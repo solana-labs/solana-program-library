@@ -27,8 +27,6 @@ use {
 /// PMMCurve struct implementing CurveCalculator
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct PMMCurve {
-    /// base token regression target
-    pub b_0: u128,
     /// quote token regression target
     pub q_0: u128,
     /// the market price provided by an oracle
@@ -38,15 +36,16 @@ pub struct PMMCurve {
 }
 
 
-fn p_margin(i: f64, b: u128, b_0: u128, q: u128, q_0: u128, k: f64) -> f64 {
-    let mut r = 1.0;
-    if b < b_0 {
-        r = 1.0 - k + (b_0 as f64/b as f64).powf(2.0) * k;
-    } else
-    if q < q_0 {
-        r = 1.0 / (1.0 - k + (q_0 as f64/q as f64).powf(2.0) * k)
-    }
-    return i*r;
+fn calc_q_2(delta_b: i128, q_0: u128, q_1: u128, i: f64, k: f64) -> u128 {
+    // does not handle k=1.0 (divide by zero)
+    // what should the behavior be?
+    if delta_b == 0 { return q_1 }
+    let a = 1.0 - k;
+    let q_2_sq = f64::powf(q_0 as f64, 2.0);
+    let b = k * q_2_sq / q_1 as f64 - q_1 as f64 + k * q_1 as f64 - i * delta_b  as f64;
+    let c = -k * q_2_sq;
+    let q_2 = (-b + f64::sqrt(f64::powf(b,2.0) - 4.0*a*c)) / (2.0*a);
+    return q_2 as u128;
 }
 
 
@@ -60,11 +59,12 @@ impl CurveCalculator for PMMCurve {
         trade_direction: TradeDirection,
     ) -> Option<SwapWithoutFeesResult> {
         let b = swap_source_amount;
-        let q = swap_destination_amount;
-        // if bid:quote is ETH:BTC, price is the quantity of ETH equal to one BTC
-        let p = p_margin(self.i, b, self.b_0, q, self.q_0, self.k);
-        let source_amount_swapped = source_amount;
-        let destination_amount_swapped = (source_amount as f64 / p) as u128;
+        let q_1 = swap_destination_amount;
+        let delta_b = source_amount as i128 - swap_source_amount as i128; // not sure about this.  other way around?
+        let q_2 = calc_q_2(delta_b, self.q_0, q_1, self.i, self.k);
+        let receive_q = if delta_b < 0 {q_1 - q_2} else {q_2 - q_1};
+        let source_amount_swapped = delta_b.abs() as u128;
+        let destination_amount_swapped = receive_q;
         return Some(SwapWithoutFeesResult {
             source_amount_swapped,
             destination_amount_swapped,
@@ -146,99 +146,64 @@ mod tests {
     use proptest::prelude::*;
 
 
-    #[test]
-    fn test_constant_price() {
-        // if k=0, price should always match the oracle's price
-        assert_eq!(p_margin(15.0, 100, 100, 100, 100, 0.0), 15.0);
-    }
+    // calc_q_2(delta_b: u128, q_0: u128, q_1: u128, k: f64) -> u128
+
 
     #[test]
-    fn test_constant_price_swap() {
-        // if k=0, price should always match the oracle's price
-        let calculator = PMMCurve {b_0:100, q_0:100, i:15.0, k:0.0};
-        let x = calculator.swap_without_fees(15, 100, 100, TradeDirection::AtoB).unwrap();
-        assert_eq!(x.source_amount_swapped, 15);
-        assert_eq!(x.destination_amount_swapped, 1);
-    }
-    
-    
-    #[test]
-    fn test_constant_price_small_b() {
-        // b < b_0
-        assert_eq!(p_margin(15.0, 1, 100, 1, 1, 0.0), 15.0);
-    }
-    
-    #[test]
-    fn test_constant_price_small_b_swap() {
-        // b < b_0
-        let calculator = PMMCurve {b_0:100, q_0:1, i:15.0, k:0.0};
-        let x = calculator.swap_without_fees(15, 1, 1, TradeDirection::AtoB).unwrap();
-        assert_eq!(x.source_amount_swapped, 15);
-        assert_eq!(x.destination_amount_swapped, 1);
-    }
-    
-    #[test]
-    fn test_constant_price_small_q() {
-        // q < q_0
-        assert_eq!(p_margin(15.0, 1, 1, 1, 100, 0.0), 15.0);
-    }
-    
-    #[test]
-    fn test_constant_price_zeros() {
-        // should not divide by zero
-        assert_eq!(p_margin(15.0, 0, 0, 0, 0, 0.0), 15.0);
-    }
-    
-    #[test]
-    fn test_pmm_equiv_to_amm_base() {
-        // k=1, so price should scale linearly according to AMM
-        assert_eq!(p_margin(15.0, 1, 1, 1, 1, 1.0), 15.0);
-    }
-    
-    #[test]
-    fn test_pmm_equiv_to_amm_small_b() {
-        // b < b_0
-        assert_eq!(p_margin(15.0, 1, 2, 0, 0, 1.0), 60.0);
-    }
-    
-    #[test]
-    fn test_pmm_equiv_to_amm_small_q() {
-        // q < q_0
-        assert_eq!(p_margin(16.0, 0, 0, 1, 2, 1.0), 4.0);
-    }
-    
-    #[test]
-    fn test_nonlinear_small_b() {
-        assert_eq!(p_margin(10.0, 2, 4, 0, 0, 0.5), 25.0);
-    }
-    
-    #[test]
-    fn test_nonlinear_small_b_swap() {
-        let calculator = PMMCurve {b_0:4, q_0:0, i:10.0, k:0.5};
-        let x = calculator.swap_without_fees(25, 2, 0, TradeDirection::AtoB).unwrap();
-        assert_eq!(x.source_amount_swapped, 25);
-        assert_eq!(x.destination_amount_swapped, 1);
-    }
-    
-    #[test]
-    fn test_nonlinear_small_b_swap_2() {
-        let calculator = PMMCurve {b_0:4, q_0:0, i:10.0, k:0.5};
-        let x = calculator.swap_without_fees(50, 2, 0, TradeDirection::AtoB).unwrap();
-        assert_eq!(x.source_amount_swapped, 50);
-        assert_eq!(x.destination_amount_swapped, 2);
-    }
-    
-    #[test]
-    fn test_nonlinear_small_q() {
-        assert_eq!(p_margin(10.0, 0, 0, 2, 4, 0.5), 4.0);
+    fn test_delta_b_is_zero() {
+        let delta_b = 0;
+        assert_eq!(calc_q_2(delta_b, 100, 200, 100.0, 0.5), 200);
+        assert_eq!(calc_q_2(delta_b, 100, 200, 100.0, 1.0), 200);
     }
 
+
     #[test]
-    fn test_nonlinear_small_q_swap() {
-        let calculator = PMMCurve {b_0:0, q_0:4, i:10.0, k:0.5};
-        let x = calculator.swap_without_fees(16, 0, 2, TradeDirection::AtoB).unwrap();
-        assert_eq!(x.source_amount_swapped, 16);
-        assert_eq!(x.destination_amount_swapped, 4);
+    fn test_k_is_0() {
+        // When k = 0, the price is the determining factor
+        let q_0 = 100;
+        let q_1 = 200;
+        let delta_b = -20;
+        let mut i = 1.0;
+        let k = 0.0;
+        assert_eq!(q_1 - calc_q_2(delta_b, q_0, q_1, i, k), 20);
+        assert_eq!(q_1 - calc_q_2(delta_b, 0, q_1, i, k), 20);
+        assert_eq!(q_1-100 - calc_q_2(delta_b, q_0, q_1-100, i, k), 20); // q_1 == q_0
+        assert_eq!(q_1-101 - calc_q_2(delta_b, q_0, q_1-101, i, k), 20); // q_1 < q_0, but not sure if this will ever happen?
+        assert_eq!(q_1 - calc_q_2(delta_b-10, q_0, q_1, i, k), 30);
+        i = 2.0;
+        assert_eq!(q_1 - calc_q_2(delta_b, q_0, q_1, i, k), 40);
+        assert_eq!(q_1 - calc_q_2(delta_b-1, q_0, q_1, i, k), 42);
+        i = 0.5;
+        assert_eq!(q_1 - calc_q_2(delta_b, q_0, q_1, i, k), 10);
+        assert_eq!(q_1 - calc_q_2(delta_b+2, q_0, q_1, i, k), 9);
     }
+
+
+    #[test]
+    fn test_k_sensitivity() {
+        // as k increases, you get more of your quote token for your base token.
+        // i think this is correct per the trading formula, as q_2 is calculated 
+        // w/ 2*(1-k) in the denominator, but it seems counter intuitive to me.
+        let q_0 = 100;
+        let q_1 = 200;
+        let delta_b = -20;
+        let i = 1.0;
+        assert_eq!(q_1 - calc_q_2(delta_b, q_0, q_1, i, 0.0), 20);
+        assert_eq!(q_1 - calc_q_2(delta_b, q_0, q_1, i, 0.1), 22);
+        assert_eq!(q_1 - calc_q_2(delta_b, q_0, q_1, i, 0.5), 31);
+        assert_eq!(q_1 - calc_q_2(delta_b, q_0, q_1, i, 0.9), 50);
+        // what should it do when k=1, where q_2 is undefined?
+        // assert_eq!(q_1 - calc_q_2(delta_b, q_0, q_1, i, 1.0), ???);
+    }
+    
+    
+    #[test]
+    fn test_swap_without_fees() {
+        let calculator = PMMCurve {q_0:100, i:1.0, k:0.5};
+        let x = calculator.swap_without_fees(100, 120, 200, TradeDirection::AtoB).unwrap();
+        assert_eq!(x.source_amount_swapped, 20);
+        assert_eq!(x.destination_amount_swapped, 31);
+    }
+    
 
 }
