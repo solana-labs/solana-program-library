@@ -170,6 +170,7 @@ async fn fail_too_little_stake() {
         &mut banks_client,
         &payer,
         &recent_blockhash,
+        &user_stake.validator,
         &user_stake.vote,
     )
     .await;

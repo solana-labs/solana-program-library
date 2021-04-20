@@ -23,7 +23,7 @@ async fn setup() -> (
     Hash,
     StakePoolAccounts,
     ValidatorStakeAccount,
-    DepositInfo,
+    DepositStakeAccount,
     u64,
 ) {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;

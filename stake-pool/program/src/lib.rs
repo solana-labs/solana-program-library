@@ -39,6 +39,12 @@ pub fn minimum_stake_lamports(meta: &Meta) -> u64 {
         .saturating_add(MINIMUM_ACTIVE_STAKE)
 }
 
+/// Get the stake amount under consideration when calculating pool token
+/// conversions
+pub fn minimum_reserve_lamports(meta: &Meta) -> u64 {
+    meta.rent_exempt_reserve.saturating_add(1)
+}
+
 /// Generates the deposit authority program address for the stake pool
 pub fn find_deposit_authority_program_address(
     program_id: &Pubkey,

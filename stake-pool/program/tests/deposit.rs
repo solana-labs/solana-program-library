@@ -88,6 +88,7 @@ async fn test_stake_pool_deposit() {
         &mut banks_client,
         &payer,
         &recent_blockhash,
+        &validator_stake_account.validator,
         &validator_stake_account.vote,
     )
     .await;
