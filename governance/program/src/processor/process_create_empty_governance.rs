@@ -8,9 +8,11 @@ use solana_program::{
     account_info::{next_account_info, AccountInfo},
     bpf_loader_upgradeable,
     entrypoint::ProgramResult,
-    program::invoke_signed,
+    program::invoke,
     pubkey::Pubkey,
 };
+
+//use solana_account_decoder::parse_token::spl_token_v2_0_pubkey;
 
 /// Create empty Governance
 pub fn process_create_empty_governance(
@@ -78,17 +80,8 @@ pub fn process_create_empty_governance(
         governance_account_info.clone(),
         program_buffer_account_info.clone(),
     ];
-
-    invoke_signed(
-        &set_buffer_authority_ix,
-        accounts,
-        &[authority_signer_seeds],
-    )?;
-    invoke_signed(
-        &set_upgrade_authority_ix,
-        accounts,
-        &[authority_signer_seeds],
-    )?;
+    invoke(&set_buffer_authority_ix, accounts)?;
+    invoke(&set_upgrade_authority_ix, accounts)?;
 
     Ok(())
 }
