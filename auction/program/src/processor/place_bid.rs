@@ -83,8 +83,9 @@ pub fn place_bid(
     let mut auction: AuctionData = try_from_slice_unchecked(&auction_act.data.borrow())?;
 
     // If the auction mint does not match the passed mint, bail.
+    msg!("{} == {}", auction.token_mint, mint_account.key);
     if auction.token_mint != *mint_account.key {
-        return Ok(());
+        return Err(AuctionError::InvalidState.into());
     }
 
     // Use the clock sysvar for timing the auction.
@@ -165,7 +166,7 @@ pub fn place_bid(
     if *bidder_pot_act.owner != spl_token::id() {
         msg!("Allocating SPL Account");
         create_or_allocate_account_raw(
-            *program_id,
+            spl_token::id(),
             bidder_pot_act,
             rent_act,
             system_account,
@@ -221,21 +222,29 @@ pub fn place_bid(
     // Transfer amount of SPL token to bid account.
     msg!("Transferring SPL Token");
     spl_token_transfer(TokenTransferParams {
-        source: bidder_act.clone(),
-        destination: bidder_pot_act.clone(),
         amount: args.amount,
-        authority: transfer_authority.clone(),
-        authority_signer_seeds: bump_authority_seeds,
+        authority_signer_seeds: None,
+        authority: bidder_act.clone(),
+        destination: bidder_pot_act.clone(),
+        source: bidder_act.clone(),
         token_program: token_program_account.clone(),
-    });
+    })?;
 
-    // result.map_err(|_| VaultError::TokenTransferFailed.into());
+    // Update Metadata
+    BidderMetadata {
+        bidder_pubkey: *bidder_act.key,
+        auction_pubkey: *auction_act.key,
+        last_bid: args.amount,
+        last_bid_timestamp: clock.unix_timestamp,
+        last_bid_timestamp_slot: clock.slot,
+        cancelled: false,
+    }
+    .serialize(&mut *bidder_meta_act.data.borrow_mut())?;
 
-    //
-    //    msg!("Storing new auction state");
-    //    auction.last_bid = Some(clock.slot);
-    //    auction.bid_state.place_bid(Bid(pot_key, args.amount))?;
-    //    auction.serialize(&mut *auction_act.data.borrow_mut())?;
+    msg!("Storing new auction state");
+    auction.last_bid = Some(clock.slot);
+    auction.bid_state.place_bid(Bid(*bidder_pot_act.key, args.amount))?;
+    auction.serialize(&mut *auction_act.data.borrow_mut())?;
 
     Ok(())
 }

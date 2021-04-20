@@ -224,6 +224,8 @@ pub struct BidderMetadata {
     pub last_bid: u64,
     // Tracks the last time this user bid.
     pub last_bid_timestamp: UnixTimestamp,
+    // Tracks the last time in slots this user bid.
+    pub last_bid_timestamp_slot: Slot,
     // Whether the last bid the user made was cancelled. This should also be enough to know if the
     // user is a winner, as if cancelled it implies previous bids were also cancelled.
     pub cancelled: bool,
