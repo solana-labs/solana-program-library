@@ -40,7 +40,7 @@ pub fn start_auction(
     let auction_path = [
         PREFIX.as_bytes(),
         program_id.as_ref(),
-        &args.resource.to_bytes(),
+        &args.resource.as_ref(),
     ];
 
     // Derive auction address so we can make the modifications necessary to start it.
