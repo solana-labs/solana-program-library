@@ -176,8 +176,6 @@ pub fn place_bid(
     ];
 
     if bidder_pot_act.data_is_empty() {
-        let rent = &Rent::from_account_info(rent_act)?;
-
         create_or_allocate_account_raw(
             *program_id,
             bidder_pot_act,
@@ -185,12 +183,7 @@ pub fn place_bid(
             system_account,
             payer,
             mem::size_of::<BidderPot>(),
-            &[
-                PREFIX.as_bytes(),
-                program_id.as_ref(),
-                args.resource.as_ref(),
-                &[auction_bump],
-            ],
+            bump_authority_seeds,
         )?;
 
         let mut bidder_pot: BidderPot =
@@ -200,7 +193,6 @@ pub fn place_bid(
         bidder_pot.serialize(&mut *bidder_pot_act.data.borrow_mut())?;
 
         msg!("Cool");
-        return Ok(());
     } else {
         let bidder_pot: BidderPot = try_from_slice_unchecked(&bidder_pot_act.data.borrow_mut())?;
         if bidder_pot.bidder_pot != *bidder_pot_token_act.key {
