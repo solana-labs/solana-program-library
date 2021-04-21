@@ -391,7 +391,7 @@ pub fn decrease_validator_stake(
     validator_stake: &Pubkey,
     transient_stake: &Pubkey,
     lamports: u64,
-) -> Result<Instruction, ProgramError> {
+) -> Instruction {
     let accounts = vec![
         AccountMeta::new_readonly(*stake_pool, false),
         AccountMeta::new_readonly(*staker, true),
@@ -404,11 +404,13 @@ pub fn decrease_validator_stake(
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(stake_program::id(), false),
     ];
-    Ok(Instruction {
+    Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::DecreaseValidatorStake(lamports).try_to_vec()?,
-    })
+        data: StakePoolInstruction::DecreaseValidatorStake(lamports)
+            .try_to_vec()
+            .unwrap(),
+    }
 }
 
 /// Creates `IncreaseValidatorStake` instruction (rebalance from reserve account to
@@ -423,7 +425,7 @@ pub fn increase_validator_stake(
     transient_stake: &Pubkey,
     validator: &Pubkey,
     lamports: u64,
-) -> Result<Instruction, ProgramError> {
+) -> Instruction {
     let accounts = vec![
         AccountMeta::new_readonly(*stake_pool, false),
         AccountMeta::new_readonly(*staker, true),
@@ -439,11 +441,13 @@ pub fn increase_validator_stake(
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(stake_program::id(), false),
     ];
-    Ok(Instruction {
+    Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::IncreaseValidatorStake(lamports).try_to_vec()?,
-    })
+        data: StakePoolInstruction::IncreaseValidatorStake(lamports)
+            .try_to_vec()
+            .unwrap(),
+    }
 }
 
 /// Creates `UpdateValidatorListBalance` instruction (update validator stake account balances)
