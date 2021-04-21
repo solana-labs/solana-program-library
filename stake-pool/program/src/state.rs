@@ -79,7 +79,7 @@ pub struct StakePool {
 impl StakePool {
     /// calculate the pool tokens that should be minted for a deposit of `stake_lamports`
     pub fn calc_pool_tokens_for_deposit(&self, stake_lamports: u64) -> Option<u64> {
-        if self.total_stake_lamports == 0 {
+        if self.total_stake_lamports == 0 || self.pool_token_supply == 0 {
             return Some(stake_lamports);
         }
         u64::try_from(
@@ -236,7 +236,7 @@ pub struct ValidatorList {
 #[derive(Clone, Copy, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ValidatorStakeInfo {
     /// Validator vote account address
-    pub vote_account: Pubkey,
+    pub vote_account_address: Pubkey,
 
     /// Amount of stake delegated to this validator
     /// Note that if `last_update_epoch` does not match the current epoch then this field may not
@@ -264,23 +264,23 @@ impl ValidatorList {
     }
 
     /// Check if contains validator with particular pubkey
-    pub fn contains(&self, vote_account: &Pubkey) -> bool {
+    pub fn contains(&self, vote_account_address: &Pubkey) -> bool {
         self.validators
             .iter()
-            .any(|x| x.vote_account == *vote_account)
+            .any(|x| x.vote_account_address == *vote_account_address)
     }
 
     /// Check if contains validator with particular pubkey
-    pub fn find_mut(&mut self, vote_account: &Pubkey) -> Option<&mut ValidatorStakeInfo> {
+    pub fn find_mut(&mut self, vote_account_address: &Pubkey) -> Option<&mut ValidatorStakeInfo> {
         self.validators
             .iter_mut()
-            .find(|x| x.vote_account == *vote_account)
+            .find(|x| x.vote_account_address == *vote_account_address)
     }
     /// Check if contains validator with particular pubkey
-    pub fn find(&self, vote_account: &Pubkey) -> Option<&ValidatorStakeInfo> {
+    pub fn find(&self, vote_account_address: &Pubkey) -> Option<&ValidatorStakeInfo> {
         self.validators
             .iter()
-            .find(|x| x.vote_account == *vote_account)
+            .find(|x| x.vote_account_address == *vote_account_address)
     }
 
     /// Check if validator stake list is actually initialized as a validator stake list
@@ -337,17 +337,17 @@ mod test {
             max_validators,
             validators: vec![
                 ValidatorStakeInfo {
-                    vote_account: Pubkey::new_from_array([1; 32]),
+                    vote_account_address: Pubkey::new_from_array([1; 32]),
                     stake_lamports: 123456789,
                     last_update_epoch: 987654321,
                 },
                 ValidatorStakeInfo {
-                    vote_account: Pubkey::new_from_array([2; 32]),
+                    vote_account_address: Pubkey::new_from_array([2; 32]),
                     stake_lamports: 998877665544,
                     last_update_epoch: 11223445566,
                 },
                 ValidatorStakeInfo {
-                    vote_account: Pubkey::new_from_array([3; 32]),
+                    vote_account_address: Pubkey::new_from_array([3; 32]),
                     stake_lamports: 0,
                     last_update_epoch: 999999999999999,
                 },

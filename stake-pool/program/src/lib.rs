@@ -14,13 +14,27 @@ pub mod entrypoint;
 
 // Export current sdk types for downstream users building with a different sdk version
 pub use solana_program;
-use solana_program::pubkey::Pubkey;
+use {
+    crate::stake_program::Meta,
+    solana_program::{native_token::LAMPORTS_PER_SOL, pubkey::Pubkey},
+};
 
 /// Seed for deposit authority seed
 const AUTHORITY_DEPOSIT: &[u8] = b"deposit";
 
 /// Seed for withdraw authority seed
 const AUTHORITY_WITHDRAW: &[u8] = b"withdraw";
+
+/// Minimum amount of staked SOL required in a validator stake account to allow
+/// for merges without a mismatch on credits observed
+pub const MINIMUM_ACTIVE_STAKE: u64 = LAMPORTS_PER_SOL;
+
+/// Get the stake amount under consideration when calculating pool token
+/// conversions
+pub fn minimum_stake_lamports(meta: &Meta) -> u64 {
+    meta.rent_exempt_reserve
+        .saturating_add(MINIMUM_ACTIVE_STAKE)
+}
 
 /// Generates the deposit authority program address for the stake pool
 pub fn find_deposit_authority_program_address(

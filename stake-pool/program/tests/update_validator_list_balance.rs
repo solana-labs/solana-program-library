@@ -3,12 +3,8 @@
 mod helpers;
 
 use {
-    crate::helpers::TEST_STAKE_AMOUNT,
-    helpers::*,
-    solana_program::{native_token, pubkey::Pubkey},
-    solana_program_test::*,
+    helpers::*, solana_program::pubkey::Pubkey, solana_program_test::*,
     solana_sdk::signature::Signer,
-    spl_stake_pool::stake_program,
 };
 
 #[tokio::test]
@@ -39,10 +35,6 @@ async fn success() {
         );
     }
 
-    let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>())
-        + native_token::sol_to_lamports(1.0);
-
     // Check current balance in the list
     assert_eq!(
         get_validator_list_sum(
@@ -50,7 +42,7 @@ async fn success() {
             &stake_pool_accounts.validator_list.pubkey()
         )
         .await,
-        STAKE_ACCOUNTS * (stake_rent + TEST_STAKE_AMOUNT)
+        0,
     );
 
     // Add extra funds, simulating rewards
@@ -90,12 +82,12 @@ async fn success() {
             &stake_pool_accounts.validator_list.pubkey()
         )
         .await,
-        STAKE_ACCOUNTS * (stake_rent + TEST_STAKE_AMOUNT + EXTRA_STAKE_AMOUNT)
+        STAKE_ACCOUNTS * EXTRA_STAKE_AMOUNT
     );
 }
 
 #[tokio::test]
-async fn test_update_validator_list_balance_with_uninitialized_validator_list() {} // TODO
+async fn fail_with_uninitialized_validator_list() {} // TODO
 
 #[tokio::test]
-async fn test_update_validator_list_balance_with_wrong_stake_state() {} // TODO
+async fn fail_with_wrong_stake_state() {} // TODO

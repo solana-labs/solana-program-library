@@ -264,12 +264,7 @@ fn command_vsa_create(
     Ok(())
 }
 
-fn command_vsa_add(
-    config: &Config,
-    stake_pool_address: &Pubkey,
-    stake: &Pubkey,
-    token_receiver: &Option<Pubkey>,
-) -> CommandResult {
+fn command_vsa_add(config: &Config, stake_pool_address: &Pubkey, stake: &Pubkey) -> CommandResult {
     if config.rpc_client.get_stake_activation(*stake, None)?.state != StakeActivationState::Active {
         return Err("Stake account is not active.".into());
     }
@@ -280,25 +275,8 @@ fn command_vsa_add(
 
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
 
-    let mut total_rent_free_balances: u64 = 0;
-
-    let token_receiver_account = Keypair::new();
-
     let mut instructions: Vec<Instruction> = vec![];
     let mut signers = vec![config.fee_payer.as_ref(), config.staker.as_ref()];
-
-    // Create token account if not specified
-    let token_receiver = unwrap_create_token_account(
-        &config,
-        &token_receiver,
-        &token_receiver_account,
-        &stake_pool.pool_mint,
-        &mut instructions,
-        |balance| {
-            signers.push(&token_receiver_account);
-            total_rent_free_balances += balance;
-        },
-    )?;
 
     // Calculate Deposit and Withdraw stake pool authorities
     let pool_deposit_authority =
@@ -331,9 +309,6 @@ fn command_vsa_add(
             &pool_withdraw_authority,
             &stake_pool.validator_list,
             &stake,
-            &token_receiver,
-            &stake_pool.pool_mint,
-            &spl_token::id(),
         )?,
     ]);
 
@@ -341,10 +316,7 @@ fn command_vsa_add(
         Transaction::new_with_payer(&instructions, Some(&config.fee_payer.pubkey()));
 
     let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-    check_fee_payer_balance(
-        config,
-        total_rent_free_balances + fee_calculator.calculate_fee(&transaction.message()),
-    )?;
+    check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
     unique_signers!(signers);
     transaction.sign(&signers, recent_blockhash);
     send_transaction(&config, transaction)?;
@@ -355,7 +327,6 @@ fn command_vsa_remove(
     config: &Config,
     stake_pool_address: &Pubkey,
     stake: &Pubkey,
-    withdraw_from: &Pubkey,
     new_authority: &Option<Pubkey>,
 ) -> CommandResult {
     if !config.no_update {
@@ -369,35 +340,8 @@ fn command_vsa_remove(
     let staker_pubkey = config.staker.pubkey();
     let new_authority = new_authority.as_ref().unwrap_or(&staker_pubkey);
 
-    // Calculate amount of tokens to withdraw
-    let stake_account = config.rpc_client.get_account(&stake)?;
-    let tokens_to_withdraw = stake_pool
-        .calc_pool_tokens_for_withdraw(stake_account.lamports)
-        .unwrap();
-
-    // Check balance and mint
-    let token_account =
-        get_token_account(&config.rpc_client, &withdraw_from, &stake_pool.pool_mint)?;
-
-    if token_account.amount < tokens_to_withdraw {
-        let pool_mint = get_token_mint(&config.rpc_client, &stake_pool.pool_mint)?;
-        return Err(format!(
-            "Not enough balance to burn to remove validator stake account from the pool. {} pool tokens needed.",
-            spl_token::amount_to_ui_amount(tokens_to_withdraw, pool_mint.decimals)
-        ).into());
-    }
-
     let mut transaction = Transaction::new_with_payer(
         &[
-            // Approve spending token
-            spl_token::instruction::approve(
-                &spl_token::id(),
-                &withdraw_from,
-                &pool_withdraw_authority,
-                &config.token_owner.pubkey(),
-                &[],
-                tokens_to_withdraw,
-            )?,
             // Create new validator stake account address
             spl_stake_pool::instruction::remove_validator_from_pool(
                 &spl_stake_pool::id(),
@@ -407,9 +351,6 @@ fn command_vsa_remove(
                 &new_authority,
                 &stake_pool.validator_list,
                 &stake,
-                &withdraw_from,
-                &stake_pool.pool_mint,
-                &spl_token::id(),
             )?,
         ],
         Some(&config.fee_payer.pubkey()),
@@ -589,7 +530,7 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
     for validator in validator_list.validators {
         println!(
             "Validator Vote Account: {}\tBalance: {}\tLast Update Epoch: {}{}",
-            validator.vote_account,
+            validator.vote_account_address,
             Sol(validator.stake_lamports),
             validator.last_update_epoch,
             if validator.last_update_epoch != epoch_info.epoch {
@@ -669,7 +610,7 @@ fn command_update(config: &Config, stake_pool_address: &Pubkey) -> CommandResult
             } else {
                 let (stake_account, _) = find_stake_program_address(
                     &spl_stake_pool::id(),
-                    &item.vote_account,
+                    &item.vote_account_address,
                     &stake_pool_address,
                 );
                 Some(stake_account)
@@ -1439,26 +1380,13 @@ fn main() {
         ("add-validator", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
             let stake_account = pubkey_of(arg_matches, "stake_account").unwrap();
-            let token_receiver: Option<Pubkey> = pubkey_of(arg_matches, "token_receiver");
-            command_vsa_add(
-                &config,
-                &stake_pool_address,
-                &stake_account,
-                &token_receiver,
-            )
+            command_vsa_add(&config, &stake_pool_address, &stake_account)
         }
         ("remove-validator", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
             let stake_account = pubkey_of(arg_matches, "stake_account").unwrap();
-            let withdraw_from = pubkey_of(arg_matches, "withdraw_from").unwrap();
             let new_authority: Option<Pubkey> = pubkey_of(arg_matches, "new_authority");
-            command_vsa_remove(
-                &config,
-                &stake_pool_address,
-                &stake_account,
-                &withdraw_from,
-                &new_authority,
-            )
+            command_vsa_remove(&config, &stake_pool_address, &stake_account, &new_authority)
         }
         ("deposit", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();

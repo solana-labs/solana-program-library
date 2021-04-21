@@ -3,6 +3,7 @@
 mod helpers;
 
 use {
+    bincode::deserialize,
     borsh::{BorshDeserialize, BorshSerialize},
     helpers::*,
     solana_program::{
@@ -19,7 +20,8 @@ use {
         transport::TransportError,
     },
     spl_stake_pool::{
-        borsh::try_from_slice_unchecked, error, id, instruction, stake_program, state,
+        borsh::try_from_slice_unchecked, error, id, instruction, minimum_stake_lamports,
+        stake_program, state,
     },
     spl_token::error as token_error,
 };
@@ -208,8 +210,11 @@ async fn test_stake_pool_deposit() {
     // Check validator stake account actual SOL balance
     let validator_stake_account =
         get_account(&mut banks_client, &validator_stake_account.stake_account).await;
+    let stake_state =
+        deserialize::<stake_program::StakeState>(&validator_stake_account.data).unwrap();
+    let meta = stake_state.meta().unwrap();
     assert_eq!(
-        validator_stake_account.lamports,
+        validator_stake_account.lamports - minimum_stake_lamports(&meta),
         validator_stake_item.stake_lamports
     );
 }

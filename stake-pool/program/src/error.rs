@@ -85,6 +85,9 @@ pub enum StakePoolError {
     /// Pool token supply is not zero on initialization
     #[error("NonZeroPoolTokenSupply")]
     NonZeroPoolTokenSupply,
+    /// The lamports in the validator stake account is not equal to the minimum
+    #[error("StakeLamportsNotEqualToMinimum")]
+    StakeLamportsNotEqualToMinimum,
 }
 impl From<StakePoolError> for ProgramError {
     fn from(e: StakePoolError) -> Self {
