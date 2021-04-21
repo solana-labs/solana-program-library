@@ -4,9 +4,9 @@ use {
     crate::{
         borsh::try_from_slice_unchecked,
         error::StakePoolError,
-        instruction::{Fee, StakePoolInstruction},
+        instruction::StakePoolInstruction,
         minimum_stake_lamports, stake_program,
-        state::{AccountType, StakePool, ValidatorList, ValidatorStakeInfo},
+        state::{AccountType, Fee, StakePool, ValidatorList, ValidatorStakeInfo},
         AUTHORITY_DEPOSIT, AUTHORITY_WITHDRAW, MINIMUM_ACTIVE_STAKE,
     },
     bincode::deserialize,
@@ -1096,6 +1096,40 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes [SetFee](enum.Instruction.html).
+    fn process_set_fee(_program_id: &Pubkey, accounts: &[AccountInfo], fee: Fee) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let stake_pool_info = next_account_info(account_info_iter)?;
+        let manager_info = next_account_info(account_info_iter)?;
+        let clock_info = next_account_info(account_info_iter)?;
+        let clock = &Clock::from_account_info(clock_info)?;
+
+        let mut stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
+        if !stake_pool.is_valid() {
+            return Err(StakePoolError::InvalidState.into());
+        }
+
+        stake_pool.check_manager(manager_info)?;
+
+        if stake_pool.last_update_epoch < clock.epoch {
+            return Err(StakePoolError::StakeListAndPoolOutOfDate.into());
+        }
+
+        // Numerator should be smaller than or equal to denominator (fee <= 1)
+        if fee.numerator > fee.denominator {
+            msg!(
+                "Fee greater than 100%, numerator {}, denominator {}",
+                fee.numerator,
+                fee.denominator
+            );
+            return Err(StakePoolError::FeeTooHigh.into());
+        }
+
+        stake_pool.fee = fee;
+        stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
+        Ok(())
+    }
+
     /// Processes [SetManager](enum.Instruction.html).
     fn process_set_staker(_program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -1168,6 +1202,10 @@ impl Processor {
             StakePoolInstruction::SetManager => {
                 msg!("Instruction: SetManager");
                 Self::process_set_manager(program_id, accounts)
+            }
+            StakePoolInstruction::SetFee { fee } => {
+                msg!("Instruction: SetFee");
+                Self::process_set_fee(program_id, accounts, fee)
             }
             StakePoolInstruction::SetStaker => {
                 msg!("Instruction: SetStaker");

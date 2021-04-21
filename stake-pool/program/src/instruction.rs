@@ -3,7 +3,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use {
-    crate::stake_program,
+    crate::{stake_program, state::Fee},
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{
         instruction::{AccountMeta, Instruction},
@@ -12,17 +12,6 @@ use {
         system_program, sysvar,
     },
 };
-
-/// Fee rate as a ratio, minted on `UpdateStakePoolBalance` as a proportion of
-/// the rewards
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq, BorshSerialize, BorshDeserialize, BorshSchema)]
-pub struct Fee {
-    /// denominator of the fee ratio
-    pub denominator: u64,
-    /// numerator of the fee ratio
-    pub numerator: u64,
-}
 
 /// Instructions supported by the StakePool program.
 #[repr(C)]
@@ -233,6 +222,17 @@ pub enum StakePoolInstruction {
     ///  2. '[]` New manager pubkey
     ///  3. '[]` New manager fee account
     SetManager,
+
+    ///  (Manager only) Update fee
+    ///
+    ///  0. `[w]` StakePool
+    ///  1. `[s]` Manager
+    ///  2. `[]` Sysvar clock
+    SetFee {
+        /// Fee assessed as percentage of perceived rewards
+        #[allow(dead_code)] // but it's not
+        fee: Fee,
+    },
 
     ///  (Manager or staker only) Update staker
     ///
@@ -505,6 +505,25 @@ pub fn set_manager(
         accounts,
         data: StakePoolInstruction::SetManager.try_to_vec()?,
     })
+}
+
+/// Creates a 'set fee' instruction.
+pub fn set_fee(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    manager: &Pubkey,
+    fee: Fee,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new(*stake_pool, false),
+        AccountMeta::new_readonly(*manager, true),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+    ];
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: StakePoolInstruction::SetFee { fee }.try_to_vec().unwrap(),
+    }
 }
 
 /// Creates a 'set staker' instruction.

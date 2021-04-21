@@ -31,7 +31,7 @@ use {
         find_deposit_authority_program_address, find_stake_program_address,
         find_withdraw_authority_program_address,
         stake_program::{self, StakeAuthorize, StakeState},
-        state::{StakePool, ValidatorList},
+        state::{Fee, StakePool, ValidatorList},
     },
     std::process::exit,
 };
@@ -94,11 +94,7 @@ fn send_transaction(
     Ok(())
 }
 
-fn command_create_pool(
-    config: &Config,
-    fee: spl_stake_pool::instruction::Fee,
-    max_validators: u32,
-) -> CommandResult {
+fn command_create_pool(config: &Config, fee: Fee, max_validators: u32) -> CommandResult {
     let mint_account = Keypair::new();
     println!("Creating mint {}", mint_account.pubkey());
 
@@ -921,6 +917,26 @@ fn command_set_staker(
     Ok(())
 }
 
+fn command_set_fee(config: &Config, stake_pool_address: &Pubkey, new_fee: Fee) -> CommandResult {
+    let mut transaction = Transaction::new_with_payer(
+        &[spl_stake_pool::instruction::set_fee(
+            &spl_stake_pool::id(),
+            &stake_pool_address,
+            &config.manager.pubkey(),
+            new_fee,
+        )],
+        Some(&config.fee_payer.pubkey()),
+    );
+
+    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+    check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
+    let mut signers = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
+    unique_signers!(signers);
+    transaction.sign(&signers, recent_blockhash);
+    send_transaction(&config, transaction)?;
+    Ok(())
+}
+
 fn main() {
     solana_logger::setup_with_default("solana=info");
 
@@ -1290,6 +1306,36 @@ fn main() {
                     .help("Public key for the new stake pool staker."),
             )
         )
+        .subcommand(SubCommand::with_name("set-fee")
+            .about("Change the fee assessed by the stake pool. Must be signed by the manager.")
+            .arg(
+                Arg::with_name("pool")
+                    .index(1)
+                    .validator(is_pubkey)
+                    .value_name("POOL_ADDRESS")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Stake pool address."),
+            )
+            .arg(
+                Arg::with_name("fee_numerator")
+                    .index(2)
+                    .validator(is_parsable::<u64>)
+                    .value_name("NUMERATOR")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Fee numerator, fee amount is numerator divided by denominator."),
+            )
+            .arg(
+                Arg::with_name("fee_denominator")
+                    .index(3)
+                    .validator(is_parsable::<u64>)
+                    .value_name("DENOMINATOR")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Fee denominator, fee amount is numerator divided by denominator."),
+            )
+        )
         .get_matches();
 
     let mut wallet_manager = None;
@@ -1365,7 +1411,7 @@ fn main() {
             let max_validators = value_t_or_exit!(arg_matches, "max_validators", u32);
             command_create_pool(
                 &config,
-                spl_stake_pool::instruction::Fee {
+                Fee {
                     denominator,
                     numerator,
                 },
@@ -1435,6 +1481,16 @@ fn main() {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
             let new_staker = pubkey_of(arg_matches, "new_staker").unwrap();
             command_set_staker(&config, &stake_pool_address, &new_staker)
+        }
+        ("set-fee", Some(arg_matches)) => {
+            let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
+            let numerator = value_t_or_exit!(arg_matches, "fee_numerator", u64);
+            let denominator = value_t_or_exit!(arg_matches, "fee_denominator", u64);
+            let new_fee = Fee {
+                denominator,
+                numerator,
+            };
+            command_set_fee(&config, &stake_pool_address, new_fee)
         }
         _ => unreachable!(),
     }
