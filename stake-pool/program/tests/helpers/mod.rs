@@ -13,8 +13,9 @@ use {
     },
     solana_vote_program::{self, vote_state::VoteState},
     spl_stake_pool::{
-        borsh::{get_instance_packed_len, try_from_slice_unchecked}, find_stake_program_address,
-        find_transient_stake_program_address, id, instruction, processor, stake_program, state,
+        borsh::{get_instance_packed_len, try_from_slice_unchecked},
+        find_stake_program_address, find_transient_stake_program_address, id, instruction,
+        processor, stake_program, state,
     },
 };
 
