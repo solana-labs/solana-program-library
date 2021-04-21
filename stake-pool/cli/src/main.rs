@@ -1487,8 +1487,8 @@ fn main() {
             let numerator = value_t_or_exit!(arg_matches, "fee_numerator", u64);
             let denominator = value_t_or_exit!(arg_matches, "fee_denominator", u64);
             let new_fee = Fee {
-                numerator,
                 denominator,
+                numerator,
             };
             command_set_fee(&config, &stake_pool_address, new_fee)
         }
