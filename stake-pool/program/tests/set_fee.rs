@@ -21,7 +21,7 @@ async fn setup() -> (BanksClient, Keypair, Hash, StakePoolAccounts, Fee) {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
         .await
         .unwrap();
     let new_fee = Fee {
@@ -47,7 +47,7 @@ async fn success() {
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
-            new_fee.clone(),
+            new_fee,
         )],
         Some(&payer.pubkey()),
         &[&payer, &stake_pool_accounts.manager],
@@ -137,6 +137,7 @@ async fn fail_not_updated() {
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
+            1,
         )
         .await
         .unwrap();

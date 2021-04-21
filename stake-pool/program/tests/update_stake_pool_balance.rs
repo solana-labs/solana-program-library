@@ -26,6 +26,7 @@ async fn setup() -> (
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
+            1,
         )
         .await
         .unwrap();
@@ -48,6 +49,7 @@ async fn setup() -> (
             &context.last_blockhash,
             &stake_pool_accounts,
             &validator_stake_account,
+            TEST_STAKE_AMOUNT,
         )
         .await;
 
@@ -157,7 +159,7 @@ async fn fail_with_wrong_validator_list() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let mut stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
         .await
         .unwrap();
 
@@ -186,7 +188,7 @@ async fn fail_with_wrong_pool_fee_account() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let mut stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
         .await
         .unwrap();
 

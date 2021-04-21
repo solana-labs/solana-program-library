@@ -34,7 +34,7 @@ async fn setup() -> (
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
         .await
         .unwrap();
 
@@ -158,7 +158,7 @@ async fn fail_too_little_stake() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
         .await
         .unwrap();
 
@@ -248,7 +248,7 @@ async fn fail_too_much_stake() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
         .await
         .unwrap();
 
@@ -463,7 +463,7 @@ async fn fail_add_too_many_validator_stake_accounts() {
     let mut stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts.max_validators = 1;
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
         .await
         .unwrap();
 

@@ -7,7 +7,7 @@ use {
         instruction::StakePoolInstruction,
         minimum_stake_lamports, stake_program,
         state::{AccountType, Fee, StakePool, ValidatorList, ValidatorStakeInfo},
-        AUTHORITY_DEPOSIT, AUTHORITY_WITHDRAW, MINIMUM_ACTIVE_STAKE,
+        AUTHORITY_DEPOSIT, AUTHORITY_WITHDRAW, MINIMUM_ACTIVE_STAKE, TRANSIENT_STAKE_SEED,
     },
     bincode::deserialize,
     borsh::{BorshDeserialize, BorshSerialize},
@@ -44,19 +44,6 @@ fn get_stake_state(
     }
 }
 
-/// Checks if validator stake account is a proper program address
-fn is_validator_stake_address(
-    program_id: &Pubkey,
-    stake_pool_address: &Pubkey,
-    stake_account_address: &Pubkey,
-    vote_address: &Pubkey,
-) -> bool {
-    // Check stake account address validity
-    let (stake_address, _) =
-        crate::find_stake_program_address(&program_id, &vote_address, &stake_pool_address);
-    stake_address == *stake_account_address
-}
-
 /// Check validity of vote address for a particular stake account
 fn check_validator_stake_address(
     program_id: &Pubkey,
@@ -64,13 +51,82 @@ fn check_validator_stake_address(
     stake_account_address: &Pubkey,
     vote_address: &Pubkey,
 ) -> Result<(), ProgramError> {
-    if !is_validator_stake_address(
-        program_id,
-        stake_pool_address,
-        stake_account_address,
-        vote_address,
-    ) {
+    // Check stake account address validity
+    let (validator_stake_address, _) =
+        crate::find_stake_program_address(&program_id, &vote_address, &stake_pool_address);
+    if validator_stake_address != *stake_account_address {
+        msg!(
+            "Incorrect stake account address for vote {}, expected {}, received {}",
+            vote_address,
+            validator_stake_address,
+            stake_account_address
+        );
         Err(StakePoolError::InvalidStakeAccountAddress.into())
+    } else {
+        Ok(())
+    }
+}
+
+/// Check validity of vote address for a particular stake account
+fn check_transient_stake_address(
+    program_id: &Pubkey,
+    stake_pool_address: &Pubkey,
+    stake_account_address: &Pubkey,
+    vote_address: &Pubkey,
+) -> Result<u8, ProgramError> {
+    // Check stake account address validity
+    let (transient_stake_address, bump_seed) = crate::find_transient_stake_program_address(
+        &program_id,
+        &vote_address,
+        &stake_pool_address,
+    );
+    if transient_stake_address != *stake_account_address {
+        Err(StakePoolError::InvalidStakeAccountAddress.into())
+    } else {
+        Ok(bump_seed)
+    }
+}
+
+/// Check system program address
+fn check_system_program(program_id: &Pubkey) -> Result<(), ProgramError> {
+    if *program_id != system_program::id() {
+        msg!(
+            "Expected system program {}, received {}",
+            system_program::id(),
+            program_id
+        );
+        Err(ProgramError::IncorrectProgramId)
+    } else {
+        Ok(())
+    }
+}
+
+/// Check stake program address
+fn check_stake_program(program_id: &Pubkey) -> Result<(), ProgramError> {
+    if *program_id != stake_program::id() {
+        msg!(
+            "Expected stake program {}, received {}",
+            stake_program::id(),
+            program_id
+        );
+        Err(ProgramError::IncorrectProgramId)
+    } else {
+        Ok(())
+    }
+}
+
+/// Check account owner is the given program
+fn check_account_owner(
+    account_info: &AccountInfo,
+    program_id: &Pubkey,
+) -> Result<(), ProgramError> {
+    if *program_id != *account_info.owner {
+        msg!(
+            "Expected account to be owned by program {}, received {}",
+            program_id,
+            account_info.owner
+        );
+        Err(ProgramError::IncorrectProgramId)
     } else {
         Ok(())
     }
@@ -79,6 +135,61 @@ fn check_validator_stake_address(
 /// Program state handler.
 pub struct Processor {}
 impl Processor {
+    /// Issue a stake_deactivate instruction.
+    #[allow(clippy::too_many_arguments)]
+    fn stake_delegate<'a>(
+        stake_info: AccountInfo<'a>,
+        vote_account_info: AccountInfo<'a>,
+        clock_info: AccountInfo<'a>,
+        stake_history_info: AccountInfo<'a>,
+        stake_config_info: AccountInfo<'a>,
+        authority_info: AccountInfo<'a>,
+        stake_pool: &Pubkey,
+        authority_type: &[u8],
+        bump_seed: u8,
+    ) -> Result<(), ProgramError> {
+        let authority_signature_seeds =
+            [&stake_pool.to_bytes()[..32], authority_type, &[bump_seed]];
+        let signers = &[&authority_signature_seeds[..]];
+
+        let ix = stake_program::delegate_stake(
+            stake_info.key,
+            authority_info.key,
+            vote_account_info.key,
+        );
+
+        invoke_signed(
+            &ix,
+            &[
+                stake_info,
+                vote_account_info,
+                clock_info,
+                stake_history_info,
+                stake_config_info,
+                authority_info,
+            ],
+            signers,
+        )
+    }
+
+    /// Issue a stake_deactivate instruction.
+    fn stake_deactivate<'a>(
+        stake_info: AccountInfo<'a>,
+        clock_info: AccountInfo<'a>,
+        authority_info: AccountInfo<'a>,
+        stake_pool: &Pubkey,
+        authority_type: &[u8],
+        bump_seed: u8,
+    ) -> Result<(), ProgramError> {
+        let authority_signature_seeds =
+            [&stake_pool.to_bytes()[..32], authority_type, &[bump_seed]];
+        let signers = &[&authority_signature_seeds[..]];
+
+        let ix = stake_program::deactivate_stake(stake_info.key, authority_info.key);
+
+        invoke_signed(&ix, &[stake_info, clock_info, authority_info], signers)
+    }
+
     /// Issue a stake_split instruction.
     fn stake_split<'a>(
         stake_pool: &Pubkey,
@@ -231,6 +342,7 @@ impl Processor {
         let manager_info = next_account_info(account_info_iter)?;
         let staker_info = next_account_info(account_info_iter)?;
         let validator_list_info = next_account_info(account_info_iter)?;
+        let reserve_stake_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let manager_fee_info = next_account_info(account_info_iter)?;
         let clock_info = next_account_info(account_info_iter)?;
@@ -240,23 +352,31 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         if !manager_info.is_signer {
+            msg!("Manager did not sign initialization");
             return Err(StakePoolError::SignatureMissing.into());
         }
 
         let mut stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_uninitialized() {
+            msg!("Provided stake pool already in use");
             return Err(StakePoolError::AlreadyInUse.into());
         }
 
         let mut validator_list =
             try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
         if !validator_list.is_uninitialized() {
+            msg!("Provided validator list already in use");
             return Err(StakePoolError::AlreadyInUse.into());
         }
 
         let data_length = validator_list_info.data_len();
         let expected_max_validators = ValidatorList::calculate_max_validators(data_length);
         if expected_max_validators != max_validators as usize || max_validators == 0 {
+            msg!(
+                "Incorrect validator list size provided, expected {}, provided {}",
+                expected_max_validators,
+                max_validators
+            );
             return Err(StakePoolError::UnexpectedValidatorListAccountSize.into());
         }
         validator_list.account_type = AccountType::ValidatorList;
@@ -310,14 +430,46 @@ impl Processor {
             return Err(StakePoolError::WrongMintingAuthority.into());
         }
 
-        validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
+        if *reserve_stake_info.owner != stake_program::id() {
+            msg!("Reserve stake account not owned by stake program");
+            return Err(ProgramError::IncorrectProgramId);
+        }
+        let stake_state: stake_program::StakeState = deserialize(&reserve_stake_info.data.borrow())
+            .or(Err(ProgramError::InvalidAccountData))?;
+        if let stake_program::StakeState::Initialized(meta) = stake_state {
+            if meta.lockup != stake_program::Lockup::default() {
+                msg!("Reserve stake account has some lockup");
+                return Err(StakePoolError::WrongStakeState.into());
+            }
 
-        msg!("Clock data: {:?}", clock_info.data.borrow());
-        msg!("Epoch: {}", clock.epoch);
+            if meta.authorized.staker != withdraw_authority_key {
+                msg!(
+                    "Reserve stake account has incorrect staker {}, should be {}",
+                    meta.authorized.staker,
+                    withdraw_authority_key
+                );
+                return Err(StakePoolError::WrongStakeState.into());
+            }
+
+            if meta.authorized.withdrawer != withdraw_authority_key {
+                msg!(
+                    "Reserve stake account has incorrect withdrawer {}, should be {}",
+                    meta.authorized.staker,
+                    withdraw_authority_key
+                );
+                return Err(StakePoolError::WrongStakeState.into());
+            }
+        } else {
+            msg!("Reserve stake account not in intialized state");
+            return Err(StakePoolError::WrongStakeState.into());
+        }
+
+        validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
 
         stake_pool.account_type = AccountType::StakePool;
         stake_pool.manager = *manager_info.key;
         stake_pool.staker = *staker_info.key;
+        stake_pool.reserve_stake = *reserve_stake_info.key;
         stake_pool.deposit_bump_seed = deposit_bump_seed;
         stake_pool.withdraw_bump_seed = withdraw_bump_seed;
         stake_pool.validator_list = *validator_list_info.key;
@@ -360,12 +512,8 @@ impl Processor {
         }
         stake_pool.check_staker(staker_info)?;
 
-        if *system_program_info.key != system_program::id() {
-            return Err(ProgramError::IncorrectProgramId);
-        }
-        if *stake_program_info.key != stake_program::id() {
-            return Err(ProgramError::IncorrectProgramId);
-        }
+        check_system_program(system_program_info.key)?;
+        check_stake_program(stake_program_info.key)?;
 
         let (stake_address, bump_seed) = crate::find_stake_program_address(
             &program_id,
@@ -450,9 +598,7 @@ impl Processor {
         let stake_history = &StakeHistory::from_account_info(stake_history_info)?;
         let stake_program_info = next_account_info(account_info_iter)?;
 
-        if *stake_program_info.key != stake_program::id() {
-            return Err(ProgramError::IncorrectProgramId);
-        }
+        check_stake_program(stake_program_info.key)?;
 
         if stake_pool_info.owner != program_id {
             return Err(ProgramError::IncorrectProgramId);
@@ -556,9 +702,7 @@ impl Processor {
         let clock = &Clock::from_account_info(clock_info)?;
         let stake_program_info = next_account_info(account_info_iter)?;
 
-        if *stake_program_info.key != stake_program::id() {
-            return Err(ProgramError::IncorrectProgramId);
-        }
+        check_stake_program(stake_program_info.key)?;
 
         if stake_pool_info.owner != program_id {
             return Err(ProgramError::IncorrectProgramId);
@@ -630,6 +774,259 @@ impl Processor {
             .validators
             .retain(|item| item.vote_account_address != vote_account_address);
         validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
+
+        Ok(())
+    }
+
+    /// Processes `DecreaseValidatorStake` instruction.
+    fn process_decrease_validator_stake(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        lamports: u64,
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let stake_pool_info = next_account_info(account_info_iter)?;
+        let staker_info = next_account_info(account_info_iter)?;
+        let withdraw_authority_info = next_account_info(account_info_iter)?;
+        let validator_list_info = next_account_info(account_info_iter)?;
+        let validator_stake_account_info = next_account_info(account_info_iter)?;
+        let transient_stake_account_info = next_account_info(account_info_iter)?;
+        let clock_info = next_account_info(account_info_iter)?;
+        let clock = &Clock::from_account_info(clock_info)?;
+        let rent_info = next_account_info(account_info_iter)?;
+        let rent = &Rent::from_account_info(rent_info)?;
+        let system_program_info = next_account_info(account_info_iter)?;
+        let stake_program_info = next_account_info(account_info_iter)?;
+
+        check_system_program(system_program_info.key)?;
+        check_stake_program(stake_program_info.key)?;
+        check_account_owner(stake_pool_info, program_id)?;
+
+        let stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
+        if !stake_pool.is_valid() {
+            msg!("Expected valid stake pool");
+            return Err(StakePoolError::InvalidState.into());
+        }
+
+        stake_pool.check_authority_withdraw(
+            withdraw_authority_info.key,
+            program_id,
+            stake_pool_info.key,
+        )?;
+        stake_pool.check_staker(staker_info)?;
+
+        if stake_pool.last_update_epoch < clock.epoch {
+            return Err(StakePoolError::StakeListAndPoolOutOfDate.into());
+        }
+
+        stake_pool.check_validator_list(validator_list_info)?;
+
+        let validator_list =
+            try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
+        if !validator_list.is_valid() {
+            return Err(StakePoolError::InvalidState.into());
+        }
+
+        let (_meta, stake) = get_stake_state(validator_stake_account_info)?;
+        let vote_account_address = stake.delegation.voter_pubkey;
+        check_validator_stake_address(
+            program_id,
+            stake_pool_info.key,
+            validator_stake_account_info.key,
+            &vote_account_address,
+        )?;
+
+        let transient_stake_bump_seed = check_transient_stake_address(
+            program_id,
+            stake_pool_info.key,
+            transient_stake_account_info.key,
+            &vote_account_address,
+        )?;
+        let transient_stake_account_signer_seeds: &[&[_]] = &[
+            TRANSIENT_STAKE_SEED,
+            &vote_account_address.to_bytes()[..32],
+            &stake_pool_info.key.to_bytes()[..32],
+            &[transient_stake_bump_seed],
+        ];
+
+        if !validator_list.contains(&vote_account_address) {
+            msg!(
+                "Vote account {} not found in stake pool",
+                vote_account_address
+            );
+            return Err(StakePoolError::ValidatorNotFound.into());
+        }
+
+        let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
+        if lamports <= stake_rent {
+            msg!(
+                "Need more than {} lamports for transient stake to be rent-exempt, {} provided",
+                stake_rent,
+                lamports
+            );
+            return Err(ProgramError::AccountNotRentExempt);
+        }
+
+        // create transient stake account
+        invoke_signed(
+            &system_instruction::create_account(
+                &transient_stake_account_info.key, // doesn't matter since no lamports are transferred
+                &transient_stake_account_info.key,
+                0,
+                std::mem::size_of::<stake_program::StakeState>() as u64,
+                &stake_program::id(),
+            ),
+            &[transient_stake_account_info.clone()],
+            &[&transient_stake_account_signer_seeds],
+        )?;
+
+        // split into transient stake account
+        Self::stake_split(
+            stake_pool_info.key,
+            validator_stake_account_info.clone(),
+            withdraw_authority_info.clone(),
+            AUTHORITY_WITHDRAW,
+            stake_pool.withdraw_bump_seed,
+            lamports,
+            transient_stake_account_info.clone(),
+        )?;
+
+        // deactivate transient stake
+        Self::stake_deactivate(
+            transient_stake_account_info.clone(),
+            clock_info.clone(),
+            withdraw_authority_info.clone(),
+            stake_pool_info.key,
+            AUTHORITY_WITHDRAW,
+            stake_pool.withdraw_bump_seed,
+        )?;
+
+        Ok(())
+    }
+
+    /// Processes `IncreaseValidatorStake` instruction.
+    fn process_increase_validator_stake(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        lamports: u64,
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let stake_pool_info = next_account_info(account_info_iter)?;
+        let staker_info = next_account_info(account_info_iter)?;
+        let withdraw_authority_info = next_account_info(account_info_iter)?;
+        let validator_list_info = next_account_info(account_info_iter)?;
+        let reserve_stake_account_info = next_account_info(account_info_iter)?;
+        let transient_stake_account_info = next_account_info(account_info_iter)?;
+        let validator_vote_account_info = next_account_info(account_info_iter)?;
+        let clock_info = next_account_info(account_info_iter)?;
+        let clock = &Clock::from_account_info(clock_info)?;
+        let rent_info = next_account_info(account_info_iter)?;
+        let rent = &Rent::from_account_info(rent_info)?;
+        let stake_history_info = next_account_info(account_info_iter)?;
+        let stake_config_info = next_account_info(account_info_iter)?;
+        let system_program_info = next_account_info(account_info_iter)?;
+        let stake_program_info = next_account_info(account_info_iter)?;
+
+        check_system_program(system_program_info.key)?;
+        check_stake_program(stake_program_info.key)?;
+        check_account_owner(stake_pool_info, program_id)?;
+
+        let stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
+        if !stake_pool.is_valid() {
+            msg!("Expected valid stake pool");
+            return Err(StakePoolError::InvalidState.into());
+        }
+
+        stake_pool.check_authority_withdraw(
+            withdraw_authority_info.key,
+            program_id,
+            stake_pool_info.key,
+        )?;
+        stake_pool.check_staker(staker_info)?;
+
+        if stake_pool.last_update_epoch < clock.epoch {
+            return Err(StakePoolError::StakeListAndPoolOutOfDate.into());
+        }
+
+        stake_pool.check_validator_list(validator_list_info)?;
+
+        let validator_list =
+            try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
+        if !validator_list.is_valid() {
+            return Err(StakePoolError::InvalidState.into());
+        }
+
+        stake_pool.check_reserve_stake(reserve_stake_account_info)?;
+
+        let vote_account_address = validator_vote_account_info.key;
+
+        let transient_stake_bump_seed = check_transient_stake_address(
+            program_id,
+            stake_pool_info.key,
+            transient_stake_account_info.key,
+            &vote_account_address,
+        )?;
+        let transient_stake_account_signer_seeds: &[&[_]] = &[
+            TRANSIENT_STAKE_SEED,
+            &vote_account_address.to_bytes()[..32],
+            &stake_pool_info.key.to_bytes()[..32],
+            &[transient_stake_bump_seed],
+        ];
+
+        if !validator_list.contains(&validator_vote_account_info.key) {
+            msg!(
+                "Vote account {} not found in stake pool",
+                vote_account_address
+            );
+            return Err(StakePoolError::ValidatorNotFound.into());
+        }
+
+        let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
+        if lamports <= stake_rent {
+            msg!(
+                "Need more than {} lamports for transient stake to be rent-exempt, {} provided",
+                stake_rent,
+                lamports
+            );
+            return Err(ProgramError::AccountNotRentExempt);
+        }
+
+        // create transient stake account
+        invoke_signed(
+            &system_instruction::create_account(
+                &transient_stake_account_info.key, // doesn't matter since no lamports are transferred
+                &transient_stake_account_info.key,
+                0,
+                std::mem::size_of::<stake_program::StakeState>() as u64,
+                &stake_program::id(),
+            ),
+            &[transient_stake_account_info.clone()],
+            &[&transient_stake_account_signer_seeds],
+        )?;
+
+        // split into transient stake account
+        Self::stake_split(
+            stake_pool_info.key,
+            reserve_stake_account_info.clone(),
+            withdraw_authority_info.clone(),
+            AUTHORITY_WITHDRAW,
+            stake_pool.withdraw_bump_seed,
+            lamports,
+            transient_stake_account_info.clone(),
+        )?;
+
+        // activate transient stake to validator
+        Self::stake_delegate(
+            transient_stake_account_info.clone(),
+            validator_vote_account_info.clone(),
+            clock_info.clone(),
+            stake_history_info.clone(),
+            stake_config_info.clone(),
+            withdraw_authority_info.clone(),
+            stake_pool_info.key,
+            AUTHORITY_WITHDRAW,
+            stake_pool.withdraw_bump_seed,
+        )?;
 
         Ok(())
     }
@@ -1175,13 +1572,13 @@ impl Processor {
                 msg!("Instruction: RemoveValidatorFromPool");
                 Self::process_remove_validator_from_pool(program_id, accounts)
             }
-            StakePoolInstruction::DecreaseValidatorStake(_amount) => {
+            StakePoolInstruction::DecreaseValidatorStake(amount) => {
                 msg!("Instruction: DecreaseValidatorStake");
-                Ok(())
+                Self::process_decrease_validator_stake(program_id, accounts, amount)
             }
-            StakePoolInstruction::IncreaseValidatorStake(_amount) => {
+            StakePoolInstruction::IncreaseValidatorStake(amount) => {
                 msg!("Instruction: IncreaseValidatorStake");
-                Ok(())
+                Self::process_increase_validator_stake(program_id, accounts, amount)
             }
             StakePoolInstruction::UpdateValidatorListBalance => {
                 msg!("Instruction: UpdateValidatorListBalance");
