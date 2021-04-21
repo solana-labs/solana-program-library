@@ -3,7 +3,9 @@
 #![allow(clippy::too_many_arguments)]
 
 use {
-    crate::{stake_program, state::Fee},
+    crate::{
+        find_stake_program_address, find_transient_stake_program_address, stake_program, state::Fee,
+    },
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{
         instruction::{AccountMeta, Instruction},
@@ -88,8 +90,9 @@ pub enum StakePoolInstruction {
     ///   3. `[]` New withdraw/staker authority to set in the stake account
     ///   4. `[w]` Validator stake list storage account
     ///   5. `[w]` Stake account to remove from the pool
-    ///   8. '[]' Sysvar clock
-    ///  10. `[]` Stake program id,
+    ///   6. `[]` Transient stake account, to check that that we're not trying to activate
+    ///   7. '[]' Sysvar clock
+    ///   8. `[]` Stake program id,
     RemoveValidatorFromPool,
 
     /// (Staker only) Decrease active stake on a validator, eventually moving it to the reserve
@@ -132,7 +135,7 @@ pub enum StakePoolInstruction {
     ///  0. `[]` Stake pool
     ///  1. `[s]` Stake pool staker
     ///  2. `[]` Stake pool withdraw authority
-    ///  3. `[]` Validator list
+    ///  3. `[w]` Validator list
     ///  4. `[w]` Stake pool reserve stake
     ///  5. `[w]` Transient stake account
     ///  6. `[]` Validator vote account to delegate to
@@ -149,26 +152,36 @@ pub enum StakePoolInstruction {
     ///
     ///  While going through the pairs of validator and transient stake accounts,
     ///  if the transient stake is inactive, it is merged into the reserve stake
-    ///  account.  If the transient stake is active and has matching credits
+    ///  account. If the transient stake is active and has matching credits
     ///  observed, it is merged into the canonical validator stake account. In
     ///  all other states, nothing is done, and the balance is simply added to
     ///  the canonical stake account balance.
     ///
     ///  0. `[]` Stake pool
-    ///  1. `[w]` Validator stake list storage account
-    ///  2. `[w]` Reserve stake account
-    ///  3. `[]` Stake pool withdraw authority
-    ///  4. `[]` Sysvar clock account
-    ///  5. `[]` Stake program
-    ///  6. ..6+N ` [] N pairs of validator and transient stake accounts
-    UpdateValidatorListBalance,
+    ///  1. `[]` Stake pool withdraw authority
+    ///  2. `[w]` Validator stake list storage account
+    ///  3. `[w]` Reserve stake account
+    ///  4. `[]` Sysvar clock
+    ///  5. `[]` Sysvar stake history
+    ///  6. `[]` Stake program
+    ///  7. ..7+N ` [] N pairs of validator and transient stake accounts
+    UpdateValidatorListBalance {
+        /// Index to start updating on the validator list
+        #[allow(dead_code)] // but it's not
+        start_index: u32,
+        /// If true, don't try merging transient stake accounts into the reserve or
+        /// validator stake account.  Useful for testing or if a particular stake
+        /// account is in a bad state, but we still want to update
+        #[allow(dead_code)] // but it's not
+        no_merge: bool,
+    },
 
     ///   Updates total pool balance based on balances in the reserve and validator list
     ///
     ///   0. `[w]` Stake pool
-    ///   1. `[]` Validator stake list storage account
-    ///   2. `[]` Reserve stake account
-    ///   3. `[]` Stake pool withdraw authority
+    ///   1. `[]` Stake pool withdraw authority
+    ///   2. `[]` Validator stake list storage account
+    ///   3. `[]` Reserve stake account
     ///   4. `[w]` Account to receive pool fee tokens
     ///   5. `[w]` Pool mint account
     ///   6. `[]` Sysvar clock account
@@ -347,6 +360,7 @@ pub fn remove_validator_from_pool(
     new_stake_authority: &Pubkey,
     validator_list: &Pubkey,
     stake_account: &Pubkey,
+    transient_stake_account: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
@@ -355,6 +369,7 @@ pub fn remove_validator_from_pool(
         AccountMeta::new_readonly(*new_stake_authority, false),
         AccountMeta::new(*validator_list, false),
         AccountMeta::new(*stake_account, false),
+        AccountMeta::new_readonly(*transient_stake_account, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(stake_program::id(), false),
     ];
@@ -413,7 +428,7 @@ pub fn increase_validator_stake(
         AccountMeta::new_readonly(*stake_pool, false),
         AccountMeta::new_readonly(*staker, true),
         AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
-        AccountMeta::new_readonly(*validator_list, false),
+        AccountMeta::new(*validator_list, false),
         AccountMeta::new(*reserve_stake, false),
         AccountMeta::new(*transient_stake, false),
         AccountMeta::new_readonly(*validator, false),
@@ -434,45 +449,80 @@ pub fn increase_validator_stake(
 /// Creates `UpdateValidatorListBalance` instruction (update validator stake account balances)
 pub fn update_validator_list_balance(
     program_id: &Pubkey,
-    validator_list_storage: &Pubkey,
-    validator_list: &[Pubkey],
-) -> Result<Instruction, ProgramError> {
-    let mut accounts: Vec<AccountMeta> = validator_list
-        .iter()
-        .map(|pubkey| AccountMeta::new_readonly(*pubkey, false))
-        .collect();
-    accounts.insert(0, AccountMeta::new(*validator_list_storage, false));
-    accounts.insert(1, AccountMeta::new_readonly(sysvar::clock::id(), false));
-    Ok(Instruction {
+    stake_pool: &Pubkey,
+    stake_pool_withdraw_authority: &Pubkey,
+    validator_list: &Pubkey,
+    reserve_stake: &Pubkey,
+    validator_vote_accounts: &[Pubkey],
+    start_index: u32,
+    no_merge: bool,
+) -> Instruction {
+    let mut accounts = vec![
+        AccountMeta::new_readonly(*stake_pool, false),
+        AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
+        AccountMeta::new(*validator_list, false),
+        AccountMeta::new(*reserve_stake, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        AccountMeta::new_readonly(stake_program::id(), false),
+    ];
+    accounts.append(
+        &mut validator_vote_accounts
+            .iter()
+            .flat_map(|vote_account_address| {
+                let (validator_stake_account, _) =
+                    find_stake_program_address(program_id, vote_account_address, stake_pool);
+                let (transient_stake_account, _) = find_transient_stake_program_address(
+                    program_id,
+                    vote_account_address,
+                    stake_pool,
+                );
+                vec![
+                    AccountMeta::new(validator_stake_account, false),
+                    AccountMeta::new(transient_stake_account, false),
+                ]
+            })
+            .collect::<Vec<AccountMeta>>(),
+    );
+    Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::UpdateValidatorListBalance.try_to_vec()?,
-    })
+        data: StakePoolInstruction::UpdateValidatorListBalance {
+            start_index,
+            no_merge,
+        }
+        .try_to_vec()
+        .unwrap(),
+    }
 }
 
 /// Creates `UpdateStakePoolBalance` instruction (pool balance from the stake account list balances)
 pub fn update_stake_pool_balance(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
-    validator_list_storage: &Pubkey,
     withdraw_authority: &Pubkey,
+    validator_list_storage: &Pubkey,
+    reserve_stake: &Pubkey,
     manager_fee_account: &Pubkey,
     stake_pool_mint: &Pubkey,
-) -> Result<Instruction, ProgramError> {
+) -> Instruction {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
-        AccountMeta::new(*validator_list_storage, false),
         AccountMeta::new_readonly(*withdraw_authority, false),
+        AccountMeta::new_readonly(*validator_list_storage, false),
+        AccountMeta::new_readonly(*reserve_stake, false),
         AccountMeta::new(*manager_fee_account, false),
         AccountMeta::new(*stake_pool_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(spl_token::id(), false),
     ];
-    Ok(Instruction {
+    Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::UpdateStakePoolBalance.try_to_vec()?,
-    })
+        data: StakePoolInstruction::UpdateStakePoolBalance
+            .try_to_vec()
+            .unwrap(),
+    }
 }
 
 /// Creates a 'Deposit' instruction.

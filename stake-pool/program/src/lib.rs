@@ -32,11 +32,21 @@ const TRANSIENT_STAKE_SEED: &[u8] = b"transient";
 /// for merges without a mismatch on credits observed
 pub const MINIMUM_ACTIVE_STAKE: u64 = LAMPORTS_PER_SOL;
 
+/// Maximum amount of validator stake accounts to update per
+/// `UpdateValidatorListBalance` instruction, based on compute limits
+pub const MAX_VALIDATORS_TO_UPDATE: usize = 10;
+
 /// Get the stake amount under consideration when calculating pool token
 /// conversions
 pub fn minimum_stake_lamports(meta: &Meta) -> u64 {
     meta.rent_exempt_reserve
         .saturating_add(MINIMUM_ACTIVE_STAKE)
+}
+
+/// Get the stake amount under consideration when calculating pool token
+/// conversions
+pub fn minimum_reserve_lamports(meta: &Meta) -> u64 {
+    meta.rent_exempt_reserve.saturating_add(1)
 }
 
 /// Generates the deposit authority program address for the stake pool

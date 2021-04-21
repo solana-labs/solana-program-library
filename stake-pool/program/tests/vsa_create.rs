@@ -31,11 +31,19 @@ async fn success_create_validator_stake_account() {
         .unwrap();
 
     let validator = Keypair::new();
-    create_vote(&mut banks_client, &payer, &recent_blockhash, &validator).await;
+    let vote = Keypair::new();
+    create_vote(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &validator,
+        &vote,
+    )
+    .await;
 
     let (stake_account, _) = find_stake_program_address(
         &id(),
-        &validator.pubkey(),
+        &vote.pubkey(),
         &stake_pool_accounts.stake_pool.pubkey(),
     );
 
@@ -46,7 +54,7 @@ async fn success_create_validator_stake_account() {
             &stake_pool_accounts.staker.pubkey(),
             &payer.pubkey(),
             &stake_account,
-            &validator.pubkey(),
+            &vote.pubkey(),
         )
         .unwrap()],
         Some(&payer.pubkey()),
@@ -67,7 +75,7 @@ async fn success_create_validator_stake_account() {
                 &meta.authorized.withdrawer,
                 &stake_pool_accounts.staker.pubkey()
             );
-            assert_eq!(stake.delegation.voter_pubkey, validator.pubkey());
+            assert_eq!(stake.delegation.voter_pubkey, vote.pubkey());
         }
         _ => panic!(),
     }

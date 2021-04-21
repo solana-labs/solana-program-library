@@ -31,7 +31,7 @@ async fn setup() -> (
     Hash,
     StakePoolAccounts,
     ValidatorStakeAccount,
-    DepositInfo,
+    DepositStakeAccount,
     u64,
 ) {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
@@ -66,8 +66,8 @@ async fn setup() -> (
         &mut banks_client,
         &payer,
         &recent_blockhash,
-        &deposit_info.user_pool_account,
-        &deposit_info.user,
+        &deposit_info.pool_account.pubkey(),
+        &deposit_info.authority,
         &stake_pool_accounts.withdraw_authority,
         tokens_to_burn,
     )
@@ -126,7 +126,7 @@ async fn success() {
 
     // Save user token balance
     let user_token_balance_before =
-        get_token_balance(&mut banks_client, &deposit_info.user_pool_account).await;
+        get_token_balance(&mut banks_client, &deposit_info.pool_account.pubkey()).await;
 
     let new_authority = Pubkey::new_unique();
     let error = stake_pool_accounts
@@ -135,7 +135,7 @@ async fn success() {
             &payer,
             &recent_blockhash,
             &user_stake_recipient.pubkey(),
-            &deposit_info.user_pool_account,
+            &deposit_info.pool_account.pubkey(),
             &validator_stake_account.stake_account,
             &new_authority,
             tokens_to_burn,
@@ -173,7 +173,7 @@ async fn success() {
 
     // Check tokens burned
     let user_token_balance =
-        get_token_balance(&mut banks_client, &deposit_info.user_pool_account).await;
+        get_token_balance(&mut banks_client, &deposit_info.pool_account.pubkey()).await;
     assert_eq!(
         user_token_balance,
         user_token_balance_before - tokens_to_burn
@@ -224,7 +224,7 @@ async fn fail_with_wrong_stake_program() {
         AccountMeta::new(validator_stake_account.stake_account, false),
         AccountMeta::new(user_stake_recipient.pubkey(), false),
         AccountMeta::new_readonly(new_authority, false),
-        AccountMeta::new(deposit_info.user_pool_account, false),
+        AccountMeta::new(deposit_info.pool_account.pubkey(), false),
         AccountMeta::new(stake_pool_accounts.pool_mint.pubkey(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(spl_token::id(), false),
@@ -278,7 +278,7 @@ async fn fail_with_wrong_withdraw_authority() {
             &payer,
             &recent_blockhash,
             &user_stake_recipient.pubkey(),
-            &deposit_info.user_pool_account,
+            &deposit_info.pool_account.pubkey(),
             &validator_stake_account.stake_account,
             &new_authority,
             tokens_to_burn,
@@ -325,7 +325,7 @@ async fn fail_with_wrong_token_program_id() {
             &validator_stake_account.stake_account,
             &user_stake_recipient.pubkey(),
             &new_authority,
-            &deposit_info.user_pool_account,
+            &deposit_info.pool_account.pubkey(),
             &stake_pool_accounts.pool_mint.pubkey(),
             &wrong_token_program.pubkey(),
             tokens_to_burn,
@@ -372,7 +372,7 @@ async fn fail_with_wrong_validator_list() {
             &payer,
             &recent_blockhash,
             &user_stake_recipient.pubkey(),
-            &deposit_info.user_pool_account,
+            &deposit_info.pool_account.pubkey(),
             &validator_stake_account.stake_account,
             &new_authority,
             tokens_to_burn,
@@ -550,7 +550,7 @@ async fn fail_double_withdraw_to_the_same_account() {
             &payer,
             &recent_blockhash,
             &user_stake_recipient.pubkey(),
-            &deposit_info.user_pool_account,
+            &deposit_info.pool_account.pubkey(),
             &validator_stake_account.stake_account,
             &new_authority,
             tokens_to_burn,
@@ -565,8 +565,8 @@ async fn fail_double_withdraw_to_the_same_account() {
         &mut banks_client,
         &payer,
         &latest_blockhash,
-        &deposit_info.user_pool_account,
-        &deposit_info.user,
+        &deposit_info.pool_account.pubkey(),
+        &deposit_info.authority,
         &stake_pool_accounts.withdraw_authority,
         tokens_to_burn,
     )
@@ -578,7 +578,7 @@ async fn fail_double_withdraw_to_the_same_account() {
             &payer,
             &latest_blockhash,
             &user_stake_recipient.pubkey(),
-            &deposit_info.user_pool_account,
+            &deposit_info.pool_account.pubkey(),
             &validator_stake_account.stake_account,
             &new_authority,
             tokens_to_burn,
@@ -640,7 +640,7 @@ async fn fail_without_token_approval() {
             &payer,
             &recent_blockhash,
             &user_stake_recipient.pubkey(),
-            &deposit_info.user_pool_account,
+            &deposit_info.pool_account.pubkey(),
             &validator_stake_account.stake_account,
             &new_authority,
             tokens_to_burn,
@@ -696,8 +696,8 @@ async fn fail_with_low_delegation() {
         &mut banks_client,
         &payer,
         &recent_blockhash,
-        &deposit_info.user_pool_account,
-        &deposit_info.user,
+        &deposit_info.pool_account.pubkey(),
+        &deposit_info.authority,
         &stake_pool_accounts.withdraw_authority,
         1,
     )
@@ -720,7 +720,7 @@ async fn fail_with_low_delegation() {
             &payer,
             &recent_blockhash,
             &user_stake_recipient.pubkey(),
-            &deposit_info.user_pool_account,
+            &deposit_info.pool_account.pubkey(),
             &validator_stake_account.stake_account,
             &new_authority,
             tokens_to_burn,
@@ -779,7 +779,7 @@ async fn fail_overdraw_validator() {
             &payer,
             &recent_blockhash,
             &user_stake_recipient.pubkey(),
-            &deposit_info.user_pool_account,
+            &deposit_info.pool_account.pubkey(),
             &validator_stake_account.stake_account,
             &new_authority,
             tokens_to_burn,
