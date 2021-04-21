@@ -266,9 +266,9 @@ pub enum GovernanceInstruction {
 
     ///   0. `[]` Governance account. The account pubkey needs to be set to PDA with the following seeds:
     ///           1) 'governance' const prefix, 2) Governance program account key  3) Governance mint key, 4) Council mint key  [Optional], 4) Program to tie up account key
-    ///   1. `[]` Account of the Program this Governance ties up
-    ///   2. `[writable]` Buffer account of the Program this Governance ties up
-    ///   3. `[signer]` Upgrade Authority Account of the Program this Governance ties up
+    ///   1. `[]` Account of the Program governed by this Governance account
+    ///   2. `[writable]` Program Data account of the Program governed by this Governance account
+    ///   3. `[signer]` Current Upgrade Authority account of the Program governed by this Governance account
     ///   4. `[]` Governance mint that this Governance uses
     ///   5. `[signer]` Payer
     ///   6. `[]` System account.
