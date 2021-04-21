@@ -1094,18 +1094,19 @@ impl Processor {
         let stake_program_info = next_account_info(account_info_iter)?;
         let validator_stake_accounts = account_info_iter.as_slice();
 
+        check_account_owner(stake_pool_info, program_id)?;
         let stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
-        if stake_pool_info.owner != program_id {
-            msg!(
-                "Stake pool is owned by the wrong program, expected {}, received {}",
-                program_id,
-                stake_pool_info.owner
-            );
-            return Err(ProgramError::IncorrectProgramId);
-        }
         if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
+        stake_pool.check_validator_list(&validator_list_info)?;
+        stake_pool.check_authority_withdraw(
+            withdraw_authority_info.key,
+            program_id,
+            stake_pool_info.key,
+        )?;
+        stake_pool.check_reserve_stake(reserve_stake_info)?;
+        check_stake_program(stake_program_info.key)?;
 
         let mut validator_list =
             try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
@@ -1120,9 +1121,6 @@ impl Processor {
             .skip(start_index as usize)
             .zip(validator_stake_accounts.chunks_exact(2));
         for (validator_stake_record, validator_stakes) in validator_iter {
-            if validator_stake_record.last_update_epoch >= clock.epoch {
-                continue;
-            }
             // chunks_exact means that we always get 2 elements, making this safe
             let validator_stake_info = validator_stakes.first().unwrap();
             let transient_stake_info = validator_stakes.last().unwrap();
@@ -1146,16 +1144,7 @@ impl Processor {
             {
                 continue;
             };
-            // Possible merge situations for transient stake
-            //  * active -> merge into validator stake
-            //  * activating -> nothing, just account its stakes
-            //  * deactivating -> nothing, just account its stakes
-            //  * inactive -> merge into reserve stake
-            //  * not a stake -> ignore totally
-            //
-            // Status for validator stake
-            //  * active -> do everything
-            //  * any other state / not a stake -> error state, but account for transient stake
+
             let mut stake_lamports = 0;
             let validator_stake_state = try_from_slice_unchecked::<stake_program::StakeState>(
                 &validator_stake_info.data.borrow(),
@@ -1166,6 +1155,12 @@ impl Processor {
             )
             .ok();
 
+            // Possible merge situations for transient stake
+            //  * active -> merge into validator stake
+            //  * activating -> nothing, just account its lamports
+            //  * deactivating -> nothing, just account its lamports
+            //  * inactive -> merge into reserve stake
+            //  * not a stake -> ignore
             match transient_stake_state {
                 Some(stake_program::StakeState::Initialized(_meta)) => {
                     if no_merge {
@@ -1237,6 +1232,9 @@ impl Processor {
                 | Some(stake_program::StakeState::RewardsPool) => {} // do nothing
             }
 
+            // Status for validator stake
+            //  * active -> do everything
+            //  * any other state / not a stake -> error state, but account for transient stake
             match validator_stake_state {
                 Some(stake_program::StakeState::Stake(meta, _)) => {
                     stake_lamports += validator_stake_info

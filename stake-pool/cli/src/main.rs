@@ -32,6 +32,7 @@ use {
         find_transient_stake_program_address, find_withdraw_authority_program_address,
         stake_program::{self, StakeAuthorize, StakeState},
         state::{Fee, StakePool, ValidatorList},
+        MAX_VALIDATORS_TO_UPDATE,
     },
     std::process::exit,
 };
@@ -51,7 +52,6 @@ type Error = Box<dyn std::error::Error>;
 type CommandResult = Result<(), Error>;
 
 const STAKE_STATE_LEN: usize = 200;
-const MAX_ACCOUNTS_TO_UPDATE: usize = 10;
 lazy_static! {
     static ref MIN_STAKE_BALANCE: u64 = native_token::sol_to_lamports(1.0);
 }
@@ -653,7 +653,7 @@ fn command_update(config: &Config, stake_pool_address: &Pubkey) -> CommandResult
 
     let mut instructions: Vec<Instruction> = vec![];
     let mut start_index = 0;
-    for accounts_chunk in accounts_to_update.chunks(MAX_ACCOUNTS_TO_UPDATE) {
+    for accounts_chunk in accounts_to_update.chunks(MAX_VALIDATORS_TO_UPDATE) {
         instructions.push(spl_stake_pool::instruction::update_validator_list_balance(
             &spl_stake_pool::id(),
             stake_pool_address,
@@ -664,7 +664,7 @@ fn command_update(config: &Config, stake_pool_address: &Pubkey) -> CommandResult
             start_index,
             false,
         ));
-        start_index += MAX_ACCOUNTS_TO_UPDATE as u32;
+        start_index += MAX_VALIDATORS_TO_UPDATE as u32;
     }
 
     instructions.push(spl_stake_pool::instruction::update_stake_pool_balance(

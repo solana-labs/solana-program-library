@@ -270,14 +270,13 @@ pub async fn create_vote(
     let rent = banks_client.get_rent().await.unwrap();
     let rent_voter = rent.minimum_balance(VoteState::size_of());
 
-    let mut instructions = vec![];
-    instructions.push(system_instruction::create_account(
+    let mut instructions = vec![system_instruction::create_account(
         &payer.pubkey(),
         &validator.pubkey(),
         42,
         0,
         &system_program::id(),
-    ));
+    )];
     instructions.append(&mut vote_instruction::create_account(
         &payer.pubkey(),
         &vote.pubkey(),

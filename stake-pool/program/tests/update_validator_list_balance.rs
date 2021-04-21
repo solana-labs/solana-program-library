@@ -8,12 +8,14 @@ use {
     solana_program::pubkey::Pubkey,
     solana_program_test::*,
     solana_sdk::signature::Signer,
-    spl_stake_pool::{stake_program, state::StakePool, MINIMUM_ACTIVE_STAKE},
+    spl_stake_pool::{
+        stake_program, state::StakePool, MAX_VALIDATORS_TO_UPDATE, MINIMUM_ACTIVE_STAKE,
+    },
 };
 
-const STAKE_ACCOUNTS: u64 = 5;
-
-async fn setup() -> (
+async fn setup(
+    num_validators: usize,
+) -> (
     ProgramTestContext,
     StakePoolAccounts,
     Vec<ValidatorStakeAccount>,
@@ -23,7 +25,8 @@ async fn setup() -> (
     let mut context = program_test().start_with_context().await;
     let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
     let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
-    context.warp_to_slot(first_normal_slot).unwrap();
+    let mut slot = first_normal_slot;
+    context.warp_to_slot(slot).unwrap();
 
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
@@ -39,7 +42,7 @@ async fn setup() -> (
     // Add several accounts with some stake
     let mut stake_accounts: Vec<ValidatorStakeAccount> = vec![];
     let mut deposit_accounts: Vec<DepositStakeAccount> = vec![];
-    for _ in 0..STAKE_ACCOUNTS {
+    for _ in 0..num_validators {
         let stake_account = ValidatorStakeAccount::new_with_target_authority(
             &stake_pool_accounts.deposit_authority,
             &stake_pool_accounts.stake_pool.pubkey(),
@@ -74,11 +77,11 @@ async fn setup() -> (
     // TODO This is *bad* -- program-test needs to have some more active stake
     // so we can warm up faster than this. Also, we need to do each of these
     // warps by hand to get fully active stakes.
-    for i in 2..100 {
-        context
-            .warp_to_slot(first_normal_slot + i * slots_per_epoch)
-            .unwrap();
+    for i in 2..50 {
+        slot = first_normal_slot + i * slots_per_epoch;
+        context.warp_to_slot(slot).unwrap();
     }
+
     stake_pool_accounts
         .update_all(
             &mut context.banks_client,
@@ -116,10 +119,8 @@ async fn setup() -> (
             .await;
     }
 
-    // Warp forward one epoch so the stakes activate, and update
-    context
-        .warp_to_slot(first_normal_slot + 100 * slots_per_epoch + 1)
-        .unwrap();
+    slot += slots_per_epoch;
+    context.warp_to_slot(slot).unwrap();
 
     stake_pool_accounts
         .update_all(
@@ -140,19 +141,22 @@ async fn setup() -> (
         stake_pool_accounts,
         stake_accounts,
         TEST_STAKE_AMOUNT,
-        100,
+        slot,
     )
 }
 
 #[tokio::test]
 async fn success() {
-    let (mut context, stake_pool_accounts, stake_accounts, _, start_epoch) = setup().await;
+    let num_validators = 5;
+    let (mut context, stake_pool_accounts, stake_accounts, _, mut slot) =
+        setup(num_validators).await;
 
     // Check current balance in the list
     let rent = context.banks_client.get_rent().await.unwrap();
     let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
     // initially, have all of the deposits plus their rent, and the reserve stake
-    let initial_lamports = (TEST_STAKE_AMOUNT + stake_rent) * STAKE_ACCOUNTS + TEST_STAKE_AMOUNT;
+    let initial_lamports =
+        (TEST_STAKE_AMOUNT + stake_rent) * num_validators as u64 + TEST_STAKE_AMOUNT;
     assert_eq!(
         get_validator_list_sum(
             &mut context.banks_client,
@@ -169,11 +173,9 @@ async fn success() {
     }
 
     // Warp one more epoch so the rewards are paid out
-    let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
     let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
-    context
-        .warp_to_slot(first_normal_slot + (start_epoch + 1) * slots_per_epoch)
-        .unwrap();
+    slot += slots_per_epoch;
+    context.warp_to_slot(slot).unwrap();
 
     stake_pool_accounts
         .update_all(
@@ -207,7 +209,8 @@ async fn success() {
 
 #[tokio::test]
 async fn merge_into_reserve() {
-    let (mut context, stake_pool_accounts, stake_accounts, lamports, start_epoch) = setup().await;
+    let (mut context, stake_pool_accounts, stake_accounts, lamports, mut slot) =
+        setup(MAX_VALIDATORS_TO_UPDATE).await;
 
     let pre_lamports = get_validator_list_sum(
         &mut context.banks_client,
@@ -271,11 +274,9 @@ async fn merge_into_reserve() {
     assert_eq!(expected_lamports, stake_pool.total_stake_lamports);
 
     // Warp one more epoch so the stakes deactivate
-    let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
     let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
-    context
-        .warp_to_slot(first_normal_slot + (start_epoch + 1) * slots_per_epoch)
-        .unwrap();
+    slot += slots_per_epoch;
+    context.warp_to_slot(slot).unwrap();
 
     stake_pool_accounts
         .update_all(
@@ -318,7 +319,8 @@ async fn merge_into_reserve() {
 
 #[tokio::test]
 async fn merge_into_validator_stake() {
-    let (mut context, stake_pool_accounts, stake_accounts, lamports, start_epoch) = setup().await;
+    let (mut context, stake_pool_accounts, stake_accounts, lamports, mut slot) =
+        setup(MAX_VALIDATORS_TO_UPDATE).await;
 
     let rent = context.banks_client.get_rent().await.unwrap();
     let pre_lamports = get_validator_list_sum(
@@ -344,11 +346,7 @@ async fn merge_into_validator_stake() {
     }
 
     // Warp just a little bit to get a new blockhash and update again
-    let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
-    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
-    context
-        .warp_to_slot(first_normal_slot + start_epoch * slots_per_epoch + 10)
-        .unwrap();
+    context.warp_to_slot(slot + 10).unwrap();
 
     // Update, should not change, no merges yet
     let error = stake_pool_accounts
@@ -390,9 +388,9 @@ async fn merge_into_validator_stake() {
     assert_eq!(expected_lamports, stake_pool.total_stake_lamports);
 
     // Warp one more epoch so the stakes activate, ready to merge
-    context
-        .warp_to_slot(first_normal_slot + (start_epoch + 1) * slots_per_epoch)
-        .unwrap();
+    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
+    slot += slots_per_epoch;
+    context.warp_to_slot(slot).unwrap();
 
     let error = stake_pool_accounts
         .update_all(
@@ -444,6 +442,9 @@ async fn merge_into_validator_stake() {
         assert_eq!(validator_stake.lamports, expected_lamports);
     }
 }
+
+#[tokio::test]
+async fn max_validators() {}
 
 #[tokio::test]
 async fn fail_with_uninitialized_validator_list() {} // TODO
