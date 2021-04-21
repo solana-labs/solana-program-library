@@ -1,3 +1,5 @@
+#![cfg(feature = "test-bpf")]
+
 mod helpers;
 
 use {
