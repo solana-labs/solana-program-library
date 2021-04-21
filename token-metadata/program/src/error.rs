@@ -110,6 +110,30 @@ pub enum MetadataError {
     /// An edition can only mint one of its kind!
     #[error("An edition can only mint one of its kind!")]
     EditionAlreadyMinted,
+
+    /// Master mint decimals should be zero
+    #[error("MasterMintDecimalsShouldBeZero")]
+    MasterMintDecimalsShouldBeZero,
+
+    /// Edition mint decimals should be zero
+    #[error("EditionMintDecimalsShouldBeZero")]
+    EditionMintDecimalsShouldBeZero,
+
+    /// Token burn failed
+    #[error("Token burn failed")]
+    TokenBurnFailed,
+
+    /// The master mint does not match that on the master edition!
+    #[error("The master mint does not match that on the master edition!")]
+    MasterMintMismatch,
+
+    /// The mint of the token account does not match the master mint!
+    #[error("The mint of the token account does not match the master mint!")]
+    TokenAccountMintMismatch,
+
+    /// Not enough tokens to mint a limited edition
+    #[error("Not enough tokens to mint a limited edition")]
+    NotEnoughTokens,
 }
 
 impl PrintProgramError for MetadataError {

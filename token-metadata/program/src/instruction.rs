@@ -64,14 +64,16 @@ pub enum MetadataInstruction {
     /// token exists, and will throw an error if less than one token exists in this primary mint.
     ///   0. `[writable]` Unallocated edition account with address as pda of ['metadata', program id, mint, 'edition']
     ///   1. `[writable]` Metadata mint
-    ///   2. `[signer]` Current Update authority key on metadata
-    ///   3. `[signer]` Mint authority on the metadata's mint - THIS WILL TRANSFER AUTHORITY AWAY FROM THIS KEY
-    ///   4. `[]` Metadata account
-    ///   5. `[]` Name symbol account (optional), will be used if update authority on metadata is None
-    ///   6. `[signer]` payer
-    ///   7. `[]` Token program
-    ///   8. `[]` System program
-    ///   9. `[]` Rent info
+    ///   2. `[]` Master mint - A mint you control that can mint tokens that can be exchanged for limited editions of your
+    ///       master edition via the MintNewEditionFromMasterEditionViaToken endpoint, like a one time authority.
+    ///   3. `[signer]` Current Update authority key on metadata
+    ///   4. `[signer]` Mint authority on the metadata's mint - THIS WILL TRANSFER AUTHORITY AWAY FROM THIS KEY
+    ///   5. `[]` Metadata account
+    ///   6. `[]` Name symbol account (optional), will be used if update authority on metadata is None
+    ///   7. `[signer]` payer
+    ///   8. `[]` Token program
+    ///   9. `[]` System program
+    ///   10. `[]` Rent info
     CreateMasterEdition(CreateMasterEditionArgs),
 
     /// Given a master edition, mint a new edition from it, if max_supply not already maxed out. Update authority set to update authority of original.
@@ -88,6 +90,24 @@ pub enum MetadataInstruction {
     ///   9. `[]` System program
     ///   10. `[]` Rent info
     MintNewEditionFromMasterEdition,
+
+    /// Given a master edition, mint a new edition from it, if max_supply not already maxed out. Update authority set to update authority of original.
+    /// If you want to move it, transfer it yourself. Note that Edition coins cannot be unique, by definition, since they have same name/symbols.
+    ///   0. `[writable]` New Metadata key (pda of ['metadata', program id, mint id])
+    ///   1. `[writable]` New Edition (pda of ['metadata', program id, mint id, 'edition'])
+    ///   2. `[writable]` Master Record Edition (pda of ['metadata', program id, master mint id, 'edition'])
+    ///   3. `[writable]` Mint of new token - THIS WILL TRANSFER AUTHORITY AWAY FROM THIS KEY
+    ///   4. `[signer]` Mint authority of new mint
+    ///   5. `[]` Master Mint of master record edition
+    ///   6. `[writable]` Token account containing master mint token to be transferred
+    ///   7. `[signer]` Burn authority for this token
+    ///   8. `[signer]` payer
+    ///   9. `[]` update authority info of master metadata account
+    ///   10. `[]` Master record metadata account
+    ///   11. `[]` Token program
+    ///   12. `[]` System program
+    ///   13. `[]` Rent info
+    MintNewEditionFromMasterEditionViaToken,
 }
 
 /// Creates an CreateMetadataAccounts instruction
@@ -178,6 +198,7 @@ pub fn create_master_edition(
     program_id: Pubkey,
     edition: Pubkey,
     mint: Pubkey,
+    master_mint: Pubkey,
     update_authority: Pubkey,
     mint_authority: Pubkey,
     metadata: Pubkey,
@@ -190,6 +211,7 @@ pub fn create_master_edition(
         accounts: vec![
             AccountMeta::new(edition, false),
             AccountMeta::new(mint, false),
+            AccountMeta::new_readonly(master_mint, false),
             AccountMeta::new_readonly(update_authority, true),
             AccountMeta::new_readonly(mint_authority, true),
             AccountMeta::new_readonly(metadata, false),
@@ -235,6 +257,46 @@ pub fn mint_new_edition_from_master_edition(
             AccountMeta::new_readonly(sysvar::rent::id(), false),
         ],
         data: MetadataInstruction::MintNewEditionFromMasterEdition
+            .try_to_vec()
+            .unwrap(),
+    }
+}
+
+/// creates a mint_new_edition_from_master_edition instruction
+#[allow(clippy::too_many_arguments)]
+pub fn mint_new_edition_from_master_edition_via_token(
+    program_id: Pubkey,
+    metadata: Pubkey,
+    edition: Pubkey,
+    master_edition: Pubkey,
+    mint: Pubkey,
+    mint_authority: Pubkey,
+    master_mint: Pubkey,
+    master_token_account: Pubkey,
+    burn_authority: Pubkey,
+    payer: Pubkey,
+    master_update_authority: Pubkey,
+    master_metadata: Pubkey,
+) -> Instruction {
+    Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(metadata, false),
+            AccountMeta::new(edition, false),
+            AccountMeta::new(master_edition, false),
+            AccountMeta::new(mint, false),
+            AccountMeta::new_readonly(mint_authority, true),
+            AccountMeta::new_readonly(master_mint, false),
+            AccountMeta::new(master_token_account, false),
+            AccountMeta::new_readonly(burn_authority, true),
+            AccountMeta::new(payer, true),
+            AccountMeta::new_readonly(master_update_authority, true),
+            AccountMeta::new_readonly(master_metadata, false),
+            AccountMeta::new_readonly(spl_token::id(), false),
+            AccountMeta::new_readonly(solana_program::system_program::id(), false),
+            AccountMeta::new_readonly(sysvar::rent::id(), false),
+        ],
+        data: MetadataInstruction::MintNewEditionFromMasterEditionViaToken
             .try_to_vec()
             .unwrap(),
     }

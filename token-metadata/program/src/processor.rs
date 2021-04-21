@@ -3,14 +3,14 @@ use {
         error::MetadataError,
         instruction::MetadataInstruction,
         state::{
-            Edition, Key, MasterEdition, Metadata, NameSymbolTuple, EDITION, MAX_EDITION_LEN,
-            MAX_MASTER_EDITION_LEN, MAX_METADATA_LEN, MAX_NAME_LENGTH, MAX_NAME_SYMBOL_LEN,
-            MAX_SYMBOL_LENGTH, MAX_URI_LENGTH, PREFIX,
+            Key, MasterEdition, Metadata, NameSymbolTuple, EDITION, MAX_MASTER_EDITION_LEN,
+            MAX_METADATA_LEN, MAX_NAME_LENGTH, MAX_NAME_SYMBOL_LEN, MAX_SYMBOL_LENGTH,
+            MAX_URI_LENGTH, PREFIX,
         },
         utils::{
-            assert_edition_valid, assert_initialized, assert_mint_authority_matches_mint,
+            assert_initialized, assert_mint_authority_matches_mint,
             assert_update_authority_is_correct, create_or_allocate_account_raw,
-            transfer_mint_authority,
+            mint_limited_edition, spl_token_burn, transfer_mint_authority, TokenBurnParams,
         },
     },
     borsh::{BorshDeserialize, BorshSerialize},
@@ -21,7 +21,7 @@ use {
         msg,
         pubkey::Pubkey,
     },
-    spl_token::state::Mint,
+    spl_token::state::{Account, Mint},
 };
 
 pub fn process_instruction(
@@ -62,6 +62,10 @@ pub fn process_instruction(
         MetadataInstruction::MintNewEditionFromMasterEdition => {
             msg!("Instruction: Mint New Edition from Master Edition");
             process_mint_new_edition_from_master_edition(program_id, accounts)
+        }
+        MetadataInstruction::MintNewEditionFromMasterEditionViaToken => {
+            msg!("Instruction: Mint New Edition from Master Edition Via Token");
+            process_mint_new_edition_from_master_edition_via_token(program_id, accounts)
         }
     }
 }
@@ -300,6 +304,7 @@ pub fn process_create_master_edition(
 
     let edition_account_info = next_account_info(account_info_iter)?;
     let mint_info = next_account_info(account_info_iter)?;
+    let master_mint_info = next_account_info(account_info_iter)?;
     let update_authority_info = next_account_info(account_info_iter)?;
     let mint_authority_info = next_account_info(account_info_iter)?;
     let metadata_account_info = next_account_info(account_info_iter)?;
@@ -311,6 +316,7 @@ pub fn process_create_master_edition(
 
     let metadata: Metadata = try_from_slice_unchecked(&metadata_account_info.data.borrow())?;
     let mint: Mint = assert_initialized(mint_info)?;
+    let master_mint: Mint = assert_initialized(master_mint_info)?;
 
     let edition_seeds = &[
         PREFIX.as_bytes(),
@@ -325,9 +331,18 @@ pub fn process_create_master_edition(
     }
 
     assert_mint_authority_matches_mint(&mint, mint_authority_info)?;
+    assert_mint_authority_matches_mint(&master_mint, mint_authority_info)?;
 
     if metadata.mint != *mint_info.key {
         return Err(MetadataError::MintMismatch.into());
+    }
+
+    if master_mint.decimals != 0 {
+        return Err(MetadataError::MasterMintDecimalsShouldBeZero.into());
+    }
+
+    if mint.decimals != 0 {
+        return Err(MetadataError::EditionMintDecimalsShouldBeZero.into());
     }
 
     assert_update_authority_is_correct(
@@ -364,8 +379,12 @@ pub fn process_create_master_edition(
     edition.key = Key::MasterEditionV1;
     edition.supply = 0;
     edition.max_supply = max_supply;
+    edition.master_mint = *master_mint_info.key;
     edition.serialize(&mut *edition_account_info.data.borrow_mut())?;
 
+    // While you can't mint any more of your master record, you can
+    // mint as many limited editions as you like, and coins to permission others
+    // to mint one of them in the future.
     transfer_mint_authority(
         edition_authority_seeds,
         &edition_key,
@@ -397,11 +416,6 @@ pub fn process_mint_new_edition_from_master_edition(
 
     let master_metadata: Metadata =
         try_from_slice_unchecked(&master_metadata_account_info.data.borrow())?;
-    let mut master_edition: MasterEdition =
-        try_from_slice_unchecked(&master_edition_account_info.data.borrow())?;
-    let mint: Mint = assert_initialized(mint_info)?;
-
-    assert_mint_authority_matches_mint(&mint, mint_authority_info)?;
 
     assert_update_authority_is_correct(
         &master_metadata,
@@ -410,89 +424,82 @@ pub fn process_mint_new_edition_from_master_edition(
         update_authority_info,
     )?;
 
-    assert_edition_valid(
+    mint_limited_edition(
         program_id,
-        &master_metadata.mint,
+        new_metadata_account_info,
+        new_edition_account_info,
         master_edition_account_info,
-    )?;
-
-    let edition_seeds = &[
-        PREFIX.as_bytes(),
-        program_id.as_ref(),
-        &mint_info.key.as_ref(),
-        EDITION.as_bytes(),
-    ];
-    let (edition_key, bump_seed) = Pubkey::find_program_address(edition_seeds, program_id);
-    if edition_key != *new_edition_account_info.key {
-        return Err(MetadataError::InvalidEditionKey.into());
-    }
-
-    if let Some(max) = master_edition.max_supply {
-        if master_edition.supply >= max {
-            return Err(MetadataError::MaxEditionsMintedAlready.into());
-        }
-    }
-
-    master_edition.supply += 1;
-    master_edition.serialize(&mut *master_edition_account_info.data.borrow_mut())?;
-
-    if mint.supply != 1 {
-        return Err(MetadataError::EditionsMustHaveExactlyOneToken.into());
-    }
-
-    // create the metadata the normal way...
-    process_create_metadata_accounts(
-        program_id,
-        &[
-            system_account_info.clone(),
-            new_metadata_account_info.clone(),
-            mint_info.clone(),
-            mint_authority_info.clone(),
-            payer_account_info.clone(),
-            update_authority_info.clone(),
-            system_account_info.clone(),
-            rent_info.clone(),
-        ],
-        master_metadata.data.name,
-        master_metadata.data.symbol,
-        master_metadata.data.uri,
-        true,
-    )?;
-
-    let edition_authority_seeds = &[
-        PREFIX.as_bytes(),
-        program_id.as_ref(),
-        &mint_info.key.as_ref(),
-        EDITION.as_bytes(),
-        &[bump_seed],
-    ];
-
-    create_or_allocate_account_raw(
-        *program_id,
-        new_edition_account_info,
-        rent_info,
-        system_account_info,
-        payer_account_info,
-        MAX_EDITION_LEN,
-        edition_authority_seeds,
-    )?;
-
-    let mut new_edition: Edition =
-        try_from_slice_unchecked(&new_edition_account_info.data.borrow())?;
-    new_edition.key = Key::EditionV1;
-    new_edition.parent = *master_edition_account_info.key;
-    new_edition.edition = master_edition.supply;
-    new_edition.serialize(&mut *new_edition_account_info.data.borrow_mut())?;
-
-    // Now make sure this mint can never be used by anybody else.
-    transfer_mint_authority(
-        edition_authority_seeds,
-        &edition_key,
-        new_edition_account_info,
         mint_info,
         mint_authority_info,
+        payer_account_info,
+        update_authority_info,
+        master_metadata_account_info,
         token_program_account_info,
+        system_account_info,
+        rent_info,
     )?;
+    Ok(())
+}
 
+pub fn process_mint_new_edition_from_master_edition_via_token(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+
+    let new_metadata_account_info = next_account_info(account_info_iter)?;
+    let new_edition_account_info = next_account_info(account_info_iter)?;
+    let master_edition_account_info = next_account_info(account_info_iter)?;
+    let mint_info = next_account_info(account_info_iter)?;
+    let mint_authority_info = next_account_info(account_info_iter)?;
+    let master_mint_info = next_account_info(account_info_iter)?;
+    let master_token_account_info = next_account_info(account_info_iter)?;
+    let burn_authority = next_account_info(account_info_iter)?;
+    let payer_account_info = next_account_info(account_info_iter)?;
+    let update_authority_info = next_account_info(account_info_iter)?;
+    let master_metadata_account_info = next_account_info(account_info_iter)?;
+    let token_program_account_info = next_account_info(account_info_iter)?;
+    let system_account_info = next_account_info(account_info_iter)?;
+    let rent_info = next_account_info(account_info_iter)?;
+
+    let token_account: Account = assert_initialized(master_token_account_info)?;
+    let master_edition: MasterEdition =
+        try_from_slice_unchecked(&master_edition_account_info.data.borrow())?;
+
+    if master_edition.master_mint != *master_mint_info.key {
+        return Err(MetadataError::MasterMintMismatch.into());
+    }
+
+    if token_account.mint != *master_mint_info.key {
+        return Err(MetadataError::TokenAccountMintMismatch.into());
+    }
+
+    if token_account.amount < 1 {
+        return Err(MetadataError::NotEnoughTokens.into());
+    }
+
+    spl_token_burn(TokenBurnParams {
+        mint: master_mint_info.clone(),
+        source: master_token_account_info.clone(),
+        amount: 1,
+        authority: burn_authority.clone(),
+        authority_signer_seeds: &[],
+        token_program: token_program_account_info.clone(),
+    })?;
+
+    mint_limited_edition(
+        program_id,
+        new_metadata_account_info,
+        new_edition_account_info,
+        master_edition_account_info,
+        mint_info,
+        mint_authority_info,
+        payer_account_info,
+        update_authority_info,
+        master_metadata_account_info,
+        token_program_account_info,
+        system_account_info,
+        rent_info,
+    )?;
     Ok(())
 }

@@ -20,7 +20,7 @@ pub const MAX_NAME_SYMBOL_LEN: usize = 1 + 32 + 32;
 
 pub const MAX_EDITION_LEN: usize = 1 + 32 + 8;
 
-pub const MAX_MASTER_EDITION_LEN: usize = 1 + 9 + 8;
+pub const MAX_MASTER_EDITION_LEN: usize = 1 + 9 + 8 + 32;
 
 #[repr(C)]
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
@@ -75,6 +75,9 @@ pub struct MasterEdition {
     pub supply: u64,
 
     pub max_supply: Option<u64>,
+
+    /// Can be used to mint tokens that give one-time permission to mint a single limited edition.
+    pub master_mint: Pubkey,
 }
 
 #[repr(C)]

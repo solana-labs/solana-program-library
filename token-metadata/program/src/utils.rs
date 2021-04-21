@@ -1,8 +1,13 @@
 use {
     crate::{
         error::MetadataError,
-        state::{Metadata, NameSymbolTuple, EDITION, PREFIX},
+        processor::process_create_metadata_accounts,
+        state::{
+            Edition, Key, MasterEdition, Metadata, NameSymbolTuple, EDITION, MAX_EDITION_LEN,
+            PREFIX,
+        },
     },
+    borsh::BorshSerialize,
     solana_program::{
         account_info::AccountInfo,
         borsh::try_from_slice_unchecked,
@@ -205,4 +210,153 @@ pub fn assert_edition_valid(
     }
 
     Ok(())
+}
+
+pub fn mint_limited_edition<'a>(
+    program_id: &Pubkey,
+    new_metadata_account_info: &AccountInfo<'a>,
+    new_edition_account_info: &AccountInfo<'a>,
+    master_edition_account_info: &AccountInfo<'a>,
+    mint_info: &AccountInfo<'a>,
+    mint_authority_info: &AccountInfo<'a>,
+    payer_account_info: &AccountInfo<'a>,
+    update_authority_info: &AccountInfo<'a>,
+    master_metadata_account_info: &AccountInfo<'a>,
+    token_program_account_info: &AccountInfo<'a>,
+    system_account_info: &AccountInfo<'a>,
+    rent_info: &AccountInfo<'a>,
+) -> ProgramResult {
+    let master_metadata: Metadata =
+        try_from_slice_unchecked(&master_metadata_account_info.data.borrow())?;
+    let mut master_edition: MasterEdition =
+        try_from_slice_unchecked(&master_edition_account_info.data.borrow())?;
+    let mint: Mint = assert_initialized(mint_info)?;
+
+    assert_mint_authority_matches_mint(&mint, mint_authority_info)?;
+
+    assert_edition_valid(
+        program_id,
+        &master_metadata.mint,
+        master_edition_account_info,
+    )?;
+
+    let edition_seeds = &[
+        PREFIX.as_bytes(),
+        program_id.as_ref(),
+        &mint_info.key.as_ref(),
+        EDITION.as_bytes(),
+    ];
+    let (edition_key, bump_seed) = Pubkey::find_program_address(edition_seeds, program_id);
+    if edition_key != *new_edition_account_info.key {
+        return Err(MetadataError::InvalidEditionKey.into());
+    }
+
+    if let Some(max) = master_edition.max_supply {
+        if master_edition.supply >= max {
+            return Err(MetadataError::MaxEditionsMintedAlready.into());
+        }
+    }
+
+    master_edition.supply += 1;
+    master_edition.serialize(&mut *master_edition_account_info.data.borrow_mut())?;
+
+    if mint.supply != 1 {
+        return Err(MetadataError::EditionsMustHaveExactlyOneToken.into());
+    }
+
+    // create the metadata the normal way...
+    process_create_metadata_accounts(
+        program_id,
+        &[
+            system_account_info.clone(),
+            new_metadata_account_info.clone(),
+            mint_info.clone(),
+            mint_authority_info.clone(),
+            payer_account_info.clone(),
+            update_authority_info.clone(),
+            system_account_info.clone(),
+            rent_info.clone(),
+        ],
+        master_metadata.data.name,
+        master_metadata.data.symbol,
+        master_metadata.data.uri,
+        true,
+    )?;
+
+    let edition_authority_seeds = &[
+        PREFIX.as_bytes(),
+        program_id.as_ref(),
+        &mint_info.key.as_ref(),
+        EDITION.as_bytes(),
+        &[bump_seed],
+    ];
+
+    create_or_allocate_account_raw(
+        *program_id,
+        new_edition_account_info,
+        rent_info,
+        system_account_info,
+        payer_account_info,
+        MAX_EDITION_LEN,
+        edition_authority_seeds,
+    )?;
+
+    let mut new_edition: Edition =
+        try_from_slice_unchecked(&new_edition_account_info.data.borrow())?;
+    new_edition.key = Key::EditionV1;
+    new_edition.parent = *master_edition_account_info.key;
+    new_edition.edition = master_edition.supply;
+    new_edition.serialize(&mut *new_edition_account_info.data.borrow_mut())?;
+
+    // Now make sure this mint can never be used by anybody else.
+    transfer_mint_authority(
+        edition_authority_seeds,
+        &edition_key,
+        new_edition_account_info,
+        mint_info,
+        mint_authority_info,
+        token_program_account_info,
+    )?;
+
+    Ok(())
+}
+
+pub fn spl_token_burn(params: TokenBurnParams<'_, '_>) -> ProgramResult {
+    let TokenBurnParams {
+        mint,
+        source,
+        authority,
+        token_program,
+        amount,
+        authority_signer_seeds,
+    } = params;
+    let result = invoke_signed(
+        &spl_token::instruction::burn(
+            token_program.key,
+            source.key,
+            mint.key,
+            authority.key,
+            &[],
+            amount,
+        )?,
+        &[source, mint, authority, token_program],
+        &[authority_signer_seeds],
+    );
+    result.map_err(|_| MetadataError::TokenBurnFailed.into())
+}
+
+/// TokenBurnParams
+pub struct TokenBurnParams<'a: 'b, 'b> {
+    /// mint
+    pub mint: AccountInfo<'a>,
+    /// source
+    pub source: AccountInfo<'a>,
+    /// amount
+    pub amount: u64,
+    /// authority
+    pub authority: AccountInfo<'a>,
+    /// authority_signer_seeds
+    pub authority_signer_seeds: &'b [&'b [u8]],
+    /// token_program
+    pub token_program: AccountInfo<'a>,
 }
