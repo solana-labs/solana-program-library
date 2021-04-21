@@ -6,9 +6,8 @@ use crate::{
 };
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
-    bpf_loader_upgradeable,
     entrypoint::ProgramResult,
-    //   program::invoke,
+    //   program::invoke, bpf_loader_upgradeable,
     pubkey::Pubkey,
 };
 
@@ -22,12 +21,12 @@ pub fn process_create_empty_governance(
     let account_info_iter = &mut accounts.iter();
     let governance_account_info = next_account_info(account_info_iter)?; // 0
     let governed_program_account_info = next_account_info(account_info_iter)?; // 1
-    let governed_program_data_account_info = next_account_info(account_info_iter)?; // 2
-    let governed_program_upgrade_authority_account_info = next_account_info(account_info_iter)?; // 3
+    let _governed_program_data_account_info = next_account_info(account_info_iter)?; // 2
+    let _governed_program_upgrade_authority_account_info = next_account_info(account_info_iter)?; // 3
     let governance_mint_account_info = next_account_info(account_info_iter)?; // 4
     let payer_account_info = next_account_info(account_info_iter)?; // 5
     let system_account_info = next_account_info(account_info_iter)?; // 6
-    let bpf_upgrade_loader_account_info = next_account_info(account_info_iter)?; // 7
+    let _bpf_upgrade_loader_account_info = next_account_info(account_info_iter)?; // 7
 
     let council_mint_seed = next_account_info(account_info_iter) // 8
         .map(|acc| acc.key.as_ref())

@@ -28,7 +28,7 @@ pub fn process_init_governance(
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let governance_account_info = next_account_info(account_info_iter)?;
-    let program_to_tie_account_info = next_account_info(account_info_iter)?;
+    let governed_program_account_info = next_account_info(account_info_iter)?;
     let governance_mint_account_info = next_account_info(account_info_iter)?;
 
     let (council_mint, council_mint_seed) = next_account_info(account_info_iter)
@@ -40,7 +40,7 @@ pub fn process_init_governance(
         program_id.as_ref(),
         governance_mint_account_info.key.as_ref(),
         council_mint_seed,
-        program_to_tie_account_info.key.as_ref(),
+        governed_program_account_info.key.as_ref(),
     ];
     let (governance_key, _) = Pubkey::find_program_address(seeds, program_id);
     if governance_account_info.key != &governance_key {
@@ -51,7 +51,7 @@ pub fn process_init_governance(
     new_governance.name = name;
     new_governance.minimum_slot_waiting_period = minimum_slot_waiting_period;
     new_governance.time_limit = time_limit;
-    new_governance.program = *program_to_tie_account_info.key;
+    new_governance.program = *governed_program_account_info.key;
     new_governance.governance_mint = *governance_mint_account_info.key;
 
     new_governance.council_mint = council_mint;
