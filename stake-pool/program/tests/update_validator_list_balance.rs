@@ -4,8 +4,11 @@ mod helpers;
 
 use {
     borsh::BorshDeserialize,
-    helpers::*, solana_program::pubkey::Pubkey, solana_program_test::*,
-    solana_sdk::signature::Signer, spl_stake_pool::{MINIMUM_ACTIVE_STAKE, state::StakePool, stake_program},
+    helpers::*,
+    solana_program::pubkey::Pubkey,
+    solana_program_test::*,
+    solana_sdk::signature::Signer,
+    spl_stake_pool::{stake_program, state::StakePool, MINIMUM_ACTIVE_STAKE},
 };
 
 const STAKE_ACCOUNTS: u64 = 5;
@@ -50,8 +53,18 @@ async fn setup() -> (
             )
             .await;
 
-        let deposit_account = DepositStakeAccount::new_with_vote(stake_account.vote.pubkey(), stake_account.stake_account, TEST_STAKE_AMOUNT);
-        deposit_account.create_and_delegate(&mut context.banks_client, &context.payer, &context.last_blockhash).await;
+        let deposit_account = DepositStakeAccount::new_with_vote(
+            stake_account.vote.pubkey(),
+            stake_account.stake_account,
+            TEST_STAKE_AMOUNT,
+        );
+        deposit_account
+            .create_and_delegate(
+                &mut context.banks_client,
+                &context.payer,
+                &context.last_blockhash,
+            )
+            .await;
 
         stake_accounts.push(stake_account);
         deposit_accounts.push(deposit_account);
@@ -62,7 +75,9 @@ async fn setup() -> (
     // so we can warm up faster than this. Also, we need to do each of these
     // warps by hand to get fully active stakes.
     for i in 2..100 {
-        context.warp_to_slot(first_normal_slot + i * slots_per_epoch).unwrap();
+        context
+            .warp_to_slot(first_normal_slot + i * slots_per_epoch)
+            .unwrap();
     }
     stake_pool_accounts
         .update_all(
@@ -91,17 +106,20 @@ async fn setup() -> (
     }
 
     for deposit_account in &deposit_accounts {
-        deposit_account.deposit(
-            &mut context.banks_client,
-            &context.payer,
-            &context.last_blockhash,
-            &stake_pool_accounts,
-        )
-        .await;
+        deposit_account
+            .deposit(
+                &mut context.banks_client,
+                &context.payer,
+                &context.last_blockhash,
+                &stake_pool_accounts,
+            )
+            .await;
     }
 
     // Warp forward one epoch so the stakes activate, and update
-    context.warp_to_slot(first_normal_slot + 100 * slots_per_epoch + 1).unwrap();
+    context
+        .warp_to_slot(first_normal_slot + 100 * slots_per_epoch + 1)
+        .unwrap();
 
     stake_pool_accounts
         .update_all(
@@ -122,7 +140,7 @@ async fn setup() -> (
         stake_pool_accounts,
         stake_accounts,
         TEST_STAKE_AMOUNT,
-        100
+        100,
     )
 }
 
@@ -153,7 +171,9 @@ async fn success() {
     // Warp one more epoch so the rewards are paid out
     let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
     let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
-    context.warp_to_slot(first_normal_slot + (start_epoch + 1) * slots_per_epoch).unwrap();
+    context
+        .warp_to_slot(first_normal_slot + (start_epoch + 1) * slots_per_epoch)
+        .unwrap();
 
     stake_pool_accounts
         .update_all(
@@ -169,11 +189,11 @@ async fn success() {
         )
         .await;
     let new_lamports = get_validator_list_sum(
-            &mut context.banks_client,
-            &stake_pool_accounts.reserve_stake.pubkey(),
-            &stake_pool_accounts.validator_list.pubkey()
-        )
-        .await;
+        &mut context.banks_client,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+        &stake_pool_accounts.validator_list.pubkey(),
+    )
+    .await;
     assert!(new_lamports > initial_lamports);
 
     let stake_pool_info = get_account(
@@ -190,13 +210,14 @@ async fn merge_into_reserve() {
     let (mut context, stake_pool_accounts, stake_accounts, lamports, start_epoch) = setup().await;
 
     let pre_lamports = get_validator_list_sum(
-            &mut context.banks_client,
-            &stake_pool_accounts.reserve_stake.pubkey(),
-            &stake_pool_accounts.validator_list.pubkey()
-        )
-        .await;
+        &mut context.banks_client,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+        &stake_pool_accounts.validator_list.pubkey(),
+    )
+    .await;
 
-    let reserve_stake = context.banks_client
+    let reserve_stake = context
+        .banks_client
         .get_account(stake_pool_accounts.reserve_stake.pubkey())
         .await
         .unwrap()
@@ -234,11 +255,11 @@ async fn merge_into_reserve() {
         .await;
 
     let expected_lamports = get_validator_list_sum(
-            &mut context.banks_client,
-            &stake_pool_accounts.reserve_stake.pubkey(),
-            &stake_pool_accounts.validator_list.pubkey()
-        )
-        .await;
+        &mut context.banks_client,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+        &stake_pool_accounts.validator_list.pubkey(),
+    )
+    .await;
     assert_eq!(pre_lamports, expected_lamports);
 
     let stake_pool_info = get_account(
@@ -252,7 +273,9 @@ async fn merge_into_reserve() {
     // Warp one more epoch so the stakes deactivate
     let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
     let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
-    context.warp_to_slot(first_normal_slot + (start_epoch + 1) * slots_per_epoch).unwrap();
+    context
+        .warp_to_slot(first_normal_slot + (start_epoch + 1) * slots_per_epoch)
+        .unwrap();
 
     stake_pool_accounts
         .update_all(
@@ -268,14 +291,15 @@ async fn merge_into_reserve() {
         )
         .await;
     let expected_lamports = get_validator_list_sum(
-            &mut context.banks_client,
-            &stake_pool_accounts.reserve_stake.pubkey(),
-            &stake_pool_accounts.validator_list.pubkey()
-        )
-        .await;
+        &mut context.banks_client,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+        &stake_pool_accounts.validator_list.pubkey(),
+    )
+    .await;
     assert_eq!(pre_lamports, expected_lamports);
 
-    let reserve_stake = context.banks_client
+    let reserve_stake = context
+        .banks_client
         .get_account(stake_pool_accounts.reserve_stake.pubkey())
         .await
         .unwrap()
@@ -298,11 +322,11 @@ async fn merge_into_validator_stake() {
 
     let rent = context.banks_client.get_rent().await.unwrap();
     let pre_lamports = get_validator_list_sum(
-            &mut context.banks_client,
-            &stake_pool_accounts.reserve_stake.pubkey(),
-            &stake_pool_accounts.validator_list.pubkey()
-        )
-        .await;
+        &mut context.banks_client,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+        &stake_pool_accounts.validator_list.pubkey(),
+    )
+    .await;
 
     // Increase stake to all validators
     for stake_account in &stake_accounts {
@@ -322,7 +346,9 @@ async fn merge_into_validator_stake() {
     // Warp just a little bit to get a new blockhash and update again
     let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
     let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
-    context.warp_to_slot(first_normal_slot + start_epoch * slots_per_epoch + 10).unwrap();
+    context
+        .warp_to_slot(first_normal_slot + start_epoch * slots_per_epoch + 10)
+        .unwrap();
 
     // Update, should not change, no merges yet
     let error = stake_pool_accounts
@@ -341,11 +367,11 @@ async fn merge_into_validator_stake() {
     assert!(error.is_none());
 
     let expected_lamports = get_validator_list_sum(
-            &mut context.banks_client,
-            &stake_pool_accounts.reserve_stake.pubkey(),
-            &stake_pool_accounts.validator_list.pubkey()
-        )
-        .await;
+        &mut context.banks_client,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+        &stake_pool_accounts.validator_list.pubkey(),
+    )
+    .await;
     assert_eq!(pre_lamports, expected_lamports);
     let stake_pool_info = get_account(
         &mut context.banks_client,
@@ -364,7 +390,9 @@ async fn merge_into_validator_stake() {
     assert_eq!(expected_lamports, stake_pool.total_stake_lamports);
 
     // Warp one more epoch so the stakes activate, ready to merge
-    context.warp_to_slot(first_normal_slot + (start_epoch + 1) * slots_per_epoch).unwrap();
+    context
+        .warp_to_slot(first_normal_slot + (start_epoch + 1) * slots_per_epoch)
+        .unwrap();
 
     let error = stake_pool_accounts
         .update_all(
@@ -381,11 +409,11 @@ async fn merge_into_validator_stake() {
         .await;
     assert!(error.is_none());
     let current_lamports = get_validator_list_sum(
-            &mut context.banks_client,
-            &stake_pool_accounts.reserve_stake.pubkey(),
-            &stake_pool_accounts.validator_list.pubkey()
-        )
-        .await;
+        &mut context.banks_client,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+        &stake_pool_accounts.validator_list.pubkey(),
+    )
+    .await;
     let stake_pool_info = get_account(
         &mut context.banks_client,
         &stake_pool_accounts.stake_pool.pubkey(),
@@ -396,18 +424,23 @@ async fn merge_into_validator_stake() {
 
     // Check that transient accounts are gone
     for stake_account in &stake_accounts {
-        assert!(context.banks_client.get_account(stake_account.transient_stake_account).await.unwrap().is_none());
+        assert!(context
+            .banks_client
+            .get_account(stake_account.transient_stake_account)
+            .await
+            .unwrap()
+            .is_none());
     }
 
     // Check validator stake accounts have the expected balance now:
     // validator stake account minimum + deposited lamports + 2 rents + increased lamports
-    let expected_lamports = MINIMUM_ACTIVE_STAKE + lamports + lamports / stake_accounts.len() as u64 + 2 * rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
+    let expected_lamports = MINIMUM_ACTIVE_STAKE
+        + lamports
+        + lamports / stake_accounts.len() as u64
+        + 2 * rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
     for stake_account in &stake_accounts {
-        let validator_stake = get_account(
-            &mut context.banks_client,
-            &stake_account.stake_account,
-        )
-        .await;
+        let validator_stake =
+            get_account(&mut context.banks_client, &stake_account.stake_account).await;
         assert_eq!(validator_stake.lamports, expected_lamports);
     }
 }

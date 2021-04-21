@@ -1,7 +1,10 @@
 //! FIXME copied from the solana stake program
 
 use {
-    borsh::{maybestd::io::{Result as IoResult, Error as IoError, ErrorKind as IoErrorKind}, BorshSerialize, BorshDeserialize, BorshSchema},
+    borsh::{
+        maybestd::io::{Error as IoError, ErrorKind as IoErrorKind, Result as IoResult},
+        BorshDeserialize, BorshSchema, BorshSerialize,
+    },
     serde_derive::{Deserialize, Serialize},
     solana_program::{
         clock::{Epoch, UnixTimestamp},
@@ -138,12 +141,12 @@ impl BorshDeserialize for StakeState {
             1 => {
                 let meta: Meta = BorshDeserialize::deserialize(buf)?;
                 Ok(StakeState::Initialized(meta))
-            },
+            }
             2 => {
                 let meta: Meta = BorshDeserialize::deserialize(buf)?;
                 let stake: Stake = BorshDeserialize::deserialize(buf)?;
                 Ok(StakeState::Stake(meta, stake))
-            },
+            }
             3 => Ok(StakeState::RewardsPool),
             _ => Err(IoError::new(IoErrorKind::InvalidData, "Invalid enum value")),
         }
@@ -151,7 +154,18 @@ impl BorshDeserialize for StakeState {
 }
 
 /// FIXME copied from the stake program
-#[derive(BorshSerialize, BorshDeserialize, BorshSchema, Default, Debug, Serialize, Deserialize, PartialEq, Clone, Copy)]
+#[derive(
+    BorshSerialize,
+    BorshDeserialize,
+    BorshSchema,
+    Default,
+    Debug,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Clone,
+    Copy,
+)]
 pub struct Meta {
     /// FIXME copied from the stake program
     pub rent_exempt_reserve: u64,
@@ -162,7 +176,18 @@ pub struct Meta {
 }
 
 /// FIXME copied from the stake program
-#[derive(BorshSerialize, BorshDeserialize, BorshSchema, Debug, Default, Serialize, Deserialize, PartialEq, Clone, Copy)]
+#[derive(
+    BorshSerialize,
+    BorshDeserialize,
+    BorshSchema,
+    Debug,
+    Default,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Clone,
+    Copy,
+)]
 pub struct Stake {
     /// FIXME copied from the stake program
     pub delegation: Delegation,
@@ -171,7 +196,18 @@ pub struct Stake {
 }
 
 /// FIXME copied from the stake program
-#[derive(BorshSerialize, BorshDeserialize, BorshSchema, Debug, Default, Serialize, Deserialize, PartialEq, Clone, Copy)]
+#[derive(
+    BorshSerialize,
+    BorshDeserialize,
+    BorshSchema,
+    Debug,
+    Default,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Clone,
+    Copy,
+)]
 pub struct Delegation {
     /// to whom the stake is delegated
     pub voter_pubkey: Pubkey,
@@ -186,7 +222,17 @@ pub struct Delegation {
 }
 
 /// FIXME copied from the stake program
-#[derive(BorshSerialize, BorshDeserialize, BorshSchema, Debug, Serialize, Deserialize, PartialEq, Clone, Copy)]
+#[derive(
+    BorshSerialize,
+    BorshDeserialize,
+    BorshSchema,
+    Debug,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Clone,
+    Copy,
+)]
 pub enum StakeAuthorize {
     /// FIXME copied from the stake program
     Staker,
@@ -194,7 +240,18 @@ pub enum StakeAuthorize {
     Withdrawer,
 }
 /// FIXME copied from the stake program
-#[derive(BorshSerialize, BorshDeserialize, BorshSchema, Default, Debug, Serialize, Deserialize, PartialEq, Clone, Copy)]
+#[derive(
+    BorshSerialize,
+    BorshDeserialize,
+    BorshSchema,
+    Default,
+    Debug,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Clone,
+    Copy,
+)]
 pub struct Authorized {
     /// FIXME copied from the stake program
     pub staker: Pubkey,
@@ -203,7 +260,18 @@ pub struct Authorized {
 }
 
 /// FIXME copied from the stake program
-#[derive(BorshSerialize, BorshDeserialize, BorshSchema, Default, Debug, Serialize, Deserialize, PartialEq, Clone, Copy)]
+#[derive(
+    BorshSerialize,
+    BorshDeserialize,
+    BorshSchema,
+    Default,
+    Debug,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Clone,
+    Copy,
+)]
 pub struct Lockup {
     /// UnixTimestamp at which this stake will allow withdrawal, unless the
     ///   transaction is signed by the custodian
@@ -435,7 +503,7 @@ impl Delegation {
 /// from a CPI error.
 pub fn active_delegations_can_merge(
     stake: &Delegation,
-    source: &Delegation
+    source: &Delegation,
 ) -> Result<(), ProgramError> {
     if stake.voter_pubkey != source.voter_pubkey {
         msg!("Unable to merge due to voter mismatch");
@@ -454,10 +522,7 @@ pub fn active_delegations_can_merge(
 /// FIXME copied from stake program
 /// Checks if two active stakes are mergeable, required since we cannot recover
 /// from a CPI error.
-pub fn active_stakes_can_merge(
-    stake: &Stake,
-    source: &Stake,
-) -> Result<(), ProgramError> {
+pub fn active_stakes_can_merge(stake: &Stake, source: &Stake) -> Result<(), ProgramError> {
     active_delegations_can_merge(&stake.delegation, &source.delegation)?;
 
     if stake.credits_observed == source.credits_observed {
@@ -582,11 +647,7 @@ pub fn deactivate_stake(stake_pubkey: &Pubkey, authorized_pubkey: &Pubkey) -> In
 
 #[cfg(test)]
 mod test {
-    use {
-        super::*,
-        crate::borsh::try_from_slice_unchecked,
-        bincode::serialize,
-    };
+    use {super::*, crate::borsh::try_from_slice_unchecked, bincode::serialize};
 
     fn check_borsh_deserialization(stake: StakeState) {
         let serialized = serialize(&stake).unwrap();
@@ -606,7 +667,8 @@ mod test {
             },
             lockup: Lockup::default(),
         }));
-        check_borsh_deserialization(StakeState::Stake(Meta {
+        check_borsh_deserialization(StakeState::Stake(
+            Meta {
                 rent_exempt_reserve: 1,
                 authorized: Authorized {
                     staker: Pubkey::new_unique(),
@@ -623,13 +685,23 @@ mod test {
                     warmup_cooldown_rate: f64::MAX,
                 },
                 credits_observed: 1,
-            }
+            },
         ));
     }
 
     #[test]
     fn borsh_deserialization_live_data() {
-        let data = [1, 0, 0, 0, 128, 213, 34, 0, 0, 0, 0, 0, 133, 0, 79, 231, 141, 29, 73, 61, 232, 35, 119, 124, 168, 12, 120, 216, 195, 29, 12, 166, 139, 28, 36, 182, 186, 154, 246, 149, 224, 109, 52, 100, 133, 0, 79, 231, 141, 29, 73, 61, 232, 35, 119, 124, 168, 12, 120, 216, 195, 29, 12, 166, 139, 28, 36, 182, 186, 154, 246, 149, 224, 109, 52, 100, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        let data = [
+            1, 0, 0, 0, 128, 213, 34, 0, 0, 0, 0, 0, 133, 0, 79, 231, 141, 29, 73, 61, 232, 35,
+            119, 124, 168, 12, 120, 216, 195, 29, 12, 166, 139, 28, 36, 182, 186, 154, 246, 149,
+            224, 109, 52, 100, 133, 0, 79, 231, 141, 29, 73, 61, 232, 35, 119, 124, 168, 12, 120,
+            216, 195, 29, 12, 166, 139, 28, 36, 182, 186, 154, 246, 149, 224, 109, 52, 100, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0,
+        ];
         let _deserialized = try_from_slice_unchecked::<StakeState>(&data).unwrap();
     }
 }

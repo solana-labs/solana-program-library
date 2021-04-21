@@ -69,7 +69,11 @@ async fn success() {
         &stake_pool_accounts.validator_list.pubkey(),
     )
     .await;
-    let stake_pool = get_account(&mut context.banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
+    let stake_pool = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
     let stake_pool = StakePool::try_from_slice(&stake_pool.data.as_slice()).unwrap();
     assert_eq!(pre_balance, stake_pool.total_stake_lamports);
 
@@ -127,7 +131,11 @@ async fn success() {
         &stake_pool_accounts.validator_list.pubkey(),
     )
     .await;
-    let stake_pool = get_account(&mut context.banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
+    let stake_pool = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
     let stake_pool = StakePool::try_from_slice(&stake_pool.data.as_slice()).unwrap();
     assert_eq!(post_balance, stake_pool.total_stake_lamports);
 

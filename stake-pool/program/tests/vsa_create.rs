@@ -32,7 +32,14 @@ async fn success_create_validator_stake_account() {
 
     let validator = Keypair::new();
     let vote = Keypair::new();
-    create_vote(&mut banks_client, &payer, &recent_blockhash, &validator, &vote).await;
+    create_vote(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &validator,
+        &vote,
+    )
+    .await;
 
     let (stake_account, _) = find_stake_program_address(
         &id(),

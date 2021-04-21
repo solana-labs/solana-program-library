@@ -648,27 +648,34 @@ fn command_update(config: &Config, stake_pool_address: &Pubkey) -> CommandResult
         .collect();
 
     println!("Updating stake pool...");
+    let (withdraw_authority, _) =
+        find_withdraw_authority_program_address(&spl_stake_pool::id(), &stake_pool_address);
 
     let mut instructions: Vec<Instruction> = vec![];
+    let mut start_index = 0;
     for accounts_chunk in accounts_to_update.chunks(MAX_ACCOUNTS_TO_UPDATE) {
         instructions.push(spl_stake_pool::instruction::update_validator_list_balance(
             &spl_stake_pool::id(),
+            stake_pool_address,
+            &withdraw_authority,
             &stake_pool.validator_list,
+            &stake_pool.reserve_stake,
             &accounts_chunk,
-        )?);
+            start_index,
+            false,
+        ));
+        start_index += MAX_ACCOUNTS_TO_UPDATE as u32;
     }
-
-    let (withdraw_authority, _) =
-        find_withdraw_authority_program_address(&spl_stake_pool::id(), &stake_pool_address);
 
     instructions.push(spl_stake_pool::instruction::update_stake_pool_balance(
         &spl_stake_pool::id(),
         stake_pool_address,
-        &stake_pool.validator_list,
         &withdraw_authority,
+        &stake_pool.validator_list,
+        &stake_pool.reserve_stake,
         &stake_pool.manager_fee_account,
         &stake_pool.pool_mint,
-    )?);
+    ));
 
     // TODO: A faster solution would be to send all the `update_validator_list_balance` instructions concurrently
     for instruction in instructions {

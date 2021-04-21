@@ -1126,20 +1126,24 @@ impl Processor {
             // chunks_exact means that we always get 2 elements, making this safe
             let validator_stake_info = validator_stakes.first().unwrap();
             let transient_stake_info = validator_stakes.last().unwrap();
-            if let Err(_) = check_validator_stake_address(
+            if check_validator_stake_address(
                 program_id,
                 stake_pool_info.key,
                 validator_stake_info.key,
                 &validator_stake_record.vote_account_address,
-            ) {
+            )
+            .is_err()
+            {
                 continue;
             };
-            if let Err(_) = check_transient_stake_address(
+            if check_transient_stake_address(
                 program_id,
                 stake_pool_info.key,
                 transient_stake_info.key,
                 &validator_stake_record.vote_account_address,
-            ) {
+            )
+            .is_err()
+            {
                 continue;
             };
             // Possible merge situations for transient stake
@@ -1201,8 +1205,8 @@ impl Processor {
                         if let Some(stake_program::StakeState::Stake(_, validator_stake)) =
                             validator_stake_state
                         {
-                            if let Ok(_) =
-                                stake_program::active_stakes_can_merge(&stake, &validator_stake)
+                            if stake_program::active_stakes_can_merge(&stake, &validator_stake)
+                                .is_ok()
                             {
                                 Self::stake_merge(
                                     stake_pool_info.key,
