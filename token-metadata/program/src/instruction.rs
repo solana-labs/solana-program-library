@@ -227,7 +227,7 @@ pub fn mint_new_edition_from_master_edition(
             AccountMeta::new(master_edition, false),
             AccountMeta::new(mint, false),
             AccountMeta::new_readonly(mint_authority, true),
-            AccountMeta::new_readonly(payer, true),
+            AccountMeta::new(payer, true),
             AccountMeta::new_readonly(master_update_authority, true),
             AccountMeta::new_readonly(master_metadata, false),
             AccountMeta::new_readonly(spl_token::id(), false),
