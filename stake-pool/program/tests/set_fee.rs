@@ -47,7 +47,7 @@ async fn success() {
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
-            new_fee.clone(),
+            new_fee,
         )],
         Some(&payer.pubkey()),
         &[&payer, &stake_pool_accounts.manager],

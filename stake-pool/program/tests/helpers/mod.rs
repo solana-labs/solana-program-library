@@ -241,7 +241,7 @@ pub async fn create_stake_pool(
                 pool_mint,
                 pool_token_account,
                 &spl_token::id(),
-                fee.clone(),
+                *fee,
                 max_validators,
             )
             .unwrap(),
@@ -611,6 +611,7 @@ impl StakePoolAccounts {
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn withdraw_stake(
         &self,
         banks_client: &mut BanksClient,

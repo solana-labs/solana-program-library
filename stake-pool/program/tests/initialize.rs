@@ -226,7 +226,7 @@ async fn fail_with_wrong_max_validators() {
                 &stake_pool_accounts.pool_mint.pubkey(),
                 &stake_pool_accounts.pool_fee_account.pubkey(),
                 &spl_token::id(),
-                stake_pool_accounts.fee.clone(),
+                stake_pool_accounts.fee,
                 stake_pool_accounts.max_validators,
             )
             .unwrap(),
@@ -384,7 +384,7 @@ async fn fail_with_wrong_token_program_id() {
                 &stake_pool_accounts.pool_mint.pubkey(),
                 &stake_pool_accounts.pool_fee_account.pubkey(),
                 &wrong_token_program.pubkey(),
-                stake_pool_accounts.fee.clone(),
+                stake_pool_accounts.fee,
                 stake_pool_accounts.max_validators,
             )
             .unwrap(),
@@ -547,7 +547,7 @@ async fn fail_with_not_rent_exempt_pool() {
                 &stake_pool_accounts.pool_mint.pubkey(),
                 &stake_pool_accounts.pool_fee_account.pubkey(),
                 &spl_token::id(),
-                stake_pool_accounts.fee.clone(),
+                stake_pool_accounts.fee,
                 stake_pool_accounts.max_validators,
             )
             .unwrap(),
@@ -621,7 +621,7 @@ async fn fail_with_not_rent_exempt_validator_list() {
                 &stake_pool_accounts.pool_mint.pubkey(),
                 &stake_pool_accounts.pool_fee_account.pubkey(),
                 &spl_token::id(),
-                stake_pool_accounts.fee.clone(),
+                stake_pool_accounts.fee,
                 stake_pool_accounts.max_validators,
             )
             .unwrap(),
@@ -673,7 +673,7 @@ async fn fail_without_manager_signature() {
     let rent_validator_list = rent.minimum_balance(validator_list_size);
 
     let init_data = instruction::StakePoolInstruction::Initialize {
-        fee: stake_pool_accounts.fee.clone(),
+        fee: stake_pool_accounts.fee,
         max_validators: stake_pool_accounts.max_validators,
     };
     let data = init_data.try_to_vec().unwrap();
