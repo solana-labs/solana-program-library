@@ -746,17 +746,15 @@ impl Processor {
             transient_stake_account_info.key,
             &vote_account_address,
         )?;
-        // check that the transient stake account isn't activating
-        if let Ok((_, transient_stake)) = get_stake_state(transient_stake_account_info) {
-            if transient_stake.delegation.activation_epoch == clock.epoch {
-                msg!(
-                    "Transient stake {} is activating, can't remove stake {} on validator {}",
-                    transient_stake_account_info.key,
-                    stake_account_info.key,
-                    vote_account_address
-                );
-                return Err(StakePoolError::WrongStakeState.into());
-            }
+        // check that the transient stake account doesn't exist
+        if get_stake_state(transient_stake_account_info).is_ok() {
+            msg!(
+                "Transient stake {} exists, can't remove stake {} on validator {}",
+                transient_stake_account_info.key,
+                stake_account_info.key,
+                vote_account_address
+            );
+            return Err(StakePoolError::WrongStakeState.into());
         }
 
         if !validator_list.contains(&vote_account_address) {
