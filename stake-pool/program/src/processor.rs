@@ -7,7 +7,7 @@ use {
         instruction::StakePoolInstruction,
         minimum_stake_lamports, stake_program,
         state::{AccountType, Fee, StakePool, ValidatorList, ValidatorStakeInfo},
-        AUTHORITY_DEPOSIT, AUTHORITY_WITHDRAW, MINIMUM_ACTIVE_STAKE
+        AUTHORITY_DEPOSIT, AUTHORITY_WITHDRAW, MINIMUM_ACTIVE_STAKE,
     },
     bincode::deserialize,
     borsh::{BorshDeserialize, BorshSerialize},
