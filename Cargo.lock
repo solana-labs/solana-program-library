@@ -3754,6 +3754,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-governance"
+version = "0.0.1"
+dependencies = [
+ "arrayref",
+ "assert_matches",
+ "bincode",
+ "log",
+ "num-derive",
+ "num-traits",
+ "proptest",
+ "serde",
+ "serde_yaml",
+ "solana-program",
+ "spl-token 3.1.0",
+ "thiserror",
+]
+
+[[package]]
 name = "spl-math"
 version = "0.1.0"
 dependencies = [
@@ -3862,24 +3880,6 @@ dependencies = [
  "solana-sdk",
  "spl-stake-pool",
  "spl-token 3.1.0",
-]
-
-[[package]]
-name = "spl-timelock"
-version = "0.0.1"
-dependencies = [
- "arrayref",
- "assert_matches",
- "bincode",
- "log",
- "num-derive",
- "num-traits",
- "proptest",
- "serde",
- "serde_yaml",
- "solana-program",
- "spl-token 3.1.0",
- "thiserror",
 ]
 
 [[package]]
