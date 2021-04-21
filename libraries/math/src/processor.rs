@@ -15,6 +15,12 @@ fn u64_multiply(multiplicand: u64, multiplier: u64) -> u64 {
     multiplicand * multiplier
 }
 
+/// u64_divide
+#[inline(never)]
+fn u64_divide(dividend: u64, divisor: u64) -> u64 {
+    dividend / divisor
+}
+
 /// f32_multiply
 #[inline(never)]
 fn f32_multiply(multiplicand: f32, multiplier: f32) -> f32 {
@@ -67,6 +73,14 @@ pub fn process_instruction(
             msg!("Calculating U64 Multiply");
             sol_log_compute_units();
             let result = u64_multiply(multiplicand, multiplier);
+            sol_log_compute_units();
+            msg!("{}", result);
+            Ok(())
+        }
+        MathInstruction::U64Divide { dividend, divisor } => {
+            msg!("Calculating U64 Divide");
+            sol_log_compute_units();
+            let result = u64_divide(dividend, divisor);
             sol_log_compute_units();
             msg!("{}", result);
             Ok(())
