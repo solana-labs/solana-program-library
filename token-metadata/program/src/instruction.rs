@@ -98,7 +98,7 @@ pub enum MetadataInstruction {
     ///   2. `[writable]` Master Record Edition (pda of ['metadata', program id, master mint id, 'edition'])
     ///   3. `[writable]` Mint of new token - THIS WILL TRANSFER AUTHORITY AWAY FROM THIS KEY
     ///   4. `[signer]` Mint authority of new mint
-    ///   5. `[]` Master Mint of master record edition
+    ///   5. `[writable]` Master Mint of master record edition
     ///   6. `[writable]` Token account containing master mint token to be transferred
     ///   7. `[signer]` Burn authority for this token
     ///   8. `[signer]` payer
@@ -286,7 +286,7 @@ pub fn mint_new_edition_from_master_edition_via_token(
             AccountMeta::new(master_edition, false),
             AccountMeta::new(mint, false),
             AccountMeta::new_readonly(mint_authority, true),
-            AccountMeta::new_readonly(master_mint, false),
+            AccountMeta::new(master_mint, false),
             AccountMeta::new(master_token_account, false),
             AccountMeta::new_readonly(burn_authority, true),
             AccountMeta::new(payer, true),
