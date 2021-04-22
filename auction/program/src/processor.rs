@@ -46,11 +46,12 @@ pub fn process_instruction(
         }
         AuctionInstruction::CancelBid(args) => {
             msg!("+ Processing Cancelbid");
-            cancel_bid(program_id, accounts)
+            cancel_bid(program_id, accounts, args)
         }
         AuctionInstruction::SetAuthority => {
             msg!("+ Processing SetAuthority");
-            cancel_bid(program_id, accounts)
+            //cancel_bid(program_id, accounts)
+            Ok(())
         }
     }
 }
@@ -155,20 +156,21 @@ impl BidState {
             // In a capped auction, track the limited number of winners.
             BidState::EnglishAuction { ref mut bids, max } => match bids.last() {
                 Some(top) => {
-                    msg!("{} < {}", top.1, bid.1);
+                    msg!("Bid Check: {} < {}", top.1, bid.1);
                     if top.1 < bid.1 {
                         bids.retain(|b| b.0 != bid.0);
                         bids.push(bid);
                         if bids.len() > *max {
                             bids.remove(0);
                         }
-                        return Ok(());
+                        Ok(())
+                    } else {
+                        Err(AuctionError::BidTooSmall.into())
                     }
-                    return Ok(());
                 }
                 _ => {
                     bids.push(bid);
-                    return Ok(());
+                    Ok(())
                 }
             },
 
@@ -182,7 +184,10 @@ impl BidState {
     pub fn cancel_bid(&mut self, key: Pubkey) -> Result<(), ProgramError> {
         match self {
             BidState::EnglishAuction { ref mut bids, max } => {
+                msg!("Cancelling {}!", key);
+                msg!("Before: {}", bids.len());
                 bids.retain(|b| b.0 != key);
+                msg!("After: {}", bids.len());
                 Ok(())
             }
 
@@ -224,8 +229,6 @@ pub struct BidderMetadata {
     pub last_bid: u64,
     // Tracks the last time this user bid.
     pub last_bid_timestamp: UnixTimestamp,
-    // Tracks the last time in slots this user bid.
-    pub last_bid_timestamp_slot: Slot,
     // Whether the last bid the user made was cancelled. This should also be enough to know if the
     // user is a winner, as if cancelled it implies previous bids were also cancelled.
     pub cancelled: bool,

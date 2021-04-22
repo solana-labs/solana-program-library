@@ -112,7 +112,7 @@ pub struct TokenTransferParams<'a: 'b, 'b> {
     /// authority
     pub authority: AccountInfo<'a>,
     /// authority_signer_seeds
-    pub authority_signer_seeds: Option<&'b [&'b [u8]]>,
+    pub authority_signer_seeds: &'b [&'b [u8]],
     /// token_program
     pub token_program: AccountInfo<'a>,
 }
@@ -128,38 +128,20 @@ pub fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> ProgramResult 
         authority_signer_seeds,
     } = params;
 
-    match authority_signer_seeds {
-        Some(seeds) => {
-            invoke_signed(
-                &spl_token::instruction::transfer(
-                    token_program.key,
-                    source.key,
-                    destination.key,
-                    authority.key,
-                    &[],
-                    amount,
-                )?,
-                &[source, destination, authority, token_program],
-                &[seeds],
-            )
-            .map_err(|_| AuctionError::TokenTransferFailed.into())
-        }
+    let result = invoke_signed(
+        &spl_token::instruction::transfer(
+            token_program.key,
+            source.key,
+            destination.key,
+            authority.key,
+            &[],
+            amount,
+        )?,
+        &[source, destination, authority, token_program],
+        &[authority_signer_seeds],
+    );
 
-        None => {
-            invoke(
-                &spl_token::instruction::transfer(
-                    token_program.key,
-                    source.key,
-                    destination.key,
-                    authority.key,
-                    &[],
-                    amount,
-                )?,
-                &[source, destination, authority, token_program],
-            )
-            .map_err(|_| AuctionError::TokenTransferFailed.into())
-        }
-    }
+    result.map_err(|_| AuctionError::TokenTransferFailed.into())
 }
 
 /// TokenMintToParams

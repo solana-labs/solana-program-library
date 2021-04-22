@@ -86,7 +86,6 @@ pub fn start_auction_instruction(
             AccountMeta::new(creator_pubkey, false),
             AccountMeta::new(auction_pubkey, false),
             AccountMeta::new_readonly(sysvar::clock::id(), false),
-            AccountMeta::new_readonly(solana_program::system_program::id(), false),
         ],
         data: AuctionInstruction::StartAuction(args).try_to_vec().unwrap(),
     }
@@ -101,6 +100,69 @@ pub fn place_bid_instruction(
     transfer_authority: Pubkey,
     payer: Pubkey,
     args: PlaceBidArgs,
+) -> Instruction {
+
+    // Derive Auction Key
+    let seeds = &[
+        PREFIX.as_bytes(),
+        program_id.as_ref(),
+        args.resource.as_ref(),
+    ];
+    let (auction_pubkey, _) = Pubkey::find_program_address(seeds, &program_id);
+
+    println!("-- place_bid_instruction");
+    println!("PREFIX {}", PREFIX);
+    println!("{}", program_id);
+    println!("{}", auction_pubkey);
+    println!("{}", bidder_pubkey);
+
+    // Derive Bidder Pot
+    let seeds = &[
+        PREFIX.as_bytes(),
+        &program_id.as_ref(),
+        auction_pubkey.as_ref(),
+        bidder_pubkey.as_ref(),
+    ];
+    let (bidder_pot_pubkey, _) = Pubkey::find_program_address(seeds, &program_id);
+
+    // Derive Bidder Meta
+    let seeds = &[
+        PREFIX.as_bytes(),
+        &program_id.as_ref(),
+        auction_pubkey.as_ref(),
+        bidder_pubkey.as_ref(),
+        "metadata".as_bytes(),
+    ];
+    let (bidder_meta_pubkey, _) = Pubkey::find_program_address(seeds, &program_id);
+
+    Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(bidder_pubkey, true),
+            AccountMeta::new(bidder_pot_pubkey, false),
+            AccountMeta::new(bidder_pot_token_pubkey, false),
+            AccountMeta::new(bidder_meta_pubkey, false),
+            AccountMeta::new(auction_pubkey, false),
+            AccountMeta::new(token_mint_pubkey, false),
+            AccountMeta::new_readonly(transfer_authority, true),
+            AccountMeta::new_readonly(payer, true),
+            AccountMeta::new_readonly(sysvar::clock::id(), false),
+            AccountMeta::new_readonly(sysvar::rent::id(), false),
+            AccountMeta::new_readonly(solana_program::system_program::id(), false),
+            AccountMeta::new_readonly(spl_token::id(), false),
+        ],
+        data: AuctionInstruction::PlaceBid(args).try_to_vec().unwrap(),
+    }
+}
+
+/// Creates an CancelBidinstruction.
+pub fn cancel_bid_instruction(
+    program_id: Pubkey,
+    bidder_pubkey: Pubkey,
+    bidder_pot_token_pubkey: Pubkey,
+    token_mint_pubkey: Pubkey,
+    payer: Pubkey,
+    args: CancelBidArgs,
 ) -> Instruction {
     // Derive Auction Key
     let seeds = &[
@@ -138,59 +200,11 @@ pub fn place_bid_instruction(
             AccountMeta::new(bidder_meta_pubkey, false),
             AccountMeta::new(auction_pubkey, false),
             AccountMeta::new(token_mint_pubkey, false),
-            AccountMeta::new_readonly(transfer_authority, false),
+            AccountMeta::new_readonly(payer, true),
             AccountMeta::new_readonly(sysvar::clock::id(), false),
             AccountMeta::new_readonly(sysvar::rent::id(), false),
             AccountMeta::new_readonly(solana_program::system_program::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
-        ],
-        data: AuctionInstruction::PlaceBid(args).try_to_vec().unwrap(),
-    }
-}
-
-/// Creates an CancelBidinstruction.
-pub fn cancel_bid_instruction(
-    program_id: Pubkey,
-    bidder_pubkey: Pubkey,
-    args: CancelBidArgs,
-) -> Instruction {
-    // Derive Auction Key
-    let seeds = &[
-        PREFIX.as_bytes(),
-        program_id.as_ref(),
-        args.resource.as_ref(),
-    ];
-    let (auction_pubkey, _) = Pubkey::find_program_address(seeds, &program_id);
-
-    // Derive Bidder Pot
-    let seeds = &[
-        PREFIX.as_bytes(),
-        &program_id.as_ref(),
-        auction_pubkey.as_ref(),
-        bidder_pubkey.as_ref(),
-    ];
-    let (bidder_pot_pubkey, _) = Pubkey::find_program_address(seeds, &program_id);
-
-    // Derive Bidder Meta
-    let seeds = &[
-        PREFIX.as_bytes(),
-        &program_id.as_ref(),
-        auction_pubkey.as_ref(),
-        bidder_pubkey.as_ref(),
-        "metadata".as_bytes(),
-    ];
-    let (bidder_meta_pubkey, _) = Pubkey::find_program_address(seeds, &program_id);
-
-    Instruction {
-        program_id,
-        accounts: vec![
-            AccountMeta::new(bidder_pubkey, false),
-            AccountMeta::new(auction_pubkey, false),
-            AccountMeta::new(bidder_pot_pubkey, false),
-            AccountMeta::new(bidder_meta_pubkey, false),
-            AccountMeta::new_readonly(sysvar::clock::id(), false),
-            AccountMeta::new_readonly(sysvar::rent::id(), false),
-            AccountMeta::new_readonly(solana_program::system_program::id(), false),
         ],
         data: AuctionInstruction::CancelBid(args).try_to_vec().unwrap(),
     }

@@ -79,9 +79,13 @@ pub enum AuctionError {
     #[error("Uninitialized")]
     Uninitialized,
 
-    /// The token account provided does not match the token account on the bidder pot
-    #[error("The token account provided does not match the token account on the bidder pot")]
-    BidderPotTokenAccountMismatch,
+    /// Metadata account is missing or invalid.
+    #[error("Metadata account is missing or invalid.")]
+    MetadataInvalid,
+
+    /// Bidder pot is missing, and required for SPL trades.
+    #[error("Bidder pot is missing, and required for SPL trades.")]
+    BidderPotDoesNotExist,
 }
 
 impl PrintProgramError for AuctionError {
