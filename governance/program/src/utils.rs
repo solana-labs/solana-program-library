@@ -1,11 +1,13 @@
 use crate::{
     error::GovernanceError,
+    state::upgradable_loader_state::UpgradeableLoaderState,
     state::{enums::ProposalStateStatus, proposal::Proposal, proposal_state::ProposalState},
     PROGRAM_AUTHORITY_SEED,
 };
 use arrayref::{array_ref, array_refs, mut_array_refs};
 use solana_program::{
     account_info::AccountInfo,
+    bpf_loader_upgradeable,
     entrypoint::ProgramResult,
     instruction::Instruction,
     program::invoke_signed,
@@ -17,6 +19,7 @@ use solana_program::{
     sysvar::rent::Rent,
 };
 
+use bincode::deserialize;
 use spl_token::state::Account;
 
 /* TODO come back to this conundrum later..
@@ -314,6 +317,47 @@ pub fn assert_initialized<T: Pack + IsInitialized>(
         Err(GovernanceError::Uninitialized.into())
     } else {
         Ok(account)
+    }
+}
+
+/// Checks if the given program upgrade authority matches the given authority and the authority is a signer of the transaction
+pub fn assert_program_upgrade_authority(
+    program_key: &Pubkey,
+    program_data_account_info: &AccountInfo,
+    program_upgrade_authority_account_info: &AccountInfo,
+) -> Result<(), ProgramError> {
+    if program_data_account_info.owner != &bpf_loader_upgradeable::id() {
+        return Err(ProgramError::IncorrectProgramId);
+    }
+
+    let (program_data_account_key, _) =
+        Pubkey::find_program_address(&[program_key.as_ref()], &bpf_loader_upgradeable::id());
+
+    if program_data_account_key != *program_data_account_info.key {
+        return Err(GovernanceError::InvalidProgramDataAccountKey.into());
+    }
+
+    let upgrade_authority = match deserialize(&program_data_account_info.data.borrow())
+        .map_err(|_| GovernanceError::InvalidProgramDataAccountData)?
+    {
+        UpgradeableLoaderState::ProgramData {
+            slot: _,
+            upgrade_authority_address,
+        } => upgrade_authority_address,
+        _ => None,
+    };
+
+    match upgrade_authority {
+        Some(upgrade_authority) => {
+            if upgrade_authority != *program_upgrade_authority_account_info.key {
+                return Err(GovernanceError::InvalidUpgradeAuthority.into());
+            }
+            if !program_upgrade_authority_account_info.is_signer {
+                return Err(GovernanceError::UpgradeAuthorityMustSign.into());
+            }
+            Ok(())
+        }
+        None => Err(GovernanceError::ProgramNotUpgradable.into()),
     }
 }
 

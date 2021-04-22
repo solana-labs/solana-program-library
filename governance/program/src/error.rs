@@ -129,6 +129,26 @@ pub enum GovernanceError {
     #[error("Invalid Governance key given for a program-mint tuple")]
     InvalidGovernanceKey,
 
+    /// Given program is not upgradable
+    #[error("Given program is not upgradable")]
+    ProgramNotUpgradable,
+
+    /// Provided upgrade authority doesn't match current program upgrade authority
+    #[error("Provided upgrade authority doesn't match current program upgrade authority")]
+    InvalidUpgradeAuthority,
+
+    /// Current program upgrade authority must sign transaction
+    #[error("Current program upgrade authority must sign transaction")]
+    UpgradeAuthorityMustSign,
+
+    /// Invalid ProgramData account data
+    #[error("Invalid ProgramData account Data")]
+    InvalidProgramDataAccountData,
+
+    /// Invalid ProgramData account key
+    #[error("Invalid ProgramData account key")]
+    InvalidProgramDataAccountKey,
+
     /// Cannot reimburse more tokens than you put in
     #[error("Cannot reimburse more tokens than you put in")]
     TokenAmountAboveGivenAmount,
