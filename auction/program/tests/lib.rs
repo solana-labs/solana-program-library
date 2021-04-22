@@ -222,8 +222,8 @@ async fn test_english_auction() {
             Action::Bid(3, 4000),
         ],
         vec![
-            Action::Bid(0, 5000),
             Action::Cancel(0),
+            Action::Bid(0, 5000),
         ],
     ];
 
@@ -236,11 +236,8 @@ async fn test_english_auction() {
                         &mut banks_client,
                         &program_id,
                         &recent_blockhash,
-                        // Pay instruction
                         &payer,
-                        // Give authority to this key.
                         &transfer_authority.pubkey(),
-                        // This is the SPL account to delegate from.
                         &bidders[bidder].0,
                         amount,
                     )

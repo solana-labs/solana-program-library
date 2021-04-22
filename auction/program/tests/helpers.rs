@@ -207,26 +207,14 @@ pub async fn place_bid(
     banks_client: &mut BanksClient,
     recent_blockhash: &Hash,
     program_id: &Pubkey,
-    // Signer
     payer: &Keypair,
-    // Signer
     bidder: &Keypair,
     bidder_spl_account: &Keypair,
-    // Signer
     transfer_authority: &Keypair,
     resource: &Pubkey,
     mint: &Pubkey,
     amount: u64,
 ) -> Result<(), TransportError> {
-    // println!("--------------------------------------------------------------------------------");
-    // println!("Program ID: {}", program_id);
-    // println!("SOL Bidder: {}", bidder.pubkey());
-    // println!("SPL Bidder: {} ", bidder_spl_account.pubkey());
-    // println!("Resource:   {} ", resource);
-    // println!("Mint:       {} ", mint);
-    // println!("Payer:      {} ", payer.pubkey());
-    // println!("Transfer:   {} ", transfer_authority.pubkey());
-
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::place_bid_instruction(
             *program_id,

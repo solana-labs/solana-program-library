@@ -98,6 +98,49 @@ pub fn place_bid<'r, 'b: 'r>(
     msg!("0");
     let accounts = parse_accounts(program_id, accounts)?;
 
+    // Derive Metadata key and load it.
+    let metadata_bump = assert_derivation(
+        program_id,
+        accounts.bidder_meta,
+        &[
+            PREFIX.as_bytes(),
+            program_id.as_ref(),
+            accounts.auction.key.as_ref(),
+            accounts.bidder.key.as_ref(),
+            "metadata".as_bytes(),
+        ],
+    )?;
+
+
+    // If metadata doesn't exist, create it.
+    let mut bidder_metadata: BidderMetadata =
+        if accounts.bidder_meta.owner != program_id {
+            create_or_allocate_account_raw(
+                *program_id,
+                accounts.bidder_meta,
+                accounts.rent,
+                accounts.system,
+                accounts.payer,
+                mem::size_of::<BidderMetadata>(),
+                &[
+                    PREFIX.as_bytes(),
+                    program_id.as_ref(),
+                    accounts.auction.key.as_ref(),
+                    accounts.bidder.key.as_ref(),
+                    "metadata".as_bytes(),
+                    &[metadata_bump],
+                ],
+            )?;
+            try_from_slice_unchecked(&accounts.bidder_meta.data.borrow_mut())?
+        } else {
+            // Verify the last bid was cancelled before continuing.
+            let metadata: BidderMetadata = try_from_slice_unchecked(&accounts.bidder_meta.data.borrow_mut())?;
+            if metadata.cancelled == false {
+                return Err(AuctionError::BidAlreadyActive.into());
+            }
+            metadata
+        };
+
     // Derive Pot address, this account wraps/holds an SPL account to transfer tokens into and is
     // also used as the authoriser of the SPL pot.
     let pot_bump = assert_derivation(
@@ -160,39 +203,6 @@ pub fn place_bid<'r, 'b: 'r>(
         _ => {},
     }
 
-    // Derive Metadata key and load it.
-    let metadata_bump = assert_derivation(
-        program_id,
-        accounts.bidder_meta,
-        &[
-            PREFIX.as_bytes(),
-            program_id.as_ref(),
-            accounts.auction.key.as_ref(),
-            accounts.bidder.key.as_ref(),
-            "metadata".as_bytes(),
-        ],
-    )?;
-
-    // If metadata doesn't exist, create it.
-    if accounts.bidder_meta.owner != program_id {
-        create_or_allocate_account_raw(
-            *program_id,
-            accounts.bidder_meta,
-            accounts.rent,
-            accounts.system,
-            accounts.payer,
-            mem::size_of::<BidderMetadata>(),
-            &[
-                PREFIX.as_bytes(),
-                program_id.as_ref(),
-                accounts.auction.key.as_ref(),
-                accounts.bidder.key.as_ref(),
-                "metadata".as_bytes(),
-                &[metadata_bump],
-            ],
-        )?;
-    }
-
     let bump_authority_seeds = &[
         PREFIX.as_bytes(),
         program_id.as_ref(),
@@ -252,9 +262,6 @@ pub fn place_bid<'r, 'b: 'r>(
     auction.serialize(&mut *accounts.auction.data.borrow_mut())?;
 
     // Update latest metadata with results from the bid.
-    let mut bidder_metadata: BidderMetadata =
-        try_from_slice_unchecked(&accounts.bidder_meta.data.borrow_mut())?;
-
     BidderMetadata {
         bidder_pubkey: *accounts.bidder.key,
         auction_pubkey: *accounts.auction.key,

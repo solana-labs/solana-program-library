@@ -101,7 +101,6 @@ pub fn place_bid_instruction(
     payer: Pubkey,
     args: PlaceBidArgs,
 ) -> Instruction {
-
     // Derive Auction Key
     let seeds = &[
         PREFIX.as_bytes(),
@@ -109,12 +108,6 @@ pub fn place_bid_instruction(
         args.resource.as_ref(),
     ];
     let (auction_pubkey, _) = Pubkey::find_program_address(seeds, &program_id);
-
-    println!("-- place_bid_instruction");
-    println!("PREFIX {}", PREFIX);
-    println!("{}", program_id);
-    println!("{}", auction_pubkey);
-    println!("{}", bidder_pubkey);
 
     // Derive Bidder Pot
     let seeds = &[

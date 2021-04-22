@@ -86,6 +86,10 @@ pub enum AuctionError {
     /// Bidder pot is missing, and required for SPL trades.
     #[error("Bidder pot is missing, and required for SPL trades.")]
     BidderPotDoesNotExist,
+
+    /// Existing Bid is already active.
+    #[error("An active pot exists for this bidder already. Cancel first.")]
+    BidAlreadyActive,
 }
 
 impl PrintProgramError for AuctionError {

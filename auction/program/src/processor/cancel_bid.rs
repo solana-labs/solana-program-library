@@ -6,7 +6,7 @@
 
 use crate::{
     errors::AuctionError,
-    processor::{AuctionData, BidderPot},
+    processor::{AuctionData, BidderMetadata, BidderPot},
     utils::{
         assert_derivation, assert_initialized, assert_owned_by, create_or_allocate_account_raw, spl_token_transfer, TokenTransferParams
     },
@@ -22,6 +22,7 @@ use {
         msg,
         program::invoke_signed,
         program_error::ProgramError,
+        program_pack::Pack,
         pubkey::Pubkey,
         system_instruction,
         sysvar::{clock::Clock, Sysvar},
@@ -164,64 +165,29 @@ pub fn cancel_bid(
         return Err(AuctionError::BidderPotDoesNotExist.into());
     }
 
+    // Confirm we're looking at the real SPL account for this bidder.
     let bidder_pot: BidderPot = try_from_slice_unchecked(&accounts.bidder_pot.data.borrow_mut())?;
     if bidder_pot.bidder_pot != *accounts.bidder_pot_token.key {
         return Err(AuctionError::BidderPotTokenAccountOwnerMismatch.into());
     }
 
     // Transfer SPL bid balance back to the user.
+    let account: Account = Account::unpack_from_slice(&accounts.bidder_pot_token.data.borrow())?;
     spl_token_transfer(TokenTransferParams {
         source: accounts.bidder_pot_token.clone(),
         destination: accounts.bidder.clone(),
         authority: accounts.bidder_pot.clone(),
         authority_signer_seeds: bump_authority_seeds,
         token_program: accounts.token_program.clone(),
-        amount: 1,
+        amount: account.amount,
     })?;
 
-    // ------------------------------------------------------------------------------
+    // Update Metadata
+    let metadata: BidderMetadata = try_from_slice_unchecked(&accounts.bidder_meta.data.borrow_mut())?;
+    BidderMetadata {
+        cancelled: true,
+        ..metadata
+    }.serialize(&mut *accounts.bidder_meta.data.borrow_mut())?;
 
-    //    // This  path references an account to store the users bid SOL in, if the user wins the auction
-    //    // this is claimed by the auction authority, otherwise the user can request to have the SOL
-    //    // sent back.
-    //    let pot_path = [
-    //        PREFIX.as_bytes(),
-    //        program_id.as_ref(),
-    //        auction_act.key.as_ref(),
-    //        bidder_act.key.as_ref(),
-    //    ];
-    //
-    //    // Derive pot key, confirm it matches the users sent pot address.
-    //    let (pot_key, pot_bump) = Pubkey::find_program_address(&pot_path, program_id);
-    //    if pot_key != *bidder_pot.key {
-    //        return Err(AuctionError::InvalidBidAccount.into());
-    //    }
-    //
-    //    // Scan and remove the bid (Expensive, need a better datastructure).
-    //    msg!("Loading AuctionData");
-    //    let mut auction: AuctionData = try_from_slice_unchecked(&auction_act.data.borrow())?;
-    //    msg!("Cancelling Bid");
-    //    auction.bid_state.cancel_bid(pot_key)?;
-    //
-    //    // Pot path including the bump for seeds.
-    //    let pot_seeds = [
-    //        PREFIX.as_bytes(),
-    //        program_id.as_ref(),
-    //        auction_act.key.as_ref(),
-    //        bidder_act.key.as_ref(),
-    //        &[pot_bump],
-    //    ];
-    //
-    //    // Transfer SOL from the bidder's SOL account into their pot.
-    //    msg!("Invoking Transfer back to the bidders account");
-    //    invoke_signed(
-    //        &system_instruction::transfer(&pot_key, bidder_act.key, bidder_pot.lamports()),
-    //        &[bidder_pot.clone(), bidder_act.clone()],
-    //        &[&pot_seeds],
-    //    )?;
-    //
-    //    // Write modified AuctionData.
-    //    auction.serialize(&mut *auction_act.data.borrow_mut())?;
-    //
     Ok(())
 }
