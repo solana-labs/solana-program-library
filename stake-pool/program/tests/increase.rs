@@ -27,7 +27,7 @@ async fn setup() -> (
 ) {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
-    let reserve_lamports = 100_000_000;
+    let reserve_lamports = 100_000_000_000;
     stake_pool_accounts
         .initialize_stake_pool(
             &mut banks_client,
@@ -156,8 +156,7 @@ async fn fail_with_wrong_withdraw_authority() {
             &validator_stake.transient_stake_account,
             &validator_stake.vote.pubkey(),
             reserve_lamports / 2,
-        )
-        .unwrap()],
+        )],
         Some(&payer.pubkey()),
         &[&payer, &stake_pool_accounts.staker],
         recent_blockhash,
@@ -202,8 +201,7 @@ async fn fail_with_wrong_validator_list() {
             &validator_stake.transient_stake_account,
             &validator_stake.vote.pubkey(),
             reserve_lamports / 2,
-        )
-        .unwrap()],
+        )],
         Some(&payer.pubkey()),
         &[&payer, &stake_pool_accounts.staker],
         recent_blockhash,
@@ -259,8 +257,7 @@ async fn fail_with_unknown_validator() {
             &unknown_stake.transient_stake_account,
             &unknown_stake.vote.pubkey(),
             reserve_lamports / 2,
-        )
-        .unwrap()],
+        )],
         Some(&payer.pubkey()),
         &[&payer, &stake_pool_accounts.staker],
         recent_blockhash,

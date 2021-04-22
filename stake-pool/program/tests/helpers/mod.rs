@@ -831,8 +831,7 @@ impl StakePoolAccounts {
                 validator_stake,
                 transient_stake,
                 lamports,
-            )
-            .unwrap()],
+            )],
             Some(&payer.pubkey()),
             &[payer, &self.staker],
             *recent_blockhash,
@@ -860,8 +859,7 @@ impl StakePoolAccounts {
                 transient_stake,
                 validator,
                 lamports,
-            )
-            .unwrap()],
+            )],
             Some(&payer.pubkey()),
             &[payer, &self.staker],
             *recent_blockhash,

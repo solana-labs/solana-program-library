@@ -155,8 +155,7 @@ async fn fail_with_wrong_withdraw_authority() {
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
             decrease_lamports,
-        )
-        .unwrap()],
+        )],
         Some(&payer.pubkey()),
         &[&payer, &stake_pool_accounts.staker],
         recent_blockhash,
@@ -201,8 +200,7 @@ async fn fail_with_wrong_validator_list() {
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
             decrease_lamports,
-        )
-        .unwrap()],
+        )],
         Some(&payer.pubkey()),
         &[&payer, &stake_pool_accounts.staker],
         recent_blockhash,
@@ -258,8 +256,7 @@ async fn fail_with_unknown_validator() {
             &unknown_stake.stake_account,
             &unknown_stake.transient_stake_account,
             decrease_lamports,
-        )
-        .unwrap()],
+        )],
         Some(&payer.pubkey()),
         &[&payer, &stake_pool_accounts.staker],
         recent_blockhash,
