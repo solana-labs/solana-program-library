@@ -146,6 +146,7 @@ async fn setup(
 }
 
 #[tokio::test]
+#[ignore]
 async fn success() {
     let num_validators = 5;
     let (mut context, stake_pool_accounts, stake_accounts, _, mut slot) =
@@ -208,6 +209,7 @@ async fn success() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn merge_into_reserve() {
     let (mut context, stake_pool_accounts, stake_accounts, lamports, mut slot) =
         setup(MAX_VALIDATORS_TO_UPDATE).await;
@@ -318,6 +320,7 @@ async fn merge_into_reserve() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn merge_into_validator_stake() {
     let (mut context, stake_pool_accounts, stake_accounts, lamports, mut slot) =
         setup(MAX_VALIDATORS_TO_UPDATE).await;
