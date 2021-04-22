@@ -73,9 +73,11 @@ pub enum PriceFloor {
     BlindedPrice(Hash),
 }
 
-pub const BASE_AUCTION_DATA_SIZE: usize = 32 + 32 + 32 + 1 + 9 + 9 + 9 + 9;
+// The two extra 8's are present, one 8 is for the Vec's amount of elements and one is for the max usize in
+// bid state.
+pub const BASE_AUCTION_DATA_SIZE: usize = 32 + 32 + 32 + 8 + 8 + 1 + 9 + 9 + 9 + 9;
 #[repr(C)]
-#[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq)]
+#[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 pub struct AuctionData {
     /// Pubkey of the authority with permission to modify this auction.
     pub authority: Pubkey,
@@ -101,7 +103,7 @@ pub struct AuctionData {
 
 /// Define valid auction state transitions.
 #[repr(C)]
-#[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq)]
+#[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 pub enum AuctionState {
     Created,
     Started,
@@ -132,13 +134,13 @@ impl AuctionState {
 
 /// Bids associate a bidding key with an amount bid.
 #[repr(C)]
-#[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq)]
+#[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 pub struct Bid(Pubkey, u64);
 
 /// BidState tracks the running state of an auction, each variant represents a different kind of
 /// auction being run.
 #[repr(C)]
-#[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq)]
+#[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 pub enum BidState {
     EnglishAuction { bids: Vec<Bid>, max: usize },
     OpenEdition,
@@ -183,6 +185,7 @@ impl BidState {
                     }
                 }
                 _ => {
+                    msg!("Pushing bid onto stack");
                     bids.push(bid);
                     Ok(())
                 }
@@ -224,7 +227,7 @@ impl BidState {
 }
 
 #[repr(C)]
-#[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq)]
+#[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 pub enum WinnerLimit {
     Unlimited,
     Capped(usize),
@@ -233,7 +236,7 @@ pub enum WinnerLimit {
 /// Models a set of metadata for a bidder, meant to be stored in a PDA. This allows looking up
 /// information about a bidder regardless of if they have won, lost or cancelled.
 #[repr(C)]
-#[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq)]
+#[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 pub struct BidderMetadata {
     // Relationship with the bidder who's metadata this covers.
     pub bidder_pubkey: Pubkey,
