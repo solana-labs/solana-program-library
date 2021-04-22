@@ -83,7 +83,7 @@ pub fn cancel_bid(
 
     // The account within the pot must be owned by us.
     let actual_account: Account = assert_initialized(accounts.bidder_pot_token)?;
-    if actual_account.owner != *accounts.bidder_pot.key {
+    if actual_account.owner != *accounts.auction.key {
         return Err(AuctionError::BidderPotTokenAccountOwnerMismatch.into());
     }
 
@@ -97,6 +97,14 @@ pub fn cancel_bid(
             args.resource.as_ref(),
         ],
     )?;
+
+    let auction_seeds = 
+        &[
+            PREFIX.as_bytes(),
+            program_id.as_ref(),
+            args.resource.as_ref(),
+            &[auction_bump],
+        ];
 
     // Load the auction and verify this bid is valid.
     let mut auction: AuctionData = try_from_slice_unchecked(&accounts.auction.data.borrow())?;
@@ -176,8 +184,8 @@ pub fn cancel_bid(
     spl_token_transfer(TokenTransferParams {
         source: accounts.bidder_pot_token.clone(),
         destination: accounts.bidder.clone(),
-        authority: accounts.bidder_pot.clone(),
-        authority_signer_seeds: bump_authority_seeds,
+        authority: accounts.auction.clone(),
+        authority_signer_seeds: auction_seeds,
         token_program: accounts.token_program.clone(),
         amount: account.amount,
     })?;

@@ -127,7 +127,7 @@ async fn setup_auction() -> (
             &recent_blockhash,
             &auction_spl_pot,
             &mint_keypair.pubkey(),
-            &bid_pot_pubkey, // Manager
+            &auction_pubkey,
         )
         .await
         .unwrap();

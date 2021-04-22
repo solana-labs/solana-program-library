@@ -157,7 +157,7 @@ pub fn place_bid<'r, 'b: 'r>(
     // The account within the pot must be owned by us.
     let actual_account: Account = assert_initialized(accounts.bidder_pot_token)?;
     msg!("Account Owner: {} {}", actual_account.owner, accounts.bidder_pot.key);
-    if actual_account.owner != *accounts.bidder_pot.key {
+    if actual_account.owner != *accounts.auction.key {
         return Err(AuctionError::BidderPotTokenAccountOwnerMismatch.into());
     }
 

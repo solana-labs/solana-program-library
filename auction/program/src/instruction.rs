@@ -26,6 +26,9 @@ pub enum AuctionInstruction {
     ///   2. `[]` Clock sysvar
     StartAuction(StartAuctionArgs),
 
+    /// Ends an auction, regardless of end timing conditions
+    EndAuction(EndAuctionArgs),
+
     /// Place a bid on a running auction.
     ///   0. `[signer]` The bidders primary account, for PDA calculation/transit auth.
     ///   1. `[writable]` The pot, containing a reference to the stored SPL token account.
@@ -57,9 +60,6 @@ pub enum AuctionInstruction {
 
     /// Update the authority for an auction account.
     SetAuthority,
-
-    /// Ends an auction, regardless of end timing conditions
-    EndAuction(EndAuctionArgs),
 }
 
 /// Creates an CreateAuction instruction.

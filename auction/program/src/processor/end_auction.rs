@@ -54,4 +54,3 @@ pub fn end_auction(
 
     Ok(())
 }
-
