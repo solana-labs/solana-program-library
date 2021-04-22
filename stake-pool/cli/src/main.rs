@@ -395,6 +395,95 @@ fn command_vsa_remove(
     Ok(())
 }
 
+fn command_increase_validator_stake(
+    config: &Config,
+    stake_pool_address: &Pubkey,
+    vote_account: &Pubkey,
+    lamports: u64,
+) -> CommandResult {
+    if !config.no_update {
+        command_update(config, stake_pool_address)?;
+    }
+
+    let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
+    let pool_withdraw_authority =
+        find_withdraw_authority_program_address(&spl_stake_pool::id(), stake_pool_address).0;
+    let (transient_stake_address, _) = find_transient_stake_program_address(
+        &spl_stake_pool::id(),
+        &vote_account,
+        stake_pool_address,
+    );
+
+    let mut transaction = Transaction::new_with_payer(
+        &[spl_stake_pool::instruction::increase_validator_stake(
+            &spl_stake_pool::id(),
+            &stake_pool_address,
+            &config.staker.pubkey(),
+            &pool_withdraw_authority,
+            &stake_pool.validator_list,
+            &stake_pool.reserve_stake,
+            &transient_stake_address,
+            &vote_account,
+            lamports,
+        )],
+        Some(&config.fee_payer.pubkey()),
+    );
+
+    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+    check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
+    transaction.sign(
+        &[config.fee_payer.as_ref(), config.staker.as_ref()],
+        recent_blockhash,
+    );
+    send_transaction(&config, transaction)?;
+    Ok(())
+}
+
+fn command_decrease_validator_stake(
+    config: &Config,
+    stake_pool_address: &Pubkey,
+    vote_account: &Pubkey,
+    lamports: u64,
+) -> CommandResult {
+    if !config.no_update {
+        command_update(config, stake_pool_address)?;
+    }
+
+    let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
+    let pool_withdraw_authority =
+        find_withdraw_authority_program_address(&spl_stake_pool::id(), stake_pool_address).0;
+    let (validator_stake_address, _) =
+        find_stake_program_address(&spl_stake_pool::id(), &vote_account, stake_pool_address);
+    let (transient_stake_address, _) = find_transient_stake_program_address(
+        &spl_stake_pool::id(),
+        &vote_account,
+        stake_pool_address,
+    );
+
+    let mut transaction = Transaction::new_with_payer(
+        &[spl_stake_pool::instruction::decrease_validator_stake(
+            &spl_stake_pool::id(),
+            &stake_pool_address,
+            &config.staker.pubkey(),
+            &pool_withdraw_authority,
+            &stake_pool.validator_list,
+            &validator_stake_address,
+            &transient_stake_address,
+            lamports,
+        )],
+        Some(&config.fee_payer.pubkey()),
+    );
+
+    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+    check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
+    transaction.sign(
+        &[config.fee_payer.as_ref(), config.staker.as_ref()],
+        recent_blockhash,
+    );
+    send_transaction(&config, transaction)?;
+    Ok(())
+}
+
 fn unwrap_create_token_account<F>(
     config: &Config,
     token_optional: &Option<Pubkey>,
@@ -630,21 +719,10 @@ fn command_update(config: &Config, stake_pool_address: &Pubkey) -> CommandResult
 
     let validator_list = get_validator_list(&config.rpc_client, &stake_pool.validator_list)?;
 
-    let accounts_to_update: Vec<Pubkey> = validator_list
+    let vote_accounts: Vec<Pubkey> = validator_list
         .validators
         .iter()
-        .filter_map(|item| {
-            if item.last_update_epoch >= epoch_info.epoch {
-                None
-            } else {
-                let (stake_account, _) = find_stake_program_address(
-                    &spl_stake_pool::id(),
-                    &item.vote_account_address,
-                    &stake_pool_address,
-                );
-                Some(stake_account)
-            }
-        })
+        .map(|item| item.vote_account_address)
         .collect();
 
     println!("Updating stake pool...");
@@ -653,7 +731,7 @@ fn command_update(config: &Config, stake_pool_address: &Pubkey) -> CommandResult
 
     let mut instructions: Vec<Instruction> = vec![];
     let mut start_index = 0;
-    for accounts_chunk in accounts_to_update.chunks(MAX_VALIDATORS_TO_UPDATE) {
+    for accounts_chunk in vote_accounts.chunks(MAX_VALIDATORS_TO_UPDATE) {
         instructions.push(spl_stake_pool::instruction::update_validator_list_balance(
             &spl_stake_pool::id(),
             stake_pool_address,
@@ -1181,6 +1259,64 @@ fn main() {
                           Defaults to the wallet owner pubkey."),
             )
         )
+        .subcommand(SubCommand::with_name("increase-validator-stake")
+            .about("Increase stake to a validator, drawing from the stake pool reserve. Must be signed by the pool staker.")
+            .arg(
+                Arg::with_name("pool")
+                    .index(1)
+                    .validator(is_pubkey)
+                    .value_name("POOL_ADDRESS")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Stake pool address"),
+            )
+            .arg(
+                Arg::with_name("vote_account")
+                    .index(2)
+                    .validator(is_pubkey)
+                    .value_name("VOTE_ACCOUNT_ADDRESS")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Vote account for the validator to increase stake to"),
+            )
+            .arg(
+                Arg::with_name("lamports")
+                    .index(3)
+                    .validator(is_pubkey)
+                    .value_name("LAMPORTS")
+                    .takes_value(true)
+                    .help("Amount in lamports to add to the validator stake account. Must be at least the rent-exempt amount for a stake plus 1 SOL for merging."),
+            )
+        )
+        .subcommand(SubCommand::with_name("decrease-validator-stake")
+            .about("Decrease stake to a validator, splitting from the active stake. Must be signed by the pool staker.")
+            .arg(
+                Arg::with_name("pool")
+                    .index(1)
+                    .validator(is_pubkey)
+                    .value_name("POOL_ADDRESS")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Stake pool address"),
+            )
+            .arg(
+                Arg::with_name("vote_account")
+                    .index(2)
+                    .validator(is_pubkey)
+                    .value_name("VOTE_ACCOUNT_ADDRESS")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Vote account for the validator to decrease stake from"),
+            )
+            .arg(
+                Arg::with_name("lamports")
+                    .index(3)
+                    .validator(is_pubkey)
+                    .value_name("LAMPORTS")
+                    .takes_value(true)
+                    .help("Amount in lamports to remove from the validator stake account. Must be at least the rent-exempt amount for a stake."),
+            )
+        )
         .subcommand(SubCommand::with_name("deposit")
             .about("Add stake account to the stake pool")
             .arg(
@@ -1454,6 +1590,18 @@ fn main() {
             let vote_account = pubkey_of(arg_matches, "vote_account").unwrap();
             let new_authority: Option<Pubkey> = pubkey_of(arg_matches, "new_authority");
             command_vsa_remove(&config, &stake_pool_address, &vote_account, &new_authority)
+        }
+        ("increase-validator-stake", Some(arg_matches)) => {
+            let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
+            let vote_account = pubkey_of(arg_matches, "vote_account").unwrap();
+            let lamports = value_t_or_exit!(arg_matches, "lamports", u64);
+            command_increase_validator_stake(&config, &stake_pool_address, &vote_account, lamports)
+        }
+        ("decrease-validator-stake", Some(arg_matches)) => {
+            let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
+            let vote_account = pubkey_of(arg_matches, "vote_account").unwrap();
+            let lamports = value_t_or_exit!(arg_matches, "lamports", u64);
+            command_decrease_validator_stake(&config, &stake_pool_address, &vote_account, lamports)
         }
         ("deposit", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
