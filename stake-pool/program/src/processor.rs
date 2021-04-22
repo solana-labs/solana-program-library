@@ -1327,15 +1327,19 @@ impl Processor {
             //  * any other state / not a stake -> error state, but account for transient stake
             match validator_stake_state {
                 Some(stake_program::StakeState::Stake(meta, _)) => {
-                    stake_lamports += validator_stake_info
-                        .lamports()
-                        .saturating_sub(minimum_stake_lamports(&meta));
+                    if validator_stake_record.status == StakeStatus::Active {
+                        stake_lamports += validator_stake_info
+                            .lamports()
+                            .saturating_sub(minimum_stake_lamports(&meta));
+                    } else {
+                        msg!("Validator stake account no longer part of the pool, ignoring");
+                    }
                 }
                 Some(stake_program::StakeState::Initialized(_))
                 | Some(stake_program::StakeState::Uninitialized)
                 | Some(stake_program::StakeState::RewardsPool)
                 | None => {
-                    msg!("Validator stake account no longer part of the pool, not considering");
+                    msg!("Validator stake account no longer part of the pool, ignoring");
                 }
             }
 
