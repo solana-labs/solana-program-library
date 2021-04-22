@@ -639,7 +639,7 @@ async fn success_with_deposit_authority() {
     let deposit_authority = Keypair::new();
     let stake_pool_accounts = StakePoolAccounts::new_with_deposit_authority(deposit_authority);
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
         .await
         .unwrap();
 
@@ -673,6 +673,7 @@ async fn success_with_deposit_authority() {
         &mut banks_client,
         &payer,
         &recent_blockhash,
+        &validator_stake_account.validator,
         &validator_stake_account.vote,
     )
     .await;
@@ -719,7 +720,7 @@ async fn fail_without_deposit_authority_signature() {
     let deposit_authority = Keypair::new();
     let mut stake_pool_accounts = StakePoolAccounts::new_with_deposit_authority(deposit_authority);
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
         .await
         .unwrap();
 
@@ -745,6 +746,7 @@ async fn fail_without_deposit_authority_signature() {
         &user_stake,
         &authorized,
         &lockup,
+        TEST_STAKE_AMOUNT,
     )
     .await;
 
@@ -752,6 +754,7 @@ async fn fail_without_deposit_authority_signature() {
         &mut banks_client,
         &payer,
         &recent_blockhash,
+        &validator_stake_account.validator,
         &validator_stake_account.vote,
     )
     .await;

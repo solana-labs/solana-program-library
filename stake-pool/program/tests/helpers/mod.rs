@@ -597,6 +597,7 @@ impl StakePoolAccounts {
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn deposit_stake(
         &self,
         banks_client: &mut BanksClient,
@@ -975,26 +976,6 @@ impl DepositStakeAccount {
         recent_blockhash: &Hash,
         stake_pool_accounts: &StakePoolAccounts,
     ) {
-        authorize_stake_account(
-            banks_client,
-            payer,
-            recent_blockhash,
-            &self.stake.pubkey(),
-            &self.authority,
-            &stake_pool_accounts.deposit_authority,
-            stake_program::StakeAuthorize::Staker,
-        )
-        .await;
-        authorize_stake_account(
-            banks_client,
-            &payer,
-            &recent_blockhash,
-            &self.stake.pubkey(),
-            &self.authority,
-            &stake_pool_accounts.deposit_authority,
-            stake_program::StakeAuthorize::Withdrawer,
-        )
-        .await;
         // make pool token account
         create_token_account(
             banks_client,
@@ -1015,6 +996,7 @@ impl DepositStakeAccount {
                 &self.stake.pubkey(),
                 &self.pool_account.pubkey(),
                 &self.validator_stake_account,
+                &self.authority,
             )
             .await
             .unwrap();
@@ -1057,26 +1039,6 @@ pub async fn simple_deposit(
         &vote_account,
     )
     .await;
-    authorize_stake_account(
-        banks_client,
-        payer,
-        recent_blockhash,
-        &stake.pubkey(),
-        &authority,
-        &stake_pool_accounts.deposit_authority,
-        stake_program::StakeAuthorize::Staker,
-    )
-    .await;
-    authorize_stake_account(
-        banks_client,
-        &payer,
-        &recent_blockhash,
-        &stake.pubkey(),
-        &authority,
-        &stake_pool_accounts.deposit_authority,
-        stake_program::StakeAuthorize::Withdrawer,
-    )
-    .await;
     // make pool token account
     let pool_account = Keypair::new();
     create_token_account(
@@ -1099,7 +1061,7 @@ pub async fn simple_deposit(
             &stake.pubkey(),
             &pool_account.pubkey(),
             &validator_stake_account,
-            &user,
+            &authority,
         )
         .await
         .unwrap();

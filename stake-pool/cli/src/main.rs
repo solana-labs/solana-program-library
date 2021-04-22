@@ -28,7 +28,8 @@ use {
     spl_stake_pool::{
         self,
         borsh::get_instance_packed_len,
-        find_transient_stake_program_address, find_stake_program_address, find_withdraw_authority_program_address,
+        find_stake_program_address, find_transient_stake_program_address,
+        find_withdraw_authority_program_address,
         stake_program::{self, StakeState},
         state::{Fee, StakePool, ValidatorList},
         MAX_VALIDATORS_TO_UPDATE,

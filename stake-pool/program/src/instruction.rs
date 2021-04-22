@@ -4,7 +4,8 @@
 
 use {
     crate::{
-        find_deposit_authority_program_address, find_stake_program_address, find_transient_stake_program_address, stake_program, state::Fee,
+        find_deposit_authority_program_address, find_stake_program_address,
+        find_transient_stake_program_address, stake_program, state::Fee,
     },
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{
@@ -33,10 +34,8 @@ pub enum StakePoolInstruction {
     ///   8. `[]` Rent sysvar
     ///   9. `[]` Token program id
     ///  10. `[]` (Optional) Deposit authority that must sign all deposits.
-    ///      Defaults to a program address:
-    ///      ```ignore
-    ///      spl_stake_pool::find_deposit_authority_program_address(program_id, stake_pool_address)
-    ///      ```
+    ///      Defaults to the program address generated using
+    ///      `find_deposit_authority_program_address`, making deposits permissionless.
     Initialize {
         /// Fee assessed as percentage of perceived rewards
         #[allow(dead_code)] // but it's not

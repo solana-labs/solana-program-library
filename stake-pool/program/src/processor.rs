@@ -231,7 +231,8 @@ impl Processor {
         let authority_signature_seeds = [&me_bytes[..32], authority_type, &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
 
-        let merge_instruction = stake_program::merge(destination_account.key, source_account.key, authority.key);
+        let merge_instruction =
+            stake_program::merge(destination_account.key, source_account.key, authority.key);
 
         invoke_signed(
             &merge_instruction,

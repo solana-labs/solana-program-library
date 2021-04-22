@@ -860,6 +860,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.pool_fee_account.pubkey(),
             &stake_pool_accounts.manager,
             &stake_pool_accounts.staker.pubkey(),
+            &None,
             &stake_pool_accounts.fee,
             stake_pool_accounts.max_validators,
         )
@@ -904,6 +905,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.pool_fee_account.pubkey(),
             &stake_pool_accounts.manager,
             &stake_pool_accounts.staker.pubkey(),
+            &None,
             &stake_pool_accounts.fee,
             stake_pool_accounts.max_validators,
         )
@@ -951,6 +953,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.pool_fee_account.pubkey(),
             &stake_pool_accounts.manager,
             &stake_pool_accounts.staker.pubkey(),
+            &None,
             &stake_pool_accounts.fee,
             stake_pool_accounts.max_validators,
         )
@@ -998,6 +1001,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.pool_fee_account.pubkey(),
             &stake_pool_accounts.manager,
             &stake_pool_accounts.staker.pubkey(),
+            &None,
             &stake_pool_accounts.fee,
             stake_pool_accounts.max_validators,
         )
@@ -1022,7 +1026,7 @@ async fn success_with_required_deposit_authority() {
     let deposit_authority = Keypair::new();
     let stake_pool_accounts = StakePoolAccounts::new_with_deposit_authority(deposit_authority);
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
         .await
         .unwrap();
 
