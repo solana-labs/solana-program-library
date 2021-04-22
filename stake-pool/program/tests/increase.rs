@@ -54,7 +54,8 @@ async fn setup() -> (
         &validator_stake_account,
         5_000_000,
     )
-    .await;
+    .await
+    .unwrap();
 
     (
         banks_client,

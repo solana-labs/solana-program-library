@@ -57,7 +57,8 @@ async fn setup() -> (
         &validator_stake_account,
         TEST_STAKE_AMOUNT,
     )
-    .await;
+    .await
+    .unwrap();
 
     let tokens_to_burn = deposit_info.pool_tokens / 4;
 
@@ -607,7 +608,8 @@ async fn fail_without_token_approval() {
         &validator_stake_account,
         TEST_STAKE_AMOUNT,
     )
-    .await;
+    .await
+    .unwrap();
 
     let tokens_to_burn = deposit_info.pool_tokens / 4;
 
@@ -675,7 +677,8 @@ async fn fail_with_low_delegation() {
         &validator_stake_account,
         TEST_STAKE_AMOUNT,
     )
-    .await;
+    .await
+    .unwrap();
 
     let tokens_to_burn = deposit_info.pool_tokens / 4;
 

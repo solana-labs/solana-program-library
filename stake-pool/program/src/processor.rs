@@ -7,7 +7,7 @@ use {
         find_deposit_authority_program_address,
         instruction::StakePoolInstruction,
         minimum_reserve_lamports, minimum_stake_lamports, stake_program,
-        state::{AccountType, Fee, StakeStatus, StakePool, ValidatorList, ValidatorStakeInfo},
+        state::{AccountType, Fee, StakePool, StakeStatus, ValidatorList, ValidatorStakeInfo},
         AUTHORITY_DEPOSIT, AUTHORITY_WITHDRAW, MINIMUM_ACTIVE_STAKE, TRANSIENT_STAKE_SEED,
     },
     borsh::{BorshDeserialize, BorshSerialize},
@@ -868,10 +868,9 @@ impl Processor {
 
         match new_status {
             StakeStatus::DeactivatingTransient => validator_list_entry.status = new_status,
-            StakeStatus::ReadyForRemoval =>
-                validator_list
-                    .validators
-                    .retain(|item| item.vote_account_address != vote_account_address),
+            StakeStatus::ReadyForRemoval => validator_list
+                .validators
+                .retain(|item| item.vote_account_address != vote_account_address),
             _ => unreachable!(),
         }
         validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
@@ -1259,6 +1258,11 @@ impl Processor {
                             stake_history_info.clone(),
                             stake_program_info.clone(),
                         )?;
+                        if validator_stake_record.status == StakeStatus::DeactivatingTransient {
+                            // the validator stake was previously removed, and
+                            // now this entry can be removed totally
+                            validator_stake_record.status = StakeStatus::ReadyForRemoval;
+                        }
                     }
                 }
                 Some(stake_program::StakeState::Stake(_, stake)) => {
@@ -1277,6 +1281,11 @@ impl Processor {
                             stake_history_info.clone(),
                             stake_program_info.clone(),
                         )?;
+                        if validator_stake_record.status == StakeStatus::DeactivatingTransient {
+                            // the validator stake was previously removed, and
+                            // now this entry can be removed totally
+                            validator_stake_record.status = StakeStatus::ReadyForRemoval;
+                        }
                     } else if stake.delegation.activation_epoch < clock.epoch {
                         if let Some(stake_program::StakeState::Stake(_, validator_stake)) =
                             validator_stake_state
@@ -1375,7 +1384,7 @@ impl Processor {
             return Err(ProgramError::IncorrectProgramId);
         }
 
-        let validator_list =
+        let mut validator_list =
             try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
         if !validator_list.is_valid() {
             return Err(StakePoolError::InvalidState.into());
@@ -1395,7 +1404,7 @@ impl Processor {
                 msg!("Reserve stake account in unknown state, aborting");
                 return Err(StakePoolError::WrongStakeState.into());
             };
-        for validator_stake_record in validator_list.validators {
+        for validator_stake_record in &validator_list.validators {
             if validator_stake_record.last_update_epoch < clock.epoch {
                 return Err(StakePoolError::StakeListOutOfDate.into());
             }
@@ -1426,6 +1435,10 @@ impl Processor {
                 .checked_add(fee)
                 .ok_or(StakePoolError::CalculationFailure)?;
         }
+        validator_list
+            .validators
+            .retain(|item| item.status != StakeStatus::ReadyForRemoval);
+        validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
         stake_pool.total_stake_lamports = total_stake_lamports;
         stake_pool.last_update_epoch = clock.epoch;
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
@@ -1529,7 +1542,7 @@ impl Processor {
 
         if validator_list_item.status != StakeStatus::Active {
             msg!("Validator is marked for removal and no longer accepting deposits");
-            return Err(StakePoolError::ValidatorNotFound)?;
+            return Err(StakePoolError::ValidatorNotFound.into());
         }
 
         let stake_lamports = **stake_info.lamports.borrow();
@@ -1680,7 +1693,7 @@ impl Processor {
 
         if validator_list_item.status != StakeStatus::Active {
             msg!("Validator is marked for removal and no longer allowing withdrawals");
-            return Err(StakePoolError::ValidatorNotFound)?;
+            return Err(StakePoolError::ValidatorNotFound.into());
         }
 
         let withdraw_lamports = stake_pool
