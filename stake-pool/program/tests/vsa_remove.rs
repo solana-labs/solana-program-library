@@ -34,7 +34,7 @@ async fn setup() -> (
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 10_000_000)
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 10_000_000_000)
         .await
         .unwrap();
 
@@ -392,7 +392,7 @@ async fn fail_with_activating_transient_stake() {
             &recent_blockhash,
             &user_stake.transient_stake_account,
             &user_stake.vote.pubkey(),
-            5_000_000,
+            2_000_000_000,
         )
         .await;
     assert!(error.is_none());

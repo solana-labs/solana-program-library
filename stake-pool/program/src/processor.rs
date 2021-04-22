@@ -1003,10 +1003,11 @@ impl Processor {
         let mut validator_list_entry = maybe_validator_list_entry.unwrap();
 
         let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
-        if lamports <= stake_rent {
+        let minimum_lamports = MINIMUM_ACTIVE_STAKE + stake_rent;
+        if lamports < minimum_lamports {
             msg!(
-                "Need more than {} lamports for transient stake to be rent-exempt, {} provided",
-                stake_rent,
+                "Need more than {} lamports for transient stake to be rent-exempt and mergeable, {} provided",
+                minimum_lamports,
                 lamports
             );
             return Err(ProgramError::AccountNotRentExempt);

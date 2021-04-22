@@ -7,7 +7,7 @@ use {
     helpers::*,
     solana_program::pubkey::Pubkey,
     solana_program_test::*,
-    solana_sdk::signature::Signer,
+    solana_sdk::signature::{Keypair, Signer},
     spl_stake_pool::{
         stake_program, state::StakePool, MAX_VALIDATORS_TO_UPDATE, MINIMUM_ACTIVE_STAKE,
     },
@@ -21,6 +21,7 @@ async fn setup(
     Vec<ValidatorStakeAccount>,
     u64,
     u64,
+    u64,
 ) {
     let mut context = program_test().start_with_context().await;
     let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
@@ -28,16 +29,38 @@ async fn setup(
     let mut slot = first_normal_slot;
     context.warp_to_slot(slot).unwrap();
 
+    let reserve_stake_amount = TEST_STAKE_AMOUNT * num_validators as u64;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
         .initialize_stake_pool(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            TEST_STAKE_AMOUNT + 1,
+            reserve_stake_amount + 1,
         )
         .await
         .unwrap();
+
+    // so warmups / cooldowns go faster
+    let validator = Keypair::new();
+    let vote = Keypair::new();
+    create_vote(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &validator,
+        &vote,
+    )
+    .await;
+    let deposit_account =
+        DepositStakeAccount::new_with_vote(vote.pubkey(), validator.pubkey(), 100_000_000_000);
+    deposit_account
+        .create_and_delegate(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+        )
+        .await;
 
     // Add several accounts with some stake
     let mut stake_accounts: Vec<ValidatorStakeAccount> = vec![];
@@ -141,6 +164,7 @@ async fn setup(
         stake_pool_accounts,
         stake_accounts,
         TEST_STAKE_AMOUNT,
+        reserve_stake_amount,
         slot,
     )
 }
@@ -149,15 +173,21 @@ async fn setup(
 #[ignore]
 async fn success() {
     let num_validators = 5;
-    let (mut context, stake_pool_accounts, stake_accounts, _, mut slot) =
-        setup(num_validators).await;
+    let (
+        mut context,
+        stake_pool_accounts,
+        stake_accounts,
+        validator_lamports,
+        reserve_lamports,
+        mut slot,
+    ) = setup(num_validators).await;
 
     // Check current balance in the list
     let rent = context.banks_client.get_rent().await.unwrap();
     let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
     // initially, have all of the deposits plus their rent, and the reserve stake
     let initial_lamports =
-        (TEST_STAKE_AMOUNT + stake_rent) * num_validators as u64 + TEST_STAKE_AMOUNT;
+        (validator_lamports + stake_rent) * num_validators as u64 + reserve_lamports;
     assert_eq!(
         get_validator_list_sum(
             &mut context.banks_client,
@@ -211,7 +241,7 @@ async fn success() {
 #[tokio::test]
 #[ignore]
 async fn merge_into_reserve() {
-    let (mut context, stake_pool_accounts, stake_accounts, lamports, mut slot) =
+    let (mut context, stake_pool_accounts, stake_accounts, lamports, _, mut slot) =
         setup(MAX_VALIDATORS_TO_UPDATE).await;
 
     let pre_lamports = get_validator_list_sum(
@@ -322,7 +352,7 @@ async fn merge_into_reserve() {
 #[tokio::test]
 #[ignore]
 async fn merge_into_validator_stake() {
-    let (mut context, stake_pool_accounts, stake_accounts, lamports, mut slot) =
+    let (mut context, stake_pool_accounts, stake_accounts, lamports, reserve_lamports, mut slot) =
         setup(MAX_VALIDATORS_TO_UPDATE).await;
 
     let rent = context.banks_client.get_rent().await.unwrap();
@@ -342,7 +372,7 @@ async fn merge_into_validator_stake() {
                 &context.last_blockhash,
                 &stake_account.transient_stake_account,
                 &stake_account.vote.pubkey(),
-                lamports / stake_accounts.len() as u64,
+                reserve_lamports / stake_accounts.len() as u64,
             )
             .await;
         assert!(error.is_none());
@@ -437,7 +467,7 @@ async fn merge_into_validator_stake() {
     // validator stake account minimum + deposited lamports + 2 rents + increased lamports
     let expected_lamports = MINIMUM_ACTIVE_STAKE
         + lamports
-        + lamports / stake_accounts.len() as u64
+        + reserve_lamports / stake_accounts.len() as u64
         + 2 * rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
     for stake_account in &stake_accounts {
         let validator_stake =
