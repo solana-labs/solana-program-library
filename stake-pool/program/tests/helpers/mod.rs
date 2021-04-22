@@ -608,28 +608,38 @@ impl StakePoolAccounts {
         current_staker: &Keypair,
     ) -> Result<(), TransportError> {
         let mut signers = vec![payer, current_staker];
-        let deposit_authority_must_sign =
-            if let Some(deposit_authority) = self.deposit_authority_keypair.as_ref() {
-                signers.push(deposit_authority);
-                true
-            } else {
-                false
-            };
-        let transaction = Transaction::new_signed_with_payer(
-            &instruction::deposit(
+        let instructions = if let Some(deposit_authority) = self.deposit_authority_keypair.as_ref()
+        {
+            signers.push(deposit_authority);
+            instruction::deposit_with_authority(
                 &id(),
                 &self.stake_pool.pubkey(),
                 &self.validator_list.pubkey(),
                 &self.deposit_authority,
                 &self.withdraw_authority,
                 stake,
+                &current_staker.pubkey(),
                 validator_stake_account,
                 pool_account,
                 &self.pool_mint.pubkey(),
                 &spl_token::id(),
+            )
+        } else {
+            instruction::deposit(
+                &id(),
+                &self.stake_pool.pubkey(),
+                &self.validator_list.pubkey(),
+                &self.withdraw_authority,
+                stake,
                 &current_staker.pubkey(),
-                deposit_authority_must_sign,
-            ),
+                validator_stake_account,
+                pool_account,
+                &self.pool_mint.pubkey(),
+                &spl_token::id(),
+            )
+        };
+        let transaction = Transaction::new_signed_with_payer(
+            &instructions,
             Some(&payer.pubkey()),
             &signers,
             *recent_blockhash,

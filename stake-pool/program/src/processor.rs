@@ -250,15 +250,15 @@ impl Processor {
     /// Issue stake_program::authorize instructions to update both authorities
     fn stake_authorize<'a>(
         stake_account: AccountInfo<'a>,
-        authority: AccountInfo<'a>,
-        new_staker: &Pubkey,
+        stake_authority: AccountInfo<'a>,
+        new_stake_authority: &Pubkey,
         clock: AccountInfo<'a>,
         stake_program_info: AccountInfo<'a>,
     ) -> Result<(), ProgramError> {
         let authorize_instruction = stake_program::authorize(
             stake_account.key,
-            authority.key,
-            new_staker,
+            stake_authority.key,
+            new_stake_authority,
             stake_program::StakeAuthorize::Staker,
         );
 
@@ -267,21 +267,21 @@ impl Processor {
             &[
                 stake_account.clone(),
                 clock.clone(),
-                authority.clone(),
+                stake_authority.clone(),
                 stake_program_info.clone(),
             ],
         )?;
 
         let authorize_instruction = stake_program::authorize(
             stake_account.key,
-            authority.key,
-            new_staker,
+            stake_authority.key,
+            new_stake_authority,
             stake_program::StakeAuthorize::Withdrawer,
         );
 
         invoke(
             &authorize_instruction,
-            &[stake_account, clock, authority, stake_program_info],
+            &[stake_account, clock, stake_authority, stake_program_info],
         )
     }
 
@@ -290,10 +290,10 @@ impl Processor {
     fn stake_authorize_signed<'a>(
         stake_pool: &Pubkey,
         stake_account: AccountInfo<'a>,
-        authority: AccountInfo<'a>,
+        stake_authority: AccountInfo<'a>,
         authority_type: &[u8],
         bump_seed: u8,
-        new_staker: &Pubkey,
+        new_stake_authority: &Pubkey,
         clock: AccountInfo<'a>,
         stake_program_info: AccountInfo<'a>,
     ) -> Result<(), ProgramError> {
@@ -303,8 +303,8 @@ impl Processor {
 
         let authorize_instruction = stake_program::authorize(
             stake_account.key,
-            authority.key,
-            new_staker,
+            stake_authority.key,
+            new_stake_authority,
             stake_program::StakeAuthorize::Staker,
         );
 
@@ -313,7 +313,7 @@ impl Processor {
             &[
                 stake_account.clone(),
                 clock.clone(),
-                authority.clone(),
+                stake_authority.clone(),
                 stake_program_info.clone(),
             ],
             signers,
@@ -321,13 +321,13 @@ impl Processor {
 
         let authorize_instruction = stake_program::authorize(
             stake_account.key,
-            authority.key,
-            new_staker,
+            stake_authority.key,
+            new_stake_authority,
             stake_program::StakeAuthorize::Withdrawer,
         );
         invoke_signed(
             &authorize_instruction,
-            &[stake_account, clock, authority, stake_program_info],
+            &[stake_account, clock, stake_authority, stake_program_info],
             signers,
         )
     }
@@ -478,13 +478,7 @@ impl Processor {
         }
 
         let deposit_authority = match next_account_info(account_info_iter) {
-            Ok(deposit_authority_info) => {
-                if !deposit_authority_info.is_signer {
-                    return Err(StakePoolError::SignatureMissing.into());
-                } else {
-                    *deposit_authority_info.key
-                }
-            }
+            Ok(deposit_authority_info) => *deposit_authority_info.key,
             Err(_) => find_deposit_authority_program_address(program_id, stake_pool_info.key).0,
         };
         let (withdraw_authority_key, withdraw_bump_seed) =
@@ -719,7 +713,7 @@ impl Processor {
         )?;
 
         if meta.lockup != stake_program::Lockup::default() {
-            msg!("Invalid lockup exists on validator stake account");
+            msg!("Validator stake account has a lockup");
             return Err(StakePoolError::WrongStakeState.into());
         }
 

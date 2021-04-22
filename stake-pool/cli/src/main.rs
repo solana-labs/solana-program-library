@@ -28,8 +28,7 @@ use {
     spl_stake_pool::{
         self,
         borsh::get_instance_packed_len,
-        find_deposit_authority_program_address, find_stake_program_address,
-        find_transient_stake_program_address, find_withdraw_authority_program_address,
+        find_transient_stake_program_address, find_stake_program_address, find_withdraw_authority_program_address,
         stake_program::{self, StakeState},
         state::{Fee, StakePool, ValidatorList},
         MAX_VALIDATORS_TO_UPDATE,
@@ -95,21 +94,15 @@ fn send_transaction(
     Ok(())
 }
 
-<<<<<<< HEAD
-fn command_create_pool(config: &Config, fee: Fee, max_validators: u32) -> CommandResult {
-    let reserve_stake = Keypair::new();
-    println!("Creating reserve stake {}", reserve_stake.pubkey());
-
-||||||| parent of fa0e193 (stake-pool: Add depositor key on init, required on deposit)
-fn command_create_pool(config: &Config, fee: Fee, max_validators: u32) -> CommandResult {
-=======
 fn command_create_pool(
     config: &Config,
     deposit_authority: Option<Pubkey>,
     fee: Fee,
     max_validators: u32,
 ) -> CommandResult {
->>>>>>> fa0e193 (stake-pool: Add depositor key on init, required on deposit)
+    let reserve_stake = Keypair::new();
+    println!("Creating reserve stake {}", reserve_stake.pubkey());
+
     let mint_account = Keypair::new();
     println!("Creating mint {}", mint_account.pubkey());
 
@@ -593,47 +586,49 @@ fn command_deposit(
         },
     )?;
 
-    // Check Deposit authority
-    let (deposit_authority, deposit_authority_must_sign) =
-        if let Some(depositor) = config.depositor.as_ref() {
-            signers.push(depositor.as_ref());
-            (depositor.pubkey(), true)
-        } else {
-            (
-                find_deposit_authority_program_address(&spl_stake_pool::id(), stake_pool_address).0,
-                false,
-            )
-        };
-
-    if deposit_authority != stake_pool.deposit_authority {
-        let error = format!(
-            "Invalid deposit authority specified, expected {}, received {}",
-            stake_pool.deposit_authority, deposit_authority
-        );
-        return Err(error.into());
-    }
-
-    // Check withdraw authority
     let pool_withdraw_authority =
         find_withdraw_authority_program_address(&spl_stake_pool::id(), stake_pool_address).0;
 
-    instructions.extend(
-        // Add stake account to the pool
-        spl_stake_pool::instruction::deposit(
+    let mut deposit_instructions = if let Some(deposit_authority) = config.depositor.as_ref() {
+        signers.push(deposit_authority.as_ref());
+        if deposit_authority.pubkey() != stake_pool.deposit_authority {
+            let error = format!(
+                "Invalid deposit authority specified, expected {}, received {}",
+                stake_pool.deposit_authority,
+                deposit_authority.pubkey()
+            );
+            return Err(error.into());
+        }
+
+        spl_stake_pool::instruction::deposit_with_authority(
             &spl_stake_pool::id(),
             &stake_pool_address,
             &stake_pool.validator_list,
-            &deposit_authority,
+            &deposit_authority.pubkey(),
             &pool_withdraw_authority,
             &stake,
+            &config.staker.pubkey(),
             &validator_stake_account,
             &token_receiver,
             &stake_pool.pool_mint,
             &spl_token::id(),
+        )
+    } else {
+        spl_stake_pool::instruction::deposit(
+            &spl_stake_pool::id(),
+            &stake_pool_address,
+            &stake_pool.validator_list,
+            &pool_withdraw_authority,
+            &stake,
             &config.staker.pubkey(),
-            deposit_authority_must_sign,
-        ),
-    );
+            &validator_stake_account,
+            &token_receiver,
+            &stake_pool.pool_mint,
+            &spl_token::id(),
+        )
+    };
+
+    instructions.append(&mut deposit_instructions);
 
     let mut transaction =
         Transaction::new_with_payer(&instructions, Some(&config.fee_payer.pubkey()));
