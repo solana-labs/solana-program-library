@@ -11,14 +11,18 @@ use solana_program::{
 
 pub mod cancel_bid;
 pub mod create_auction;
+pub mod end_auction;
 pub mod place_bid;
 pub mod set_authority;
 pub mod start_auction;
 
+// Re-export submodules with handlers + associated types.
 pub use cancel_bid::*;
 pub use create_auction::*;
 pub use place_bid::*;
 pub use start_auction::*;
+pub use set_authority::*;
+pub use end_auction::*;
 
 pub fn process_instruction(
     program_id: &Pubkey,
@@ -26,11 +30,6 @@ pub fn process_instruction(
     input: &[u8],
 ) -> ProgramResult {
     use crate::instruction::AuctionInstruction;
-    use cancel_bid::cancel_bid;
-    use create_auction::create_auction;
-    use place_bid::place_bid;
-    use start_auction::start_auction;
-
     match AuctionInstruction::try_from_slice(input)? {
         AuctionInstruction::CreateAuction(args) => {
             msg!("+ Processing CreateAuction");
@@ -51,6 +50,11 @@ pub fn process_instruction(
         AuctionInstruction::SetAuthority => {
             msg!("+ Processing SetAuthority");
             //cancel_bid(program_id, accounts)
+            Ok(())
+        }
+        AuctionInstruction::EndAuction(args) => {
+            msg!("+ Processing EndAuction");
+            end_auction(program_id, accounts, args);
             Ok(())
         }
     }

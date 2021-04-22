@@ -8,16 +8,58 @@ use solana_program::{
 
 pub use crate::processor::{
     cancel_bid::CancelBidArgs, create_auction::CreateAuctionArgs, place_bid::PlaceBidArgs,
-    start_auction::StartAuctionArgs,
+    start_auction::StartAuctionArgs, end_auction::EndAuctionArgs,
 };
 
 #[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq)]
 pub enum AuctionInstruction {
+    /// Create a new auction account bound to a resource, initially in a pending state.
+    ///   0. `[signer]` The account creating the auction, which is authorised to make changes.
+    ///   1. `[writable]` Uninitialized auction account.
+    ///   2. `[]` Rent sysvar
+    ///   3. `[]` System account
     CreateAuction(CreateAuctionArgs),
+
+    /// Start an inactive auction.
+    ///   0. `[signer]` The creator/authorised account.
+    ///   1. `[writable]` Initialized auction account.
+    ///   2. `[]` Clock sysvar
     StartAuction(StartAuctionArgs),
+
+    /// Place a bid on a running auction.
+    ///   0. `[signer]` The bidders primary account, for PDA calculation/transit auth.
+    ///   1. `[writable]` The pot, containing a reference to the stored SPL token account.
+    ///   2. `[writable]` The pot SPL account, where the tokens will be deposited.
+    ///   3. `[writable]` The metadata account, storing information about the bidders actions.
+    ///   4. `[writable]` Auction account, containing data about the auction and item being bid on.
+    ///   5. `[writable]` Token mint, for transfer instructions and verification.
+    ///   6. `[signer]` Transfer authority, for moving tokens into the bid pot.
+    ///   7. `[signer]` Payer
+    ///   8. `[]` Clock sysvar
+    ///   9. `[]` Rent sysvar
+    ///   10. `[]` System program
+    ///   11. `[]` SPL Token Program
     PlaceBid(PlaceBidArgs),
+
+    /// Place a bid on a running auction.
+    ///   0. `[signer]` The bidders primary account, for PDA calculation/transit auth.
+    ///   1. `[writable]` The pot, containing a reference to the stored SPL token account.
+    ///   2. `[writable]` The pot SPL account, where the tokens will be deposited.
+    ///   3. `[writable]` The metadata account, storing information about the bidders actions.
+    ///   4. `[writable]` Auction account, containing data about the auction and item being bid on.
+    ///   5. `[writable]` Token mint, for transfer instructions and verification.
+    ///   7. `[signer]` Payer
+    ///   8. `[]` Clock sysvar
+    ///   9. `[]` Rent sysvar
+    ///   10. `[]` System program
+    ///   11. `[]` SPL Token Program
     CancelBid(CancelBidArgs),
+
+    /// Update the authority for an auction account.
     SetAuthority,
+
+    /// Ends an auction, regardless of end timing conditions
+    EndAuction(EndAuctionArgs),
 }
 
 /// Creates an CreateAuction instruction.
@@ -83,7 +125,7 @@ pub fn start_auction_instruction(
     Instruction {
         program_id,
         accounts: vec![
-            AccountMeta::new(creator_pubkey, false),
+            AccountMeta::new(creator_pubkey, true),
             AccountMeta::new(auction_pubkey, false),
             AccountMeta::new_readonly(sysvar::clock::id(), false),
         ],
