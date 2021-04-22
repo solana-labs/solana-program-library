@@ -3,7 +3,7 @@
 mod helpers;
 
 use {
-    borsh::BorshSerialize,
+    borsh::{BorshDeserialize, BorshSerialize},
     helpers::*,
     solana_program::{
         borsh::get_packed_len,
@@ -226,6 +226,7 @@ async fn fail_with_wrong_max_validators() {
                 &stake_pool_accounts.pool_mint.pubkey(),
                 &stake_pool_accounts.pool_fee_account.pubkey(),
                 &spl_token::id(),
+                None,
                 stake_pool_accounts.fee,
                 stake_pool_accounts.max_validators,
             )
@@ -296,6 +297,7 @@ async fn fail_with_wrong_mint_authority() {
         &stake_pool_accounts.pool_fee_account.pubkey(),
         &stake_pool_accounts.manager,
         &stake_pool_accounts.staker.pubkey(),
+        &None,
         &stake_pool_accounts.fee,
         stake_pool_accounts.max_validators,
     )
@@ -384,6 +386,7 @@ async fn fail_with_wrong_token_program_id() {
                 &stake_pool_accounts.pool_mint.pubkey(),
                 &stake_pool_accounts.pool_fee_account.pubkey(),
                 &wrong_token_program.pubkey(),
+                None,
                 stake_pool_accounts.fee,
                 stake_pool_accounts.max_validators,
             )
@@ -460,6 +463,7 @@ async fn fail_with_wrong_fee_account() {
         &stake_pool_accounts.pool_fee_account.pubkey(),
         &stake_pool_accounts.manager,
         &stake_pool_accounts.staker.pubkey(),
+        &None,
         &stake_pool_accounts.fee,
         stake_pool_accounts.max_validators,
     )
@@ -547,6 +551,7 @@ async fn fail_with_not_rent_exempt_pool() {
                 &stake_pool_accounts.pool_mint.pubkey(),
                 &stake_pool_accounts.pool_fee_account.pubkey(),
                 &spl_token::id(),
+                None,
                 stake_pool_accounts.fee,
                 stake_pool_accounts.max_validators,
             )
@@ -621,6 +626,7 @@ async fn fail_with_not_rent_exempt_validator_list() {
                 &stake_pool_accounts.pool_mint.pubkey(),
                 &stake_pool_accounts.pool_fee_account.pubkey(),
                 &spl_token::id(),
+                None,
                 stake_pool_accounts.fee,
                 stake_pool_accounts.max_validators,
             )
@@ -793,6 +799,7 @@ async fn fail_with_pre_minted_pool_tokens() {
         &stake_pool_accounts.pool_fee_account.pubkey(),
         &stake_pool_accounts.manager,
         &stake_pool_accounts.staker.pubkey(),
+        &None,
         &stake_pool_accounts.fee,
         stake_pool_accounts.max_validators,
     )
@@ -853,6 +860,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.pool_fee_account.pubkey(),
             &stake_pool_accounts.manager,
             &stake_pool_accounts.staker.pubkey(),
+            &None,
             &stake_pool_accounts.fee,
             stake_pool_accounts.max_validators,
         )
@@ -897,6 +905,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.pool_fee_account.pubkey(),
             &stake_pool_accounts.manager,
             &stake_pool_accounts.staker.pubkey(),
+            &None,
             &stake_pool_accounts.fee,
             stake_pool_accounts.max_validators,
         )
@@ -944,6 +953,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.pool_fee_account.pubkey(),
             &stake_pool_accounts.manager,
             &stake_pool_accounts.staker.pubkey(),
+            &None,
             &stake_pool_accounts.fee,
             stake_pool_accounts.max_validators,
         )
@@ -991,6 +1001,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.pool_fee_account.pubkey(),
             &stake_pool_accounts.manager,
             &stake_pool_accounts.staker.pubkey(),
+            &None,
             &stake_pool_accounts.fee,
             stake_pool_accounts.max_validators,
         )
@@ -1007,4 +1018,24 @@ async fn fail_with_bad_reserve() {
             )
         );
     }
+}
+
+#[tokio::test]
+async fn success_with_required_deposit_authority() {
+    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
+    let deposit_authority = Keypair::new();
+    let stake_pool_accounts = StakePoolAccounts::new_with_deposit_authority(deposit_authority);
+    stake_pool_accounts
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
+        .await
+        .unwrap();
+
+    // Stake pool now exists
+    let stake_pool_account =
+        get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
+    let stake_pool = state::StakePool::try_from_slice(stake_pool_account.data.as_slice()).unwrap();
+    assert_eq!(
+        stake_pool.deposit_authority,
+        stake_pool_accounts.deposit_authority
+    );
 }

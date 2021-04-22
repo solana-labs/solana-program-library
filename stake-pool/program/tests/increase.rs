@@ -233,10 +233,7 @@ async fn fail_with_unknown_validator() {
         reserve_lamports,
     ) = setup().await;
 
-    let unknown_stake = ValidatorStakeAccount::new_with_target_authority(
-        &stake_pool_accounts.deposit_authority,
-        &stake_pool_accounts.stake_pool.pubkey(),
-    );
+    let unknown_stake = ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey());
     unknown_stake
         .create_and_delegate(
             &mut banks_client,

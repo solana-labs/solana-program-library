@@ -39,9 +39,16 @@ pub struct StakePool {
     /// distribution
     pub staker: Pubkey,
 
-    /// Deposit authority bump seed
-    /// for `create_program_address(&[state::StakePool account, "deposit"])`
-    pub deposit_bump_seed: u8,
+    /// Deposit authority
+    ///
+    /// If a depositor pubkey is specified on initialization, then deposits must be
+    /// signed by this authority. If no deposit authority is specified,
+    /// then the stake pool will default to the result of:
+    /// `Pubkey::find_program_address(
+    ///     &[&stake_pool_address.to_bytes()[..32], b"deposit"],
+    ///     program_id,
+    /// )`
+    pub deposit_authority: Pubkey,
 
     /// Withdrawal authority bump seed
     /// for `create_program_address(&[state::StakePool account, "withdrawal"])`
@@ -165,19 +172,15 @@ impl StakePool {
         )
     }
     /// Checks that the deposit authority is valid
-    pub(crate) fn check_authority_deposit(
+    pub(crate) fn check_deposit_authority(
         &self,
         deposit_authority: &Pubkey,
-        program_id: &Pubkey,
-        stake_pool_address: &Pubkey,
     ) -> Result<(), ProgramError> {
-        Self::check_authority(
-            deposit_authority,
-            program_id,
-            stake_pool_address,
-            crate::AUTHORITY_DEPOSIT,
-            self.deposit_bump_seed,
-        )
+        if self.deposit_authority == *deposit_authority {
+            Ok(())
+        } else {
+            Err(StakePoolError::InvalidProgramAddress.into())
+        }
     }
 
     /// Check staker validity and signature

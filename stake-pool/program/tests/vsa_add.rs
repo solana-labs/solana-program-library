@@ -38,10 +38,7 @@ async fn setup() -> (
         .await
         .unwrap();
 
-    let user_stake = ValidatorStakeAccount::new_with_target_authority(
-        &stake_pool_accounts.deposit_authority,
-        &stake_pool_accounts.stake_pool.pubkey(),
-    );
+    let user_stake = ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey());
     user_stake
         .create_and_delegate(
             &mut banks_client,
@@ -126,7 +123,6 @@ async fn fail_with_wrong_validator_list_account() {
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.staker.pubkey(),
-            &stake_pool_accounts.deposit_authority,
             &stake_pool_accounts.withdraw_authority,
             &wrong_validator_list.pubkey(),
             &user_stake.stake_account,
@@ -162,10 +158,7 @@ async fn fail_too_little_stake() {
         .await
         .unwrap();
 
-    let user_stake = ValidatorStakeAccount::new_with_target_authority(
-        &stake_pool_accounts.deposit_authority,
-        &stake_pool_accounts.stake_pool.pubkey(),
-    );
+    let user_stake = ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey());
     create_vote(
         &mut banks_client,
         &payer,
@@ -203,28 +196,6 @@ async fn fail_too_little_stake() {
 
     banks_client.process_transaction(transaction).await.unwrap();
 
-    authorize_stake_account(
-        &mut banks_client,
-        &payer,
-        &recent_blockhash,
-        &user_stake.stake_account,
-        &stake_pool_accounts.staker,
-        &user_stake.target_authority,
-        stake_program::StakeAuthorize::Staker,
-    )
-    .await;
-
-    authorize_stake_account(
-        &mut banks_client,
-        &payer,
-        &recent_blockhash,
-        &user_stake.stake_account,
-        &stake_pool_accounts.staker,
-        &user_stake.target_authority,
-        stake_program::StakeAuthorize::Withdrawer,
-    )
-    .await;
-
     let error = stake_pool_accounts
         .add_validator_to_pool(
             &mut banks_client,
@@ -253,10 +224,7 @@ async fn fail_too_much_stake() {
         .await
         .unwrap();
 
-    let user_stake = ValidatorStakeAccount::new_with_target_authority(
-        &stake_pool_accounts.deposit_authority,
-        &stake_pool_accounts.stake_pool.pubkey(),
-    );
+    let user_stake = ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey());
     user_stake
         .create_and_delegate(
             &mut banks_client,
@@ -344,7 +312,6 @@ async fn fail_wrong_staker() {
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &malicious.pubkey(),
-            &stake_pool_accounts.deposit_authority,
             &stake_pool_accounts.withdraw_authority,
             &stake_pool_accounts.validator_list.pubkey(),
             &user_stake.stake_account,
@@ -379,7 +346,6 @@ async fn fail_without_signature() {
     let accounts = vec![
         AccountMeta::new(stake_pool_accounts.stake_pool.pubkey(), false),
         AccountMeta::new_readonly(stake_pool_accounts.staker.pubkey(), false),
-        AccountMeta::new_readonly(stake_pool_accounts.deposit_authority, false),
         AccountMeta::new_readonly(stake_pool_accounts.withdraw_authority, false),
         AccountMeta::new(stake_pool_accounts.validator_list.pubkey(), false),
         AccountMeta::new(user_stake.stake_account, false),
@@ -425,7 +391,6 @@ async fn fail_with_wrong_stake_program_id() {
     let accounts = vec![
         AccountMeta::new(stake_pool_accounts.stake_pool.pubkey(), false),
         AccountMeta::new_readonly(stake_pool_accounts.staker.pubkey(), true),
-        AccountMeta::new_readonly(stake_pool_accounts.deposit_authority, false),
         AccountMeta::new_readonly(stake_pool_accounts.withdraw_authority, false),
         AccountMeta::new(stake_pool_accounts.validator_list.pubkey(), false),
         AccountMeta::new(user_stake.stake_account, false),
@@ -468,10 +433,7 @@ async fn fail_add_too_many_validator_stake_accounts() {
         .await
         .unwrap();
 
-    let user_stake = ValidatorStakeAccount::new_with_target_authority(
-        &stake_pool_accounts.deposit_authority,
-        &stake_pool_accounts.stake_pool.pubkey(),
-    );
+    let user_stake = ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey());
     user_stake
         .create_and_delegate(
             &mut banks_client,
@@ -491,10 +453,7 @@ async fn fail_add_too_many_validator_stake_accounts() {
         .await;
     assert!(error.is_none());
 
-    let user_stake = ValidatorStakeAccount::new_with_target_authority(
-        &stake_pool_accounts.deposit_authority,
-        &stake_pool_accounts.stake_pool.pubkey(),
-    );
+    let user_stake = ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey());
     user_stake
         .create_and_delegate(
             &mut banks_client,

@@ -66,10 +66,7 @@ async fn setup(
     let mut stake_accounts: Vec<ValidatorStakeAccount> = vec![];
     let mut deposit_accounts: Vec<DepositStakeAccount> = vec![];
     for _ in 0..num_validators {
-        let stake_account = ValidatorStakeAccount::new_with_target_authority(
-            &stake_pool_accounts.deposit_authority,
-            &stake_pool_accounts.stake_pool.pubkey(),
-        );
+        let stake_account = ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey());
         stake_account
             .create_and_delegate(
                 &mut context.banks_client,

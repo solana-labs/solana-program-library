@@ -4,6 +4,7 @@ use {
     crate::{
         borsh::try_from_slice_unchecked,
         error::StakePoolError,
+        find_deposit_authority_program_address,
         instruction::StakePoolInstruction,
         minimum_reserve_lamports, minimum_stake_lamports, stake_program,
         state::{AccountType, Fee, StakePool, ValidatorList, ValidatorStakeInfo},
@@ -203,10 +204,14 @@ impl Processor {
         let authority_signature_seeds = [&me_bytes[..32], authority_type, &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
 
-        let ix =
+        let split_instruction =
             stake_program::split_only(stake_account.key, authority.key, amount, split_stake.key);
 
-        invoke_signed(&ix, &[stake_account, split_stake, authority], signers)
+        invoke_signed(
+            &split_instruction,
+            &[stake_account, split_stake, authority],
+            signers,
+        )
     }
 
     /// Issue a stake_merge instruction.
@@ -226,10 +231,11 @@ impl Processor {
         let authority_signature_seeds = [&me_bytes[..32], authority_type, &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
 
-        let ix = stake_program::merge(destination_account.key, source_account.key, authority.key);
+        let merge_instruction =
+            stake_program::merge(destination_account.key, source_account.key, authority.key);
 
         invoke_signed(
-            &ix,
+            &merge_instruction,
             &[
                 destination_account,
                 source_account,
@@ -242,16 +248,53 @@ impl Processor {
         )
     }
 
-    /// Issue a stake_set_manager instruction.
-    #[allow(clippy::too_many_arguments)]
+    /// Issue stake_program::authorize instructions to update both authorities
     fn stake_authorize<'a>(
+        stake_account: AccountInfo<'a>,
+        stake_authority: AccountInfo<'a>,
+        new_stake_authority: &Pubkey,
+        clock: AccountInfo<'a>,
+        stake_program_info: AccountInfo<'a>,
+    ) -> Result<(), ProgramError> {
+        let authorize_instruction = stake_program::authorize(
+            stake_account.key,
+            stake_authority.key,
+            new_stake_authority,
+            stake_program::StakeAuthorize::Staker,
+        );
+
+        invoke(
+            &authorize_instruction,
+            &[
+                stake_account.clone(),
+                clock.clone(),
+                stake_authority.clone(),
+                stake_program_info.clone(),
+            ],
+        )?;
+
+        let authorize_instruction = stake_program::authorize(
+            stake_account.key,
+            stake_authority.key,
+            new_stake_authority,
+            stake_program::StakeAuthorize::Withdrawer,
+        );
+
+        invoke(
+            &authorize_instruction,
+            &[stake_account, clock, stake_authority, stake_program_info],
+        )
+    }
+
+    /// Issue stake_program::authorize instructions to update both authorities
+    #[allow(clippy::too_many_arguments)]
+    fn stake_authorize_signed<'a>(
         stake_pool: &Pubkey,
         stake_account: AccountInfo<'a>,
-        authority: AccountInfo<'a>,
+        stake_authority: AccountInfo<'a>,
         authority_type: &[u8],
         bump_seed: u8,
-        new_staker: &Pubkey,
-        staker_auth: stake_program::StakeAuthorize,
+        new_stake_authority: &Pubkey,
         clock: AccountInfo<'a>,
         stake_program_info: AccountInfo<'a>,
     ) -> Result<(), ProgramError> {
@@ -259,12 +302,33 @@ impl Processor {
         let authority_signature_seeds = [&me_bytes[..32], authority_type, &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
 
-        let ix =
-            stake_program::authorize(stake_account.key, authority.key, new_staker, staker_auth);
+        let authorize_instruction = stake_program::authorize(
+            stake_account.key,
+            stake_authority.key,
+            new_stake_authority,
+            stake_program::StakeAuthorize::Staker,
+        );
 
         invoke_signed(
-            &ix,
-            &[stake_account, clock, authority, stake_program_info],
+            &authorize_instruction,
+            &[
+                stake_account.clone(),
+                clock.clone(),
+                stake_authority.clone(),
+                stake_program_info.clone(),
+            ],
+            signers,
+        )?;
+
+        let authorize_instruction = stake_program::authorize(
+            stake_account.key,
+            stake_authority.key,
+            new_stake_authority,
+            stake_program::StakeAuthorize::Withdrawer,
+        );
+        invoke_signed(
+            &authorize_instruction,
+            &[stake_account, clock, stake_authority, stake_program_info],
             signers,
         )
     }
@@ -414,8 +478,10 @@ impl Processor {
             return Err(StakePoolError::WrongAccountMint.into());
         }
 
-        let (_, deposit_bump_seed) =
-            crate::find_deposit_authority_program_address(program_id, stake_pool_info.key);
+        let deposit_authority = match next_account_info(account_info_iter) {
+            Ok(deposit_authority_info) => *deposit_authority_info.key,
+            Err(_) => find_deposit_authority_program_address(program_id, stake_pool_info.key).0,
+        };
         let (withdraw_authority_key, withdraw_bump_seed) =
             crate::find_withdraw_authority_program_address(program_id, stake_pool_info.key);
 
@@ -475,7 +541,7 @@ impl Processor {
         stake_pool.manager = *manager_info.key;
         stake_pool.staker = *staker_info.key;
         stake_pool.reserve_stake = *reserve_stake_info.key;
-        stake_pool.deposit_bump_seed = deposit_bump_seed;
+        stake_pool.deposit_authority = deposit_authority;
         stake_pool.withdraw_bump_seed = withdraw_bump_seed;
         stake_pool.validator_list = *validator_list_info.key;
         stake_pool.pool_mint = *pool_mint_info.key;
@@ -594,8 +660,7 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
         let staker_info = next_account_info(account_info_iter)?;
-        let deposit_info = next_account_info(account_info_iter)?;
-        let withdraw_info = next_account_info(account_info_iter)?;
+        let withdraw_authority_info = next_account_info(account_info_iter)?;
         let validator_list_info = next_account_info(account_info_iter)?;
         let stake_account_info = next_account_info(account_info_iter)?;
         let clock_info = next_account_info(account_info_iter)?;
@@ -614,8 +679,11 @@ impl Processor {
             return Err(StakePoolError::InvalidState.into());
         }
 
-        stake_pool.check_authority_withdraw(withdraw_info.key, program_id, stake_pool_info.key)?;
-        stake_pool.check_authority_deposit(deposit_info.key, program_id, stake_pool_info.key)?;
+        stake_pool.check_authority_withdraw(
+            withdraw_authority_info.key,
+            program_id,
+            stake_pool_info.key,
+        )?;
 
         stake_pool.check_staker(staker_info)?;
 
@@ -645,6 +713,11 @@ impl Processor {
             &vote_account_address,
         )?;
 
+        if meta.lockup != stake_program::Lockup::default() {
+            msg!("Validator stake account has a lockup");
+            return Err(StakePoolError::WrongStakeState.into());
+        }
+
         if validator_list.contains(&vote_account_address) {
             return Err(StakePoolError::ValidatorAlreadyAdded.into());
         }
@@ -665,22 +738,13 @@ impl Processor {
         //Self::check_stake_activation(stake_account_info, clock, stake_history)?;
 
         // Update Withdrawer and Staker authority to the program withdraw authority
-        for authority in &[
-            stake_program::StakeAuthorize::Withdrawer,
-            stake_program::StakeAuthorize::Staker,
-        ] {
-            Self::stake_authorize(
-                stake_pool_info.key,
-                stake_account_info.clone(),
-                deposit_info.clone(),
-                AUTHORITY_DEPOSIT,
-                stake_pool.deposit_bump_seed,
-                withdraw_info.key,
-                *authority,
-                clock_info.clone(),
-                stake_program_info.clone(),
-            )?;
-        }
+        Self::stake_authorize(
+            stake_account_info.clone(),
+            staker_info.clone(),
+            withdraw_authority_info.key,
+            clock_info.clone(),
+            stake_program_info.clone(),
+        )?;
 
         validator_list.validators.push(ValidatorStakeInfo {
             vote_account_address,
@@ -700,7 +764,7 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
         let staker_info = next_account_info(account_info_iter)?;
-        let withdraw_info = next_account_info(account_info_iter)?;
+        let withdraw_authority_info = next_account_info(account_info_iter)?;
         let new_stake_authority_info = next_account_info(account_info_iter)?;
         let validator_list_info = next_account_info(account_info_iter)?;
         let stake_account_info = next_account_info(account_info_iter)?;
@@ -717,7 +781,11 @@ impl Processor {
             return Err(StakePoolError::InvalidState.into());
         }
 
-        stake_pool.check_authority_withdraw(withdraw_info.key, program_id, stake_pool_info.key)?;
+        stake_pool.check_authority_withdraw(
+            withdraw_authority_info.key,
+            program_id,
+            stake_pool_info.key,
+        )?;
         stake_pool.check_staker(staker_info)?;
 
         if stake_pool.last_update_epoch < clock.epoch {
@@ -772,22 +840,16 @@ impl Processor {
             return Err(StakePoolError::StakeLamportsNotEqualToMinimum.into());
         }
 
-        for authority in &[
-            stake_program::StakeAuthorize::Withdrawer,
-            stake_program::StakeAuthorize::Staker,
-        ] {
-            Self::stake_authorize(
-                stake_pool_info.key,
-                stake_account_info.clone(),
-                withdraw_info.clone(),
-                AUTHORITY_WITHDRAW,
-                stake_pool.withdraw_bump_seed,
-                new_stake_authority_info.key,
-                *authority,
-                clock_info.clone(),
-                stake_program_info.clone(),
-            )?;
-        }
+        Self::stake_authorize_signed(
+            stake_pool_info.key,
+            stake_account_info.clone(),
+            withdraw_authority_info.clone(),
+            AUTHORITY_WITHDRAW,
+            stake_pool.withdraw_bump_seed,
+            new_stake_authority_info.key,
+            clock_info.clone(),
+            stake_program_info.clone(),
+        )?;
 
         validator_list
             .validators
@@ -1382,8 +1444,8 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
         let validator_list_info = next_account_info(account_info_iter)?;
-        let deposit_info = next_account_info(account_info_iter)?;
-        let withdraw_info = next_account_info(account_info_iter)?;
+        let deposit_authority_info = next_account_info(account_info_iter)?;
+        let withdraw_authority_info = next_account_info(account_info_iter)?;
         let stake_info = next_account_info(account_info_iter)?;
         let validator_stake_account_info = next_account_info(account_info_iter)?;
         let dest_user_info = next_account_info(account_info_iter)?;
@@ -1406,8 +1468,12 @@ impl Processor {
 
         //Self::check_stake_activation(stake_info, clock, stake_history)?;
 
-        stake_pool.check_authority_withdraw(withdraw_info.key, program_id, stake_pool_info.key)?;
-        stake_pool.check_authority_deposit(deposit_info.key, program_id, stake_pool_info.key)?;
+        stake_pool.check_authority_withdraw(
+            withdraw_authority_info.key,
+            program_id,
+            stake_pool_info.key,
+        )?;
+        stake_pool.check_deposit_authority(deposit_authority_info.key)?;
         stake_pool.check_mint(pool_mint_info)?;
 
         if stake_pool.token_program_id != *token_program_info.key {
@@ -1451,34 +1517,33 @@ impl Processor {
             validator_stake_account_info.lamports()
         );
 
-        Self::stake_authorize(
-            stake_pool_info.key,
-            stake_info.clone(),
-            deposit_info.clone(),
-            AUTHORITY_DEPOSIT,
-            stake_pool.deposit_bump_seed,
-            withdraw_info.key,
-            stake_program::StakeAuthorize::Withdrawer,
-            clock_info.clone(),
-            stake_program_info.clone(),
-        )?;
-
-        Self::stake_authorize(
-            stake_pool_info.key,
-            stake_info.clone(),
-            deposit_info.clone(),
-            AUTHORITY_DEPOSIT,
-            stake_pool.deposit_bump_seed,
-            withdraw_info.key,
-            stake_program::StakeAuthorize::Staker,
-            clock_info.clone(),
-            stake_program_info.clone(),
-        )?;
+        let (deposit_authority_program_address, deposit_bump_seed) =
+            find_deposit_authority_program_address(program_id, stake_pool_info.key);
+        if *deposit_authority_info.key == deposit_authority_program_address {
+            Self::stake_authorize_signed(
+                stake_pool_info.key,
+                stake_info.clone(),
+                deposit_authority_info.clone(),
+                AUTHORITY_DEPOSIT,
+                deposit_bump_seed,
+                withdraw_authority_info.key,
+                clock_info.clone(),
+                stake_program_info.clone(),
+            )?;
+        } else {
+            Self::stake_authorize(
+                stake_info.clone(),
+                deposit_authority_info.clone(),
+                withdraw_authority_info.key,
+                clock_info.clone(),
+                stake_program_info.clone(),
+            )?;
+        }
 
         Self::stake_merge(
             stake_pool_info.key,
             stake_info.clone(),
-            withdraw_info.clone(),
+            withdraw_authority_info.clone(),
             AUTHORITY_WITHDRAW,
             stake_pool.withdraw_bump_seed,
             validator_stake_account_info.clone(),
@@ -1492,7 +1557,7 @@ impl Processor {
             token_program_info.clone(),
             pool_mint_info.clone(),
             dest_user_info.clone(),
-            withdraw_info.clone(),
+            withdraw_authority_info.clone(),
             AUTHORITY_WITHDRAW,
             stake_pool.withdraw_bump_seed,
             new_pool_tokens,
@@ -1530,7 +1595,7 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
         let validator_list_info = next_account_info(account_info_iter)?;
-        let withdraw_info = next_account_info(account_info_iter)?;
+        let withdraw_authority_info = next_account_info(account_info_iter)?;
         let stake_split_from = next_account_info(account_info_iter)?;
         let stake_split_to = next_account_info(account_info_iter)?;
         let user_stake_authority = next_account_info(account_info_iter)?;
@@ -1550,8 +1615,12 @@ impl Processor {
             return Err(StakePoolError::InvalidState.into());
         }
 
-        stake_pool.check_authority_withdraw(withdraw_info.key, program_id, stake_pool_info.key)?;
         stake_pool.check_mint(pool_mint_info)?;
+        stake_pool.check_authority_withdraw(
+            withdraw_authority_info.key,
+            program_id,
+            stake_pool_info.key,
+        )?;
 
         if stake_pool.token_program_id != *token_program_info.key {
             return Err(ProgramError::IncorrectProgramId);
@@ -1601,7 +1670,7 @@ impl Processor {
             token_program_info.clone(),
             burn_from_info.clone(),
             pool_mint_info.clone(),
-            withdraw_info.clone(),
+            withdraw_authority_info.clone(),
             AUTHORITY_WITHDRAW,
             stake_pool.withdraw_bump_seed,
             pool_tokens,
@@ -1610,33 +1679,20 @@ impl Processor {
         Self::stake_split(
             stake_pool_info.key,
             stake_split_from.clone(),
-            withdraw_info.clone(),
+            withdraw_authority_info.clone(),
             AUTHORITY_WITHDRAW,
             stake_pool.withdraw_bump_seed,
             withdraw_lamports,
             stake_split_to.clone(),
         )?;
 
-        Self::stake_authorize(
+        Self::stake_authorize_signed(
             stake_pool_info.key,
             stake_split_to.clone(),
-            withdraw_info.clone(),
+            withdraw_authority_info.clone(),
             AUTHORITY_WITHDRAW,
             stake_pool.withdraw_bump_seed,
             user_stake_authority.key,
-            stake_program::StakeAuthorize::Withdrawer,
-            clock_info.clone(),
-            stake_program_info.clone(),
-        )?;
-
-        Self::stake_authorize(
-            stake_pool_info.key,
-            stake_split_to.clone(),
-            withdraw_info.clone(),
-            AUTHORITY_WITHDRAW,
-            stake_pool.withdraw_bump_seed,
-            user_stake_authority.key,
-            stake_program::StakeAuthorize::Staker,
             clock_info.clone(),
             stake_program_info.clone(),
         )?;

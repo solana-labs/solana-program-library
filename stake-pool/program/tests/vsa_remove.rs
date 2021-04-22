@@ -38,10 +38,7 @@ async fn setup() -> (
         .await
         .unwrap();
 
-    let user_stake = ValidatorStakeAccount::new_with_target_authority(
-        &stake_pool_accounts.deposit_authority,
-        &stake_pool_accounts.stake_pool.pubkey(),
-    );
+    let user_stake = ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey());
     user_stake
         .create_and_delegate(
             &mut banks_client,
