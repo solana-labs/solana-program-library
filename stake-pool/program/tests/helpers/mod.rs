@@ -23,7 +23,7 @@ use {
     },
 };
 
-pub const TEST_STAKE_AMOUNT: u64 = 100_000_000;
+pub const TEST_STAKE_AMOUNT: u64 = 1_500_000_000;
 pub const MAX_TEST_VALIDATORS: u32 = 10_000;
 
 pub fn program_test() -> ProgramTest {

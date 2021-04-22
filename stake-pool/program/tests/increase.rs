@@ -27,7 +27,7 @@ async fn setup() -> (
 ) {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
-    let reserve_lamports = 100_000_000;
+    let reserve_lamports = 10_000_000_000;
     stake_pool_accounts
         .initialize_stake_pool(
             &mut banks_client,
