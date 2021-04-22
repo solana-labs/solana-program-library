@@ -242,9 +242,9 @@ pub enum GovernanceInstruction {
         voting_token_amount: u64,
     },
 
-    ///   0. `[writable]` Governance key. Needs to be set with pubkey set to PDA with seeds of the
-    ///           program account key, governance mint key, council mint key, Governance program account key.
-    ///   1. `[]` Program account that this Governance uses
+    ///   0. `[writable]` Governance account. The account pubkey needs to be set to PDA with the following seeds:
+    ///           1) 'governance' const prefix, 2) Governance program account key  3) Governance mint key, 4) Council mint key  [Optional], 4) Governed Program account key
+    ///   1. `[]` Account of the Program governed by this Governance account
     ///   2. `[]` Governance mint that this Governance uses
     ///   3. `[]` Council mint that this Governance uses [Optional]
     InitGovernance {
@@ -264,13 +264,16 @@ pub enum GovernanceInstruction {
         name: [u8; GOVERNANCE_NAME_LENGTH],
     },
 
-    ///   0. `[]` Governance key. Needs to be set with pubkey set to PDA with seeds of the
-    ///           program account key, governance mint key, council mint key, and Governance program account key.
-    ///   1. `[]` Program account to tie this Governance to.
-    ///   2. `[]` Governance mint to tie this Governance to
-    ///   3. `[]` Payer
-    ///   4. `[]` System account.
-    ///   5. `[]` Council mint to tie this Governance to [Optional]
+    ///   0. `[]` Governance account. The account pubkey needs to be set to PDA with the following seeds:
+    ///           1) 'governance' const prefix, 2) Governance program account key  3) Governance mint key, 4) Council mint key  [Optional], 4) Governed Program account key
+    ///   1. `[]` Account of the Program governed by this Governance account
+    ///   2. `[writable]` Program Data account of the Program governed by this Governance account
+    ///   3. `[signer]` Current Upgrade Authority account of the Program governed by this Governance account
+    ///   4. `[]` Governance mint that this Governance uses
+    ///   5. `[signer]` Payer
+    ///   6. `[]` System account.
+    ///   7. `[]` bpf_upgrade_loader account.
+    ///   8. `[]` Council mint that this Governance uses [Optional]
     CreateEmptyGovernance,
 
     ///   0. `[]` Governance voting record key. Needs to be set with pubkey set to PDA with seeds of the
