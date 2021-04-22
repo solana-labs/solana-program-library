@@ -285,10 +285,32 @@ pub struct ValidatorList {
     pub validators: Vec<ValidatorStakeInfo>,
 }
 
+/// Status of the stake account in the validator list, for accounting
+#[derive(Copy, Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub enum StakeStatus {
+    /// Stake account is active, there may be a transient stake as well
+    Active,
+    /// Only transient stake account exists, when a transient stake is
+    /// deactivating during validator removal
+    DeactivatingTransient,
+    /// No more validator stake accounts exist, entry ready for removal during
+    /// `UpdateStakePoolBalance`
+    ReadyForRemoval,
+}
+
+impl Default for StakeStatus {
+    fn default() -> Self {
+        Self::Active
+    }
+}
+
 /// Information about the singe validator stake account
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ValidatorStakeInfo {
+    /// Status of the validator stake account
+    pub status: StakeStatus,
+
     /// Validator vote account address
     pub vote_account_address: Pubkey,
 
@@ -314,7 +336,7 @@ impl ValidatorList {
     /// Calculate the number of validator entries that fit in the provided length
     pub fn calculate_max_validators(buffer_length: usize) -> usize {
         let header_size = 1 + 4 + 4;
-        buffer_length.saturating_sub(header_size) / 48
+        buffer_length.saturating_sub(header_size) / 49
     }
 
     /// Check if contains validator with particular pubkey
@@ -402,16 +424,19 @@ mod test {
             max_validators,
             validators: vec![
                 ValidatorStakeInfo {
+                    status: StakeStatus::Active,
                     vote_account_address: Pubkey::new_from_array([1; 32]),
                     stake_lamports: 123456789,
                     last_update_epoch: 987654321,
                 },
                 ValidatorStakeInfo {
+                    status: StakeStatus::DeactivatingTransient,
                     vote_account_address: Pubkey::new_from_array([2; 32]),
                     stake_lamports: 998877665544,
                     last_update_epoch: 11223445566,
                 },
                 ValidatorStakeInfo {
+                    status: StakeStatus::ReadyForRemoval,
                     vote_account_address: Pubkey::new_from_array([3; 32]),
                     stake_lamports: 0,
                     last_update_epoch: 999999999999999,

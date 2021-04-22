@@ -7,7 +7,7 @@ use {
         find_deposit_authority_program_address,
         instruction::StakePoolInstruction,
         minimum_reserve_lamports, minimum_stake_lamports, stake_program,
-        state::{AccountType, Fee, StakePool, ValidatorList, ValidatorStakeInfo},
+        state::{AccountType, Fee, StakeStatus, StakePool, ValidatorList, ValidatorStakeInfo},
         AUTHORITY_DEPOSIT, AUTHORITY_WITHDRAW, MINIMUM_ACTIVE_STAKE, TRANSIENT_STAKE_SEED,
     },
     borsh::{BorshDeserialize, BorshSerialize},
@@ -15,7 +15,7 @@ use {
     solana_program::{
         account_info::next_account_info,
         account_info::AccountInfo,
-        clock::Clock,
+        clock::{Clock, Epoch},
         decode_error::DecodeError,
         entrypoint::ProgramResult,
         msg,
@@ -747,6 +747,7 @@ impl Processor {
         )?;
 
         validator_list.validators.push(ValidatorStakeInfo {
+            status: StakeStatus::Active,
             vote_account_address,
             stake_lamports: stake_lamports.saturating_sub(minimum_lamport_amount),
             last_update_epoch: clock.epoch,
@@ -814,20 +815,16 @@ impl Processor {
             transient_stake_account_info.key,
             &vote_account_address,
         )?;
-        // check that the transient stake account doesn't exist
-        if get_stake_state(transient_stake_account_info).is_ok() {
+
+        let maybe_validator_list_entry = validator_list.find_mut(&vote_account_address);
+        if maybe_validator_list_entry.is_none() {
             msg!(
-                "Transient stake {} exists, can't remove stake {} on validator {}",
-                transient_stake_account_info.key,
-                stake_account_info.key,
+                "Vote account {} not found in stake pool",
                 vote_account_address
             );
-            return Err(StakePoolError::WrongStakeState.into());
-        }
-
-        if !validator_list.contains(&vote_account_address) {
             return Err(StakePoolError::ValidatorNotFound.into());
         }
+        let mut validator_list_entry = maybe_validator_list_entry.unwrap();
 
         let stake_lamports = **stake_account_info.lamports.borrow();
         let required_lamports = minimum_stake_lamports(&meta);
@@ -840,6 +837,24 @@ impl Processor {
             return Err(StakePoolError::StakeLamportsNotEqualToMinimum.into());
         }
 
+        // check that the transient stake account doesn't exist
+        let new_status = if let Ok((_meta, stake)) = get_stake_state(transient_stake_account_info) {
+            if stake.delegation.deactivation_epoch == Epoch::MAX {
+                msg!(
+                    "Transient stake {} activating, can't remove stake {} on validator {}",
+                    transient_stake_account_info.key,
+                    stake_account_info.key,
+                    vote_account_address
+                );
+                return Err(StakePoolError::WrongStakeState.into());
+            } else {
+                // stake is deactivating, mark the entry as such
+                StakeStatus::DeactivatingTransient
+            }
+        } else {
+            StakeStatus::ReadyForRemoval
+        };
+
         Self::stake_authorize_signed(
             stake_pool_info.key,
             stake_account_info.clone(),
@@ -851,9 +866,14 @@ impl Processor {
             stake_program_info.clone(),
         )?;
 
-        validator_list
-            .validators
-            .retain(|item| item.vote_account_address != vote_account_address);
+        match new_status {
+            StakeStatus::DeactivatingTransient => validator_list_entry.status = new_status,
+            StakeStatus::ReadyForRemoval =>
+                validator_list
+                    .validators
+                    .retain(|item| item.vote_account_address != vote_account_address),
+            _ => unreachable!(),
+        }
         validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
 
         Ok(())
@@ -1507,6 +1527,11 @@ impl Processor {
             .find_mut(&vote_account_address)
             .ok_or(StakePoolError::ValidatorNotFound)?;
 
+        if validator_list_item.status != StakeStatus::Active {
+            msg!("Validator is marked for removal and no longer accepting deposits");
+            return Err(StakePoolError::ValidatorNotFound)?;
+        }
+
         let stake_lamports = **stake_info.lamports.borrow();
         let new_pool_tokens = stake_pool
             .calc_pool_tokens_for_deposit(stake_lamports)
@@ -1638,6 +1663,24 @@ impl Processor {
             try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
         if !validator_list.is_valid() {
             return Err(StakePoolError::InvalidState.into());
+        }
+
+        let (meta, stake) = get_stake_state(stake_split_from)?;
+        let vote_account_address = stake.delegation.voter_pubkey;
+        check_validator_stake_address(
+            program_id,
+            stake_pool_info.key,
+            stake_split_from.key,
+            &vote_account_address,
+        )?;
+
+        let validator_list_item = validator_list
+            .find_mut(&vote_account_address)
+            .ok_or(StakePoolError::ValidatorNotFound)?;
+
+        if validator_list_item.status != StakeStatus::Active {
+            msg!("Validator is marked for removal and no longer allowing withdrawals");
+            return Err(StakePoolError::ValidatorNotFound)?;
         }
 
         let withdraw_lamports = stake_pool
