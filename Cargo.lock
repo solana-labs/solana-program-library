@@ -3765,6 +3765,7 @@ dependencies = [
  "num-traits",
  "proptest",
  "serde",
+ "serde_derive",
  "serde_yaml",
  "solana-program",
  "spl-token 3.1.0",

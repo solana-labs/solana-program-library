@@ -1,5 +1,6 @@
 //! Program state processor
 
+use crate::utils::assert_program_upgrade_authority;
 use crate::{
     error::GovernanceError, state::governance::Governance, utils::create_account_raw,
     PROGRAM_AUTHORITY_SEED,
@@ -7,11 +8,9 @@ use crate::{
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
-    //   program::invoke, bpf_loader_upgradeable,
+    // program::invoke, bpf_loader_upgradeable,
     pubkey::Pubkey,
 };
-
-//use solana_account_decoder::parse_token::spl_token_v2_0_pubkey;
 
 /// Create empty Governance
 pub fn process_create_empty_governance(
@@ -21,8 +20,8 @@ pub fn process_create_empty_governance(
     let account_info_iter = &mut accounts.iter();
     let governance_account_info = next_account_info(account_info_iter)?; // 0
     let governed_program_account_info = next_account_info(account_info_iter)?; // 1
-    let _governed_program_data_account_info = next_account_info(account_info_iter)?; // 2
-    let _governed_program_upgrade_authority_account_info = next_account_info(account_info_iter)?; // 3
+    let governed_program_data_account_info = next_account_info(account_info_iter)?; // 2
+    let governed_program_upgrade_authority_account_info = next_account_info(account_info_iter)?; // 3
     let governance_mint_account_info = next_account_info(account_info_iter)?; // 4
     let payer_account_info = next_account_info(account_info_iter)?; // 5
     let system_account_info = next_account_info(account_info_iter)?; // 6
@@ -58,6 +57,15 @@ pub fn process_create_empty_governance(
         payer_account_info.key,
         program_id,
         authority_signer_seeds,
+    )?;
+
+    // Assert current program upgrade authority signed the transaction as a temp. workaround until we can set_upgrade_authority via CPI.
+    // Even though it doesn't transfer authority to the governance at the creation time it prevents from creating governance for programs owned by somebody else
+    // After governance is created upgrade authority can be transferred to governance using CLI call.
+    assert_program_upgrade_authority(
+        governed_program_account_info.key,
+        governed_program_data_account_info,
+        governed_program_upgrade_authority_account_info,
     )?;
 
     // TODO: Uncomment once PR to allow set_upgrade_authority via CPI calls is released  https://github.com/solana-labs/solana/pull/16676
