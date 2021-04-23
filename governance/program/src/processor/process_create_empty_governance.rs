@@ -55,6 +55,7 @@ pub fn process_create_empty_governance(
     // Even though it doesn't transfer authority to the governance at the creation time it prevents from creating governance for programs owned by somebody else
     // After governance is created upgrade authority can be transferred to governance using CLI call.
     assert_program_upgrade_authority(
+        &governance_key,
         governed_program_account_info.key,
         governed_program_data_account_info,
         governed_program_upgrade_authority_account_info,
