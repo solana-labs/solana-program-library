@@ -88,8 +88,12 @@ pub enum AuctionError {
     BidderPotDoesNotExist,
 
     /// Existing Bid is already active.
-    #[error("An active pot exists for this bidder already. Cancel first.")]
+    #[error("Existing Bid is already active.")]
     BidAlreadyActive,
+
+    /// Incorrect mint specified, must match auction.
+    #[error("Incorrect mint specified, must match auction.")]
+    IncorrectMint,
 }
 
 impl PrintProgramError for AuctionError {

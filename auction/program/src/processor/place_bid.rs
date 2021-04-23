@@ -84,8 +84,11 @@ fn parse_accounts<'a, 'b: 'a>(
         system: next_account_info(account_iter)?,
         token_program: next_account_info(account_iter)?,
     };
+
     assert_owned_by(accounts.auction, program_id)?;
+    assert_owned_by(accounts.mint, &spl_token::id())?;
     assert_owned_by(accounts.bidder_pot_token, &spl_token::id())?;
+
     Ok(accounts)
 }
 
@@ -94,7 +97,6 @@ pub fn place_bid<'r, 'b: 'r>(
     accounts: &'r [AccountInfo<'b>],
     args: PlaceBidArgs,
 ) -> ProgramResult {
-    msg!("0");
     let accounts = parse_accounts(program_id, accounts)?;
 
     // Derive Metadata key and load it.
@@ -155,7 +157,6 @@ pub fn place_bid<'r, 'b: 'r>(
 
     // The account within the pot must be owned by us.
     let actual_account: Account = assert_initialized(accounts.bidder_pot_token)?;
-    msg!("Account Owner: {} {}", actual_account.owner, accounts.bidder_pot.key);
     if actual_account.owner != *accounts.auction.key {
         return Err(AuctionError::BidderPotTokenAccountOwnerMismatch.into());
     }
@@ -182,24 +183,9 @@ pub fn place_bid<'r, 'b: 'r>(
     // Load the clock, used for various auction timing.
     let clock = Clock::from_account_info(accounts.clock_sysvar)?;
 
-    // Gap time begins at end_time - gap_time.
-    if let Some(gap) = auction.end_auction_gap {
-        // Find the last bid, it must be within the gap time.
-        if let Some(last_bid) = auction.last_bid {
-            if clock.slot - last_bid > gap {
-                return Err(AuctionError::InvalidState.into());
-            }
-        }
-    }
-
-    // Do not allow bids post end-time
-    match (auction.ended_at, auction.end_auction_at) {
-        // If the auction has a set end time, return.
-        (Some(end), _) if clock.slot > end => return Err(AuctionError::InvalidState.into()),
-        // If the auction has an end by time, which has passed, end.
-        (_, Some(end)) if clock.slot > end => return Err(AuctionError::InvalidState.into()),
-        // Any other scenario, auction is live.
-        _ => {},
+    // Verify auction has not ended.
+    if auction.ended(clock.slot) {
+        return Err(AuctionError::InvalidState.into());
     }
 
     let bump_authority_seeds = &[
@@ -233,7 +219,6 @@ pub fn place_bid<'r, 'b: 'r>(
             return Err(AuctionError::BidderPotTokenAccountOwnerMismatch.into());
         }
     }
-    msg!("3");
 
     // Confirm payers SPL token balance is enough to pay the bid.
     let account: Account = Account::unpack_from_slice(&accounts.bidder.data.borrow())?;
@@ -242,7 +227,6 @@ pub fn place_bid<'r, 'b: 'r>(
     }
 
     // Transfer amount of SPL token to bid account.
-    msg!("{} > {}", account.amount, args.amount);
     spl_token_transfer(TokenTransferParams {
         source: accounts.bidder.clone(),
         destination: accounts.bidder_pot_token.clone(),
@@ -251,7 +235,6 @@ pub fn place_bid<'r, 'b: 'r>(
         token_program: accounts.token_program.clone(),
         amount: args.amount,
     })?;
-    msg!("{} > {}", account.amount, args.amount);
 
     // Serialize new Auction State
     auction.last_bid = Some(clock.slot);

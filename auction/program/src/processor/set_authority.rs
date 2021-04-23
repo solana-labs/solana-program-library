@@ -24,7 +24,6 @@ pub fn set_authority(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRe
     let new_authority = next_account_info(account_iter)?;
 
     let mut auction: AuctionData = try_from_slice_unchecked(&auction_act.data.borrow_mut())?;
-
     assert_owned_by(auction_act, program_id)?;
 
     if auction.authority != *current_authority.key {
@@ -36,8 +35,6 @@ pub fn set_authority(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramRe
     }
 
     auction.authority = *new_authority.key;
-
     auction.serialize(&mut *auction_act.data.borrow_mut())?;
-
     Ok(())
 }

@@ -50,7 +50,7 @@ pub fn process_instruction(
         }
         AuctionInstruction::SetAuthority => {
             msg!("+ Processing SetAuthority");
-            //cancel_bid(program_id, accounts)
+            set_authority(program_id, accounts);
             Ok(())
         }
         AuctionInstruction::EndAuction(args) => {
@@ -97,6 +97,35 @@ pub struct AuctionData {
     pub end_auction_at: Option<Slot>,
     /// Gap time is the amount of time in slots after the previous bid at which the auction ends.
     pub end_auction_gap: Option<Slot>,
+}
+
+impl AuctionData {
+    fn ended(&self, now: Slot) -> bool {
+        // Already ended, nothing to check.
+        if self.ended_at.is_some() {
+            return true;
+        }
+
+        // If there is an end time specified, handle conditions.
+        match (self.end_auction_at, self.end_auction_gap) {
+            // Both end and gap present, means a bid can still be placed post-auction if it is
+            // within the gap time.
+            (Some(end), Some(gap)) => {
+                // Check if the bid is within the gap between the last bidder.
+                if let Some(last) = self.last_bid {
+                    now > end && now > last + gap
+                } else {
+                    now > end
+                }
+            }
+
+            // Simply whether now has passed the end.
+            (Some(end), None) => now > end,
+
+            // No other end conditions.
+            _ => false,
+        }
+    }
 }
 
 /// Define valid auction state transitions.
@@ -170,7 +199,6 @@ impl BidState {
             // In a capped auction, track the limited number of winners.
             BidState::EnglishAuction { ref mut bids, max } => match bids.last() {
                 Some(top) => {
-                    msg!("Bid Check: {} < {}", top.1, bid.1);
                     if top.1 < bid.1 {
                         bids.retain(|b| b.0 != bid.0);
                         bids.push(bid);
@@ -183,7 +211,6 @@ impl BidState {
                     }
                 }
                 _ => {
-                    msg!("Pushing bid onto stack");
                     bids.push(bid);
                     Ok(())
                 }
@@ -199,10 +226,7 @@ impl BidState {
     pub fn cancel_bid(&mut self, key: Pubkey) -> Result<(), ProgramError> {
         match self {
             BidState::EnglishAuction { ref mut bids, max } => {
-                msg!("Cancelling {}!", key);
-                msg!("Before: {}", bids.len());
                 bids.retain(|b| b.0 != key);
-                msg!("After: {}", bids.len());
                 Ok(())
             }
 

@@ -71,7 +71,6 @@ pub fn create_auction(
     };
 
     // Create auction account with enough space for a winner tracking.
-    msg!("Allocating Auction");
     create_or_allocate_account_raw(
         *program_id,
         auction_act,

@@ -11,7 +11,9 @@ use solana_sdk::{
     pubkey::Pubkey,
     signature::{Keypair, Signer},
     system_instruction, system_program,
+    hash::Hash,
     transaction::Transaction,
+    transport::TransportError,
 };
 use spl_auction::{
     instruction,
@@ -38,7 +40,7 @@ async fn setup_auction(
     Pubkey,
     Pubkey,
     Pubkey,
-    solana_sdk::hash::Hash,
+    Hash,
 ) {
     // Create a program to attach accounts to.
     let program_id = Pubkey::new_unique();
@@ -172,15 +174,17 @@ async fn setup_auction(
     );
 }
 
+/// Used to drive tests in the functions below.
+#[derive(Debug)]
+enum Action {
+    Bid(usize, u64),
+    Cancel(usize),
+    End
+}
+
 #[cfg(feature = "test-bpf")]
 #[tokio::test]
 async fn test_correct_runs() {
-    enum Action {
-        Bid(usize, u64),
-        Cancel(usize),
-        End
-    }
-
     // Local wrapper around a small test description described by actions.
     struct Test {
         actions: Vec<Action>,
@@ -192,6 +196,7 @@ async fn test_correct_runs() {
     // A list of auction runs that should succeed. At the end of the run the winning bid state
     // should match the expected result.
     let strategies = [
+        // Simple successive bids should work.
         Test {
             actions: vec![
                 Action::Bid(0, 1000),
@@ -208,14 +213,59 @@ async fn test_correct_runs() {
                 (3, 4000),
             ],
         },
+
+        // A single bidder should be able to cancel and rebid lower.
         Test {
             actions: vec![
                 Action::Bid(0, 5000),
                 Action::Cancel(0),
-                Action::Bid(0, 5000),
+                Action::Bid(0, 4000),
                 Action::End,
             ],
-            expect: vec![(0, 5000)],
+            expect: vec![(0, 4000)],
+            max_winners: 3,
+            price_floor: PriceFloor::None,
+        },
+
+        // The top bidder when cancelling should allow room for lower bidders.
+        Test {
+            actions: vec![
+                Action::Bid(0, 5000),
+                Action::Bid(1, 6000),
+                Action::Cancel(1),
+                Action::Bid(2, 5500),
+                Action::Bid(1, 6000),
+                Action::Bid(3, 7000),
+                Action::Cancel(0),
+                Action::End,
+            ],
+            expect: vec![(2, 5500), (1, 6000), (3, 7000)],
+            max_winners: 3,
+            price_floor: PriceFloor::None,
+        },
+
+        // An auction where everyone cancels should still succeed, with no winners.
+        Test {
+            actions: vec![
+                Action::Bid(0, 5000),
+                Action::Bid(1, 6000),
+                Action::Bid(2, 7000),
+                Action::Cancel(0),
+                Action::Cancel(1),
+                Action::Cancel(2),
+                Action::End,
+            ],
+            expect: vec![],
+            max_winners: 3,
+            price_floor: PriceFloor::None,
+        },
+
+        // An auction where no one bids should still succeed.
+        Test {
+            actions: vec![
+                Action::End,
+            ],
+            expect: vec![],
             max_winners: 3,
             price_floor: PriceFloor::None,
         },
@@ -363,5 +413,191 @@ async fn test_correct_runs() {
             }
             _ => {}
         }
+    }
+}
+
+// Function wrapper expected to fail for testing failures.
+async fn handle_failing_action(
+    banks_client: &mut BanksClient,
+    recent_blockhash: &Hash,
+    program_id: &Pubkey,
+    bidders: &Vec<(Keypair, Keypair, Pubkey)>,
+    mint: &Pubkey,
+    payer: &Keypair,
+    resource: &Pubkey,
+    action: &Action,
+) -> Result<(), TransportError> {
+    match *action {
+        Action::Bid(bidder, amount) => {
+            // Get balances pre bidding.
+            let pre_balance = (
+                helpers::get_token_balance(banks_client, &bidders[bidder].0.pubkey())
+                    .await,
+                helpers::get_token_balance(banks_client, &bidders[bidder].1.pubkey())
+                    .await,
+            );
+
+            let transfer_authority = Keypair::new();
+            helpers::approve(
+                banks_client,
+                &recent_blockhash,
+                &payer,
+                &transfer_authority.pubkey(),
+                &bidders[bidder].0,
+                amount,
+            )
+            .await?;
+
+            let value = helpers::place_bid(
+                banks_client,
+                &recent_blockhash,
+                &program_id,
+                &payer,
+                &bidders[bidder].0,
+                &bidders[bidder].1,
+                &transfer_authority,
+                &resource,
+                &mint,
+                amount,
+            )
+            .await?;
+
+            let post_balance = (
+                helpers::get_token_balance(banks_client, &bidders[bidder].0.pubkey())
+                    .await,
+                helpers::get_token_balance(banks_client, &bidders[bidder].1.pubkey())
+                    .await,
+            );
+
+            assert_eq!(post_balance.0, pre_balance.0 - amount);
+            assert_eq!(post_balance.1, pre_balance.1 + amount);
+        }
+
+        Action::Cancel(bidder) => {
+            // Get balances pre bidding.
+            let pre_balance = (
+                helpers::get_token_balance(banks_client, &bidders[bidder].0.pubkey())
+                    .await,
+                helpers::get_token_balance(banks_client, &bidders[bidder].1.pubkey())
+                    .await,
+            );
+
+            helpers::cancel_bid(
+                banks_client,
+                &recent_blockhash,
+                &program_id,
+                &payer,
+                &bidders[bidder].0,
+                &bidders[bidder].1,
+                &resource,
+                &mint,
+            )
+            .await?;
+
+            let bidder_account = banks_client
+                .get_account(bidders[bidder].0.pubkey())
+                .await
+                .expect("get_account")
+                .expect("account not found");
+
+            let post_balance = (
+                helpers::get_token_balance(banks_client, &bidders[bidder].0.pubkey())
+                    .await,
+                helpers::get_token_balance(banks_client, &bidders[bidder].1.pubkey())
+                    .await,
+            );
+
+            // Assert the balance successfully moves.
+            assert_eq!(post_balance.0, pre_balance.0 + pre_balance.1);
+            assert_eq!(post_balance.1, 0);
+        }
+
+        Action::End => {
+        }
+    }
+
+    Ok(())
+}
+
+#[cfg(feature = "test-bpf")]
+#[tokio::test]
+async fn test_incorrect_runs() {
+    // Local wrapper around a small test description described by actions.
+    #[derive(Debug)]
+    struct Test {
+        actions: Vec<Action>,
+        max_winners: usize,
+        price_floor: PriceFloor,
+    }
+
+    // A list of auction runs that should succeed. At the end of the run the winning bid state
+    // should match the expected result.
+    let strategies = [
+        // Bidding less than the top bidder should fail.
+        Test {
+            actions: vec![
+                Action::Bid(0, 5000),
+                Action::Bid(1, 6000),
+                Action::Bid(2, 5500),
+                Action::End,
+            ],
+            max_winners: 3,
+            price_floor: PriceFloor::None,
+        },
+
+        // Bidding less than any bidder should fail.
+        Test {
+            actions: vec![
+                Action::Bid(0, 5000),
+                Action::Bid(1, 6000),
+                Action::Bid(2, 1000),
+                Action::End,
+            ],
+            max_winners: 3,
+            price_floor: PriceFloor::None,
+        },
+    ];
+
+    // Run each strategy with a new auction.
+    for strategy in strategies.iter() {
+        let (
+            program_id,
+            mut banks_client,
+            bidders,
+            payer,
+            resource,
+            mint,
+            mint_authority,
+            recent_blockhash,
+        ) = setup_auction(true, strategy.max_winners).await;
+
+        println!("Trying Strategy: {:?}", strategy);
+        for action in strategy.actions.iter() {
+            let result = handle_failing_action(
+                &mut banks_client,
+                &recent_blockhash,
+                &program_id,
+                &bidders,
+                &mint,
+                &payer,
+                &resource,
+                action,
+            ).await;
+            println!("{:?}", result);
+        }
+
+        // Verify a bid was created, and Metadata for this bidder correctly reflects
+        // the last bid as expected.
+        let auction_seeds = &[PREFIX.as_bytes(), &program_id.as_ref(), resource.as_ref()];
+        let (auction_pubkey, _) = Pubkey::find_program_address(auction_seeds, &program_id);
+        let auction: AuctionData = try_from_slice_unchecked(
+            &banks_client
+                .get_account(auction_pubkey)
+                .await
+                .expect("get_account")
+                .expect("account not found")
+                .data,
+        )
+        .unwrap();
     }
 }

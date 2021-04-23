@@ -39,7 +39,7 @@ pub fn start_auction<'a, 'b: 'a>(
         ],
     )?;
 
-    // Initialise a new auction.
+    // Initialise a new auction. The end time is calculated relative to now.
     let mut auction: AuctionData = try_from_slice_unchecked(&accounts.auction.data.borrow())?;
     let ended_at = if let Some(end_auction_at) = auction.end_auction_at {
         match clock.slot.checked_add(end_auction_at) {

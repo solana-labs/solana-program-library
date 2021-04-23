@@ -71,7 +71,10 @@ fn parse_accounts<'a, 'b: 'a>(
     };
 
     assert_owned_by(accounts.auction, program_id)?;
+    assert_owned_by(accounts.bidder_meta, program_id)?;
+    assert_owned_by(accounts.mint, &spl_token::id())?;
     assert_owned_by(accounts.bidder_pot_token, &spl_token::id())?;
+
     Ok(accounts)
 }
 
@@ -111,7 +114,7 @@ pub fn cancel_bid(
 
     // The mint provided in this bid must match the one the auction was initialized with.
     if auction.token_mint != *accounts.mint.key {
-        return Ok(());
+        return Err(AuctionError::IncorrectMint.into());
     }
 
     // Load the clock, used for various auction timing.
