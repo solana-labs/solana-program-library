@@ -1,19 +1,6 @@
-//! Creates a new auction account. This will verify the start time is valid, and that the resource
-//! being bid on exists. The creator of the auction by default has authority to modify the auction
-//! state, including setting someone else as the auction authority.
-//!
-//! Possible methods to store bid data.
-//!
-//! 1) Store the entire bid history in the auction account itself with a list.
-//! 2) Use a counter for total number of bids, and use PDAs to store individual bids.
-//! 3) Create a ring buffer the size of the winner list, and throw away cancelled bids.
-//!
-//! For now going with 1 for ease of implementation, will come back to this to figure out cost
-//! and/or efficiency of the optoins.
-
 use crate::{
     errors::AuctionError,
-    processor::{AuctionData, AuctionState, Bid, BidState, WinnerLimit, BASE_AUCTION_DATA_SIZE},
+    processor::{AuctionData, AuctionState, Bid, BidState, WinnerLimit, PriceFloor, BASE_AUCTION_DATA_SIZE},
     utils::{assert_owned_by, create_or_allocate_account_raw},
     PREFIX,
 };
@@ -46,6 +33,8 @@ pub struct CreateAuctionArgs {
     pub token_mint: Pubkey,
     /// Authority
     pub authority: Pubkey,
+    /// Price Floor
+    pub price_floor: PriceFloor,
 }
 
 pub fn create_auction(
@@ -104,14 +93,15 @@ pub fn create_auction(
     // Configure Auction.
     AuctionData {
         authority: args.authority,
-        resource: args.resource,
-        token_mint: args.token_mint,
-        state: AuctionState::create(),
         bid_state: bid_state,
-        last_bid: None,
-        ended_at: None,
         end_auction_at: args.end_auction_at,
         end_auction_gap: args.end_auction_gap,
+        ended_at: None,
+        last_bid: None,
+        price_floor: args.price_floor,
+        resource: args.resource,
+        state: AuctionState::create(),
+        token_mint: args.token_mint,
     }
     .serialize(&mut *auction_act.data.borrow_mut())?;
 

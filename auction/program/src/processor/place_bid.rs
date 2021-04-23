@@ -84,7 +84,6 @@ fn parse_accounts<'a, 'b: 'a>(
         system: next_account_info(account_iter)?,
         token_program: next_account_info(account_iter)?,
     };
-
     assert_owned_by(accounts.auction, program_id)?;
     assert_owned_by(accounts.bidder_pot_token, &spl_token::id())?;
     Ok(accounts)

@@ -4,6 +4,7 @@ use solana_program::{
     account_info::AccountInfo,
     clock::{Slot, UnixTimestamp},
     entrypoint::ProgramResult,
+    hash::Hash,
     msg,
     program_error::ProgramError,
     pubkey::Pubkey,
@@ -60,10 +61,17 @@ pub fn process_instruction(
     }
 }
 
-/// Structure containing timing configuration, I.E when the auction ends.
+/// Structure with pricing floor data.
 #[repr(C)]
 #[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq)]
-pub struct AuctionTiming {}
+pub enum PriceFloor {
+    /// No price floor, any bid is valid.
+    None,
+    /// Explicit minimum price, any bid below this is rejected.
+    MinimumPrice(u64),
+    /// Hidden minimum price, revealed at the end of the auction.
+    BlindedPrice(Hash),
+}
 
 pub const BASE_AUCTION_DATA_SIZE: usize = 32 + 32 + 32 + 1 + 9 + 9 + 9 + 9;
 #[repr(C)]
@@ -87,6 +95,8 @@ pub struct AuctionData {
     pub end_auction_at: Option<Slot>,
     /// Gap time is the amount of time in slots after the previous bid at which the auction ends.
     pub end_auction_gap: Option<Slot>,
+    /// Price floor
+    pub price_floor: PriceFloor,
 }
 
 /// Define valid auction state transitions.

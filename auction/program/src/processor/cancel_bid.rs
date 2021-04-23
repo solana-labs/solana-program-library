@@ -197,5 +197,9 @@ pub fn cancel_bid(
         ..metadata
     }.serialize(&mut *accounts.bidder_meta.data.borrow_mut())?;
 
+    // Update Auction
+    auction.bid_state.cancel_bid(*accounts.bidder_pot.key);
+    auction.serialize(&mut *accounts.auction.data.borrow_mut())?;
+
     Ok(())
 }

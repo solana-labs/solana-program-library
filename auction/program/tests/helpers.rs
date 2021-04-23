@@ -1,5 +1,4 @@
 use solana_program::{
-    borsh::get_packed_len,
     hash::Hash,
     program_pack::Pack,
     pubkey::Pubkey,
@@ -15,16 +14,13 @@ use solana_sdk::{
 use spl_auction::{
     instruction,
     processor::{
-        process_instruction,
-        AuctionData,
-        AuctionState,
         CancelBidArgs,
         CreateAuctionArgs,
         PlaceBidArgs,
         StartAuctionArgs,
         WinnerLimit,
+        PriceFloor,
     },
-    PREFIX,
 };
 
 pub async fn get_account(banks_client: &mut BanksClient, pubkey: &Pubkey) -> Account {
@@ -152,18 +148,20 @@ pub async fn create_auction(
     recent_blockhash: &Hash,
     resource: &Pubkey,
     mint_keypair: &Pubkey,
+    price_floor: PriceFloor,
 ) -> Result<(), TransportError> {
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::create_auction_instruction(
             *program_id,
             payer.pubkey(),
             CreateAuctionArgs {
-                winners: WinnerLimit::Capped(100),
-                resource: *resource,
+                authority: payer.pubkey(),
                 end_auction_at: None,
                 end_auction_gap: None,
+                price_floor: price_floor,
+                resource: *resource,
                 token_mint: *mint_keypair,
-                authority: payer.pubkey(),
+                winners: WinnerLimit::Capped(100),
             },
         )],
         Some(&payer.pubkey()),
@@ -177,22 +175,16 @@ pub async fn create_auction(
 pub async fn start_auction(
     banks_client: &mut BanksClient,
     program_id: &Pubkey,
-    payer: &Keypair,
     recent_blockhash: &Hash,
+    payer: &Keypair,
     resource: &Pubkey,
-    mint_keypair: &Pubkey,
 ) -> Result<(), TransportError> {
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::create_auction_instruction(
+        &[instruction::start_auction_instruction(
             *program_id,
             payer.pubkey(),
-            CreateAuctionArgs {
-                winners: WinnerLimit::Capped(100),
+            StartAuctionArgs {
                 resource: *resource,
-                end_auction_at: None,
-                end_auction_gap: None,
-                token_mint: *mint_keypair,
-                authority: Pubkey::new_unique(),
             },
         )],
         Some(&payer.pubkey()),
@@ -266,7 +258,6 @@ pub async fn cancel_bid(
 pub async
 fn approve(
     banks_client: &mut BanksClient,
-    program_id: &Pubkey,
     recent_blockhash: &Hash,
     payer: &Keypair,
     transfer_authority: &Pubkey,

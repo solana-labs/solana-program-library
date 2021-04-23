@@ -29,6 +29,7 @@ use spl_auction::{
         PlaceBidArgs,
         StartAuctionArgs,
         WinnerLimit,
+        PriceFloor,
     },
     PREFIX,
 };
@@ -37,7 +38,7 @@ mod helpers;
 
 /// Initialize an auction with a random resource, and generate bidders with tokens that can be used
 /// for testing.
-async fn setup_auction() -> (
+async fn setup_auction(start: bool) -> (
     Pubkey,
     BanksClient,
     Vec<(Keypair, Keypair)>,
@@ -81,6 +82,7 @@ async fn setup_auction() -> (
         &recent_blockhash,
         &resource,
         &mint_keypair.pubkey(),
+        PriceFloor::None,
     ).await;
 
     // Attach useful Accounts for testing.
@@ -113,14 +115,8 @@ async fn setup_auction() -> (
             ],
             &program_id,
         );
-        println!("-- placing bid");
-        println!("PREFIX {}", PREFIX);
-        println!("{}", program_id);
-        println!("{}", auction_pubkey);
-        println!("{}", bidder.pubkey());
 
         // Generate Auction SPL Pot to Transfer to.
-        println!("{} {}", program_id, bid_pot_pubkey);
         helpers::create_token_account(
             &mut banks_client,
             &payer,
@@ -168,19 +164,17 @@ async fn setup_auction() -> (
     assert_eq!(auction.end_auction_at, None);
 
     // Start Auction.
-    let mut transaction = Transaction::new_with_payer(
-        &[instruction::start_auction_instruction(
-            program_id,
-            payer.pubkey(),
-            StartAuctionArgs {
-                resource: resource,
-            },
-        )],
-        Some(&payer.pubkey()),
-    );
-
-    transaction.sign(&[&payer], recent_blockhash);
-    banks_client.process_transaction(transaction).await.unwrap();
+    if start {
+        helpers::start_auction(
+            &mut banks_client,
+            &program_id,
+            &recent_blockhash,
+            &payer,
+            &resource,
+        )
+        .await
+        .unwrap();
+    }
 
     return (
         program_id,
@@ -196,45 +190,65 @@ async fn setup_auction() -> (
 
 #[cfg(feature = "test-bpf")]
 #[tokio::test]
-async fn test_english_auction() {
-    let (
-        program_id,
-        mut banks_client,
-        bidders,
-        payer,
-        resource,
-        mint,
-        mint_authority,
-        recent_blockhash,
-    ) = setup_auction().await;
-
+async fn test_correct_runs() {
     enum Action {
         Bid(usize, u64),
         Cancel(usize),
     }
 
+    // Local wrapper around a small test description described by actions.
+    struct Test {
+        actions: Vec<Action>,
+        price_floor: PriceFloor,
+    }
+
+    // A list of auction runs that should succeed. At the end of the run the winning bid state
+    // should match the expected result.
     let strategies = [
-        // Test bidding increments with no cancel or low bids.
-        vec![
-            Action::Bid(0, 1000),
-            Action::Bid(1, 2000),
-            Action::Bid(2, 3000),
-            Action::Bid(3, 4000),
-        ],
-        vec![
-            Action::Cancel(0),
-            Action::Bid(0, 5000),
-        ],
+        Test {
+            actions: vec![
+                Action::Bid(0, 1000),
+                Action::Bid(1, 2000),
+                Action::Bid(2, 3000),
+                Action::Bid(3, 4000),
+            ],
+            price_floor: PriceFloor::None,
+        },
+        Test {
+            actions: vec![
+                Action::Bid(0, 5000),
+                Action::Cancel(0),
+                Action::Bid(0, 5000),
+            ],
+            price_floor: PriceFloor::None,
+        },
     ];
 
+    // Run each strategy with a new auction.
     for strategy in strategies.iter() {
-        for action in strategy.iter() {
+        let (
+            program_id,
+            mut banks_client,
+            bidders,
+            payer,
+            resource,
+            mint,
+            mint_authority,
+            recent_blockhash,
+        ) = setup_auction(true).await;
+
+        for action in strategy.actions.iter() {
             match *action {
                 Action::Bid(bidder, amount) => {
+                    // Get balances pre bidding.
+                    let pre_balance = (
+                        helpers::get_token_balance(&mut banks_client, &bidders[bidder].0.pubkey()).await,
+                        helpers::get_token_balance(&mut banks_client, &bidders[bidder].1.pubkey()).await,
+                    );
+
                     let transfer_authority = Keypair::new();
                     helpers::approve(
                         &mut banks_client,
-                        &program_id,
                         &recent_blockhash,
                         &payer,
                         &transfer_authority.pubkey(),
@@ -244,7 +258,6 @@ async fn test_english_auction() {
                     .await
                     .expect("approve");
 
-                    println!("Bid Time");
                     helpers::place_bid(
                         &mut banks_client,
                         &recent_blockhash,
@@ -267,10 +280,23 @@ async fn test_english_auction() {
                         .await
                         .expect("get_account")
                         .expect("account not found");
+
+                    let post_balance = (
+                        helpers::get_token_balance(&mut banks_client, &bidders[bidder].0.pubkey()).await,
+                        helpers::get_token_balance(&mut banks_client, &bidders[bidder].1.pubkey()).await,
+                    );
+
+                    assert_eq!(post_balance.0, pre_balance.0 - amount);
+                    assert_eq!(post_balance.1, pre_balance.1 + amount);
                 }
 
                 Action::Cancel(bidder) => {
-                    println!("Cancel Bid");
+                    // Get balances pre bidding.
+                    let pre_balance = (
+                        helpers::get_token_balance(&mut banks_client, &bidders[bidder].0.pubkey()).await,
+                        helpers::get_token_balance(&mut banks_client, &bidders[bidder].1.pubkey()).await,
+                    );
+
                     helpers::cancel_bid(
                         &mut banks_client,
                         &recent_blockhash,
@@ -289,6 +315,15 @@ async fn test_english_auction() {
                         .await
                         .expect("get_account")
                         .expect("account not found");
+
+                    let post_balance = (
+                        helpers::get_token_balance(&mut banks_client, &bidders[bidder].0.pubkey()).await,
+                        helpers::get_token_balance(&mut banks_client, &bidders[bidder].1.pubkey()).await,
+                    );
+
+                    // Assert the balance successfully moves.
+                    assert_eq!(post_balance.0, pre_balance.0 + pre_balance.1);
+                    assert_eq!(post_balance.1, 0);
                 }
             }
         }

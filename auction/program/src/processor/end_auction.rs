@@ -1,7 +1,7 @@
 use crate::{
     errors::AuctionError,
     processor::{AuctionData, AuctionState, Bid, BidState, WinnerLimit},
-    utils::{assert_owned_by, assert_derivation, create_or_allocate_account_raw},
+    utils::{assert_derivation, assert_owned_by, create_or_allocate_account_raw},
     PREFIX,
 };
 
@@ -13,6 +13,7 @@ use {
         clock::Clock,
         entrypoint::ProgramResult,
         msg,
+        program_error::ProgramError,
         pubkey::Pubkey,
         sysvar::Sysvar,
     },
@@ -26,19 +27,17 @@ pub struct EndAuctionArgs {
     pub resource: Pubkey,
 }
 
-pub fn end_auction(
+pub fn end_auction<'a, 'b: 'a>(
     program_id: &Pubkey,
-    accounts: &[AccountInfo],
+    accounts: &'a [AccountInfo<'b>],
     args: EndAuctionArgs,
 ) -> ProgramResult {
-    let account_iter = &mut accounts.iter();
-    let auction_act = next_account_info(account_iter)?;
-    let clock_sysvar = next_account_info(account_iter)?;
-    let clock = Clock::from_account_info(clock_sysvar)?;
+    let accounts = parse_accounts(program_id, accounts)?;
+    let clock = Clock::from_account_info(accounts.clock_sysvar)?;
 
     assert_derivation(
         program_id,
-        auction_act,
+        accounts.auction,
         &[
             PREFIX.as_bytes(),
             program_id.as_ref(),
@@ -46,11 +45,40 @@ pub fn end_auction(
         ],
     )?;
 
-    let mut auction: AuctionData = try_from_slice_unchecked(&auction_act.data.borrow())?;
-    let clock_sysvar = next_account_info(account_iter)?;
-    let clock = Clock::from_account_info(clock_sysvar)?;
-    auction.ended_at = Some(clock.slot);
-    auction.serialize(&mut *auction_act.data.borrow_mut())?;
+    // End auction.
+    let mut auction: AuctionData = try_from_slice_unchecked(&accounts.auction.data.borrow())?;
+
+    // As long as it hasn't already ended.
+    if auction.ended_at.is_some() {
+        return Err(AuctionError::AuctionTransitionInvalid.into());
+    }
+
+    AuctionData {
+        ended_at: Some(clock.slot),
+        state: auction.state.end()?,
+        ..auction
+    }
+    .serialize(&mut *accounts.auction.data.borrow_mut())?;
 
     Ok(())
+}
+
+struct Accounts<'a, 'b: 'a> {
+    creator: &'a AccountInfo<'b>,
+    auction: &'a AccountInfo<'b>,
+    clock_sysvar: &'a AccountInfo<'b>,
+}
+
+fn parse_accounts<'a, 'b: 'a>(
+    program_id: &Pubkey,
+    accounts: &'a [AccountInfo<'b>],
+) -> Result<Accounts<'a, 'b>, ProgramError> {
+    let account_iter = &mut accounts.iter();
+    let accounts = Accounts {
+        creator: next_account_info(account_iter)?,
+        auction: next_account_info(account_iter)?,
+        clock_sysvar: next_account_info(account_iter)?,
+    };
+    assert_owned_by(accounts.auction, program_id)?;
+    Ok(accounts)
 }
