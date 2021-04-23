@@ -576,8 +576,8 @@ fn command_transfer(
             recipient_token_account
         );
 
-        if !config.sign_only {
-            let needs_funding = if let Some(recipient_token_account_data) = config
+        let needs_funding = if !config.sign_only {
+            if let Some(recipient_token_account_data) = config
                 .rpc_client
                 .get_account_with_commitment(
                     &recipient_token_account,
@@ -596,10 +596,14 @@ fn command_transfer(
                 }
             } else {
                 true
-            };
+            }
+        } else {
+            fund_recipient
+        };
 
-            if needs_funding {
-                if fund_recipient {
+        if needs_funding {
+            if fund_recipient {
+                if !config.sign_only {
                     minimum_balance_for_rent_exemption += config
                         .rpc_client
                         .get_minimum_balance_for_rent_exemption(Account::LEN)?;
@@ -608,18 +612,18 @@ fn command_transfer(
                         recipient_token_account,
                         lamports_to_sol(minimum_balance_for_rent_exemption)
                     );
-                    instructions.push(create_associated_token_account(
-                        &config.fee_payer,
-                        &recipient,
-                        &mint_pubkey,
-                    ));
-                } else {
-                    return Err(
-                        "Error: Recipient's associated token account does not exist. \
-                                        Add `--fund-recipient` to fund their account"
-                            .into(),
-                    );
                 }
+                instructions.push(create_associated_token_account(
+                    &config.fee_payer,
+                    &recipient,
+                    &mint_pubkey,
+                ));
+            } else {
+                return Err(
+                    "Error: Recipient's associated token account does not exist. \
+                                    Add `--fund-recipient` to fund their account"
+                        .into(),
+                );
             }
         }
     }
