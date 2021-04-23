@@ -1640,30 +1640,59 @@ impl Processor {
             return Err(StakePoolError::InvalidState.into());
         }
 
-        let (meta, stake) = get_stake_state(stake_split_from)?;
-        let vote_account_address = stake.delegation.voter_pubkey;
-        check_validator_stake_address(
-            program_id,
-            stake_pool_info.key,
-            stake_split_from.key,
-            &vote_account_address,
-        )?;
-
-        let validator_list_item = validator_list
-            .find_mut(&vote_account_address)
-            .ok_or(StakePoolError::ValidatorNotFound)?;
-
         let withdraw_lamports = stake_pool
             .calc_lamports_withdraw_amount(pool_tokens)
             .ok_or(StakePoolError::CalculationFailure)?;
 
-        let required_lamports = minimum_stake_lamports(&meta);
-        let current_lamports = **stake_split_from.lamports.borrow();
-        let remaining_lamports = current_lamports.saturating_sub(withdraw_lamports);
-        if remaining_lamports < required_lamports {
-            msg!("Attempting to withdraw {} lamports from validator account with {} lamports, {} must remain", withdraw_lamports, current_lamports, required_lamports);
-            return Err(StakePoolError::StakeLamportsNotEqualToMinimum.into());
-        }
+        let validator_list_item = if *stake_split_from.key == stake_pool.reserve_stake {
+            // check that the validator stake accounts have no withdrawable stake
+            if let Some(withdrawable_entry) = validator_list
+                .validators
+                .iter()
+                .find(|&&x| x.stake_lamports != 0)
+            {
+                let (validator_stake_address, _) = crate::find_stake_program_address(
+                    &program_id,
+                    &withdrawable_entry.vote_account_address,
+                    stake_pool_info.key,
+                );
+                msg!("Error withdrawing from reserve: validator stake account {} has {} lamports available, please use that first.", validator_stake_address, withdrawable_entry.stake_lamports);
+                return Err(StakePoolError::StakeLamportsNotEqualToMinimum.into());
+            }
+
+            // check that reserve has enough (should never fail, but who knows?)
+            let stake_state = try_from_slice_unchecked::<stake_program::StakeState>(
+                &stake_split_from.data.borrow(),
+            )?;
+            let meta = stake_state.meta().ok_or(StakePoolError::WrongStakeState)?;
+            stake_split_from
+                .lamports()
+                .checked_sub(minimum_reserve_lamports(&meta))
+                .ok_or(StakePoolError::StakeLamportsNotEqualToMinimum)?;
+            None
+        } else {
+            let (meta, stake) = get_stake_state(stake_split_from)?;
+            let vote_account_address = stake.delegation.voter_pubkey;
+            check_validator_stake_address(
+                program_id,
+                stake_pool_info.key,
+                stake_split_from.key,
+                &vote_account_address,
+            )?;
+
+            let validator_list_item = validator_list
+                .find_mut(&vote_account_address)
+                .ok_or(StakePoolError::ValidatorNotFound)?;
+
+            let required_lamports = minimum_stake_lamports(&meta);
+            let current_lamports = stake_split_from.lamports();
+            let remaining_lamports = current_lamports.saturating_sub(withdraw_lamports);
+            if remaining_lamports < required_lamports {
+                msg!("Attempting to withdraw {} lamports from validator account with {} lamports, {} must remain", withdraw_lamports, current_lamports, required_lamports);
+                return Err(StakePoolError::StakeLamportsNotEqualToMinimum.into());
+            }
+            Some(validator_list_item)
+        };
 
         Self::token_burn(
             stake_pool_info.key,
@@ -1707,11 +1736,13 @@ impl Processor {
             .ok_or(StakePoolError::CalculationFailure)?;
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
 
-        validator_list_item.stake_lamports = validator_list_item
-            .stake_lamports
-            .checked_sub(withdraw_lamports)
-            .ok_or(StakePoolError::CalculationFailure)?;
-        validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
+        if let Some(validator_list_item) = validator_list_item {
+            validator_list_item.stake_lamports = validator_list_item
+                .stake_lamports
+                .checked_sub(withdraw_lamports)
+                .ok_or(StakePoolError::CalculationFailure)?;
+            validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
+        }
 
         Ok(())
     }
