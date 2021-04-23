@@ -32,7 +32,6 @@ const TOKEN_PROGRAM_PUBKEY: &str = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
 
 fn show(app_matches: &ArgMatches, _payer: Keypair, client: RpcClient) {
     let program_key = Pubkey::from_str(METADATA_PROGRAM_PUBKEY).unwrap();
-    let token_key = Pubkey::from_str(TOKEN_PROGRAM_PUBKEY).unwrap();
 
     let master_mint_key = pubkey_of(app_matches, "mint").unwrap();
     let master_metadata_seeds = &[
