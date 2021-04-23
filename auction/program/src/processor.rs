@@ -63,7 +63,7 @@ pub fn process_instruction(
 
 /// Structure with pricing floor data.
 #[repr(C)]
-#[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq)]
+#[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 pub enum PriceFloor {
     /// No price floor, any bid is valid.
     None,
@@ -73,8 +73,8 @@ pub enum PriceFloor {
     BlindedPrice(Hash),
 }
 
-// The two extra 8's are present, one 8 is for the Vec's amount of elements and one is for the max usize in
-// bid state.
+// The two extra 8's are present, one 8 is for the Vec's amount of elements and one is for the max
+// usize in bid state.
 pub const BASE_AUCTION_DATA_SIZE: usize = 32 + 32 + 32 + 8 + 8 + 1 + 9 + 9 + 9 + 9;
 #[repr(C)]
 #[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq, Debug)]
@@ -97,8 +97,6 @@ pub struct AuctionData {
     pub end_auction_at: Option<Slot>,
     /// Gap time is the amount of time in slots after the previous bid at which the auction ends.
     pub end_auction_gap: Option<Slot>,
-    /// Price floor
-    pub price_floor: PriceFloor,
 }
 
 /// Define valid auction state transitions.
@@ -135,7 +133,7 @@ impl AuctionState {
 /// Bids associate a bidding key with an amount bid.
 #[repr(C)]
 #[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq, Debug)]
-pub struct Bid(Pubkey, u64);
+pub struct Bid(pub Pubkey, pub u64);
 
 /// BidState tracks the running state of an auction, each variant represents a different kind of
 /// auction being run.

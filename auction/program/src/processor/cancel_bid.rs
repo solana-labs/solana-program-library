@@ -8,7 +8,8 @@ use crate::{
     errors::AuctionError,
     processor::{AuctionData, BidderMetadata, BidderPot},
     utils::{
-        assert_derivation, assert_initialized, assert_owned_by, create_or_allocate_account_raw, spl_token_transfer, TokenTransferParams
+        assert_derivation, assert_initialized, assert_owned_by, create_or_allocate_account_raw,
+        spl_token_transfer, TokenTransferParams,
     },
     PREFIX,
 };
@@ -98,13 +99,12 @@ pub fn cancel_bid(
         ],
     )?;
 
-    let auction_seeds = 
-        &[
-            PREFIX.as_bytes(),
-            program_id.as_ref(),
-            args.resource.as_ref(),
-            &[auction_bump],
-        ];
+    let auction_seeds = &[
+        PREFIX.as_bytes(),
+        program_id.as_ref(),
+        args.resource.as_ref(),
+        &[auction_bump],
+    ];
 
     // Load the auction and verify this bid is valid.
     let mut auction: AuctionData = try_from_slice_unchecked(&accounts.auction.data.borrow())?;
@@ -116,15 +116,6 @@ pub fn cancel_bid(
 
     // Load the clock, used for various auction timing.
     let clock = Clock::from_account_info(accounts.clock_sysvar)?;
-
-    // If the auction has finished, and this bid was not a winning bid, the user can claim their
-    // funds back with a cancel.
-    // TODO: Fix
-    match (auction.ended_at, auction.end_auction_at) {
-        (Some(end), _) if clock.slot > end => return Err(AuctionError::InvalidState.into()),
-        (_, Some(end)) if clock.slot > end => return Err(AuctionError::InvalidState.into()),
-        _ => {}
-    }
 
     // Derive Metadata key and load it.
     let metadata_bump = assert_derivation(
@@ -153,13 +144,8 @@ pub fn cancel_bid(
         accounts.bidder.key.as_ref(),
     ];
 
-    let pot_bump = assert_derivation(
-        program_id,
-        accounts.bidder_pot,
-        &pot_seeds,
-    )?;
+    let pot_bump = assert_derivation(program_id, accounts.bidder_pot, &pot_seeds)?;
 
-    msg!("Bump: {} {}", accounts.bidder_pot.key, pot_bump);
     let bump_authority_seeds = &[
         PREFIX.as_bytes(),
         program_id.as_ref(),
@@ -171,6 +157,30 @@ pub fn cancel_bid(
     // If the bidder pot account is empty, this bid is invalid.
     if accounts.bidder_pot.data_is_empty() {
         return Err(AuctionError::BidderPotDoesNotExist.into());
+    }
+
+    // Refuse to cancel if the auction ended and this person is a winning account.
+    if let Some(end) = auction.ended_at {
+        if clock.slot > end
+            && auction
+                .bid_state
+                .is_winner(*accounts.bidder_pot.key)
+                .is_some()
+        {
+            return Err(AuctionError::InvalidState.into());
+        }
+    }
+
+    // Refuse to cancel if the auction passed end time and this person is a winning account.
+    if let Some(end) = auction.end_auction_at {
+        if clock.slot > end
+            && auction
+                .bid_state
+                .is_winner(*accounts.bidder_pot.key)
+                .is_some()
+        {
+            return Err(AuctionError::InvalidState.into());
+        }
     }
 
     // Confirm we're looking at the real SPL account for this bidder.
@@ -191,11 +201,13 @@ pub fn cancel_bid(
     })?;
 
     // Update Metadata
-    let metadata: BidderMetadata = try_from_slice_unchecked(&accounts.bidder_meta.data.borrow_mut())?;
+    let metadata: BidderMetadata =
+        try_from_slice_unchecked(&accounts.bidder_meta.data.borrow_mut())?;
     BidderMetadata {
         cancelled: true,
         ..metadata
-    }.serialize(&mut *accounts.bidder_meta.data.borrow_mut())?;
+    }
+    .serialize(&mut *accounts.bidder_meta.data.borrow_mut())?;
 
     // Update Auction
     auction.bid_state.cancel_bid(*accounts.bidder_pot.key);

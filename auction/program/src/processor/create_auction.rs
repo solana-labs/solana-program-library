@@ -33,8 +33,6 @@ pub struct CreateAuctionArgs {
     pub token_mint: Pubkey,
     /// Authority
     pub authority: Pubkey,
-    /// Price Floor
-    pub price_floor: PriceFloor,
 }
 
 pub fn create_auction(
@@ -97,7 +95,6 @@ pub fn create_auction(
         end_auction_gap: args.end_auction_gap,
         ended_at: None,
         last_bid: None,
-        price_floor: args.price_floor,
         resource: args.resource,
         state: AuctionState::create(),
         token_mint: args.token_mint,
