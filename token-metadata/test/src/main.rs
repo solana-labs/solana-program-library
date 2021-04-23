@@ -30,6 +30,60 @@ use {
 const METADATA_PROGRAM_PUBKEY: &str = "metaTA73sFPqA8whreUbBsbn3SLJH2vhrW9fP5dmfdC";
 const TOKEN_PROGRAM_PUBKEY: &str = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 
+fn show(app_matches: &ArgMatches, _payer: Keypair, client: RpcClient) {
+    let program_key = Pubkey::from_str(METADATA_PROGRAM_PUBKEY).unwrap();
+    let token_key = Pubkey::from_str(TOKEN_PROGRAM_PUBKEY).unwrap();
+
+    let master_mint_key = pubkey_of(app_matches, "mint").unwrap();
+    let master_metadata_seeds = &[
+        PREFIX.as_bytes(),
+        &program_key.as_ref(),
+        master_mint_key.as_ref(),
+    ];
+    let (master_metadata_key, _) =
+        Pubkey::find_program_address(master_metadata_seeds, &program_key);
+
+    let master_metadata_account = client.get_account(&master_metadata_key).unwrap();
+    let master_metadata: Metadata =
+        try_from_slice_unchecked(&master_metadata_account.data).unwrap();
+
+    let name_symbol_seeds = &[
+        PREFIX.as_bytes(),
+        &program_key.as_ref(),
+        &master_metadata.data.name.as_bytes(),
+        &master_metadata.data.symbol.as_bytes(),
+    ];
+    let (name_symbol_key, _) = Pubkey::find_program_address(name_symbol_seeds, &program_key);
+    let ns_account = client.get_account(&name_symbol_key);
+    let update_authority: Pubkey;
+    match ns_account {
+        Ok(val) => {
+            let ns: NameSymbolTuple = try_from_slice_unchecked(&val.data).unwrap();
+            update_authority = ns.update_authority;
+        }
+        Err(_) => {
+            update_authority = master_metadata
+                .non_unique_specific_update_authority
+                .unwrap()
+        }
+    }
+
+    let master_edition_seeds = &[
+        PREFIX.as_bytes(),
+        &program_key.as_ref(),
+        &master_metadata.mint.as_ref(),
+        EDITION.as_bytes(),
+    ];
+    let (master_edition_key, _) = Pubkey::find_program_address(master_edition_seeds, &program_key);
+    let master_edition_account = client.get_account(&master_edition_key).unwrap();
+    let master_edition: MasterEdition =
+        try_from_slice_unchecked(&master_edition_account.data).unwrap();
+
+    println!("Metadata: {:#?}", master_metadata);
+    println!("Update authority: {:?}", update_authority);
+    println!("Master edition {:#?}", master_edition);
+}
+
 fn mint_edition_via_token_call(
     app_matches: &ArgMatches,
     payer: Keypair,
@@ -762,7 +816,7 @@ fn main() {
                         .help("new URI for the Metadata"),
                 )
         ).subcommand(
-     SubCommand::with_name("transfer_update_authority")
+            SubCommand::with_name("transfer_update_authority")
                 .about("Transfer Update Authority")
                 .arg(
                     Arg::with_name("mint")
@@ -781,6 +835,19 @@ fn main() {
                         .takes_value(true)
                         .help("New update authority"))
         ).subcommand(
+            SubCommand::with_name("show")
+                .about("Show")
+                .arg(
+                    Arg::with_name("mint")
+                        .long("mint")
+                        .value_name("MINT")
+                        .required(true)
+                        .validator(is_valid_pubkey)
+                        .takes_value(true)
+                        .help("Metadata mint"),
+                )
+        )
+        .subcommand(
             SubCommand::with_name("create_master_edition")
                 .about("Create Master Edition out of Metadata")
                 .arg(
@@ -917,6 +984,9 @@ fn main() {
                 "Created new edition {:?} from parent edition {:?} with edition number {:?}",
                 edition_key, edition.parent, edition.edition
             );
+        }
+        ("show", Some(arg_matches)) => {
+            show(arg_matches, payer, client);
         }
         _ => unreachable!(),
     }

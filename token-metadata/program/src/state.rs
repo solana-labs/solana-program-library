@@ -42,7 +42,7 @@ pub struct Data {
 }
 
 #[repr(C)]
-#[derive(Clone, BorshSerialize, BorshDeserialize)]
+#[derive(Clone, BorshSerialize, BorshDeserialize, Debug)]
 pub struct Metadata {
     pub key: Key,
     /// This key is only present when the Metadata is used for a name/symbol combo that
