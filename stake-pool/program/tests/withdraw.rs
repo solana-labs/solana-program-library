@@ -396,12 +396,7 @@ async fn fail_with_wrong_validator_list() {
 
 #[tokio::test]
 async fn fail_with_unknown_validator() {
-    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let stake_pool_accounts = StakePoolAccounts::new();
-    stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
-        .await
-        .unwrap();
+    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, _, _, _) = setup().await;
 
     let validator_stake_account =
         ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey());
@@ -502,13 +497,11 @@ async fn fail_with_unknown_validator() {
             tokens_to_burn,
         )
         .await
+        .unwrap()
         .unwrap();
 
     match transaction_error {
-        TransportError::TransactionError(TransactionError::InstructionError(
-            _,
-            InstructionError::Custom(error_index),
-        )) => {
+        TransactionError::InstructionError(_, InstructionError::Custom(error_index)) => {
             let program_error = StakePoolError::ValidatorNotFound as u32;
             assert_eq!(error_index, program_error);
         }
@@ -788,5 +781,192 @@ async fn fail_overdraw_validator() {
             0,
             InstructionError::Custom(StakePoolError::StakeLamportsNotEqualToMinimum as u32)
         ),
+    );
+}
+
+#[tokio::test]
+async fn success_with_reserve() {
+    let mut context = program_test().start_with_context().await;
+    let stake_pool_accounts = StakePoolAccounts::new();
+    let initial_reserve_lamports = 1;
+    stake_pool_accounts
+        .initialize_stake_pool(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            initial_reserve_lamports,
+        )
+        .await
+        .unwrap();
+
+    let validator_stake = simple_add_validator_to_pool(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &stake_pool_accounts,
+    )
+    .await;
+
+    let deposit_lamports = TEST_STAKE_AMOUNT;
+    let rent = context.banks_client.get_rent().await.unwrap();
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
+
+    let deposit_info = simple_deposit(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &stake_pool_accounts,
+        &validator_stake,
+        deposit_lamports,
+    )
+    .await;
+
+    // decrease some stake
+    let error = stake_pool_accounts
+        .decrease_validator_stake(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &validator_stake.stake_account,
+            &validator_stake.transient_stake_account,
+            deposit_lamports - 1,
+        )
+        .await;
+    assert!(error.is_none());
+
+    // warp forward to deactivation
+    let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
+    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
+    context
+        .warp_to_slot(first_normal_slot + slots_per_epoch)
+        .unwrap();
+
+    // update to merge deactivated stake into reserve
+    stake_pool_accounts
+        .update_all(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &[validator_stake.vote.pubkey()],
+            false,
+        )
+        .await;
+
+    // Delegate tokens for burning during withdraw
+    delegate_tokens(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &deposit_info.pool_account.pubkey(),
+        &deposit_info.authority,
+        &stake_pool_accounts.withdraw_authority,
+        deposit_info.pool_tokens,
+    )
+    .await;
+
+    // Withdraw directly from reserve, fail because some stake left
+    let withdraw_destination = Keypair::new();
+    let withdraw_destination_authority = Pubkey::new_unique();
+    let initial_stake_lamports = create_blank_stake_account(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &withdraw_destination,
+    )
+    .await;
+    let error = stake_pool_accounts
+        .withdraw_stake(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &withdraw_destination.pubkey(),
+            &deposit_info.pool_account.pubkey(),
+            &stake_pool_accounts.reserve_stake.pubkey(),
+            &withdraw_destination_authority,
+            deposit_info.pool_tokens,
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(StakePoolError::StakeLamportsNotEqualToMinimum as u32)
+        )
+    );
+
+    // decrease rest of stake
+    let error = stake_pool_accounts
+        .decrease_validator_stake(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &validator_stake.stake_account,
+            &validator_stake.transient_stake_account,
+            stake_rent + 1,
+        )
+        .await;
+    assert!(error.is_none());
+
+    // warp forward to deactivation
+    context
+        .warp_to_slot(first_normal_slot + 2 * slots_per_epoch)
+        .unwrap();
+
+    // update to merge deactivated stake into reserve
+    stake_pool_accounts
+        .update_all(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &[validator_stake.vote.pubkey()],
+            false,
+        )
+        .await;
+
+    // now it works
+    let error = stake_pool_accounts
+        .withdraw_stake(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &withdraw_destination.pubkey(),
+            &deposit_info.pool_account.pubkey(),
+            &stake_pool_accounts.reserve_stake.pubkey(),
+            &withdraw_destination_authority,
+            deposit_info.pool_tokens,
+        )
+        .await;
+    assert!(error.is_none());
+
+    // Check tokens burned
+    let user_token_balance = get_token_balance(
+        &mut context.banks_client,
+        &deposit_info.pool_account.pubkey(),
+    )
+    .await;
+    assert_eq!(user_token_balance, 0);
+
+    // Check reserve stake account balance
+    let reserve_stake_account = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+    )
+    .await;
+    let stake_state =
+        deserialize::<stake_program::StakeState>(&reserve_stake_account.data).unwrap();
+    let meta = stake_state.meta().unwrap();
+    assert_eq!(
+        initial_reserve_lamports + meta.rent_exempt_reserve,
+        reserve_stake_account.lamports
+    );
+
+    // Check user recipient stake account balance
+    let user_stake_recipient_account =
+        get_account(&mut context.banks_client, &withdraw_destination.pubkey()).await;
+    assert_eq!(
+        user_stake_recipient_account.lamports,
+        initial_stake_lamports + deposit_info.stake_lamports + stake_rent
     );
 }
