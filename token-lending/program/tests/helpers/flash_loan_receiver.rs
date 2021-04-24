@@ -49,14 +49,12 @@ impl Processor {
         let repay_token_account_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
-        // I don't understand why we need the & here...
         let token_account = TokenAccount::unpack_from_slice(
             &destination_liquidity_account_info.try_borrow_mut_data()?,
         )?;
         let (pda, nonce) = Pubkey::find_program_address(&[b"flashloan"], program_id);
 
         if token_account.owner != pda {
-            msg!(&pda.to_string());
             msg!("Token account is not owned by the program.");
             return Err(ProgramError::IncorrectProgramId);
         }
@@ -70,7 +68,6 @@ impl Processor {
             amount,
         )?;
 
-        msg!("Calling the token program to transfer the token back...");
         invoke_signed(
             &transfer_ix,
             &[
@@ -81,7 +78,6 @@ impl Processor {
             ],
             &[&[&b"flashloan"[..], &[nonce]]],
         )?;
-        msg!("transfer it back!!!");
 
         Ok(())
     }

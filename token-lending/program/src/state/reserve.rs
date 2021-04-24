@@ -610,7 +610,6 @@ impl ReserveFees {
         &self,
         liquidity_amount: u64,
     ) -> Result<(u64, u64), ProgramError> {
-        msg!("wad: {}", self.flash_loan_fee_wad);
         self.calculate_fees(liquidity_amount, self.flash_loan_fee_wad)
     }
 

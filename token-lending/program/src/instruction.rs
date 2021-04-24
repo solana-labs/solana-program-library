@@ -967,7 +967,7 @@ pub fn flash_loan(
     flash_loan_receiver_program_derived_account: Pubkey,
     flash_loan_fees_account_info: Pubkey,
     host_fee_recipient: Pubkey,
-    additional_params: Vec<Pubkey>,
+    flash_loan_receiver_program_params: Vec<Pubkey>,
 ) -> Instruction {
     let mut accounts = vec![
         AccountMeta::new(reserve_liquidity_pubkey, false),
@@ -982,7 +982,7 @@ pub fn flash_loan(
         AccountMeta::new(host_fee_recipient, false),
     ];
     accounts.extend(
-        additional_params
+        flash_loan_receiver_program_params
             .into_iter()
             .map(|additional_param| AccountMeta::new(additional_param, false)),
     );
