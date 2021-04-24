@@ -73,16 +73,16 @@ async fn test_flash_loan_success() {
     let mut transaction = Transaction::new_with_payer(
         &[flash_loan(
             spl_token_lending::id(),
+            flash_loan_amount,
+            usdc_reserve.liquidity_supply,
             program_owned_token_account,
             usdc_reserve.pubkey,
-            usdc_reserve.liquidity_supply,
             lending_market.pubkey,
             lending_market.authority,
             receiver_program_id.clone(),
             receiver_authority_pubkey.clone(),
             usdc_reserve.flash_loan_fees_receiver,
             usdc_reserve.liquidity_host,
-            flash_loan_amount,
             Vec::new(),
         )],
         Some(&payer.pubkey()),

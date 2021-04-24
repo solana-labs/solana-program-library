@@ -292,13 +292,12 @@ pub enum LendingInstruction {
     ///   1. `[writable]` Reserve account.
     ///   2. `[]` Lending market account.
     ///   3. `[]` Derived lending market authority.
-    ///   4. `[]` Temporary memory
-    ///   5. `[]` Flash Loan Receiver Program Account, which should have a function (which we will
+    ///   4. `[]` Flash Loan Receiver Program Account, which should have a function (which we will
     ///   call it `ExecuteOperation(amount: u64)` to mimic Aave flash loan) that has tag of 0.
-    ///   6. `[]` Flash Loan Receiver Program Derived Account
-    ///   7. `[]` Token program id
-    ///   8. `[writable]` Host fee receiver.
-    ///   9. `[writeable]` Flash loan fees receiver, must match init reserve.
+    ///   5. `[]` Flash Loan Receiver Program Derived Account
+    ///   6. `[]` Token program id
+    ///   7. `[writable]` Host fee receiver.
+    ///   8. `[writeable]` Flash loan fees receiver, must match init reserve.
     /// ... a variable number of accounts that is needed for `executeOperation(amount: u64)`.
     ///
     ///   The flash loan receiver program that is to be invoked should contain an instruction with
@@ -958,25 +957,25 @@ pub fn set_lending_market_owner(
 #[allow(clippy::too_many_arguments)]
 pub fn flash_loan(
     program_id: Pubkey,
+    amount: u64,
+    reserve_liquidity_pubkey: Pubkey,
     destination_liquidity_pubkey: Pubkey,
     reserve_pubkey: Pubkey,
-    reserve_liquidity_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
     derived_lending_market_authority: Pubkey,
-    flash_loan_recevier_pubkey: Pubkey,
+    flash_loan_receiver_pubkey: Pubkey,
     flash_loan_receiver_program_derived_account: Pubkey,
     flash_loan_fees_account_info: Pubkey,
     host_fee_recipient: Pubkey,
-    amount: u64,
     additional_params: Vec<Pubkey>,
 ) -> Instruction {
     let mut accounts = vec![
+        AccountMeta::new(reserve_liquidity_pubkey, false),
         AccountMeta::new(destination_liquidity_pubkey, false),
         AccountMeta::new_readonly(reserve_pubkey, false),
-        AccountMeta::new(reserve_liquidity_pubkey, false),
         AccountMeta::new_readonly(lending_market_pubkey, false),
         AccountMeta::new_readonly(derived_lending_market_authority, false),
-        AccountMeta::new_readonly(flash_loan_recevier_pubkey, false),
+        AccountMeta::new_readonly(flash_loan_receiver_pubkey, false),
         AccountMeta::new_readonly(flash_loan_receiver_program_derived_account, false),
         AccountMeta::new_readonly(spl_token::id(), false),
         AccountMeta::new(flash_loan_fees_account_info, false),

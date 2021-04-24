@@ -1539,9 +1539,9 @@ fn process_set_lending_market_owner(
 #[inline(never)] // avoid stack frame limit
 fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
+    let reserve_liquidity_supply_info = next_account_info(account_info_iter)?;
     let destination_liquidity_info = next_account_info(account_info_iter)?;
     let reserve_account_info = next_account_info(account_info_iter)?;
-    let reserve_liquidity_supply_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let derived_lending_market_account_info = next_account_info(account_info_iter)?;
     let flash_loan_receiver_program_info = next_account_info(account_info_iter)?;
@@ -1596,9 +1596,13 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
     })?;
 
     let (origination_fee, host_fee) = reserve.config.fees.calculate_flash_loan_fees(amount)?;
-    let returned_amount_required = amount + origination_fee;
+    let returned_amount_required = amount.checked_add(origination_fee).unwrap();
 
-    let data = generate_instruction_to_invoke_flash_loan_receiver(&returned_amount_required);
+    let returned_amount_required_argument = &returned_amount_required;
+    let mut data = Vec::with_capacity(9);
+    data.push(0u8);
+    data.extend_from_slice(&returned_amount_required_argument.to_le_bytes());
+    let data = data;
     let mut instruction_accounts = vec![
         AccountMeta::new(*destination_liquidity_info.key, false),
         AccountMeta::new_readonly(*flash_loan_receiver_program_derived_info.key, false),
@@ -1614,7 +1618,11 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
     ];
     for acc in account_info_iter {
         calling_accounts.push(acc.clone());
-        instruction_accounts.push(AccountMeta::new(*acc.key, acc.is_signer))
+        instruction_accounts.push(AccountMeta {
+            pubkey: *acc.key,
+            is_signer: acc.is_signer,
+            is_writable: acc.is_writable,
+        });
     }
 
     let ix = Instruction {
@@ -1622,10 +1630,7 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
         accounts: instruction_accounts,
         data,
     };
-    let result = invoke(&ix, &calling_accounts[..]);
-    if result.is_err() {
-        return Err(LendingError::InvokingFlashLoanReceiverFailed.into());
-    }
+    invoke(&ix, &calling_accounts[..])?;
 
     let after_liquidity_supply_token_account =
         Account::unpack_from_slice(&reserve_liquidity_supply_info.try_borrow_data()?)?;
@@ -1668,13 +1673,6 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
     reserve.end_flash_loan(amount)?;
 
     Ok(())
-}
-
-fn generate_instruction_to_invoke_flash_loan_receiver(returned_amount_required: &u64) -> Vec<u8> {
-    let mut data = Vec::with_capacity(9);
-    data.push(0u8);
-    data.extend_from_slice(&returned_amount_required.to_le_bytes());
-    data
 }
 
 fn assert_rent_exempt(rent: &Rent, account_info: &AccountInfo) -> ProgramResult {

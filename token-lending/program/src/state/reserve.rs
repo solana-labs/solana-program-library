@@ -608,10 +608,10 @@ impl ReserveFees {
     /// Calculate the owner and host fees on flash loan
     pub fn calculate_flash_loan_fees(
         &self,
-        collateral_amount: u64,
+        liquidity_amount: u64,
     ) -> Result<(u64, u64), ProgramError> {
         msg!("wad: {}", self.flash_loan_fee_wad);
-        self.calculate_fees(collateral_amount, self.flash_loan_fee_wad)
+        self.calculate_fees(liquidity_amount, self.flash_loan_fee_wad)
     }
 
     fn calculate_fees(&self, token_amount: u64, fee_wad: u64) -> Result<(u64, u64), ProgramError> {
