@@ -22,20 +22,12 @@ pub fn process_create_empty_governance(
     let governed_program_account_info = next_account_info(account_info_iter)?; // 1
     let governed_program_data_account_info = next_account_info(account_info_iter)?; // 2
     let governed_program_upgrade_authority_account_info = next_account_info(account_info_iter)?; // 3
-    let governance_mint_account_info = next_account_info(account_info_iter)?; // 4
-    let payer_account_info = next_account_info(account_info_iter)?; // 5
-    let system_account_info = next_account_info(account_info_iter)?; // 6
-    let _bpf_upgrade_loader_account_info = next_account_info(account_info_iter)?; // 7
-
-    let council_mint_seed = next_account_info(account_info_iter) // 8
-        .map(|acc| acc.key.as_ref())
-        .unwrap_or(&[]);
+    let payer_account_info = next_account_info(account_info_iter)?; // 4
+    let system_account_info = next_account_info(account_info_iter)?; // 5
+    let _bpf_upgrade_loader_account_info = next_account_info(account_info_iter)?; // 6
 
     let mut seeds = vec![
         PROGRAM_AUTHORITY_SEED,
-        program_id.as_ref(),
-        governance_mint_account_info.key.as_ref(),
-        council_mint_seed,
         governed_program_account_info.key.as_ref(),
     ];
     let (governance_key, bump_seed) = Pubkey::find_program_address(&seeds[..], program_id);
@@ -63,6 +55,7 @@ pub fn process_create_empty_governance(
     // Even though it doesn't transfer authority to the governance at the creation time it prevents from creating governance for programs owned by somebody else
     // After governance is created upgrade authority can be transferred to governance using CLI call.
     assert_program_upgrade_authority(
+        &governance_key,
         governed_program_account_info.key,
         governed_program_data_account_info,
         governed_program_upgrade_authority_account_info,

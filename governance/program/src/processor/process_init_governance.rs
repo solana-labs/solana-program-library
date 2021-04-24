@@ -31,15 +31,12 @@ pub fn process_init_governance(
     let governed_program_account_info = next_account_info(account_info_iter)?;
     let governance_mint_account_info = next_account_info(account_info_iter)?;
 
-    let (council_mint, council_mint_seed) = next_account_info(account_info_iter)
+    let (council_mint, _) = next_account_info(account_info_iter)
         .map(|acc| (Some(*acc.key), acc.key.as_ref()))
         .unwrap_or((None, &[]));
 
     let seeds = &[
         PROGRAM_AUTHORITY_SEED,
-        program_id.as_ref(),
-        governance_mint_account_info.key.as_ref(),
-        council_mint_seed,
         governed_program_account_info.key.as_ref(),
     ];
     let (governance_key, _) = Pubkey::find_program_address(seeds, program_id);

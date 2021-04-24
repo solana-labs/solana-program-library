@@ -58,19 +58,7 @@ pub fn process_execute(
     assert_account_equiv(proposal_state_account_info, &proposal.state)?;
     assert_account_equiv(governance_account_info, &proposal.governance)?;
 
-    let council_mint_seed = governance
-        .council_mint
-        .as_ref()
-        .map(|key| key.as_ref())
-        .unwrap_or(&[]);
-
-    let mut seeds = vec![
-        PROGRAM_AUTHORITY_SEED,
-        program_id.as_ref(),
-        governance.governance_mint.as_ref(),
-        council_mint_seed,
-        governance.program.as_ref(),
-    ];
+    let mut seeds = vec![PROGRAM_AUTHORITY_SEED, governance.program.as_ref()];
 
     let (governance_authority, bump_seed) = Pubkey::find_program_address(&seeds[..], program_id);
     let mut account_infos: Vec<AccountInfo> = vec![];

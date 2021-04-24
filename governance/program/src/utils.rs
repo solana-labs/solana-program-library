@@ -322,6 +322,7 @@ pub fn assert_initialized<T: Pack + IsInitialized>(
 
 /// Checks if the given program upgrade authority matches the given authority and the authority is a signer of the transaction
 pub fn assert_program_upgrade_authority(
+    governance_key: &Pubkey,
     program_key: &Pubkey,
     program_data_account_info: &AccountInfo,
     program_upgrade_authority_account_info: &AccountInfo,
@@ -349,11 +350,13 @@ pub fn assert_program_upgrade_authority(
 
     match upgrade_authority {
         Some(upgrade_authority) => {
-            if upgrade_authority != *program_upgrade_authority_account_info.key {
-                return Err(GovernanceError::InvalidUpgradeAuthority.into());
-            }
-            if !program_upgrade_authority_account_info.is_signer {
-                return Err(GovernanceError::UpgradeAuthorityMustSign.into());
+            if upgrade_authority != *governance_key {
+                if upgrade_authority != *program_upgrade_authority_account_info.key {
+                    return Err(GovernanceError::InvalidUpgradeAuthority.into());
+                }
+                if !program_upgrade_authority_account_info.is_signer {
+                    return Err(GovernanceError::UpgradeAuthorityMustSign.into());
+                }
             }
             Ok(())
         }
