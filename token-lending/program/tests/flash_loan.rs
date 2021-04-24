@@ -80,10 +80,9 @@ async fn test_flash_loan_success() {
             lending_market.pubkey,
             lending_market.authority,
             receiver_program_id.clone(),
-            receiver_authority_pubkey.clone(),
             usdc_reserve.flash_loan_fees_receiver,
             usdc_reserve.liquidity_host,
-            Vec::new(),
+            vec![receiver_authority_pubkey.clone()],
         )],
         Some(&payer.pubkey()),
     );

@@ -45,9 +45,9 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
 
         let destination_liquidity_account_info = next_account_info(account_info_iter)?;
-        let pda_account_info = next_account_info(account_info_iter)?;
         let repay_token_account_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
+        let pda_account_info = next_account_info(account_info_iter)?;
 
         let token_account = TokenAccount::unpack_from_slice(
             &destination_liquidity_account_info.try_borrow_mut_data()?,
@@ -89,10 +89,9 @@ pub enum FlashLoanReceiverInstruction {
     /// Accounts expected:
     ///
     /// 0. `[writable]` The destination liquidity token account.
-    /// 1. `[]` program derived account.
-    /// 2. `[writable]` The repay token account.
-    /// 3. `[]` The token program
-    /// 4. `[writable]` the account that the FlashLoanReceiver needs to write to.
+    /// 1. `[writable]` The repay token account.
+    /// 2. `[]` The token program
+    /// 3. `[]` program derived account.
     ExecuteOperation {
         /// The amount that is loaned
         amount: u64,

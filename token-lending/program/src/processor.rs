@@ -1545,7 +1545,6 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
     let lending_market_info = next_account_info(account_info_iter)?;
     let derived_lending_market_account_info = next_account_info(account_info_iter)?;
     let flash_loan_receiver_program_info = next_account_info(account_info_iter)?;
-    let flash_loan_receiver_program_derived_info = next_account_info(account_info_iter)?;
     let token_program_id = next_account_info(account_info_iter)?;
     let flash_loan_fees_receiver_account_info = next_account_info(account_info_iter)?;
     let host_fee_recipient = next_account_info(account_info_iter)?;
@@ -1606,14 +1605,12 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
     let data = data;
     let mut instruction_accounts = vec![
         AccountMeta::new(*destination_liquidity_info.key, false),
-        AccountMeta::new_readonly(*flash_loan_receiver_program_derived_info.key, false),
         AccountMeta::new(*reserve_liquidity_supply_info.key, false),
         AccountMeta::new_readonly(*token_program_id.key, false),
     ];
     let mut calling_accounts = vec![
         destination_liquidity_info.clone(),
         flash_loan_receiver_program_info.clone(),
-        flash_loan_receiver_program_derived_info.clone(),
         reserve_liquidity_supply_info.clone(),
         token_program_id.clone(),
     ];
