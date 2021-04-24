@@ -3,6 +3,7 @@
 mod helpers;
 
 use {
+    bincode::deserialize,
     borsh::{BorshDeserialize, BorshSerialize},
     helpers::*,
     solana_program::{
@@ -19,7 +20,8 @@ use {
         transport::TransportError,
     },
     spl_stake_pool::{
-        borsh::try_from_slice_unchecked, error, id, instruction, stake_program, state,
+        borsh::try_from_slice_unchecked, error, id, instruction, minimum_stake_lamports,
+        stake_program, state,
     },
     spl_token::error as token_error,
 };
@@ -34,7 +36,7 @@ async fn setup() -> (
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
         .await
         .unwrap();
 
@@ -78,6 +80,7 @@ async fn test_stake_pool_deposit() {
         &user_stake,
         &authorized,
         &lockup,
+        TEST_STAKE_AMOUNT,
     )
     .await;
 
@@ -85,6 +88,7 @@ async fn test_stake_pool_deposit() {
         &mut banks_client,
         &payer,
         &recent_blockhash,
+        &validator_stake_account.validator,
         &validator_stake_account.vote,
     )
     .await;
@@ -95,28 +99,6 @@ async fn test_stake_pool_deposit() {
         &user_stake.pubkey(),
         &stake_authority,
         &validator_stake_account.vote.pubkey(),
-    )
-    .await;
-
-    // Change authority to the stake pool's deposit
-    authorize_stake_account(
-        &mut banks_client,
-        &payer,
-        &recent_blockhash,
-        &user_stake.pubkey(),
-        &stake_authority,
-        &stake_pool_accounts.deposit_authority,
-        stake_program::StakeAuthorize::Withdrawer,
-    )
-    .await;
-    authorize_stake_account(
-        &mut banks_client,
-        &payer,
-        &recent_blockhash,
-        &user_stake.pubkey(),
-        &stake_authority,
-        &stake_pool_accounts.deposit_authority,
-        stake_program::StakeAuthorize::Staker,
     )
     .await;
 
@@ -159,6 +141,7 @@ async fn test_stake_pool_deposit() {
             &user_stake.pubkey(),
             &user_pool_account.pubkey(),
             &validator_stake_account.stake_account,
+            &stake_authority,
         )
         .await
         .unwrap();
@@ -208,8 +191,11 @@ async fn test_stake_pool_deposit() {
     // Check validator stake account actual SOL balance
     let validator_stake_account =
         get_account(&mut banks_client, &validator_stake_account.stake_account).await;
+    let stake_state =
+        deserialize::<stake_program::StakeState>(&validator_stake_account.data).unwrap();
+    let meta = stake_state.meta().unwrap();
     assert_eq!(
-        validator_stake_account.lamports,
+        validator_stake_account.lamports - minimum_stake_lamports(&meta),
         validator_stake_item.stake_lamports
     );
 }
@@ -286,8 +272,8 @@ async fn test_stake_pool_deposit_with_wrong_token_program_id() {
     let user_stake = Keypair::new();
     let lockup = stake_program::Lockup::default();
     let authorized = stake_program::Authorized {
-        staker: stake_pool_accounts.deposit_authority,
-        withdrawer: stake_pool_accounts.deposit_authority,
+        staker: user.pubkey(),
+        withdrawer: user.pubkey(),
     };
     create_independent_stake_account(
         &mut banks_client,
@@ -296,6 +282,7 @@ async fn test_stake_pool_deposit_with_wrong_token_program_id() {
         &user_stake,
         &authorized,
         &lockup,
+        TEST_STAKE_AMOUNT,
     )
     .await;
 
@@ -315,22 +302,21 @@ async fn test_stake_pool_deposit_with_wrong_token_program_id() {
     let wrong_token_program = Keypair::new();
 
     let mut transaction = Transaction::new_with_payer(
-        &[instruction::deposit(
+        &instruction::deposit(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.validator_list.pubkey(),
-            &stake_pool_accounts.deposit_authority,
             &stake_pool_accounts.withdraw_authority,
             &user_stake.pubkey(),
+            &user.pubkey(),
             &validator_stake_account.stake_account,
             &user_pool_account.pubkey(),
             &stake_pool_accounts.pool_mint.pubkey(),
             &wrong_token_program.pubkey(),
-        )
-        .unwrap()],
+        ),
         Some(&payer.pubkey()),
     );
-    transaction.sign(&[&payer], recent_blockhash);
+    transaction.sign(&[&payer, &user], recent_blockhash);
     let transaction_error = banks_client
         .process_transaction(transaction)
         .await
@@ -360,8 +346,8 @@ async fn test_stake_pool_deposit_with_wrong_validator_list_account() {
     let user_stake = Keypair::new();
     let lockup = stake_program::Lockup::default();
     let authorized = stake_program::Authorized {
-        staker: stake_pool_accounts.deposit_authority,
-        withdrawer: stake_pool_accounts.deposit_authority,
+        staker: user.pubkey(),
+        withdrawer: user.pubkey(),
     };
     create_independent_stake_account(
         &mut banks_client,
@@ -370,6 +356,7 @@ async fn test_stake_pool_deposit_with_wrong_validator_list_account() {
         &user_stake,
         &authorized,
         &lockup,
+        TEST_STAKE_AMOUNT,
     )
     .await;
 
@@ -397,6 +384,7 @@ async fn test_stake_pool_deposit_with_wrong_validator_list_account() {
             &user_stake.pubkey(),
             &user_pool_account.pubkey(),
             &validator_stake_account.stake_account,
+            &user,
         )
         .await
         .err()
@@ -419,14 +407,12 @@ async fn test_stake_pool_deposit_to_unknown_validator() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
         .await
         .unwrap();
 
-    let validator_stake_account = ValidatorStakeAccount::new_with_target_authority(
-        &stake_pool_accounts.deposit_authority,
-        &stake_pool_accounts.stake_pool.pubkey(),
-    );
+    let validator_stake_account =
+        ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey());
     validator_stake_account
         .create_and_delegate(
             &mut banks_client,
@@ -453,8 +439,8 @@ async fn test_stake_pool_deposit_to_unknown_validator() {
     let user_stake = Keypair::new();
     let lockup = stake_program::Lockup::default();
     let authorized = stake_program::Authorized {
-        staker: stake_pool_accounts.deposit_authority,
-        withdrawer: stake_pool_accounts.deposit_authority,
+        staker: user.pubkey(),
+        withdrawer: user.pubkey(),
     };
     create_independent_stake_account(
         &mut banks_client,
@@ -463,6 +449,7 @@ async fn test_stake_pool_deposit_to_unknown_validator() {
         &user_stake,
         &authorized,
         &lockup,
+        TEST_STAKE_AMOUNT,
     )
     .await;
 
@@ -474,6 +461,7 @@ async fn test_stake_pool_deposit_to_unknown_validator() {
             &user_stake.pubkey(),
             &user_pool_account.pubkey(),
             &validator_stake_account.stake_account,
+            &user,
         )
         .await
         .err()
@@ -494,74 +482,6 @@ async fn test_stake_pool_deposit_to_unknown_validator() {
 }
 
 #[tokio::test]
-async fn test_stake_pool_deposit_with_wrong_deposit_authority() {
-    let (
-        mut banks_client,
-        payer,
-        recent_blockhash,
-        mut stake_pool_accounts,
-        validator_stake_account,
-    ) = setup().await;
-
-    let user = Keypair::new();
-    // make stake account
-    let user_stake = Keypair::new();
-    let lockup = stake_program::Lockup::default();
-    let authorized = stake_program::Authorized {
-        staker: stake_pool_accounts.deposit_authority,
-        withdrawer: stake_pool_accounts.deposit_authority,
-    };
-    create_independent_stake_account(
-        &mut banks_client,
-        &payer,
-        &recent_blockhash,
-        &user_stake,
-        &authorized,
-        &lockup,
-    )
-    .await;
-
-    // make pool token account
-    let user_pool_account = Keypair::new();
-    create_token_account(
-        &mut banks_client,
-        &payer,
-        &recent_blockhash,
-        &user_pool_account,
-        &stake_pool_accounts.pool_mint.pubkey(),
-        &user.pubkey(),
-    )
-    .await
-    .unwrap();
-
-    stake_pool_accounts.deposit_authority = Keypair::new().pubkey();
-
-    let transaction_error = stake_pool_accounts
-        .deposit_stake(
-            &mut banks_client,
-            &payer,
-            &recent_blockhash,
-            &user_stake.pubkey(),
-            &user_pool_account.pubkey(),
-            &validator_stake_account.stake_account,
-        )
-        .await
-        .err()
-        .unwrap();
-
-    match transaction_error {
-        TransportError::TransactionError(TransactionError::InstructionError(
-            _,
-            InstructionError::Custom(error_index),
-        )) => {
-            let program_error = error::StakePoolError::InvalidProgramAddress as u32;
-            assert_eq!(error_index, program_error);
-        }
-        _ => panic!("Wrong error occurs while try to make a deposit with wrong deposit authority"),
-    }
-}
-
-#[tokio::test]
 async fn test_stake_pool_deposit_with_wrong_withdraw_authority() {
     let (
         mut banks_client,
@@ -576,8 +496,8 @@ async fn test_stake_pool_deposit_with_wrong_withdraw_authority() {
     let user_stake = Keypair::new();
     let lockup = stake_program::Lockup::default();
     let authorized = stake_program::Authorized {
-        staker: stake_pool_accounts.deposit_authority,
-        withdrawer: stake_pool_accounts.deposit_authority,
+        staker: user.pubkey(),
+        withdrawer: user.pubkey(),
     };
     create_independent_stake_account(
         &mut banks_client,
@@ -586,6 +506,7 @@ async fn test_stake_pool_deposit_with_wrong_withdraw_authority() {
         &user_stake,
         &authorized,
         &lockup,
+        TEST_STAKE_AMOUNT,
     )
     .await;
 
@@ -612,6 +533,7 @@ async fn test_stake_pool_deposit_with_wrong_withdraw_authority() {
             &user_stake.pubkey(),
             &user_pool_account.pubkey(),
             &validator_stake_account.stake_account,
+            &user,
         )
         .await
         .err()
@@ -630,74 +552,17 @@ async fn test_stake_pool_deposit_with_wrong_withdraw_authority() {
 }
 
 #[tokio::test]
-async fn test_stake_pool_deposit_with_wrong_set_deposit_authority() {
-    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake_account) =
-        setup().await;
-
-    let user = Keypair::new();
-    // make stake account
-    let user_stake = Keypair::new();
-    let lockup = stake_program::Lockup::default();
-    let authorized = stake_program::Authorized {
-        staker: Keypair::new().pubkey(),
-        withdrawer: stake_pool_accounts.deposit_authority,
-    };
-    create_independent_stake_account(
-        &mut banks_client,
-        &payer,
-        &recent_blockhash,
-        &user_stake,
-        &authorized,
-        &lockup,
-    )
-    .await;
-    // make pool token account
-    let user_pool_account = Keypair::new();
-    create_token_account(
-        &mut banks_client,
-        &payer,
-        &recent_blockhash,
-        &user_pool_account,
-        &stake_pool_accounts.pool_mint.pubkey(),
-        &user.pubkey(),
-    )
-    .await
-    .unwrap();
-
-    let transaction_error = stake_pool_accounts
-        .deposit_stake(
-            &mut banks_client,
-            &payer,
-            &recent_blockhash,
-            &user_stake.pubkey(),
-            &user_pool_account.pubkey(),
-            &validator_stake_account.stake_account,
-        )
-        .await
-        .err()
-        .unwrap();
-
-    match transaction_error {
-        TransportError::TransactionError(TransactionError::InstructionError(_, error)) => {
-            assert_eq!(error, InstructionError::MissingRequiredSignature);
-        }
-        _ => {
-            panic!("Wrong error occurs while try to make deposit with wrong set deposit authority")
-        }
-    }
-}
-
-#[tokio::test]
 async fn test_stake_pool_deposit_with_wrong_mint_for_receiver_acc() {
     let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake_account) =
         setup().await;
 
     // make stake account
+    let user = Keypair::new();
     let user_stake = Keypair::new();
     let lockup = stake_program::Lockup::default();
     let authorized = stake_program::Authorized {
-        staker: stake_pool_accounts.deposit_authority,
-        withdrawer: stake_pool_accounts.deposit_authority,
+        staker: user.pubkey(),
+        withdrawer: user.pubkey(),
     };
     create_independent_stake_account(
         &mut banks_client,
@@ -706,6 +571,7 @@ async fn test_stake_pool_deposit_with_wrong_mint_for_receiver_acc() {
         &user_stake,
         &authorized,
         &lockup,
+        TEST_STAKE_AMOUNT,
     )
     .await;
 
@@ -743,6 +609,7 @@ async fn test_stake_pool_deposit_with_wrong_mint_for_receiver_acc() {
             &user_stake.pubkey(),
             &outside_pool_fee_acc.pubkey(),
             &validator_stake_account.stake_account,
+            &user,
         )
         .await
         .err()
@@ -765,3 +632,180 @@ async fn test_deposit_with_uninitialized_validator_list() {} // TODO
 
 #[tokio::test]
 async fn test_deposit_with_out_of_dated_pool_balances() {} // TODO
+
+#[tokio::test]
+async fn success_with_deposit_authority() {
+    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
+    let deposit_authority = Keypair::new();
+    let stake_pool_accounts = StakePoolAccounts::new_with_deposit_authority(deposit_authority);
+    stake_pool_accounts
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
+        .await
+        .unwrap();
+
+    let validator_stake_account = simple_add_validator_to_pool(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts,
+    )
+    .await;
+
+    let user = Keypair::new();
+    let user_stake = Keypair::new();
+    let lockup = stake_program::Lockup::default();
+    let authorized = stake_program::Authorized {
+        staker: user.pubkey(),
+        withdrawer: user.pubkey(),
+    };
+    let _stake_lamports = create_independent_stake_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &user_stake,
+        &authorized,
+        &lockup,
+        TEST_STAKE_AMOUNT,
+    )
+    .await;
+
+    create_vote(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &validator_stake_account.validator,
+        &validator_stake_account.vote,
+    )
+    .await;
+    delegate_stake_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &user_stake.pubkey(),
+        &user,
+        &validator_stake_account.vote.pubkey(),
+    )
+    .await;
+
+    // make pool token account
+    let user_pool_account = Keypair::new();
+    create_token_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &user_pool_account,
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &user.pubkey(),
+    )
+    .await
+    .unwrap();
+
+    stake_pool_accounts
+        .deposit_stake(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            &user_stake.pubkey(),
+            &user_pool_account.pubkey(),
+            &validator_stake_account.stake_account,
+            &user,
+        )
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn fail_without_deposit_authority_signature() {
+    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
+    let deposit_authority = Keypair::new();
+    let mut stake_pool_accounts = StakePoolAccounts::new_with_deposit_authority(deposit_authority);
+    stake_pool_accounts
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
+        .await
+        .unwrap();
+
+    let validator_stake_account = simple_add_validator_to_pool(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts,
+    )
+    .await;
+
+    let user = Keypair::new();
+    let user_stake = Keypair::new();
+    let lockup = stake_program::Lockup::default();
+    let authorized = stake_program::Authorized {
+        staker: user.pubkey(),
+        withdrawer: user.pubkey(),
+    };
+    let _stake_lamports = create_independent_stake_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &user_stake,
+        &authorized,
+        &lockup,
+        TEST_STAKE_AMOUNT,
+    )
+    .await;
+
+    create_vote(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &validator_stake_account.validator,
+        &validator_stake_account.vote,
+    )
+    .await;
+    delegate_stake_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &user_stake.pubkey(),
+        &user,
+        &validator_stake_account.vote.pubkey(),
+    )
+    .await;
+
+    // make pool token account
+    let user_pool_account = Keypair::new();
+    create_token_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &user_pool_account,
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &user.pubkey(),
+    )
+    .await
+    .unwrap();
+
+    let wrong_depositor = Keypair::new();
+    stake_pool_accounts.deposit_authority = wrong_depositor.pubkey();
+    stake_pool_accounts.deposit_authority_keypair = Some(wrong_depositor);
+
+    let error = stake_pool_accounts
+        .deposit_stake(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            &user_stake.pubkey(),
+            &user_pool_account.pubkey(),
+            &validator_stake_account.stake_account,
+            &user,
+        )
+        .await
+        .unwrap_err()
+        .unwrap();
+
+    match error {
+        TransactionError::InstructionError(_, InstructionError::Custom(error_index)) => {
+            assert_eq!(
+                error_index,
+                error::StakePoolError::InvalidProgramAddress as u32
+            );
+        }
+        _ => panic!("Wrong error occurs while try to make a deposit with wrong stake program ID"),
+    }
+}

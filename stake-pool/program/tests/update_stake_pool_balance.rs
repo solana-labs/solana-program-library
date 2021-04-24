@@ -26,6 +26,7 @@ async fn setup() -> (
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
+            1,
         )
         .await
         .unwrap();
@@ -34,15 +35,25 @@ async fn setup() -> (
     let mut stake_accounts: Vec<ValidatorStakeAccount> = vec![];
     const STAKE_ACCOUNTS: u64 = 3;
     for _ in 0..STAKE_ACCOUNTS {
-        stake_accounts.push(
-            simple_add_validator_to_pool(
-                &mut context.banks_client,
-                &context.payer,
-                &context.last_blockhash,
-                &stake_pool_accounts,
-            )
-            .await,
-        );
+        let validator_stake_account = simple_add_validator_to_pool(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &stake_pool_accounts,
+        )
+        .await;
+
+        let _deposit_info = simple_deposit(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &stake_pool_accounts,
+            &validator_stake_account,
+            TEST_STAKE_AMOUNT,
+        )
+        .await;
+
+        stake_accounts.push(validator_stake_account);
     }
 
     (context, stake_pool_accounts, stake_accounts)
@@ -51,6 +62,26 @@ async fn setup() -> (
 #[tokio::test]
 async fn success() {
     let (mut context, stake_pool_accounts, stake_accounts) = setup().await;
+
+    let pre_balance = get_validator_list_sum(
+        &mut context.banks_client,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+        &stake_pool_accounts.validator_list.pubkey(),
+    )
+    .await;
+    let stake_pool = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
+    let stake_pool = StakePool::try_from_slice(&stake_pool.data.as_slice()).unwrap();
+    assert_eq!(pre_balance, stake_pool.total_stake_lamports);
+
+    let pre_token_supply = get_token_supply(
+        &mut context.banks_client,
+        &stake_pool_accounts.pool_mint.pubkey(),
+    )
+    .await;
 
     let error = stake_pool_accounts
         .update_stake_pool_balance(
@@ -74,44 +105,39 @@ async fn success() {
         .await;
     }
 
-    let before_balance = get_validator_list_sum(
-        &mut context.banks_client,
-        &stake_pool_accounts.validator_list.pubkey(),
-    )
-    .await;
-
     // Update epoch
     context.warp_to_slot(50_000).unwrap();
 
     // Update list and pool
     let error = stake_pool_accounts
-        .update_validator_list_balance(
+        .update_all(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
             stake_accounts
                 .iter()
-                .map(|v| v.stake_account)
+                .map(|v| v.vote.pubkey())
                 .collect::<Vec<Pubkey>>()
                 .as_slice(),
-        )
-        .await;
-    assert!(error.is_none());
-    let error = stake_pool_accounts
-        .update_stake_pool_balance(
-            &mut context.banks_client,
-            &context.payer,
-            &context.last_blockhash,
+            false,
         )
         .await;
     assert!(error.is_none());
 
     // Check fee
-    let after_balance = get_validator_list_sum(
+    let post_balance = get_validator_list_sum(
         &mut context.banks_client,
+        &stake_pool_accounts.reserve_stake.pubkey(),
         &stake_pool_accounts.validator_list.pubkey(),
     )
     .await;
+    let stake_pool = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
+    let stake_pool = StakePool::try_from_slice(&stake_pool.data.as_slice()).unwrap();
+    assert_eq!(post_balance, stake_pool.total_stake_lamports);
 
     let actual_fee = get_token_balance(
         &mut context.banks_client,
@@ -130,9 +156,9 @@ async fn success() {
     )
     .await;
     let stake_pool = StakePool::try_from_slice(&stake_pool_info.data).unwrap();
-    let expected_fee = stake_pool
-        .calc_fee_amount(after_balance - before_balance)
-        .unwrap();
+    let expected_fee = (post_balance - pre_balance) * pre_token_supply / pre_balance
+        * stake_pool.fee.numerator
+        / stake_pool.fee.denominator;
     assert_eq!(actual_fee, expected_fee);
     assert_eq!(pool_token_supply, stake_pool.pool_token_supply);
 }
@@ -142,7 +168,7 @@ async fn fail_with_wrong_validator_list() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let mut stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
         .await
         .unwrap();
 
@@ -171,7 +197,7 @@ async fn fail_with_wrong_pool_fee_account() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let mut stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
         .await
         .unwrap();
 

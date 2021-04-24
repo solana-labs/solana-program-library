@@ -26,16 +26,24 @@ async fn success_create_validator_stake_account() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
         .await
         .unwrap();
 
     let validator = Keypair::new();
-    create_vote(&mut banks_client, &payer, &recent_blockhash, &validator).await;
+    let vote = Keypair::new();
+    create_vote(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &validator,
+        &vote,
+    )
+    .await;
 
     let (stake_account, _) = find_stake_program_address(
         &id(),
-        &validator.pubkey(),
+        &vote.pubkey(),
         &stake_pool_accounts.stake_pool.pubkey(),
     );
 
@@ -46,7 +54,7 @@ async fn success_create_validator_stake_account() {
             &stake_pool_accounts.staker.pubkey(),
             &payer.pubkey(),
             &stake_account,
-            &validator.pubkey(),
+            &vote.pubkey(),
         )
         .unwrap()],
         Some(&payer.pubkey()),
@@ -67,7 +75,7 @@ async fn success_create_validator_stake_account() {
                 &meta.authorized.withdrawer,
                 &stake_pool_accounts.staker.pubkey()
             );
-            assert_eq!(stake.delegation.voter_pubkey, validator.pubkey());
+            assert_eq!(stake.delegation.voter_pubkey, vote.pubkey());
         }
         _ => panic!(),
     }
@@ -78,7 +86,7 @@ async fn fail_create_validator_stake_account_on_non_vote_account() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
         .await
         .unwrap();
 
@@ -118,7 +126,7 @@ async fn fail_create_validator_stake_account_with_wrong_system_program() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
         .await
         .unwrap();
 
@@ -168,7 +176,7 @@ async fn fail_create_validator_stake_account_with_wrong_stake_program() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
         .await
         .unwrap();
 
@@ -218,7 +226,7 @@ async fn fail_create_validator_stake_account_with_incorrect_address() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash)
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
         .await
         .unwrap();
 

@@ -14,7 +14,7 @@ inflation rate, total number of SOL staked on the network, and an individual
 validator’s uptime and commission (fee).
 
 Stake pools are an alternative method of earning staking rewards. This on-chain
-program pools together SOL to be staked by a manager, allowing SOL holders to
+program pools together SOL to be staked by a staker, allowing SOL holders to
 stake and earn rewards without managing stakes.
 
 Additional information regarding staking and stake programming is available at:
@@ -24,16 +24,18 @@ Additional information regarding staking and stake programming is available at:
 
 ## Motivation
 
-This document is intended for stake pool managers who want to create or manage
-stake pools, and users who want to provide staked SOL into an existing stake
-pool.
+This document is intended for the main actors of the stake pool system:
+
+* manager: creates and manages the stake pool, earns fees, can update the fee, staker, and manager
+* staker: adds and removes validators to the pool, rebalances stake among valiators
+* user: provides staked SOL into an existing stake pool
 
 In its current iteration, the stake pool only processes totally active stakes.
 Deposits must come from fully active stakes, and withdrawals return a fully
 active stake account.
 
-This means that stake pool managers and users must be comfortable with creating
-and delegating stakes, which are more advanced operations than sending and
+This means that stake pool managers, stakers, and users must be comfortable with
+creating and delegating stakes, which are more advanced operations than sending and
 receiving SPL tokens and SOL. Additional information on stake operations are
 available at:
 
@@ -46,10 +48,10 @@ like [Token Swap](token-swap.md).
 
 ## Operation
 
-A stake pool manager creates a stake pool and includes validators that will
+A stake pool manager creates a stake pool, and the staker includes validators that will
 receive delegations from the pool by creating "validator stake accounts" and
 activating a delegation on them. Once a validator stake account's delegation is
-active, the stake pool manager adds it to the stake pool.
+active, the staker adds it to the stake pool.
 
 At this point, users can participate with deposits. They must delegate a stake
 account to the one of the validators in the stake pool. Once it's active, the
@@ -61,12 +63,12 @@ Over time, as the stake pool accrues staking rewards, the user's fractional
 ownership will be worth more than their initial deposit. Whenever the user chooses,
 they can withdraw their SPL staking derivatives in exchange for an activated stake.
 
-The stake pool manager can add and remove validators, or rebalance the pool by
+The stake pool staker can add and remove validators, or rebalance the pool by
 withdrawing stakes from the pool, deactivating them, reactivating them on another
 validator, then depositing back into the pool.
 
 These manager operations require SPL staking derivatives and staked SOL, so the
-stake pool manager will need liquidity on hand to properly manage the pool.
+stake pool staker will need liquidity on hand to properly manage the pool.
 
 ## Background
 
@@ -130,12 +132,12 @@ Hardware Wallet URL (See [URL spec](https://docs.solana.com/wallet-guide/hardwar
 solana config set --keypair usb://ledger/
 ```
 
-### Stake Pool Administrator Examples
+### Stake Pool Manager Examples
 
 #### Create a stake pool
 
-The pool administrator manages the stake accounts in a stake pool, and in exchange
-receives a fee in the form of SPL token staking derivatives. The administrator
+The stake pool manager controls the stake pool from a high level, and in exchange
+receives a fee in the form of SPL token staking derivatives. The manager
 sets the fee on creation. Let's create a pool with a 3% fee:
 
 ```sh
@@ -156,6 +158,46 @@ The pool creator's fee account identifier is
 `3xvXPfQi2SaTkqPV9A7BQwh4GyTe2ZPasfoaCBCnTAJ5`. Every epoch, as stake accounts
 in the stake pool earn rewards, the program will mint SPL token staking derivatives
 equal to 3% of the gains on that epoch into this account.
+
+#### Set manager
+
+The stake pool manager may pass their administrator privileges to another account.
+
+```sh
+$ spl-stake-pool set-manager 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC --new-manager 4SnSuUtJGKvk2GYpBwmEsWG53zTurVM8yXGsoiZQyMJn
+Signature: 39N5gkaqXuWm6JPEUWfenKXeG4nSa71p7iHb9zurvdZcsWmbjdmSXwLVYfhAVHWucTY77sJ8SkUNpVpVAhe4eZ53
+```
+
+#### Set fee
+
+The stake pool manager may update the fee assessed every epoch.
+
+```sh
+$ spl-stake-pool set-fee 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC 10 100
+Signature: 5yPXfVj5cbKBfZiEVi2UR5bXzVDuc2c3ruBwSjkAqpvxPHigwGHiS1mXQVE4qwok5moMWT5RNYAMvkE9bnfQ1i93
+```
+
+#### Set staker
+
+In order to manage the stake accounts, the stake pool manager or
+staker can set the staker authority of the stake pool's managed accounts.
+
+```sh
+$ spl-stake-pool set-staker 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC 4SnSuUtJGKvk2GYpBwmEsWG53zTurVM8yXGsoiZQyMJn
+Signature: 39N5gkaqXuWm6JPEUWfenKXeG4nSa71p7iHb9zurvdZcsWmbjdmSXwLVYfhAVHWucTY77sJ8SkUNpVpVAhe4eZ53
+```
+
+Now, the new staker can perform any normal stake pool operations, including
+adding and removing validators and rebalancing stake.
+
+Important security note: the stake pool program only gives staking authority to
+the pool staker and always retains withdraw authority. Therefore, a malicious
+stake pool staker cannot steal funds from the stake pool.
+
+Note: to avoid "disturbing the manager", the staker can also reassign their stake
+authority.
+
+### Stake Pool Staker Examples
 
 #### Create a validator stake account
 
@@ -260,7 +302,7 @@ Withdraw Authority: 4SnSuUtJGKvk2GYpBwmEsWG53zTurVM8yXGsoiZQyMJn
 
 #### Remove validator stake account
 
-If the stake pool manager wants to stop delegating to a vote account, they can
+If the stake pool staker wants to stop delegating to a vote account, they can
 totally remove the validator stake account from the stake pool by providing
 staking derivatives, just like `withdraw`.
 
@@ -301,9 +343,9 @@ Total: ◎15.849959206
 #### Rebalance the stake pool
 
 As time goes on, deposits and withdrawals will happen to all of the stake accounts
-managed by the pool, and the stake pool manager may want to rebalance the stakes.
+managed by the pool, and the stake pool staker may want to rebalance the stakes.
 
-For example, let's say the manager wants the same delegation to every validator
+For example, let's say the staker wants the same delegation to every validator
 in the pool. When they look at the state of the pool, they see:
 
 ```sh
@@ -315,7 +357,7 @@ Total: ◎15.849959206
 ```
 
 This isn't great! The last stake account, `E5KBATUd21Dnjnh5sGFw5ngp9kdVXCcAAYMRe2WsVXie`
-has too much allocated. For their strategy, the manager wants the `15.849959206`
+has too much allocated. For their strategy, the staker wants the `15.849959206`
 SOL to be distributed evenly, meaning around `5.283319735` in each account. They need
 to move `4.281036854` to `FhFft7ArhZZkh6q4ir1JZMYFgXdH6wkT5M5nmDDb1Q13` and
 `1.872447062` to `FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN`.
@@ -370,7 +412,7 @@ with `4.281036854` delegated to `8r1f8mwrUiYdg2Rx9sxTh4M3UAUcCBBrmRA3nxk3Z6Lm`
 and stake account `GCJnuFGCDzaToPwJtG5GiK4g3DJBfuhQy6388NyGcfwf` with `1.872447062`
 delegated to `2HUKQz7W2nXZSwrdX5RkfS2rLU4j1QZLjdGCHcoUKFh3`.
 
-Once the new stakes are ready, the manager deposits them back into the stake pool:
+Once the new stakes are ready, the staker deposits them back into the stake pool:
 ```sh
 $ spl-stake-pool deposit 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC GCJnuFGCDzaToPwJtG5GiK4g3DJBfuhQy6388NyGcfwf --token-receiver 34XMHa3JUPv46ftU4dGHvemZ9oKVjnciRePYMcX3rjEF
 Depositing into stake account FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN
@@ -392,32 +434,6 @@ Total: ◎15.851269888
 
 Due to staking rewards that accrued during the rebalancing process, the pool is
 not prefectly balanced. This is completely normal.
-
-#### Set staking authority
-
-In order to manage the stake accounts more directly, the stake pool owner can
-set the stake authority of the stake pool's managed accounts.
-
-```sh
-$ spl-stake-pool set-staking-auth 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC --stake-account FYQB64aEzSmECvnG8RVvdAXBxRnzrLvcA3R22aGH2hUN --new-staker 4SnSuUtJGKvk2GYpBwmEsWG53zTurVM8yXGsoiZQyMJn
-Signature: 39N5gkaqXuWm6JPEUWfenKXeG4nSa71p7iHb9zurvdZcsWmbjdmSXwLVYfhAVHWucTY77sJ8SkUNpVpVAhe4eZ53
-```
-
-Now, the new staking authority can perform any normal staking operations,
-including deactivating or re-staking.
-
-Important security note: the stake pool program only gives staking authority to
-the pool owner and always retains withdraw authority. Therefore, a malicious
-stake pool manager cannot steal funds from the stake pool.
-
-#### Set owner
-
-The stake pool owner may pass their administrator privileges to another account.
-
-```sh
-$ spl-stake-pool 3CLwo9CntMi4D1enHEFBe3pRJQzGJBCAYe66xFuEbmhC --new-owner 4SnSuUtJGKvk2GYpBwmEsWG53zTurVM8yXGsoiZQyMJn
-Signature: 39N5gkaqXuWm6JPEUWfenKXeG4nSa71p7iHb9zurvdZcsWmbjdmSXwLVYfhAVHWucTY77sJ8SkUNpVpVAhe4eZ53
-```
 
 ### User Examples
 

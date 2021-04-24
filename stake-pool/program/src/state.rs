@@ -1,9 +1,9 @@
 //! State transition types
 
 use {
-    crate::{error::StakePoolError, instruction::Fee},
+    crate::error::StakePoolError,
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
-    solana_program::{account_info::AccountInfo, program_error::ProgramError, pubkey::Pubkey},
+    solana_program::{account_info::AccountInfo, msg, program_error::ProgramError, pubkey::Pubkey},
     spl_math::checked_ceil_div::CheckedCeilDiv,
     std::convert::TryFrom,
 };
@@ -39,9 +39,16 @@ pub struct StakePool {
     /// distribution
     pub staker: Pubkey,
 
-    /// Deposit authority bump seed
-    /// for `create_program_address(&[state::StakePool account, "deposit"])`
-    pub deposit_bump_seed: u8,
+    /// Deposit authority
+    ///
+    /// If a depositor pubkey is specified on initialization, then deposits must be
+    /// signed by this authority. If no deposit authority is specified,
+    /// then the stake pool will default to the result of:
+    /// `Pubkey::find_program_address(
+    ///     &[&stake_pool_address.to_bytes()[..32], b"deposit"],
+    ///     program_id,
+    /// )`
+    pub deposit_authority: Pubkey,
 
     /// Withdrawal authority bump seed
     /// for `create_program_address(&[state::StakePool account, "withdrawal"])`
@@ -63,8 +70,8 @@ pub struct StakePool {
     pub token_program_id: Pubkey,
 
     /// Total stake under management.
-    /// Note that if `last_update_epoch` does not match the current epoch then this field may not
-    /// be accurate
+    /// Note that if `last_update_epoch` does not match the current epoch then
+    /// this field may not be accurate
     pub total_stake_lamports: u64,
 
     /// Total supply of pool tokens (should always match the supply in the Pool Mint)
@@ -79,7 +86,7 @@ pub struct StakePool {
 impl StakePool {
     /// calculate the pool tokens that should be minted for a deposit of `stake_lamports`
     pub fn calc_pool_tokens_for_deposit(&self, stake_lamports: u64) -> Option<u64> {
-        if self.total_stake_lamports == 0 {
+        if self.total_stake_lamports == 0 || self.pool_token_supply == 0 {
             return Some(stake_lamports);
         }
         u64::try_from(
@@ -128,18 +135,23 @@ impl StakePool {
         authority_seed: &[u8],
         bump_seed: u8,
     ) -> Result<(), ProgramError> {
-        if *authority_address
-            == Pubkey::create_program_address(
-                &[
-                    &stake_pool_address.to_bytes()[..32],
-                    authority_seed,
-                    &[bump_seed],
-                ],
-                program_id,
-            )?
-        {
+        let expected_address = Pubkey::create_program_address(
+            &[
+                &stake_pool_address.to_bytes()[..32],
+                authority_seed,
+                &[bump_seed],
+            ],
+            program_id,
+        )?;
+
+        if *authority_address == expected_address {
             Ok(())
         } else {
+            msg!(
+                "Incorrect authority provided, expected {}, received {}",
+                expected_address,
+                authority_address
+            );
             Err(StakePoolError::InvalidProgramAddress.into())
         }
     }
@@ -160,19 +172,15 @@ impl StakePool {
         )
     }
     /// Checks that the deposit authority is valid
-    pub(crate) fn check_authority_deposit(
+    pub(crate) fn check_deposit_authority(
         &self,
         deposit_authority: &Pubkey,
-        program_id: &Pubkey,
-        stake_pool_address: &Pubkey,
     ) -> Result<(), ProgramError> {
-        Self::check_authority(
-            deposit_authority,
-            program_id,
-            stake_pool_address,
-            crate::AUTHORITY_DEPOSIT,
-            self.deposit_bump_seed,
-        )
+        if self.deposit_authority == *deposit_authority {
+            Ok(())
+        } else {
+            Err(StakePoolError::InvalidProgramAddress.into())
+        }
     }
 
     /// Check staker validity and signature
@@ -187,9 +195,15 @@ impl StakePool {
     /// Check manager validity and signature
     pub(crate) fn check_manager(&self, manager_info: &AccountInfo) -> Result<(), ProgramError> {
         if *manager_info.key != self.manager {
+            msg!(
+                "Incorrect manager provided, expected {}, received {}",
+                self.manager,
+                manager_info.key
+            );
             return Err(StakePoolError::WrongManager.into());
         }
         if !manager_info.is_signer {
+            msg!("Manager signature missing");
             return Err(StakePoolError::SignatureMissing.into());
         }
         Ok(())
@@ -198,12 +212,52 @@ impl StakePool {
     /// Check staker validity and signature
     pub(crate) fn check_staker(&self, staker_info: &AccountInfo) -> Result<(), ProgramError> {
         if *staker_info.key != self.staker {
+            msg!(
+                "Incorrect staker provided, expected {}, received {}",
+                self.staker,
+                staker_info.key
+            );
             return Err(StakePoolError::WrongStaker.into());
         }
         if !staker_info.is_signer {
+            msg!("Staker signature missing");
             return Err(StakePoolError::SignatureMissing.into());
         }
         Ok(())
+    }
+
+    /// Check the validator list is valid
+    pub fn check_validator_list(
+        &self,
+        validator_list_info: &AccountInfo,
+    ) -> Result<(), ProgramError> {
+        if *validator_list_info.key != self.validator_list {
+            msg!(
+                "Invalid validator list provided, expected {}, received {}",
+                self.validator_list,
+                validator_list_info.key
+            );
+            Err(StakePoolError::InvalidValidatorStakeList.into())
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Check the validator list is valid
+    pub fn check_reserve_stake(
+        &self,
+        reserve_stake_info: &AccountInfo,
+    ) -> Result<(), ProgramError> {
+        if *reserve_stake_info.key != self.reserve_stake {
+            msg!(
+                "Invalid reserve stake provided, expected {}, received {}",
+                self.reserve_stake,
+                reserve_stake_info.key
+            );
+            Err(StakePoolError::InvalidProgramAddress.into())
+        } else {
+            Ok(())
+        }
     }
 
     /// Check if StakePool is actually initialized as a stake pool
@@ -236,7 +290,7 @@ pub struct ValidatorList {
 #[derive(Clone, Copy, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ValidatorStakeInfo {
     /// Validator vote account address
-    pub vote_account: Pubkey,
+    pub vote_account_address: Pubkey,
 
     /// Amount of stake delegated to this validator
     /// Note that if `last_update_epoch` does not match the current epoch then this field may not
@@ -264,23 +318,23 @@ impl ValidatorList {
     }
 
     /// Check if contains validator with particular pubkey
-    pub fn contains(&self, vote_account: &Pubkey) -> bool {
+    pub fn contains(&self, vote_account_address: &Pubkey) -> bool {
         self.validators
             .iter()
-            .any(|x| x.vote_account == *vote_account)
+            .any(|x| x.vote_account_address == *vote_account_address)
     }
 
     /// Check if contains validator with particular pubkey
-    pub fn find_mut(&mut self, vote_account: &Pubkey) -> Option<&mut ValidatorStakeInfo> {
+    pub fn find_mut(&mut self, vote_account_address: &Pubkey) -> Option<&mut ValidatorStakeInfo> {
         self.validators
             .iter_mut()
-            .find(|x| x.vote_account == *vote_account)
+            .find(|x| x.vote_account_address == *vote_account_address)
     }
     /// Check if contains validator with particular pubkey
-    pub fn find(&self, vote_account: &Pubkey) -> Option<&ValidatorStakeInfo> {
+    pub fn find(&self, vote_account_address: &Pubkey) -> Option<&ValidatorStakeInfo> {
         self.validators
             .iter()
-            .find(|x| x.vote_account == *vote_account)
+            .find(|x| x.vote_account_address == *vote_account_address)
     }
 
     /// Check if validator stake list is actually initialized as a validator stake list
@@ -292,6 +346,17 @@ impl ValidatorList {
     pub fn is_uninitialized(&self) -> bool {
         self.account_type == AccountType::Uninitialized
     }
+}
+
+/// Fee rate as a ratio, minted on `UpdateStakePoolBalance` as a proportion of
+/// the rewards
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, BorshSerialize, BorshDeserialize, BorshSchema)]
+pub struct Fee {
+    /// denominator of the fee ratio
+    pub denominator: u64,
+    /// numerator of the fee ratio
+    pub numerator: u64,
 }
 
 #[cfg(test)]
@@ -337,17 +402,17 @@ mod test {
             max_validators,
             validators: vec![
                 ValidatorStakeInfo {
-                    vote_account: Pubkey::new_from_array([1; 32]),
+                    vote_account_address: Pubkey::new_from_array([1; 32]),
                     stake_lamports: 123456789,
                     last_update_epoch: 987654321,
                 },
                 ValidatorStakeInfo {
-                    vote_account: Pubkey::new_from_array([2; 32]),
+                    vote_account_address: Pubkey::new_from_array([2; 32]),
                     stake_lamports: 998877665544,
                     last_update_epoch: 11223445566,
                 },
                 ValidatorStakeInfo {
-                    vote_account: Pubkey::new_from_array([3; 32]),
+                    vote_account_address: Pubkey::new_from_array([3; 32]),
                     stake_lamports: 0,
                     last_update_epoch: 999999999999999,
                 },
