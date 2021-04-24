@@ -3013,8 +3013,8 @@ dependencies = [
  "bincode",
  "borsh",
  "borsh-derive",
- "futures 0.3.12",
- "mio 0.7.7",
+ "futures 0.3.14",
+ "mio 0.7.11",
  "solana-banks-interface",
  "solana-program",
  "solana-sdk",
@@ -3160,7 +3160,7 @@ dependencies = [
  "solana-version",
  "solana-vote-program",
  "thiserror",
- "tokio 1.3.0",
+ "tokio 1.5.0",
  "tungstenite",
  "url",
 ]
@@ -3224,7 +3224,7 @@ dependencies = [
  "solana-version",
  "spl-memo 3.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "thiserror",
- "tokio 1.3.0",
+ "tokio 1.5.0",
 ]
 
 [[package]]
@@ -3364,7 +3364,7 @@ dependencies = [
  "chrono",
  "chrono-humanize",
  "log",
- "mio 0.7.7",
+ "mio 0.7.11",
  "serde",
  "serde_derive",
  "solana-banks-client",
@@ -3727,7 +3727,7 @@ version = "1.0.0"
 dependencies = [
  "borsh",
  "borsh-derive",
- "futures 0.3.12",
+ "futures 0.3.14",
  "solana-program",
  "solana-program-test",
  "solana-sdk",
