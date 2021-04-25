@@ -380,7 +380,6 @@ impl Processor {
             return Err(PerpetualSwapError::IncorrectTokenProgramId.into());
         }
 
-
         let is_long = *margin_info.key == perpetual_swap.long_margin_pubkey
             && *source_info.key == perpetual_swap.long_account_pubkey;
         let is_short = *margin_info.key == perpetual_swap.short_margin_pubkey
@@ -608,7 +607,7 @@ impl Processor {
 
         // TODO add more checks
         if !perpetual_swap.is_initialized() {
-            return Err(PerpetualSwapError::AccountNotInitialized.into())
+            return Err(PerpetualSwapError::AccountNotInitialized.into());
         }
 
         if perpetual_swap_info.owner != program_id {
@@ -697,7 +696,7 @@ impl Processor {
         if *token_program_info.key != perpetual_swap.token_program_id {
             return Err(PerpetualSwapError::IncorrectTokenProgramId.into());
         }
-        
+
         let long_margin =
             Self::unpack_token_account(long_margin_info, &perpetual_swap.token_program_id)?;
         let long_account =
@@ -739,8 +738,7 @@ impl Processor {
             amount_owed = (perpetual_swap.index_price - perpetual_swap.mark_price) as u64;
             amount_paid = std::cmp::min(amount_owed, long_margin.amount);
             liquidation_fee = ((short_margin.amount - amount_paid) as f64
-                * perpetual_swap.liquidation_threshold)
-                as u64;
+                * perpetual_swap.liquidation_threshold) as u64;
             if short_account.amount > amount_paid + liquidation_fee {
                 returned_amount = short_account.amount - amount_paid - liquidation_fee;
             }
