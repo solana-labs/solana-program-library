@@ -250,9 +250,6 @@ impl Processor {
             token_program_info.clone(),
         )?;
 
-        let now = SystemTime::now().duration_since(UNIX_EPOCH);
-        // This is number of milliseconds since the epoch
-        let reference_time = now.unwrap().as_millis();
         perpetual_swap.is_long_initialized = false;
         perpetual_swap.is_short_initialized = false;
         perpetual_swap.nonce = nonce;
@@ -315,6 +312,14 @@ impl Processor {
         } else {
             perpetual_swap.short_account_pubkey = *source_info.key;
             perpetual_swap.is_short_initialized = true;
+        }
+
+        // Start the funding rate interval only when both parties have been set
+        if perpetual_swap.is_initialized() {
+            let now = SystemTime::now().duration_since(UNIX_EPOCH);
+            // This is number of milliseconds since the epoch
+            let reference_time = now.unwrap().as_millis();
+            perpetual_swap.reference_time = reference_time;
         }
         Ok(())
     }
