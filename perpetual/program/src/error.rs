@@ -12,6 +12,10 @@ pub enum PerpetualSwapError {
     AlreadyInUse,
     #[error("ExpectedMint")]
     ExpectedMint,
+    #[error("NotRentExempt")]
+    NotRentExempt,
+    #[error("InsufficientFunds")]
+    InsufficientFunds,
     #[error("InvalidProgramAddress")]
     InvalidProgramAddress,
     #[error("InvalidAuthorityAccount")]

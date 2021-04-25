@@ -4,12 +4,15 @@ use solana_program::{
     program_error::ProgramError,
     msg,
     pubkey::Pubkey,
-    program_pack::{Pack},
+    program_pack::{Pack, IsInitialized},
     program::{invoke, invoke_signed},
+    rent::Rent,
+    sysvar::Sysvar,
 };
 
 use borsh::{BorshDeserialize, BorshSerialize};
 use std::time::{SystemTime, UNIX_EPOCH};
+use spl_token::state::Account;
 
 use crate::{instruction::PerpetualSwapInstruction, error::PerpetualSwapError, state::PerpetualSwap};
 
@@ -134,6 +137,10 @@ impl Processor {
                     accounts,
                 )
             },
+            PerpetualSwapInstruction::InitializeSide { amount_to_deposit } => {
+                msg!("Instruction: InitializeSide");
+                Self::process_initialize_side(program_id, amount_to_deposit, accounts)
+            },
             PerpetualSwapInstruction::DepositToMargin { amount_to_deposit } => {
                 msg!("Instruction: DepositToMargin");
                 Self::process_deposit_to_margin(program_id, amount_to_deposit, accounts)
@@ -192,6 +199,27 @@ impl Processor {
         let token_program_id = *token_program_info.key;
         // TODO
 
+        let mut perpetual_swap = PerpetualSwap::try_from_slice(&perpetual_swap_info.data.borrow())?;
+        if perpetual_swap.is_initialized() {
+            return Err(PerpetualSwapError::AlreadyInUse.into());
+        }
+
+        // Check if pool account is rent-exempt
+        let rent = &Rent::from_account_info(rent_info)?;
+        if !rent.is_exempt(perpetual_swap_info.lamports(), perpetual_swap_info.data_len()) {
+            return Err(PerpetualSwapError::NotRentExempt.into());
+        }
+
+        let long_margin_account = Account::unpack_unchecked(&margin_long_info.data.borrow())?;
+        if long_margin_account.is_initialized() {
+            return Err(PerpetualSwapError::AlreadyInUse.into());
+        }
+
+        let short_margin_account = Account::unpack_unchecked(&margin_short_info.data.borrow())?;
+        if short_margin_account.is_initialized() {
+            return Err(PerpetualSwapError::AlreadyInUse.into());
+        }
+
         let authority_pubkey = Self::authority_id(program_id, perpetual_swap_info.key, nonce)?;
 
         if *authority_info.key != authority_pubkey {
@@ -225,20 +253,68 @@ impl Processor {
         let now = SystemTime::now().duration_since(UNIX_EPOCH);
         // This is number of milliseconds since the epoch
         let reference_time = now.unwrap().as_millis();
-        let mut perpetual_swap_data = PerpetualSwap::try_from_slice(&perpetual_swap_info.data.borrow())?;
-        perpetual_swap_data.is_initialized = false;
-        perpetual_swap_data.nonce = nonce;
-        perpetual_swap_data.token_program_id = token_program_id;
-        perpetual_swap_data.long_margin_pubkey = *margin_long_info.key ;
-        perpetual_swap_data.short_margin_pubkey = *margin_short_info.key;
-        perpetual_swap_data.reference_time = reference_time;
-        perpetual_swap_data.minimum_margin = minimum_margin; 
-        perpetual_swap_data.liquidation_threshold = liquidation_threshold; 
-        perpetual_swap_data.funding_rate = funding_rate;
-        perpetual_swap_data.serialize(&mut *perpetual_swap_info.data.borrow_mut())?;
-        Ok(())
+        perpetual_swap.is_initialized = false;
+        perpetual_swap.nonce = nonce;
+        perpetual_swap.token_program_id = token_program_id;
+        perpetual_swap.long_margin_pubkey = *margin_long_info.key ;
+        perpetual_swap.short_margin_pubkey = *margin_short_info.key;
+        perpetual_swap.reference_time = reference_time;
+        perpetual_swap.minimum_margin = minimum_margin; 
+        perpetual_swap.liquidation_threshold = liquidation_threshold; 
+        perpetual_swap.funding_rate = funding_rate;
+        perpetual_swap.serialize(&mut *perpetual_swap_info.data.borrow_mut()).map_err(|e| e.into())
     }
 
+
+    pub fn process_initialize_side(
+        program_id: &Pubkey,
+        amount_to_deposit: u64,
+        accounts: &[AccountInfo],
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let perpetual_swap_info = next_account_info(account_info_iter)?;
+        let authority_info = next_account_info(account_info_iter)?;
+        let user_transfer_authority_info = next_account_info(account_info_iter)?;
+        let source_info = next_account_info(account_info_iter)?;
+        let margin_info = next_account_info(account_info_iter)?;
+        let token_program_info = next_account_info(account_info_iter)?;
+
+        let mut perpetual_swap = PerpetualSwap::try_from_slice(&perpetual_swap_info.data.borrow())?;
+        let source_account = Self::unpack_token_account(margin_info, &perpetual_swap.token_program_id)?;
+        // TODO Add all the data checks 
+
+        let is_long = *margin_info.key == perpetual_swap.long_margin_pubkey;
+        let is_short = *margin_info.key == perpetual_swap.short_margin_pubkey;
+        
+        if !is_long && !is_short {
+            return Err(PerpetualSwapError::InvalidAccountKeys.into());
+        }
+
+        if amount_to_deposit < perpetual_swap.minimum_margin {
+            return Err(PerpetualSwapError::WouldBeLiquidated.into());
+        }
+
+        if source_account.amount < amount_to_deposit {
+            return Err(PerpetualSwapError::InsufficientFunds.into());
+        }
+
+        Self::token_transfer(
+            perpetual_swap_info.key,
+            token_program_info.clone(),
+            source_info.clone(),
+            margin_info.clone(),
+            user_transfer_authority_info.clone(),
+            perpetual_swap.nonce,
+            amount_to_deposit,
+        )?;
+
+        if is_long {
+            perpetual_swap.long_account_pubkey = *source_info.key;
+        } else {
+            perpetual_swap.long_account_pubkey = *source_info.key;
+        }
+        Ok(())
+    }
 
     pub fn process_deposit_to_margin(
         program_id: &Pubkey,
@@ -254,7 +330,6 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let perpetual_swap = PerpetualSwap::try_from_slice(&perpetual_swap_info.data.borrow())?;
-
         // TODO Add all the data checks 
 
         let is_long = *margin_info.key == perpetual_swap.long_margin_pubkey && *source_info.key == perpetual_swap.long_account_pubkey;
@@ -276,6 +351,7 @@ impl Processor {
 
         Ok(())
     }
+
 
     pub fn process_withdraw_from_margin(
         program_id: &Pubkey,

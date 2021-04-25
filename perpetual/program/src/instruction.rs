@@ -5,16 +5,16 @@ use crate::error::PerpetualSwapError;
  pub enum PerpetualSwapInstruction {
 
     /// Accounts expected:
-    /// 0. `[writable, signer]` New PerpetrualSwap to create.
+    /// 0. `[w, signer]` New PerpetrualSwap to create.
     /// 1. `[]` swap authority derived from `create_program_address(&[Token-swap account])`
     /// 2. `[]` long margin acount
     /// 3. `[]` long user acount
     /// 4. `[]` short margin acount
     /// 5. `[]` short user acount
-    /// 6. `[writable]` Pool Token Mint. Must be empty, owned by swap authority.
-    /// 7. `[writable]` Pool Token Account to deposit trading and withdraw fees.
+    /// 6. `[w]` Pool Token Mint. Must be empty, owned by swap authority.
+    /// 7. `[w]` Pool Token Account to deposit trading and withdraw fees.
     /// Must be empty, not owned by swap authority
-    /// 8. `[writable]` Pool Token Account to deposit the initial pool token
+    /// 8. `[w]` Pool Token Account to deposit the initial pool token
     /// supply.  Must be empty, not owned by swap authority.
     /// 9. '[]` Token program id 
     InitializePerpetualSwap {
@@ -24,12 +24,24 @@ use crate::error::PerpetualSwapError;
         liquidation_threshold: f64,
     },
 
+
+    /// Accounts expected:
+    /// 0. `[w]` PerpetualSwap
+    /// 1. `[]` swap authority
+    /// 2. `[]` user transfer authority 
+    /// 3. `[w, s]` The account of the person depositing to the margin account 
+    /// 4. `[w]` The margin account
+    /// 5. `[]` The token program
+    InitializeSide {
+        amount_to_deposit: u64
+    },
+
     /// Accounts expected:
     /// 0. `[]` PerpetualSwap
     /// 1. `[]` swap authority
     /// 2. `[]` user transfer authority 
-    /// 3. `[writable]` The account of the person depositing to the margin account 
-    /// 4. `[writable]` The margin account
+    /// 3. `[w, s]` The account of the person depositing to the margin account 
+    /// 4. `[w]` The margin account
     /// 5. `[]` The token program
     DepositToMargin {
         amount_to_deposit: u64
@@ -39,8 +51,8 @@ use crate::error::PerpetualSwapError;
     /// 0. `[]` PerpetualSwap
     /// 1. `[]` swap authority
     /// 2. `[]` user transfer authority 
-    /// 3. `[writable]` The account of the person withrawing from the margin account 
-    /// 4. `[writable]` The margin account
+    /// 3. `[w]` The account of the person withrawing from the margin account 
+    /// 4. `[w, s]` The margin account
     /// 5. `[]` The token program
     WithdrawFromMargin {
         amount_to_withdraw: u64
@@ -50,21 +62,21 @@ use crate::error::PerpetualSwapError;
     /// 0. `[]` PerpetualSwap
     /// 1. `[]` swap authority
     /// 2. `[]` user transfer authority
-    /// 3. `[writable]` The margin account of the long party who is selling
-    /// 4. `[writable]` The user account of the long party who is selling
-    /// 5. `[writable]` The account of the party who is buying 
+    /// 3. `[w]` The margin account of the long party who is selling
+    /// 4. `[w]` The user account of the long party who is selling
+    /// 5. `[w]` The account of the party who is buying 
     /// 6. `[]` The token program
     TransferLong {
         amount: u64,
     },
 
     /// Accounts expected:
-    /// 0. `[writable]` PerpetualSwap
+    /// 0. `[w]` PerpetualSwap
     /// 1. `[]` swap authority
     /// 2. `[]` user transfer authority
-    /// 3. `[writable]` The account of the short party who is buying 
-    /// 4. `[writable]` The account of the party who is selling 
-    /// 5. `[writable]` The new margin account of the party who is selling 
+    /// 3. `[w]` The account of the short party who is buying 
+    /// 4. `[w]` The account of the party who is selling 
+    /// 5. `[w]` The new margin account of the party who is selling 
     /// 7. `[]` The token program
     TransferShort {
         amount: u64,
@@ -75,20 +87,20 @@ use crate::error::PerpetualSwapError;
     /// 0. `[]` PerpetualSwap
     /// 1. `[]` swap authority
     /// 2. `[]` user transfer authority
-    /// 3. `[writable]` The account of the party to be liquidated 
-    /// 4. `[writable]` The account of the counterparty 
-    /// 5. `[writable]` The margin account of the party to be liquidated
-    /// 6. `[writable]` The insurance fund 
+    /// 3. `[w]` The account of the party to be liquidated 
+    /// 4. `[w]` The account of the counterparty 
+    /// 5. `[w]` The margin account of the party to be liquidated
+    /// 6. `[w]` The insurance fund 
     /// 8. `[]` The token program
     TryToLiquidate {
     },
 
     /// Accounts expected:
-    /// 0. `[writable]` PerpetualSwap (writable because reference time needs to be updated)
+    /// 0. `[w]` PerpetualSwap (w because reference time needs to be updated)
     /// 1. `[]` swap authority
     /// 2. `[]` user transfer authority
-    /// 3. `[writable]` The account of the party who is long
-    /// 4. `[writable]` The account of the party who is short 
+    /// 3. `[w]` The account of the party who is long
+    /// 4. `[w]` The account of the party who is short 
     /// 3. `[]` The token program
     TransferFunds {
     },
@@ -132,23 +144,27 @@ impl PerpetualSwapInstruction {
             }
             1 => {
                 let (amount_to_deposit, _rest) = Self::unpack_u64(rest)?;
-                Self::DepositToMargin { amount_to_deposit }
+                Self::InitializeSide { amount_to_deposit }
             }
             2 => {
+                let (amount_to_deposit, _rest) = Self::unpack_u64(rest)?;
+                Self::DepositToMargin { amount_to_deposit }
+            }
+            3 => {
                 let (amount_to_withdraw, _rest) = Self::unpack_u64(rest)?;
                 Self::WithdrawFromMargin { amount_to_withdraw }
             }
-            3 => {
+            4 => {
                 Self::TryToLiquidate { }
             }
-            4 => {
+            5 => {
                 Self::TransferFunds { }
             }
-            5 => {
+            6 => {
                 let (price, _rest) = Self::unpack_f64(rest)?;
                 Self::UpdateIndexPrice { price }
             }
-            6 => {
+            7 => {
                 let (price, _rest) = Self::unpack_f64(rest)?;
                 Self::UpdateMarkPrice { price }
             }
