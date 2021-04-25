@@ -108,6 +108,7 @@ impl Processor {
             signers,
         )
     }
+
     pub fn initialize_account<'a>(
         account: AccountInfo<'a>,
         mint: AccountInfo<'a>,
@@ -678,22 +679,20 @@ impl Processor {
                     returned_amount = long_account.amount - amount_paid - liquidation_fee;
                 }
             }
-        } else {
-            if short_account.amount <= perpetual_swap.minimum_margin {
-                needs_liquidation = true;
-                liquidated_margin_account_info = short_margin_info.clone();
-                liquidated_user_account_info = short_account_info.clone();
-                receiver_margin_account_info = long_margin_info.clone();
-                receiver_user_account_info = long_account_info.clone();
-                receiver_margin_account_total = long_account.amount;
-                amount_owed = (perpetual_swap.index_price - perpetual_swap.mark_price) as u64;
-                amount_paid = std::cmp::min(amount_owed, long_margin.amount);
-                liquidation_fee = ((short_margin.amount - amount_paid) as f64
-                    * perpetual_swap.liquidation_threshold)
-                    as u64;
-                if short_account.amount > amount_paid + liquidation_fee {
-                    returned_amount = short_account.amount - amount_paid - liquidation_fee;
-                }
+        } else if short_account.amount <= perpetual_swap.minimum_margin {
+            needs_liquidation = true;
+            liquidated_margin_account_info = short_margin_info.clone();
+            liquidated_user_account_info = short_account_info.clone();
+            receiver_margin_account_info = long_margin_info.clone();
+            receiver_user_account_info = long_account_info.clone();
+            receiver_margin_account_total = long_account.amount;
+            amount_owed = (perpetual_swap.index_price - perpetual_swap.mark_price) as u64;
+            amount_paid = std::cmp::min(amount_owed, long_margin.amount);
+            liquidation_fee = ((short_margin.amount - amount_paid) as f64
+                * perpetual_swap.liquidation_threshold)
+                as u64;
+            if short_account.amount > amount_paid + liquidation_fee {
+                returned_amount = short_account.amount - amount_paid - liquidation_fee;
             }
         }
 
