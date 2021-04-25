@@ -1,20 +1,22 @@
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
-    program_error::ProgramError,
     msg,
-    pubkey::Pubkey,
-    program_pack::{Pack, IsInitialized},
     program::{invoke, invoke_signed},
+    program_error::ProgramError,
+    program_pack::{IsInitialized, Pack},
+    pubkey::Pubkey,
     rent::Rent,
     sysvar::Sysvar,
 };
 
 use borsh::{BorshDeserialize, BorshSerialize};
-use std::time::{SystemTime, UNIX_EPOCH};
 use spl_token::state::Account;
+use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::{instruction::PerpetualSwapInstruction, error::PerpetualSwapError, state::PerpetualSwap};
+use crate::{
+    error::PerpetualSwapError, instruction::PerpetualSwapInstruction, state::PerpetualSwap,
+};
 
 pub struct Processor;
 impl Processor {
@@ -122,11 +124,20 @@ impl Processor {
         invoke(&ix, &[account, mint, owner, rent, token_program])
     }
 
-    pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
+    pub fn process(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        instruction_data: &[u8],
+    ) -> ProgramResult {
         let instruction = PerpetualSwapInstruction::unpack(instruction_data)?;
 
         match instruction {
-            PerpetualSwapInstruction::InitializePerpetualSwap { nonce, funding_rate, minimum_margin, liquidation_threshold } => {
+            PerpetualSwapInstruction::InitializePerpetualSwap {
+                nonce,
+                funding_rate,
+                minimum_margin,
+                liquidation_threshold,
+            } => {
                 msg!("Instruction: InitializePerpetualSwap");
                 Self::process_initialize_perpetual_swap(
                     program_id,
@@ -136,43 +147,43 @@ impl Processor {
                     liquidation_threshold,
                     accounts,
                 )
-            },
+            }
             PerpetualSwapInstruction::InitializeSide { amount_to_deposit } => {
                 msg!("Instruction: InitializeSide");
                 Self::process_initialize_side(program_id, amount_to_deposit, accounts)
-            },
+            }
             PerpetualSwapInstruction::DepositToMargin { amount_to_deposit } => {
                 msg!("Instruction: DepositToMargin");
                 Self::process_deposit_to_margin(program_id, amount_to_deposit, accounts)
-            },
+            }
             PerpetualSwapInstruction::WithdrawFromMargin { amount_to_withdraw } => {
                 msg!("Instruction: WithdrawFromMargin");
                 Self::process_withdraw_from_margin(program_id, amount_to_withdraw, accounts)
-            },
+            }
             PerpetualSwapInstruction::TransferLong { amount } => {
                 msg!("Instruction: TransferLong");
                 Self::process_transfer_long(program_id, amount, accounts)
-            },
+            }
             PerpetualSwapInstruction::TransferShort { amount } => {
                 msg!("Instruction: TransferShort");
                 Self::process_transfer_short(program_id, amount, accounts)
-            },
-            PerpetualSwapInstruction::TryToLiquidate { }=> {
+            }
+            PerpetualSwapInstruction::TryToLiquidate {} => {
                 msg!("Instruction: TryToLiquidate");
                 Self::process_try_to_liquidate(program_id, accounts)
-            },
-            PerpetualSwapInstruction::TransferFunds { } => {
+            }
+            PerpetualSwapInstruction::TransferFunds {} => {
                 msg!("Instruction: TransferFunds");
                 Self::process_transfer_funds(program_id, accounts)
-            },
+            }
             PerpetualSwapInstruction::UpdateMarkPrice { price } => {
                 msg!("Instruction: UpdateMarkPrice");
                 Self::process_update_mark_price(program_id, price, accounts)
-            },
+            }
             PerpetualSwapInstruction::UpdateIndexPrice { price } => {
                 msg!("Instruction: UpdateIndexPrice");
                 Self::process_update_index_price(program_id, price, accounts)
-            },
+            }
         }
     }
 
@@ -206,7 +217,10 @@ impl Processor {
 
         // Check if pool account is rent-exempt
         let rent = &Rent::from_account_info(rent_info)?;
-        if !rent.is_exempt(perpetual_swap_info.lamports(), perpetual_swap_info.data_len()) {
+        if !rent.is_exempt(
+            perpetual_swap_info.lamports(),
+            perpetual_swap_info.data_len(),
+        ) {
             return Err(PerpetualSwapError::NotRentExempt.into());
         }
 
@@ -254,14 +268,15 @@ impl Processor {
         perpetual_swap.is_short_initialized = false;
         perpetual_swap.nonce = nonce;
         perpetual_swap.token_program_id = token_program_id;
-        perpetual_swap.long_margin_pubkey = *margin_long_info.key ;
+        perpetual_swap.long_margin_pubkey = *margin_long_info.key;
         perpetual_swap.short_margin_pubkey = *margin_short_info.key;
-        perpetual_swap.minimum_margin = minimum_margin; 
-        perpetual_swap.liquidation_threshold = liquidation_threshold; 
+        perpetual_swap.minimum_margin = minimum_margin;
+        perpetual_swap.liquidation_threshold = liquidation_threshold;
         perpetual_swap.funding_rate = funding_rate;
-        perpetual_swap.serialize(&mut *perpetual_swap_info.data.borrow_mut()).map_err(|e| e.into())
+        perpetual_swap
+            .serialize(&mut *perpetual_swap_info.data.borrow_mut())
+            .map_err(|e| e.into())
     }
-
 
     pub fn process_initialize_side(
         program_id: &Pubkey,
@@ -277,12 +292,13 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let mut perpetual_swap = PerpetualSwap::try_from_slice(&perpetual_swap_info.data.borrow())?;
-        let source_account = Self::unpack_token_account(margin_info, &perpetual_swap.token_program_id)?;
-        // TODO Add all the data checks 
+        let source_account =
+            Self::unpack_token_account(margin_info, &perpetual_swap.token_program_id)?;
+        // TODO Add all the data checks
 
         let is_long = *margin_info.key == perpetual_swap.long_margin_pubkey;
         let is_short = *margin_info.key == perpetual_swap.short_margin_pubkey;
-        
+
         if !is_long && !is_short {
             return Err(PerpetualSwapError::InvalidAccountKeys.into());
         }
@@ -337,12 +353,15 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let perpetual_swap = PerpetualSwap::try_from_slice(&perpetual_swap_info.data.borrow())?;
-        let source_account = Self::unpack_token_account(margin_info, &perpetual_swap.token_program_id)?;
-        // TODO Add all the data checks 
+        let source_account =
+            Self::unpack_token_account(margin_info, &perpetual_swap.token_program_id)?;
+        // TODO Add all the data checks
 
-        let is_long = *margin_info.key == perpetual_swap.long_margin_pubkey && *source_info.key == perpetual_swap.long_account_pubkey;
-        let is_short = *margin_info.key == perpetual_swap.short_margin_pubkey && *source_info.key == perpetual_swap.short_account_pubkey;
-        
+        let is_long = *margin_info.key == perpetual_swap.long_margin_pubkey
+            && *source_info.key == perpetual_swap.long_account_pubkey;
+        let is_short = *margin_info.key == perpetual_swap.short_margin_pubkey
+            && *source_info.key == perpetual_swap.short_account_pubkey;
+
         if !is_long && !is_short {
             return Err(PerpetualSwapError::InvalidAccountKeys.into());
         }
@@ -364,7 +383,6 @@ impl Processor {
         Ok(())
     }
 
-
     pub fn process_withdraw_from_margin(
         program_id: &Pubkey,
         amount_to_withdraw: u64,
@@ -379,14 +397,17 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let perpetual_swap = PerpetualSwap::try_from_slice(&perpetual_swap_info.data.borrow())?;
-        let source_account = Self::unpack_token_account(margin_info, &perpetual_swap.token_program_id)?;
+        let source_account =
+            Self::unpack_token_account(margin_info, &perpetual_swap.token_program_id)?;
         let dest_account = Self::unpack_token_account(dest_info, &perpetual_swap.token_program_id)?;
 
-        // TODO add all the data checks 
+        // TODO add all the data checks
 
-        let is_long = *margin_info.key == perpetual_swap.long_margin_pubkey && *dest_info.key == perpetual_swap.long_account_pubkey;
-        let is_short = *margin_info.key == perpetual_swap.short_margin_pubkey && *dest_info.key == perpetual_swap.short_account_pubkey;
-        
+        let is_long = *margin_info.key == perpetual_swap.long_margin_pubkey
+            && *dest_info.key == perpetual_swap.long_account_pubkey;
+        let is_short = *margin_info.key == perpetual_swap.short_margin_pubkey
+            && *dest_info.key == perpetual_swap.short_account_pubkey;
+
         if !is_long && !is_short {
             return Err(PerpetualSwapError::InvalidAccountKeys.into());
         }
@@ -411,7 +432,7 @@ impl Processor {
     pub fn process_transfer_long(
         program_id: &Pubkey,
         margin_amount: u64,
-        accounts: &[AccountInfo], 
+        accounts: &[AccountInfo],
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let perpetual_swap_info = next_account_info(account_info_iter)?;
@@ -424,22 +445,28 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let mut perpetual_swap = PerpetualSwap::try_from_slice(&perpetual_swap_info.data.borrow())?;
-        let long_margin = Self::unpack_token_account(long_margin_info, &perpetual_swap.token_program_id)?;
-        let long_account = Self::unpack_token_account(long_account_info, &perpetual_swap.token_program_id)?;
-        let new_account = Self::unpack_token_account(new_account_info, &perpetual_swap.token_program_id)?;
+        let long_margin =
+            Self::unpack_token_account(long_margin_info, &perpetual_swap.token_program_id)?;
+        let long_account =
+            Self::unpack_token_account(long_account_info, &perpetual_swap.token_program_id)?;
+        let new_account =
+            Self::unpack_token_account(new_account_info, &perpetual_swap.token_program_id)?;
 
         // TODO add more checks
         if perpetual_swap_info.owner != program_id {
             return Err(ProgramError::IncorrectProgramId);
         }
-        if *authority_info.key != Self::authority_id(program_id, perpetual_swap_info.key, perpetual_swap.nonce)?
+        if *authority_info.key
+            != Self::authority_id(program_id, perpetual_swap_info.key, perpetual_swap.nonce)?
         {
             return Err(PerpetualSwapError::InvalidProgramAddress.into());
         }
         if *token_program_info.key != perpetual_swap.token_program_id {
             return Err(PerpetualSwapError::IncorrectTokenProgramId.into());
         }
-        if perpetual_swap.long_margin_pubkey != *long_margin_info.key || perpetual_swap.long_account_pubkey != *long_account_info.key {
+        if perpetual_swap.long_margin_pubkey != *long_margin_info.key
+            || perpetual_swap.long_account_pubkey != *long_account_info.key
+        {
             return Err(PerpetualSwapError::InvalidAccountKeys.into());
         }
         if long_account.mint != new_account.mint {
@@ -478,7 +505,7 @@ impl Processor {
     pub fn process_transfer_short(
         program_id: &Pubkey,
         margin_amount: u64,
-        accounts: &[AccountInfo], 
+        accounts: &[AccountInfo],
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let perpetual_swap_info = next_account_info(account_info_iter)?;
@@ -491,20 +518,24 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let mut perpetual_swap = PerpetualSwap::try_from_slice(&perpetual_swap_info.data.borrow())?;
-        let short_margin_account = Self::unpack_token_account(short_margin_info, &perpetual_swap.token_program_id)?;
+        let short_margin_account =
+            Self::unpack_token_account(short_margin_info, &perpetual_swap.token_program_id)?;
 
         // TODO add all the checks
         if perpetual_swap_info.owner != program_id {
             return Err(ProgramError::IncorrectProgramId);
         }
-        if *authority_info.key != Self::authority_id(program_id, perpetual_swap_info.key, perpetual_swap.nonce)?
+        if *authority_info.key
+            != Self::authority_id(program_id, perpetual_swap_info.key, perpetual_swap.nonce)?
         {
             return Err(PerpetualSwapError::InvalidProgramAddress.into());
         }
         if *token_program_info.key != perpetual_swap.token_program_id {
             return Err(PerpetualSwapError::IncorrectTokenProgramId.into());
         }
-        if perpetual_swap.short_margin_pubkey != *short_margin_info.key || perpetual_swap.short_account_pubkey != *short_account_info.key {
+        if perpetual_swap.short_margin_pubkey != *short_margin_info.key
+            || perpetual_swap.short_account_pubkey != *short_account_info.key
+        {
             return Err(PerpetualSwapError::InvalidAccountKeys.into());
         }
 
@@ -532,11 +563,7 @@ impl Processor {
         Ok(())
     }
 
-
-    pub fn process_transfer_funds(
-        program_id: &Pubkey,
-        accounts: &[AccountInfo], 
-    ) -> ProgramResult {
+    pub fn process_transfer_funds(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let perpetual_swap_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
@@ -544,14 +571,15 @@ impl Processor {
         let long_margin_info = next_account_info(account_info_iter)?;
         let short_margin_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
-        
+
         let mut perpetual_swap = PerpetualSwap::try_from_slice(&perpetual_swap_info.data.borrow())?;
 
         // TODO add more checks
         if perpetual_swap_info.owner != program_id {
             return Err(ProgramError::IncorrectProgramId);
         }
-        if *authority_info.key != Self::authority_id(program_id, perpetual_swap_info.key, perpetual_swap.nonce)?
+        if *authority_info.key
+            != Self::authority_id(program_id, perpetual_swap_info.key, perpetual_swap.nonce)?
         {
             return Err(PerpetualSwapError::InvalidProgramAddress.into());
         }
@@ -573,7 +601,8 @@ impl Processor {
         // TODO check for liquidation
         if perpetual_swap.mark_price - perpetual_swap.index_price > 0.0 {
             // This is subject to some rounding error
-            let funds_to_transfer = ((perpetual_swap.mark_price - perpetual_swap.index_price) * funding_rate) as u64;
+            let funds_to_transfer =
+                ((perpetual_swap.mark_price - perpetual_swap.index_price) * funding_rate) as u64;
             Self::token_transfer(
                 perpetual_swap_info.key,
                 token_program_info.clone(),
@@ -585,7 +614,8 @@ impl Processor {
             )?;
         } else {
             // This is subject to some rounding error
-            let funds_to_transfer = ((perpetual_swap.index_price - perpetual_swap.mark_price) * funding_rate) as u64;
+            let funds_to_transfer =
+                ((perpetual_swap.index_price - perpetual_swap.mark_price) * funding_rate) as u64;
             Self::token_transfer(
                 perpetual_swap_info.key,
                 token_program_info.clone(),
@@ -617,10 +647,14 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let perpetual_swap = PerpetualSwap::try_from_slice(&perpetual_swap_info.data.borrow())?;
-        let long_margin = Self::unpack_token_account(long_margin_info, &perpetual_swap.token_program_id)?;
-        let long_account = Self::unpack_token_account(long_account_info, &perpetual_swap.token_program_id)?;
-        let short_margin = Self::unpack_token_account(short_margin_info, &perpetual_swap.token_program_id)?;
-        let short_account = Self::unpack_token_account(short_account_info, &perpetual_swap.token_program_id)?;
+        let long_margin =
+            Self::unpack_token_account(long_margin_info, &perpetual_swap.token_program_id)?;
+        let long_account =
+            Self::unpack_token_account(long_account_info, &perpetual_swap.token_program_id)?;
+        let short_margin =
+            Self::unpack_token_account(short_margin_info, &perpetual_swap.token_program_id)?;
+        let short_account =
+            Self::unpack_token_account(short_account_info, &perpetual_swap.token_program_id)?;
 
         let mut needs_liquidation = false;
         let mut liquidated_margin_account_info = long_margin_info.clone();
@@ -637,7 +671,9 @@ impl Processor {
                 needs_liquidation = true;
                 amount_owed = (perpetual_swap.mark_price - perpetual_swap.index_price) as u64;
                 amount_paid = std::cmp::min(amount_owed, long_margin.amount);
-                liquidation_fee = ((long_margin.amount - amount_paid) as f64 * perpetual_swap.liquidation_threshold) as u64;
+                liquidation_fee = ((long_margin.amount - amount_paid) as f64
+                    * perpetual_swap.liquidation_threshold)
+                    as u64;
                 if long_account.amount > amount_paid + liquidation_fee {
                     returned_amount = long_account.amount - amount_paid - liquidation_fee;
                 }
@@ -652,7 +688,9 @@ impl Processor {
                 receiver_margin_account_total = long_account.amount;
                 amount_owed = (perpetual_swap.index_price - perpetual_swap.mark_price) as u64;
                 amount_paid = std::cmp::min(amount_owed, long_margin.amount);
-                liquidation_fee = ((short_margin.amount - amount_paid) as f64 * perpetual_swap.liquidation_threshold) as u64;
+                liquidation_fee = ((short_margin.amount - amount_paid) as f64
+                    * perpetual_swap.liquidation_threshold)
+                    as u64;
                 if short_account.amount > amount_paid + liquidation_fee {
                     returned_amount = short_account.amount - amount_paid - liquidation_fee;
                 }
@@ -752,5 +790,4 @@ impl Processor {
         perpetual_swap.index_price = price;
         Ok(())
     }
-            
 }
