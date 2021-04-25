@@ -44,6 +44,8 @@ pub enum PerpetualSwapError {
     InvalidTransferTime,
     #[error("ExpectedAccount")]
     ExpectedAccount,
+    #[error("AccountNotInitialized")]
+    AccountNotInitialized,
 }
 
 impl From<PerpetualSwapError> for ProgramError {

@@ -201,11 +201,10 @@ impl Processor {
         let authority_info = next_account_info(account_info_iter)?;
         let margin_long_info = next_account_info(account_info_iter)?;
         let margin_short_info = next_account_info(account_info_iter)?;
-        let short_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
-        let spot_mint_info = next_account_info(account_info_iter)?;
+        // let spot_mint_info = next_account_info(account_info_iter)?;
         let rent_info = next_account_info(account_info_iter)?;
-        let destination_info = next_account_info(account_info_iter)?;
+        // let destination_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_program_id = *token_program_info.key;
@@ -296,6 +295,17 @@ impl Processor {
         let source_account =
             Self::unpack_token_account(margin_info, &perpetual_swap.token_program_id)?;
         // TODO Add all the data checks
+        if perpetual_swap_info.owner != program_id {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+        if *authority_info.key
+            != Self::authority_id(program_id, perpetual_swap_info.key, perpetual_swap.nonce)?
+        {
+            return Err(PerpetualSwapError::InvalidProgramAddress.into());
+        }
+        if *token_program_info.key != perpetual_swap.token_program_id {
+            return Err(PerpetualSwapError::IncorrectTokenProgramId.into());
+        }
 
         let is_long = *margin_info.key == perpetual_swap.long_margin_pubkey;
         let is_short = *margin_info.key == perpetual_swap.short_margin_pubkey;
@@ -332,10 +342,11 @@ impl Processor {
 
         // Start the funding rate interval only when both parties have been set
         if perpetual_swap.is_initialized() {
-            let now = SystemTime::now().duration_since(UNIX_EPOCH);
-            // This is number of milliseconds since the epoch
-            let init_time = now.unwrap().as_millis();
-            perpetual_swap.reference_time = init_time;
+            // This is number of millisecondss ince the epoch
+            perpetual_swap.reference_time = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_millis();
         }
         Ok(())
     }
@@ -357,6 +368,18 @@ impl Processor {
         let source_account =
             Self::unpack_token_account(margin_info, &perpetual_swap.token_program_id)?;
         // TODO Add all the data checks
+        if perpetual_swap_info.owner != program_id {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+        if *authority_info.key
+            != Self::authority_id(program_id, perpetual_swap_info.key, perpetual_swap.nonce)?
+        {
+            return Err(PerpetualSwapError::InvalidProgramAddress.into());
+        }
+        if *token_program_info.key != perpetual_swap.token_program_id {
+            return Err(PerpetualSwapError::IncorrectTokenProgramId.into());
+        }
+
 
         let is_long = *margin_info.key == perpetual_swap.long_margin_pubkey
             && *source_info.key == perpetual_swap.long_account_pubkey;
@@ -400,9 +423,19 @@ impl Processor {
         let perpetual_swap = PerpetualSwap::try_from_slice(&perpetual_swap_info.data.borrow())?;
         let source_account =
             Self::unpack_token_account(margin_info, &perpetual_swap.token_program_id)?;
-        let dest_account = Self::unpack_token_account(dest_info, &perpetual_swap.token_program_id)?;
 
         // TODO add all the data checks
+        if perpetual_swap_info.owner != program_id {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+        if *authority_info.key
+            != Self::authority_id(program_id, perpetual_swap_info.key, perpetual_swap.nonce)?
+        {
+            return Err(PerpetualSwapError::InvalidProgramAddress.into());
+        }
+        if *token_program_info.key != perpetual_swap.token_program_id {
+            return Err(PerpetualSwapError::IncorrectTokenProgramId.into());
+        }
 
         let is_long = *margin_info.key == perpetual_swap.long_margin_pubkey
             && *dest_info.key == perpetual_swap.long_account_pubkey;
@@ -442,7 +475,6 @@ impl Processor {
         let long_margin_info = next_account_info(account_info_iter)?;
         let long_account_info = next_account_info(account_info_iter)?;
         let new_account_info = next_account_info(account_info_iter)?;
-        let dest_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
         let mut perpetual_swap = PerpetualSwap::try_from_slice(&perpetual_swap_info.data.borrow())?;
@@ -515,7 +547,6 @@ impl Processor {
         let short_margin_info = next_account_info(account_info_iter)?;
         let short_account_info = next_account_info(account_info_iter)?;
         let new_account_info = next_account_info(account_info_iter)?;
-        let dest_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
         let mut perpetual_swap = PerpetualSwap::try_from_slice(&perpetual_swap_info.data.borrow())?;
@@ -576,6 +607,10 @@ impl Processor {
         let mut perpetual_swap = PerpetualSwap::try_from_slice(&perpetual_swap_info.data.borrow())?;
 
         // TODO add more checks
+        if !perpetual_swap.is_initialized() {
+            return Err(PerpetualSwapError::AccountNotInitialized.into())
+        }
+
         if perpetual_swap_info.owner != program_id {
             return Err(ProgramError::IncorrectProgramId);
         }
@@ -644,10 +679,25 @@ impl Processor {
         let short_margin_info = next_account_info(account_info_iter)?;
         let short_account_info = next_account_info(account_info_iter)?;
         let insurance_account_info = next_account_info(account_info_iter)?;
-        let dest_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
         let perpetual_swap = PerpetualSwap::try_from_slice(&perpetual_swap_info.data.borrow())?;
+
+        if !perpetual_swap.is_initialized() {
+            return Err(PerpetualSwapError::AccountNotInitialized.into());
+        }
+        if perpetual_swap_info.owner != program_id {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+        if *authority_info.key
+            != Self::authority_id(program_id, perpetual_swap_info.key, perpetual_swap.nonce)?
+        {
+            return Err(PerpetualSwapError::InvalidProgramAddress.into());
+        }
+        if *token_program_info.key != perpetual_swap.token_program_id {
+            return Err(PerpetualSwapError::IncorrectTokenProgramId.into());
+        }
+        
         let long_margin =
             Self::unpack_token_account(long_margin_info, &perpetual_swap.token_program_id)?;
         let long_account =
@@ -766,10 +816,24 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
         let perpetual_swap_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
-        let user_transfer_authority_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
-
         let mut perpetual_swap = PerpetualSwap::try_from_slice(&perpetual_swap_info.data.borrow())?;
+
+        if !perpetual_swap.is_initialized() {
+            return Err(PerpetualSwapError::AccountNotInitialized.into());
+        }
+        if perpetual_swap_info.owner != program_id {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+        if *authority_info.key
+            != Self::authority_id(program_id, perpetual_swap_info.key, perpetual_swap.nonce)?
+        {
+            return Err(PerpetualSwapError::InvalidProgramAddress.into());
+        }
+        if *token_program_info.key != perpetual_swap.token_program_id {
+            return Err(PerpetualSwapError::IncorrectTokenProgramId.into());
+        }
+
         perpetual_swap.mark_price = price;
         Ok(())
     }
@@ -782,10 +846,24 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
         let perpetual_swap_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
-        let user_transfer_authority_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
-
         let mut perpetual_swap = PerpetualSwap::try_from_slice(&perpetual_swap_info.data.borrow())?;
+
+        if !perpetual_swap.is_initialized() {
+            return Err(PerpetualSwapError::AccountNotInitialized.into());
+        }
+        if perpetual_swap_info.owner != program_id {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+        if *authority_info.key
+            != Self::authority_id(program_id, perpetual_swap_info.key, perpetual_swap.nonce)?
+        {
+            return Err(PerpetualSwapError::InvalidProgramAddress.into());
+        }
+        if *token_program_info.key != perpetual_swap.token_program_id {
+            return Err(PerpetualSwapError::IncorrectTokenProgramId.into());
+        }
+
         perpetual_swap.index_price = price;
         Ok(())
     }
