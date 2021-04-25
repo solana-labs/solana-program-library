@@ -253,7 +253,8 @@ impl Processor {
         let now = SystemTime::now().duration_since(UNIX_EPOCH);
         // This is number of milliseconds since the epoch
         let reference_time = now.unwrap().as_millis();
-        perpetual_swap.is_initialized = false;
+        perpetual_swap.is_long_initialized = false;
+        perpetual_swap.is_short_initialized = false;
         perpetual_swap.nonce = nonce;
         perpetual_swap.token_program_id = token_program_id;
         perpetual_swap.long_margin_pubkey = *margin_long_info.key ;
@@ -310,8 +311,10 @@ impl Processor {
 
         if is_long {
             perpetual_swap.long_account_pubkey = *source_info.key;
+            perpetual_swap.is_long_initialized = true;
         } else {
-            perpetual_swap.long_account_pubkey = *source_info.key;
+            perpetual_swap.short_account_pubkey = *source_info.key;
+            perpetual_swap.is_short_initialized = true;
         }
         Ok(())
     }

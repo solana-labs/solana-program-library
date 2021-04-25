@@ -5,7 +5,8 @@ use borsh::{BorshDeserialize, BorshSerialize};
 #[repr(C)]
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
 pub struct PerpetualSwap {
-    pub is_initialized: bool,
+    pub is_long_initialized: bool,
+    pub is_short_initialized: bool,
     pub nonce: u8,
     pub token_program_id: Pubkey,
     pub long_margin_pubkey: Pubkey,
@@ -24,6 +25,6 @@ impl PerpetualSwap {
     pub const LEN: usize = 218;
 
     pub fn is_initialized(&self) -> bool {
-        self.is_initialized
+        self.is_long_initialized && self.is_short_initialized
     }
 }
