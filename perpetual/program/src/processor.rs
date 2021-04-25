@@ -256,7 +256,6 @@ impl Processor {
         perpetual_swap.token_program_id = token_program_id;
         perpetual_swap.long_margin_pubkey = *margin_long_info.key ;
         perpetual_swap.short_margin_pubkey = *margin_short_info.key;
-        perpetual_swap.reference_time = reference_time;
         perpetual_swap.minimum_margin = minimum_margin; 
         perpetual_swap.liquidation_threshold = liquidation_threshold; 
         perpetual_swap.funding_rate = funding_rate;
@@ -318,8 +317,8 @@ impl Processor {
         if perpetual_swap.is_initialized() {
             let now = SystemTime::now().duration_since(UNIX_EPOCH);
             // This is number of milliseconds since the epoch
-            let reference_time = now.unwrap().as_millis();
-            perpetual_swap.reference_time = reference_time;
+            let init_time = now.unwrap().as_millis();
+            perpetual_swap.reference_time = init_time;
         }
         Ok(())
     }
