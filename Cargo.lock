@@ -2233,6 +2233,7 @@ name = "perpetual"
 version = "0.1.0"
 dependencies = [
  "arrayref",
+ "borsh 0.8.2",
  "solana-program",
  "spl-token 3.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "thiserror",

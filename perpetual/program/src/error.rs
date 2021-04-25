@@ -14,6 +14,8 @@ pub enum PerpetualSwapError {
     ExpectedMint,
     #[error("InvalidProgramAddress")]
     InvalidProgramAddress,
+    #[error("InvalidAuthorityAccount")]
+    InvalidAuthorityAccount,
     #[error("InvalidOwner")]
     InvalidOwner,
     #[error("DifferentCollateralUsed")]

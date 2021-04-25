@@ -8,6 +8,7 @@ use solana_program::{
     program::{invoke, invoke_signed},
 };
 
+use borsh::{BorshDeserialize, BorshSerialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::{instruction::PerpetualSwapInstruction, error::PerpetualSwapError, state::PerpetualSwap};
@@ -191,6 +192,12 @@ impl Processor {
         let token_program_id = *token_program_info.key;
         // TODO
 
+        let authority_pubkey = Self::authority_id(program_id, perpetual_swap_info.key, nonce)?;
+
+        if *authority_info.key != authority_pubkey {
+            return Err(PerpetualSwapError::InvalidAuthorityAccount.into());
+        }
+
         Self::initialize_account(
             perpetual_swap_info.clone(),
             pool_mint_info.clone(),
@@ -215,20 +222,10 @@ impl Processor {
             token_program_info.clone(),
         )?;
 
-        // Self::token_mint_to(
-        //     perpetual_swap_info.key,
-        //     token_program_info.clone(),
-        //     pool_mint_info.clone(),
-        //     destination_info.clone(),
-        //     authority_info.clone(),
-        //     nonce,
-        //     to_u64(initial_amount)?,
-        // )?;
-
         let now = SystemTime::now().duration_since(UNIX_EPOCH);
         // This is number of milliseconds since the epoch
         let reference_time = now.unwrap().as_millis();
-        let mut perpetual_swap_data = PerpetualSwap::unpack_unchecked(&perpetual_swap_info.data.borrow())?;
+        let mut perpetual_swap_data = PerpetualSwap::try_from_slice(&perpetual_swap_info.data.borrow())?;
         perpetual_swap_data.is_initialized = false;
         perpetual_swap_data.nonce = nonce;
         perpetual_swap_data.token_program_id = token_program_id;
@@ -238,8 +235,7 @@ impl Processor {
         perpetual_swap_data.minimum_margin = minimum_margin; 
         perpetual_swap_data.liquidation_threshold = liquidation_threshold; 
         perpetual_swap_data.funding_rate = funding_rate;
-
-        PerpetualSwap::pack(perpetual_swap_data, &mut perpetual_swap_info.data.borrow_mut())?;
+        perpetual_swap_data.serialize(&mut *perpetual_swap_info.data.borrow_mut())?;
         Ok(())
     }
 
@@ -257,7 +253,7 @@ impl Processor {
         let margin_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
-        let perpetual_swap = PerpetualSwap::unpack(&perpetual_swap_info.data.borrow())?;
+        let perpetual_swap = PerpetualSwap::try_from_slice(&perpetual_swap_info.data.borrow())?;
 
         // TODO Add all the data checks 
 
@@ -294,7 +290,7 @@ impl Processor {
         let dest_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
-        let perpetual_swap = PerpetualSwap::unpack(&perpetual_swap_info.data.borrow())?;
+        let perpetual_swap = PerpetualSwap::try_from_slice(&perpetual_swap_info.data.borrow())?;
         let source_account = Self::unpack_token_account(margin_info, &perpetual_swap.token_program_id)?;
         let dest_account = Self::unpack_token_account(dest_info, &perpetual_swap.token_program_id)?;
 
@@ -339,7 +335,7 @@ impl Processor {
         let dest_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
-        let mut perpetual_swap = PerpetualSwap::unpack(&perpetual_swap_info.data.borrow())?;
+        let mut perpetual_swap = PerpetualSwap::try_from_slice(&perpetual_swap_info.data.borrow())?;
         let long_margin = Self::unpack_token_account(long_margin_info, &perpetual_swap.token_program_id)?;
         let long_account = Self::unpack_token_account(long_account_info, &perpetual_swap.token_program_id)?;
         let new_account = Self::unpack_token_account(new_account_info, &perpetual_swap.token_program_id)?;
@@ -406,7 +402,7 @@ impl Processor {
         let dest_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
-        let mut perpetual_swap = PerpetualSwap::unpack(&perpetual_swap_info.data.borrow())?;
+        let mut perpetual_swap = PerpetualSwap::try_from_slice(&perpetual_swap_info.data.borrow())?;
         let short_margin_account = Self::unpack_token_account(short_margin_info, &perpetual_swap.token_program_id)?;
 
         // TODO add all the checks
@@ -461,7 +457,7 @@ impl Processor {
         let short_margin_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
         
-        let mut perpetual_swap = PerpetualSwap::unpack(&perpetual_swap_info.data.borrow())?;
+        let mut perpetual_swap = PerpetualSwap::try_from_slice(&perpetual_swap_info.data.borrow())?;
 
         // TODO add more checks
         if perpetual_swap_info.owner != program_id {
@@ -532,7 +528,7 @@ impl Processor {
         let dest_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
-        let perpetual_swap = PerpetualSwap::unpack(&perpetual_swap_info.data.borrow())?;
+        let perpetual_swap = PerpetualSwap::try_from_slice(&perpetual_swap_info.data.borrow())?;
         let long_margin = Self::unpack_token_account(long_margin_info, &perpetual_swap.token_program_id)?;
         let long_account = Self::unpack_token_account(long_account_info, &perpetual_swap.token_program_id)?;
         let short_margin = Self::unpack_token_account(short_margin_info, &perpetual_swap.token_program_id)?;
@@ -648,7 +644,7 @@ impl Processor {
         let user_transfer_authority_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
-        let mut perpetual_swap = PerpetualSwap::unpack(&perpetual_swap_info.data.borrow())?;
+        let mut perpetual_swap = PerpetualSwap::try_from_slice(&perpetual_swap_info.data.borrow())?;
         perpetual_swap.mark_price = price;
         Ok(())
     }
@@ -664,7 +660,7 @@ impl Processor {
         let user_transfer_authority_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
-        let mut perpetual_swap = PerpetualSwap::unpack(&perpetual_swap_info.data.borrow())?;
+        let mut perpetual_swap = PerpetualSwap::try_from_slice(&perpetual_swap_info.data.borrow())?;
         perpetual_swap.index_price = price;
         Ok(())
     }
