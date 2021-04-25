@@ -330,6 +330,7 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let perpetual_swap = PerpetualSwap::try_from_slice(&perpetual_swap_info.data.borrow())?;
+        let source_account = Self::unpack_token_account(margin_info, &perpetual_swap.token_program_id)?;
         // TODO Add all the data checks 
 
         let is_long = *margin_info.key == perpetual_swap.long_margin_pubkey && *source_info.key == perpetual_swap.long_account_pubkey;
@@ -337,6 +338,10 @@ impl Processor {
         
         if !is_long && !is_short {
             return Err(PerpetualSwapError::InvalidAccountKeys.into());
+        }
+
+        if source_account.amount < amount_to_deposit {
+            return Err(PerpetualSwapError::InsufficientFunds.into());
         }
 
         Self::token_transfer(
