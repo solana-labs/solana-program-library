@@ -102,6 +102,21 @@ impl Processor {
             signers,
         )
     }
+    pub fn initialize_account<'a>(
+        account: AccountInfo<'a>,
+        mint: AccountInfo<'a>,
+        owner: AccountInfo<'a>,
+        rent: AccountInfo<'a>,
+        token_program: AccountInfo<'a>,
+    ) -> Result<(), ProgramError> {
+        let ix = spl_token::instruction::initialize_account(
+            token_program.key,
+            account.key,
+            mint.key,
+            owner.key,
+        )?;
+        invoke(&ix, &[account, mint, owner, rent, token_program])
+    }
 
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], instruction_data: &[u8]) -> ProgramResult {
         let instruction = PerpetualSwapInstruction::unpack(instruction_data)?;
@@ -153,7 +168,6 @@ impl Processor {
         }
     }
 
-    /// Processes an [Initialize](enum.Instruction.html).
     pub fn process_initialize_perpetual_swap(
         program_id: &Pubkey,
         nonce: u8,
@@ -166,18 +180,69 @@ impl Processor {
         let perpetual_swap_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
         let margin_long_info = next_account_info(account_info_iter)?;
-        let long_info = next_account_info(account_info_iter)?;
         let margin_short_info = next_account_info(account_info_iter)?;
         let short_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
-        let fee_account_info = next_account_info(account_info_iter)?;
+        let spot_mint_info = next_account_info(account_info_iter)?;
+        let rent_info = next_account_info(account_info_iter)?;
         let destination_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_program_id = *token_program_info.key;
         // TODO
+
+        Self::initialize_account(
+            perpetual_swap_info.clone(),
+            pool_mint_info.clone(),
+            authority_info.clone(),
+            rent_info.clone(),
+            token_program_info.clone(),
+        )?;
+
+        Self::initialize_account(
+            margin_long_info.clone(),
+            pool_mint_info.clone(),
+            authority_info.clone(),
+            rent_info.clone(),
+            token_program_info.clone(),
+        )?;
+
+        Self::initialize_account(
+            margin_short_info.clone(),
+            pool_mint_info.clone(),
+            authority_info.clone(),
+            rent_info.clone(),
+            token_program_info.clone(),
+        )?;
+
+        // Self::token_mint_to(
+        //     perpetual_swap_info.key,
+        //     token_program_info.clone(),
+        //     pool_mint_info.clone(),
+        //     destination_info.clone(),
+        //     authority_info.clone(),
+        //     nonce,
+        //     to_u64(initial_amount)?,
+        // )?;
+
+        let now = SystemTime::now().duration_since(UNIX_EPOCH);
+        // This is number of milliseconds since the epoch
+        let reference_time = now.unwrap().as_millis();
+        let mut perpetual_swap_data = PerpetualSwap::unpack_unchecked(&perpetual_swap_info.data.borrow())?;
+        perpetual_swap_data.is_initialized = false;
+        perpetual_swap_data.nonce = nonce;
+        perpetual_swap_data.token_program_id = token_program_id;
+        perpetual_swap_data.long_margin_pubkey = *margin_long_info.key ;
+        perpetual_swap_data.short_margin_pubkey = *margin_short_info.key;
+        perpetual_swap_data.reference_time = reference_time;
+        perpetual_swap_data.minimum_margin = minimum_margin; 
+        perpetual_swap_data.liquidation_threshold = liquidation_threshold; 
+        perpetual_swap_data.funding_rate = funding_rate;
+
+        PerpetualSwap::pack(perpetual_swap_data, &mut perpetual_swap_info.data.borrow_mut())?;
         Ok(())
     }
+
 
     pub fn process_deposit_to_margin(
         program_id: &Pubkey,
