@@ -83,6 +83,15 @@ Hardware Wallet URL (See [URL spec](https://docs.solana.com/wallet-guide/hardwar
 solana config set --keypair usb://ledger/
 ```
 
+#### Airdrop SOL
+
+Creating tokens and accounts requires SOL for account rent deposits and
+transaction fees. If the cluster you are targeting offers a faucet, you can get
+a little SOL for testing:
+```
+solana airdrop 1
+```
+
 ### Example: Creating your own fungible token
 
 ```sh
