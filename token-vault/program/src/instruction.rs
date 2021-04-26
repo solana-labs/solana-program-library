@@ -75,7 +75,7 @@ pub enum VaultInstruction {
     ///   5. `[writable]` Redeem treasury account
     ///   6. `[]` New authority on the vault going forward - can be same authority if you want
     ///   7. `[signer]` Authority on the vault
-    ///   8. `[signer]` Transfer authority for the  token account that you will pay with
+    ///   8. `[signer]` Transfer authority for the token account and outstanding fractional shares account you're transferring from
     ///   9. `[]` PDA-based Burn authority for the fraction treasury account containing the uncirculated shares seed [PREFIX, program_id]
     ///   10. `[]` External pricing lookup address
     ///   11. `[]` Token program
