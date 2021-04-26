@@ -1682,24 +1682,6 @@ impl Processor {
             return Err(StakePoolError::InvalidState.into());
         }
 
-        let (meta, stake) = get_stake_state(stake_split_from)?;
-        let vote_account_address = stake.delegation.voter_pubkey;
-        check_validator_stake_address(
-            program_id,
-            stake_pool_info.key,
-            stake_split_from.key,
-            &vote_account_address,
-        )?;
-
-        let validator_list_item = validator_list
-            .find_mut(&vote_account_address)
-            .ok_or(StakePoolError::ValidatorNotFound)?;
-
-        if validator_list_item.status != StakeStatus::Active {
-            msg!("Validator is marked for removal and no longer allowing withdrawals");
-            return Err(StakePoolError::ValidatorNotFound.into());
-        }
-
         let withdraw_lamports = stake_pool
             .calc_lamports_withdraw_amount(pool_tokens)
             .ok_or(StakePoolError::CalculationFailure)?;
@@ -1743,6 +1725,11 @@ impl Processor {
             let validator_list_item = validator_list
                 .find_mut(&vote_account_address)
                 .ok_or(StakePoolError::ValidatorNotFound)?;
+
+            if validator_list_item.status != StakeStatus::Active {
+                msg!("Validator is marked for removal and no longer allowing withdrawals");
+                return Err(StakePoolError::ValidatorNotFound.into());
+            }
 
             let required_lamports = minimum_stake_lamports(&meta);
             let current_lamports = stake_split_from.lamports();

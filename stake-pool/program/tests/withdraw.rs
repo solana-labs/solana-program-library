@@ -822,7 +822,8 @@ async fn success_with_reserve() {
         &validator_stake,
         deposit_lamports,
     )
-    .await;
+    .await
+    .unwrap();
 
     // decrease some stake
     let error = stake_pool_accounts
