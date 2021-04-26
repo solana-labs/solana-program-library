@@ -30,6 +30,57 @@ use {
 const METADATA_PROGRAM_PUBKEY: &str = "metaTA73sFPqA8whreUbBsbn3SLJH2vhrW9fP5dmfdC";
 const TOKEN_PROGRAM_PUBKEY: &str = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 
+fn mint_coins(app_matches: &ArgMatches, payer: Keypair, client: RpcClient) {
+    let token_key = Pubkey::from_str(TOKEN_PROGRAM_PUBKEY).unwrap();
+    let amount = match app_matches.value_of("amount") {
+        Some(val) => Some(val.parse::<u64>().unwrap()),
+        None => None,
+    }
+    .unwrap();
+    let mint_key = pubkey_of(app_matches, "mint").unwrap();
+    let mut instructions = vec![];
+
+    let mut signers = vec![&payer];
+    let destination_key: Pubkey;
+    let destination = Keypair::new();
+    if app_matches.is_present("destination") {
+        destination_key = pubkey_of(app_matches, "destination").unwrap();
+    } else {
+        destination_key = destination.pubkey();
+        signers.push(&destination);
+        instructions.push(create_account(
+            &payer.pubkey(),
+            &destination_key,
+            client
+                .get_minimum_balance_for_rent_exemption(Account::LEN)
+                .unwrap(),
+            Account::LEN as u64,
+            &token_key,
+        ));
+        instructions.push(
+            initialize_account(&token_key, &destination_key, &mint_key, &payer.pubkey()).unwrap(),
+        );
+    }
+    instructions.push(
+        mint_to(
+            &token_key,
+            &mint_key,
+            &destination_key,
+            &payer.pubkey(),
+            &[&payer.pubkey()],
+            amount,
+        )
+        .unwrap(),
+    );
+    let mut transaction = Transaction::new_with_payer(&instructions, Some(&payer.pubkey()));
+    let recent_blockhash = client.get_recent_blockhash().unwrap().0;
+
+    transaction.sign(&signers, recent_blockhash);
+    client.send_and_confirm_transaction(&transaction).unwrap();
+
+    println!("Minted {:?} tokens to {:?}.", amount, destination_key);
+}
+
 fn show(app_matches: &ArgMatches, _payer: Keypair, client: RpcClient) {
     let program_key = Pubkey::from_str(METADATA_PROGRAM_PUBKEY).unwrap();
 
@@ -795,6 +846,34 @@ fn main() {
                         .help("Allow duplicates"),
                 )
         ).subcommand(
+            SubCommand::with_name("mint_coins")
+                       .about("Mint coins to your mint to an account")
+                       .arg(
+                        Arg::with_name("mint")
+                            .long("mint")
+                            .value_name("MINT")
+                            .required(true)
+                            .validator(is_valid_pubkey)
+                            .takes_value(true)
+                            .help("Mint of the Metadata"),
+                    ).arg(
+                        Arg::with_name("destination")
+                            .long("destination")
+                            .value_name("DESTINATION")
+                            .required(false)
+                            .validator(is_valid_pubkey)
+                            .takes_value(true)
+                            .help("Destination account. If one isnt given, one is made."),
+                    ).arg(
+                        Arg::with_name("amount")
+                            .long("amount")
+                            .value_name("AMOUNT")
+                            .required(true)
+                            .takes_value(true)
+                            .help("How many"),
+                    )
+               )
+        .subcommand(
      SubCommand::with_name("update_metadata_accounts")
                 .about("Update Metadata Accounts")
                 .arg(
@@ -986,6 +1065,9 @@ fn main() {
         }
         ("show", Some(arg_matches)) => {
             show(arg_matches, payer, client);
+        }
+        ("mint_coins", Some(arg_matches)) => {
+            mint_coins(arg_matches, payer, client);
         }
         _ => unreachable!(),
     }
