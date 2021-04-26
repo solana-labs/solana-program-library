@@ -1584,8 +1584,7 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
         msg!("Not enough liquidity for flash loan");
         return Err(LendingError::InsufficientLiquidity.into());
     }
-
-    reserve.start_flash_loan(amount)?;
+    reserve.liquidity.borrow(amount)?;
     spl_token_transfer(TokenTransferParams {
         source: reserve_liquidity_supply_info.clone(),
         destination: destination_liquidity_info.clone(),
@@ -1629,7 +1628,7 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
         data,
     };
     invoke(&ix, &calling_accounts[..])?;
-    reserve.end_flash_loan(amount)?;
+    reserve.liquidity.repay(amount, Decimal::from(amount))?;
 
     let after_liquidity_supply_token_account =
         Account::unpack_from_slice(&reserve_liquidity_supply_info.try_borrow_data()?)?;

@@ -333,31 +333,6 @@ impl Reserve {
             .try_mul(compounded_interest_rate)?;
         Ok(compounded_interest_rate)
     }
-
-    /// Record the amount that is in the flash loan.
-    pub fn start_flash_loan(&mut self, borrowed_liquidity_amount: u64) -> ProgramResult {
-        if borrowed_liquidity_amount > self.liquidity.available_amount {
-            return Err(LendingError::InsufficientLiquidity.into());
-        }
-        let collateral_exchange_rate = self.collateral_exchange_rate()?;
-        let borrowed_collateral_amount =
-            collateral_exchange_rate.liquidity_to_collateral(borrowed_liquidity_amount)?;
-
-        self.liquidity.available_amount -= borrowed_liquidity_amount;
-        self.collateral.mint_total_supply -= borrowed_collateral_amount;
-        Ok(())
-    }
-
-    /// Return the amount that is in the flash loan.
-    pub fn end_flash_loan(&mut self, borrowed_liquidity_amount: u64) -> ProgramResult {
-        let collateral_exchange_rate = self.collateral_exchange_rate()?;
-        let collateral_amount =
-            collateral_exchange_rate.liquidity_to_collateral(borrowed_liquidity_amount)?;
-
-        self.liquidity.available_amount += borrowed_liquidity_amount;
-        self.collateral.mint_total_supply += collateral_amount;
-        Ok(())
-    }
 }
 
 /// Create new reserve
