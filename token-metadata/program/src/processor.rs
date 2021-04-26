@@ -244,7 +244,9 @@ pub fn process_update_metadata_accounts(
 
     // Only set it if it's specifically a duplicable metadata (not an NFT kind) which can be
     // determined by the presence of this field already.
-    if metadata.non_unique_specific_update_authority.is_some() {
+    if metadata.non_unique_specific_update_authority.is_some()
+        && non_unique_specific_update_authority.is_some()
+    {
         metadata.non_unique_specific_update_authority = non_unique_specific_update_authority
     }
 
