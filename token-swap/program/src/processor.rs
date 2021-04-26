@@ -534,7 +534,7 @@ impl Processor {
         let token_b = Self::unpack_token_account(token_b_info, &token_swap.token_program_id())?;
         let pool_mint = Self::unpack_mint(pool_mint_info, &token_swap.token_program_id())?;
         let current_pool_mint_supply = to_u128(pool_mint.supply)?;
-        let (pool_token_amount, pool_mint_supply) = if current_pool_mint_supply  > 0 {
+        let (pool_token_amount, pool_mint_supply) = if current_pool_mint_supply > 0 {
             (to_u128(pool_token_amount)?, current_pool_mint_supply)
         } else {
             (calculator.new_pool_supply(), calculator.new_pool_supply())
@@ -779,7 +779,7 @@ impl Processor {
 
         let pool_mint = Self::unpack_mint(pool_mint_info, &token_swap.token_program_id())?;
         let current_pool_mint_supply = to_u128(pool_mint.supply)?;
-        let pool_mint_supply = if current_pool_mint_supply  > 0 {
+        let pool_mint_supply = if current_pool_mint_supply > 0 {
             current_pool_mint_supply
         } else {
             token_swap.swap_curve().calculator.new_pool_supply()
@@ -6776,8 +6776,13 @@ mod tests {
         let user_key = Pubkey::new_unique();
         let withdrawer_key = Pubkey::new_unique();
 
-        let mut accounts =
-            SwapAccountInfo::new(&user_key, fees, swap_curve, swap_token_a_amount, swap_token_b_amount);
+        let mut accounts = SwapAccountInfo::new(
+            &user_key,
+            fees,
+            swap_curve,
+            swap_token_a_amount,
+            swap_token_b_amount,
+        );
 
         accounts.initialize_swap().unwrap();
 
@@ -6799,19 +6804,18 @@ mod tests {
         // With no slippage, this will leave 250 token B in the pool.
         assert_eq!(
             Err(SwapError::ExceededSlippage.into()),
-            accounts
-                .withdraw_all_token_types(
-                    &user_key,
-                    &pool_key,
-                    &mut pool_account,
-                    &token_a_key,
-                    &mut token_a_account,
-                    &token_b_key,
-                    &mut token_b_account,
-                    total_pool.try_into().unwrap(),
-                    swap_token_a_amount,
-                    swap_token_b_amount,
-                )
+            accounts.withdraw_all_token_types(
+                &user_key,
+                &pool_key,
+                &mut pool_account,
+                &token_a_key,
+                &mut token_a_account,
+                &token_b_key,
+                &mut token_b_account,
+                total_pool.try_into().unwrap(),
+                swap_token_a_amount,
+                swap_token_b_amount,
+            )
         );
 
         accounts
@@ -6850,7 +6854,13 @@ mod tests {
             mut token_b_account,
             pool_key,
             mut pool_account,
-        ) = accounts.setup_token_accounts(&user_key, &withdrawer_key, token_a_amount, token_b_amount, 0);
+        ) = accounts.setup_token_accounts(
+            &user_key,
+            &withdrawer_key,
+            token_a_amount,
+            token_b_amount,
+            0,
+        );
 
         assert_eq!(
             Err(SwapError::ExceededSlippage.into()),
@@ -6878,19 +6888,27 @@ mod tests {
             mut token_b_account,
             pool_key,
             mut pool_account,
-        ) = accounts.setup_token_accounts(&user_key, &withdrawer_key, token_a_amount, token_b_amount, 0);
-
-        accounts.deposit_all_token_types(
+        ) = accounts.setup_token_accounts(
+            &user_key,
             &withdrawer_key,
-            &token_a_key,
-            &mut token_a_account,
-            &token_b_key,
-            &mut token_b_account,
-            &pool_key,
-            &mut pool_account,
-            1, // doesn't matter
             token_a_amount,
             token_b_amount,
-        ).unwrap();
+            0,
+        );
+
+        accounts
+            .deposit_all_token_types(
+                &withdrawer_key,
+                &token_a_key,
+                &mut token_a_account,
+                &token_b_key,
+                &mut token_b_account,
+                &pool_key,
+                &mut pool_account,
+                1, // doesn't matter
+                token_a_amount,
+                token_b_amount,
+            )
+            .unwrap();
     }
 }
