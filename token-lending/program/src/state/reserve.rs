@@ -688,7 +688,7 @@ impl IsInitialized for Reserve {
 }
 
 const RESERVE_LEN: usize = 567; // 1 + 8 + 1 + 32 + 32 + 1 + 32 + 32 + (4 + 32) + 16 + 8 + 8 + 16 + 32 + 32 + 8 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 8 + 1 + 256
-// @TODO: break this up by reserve / liquidity / collateral / config https://git.io/JOCca
+                                // @TODO: break this up by reserve / liquidity / collateral / config https://git.io/JOCca
 impl Pack for Reserve {
     const LEN: usize = RESERVE_LEN;
 
@@ -796,7 +796,7 @@ impl Pack for Reserve {
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
         let input = array_ref![input, 0, RESERVE_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
-            let (
+        let (
             version,
             last_update_slot,
             last_update_stale,

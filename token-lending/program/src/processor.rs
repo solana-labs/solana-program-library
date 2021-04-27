@@ -11,11 +11,7 @@ use crate::{
         ReserveCollateral, ReserveConfig, ReserveLiquidity,
     },
 };
-use flux_aggregator::{
-    borsh_state::InitBorshState,
-    read_median,
-    state::Aggregator
-};
+use flux_aggregator::{borsh_state::InitBorshState, read_median, state::Aggregator};
 use num_traits::FromPrimitive;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -30,7 +26,6 @@ use solana_program::{
     sysvar::{clock::Clock, rent::Rent, Sysvar},
 };
 use spl_token::state::{Account, Mint};
-use std::convert::TryFrom;
 
 /// Processes an instruction
 pub fn process_instruction(
@@ -239,13 +234,16 @@ fn process_init_reserve(
         return Err(LendingError::InvalidAccountInput.into());
     }
 
-    let reserve_liquidity_fee_receiver = unpack_account(&reserve_liquidity_fee_receiver_info.data.borrow_mut())?;
+    let reserve_liquidity_fee_receiver =
+        unpack_account(&reserve_liquidity_fee_receiver_info.data.borrow_mut())?;
     if reserve_liquidity_fee_receiver_info.owner != token_program_id.key {
         msg!("Reserve liquidity fee reserve provided is not owned by the token program provided");
         return Err(LendingError::InvalidTokenOwner.into());
     }
     if &reserve_liquidity_fee_receiver.mint != reserve_liquidity_mint_info.key {
-        msg!("Reserve liquidity fee reserve mint does not match the reserve liquidity mint provided");
+        msg!(
+            "Reserve liquidity fee reserve mint does not match the reserve liquidity mint provided"
+        );
         return Err(LendingError::InvalidAccountInput.into());
     }
 
@@ -277,29 +275,33 @@ fn process_init_reserve(
         return Err(LendingError::InvalidAccountInput.into());
     }
 
-    let (reserve_liquidity_aggregator, reserve_liquidity_market_price) =
-        if &lending_market.quote_token_mint == reserve_liquidity_mint_info.key {
-            if account_info_iter.peek().is_some() {
-                msg!("Reserve liquidity aggregator cannot be provided when reserve liquidity is the quote currency");
-                return Err(LendingError::InvalidAccountInput.into());
-            }
-            // 1 because quote token price is equal to itself
-            (COption::None, 1)
-        } else {
-            let aggregator_info = next_account_info(account_info_iter)?;
-            assert_rent_exempt(rent, aggregator_info)?;
+    let (reserve_liquidity_aggregator, reserve_liquidity_market_price) = if &lending_market
+        .quote_token_mint
+        == reserve_liquidity_mint_info.key
+    {
+        if account_info_iter.peek().is_some() {
+            msg!("Reserve liquidity aggregator cannot be provided when reserve liquidity is the quote currency");
+            return Err(LendingError::InvalidAccountInput.into());
+        }
+        // 1 because quote token price is equal to itself
+        (COption::None, 1)
+    } else {
+        let aggregator_info = next_account_info(account_info_iter)?;
+        assert_rent_exempt(rent, aggregator_info)?;
 
-            let aggregator = Aggregator::load_initialized(aggregator_info)?;
-            if aggregator.config.decimals != quote_token_mint.decimals {
-                msg!("Quote token mint decimals does not match the aggregator config decimals provided");
-                return Err(LendingError::InvalidAggregatorConfig.into());
-            }
+        let aggregator = Aggregator::load_initialized(aggregator_info)?;
+        if aggregator.config.decimals != quote_token_mint.decimals {
+            msg!(
+                "Quote token mint decimals does not match the aggregator config decimals provided"
+            );
+            return Err(LendingError::InvalidAggregatorConfig.into());
+        }
 
-            (
-                COption::Some(*aggregator_info.key),
-                read_median(aggregator_info)?.median,
-            )
-        };
+        (
+            COption::Some(*aggregator_info.key),
+            read_median(aggregator_info)?.median,
+        )
+    };
 
     let authority_signer_seeds = &[
         lending_market_info.key.as_ref(),

@@ -92,7 +92,8 @@ impl Obligation {
 
     /// Calculate the maximum collateral value that can be withdrawn
     pub fn max_withdraw_value(&self) -> Result<Decimal, ProgramError> {
-        let required_deposit_value = self.borrowed_value
+        let required_deposit_value = self
+            .borrowed_value
             .try_mul(self.deposited_value)?
             .try_div(self.allowed_borrow_value)?;
         if required_deposit_value >= self.deposited_value {
@@ -326,7 +327,7 @@ impl ObligationLiquidity {
 const OBLIGATION_COLLATERAL_LEN: usize = 56; // 32 + 8 + 16
 const OBLIGATION_LIQUIDITY_LEN: usize = 80; // 32 + 16 + 16 + 16
 const OBLIGATION_LEN: usize = 916; // 1 + 8 + 1 + 32 + 32 + 16 + 16 + 16 + 16 + 1 + 1 + (56 * 1) + (80 * 9)
-// @TODO: break this up by obligation / collateral / liquidity https://git.io/JOCca
+                                   // @TODO: break this up by obligation / collateral / liquidity https://git.io/JOCca
 impl Pack for Obligation {
     const LEN: usize = OBLIGATION_LEN;
 
