@@ -25,7 +25,7 @@ use solana_program::{
     pubkey::Pubkey,
     sysvar::{clock::Clock, rent::Rent, Sysvar},
 };
-use spl_token::state::{Account, Mint};
+use spl_token::state::Mint;
 
 /// Processes an instruction
 pub fn process_instruction(
@@ -234,19 +234,6 @@ fn process_init_reserve(
         return Err(LendingError::InvalidAccountInput.into());
     }
 
-    let reserve_liquidity_fee_receiver =
-        unpack_account(&reserve_liquidity_fee_receiver_info.data.borrow_mut())?;
-    if reserve_liquidity_fee_receiver_info.owner != token_program_id.key {
-        msg!("Reserve liquidity fee reserve provided is not owned by the token program provided");
-        return Err(LendingError::InvalidTokenOwner.into());
-    }
-    if &reserve_liquidity_fee_receiver.mint != reserve_liquidity_mint_info.key {
-        msg!(
-            "Reserve liquidity fee reserve mint does not match the reserve liquidity mint provided"
-        );
-        return Err(LendingError::InvalidAccountInput.into());
-    }
-
     let quote_token_mint = unpack_mint(&quote_token_mint_info.data.borrow())?;
     if quote_token_mint_info.owner != token_program_id.key {
         msg!("Quote token mint provided is not owned by the token program provided");
@@ -345,6 +332,14 @@ fn process_init_reserve(
 
     spl_token_init_account(TokenInitializeAccountParams {
         account: reserve_liquidity_supply_info.clone(),
+        mint: reserve_liquidity_mint_info.clone(),
+        owner: lending_market_authority_info.clone(),
+        rent: rent_info.clone(),
+        token_program: token_program_id.clone(),
+    })?;
+
+    spl_token_init_account(TokenInitializeAccountParams {
+        account: reserve_liquidity_fee_receiver_info.clone(),
         mint: reserve_liquidity_mint_info.clone(),
         owner: lending_market_authority_info.clone(),
         rent: rent_info.clone(),
@@ -1544,11 +1539,6 @@ fn assert_uninitialized<T: Pack + IsInitialized>(
     } else {
         Ok(account)
     }
-}
-
-/// Unpacks a spl_token `Account`.
-fn unpack_account(data: &[u8]) -> Result<Account, LendingError> {
-    Account::unpack(data).map_err(|_| LendingError::InvalidTokenAccount)
 }
 
 /// Unpacks a spl_token `Mint`.
