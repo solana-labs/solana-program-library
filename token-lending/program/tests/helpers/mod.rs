@@ -281,8 +281,7 @@ pub fn add_reserve(
         aggregator_pair,
     } = args;
 
-    let (liquidity_aggregator_pubkey, market_price) = if let Some(aggregator_pair) = aggregator_pair
-    {
+    let (liquidity_oracle_pubkey, market_price) = if let Some(aggregator_pair) = aggregator_pair {
         let aggregator = add_aggregator(test, aggregator_pair);
         (Some(aggregator.pubkey), aggregator.price)
     } else if liquidity_mint_pubkey == spl_token::native_mint::id() {
@@ -389,7 +388,7 @@ pub fn add_reserve(
             mint_decimals: liquidity_mint_decimals,
             supply_pubkey: liquidity_supply_pubkey,
             fee_receiver: liquidity_fee_receiver_pubkey,
-            aggregator: liquidity_aggregator_pubkey.into(),
+            oracle_pubkey: liquidity_oracle_pubkey.into(),
             market_price,
         }),
         collateral: ReserveCollateral::new(NewReserveCollateralParams {
@@ -468,7 +467,7 @@ pub fn add_reserve(
         collateral_supply_pubkey,
         user_liquidity_pubkey,
         user_collateral_pubkey,
-        liquidity_aggregator_pubkey,
+        liquidity_oracle_pubkey,
         market_price,
     }
 }
@@ -552,7 +551,7 @@ impl TestLendingMarket {
             &[refresh_reserve(
                 spl_token_lending::id(),
                 reserve.pubkey,
-                reserve.liquidity_aggregator_pubkey,
+                reserve.liquidity_oracle_pubkey,
             )],
             Some(&payer.pubkey()),
         );
@@ -732,11 +731,11 @@ pub struct TestReserve {
     pub liquidity_supply_pubkey: Pubkey,
     pub liquidity_fee_receiver_pubkey: Pubkey,
     pub liquidity_host_pubkey: Pubkey,
+    pub liquidity_oracle_pubkey: Option<Pubkey>,
     pub collateral_mint_pubkey: Pubkey,
     pub collateral_supply_pubkey: Pubkey,
     pub user_liquidity_pubkey: Pubkey,
     pub user_collateral_pubkey: Pubkey,
-    pub liquidity_aggregator_pubkey: Option<Pubkey>,
     pub market_price: u64,
 }
 
@@ -764,7 +763,7 @@ impl TestReserve {
         let user_collateral_token_keypair = Keypair::new();
         let user_transfer_authority_keypair = Keypair::new();
 
-        let (liquidity_aggregator_pubkey, market_price) = if let Some(aggregator) = aggregator {
+        let (liquidity_oracle_pubkey, market_price) = if let Some(aggregator) = aggregator {
             (Some(aggregator.pubkey), aggregator.price)
         } else if liquidity_mint_pubkey == lending_market.quote_token_mint {
             (None, 1 * FRACTIONAL_TO_USDC)
@@ -852,10 +851,11 @@ impl TestReserve {
                     liquidity_fee_receiver_keypair.pubkey(),
                     collateral_mint_keypair.pubkey(),
                     collateral_supply_keypair.pubkey(),
+                    lending_market.quote_token_mint,
                     lending_market.pubkey,
                     lending_market.owner.pubkey(),
                     user_transfer_authority_keypair.pubkey(),
-                    liquidity_aggregator_pubkey,
+                    liquidity_oracle_pubkey,
                 ),
             ],
             Some(&payer.pubkey()),
@@ -896,7 +896,7 @@ impl TestReserve {
                 collateral_supply_pubkey: collateral_supply_keypair.pubkey(),
                 user_liquidity_pubkey,
                 user_collateral_pubkey: user_collateral_token_keypair.pubkey(),
-                liquidity_aggregator_pubkey,
+                liquidity_oracle_pubkey,
                 market_price,
             })
             .map_err(|e| e.unwrap())
@@ -990,14 +990,17 @@ impl TestReserve {
         );
         assert_eq!(self.config, reserve.config);
 
-        let liquidity_aggregator_coption =
-            if let Some(liquidity_aggregator_pubkey) = self.liquidity_aggregator_pubkey {
-                COption::Some(liquidity_aggregator_pubkey)
+        let liquidity_oracle_coption =
+            if let Some(liquidity_oracle_pubkey) = self.liquidity_oracle_pubkey {
+                COption::Some(liquidity_oracle_pubkey)
             } else {
                 COption::None
             };
 
-        assert_eq!(liquidity_aggregator_coption, reserve.liquidity.aggregator);
+        assert_eq!(
+            liquidity_oracle_coption,
+            reserve.liquidity.oracle_pubkey
+        );
         assert_eq!(
             reserve.liquidity.cumulative_borrow_rate_wads,
             Decimal::one()

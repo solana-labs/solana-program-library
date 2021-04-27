@@ -150,9 +150,9 @@ pub enum LendingError {
     /// Negative interest rate
     #[error("Interest rate is negative")]
     NegativeInterestRate,
-    /// Aggregator config is invalid
-    #[error("Input aggregator config is invalid")]
-    InvalidAggregatorConfig,
+    /// Oracle config is invalid
+    #[error("Input oracle config is invalid")]
+    InvalidOracleConfig,
 }
 
 impl From<LendingError> for ProgramError {

@@ -90,7 +90,7 @@ async fn test_success() {
             refresh_reserve(
                 spl_token_lending::id(),
                 sol_test_reserve.pubkey,
-                sol_test_reserve.liquidity_aggregator_pubkey,
+                sol_test_reserve.liquidity_oracle_pubkey,
             ),
         ],
         Some(&payer.pubkey()),

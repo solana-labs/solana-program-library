@@ -64,7 +64,7 @@ pub enum LendingInstruction {
     ///   13 `[]` Clock sysvar.
     ///   13 `[]` Rent sysvar.
     ///   14 `[]` Token program id.
-    ///   15 `[optional]` Reserve liquidity aggregator account.
+    ///   15 `[optional]` Reserve liquidity oracle account.
     ///                     Not required for quote currency reserves.
     ///                     Must match base and quote currency mint, and quote currency decimals.
     InitReserve {
@@ -81,7 +81,7 @@ pub enum LendingInstruction {
     ///
     ///   0. `[writable]` Reserve account.
     ///   1. `[]` Clock sysvar.
-    ///   2. `[optional]` Reserve liquidity aggregator account.
+    ///   2. `[optional]` Reserve liquidity oracle account.
     ///                     Required if the reserve currency is not the lending market quote
     ///                     currency.
     RefreshReserve,
@@ -531,7 +531,7 @@ pub fn init_reserve(
     lending_market_pubkey: Pubkey,
     lending_market_owner_pubkey: Pubkey,
     user_transfer_authority_pubkey: Pubkey,
-    reserve_liquidity_aggregator_pubkey: Option<Pubkey>,
+    reserve_liquidity_oracle_pubkey: Option<Pubkey>,
 ) -> Instruction {
     let (lending_market_authority_pubkey, _bump_seed) = Pubkey::find_program_address(
         &[&lending_market_pubkey.to_bytes()[..PUBKEY_BYTES]],
@@ -555,9 +555,9 @@ pub fn init_reserve(
         AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(spl_token::id(), false),
     ];
-    if let Some(reserve_liquidity_aggregator_pubkey) = reserve_liquidity_aggregator_pubkey {
+    if let Some(reserve_liquidity_oracle_pubkey) = reserve_liquidity_oracle_pubkey {
         accounts.push(AccountMeta::new_readonly(
-            reserve_liquidity_aggregator_pubkey,
+            reserve_liquidity_oracle_pubkey,
             false,
         ));
     }
@@ -576,15 +576,15 @@ pub fn init_reserve(
 pub fn refresh_reserve(
     program_id: Pubkey,
     reserve_pubkey: Pubkey,
-    reserve_liquidity_aggregator_pubkey: Option<Pubkey>,
+    reserve_liquidity_oracle_pubkey: Option<Pubkey>,
 ) -> Instruction {
     let mut accounts = vec![
         AccountMeta::new(reserve_pubkey, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];
-    if let Some(reserve_liquidity_aggregator_pubkey) = reserve_liquidity_aggregator_pubkey {
+    if let Some(reserve_liquidity_oracle_pubkey) = reserve_liquidity_oracle_pubkey {
         accounts.push(AccountMeta::new_readonly(
-            reserve_liquidity_aggregator_pubkey,
+            reserve_liquidity_oracle_pubkey,
             false,
         ));
     }

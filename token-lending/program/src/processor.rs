@@ -275,31 +275,31 @@ fn process_init_reserve(
         return Err(LendingError::InvalidAccountInput.into());
     }
 
-    let (reserve_liquidity_aggregator, reserve_liquidity_market_price) = if &lending_market
+    let (reserve_liquidity_oracle_pubkey, reserve_liquidity_market_price) = if &lending_market
         .quote_token_mint
         == reserve_liquidity_mint_info.key
     {
         if account_info_iter.peek().is_some() {
-            msg!("Reserve liquidity aggregator cannot be provided when reserve liquidity is the quote currency");
+            msg!("Reserve liquidity oracle cannot be provided when reserve liquidity is the quote currency");
             return Err(LendingError::InvalidAccountInput.into());
         }
         // 1 because quote token price is equal to itself
         (COption::None, 1)
     } else {
-        let aggregator_info = next_account_info(account_info_iter)?;
-        assert_rent_exempt(rent, aggregator_info)?;
+        let reserve_liquidity_oracle_info = next_account_info(account_info_iter)?;
+        assert_rent_exempt(rent, reserve_liquidity_oracle_info)?;
 
-        let aggregator = Aggregator::load_initialized(aggregator_info)?;
+        let aggregator = Aggregator::load_initialized(reserve_liquidity_oracle_info)?;
         if aggregator.config.decimals != quote_token_mint.decimals {
             msg!(
                 "Quote token mint decimals does not match the aggregator config decimals provided"
             );
-            return Err(LendingError::InvalidAggregatorConfig.into());
+            return Err(LendingError::InvalidOracleConfig.into());
         }
 
         (
-            COption::Some(*aggregator_info.key),
-            read_median(aggregator_info)?.median,
+            COption::Some(*reserve_liquidity_oracle_info.key),
+            read_median(reserve_liquidity_oracle_info)?.median,
         )
     };
 
@@ -330,7 +330,7 @@ fn process_init_reserve(
             mint_decimals: reserve_liquidity_mint.decimals,
             supply_pubkey: *reserve_liquidity_supply_info.key,
             fee_receiver: *reserve_liquidity_fee_receiver_info.key,
-            aggregator: reserve_liquidity_aggregator,
+            oracle_pubkey: reserve_liquidity_oracle_pubkey,
             market_price: reserve_liquidity_market_price,
         }),
         collateral: ReserveCollateral::new(NewReserveCollateralParams {
@@ -407,19 +407,17 @@ fn process_refresh_reserve(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pro
         return Err(LendingError::InvalidAccountOwner.into());
     }
 
-    if let COption::Some(reserve_liquidity_aggregator) = reserve.liquidity.aggregator {
-        let reserve_liquidity_aggregator_info = next_account_info(account_info_iter)?;
-        if &reserve_liquidity_aggregator != reserve_liquidity_aggregator_info.key {
-            msg!(
-                "Reserve liquidity aggregator does not match the reserve liquidity aggregator provided"
-            );
+    if let COption::Some(reserve_liquidity_oracle_pubkey) = reserve.liquidity.oracle_pubkey {
+        let reserve_liquidity_oracle_info = next_account_info(account_info_iter)?;
+        if &reserve_liquidity_oracle_pubkey != reserve_liquidity_oracle_info.key {
+            msg!("Reserve liquidity oracle does not match the reserve liquidity oracle provided");
             return Err(LendingError::InvalidAccountInput.into());
         }
 
         // @TODO: sanity check https://git.io/JOCcb
-        reserve.liquidity.market_price = read_median(reserve_liquidity_aggregator_info)?.median;
+        reserve.liquidity.market_price = read_median(reserve_liquidity_oracle_info)?.median;
     } else if account_info_iter.peek().is_some() {
-        msg!("Reserve liquidity aggregator cannot be provided when reserve liquidity is the quote currency");
+        msg!("Reserve liquidity oracle cannot be provided when reserve liquidity is the quote currency");
         return Err(LendingError::InvalidAccountInput.into());
     }
 
