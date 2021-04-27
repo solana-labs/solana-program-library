@@ -97,6 +97,7 @@ pub fn place_bid<'r, 'b: 'r>(
     accounts: &'r [AccountInfo<'b>],
     args: PlaceBidArgs,
 ) -> ProgramResult {
+    msg!("+ Processing PlaceBid");
     let accounts = parse_accounts(program_id, accounts)?;
 
     // Derive Metadata key and load it.
@@ -111,7 +112,6 @@ pub fn place_bid<'r, 'b: 'r>(
             "metadata".as_bytes(),
         ],
     )?;
-
 
     // If metadata doesn't exist, create it.
     let mut bidder_metadata: BidderMetadata =

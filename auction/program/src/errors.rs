@@ -94,6 +94,10 @@ pub enum AuctionError {
     /// Incorrect mint specified, must match auction.
     #[error("Incorrect mint specified, must match auction.")]
     IncorrectMint,
+
+    /// The pot for this bid is already empty.
+    #[error("The pot for this bid is already empty.")]
+    BidderPotEmpty,
 }
 
 impl PrintProgramError for AuctionError {

@@ -20,11 +20,39 @@ use {
     std::mem,
 };
 
+struct Accounts<'a, 'b: 'a> {
+    creator: &'a AccountInfo<'b>,
+    auction: &'a AccountInfo<'b>,
+    clock_sysvar: &'a AccountInfo<'b>,
+}
+
+fn parse_accounts<'a, 'b: 'a>(
+    program_id: &Pubkey,
+    accounts: &'a [AccountInfo<'b>],
+) -> Result<Accounts<'a, 'b>, ProgramError> {
+    let account_iter = &mut accounts.iter();
+    let accounts = Accounts {
+        creator: next_account_info(account_iter)?,
+        auction: next_account_info(account_iter)?,
+        clock_sysvar: next_account_info(account_iter)?,
+    };
+    assert_owned_by(accounts.auction, program_id)?;
+    Ok(accounts)
+}
+
+#[repr(C)]
+#[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq)]
+pub struct StartAuctionArgs {
+    /// The resource being auctioned. See AuctionData.
+    pub resource: Pubkey,
+}
+
 pub fn start_auction<'a, 'b: 'a>(
     program_id: &Pubkey,
     accounts: &'a [AccountInfo<'b>],
     args: StartAuctionArgs,
 ) -> ProgramResult {
+    msg!("+ Processing StartAuction");
     let accounts = parse_accounts(program_id, accounts)?;
     let clock = Clock::from_account_info(accounts.clock_sysvar)?;
 
@@ -58,31 +86,4 @@ pub fn start_auction<'a, 'b: 'a>(
     .serialize(&mut *accounts.auction.data.borrow_mut())?;
 
     Ok(())
-}
-
-struct Accounts<'a, 'b: 'a> {
-    creator: &'a AccountInfo<'b>,
-    auction: &'a AccountInfo<'b>,
-    clock_sysvar: &'a AccountInfo<'b>,
-}
-
-fn parse_accounts<'a, 'b: 'a>(
-    program_id: &Pubkey,
-    accounts: &'a [AccountInfo<'b>],
-) -> Result<Accounts<'a, 'b>, ProgramError> {
-    let account_iter = &mut accounts.iter();
-    let accounts = Accounts {
-        creator: next_account_info(account_iter)?,
-        auction: next_account_info(account_iter)?,
-        clock_sysvar: next_account_info(account_iter)?,
-    };
-    assert_owned_by(accounts.auction, program_id)?;
-    Ok(accounts)
-}
-
-#[repr(C)]
-#[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq)]
-pub struct StartAuctionArgs {
-    /// The resource being auctioned. See AuctionData.
-    pub resource: Pubkey,
 }

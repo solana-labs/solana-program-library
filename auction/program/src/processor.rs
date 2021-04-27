@@ -10,20 +10,23 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
+// Declare submodules, each contains a single handler for each instruction variant in the program.
 pub mod cancel_bid;
+pub mod claim_bid;
 pub mod create_auction;
 pub mod end_auction;
 pub mod place_bid;
 pub mod set_authority;
 pub mod start_auction;
 
-// Re-export submodules with handlers + associated types.
+// Re-export submodules handlers + associated types for other programs to consume.
 pub use cancel_bid::*;
+pub use claim_bid::*;
 pub use create_auction::*;
-pub use place_bid::*;
-pub use start_auction::*;
-pub use set_authority::*;
 pub use end_auction::*;
+pub use place_bid::*;
+pub use set_authority::*;
+pub use start_auction::*;
 
 pub fn process_instruction(
     program_id: &Pubkey,
@@ -32,32 +35,13 @@ pub fn process_instruction(
 ) -> ProgramResult {
     use crate::instruction::AuctionInstruction;
     match AuctionInstruction::try_from_slice(input)? {
-        AuctionInstruction::CreateAuction(args) => {
-            msg!("+ Processing CreateAuction");
-            create_auction(program_id, accounts, args)
-        }
-        AuctionInstruction::StartAuction(args) => {
-            msg!("+ Processing StartAuction");
-            start_auction(program_id, accounts, args)
-        }
-        AuctionInstruction::PlaceBid(args) => {
-            msg!("+ Processing PlaceBid");
-            place_bid(program_id, accounts, args)
-        }
-        AuctionInstruction::CancelBid(args) => {
-            msg!("+ Processing Cancelbid");
-            cancel_bid(program_id, accounts, args)
-        }
-        AuctionInstruction::SetAuthority => {
-            msg!("+ Processing SetAuthority");
-            set_authority(program_id, accounts);
-            Ok(())
-        }
-        AuctionInstruction::EndAuction(args) => {
-            msg!("+ Processing EndAuction");
-            end_auction(program_id, accounts, args);
-            Ok(())
-        }
+        AuctionInstruction::CancelBid(args) => cancel_bid(program_id, accounts, args),
+        AuctionInstruction::ClaimBid(args) => claim_bid(program_id, accounts, args),
+        AuctionInstruction::CreateAuction(args) => create_auction(program_id, accounts, args),
+        AuctionInstruction::EndAuction(args) => end_auction(program_id, accounts, args),
+        AuctionInstruction::PlaceBid(args) => place_bid(program_id, accounts, args),
+        AuctionInstruction::SetAuthority => set_authority(program_id, accounts),
+        AuctionInstruction::StartAuction(args) => start_auction(program_id, accounts, args),
     }
 }
 
@@ -97,10 +81,12 @@ pub struct AuctionData {
     pub end_auction_at: Option<Slot>,
     /// Gap time is the amount of time in slots after the previous bid at which the auction ends.
     pub end_auction_gap: Option<Slot>,
+    /// Minimum price for any bid to meet.
+    pub price_floor: PriceFloor,
 }
 
 impl AuctionData {
-    fn ended(&self, now: Slot) -> bool {
+    pub fn ended(&self, now: Slot) -> bool {
         // Already ended, nothing to check.
         if self.ended_at.is_some() {
             return true;
@@ -120,7 +106,9 @@ impl AuctionData {
             }
 
             // Simply whether now has passed the end.
-            (Some(end), None) => now > end,
+            (Some(end), None) => {
+                now > end
+            },
 
             // No other end conditions.
             _ => false,

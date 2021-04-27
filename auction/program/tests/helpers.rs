@@ -16,6 +16,8 @@ use spl_auction::{
     processor::{
         CancelBidArgs,
         CreateAuctionArgs,
+        ClaimBidArgs,
+        EndAuctionArgs,
         PlaceBidArgs,
         StartAuctionArgs,
         WinnerLimit,
@@ -161,6 +163,30 @@ pub async fn create_auction(
                 resource: *resource,
                 token_mint: *mint_keypair,
                 winners: WinnerLimit::Capped(max_winners),
+                price_floor: PriceFloor::None,
+            },
+        )],
+        Some(&payer.pubkey()),
+        &[payer],
+        *recent_blockhash,
+    );
+    banks_client.process_transaction(transaction).await?;
+    Ok(())
+}
+
+pub async fn end_auction(
+    banks_client: &mut BanksClient,
+    program_id: &Pubkey,
+    recent_blockhash: &Hash,
+    payer: &Keypair,
+    resource: &Pubkey,
+) -> Result<(), TransportError> {
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction::end_auction_instruction(
+            *program_id,
+            payer.pubkey(),
+            EndAuctionArgs {
+                resource: *resource,
             },
         )],
         Some(&payer.pubkey()),
@@ -254,8 +280,7 @@ pub async fn cancel_bid(
     Ok(())
 }
 
-pub async
-fn approve(
+pub async fn approve(
     banks_client: &mut BanksClient,
     recent_blockhash: &Hash,
     payer: &Keypair,
@@ -275,6 +300,37 @@ fn approve(
         .unwrap()],
         Some(&payer.pubkey()),
         &[payer],
+        *recent_blockhash,
+    );
+    banks_client.process_transaction(transaction).await?;
+    Ok(())
+}
+
+pub async fn claim_bid(
+    banks_client: &mut BanksClient,
+    recent_blockhash: &Hash,
+    program_id: &Pubkey,
+    authority: &Keypair,
+    payer: &Keypair,
+    bidder: &Keypair,
+    bidder_spl_account: &Keypair,
+    seller: &Pubkey,
+    resource: &Pubkey,
+    mint: &Pubkey,
+) -> Result<(), TransportError> {
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction::claim_bid_instruction(
+            *program_id,
+            authority.pubkey(),
+            *seller,
+            bidder.pubkey(),
+            bidder_spl_account.pubkey(),
+            *mint,
+            payer.pubkey(),
+            ClaimBidArgs { resource: *resource },
+        )],
+        Some(&payer.pubkey()),
+        &[authority, payer],
         *recent_blockhash,
     );
     banks_client.process_transaction(transaction).await?;

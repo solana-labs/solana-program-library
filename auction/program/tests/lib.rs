@@ -40,6 +40,7 @@ async fn setup_auction(
     Pubkey,
     Pubkey,
     Pubkey,
+    Pubkey,
     Hash,
 ) {
     // Create a program to attach accounts to.
@@ -62,7 +63,7 @@ async fn setup_auction(
     let (auction_pubkey, _) = Pubkey::find_program_address(seeds, &program_id);
 
     // Run Create Auction instruction.
-    helpers::create_auction(
+    let err = helpers::create_auction(
         &mut banks_client,
         &program_id,
         &payer,
@@ -71,7 +72,8 @@ async fn setup_auction(
         &mint_keypair.pubkey(),
         max_winners,
     )
-    .await;
+    .await
+    .unwrap();
 
     // Attach useful Accounts for testing.
     let mut bidders = vec![];
@@ -170,6 +172,7 @@ async fn setup_auction(
         resource,
         mint_keypair.pubkey(),
         mint_manager.pubkey(),
+        auction_pubkey,
         recent_blockhash,
     );
 }
@@ -188,9 +191,10 @@ async fn test_correct_runs() {
     // Local wrapper around a small test description described by actions.
     struct Test {
         actions: Vec<Action>,
+        expect: Vec<(usize, u64)>,
         max_winners: usize,
         price_floor: PriceFloor,
-        expect: Vec<(usize, u64)>,
+        seller_collects: u64,
     }
 
     // A list of auction runs that should succeed. At the end of the run the winning bid state
@@ -207,6 +211,7 @@ async fn test_correct_runs() {
             ],
             max_winners: 3,
             price_floor: PriceFloor::None,
+            seller_collects: 9000,
             expect: vec![
                 (1, 2000),
                 (2, 3000),
@@ -225,6 +230,7 @@ async fn test_correct_runs() {
             expect: vec![(0, 4000)],
             max_winners: 3,
             price_floor: PriceFloor::None,
+            seller_collects: 4000,
         },
 
         // The top bidder when cancelling should allow room for lower bidders.
@@ -242,6 +248,7 @@ async fn test_correct_runs() {
             expect: vec![(2, 5500), (1, 6000), (3, 7000)],
             max_winners: 3,
             price_floor: PriceFloor::None,
+            seller_collects: 18500,
         },
 
         // An auction where everyone cancels should still succeed, with no winners.
@@ -258,6 +265,7 @@ async fn test_correct_runs() {
             expect: vec![],
             max_winners: 3,
             price_floor: PriceFloor::None,
+            seller_collects: 0,
         },
 
         // An auction where no one bids should still succeed.
@@ -268,6 +276,7 @@ async fn test_correct_runs() {
             expect: vec![],
             max_winners: 3,
             price_floor: PriceFloor::None,
+            seller_collects: 0,
         },
     ];
 
@@ -281,10 +290,13 @@ async fn test_correct_runs() {
             resource,
             mint,
             mint_authority,
+            auction_pubkey,
             recent_blockhash,
         ) = setup_auction(true, strategy.max_winners).await;
 
+        // Interpret test actions one by one.
         for action in strategy.actions.iter() {
+            println!("Strategy: {} Step {:?}", strategy.actions.len(), action);
             match *action {
                 Action::Bid(bidder, amount) => {
                     // Get balances pre bidding.
@@ -374,14 +386,34 @@ async fn test_correct_runs() {
                 }
 
                 Action::End => {
+                    helpers::end_auction(
+                        &mut banks_client,
+                        &program_id,
+                        &recent_blockhash,
+                        &payer,
+                        &resource,
+                    )
+                    .await
+                    .expect("end_auction");
+
+                    // Assert Auction is actually in ended state.
+                    let auction: AuctionData = try_from_slice_unchecked(
+                        &banks_client
+                            .get_account(auction_pubkey)
+                            .await
+                            .expect("get_account")
+                            .expect("account not found")
+                            .data,
+                    )
+                    .unwrap();
+
+                    assert!(auction.ended_at.is_some());
                 }
             }
         }
 
         // Verify a bid was created, and Metadata for this bidder correctly reflects
         // the last bid as expected.
-        let auction_seeds = &[PREFIX.as_bytes(), &program_id.as_ref(), resource.as_ref()];
-        let (auction_pubkey, _) = Pubkey::find_program_address(auction_seeds, &program_id);
         let auction: AuctionData = try_from_slice_unchecked(
             &banks_client
                 .get_account(auction_pubkey)
@@ -392,13 +424,13 @@ async fn test_correct_runs() {
         )
         .unwrap();
 
-        // Verify BidState
+        // Verify BidState, all winners should be as expected
         match auction.bid_state {
             BidState::EnglishAuction { ref bids, .. } => {
                 // Zip internal bid state with the expected indices this strategy expects winners
                 // to result in.
                 let results: Vec<(_, _)> = strategy.expect.iter().zip(bids).collect();
-                for (index, bid) in results {
+                for (index, bid) in results.iter() {
                     let bidder = &bidders[index.0];
                     let amount = index.1;
 
@@ -409,6 +441,52 @@ async fn test_correct_runs() {
                     // Must have bid the amount we expected. 
                     // bid.1 is the amount.
                     assert_eq!(bid.1, amount);
+                }
+
+                // If the auction has ended, attempt to claim back SPL tokens into a new account.
+                if auction.ended(0) {
+                    let collection = Keypair::new();
+
+                    // Generate Collection Pot.
+                    helpers::create_token_account(
+                        &mut banks_client,
+                        &payer,
+                        &recent_blockhash,
+                        &collection,
+                        &mint,
+                        &payer.pubkey(),
+                    )
+                    .await
+                    .unwrap();
+
+                    // For each winning bid, claim into auction.
+                    for (index, bid) in results {
+                        let err = helpers::claim_bid(
+                            &mut banks_client,
+                            &recent_blockhash,
+                            &program_id,
+                            &payer,
+                            &payer,
+                            &bidders[index.0].0,
+                            &bidders[index.0].1,
+                            &collection.pubkey(),
+                            &resource,
+                            &mint,
+                        )
+                        .await;
+                        println!("{:?}", err);
+                        err.expect("claim_bid");
+
+                        // Bid pot should be empty
+                        let balance = helpers::get_token_balance(&mut banks_client, &bidders[index.0].1.pubkey())
+                            .await;
+                        assert_eq!(balance, 0);
+                    }
+
+                    // Total claimed balance should match what we expect
+                    let balance = helpers::get_token_balance(&mut banks_client, &collection.pubkey())
+                        .await;
+                    assert_eq!(balance, strategy.seller_collects);
                 }
             }
             _ => {}
@@ -425,6 +503,7 @@ async fn handle_failing_action(
     mint: &Pubkey,
     payer: &Keypair,
     resource: &Pubkey,
+    auction_pubkey: &Pubkey,
     action: &Action,
 ) -> Result<(), TransportError> {
     match *action {
@@ -513,6 +592,26 @@ async fn handle_failing_action(
         }
 
         Action::End => {
+            helpers::end_auction(
+                banks_client,
+                &program_id,
+                &recent_blockhash,
+                &payer,
+                &resource,
+            )
+            .await?;
+
+            // Assert Auction is actually in ended state.
+            let auction: AuctionData = try_from_slice_unchecked(
+                &banks_client
+                    .get_account(*auction_pubkey)
+                    .await
+                    .expect("get_account")
+                    .expect("account not found")
+                    .data,
+            )?;
+
+            assert!(auction.ended_at.is_some());
         }
     }
 
@@ -533,12 +632,27 @@ async fn test_incorrect_runs() {
     // A list of auction runs that should succeed. At the end of the run the winning bid state
     // should match the expected result.
     let strategies = [
+        Test {
+            actions: vec![
+                Action::Cancel(0),
+                Action::End,
+            ],
+            max_winners: 3,
+            price_floor: PriceFloor::None,
+        },
+
+        // Cancel a non-existing bid.
         // Bidding less than the top bidder should fail.
         Test {
             actions: vec![
                 Action::Bid(0, 5000),
                 Action::Bid(1, 6000),
                 Action::Bid(2, 5500),
+                Action::Bid(0, 1000),
+                Action::Bid(1, 2000),
+                Action::Bid(2, 3000),
+                Action::Bid(3, 4000),
+                Action::Bid(3, 4000),
                 Action::End,
             ],
             max_winners: 3,
@@ -556,6 +670,17 @@ async fn test_incorrect_runs() {
             max_winners: 3,
             price_floor: PriceFloor::None,
         },
+
+        // Bidding after an auction has been explicitly ended should fail.
+        Test {
+            actions: vec![
+                Action::Bid(0, 5000),
+                Action::End,
+                Action::Bid(1, 6000),
+            ],
+            max_winners: 3,
+            price_floor: PriceFloor::None,
+        },
     ];
 
     // Run each strategy with a new auction.
@@ -568,12 +693,14 @@ async fn test_incorrect_runs() {
             resource,
             mint,
             mint_authority,
+            auction_pubkey,
             recent_blockhash,
         ) = setup_auction(true, strategy.max_winners).await;
 
-        println!("Trying Strategy: {:?}", strategy);
+        let mut failed = false;
+
         for action in strategy.actions.iter() {
-            let result = handle_failing_action(
+            failed = failed || handle_failing_action(
                 &mut banks_client,
                 &recent_blockhash,
                 &program_id,
@@ -581,23 +708,12 @@ async fn test_incorrect_runs() {
                 &mint,
                 &payer,
                 &resource,
+                &auction_pubkey,
                 action,
-            ).await;
-            println!("{:?}", result);
+            ).await.is_err();
         }
 
-        // Verify a bid was created, and Metadata for this bidder correctly reflects
-        // the last bid as expected.
-        let auction_seeds = &[PREFIX.as_bytes(), &program_id.as_ref(), resource.as_ref()];
-        let (auction_pubkey, _) = Pubkey::find_program_address(auction_seeds, &program_id);
-        let auction: AuctionData = try_from_slice_unchecked(
-            &banks_client
-                .get_account(auction_pubkey)
-                .await
-                .expect("get_account")
-                .expect("account not found")
-                .data,
-        )
-        .unwrap();
+        // Expect to fail.
+        assert!(failed);
     }
 }

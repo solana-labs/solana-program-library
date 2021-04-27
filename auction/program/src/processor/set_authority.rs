@@ -13,11 +13,13 @@ use {
         account_info::{next_account_info, AccountInfo},
         borsh::try_from_slice_unchecked,
         entrypoint::ProgramResult,
+        msg,
         pubkey::Pubkey,
     },
 };
 
 pub fn set_authority(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+    msg!("+ Processing SetAuthority");
     let account_iter = &mut accounts.iter();
     let auction_act = next_account_info(account_iter)?;
     let current_authority = next_account_info(account_iter)?;
