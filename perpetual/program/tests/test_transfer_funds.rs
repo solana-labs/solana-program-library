@@ -11,13 +11,7 @@ use {
     std::str::FromStr,
 };
 
-use spl_perpetual::{
-    instruction::*,
-    processor::*,
-    error::*,
-    state::*,
-};
-
+use spl_perpetual::{error::*, instruction::*, processor::*, state::*};
 
 #[tokio::test]
 async fn test_transfer_funds() {
