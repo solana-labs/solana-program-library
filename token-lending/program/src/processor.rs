@@ -724,7 +724,6 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
             .decimal_collateral_to_liquidity(collateral.deposited_amount.into())?
             .try_mul(deposit_reserve.liquidity.market_price)?
             .try_div(decimals)?;
-        // @TODO: sanity check https://git.io/JOCcb
         collateral.market_value = market_value;
 
         let loan_to_value_rate = Rate::from_percent(deposit_reserve.config.loan_to_value_ratio);
@@ -774,7 +773,6 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
             .borrowed_amount_wads
             .try_mul(borrow_reserve.liquidity.market_price)?
             .try_div(decimals)?;
-        // @TODO: sanity check https://git.io/JOCcb
         liquidity.market_value = market_value;
         borrowed_value = borrowed_value.try_add(market_value)?;
     }
