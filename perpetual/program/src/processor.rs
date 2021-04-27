@@ -202,15 +202,13 @@ impl Processor {
         let margin_long_info = next_account_info(account_info_iter)?;
         let margin_short_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
-        // let spot_mint_info = next_account_info(account_info_iter)?;
         let rent_info = next_account_info(account_info_iter)?;
-        // let destination_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_program_id = *token_program_info.key;
-        // TODO
 
         let mut perpetual_swap = PerpetualSwap::try_from_slice(&perpetual_swap_info.data.borrow())?;
+        // Check if the perpetual swap is already initialized
         if perpetual_swap.is_initialized() {
             return Err(PerpetualSwapError::AlreadyInUse.into());
         }
@@ -224,11 +222,13 @@ impl Processor {
             return Err(PerpetualSwapError::NotRentExempt.into());
         }
 
+        // Check if the long margin account is already initialized
         let long_margin_account = Account::unpack_unchecked(&margin_long_info.data.borrow())?;
         if long_margin_account.is_initialized() {
             return Err(PerpetualSwapError::AlreadyInUse.into());
         }
 
+        // Check if the short margin account is already initialized
         let short_margin_account = Account::unpack_unchecked(&margin_short_info.data.borrow())?;
         if short_margin_account.is_initialized() {
             return Err(PerpetualSwapError::AlreadyInUse.into());

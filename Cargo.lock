@@ -2229,17 +2229,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d4fd5641d01c8f18a23da7b6fe29298ff4b55afcccdf78973b24cf3175fee32e"
 
 [[package]]
-name = "perpetual"
-version = "0.1.0"
-dependencies = [
- "arrayref",
- "borsh 0.8.2",
- "solana-program",
- "spl-token 3.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "thiserror",
-]
-
-[[package]]
 name = "pest"
 version = "2.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3806,6 +3795,26 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
+]
+
+[[package]]
+name = "spl-perpetual"
+version = "0.1.0"
+dependencies = [
+ "arrayref",
+ "assert_matches",
+ "base64 0.13.0",
+ "borsh 0.8.2",
+ "log",
+ "proptest",
+ "serde",
+ "serde_yaml",
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "spl-token 3.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "thiserror",
+ "uint",
 ]
 
 [[package]]
