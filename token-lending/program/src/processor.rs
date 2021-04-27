@@ -685,8 +685,8 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
 
     let mut deposited_value = Decimal::zero();
     let mut borrowed_value = Decimal::zero();
-    let mut loan_to_value_ratio = Decimal::zero();
-    let mut liquidation_threshold = Decimal::zero();
+    let mut allowed_borrow_value = Decimal::zero();
+    let mut unhealthy_borrow_value = Decimal::zero();
 
     for (index, collateral) in obligation.deposits.iter_mut().enumerate() {
         let deposit_reserve_info = next_account_info(account_info_iter)?;
@@ -731,10 +731,10 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
             Rate::from_percent(deposit_reserve.config.liquidation_threshold);
 
         deposited_value = deposited_value.try_add(market_value)?;
-        loan_to_value_ratio =
-            loan_to_value_ratio.try_add(market_value.try_mul(loan_to_value_rate)?)?;
-        liquidation_threshold =
-            liquidation_threshold.try_add(market_value.try_mul(liquidation_threshold_rate)?)?;
+        allowed_borrow_value =
+            allowed_borrow_value.try_add(market_value.try_mul(loan_to_value_rate)?)?;
+        unhealthy_borrow_value =
+            unhealthy_borrow_value.try_add(market_value.try_mul(liquidation_threshold_rate)?)?;
     }
 
     for (index, liquidity) in obligation.borrows.iter_mut().enumerate() {
@@ -784,17 +784,8 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
 
     obligation.deposited_value = deposited_value;
     obligation.borrowed_value = borrowed_value;
-
-    // @FIXME: https://git.io/JOlik
-    if deposited_value == Decimal::zero() {
-        obligation.loan_to_value_ratio = Rate::zero();
-        obligation.liquidation_threshold = Rate::zero();
-    } else {
-        obligation.loan_to_value_ratio =
-            Rate::try_from(loan_to_value_ratio.try_div(deposited_value)?)?;
-        obligation.liquidation_threshold =
-            Rate::try_from(liquidation_threshold.try_div(deposited_value)?)?;
-    }
+    obligation.allowed_borrow_value = allowed_borrow_value;
+    obligation.unhealthy_borrow_value = unhealthy_borrow_value;
 
     obligation.last_update.update_slot(clock.slot);
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
@@ -1169,7 +1160,7 @@ fn process_borrow_obligation_liquidity(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
-    let remaining_borrow_value = obligation.max_borrow_value()?;
+    let remaining_borrow_value = obligation.remaining_borrow_value()?;
     if remaining_borrow_value == Decimal::zero() {
         msg!("Remaining borrow value is zero");
         return Err(LendingError::BorrowTooLarge.into());
@@ -1453,7 +1444,7 @@ fn process_liquidate_obligation(
         msg!("Obligation borrowed value is zero");
         return Err(LendingError::ObligationBorrowsZero.into());
     }
-    if obligation.loan_to_value()? < Decimal::from(obligation.liquidation_threshold) {
+    if obligation.borrowed_value < obligation.unhealthy_borrow_value {
         msg!("Obligation is healthy and cannot be liquidated");
         return Err(LendingError::ObligationHealthy.into());
     }

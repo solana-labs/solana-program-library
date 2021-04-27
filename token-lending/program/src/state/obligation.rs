@@ -39,10 +39,10 @@ pub struct Obligation {
     pub deposited_value: Decimal,
     /// Market value of borrows
     pub borrowed_value: Decimal,
-    /// The target ratio of borrowed value to deposited value
-    pub loan_to_value_ratio: Rate,
-    /// The loan to value ratio at which the obligation can be liquidated
-    pub liquidation_threshold: Rate,
+    /// The maximum borrow value at the weighted average loan to value ratio
+    pub allowed_borrow_value: Decimal,
+    /// The dangerous borrow value at the weighted average liquidation threshold
+    pub unhealthy_borrow_value: Decimal,
 }
 
 impl Obligation {
@@ -90,22 +90,19 @@ impl Obligation {
         Ok(())
     }
 
-    /// Calculate the maximum collateral value that can be withdrawn for a given loan to value ratio
+    /// Calculate the maximum collateral value that can be withdrawn
     pub fn max_withdraw_value(&self) -> Result<Decimal, ProgramError> {
-        let min_deposited_value = self.borrowed_value.try_div(self.loan_to_value_ratio)?;
-        if min_deposited_value >= self.deposited_value {
+        let loan_to_value_ratio = self.allowed_borrow_value.try_div(self.deposited_value)?;
+        let required_deposit_value = self.borrowed_value.try_div(loan_to_value_ratio)?;
+        if required_deposit_value >= self.deposited_value {
             return Ok(Decimal::zero());
         }
-        self.deposited_value.try_sub(min_deposited_value)
+        self.deposited_value.try_sub(required_deposit_value)
     }
 
-    /// Calculate the maximum liquidity value that can be borrowed for a given loan to value ratio
-    pub fn max_borrow_value(&self) -> Result<Decimal, ProgramError> {
-        let max_borrowed_value = self.deposited_value.try_mul(self.loan_to_value_ratio)?;
-        if self.borrowed_value >= max_borrowed_value {
-            return Ok(Decimal::zero());
-        }
-        max_borrowed_value.try_sub(self.borrowed_value)
+    /// Calculate the maximum liquidity value that can be borrowed
+    pub fn remaining_borrow_value(&self) -> Result<Decimal, ProgramError> {
+        self.allowed_borrow_value.try_sub(self.borrowed_value)
     }
 
     /// Calculate the maximum liquidation amount for a given liquidity
@@ -343,8 +340,8 @@ impl Pack for Obligation {
             owner,
             deposited_value,
             borrowed_value,
-            loan_to_value_ratio,
-            liquidation_threshold,
+            allowed_borrow_value,
+            unhealthy_borrow_value,
             deposits_len,
             borrows_len,
             data_flat,
@@ -372,8 +369,8 @@ impl Pack for Obligation {
         owner.copy_from_slice(self.owner.as_ref());
         pack_decimal(self.deposited_value, deposited_value);
         pack_decimal(self.borrowed_value, borrowed_value);
-        pack_rate(self.loan_to_value_ratio, loan_to_value_ratio);
-        pack_rate(self.liquidation_threshold, liquidation_threshold);
+        pack_decimal(self.allowed_borrow_value, allowed_borrow_value);
+        pack_decimal(self.unhealthy_borrow_value, unhealthy_borrow_value);
         *deposits_len = u8::try_from(self.deposits.len()).unwrap().to_le_bytes();
         *borrows_len = u8::try_from(self.borrows.len()).unwrap().to_le_bytes();
 
@@ -420,8 +417,8 @@ impl Pack for Obligation {
             owner,
             deposited_value,
             borrowed_value,
-            loan_to_value_ratio,
-            liquidation_threshold,
+            allowed_borrow_value,
+            unhealthy_borrow_value,
             deposits_len,
             borrows_len,
             data_flat,
@@ -491,8 +488,8 @@ impl Pack for Obligation {
             borrows,
             deposited_value: unpack_decimal(deposited_value),
             borrowed_value: unpack_decimal(borrowed_value),
-            loan_to_value_ratio: unpack_rate(loan_to_value_ratio),
-            liquidation_threshold: unpack_rate(liquidation_threshold),
+            allowed_borrow_value: unpack_decimal(allowed_borrow_value),
+            unhealthy_borrow_value: unpack_decimal(unhealthy_borrow_value),
         })
     }
 }
