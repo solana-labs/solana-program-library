@@ -92,8 +92,9 @@ impl Obligation {
 
     /// Calculate the maximum collateral value that can be withdrawn
     pub fn max_withdraw_value(&self) -> Result<Decimal, ProgramError> {
-        let loan_to_value_ratio = self.allowed_borrow_value.try_div(self.deposited_value)?;
-        let required_deposit_value = self.borrowed_value.try_div(loan_to_value_ratio)?;
+        let required_deposit_value = self.borrowed_value
+            .try_mul(self.deposited_value)?
+            .try_div(self.allowed_borrow_value)?;
         if required_deposit_value >= self.deposited_value {
             return Ok(Decimal::zero());
         }
