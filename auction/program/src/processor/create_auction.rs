@@ -24,18 +24,18 @@ use {
 pub struct CreateAuctionArgs {
     /// How many winners are allowed for this auction. See AuctionData.
     pub winners: WinnerLimit,
-    /// The resource being auctioned. See AuctionData.
-    pub resource: Pubkey,
     /// End time is the cut-off point that the auction is forced to end by. See AuctionData.
     pub end_auction_at: Option<Slot>,
     /// Gap time is how much time after the previous bid where the auction ends. See AuctionData.
     pub end_auction_gap: Option<Slot>,
+    /// Set a price floor.
+    pub price_floor: PriceFloor,
     /// Token mint for the SPL token used for bidding.
     pub token_mint: Pubkey,
     /// Authority
     pub authority: Pubkey,
-    /// Set a price floor.
-    pub price_floor: PriceFloor,
+    /// The resource being auctioned. See AuctionData.
+    pub resource: Pubkey,
 }
 
 struct Accounts<'a, 'b: 'a> {
@@ -83,12 +83,12 @@ pub fn create_auction(
     // The data must be large enough to hold at least the number of winners.
     let auction_size = match args.winners {
         WinnerLimit::Capped(n) => mem::size_of::<Bid>() * n + BASE_AUCTION_DATA_SIZE,
-        WinnerLimit::Unlimited => BASE_AUCTION_DATA_SIZE,
+        WinnerLimit::Unlimited(_) => BASE_AUCTION_DATA_SIZE,
     };
 
     let bid_state = match args.winners {
         WinnerLimit::Capped(n) => BidState::new_english(n),
-        WinnerLimit::Unlimited => BidState::new_open_edition(),
+        WinnerLimit::Unlimited(_) => BidState::new_open_edition(),
     };
 
     // Create auction account with enough space for a winner tracking.

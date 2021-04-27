@@ -185,7 +185,9 @@ pub fn place_bid<'r, 'b: 'r>(
 
     // Verify auction has not ended.
     if auction.ended(clock.slot) {
-        return Err(AuctionError::InvalidState.into());
+        auction.state = auction.state.end()?;
+        auction.serialize(&mut *accounts.auction.data.borrow_mut())?;
+        return Ok(());
     }
 
     let bump_authority_seeds = &[
@@ -211,6 +213,8 @@ pub fn place_bid<'r, 'b: 'r>(
         // Attach SPL token address to pot account.
         let mut pot: BidderPot = try_from_slice_unchecked(&accounts.bidder_pot.data.borrow_mut())?;
         pot.bidder_pot = *accounts.bidder_pot_token.key;
+        pot.bidder_act = *accounts.bidder.key;
+        pot.auction_act = *accounts.auction.key;
         pot.serialize(&mut *accounts.bidder_pot.data.borrow_mut())?;
     } else {
         // Already exists, verify that the pot contains the specified SPL address.

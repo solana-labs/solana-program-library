@@ -69,10 +69,6 @@ pub struct AuctionData {
     pub resource: Pubkey,
     /// Token mint for the SPL token being used to bid
     pub token_mint: Pubkey,
-    /// The state the auction is in, whether it has started or ended.
-    pub state: AuctionState,
-    /// Auction Bids, each user may have one bid open at a time.
-    pub bid_state: BidState,
     /// The time the last bid was placed, used to keep track of auction timing.
     pub last_bid: Option<Slot>,
     /// Slot time the auction was officially ended by.
@@ -83,6 +79,10 @@ pub struct AuctionData {
     pub end_auction_gap: Option<Slot>,
     /// Minimum price for any bid to meet.
     pub price_floor: PriceFloor,
+    /// The state the auction is in, whether it has started or ended.
+    pub state: AuctionState,
+    /// Auction Bids, each user may have one bid open at a time.
+    pub bid_state: BidState,
 }
 
 impl AuctionData {
@@ -239,9 +239,11 @@ impl BidState {
 #[repr(C)]
 #[derive(Clone, BorshSerialize, BorshDeserialize, PartialEq, Debug)]
 pub enum WinnerLimit {
-    Unlimited,
+    Unlimited(usize),
     Capped(usize),
 }
+
+pub const BIDDER_METADATA_LEN: usize = 32 + 32 + 8 + 8 + 1;
 
 /// Models a set of metadata for a bidder, meant to be stored in a PDA. This allows looking up
 /// information about a bidder regardless of if they have won, lost or cancelled.
@@ -266,4 +268,8 @@ pub struct BidderMetadata {
 pub struct BidderPot {
     /// Points at actual pot that is a token account
     pub bidder_pot: Pubkey,
+    /// Originating bidder account
+    pub bidder_act: Pubkey,
+    /// Auction account
+    pub auction_act: Pubkey,
 }
