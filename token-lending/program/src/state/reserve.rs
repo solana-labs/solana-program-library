@@ -389,7 +389,7 @@ pub struct ReserveLiquidity {
     /// Reserve liquidity borrowed
     pub borrowed_amount_wads: Decimal,
     /// Fee receiver for flash loan
-    pub flash_loan_fee_receiver: Pubkey,
+    pub flash_loan_fees_receiver: Pubkey,
 }
 
 impl ReserveLiquidity {
@@ -406,7 +406,7 @@ impl ReserveLiquidity {
             supply_pubkey,
             available_amount: 0,
             borrowed_amount_wads: Decimal::zero(),
-            flash_loan_fee_receiver,
+            flash_loan_fees_receiver: flash_loan_fee_receiver,
         }
     }
 
@@ -580,7 +580,7 @@ impl ReserveFees {
     }
 
     /// Calculate the owner and host fees on flash loan
-    pub fn calculate_flash_loan_fees(
+    pub fn calculate_flash_loan_fee(
         &self,
         liquidity_amount: u64,
     ) -> Result<(u64, u64), ProgramError> {
@@ -678,7 +678,7 @@ impl Pack for Reserve {
                 supply_pubkey: Pubkey::new_from_array(*liquidity_supply),
                 available_amount: u64::from_le_bytes(*available_liquidity),
                 borrowed_amount_wads: unpack_decimal(total_borrows),
-                flash_loan_fee_receiver: Pubkey::new_from_array(*flash_loan_fee_receiver),
+                flash_loan_fees_receiver: Pubkey::new_from_array(*flash_loan_fee_receiver),
             },
             collateral: ReserveCollateral {
                 mint_pubkey: Pubkey::new_from_array(*collateral_mint),
@@ -748,7 +748,7 @@ impl Pack for Reserve {
         liquidity_supply.copy_from_slice(self.liquidity.supply_pubkey.as_ref());
         *available_liquidity = self.liquidity.available_amount.to_le_bytes();
         pack_decimal(self.liquidity.borrowed_amount_wads, total_borrows);
-        flash_loan_fee_receiver.copy_from_slice(self.liquidity.flash_loan_fee_receiver.as_ref());
+        flash_loan_fee_receiver.copy_from_slice(self.liquidity.flash_loan_fees_receiver.as_ref());
 
         // collateral info
         collateral_mint.copy_from_slice(self.collateral.mint_pubkey.as_ref());

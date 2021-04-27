@@ -962,25 +962,25 @@ pub fn flash_loan(
     destination_liquidity_pubkey: Pubkey,
     reserve_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
-    derived_lending_market_authority: Pubkey,
+    derived_lending_market_authority_pubkey: Pubkey,
     flash_loan_receiver_pubkey: Pubkey,
-    flash_loan_fees_account_info: Pubkey,
-    host_fee_recipient: Pubkey,
-    flash_loan_receiver_program_params: Vec<Pubkey>,
+    flash_loan_fees_reciver_pubkey: Pubkey,
+    host_fee_recipient_pubkey: Pubkey,
+    flash_loan_receiver_program_account_pubkeys: Vec<Pubkey>,
 ) -> Instruction {
     let mut accounts = vec![
         AccountMeta::new(reserve_liquidity_pubkey, false),
         AccountMeta::new(destination_liquidity_pubkey, false),
         AccountMeta::new_readonly(reserve_pubkey, false),
         AccountMeta::new_readonly(lending_market_pubkey, false),
-        AccountMeta::new_readonly(derived_lending_market_authority, false),
+        AccountMeta::new_readonly(derived_lending_market_authority_pubkey, false),
         AccountMeta::new_readonly(flash_loan_receiver_pubkey, false),
         AccountMeta::new_readonly(spl_token::id(), false),
-        AccountMeta::new(flash_loan_fees_account_info, false),
-        AccountMeta::new(host_fee_recipient, false),
+        AccountMeta::new(flash_loan_fees_reciver_pubkey, false),
+        AccountMeta::new(host_fee_recipient_pubkey, false),
     ];
     accounts.extend(
-        flash_loan_receiver_program_params
+        flash_loan_receiver_program_account_pubkeys
             .into_iter()
             .map(|additional_param| AccountMeta::new(additional_param, false)),
     );
