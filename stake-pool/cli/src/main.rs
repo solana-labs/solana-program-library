@@ -877,7 +877,12 @@ fn command_withdraw(
 
     // Construct transaction to withdraw from withdraw_accounts account list
     let mut instructions: Vec<Instruction> = vec![];
-    let mut signers = vec![config.fee_payer.as_ref(), config.token_owner.as_ref()];
+    let user_transfer_authority = Keypair::new(); // ephemeral keypair just to do the transfer
+    let mut signers = vec![
+        config.fee_payer.as_ref(),
+        config.token_owner.as_ref(),
+        &user_transfer_authority,
+    ];
     let stake_receiver_account = Keypair::new(); // Will be added to signers if creating new account
 
     instructions.push(
@@ -885,7 +890,7 @@ fn command_withdraw(
         spl_token::instruction::approve(
             &spl_token::id(),
             &withdraw_from,
-            &pool_withdraw_authority,
+            &user_transfer_authority.pubkey(),
             &config.token_owner.pubkey(),
             &[],
             pool_amount,
@@ -948,6 +953,7 @@ fn command_withdraw(
             &withdraw_account.address,
             &stake_receiver.unwrap(), // Cannot be none at this point
             &config.staker.pubkey(),
+            &user_transfer_authority.pubkey(),
             &withdraw_from,
             &stake_pool.pool_mint,
             &spl_token::id(),

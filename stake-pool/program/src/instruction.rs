@@ -225,12 +225,13 @@ pub enum StakePoolInstruction {
     ///   3. `[w]` Validator or reserve stake account to split
     ///   4. `[w]` Unitialized stake account to receive withdrawal
     ///   5. `[]` User account to set as a new withdraw authority
-    ///   6. `[w]` User account with pool tokens to burn from
-    ///   7. `[w]` Pool token mint account
-    ///   8. '[]' Sysvar clock account (required)
-    ///   9. `[]` Pool token program id
-    ///   10. `[]` Stake program id,
-    ///   userdata: amount to withdraw
+    ///   6. `[s]` User transfer authority, for pool token account
+    ///   7. `[w]` User account with pool tokens to burn from
+    ///   8. `[w]` Pool token mint account
+    ///   9. `[]` Sysvar clock account (required)
+    ///  10. `[]` Pool token program id
+    ///  11. `[]` Stake program id,
+    ///  userdata: amount of pool tokens to withdraw
     Withdraw(u64),
 
     ///  (Manager only) Update manager
@@ -645,8 +646,9 @@ pub fn withdraw(
     stake_pool_withdraw: &Pubkey,
     stake_to_split: &Pubkey,
     stake_to_receive: &Pubkey,
-    user_withdrawer: &Pubkey,
-    burn_from: &Pubkey,
+    user_stake_authority: &Pubkey,
+    user_transfer_authority: &Pubkey,
+    user_pool_token_account: &Pubkey,
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
     amount: u64,
@@ -657,8 +659,9 @@ pub fn withdraw(
         AccountMeta::new_readonly(*stake_pool_withdraw, false),
         AccountMeta::new(*stake_to_split, false),
         AccountMeta::new(*stake_to_receive, false),
-        AccountMeta::new_readonly(*user_withdrawer, false),
-        AccountMeta::new(*burn_from, false),
+        AccountMeta::new_readonly(*user_stake_authority, false),
+        AccountMeta::new_readonly(*user_transfer_authority, true),
+        AccountMeta::new(*user_pool_token_account, false),
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),

@@ -182,7 +182,7 @@ pub async fn delegate_tokens(
     delegate: &Pubkey,
     amount: u64,
 ) {
-    let mut transaction = Transaction::new_with_payer(
+    let transaction = Transaction::new_signed_with_payer(
         &[spl_token::instruction::approve(
             &spl_token::id(),
             &account,
@@ -193,8 +193,9 @@ pub async fn delegate_tokens(
         )
         .unwrap()],
         Some(&payer.pubkey()),
+        &[payer, manager],
+        *recent_blockhash,
     );
-    transaction.sign(&[payer, manager], *recent_blockhash);
     banks_client.process_transaction(transaction).await.unwrap();
 }
 
@@ -656,6 +657,7 @@ impl StakePoolAccounts {
         payer: &Keypair,
         recent_blockhash: &Hash,
         stake_recipient: &Pubkey,
+        user_transfer_authority: &Keypair,
         pool_account: &Pubkey,
         validator_stake_account: &Pubkey,
         recipient_new_authority: &Pubkey,
@@ -670,6 +672,7 @@ impl StakePoolAccounts {
                 validator_stake_account,
                 stake_recipient,
                 recipient_new_authority,
+                &user_transfer_authority.pubkey(),
                 pool_account,
                 &self.pool_mint.pubkey(),
                 &spl_token::id(),
@@ -677,7 +680,7 @@ impl StakePoolAccounts {
             )
             .unwrap()],
             Some(&payer.pubkey()),
-            &[payer],
+            &[payer, user_transfer_authority],
             *recent_blockhash,
         );
         banks_client.process_transaction(transaction).await.err()
