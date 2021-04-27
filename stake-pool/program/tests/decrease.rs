@@ -49,7 +49,8 @@ async fn setup() -> (
         &validator_stake_account,
         100_000_000,
     )
-    .await;
+    .await
+    .unwrap();
 
     let lamports = deposit_info.stake_lamports / 2;
 

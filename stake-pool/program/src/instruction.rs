@@ -519,7 +519,7 @@ pub fn update_stake_pool_balance(
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
         AccountMeta::new_readonly(*withdraw_authority, false),
-        AccountMeta::new_readonly(*validator_list_storage, false),
+        AccountMeta::new(*validator_list_storage, false),
         AccountMeta::new_readonly(*reserve_stake, false),
         AccountMeta::new(*manager_fee_account, false),
         AccountMeta::new(*stake_pool_mint, false),

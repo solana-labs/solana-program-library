@@ -51,7 +51,8 @@ async fn setup() -> (
             &validator_stake_account,
             TEST_STAKE_AMOUNT,
         )
-        .await;
+        .await
+        .unwrap();
 
         stake_accounts.push(validator_stake_account);
     }

@@ -1010,7 +1010,7 @@ pub async fn simple_deposit(
     stake_pool_accounts: &StakePoolAccounts,
     validator_stake_account: &ValidatorStakeAccount,
     stake_lamports: u64,
-) -> DepositStakeAccount {
+) -> Option<DepositStakeAccount> {
     let authority = Keypair::new();
     // make stake account
     let stake = Keypair::new();
@@ -1064,11 +1064,11 @@ pub async fn simple_deposit(
             &authority,
         )
         .await
-        .unwrap();
+        .ok()?;
 
     let pool_tokens = get_token_balance(banks_client, &pool_account.pubkey()).await;
 
-    DepositStakeAccount {
+    Some(DepositStakeAccount {
         authority,
         stake,
         pool_account,
@@ -1076,7 +1076,7 @@ pub async fn simple_deposit(
         pool_tokens,
         vote_account,
         validator_stake_account,
-    }
+    })
 }
 
 pub async fn get_validator_list_sum(
