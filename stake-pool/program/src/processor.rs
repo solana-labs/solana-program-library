@@ -336,19 +336,12 @@ impl Processor {
     /// Issue a spl_token `Burn` instruction.
     #[allow(clippy::too_many_arguments)]
     fn token_burn<'a>(
-        stake_pool: &Pubkey,
         token_program: AccountInfo<'a>,
         burn_account: AccountInfo<'a>,
         mint: AccountInfo<'a>,
         authority: AccountInfo<'a>,
-        authority_type: &[u8],
-        bump_seed: u8,
         amount: u64,
     ) -> Result<(), ProgramError> {
-        let me_bytes = stake_pool.to_bytes();
-        let authority_signature_seeds = [&me_bytes[..32], authority_type, &[bump_seed]];
-        let signers = &[&authority_signature_seeds[..]];
-
         let ix = spl_token::instruction::burn(
             token_program.key,
             burn_account.key,
@@ -358,11 +351,7 @@ impl Processor {
             amount,
         )?;
 
-        invoke_signed(
-            &ix,
-            &[burn_account, mint, authority, token_program],
-            signers,
-        )
+        invoke(&ix, &[burn_account, mint, authority, token_program])
     }
 
     /// Issue a spl_token `MintTo` instruction.
@@ -1640,7 +1629,8 @@ impl Processor {
         let withdraw_authority_info = next_account_info(account_info_iter)?;
         let stake_split_from = next_account_info(account_info_iter)?;
         let stake_split_to = next_account_info(account_info_iter)?;
-        let user_stake_authority = next_account_info(account_info_iter)?;
+        let user_stake_authority_info = next_account_info(account_info_iter)?;
+        let user_transfer_authority_info = next_account_info(account_info_iter)?;
         let burn_from_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let clock_info = next_account_info(account_info_iter)?;
@@ -1742,13 +1732,10 @@ impl Processor {
         };
 
         Self::token_burn(
-            stake_pool_info.key,
             token_program_info.clone(),
             burn_from_info.clone(),
             pool_mint_info.clone(),
-            withdraw_authority_info.clone(),
-            AUTHORITY_WITHDRAW,
-            stake_pool.withdraw_bump_seed,
+            user_transfer_authority_info.clone(),
             pool_tokens,
         )?;
 
@@ -1768,7 +1755,7 @@ impl Processor {
             withdraw_authority_info.clone(),
             AUTHORITY_WITHDRAW,
             stake_pool.withdraw_bump_seed,
-            user_stake_authority.key,
+            user_stake_authority_info.key,
             clock_info.clone(),
             stake_program_info.clone(),
         )?;

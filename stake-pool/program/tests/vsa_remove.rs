@@ -485,13 +485,25 @@ async fn success_with_deactivating_transient_stake() {
     )
     .await;
 
+    let user_transfer_authority = Keypair::new();
     let new_authority = Pubkey::new_unique();
+    delegate_tokens(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &deposit_info.pool_account.pubkey(),
+        &deposit_info.authority,
+        &user_transfer_authority.pubkey(),
+        1,
+    )
+    .await;
     let error = stake_pool_accounts
         .withdraw_stake(
             &mut banks_client,
             &payer,
             &recent_blockhash,
             &user_stake_recipient.pubkey(),
+            &user_transfer_authority,
             &deposit_info.pool_account.pubkey(),
             &validator_stake.stake_account,
             &new_authority,
