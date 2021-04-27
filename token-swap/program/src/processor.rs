@@ -778,25 +778,23 @@ impl Processor {
         )?;
 
         let pool_mint = Self::unpack_mint(pool_mint_info, &token_swap.token_program_id())?;
-        let current_pool_mint_supply = to_u128(pool_mint.supply)?;
-        let pool_mint_supply = if current_pool_mint_supply > 0 {
-            current_pool_mint_supply
+        let pool_mint_supply = to_u128(pool_mint.supply)?;
+        let pool_token_amount = if pool_mint_supply > 0 {
+            token_swap
+                .swap_curve()
+                .trading_tokens_to_pool_tokens(
+                    to_u128(source_token_amount)?,
+                    to_u128(swap_token_a.amount)?,
+                    to_u128(swap_token_b.amount)?,
+                    pool_mint_supply,
+                    trade_direction,
+                    RoundDirection::Floor,
+                    token_swap.fees(),
+                )
+                .ok_or(SwapError::ZeroTradingTokens)?
         } else {
             token_swap.swap_curve().calculator.new_pool_supply()
         };
-
-        let pool_token_amount = token_swap
-            .swap_curve()
-            .trading_tokens_to_pool_tokens(
-                to_u128(source_token_amount)?,
-                to_u128(swap_token_a.amount)?,
-                to_u128(swap_token_b.amount)?,
-                pool_mint_supply,
-                trade_direction,
-                RoundDirection::Floor,
-                token_swap.fees(),
-            )
-            .ok_or(SwapError::ZeroTradingTokens)?;
 
         let pool_token_amount = to_u64(pool_token_amount)?;
         if pool_token_amount < minimum_pool_token_amount {
