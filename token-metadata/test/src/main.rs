@@ -22,7 +22,7 @@ use {
             mint_new_edition_from_master_edition_via_token, transfer_update_authority,
             update_metadata_accounts,
         },
-        state::{Edition, MasterEdition, Metadata, NameSymbolTuple, EDITION, PREFIX},
+        state::{Edition, Key, MasterEdition, Metadata, NameSymbolTuple, EDITION, PREFIX},
     },
     std::str::FromStr,
 };
@@ -126,12 +126,17 @@ fn show(app_matches: &ArgMatches, _payer: Keypair, client: RpcClient) {
     ];
     let (master_edition_key, _) = Pubkey::find_program_address(master_edition_seeds, &program_key);
     let master_edition_account = client.get_account(&master_edition_key).unwrap();
-    let master_edition: MasterEdition =
-        try_from_slice_unchecked(&master_edition_account.data).unwrap();
 
     println!("Metadata: {:#?}", master_metadata);
     println!("Update authority: {:?}", update_authority);
-    println!("Master edition {:#?}", master_edition);
+    if master_edition_account.data[0] == Key::MasterEditionV1 as u8 {
+        let master_edition: MasterEdition =
+            try_from_slice_unchecked(&master_edition_account.data).unwrap();
+        println!("Master edition {:#?}", master_edition);
+    } else {
+        let edition: Edition = try_from_slice_unchecked(&master_edition_account.data).unwrap();
+        println!("Limited edition {:#?}", edition);
+    }
 }
 
 fn mint_edition_via_token_call(
