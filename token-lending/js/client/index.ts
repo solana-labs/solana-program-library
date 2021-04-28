@@ -30,7 +30,7 @@ export const LendingMarketLayout: typeof BufferLayout.Structure = BufferLayout.s
     Layout.publicKey("owner"),
     Layout.publicKey("quoteTokenMint"),
     Layout.publicKey("tokenProgramId"),
-    BufferLayout.blob(62, "padding"),
+    BufferLayout.blob(128, "padding"),
   ]
 );
 
