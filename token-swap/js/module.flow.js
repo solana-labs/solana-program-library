@@ -19,9 +19,9 @@ declare module '@solana/spl-token-swap' {
   declare export class TokenSwap {
     constructor(
       connection: Connection,
+      tokenSwap: PublicKey,
       swapProgramId: PublicKey,
       tokenProgramId: PublicKey,
-      tokenSwap: PublicKey,
       poolToken: PublicKey,
       feeAccount: PublicKey,
       authority: PublicKey,

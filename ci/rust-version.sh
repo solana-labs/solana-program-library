@@ -18,14 +18,13 @@
 if [[ -n $RUST_STABLE_VERSION ]]; then
   stable_version="$RUST_STABLE_VERSION"
 else
-  stable_version=1.49.0
+  stable_version=1.51.0
 fi
 
 if [[ -n $RUST_NIGHTLY_VERSION ]]; then
   nightly_version="$RUST_NIGHTLY_VERSION"
 else
-  # nightly 2021-01-13 fails due to https://github.com/rust-lang/rust/issues/80956
-  nightly_version=2021-01-12
+  nightly_version=2021-04-18
 fi
 
 

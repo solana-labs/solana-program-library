@@ -1179,7 +1179,7 @@ mod tests {
         },
     };
     use solana_program::{instruction::Instruction, program_stubs, rent::Rent};
-    use solana_sdk::account::{create_account, create_is_signer_account_infos, Account};
+    use solana_sdk::account::{create_account_for_test, create_is_signer_account_infos, Account};
     use spl_token::{
         error::TokenError,
         instruction::{
@@ -1880,7 +1880,7 @@ mod tests {
             &program_id,
         );
         let mut mint_authority_account = Account::default();
-        let mut rent_sysvar_account = create_account(&Rent::free(), 1);
+        let mut rent_sysvar_account = create_account_for_test(&Rent::free());
 
         do_process_instruction(
             initialize_account(&program_id, &account_key, &mint_key, account_owner_key).unwrap(),
@@ -1927,7 +1927,7 @@ mod tests {
             spl_token::state::Mint::get_packed_len(),
             &program_id,
         );
-        let mut rent_sysvar_account = create_account(&Rent::free(), 1);
+        let mut rent_sysvar_account = create_account_for_test(&Rent::free());
 
         do_process_instruction(
             initialize_mint(&program_id, &mint_key, authority_key, freeze_authority, 2).unwrap(),

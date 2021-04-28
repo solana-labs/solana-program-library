@@ -266,6 +266,7 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
 
         let source_account_info = next_account_info(account_info_iter)?;
+
         let expected_mint_info = if let Some(expected_decimals) = expected_decimals {
             Some((next_account_info(account_info_iter)?, expected_decimals))
         } else {
@@ -810,7 +811,7 @@ mod tests {
         account_info::IntoAccountInfo, clock::Epoch, instruction::Instruction, sysvar::rent,
     };
     use solana_sdk::account::{
-        create_account, create_is_signer_account_infos, Account as SolanaAccount,
+        create_account_for_test, create_is_signer_account_infos, Account as SolanaAccount,
     };
 
     fn do_process_instruction(
@@ -840,7 +841,7 @@ mod tests {
     }
 
     fn rent_sysvar() -> SolanaAccount {
-        create_account(&Rent::default(), 42)
+        create_account_for_test(&Rent::default())
     }
 
     fn mint_minimum_balance() -> u64 {

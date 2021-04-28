@@ -4,7 +4,6 @@
 #
 
 solana_ver=$1
-tokio_ver=$2
 if [[ -z $solana_ver ]]; then
   echo "Usage: $0 <new-solana-version>"
   exit 1
@@ -26,17 +25,18 @@ crates=(
   solana-client
   solana-core
   solana-logger
+  solana-notifier
   solana-program
   solana-program-test
   solana-remote-wallet
   solana-runtime
   solana-sdk
+  solana-stake-program
+  solana-transaction-status
+  solana-vote-program
 )
 
 set -x
 for crate in "${crates[@]}"; do
-  sed -i -e "s#\(${crate} = \"\).*\(\"\)#\1$solana_ver\2#g" "${tomls[@]}"
+  sed -i -e "s#\(${crate} = \"\)\(=\?\).*\(\"\)#\1\2$solana_ver\3#g" "${tomls[@]}"
 done
-if [[ -n $tokio_ver ]]; then
-  sed -i -e "s#\(tokio.*version *= *\"\)[^\"]*\(\".*$\)#\1$tokio_ver\2#g" "${tomls[@]}"
-fi
