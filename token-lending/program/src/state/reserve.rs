@@ -142,6 +142,7 @@ impl Reserve {
         amount_to_borrow: u64,
         max_borrow_value: Decimal,
     ) -> Result<CalculateBorrowResult, ProgramError> {
+        // @TODO: add lookup table https://git.io/JOCYq
         let decimals = 10u64
             .checked_pow(self.liquidity.mint_decimals as u32)
             .ok_or(LendingError::MathOverflow)?;
