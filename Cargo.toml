@@ -16,7 +16,6 @@ members = [
   "stake-pool/cli",
   "stake-pool/program",
   "token-lending/program",
-  "token-lending/client",
   "token-swap/program",
   "token-swap/program/fuzz",
   "token/cli",
