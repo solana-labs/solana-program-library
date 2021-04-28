@@ -1161,15 +1161,21 @@ mod test {
         };
 
         // only 2 tokens borrowed, get error
-        let err = fees.calculate_borrow_fees(Decimal::from(2u64), FeeCalculation::Exclusive).unwrap_err();
+        let err = fees
+            .calculate_borrow_fees(Decimal::from(2u64), FeeCalculation::Exclusive)
+            .unwrap_err();
         assert_eq!(err, LendingError::BorrowTooSmall.into()); // minimum of 3 tokens
 
         // only 1 token borrowed, get error
-        let err = fees.calculate_borrow_fees(Decimal::one(), FeeCalculation::Exclusive).unwrap_err();
+        let err = fees
+            .calculate_borrow_fees(Decimal::one(), FeeCalculation::Exclusive)
+            .unwrap_err();
         assert_eq!(err, LendingError::BorrowTooSmall.into());
 
         // 0 amount borrowed, 0 fee
-        let (total_fee, host_fee) = fees.calculate_borrow_fees(Decimal::zero(), FeeCalculation::Exclusive).unwrap();
+        let (total_fee, host_fee) = fees
+            .calculate_borrow_fees(Decimal::zero(), FeeCalculation::Exclusive)
+            .unwrap();
         assert_eq!(total_fee, 0);
         assert_eq!(host_fee, 0);
     }
@@ -1182,16 +1188,22 @@ mod test {
         };
 
         // only 2 tokens borrowed, ok
-        let (total_fee, host_fee) = fees.calculate_borrow_fees(Decimal::from(2u64), FeeCalculation::Exclusive).unwrap();
+        let (total_fee, host_fee) = fees
+            .calculate_borrow_fees(Decimal::from(2u64), FeeCalculation::Exclusive)
+            .unwrap();
         assert_eq!(total_fee, 1);
         assert_eq!(host_fee, 0);
 
         // only 1 token borrowed, get error
-        let err = fees.calculate_borrow_fees(Decimal::one(), FeeCalculation::Exclusive).unwrap_err();
+        let err = fees
+            .calculate_borrow_fees(Decimal::one(), FeeCalculation::Exclusive)
+            .unwrap_err();
         assert_eq!(err, LendingError::BorrowTooSmall.into()); // minimum of 2 tokens
 
         // 0 amount borrowed, 0 fee
-        let (total_fee, host_fee) = fees.calculate_borrow_fees(Decimal::zero(), FeeCalculation::Exclusive).unwrap();
+        let (total_fee, host_fee) = fees
+            .calculate_borrow_fees(Decimal::zero(), FeeCalculation::Exclusive)
+            .unwrap();
         assert_eq!(total_fee, 0);
         assert_eq!(host_fee, 0);
     }
@@ -1203,7 +1215,9 @@ mod test {
             host_fee_percentage: 20,
         };
 
-        let (total_fee, host_fee) = fees.calculate_borrow_fees(Decimal::from(1000u64), FeeCalculation::Exclusive).unwrap();
+        let (total_fee, host_fee) = fees
+            .calculate_borrow_fees(Decimal::from(1000u64), FeeCalculation::Exclusive)
+            .unwrap();
 
         assert_eq!(total_fee, 10); // 1% of 1000
         assert_eq!(host_fee, 2); // 20% of 10
@@ -1216,7 +1230,9 @@ mod test {
             host_fee_percentage: 0,
         };
 
-        let (total_fee, host_fee) = fees.calculate_borrow_fees(Decimal::from(1000u64), FeeCalculation::Exclusive).unwrap();
+        let (total_fee, host_fee) = fees
+            .calculate_borrow_fees(Decimal::from(1000u64), FeeCalculation::Exclusive)
+            .unwrap();
 
         assert_eq!(total_fee, 10); // 1% of 1000
         assert_eq!(host_fee, 0); // 0 host fee

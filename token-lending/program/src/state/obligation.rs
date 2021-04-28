@@ -511,7 +511,7 @@ mod test {
                 cumulative_borrow_rate_wads: Decimal::zero(),
                 ..ObligationLiquidity::default()
             }
-                .accrue_interest(Decimal::one()),
+            .accrue_interest(Decimal::one()),
             Err(LendingError::MathOverflow.into())
         );
 
@@ -520,7 +520,7 @@ mod test {
                 cumulative_borrow_rate_wads: Decimal::from(2u64),
                 ..ObligationLiquidity::default()
             }
-                .accrue_interest(Decimal::one()),
+            .accrue_interest(Decimal::one()),
             Err(LendingError::NegativeInterestRate.into())
         );
 
@@ -530,7 +530,7 @@ mod test {
                 borrowed_amount_wads: Decimal::from(u64::MAX),
                 ..ObligationLiquidity::default()
             }
-                .accrue_interest(Decimal::from(10 * MAX_COMPOUNDED_INTEREST)),
+            .accrue_interest(Decimal::from(10 * MAX_COMPOUNDED_INTEREST)),
             Err(LendingError::MathOverflow.into())
         );
     }
