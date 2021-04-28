@@ -495,3 +495,145 @@ impl Pack for Obligation {
         })
     }
 }
+
+// @FIXME: test
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::math::TryAdd;
+    use proptest::prelude::*;
+
+    const MAX_COMPOUNDED_INTEREST: u64 = 100; // 10,000%
+
+    #[test]
+    fn obligation_accrue_interest_failure() {
+        assert_eq!(
+            Obligation {
+                cumulative_borrow_rate_wads: Decimal::zero(),
+                ..Obligation::default()
+            }
+                .accrue_interest(Decimal::one()),
+            Err(LendingError::MathOverflow.into())
+        );
+
+        assert_eq!(
+            Obligation {
+                cumulative_borrow_rate_wads: Decimal::from(2u64),
+                ..Obligation::default()
+            }
+                .accrue_interest(Decimal::one()),
+            Err(LendingError::NegativeInterestRate.into())
+        );
+
+        assert_eq!(
+            Obligation {
+                cumulative_borrow_rate_wads: Decimal::one(),
+                borrowed_liquidity_wads: Decimal::from(u64::MAX),
+                ..Obligation::default()
+            }
+                .accrue_interest(Decimal::from(10 * MAX_COMPOUNDED_INTEREST)),
+            Err(LendingError::MathOverflow.into())
+        );
+    }
+
+    // Creates rates (r1, r2) where 0 < r1 <= r2 <= 100*r1
+    prop_compose! {
+        fn cumulative_rates()(rate in 1..=u128::MAX)(
+            current_rate in Just(rate),
+            max_new_rate in rate..=rate.saturating_mul(MAX_COMPOUNDED_INTEREST as u128)
+        ) -> (u128, u128) {
+            (current_rate, max_new_rate)
+        }
+    }
+
+    const MAX_BORROWED: u128 = u64::MAX as u128 * WAD as u128;
+
+    // Creates liquidity amounts (repay, borrow) where repay < borrow
+    prop_compose! {
+        fn repay_partial_amounts()(repay in 1..=u64::MAX)(
+            liquidity_amount in Just(repay),
+            borrowed_liquidity in (WAD as u128 * repay as u128 + 1)..=MAX_BORROWED
+        ) -> (u64, u128) {
+            (liquidity_amount, borrowed_liquidity)
+        }
+    }
+
+    // Creates liquidity amounts (repay, borrow) where repay >= borrow
+    prop_compose! {
+        fn repay_full_amounts()(repay in 1..=u64::MAX)(
+            liquidity_amount in Just(repay),
+            borrowed_liquidity in 0..=(WAD as u128 * repay as u128)
+        ) -> (u64, u128) {
+            (liquidity_amount, borrowed_liquidity)
+        }
+    }
+
+    // Creates collateral amounts (collateral, obligation tokens) where c <= ot
+    prop_compose! {
+        fn collateral_amounts()(collateral in 1..=u64::MAX)(
+            deposited_collateral_tokens in Just(collateral),
+            obligation_tokens in collateral..=u64::MAX
+        ) -> (u64, u64) {
+            (deposited_collateral_tokens, obligation_tokens)
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn repay_partial(
+            (liquidity_amount, borrowed_liquidity) in repay_partial_amounts(),
+            (deposited_collateral_tokens, obligation_tokens) in collateral_amounts(),
+        ) {
+            let borrowed_liquidity_wads = Decimal::from_scaled_val(borrowed_liquidity);
+            let mut state = Obligation { deposited_collateral_tokens, borrowed_liquidity_wads, ..Obligation::default() };
+
+            let repay_result = state.repay(liquidity_amount, obligation_tokens)?;
+            assert!(repay_result.decimal_repay_amount <= Decimal::from(repay_result.integer_repay_amount));
+            assert!(repay_result.collateral_withdraw_amount < deposited_collateral_tokens);
+            assert!(repay_result.obligation_token_amount < obligation_tokens);
+            assert!(state.borrowed_liquidity_wads < borrowed_liquidity_wads);
+            assert!(state.borrowed_liquidity_wads > Decimal::zero());
+            assert!(state.deposited_collateral_tokens > 0);
+
+            let obligation_token_rate = Decimal::from(repay_result.obligation_token_amount).try_div(Decimal::from(obligation_tokens))?;
+            let collateral_withdraw_rate = Decimal::from(repay_result.collateral_withdraw_amount).try_div(Decimal::from(deposited_collateral_tokens))?;
+            assert!(obligation_token_rate <= collateral_withdraw_rate);
+        }
+
+        #[test]
+        fn repay_full(
+            (liquidity_amount, borrowed_liquidity) in repay_full_amounts(),
+            (deposited_collateral_tokens, obligation_tokens) in collateral_amounts(),
+        ) {
+            let borrowed_liquidity_wads = Decimal::from_scaled_val(borrowed_liquidity);
+            let mut state = Obligation { deposited_collateral_tokens, borrowed_liquidity_wads, ..Obligation::default() } ;
+
+            let repay_result = state.repay(liquidity_amount, obligation_tokens)?;
+            assert!(repay_result.decimal_repay_amount <= Decimal::from(repay_result.integer_repay_amount));
+            assert_eq!(repay_result.collateral_withdraw_amount, deposited_collateral_tokens);
+            assert_eq!(repay_result.obligation_token_amount, obligation_tokens);
+            assert_eq!(repay_result.decimal_repay_amount, borrowed_liquidity_wads);
+            assert_eq!(state.borrowed_liquidity_wads, Decimal::zero());
+            assert_eq!(state.deposited_collateral_tokens, 0);
+        }
+
+        #[test]
+        fn accrue_interest(
+            borrowed_liquidity in 0..=u64::MAX,
+            (current_borrow_rate, new_borrow_rate) in cumulative_rates(),
+        ) {
+            let borrowed_liquidity_wads = Decimal::from(borrowed_liquidity);
+            let cumulative_borrow_rate_wads = Decimal::one().try_add(Decimal::from_scaled_val(current_borrow_rate))?;
+            let mut state = Obligation { cumulative_borrow_rate_wads, borrowed_liquidity_wads, ..Obligation::default() };
+
+            let next_cumulative_borrow_rate = Decimal::one().try_add(Decimal::from_scaled_val(new_borrow_rate))?;
+            state.accrue_interest(next_cumulative_borrow_rate)?;
+
+            if next_cumulative_borrow_rate > cumulative_borrow_rate_wads {
+                assert!(state.borrowed_liquidity_wads > borrowed_liquidity_wads);
+            } else {
+                assert!(state.borrowed_liquidity_wads == borrowed_liquidity_wads);
+            }
+        }
+    }
+}
