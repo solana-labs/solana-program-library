@@ -151,19 +151,19 @@ impl Reserve {
                 .try_mul(decimals)?
                 .try_div(self.liquidity.market_price)?
                 .min(self.liquidity.available_amount.into());
-            let (origination_fee, host_fee) = self
+            let (borrow_fee, host_fee) = self
                 .config
                 .fees
                 .calculate_borrow_fees(borrow_amount, FeeCalculation::Inclusive)?;
             let receive_amount = borrow_amount
                 .try_floor_u64()?
-                .checked_sub(origination_fee)
+                .checked_sub(borrow_fee)
                 .ok_or(LendingError::MathOverflow)?;
 
             Ok(CalculateBorrowResult {
                 borrow_amount,
                 receive_amount,
-                borrow_fee: origination_fee,
+                borrow_fee,
                 host_fee,
             })
         } else {
