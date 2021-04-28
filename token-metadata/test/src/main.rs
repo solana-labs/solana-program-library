@@ -127,6 +127,7 @@ fn show(app_matches: &ArgMatches, _payer: Keypair, client: RpcClient) {
     let (master_edition_key, _) = Pubkey::find_program_address(master_edition_seeds, &program_key);
     let master_edition_account = client.get_account(&master_edition_key).unwrap();
 
+    println!("Metadata key: {:?}", master_metadata_key);
     println!("Metadata: {:#?}", master_metadata);
     println!("Update authority: {:?}", update_authority);
     if master_edition_account.data[0] == Key::MasterEditionV1 as u8 {
