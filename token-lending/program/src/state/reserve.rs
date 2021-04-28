@@ -411,17 +411,18 @@ impl ReserveLiquidity {
     }
 
     /// Subtract borrow amount from available liquidity and add to borrows
-    pub fn borrow(&mut self, borrow_amount: Decimal, receive_amount: u64) -> ProgramResult {
-        if receive_amount > self.available_amount {
+    pub fn borrow(&mut self, borrow_decimal: Decimal) -> ProgramResult {
+        let borrow_amount = borrow_decimal.try_floor_u64()?;
+        if borrow_amount > self.available_amount {
             msg!("Borrow amount cannot exceed available amount");
             return Err(LendingError::InsufficientLiquidity.into());
         }
 
         self.available_amount = self
             .available_amount
-            .checked_sub(receive_amount)
+            .checked_sub(borrow_amount)
             .ok_or(LendingError::MathOverflow)?;
-        self.borrowed_amount_wads = self.borrowed_amount_wads.try_add(borrow_amount)?;
+        self.borrowed_amount_wads = self.borrowed_amount_wads.try_add(borrow_decimal)?;
 
         Ok(())
     }

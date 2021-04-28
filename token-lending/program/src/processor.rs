@@ -1173,9 +1173,7 @@ fn process_borrow_obligation_liquidity(
         return Err(LendingError::BorrowTooSmall.into());
     }
 
-    borrow_reserve
-        .liquidity
-        .borrow(borrow_amount, receive_amount)?;
+    borrow_reserve.liquidity.borrow(borrow_amount)?;
     borrow_reserve.last_update.mark_stale();
     Reserve::pack(borrow_reserve, &mut borrow_reserve_info.data.borrow_mut())?;
 
