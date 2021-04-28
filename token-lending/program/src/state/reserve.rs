@@ -910,17 +910,6 @@ mod test {
 
     const MAX_LIQUIDITY: u64 = u64::MAX / 5;
 
-    /// Convert reserve liquidity tokens to the collateral tokens of another reserve
-    fn liquidity_in_other_collateral(
-        liquidity_amount: u64,
-        collateral_exchange_rate: CollateralExchangeRate,
-        conversion_rate: Decimal,
-    ) -> Result<Decimal, ProgramError> {
-        collateral_exchange_rate.decimal_liquidity_to_collateral(
-            Decimal::from(liquidity_amount).try_mul(conversion_rate)?,
-        )
-    }
-
     // Creates rates (min, opt, max) where 0 <= min <= opt <= max <= MAX
     prop_compose! {
         fn borrow_rates()(optimal_rate in 0..=u8::MAX)(
