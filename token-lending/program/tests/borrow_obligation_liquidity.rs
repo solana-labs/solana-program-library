@@ -115,7 +115,6 @@ async fn test_borrow_quote_currency() {
     transaction.sign(&[&payer, &user_accounts_owner], recent_blockhash);
     assert!(banks_client.process_transaction(transaction).await.is_ok());
 
-    let sol_reserve = sol_test_reserve.get_state(&mut banks_client).await;
     let usdc_reserve = usdc_test_reserve.get_state(&mut banks_client).await;
     let obligation = test_obligation.get_state(&mut banks_client).await;
 
@@ -261,7 +260,6 @@ async fn test_borrow_max_base_currency() {
     assert!(banks_client.process_transaction(transaction).await.is_ok());
 
     let sol_reserve = sol_test_reserve.get_state(&mut banks_client).await;
-    let usdc_reserve = usdc_test_reserve.get_state(&mut banks_client).await;
     let obligation = test_obligation.get_state(&mut banks_client).await;
 
     let (total_fee, host_fee) = sol_reserve

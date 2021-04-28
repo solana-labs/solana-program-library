@@ -6,17 +6,12 @@ use helpers::*;
 use solana_program_test::*;
 use solana_sdk::{
     account::Account,
-    instruction::InstructionError,
     pubkey::Pubkey,
     signature::{Keypair, Signer},
     system_instruction::create_account,
     transaction::Transaction,
 };
-use spl_token::{
-    instruction::approve,
-    solana_program::program_pack::Pack,
-    state::{Account as Token, Mint},
-};
+use spl_token::{instruction::approve, solana_program::program_pack::Pack};
 use spl_token_lending::{
     instruction::{
         borrow_obligation_liquidity, deposit_obligation_collateral, init_obligation,
@@ -45,10 +40,9 @@ async fn test_success() {
     const SOL_DEPOSIT_AMOUNT_LAMPORTS: u64 = 100 * LAMPORTS_TO_SOL * INITIAL_COLLATERAL_RATIO;
     const SOL_RESERVE_COLLATERAL_LAMPORTS: u64 = SOL_DEPOSIT_AMOUNT_LAMPORTS;
 
-    const USDC_BORROW_AMOUNT_FRACTIONAL: u64 = 1_000 * FRACTIONAL_TO_USDC - FEE_AMOUNT;
-    const USDC_REPAY_AMOUNT_FRACTIONAL: u64 = USDC_BORROW_AMOUNT_FRACTIONAL + FEE_AMOUNT;
-    const USDC_RESERVE_LIQUIDITY_FRACTIONAL: u64 =
-        USDC_BORROW_AMOUNT_FRACTIONAL + USDC_REPAY_AMOUNT_FRACTIONAL;
+    const USDC_RESERVE_LIQUIDITY_FRACTIONAL: u64 = 1_000 * FRACTIONAL_TO_USDC;
+    const USDC_BORROW_AMOUNT_FRACTIONAL: u64 = USDC_RESERVE_LIQUIDITY_FRACTIONAL - FEE_AMOUNT;
+    const USDC_REPAY_AMOUNT_FRACTIONAL: u64 = USDC_RESERVE_LIQUIDITY_FRACTIONAL;
 
     let user_accounts_owner = Keypair::new();
     let user_accounts_owner_pubkey = user_accounts_owner.pubkey();
@@ -84,7 +78,7 @@ async fn test_success() {
         &lending_market,
         &user_accounts_owner,
         AddReserveArgs {
-            user_liquidity_amount: USDC_RESERVE_LIQUIDITY_FRACTIONAL,
+            user_liquidity_amount: FEE_AMOUNT,
             liquidity_amount: USDC_RESERVE_LIQUIDITY_FRACTIONAL,
             liquidity_mint_pubkey: usdc_mint.pubkey,
             liquidity_mint_decimals: usdc_mint.decimals,
@@ -234,7 +228,6 @@ async fn test_success() {
     );
     assert!(banks_client.process_transaction(transaction).await.is_ok());
 
-    let sol_reserve = sol_test_reserve.get_state(&mut banks_client).await;
     let usdc_reserve = usdc_test_reserve.get_state(&mut banks_client).await;
 
     let obligation = {
@@ -263,10 +256,6 @@ async fn test_success() {
         initial_user_liquidity_balance - FEE_AMOUNT
     );
     assert_eq!(usdc_reserve.liquidity.borrowed_amount_wads, Decimal::zero());
-    // @FIXME:
-    // thread 'test_success' panicked at 'assertion failed: `(left == right)`
-    // left: `2000000000`,
-    // right: `1999999900`', token-lending/program/tests/obligation_end_to_end.rs:266:5
     assert_eq!(
         usdc_reserve.liquidity.available_amount,
         initial_liquidity_supply

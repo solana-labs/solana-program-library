@@ -26,7 +26,7 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(62_000);
+    test.set_bpf_compute_max_units(66_000);
 
     let user_accounts_owner = Keypair::new();
     let usdc_mint = add_usdc_mint(&mut test);
@@ -119,6 +119,7 @@ async fn test_already_initialized() {
             usdc_test_reserve.liquidity_fee_receiver_pubkey,
             usdc_test_reserve.collateral_mint_pubkey,
             usdc_test_reserve.collateral_supply_pubkey,
+            lending_market.quote_token_mint,
             lending_market.pubkey,
             lending_market.owner.pubkey(),
             user_transfer_authority.pubkey(),

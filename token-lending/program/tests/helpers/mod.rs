@@ -24,10 +24,8 @@ use spl_token::{
 };
 use spl_token_lending::{
     instruction::{
-        borrow_obligation_liquidity, deposit_obligation_collateral, deposit_reserve_liquidity,
-        init_lending_market, init_obligation, init_reserve, liquidate_obligation,
-        redeem_reserve_collateral, refresh_obligation, refresh_reserve, repay_obligation_liquidity,
-        set_lending_market_owner, withdraw_obligation_collateral,
+        borrow_obligation_liquidity, deposit_reserve_liquidity, init_lending_market,
+        init_obligation, init_reserve, liquidate_obligation, refresh_reserve,
     },
     math::{Decimal, Rate, TryAdd, TryMul},
     processor::process_instruction,
@@ -253,7 +251,6 @@ pub struct AddReserveArgs {
     pub borrow_amount: u64,
     pub initial_borrow_rate: u8,
     pub collateral_amount: u64,
-    pub fees_amount: u64,
     pub mark_fresh: bool,
     pub slots_elapsed: u64,
     pub aggregator_pair: Option<TestAggregatorPair>,
@@ -275,7 +272,6 @@ pub fn add_reserve(
         borrow_amount,
         initial_borrow_rate,
         collateral_amount,
-        fees_amount,
         mark_fresh,
         slots_elapsed,
         aggregator_pair,
@@ -357,7 +353,7 @@ pub fn add_reserve(
         &Token {
             mint: liquidity_mint_pubkey,
             owner: lending_market.owner.pubkey(),
-            amount: fees_amount,
+            amount: 0,
             state: AccountState::Initialized,
             ..Token::default()
         },
@@ -371,7 +367,7 @@ pub fn add_reserve(
         &Token {
             mint: liquidity_mint_pubkey,
             owner: user_accounts_owner.pubkey(),
-            amount: fees_amount,
+            amount: 0,
             state: AccountState::Initialized,
             ..Token::default()
         },
@@ -398,10 +394,7 @@ pub fn add_reserve(
         config,
     });
     reserve.deposit_liquidity(liquidity_amount).unwrap();
-    reserve
-        .liquidity
-        .borrow(borrow_amount.into(), borrow_amount)
-        .unwrap();
+    reserve.liquidity.borrow(borrow_amount.into()).unwrap();
     let borrow_rate_multiplier = Rate::one()
         .try_add(Rate::from_percent(initial_borrow_rate))
         .unwrap();
@@ -997,10 +990,7 @@ impl TestReserve {
                 COption::None
             };
 
-        assert_eq!(
-            liquidity_oracle_coption,
-            reserve.liquidity.oracle_pubkey
-        );
+        assert_eq!(liquidity_oracle_coption, reserve.liquidity.oracle_pubkey);
         assert_eq!(
             reserve.liquidity.cumulative_borrow_rate_wads,
             Decimal::one()
@@ -1202,7 +1192,9 @@ pub struct TestAggregator {
 
 pub fn add_aggregator(test: &mut ProgramTest, pair: TestAggregatorPair) -> TestAggregator {
     let (name, decimals, price) = match pair {
+        // price @ 1 SOL = 20 USDC
         TestAggregatorPair::SOL_USDC => ("SOL:USDC", 6, 20 * FRACTIONAL_TO_USDC),
+        // price @ 1 SRM = 5 USDC
         TestAggregatorPair::SRM_USDC => ("SRM:USDC", 6, 5 * FRACTIONAL_TO_USDC),
     };
 

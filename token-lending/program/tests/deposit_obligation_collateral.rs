@@ -7,14 +7,9 @@ use solana_program_test::*;
 use solana_sdk::{
     pubkey::Pubkey,
     signature::{Keypair, Signer},
-    system_instruction::create_account,
     transaction::Transaction,
 };
-use spl_token::{
-    instruction::approve,
-    solana_program::program_pack::Pack,
-    state::{Account as Token, Mint},
-};
+use spl_token::instruction::approve;
 use spl_token_lending::{
     instruction::deposit_obligation_collateral, processor::process_instruction,
     state::INITIAL_COLLATERAL_RATIO,
@@ -70,8 +65,6 @@ async fn test_success() {
         get_token_balance(&mut banks_client, sol_test_reserve.collateral_supply_pubkey).await;
     let initial_user_collateral_balance =
         get_token_balance(&mut banks_client, sol_test_reserve.user_collateral_pubkey).await;
-
-    let rent = banks_client.get_rent().await.unwrap();
 
     let mut transaction = Transaction::new_with_payer(
         &[

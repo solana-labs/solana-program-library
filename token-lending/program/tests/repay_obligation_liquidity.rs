@@ -124,8 +124,6 @@ async fn test_success() {
     );
     assert!(banks_client.process_transaction(transaction).await.is_ok());
 
-    let usdc_reserve = usdc_test_reserve.get_state(&mut banks_client).await;
-
     let user_liquidity_balance =
         get_token_balance(&mut banks_client, usdc_test_reserve.user_liquidity_pubkey).await;
     assert_eq!(

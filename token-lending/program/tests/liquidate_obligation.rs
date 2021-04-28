@@ -10,9 +10,9 @@ use solana_sdk::{
     transaction::Transaction,
 };
 use spl_token::instruction::approve;
-use spl_token_lending::instruction::{liquidate_obligation, refresh_obligation};
 use spl_token_lending::{
-    instruction::repay_obligation_liquidity, processor::process_instruction,
+    instruction::{liquidate_obligation, refresh_obligation},
+    processor::process_instruction,
     state::INITIAL_COLLATERAL_RATIO,
 };
 
@@ -139,8 +139,6 @@ async fn test_success() {
         recent_blockhash,
     );
     assert!(banks_client.process_transaction(transaction).await.is_ok());
-
-    let usdc_reserve = usdc_test_reserve.get_state(&mut banks_client).await;
 
     let user_liquidity_balance =
         get_token_balance(&mut banks_client, usdc_test_reserve.user_liquidity_pubkey).await;

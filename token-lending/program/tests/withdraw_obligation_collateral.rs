@@ -10,7 +10,6 @@ use solana_sdk::{
     signature::{Keypair, Signer},
     transaction::{Transaction, TransactionError},
 };
-use spl_token::instruction::approve;
 use spl_token_lending::{
     error::LendingError,
     instruction::{refresh_obligation, withdraw_obligation_collateral},
@@ -36,7 +35,6 @@ async fn test_withdraw_base_currency_fixed_amount() {
     const WITHDRAW_AMOUNT: u64 = 100 * LAMPORTS_TO_SOL * INITIAL_COLLATERAL_RATIO;
 
     let user_accounts_owner = Keypair::new();
-    let user_transfer_authority = Keypair::new();
     let usdc_mint = add_usdc_mint(&mut test);
     let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
 
@@ -99,15 +97,6 @@ async fn test_withdraw_base_currency_fixed_amount() {
 
     let mut transaction = Transaction::new_with_payer(
         &[
-            approve(
-                &spl_token::id(),
-                &sol_test_reserve.user_collateral_pubkey,
-                &user_transfer_authority.pubkey(),
-                &user_accounts_owner.pubkey(),
-                &[],
-                WITHDRAW_AMOUNT,
-            )
-            .unwrap(),
             refresh_obligation(
                 spl_token_lending::id(),
                 test_obligation.pubkey,
@@ -121,16 +110,13 @@ async fn test_withdraw_base_currency_fixed_amount() {
                 sol_test_reserve.pubkey,
                 test_obligation.pubkey,
                 lending_market.pubkey,
-                user_transfer_authority.pubkey(),
+                test_obligation.owner,
             ),
         ],
         Some(&payer.pubkey()),
     );
 
-    transaction.sign(
-        &[&payer, &user_accounts_owner, &user_transfer_authority],
-        recent_blockhash,
-    );
+    transaction.sign(&[&payer, &user_accounts_owner], recent_blockhash);
     assert!(banks_client.process_transaction(transaction).await.is_ok());
 
     // check that collateral tokens were transferred
@@ -172,7 +158,6 @@ async fn test_withdraw_quote_currency_all() {
     const WITHDRAW_AMOUNT: u64 = u64::MAX;
 
     let user_accounts_owner = Keypair::new();
-    let user_transfer_authority = Keypair::new();
     let usdc_mint = add_usdc_mint(&mut test);
     let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
 
@@ -220,15 +205,6 @@ async fn test_withdraw_quote_currency_all() {
 
     let mut transaction = Transaction::new_with_payer(
         &[
-            approve(
-                &spl_token::id(),
-                &usdc_test_reserve.user_collateral_pubkey,
-                &user_transfer_authority.pubkey(),
-                &user_accounts_owner.pubkey(),
-                &[],
-                WITHDRAW_AMOUNT,
-            )
-            .unwrap(),
             refresh_obligation(
                 spl_token_lending::id(),
                 test_obligation.pubkey,
@@ -242,16 +218,13 @@ async fn test_withdraw_quote_currency_all() {
                 usdc_test_reserve.pubkey,
                 test_obligation.pubkey,
                 lending_market.pubkey,
-                user_transfer_authority.pubkey(),
+                test_obligation.owner,
             ),
         ],
         Some(&payer.pubkey()),
     );
 
-    transaction.sign(
-        &[&payer, &user_accounts_owner, &user_transfer_authority],
-        recent_blockhash,
-    );
+    transaction.sign(&[&payer, &user_accounts_owner], recent_blockhash);
     assert!(banks_client.process_transaction(transaction).await.is_ok());
 
     // check that collateral tokens were transferred
@@ -289,7 +262,6 @@ async fn test_withdraw_too_large() {
     const WITHDRAW_AMOUNT: u64 = (100 * LAMPORTS_TO_SOL * INITIAL_COLLATERAL_RATIO) + 1;
 
     let user_accounts_owner = Keypair::new();
-    let user_transfer_authority = Keypair::new();
     let usdc_mint = add_usdc_mint(&mut test);
     let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
 
@@ -336,21 +308,10 @@ async fn test_withdraw_too_large() {
         },
     );
 
-    let test_collateral = &test_obligation.deposits[0];
-
     let (mut banks_client, payer, recent_blockhash) = test.start().await;
 
     let mut transaction = Transaction::new_with_payer(
         &[
-            approve(
-                &spl_token::id(),
-                &sol_test_reserve.user_collateral_pubkey,
-                &user_transfer_authority.pubkey(),
-                &user_accounts_owner.pubkey(),
-                &[],
-                WITHDRAW_AMOUNT,
-            )
-            .unwrap(),
             refresh_obligation(
                 spl_token_lending::id(),
                 test_obligation.pubkey,
@@ -364,16 +325,13 @@ async fn test_withdraw_too_large() {
                 sol_test_reserve.pubkey,
                 test_obligation.pubkey,
                 lending_market.pubkey,
-                user_transfer_authority.pubkey(),
+                test_obligation.owner,
             ),
         ],
         Some(&payer.pubkey()),
     );
 
-    transaction.sign(
-        &[&payer, &user_accounts_owner, &user_transfer_authority],
-        recent_blockhash,
-    );
+    transaction.sign(&[&payer, &user_accounts_owner], recent_blockhash);
 
     // check that transaction fails
     assert_eq!(
@@ -383,7 +341,7 @@ async fn test_withdraw_too_large() {
             .unwrap_err()
             .unwrap(),
         TransactionError::InstructionError(
-            3,
+            1,
             InstructionError::Custom(LendingError::WithdrawTooLarge as u32)
         )
     );
