@@ -15,12 +15,22 @@
   "publishConfig": {
     "access": "public"
   },
+  "browser": {
+    "./lib/index.cjs.js": "./lib/index.browser.esm.js",
+    "./lib/index.esm.js": "./lib/index.browser.esm.js"
+  },
   "main": "lib/index.cjs.js",
   "module": "lib/index.esm.js",
   "types": "lib/index.d.ts",
+  "browserslist": [
+    "defaults",
+    "not IE 11",
+    "maintained node versions"
+  ],
   "files": [
     "/lib",
-    "/module.flow.js"
+    "/module.flow.js",
+    "/client"
   ],
   "scripts": {
     "build": "rollup -c;npm run generate:dts; npm run generate:flow",
@@ -28,7 +38,7 @@
     "start-with-test-validator": "start-server-and-test 'solana-test-validator --bpf-program SwaPpA9LAaLfeLi3a68M4DjnLqgtticKg6CnyNwgAC8 ../../target/deploy/spl_token_swap.so --reset --quiet' http://localhost:8899/health start",
     "lint": "npm run pretty && eslint .",
     "lint:fix": "npm run pretty:fix && eslint . --fix",
-    "generate:dts": "tsc -p tsconfig.d.json -d",
+    "generate:dts": "./scripts/typegen.sh",
     "generate:flow": "flowgen lib/index.d.ts -o module.flow.js",
     "lint:watch": "watch 'npm run lint:fix' . --wait=1",
     "build:program": "cargo build-bpf --manifest-path ../program/Cargo.toml",
@@ -75,6 +85,7 @@
     "prettier": "^2.1.2",
     "rollup": "^2.27.1",
     "rollup-plugin-copy": "^3.3.0",
+    "rollup-plugin-dts": "^3.0.1",
     "rollup-plugin-node-polyfills": "^0.2.1",
     "rollup-plugin-terser": "^7.0.2",
     "start-server-and-test": "^1.11.6",
