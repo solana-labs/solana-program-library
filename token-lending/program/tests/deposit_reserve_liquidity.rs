@@ -7,8 +7,6 @@ use solana_program_test::*;
 use solana_sdk::{pubkey::Pubkey, signature::Keypair};
 use spl_token_lending::processor::process_instruction;
 
-const FRACTIONAL_TO_USDC: u64 = 1_000_000;
-
 #[tokio::test]
 async fn test_success() {
     let mut test = ProgramTest::new(
@@ -18,22 +16,23 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(35_000);
+    test.set_bpf_compute_max_units(27_000);
 
     let user_accounts_owner = Keypair::new();
     let usdc_mint = add_usdc_mint(&mut test);
     let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
 
-    let usdc_reserve = add_reserve(
+    let usdc_test_reserve = add_reserve(
         &mut test,
-        &user_accounts_owner,
         &lending_market,
+        &user_accounts_owner,
         AddReserveArgs {
             user_liquidity_amount: 100 * FRACTIONAL_TO_USDC,
             liquidity_amount: 10_000 * FRACTIONAL_TO_USDC,
             liquidity_mint_decimals: usdc_mint.decimals,
             liquidity_mint_pubkey: usdc_mint.pubkey,
             config: TEST_RESERVE_CONFIG,
+            mark_fresh: true,
             ..AddReserveArgs::default()
         },
     );
@@ -45,7 +44,7 @@ async fn test_success() {
             &mut banks_client,
             &user_accounts_owner,
             &payer,
-            &usdc_reserve,
+            &usdc_test_reserve,
             100 * FRACTIONAL_TO_USDC,
         )
         .await;

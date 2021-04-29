@@ -26,12 +26,13 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(75_000);
+    test.set_bpf_compute_max_units(66_000);
 
     let user_accounts_owner = Keypair::new();
-    let sol_usdc_dex_market = TestDexMarket::setup(&mut test, TestDexMarketPair::SOL_USDC);
     let usdc_mint = add_usdc_mint(&mut test);
     let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
+    let sol_usdc_aggregator = add_aggregator(&mut test, TestAggregatorPair::SOL_USDC);
+
     let (mut banks_client, payer, _recent_blockhash) = test.start().await;
 
     const RESERVE_AMOUNT: u64 = 42;
@@ -56,7 +57,7 @@ async fn test_success() {
         sol_user_liquidity_account,
         &payer,
         &user_accounts_owner,
-        &sol_usdc_dex_market,
+        Some(&sol_usdc_aggregator),
     )
     .await
     .unwrap();
@@ -64,16 +65,16 @@ async fn test_success() {
     sol_reserve.validate_state(&mut banks_client).await;
 
     let sol_liquidity_supply =
-        get_token_balance(&mut banks_client, sol_reserve.liquidity_supply).await;
+        get_token_balance(&mut banks_client, sol_reserve.liquidity_supply_pubkey).await;
     assert_eq!(sol_liquidity_supply, RESERVE_AMOUNT);
     let user_sol_balance =
-        get_token_balance(&mut banks_client, sol_reserve.user_liquidity_account).await;
+        get_token_balance(&mut banks_client, sol_reserve.user_liquidity_pubkey).await;
     assert_eq!(user_sol_balance, 0);
     let user_sol_collateral_balance =
-        get_token_balance(&mut banks_client, sol_reserve.user_collateral_account).await;
+        get_token_balance(&mut banks_client, sol_reserve.user_collateral_pubkey).await;
     assert_eq!(
         user_sol_collateral_balance,
-        INITIAL_COLLATERAL_RATIO * RESERVE_AMOUNT
+        RESERVE_AMOUNT * INITIAL_COLLATERAL_RATIO
     );
 }
 
@@ -87,16 +88,14 @@ async fn test_already_initialized() {
 
     let user_accounts_owner = Keypair::new();
     let user_transfer_authority = Keypair::new();
-    let sol_usdc_dex_market = TestDexMarket::setup(&mut test, TestDexMarketPair::SOL_USDC);
     let usdc_mint = add_usdc_mint(&mut test);
     let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
 
-    let usdc_reserve = add_reserve(
+    let usdc_test_reserve = add_reserve(
         &mut test,
-        &user_accounts_owner,
         &lending_market,
+        &user_accounts_owner,
         AddReserveArgs {
-            dex_market_pubkey: Some(sol_usdc_dex_market.pubkey),
             liquidity_amount: 42,
             liquidity_mint_decimals: usdc_mint.decimals,
             liquidity_mint_pubkey: usdc_mint.pubkey,
@@ -111,19 +110,20 @@ async fn test_already_initialized() {
         &[init_reserve(
             spl_token_lending::id(),
             42,
-            usdc_reserve.config,
-            usdc_reserve.user_liquidity_account,
-            usdc_reserve.user_collateral_account,
-            usdc_reserve.pubkey,
-            usdc_reserve.liquidity_mint,
-            usdc_reserve.liquidity_supply,
-            usdc_reserve.collateral_mint,
-            usdc_reserve.collateral_supply,
-            usdc_reserve.collateral_fees_receiver,
+            usdc_test_reserve.config,
+            usdc_test_reserve.user_liquidity_pubkey,
+            usdc_test_reserve.user_collateral_pubkey,
+            usdc_test_reserve.pubkey,
+            usdc_test_reserve.liquidity_mint_pubkey,
+            usdc_test_reserve.liquidity_supply_pubkey,
+            usdc_test_reserve.liquidity_fee_receiver_pubkey,
+            usdc_test_reserve.collateral_mint_pubkey,
+            usdc_test_reserve.collateral_supply_pubkey,
+            lending_market.quote_token_mint,
             lending_market.pubkey,
             lending_market.owner.pubkey(),
             user_transfer_authority.pubkey(),
-            Some(sol_usdc_dex_market.pubkey),
+            None,
         )],
         Some(&payer.pubkey()),
     );
@@ -153,9 +153,10 @@ async fn test_invalid_fees() {
     );
 
     let user_accounts_owner = Keypair::new();
-    let sol_usdc_dex_market = TestDexMarket::setup(&mut test, TestDexMarketPair::SOL_USDC);
     let usdc_mint = add_usdc_mint(&mut test);
     let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
+    let sol_usdc_aggregator = add_aggregator(&mut test, TestAggregatorPair::SOL_USDC);
+
     let (mut banks_client, payer, _recent_blockhash) = test.start().await;
 
     const RESERVE_AMOUNT: u64 = 42;
@@ -189,7 +190,7 @@ async fn test_invalid_fees() {
                 sol_user_liquidity_account,
                 &payer,
                 &user_accounts_owner,
-                &sol_usdc_dex_market,
+                Some(&sol_usdc_aggregator)
             )
             .await
             .unwrap_err(),
@@ -219,7 +220,7 @@ async fn test_invalid_fees() {
                 sol_user_liquidity_account,
                 &payer,
                 &user_accounts_owner,
-                &sol_usdc_dex_market,
+                Some(&sol_usdc_aggregator)
             )
             .await
             .unwrap_err(),

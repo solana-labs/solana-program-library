@@ -11,12 +11,9 @@ use solana_sdk::{
 };
 use spl_token::instruction::approve;
 use spl_token_lending::{
-    instruction::withdraw_reserve_liquidity, processor::process_instruction,
+    instruction::redeem_reserve_collateral, processor::process_instruction,
     state::INITIAL_COLLATERAL_RATIO,
 };
-
-const FRACTIONAL_TO_USDC: u64 = 1_000_000;
-const INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL: u64 = 10 * FRACTIONAL_TO_USDC;
 
 #[tokio::test]
 async fn test_success() {
@@ -27,25 +24,26 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(35_000);
+    test.set_bpf_compute_max_units(29_000);
 
     let user_accounts_owner = Keypair::new();
     let usdc_mint = add_usdc_mint(&mut test);
     let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
 
-    const WITHDRAW_COLLATERAL_AMOUNT: u64 =
-        INITIAL_COLLATERAL_RATIO * INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL;
+    const USDC_RESERVE_LIQUIDITY_FRACTIONAL: u64 = 10 * FRACTIONAL_TO_USDC;
+    const COLLATERAL_AMOUNT: u64 = USDC_RESERVE_LIQUIDITY_FRACTIONAL * INITIAL_COLLATERAL_RATIO;
 
-    let usdc_reserve = add_reserve(
+    let usdc_test_reserve = add_reserve(
         &mut test,
-        &user_accounts_owner,
         &lending_market,
+        &user_accounts_owner,
         AddReserveArgs {
-            liquidity_amount: INITIAL_USDC_RESERVE_SUPPLY_FRACTIONAL,
+            collateral_amount: COLLATERAL_AMOUNT,
+            liquidity_amount: USDC_RESERVE_LIQUIDITY_FRACTIONAL,
             liquidity_mint_decimals: usdc_mint.decimals,
             liquidity_mint_pubkey: usdc_mint.pubkey,
-            collateral_amount: WITHDRAW_COLLATERAL_AMOUNT,
             config: TEST_RESERVE_CONFIG,
+            mark_fresh: true,
             ..AddReserveArgs::default()
         },
     );
@@ -57,23 +55,22 @@ async fn test_success() {
         &[
             approve(
                 &spl_token::id(),
-                &usdc_reserve.user_collateral_account,
+                &usdc_test_reserve.user_collateral_pubkey,
                 &user_transfer_authority.pubkey(),
                 &user_accounts_owner.pubkey(),
                 &[],
-                WITHDRAW_COLLATERAL_AMOUNT,
+                COLLATERAL_AMOUNT,
             )
             .unwrap(),
-            withdraw_reserve_liquidity(
+            redeem_reserve_collateral(
                 spl_token_lending::id(),
-                WITHDRAW_COLLATERAL_AMOUNT,
-                usdc_reserve.user_collateral_account,
-                usdc_reserve.user_liquidity_account,
-                usdc_reserve.pubkey,
-                usdc_reserve.collateral_mint,
-                usdc_reserve.liquidity_supply,
+                COLLATERAL_AMOUNT,
+                usdc_test_reserve.user_collateral_pubkey,
+                usdc_test_reserve.user_liquidity_pubkey,
+                usdc_test_reserve.pubkey,
+                usdc_test_reserve.collateral_mint_pubkey,
+                usdc_test_reserve.liquidity_supply_pubkey,
                 lending_market.pubkey,
-                lending_market.authority,
                 user_transfer_authority.pubkey(),
             ),
         ],

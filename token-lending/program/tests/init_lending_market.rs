@@ -1,3 +1,5 @@
+#![cfg(feature = "test-bpf")]
+
 mod helpers;
 
 use helpers::*;
@@ -10,7 +12,6 @@ use solana_sdk::{
 };
 use spl_token_lending::{
     error::LendingError, instruction::init_lending_market, processor::process_instruction,
-    state::PROGRAM_VERSION,
 };
 
 #[tokio::test]
@@ -27,10 +28,13 @@ async fn test_success() {
     let usdc_mint = add_usdc_mint(&mut test);
     let (mut banks_client, payer, _recent_blockhash) = test.start().await;
 
-    let lending_market = TestLendingMarket::init(&mut banks_client, usdc_mint.pubkey, &payer).await;
-    let lending_market_info = lending_market.get_state(&mut banks_client).await;
-    assert_eq!(lending_market_info.version, PROGRAM_VERSION);
-    assert_eq!(lending_market_info.quote_token_mint, usdc_mint.pubkey);
+    let test_lending_market =
+        TestLendingMarket::init(&mut banks_client, usdc_mint.pubkey, &payer).await;
+
+    test_lending_market.validate_state(&mut banks_client).await;
+
+    let lending_market = test_lending_market.get_state(&mut banks_client).await;
+    assert_eq!(lending_market.quote_token_mint, usdc_mint.pubkey);
 }
 
 #[tokio::test]

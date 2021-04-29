@@ -31,17 +31,20 @@ pub enum LendingError {
     /// The owner of the account input isn't set to the correct token program id.
     #[error("Input token account is not owned by the correct token program id")]
     InvalidTokenOwner,
+    /// Expected an SPL Token account
+    #[error("Input token account is not valid")]
+    InvalidTokenAccount,
     /// Expected an SPL Token mint
     #[error("Input token mint account is not valid")]
     InvalidTokenMint,
     /// Expected a different SPL Token program
     #[error("Input token program account is not valid")]
     InvalidTokenProgram,
+
+    // 10
     /// Invalid amount, must be greater than zero
     #[error("Input amount is invalid")]
     InvalidAmount,
-
-    // 10
     /// Invalid config value
     #[error("Input config value is invalid")]
     InvalidConfig,
@@ -54,62 +57,8 @@ pub enum LendingError {
     /// Math operation overflow
     #[error("Math operation overflow")]
     MathOverflow,
-    /// Negative interest rate
-    #[error("Interest rate is negative")]
-    NegativeInterestRate,
 
     // 15
-    /// Memory is too small
-    #[error("Memory is too small")]
-    MemoryTooSmall,
-    /// The reserve lending market must be the same
-    #[error("Reserve mints do not match dex market mints")]
-    DexMarketMintMismatch,
-    /// The reserve lending market must be the same
-    #[error("Reserve lending market mismatch")]
-    LendingMarketMismatch,
-    /// The obligation token owner must be the same if reusing an obligation
-    #[error("Obligation token owner mismatch")]
-    ObligationTokenOwnerMismatch,
-    /// Insufficient liquidity available
-    #[error("Insufficient liquidity available")]
-    InsufficientLiquidity,
-
-    // 20
-    /// This reserve's collateral cannot be used for borrows
-    #[error("Input reserve has collateral disabled")]
-    ReserveCollateralDisabled,
-    /// Input reserves cannot be the same
-    #[error("Input reserves cannot be the same")]
-    DuplicateReserve,
-    /// Input reserves cannot use the same liquidity mint
-    #[error("Input reserves cannot use the same liquidity mint")]
-    DuplicateReserveMint,
-    /// Obligation amount is empty
-    #[error("Obligation amount is empty")]
-    ObligationEmpty,
-    /// Cannot liquidate healthy obligations
-    #[error("Cannot liquidate healthy obligations")]
-    HealthyObligation,
-
-    // 25
-    /// Borrow amount too small
-    #[error("Borrow amount too small")]
-    BorrowTooSmall,
-    /// Liquidation amount too small
-    #[error("Liquidation amount too small to receive collateral")]
-    LiquidationTooSmall,
-    /// Reserve state stale
-    #[error("Reserve state needs to be updated for the current slot")]
-    ReserveStale,
-    /// Trade simulation error
-    #[error("Trade simulation error")]
-    TradeSimulationError,
-    /// Invalid dex order book side
-    #[error("Invalid dex order book side")]
-    DexInvalidOrderBookSide,
-
-    // 30
     /// Token initialize mint failed
     #[error("Token initialize mint failed")]
     TokenInitializeMintFailed,
@@ -126,16 +75,84 @@ pub enum LendingError {
     #[error("Token burn failed")]
     TokenBurnFailed,
 
+    // 20
+    /// Insufficient liquidity available
+    #[error("Insufficient liquidity available")]
+    InsufficientLiquidity,
+    /// This reserve's collateral cannot be used for borrows
+    #[error("Input reserve has collateral disabled")]
+    ReserveCollateralDisabled,
+    /// Reserve state stale
+    #[error("Reserve state needs to be refreshed")]
+    ReserveStale,
+    /// Withdraw amount too small
+    #[error("Withdraw amount too small")]
+    WithdrawTooSmall,
+    /// Withdraw amount too large
+    #[error("Withdraw amount too large")]
+    WithdrawTooLarge,
+
+    // 25
+    /// Borrow amount too small
+    #[error("Borrow amount too small to receive liquidity after fees")]
+    BorrowTooSmall,
+    /// Borrow amount too large
+    #[error("Borrow amount too large for deposited collateral")]
+    BorrowTooLarge,
+    /// Repay amount too small
+    #[error("Repay amount too small to transfer liquidity")]
+    RepayTooSmall,
+    /// Liquidation amount too small
+    #[error("Liquidation amount too small to receive collateral")]
+    LiquidationTooSmall,
+    /// Cannot liquidate healthy obligations
+    #[error("Cannot liquidate healthy obligations")]
+    ObligationHealthy,
+
+    // 30
+    /// Obligation state stale
+    #[error("Obligation state needs to be refreshed")]
+    ObligationStale,
+    /// Obligation reserve limit exceeded
+    #[error("Obligation reserve limit exceeded")]
+    ObligationReserveLimit,
+    /// Expected a different obligation owner
+    #[error("Obligation owner is invalid")]
+    InvalidObligationOwner,
+    /// Obligation deposits are empty
+    #[error("Obligation deposits are empty")]
+    ObligationDepositsEmpty,
+    /// Obligation borrows are empty
+    #[error("Obligation borrows are empty")]
+    ObligationBorrowsEmpty,
+
     // 35
-    /// Invalid obligation collateral amount
-    #[error("Invalid obligation collateral amount")]
+    /// Obligation deposits have zero value
+    #[error("Obligation deposits have zero value")]
+    ObligationDepositsZero,
+    /// Obligation borrows have zero value
+    #[error("Obligation borrows have zero value")]
+    ObligationBorrowsZero,
+    /// Invalid obligation collateral
+    #[error("Invalid obligation collateral")]
     InvalidObligationCollateral,
-    /// Obligation collateral is already below required amount
-    #[error("Obligation collateral is already below required amount")]
-    ObligationCollateralBelowRequired,
-    /// Obligation collateral cannot be withdrawn below required amount
-    #[error("Obligation collateral cannot be withdrawn below required amount")]
-    ObligationCollateralWithdrawBelowRequired,
+    /// Invalid obligation liquidity
+    #[error("Invalid obligation liquidity")]
+    InvalidObligationLiquidity,
+    /// Obligation collateral is empty
+    #[error("Obligation collateral is empty")]
+    ObligationCollateralEmpty,
+
+    // 40
+    /// Obligation liquidity is empty
+    #[error("Obligation liquidity is empty")]
+    ObligationLiquidityEmpty,
+    /// Negative interest rate
+    #[error("Interest rate is negative")]
+    NegativeInterestRate,
+    /// Oracle config is invalid
+    #[error("Input oracle config is invalid")]
+    InvalidOracleConfig,
 }
 
 impl From<LendingError> for ProgramError {
