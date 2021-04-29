@@ -1001,7 +1001,7 @@ fn process_withdraw_obligation_collateral(
     }
 
     let withdraw_amount = if obligation.borrows.is_empty() {
-        if collateral_amount == std::u64::MAX {
+        if collateral_amount == u64::MAX {
             collateral.deposited_amount
         } else {
             collateral.deposited_amount.min(collateral_amount)
