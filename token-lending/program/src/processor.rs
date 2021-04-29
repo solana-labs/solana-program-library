@@ -1,5 +1,4 @@
 //! Program state processor
-
 use crate::{
     error::LendingError,
     instruction::LendingInstruction,
@@ -17,6 +16,7 @@ use solana_program::{
     account_info::{next_account_info, AccountInfo},
     decode_error::DecodeError,
     entrypoint::ProgramResult,
+    instruction::Instruction,
     msg,
     program::{invoke, invoke_signed},
     program_error::{PrintProgramError, ProgramError},
