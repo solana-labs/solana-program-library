@@ -26,7 +26,7 @@ use solana_program::{
     sysvar::{clock::Clock, rent::Rent, Sysvar},
 };
 use spl_token::state::{Mint, Account};
-use spl_token::solana_program::instruction::{Instruction, AccountMeta};
+use spl_token::solana_program::instruction::AccountMeta;
 use crate::state::FeeCalculation::Exclusive;
 
 /// Processes an instruction

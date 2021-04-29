@@ -381,7 +381,6 @@ impl ReserveLiquidity {
             market_price: params.market_price,
             available_amount: 0,
             borrowed_amount_wads: Decimal::zero(),
-            flash_loan_fees_receiver: flash_loan_fee_receiver,
         }
     }
 
@@ -678,7 +677,7 @@ impl ReserveFees {
             }
 
             let host_fee = if need_to_assess_host_fee {
-                host_fee_rate.try_mul(total_fee)?.try_round_u64()?.max(1)
+                host_fee_rate.try_mul(borrow_fee)?.try_round_u64()?.max(1)
             } else {
                 0
             };
@@ -1172,7 +1171,6 @@ mod test {
             borrow_fee_wad: 10_000_000_000_000_000, // 1%
             flash_loan_fee_wad: 0,
             host_fee_percentage: 20,
-            flash_loan_fee_wad: 0,
         };
 
         // only 2 tokens borrowed, get error
@@ -1201,7 +1199,6 @@ mod test {
             borrow_fee_wad: 10_000_000_000_000_000, // 1%
             flash_loan_fee_wad: 0,
             host_fee_percentage: 0,
-            flash_loan_fee_wad: 0,
         };
 
         // only 2 tokens borrowed, ok
@@ -1231,7 +1228,6 @@ mod test {
             borrow_fee_wad: 10_000_000_000_000_000, // 1%
             flash_loan_fee_wad: 0,
             host_fee_percentage: 20,
-            flash_loan_fee_wad: 0,
         };
 
         let (total_fee, host_fee) = fees
@@ -1248,7 +1244,6 @@ mod test {
             borrow_fee_wad: 10_000_000_000_000_000, // 1%
             flash_loan_fee_wad: 0,
             host_fee_percentage: 0,
-            flash_loan_fee_wad: 0,
         };
 
         let (total_fee, host_fee) = fees

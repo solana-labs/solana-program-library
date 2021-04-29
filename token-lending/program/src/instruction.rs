@@ -510,10 +510,6 @@ impl LendingInstruction {
                 buf.push(13);
                 buf.extend_from_slice(&amount.to_le_bytes());
             }
-            Self::FlashLoan { amount } => {
-                buf.push(12);
-                buf.extend_from_slice(&amount.to_le_bytes());
-            }
         }
         buf
     }
