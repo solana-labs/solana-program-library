@@ -28,6 +28,7 @@ use solana_program::{
 use spl_token::state::{Mint, Account};
 use spl_token::solana_program::instruction::AccountMeta;
 use crate::state::FeeCalculation::Exclusive;
+use std::u64;
 
 /// Processes an instruction
 pub fn process_instruction(
@@ -1016,7 +1017,7 @@ fn process_withdraw_obligation_collateral(
             return Err(LendingError::WithdrawTooLarge.into());
         }
 
-        let withdraw_amount = if collateral_amount == std::u64::MAX {
+        let withdraw_amount = if collateral_amount == u64::MAX {
             let withdraw_value = max_withdraw_value.min(collateral.market_value);
             let withdraw_pct = withdraw_value.try_div(collateral.market_value)?;
             withdraw_pct
