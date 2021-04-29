@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 
 pub mod genesis;
+pub mod flash_loan_receiver;
 
 use assert_matches::*;
 use flux_aggregator::{
@@ -53,6 +54,7 @@ pub const TEST_RESERVE_CONFIG: ReserveConfig = ReserveConfig {
     fees: ReserveFees {
         borrow_fee_wad: 100_000_000_000,
         /// 0.00001% (Aave borrow fee)
+        flash_loan_fee_wad: 100_000_000_000,
         host_fee_percentage: 20,
     },
 };

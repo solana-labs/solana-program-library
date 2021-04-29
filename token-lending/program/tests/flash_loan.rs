@@ -10,6 +10,7 @@ use solana_sdk::{pubkey::Pubkey, signature::Keypair};
 use spl_token_lending::instruction::flash_loan;
 use spl_token_lending::processor::process_instruction;
 use spl_token_lending::state::FeeCalculation::Exclusive;
+use spl_token_lending::math::Decimal;
 
 #[tokio::test]
 async fn test_flash_loan_success() {
@@ -39,7 +40,7 @@ async fn test_flash_loan_success() {
     let flash_loan_amount = 1_000_000u64;
     let (flash_loan_fee, host_fee) = TEST_RESERVE_CONFIG
         .fees
-        .calculate_flash_loan_fee(Decimals::from(flash_loan_amount), Exclusive)
+        .calculate_flash_loan_fee(Decimal::from(flash_loan_amount), Exclusive)
         .unwrap();
 
     let usdc_reserve = add_reserve(
@@ -75,7 +76,7 @@ async fn test_flash_loan_success() {
         &[flash_loan(
             spl_token_lending::id(),
             flash_loan_amount,
-            usdc_reserve.liquidity_supply,
+            usdc_reserve.liquidity_supply_pubkey,
             program_owned_token_account,
             usdc_reserve.pubkey,
             lending_market.pubkey,
@@ -91,9 +92,9 @@ async fn test_flash_loan_success() {
     transaction.sign(&[&payer], recent_blockhash);
     assert!(banks_client.process_transaction(transaction).await.is_ok());
     let fee_balance =
-        get_token_balance(&mut banks_client, usdc_reserve.flash_loan_fees_receiver).await;
+        get_token_balance(&mut banks_client, usdc_reserve.liquidity_fee_receiver_pubkey).await;
     assert_eq!(fee_balance, flash_loan_fee - host_fee);
 
-    let host_fee_balance = get_token_balance(&mut banks_client, usdc_reserve.liquidity_host).await;
+    let host_fee_balance = get_token_balance(&mut banks_client, usdc_reserve.liquidity_host_pubkey).await;
     assert_eq!(host_fee_balance, host_fee);
 }
