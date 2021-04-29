@@ -3881,7 +3881,6 @@ dependencies = [
  "arrayref",
  "assert_matches",
  "base64 0.13.0",
- "byteorder",
  "flux-aggregator",
  "log",
  "num-derive",
