@@ -146,7 +146,7 @@ impl Reserve {
         let decimals = 10u64
             .checked_pow(self.liquidity.mint_decimals as u32)
             .ok_or(LendingError::MathOverflow)?;
-        if amount_to_borrow == u64::MAX {
+        if amount_to_borrow == std::u64::MAX {
             let borrow_amount = max_borrow_value
                 .try_mul(decimals)?
                 .try_div(self.liquidity.market_price)?
@@ -198,7 +198,7 @@ impl Reserve {
         amount_to_repay: u64,
         borrowed_amount: Decimal,
     ) -> Result<CalculateRepayResult, ProgramError> {
-        let settle_amount = if amount_to_repay == u64::MAX {
+        let settle_amount = if amount_to_repay == std::u64::MAX {
             borrowed_amount
         } else {
             Decimal::from(amount_to_repay).min(borrowed_amount)
@@ -221,7 +221,7 @@ impl Reserve {
     ) -> Result<CalculateLiquidationResult, ProgramError> {
         let bonus_rate = Rate::from_percent(self.config.liquidation_bonus).try_add(Rate::one())?;
 
-        let max_amount = if amount_to_liquidate == u64::MAX {
+        let max_amount = if amount_to_liquidate == std::u64::MAX {
             liquidity.borrowed_amount_wads
         } else {
             Decimal::from(amount_to_liquidate).min(liquidity.borrowed_amount_wads)
@@ -1125,12 +1125,14 @@ mod test {
         #[test]
         fn borrow_fee_calculation(
             borrow_fee_wad in 0..WAD, // at WAD, fee == borrow amount, which fails
+            flash_loan_fee_wad in 0..WAD, // at WAD, fee == borrow amount, which fails
             host_fee_percentage in 0..=100u8,
             borrow_amount in 3..=u64::MAX, // start at 3 to ensure calculation success
                                            // 0, 1, and 2 are covered in the minimum tests
         ) {
             let fees = ReserveFees {
                 borrow_fee_wad,
+                flash_loan_fee_wad,
                 host_fee_percentage,
             };
             let (total_fee, host_fee) = fees.calculate_borrow_fees(Decimal::from(borrow_amount), FeeCalculation::Exclusive)?;
