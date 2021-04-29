@@ -9,6 +9,7 @@ use solana_sdk::transaction::Transaction;
 use solana_sdk::{pubkey::Pubkey, signature::Keypair};
 use spl_token_lending::instruction::flash_loan;
 use spl_token_lending::processor::process_instruction;
+use spl_token_lending::state::FeeCalculation::Exclusive;
 
 #[tokio::test]
 async fn test_flash_loan_success() {
@@ -38,13 +39,13 @@ async fn test_flash_loan_success() {
     let flash_loan_amount = 1_000_000u64;
     let (flash_loan_fee, host_fee) = TEST_RESERVE_CONFIG
         .fees
-        .calculate_flash_loan_fee(flash_loan_amount)
+        .calculate_flash_loan_fee(Decimals::from(flash_loan_amount), Exclusive)
         .unwrap();
 
     let usdc_reserve = add_reserve(
         &mut test,
-        &user_accounts_owner,
         &lending_market,
+        &user_accounts_owner,
         AddReserveArgs {
             liquidity_amount: 1_000_000,
             liquidity_mint_pubkey: usdc_mint.pubkey,
@@ -80,8 +81,8 @@ async fn test_flash_loan_success() {
             lending_market.pubkey,
             lending_market.authority,
             receiver_program_id.clone(),
-            usdc_reserve.flash_loan_fees_receiver,
-            usdc_reserve.liquidity_host,
+            usdc_reserve.liquidity_fee_receiver_pubkey,
+            usdc_reserve.liquidity_host_pubkey,
             vec![receiver_authority_pubkey.clone()],
         )],
         Some(&payer.pubkey()),

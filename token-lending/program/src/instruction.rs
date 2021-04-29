@@ -269,6 +269,35 @@ pub enum LendingInstruction {
         /// Amount of liquidity to repay - u64::MAX for up to 100% of borrowed amount
         liquidity_amount: u64,
     },
+
+    // 13
+    /// Make a flash loan.
+    ///   0. `[writable]` Source liquidity (reserve liquidity supply), minted by reserve liquidity mint
+    ///   1. `[writable]` Destination liquidity (owned by the flash loan receiver program)
+    ///   2. `[writable]` Reserve account.
+    ///   3. `[]` Lending market account.
+    ///   4. `[]` Derived lending market authority.
+    ///   5. `[]` Flash Loan Receiver Program Account, which should have a function (which we will
+    ///   call it `ExecuteOperation(amount: u64)` to mimic Aave flash loan) that has tag of 0.
+    ///   6. `[]` Flash Loan Receiver Program Derived Account
+    ///   7. `[]` Token program id
+    ///   8. `[writable]` Flash loan fees receiver, must be the fee account specified at InitReserve.
+    ///   9. `[writeable]` Host fee receiver.
+    /// ... a variable number of accounts that is needed for `executeOperation(amount: u64)`.
+    ///
+    ///   The flash loan receiver program that is to be invoked should contain an instruction with
+    ///   tag `0` and accept the total amount that needs to be returned back after its execution
+    ///   has completed.
+    ///
+    ///   Flash loan receiver should have the following signature:
+    ///   0. `[writable]` Source liquidity (matching the destination from above)
+    ///   1. `[writable]` Destination liquidity (matching the source from above)
+    ///   2. Token program id
+    ///    .. Additional accounts from above
+    FlashLoan {
+        /// The amount that is to be borrowed
+        amount: u64,
+    },
 }
 
 impl LendingInstruction {
@@ -296,6 +325,7 @@ impl LendingInstruction {
                 let (optimal_borrow_rate, rest) = Self::unpack_u8(rest)?;
                 let (max_borrow_rate, rest) = Self::unpack_u8(rest)?;
                 let (borrow_fee_wad, rest) = Self::unpack_u64(rest)?;
+                let (flash_loan_fee_wad, rest) = Self::unpack_u64(rest)?;
                 let (host_fee_percentage, _rest) = Self::unpack_u8(rest)?;
                 Self::InitReserve {
                     liquidity_amount,
@@ -309,6 +339,7 @@ impl LendingInstruction {
                         max_borrow_rate,
                         fees: ReserveFees {
                             borrow_fee_wad,
+                            flash_loan_fee_wad,
                             host_fee_percentage,
                         },
                     },
@@ -344,6 +375,10 @@ impl LendingInstruction {
             12 => {
                 let (liquidity_amount, _rest) = Self::unpack_u64(rest)?;
                 Self::LiquidateObligation { liquidity_amount }
+            }
+            13 => {
+                let (amount, _rest) = Self::unpack_u64(rest)?;
+                Self::FlashLoan { amount }
             }
             _ => {
                 msg!("Instruction cannot be unpacked");
@@ -416,6 +451,7 @@ impl LendingInstruction {
                         fees:
                             ReserveFees {
                                 borrow_fee_wad,
+                                flash_loan_fee_wad,
                                 host_fee_percentage,
                             },
                     },
@@ -430,6 +466,7 @@ impl LendingInstruction {
                 buf.extend_from_slice(&optimal_borrow_rate.to_le_bytes());
                 buf.extend_from_slice(&max_borrow_rate.to_le_bytes());
                 buf.extend_from_slice(&borrow_fee_wad.to_le_bytes());
+                buf.extend_from_slice(&flash_loan_fee_wad.to_le_bytes());
                 buf.extend_from_slice(&host_fee_percentage.to_le_bytes());
             }
             Self::RefreshReserve => {
@@ -468,6 +505,10 @@ impl LendingInstruction {
             Self::LiquidateObligation { liquidity_amount } => {
                 buf.push(12);
                 buf.extend_from_slice(&liquidity_amount.to_le_bytes());
+            }
+            Self::FlashLoan { amount } => {
+                buf.push(13);
+                buf.extend_from_slice(&amount.to_le_bytes());
             }
         }
         buf
@@ -882,5 +923,43 @@ pub fn liquidate_obligation(
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
         data: LendingInstruction::LiquidateObligation { liquidity_amount }.pack(),
+    }
+}
+
+/// Creates a `FlashLoan` instruction.
+#[allow(clippy::too_many_arguments)]
+pub fn flash_loan(
+    program_id: Pubkey,
+    amount: u64,
+    reserve_liquidity_pubkey: Pubkey,
+    destination_liquidity_pubkey: Pubkey,
+    reserve_pubkey: Pubkey,
+    lending_market_pubkey: Pubkey,
+    derived_lending_market_authority_pubkey: Pubkey,
+    flash_loan_receiver_pubkey: Pubkey,
+    flash_loan_fees_reciver_pubkey: Pubkey,
+    host_fee_recipient_pubkey: Pubkey,
+    flash_loan_receiver_program_account_pubkeys: Vec<Pubkey>,
+) -> Instruction {
+    let mut accounts = vec![
+        AccountMeta::new(reserve_liquidity_pubkey, false),
+        AccountMeta::new(destination_liquidity_pubkey, false),
+        AccountMeta::new_readonly(reserve_pubkey, false),
+        AccountMeta::new_readonly(lending_market_pubkey, false),
+        AccountMeta::new_readonly(derived_lending_market_authority_pubkey, false),
+        AccountMeta::new_readonly(flash_loan_receiver_pubkey, false),
+        AccountMeta::new_readonly(spl_token::id(), false),
+        AccountMeta::new(flash_loan_fees_reciver_pubkey, false),
+        AccountMeta::new(host_fee_recipient_pubkey, false),
+    ];
+    accounts.extend(
+        flash_loan_receiver_program_account_pubkeys
+            .into_iter()
+            .map(|additional_param| AccountMeta::new(additional_param, false)),
+    );
+    Instruction {
+        program_id,
+        accounts,
+        data: LendingInstruction::FlashLoan { amount }.pack(),
     }
 }

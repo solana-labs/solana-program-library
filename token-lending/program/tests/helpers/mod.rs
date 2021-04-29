@@ -465,6 +465,29 @@ pub fn add_reserve(
     }
 }
 
+pub fn add_token_account_for_flash_loan_receiver(
+    test: &mut ProgramTest,
+    program_derived_account: &Pubkey,
+    amount: u64,
+    mint_pubkey: &Pubkey,
+) -> Pubkey {
+    let program_owned_token_account = Keypair::new();
+    test.add_packable_account(
+        program_owned_token_account.pubkey(),
+        u32::MAX as u64,
+        &Token {
+            mint: *mint_pubkey,
+            owner: *program_derived_account,
+            amount,
+            state: AccountState::Initialized,
+            is_native: COption::None,
+            ..Token::default()
+        },
+        &spl_token::id(),
+    );
+    program_owned_token_account.pubkey()
+}
+
 pub struct TestLendingMarket {
     pub pubkey: Pubkey,
     pub owner: Keypair,
