@@ -30,15 +30,14 @@ The flash loan receiver program should have the following instruction, that exec
 ```rust
 pub enum FlashLoanReceiverInstruction {
 	
-/// Execute the operation that is needed after flash loan
-    	///
-    	/// Accounts expected:
-    	///
-        ///   0. `[writable]` Source liquidity (matching the destination from above)
-        ///   1. `[writable]` Destination liquidity (matching the source from above)
-        ///   2. Token program id
-        ///    .. Additional accounts from above
-
+    /// Execute the operation that is needed after flash loan
+    ///
+    /// Accounts expected:
+    ///
+    ///   0. `[writable]` Source liquidity (matching the destination from above)
+    ///   1. `[writable]` Destination liquidity (matching the source from above)
+    ///   2. Token program id
+    ///    .. Additional accounts from above
 	ExecuteOperation{
 		// Amount that is loaned to the receiver program
         amount: u64
