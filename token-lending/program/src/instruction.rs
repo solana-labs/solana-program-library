@@ -298,28 +298,6 @@ pub enum LendingInstruction {
         /// The amount that is to be borrowed
         amount: u64,
     },
-    // 12
-    /// Make a flash loan.
-    ///
-    ///   0. `[writable]` Destination liquidity token account, minted by reserve liquidity mint.
-    ///   1. `[writable]` Reserve account.
-    ///   2. `[]` Lending market account.
-    ///   3. `[]` Derived lending market authority.
-    ///   4. `[]` Flash Loan Receiver Program Account, which should have a function (which we will
-    ///   call it `ExecuteOperation(amount: u64)` to mimic Aave flash loan) that has tag of 0.
-    ///   5. `[]` Flash Loan Receiver Program Derived Account
-    ///   6. `[]` Token program id
-    ///   7. `[writable]` Host fee receiver.
-    ///   8. `[writeable]` Flash loan fees receiver, must match init reserve.
-    /// ... a variable number of accounts that is needed for `executeOperation(amount: u64)`.
-    ///
-    ///   The flash loan receiver program that is to be invoked should contain an instruction with
-    ///   tag `0` and accept the total amount that needs to be returned back after its execution
-    ///   has completed.
-    FlashLoan {
-        /// The amount that is to be borrowed
-        amount: u64,
-    },
 }
 
 impl LendingInstruction {

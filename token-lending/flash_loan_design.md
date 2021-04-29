@@ -2,25 +2,19 @@
 
 We added a new instruction with the following signature for flash loan:
 ```rust
-    // 12
     /// Make a flash loan.
-    ///
-    ///   0. `[writable]` Destination liquidity token account, minted by reserve liquidity mint.
-    ///   1. `[writable]` Reserve account.
-    ///   2. `[]` Lending market account.
-    ///   3. `[]` Derived lending market authority.
-    ///   4. `[]` Temporary memory
+    ///   0. `[writable]` Source liquidity (reserve liquidity supply), minted by reserve liquidity mint
+    ///   1. `[writable]` Destination liquidity (owned by the flash loan receiver program)
+    ///   2. `[writable]` Reserve account.
+    ///   3. `[]` Lending market account.
+    ///   4. `[]` Derived lending market authority.
     ///   5. `[]` Flash Loan Receiver Program Account, which should have a function (which we will
     ///   call it `ExecuteOperation(amount: u64)` to mimic Aave flash loan) that has tag of 0.
     ///   6. `[]` Flash Loan Receiver Program Derived Account
     ///   7. `[]` Token program id
-    ///   8. `[writable]` Host fee receiver.
-    ///   9. `[writeable]` Flash loan fees receiver, must match init reserve.
+    ///   8. `[writable]` Flash loan fees receiver, must be the fee account specified at InitReserve.
+    ///   9. `[writeable]` Host fee receiver.
     /// ... a variable number of accounts that is needed for `executeOperation(amount: u64)`.
-    ///
-    ///   The flash loan receiver program that is to be invoked should contain an instruction with
-    ///   tag `0` and accept the total amount that needs to be returned back after its execution
-    ///   has completed.
     FlashLoan {
         /// The amount that is to be borrowed
         amount: u64,
@@ -40,12 +34,10 @@ pub enum FlashLoanReceiverInstruction {
     	///
     	/// Accounts expected:
     	///
-    	/// 0. `[writable]` The destination liquidity token account owned by the PDA of the program.
-	/// 1. `[]` The program derived account of flash loan receiver.
-    	/// 2. `[writable]` The repay token account.
-    	/// 3. `[]` The token program Id.
-    	/// 4... `[writable]` the account that the FlashLoanReceiver needs to write to.
-
+        ///   0. `[writable]` Source liquidity (matching the destination from above)
+        ///   1. `[writable]` Destination liquidity (matching the source from above)
+        ///   2. Token program id
+        ///    .. Additional accounts from above
 
 	ExecuteOperation{
 		// Amount that is loaned to the receiver program
