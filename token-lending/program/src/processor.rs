@@ -1585,12 +1585,11 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
     })?;
 
     let (origination_fee, host_fee) = reserve.config.fees.calculate_flash_loan_fee(Decimal::from(amount), Exclusive)?;
-    let returned_amount_required = amount.checked_add(origination_fee).unwrap();
+    let returned_amount_required = amount.checked_add(origination_fee).ok_or(LendingError::MathOverflow);
 
-    let returned_amount_required_argument = &returned_amount_required;
     let mut data = Vec::with_capacity(9);
     data.push(0u8);
-    data.extend_from_slice(&returned_amount_required_argument.to_le_bytes());
+    data.extend_from_slice(&&returned_amount_required.to_le_bytes());
     let mut instruction_accounts = vec![
         AccountMeta::new(*destination_liquidity_info.key, false),
         AccountMeta::new(*source_liquidity_info.key, false),
