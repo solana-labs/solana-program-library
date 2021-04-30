@@ -28,7 +28,7 @@ pub enum GovernanceInstruction {
         vote_threshold: u8,
 
         /// Minimum waiting time in slots for a transaction to be executed after proposal is voted on
-        min_transaction_cool_off_time: u64,
+        min_transaction_hold_up_time: u64,
 
         /// Time limit in slots for proposal to be open for voting
         max_voting_time: u64,
@@ -106,7 +106,7 @@ pub enum GovernanceInstruction {
     ///   7. `[]` Governance program account
     AddCustomSingleSignerTransaction {
         /// Slot waiting time between vote period ending and this being eligible for execution
-        cool_off_tine: u64,
+        hold_up_time: u64,
         /// Instruction
         instruction: [u8; MAX_PROPOSAL_INSTRUCTION_DATA_LENGTH],
         /// Position in transaction array
@@ -135,9 +135,9 @@ pub enum GovernanceInstruction {
     ///   3. `[]` Proposal account
     ///   4. `[]` Transfer authority
     ///   5. `[]` Proposal Authority account. PDA with seeds: ['governance',proposal_key]
-    UpdateTransactionCoolOffTime {
+    UpdateTransactionHoldUpTime {
         /// Minimum waiting time in slots for a transaction to be executed after proposal is voted on
-        cool_off_time: u64,
+        hold_up_time: u64,
     },
 
     /// [Requires Admin token]

@@ -73,7 +73,7 @@ pub struct Governance {
     pub token_threshold_to_create_proposal: u8,
 
     /// Minimum waiting time in slots for a transaction to be executed after proposal is voted on
-    pub min_transaction_cool_off_time: u64,
+    pub min_transaction_hold_up_time: u64,
 
     /// Governance mint
     pub governance_mint: Pubkey,
@@ -173,10 +173,13 @@ pub enum ProposalStateStatus {
     /// Taking votes
     Voting,
 
-    /// Votes complete, in execution phase
+    /// Voting ended with success 
+    Succeeded 
+
+    /// Votes completed and after cool oof period and transactions are being executed
     Executing,
 
-    /// Completed, can be rebooted
+    /// Completed
     Completed,
 
     /// Cancelled
@@ -215,7 +218,7 @@ pub struct CustomSingleSignerTransaction {
     pub account_type: GovernanceAccountType,
 
     /// Minimum waiting time in slots for a transaction to be executed after proposal is voted on
-    pub cool_off_time: u64,
+    pub hold_up_time: u64,
 
     /// Instruction data
     pub instruction: [u8; MAX_PROPOSAL_INSTRUCTION_DATA_LENGTH],
