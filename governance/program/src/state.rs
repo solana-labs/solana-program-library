@@ -11,9 +11,6 @@ pub const MAX_PROPOSAL_DESCRIPTION_LINK_LENGTH: usize = 200;
 /// Max length of a proposal name
 pub const MAX_PROPOSAL_NAME_LENGTH: usize = 32;
 
-/// Max length of a proposal's instruction data
-pub const MAX_PROPOSAL_INSTRUCTION_DATA_LENGTH: usize = 450;
-
 /// Max number of transactions allowed for a proposal
 pub const MAX_TRANSACTIONS: usize = 5;
 
@@ -173,8 +170,8 @@ pub enum ProposalStateStatus {
     /// Taking votes
     Voting,
 
-    /// Voting ended with success 
-    Succeeded 
+    /// Voting ended with success
+    Succeeded,
 
     /// Votes completed and after cool oof period and transactions are being executed
     Executing,
@@ -221,10 +218,7 @@ pub struct CustomSingleSignerTransaction {
     pub hold_up_time: u64,
 
     /// Instruction data
-    pub instruction: [u8; MAX_PROPOSAL_INSTRUCTION_DATA_LENGTH],
-
-    /// Instruction end index (inclusive)
-    pub instruction_end_index: u16,
+    pub instruction: Vec<u8>,
 
     /// Executed flag
     pub executed: u8,

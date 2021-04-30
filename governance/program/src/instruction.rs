@@ -2,7 +2,7 @@
 
 use crate::state::{
     Vote, MAX_GOVERNANCE_NAME_LENGTH, MAX_PROPOSAL_DESCRIPTION_LINK_LENGTH,
-    MAX_PROPOSAL_INSTRUCTION_DATA_LENGTH, MAX_PROPOSAL_NAME_LENGTH,
+    MAX_PROPOSAL_NAME_LENGTH,
 };
 
 /// Instructions supported by the Governance program
@@ -42,7 +42,7 @@ pub enum GovernanceInstruction {
     },
 
     /// Initializes a new empty Proposal for Instructions that will be executed at various slots in the future
-    /// The instruction also grants Admin and Signatory token to the caller
+    /// The instruction also grants Admin and Signatory token to the provided account
     ///
     ///   0. `[writable]` Uninitialized Proposal State account
     ///   1. `[writable]` Uninitialized Proposal account
@@ -65,8 +65,8 @@ pub enum GovernanceInstruction {
 
     /// [Requires Admin token]
     /// Adds a signatory to the Proposal which means that this Proposal can't leave Draft state until yet another signatory burns
-    /// their signatory token indicating they are satisfied with the instruction queue. They'll receive an signatory token
-    /// as a result of this call that they can burn later
+    /// their signatory token indicating they are satisfied with the Proposal instructions.
+    /// They'll receive an signatory token as a result of this call that they can burn later
     ///
     ///   0. `[writable]` Initialized Signatory account
     ///   1. `[writable]` Initialized Signatory Mint account
@@ -108,11 +108,9 @@ pub enum GovernanceInstruction {
         /// Slot waiting time between vote period ending and this being eligible for execution
         hold_up_time: u64,
         /// Instruction
-        instruction: [u8; MAX_PROPOSAL_INSTRUCTION_DATA_LENGTH],
+        instruction: Vec<u8>,
         /// Position in transaction array
         position: u8,
-        /// Point in instruction array where 0 padding begins - inclusive, index should be where actual instruction ends, not where 0s begin
-        instruction_end_index: u16,
     },
 
     /// [Requires Signatory token]
@@ -165,26 +163,30 @@ pub enum GovernanceInstruction {
     SignProposal,
 
     /// [Requires Voting tokens]
-    /// Burns voting tokens, indicating you approve and/or disapprove of running this set of transactions. If you tip the consensus,
-    /// then the transactions can begin to be run at their time slots when people click execute. You are then given yes and/or no tokens
+    ///  Deposits source voting tokens (governance or council), indicating you approve and/or disapprove of running this set of transactions
+    /// If you tip the consensus then the transactions can begin to be run after their hold up time
     ///
-    ///   0. `[writable]` Governance voting record account
-    ///                   Can be uninitialized or initialized(if already used once in this proposal)
-    ///                   Must have address with PDA having seed tuple [Governance acct key, proposal key, your voting account key]
+    ///   0. `[writable]` Governance Vote Record account. Needs to be set with pubkey set to PDA with seeds of the
+    ///                   1) 'governance' const prefix,
+    ///                   2)  Voter account
+    ///                   3)  Proposal account     
+    ///   3. `[]` Proposal account
     ///   1. `[writable]` Proposal State account
     ///   2. `[]` Source Token Mint account
-    ///   3. `[]` Proposal account
+    ///   1. `[writable]` User Source Token account to deposit tokens from
+    ///   2. `[writable]` Source Token Holding account for Proposal that will accept the tokens in escrow
     ///   4. `[]` Governance account
     ///   5. `[]` Transfer authority
     ///   6. `[]` Proposal Authority account. PDA with seeds: ['governance',proposal_key]
     ///   7. `[]` Token program account
+    ///   3. `[]` System account
     ///   8. `[]` Clock sysvar
     Vote {
         /// Yes/No  with amount of votes
         vote: Vote,
     },
 
-    /// Executes a command in the Proposal
+    /// Executes a transaction in the Proposal
     ///
     ///   0. `[writable]` Transaction account you wish to execute
     ///   1. `[writable]` Proposal State account
@@ -196,34 +198,9 @@ pub enum GovernanceInstruction {
     ///   7+ Any extra accounts that are part of the instruction, in order
     Execute,
 
-    /// Creates an empty governance vote record
-    ///
-    ///   0. `[]` Governance Vote Record account. Needs to be set with pubkey set to PDA with seeds of the
-    ///           program account key, proposal key, your voting account key
-    ///   1. `[]` Proposal key
-    ///   2. `[]` Payer
-    ///   3. `[]` System account
-    CreateEmptyGovernanceVoteRecord,
-
-    /// [Requires tokens of the Governance Mint or Council Mint depending on type of Proposal]
-    /// Deposits vote tokens to be used during the voting process on a Proposal.
-    /// These tokens are removed from your account and can be returned by withdrawing
-    /// them from the Proposal (but then you will miss the vote.)
-    ///
-    ///   0. `[writable]` Governance Vote Record account. See Vote docs for more detail
-    ///   1. `[writable]` User Source Token account to deposit tokens from
-    ///   2. `[writable]` Source Token Holding account for Proposal that will accept the tokens in escrow
-    ///   3. `[]` Proposal account.
-    ///   4. `[]` Transfer authority
-    ///   5. `[]` Proposal Authority account. PDA with seeds: ['governance',proposal_key]
-    ///   6. `[]` Token program account
-    DepositSourceTokens {
-        /// How many voting tokens to deposit
-        voting_token_amount: u64,
-    },
-
     /// [Requires voting tokens]
-    /// Withdraws voting tokens.
+    /// Withdraws source tokens from the Proposal.
+    /// If the Proposal is still being voted on then the tokens won't count towards the vote outcome
     ///
     ///   0. `[writable]` Governance Vote Record account. See Vote docs for more detail
     ///   4. `[writable]` User Source Token account that you wish your actual tokens to be returned to
@@ -233,8 +210,5 @@ pub enum GovernanceInstruction {
     ///   11. `[]` Transfer authority
     ///   12. `[]` Proposal Authority account. PDA with seeds: ['governance',proposal_key]
     ///   13. `[]` Token program account
-    WithdrawVotingTokens {
-        /// How many voting tokens to withdrawal
-        voting_token_amount: u64,
-    },
+    WithdrawSourceTokens,
 }
