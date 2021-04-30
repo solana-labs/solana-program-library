@@ -61,11 +61,19 @@ pub struct Governance {
     /// Account type
     pub account_type: GovernanceAccountType,
 
+    /// Optional governance name
+    pub name: [u8; MAX_GOVERNANCE_NAME_LENGTH],
+
     /// Voting threshold in % required to tip the vote
+    /// It's the percentage of tokens out of the entire pool of governance tokens eligible to vote
     pub vote_threshold: u8,
 
-    /// Minimum slot time-distance from creation of proposal for an instruction to be placed
-    pub minimum_slot_waiting_period: u64,
+    /// Minimum % of tokens for a governance token owner to be able to create a proposal
+    /// It's the percentage of tokens out of the entire pool of governance tokens eligible to vote
+    pub token_threshold_to_create_proposal: u8,
+
+    /// Minimum waiting time in slots for a transaction to be executed after proposal is voted on
+    pub min_transaction_cool_off_time: u64,
 
     /// Governance mint
     pub governance_mint: Pubkey,
@@ -76,11 +84,8 @@ pub struct Governance {
     /// Program ID that is governed by this Governance
     pub program: Pubkey,
 
-    /// Time limit in slots for proposal to be open to voting
-    pub time_limit: u64,
-
-    /// Optional name
-    pub name: [u8; MAX_GOVERNANCE_NAME_LENGTH],
+    /// Time limit in slots for proposal to be open for voting
+    pub max_voting_time: u64,
 
     /// Running count of proposals
     pub proposal_count: u32,
@@ -174,8 +179,8 @@ pub enum ProposalStateStatus {
     /// Completed, can be rebooted
     Completed,
 
-    /// Deleted
-    Deleted,
+    /// Cancelled
+    Cancelled,
 
     /// Defeated
     Defeated,
@@ -209,8 +214,8 @@ pub struct CustomSingleSignerTransaction {
     /// Governance Account type
     pub account_type: GovernanceAccountType,
 
-    /// Slot waiting time between vote period ending and this being eligible for execution
-    pub delay_slots: u64,
+    /// Minimum waiting time in slots for a transaction to be executed after proposal is voted on
+    pub cool_off_time: u64,
 
     /// Instruction data
     pub instruction: [u8; MAX_PROPOSAL_INSTRUCTION_DATA_LENGTH],

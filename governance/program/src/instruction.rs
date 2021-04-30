@@ -23,13 +23,20 @@ pub enum GovernanceInstruction {
     ///   7. `[]` Bpf_upgrade_loader account
     ///   8. `[]` Council mint that this Governance uses [Optional]
     CreateGovernance {
-        /// Vote threshold in % required to tip the vote
+        /// Voting threshold in % required to tip the vote
+        /// It's the percentage of tokens out of the entire pool of governance tokens eligible to vote
         vote_threshold: u8,
 
-        /// Minimum slot time-distance from creation of proposal for an instruction to be placed
-        minimum_slot_waiting_period: u64,
-        /// Time limit in slots for proposal to be open to voting
-        time_limit: u64,
+        /// Minimum waiting time in slots for a transaction to be executed after proposal is voted on
+        min_transaction_cool_off_time: u64,
+
+        /// Time limit in slots for proposal to be open for voting
+        max_voting_time: u64,
+
+        /// Minimum % of tokens for a governance token owner to be able to create proposal
+        /// It's the percentage of tokens out of the entire pool of governance tokens eligible to vote
+        token_threshold_to_create_proposal: u8,
+
         /// Governance name
         name: [u8; MAX_GOVERNANCE_NAME_LENGTH],
     },
@@ -47,7 +54,7 @@ pub enum GovernanceInstruction {
     ///   7. `[writable]` Initialized Source Token Holding account
     ///   8. `[]` Source mint account
     ///   9. `[]` Proposal Authority account. PDA with seeds: ['governance',proposal_key]
-    ///   10. '[]` Token program id
+    ///   10. '[]` Token program account
     ///   11. `[]` Rent sysvar
     InitializeProposal {
         /// Link to gist explaining proposal
@@ -68,7 +75,7 @@ pub enum GovernanceInstruction {
     ///   4. `[]` Proposal account
     ///   5. `[]` Transfer authority
     ///   6. `[]` Proposal Authority account. PDA with seeds: ['governance',proposal_key]
-    ///   7. '[]` Token program id
+    ///   7. '[]` Token program account
     AddSignatory,
 
     /// [Requires Admin token]
@@ -81,7 +88,7 @@ pub enum GovernanceInstruction {
     ///   4. `[]` Proposal account
     ///   5. `[]` Transfer authority
     ///   6. `[]` Proposal Authority account. PDA with seeds: ['governance',proposal_key]
-    ///   7. '[]` Token program id.
+    ///   7. '[]` Token program account
     RemoveSignatory,
 
     /// [Requires Signatory token]
@@ -97,10 +104,9 @@ pub enum GovernanceInstruction {
     ///   5. `[]` Transfer authority
     ///   6. `[]` Proposal Authority account. PDA with seeds: ['governance',proposal_key]
     ///   7. `[]` Governance program account
-    ///   8. `[]` Token program account
     AddCustomSingleSignerTransaction {
-        /// Slot during which this will run
-        delay_slots: u64,
+        /// Slot waiting time between vote period ending and this being eligible for execution
+        cool_off_tine: u64,
         /// Instruction
         instruction: [u8; MAX_PROPOSAL_INSTRUCTION_DATA_LENGTH],
         /// Position in transaction array
@@ -118,34 +124,31 @@ pub enum GovernanceInstruction {
     ///   3. `[]` Proposal account
     ///   4. `[]` Transfer Authority
     ///   5. `[]` Proposal Authority account. PDA with seeds: ['governance',proposal_key]
-    ///   6. `[]` Token program account
     RemoveTransaction,
 
     /// [Requires Signatory token]
-    /// Update Transaction slot in the Proposal. Useful during reset periods
+    /// Update Transaction cool off time in the Proposal.
     ///
     ///   0. `[writable]` Proposal Transaction account
     ///   1. `[writable]` Signatory account
-    ///   2. `[]` Proposal State account.
-    ///   3. `[]` Proposal account.
-    ///   4. `[]` Transfer authority.
+    ///   2. `[]` Proposal State account
+    ///   3. `[]` Proposal account
+    ///   4. `[]` Transfer authority
     ///   5. `[]` Proposal Authority account. PDA with seeds: ['governance',proposal_key]
-    ///   6. `[]` Token program account
-    UpdateTransactionDelaySlots {
-        /// On what slot this transaction slot will now run
-        delay_slots: u64,
+    UpdateTransactionCoolOffTime {
+        /// Minimum waiting time in slots for a transaction to be executed after proposal is voted on
+        cool_off_time: u64,
     },
 
     /// [Requires Admin token]
-    /// Delete Proposal entirely.
+    /// Cancels Proposal and moves it into Canceled
     ///
-    ///   0. `[writable]` Proposal state account pub key.
+    ///   0. `[writable]` Proposal state account
     ///   1. `[writable]` Admin account
-    ///   2. `[]` Proposal account pub key.
-    ///   3. `[]` Transfer authority.
+    ///   2. `[]` Proposal account
+    ///   3. `[]` Transfer authority
     ///   4. `[]` Proposal Authority account. PDA with seeds: ['governance',proposal_key]
-    ///   5. `[]` Token program account.
-    DeleteProposal,
+    CancelProposal,
 
     /// [Requires Signatory token]
     /// Burns signatory token, indicating you approve of moving this Proposal from Draft state to Voting state.
@@ -198,9 +201,8 @@ pub enum GovernanceInstruction {
     ///   0. `[]` Governance Vote Record account. Needs to be set with pubkey set to PDA with seeds of the
     ///           program account key, proposal key, your voting account key
     ///   1. `[]` Proposal key
-    ///   2. `[]` Your Vote account
-    ///   3. `[]` Payer
-    ///   4. `[]` System account.
+    ///   2. `[]` Payer
+    ///   3. `[]` System account
     CreateEmptyGovernanceVoteRecord,
 
     /// [Requires tokens of the Governance Mint or Council Mint depending on type of Proposal]
