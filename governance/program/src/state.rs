@@ -106,24 +106,6 @@ pub struct Proposal {
     /// Admin ownership mint. One token is minted, can be used to grant admin status to a new person.
     pub admin_mint: Pubkey,
 
-    /// Mint that creates voting tokens of this Proposal
-    pub vote_mint: Pubkey,
-
-    /// Mint that creates evidence of voting YES via token creation
-    pub yes_vote_mint: Pubkey,
-
-    /// Mint that creates evidence of voting NO via token creation
-    pub no_vote_mint: Pubkey,
-
-    /// Used to validate signatory tokens in a round trip transfer
-    pub signatory_validation: Pubkey,
-
-    /// Used to validate admin tokens in a round trip transfer
-    pub admin_validation: Pubkey,
-
-    /// Used to validate voting tokens in a round trip transfer
-    pub vote_validation: Pubkey,
-
     /// Source Token Holding account
     pub source_holding: Pubkey,
 
@@ -217,14 +199,8 @@ pub struct GovernanceVoteRecord {
     /// The user who casted this vote
     pub voter: Pubkey,
 
-    /// How many votes were unspent
-    pub undecided_count: u64,
-
-    /// How many votes were spent yes
-    pub yes_count: u64,
-
-    /// How many votes were spent no
-    pub no_count: u64,
+    /// Voter's vote Yes/No and amount
+    pub vote: Option<Vote>,
 }
 
 /// Account for a transaction with a single instruction signed by a single signer

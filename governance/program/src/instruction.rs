@@ -42,23 +42,17 @@ pub enum GovernanceInstruction {
     ///   2. `[writable]` Initialized Governance account
     ///   3. `[writable]` Initialized Signatory Mint account
     ///   4. `[writable]` Initialized Admin Mint account
-    ///   5. `[writable]` Initialized Vote Mint account
-    ///   6. `[writable]` Initialized Yes Vote Mint account
-    ///   7. `[writable]` Initialized No Vote Mint account
-    ///   8. `[writable]` Initialized Signatory Validation account
-    ///   9. `[writable]` Initialized Admin Validation account
-    ///   10. `[writable]` Initialized Vote Validation account
-    ///   11. `[writable]` Initialized Admin account for the issued admin token
-    ///   12. `[writable]` Initialized Signatory account for the issued signatory token
-    ///   13. `[writable]` Initialized Source Token Holding account
-    ///   14. `[]` Source mint account
-    ///   15. `[]` Proposal Authority account. PDA with seeds: ['governance',proposal_key]
-    ///   16. '[]` Token program id
-    ///   17. `[]` Rent sysvar
+    ///   5. `[writable]` Initialized Admin account for the issued admin token
+    ///   6. `[writable]` Initialized Signatory account for the issued signatory token
+    ///   7. `[writable]` Initialized Source Token Holding account
+    ///   8. `[]` Source mint account
+    ///   9. `[]` Proposal Authority account. PDA with seeds: ['governance',proposal_key]
+    ///   10. '[]` Token program id
+    ///   11. `[]` Rent sysvar
     InitializeProposal {
         /// Link to gist explaining proposal
         description_link: [u8; MAX_PROPOSAL_DESCRIPTION_LINK_LENGTH],
-        /// name of proposal
+        /// Name of the proposal
         name: [u8; MAX_PROPOSAL_NAME_LENGTH],
     },
 
@@ -70,12 +64,11 @@ pub enum GovernanceInstruction {
     ///   0. `[writable]` Initialized Signatory account
     ///   1. `[writable]` Initialized Signatory Mint account
     ///   2. `[writable]` Admin account
-    ///   3. `[writable]` Admin Validation account
-    ///   5. `[writable]` Proposal State account
-    ///   6. `[]` Proposal account
-    ///   7. `[]` Transfer authority
-    ///   8. `[]` Proposal Authority account. PDA with seeds: ['governance',proposal_key]
-    ///   9. '[]` Token program id
+    ///   3. `[writable]` Proposal State account
+    ///   4. `[]` Proposal account
+    ///   5. `[]` Transfer authority
+    ///   6. `[]` Proposal Authority account. PDA with seeds: ['governance',proposal_key]
+    ///   7. '[]` Token program id
     AddSignatory,
 
     /// [Requires Admin token]
@@ -84,12 +77,11 @@ pub enum GovernanceInstruction {
     ///   0. `[writable]` Signatory account to remove token from
     ///   1. `[writable]` Signatory Mint account
     ///   2. `[writable]` Admin account
-    ///   3. `[writable]` Admin Validation account
-    ///   4. `[writable]` Proposal State account
-    ///   5. `[]` Proposal account
-    ///   6. `[]` Transfer authority
-    ///   7. `[]` Proposal Authority account. PDA with seeds: ['governance',proposal_key]
-    ///   8. '[]` Token program id.
+    ///   3. `[writable]` Proposal State account
+    ///   4. `[]` Proposal account
+    ///   5. `[]` Transfer authority
+    ///   6. `[]` Proposal Authority account. PDA with seeds: ['governance',proposal_key]
+    ///   7. '[]` Token program id.
     RemoveSignatory,
 
     /// [Requires Signatory token]
@@ -100,13 +92,12 @@ pub enum GovernanceInstruction {
     ///   0. `[writable]` Uninitialized Proposal Transaction account
     ///   1. `[writable]` Proposal state account
     ///   2. `[writable]` Signatory account
-    ///   3. `[writable]` Signatory Validation account
-    ///   4. `[]` Proposal account.
-    ///   5. `[]` Governance account
-    ///   6. `[]` Transfer authority
-    ///   7. `[]` Proposal Authority account. PDA with seeds: ['governance',proposal_key]
-    ///   8. `[]` Governance program account
-    ///   9. `[]` Token program account
+    ///   3. `[]` Proposal account.
+    ///   4. `[]` Governance account
+    ///   5. `[]` Transfer authority
+    ///   6. `[]` Proposal Authority account. PDA with seeds: ['governance',proposal_key]
+    ///   7. `[]` Governance program account
+    ///   8. `[]` Token program account
     AddCustomSingleSignerTransaction {
         /// Slot during which this will run
         delay_slots: u64,
@@ -124,24 +115,22 @@ pub enum GovernanceInstruction {
     ///   0. `[writable]` Proposal State account
     ///   1. `[writable]` Proposal Transaction account
     ///   2. `[writable]` Signatory account
-    ///   3. `[writable]` Signatory Validation account
-    ///   5. `[]` Proposal account
-    ///   6. `[]` Transfer Authority
-    ///   7. `[]` Proposal Authority account. PDA with seeds: ['governance',proposal_key]
-    ///   9. `[]` Token program account
+    ///   3. `[]` Proposal account
+    ///   4. `[]` Transfer Authority
+    ///   5. `[]` Proposal Authority account. PDA with seeds: ['governance',proposal_key]
+    ///   6. `[]` Token program account
     RemoveTransaction,
 
     /// [Requires Signatory token]
     /// Update Transaction slot in the Proposal. Useful during reset periods
     ///
-    ///   1. `[writable]` Proposal Transaction account
-    ///   2. `[writable]` Signatory account
-    ///   3. `[writable]` Signatory Validation account
-    ///   4. `[]` Proposal State account.
-    ///   5. `[]` Proposal account.
-    ///   6. `[]` Transfer authority.
-    ///   7. `[]` Proposal Authority account. PDA with seeds: ['governance',proposal_key]
-    ///   8. `[]` Token program account
+    ///   0. `[writable]` Proposal Transaction account
+    ///   1. `[writable]` Signatory account
+    ///   2. `[]` Proposal State account.
+    ///   3. `[]` Proposal account.
+    ///   4. `[]` Transfer authority.
+    ///   5. `[]` Proposal Authority account. PDA with seeds: ['governance',proposal_key]
+    ///   6. `[]` Token program account
     UpdateTransactionDelaySlots {
         /// On what slot this transaction slot will now run
         delay_slots: u64,
@@ -152,11 +141,10 @@ pub enum GovernanceInstruction {
     ///
     ///   0. `[writable]` Proposal state account pub key.
     ///   1. `[writable]` Admin account
-    ///   2. `[writable]` Admin Validation account.
-    ///   3. `[]` Proposal account pub key.
-    ///   4. `[]` Transfer authority.
-    ///   5. `[]` Proposal Authority account. PDA with seeds: ['governance',proposal_key]
-    ///   6. `[]` Token program account.
+    ///   2. `[]` Proposal account pub key.
+    ///   3. `[]` Transfer authority.
+    ///   4. `[]` Proposal Authority account. PDA with seeds: ['governance',proposal_key]
+    ///   5. `[]` Token program account.
     DeleteProposal,
 
     /// [Requires Signatory token]
@@ -181,19 +169,13 @@ pub enum GovernanceInstruction {
     ///                   Can be uninitialized or initialized(if already used once in this proposal)
     ///                   Must have address with PDA having seed tuple [Governance acct key, proposal key, your voting account key]
     ///   1. `[writable]` Proposal State account
-    ///   2. `[writable]` Your Vote account.
-    ///   3. `[writable]` Your Yes Vote account
-    ///   4. `[writable]` Your No Vote account
-    ///   5. `[writable]` Vote Mint account
-    ///   6. `[writable]` Yes Vote Mint account
-    ///   7. `[writable]` No Vote Mint account
-    ///   8. `[]` Source Token Mint account
-    ///   9. `[]` Proposal account
-    ///   10. `[]` Governance account
-    ///   12. `[]` Transfer authority
-    ///   13. `[]` Proposal Authority account. PDA with seeds: ['governance',proposal_key]
-    ///   14. `[]` Token program account
-    ///   15. `[]` Clock sysvar
+    ///   2. `[]` Source Token Mint account
+    ///   3. `[]` Proposal account
+    ///   4. `[]` Governance account
+    ///   5. `[]` Transfer authority
+    ///   6. `[]` Proposal Authority account. PDA with seeds: ['governance',proposal_key]
+    ///   7. `[]` Token program account
+    ///   8. `[]` Clock sysvar
     Vote {
         /// Yes/No  with amount of votes
         vote: Vote,
@@ -227,14 +209,12 @@ pub enum GovernanceInstruction {
     /// them from the Proposal (but then you will miss the vote.)
     ///
     ///   0. `[writable]` Governance Vote Record account. See Vote docs for more detail
-    ///   1. `[writable]` Initialized Vote account to hold your received voting tokens
-    ///   2. `[writable]` User Source Token account to deposit tokens from
-    ///   3. `[writable]` Source Token Holding account for Proposal that will accept the tokens in escrow
-    ///   4. `[writable]` Vote Mint account
-    ///   5. `[]` Proposal account.
-    ///   6. `[]` Transfer authority
-    ///   7. `[]` Proposal Authority account. PDA with seeds: ['governance',proposal_key]
-    ///   8. `[]` Token program account
+    ///   1. `[writable]` User Source Token account to deposit tokens from
+    ///   2. `[writable]` Source Token Holding account for Proposal that will accept the tokens in escrow
+    ///   3. `[]` Proposal account.
+    ///   4. `[]` Transfer authority
+    ///   5. `[]` Proposal Authority account. PDA with seeds: ['governance',proposal_key]
+    ///   6. `[]` Token program account
     DepositSourceTokens {
         /// How many voting tokens to deposit
         voting_token_amount: u64,
@@ -244,14 +224,8 @@ pub enum GovernanceInstruction {
     /// Withdraws voting tokens.
     ///
     ///   0. `[writable]` Governance Vote Record account. See Vote docs for more detail
-    ///   1. `[writable]` Initialized Vote account from which to remove your voting tokens
-    ///   2. `[writable]` Initialized Yes Vote account from which to remove your voting tokens
-    ///   3. `[writable]` Initialized No Vote account from which to remove your voting tokens
     ///   4. `[writable]` User Source Token account that you wish your actual tokens to be returned to
     ///   5. `[writable]` Source Token Holding account owned by the Governance that will has the actual tokens in escrow
-    ///   6. `[writable]` Vote Mint account
-    ///   7. `[writable]` Yes Vote Mint account
-    ///   8. `[writable]` No Vote Mint account
     ///   9. `[]` Proposal State account
     ///   10. `[]` Proposal account
     ///   11. `[]` Transfer authority
