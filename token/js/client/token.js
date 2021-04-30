@@ -2239,6 +2239,9 @@ export class Token {
     mint: PublicKey,
     owner: PublicKey,
   ): Promise<PublicKey> {
+    if (!PublicKey.isOnCurve(owner.toBuffer())) {
+      throw new Error(`Owner cannot sign: ${owner.toString()}`);
+    }
     return (
       await PublicKey.findProgramAddress(
         [owner.toBuffer(), programId.toBuffer(), mint.toBuffer()],
