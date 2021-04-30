@@ -21,6 +21,7 @@ pub struct UpdateMetadataAccountArgs {
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
 /// Args for create call
 pub struct CreateMetadataAccountArgs {
+    /// Note that unique metadatas are disabled for now.
     pub allow_duplication: bool,
     pub data: Data,
 }
@@ -74,6 +75,10 @@ pub enum MetadataInstruction {
     ///   8. `[]` Token program
     ///   9. `[]` System program
     ///   10. `[]` Rent info
+    ///   11. `[writable]` Optional Fixed supply master mint authorization token account - if using max supply, must provide this.
+    ///                    All tokens ever in existence will be dumped here in one go, you must own this account, and you will be unable
+    ///                    to mint new authorization tokens going forward.
+    ///   12. `[signer]`   Master mint authority - must be provided if using max supply. THIS WILL TRANSFER AUTHORITY AWAY FROM THIS KEY.
     CreateMasterEdition(CreateMasterEditionArgs),
 
     /// Given a master edition, mint a new edition from it, if max_supply not already maxed out. Update authority set to update authority of original.
@@ -205,22 +210,34 @@ pub fn create_master_edition(
     name_symbol_account: Pubkey,
     payer: Pubkey,
     max_supply: Option<u64>,
+    auth_holding_account: Option<Pubkey>,
+    master_mint_authority: Option<Pubkey>,
 ) -> Instruction {
+    let mut accounts = vec![
+        AccountMeta::new(edition, false),
+        AccountMeta::new(mint, false),
+        AccountMeta::new_readonly(master_mint, false),
+        AccountMeta::new_readonly(update_authority, true),
+        AccountMeta::new_readonly(mint_authority, true),
+        AccountMeta::new_readonly(metadata, false),
+        AccountMeta::new_readonly(name_symbol_account, false),
+        AccountMeta::new_readonly(payer, false),
+        AccountMeta::new_readonly(spl_token::id(), false),
+        AccountMeta::new_readonly(solana_program::system_program::id(), false),
+        AccountMeta::new_readonly(sysvar::rent::id(), false),
+    ];
+
+    if let Some(acct) = auth_holding_account {
+        accounts.push(AccountMeta::new(acct, false));
+    }
+
+    if let Some(auth) = master_mint_authority {
+        accounts.push(AccountMeta::new_readonly(auth, true));
+    }
+
     Instruction {
         program_id,
-        accounts: vec![
-            AccountMeta::new(edition, false),
-            AccountMeta::new(mint, false),
-            AccountMeta::new_readonly(master_mint, false),
-            AccountMeta::new_readonly(update_authority, true),
-            AccountMeta::new_readonly(mint_authority, true),
-            AccountMeta::new_readonly(metadata, false),
-            AccountMeta::new_readonly(name_symbol_account, false),
-            AccountMeta::new_readonly(payer, false),
-            AccountMeta::new_readonly(spl_token::id(), false),
-            AccountMeta::new_readonly(solana_program::system_program::id(), false),
-            AccountMeta::new_readonly(sysvar::rent::id(), false),
-        ],
+        accounts,
         data: MetadataInstruction::CreateMasterEdition(CreateMasterEditionArgs { max_supply })
             .try_to_vec()
             .unwrap(),

@@ -134,6 +134,20 @@ pub enum MetadataError {
     /// Not enough tokens to mint a limited edition
     #[error("Not enough tokens to mint a limited edition")]
     NotEnoughTokens,
+
+    /// The mint on your authorization token holding account does not match your master mint!
+    #[error(
+        "The mint on your authorization token holding account does not match your master mint!"
+    )]
+    MasterMintAuthorizationAccountMismatch,
+
+    /// The authorization token account has a different owner than the update authority for the master edition!
+    #[error("The authorization token account has a different owner than the update authority for the master edition!")]
+    AuthorizationTokenAccountOwnerMismatch,
+
+    /// This feature is currently disabled.
+    #[error("This feature is currently disabled.")]
+    Disabled,
 }
 
 impl PrintProgramError for MetadataError {

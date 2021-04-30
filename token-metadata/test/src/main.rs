@@ -518,7 +518,7 @@ fn master_edition_call(
     let added_token_account = Keypair::new();
 
     let needs_a_token = app_matches.is_present("add_one_token");
-
+    let mut signers = vec![&update_authority, &master_mint];
     let mut instructions = vec![];
 
     if needs_a_token {
@@ -574,6 +574,34 @@ fn master_edition_call(
         .unwrap(),
     );
 
+    let auth_account = Keypair::new();
+    let mut auth_account_key = None;
+    let mut master_mint_authority = None;
+    if let Some(_) = max_supply {
+        signers.push(&auth_account);
+        auth_account_key = Some(auth_account.pubkey());
+        master_mint_authority = Some(payer.pubkey());
+        println!("Because you are requesting a maximum supply, your authorization tokens have been dumped into the account {:?}", auth_account_key.unwrap());
+        instructions.push(create_account(
+            &payer.pubkey(),
+            &auth_account.pubkey(),
+            client
+                .get_minimum_balance_for_rent_exemption(Account::LEN)
+                .unwrap(),
+            Account::LEN as u64,
+            &token_key,
+        ));
+        instructions.push(
+            initialize_account(
+                &token_key,
+                &auth_account.pubkey(),
+                &master_mint.pubkey(),
+                &payer.pubkey(),
+            )
+            .unwrap(),
+        );
+    }
+
     instructions.push(create_master_edition(
         program_key,
         master_edition_key,
@@ -585,11 +613,12 @@ fn master_edition_call(
         name_symbol_key,
         payer.pubkey(),
         max_supply,
+        auth_account_key,
+        master_mint_authority,
     ));
 
     let mut transaction = Transaction::new_with_payer(&instructions, Some(&payer.pubkey()));
     let recent_blockhash = client.get_recent_blockhash().unwrap().0;
-    let mut signers = vec![&update_authority, &master_mint];
 
     if needs_a_token {
         signers.push(&added_token_account);

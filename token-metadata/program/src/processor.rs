@@ -8,9 +8,10 @@ use {
             MAX_URI_LENGTH, PREFIX,
         },
         utils::{
-            assert_initialized, assert_mint_authority_matches_mint,
+            assert_initialized, assert_mint_authority_matches_mint, assert_rent_exempt,
             assert_update_authority_is_correct, create_or_allocate_account_raw,
-            mint_limited_edition, spl_token_burn, transfer_mint_authority, TokenBurnParams,
+            mint_limited_edition, spl_token_burn, spl_token_mint_to, transfer_mint_authority,
+            TokenBurnParams, TokenMintToParams,
         },
     },
     borsh::{BorshDeserialize, BorshSerialize},
@@ -20,6 +21,8 @@ use {
         entrypoint::ProgramResult,
         msg,
         pubkey::Pubkey,
+        rent::Rent,
+        sysvar::Sysvar,
     },
     spl_token::state::{Account, Mint},
 };
@@ -139,6 +142,12 @@ pub fn process_create_metadata_accounts(
     metadata.data.symbol = symbol.to_owned();
     metadata.data.uri = uri;
     metadata.non_unique_specific_update_authority = Some(*update_authority_info.key);
+
+    if !allow_duplication {
+        // Adding this in to stop unique metadata until we deal with the problem
+        // of griefing.
+        return Err(MetadataError::Disabled.into());
+    }
 
     if !allow_duplication {
         let name_symbol_seeds = &[
@@ -315,6 +324,7 @@ pub fn process_create_master_edition(
     let token_program_info = next_account_info(account_info_iter)?;
     let system_account_info = next_account_info(account_info_iter)?;
     let rent_info = next_account_info(account_info_iter)?;
+    let rent = &Rent::from_account_info(rent_info)?;
 
     let metadata: Metadata = try_from_slice_unchecked(&metadata_account_info.data.borrow())?;
     let mint: Mint = assert_initialized(mint_info)?;
@@ -395,6 +405,39 @@ pub fn process_create_master_edition(
         mint_authority_info,
         token_program_info,
     )?;
+
+    if let Some(supply) = max_supply {
+        // We need to enact limited supply protocol.
+        let auth_token_acct_info = next_account_info(account_info_iter)?;
+        let master_mint_authority_info = next_account_info(account_info_iter)?;
+
+        let auth_token_acct: Account = assert_initialized(auth_token_acct_info)?;
+        if auth_token_acct.mint != *master_mint_info.key {
+            return Err(MetadataError::MasterMintAuthorizationAccountMismatch.into());
+        }
+        assert_rent_exempt(rent, auth_token_acct_info)?;
+        if auth_token_acct.owner != *update_authority_info.key {
+            return Err(MetadataError::AuthorizationTokenAccountOwnerMismatch.into());
+        }
+
+        spl_token_mint_to(TokenMintToParams {
+            mint: master_mint_info.clone(),
+            destination: auth_token_acct_info.clone(),
+            amount: supply,
+            authority: master_mint_authority_info.clone(),
+            authority_signer_seeds: &[],
+            token_program: token_program_info.clone(),
+        })?;
+
+        transfer_mint_authority(
+            edition_authority_seeds,
+            &edition_key,
+            edition_account_info,
+            master_mint_info,
+            master_mint_authority_info,
+            token_program_info,
+        )?;
+    }
     Ok(())
 }
 
