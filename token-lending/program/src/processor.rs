@@ -1562,12 +1562,12 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
     }
 
     if &reserve.liquidity.supply_pubkey != source_liquidity_info.key {
-        msg!("Invalid reserve liquidity supply account input");
+        msg!("Source liquidity account supplied doesn't match with the reserve liquidity supply info");
         return Err(LendingError::InvalidAccountInput.into());
     }
 
     if &reserve.liquidity.fee_receiver != flash_loan_fees_receiver_account_info.key {
-        msg!("Invalid flash loan fee receiver account");
+        msg!("Flash loan fee receiver account supplied doesn't match with reserve liquidity fee receiver");
         return Err(LendingError::InvalidAccountInput.into());
     }
 
