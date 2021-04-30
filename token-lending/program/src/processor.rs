@@ -1526,6 +1526,10 @@ fn process_liquidate_obligation(
     Ok(())
 }
 
+const EXECUTE_OPERATION_DATA_SIZE: usize = 9;
+
+const EXECUTE_OPERATION_TAG: u8 = 0u8;
+
 #[inline(never)] // avoid stack frame limit
 fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
@@ -1597,8 +1601,8 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
         token_program: token_program_id.clone(),
     })?;
 
-    let mut data = Vec::with_capacity(9);
-    data.push(0u8);
+    let mut data = Vec::with_capacity(EXECUTE_OPERATION_DATA_SIZE);
+    data.push(EXECUTE_OPERATION_TAG);
     data.extend_from_slice(&returned_amount_required.to_le_bytes());
     let mut instruction_accounts = vec![
         AccountMeta::new(*destination_liquidity_info.key, false),

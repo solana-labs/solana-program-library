@@ -11,6 +11,21 @@ use spl_token::state::Account as TokenAccount;
 use std::convert::TryInto;
 use thiserror::Error;
 
+pub enum FlashLoanReceiverInstruction {
+    /// Execute the operation that is needed after flash loan
+    ///
+    /// Accounts expected:
+    ///
+    /// 0. `[writable]` The source liquidity token account.
+    /// 1. `[writable]` The destination liquidity token account (i.e. reserve liquidity token account).
+    /// 2. `[]` The token program
+    /// 3. `[]` program derived account.
+    ExecuteOperation {
+        /// The amount that is loaned
+        amount: u64,
+    },
+}
+
 entrypoint!(process_instruction);
 pub fn process_instruction(
     program_id: &Pubkey,
@@ -31,7 +46,7 @@ impl Processor {
 
         match instruction {
             FlashLoanReceiverInstruction::ExecuteOperation { amount } => {
-                msg!("Execute operation");
+                msg!("Instruction: Execute Operation");
                 Self::process_execute_operation(accounts, amount, program_id)
             }
         }
@@ -43,27 +58,31 @@ impl Processor {
         program_id: &Pubkey,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
+        let source_liquidity_token_account_info = next_account_info(account_info_iter)?;
+        let destination_liquidity_token_account_info = next_account_info(account_info_iter)?;
+        let token_program_id = next_account_info(account_info_iter)?;
+        let program_derived_account_info = next_account_info(account_info_iter)?;
 
-        let destination_liquidity_account_info = next_account_info(account_info_iter)?;
-        let repay_token_account_info = next_account_info(account_info_iter)?;
-        let token_program_info = next_account_info(account_info_iter)?;
-        let pda_account_info = next_account_info(account_info_iter)?;
-
-        let token_account = TokenAccount::unpack_from_slice(
-            &destination_liquidity_account_info.try_borrow_mut_data()?,
+        let destination_liquidity_token_account = TokenAccount::unpack_from_slice(
+            &source_liquidity_token_account_info.try_borrow_mut_data()?,
         )?;
-        let (pda, nonce) = Pubkey::find_program_address(&[b"flashloan"], program_id);
+        let (expected_program_derived_account_pubkey, nonce) =
+            Pubkey::find_program_address(&[b"flashloan"], program_id);
 
-        if token_account.owner != pda {
-            msg!("Token account is not owned by the program.");
+        if &expected_program_derived_account_pubkey != program_derived_account_info.key {
+            msg!("Supplied program derived account doesn't match with expectation.")
+        }
+
+        if destination_liquidity_token_account.owner != expected_program_derived_account_pubkey {
+            msg!("Destination liquidity token account is not owned by the program");
             return Err(ProgramError::IncorrectProgramId);
         }
 
         let transfer_ix = spl_token::instruction::transfer(
-            token_program_info.key,
-            destination_liquidity_account_info.key,
-            repay_token_account_info.key,
-            &pda,
+            token_program_id.key,
+            source_liquidity_token_account_info.key,
+            destination_liquidity_token_account_info.key,
+            &expected_program_derived_account_pubkey,
             &[],
             amount,
         )?;
@@ -71,31 +90,16 @@ impl Processor {
         invoke_signed(
             &transfer_ix,
             &[
-                destination_liquidity_account_info.clone(),
-                repay_token_account_info.clone(),
-                pda_account_info.clone(),
-                token_program_info.clone(),
+                source_liquidity_token_account_info.clone(),
+                destination_liquidity_token_account_info.clone(),
+                program_derived_account_info.clone(),
+                token_program_id.clone(),
             ],
             &[&[&b"flashloan"[..], &[nonce]]],
         )?;
 
         Ok(())
     }
-}
-
-pub enum FlashLoanReceiverInstruction {
-    /// Execute the operation that is needed after flash loan
-    ///
-    /// Accounts expected:
-    ///
-    /// 0. `[writable]` The destination liquidity token account.
-    /// 1. `[writable]` The repay token account.
-    /// 2. `[]` The token program
-    /// 3. `[]` program derived account.
-    ExecuteOperation {
-        /// The amount that is loaned
-        amount: u64,
-    },
 }
 
 impl FlashLoanReceiverInstruction {
