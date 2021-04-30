@@ -234,7 +234,18 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: cargo-fuzz-${{ hashFiles('**/Cargo.lock') }}
+          key: cargo-cli-${{ hashFiles('**/Cargo.lock') }}
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cache
+          key: solana-${{ env.SOLANA_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          ./ci/install-build-deps.sh
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
       - name: Download programs
         uses: actions/download-artifact@v2
