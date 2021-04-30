@@ -1,8 +1,12 @@
 // @flow
-import {expect} from 'chai';
+import chai from 'chai';
+import chaiAsPromised from 'chai-as-promised';
 import {Account, PublicKey} from '@solana/web3.js';
 
 import {ASSOCIATED_TOKEN_PROGRAM_ID, Token, TOKEN_PROGRAM_ID} from '../client/token';
+
+chai.use(chaiAsPromised);
+const expect = chai.expect;
 
 describe('Token', () => {
   it('createTransfer', () => {
@@ -42,6 +46,12 @@ describe('Token', () => {
     expect(associatedPublicKey.toString()).to.eql(
       new PublicKey('DShWnroshVbeUp28oopA3Pu7oFPDBtC1DBmPECXXAQ9n').toString(),
     );
+    await expect(Token.getAssociatedTokenAddress(
+      ASSOCIATED_TOKEN_PROGRAM_ID,
+      TOKEN_PROGRAM_ID,
+      new PublicKey('7o36UsWR1JQLpZ9PE2gn9L4SQ69CNNiWAXd4Jt7rqz9Z'),
+      associatedPublicKey,
+    )).to.be.rejectedWith(`Owner cannot sign: ${associatedPublicKey.toString()}`);
   });
 
   it('createAssociatedTokenAccount', () => {
