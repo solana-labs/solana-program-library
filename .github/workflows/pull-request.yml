@@ -19,6 +19,7 @@ jobs:
       - js-test-token
       - js-test-token-swap
       - js-test-token-lending
+      - cli-test-stake-pool
       - fuzz
     steps:
       - run: echo "Done"
@@ -207,6 +208,41 @@ jobs:
           name: programs
           path: target/deploy
       - run: ./ci/js-test-token-lending.sh
+
+  cli-test-stake-pool:
+    runs-on: ubuntu-latest
+    needs: cargo-build-test
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set env vars
+        run: |
+          source ci/rust-version.sh
+          echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
+          source ci/solana-version.sh
+          echo "SOLANA_VERSION=$solana_version" >> $GITHUB_ENV
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_STABLE }}
+          override: true
+          profile: minimal
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-fuzz-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Download programs
+        uses: actions/download-artifact@v2
+        with:
+          name: programs
+          path: target/deploy
+
+      - run: ./ci/cli-test-stake-pool.sh
 
   fuzz:
     runs-on: ubuntu-latest
