@@ -8,9 +8,9 @@ use solana_sdk::signature::Signer;
 use solana_sdk::transaction::Transaction;
 use solana_sdk::{pubkey::Pubkey, signature::Keypair};
 use spl_token_lending::instruction::flash_loan;
+use spl_token_lending::math::Decimal;
 use spl_token_lending::processor::process_instruction;
 use spl_token_lending::state::FeeCalculation::Exclusive;
-use spl_token_lending::math::Decimal;
 
 #[tokio::test]
 async fn test_flash_loan_success() {
@@ -91,10 +91,14 @@ async fn test_flash_loan_success() {
 
     transaction.sign(&[&payer], recent_blockhash);
     assert!(banks_client.process_transaction(transaction).await.is_ok());
-    let fee_balance =
-        get_token_balance(&mut banks_client, usdc_reserve.liquidity_fee_receiver_pubkey).await;
+    let fee_balance = get_token_balance(
+        &mut banks_client,
+        usdc_reserve.liquidity_fee_receiver_pubkey,
+    )
+    .await;
     assert_eq!(fee_balance, flash_loan_fee - host_fee);
 
-    let host_fee_balance = get_token_balance(&mut banks_client, usdc_reserve.liquidity_host_pubkey).await;
+    let host_fee_balance =
+        get_token_balance(&mut banks_client, usdc_reserve.liquidity_host_pubkey).await;
     assert_eq!(host_fee_balance, host_fee);
 }

@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
-pub mod genesis;
 pub mod flash_loan_receiver;
+pub mod genesis;
 
 use assert_matches::*;
 use flux_aggregator::{

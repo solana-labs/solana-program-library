@@ -16,7 +16,7 @@ use solana_program::{
 use std::{
     cmp::Ordering,
     convert::{TryFrom, TryInto},
-    u64
+    u64,
 };
 
 /// Percentage of an obligation that can be repaid during each liquidation call
@@ -649,7 +649,12 @@ impl ReserveFees {
         self.calculate_fees(flash_loan_amount, self.flash_loan_fee_wad, fee_calculation)
     }
 
-    fn calculate_fees(&self, amount: Decimal, fee_wad: u64, fee_calculation: FeeCalculation) -> Result<(u64, u64), ProgramError> {
+    fn calculate_fees(
+        &self,
+        amount: Decimal,
+        fee_wad: u64,
+        fee_calculation: FeeCalculation,
+    ) -> Result<(u64, u64), ProgramError> {
         let borrow_fee_rate = Rate::from_scaled_val(fee_wad);
         let host_fee_rate = Rate::from_percent(self.host_fee_percentage);
         if borrow_fee_rate > Rate::zero() && amount > Decimal::zero() {

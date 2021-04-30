@@ -1,4 +1,5 @@
 //! Program state processor
+use crate::state::FeeCalculation::Exclusive;
 use crate::{
     error::LendingError,
     instruction::LendingInstruction,
@@ -25,9 +26,8 @@ use solana_program::{
     pubkey::Pubkey,
     sysvar::{clock::Clock, rent::Rent, Sysvar},
 };
-use spl_token::state::{Mint, Account};
 use spl_token::solana_program::instruction::AccountMeta;
-use crate::state::FeeCalculation::Exclusive;
+use spl_token::state::{Account, Mint};
 use std::u64;
 
 /// Processes an instruction
@@ -1584,8 +1584,13 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
         token_program: token_program_id.clone(),
     })?;
 
-    let (origination_fee, host_fee) = reserve.config.fees.calculate_flash_loan_fee(Decimal::from(amount), Exclusive)?;
-    let returned_amount_required = amount.checked_add(origination_fee).ok_or(LendingError::MathOverflow);
+    let (origination_fee, host_fee) = reserve
+        .config
+        .fees
+        .calculate_flash_loan_fee(Decimal::from(amount), Exclusive)?;
+    let returned_amount_required = amount
+        .checked_add(origination_fee)
+        .ok_or(LendingError::MathOverflow);
 
     let mut data = Vec::with_capacity(9);
     data.push(0u8);
@@ -1659,7 +1664,6 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
 
     Ok(())
 }
-
 
 fn assert_rent_exempt(rent: &Rent, account_info: &AccountInfo) -> ProgramResult {
     if !rent.is_exempt(account_info.lamports(), account_info.data_len()) {
