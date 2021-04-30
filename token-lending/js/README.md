@@ -23,17 +23,6 @@ To enable on-chain program logs, set the `RUST_LOG` environment variable:
 $ export RUST_LOG=solana_runtime::native_loader=trace,solana_runtime::system_instruction_processor=trace,solana_runtime::bank=debug,solana_bpf_loader=debug,solana_rbpf=debug
 ```
 
-To start a local Solana cluster run:
-```bash
-$ npm run localnet:update
-$ npm run localnet:up
-```
-
-Solana cluster logs are available with:
-```bash
-$ npm run localnet:logs
-```
-
 For more details on working with a local cluster, see the [full
 instructions](https://github.com/solana-labs/solana-web3.js#local-network).
 
@@ -67,3 +56,6 @@ To point back to the local cluster:
 ```bash
 $ npm run cluster:localnet
 ```
+
+% solana program deploy /Users/wangge/Projects/rust/solana-program-library/target/deploy/spl_token_lending.so
+{"programId":"6isVZdDrR7dFpCjNJWvcBCGbUH3t4YdZSWxohRN5nRPE"}
