@@ -56,4 +56,3 @@ To point back to the local cluster:
 ```bash
 $ npm run cluster:localnet
 ```
-
