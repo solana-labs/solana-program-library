@@ -40,7 +40,7 @@ async fn test_flash_loan_success() {
     let flash_loan_amount = 1_000_000u64;
     let (flash_loan_fee, host_fee) = TEST_RESERVE_CONFIG
         .fees
-        .calculate_flash_loan_fee(Decimal::from(flash_loan_amount), Exclusive)
+        .calculate_flash_loan_fees(Decimal::from(flash_loan_amount), Exclusive)
         .unwrap();
 
     let usdc_reserve = add_reserve(

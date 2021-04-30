@@ -54,7 +54,8 @@ pub const TEST_RESERVE_CONFIG: ReserveConfig = ReserveConfig {
     fees: ReserveFees {
         borrow_fee_wad: 100_000_000_000,
         /// 0.00001% (Aave borrow fee)
-        flash_loan_fee_wad: 100_000_000_000,
+        flash_loan_fee_wad: 3_000_000_000_000_000,
+        /// 0.3% (Aave flash loan fee)
         host_fee_percentage: 20,
     },
 };

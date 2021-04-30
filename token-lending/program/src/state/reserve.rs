@@ -641,7 +641,7 @@ impl ReserveFees {
     }
 
     /// Calculate the owner and host fees on flash loan
-    pub fn calculate_flash_loan_fee(
+    pub fn calculate_flash_loan_fees(
         &self,
         flash_loan_amount: Decimal,
         fee_calculation: FeeCalculation,
