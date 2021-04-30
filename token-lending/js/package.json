@@ -37,6 +37,7 @@
     "@solana/spl-token": "0.1.3",
     "@solana/web3.js": "^1.7.0",
     "bn.js": "^5.2.0",
+    "keccak": "^3.0.1",
     "mkdirp": "^1.0.4"
   },
   "devDependencies": {
