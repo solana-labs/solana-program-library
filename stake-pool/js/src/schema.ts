@@ -2,7 +2,7 @@
 import borsh from "borsh"
 import BN from 'bn.js';
 
-export const SCHEMA = new Map();
+export const SCHEMA: borsh.Schema = new Map();
 
 // Class wrapping a plain object
 export abstract class Assignable {
@@ -42,12 +42,35 @@ export class Fee extends Assignable {
     numerator: number;
 }
 
-/* All stubs for now */
 export class AccountType extends Enum { }
 export class AccountTypeEnum extends Assignable { }
-export class StakePool extends Assignable { }
-export class ValidatorList extends Assignable { }
-export class ValidatorStakeInfo extends Assignable { }
+
+export class StakePool extends Assignable {
+    accountType: AccountType;
+    manager: PublicKey;
+    staker: PublicKey;
+    depositAuthority: PublicKey;
+    withdrawBumpSeed: number; // what is this? u8 in Rust
+    validatorList: PublicKey;
+    reserveStake: PublicKey;
+    poolMint: PublicKey;
+    managerFeeAccount: PublicKey;
+    totalStakeLamports: number;
+    poolTokenSupply: number;
+    lastUpdateEpoch: number;
+}
+
+export class ValidatorList extends Assignable {
+    accountType: AccountType;
+    maxValidators: number;
+    validators: [ValidatorStakeInfo]
+}
+export class ValidatorStakeInfo extends Assignable {
+    status: StakeStatus;
+    voteAccountAddress: PublicKey;
+    stakeLamports: number;
+    lastUpdateEpoch: number;
+}
 export class StakeStatus extends Enum { }
 export class StakeStatusEnum extends Assignable { }
 
@@ -55,7 +78,7 @@ export class PublicKey extends Assignable {
     "value": BN;
 }
 
-export function constructStakePoolSchema() {
+export function constructStakePoolSchema(): borsh.Schema {
     const SCHEMA = new Map()
 
     SCHEMA.set(PublicKey, {

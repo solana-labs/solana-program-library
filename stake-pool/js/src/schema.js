@@ -31,7 +31,6 @@ export class Enum extends Assignable {
 }
 export class Fee extends Assignable {
 }
-/* All stubs for now */
 export class AccountType extends Enum {
 }
 export class AccountTypeEnum extends Assignable {
