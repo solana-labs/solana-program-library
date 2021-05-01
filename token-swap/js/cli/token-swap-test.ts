@@ -7,11 +7,7 @@ import {
 } from '@solana/web3.js';
 import {AccountLayout, Token, TOKEN_PROGRAM_ID} from '@solana/spl-token';
 
-import {
-  TokenSwap,
-  CurveType,
-  TOKEN_SWAP_PROGRAM_ID,
-} from '../client';
+import {TokenSwap, CurveType, TOKEN_SWAP_PROGRAM_ID} from '../client';
 import {sendAndConfirmTransaction} from '../client/util/send-and-confirm-transaction';
 import {newAccountWithLamports} from '../client/util/new-account-with-lamports';
 import {url} from '../client/util/url';

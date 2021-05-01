@@ -54,30 +54,28 @@ export class Numberu64 extends BN {
   }
 }
 
-export const TokenSwapLayout = BufferLayout.struct(
-  [
-    BufferLayout.u8('version'),
-    BufferLayout.u8('isInitialized'),
-    BufferLayout.u8('nonce'),
-    Layout.publicKey('tokenProgramId'),
-    Layout.publicKey('tokenAccountA'),
-    Layout.publicKey('tokenAccountB'),
-    Layout.publicKey('tokenPool'),
-    Layout.publicKey('mintA'),
-    Layout.publicKey('mintB'),
-    Layout.publicKey('feeAccount'),
-    Layout.uint64('tradeFeeNumerator'),
-    Layout.uint64('tradeFeeDenominator'),
-    Layout.uint64('ownerTradeFeeNumerator'),
-    Layout.uint64('ownerTradeFeeDenominator'),
-    Layout.uint64('ownerWithdrawFeeNumerator'),
-    Layout.uint64('ownerWithdrawFeeDenominator'),
-    Layout.uint64('hostFeeNumerator'),
-    Layout.uint64('hostFeeDenominator'),
-    BufferLayout.u8('curveType'),
-    BufferLayout.blob(32, 'curveParameters'),
-  ],
-);
+export const TokenSwapLayout = BufferLayout.struct([
+  BufferLayout.u8('version'),
+  BufferLayout.u8('isInitialized'),
+  BufferLayout.u8('nonce'),
+  Layout.publicKey('tokenProgramId'),
+  Layout.publicKey('tokenAccountA'),
+  Layout.publicKey('tokenAccountB'),
+  Layout.publicKey('tokenPool'),
+  Layout.publicKey('mintA'),
+  Layout.publicKey('mintB'),
+  Layout.publicKey('feeAccount'),
+  Layout.uint64('tradeFeeNumerator'),
+  Layout.uint64('tradeFeeDenominator'),
+  Layout.uint64('ownerTradeFeeNumerator'),
+  Layout.uint64('ownerTradeFeeDenominator'),
+  Layout.uint64('ownerWithdrawFeeNumerator'),
+  Layout.uint64('ownerWithdrawFeeDenominator'),
+  Layout.uint64('hostFeeNumerator'),
+  Layout.uint64('hostFeeDenominator'),
+  BufferLayout.u8('curveType'),
+  BufferLayout.blob(32, 'curveParameters'),
+]);
 
 export const CurveType = Object.freeze({
   ConstantProduct: 0, // Constant product curve, Uniswap-style
@@ -98,8 +96,19 @@ export class TokenSwap {
    * @param tokenProgramId The program ID of the token program
    * @param poolToken The pool token
    * @param authority The authority over the swap and accounts
-   * @param tokenAccountA: The token swap's Token A account
-   * @param tokenAccountB: The token swap's Token B account
+   * @param tokenAccountA The token swap's Token A account
+   * @param tokenAccountB The token swap's Token B account
+   * @param mintA The mint of Token A
+   * @param mintB The mint of Token B
+   * @param tradeFeeNumerator The trade fee numerator
+   * @param tradeFeeDenominator The trade fee denominator
+   * @param ownerTradeFeeNumerator The owner trade fee numerator
+   * @param ownerTradeFeeDenominator The owner trade fee denominator
+   * @param ownerWithdrawFeeNumerator The owner withdraw fee numerator
+   * @param ownerWithdrawFeeDenominator The owner withdraw fee denominator
+   * @param hostFeeNumerator The host fee numerator
+   * @param hostFeeDenominator The host fee denominator
+   * @param curveType The curve type
    * @param payer Pays for the transaction
    */
   constructor(
@@ -125,27 +134,27 @@ export class TokenSwap {
     public curveType: number,
     public payer: Account,
   ) {
-      this.connection = connection;
-      this.tokenSwap = tokenSwap;
-      this.swapProgramId = swapProgramId;
-      this.tokenProgramId = tokenProgramId;
-      this.poolToken = poolToken;
-      this.feeAccount = feeAccount;
-      this.authority = authority;
-      this.tokenAccountA = tokenAccountA;
-      this.tokenAccountB = tokenAccountB;
-      this.mintA = mintA;
-      this.mintB = mintB;
-      this.tradeFeeNumerator = tradeFeeNumerator;
-      this.tradeFeeDenominator = tradeFeeDenominator;
-      this.ownerTradeFeeNumerator = ownerTradeFeeNumerator;
-      this.ownerTradeFeeDenominator = ownerTradeFeeDenominator;
-      this.ownerWithdrawFeeNumerator = ownerWithdrawFeeNumerator;
-      this.ownerWithdrawFeeDenominator = ownerWithdrawFeeDenominator;
-      this.hostFeeNumerator = hostFeeNumerator;
-      this.hostFeeDenominator = hostFeeDenominator;
-      this.curveType = curveType;
-      this.payer = payer;
+    this.connection = connection;
+    this.tokenSwap = tokenSwap;
+    this.swapProgramId = swapProgramId;
+    this.tokenProgramId = tokenProgramId;
+    this.poolToken = poolToken;
+    this.feeAccount = feeAccount;
+    this.authority = authority;
+    this.tokenAccountA = tokenAccountA;
+    this.tokenAccountB = tokenAccountB;
+    this.mintA = mintA;
+    this.mintB = mintB;
+    this.tradeFeeNumerator = tradeFeeNumerator;
+    this.tradeFeeDenominator = tradeFeeDenominator;
+    this.ownerTradeFeeNumerator = ownerTradeFeeNumerator;
+    this.ownerTradeFeeDenominator = ownerTradeFeeDenominator;
+    this.ownerWithdrawFeeNumerator = ownerWithdrawFeeNumerator;
+    this.ownerWithdrawFeeDenominator = ownerWithdrawFeeDenominator;
+    this.hostFeeNumerator = hostFeeNumerator;
+    this.hostFeeDenominator = hostFeeDenominator;
+    this.curveType = curveType;
+    this.payer = payer;
   }
 
   /**
