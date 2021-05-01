@@ -22,7 +22,7 @@ pub enum FlashLoanReceiverInstruction {
     /// 1. `[writable]` The destination liquidity token account (i.e. reserve liquidity token account).
     /// 2. `[]` The token program
     /// 3. `[]` program derived account.
-    ExecuteOperation {
+    ReceiveFlashLoan {
         /// The amount that is loaned
         amount: u64,
     },
@@ -47,14 +47,14 @@ impl Processor {
         let instruction = FlashLoanReceiverInstruction::unpack(instruction_data)?;
 
         match instruction {
-            FlashLoanReceiverInstruction::ExecuteOperation { amount } => {
+            FlashLoanReceiverInstruction::ReceiveFlashLoan { amount } => {
                 msg!("Instruction: Execute Operation");
-                Self::process_execute_operation(accounts, amount, program_id)
+                Self::process_receive_flash_loan(accounts, amount, program_id)
             }
         }
     }
 
-    fn process_execute_operation(
+    fn process_receive_flash_loan(
         accounts: &[AccountInfo],
         amount: u64,
         program_id: &Pubkey,
@@ -110,7 +110,7 @@ impl FlashLoanReceiverInstruction {
         let (tag, rest) = input.split_first().ok_or(InvalidInstruction)?;
 
         Ok(match tag {
-            0 => Self::ExecuteOperation {
+            0 => Self::ReceiveFlashLoan {
                 amount: Self::unpack_amount(rest)?,
             },
             _ => return Err(InvalidInstruction.into()),

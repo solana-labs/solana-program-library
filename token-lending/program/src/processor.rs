@@ -1617,11 +1617,11 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
         token_program_id.clone(),
     ];
     for flash_loan_receiver_additional_account_info in account_info_iter {
-        calling_accounts.push(acc.clone());
+        calling_accounts.push(flash_loan_receiver_additional_account_info.clone());
         instruction_accounts.push(AccountMeta {
-            pubkey: *acc.key,
-            is_signer: acc.is_signer,
-            is_writable: acc.is_writable,
+            pubkey: *flash_loan_receiver_additional_account_info.key,
+            is_signer: flash_loan_receiver_additional_account_info.is_signer,
+            is_writable: flash_loan_receiver_additional_account_info.is_writable,
         });
     }
 
