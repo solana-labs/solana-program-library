@@ -1,24 +1,29 @@
 // import { serialize, deserializeUnchecked, BinaryReader, Schema, BorshError } from "borsh"
-import borsh from "borsh";
+import borsh from "borsh"
 export const SCHEMA = new Map();
+
 // Class wrapping a plain object
-export class Assignable {
-    constructor(properties) {
-        Object.keys(properties).forEach((key) => {
+export abstract class Assignable {
+    constructor(properties: { [key: string]: any }) {
+        Object.keys(properties).forEach((key: string) => {
             this[key] = properties[key];
         });
     }
-    encode() {
+
+    encode(): Buffer {
         return Buffer.from(borsh.serialize(SCHEMA, this));
     }
-    static decode(data) {
+
+    static decode<T extends Assignable>(data: Buffer): T {
         return borsh.deserializeUnchecked(SCHEMA, this, data);
     }
 }
+
 // Class representing a Rust-compatible enum, since enums are only strings or
 // numbers in pure JS
-export class Enum extends Assignable {
-    constructor(properties) {
+export abstract class Enum extends Assignable {
+    enum: string;
+    constructor(properties: any) {
         super(properties);
         if (Object.keys(properties).length !== 1) {
             throw new Error('Enum can only take single value');
@@ -29,31 +34,31 @@ export class Enum extends Assignable {
         });
     }
 }
+
 export class Fee extends Assignable {
+    denominator: number;
+    numerator: number;
 }
-export class AccountType extends Enum {
-}
-export class AccountTypeEnum extends Assignable {
-}
-export class StakePool extends Assignable {
-}
-export class ValidatorList extends Assignable {
-}
-export class ValidatorStakeInfo extends Assignable {
-}
-export class StakeStatus extends Enum {
-}
-export class StakeStatusEnum extends Assignable {
-}
+
+/* All stubs for now */
+export class AccountType extends Enum { }
+export class AccountTypeEnum extends Assignable { }
+export class StakePool extends Assignable { }
+export class ValidatorList extends Assignable { }
+export class ValidatorStakeInfo extends Assignable { }
+export class StakeStatus extends Enum { }
+export class StakeStatusEnum extends Assignable { }
+
 export function constructStakePoolSchema() {
-    const SCHEMA = new Map();
+    const SCHEMA = new Map()
     SCHEMA.set(Fee, {
         kind: 'struct',
         fields: [
             ['denominator', 'u64'],
             ['numerator', 'u64'],
         ],
-    });
+    })
+
     SCHEMA.set(AccountType, {
         kind: 'enum',
         field: 'enum',
@@ -64,8 +69,10 @@ export function constructStakePoolSchema() {
             ['StakePool', AccountTypeEnum],
             ['ValidatorList', AccountTypeEnum],
         ],
-    });
-    SCHEMA.set(AccountTypeEnum, { kind: 'struct', fields: [], });
+    })
+
+    SCHEMA.set(AccountTypeEnum, { kind: 'struct', fields: [], })
+
     SCHEMA.set(StakePool, {
         kind: 'struct',
         fields: [
@@ -84,7 +91,8 @@ export function constructStakePoolSchema() {
             ['last_update_epoch', 'u64'],
             ['last_update_epoch', Fee],
         ],
-    });
+    })
+
     SCHEMA.set(ValidatorList, {
         kind: 'struct',
         fields: [
@@ -92,7 +100,8 @@ export function constructStakePoolSchema() {
             ['max_validators', 'u32'],
             ['validators', [ValidatorStakeInfo]]
         ],
-    });
+    })
+
     SCHEMA.set(StakeStatus, {
         kind: 'enum',
         field: 'enum',
@@ -101,8 +110,10 @@ export function constructStakePoolSchema() {
             ['DeactivatingTransient', StakeStatusEnum],
             ['ReadyForRemoval', StakeStatusEnum],
         ],
-    });
-    SCHEMA.set(StakeStatusEnum, { kind: 'struct', fields: [] });
+    })
+
+    SCHEMA.set(StakeStatusEnum, { kind: 'struct', fields: [] })
+
     SCHEMA.set(ValidatorStakeInfo, {
         kind: 'struct',
         fields: [
@@ -111,6 +122,7 @@ export function constructStakePoolSchema() {
             ['stake_lamports', 'u64'],
             ['last_update_epoch', 'u64'],
         ],
-    });
-    return SCHEMA;
+    })
+
+    return SCHEMA
 }
