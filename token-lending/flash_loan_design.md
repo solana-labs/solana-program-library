@@ -9,7 +9,7 @@ We added a new instruction with the following signature for flash loan:
     ///   3. `[]` Lending market account.
     ///   4. `[]` Derived lending market authority.
     ///   5. `[]` Flash Loan Receiver Program Account, which should have a function (which we will
-    ///   call it `ExecuteOperation(amount: u64)` to mimic Aave flash loan) that has tag of 0.
+    ///             call it `ExecuteOperation(amount: u64)` to mimic Aave flash loan) that has tag of 0.
     ///   6. `[]` Token program id
     ///   7. `[writable]` Flash loan fees receiver, must be the fee account specified at InitReserve.
     ///   8. `[writeable]` Host fee receiver.
