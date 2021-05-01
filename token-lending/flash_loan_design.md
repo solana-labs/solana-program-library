@@ -13,7 +13,7 @@ We added a new instruction with the following signature for flash loan:
     ///   6. `[]` Token program id
     ///   7. `[writable]` Flash loan fees receiver, must be the fee account specified at InitReserve.
     ///   8. `[writeable]` Host fee receiver.
-    /// ... a variable number of accounts that is needed for `executeOperation(amount: u64)`.
+    ///   .. `[any]` Additional accounts expected by the flash loan receiver program
     FlashLoan {
         /// The amount that is to be borrowed
         amount: u64,
