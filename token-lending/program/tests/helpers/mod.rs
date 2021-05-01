@@ -468,7 +468,7 @@ pub fn add_reserve(
     }
 }
 
-pub fn add_token_account_for_flash_loan_receiver(
+pub fn add_account_for_program(
     test: &mut ProgramTest,
     program_derived_account: &Pubkey,
     amount: u64,
