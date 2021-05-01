@@ -1615,7 +1615,7 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
         source_liquidity_info.clone(),
         token_program_id.clone(),
     ];
-    for acc in account_info_iter {
+    for flash_loan_receiver_additional_account_info in account_info_iter {
         calling_accounts.push(acc.clone());
         instruction_accounts.push(AccountMeta {
             pubkey: *acc.key,
