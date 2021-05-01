@@ -53,11 +53,11 @@ pub enum VaultError {
     #[error("Provided vault account is not owned by program derived address with seed of prefix and program id")]
     VaultAccountIsNotOwnedByProgram,
 
-    /// The provided registry account address does not match the expected program derived address
+    /// The provided safety deposit account address does not match the expected program derived address
     #[error(
-        "The provided registry account address does not match the expected program derived address"
+        "The provided safety deposit account address does not match the expected program derived address"
     )]
-    RegistryAccountAddressInvalid,
+    SafetyDepositAddressInvalid,
 
     /// Token transfer failed
     #[error("Token transfer failed")]

@@ -725,7 +725,7 @@ pub fn process_add_token_to_inactivated_vault(
     let (safety_deposit_account_key, bump_seed) = Pubkey::find_program_address(seeds, program_id);
 
     if safety_deposit_account_key != *safety_deposit_account_info.key {
-        return Err(VaultError::RegistryAccountAddressInvalid.into());
+        return Err(VaultError::SafetyDepositAddressInvalid.into());
     }
     let authority_signer_seeds = &[
         PREFIX.as_bytes(),
