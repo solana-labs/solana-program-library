@@ -19,7 +19,8 @@ We added a new instruction with the following signature for flash loan:
         amount: u64,
     },
 ```
-In the implementation, we do the following in order (omit the usual account safety check for brevity):
+
+In the implementation, we do the following in order:
 1. Transfer the reserve liquidity to the destination liquidity account owned by the flash loan receiver program if possible (if the requested liquidity is too large then we abort the transaction)
 2. Call the `executeOperation` function (the flash loan receiver base is required to have this function with tag `0`), and the account required is given from the 9th account of the account required of `FlashLoan` function.
 3. Check that the returned amount with the fee is in the reserve account after the completion of `executeOperation` function.
