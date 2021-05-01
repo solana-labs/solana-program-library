@@ -17,7 +17,7 @@ import * as BufferLayout from "buffer-layout";
 import * as Layout from "./layout";
 
 export const LENDING_PROGRAM_ID = new PublicKey(
-  "LendZqTs7gn5CTSJU1jWKhKuVpjJGom45nnwPb2AMTi"
+  "6isVZdDrR7dFpCjNJWvcBCGbUH3t4YdZSWxohRN5nRPE"
 );
 
 /**
