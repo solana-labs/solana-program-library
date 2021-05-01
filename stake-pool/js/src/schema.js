@@ -31,6 +31,7 @@ export class Enum extends Assignable {
 }
 export class Fee extends Assignable {
 }
+/* All stubs for now */
 export class AccountType extends Enum {
 }
 export class AccountTypeEnum extends Assignable {
@@ -82,7 +83,7 @@ export function constructStakePoolSchema() {
             ['total_stake_lamports', 'u64'],
             ['pool_token_supply', 'u64'],
             ['last_update_epoch', 'u64'],
-            ['last_update_epoch', Fee],
+            ['fee', Fee],
         ],
     });
     SCHEMA.set(ValidatorList, {

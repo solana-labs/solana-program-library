@@ -89,7 +89,7 @@ export function constructStakePoolSchema() {
             ['total_stake_lamports', 'u64'],
             ['pool_token_supply', 'u64'],
             ['last_update_epoch', 'u64'],
-            ['last_update_epoch', Fee],
+            ['fee', Fee],
         ],
     })
 
