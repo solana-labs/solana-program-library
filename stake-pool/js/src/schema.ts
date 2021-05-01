@@ -1,5 +1,7 @@
 // import { serialize, deserializeUnchecked, BinaryReader, Schema, BorshError } from "borsh"
 import borsh from "borsh"
+import BN from 'bn.js';
+
 export const SCHEMA = new Map();
 
 // Class wrapping a plain object
@@ -49,8 +51,20 @@ export class ValidatorStakeInfo extends Assignable { }
 export class StakeStatus extends Enum { }
 export class StakeStatusEnum extends Assignable { }
 
+export class PublicKey extends Assignable {
+    "value": BN;
+}
+
 export function constructStakePoolSchema() {
     const SCHEMA = new Map()
+
+    SCHEMA.set(PublicKey, {
+        kind: 'struct',
+        fields: [
+            ['value', 'u256'],
+        ],
+    })
+
     SCHEMA.set(Fee, {
         kind: 'struct',
         fields: [
@@ -77,15 +91,15 @@ export function constructStakePoolSchema() {
         kind: 'struct',
         fields: [
             ['account_type', AccountType],
-            ['manager', 'u256'],
-            ['staker', 'u256'],
-            ['deposit_authority', 'u256'],
+            ['manager', PublicKey],
+            ['staker', PublicKey],
+            ['deposit_authority', PublicKey],
             ['withdraw_bump_seed', 'u8'],
-            ['validator_list', 'u256'],
-            ['reserve_stake', 'u256'],
-            ['pool_mint', 'u256'],
-            ['manager_fee_account', 'u256'],
-            ['token_program_id', 'u256'],
+            ['validator_list', PublicKey],
+            ['reserve_stake', PublicKey],
+            ['pool_mint', PublicKey],
+            ['manager_fee_account', PublicKey],
+            ['token_program_id', PublicKey],
             ['total_stake_lamports', 'u64'],
             ['pool_token_supply', 'u64'],
             ['last_update_epoch', 'u64'],
@@ -118,7 +132,7 @@ export function constructStakePoolSchema() {
         kind: 'struct',
         fields: [
             ['status', StakeStatus],
-            ['vote_account_address', 'u256'],
+            ['vote_account_address', PublicKey],
             ['stake_lamports', 'u64'],
             ['last_update_epoch', 'u64'],
         ],
