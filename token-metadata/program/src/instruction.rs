@@ -65,7 +65,7 @@ pub enum MetadataInstruction {
     /// token exists, and will throw an error if less than one token exists in this primary mint.
     ///   0. `[writable]` Unallocated edition account with address as pda of ['metadata', program id, mint, 'edition']
     ///   1. `[writable]` Metadata mint
-    ///   2. `[]` Master mint - A mint you control that can mint tokens that can be exchanged for limited editions of your
+    ///   2. `[writable]` Master mint - A mint you control that can mint tokens that can be exchanged for limited editions of your
     ///       master edition via the MintNewEditionFromMasterEditionViaToken endpoint, like a one time authority.
     ///   3. `[signer]` Current Update authority key on metadata
     ///   4. `[signer]` Mint authority on the metadata's mint - THIS WILL TRANSFER AUTHORITY AWAY FROM THIS KEY
@@ -216,7 +216,7 @@ pub fn create_master_edition(
     let mut accounts = vec![
         AccountMeta::new(edition, false),
         AccountMeta::new(mint, false),
-        AccountMeta::new_readonly(master_mint, false),
+        AccountMeta::new(master_mint, false),
         AccountMeta::new_readonly(update_authority, true),
         AccountMeta::new_readonly(mint_authority, true),
         AccountMeta::new_readonly(metadata, false),
