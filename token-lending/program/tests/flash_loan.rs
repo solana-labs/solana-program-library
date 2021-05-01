@@ -13,7 +13,7 @@ use spl_token_lending::processor::process_instruction;
 use spl_token_lending::state::FeeCalculation::Exclusive;
 
 #[tokio::test]
-async fn test_flash_loan_success() {
+async fn test_success() {
     let mut test = ProgramTest::new(
         "spl_token_lending",
         spl_token_lending::id(),
