@@ -937,7 +937,7 @@ pub fn flash_loan(
     derived_lending_market_authority_pubkey: Pubkey,
     flash_loan_receiver_pubkey: Pubkey,
     flash_loan_fee_receiver_pubkey: Pubkey,
-    host_fee_recipient_pubkey: Pubkey,
+    host_fee_receiver_pubkey: Pubkey,
     flash_loan_receiver_program_account_pubkeys: Vec<Pubkey>,
 ) -> Instruction {
     let mut accounts = vec![
