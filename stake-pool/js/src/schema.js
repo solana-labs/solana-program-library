@@ -78,27 +78,27 @@ export function constructStakePoolSchema() {
     SCHEMA.set(StakePool, {
         kind: 'struct',
         fields: [
-            ['account_type', AccountType],
+            ['accountType', AccountType],
             ['manager', PublicKey],
             ['staker', PublicKey],
-            ['deposit_authority', PublicKey],
-            ['withdraw_bump_seed', 'u8'],
-            ['validator_list', PublicKey],
-            ['reserve_stake', PublicKey],
-            ['pool_mint', PublicKey],
-            ['manager_fee_account', PublicKey],
-            ['token_program_id', PublicKey],
-            ['total_stake_lamports', 'u64'],
-            ['pool_token_supply', 'u64'],
-            ['last_update_epoch', 'u64'],
+            ['depositAuthority', PublicKey],
+            ['withdrawBumpSeed', 'u8'],
+            ['validatorList', PublicKey],
+            ['reserveStake', PublicKey],
+            ['poolMint', PublicKey],
+            ['managerFeeAccount', PublicKey],
+            ['tokenProgramId', PublicKey],
+            ['totalStakeLamports', 'u64'],
+            ['poolTokenSupply', 'u64'],
+            ['lastUpdateEpoch', 'u64'],
             ['fee', Fee],
         ],
     });
     SCHEMA.set(ValidatorList, {
         kind: 'struct',
         fields: [
-            ['account_type', AccountType],
-            ['max_validators', 'u32'],
+            ['accountType', AccountType],
+            ['maxValidators', 'u32'],
             ['validators', [ValidatorStakeInfo]]
         ],
     });
@@ -116,9 +116,9 @@ export function constructStakePoolSchema() {
         kind: 'struct',
         fields: [
             ['status', StakeStatus],
-            ['vote_account_address', PublicKey],
-            ['stake_lamports', 'u64'],
-            ['last_update_epoch', 'u64'],
+            ['voteAccountAddress', PublicKey],
+            ['stakeLamports', 'u64'],
+            ['lastUpdateEpoch', 'u64'],
         ],
     });
     return SCHEMA;
