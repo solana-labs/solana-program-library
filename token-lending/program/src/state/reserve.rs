@@ -16,7 +16,6 @@ use solana_program::{
 use std::{
     cmp::Ordering,
     convert::{TryFrom, TryInto},
-    u64,
 };
 
 /// Percentage of an obligation that can be repaid during each liquidation call
