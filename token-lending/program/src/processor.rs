@@ -1571,7 +1571,7 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
     }
 
     if &reserve.liquidity.fee_receiver != flash_loan_fees_receiver_account_info.key {
-        msg!("Flash loan fee receiver account supplied doesn't match with reserve liquidity fee receiver");
+        msg!("Reserve liquidity fee receiver does not match the flash loan fee receiver provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
 
