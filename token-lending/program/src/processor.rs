@@ -1566,7 +1566,7 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
     }
 
     if &reserve.liquidity.supply_pubkey != source_liquidity_info.key {
-        msg!("Source liquidity account supplied doesn't match with the reserve liquidity supply info");
+        msg!("Reserve liquidity supply must be used as the source liquidity provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
 
