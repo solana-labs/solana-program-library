@@ -1,24 +1,23 @@
 {
-  "name": "rollup-starter-lib",
+  "name": "js",
   "version": "1.0.0",
-  "main": "dist/how-long-till-lunch.cjs.js",
-  "module": "dist/how-long-till-lunch.esm.js",
-  "browser": "dist/how-long-till-lunch.umd.js",
-  "dependencies": {
-    "ms": "^2.0.0"
-  },
-  "devDependencies": {
-    "@rollup/plugin-commonjs": "^11.0.1",
-    "@rollup/plugin-node-resolve": "^7.0.0",
-    "rollup": "^1.29.0"
-  },
+  "description": "",
+  "private": true,
   "scripts": {
-    "build": "rollup -c",
-    "dev": "rollup -c -w",
-    "test": "node test/test.js",
-    "pretest": "npm run build"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "files": [
-    "dist"
-  ]
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "webpack": "^5.36.2",
+    "webpack-cli": "^4.6.0"
+  },
+  "dependencies": {
+    "@solana/web3.js": "^1.7.1",
+    "assert": "^2.0.0",
+    "borsh": "file:../../../solana-repos/borsh-js",
+    "buffer": "^6.0.1",
+    "process": "^0.11.10"
+  }
 }
