@@ -12,13 +12,16 @@ use spl_token_lending::math::Decimal;
 use spl_token_lending::processor::process_instruction;
 
 #[tokio::test]
-async fn test_flash_loan_success() {
+async fn test_success() {
     let mut test = ProgramTest::new(
         "spl_token_lending",
         spl_token_lending::id(),
         processor!(process_instruction),
     );
 
+    // limit to track compute unit increase
+    test.set_bpf_compute_max_units(118_000);
+    
     let receiver_program_account = Keypair::new();
     let receiver_program_id = receiver_program_account.pubkey();
     test.add_program(
@@ -26,9 +29,6 @@ async fn test_flash_loan_success() {
         receiver_program_id.clone(),
         processor!(helpers::flash_loan_receiver::process_instruction),
     );
-
-    // limit to track compute unit increase
-    test.set_bpf_compute_max_units(118_000);
 
     let user_accounts_owner = Keypair::new();
     let usdc_mint = add_usdc_mint(&mut test);

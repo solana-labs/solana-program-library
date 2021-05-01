@@ -1564,17 +1564,17 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
     }
 
     if &reserve.liquidity.supply_pubkey != source_liquidity_info.key {
-        msg!("Source liquidity account supplied doesn't match with the reserve liquidity supply info");
+        msg!("Reserve liquidity supply must be used as the source liquidity provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
 
     if &reserve.liquidity.fee_receiver != flash_loan_fees_receiver_account_info.key {
-        msg!("Flash loan fee receiver account supplied doesn't match with reserve liquidity fee receiver");
+        msg!("Reserve liquidity fee receiver does not match the flash loan fee receiver provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
 
     if reserve.liquidity.available_amount < amount {
-        msg!("Not enough liquidity for flash loan");
+        msg!("Flash loan amount cannot exceed available amount");
         return Err(LendingError::InsufficientLiquidity.into());
     }
 
@@ -1616,7 +1616,7 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
         source_liquidity_info.clone(),
         token_program_id.clone(),
     ];
-    for acc in account_info_iter {
+    for flash_loan_receiver_additional_account_info in account_info_iter {
         calling_accounts.push(acc.clone());
         instruction_accounts.push(AccountMeta {
             pubkey: *acc.key,
