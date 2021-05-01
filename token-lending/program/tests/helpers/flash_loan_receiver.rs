@@ -3,11 +3,13 @@ use solana_program::{
 };
 
 use crate::helpers::flash_loan_receiver::FlashLoanReceiverError::InvalidInstruction;
-use spl_token::solana_program::account_info::next_account_info;
-use spl_token::solana_program::program::invoke_signed;
-use spl_token::solana_program::program_error::ProgramError;
-use spl_token::solana_program::program_pack::Pack;
-use spl_token::state::Account as TokenAccount;
+use spl_token::{
+    solana_program::{
+        account_info::next_account_info, program::invoke_signed, program_error::ProgramError,
+        program_pack::Pack,
+    },
+    state::Account,
+};
 use std::convert::TryInto;
 use thiserror::Error;
 
@@ -63,10 +65,10 @@ impl Processor {
         let token_program_id = next_account_info(account_info_iter)?;
         let program_derived_account_info = next_account_info(account_info_iter)?;
 
-        let destination_liquidity_token_account = TokenAccount::unpack_from_slice(
+        let destination_liquidity_token_account = Account::unpack_from_slice(
             &source_liquidity_token_account_info.try_borrow_mut_data()?,
         )?;
-        let (expected_program_derived_account_pubkey, nonce) =
+        let (expected_program_derived_account_pubkey, bump_seed) =
             Pubkey::find_program_address(&[b"flashloan"], program_id);
 
         if &expected_program_derived_account_pubkey != program_derived_account_info.key {
@@ -95,7 +97,7 @@ impl Processor {
                 program_derived_account_info.clone(),
                 token_program_id.clone(),
             ],
-            &[&[&b"flashloan"[..], &[nonce]]],
+            &[&[&b"flashloan"[..], &[bump_seed]]],
         )?;
 
         Ok(())

@@ -1,5 +1,4 @@
 //! Program state processor
-use crate::state::FeeCalculation::Exclusive;
 use crate::{
     error::LendingError,
     instruction::LendingInstruction,
@@ -28,7 +27,6 @@ use solana_program::{
 };
 use spl_token::solana_program::instruction::AccountMeta;
 use spl_token::state::{Account, Mint};
-use std::u64;
 
 /// Processes an instruction
 pub fn process_instruction(
@@ -1526,9 +1524,9 @@ fn process_liquidate_obligation(
     Ok(())
 }
 
-const EXECUTE_OPERATION_DATA_SIZE: usize = 9;
+const FLASH_LOAN_EXECUTE_OPERATION_DATA_SIZE: usize = 9;
 
-const EXECUTE_OPERATION_TAG: u8 = 0u8;
+const FLASH_LOAN_EXECUTE_OPERATION_TAG: u8 = 0u8;
 
 #[inline(never)] // avoid stack frame limit
 fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]) -> ProgramResult {
@@ -1539,9 +1537,9 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
     let lending_market_info = next_account_info(account_info_iter)?;
     let derived_lending_market_account_info = next_account_info(account_info_iter)?;
     let flash_loan_receiver_program_info = next_account_info(account_info_iter)?;
-    let token_program_id = next_account_info(account_info_iter)?;
     let flash_loan_fees_receiver_account_info = next_account_info(account_info_iter)?;
     let host_fee_recipient = next_account_info(account_info_iter)?;
+    let token_program_id = next_account_info(account_info_iter)?;
 
     let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
     if lending_market_info.owner != program_id {
@@ -1580,18 +1578,21 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
         return Err(LendingError::InsufficientLiquidity.into());
     }
 
-    let before_liquidity_supply_token_account =
-        Account::unpack_from_slice(&source_liquidity_info.try_borrow_data()?)?;
-
+    let amount_decimal = Decimal::from(amount);
     let (origination_fee, host_fee) = reserve
         .config
         .fees
-        .calculate_flash_loan_fees(Decimal::from(amount), Exclusive)?;
+        .calculate_flash_loan_fees(amount_decimal)?;
+    let balance_before_flash_loan =
+        Account::unpack_from_slice(&source_liquidity_info.try_borrow_data()?)?.amount;
+    let expected_balance_after_flash_loan = balance_before_flash_loan
+        .checked_add(origination_fee)
+        .ok_or(LendingError::MathOverflow)?;
     let returned_amount_required = amount
         .checked_add(origination_fee)
         .ok_or(LendingError::MathOverflow)?;
 
-    reserve.liquidity.borrow(Decimal::from(amount))?;
+    reserve.liquidity.borrow(amount_decimal)?;
     spl_token_transfer(TokenTransferParams {
         source: source_liquidity_info.clone(),
         destination: destination_liquidity_info.clone(),
@@ -1601,8 +1602,8 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
         token_program: token_program_id.clone(),
     })?;
 
-    let mut data = Vec::with_capacity(EXECUTE_OPERATION_DATA_SIZE);
-    data.push(EXECUTE_OPERATION_TAG);
+    let mut data = Vec::with_capacity(FLASH_LOAN_EXECUTE_OPERATION_DATA_SIZE);
+    data.push(FLASH_LOAN_EXECUTE_OPERATION_TAG);
     data.extend_from_slice(&returned_amount_required.to_le_bytes());
     let mut instruction_accounts = vec![
         AccountMeta::new(*destination_liquidity_info.key, false),
@@ -1624,29 +1625,24 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
         });
     }
 
-    let ix = Instruction {
+    let flash_loan_receiver_instruction = Instruction {
         program_id: *flash_loan_receiver_program_info.key,
         accounts: instruction_accounts,
         data,
     };
-    invoke(&ix, &calling_accounts[..])?;
-    reserve.liquidity.repay(amount, Decimal::from(amount))?;
+    invoke(&flash_loan_receiver_instruction, &calling_accounts[..])?;
 
-    let after_liquidity_supply_token_account =
-        Account::unpack_from_slice(&source_liquidity_info.try_borrow_data()?)?;
-
-    let total_expected_amount = before_liquidity_supply_token_account
-        .amount
-        .checked_add(origination_fee)
-        .ok_or(LendingError::MathOverflow)?;
-    if after_liquidity_supply_token_account.amount < total_expected_amount {
+    let actual_total_balance_after_flash_loan =
+        Account::unpack_from_slice(&source_liquidity_info.try_borrow_data()?)?.amount;
+    if actual_total_balance_after_flash_loan < expected_balance_after_flash_loan {
         msg!(
             "Insufficient returned liquidity for reserve after flash loan: {}, it requires: {}",
-            after_liquidity_supply_token_account.amount,
-            total_expected_amount
+            actual_total_balance_after_flash_loan,
+            expected_balance_after_flash_loan
         );
         return Err(LendingError::InsufficientLiquidity.into());
     }
+    reserve.liquidity.repay(amount, amount_decimal)?;
 
     let mut owner_fee = origination_fee;
     if host_fee > 0 {

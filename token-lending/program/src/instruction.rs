@@ -947,9 +947,9 @@ pub fn flash_loan(
         AccountMeta::new_readonly(lending_market_pubkey, false),
         AccountMeta::new_readonly(derived_lending_market_authority_pubkey, false),
         AccountMeta::new_readonly(flash_loan_receiver_pubkey, false),
+        AccountMeta::new(flash_loan_fee_receiver_pubkey, false),
+        AccountMeta::new(host_fee_receiver_pubkey, false),
         AccountMeta::new_readonly(spl_token::id(), false),
-        AccountMeta::new(flash_loan_fees_receiver_pubkey, false),
-        AccountMeta::new(host_fee_recipient_pubkey, false),
     ];
     accounts.extend(
         flash_loan_receiver_program_account_pubkeys

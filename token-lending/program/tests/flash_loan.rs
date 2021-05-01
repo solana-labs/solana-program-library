@@ -10,7 +10,6 @@ use solana_sdk::{pubkey::Pubkey, signature::Keypair};
 use spl_token_lending::instruction::flash_loan;
 use spl_token_lending::math::Decimal;
 use spl_token_lending::processor::process_instruction;
-use spl_token_lending::state::FeeCalculation::Exclusive;
 
 #[tokio::test]
 async fn test_flash_loan_success() {
@@ -40,7 +39,7 @@ async fn test_flash_loan_success() {
     let flash_loan_amount = 1_000_000u64;
     let (flash_loan_fee, host_fee) = TEST_RESERVE_CONFIG
         .fees
-        .calculate_flash_loan_fees(Decimal::from(flash_loan_amount), Exclusive)
+        .calculate_flash_loan_fees(Decimal::from(flash_loan_amount))
         .unwrap();
 
     let usdc_reserve = add_reserve(
@@ -58,7 +57,7 @@ async fn test_flash_loan_success() {
     );
     let (receiver_authority_pubkey, _) =
         Pubkey::find_program_address(&[b"flashloan"], &receiver_program_id);
-    let program_owned_token_account = add_token_account_for_flash_loan_receiver(
+    let program_owned_token_account = add_account_for_program(
         &mut test,
         &receiver_authority_pubkey,
         flash_loan_fee,
