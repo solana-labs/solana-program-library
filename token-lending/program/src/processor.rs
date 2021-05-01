@@ -1576,7 +1576,7 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
     }
 
     if reserve.liquidity.available_amount < amount {
-        msg!("Not enough liquidity for flash loan");
+        msg!("Flash loan amount cannot exceed available amount");
         return Err(LendingError::InsufficientLiquidity.into());
     }
 
