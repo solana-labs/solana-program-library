@@ -24,7 +24,7 @@ In the implementation, we do the following in order (omit the usual account safe
 2. Call the `executeOperation` function (the flash loan receiver base is required to have this function with tag `0`), and the account required is given from the 9th account of the account required of `FlashLoan` function.
 3. Check that the returned amount with the fee is in the reserve account after the completion of `executeOperation` function.
 
-The flash loan receiver program should have the following instruction which executes the user-defined operation before returning the fund to the reserve.
+The flash loan receiver program should have the following instruction which executes the user-defined operation before returning the funds to the reserve.
 
 ```rust
 pub enum FlashLoanReceiverInstruction {
