@@ -292,7 +292,7 @@ pub enum LendingInstruction {
     ///   0. `[writable]` Source liquidity (matching the destination from above).
     ///   1. `[writable]` Destination liquidity (matching the source from above).
     ///   2. Token program id
-    ///    .. Additional accounts from above
+    ///   ..  Additional accounts from above
     FlashLoan {
         /// The amount that is to be borrowed
         amount: u64,
