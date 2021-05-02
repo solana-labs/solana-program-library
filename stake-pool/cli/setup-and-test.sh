@@ -7,6 +7,7 @@ pid=
 
 setup () {
   max_validators=$1
+  solana-keygen new --no-passphrase
   solana-test-validator --bpf-program poo1B9L9nR3CrcaziKVYVpRX6A9Y1LAXYasjjfCbApj ../../target/deploy/spl_stake_pool.so --quiet --reset --slots-per-epoch 32 &
   pid=$!
   sleep 5
