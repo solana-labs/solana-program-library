@@ -3910,6 +3910,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-token-lending-client"
+version = "0.1.0"
+dependencies = [
+ "solana-client",
+ "solana-program",
+ "solana-sdk",
+ "spl-token 3.1.0",
+ "spl-token-lending",
+]
+
+[[package]]
 name = "spl-token-swap"
 version = "2.1.0"
 dependencies = [
