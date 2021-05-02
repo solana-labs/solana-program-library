@@ -153,6 +153,9 @@ pub enum LendingError {
     /// Oracle config is invalid
     #[error("Input oracle config is invalid")]
     InvalidOracleConfig,
+    /// Not enough liquidity after flash loan
+    #[error("Not enough liquidity after flash loan")]
+    NotEnoughLiquidityAfterFlashLoan,
 }
 
 impl From<LendingError> for ProgramError {

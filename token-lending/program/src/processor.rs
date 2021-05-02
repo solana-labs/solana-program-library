@@ -1530,6 +1530,11 @@ const FLASH_LOAN_EXECUTE_OPERATION_TAG: u8 = 0u8;
 
 #[inline(never)] // avoid stack frame limit
 fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]) -> ProgramResult {
+    if amount == 0 {
+        msg!("Flash loan amount cannot be zero");
+        return Err(LendingError::InvalidAmount.into());
+    }
+
     let account_info_iter = &mut accounts.iter();
     let source_liquidity_info = next_account_info(account_info_iter)?;
     let destination_liquidity_info = next_account_info(account_info_iter)?;
@@ -1605,20 +1610,21 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
     let mut data = Vec::with_capacity(FLASH_LOAN_EXECUTE_OPERATION_DATA_SIZE);
     data.push(FLASH_LOAN_EXECUTE_OPERATION_TAG);
     data.extend_from_slice(&returned_amount_required.to_le_bytes());
-    let mut instruction_accounts = vec![
+    let mut flash_loan_instruction_accounts = vec![
         AccountMeta::new(*destination_liquidity_info.key, false),
         AccountMeta::new(*source_liquidity_info.key, false),
         AccountMeta::new_readonly(*token_program_id.key, false),
     ];
-    let mut calling_accounts = vec![
+    let mut flash_loan_instruction_account_infos = vec![
         destination_liquidity_info.clone(),
         flash_loan_receiver_program_info.clone(),
         source_liquidity_info.clone(),
         token_program_id.clone(),
     ];
     for flash_loan_receiver_additional_account_info in account_info_iter {
-        calling_accounts.push(flash_loan_receiver_additional_account_info.clone());
-        instruction_accounts.push(AccountMeta {
+        flash_loan_instruction_account_infos
+            .push(flash_loan_receiver_additional_account_info.clone());
+        flash_loan_instruction_accounts.push(AccountMeta {
             pubkey: *flash_loan_receiver_additional_account_info.key,
             is_signer: flash_loan_receiver_additional_account_info.is_signer,
             is_writable: flash_loan_receiver_additional_account_info.is_writable,
@@ -1627,10 +1633,13 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
 
     let flash_loan_receiver_instruction = Instruction {
         program_id: *flash_loan_receiver_program_info.key,
-        accounts: instruction_accounts,
+        accounts: flash_loan_instruction_accounts,
         data,
     };
-    invoke(&flash_loan_receiver_instruction, &calling_accounts[..])?;
+    invoke(
+        &flash_loan_receiver_instruction,
+        &flash_loan_instruction_account_infos[..],
+    )?;
 
     let actual_total_balance_after_flash_loan =
         Account::unpack_from_slice(&source_liquidity_info.try_borrow_data()?)?.amount;
@@ -1640,7 +1649,7 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
             actual_total_balance_after_flash_loan,
             expected_balance_after_flash_loan
         );
-        return Err(LendingError::InsufficientLiquidity.into());
+        return Err(LendingError::NotEnoughLiquidityAfterFlashLoan.into());
     }
     reserve.liquidity.repay(amount, amount_decimal)?;
 

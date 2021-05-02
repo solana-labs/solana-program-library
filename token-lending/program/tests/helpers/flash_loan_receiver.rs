@@ -12,6 +12,7 @@ use spl_token::{
 };
 use std::convert::TryInto;
 use thiserror::Error;
+use std::cmp::min;
 
 pub enum FlashLoanReceiverInstruction {
     /// Execute the operation that is needed after flash loan
@@ -48,7 +49,7 @@ impl Processor {
 
         match instruction {
             FlashLoanReceiverInstruction::ReceiveFlashLoan { amount } => {
-                msg!("Instruction: Execute Operation");
+                msg!("Instruction: Receive Flash Loan");
                 Self::process_receive_flash_loan(accounts, amount, program_id)
             }
         }
@@ -80,13 +81,15 @@ impl Processor {
             return Err(ProgramError::IncorrectProgramId);
         }
 
+        let balance_in_token_account =
+            Account::unpack_from_slice(&source_liquidity_token_account_info.try_borrow_data()?)?.amount;
         let transfer_ix = spl_token::instruction::transfer(
             token_program_id.key,
             source_liquidity_token_account_info.key,
             destination_liquidity_token_account_info.key,
             &expected_program_derived_account_pubkey,
             &[],
-            amount,
+            min(balance_in_token_account, amount),
         )?;
 
         invoke_signed(
