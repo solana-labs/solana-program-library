@@ -272,24 +272,25 @@ pub enum LendingInstruction {
 
     // 13
     /// Make a flash loan.
-    ///   0. `[writable]` Source liquidity (reserve liquidity supply), minted by reserve liquidity mint.
+    ///   0. `[writable]` Source liquidity (reserve liquidity supply), minted by reserve liquidity
+    ///                     mint.
     ///   1. `[writable]` Destination liquidity account.
     ///   2. `[writable]` Reserve account.
     ///   3. `[]` Lending market account.
     ///   4. `[]` Derived lending market authority.
-    ///   5. `[]` Flash Loan Receiver Program Account, which should have a function that has tag of 0.
-    ///       This function needs to return the fund back to the source liquidity before the end of
-    ///       its execution.
+    ///   5. `[]` Flash Loan Receiver Program Account, which should implement an instruction that
+    ///             has tag of 0. This function needs to return the fund back to the source
+    ///             liquidity before the end of its execution.
     ///   6. `[]` Token program id.
     ///   7. `[writable]` Flash loan fees receiver, must be the fee account specified at `InitReserve`.
     ///   8. `[writeable]` Host fee receiver.
     /// ... a variable number of accounts that is needed for `ReceiveFlashLoan(amount: u64)`.
     ///
     ///   The flash loan receiver program that is to be invoked should contain an instruction with
-    ///   tag `0` and accept the total amount that needs to be returned back after its execution
-    ///   has completed.
+    ///   tag `0` and accept the total amount (including fee) that needs to be returned back after
+    ///   its execution has completed.
     ///
-    ///   Flash loan receiver should have a function with the following signature:
+    ///   Flash loan receiver should have an instruction with the following signature:
     ///   0. `[writable]` Source liquidity (matching the destination from above).
     ///   1. `[writable]` Destination liquidity (matching the source from above).
     ///   2. Token program id
