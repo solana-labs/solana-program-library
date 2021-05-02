@@ -26,16 +26,16 @@ In the implementation, we do the following in order:
 
 1. Perform safety checks and calculate fees
 2. Transfer `amount` from the source liquidity account to the destination liquidity account
-2. Call the `ReceiveFlashLoan` function (the flash loan receiver base is required to have this function with tag `0`).
-   The additional account required for `ReceiveFlashLoan` is given from the 10th account of the `FlashLoan` instruction.
+2. Call the `ReceiveFlashLoan` function (the flash loan receiver program is required to have this function with tag `0`).
+   The additional account required for `ReceiveFlashLoan` is given from the 10th account of the `FlashLoan` instruction, i.e. after host fee receiver.
 3. Check that the returned amount with the fee is in the reserve account after the completion of `ReceiveFlashLoan` function.
 
-The flash loan receiver program should have a `ReceiveFlashLoan` instruction which executes the user-defined operation before returning the funds to the reserve.
+The flash loan receiver program should have a `ReceiveFlashLoan` instruction which executes the user-defined operation and return the funds to the reserve in the end.
 
 ```rust
 pub enum FlashLoanReceiverInstruction {
 	
-    /// Receive a flash loan and perform user-defined operation.
+    /// Receive a flash loan and perform user-defined operation and finally return the fund back.
     ///
     /// Accounts expected:
     ///

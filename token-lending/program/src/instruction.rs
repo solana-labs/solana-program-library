@@ -277,12 +277,13 @@ pub enum LendingInstruction {
     ///   2. `[writable]` Reserve account.
     ///   3. `[]` Lending market account.
     ///   4. `[]` Derived lending market authority.
-    ///   5. `[]` Flash Loan Receiver Program Account, which should have a function (which we will
-    ///       call it `ExecuteOperation(amount: u64)` to mimic Aave flash loan) that has tag of 0.
+    ///   5. `[]` Flash Loan Receiver Program Account, which should have a function that has tag of 0.
+    ///       This function needs to return the fund back to the source liquidity before the end of
+    ///       its execution.
     ///   6. `[]` Token program id.
     ///   7. `[writable]` Flash loan fees receiver, must be the fee account specified at `InitReserve`.
     ///   8. `[writeable]` Host fee receiver.
-    /// ... a variable number of accounts that is needed for `executeOperation(amount: u64)`.
+    /// ... a variable number of accounts that is needed for `ReceiveFlashLoan(amount: u64)`.
     ///
     ///   The flash loan receiver program that is to be invoked should contain an instruction with
     ///   tag `0` and accept the total amount that needs to be returned back after its execution
@@ -938,7 +939,7 @@ pub fn flash_loan(
     flash_loan_receiver_pubkey: Pubkey,
     flash_loan_fee_receiver_pubkey: Pubkey,
     host_fee_receiver_pubkey: Pubkey,
-    flash_loan_receiver_program_account_pubkeys: Vec<Pubkey>,
+    flash_loan_receiver_program_account_meta: Vec<AccountMeta>,
 ) -> Instruction {
     let mut accounts = vec![
         AccountMeta::new(reserve_liquidity_pubkey, false),
@@ -951,11 +952,7 @@ pub fn flash_loan(
         AccountMeta::new(host_fee_receiver_pubkey, false),
         AccountMeta::new_readonly(spl_token::id(), false),
     ];
-    accounts.extend(
-        flash_loan_receiver_program_account_pubkeys
-            .into_iter()
-            .map(|additional_param| AccountMeta::new(additional_param, false)),
-    );
+    accounts.extend(flash_loan_receiver_program_account_meta);
     Instruction {
         program_id,
         accounts,

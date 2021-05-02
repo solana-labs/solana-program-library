@@ -3,6 +3,7 @@
 mod helpers;
 
 use helpers::*;
+use solana_program::instruction::AccountMeta;
 use solana_program_test::*;
 use solana_sdk::signature::Signer;
 use solana_sdk::transaction::{Transaction, TransactionError};
@@ -85,7 +86,10 @@ async fn test_success() {
             receiver_program_id.clone(),
             usdc_reserve.liquidity_fee_receiver_pubkey,
             usdc_reserve.liquidity_host_pubkey,
-            vec![receiver_authority_pubkey.clone()],
+            vec![AccountMeta::new_readonly(
+                receiver_authority_pubkey.clone(),
+                false,
+            )],
         )],
         Some(&payer.pubkey()),
     );
@@ -147,7 +151,7 @@ async fn test_failure() {
             liquidity_mint_pubkey: usdc_mint.pubkey,
             liquidity_mint_decimals: usdc_mint.decimals,
             config: reserve_config,
-            user_liquidity_amount: 2000,
+            user_liquidity_amount: flash_loan_fee,
             ..AddReserveArgs::default()
         },
     );
@@ -180,7 +184,10 @@ async fn test_failure() {
             receiver_program_id.clone(),
             usdc_reserve.liquidity_fee_receiver_pubkey,
             usdc_reserve.liquidity_host_pubkey,
-            vec![receiver_authority_pubkey.clone()],
+            vec![AccountMeta::new_readonly(
+                receiver_authority_pubkey.clone(),
+                false,
+            )],
         )],
         Some(&payer.pubkey()),
     );

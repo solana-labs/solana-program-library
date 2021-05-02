@@ -10,9 +10,9 @@ use spl_token::{
     },
     state::Account,
 };
+use std::cmp::min;
 use std::convert::TryInto;
 use thiserror::Error;
-use std::cmp::min;
 
 pub enum FlashLoanReceiverInstruction {
     /// Execute the operation that is needed after flash loan
@@ -82,7 +82,8 @@ impl Processor {
         }
 
         let balance_in_token_account =
-            Account::unpack_from_slice(&source_liquidity_token_account_info.try_borrow_data()?)?.amount;
+            Account::unpack_from_slice(&source_liquidity_token_account_info.try_borrow_data()?)?
+                .amount;
         let transfer_ix = spl_token::instruction::transfer(
             token_program_id.key,
             source_liquidity_token_account_info.key,
