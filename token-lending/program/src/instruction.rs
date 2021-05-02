@@ -272,6 +272,9 @@ pub enum LendingInstruction {
 
     // 13
     /// Make a flash loan.
+    ///
+    /// Accounts expected by this instruction:
+    ///
     ///   0. `[writable]` Source liquidity (reserve liquidity supply), minted by reserve liquidity
     ///                     mint.
     ///   1. `[writable]` Destination liquidity account.
@@ -291,10 +294,12 @@ pub enum LendingInstruction {
     ///   its execution has completed.
     ///
     ///   Flash loan receiver should have an instruction with the following signature:
+    ///
     ///   0. `[writable]` Source liquidity (matching the destination from above).
     ///   1. `[writable]` Destination liquidity (matching the source from above).
     ///   2. Token program id
     ///   ..  Additional accounts from above
+    ///
     FlashLoan {
         /// The amount that is to be borrowed
         amount: u64,
