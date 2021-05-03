@@ -5,7 +5,7 @@ use crate::{
     errors::AuctionError,
     processor::{AuctionData, BidderMetadata, BidderPot},
     utils::{
-        assert_derivation, assert_initialized, assert_owned_by, create_or_allocate_account_raw,
+        assert_derivation, assert_signer, assert_initialized, assert_owned_by, create_or_allocate_account_raw,
         spl_token_transfer, TokenTransferParams,
     },
     PREFIX,
@@ -42,8 +42,7 @@ struct Accounts<'a, 'b: 'a> {
     bidder: &'a AccountInfo<'b>,
     clock_sysvar: &'a AccountInfo<'b>,
     mint: &'a AccountInfo<'b>,
-    payer: &'a AccountInfo<'b>,
-    seller: &'a AccountInfo<'b>,
+    destination: &'a AccountInfo<'b>,
     token_program: &'a AccountInfo<'b>,
 }
 
@@ -54,21 +53,21 @@ fn parse_accounts<'a, 'b: 'a>(
     let account_iter = &mut accounts.iter();
     let accounts = Accounts {
         authority: next_account_info(account_iter)?,
-        seller: next_account_info(account_iter)?,
+        destination: next_account_info(account_iter)?,
         bidder: next_account_info(account_iter)?,
         bidder_pot: next_account_info(account_iter)?,
         bidder_pot_token: next_account_info(account_iter)?,
         auction: next_account_info(account_iter)?,
         mint: next_account_info(account_iter)?,
-        payer: next_account_info(account_iter)?,
         clock_sysvar: next_account_info(account_iter)?,
         token_program: next_account_info(account_iter)?,
     };
 
     assert_owned_by(accounts.auction, program_id)?;
     assert_owned_by(accounts.mint, &spl_token::id())?;
-    assert_owned_by(accounts.seller, &spl_token::id())?;
+    assert_owned_by(accounts.destination, &spl_token::id())?;
     assert_owned_by(accounts.bidder_pot_token, &spl_token::id())?;
+    assert_signer(accounts.authority)?;
 
     Ok(accounts)
 }
@@ -111,7 +110,7 @@ pub fn claim_bid(
 
     // User must have won the auction in order to claim their funds. Check early as the rest of the
     // checks will be for nothing otherwise.
-    if auction.bid_state.is_winner(*accounts.bidder_pot.key).is_none() {
+    if auction.is_winner(*accounts.bidder_pot.key).is_none() {
         return Err(AuctionError::InvalidState.into());
     }
 
@@ -163,7 +162,7 @@ pub fn claim_bid(
     // Transfer SPL bid balance back to the user.
     spl_token_transfer(TokenTransferParams {
         source: accounts.bidder_pot_token.clone(),
-        destination: accounts.seller.clone(),
+        destination: accounts.destination.clone(),
         authority: accounts.auction.clone(),
         authority_signer_seeds: auction_seeds,
         token_program: accounts.token_program.clone(),

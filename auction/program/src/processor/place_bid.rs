@@ -12,9 +12,9 @@
 
 use crate::{
     errors::AuctionError,
-    processor::{AuctionData, Bid, BidderMetadata, BidderPot},
+    processor::{AuctionData, AuctionState, Bid, BidderMetadata, BidderPot, PriceFloor},
     utils::{
-        assert_derivation, assert_initialized, assert_owned_by, create_or_allocate_account_raw,
+        assert_derivation, assert_signer, assert_initialized, assert_owned_by, create_or_allocate_account_raw,
         spl_token_transfer, TokenTransferParams,
     },
     PREFIX,
@@ -88,6 +88,8 @@ fn parse_accounts<'a, 'b: 'a>(
     assert_owned_by(accounts.auction, program_id)?;
     assert_owned_by(accounts.mint, &spl_token::id())?;
     assert_owned_by(accounts.bidder_pot_token, &spl_token::id())?;
+    assert_signer(accounts.bidder)?;
+    assert_signer(accounts.transfer_authority)?;
 
     Ok(accounts)
 }
@@ -178,6 +180,18 @@ pub fn place_bid<'r, 'b: 'r>(
     // The mint provided in this bid must match the one the auction was initialized with.
     if auction.token_mint != *accounts.mint.key {
         return Ok(());
+    }
+
+    // Can't bid on an auction that isn't running.
+    if auction.state != AuctionState::Started {
+        return Err(AuctionError::InvalidState.into());
+    }
+
+    // Can't bid smaller than the minimum price.
+    if let PriceFloor::MinimumPrice(min) = auction.price_floor {
+        if args.amount <= min {
+            return Err(AuctionError::BidTooSmall.into());
+        }
     }
 
     // Load the clock, used for various auction timing.

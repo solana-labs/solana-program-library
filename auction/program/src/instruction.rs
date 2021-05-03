@@ -114,7 +114,7 @@ pub fn set_authority_instruction(
 /// Creates an StartAuction instruction.
 pub fn start_auction_instruction(
     program_id: Pubkey,
-    creator_pubkey: Pubkey,
+    authority_pubkey: Pubkey,
     args: StartAuctionArgs,
 ) -> Instruction {
     // Derive Auction Key
@@ -128,7 +128,7 @@ pub fn start_auction_instruction(
     Instruction {
         program_id,
         accounts: vec![
-            AccountMeta::new(creator_pubkey, true),
+            AccountMeta::new(authority_pubkey, true),
             AccountMeta::new(auction_pubkey, false),
             AccountMeta::new_readonly(sysvar::clock::id(), false),
         ],
@@ -199,7 +199,6 @@ pub fn cancel_bid_instruction(
     bidder_pubkey: Pubkey,
     bidder_pot_token_pubkey: Pubkey,
     token_mint_pubkey: Pubkey,
-    payer: Pubkey,
     args: CancelBidArgs,
 ) -> Instruction {
     // Derive Auction Key
@@ -238,7 +237,6 @@ pub fn cancel_bid_instruction(
             AccountMeta::new(bidder_meta_pubkey, false),
             AccountMeta::new(auction_pubkey, false),
             AccountMeta::new(token_mint_pubkey, false),
-            AccountMeta::new_readonly(payer, true),
             AccountMeta::new_readonly(sysvar::clock::id(), false),
             AccountMeta::new_readonly(sysvar::rent::id(), false),
             AccountMeta::new_readonly(solana_program::system_program::id(), false),
@@ -250,7 +248,7 @@ pub fn cancel_bid_instruction(
 
 pub fn end_auction_instruction(
     program_id: Pubkey,
-    creator_pubkey: Pubkey,
+    authority_pubkey: Pubkey,
     args: EndAuctionArgs,
 ) -> Instruction {
     // Derive Auction Key
@@ -264,7 +262,7 @@ pub fn end_auction_instruction(
     Instruction {
         program_id,
         accounts: vec![
-            AccountMeta::new(creator_pubkey, true),
+            AccountMeta::new(authority_pubkey, true),
             AccountMeta::new(auction_pubkey, false),
             AccountMeta::new_readonly(sysvar::clock::id(), false),
         ],
@@ -275,11 +273,10 @@ pub fn end_auction_instruction(
 pub fn claim_bid_instruction(
     program_id: Pubkey,
     authority_pubkey: Pubkey,
-    seller_pubkey: Pubkey,
+    destination_pubkey: Pubkey,
     bidder_pubkey: Pubkey,
     bidder_pot_token_pubkey: Pubkey,
     token_mint_pubkey: Pubkey,
-    payer: Pubkey,
     args: ClaimBidArgs,
 ) -> Instruction {
     // Derive Auction Key
@@ -303,13 +300,12 @@ pub fn claim_bid_instruction(
         program_id,
         accounts: vec![
             AccountMeta::new(authority_pubkey, true),
-            AccountMeta::new(seller_pubkey, false),
+            AccountMeta::new(destination_pubkey, false),
             AccountMeta::new(bidder_pubkey, false),
             AccountMeta::new(bidder_pot_pubkey, false),
             AccountMeta::new(bidder_pot_token_pubkey, false),
             AccountMeta::new(auction_pubkey, false),
             AccountMeta::new(token_mint_pubkey, false),
-            AccountMeta::new_readonly(payer, true),
             AccountMeta::new_readonly(sysvar::clock::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],

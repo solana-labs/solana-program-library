@@ -29,6 +29,7 @@ pub fn assert_initialized<T: Pack + IsInitialized>(
 
 pub fn assert_owned_by(account: &AccountInfo, owner: &Pubkey) -> ProgramResult {
     if account.owner != owner {
+        msg!("{} Owner Invalid, Expected {}, Got {}", account.key, owner, account.owner);
         Err(AuctionError::IncorrectOwner.into())
     } else {
         Ok(())
@@ -38,6 +39,14 @@ pub fn assert_owned_by(account: &AccountInfo, owner: &Pubkey) -> ProgramResult {
 pub fn assert_rent_exempt(rent: &Rent, account_info: &AccountInfo) -> ProgramResult {
     if !rent.is_exempt(account_info.lamports(), account_info.data_len()) {
         Err(AuctionError::NotRentExempt.into())
+    } else {
+        Ok(())
+    }
+}
+
+pub fn assert_signer(account_info: &AccountInfo) -> ProgramResult {
+    if !account_info.is_signer {
+        Err(ProgramError::MissingRequiredSignature)
     } else {
         Ok(())
     }

@@ -114,6 +114,15 @@ impl AuctionData {
             _ => false,
         }
     }
+
+    pub fn is_winner(&self, key: Pubkey) -> Option<usize> {
+        let minimum = match self.price_floor {
+            PriceFloor::MinimumPrice(min) => min,
+            _ => 0,
+        };
+
+        self.bid_state.is_winner(key, minimum)
+    }
 }
 
 /// Define valid auction state transitions.
@@ -225,10 +234,10 @@ impl BidState {
     }
 
     /// Check if a pubkey is currently a winner.
-    pub fn is_winner(&self, key: Pubkey) -> Option<usize> {
+    pub fn is_winner(&self, key: Pubkey, min: u64) -> Option<usize> {
         match self {
             // Presense in the winner list is enough to check win state.
-            BidState::EnglishAuction { ref bids, max } => bids.iter().position(|bid| bid.0 == key),
+            BidState::EnglishAuction { ref bids, max } => bids.iter().position(|bid| bid.0 == key && bid.1 > min),
             // There are no winners in an open edition, it is up to the auction manager to decide
             // what to do with open edition bids.
             BidState::OpenEdition => None,

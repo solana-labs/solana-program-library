@@ -95,6 +95,14 @@ pub enum AuctionError {
     #[error("Incorrect mint specified, must match auction.")]
     IncorrectMint,
 
+    /// Must reveal price when ending a blinded auction.
+    #[error("Must reveal price when ending a blinded auction.")]
+    MustReveal,
+
+    /// The revealing hash is invalid.
+    #[error("The revealing hash is invalid.")]
+    InvalidReveal,
+
     /// The pot for this bid is already empty.
     #[error("The pot for this bid is already empty.")]
     BidderPotEmpty,

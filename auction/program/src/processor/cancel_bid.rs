@@ -45,7 +45,6 @@ struct Accounts<'a, 'b: 'a> {
     bidder: &'a AccountInfo<'b>,
     clock_sysvar: &'a AccountInfo<'b>,
     mint: &'a AccountInfo<'b>,
-    payer: &'a AccountInfo<'b>,
     rent: &'a AccountInfo<'b>,
     system: &'a AccountInfo<'b>,
     token_program: &'a AccountInfo<'b>,
@@ -63,7 +62,6 @@ fn parse_accounts<'a, 'b: 'a>(
         bidder_meta: next_account_info(account_iter)?,
         auction: next_account_info(account_iter)?,
         mint: next_account_info(account_iter)?,
-        payer: next_account_info(account_iter)?,
         clock_sysvar: next_account_info(account_iter)?,
         rent: next_account_info(account_iter)?,
         system: next_account_info(account_iter)?,
@@ -166,7 +164,6 @@ pub fn cancel_bid(
     // Refuse to cancel if the auction ended and this person is a winning account.
     if auction.ended(clock.slot)
         && auction
-            .bid_state
             .is_winner(*accounts.bidder_pot.key)
             .is_some()
     {

@@ -1,7 +1,7 @@
 use crate::{
     errors::AuctionError,
     processor::{AuctionData, AuctionState, Bid, BidState, WinnerLimit},
-    utils::{assert_derivation, assert_owned_by, create_or_allocate_account_raw},
+    utils::{assert_derivation, assert_signer, assert_owned_by, create_or_allocate_account_raw},
     PREFIX,
 };
 
@@ -21,7 +21,7 @@ use {
 };
 
 struct Accounts<'a, 'b: 'a> {
-    creator: &'a AccountInfo<'b>,
+    authority: &'a AccountInfo<'b>,
     auction: &'a AccountInfo<'b>,
     clock_sysvar: &'a AccountInfo<'b>,
 }
@@ -32,11 +32,12 @@ fn parse_accounts<'a, 'b: 'a>(
 ) -> Result<Accounts<'a, 'b>, ProgramError> {
     let account_iter = &mut accounts.iter();
     let accounts = Accounts {
-        creator: next_account_info(account_iter)?,
+        authority: next_account_info(account_iter)?,
         auction: next_account_info(account_iter)?,
         clock_sysvar: next_account_info(account_iter)?,
     };
     assert_owned_by(accounts.auction, program_id)?;
+    assert_signer(accounts.authority)?;
     Ok(accounts)
 }
 
@@ -69,6 +70,13 @@ pub fn start_auction<'a, 'b: 'a>(
 
     // Initialise a new auction. The end time is calculated relative to now.
     let mut auction: AuctionData = try_from_slice_unchecked(&accounts.auction.data.borrow())?;
+
+    // Check authority is correct.
+    if auction.authority != *accounts.authority.key {
+        return Err(AuctionError::InvalidAuthority.into());
+    }
+
+    // Calculate the relative end time.
     let ended_at = if let Some(end_auction_at) = auction.end_auction_at {
         match clock.slot.checked_add(end_auction_at) {
             Some(val) => Some(val),

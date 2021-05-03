@@ -187,6 +187,7 @@ pub async fn end_auction(
             payer.pubkey(),
             EndAuctionArgs {
                 resource: *resource,
+                reveal: None,
             },
         )],
         Some(&payer.pubkey()),
@@ -269,7 +270,6 @@ pub async fn cancel_bid(
             bidder.pubkey(),
             bidder_spl_account.pubkey(),
             *mint,
-            payer.pubkey(),
             CancelBidArgs { resource: *resource },
         )],
         Some(&payer.pubkey()),
@@ -310,8 +310,8 @@ pub async fn claim_bid(
     banks_client: &mut BanksClient,
     recent_blockhash: &Hash,
     program_id: &Pubkey,
-    authority: &Keypair,
     payer: &Keypair,
+    authority: &Keypair,
     bidder: &Keypair,
     bidder_spl_account: &Keypair,
     seller: &Pubkey,
@@ -326,11 +326,10 @@ pub async fn claim_bid(
             bidder.pubkey(),
             bidder_spl_account.pubkey(),
             *mint,
-            payer.pubkey(),
             ClaimBidArgs { resource: *resource },
         )],
         Some(&payer.pubkey()),
-        &[authority, payer],
+        &[payer, authority],
         *recent_blockhash,
     );
     banks_client.process_transaction(transaction).await?;

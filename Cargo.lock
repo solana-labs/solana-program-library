@@ -4004,6 +4004,7 @@ dependencies = [
  "bincode",
  "borsh 0.8.2",
  "clap",
+ "rand 0.7.3",
  "solana-clap-utils",
  "solana-cli-config",
  "solana-client",
