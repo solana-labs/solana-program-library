@@ -137,19 +137,19 @@ pub struct ProposalState {
     pub name: [u8; MAX_PROPOSAL_NAME_LENGTH],
 
     /// When the Proposal ended voting - this will also be when the set was defeated or began executing naturally.
-    pub voting_ended_at: u64,
+    pub voting_ended_at: Option<Slot>,
 
     /// When the Proposal began voting
-    pub voting_began_at: u64,
+    pub voting_began_at: Option<Slot>,
 
     /// when the Proposal entered draft state
-    pub created_at: u64,
+    pub created_at: Option<Slot>,
 
     /// when the Proposal entered completed state, also when execution ended naturally.
-    pub completed_at: u64,
+    pub completed_at: Option<Slot>,
 
     /// when the Proposal entered deleted state
-    pub deleted_at: u64,
+    pub deleted_at: Option<Slot>,
 
     /// The number of the transactions already executed
     pub number_of_executed_transactions: u8,
