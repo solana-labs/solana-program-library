@@ -24,7 +24,6 @@ members = [
   "token/program",
   "utils/cgen",
   "utils/test-client",
-
 ]
 exclude = [
   "themis/client_ristretto",
