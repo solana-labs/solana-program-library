@@ -2,8 +2,8 @@
 
 use solana_program::{epoch_schedule::Slot, instruction::Instruction, pubkey::Pubkey};
 
-/// Max number of transactions allowed for a proposal
-pub const MAX_TRANSACTIONS: usize = 5;
+/// Max number of instructions allowed for a proposal
+pub const MAX_INSTRUCTIONS: usize = 5;
 
 /// Defines all Governance accounts types
 #[derive(Clone, Debug, PartialEq)]
@@ -23,8 +23,8 @@ pub enum GovernanceAccountType {
     /// 4 - Vote record account for a given Proposal.  Proposal can have 0..n voting records
     VoteRecord,
 
-    /// 5 Custom Single Signer Transaction account which holds instructions to execute for Proposal
-    CustomSingleSignerTransaction,
+    /// 5 - Custom Single Signer Instruction account which holds an instruction to execute for Proposal
+    CustomSingleSignerInstruction,
 }
 
 impl Default for GovernanceAccountType {
@@ -60,8 +60,8 @@ pub struct Governance {
     /// It's the percentage of tokens out of the entire pool of governance tokens eligible to vote
     pub token_threshold_to_create_proposal: u8,
 
-    /// Minimum waiting time in slots for a transaction to be executed after proposal is voted on
-    pub min_transaction_hold_up_time: u64,
+    /// Minimum waiting time in slots for an instruction to be executed after proposal is voted on
+    pub min_instruction_hold_up_time: Slot,
 
     /// Governance mint
     pub governance_mint: Pubkey,
@@ -73,7 +73,7 @@ pub struct Governance {
     pub program: Pubkey,
 
     /// Time limit in slots for proposal to be open for voting
-    pub max_voting_time: u64,
+    pub max_voting_time: Slot,
 
     /// Running count of proposals
     pub proposal_count: u32,
@@ -119,7 +119,7 @@ pub struct ProposalState {
     pub status: ProposalStateStatus,
 
     /// Total signatory tokens minted, for use comparing to supply remaining during draft period
-    pub total_signing_tokens_minted: u64,
+    pub total_signatory_tokens_minted: u64,
 
     /// Link to proposal's description
     pub description_link: String,
@@ -142,14 +142,14 @@ pub struct ProposalState {
     /// when the Proposal entered deleted state
     pub deleted_at: Option<Slot>,
 
-    /// The number of the transactions already executed
-    pub number_of_executed_transactions: u8,
+    /// The number of the instructions already executed
+    pub number_of_executed_instructions: u8,
 
-    /// The number of transactions included in the proposal
-    pub number_of_transactions: u8,
+    /// The number of instructions included in the proposal
+    pub number_of_instructions: u8,
 
-    /// Array of pubkeys pointing at Proposal Transactions, up to 5
-    pub transactions: [Pubkey; MAX_TRANSACTIONS],
+    /// Array of pubkeys pointing at Proposal instructions, up to 5
+    pub instruction: [Pubkey; MAX_INSTRUCTIONS],
 }
 
 /// What state a Proposal is in
@@ -167,7 +167,7 @@ pub enum ProposalStateStatus {
     /// Voting ended with success
     Succeeded,
 
-    /// Votes completed and after cool oof period and transactions are being executed
+    /// Voting completed and now instructions are being execute. Proposal enter this state when first instruction is executed and leaves when the last instruction is executed
     Executing,
 
     /// Completed
@@ -202,18 +202,18 @@ pub struct GovernanceVoteRecord {
     pub vote: Option<Vote>,
 }
 
-/// Account for a transaction with a single instruction signed by a single signer
+/// Account for an instruction to be executed for Proposal
 #[derive(Clone)]
-pub struct CustomSingleSignerTransaction {
+pub struct CustomSingleSignerInstruction {
     /// Governance Account type
     pub account_type: GovernanceAccountType,
 
-    /// Minimum waiting time in slots for a transaction to be executed after proposal is voted on
-    pub hold_up_time: u64,
+    /// Minimum waiting time in slots for the  instruction to be executed once proposal is voted on
+    pub hold_up_time: Slot,
 
-    /// Instruction data
+    /// Instruction to execute
     pub instruction: Instruction,
 
     /// Executed flag
-    pub executed: u8,
+    pub executed: bool,
 }

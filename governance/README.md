@@ -59,10 +59,10 @@ If Executed, it enters Completed state once all commands have been run.
 
 A command can be run by any one at any time after the `delay_slots` length has transpired on the given command.
 
-### CustomSingleSignerTransaction
+### CustomSingleSignerInstruction
 
-We only support one kind of executable command right now, and this is the CustomSingleSignerTransaction type.
-A Proposal can have a certain number of these, and they run independently of one another.
+We only support one kind of executable command right now, and this is the CustomSingleSignerInstruction type.
+A Proposal can have a certain number of these, and they run independently of each other.
 These contain the actual data for a command, and how long after the voting phase a user must wait before they can be executed.
 
 ### Voting Dynamics
