@@ -3837,6 +3837,7 @@ dependencies = [
  "solana-logger",
  "solana-program",
  "solana-sdk",
+ "spl-associated-token-account 1.0.2",
  "spl-stake-pool",
  "spl-token 3.1.0",
 ]
