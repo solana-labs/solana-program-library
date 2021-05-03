@@ -31,6 +31,8 @@ export class Enum extends Assignable {
 }
 export class Fee extends Assignable {
 }
+export class PublicKey extends Assignable {
+}
 export class AccountType extends Enum {
 }
 export class AccountTypeEnum extends Assignable {
@@ -44,8 +46,6 @@ export class ValidatorStakeInfo extends Assignable {
 export class StakeStatus extends Enum {
 }
 export class StakeStatusEnum extends Assignable {
-}
-export class PublicKey extends Assignable {
 }
 export function constructStakePoolSchema() {
     const SCHEMA = new Map();
