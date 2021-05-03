@@ -1,6 +1,4 @@
-// import { serialize, deserializeUnchecked, BinaryReader, Schema, BorshError } from "borsh"
-import borsh from "borsh";
-export const SCHEMA = new Map();
+import borsh from 'borsh';
 // Class wrapping a plain object
 export class Assignable {
     constructor(properties) {
@@ -31,8 +29,6 @@ export class Enum extends Assignable {
 }
 export class Fee extends Assignable {
 }
-export class PublicKey extends Assignable {
-}
 export class AccountType extends Enum {
 }
 export class AccountTypeEnum extends Assignable {
@@ -47,13 +43,14 @@ export class StakeStatus extends Enum {
 }
 export class StakeStatusEnum extends Assignable {
 }
+export class PublicKey extends Assignable {
+}
+export const SCHEMA = constructStakePoolSchema();
 export function constructStakePoolSchema() {
     const SCHEMA = new Map();
     SCHEMA.set(PublicKey, {
         kind: 'struct',
-        fields: [
-            ['value', 'u256'],
-        ],
+        fields: [['value', 'u256']],
     });
     SCHEMA.set(Fee, {
         kind: 'struct',
@@ -73,7 +70,7 @@ export function constructStakePoolSchema() {
             ['ValidatorList', AccountTypeEnum],
         ],
     });
-    SCHEMA.set(AccountTypeEnum, { kind: 'struct', fields: [], });
+    SCHEMA.set(AccountTypeEnum, { kind: 'struct', fields: [] });
     SCHEMA.set(StakePool, {
         kind: 'struct',
         fields: [
@@ -98,7 +95,7 @@ export function constructStakePoolSchema() {
         fields: [
             ['accountType', AccountType],
             ['maxValidators', 'u32'],
-            ['validators', [ValidatorStakeInfo]]
+            ['validators', [ValidatorStakeInfo]],
         ],
     });
     SCHEMA.set(StakeStatus, {

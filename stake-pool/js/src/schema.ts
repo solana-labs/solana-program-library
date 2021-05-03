@@ -1,8 +1,5 @@
-// import { serialize, deserializeUnchecked, BinaryReader, Schema, BorshError } from "borsh"
 import borsh from 'borsh';
 import BN from 'bn.js';
-
-export const SCHEMA: borsh.Schema = new Map();
 
 // Class wrapping a plain object
 export abstract class Assignable {
@@ -77,6 +74,8 @@ export class StakeStatusEnum extends Assignable {}
 export class PublicKey extends Assignable {
   value: BN;
 }
+
+export const SCHEMA: borsh.Schema = constructStakePoolSchema();
 
 export function constructStakePoolSchema(): borsh.Schema {
   const SCHEMA = new Map();

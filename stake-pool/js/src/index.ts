@@ -6,15 +6,7 @@ function decodeSerializedStakePool(
   serializedStakePool: Buffer,
   accountType,
 ): schema.StakePool | schema.ValidatorList {
-  const stakePoolSchema = schema.constructStakePoolSchema();
-  const stakePool = new schema.StakePool(
-    borsh.deserializeUnchecked(
-      stakePoolSchema,
-      accountType,
-      serializedStakePool,
-    ),
-  );
-  return stakePool;
+  return accountType.decode(serializedStakePool);
 }
 
 async function getStakePoolAccounts(
