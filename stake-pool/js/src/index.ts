@@ -3,10 +3,21 @@ import borsh from 'borsh';
 import solanaWeb3 from '@solana/web3.js';
 
 export class StakePool {
+  /**
+   * Wrapper class for a stake pool.
+   * Each stake pool has a stake pool account and a validator list account.
+   * (Optionally) a stake pool can also have a name and ticker.
+   */
   name: string;
   ticker: string;
-  stakePool: solanaWeb3.AccountInfo<schema.StakePoolAccount>;
-  validatorList: solanaWeb3.AccountInfo<schema.ValidatorListAccount>;
+  stakePool: {
+    pubkey: solanaWeb3.PublicKey;
+    accountInfo: solanaWeb3.AccountInfo<schema.StakePoolAccount>;
+  };
+  validatorList: {
+    pubkey: solanaWeb3.PublicKey;
+    accountInfo: solanaWeb3.AccountInfo<schema.ValidatorListAccount>;
+  };
 }
 
 function decodeSerializedStakePool(
@@ -19,22 +30,40 @@ function decodeSerializedStakePool(
 async function getStakePoolAccounts(
   connection: solanaWeb3.Connection,
   stakePoolAddress: solanaWeb3.PublicKey,
-): Promise<(schema.StakePoolAccount | schema.ValidatorListAccount)[]> {
+): Promise<
+  {
+    account: solanaWeb3.AccountInfo<
+      schema.StakePoolAccount | schema.ValidatorListAccount
+    >;
+    pubkey: solanaWeb3.PublicKey;
+  }[]
+> {
   try {
     let response = await connection.getProgramAccounts(STAKE_POOL_ADDR);
 
     const stakePoolAccounts = response.map(a => {
+      let b = {
+        pubkey: a.pubkey,
+        account: {
+          data: null,
+          executable: a.account.executable,
+          lamports: a.account.lamports,
+          owner: a.account.owner,
+        },
+      };
+
       if (a.account.data.length === STAKE_POOL_ACCT_LENGTH) {
-        return decodeSerializedStakePool(
+        b.account.data = decodeSerializedStakePool(
           a.account.data,
           schema.StakePoolAccount,
         );
       } else {
-        return decodeSerializedStakePool(
+        b.account.data = decodeSerializedStakePool(
           a.account.data,
           schema.ValidatorListAccount,
         );
       }
+      return b;
     });
 
     return stakePoolAccounts;

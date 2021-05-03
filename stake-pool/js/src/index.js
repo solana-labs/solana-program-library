@@ -19,12 +19,22 @@ function getStakePoolAccounts(connection, stakePoolAddress) {
         try {
             let response = yield connection.getProgramAccounts(STAKE_POOL_ADDR);
             const stakePoolAccounts = response.map(a => {
+                let b = {
+                    pubkey: a.pubkey,
+                    account: {
+                        data: null,
+                        executable: a.account.executable,
+                        lamports: a.account.lamports,
+                        owner: a.account.owner,
+                    },
+                };
                 if (a.account.data.length === STAKE_POOL_ACCT_LENGTH) {
-                    return decodeSerializedStakePool(a.account.data, schema.StakePoolAccount);
+                    b.account.data = decodeSerializedStakePool(a.account.data, schema.StakePoolAccount);
                 }
                 else {
-                    return decodeSerializedStakePool(a.account.data, schema.ValidatorListAccount);
+                    b.account.data = decodeSerializedStakePool(a.account.data, schema.ValidatorListAccount);
                 }
+                return b;
             });
             return stakePoolAccounts;
         }
