@@ -164,8 +164,11 @@ pub struct ProposalState {
 /// What state a Proposal is in
 #[derive(Clone, Debug, PartialEq)]
 pub enum ProposalStateStatus {
-    /// Draft
+    /// Draft - Proposal enters Draft state when it's created
     Draft,
+
+    /// Signing - The Proposal is being signed by Signatories. Proposal enters the state when first Signatory Sings and leaves it when last Signatory signs
+    Signing,
 
     /// Taking votes
     Voting,
