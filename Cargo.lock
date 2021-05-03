@@ -3775,6 +3775,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-perpetual"
+version = "0.1.0"
+dependencies = [
+ "arrayref",
+ "assert_matches",
+ "base64 0.13.0",
+ "borsh 0.8.2",
+ "log",
+ "proptest",
+ "serde",
+ "serde_yaml",
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "spl-token 3.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "thiserror",
+ "uint",
+]
+
+[[package]]
 name = "spl-record"
 version = "0.1.0"
 dependencies = [
