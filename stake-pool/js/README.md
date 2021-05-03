@@ -17,3 +17,7 @@ In the `js` folder:
 npx prettier src/*.ts -w
 npx tsc && node src/index.js
 ```
+
+## Test
+
+Coming soon
