@@ -1,15 +1,6 @@
 //! Program accounts
 
-use solana_program::pubkey::Pubkey;
-
-/// Max length of a governance name
-pub const MAX_GOVERNANCE_NAME_LENGTH: usize = 32;
-
-/// Max length of a proposal description link
-pub const MAX_PROPOSAL_DESCRIPTION_LINK_LENGTH: usize = 200;
-
-/// Max length of a proposal name
-pub const MAX_PROPOSAL_NAME_LENGTH: usize = 32;
+use solana_program::{epoch_schedule::Slot, instruction::Instruction, pubkey::Pubkey};
 
 /// Max number of transactions allowed for a proposal
 pub const MAX_TRANSACTIONS: usize = 5;
@@ -59,7 +50,7 @@ pub struct Governance {
     pub account_type: GovernanceAccountType,
 
     /// Optional governance name
-    pub name: [u8; MAX_GOVERNANCE_NAME_LENGTH],
+    pub name: String,
 
     /// Voting threshold in % required to tip the vote
     /// It's the percentage of tokens out of the entire pool of governance tokens eligible to vote
@@ -131,10 +122,10 @@ pub struct ProposalState {
     pub total_signing_tokens_minted: u64,
 
     /// Link to proposal's description
-    pub description_link: [u8; MAX_PROPOSAL_DESCRIPTION_LINK_LENGTH],
+    pub description_link: String,
 
     /// Proposal name
-    pub name: [u8; MAX_PROPOSAL_NAME_LENGTH],
+    pub name: String,
 
     /// When the Proposal ended voting - this will also be when the set was defeated or began executing naturally.
     pub voting_ended_at: Option<Slot>,
@@ -221,7 +212,7 @@ pub struct CustomSingleSignerTransaction {
     pub hold_up_time: u64,
 
     /// Instruction data
-    pub instruction: Vec<u8>,
+    pub instruction: Instruction,
 
     /// Executed flag
     pub executed: u8,
