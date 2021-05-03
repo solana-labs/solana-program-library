@@ -42,7 +42,7 @@ export class Fee extends Assignable {
 export class AccountType extends Enum {}
 export class AccountTypeEnum extends Assignable {}
 
-export class StakePool extends Assignable {
+export class StakePoolAccount extends Assignable {
   accountType: AccountType;
   manager: PublicKey;
   staker: PublicKey;
@@ -57,7 +57,7 @@ export class StakePool extends Assignable {
   lastUpdateEpoch: number;
 }
 
-export class ValidatorList extends Assignable {
+export class ValidatorListAccount extends Assignable {
   accountType: AccountType;
   maxValidators: number;
   validators: [ValidatorStakeInfo];
@@ -77,6 +77,11 @@ export class PublicKey extends Assignable {
 
 export const SCHEMA: borsh.Schema = constructStakePoolSchema();
 
+/**
+ * Borsh requires something called a Schema,
+ * which is a Map (key-value pairs) that tell borsh how to deserialise the raw data
+ * This function creates, populates and returns such a schema
+ */
 export function constructStakePoolSchema(): borsh.Schema {
   const SCHEMA = new Map();
 
@@ -107,7 +112,7 @@ export function constructStakePoolSchema(): borsh.Schema {
 
   SCHEMA.set(AccountTypeEnum, {kind: 'struct', fields: []});
 
-  SCHEMA.set(StakePool, {
+  SCHEMA.set(StakePoolAccount, {
     kind: 'struct',
     fields: [
       ['accountType', AccountType],
@@ -127,7 +132,7 @@ export function constructStakePoolSchema(): borsh.Schema {
     ],
   });
 
-  SCHEMA.set(ValidatorList, {
+  SCHEMA.set(ValidatorListAccount, {
     kind: 'struct',
     fields: [
       ['accountType', AccountType],

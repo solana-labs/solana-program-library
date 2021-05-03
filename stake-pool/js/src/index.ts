@@ -2,25 +2,38 @@ import * as schema from './schema.js';
 import borsh from 'borsh';
 import solanaWeb3 from '@solana/web3.js';
 
+export class StakePool {
+  name: string;
+  ticker: string;
+  stakePool: solanaWeb3.AccountInfo<schema.StakePoolAccount>;
+  validatorList: solanaWeb3.AccountInfo<schema.ValidatorListAccount>;
+}
+
 function decodeSerializedStakePool(
   serializedStakePool: Buffer,
   accountType,
-): schema.StakePool | schema.ValidatorList {
+): schema.StakePoolAccount | schema.ValidatorListAccount {
   return accountType.decode(serializedStakePool);
 }
 
 async function getStakePoolAccounts(
   connection: solanaWeb3.Connection,
   stakePoolAddress: solanaWeb3.PublicKey,
-): Promise<(schema.StakePool | schema.ValidatorList)[]> {
+): Promise<(schema.StakePoolAccount | schema.ValidatorListAccount)[]> {
   try {
     let response = await connection.getProgramAccounts(STAKE_POOL_ADDR);
 
     const stakePoolAccounts = response.map(a => {
       if (a.account.data.length === STAKE_POOL_ACCT_LENGTH) {
-        return decodeSerializedStakePool(a.account.data, schema.StakePool);
+        return decodeSerializedStakePool(
+          a.account.data,
+          schema.StakePoolAccount,
+        );
       } else {
-        return decodeSerializedStakePool(a.account.data, schema.ValidatorList);
+        return decodeSerializedStakePool(
+          a.account.data,
+          schema.ValidatorListAccount,
+        );
       }
     });
 

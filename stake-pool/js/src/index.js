@@ -9,6 +9,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 import * as schema from './schema.js';
 import solanaWeb3 from '@solana/web3.js';
+export class StakePool {
+}
 function decodeSerializedStakePool(serializedStakePool, accountType) {
     return accountType.decode(serializedStakePool);
 }
@@ -18,10 +20,10 @@ function getStakePoolAccounts(connection, stakePoolAddress) {
             let response = yield connection.getProgramAccounts(STAKE_POOL_ADDR);
             const stakePoolAccounts = response.map(a => {
                 if (a.account.data.length === STAKE_POOL_ACCT_LENGTH) {
-                    return decodeSerializedStakePool(a.account.data, schema.StakePool);
+                    return decodeSerializedStakePool(a.account.data, schema.StakePoolAccount);
                 }
                 else {
-                    return decodeSerializedStakePool(a.account.data, schema.ValidatorList);
+                    return decodeSerializedStakePool(a.account.data, schema.ValidatorListAccount);
                 }
             });
             return stakePoolAccounts;
