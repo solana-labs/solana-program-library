@@ -1542,7 +1542,7 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
     let lending_market_info = next_account_info(account_info_iter)?;
     let derived_lending_market_account_info = next_account_info(account_info_iter)?;
     let flash_loan_receiver_program_info = next_account_info(account_info_iter)?;
-    let flash_loan_fees_receiver_account_info = next_account_info(account_info_iter)?;
+    let flash_loan_fee_receiver_account_info = next_account_info(account_info_iter)?;
     let host_fee_recipient = next_account_info(account_info_iter)?;
     let token_program_id = next_account_info(account_info_iter)?;
 
