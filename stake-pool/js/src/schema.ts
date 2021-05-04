@@ -52,9 +52,9 @@ export class StakePoolAccount extends Assignable {
   reserveStake: PublicKey;
   poolMint: PublicKey;
   managerFeeAccount: PublicKey;
-  totalStakeLamports: number;
-  poolTokenSupply: number;
-  lastUpdateEpoch: number;
+  totalStakeLamports: BN;
+  poolTokenSupply: BN;
+  lastUpdateEpoch: BN;
 }
 
 export class ValidatorListAccount extends Assignable {
@@ -65,8 +65,8 @@ export class ValidatorListAccount extends Assignable {
 export class ValidatorStakeInfo extends Assignable {
   status: StakeStatus;
   voteAccountAddress: PublicKey;
-  stakeLamports: number;
-  lastUpdateEpoch: number;
+  stakeLamports: BN;
+  lastUpdateEpoch: BN;
 }
 export class StakeStatus extends Enum {}
 export class StakeStatusEnum extends Assignable {}
