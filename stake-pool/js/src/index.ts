@@ -6,10 +6,7 @@ export class StakePool {
   /**
    * Wrapper class for a stake pool.
    * Each stake pool has a stake pool account and a validator list account.
-   * (Optionally) a stake pool can also have a name and ticker.
    */
-  name: string;
-  ticker: string;
   stakePool: decodedStakePool;
   validatorList: decodedValidatorList;
 }
