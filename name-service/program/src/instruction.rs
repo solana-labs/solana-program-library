@@ -1,9 +1,11 @@
-use borsh::{BorshDeserialize, BorshSerialize};
-use solana_program::{
-    instruction::{AccountMeta, Instruction},
-    program_error::ProgramError,
-    pubkey::Pubkey,
-    system_program,
+use {
+    borsh::{BorshDeserialize, BorshSerialize},
+    solana_program::{
+        instruction::{AccountMeta, Instruction},
+        program_error::ProgramError,
+        pubkey::Pubkey,
+        system_program,
+    },
 };
 
 /// Instructions supported by the generic Name Registry program
@@ -26,7 +28,7 @@ pub enum NameRegistryInstruction {
     ///   3. `[]` Account owner (written into `NameRecordHeader::owner`)
     ///   4. `[signer]` Account class (written into `NameRecordHeader::class`).
     ///                 If `Pubkey::default()` then the `signer` bit is not required
-    ///   5. `[]` Parent name record (written into `NameRecordHeader::parent_name). `Pubkey::default()` is equivalent to no existing parent.  
+    ///   5. `[]` Parent name record (written into `NameRecordHeader::parent_name). `Pubkey::default()` is equivalent to no existing parent.
     ///   6. `[signer]` Owner of the parent name record. Optional but needed if parent name different than default.
     ///
     Create {

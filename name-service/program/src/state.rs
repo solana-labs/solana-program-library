@@ -1,10 +1,12 @@
-use borsh::{BorshDeserialize, BorshSerialize};
-use solana_program::{
-    account_info::AccountInfo,
-    msg,
-    program_error::ProgramError,
-    program_pack::{IsInitialized, Pack, Sealed},
-    pubkey::Pubkey,
+use {
+    borsh::{BorshDeserialize, BorshSerialize},
+    solana_program::{
+        account_info::AccountInfo,
+        msg,
+        program_error::ProgramError,
+        program_pack::{IsInitialized, Pack, Sealed},
+        pubkey::Pubkey,
+    },
 };
 
 /// The data for a Name Registry account is always prefixed a `NameRecordHeader` structure.

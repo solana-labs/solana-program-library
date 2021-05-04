@@ -1,18 +1,20 @@
-use crate::{
-    instruction::NameRegistryInstruction,
-    state::get_seeds_and_key,
-    state::{write_data, NameRecordHeader},
-};
-use borsh::BorshDeserialize;
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    entrypoint::ProgramResult,
-    msg,
-    program::{invoke, invoke_signed},
-    program_error::ProgramError,
-    program_pack::Pack,
-    pubkey::Pubkey,
-    system_instruction,
+use {
+    crate::{
+        instruction::NameRegistryInstruction,
+        state::get_seeds_and_key,
+        state::{write_data, NameRecordHeader},
+    },
+    borsh::BorshDeserialize,
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        entrypoint::ProgramResult,
+        msg,
+        program::{invoke, invoke_signed},
+        program_error::ProgramError,
+        program_pack::Pack,
+        pubkey::Pubkey,
+        system_instruction,
+    },
 };
 
 pub struct Processor {}
