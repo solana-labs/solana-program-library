@@ -47,7 +47,7 @@ export class StakePoolAccount extends Assignable {
   manager: PublicKey;
   staker: PublicKey;
   depositAuthority: PublicKey;
-  withdrawBumpSeed: number; // what is this? u8 in Rust
+  withdrawBumpSeed: number;
   validatorList: PublicKey;
   reserveStake: PublicKey;
   poolMint: PublicKey;
@@ -103,7 +103,6 @@ export function constructStakePoolSchema(): borsh.Schema {
     field: 'enum',
     values: [
       // if the account has not been initialized, the enum will be 0
-      // FIXME
       ['Uninitialized', AccountTypeEnum],
       ['StakePool', AccountTypeEnum],
       ['ValidatorList', AccountTypeEnum],
