@@ -43,6 +43,12 @@ export class AccountType extends Enum {}
 
 export class AccountTypeEnum extends Assignable {}
 
+export enum AccountTypeKind {
+  Uninitialized = 'Uninitialized',
+  StakePool = 'StakePool',
+  ValidatorList = 'ValidatorList',
+}
+
 export class StakePoolAccount extends Assignable {
   accountType: AccountType;
   manager: PublicKey;
@@ -73,6 +79,12 @@ export class ValidatorStakeInfo extends Assignable {
 export class StakeStatus extends Enum {}
 
 export class StakeStatusEnum extends Assignable {}
+
+export enum StakeStatusKind {
+  Active = 'Active',
+  DeactivatingTransient = 'DeactivatingTransient',
+  ReadyForRemoval = 'ReadyForRemoval',
+}
 
 export class PublicKey extends Assignable {
   value: BN;
@@ -106,9 +118,9 @@ export function constructStakePoolSchema(): borsh.Schema {
     field: 'enum',
     values: [
       // if the account has not been initialized, the enum will be 0
-      ['Uninitialized', AccountTypeEnum],
-      ['StakePool', AccountTypeEnum],
-      ['ValidatorList', AccountTypeEnum],
+      [AccountTypeKind.Uninitialized, AccountTypeEnum],
+      [AccountTypeKind.StakePool, AccountTypeEnum],
+      [AccountTypeKind.ValidatorList, AccountTypeEnum],
     ],
   });
 
@@ -147,9 +159,9 @@ export function constructStakePoolSchema(): borsh.Schema {
     kind: 'enum',
     field: 'enum',
     values: [
-      ['Active', StakeStatusEnum],
-      ['DeactivatingTransient', StakeStatusEnum],
-      ['ReadyForRemoval', StakeStatusEnum],
+      [StakeStatusKind.Active, StakeStatusEnum],
+      [StakeStatusKind.DeactivatingTransient, StakeStatusEnum],
+      [StakeStatusKind.ReadyForRemoval, StakeStatusEnum],
     ],
   });
 
