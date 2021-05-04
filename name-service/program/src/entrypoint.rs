@@ -1,9 +1,11 @@
-use crate::error::NameServiceError;
-use crate::processor::Processor;
-use num_traits::FromPrimitive;
-use solana_program::{
-    account_info::AccountInfo, decode_error::DecodeError, entrypoint, entrypoint::ProgramResult,
-    msg, program_error::PrintProgramError, pubkey::Pubkey,
+use {
+    crate::error::NameServiceError,
+    crate::processor::Processor,
+    num_traits::FromPrimitive,
+    solana_program::{
+        account_info::AccountInfo, decode_error::DecodeError, entrypoint,
+        entrypoint::ProgramResult, msg, program_error::PrintProgramError, pubkey::Pubkey,
+    },
 };
 
 entrypoint!(process_instruction);
