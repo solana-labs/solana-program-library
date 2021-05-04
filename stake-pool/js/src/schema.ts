@@ -35,11 +35,12 @@ export abstract class Enum extends Assignable {
 }
 
 export class Fee extends Assignable {
-  denominator: number;
-  numerator: number;
+  denominator: BN;
+  numerator: BN;
 }
 
 export class AccountType extends Enum {}
+
 export class AccountTypeEnum extends Assignable {}
 
 export class StakePoolAccount extends Assignable {
@@ -55,6 +56,7 @@ export class StakePoolAccount extends Assignable {
   totalStakeLamports: BN;
   poolTokenSupply: BN;
   lastUpdateEpoch: BN;
+  fee: Fee;
 }
 
 export class ValidatorListAccount extends Assignable {
@@ -69,6 +71,7 @@ export class ValidatorStakeInfo extends Assignable {
   lastUpdateEpoch: BN;
 }
 export class StakeStatus extends Enum {}
+
 export class StakeStatusEnum extends Assignable {}
 
 export class PublicKey extends Assignable {
