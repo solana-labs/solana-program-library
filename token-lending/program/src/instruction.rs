@@ -286,8 +286,8 @@ pub enum LendingInstruction {
     ///             liquidity before the end of its execution.
     ///   6. `[]` Token program id.
     ///   7. `[writable]` Flash loan fees receiver, must be the fee account specified at `InitReserve`.
-    ///   8. `[writeable]` Host fee receiver.
-    /// ... a variable number of accounts that is needed for `ReceiveFlashLoan(amount: u64)`.
+    ///   8. `[writable]` Host fee receiver.
+    ///   .. `[any]` Additional accounts expected by the receiving program's `ReceiveFlashLoan` instruction.
     ///
     ///   The flash loan receiver program that is to be invoked should contain an instruction with
     ///   tag `0` and accept the total amount (including fee) that needs to be returned back after
