@@ -1578,30 +1578,36 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
         return Err(LendingError::InvalidAccountInput.into());
     }
 
-    if reserve.liquidity.available_amount < amount {
+    let flash_loan_amount = if amount == u64::MAX {
+        reserve.liquidity.available_amount
+    } else {
+        amount
+    };
+
+    if reserve.liquidity.available_amount < flash_loan_amount {
         msg!("Flash loan amount cannot exceed available amount");
         return Err(LendingError::InsufficientLiquidity.into());
     }
 
-    let amount_decimal = Decimal::from(amount);
+    let flash_loan_amount_decimal = Decimal::from(flash_loan_amount);
     let (origination_fee, host_fee) = reserve
         .config
         .fees
-        .calculate_flash_loan_fees(amount_decimal)?;
+        .calculate_flash_loan_fees(flash_loan_amount_decimal)?;
     let balance_before_flash_loan =
         Account::unpack_from_slice(&source_liquidity_info.try_borrow_data()?)?.amount;
     let expected_balance_after_flash_loan = balance_before_flash_loan
         .checked_add(origination_fee)
         .ok_or(LendingError::MathOverflow)?;
-    let returned_amount_required = amount
+    let returned_amount_required = flash_loan_amount
         .checked_add(origination_fee)
         .ok_or(LendingError::MathOverflow)?;
 
-    reserve.liquidity.borrow(amount_decimal)?;
+    reserve.liquidity.borrow(flash_loan_amount_decimal)?;
     spl_token_transfer(TokenTransferParams {
         source: source_liquidity_info.clone(),
         destination: destination_liquidity_info.clone(),
-        amount,
+        amount: flash_loan_amount,
         authority: derived_lending_market_account_info.clone(),
         authority_signer_seeds,
         token_program: token_program_id.clone(),
@@ -1651,7 +1657,7 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
         );
         return Err(LendingError::NotEnoughLiquidityAfterFlashLoan.into());
     }
-    reserve.liquidity.repay(amount, amount_decimal)?;
+    reserve.liquidity.repay(flash_loan_amount, flash_loan_amount_decimal)?;
 
     let mut owner_fee = origination_fee;
     if host_fee > 0 {

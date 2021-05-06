@@ -301,7 +301,7 @@ pub enum LendingInstruction {
     ///   ..  `[any]` Additional accounts provided to the lending program's `FlashLoan` instruction above.
     ///
     FlashLoan {
-        /// The amount that is to be borrowed
+        /// The amount that is to be borrowed - u64::MAX for up to 100% of available liquidity
         amount: u64,
     },
 }

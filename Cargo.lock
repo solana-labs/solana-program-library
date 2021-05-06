@@ -722,7 +722,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "58bcd97a54c7ca5ce2f6eb16f6bede5b0ab5f0055fedc17d2f0b4466e21671ca"
 dependencies = [
  "generic-array 0.14.4",
- "subtle 2.2.3",
+ "subtle 2.4.0",
 ]
 
 [[package]]
@@ -1003,9 +1003,9 @@ version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aa4da3c766cd7a0db8242e326e9e4e081edd567072893ed320008189715366a4"
 dependencies = [
- "proc-macro2 1.0.24",
- "quote 1.0.8",
- "syn 1.0.64",
+ "proc-macro2 1.0.26",
+ "quote 1.0.9",
+ "syn 1.0.69",
  "synstructure",
 ]
 
@@ -3115,7 +3115,6 @@ checksum = "c91d957a815c7f81ebde063eb90c743105793c1203c1530576977775ffd76597"
 dependencies = [
  "bincode",
  "byteorder",
- "curve25519-dalek 3.1.0",
  "log",
  "num-derive",
  "num-traits",
