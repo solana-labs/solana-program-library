@@ -8,6 +8,7 @@ module.exports = {
       "token-lending",
       "associated-token-account",
       "memo",
+      "name-service",
       "shared-memory",
       "stake-pool",
       "feature-proposal",

@@ -533,8 +533,12 @@ impl Processor {
         let token_a = Self::unpack_token_account(token_a_info, &token_swap.token_program_id())?;
         let token_b = Self::unpack_token_account(token_b_info, &token_swap.token_program_id())?;
         let pool_mint = Self::unpack_mint(pool_mint_info, &token_swap.token_program_id())?;
-        let pool_token_amount = to_u128(pool_token_amount)?;
-        let pool_mint_supply = to_u128(pool_mint.supply)?;
+        let current_pool_mint_supply = to_u128(pool_mint.supply)?;
+        let (pool_token_amount, pool_mint_supply) = if current_pool_mint_supply > 0 {
+            (to_u128(pool_token_amount)?, current_pool_mint_supply)
+        } else {
+            (calculator.new_pool_supply(), calculator.new_pool_supply())
+        };
 
         let results = calculator
             .pool_tokens_to_trading_tokens(
@@ -658,6 +662,7 @@ impl Processor {
             )
             .ok_or(SwapError::ZeroTradingTokens)?;
         let token_a_amount = to_u64(results.token_a_amount)?;
+        let token_a_amount = std::cmp::min(token_a.amount, token_a_amount);
         if token_a_amount < minimum_token_a_amount {
             return Err(SwapError::ExceededSlippage.into());
         }
@@ -665,6 +670,7 @@ impl Processor {
             return Err(SwapError::ZeroTradingTokens.into());
         }
         let token_b_amount = to_u64(results.token_b_amount)?;
+        let token_b_amount = std::cmp::min(token_b.amount, token_b_amount);
         if token_b_amount < minimum_token_b_amount {
             return Err(SwapError::ExceededSlippage.into());
         }
@@ -693,7 +699,6 @@ impl Processor {
             to_u64(pool_token_amount)?,
         )?;
 
-        let token_a_amount = std::cmp::min(token_a.amount, token_a_amount);
         if token_a_amount > 0 {
             Self::token_transfer(
                 swap_info.key,
@@ -705,7 +710,6 @@ impl Processor {
                 token_a_amount,
             )?;
         }
-        let token_b_amount = std::cmp::min(token_b.amount, token_b_amount);
         if token_b_amount > 0 {
             Self::token_transfer(
                 swap_info.key,
@@ -775,19 +779,22 @@ impl Processor {
 
         let pool_mint = Self::unpack_mint(pool_mint_info, &token_swap.token_program_id())?;
         let pool_mint_supply = to_u128(pool_mint.supply)?;
-
-        let pool_token_amount = token_swap
-            .swap_curve()
-            .trading_tokens_to_pool_tokens(
-                to_u128(source_token_amount)?,
-                to_u128(swap_token_a.amount)?,
-                to_u128(swap_token_b.amount)?,
-                pool_mint_supply,
-                trade_direction,
-                RoundDirection::Floor,
-                token_swap.fees(),
-            )
-            .ok_or(SwapError::ZeroTradingTokens)?;
+        let pool_token_amount = if pool_mint_supply > 0 {
+            token_swap
+                .swap_curve()
+                .trading_tokens_to_pool_tokens(
+                    to_u128(source_token_amount)?,
+                    to_u128(swap_token_a.amount)?,
+                    to_u128(swap_token_b.amount)?,
+                    pool_mint_supply,
+                    trade_direction,
+                    RoundDirection::Floor,
+                    token_swap.fees(),
+                )
+                .ok_or(SwapError::ZeroTradingTokens)?
+        } else {
+            token_swap.swap_curve().calculator.new_pool_supply()
+        };
 
         let pool_token_amount = to_u64(pool_token_amount)?;
         if pool_token_amount < minimum_pool_token_amount {
@@ -6729,5 +6736,177 @@ mod tests {
         let swap_token_b =
             spl_token::state::Account::unpack(&accounts.token_b_account.data).unwrap();
         assert_eq!(swap_token_b.amount, 0);
+    }
+
+    #[test]
+    fn test_withdraw_all_constant_price_curve() {
+        let trade_fee_numerator = 1;
+        let trade_fee_denominator = 10;
+        let owner_trade_fee_numerator = 1;
+        let owner_trade_fee_denominator = 30;
+        let owner_withdraw_fee_numerator = 0;
+        let owner_withdraw_fee_denominator = 30;
+        let host_fee_numerator = 10;
+        let host_fee_denominator = 100;
+
+        // initialize "unbalanced", so that withdrawing all will have some issues
+        // A: 1_000_000_000
+        // B: 2_000_000_000 (1_000 * 2_000_000)
+        let swap_token_a_amount = 1_000_000_000;
+        let swap_token_b_amount = 1_000;
+        let token_b_price = 2_000_000;
+        let fees = Fees {
+            trade_fee_numerator,
+            trade_fee_denominator,
+            owner_trade_fee_numerator,
+            owner_trade_fee_denominator,
+            owner_withdraw_fee_numerator,
+            owner_withdraw_fee_denominator,
+            host_fee_numerator,
+            host_fee_denominator,
+        };
+
+        let swap_curve = SwapCurve {
+            curve_type: CurveType::ConstantPrice,
+            calculator: Box::new(ConstantPriceCurve { token_b_price }),
+        };
+        let total_pool = swap_curve.calculator.new_pool_supply();
+        let user_key = Pubkey::new_unique();
+        let withdrawer_key = Pubkey::new_unique();
+
+        let mut accounts = SwapAccountInfo::new(
+            &user_key,
+            fees,
+            swap_curve,
+            swap_token_a_amount,
+            swap_token_b_amount,
+        );
+
+        accounts.initialize_swap().unwrap();
+
+        let (
+            token_a_key,
+            mut token_a_account,
+            token_b_key,
+            mut token_b_account,
+            _pool_key,
+            _pool_account,
+        ) = accounts.setup_token_accounts(&user_key, &withdrawer_key, 0, 0, 0);
+
+        let pool_key = accounts.pool_token_key;
+        let mut pool_account = accounts.pool_token_account.clone();
+
+        // WithdrawAllTokenTypes will not take all token A and B, since their
+        // ratio is unbalanced.  It will try to take 1_500_000_000 worth of
+        // each token, which means 1_500_000_000 token A, and 750 token B.
+        // With no slippage, this will leave 250 token B in the pool.
+        assert_eq!(
+            Err(SwapError::ExceededSlippage.into()),
+            accounts.withdraw_all_token_types(
+                &user_key,
+                &pool_key,
+                &mut pool_account,
+                &token_a_key,
+                &mut token_a_account,
+                &token_b_key,
+                &mut token_b_account,
+                total_pool.try_into().unwrap(),
+                swap_token_a_amount,
+                swap_token_b_amount,
+            )
+        );
+
+        accounts
+            .withdraw_all_token_types(
+                &user_key,
+                &pool_key,
+                &mut pool_account,
+                &token_a_key,
+                &mut token_a_account,
+                &token_b_key,
+                &mut token_b_account,
+                total_pool.try_into().unwrap(),
+                0,
+                0,
+            )
+            .unwrap();
+
+        let token_a = spl_token::state::Account::unpack(&token_a_account.data).unwrap();
+        assert_eq!(token_a.amount, swap_token_a_amount);
+        let token_b = spl_token::state::Account::unpack(&token_b_account.data).unwrap();
+        assert_eq!(token_b.amount, 750);
+        let swap_token_a =
+            spl_token::state::Account::unpack(&accounts.token_a_account.data).unwrap();
+        assert_eq!(swap_token_a.amount, 0);
+        let swap_token_b =
+            spl_token::state::Account::unpack(&accounts.token_b_account.data).unwrap();
+        assert_eq!(swap_token_b.amount, 250);
+
+        // deposit now, not enough to cover the tokens already in there
+        let token_b_amount = 10;
+        let token_a_amount = token_b_amount * token_b_price;
+        let (
+            token_a_key,
+            mut token_a_account,
+            token_b_key,
+            mut token_b_account,
+            pool_key,
+            mut pool_account,
+        ) = accounts.setup_token_accounts(
+            &user_key,
+            &withdrawer_key,
+            token_a_amount,
+            token_b_amount,
+            0,
+        );
+
+        assert_eq!(
+            Err(SwapError::ExceededSlippage.into()),
+            accounts.deposit_all_token_types(
+                &withdrawer_key,
+                &token_a_key,
+                &mut token_a_account,
+                &token_b_key,
+                &mut token_b_account,
+                &pool_key,
+                &mut pool_account,
+                1, // doesn't matter
+                token_a_amount,
+                token_b_amount,
+            )
+        );
+
+        // deposit enough tokens, success!
+        let token_b_amount = 125;
+        let token_a_amount = token_b_amount * token_b_price;
+        let (
+            token_a_key,
+            mut token_a_account,
+            token_b_key,
+            mut token_b_account,
+            pool_key,
+            mut pool_account,
+        ) = accounts.setup_token_accounts(
+            &user_key,
+            &withdrawer_key,
+            token_a_amount,
+            token_b_amount,
+            0,
+        );
+
+        accounts
+            .deposit_all_token_types(
+                &withdrawer_key,
+                &token_a_key,
+                &mut token_a_account,
+                &token_b_key,
+                &mut token_b_account,
+                &pool_key,
+                &mut pool_account,
+                1, // doesn't matter
+                token_a_amount,
+                token_b_amount,
+            )
+            .unwrap();
     }
 }
