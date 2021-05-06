@@ -1573,7 +1573,7 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
         return Err(LendingError::InvalidAccountInput.into());
     }
 
-    if &reserve.liquidity.fee_receiver != flash_loan_fees_receiver_account_info.key {
+    if &reserve.liquidity.fee_receiver != flash_loan_fee_receiver_account_info.key {
         msg!("Reserve liquidity fee receiver does not match the flash loan fee receiver provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
@@ -1671,7 +1671,7 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
     if owner_fee > 0 {
         spl_token_transfer(TokenTransferParams {
             source: source_liquidity_info.clone(),
-            destination: flash_loan_fees_receiver_account_info.clone(),
+            destination: flash_loan_fee_receiver_account_info.clone(),
             amount: owner_fee,
             authority: derived_lending_market_account_info.clone(),
             authority_signer_seeds,

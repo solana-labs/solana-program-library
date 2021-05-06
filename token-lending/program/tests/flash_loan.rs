@@ -14,6 +14,8 @@ use spl_token_lending::instruction::flash_loan;
 use spl_token_lending::math::Decimal;
 use spl_token_lending::processor::process_instruction;
 
+const INITIAL_RESERVE_LIQUIDITY: u64 = 1_000_000;
+
 #[tokio::test]
 async fn test_success() {
     let mut test = ProgramTest::new(
@@ -50,7 +52,7 @@ async fn test_success() {
         &lending_market,
         &user_accounts_owner,
         AddReserveArgs {
-            liquidity_amount: 1_000_000,
+            liquidity_amount: INITIAL_RESERVE_LIQUIDITY,
             liquidity_mint_pubkey: usdc_mint.pubkey,
             liquidity_mint_decimals: usdc_mint.decimals,
             config: reserve_config,
@@ -58,6 +60,7 @@ async fn test_success() {
             ..AddReserveArgs::default()
         },
     );
+
     let (receiver_authority_pubkey, _) =
         Pubkey::find_program_address(&[b"flashloan"], &receiver_program_id);
     let program_owned_token_account = add_account_for_program(
@@ -68,6 +71,13 @@ async fn test_success() {
     );
 
     let (mut banks_client, payer, recent_blockhash) = test.start().await;
+
+    let before_flash_loan_reserve_liquidity_token_balance =
+        get_token_balance(&mut banks_client, usdc_reserve.liquidity_supply_pubkey).await;
+    assert_eq!(before_flash_loan_reserve_liquidity_token_balance, INITIAL_RESERVE_LIQUIDITY);
+
+    let before_flash_loan_reserve =  usdc_reserve.get_state(&mut banks_client).await;
+    assert_eq!(before_flash_loan_reserve.liquidity.available_amount, INITIAL_RESERVE_LIQUIDITY);
 
     let before_flash_loan_token_balance =
         get_token_balance(&mut banks_client, program_owned_token_account).await;
@@ -96,6 +106,14 @@ async fn test_success() {
 
     transaction.sign(&[&payer], recent_blockhash);
     assert!(banks_client.process_transaction(transaction).await.is_ok());
+
+    let after_flash_loan_reserve_liquidity_token_balance =
+        get_token_balance(&mut banks_client, usdc_reserve.liquidity_supply_pubkey).await;
+    assert_eq!(after_flash_loan_reserve_liquidity_token_balance, INITIAL_RESERVE_LIQUIDITY);
+
+    let after_flash_loan_reserve =  usdc_reserve.get_state(&mut banks_client).await;
+    assert_eq!(after_flash_loan_reserve.liquidity.available_amount, INITIAL_RESERVE_LIQUIDITY);
+
     let after_flash_loan_token_balance =
         get_token_balance(&mut banks_client, program_owned_token_account).await;
     assert_eq!(after_flash_loan_token_balance, 0);
@@ -137,7 +155,7 @@ async fn test_failure() {
     let mut reserve_config = TEST_RESERVE_CONFIG;
     reserve_config.loan_to_value_ratio = 80;
     let flash_loan_amount = 1_000_000u64;
-    let (flash_loan_fee, host_fee) = TEST_RESERVE_CONFIG
+    let (flash_loan_fee, _host_fee) = TEST_RESERVE_CONFIG
         .fees
         .calculate_flash_loan_fees(Decimal::from(flash_loan_amount))
         .unwrap();
@@ -147,7 +165,7 @@ async fn test_failure() {
         &lending_market,
         &user_accounts_owner,
         AddReserveArgs {
-            liquidity_amount: 1_000_000,
+            liquidity_amount: INITIAL_RESERVE_LIQUIDITY,
             liquidity_mint_pubkey: usdc_mint.pubkey,
             liquidity_mint_decimals: usdc_mint.decimals,
             config: reserve_config,
