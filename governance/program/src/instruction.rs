@@ -36,7 +36,7 @@ pub enum GovernanceInstruction {
         /// It's the percentage of tokens out of the entire pool of governance tokens eligible to vote
         token_threshold_to_create_proposal: u8,
 
-        /// Governance name
+        /// UTF-8 encoded Governance name
         name: String,
     },
 
@@ -58,7 +58,7 @@ pub enum GovernanceInstruction {
     InitializeProposal {
         /// Link to gist explaining proposal
         description_link: String,
-        /// Name of the proposal
+        /// UTF-8 encoded name of the proposal
         name: String,
     },
 
