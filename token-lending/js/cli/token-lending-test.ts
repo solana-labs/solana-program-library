@@ -7,6 +7,11 @@ import { Token, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { LENDING_PROGRAM_ID, LendingMarket } from "../client";
 import { newAccountWithLamports } from "../client/util/new-account-with-lamports";
 import { url } from "../client/util/url";
+import {
+  BPFLoader,
+  Wallet,
+} from "solray";
+import fs from "fs"
 
 let connection: Connection | undefined;
 async function getConnection(): Promise<Connection> {
@@ -48,4 +53,19 @@ export async function createLendingMarket(): Promise<void> {
     lendingMarketOwner: payer.publicKey,
     payer,
   });
+}
+
+export async function deployPorgram(): Promise<void> {
+  const conn = await getConnection();
+  const programBinary = fs.readFileSync(process.env.TOKEN_LENDING_SO_FILE_PATH!)
+  const wallet = await Wallet.fromMnemonic(process.env.WALLET_MNEMONIC!, conn);
+  console.log(`deploying token lending...`)
+  const bpfLoader = new BPFLoader(wallet)
+
+  const account = await bpfLoader.load(programBinary)
+  console.log("program id is: ", account.publicKey.toString())
+}
+
+export async function createReserve(): Promise<void> {
+  const conn = await getConnection();
 }

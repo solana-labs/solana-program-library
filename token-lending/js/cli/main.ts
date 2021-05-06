@@ -2,19 +2,15 @@
  * Exercises the token-lending program
  */
 
-import { createLendingMarket } from "./token-lending-test";
+import { createLendingMarket, deployPorgram } from "./token-lending-test";
 
 async function main() {
   // These test cases are designed to run sequentially and in the following order
   console.log("Run test: createLendingMarket");
+  await deployPorgram();
   await createLendingMarket();
   console.log("Success\n");
 }
 
-main().then(
-  () => process.exit(),
-  (err) => {
-    console.error(err);
-    process.exit(-1);
-  }
-);
+
+main().catch((err) => console.log(err))

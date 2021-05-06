@@ -59,3 +59,5 @@ $ npm run cluster:localnet
 
 % solana program deploy /Users/wangge/Projects/rust/solana-program-library/target/deploy/spl_token_lending.so
 {"programId":"6isVZdDrR7dFpCjNJWvcBCGbUH3t4YdZSWxohRN5nRPE"}
+
+

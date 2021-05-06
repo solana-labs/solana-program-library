@@ -38,7 +38,8 @@
     "@solana/web3.js": "^1.7.0",
     "bn.js": "^5.2.0",
     "keccak": "^3.0.1",
-    "mkdirp": "^1.0.4"
+    "mkdirp": "^1.0.4",
+    "solray": "^0.0.1"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^18.0.0",
