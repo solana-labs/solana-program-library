@@ -529,7 +529,7 @@ There is a rich set of JSON RPC methods available for use with SPL Token:
 
 See https://docs.solana.com/apps/jsonrpc-api for more details.
 
-Additionally the versatile `getProgramAcccounts` JSON RPC method can be employed in various ways to fetch SPL Token accounts of interest.
+Additionally the versatile `getProgramAccounts` JSON RPC method can be employed in various ways to fetch SPL Token accounts of interest.
 
 ### Finding all token accounts for a specific mint
 
