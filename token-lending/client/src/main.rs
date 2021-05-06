@@ -36,6 +36,7 @@ pub fn main() {
     let quote_token_mint = usdc_mint_pubkey;
     let (lending_market_owner, lending_market_pubkey, _lending_market) =
         create_lending_market(&mut client, quote_token_mint, &payer);
+    println!("Created lending market: {}", lending_market_pubkey);
 
     let usdc_liquidity_source = Pubkey::from_str(USDC_TOKEN_ACCOUNT).unwrap();
     let usdc_reserve_config = ReserveConfig {
@@ -59,12 +60,13 @@ pub fn main() {
         &lending_market_owner,
         None,
         usdc_liquidity_source,
+        usdc_mint_pubkey,
         &payer,
     );
 
     println!("Created usdc reserve with pubkey: {}", usdc_reserve_pubkey);
 
-    let sol_liquidity_source = Pubkey::from_str(WRAPPED_SOL_TOKEN_ACCOUNT).unwrap();
+    let sol_liquidity_source = Pubkey::from_str(SOL_TOKEN_ACCOUNT).unwrap();
     let sol_reserve_config = ReserveConfig {
         optimal_utilization_rate: 0,
         loan_to_value_ratio: 75,
@@ -86,6 +88,7 @@ pub fn main() {
         &lending_market_owner,
         Some(sol_oracle_pubkey),
         sol_liquidity_source,
+        usdc_mint_pubkey,
         &payer,
     );
 
@@ -113,6 +116,7 @@ pub fn main() {
         &lending_market_owner,
         Some(srm_oracle_pubkey),
         srm_liquidity_source,
+        usdc_mint_pubkey,
         &payer,
     );
 
@@ -159,8 +163,9 @@ pub fn create_reserve(
     config: ReserveConfig,
     lending_market_pubkey: Pubkey,
     lending_market_owner: &Keypair,
-    dex_market_pubkey: Option<Pubkey>,
+    oracle_pubkey: Option<Pubkey>,
     liquidity_source_pubkey: Pubkey,
+    quote_token_mint_pubkey: Pubkey,
     payer: &Keypair,
 ) -> (Pubkey, Reserve) {
     let reserve_keypair = Keypair::new();
@@ -239,6 +244,7 @@ pub fn create_reserve(
             &reserve_keypair,
             &collateral_mint_keypair,
             &collateral_supply_keypair,
+            &liquidity_fees_receiver_keypair,
             &liquidity_supply_keypair,
             &user_collateral_token_keypair,
         ],
@@ -270,11 +276,11 @@ pub fn create_reserve(
                 liquidity_fees_receiver_keypair.pubkey(),
                 collateral_mint_keypair.pubkey(),
                 collateral_supply_keypair.pubkey(),
-                usdc_mint_pubkey,
+                quote_token_mint_pubkey,
                 lending_market_pubkey,
                 lending_market_owner.pubkey(),
                 user_transfer_authority.pubkey(),
-                dex_market_pubkey,
+                oracle_pubkey,
             ),
         ],
         Some(&payer.pubkey()),
