@@ -22,15 +22,19 @@ pub enum ExampleInstruction {
     /// InitStorage
     ///
     ///   0. `[w]` Uninitialized heap account
-    ///   1. `[r]` Rent
+    ///   1. `[r]` Authority
+    ///   2. `[r]` Heap-storage program
+    ///   3. `[r]` Rent
     InitStorage,
 
     /// Add
     ///
-    ///   0. `[w]` Uninitialized account
+    ///   0. `[w]` Uninitialized data account
     ///   1. `[w]` Created node account
     ///   2. `[w]` Heap account
-    ///   3. `[r]` Rent
+    ///   3. `[r]` Authority
+    ///   4. `[r]` Heap-storage program
+    ///   5. `[r]` Rent
     Add(Add),
 
     /// Remove
@@ -39,15 +43,19 @@ pub enum ExampleInstruction {
     ///   1. `[w]` Heap account
     ///   2. `[w]` Node account
     ///   3. `[w]` Leaf account
+    ///   4. `[r]` Authority
+    ///   5. `[r]` Heap-storage program
     Remove,
 
     /// Sort
     ///
-    ///   0. `[w]` Parent node
-    ///   1. `[r]` Parent nodes data acc
-    ///   2. `[w]` Child node
-    ///   3. `[r]` Child nodes data acc
-    ///   4. `[]` Heap account
+    ///   0. `[w]` Heap account
+    ///   1. `[w]` Parent node
+    ///   2. `[r]` Parent nodes data acc
+    ///   3. `[w]` Child node
+    ///   4. `[r]` Child nodes data acc
+    ///   5. `[r]` Authority
+    ///   6. `[r]` Heap-storage program
     Sort,
 }
 

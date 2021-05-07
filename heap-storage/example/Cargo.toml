@@ -1,5 +1,5 @@
 [package]
-name = "solana-program-template"
+name = "solana-program-example"
 version = "0.1.0"
 edition = "2018"
 

@@ -2,7 +2,7 @@
 
 use borsh::BorshDeserialize;
 use solana_program::{pubkey::Pubkey, system_instruction};
-use solana_program_template::*;
+use solana_program_example::*;
 use solana_program_test::*;
 use solana_sdk::{
     account::Account,
@@ -13,7 +13,7 @@ use solana_sdk::{
 
 pub fn program_test() -> ProgramTest {
     let mut program = ProgramTest::new(
-        "solana_program_template",
+        "solana_program_example",
         id(),
         processor!(processor::Processor::process_instruction),
     );
@@ -351,7 +351,7 @@ async fn test_sort_nodes() {
     )
     .await
     .unwrap();
-    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
     let heap_account_data = get_account(&mut program_context, &heap_acc.pubkey()).await;
     let heap =
         heap_storage::state::Heap::try_from_slice(&heap_account_data.data.as_slice()).unwrap();
@@ -401,4 +401,15 @@ async fn test_sort_nodes() {
     )
     .await
     .unwrap();
+
+    let first_node_info = get_account(&mut program_context, &first_node_key).await;
+    let first_node_info =
+        heap_storage::state::Node::try_from_slice(&first_node_info.data.as_slice()).unwrap();
+
+    let second_node_info = get_account(&mut program_context, &second_node_key).await;
+    let second_node_info =
+        heap_storage::state::Node::try_from_slice(&second_node_info.data.as_slice()).unwrap();
+
+    assert_eq!(first_node_info.data, second_data_acc.pubkey().to_bytes());
+    assert_eq!(second_node_info.data, first_data_acc.pubkey().to_bytes());
 }

@@ -1,4 +1,4 @@
-This is example Solana program to show how to use heap-program
+This is example Solana program to show how to use heap-storage
 
 ### Build and test for program compiled natively
 ```

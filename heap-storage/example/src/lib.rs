@@ -1,6 +1,6 @@
 #![deny(missing_docs)]
 
-//! A minimal Solana program template
+//! A minimal Solana program example
 
 pub mod error;
 pub mod instruction;
