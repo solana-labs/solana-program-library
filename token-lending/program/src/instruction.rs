@@ -275,8 +275,9 @@ pub enum LendingInstruction {
     ///
     /// Accounts expected by this instruction:
     ///
-    ///   0. `[writable]` Source liquidity (reserve liquidity supply), minted by reserve liquidity
-    ///                     mint.
+    ///   0. `[writable]` Source liquidity token account.
+    ///                     Minted by reserve liquidity mint.
+    ///                     Must match the reserve liquidity supply.
     ///   1. `[writable]` Destination liquidity account.
     ///   2. `[writable]` Reserve account.
     ///   3. `[]` Lending market account.
