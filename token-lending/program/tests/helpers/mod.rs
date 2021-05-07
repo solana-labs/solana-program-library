@@ -774,15 +774,6 @@ impl TestReserve {
         let rent = banks_client.get_rent().await.unwrap();
         let mut transaction = Transaction::new_with_payer(
             &[
-                approve(
-                    &spl_token::id(),
-                    &user_liquidity_pubkey,
-                    &user_transfer_authority_keypair.pubkey(),
-                    &user_accounts_owner.pubkey(),
-                    &[],
-                    liquidity_amount,
-                )
-                .unwrap(),
                 create_account(
                     &payer.pubkey(),
                     &collateral_mint_keypair.pubkey(),
@@ -832,6 +823,15 @@ impl TestReserve {
                     Reserve::LEN as u64,
                     &spl_token_lending::id(),
                 ),
+                approve(
+                    &spl_token::id(),
+                    &user_liquidity_pubkey,
+                    &user_transfer_authority_keypair.pubkey(),
+                    &user_accounts_owner.pubkey(),
+                    &[],
+                    liquidity_amount,
+                )
+                    .unwrap(),
                 init_reserve(
                     spl_token_lending::id(),
                     liquidity_amount,

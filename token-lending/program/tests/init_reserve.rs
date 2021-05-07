@@ -231,3 +231,64 @@ async fn test_invalid_fees() {
         );
     }
 }
+
+#[tokio::test]
+async fn test_usdc_success() {
+    let mut test = ProgramTest::new(
+        "spl_token_lending",
+        spl_token_lending::id(),
+        processor!(process_instruction),
+    );
+
+    // limit to track compute unit increase
+    test.set_bpf_compute_max_units(66_000);
+
+    let user_accounts_owner = Keypair::new();
+    let usdc_mint = add_usdc_mint(&mut test);
+    let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
+
+    let (mut banks_client, payer, _recent_blockhash) = test.start().await;
+
+    const RESERVE_AMOUNT: u64 = 42;
+
+    let usdc_user_liquidity_account = create_and_mint_to_token_account(
+        &mut banks_client,
+        usdc_mint.pubkey,
+        Some(&usdc_mint.authority),
+        &payer,
+        user_accounts_owner.pubkey(),
+        RESERVE_AMOUNT,
+    )
+        .await;
+
+    let usdc_reserve = TestReserve::init(
+        "usdc".to_owned(),
+        &mut banks_client,
+        &lending_market,
+        RESERVE_AMOUNT,
+        TEST_RESERVE_CONFIG,
+        usdc_mint.pubkey,
+        usdc_user_liquidity_account,
+        &payer,
+        &user_accounts_owner,
+        None,
+    )
+        .await
+        .unwrap();
+
+    usdc_reserve.validate_state(&mut banks_client).await;
+
+    let usdc_liquidity_supply =
+        get_token_balance(&mut banks_client, usdc_reserve.liquidity_supply_pubkey).await;
+    assert_eq!(usdc_liquidity_supply, RESERVE_AMOUNT);
+    let user_usdc_balance =
+        get_token_balance(&mut banks_client, usdc_reserve.user_liquidity_pubkey).await;
+    assert_eq!(user_usdc_balance, 0);
+    let user_usdc_collateral_balance =
+        get_token_balance(&mut banks_client, usdc_reserve.user_collateral_pubkey).await;
+    assert_eq!(
+        user_usdc_collateral_balance,
+        RESERVE_AMOUNT * INITIAL_COLLATERAL_RATIO
+    );
+}
+
