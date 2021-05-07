@@ -259,7 +259,7 @@ async fn test_usdc_success() {
         user_accounts_owner.pubkey(),
         RESERVE_AMOUNT,
     )
-        .await;
+    .await;
 
     let usdc_reserve = TestReserve::init(
         "usdc".to_owned(),
@@ -273,8 +273,8 @@ async fn test_usdc_success() {
         &user_accounts_owner,
         None,
     )
-        .await
-        .unwrap();
+    .await
+    .unwrap();
 
     usdc_reserve.validate_state(&mut banks_client).await;
 
@@ -291,4 +291,3 @@ async fn test_usdc_success() {
         RESERVE_AMOUNT * INITIAL_COLLATERAL_RATIO
     );
 }
-
