@@ -1524,9 +1524,9 @@ fn process_liquidate_obligation(
     Ok(())
 }
 
-const FLASH_LOAN_EXECUTE_OPERATION_DATA_SIZE: usize = 9;
+const RECEIVE_FLASH_LOAN_INSTRUCTION_DATA_SIZE: usize = 9;
 
-const FLASH_LOAN_EXECUTE_OPERATION_TAG: u8 = 0u8;
+const RECEIVE_FLASH_LOAN_INSTRUCTION_TAG: u8 = 0u8;
 
 #[inline(never)] // avoid stack frame limit
 fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]) -> ProgramResult {
@@ -1567,7 +1567,6 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
         msg!("Invalid reserve lending market account");
         return Err(LendingError::InvalidAccountInput.into());
     }
-
     if &reserve.liquidity.supply_pubkey != source_liquidity_info.key {
         msg!("Reserve liquidity supply must be used as the source liquidity provided");
         return Err(LendingError::InvalidAccountInput.into());
@@ -1594,6 +1593,7 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
         .config
         .fees
         .calculate_flash_loan_fees(flash_loan_amount_decimal)?;
+
     let balance_before_flash_loan =
         Account::unpack_from_slice(&source_liquidity_info.try_borrow_data()?)?.amount;
     let expected_balance_after_flash_loan = balance_before_flash_loan
@@ -1616,17 +1616,20 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
     let mut data = Vec::with_capacity(FLASH_LOAN_EXECUTE_OPERATION_DATA_SIZE);
     data.push(FLASH_LOAN_EXECUTE_OPERATION_TAG);
     data.extend_from_slice(&returned_amount_required.to_le_bytes());
+
     let mut flash_loan_instruction_accounts = vec![
         AccountMeta::new(*destination_liquidity_info.key, false),
         AccountMeta::new(*source_liquidity_info.key, false),
         AccountMeta::new_readonly(*token_program_id.key, false),
     ];
+
     let mut flash_loan_instruction_account_infos = vec![
         destination_liquidity_info.clone(),
         flash_loan_receiver_program_info.clone(),
         source_liquidity_info.clone(),
         token_program_id.clone(),
     ];
+
     for flash_loan_receiver_additional_account_info in account_info_iter {
         flash_loan_instruction_account_infos
             .push(flash_loan_receiver_additional_account_info.clone());
@@ -1647,14 +1650,10 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
         &flash_loan_instruction_account_infos[..],
     )?;
 
-    let actual_total_balance_after_flash_loan =
+    let actual_balance_after_flash_loan =
         Account::unpack_from_slice(&source_liquidity_info.try_borrow_data()?)?.amount;
-    if actual_total_balance_after_flash_loan < expected_balance_after_flash_loan {
-        msg!(
-            "Insufficient returned liquidity for reserve after flash loan: {}, it requires: {}",
-            actual_total_balance_after_flash_loan,
-            expected_balance_after_flash_loan
-        );
+    if actual_balance_after_flash_loan < expected_balance_after_flash_loan {
+        msg!("Insufficient reserve liquidity after flash loan);
         return Err(LendingError::NotEnoughLiquidityAfterFlashLoan.into());
     }
     reserve.liquidity.repay(flash_loan_amount, flash_loan_amount_decimal)?;

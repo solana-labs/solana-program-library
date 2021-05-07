@@ -278,15 +278,17 @@ pub enum LendingInstruction {
     ///   0. `[writable]` Source liquidity token account.
     ///                     Minted by reserve liquidity mint.
     ///                     Must match the reserve liquidity supply.
-    ///   1. `[writable]` Destination liquidity account.
+    ///   1. `[writable]` Destination liquidity token account.
+    ///                     Minted by reserve liquidity mint.
     ///   2. `[writable]` Reserve account.
     ///   3. `[]` Lending market account.
     ///   4. `[]` Derived lending market authority.
-    ///   5. `[]` Flash Loan Receiver Program Account, which should implement an instruction that
-    ///             has tag of 0. This function needs to return the fund back to the source
-    ///             liquidity before the end of its execution.
+    ///   5. `[]` Flash loan receiver program account. 
+    ///             Must implement an instruction that has tag of 0 and a signature of `(repay_amount: u64)`
+    ///             This instruction must return the amount to the source liquidity account.
     ///   6. `[]` Token program id.
-    ///   7. `[writable]` Flash loan fees receiver, must be the fee account specified at `InitReserve`.
+    ///   7. `[writable]` Flash loan fee receiver account.
+    ///                     Must match the reserve liquidity fee receiver.
     ///   8. `[writable]` Host fee receiver.
     ///   .. `[any]` Additional accounts expected by the receiving program's `ReceiveFlashLoan` instruction.
     ///

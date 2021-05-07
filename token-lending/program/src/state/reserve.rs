@@ -1,5 +1,4 @@
 use super::*;
-use crate::state::FeeCalculation::Exclusive;
 use crate::{
     error::LendingError,
     math::{Decimal, Rate, TryAdd, TryDiv, TryMul, TrySub},
@@ -645,7 +644,7 @@ impl ReserveFees {
         &self,
         flash_loan_amount: Decimal,
     ) -> Result<(u64, u64), ProgramError> {
-        self.calculate_fees(flash_loan_amount, self.flash_loan_fee_wad, Exclusive)
+        self.calculate_fees(flash_loan_amount, self.flash_loan_fee_wad, FeeCalculation::Exclusive)
     }
 
     fn calculate_fees(
