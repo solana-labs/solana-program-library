@@ -1,5 +1,4 @@
 //! Program state processor
-
 use crate::{
     error::LendingError,
     instruction::LendingInstruction,
@@ -17,6 +16,7 @@ use solana_program::{
     account_info::{next_account_info, AccountInfo},
     decode_error::DecodeError,
     entrypoint::ProgramResult,
+    instruction::Instruction,
     msg,
     program::{invoke, invoke_signed},
     program_error::{PrintProgramError, ProgramError},
@@ -25,7 +25,8 @@ use solana_program::{
     pubkey::Pubkey,
     sysvar::{clock::Clock, rent::Rent, Sysvar},
 };
-use spl_token::state::Mint;
+use spl_token::solana_program::instruction::AccountMeta;
+use spl_token::state::{Account, Mint};
 
 /// Processes an instruction
 pub fn process_instruction(
@@ -89,6 +90,10 @@ pub fn process_instruction(
         LendingInstruction::RefreshObligation => {
             msg!("Instruction: Refresh Obligation");
             process_refresh_obligation(program_id, accounts)
+        }
+        LendingInstruction::FlashLoan { amount } => {
+            msg!("Instruction: Flash Loan");
+            process_flash_loan(program_id, amount, accounts)
         }
     }
 }
@@ -1515,6 +1520,169 @@ fn process_liquidate_obligation(
         authority_signer_seeds,
         token_program: token_program_id.clone(),
     })?;
+
+    Ok(())
+}
+
+const RECEIVE_FLASH_LOAN_INSTRUCTION_DATA_SIZE: usize = 9;
+
+const RECEIVE_FLASH_LOAN_INSTRUCTION_TAG: u8 = 0u8;
+
+#[inline(never)] // avoid stack frame limit
+fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]) -> ProgramResult {
+    if amount == 0 {
+        msg!("Flash loan amount cannot be zero");
+        return Err(LendingError::InvalidAmount.into());
+    }
+
+    let account_info_iter = &mut accounts.iter();
+    let source_liquidity_info = next_account_info(account_info_iter)?;
+    let destination_liquidity_info = next_account_info(account_info_iter)?;
+    let reserve_account_info = next_account_info(account_info_iter)?;
+    let lending_market_info = next_account_info(account_info_iter)?;
+    let derived_lending_market_account_info = next_account_info(account_info_iter)?;
+    let flash_loan_receiver_program_info = next_account_info(account_info_iter)?;
+    let flash_loan_fee_receiver_account_info = next_account_info(account_info_iter)?;
+    let host_fee_recipient = next_account_info(account_info_iter)?;
+    let token_program_id = next_account_info(account_info_iter)?;
+
+    let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
+    if lending_market_info.owner != program_id {
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+
+    let authority_signer_seeds = &[
+        lending_market_info.key.as_ref(),
+        &[lending_market.bump_seed],
+    ];
+    let lending_market_authority_pubkey =
+        Pubkey::create_program_address(authority_signer_seeds, program_id)?;
+
+    if derived_lending_market_account_info.key != &lending_market_authority_pubkey {
+        return Err(LendingError::InvalidMarketAuthority.into());
+    }
+
+    let mut reserve = Reserve::unpack(&reserve_account_info.data.borrow())?;
+    if &reserve.lending_market != lending_market_info.key {
+        msg!("Invalid reserve lending market account");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+    if &reserve.liquidity.supply_pubkey != source_liquidity_info.key {
+        msg!("Reserve liquidity supply must be used as the source liquidity provided");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+
+    if &reserve.liquidity.fee_receiver != flash_loan_fee_receiver_account_info.key {
+        msg!("Reserve liquidity fee receiver does not match the flash loan fee receiver provided");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+
+    let flash_loan_amount = if amount == u64::MAX {
+        reserve.liquidity.available_amount
+    } else {
+        amount
+    };
+
+    if reserve.liquidity.available_amount < flash_loan_amount {
+        msg!("Flash loan amount cannot exceed available amount");
+        return Err(LendingError::InsufficientLiquidity.into());
+    }
+
+    let flash_loan_amount_decimal = Decimal::from(flash_loan_amount);
+    let (origination_fee, host_fee) = reserve
+        .config
+        .fees
+        .calculate_flash_loan_fees(flash_loan_amount_decimal)?;
+
+    let balance_before_flash_loan =
+        Account::unpack_from_slice(&source_liquidity_info.try_borrow_data()?)?.amount;
+    let expected_balance_after_flash_loan = balance_before_flash_loan
+        .checked_add(origination_fee)
+        .ok_or(LendingError::MathOverflow)?;
+    let returned_amount_required = flash_loan_amount
+        .checked_add(origination_fee)
+        .ok_or(LendingError::MathOverflow)?;
+
+    reserve.liquidity.borrow(flash_loan_amount_decimal)?;
+    spl_token_transfer(TokenTransferParams {
+        source: source_liquidity_info.clone(),
+        destination: destination_liquidity_info.clone(),
+        amount: flash_loan_amount,
+        authority: derived_lending_market_account_info.clone(),
+        authority_signer_seeds,
+        token_program: token_program_id.clone(),
+    })?;
+
+    let mut data = Vec::with_capacity(RECEIVE_FLASH_LOAN_INSTRUCTION_DATA_SIZE);
+    data.push(RECEIVE_FLASH_LOAN_INSTRUCTION_TAG);
+    data.extend_from_slice(&returned_amount_required.to_le_bytes());
+
+    let mut flash_loan_instruction_accounts = vec![
+        AccountMeta::new(*destination_liquidity_info.key, false),
+        AccountMeta::new(*source_liquidity_info.key, false),
+        AccountMeta::new_readonly(*token_program_id.key, false),
+    ];
+
+    let mut flash_loan_instruction_account_infos = vec![
+        destination_liquidity_info.clone(),
+        flash_loan_receiver_program_info.clone(),
+        source_liquidity_info.clone(),
+        token_program_id.clone(),
+    ];
+
+    for flash_loan_receiver_additional_account_info in account_info_iter {
+        flash_loan_instruction_account_infos
+            .push(flash_loan_receiver_additional_account_info.clone());
+        flash_loan_instruction_accounts.push(AccountMeta {
+            pubkey: *flash_loan_receiver_additional_account_info.key,
+            is_signer: flash_loan_receiver_additional_account_info.is_signer,
+            is_writable: flash_loan_receiver_additional_account_info.is_writable,
+        });
+    }
+
+    let flash_loan_receiver_instruction = Instruction {
+        program_id: *flash_loan_receiver_program_info.key,
+        accounts: flash_loan_instruction_accounts,
+        data,
+    };
+    invoke(
+        &flash_loan_receiver_instruction,
+        &flash_loan_instruction_account_infos[..],
+    )?;
+
+    let actual_balance_after_flash_loan =
+        Account::unpack_from_slice(&source_liquidity_info.try_borrow_data()?)?.amount;
+    if actual_balance_after_flash_loan < expected_balance_after_flash_loan {
+        msg!("Insufficient reserve liquidity after flash loan");
+        return Err(LendingError::NotEnoughLiquidityAfterFlashLoan.into());
+    }
+    reserve.liquidity.repay(flash_loan_amount, flash_loan_amount_decimal)?;
+
+    let mut owner_fee = origination_fee;
+    if host_fee > 0 {
+        owner_fee = owner_fee
+            .checked_sub(host_fee)
+            .ok_or(LendingError::MathOverflow)?;
+        spl_token_transfer(TokenTransferParams {
+            source: source_liquidity_info.clone(),
+            destination: host_fee_recipient.clone(),
+            amount: host_fee,
+            authority: derived_lending_market_account_info.clone(),
+            authority_signer_seeds,
+            token_program: token_program_id.clone(),
+        })?;
+    }
+
+    if owner_fee > 0 {
+        spl_token_transfer(TokenTransferParams {
+            source: source_liquidity_info.clone(),
+            destination: flash_loan_fee_receiver_account_info.clone(),
+            amount: owner_fee,
+            authority: derived_lending_market_account_info.clone(),
+            authority_signer_seeds,
+            token_program: token_program_id.clone(),
+        })?;
+    }
 
     Ok(())
 }

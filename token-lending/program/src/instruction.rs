@@ -269,6 +269,47 @@ pub enum LendingInstruction {
         /// Amount of liquidity to repay - u64::MAX for up to 100% of borrowed amount
         liquidity_amount: u64,
     },
+
+    // 13
+    /// Make a flash loan.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]` Source liquidity token account.
+    ///                     Minted by reserve liquidity mint.
+    ///                     Must match the reserve liquidity supply.
+    ///   1. `[writable]` Destination liquidity token account.
+    ///                     Minted by reserve liquidity mint.
+    ///   2. `[writable]` Reserve account.
+    ///   3. `[]` Lending market account.
+    ///   4. `[]` Derived lending market authority.
+    ///   5. `[]` Flash loan receiver program account. 
+    ///             Must implement an instruction that has tag of 0 and a signature of `(repay_amount: u64)`
+    ///             This instruction must return the amount to the source liquidity account.
+    ///   6. `[]` Token program id.
+    ///   7. `[writable]` Flash loan fee receiver account.
+    ///                     Must match the reserve liquidity fee receiver.
+    ///   8. `[writable]` Host fee receiver.
+    ///   .. `[any]` Additional accounts expected by the receiving program's `ReceiveFlashLoan` instruction.
+    ///
+    ///   The flash loan receiver program that is to be invoked should contain an instruction with
+    ///   tag `0` and accept the total amount (including fee) that needs to be returned back after
+    ///   its execution has completed.
+    ///
+    ///   Flash loan receiver should have an instruction with the following signature:
+    ///
+    ///   0. `[writable]` Source liquidity (matching the destination from above).
+    ///   1. `[writable]` Destination liquidity (matching the source from above).
+    ///   2. `[]` Token program id
+    ///   .. `[any]` Additional accounts provided to the lending program's `FlashLoan` instruction above.
+    ///   ReceiveFlashLoan {
+    ///       // Amount that is loaned to the receiver program
+    ///       amount: u64
+    ///   }
+    FlashLoan {
+        /// The amount that is to be borrowed - u64::MAX for up to 100% of available liquidity
+        amount: u64,
+    },
 }
 
 impl LendingInstruction {
@@ -296,6 +337,7 @@ impl LendingInstruction {
                 let (optimal_borrow_rate, rest) = Self::unpack_u8(rest)?;
                 let (max_borrow_rate, rest) = Self::unpack_u8(rest)?;
                 let (borrow_fee_wad, rest) = Self::unpack_u64(rest)?;
+                let (flash_loan_fee_wad, rest) = Self::unpack_u64(rest)?;
                 let (host_fee_percentage, _rest) = Self::unpack_u8(rest)?;
                 Self::InitReserve {
                     liquidity_amount,
@@ -309,6 +351,7 @@ impl LendingInstruction {
                         max_borrow_rate,
                         fees: ReserveFees {
                             borrow_fee_wad,
+                            flash_loan_fee_wad,
                             host_fee_percentage,
                         },
                     },
@@ -344,6 +387,10 @@ impl LendingInstruction {
             12 => {
                 let (liquidity_amount, _rest) = Self::unpack_u64(rest)?;
                 Self::LiquidateObligation { liquidity_amount }
+            }
+            13 => {
+                let (amount, _rest) = Self::unpack_u64(rest)?;
+                Self::FlashLoan { amount }
             }
             _ => {
                 msg!("Instruction cannot be unpacked");
@@ -416,6 +463,7 @@ impl LendingInstruction {
                         fees:
                             ReserveFees {
                                 borrow_fee_wad,
+                                flash_loan_fee_wad,
                                 host_fee_percentage,
                             },
                     },
@@ -430,6 +478,7 @@ impl LendingInstruction {
                 buf.extend_from_slice(&optimal_borrow_rate.to_le_bytes());
                 buf.extend_from_slice(&max_borrow_rate.to_le_bytes());
                 buf.extend_from_slice(&borrow_fee_wad.to_le_bytes());
+                buf.extend_from_slice(&flash_loan_fee_wad.to_le_bytes());
                 buf.extend_from_slice(&host_fee_percentage.to_le_bytes());
             }
             Self::RefreshReserve => {
@@ -468,6 +517,10 @@ impl LendingInstruction {
             Self::LiquidateObligation { liquidity_amount } => {
                 buf.push(12);
                 buf.extend_from_slice(&liquidity_amount.to_le_bytes());
+            }
+            Self::FlashLoan { amount } => {
+                buf.push(13);
+                buf.extend_from_slice(&amount.to_le_bytes());
             }
         }
         buf
@@ -882,5 +935,39 @@ pub fn liquidate_obligation(
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
         data: LendingInstruction::LiquidateObligation { liquidity_amount }.pack(),
+    }
+}
+
+/// Creates a `FlashLoan` instruction.
+#[allow(clippy::too_many_arguments)]
+pub fn flash_loan(
+    program_id: Pubkey,
+    amount: u64,
+    reserve_liquidity_pubkey: Pubkey,
+    destination_liquidity_pubkey: Pubkey,
+    reserve_pubkey: Pubkey,
+    lending_market_pubkey: Pubkey,
+    derived_lending_market_authority_pubkey: Pubkey,
+    flash_loan_receiver_pubkey: Pubkey,
+    flash_loan_fee_receiver_pubkey: Pubkey,
+    host_fee_receiver_pubkey: Pubkey,
+    flash_loan_receiver_program_account_meta: Vec<AccountMeta>,
+) -> Instruction {
+    let mut accounts = vec![
+        AccountMeta::new(reserve_liquidity_pubkey, false),
+        AccountMeta::new(destination_liquidity_pubkey, false),
+        AccountMeta::new_readonly(reserve_pubkey, false),
+        AccountMeta::new_readonly(lending_market_pubkey, false),
+        AccountMeta::new_readonly(derived_lending_market_authority_pubkey, false),
+        AccountMeta::new_readonly(flash_loan_receiver_pubkey, false),
+        AccountMeta::new(flash_loan_fee_receiver_pubkey, false),
+        AccountMeta::new(host_fee_receiver_pubkey, false),
+        AccountMeta::new_readonly(spl_token::id(), false),
+    ];
+    accounts.extend(flash_loan_receiver_program_account_meta);
+    Instruction {
+        program_id,
+        accounts,
+        data: LendingInstruction::FlashLoan { amount }.pack(),
     }
 }
