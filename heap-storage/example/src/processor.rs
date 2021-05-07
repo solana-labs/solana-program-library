@@ -131,15 +131,15 @@ impl Processor {
 
         // Here we set conditions for swap such as Heap-storage can swap any requested elements
         if parent_data_acc.value < child_data_acc.value {
-            return Err(ExampleProgramError::ParentsValueLessThanChild.into());
+            msg!("Nodes are already in correct order");
+        } else {
+            Self::invoke_swap_node(
+                heap_account_info.clone(),
+                parent_node_acc_info.clone(),
+                child_node_acc_info.clone(),
+                authority_account_info.clone(),
+            )?;
         }
-
-        Self::invoke_swap_node(
-            heap_account_info.clone(),
-            parent_node_acc_info.clone(),
-            child_node_acc_info.clone(),
-            authority_account_info.clone(),
-        )?;
 
         Ok(())
     }
