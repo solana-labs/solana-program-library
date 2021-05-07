@@ -301,8 +301,11 @@ pub enum LendingInstruction {
     ///   0. `[writable]` Source liquidity (matching the destination from above).
     ///   1. `[writable]` Destination liquidity (matching the source from above).
     ///   2. `[]` Token program id
-    ///   ..  `[any]` Additional accounts provided to the lending program's `FlashLoan` instruction above.
-    ///
+    ///   .. `[any]` Additional accounts provided to the lending program's `FlashLoan` instruction above.
+    ///   ReceiveFlashLoan {
+    ///       // Amount that is loaned to the receiver program
+    ///       amount: u64
+    ///   }
     FlashLoan {
         /// The amount that is to be borrowed - u64::MAX for up to 100% of available liquidity
         amount: u64,

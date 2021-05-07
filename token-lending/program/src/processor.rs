@@ -1613,8 +1613,8 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
         token_program: token_program_id.clone(),
     })?;
 
-    let mut data = Vec::with_capacity(FLASH_LOAN_EXECUTE_OPERATION_DATA_SIZE);
-    data.push(FLASH_LOAN_EXECUTE_OPERATION_TAG);
+    let mut data = Vec::with_capacity(RECEIVE_FLASH_LOAN_INSTRUCTION_DATA_SIZE);
+    data.push(RECEIVE_FLASH_LOAN_INSTRUCTION_TAG);
     data.extend_from_slice(&returned_amount_required.to_le_bytes());
 
     let mut flash_loan_instruction_accounts = vec![
@@ -1653,7 +1653,7 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
     let actual_balance_after_flash_loan =
         Account::unpack_from_slice(&source_liquidity_info.try_borrow_data()?)?.amount;
     if actual_balance_after_flash_loan < expected_balance_after_flash_loan {
-        msg!("Insufficient reserve liquidity after flash loan);
+        msg!("Insufficient reserve liquidity after flash loan");
         return Err(LendingError::NotEnoughLiquidityAfterFlashLoan.into());
     }
     reserve.liquidity.repay(flash_loan_amount, flash_loan_amount_decimal)?;

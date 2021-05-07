@@ -15,14 +15,14 @@ use std::convert::TryInto;
 use thiserror::Error;
 
 pub enum FlashLoanReceiverInstruction {
-    /// Execute the operation that is needed after flash loan
+    /// Receive a flash loan and perform user-defined operation and finally return the fund back.
     ///
     /// Accounts expected:
     ///
-    /// 0. `[writable]` The source liquidity token account.
-    /// 1. `[writable]` The destination liquidity token account (i.e. reserve liquidity token account).
-    /// 2. `[]` The token program
-    /// 3. `[]` program derived account.
+    ///   0. `[writable]` Source liquidity (matching the destination from above).
+    ///   1. `[writable]` Destination liquidity (matching the source from above).
+    ///   2. `[]` Token program id
+    ///   .. `[any]` Additional accounts provided to the lending program's `FlashLoan` instruction above.
     ReceiveFlashLoan {
         /// The amount that is loaned
         amount: u64,

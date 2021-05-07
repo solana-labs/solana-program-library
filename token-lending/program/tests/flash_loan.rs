@@ -39,8 +39,7 @@ async fn test_success() {
     let usdc_mint = add_usdc_mint(&mut test);
     let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
 
-    let mut reserve_config = TEST_RESERVE_CONFIG;
-    reserve_config.loan_to_value_ratio = 80;
+    let reserve_config = TEST_RESERVE_CONFIG;
     let flash_loan_amount = 1_000_000u64;
     let (flash_loan_fee, host_fee) = TEST_RESERVE_CONFIG
         .fees

@@ -5,16 +5,25 @@ We added a new instruction with the following signature for flash loan:
 pub enum LendingInstruction {
     // ....
     /// Make a flash loan.
-    ///   0. `[writable]` Source liquidity (reserve liquidity supply), minted by reserve liquidity mint
-    ///   1. `[writable]` Destination liquidity (owned by the flash loan receiver program)
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]` Source liquidity token account.
+    ///                     Minted by reserve liquidity mint.
+    ///                     Must match the reserve liquidity supply.
+    ///   1. `[writable]` Destination liquidity token account.
+    ///                     Minted by reserve liquidity mint.
     ///   2. `[writable]` Reserve account.
     ///   3. `[]` Lending market account.
     ///   4. `[]` Derived lending market authority.
-    ///   5. `[]` Flash Loan Receiver Program Account, which should have a function `ReceiveFlashLoan` that has a tag of 0.
-    ///   6. `[]` Token program id
-    ///   7. `[writable]` Flash loan fees receiver, must be the fee account specified at InitReserve.
-    ///   8. `[writeable]` Host fee receiver.
-    ///   .. `[any]` Additional accounts expected by the flash loan receiver program
+    ///   5. `[]` Flash loan receiver program account.
+    ///             Must implement an instruction that has tag of 0 and a signature of `(repay_amount: u64)`
+    ///             This instruction must return the amount to the source liquidity account.
+    ///   6. `[]` Token program id.
+    ///   7. `[writable]` Flash loan fee receiver account.
+    ///                     Must match the reserve liquidity fee receiver.
+    ///   8. `[writable]` Host fee receiver.
+    ///   .. `[any]` Additional accounts expected by the receiving program's `ReceiveFlashLoan` instruction.
     FlashLoan {
         /// The amount that is to be borrowed
         amount: u64,
@@ -39,10 +48,10 @@ pub enum FlashLoanReceiverInstruction {
     ///
     /// Accounts expected:
     ///
-    ///   0. `[writable]` Source liquidity (matching the destination from above)
-    ///   1. `[writable]` Destination liquidity (matching the source from above)
-    ///   2. Token program id
-    ///   .. Additional accounts from above
+    ///   0. `[writable]` Source liquidity (matching the destination from above).
+    ///   1. `[writable]` Destination liquidity (matching the source from above).
+    ///   2. `[]` Token program id
+    ///   .. `[any]` Additional accounts provided to the lending program's `FlashLoan` instruction above.
     ReceiveFlashLoan {
 		// Amount that is loaned to the receiver program
         amount: u64
