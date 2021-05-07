@@ -1,6 +1,6 @@
 //! Program state processor
 
-use crate::{error::ProgramTemplateError, instruction::{ExampleInstruction, Add}};
+use crate::{error::ProgramTemplateError, instruction::{ExampleInstruction, Add}, state::DataAccount};
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     account_info::next_account_info, account_info::AccountInfo, entrypoint::ProgramResult, msg,
@@ -22,6 +22,16 @@ impl Processor {
     ) -> ProgramResult {
         let tx = heap_instruction::init(&heap_storage::id(), heap.key, authority.key)?;
         Self::sign_and_send(&tx, heap.key, &[heap, authority])
+    }
+
+    fn invoke_add_node<'a>(
+        heap: AccountInfo<'a>,
+        node: AccountInfo<'a>,
+        authority: AccountInfo<'a>,
+        node_data: [u8; 32]
+    ) -> ProgramResult {
+        let tx = heap_instruction::add_node(&heap_storage::id(), heap.key, node.key, authority.key, node_data)?;
+        Self::sign_and_send(&tx, heap.key, &[heap, node, authority])
     }
 
     fn sign_and_send(tx: &Instruction, heap_key: &Pubkey, account_infos: &[AccountInfo]) -> ProgramResult {
@@ -66,13 +76,27 @@ impl Processor {
         let node_account_info = next_account_info(account_info_iter)?;
         let heap_account_info = next_account_info(account_info_iter)?;
         let authority_account_info = next_account_info(account_info_iter)?;
+        let _heap_program_info = next_account_info(account_info_iter)?;
         let rent_info = next_account_info(account_info_iter)?;
         let rent = &Rent::from_account_info(rent_info)?;
 
-        // check if data_account_info is rent exempt
-        // call heap-program to AddNode
+        let mut data_acc = DataAccount::try_from_slice(&data_account_info.data.borrow())?;
+        data_acc.uninitialized()?;
 
-        Ok(())
+        if !rent.is_exempt(
+            data_account_info.lamports(),
+            data_account_info.data_len(),
+        ) {
+            return Err(ProgramError::AccountNotRentExempt);
+        }
+
+        data_acc.value = input.amount;
+
+        Self::invoke_add_node(heap_account_info.clone(), node_account_info.clone(), authority_account_info.clone(), data_account_info.key.to_bytes())?;
+
+        data_acc
+            .serialize(&mut *data_account_info.data.borrow_mut())
+            .map_err(|e| e.into())
     }
 
     /// Remove node
@@ -127,7 +151,7 @@ impl Processor {
             }
             ExampleInstruction::Add(input) => {
                 msg!("Instruction: Add");
-                unimplemented!()
+                Self::process_add(program_id, accounts, input)
             }
             ExampleInstruction::Sort => {
                 msg!("Instruction: Sort");

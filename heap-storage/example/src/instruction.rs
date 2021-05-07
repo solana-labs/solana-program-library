@@ -13,7 +13,7 @@ use crate::processor::Processor;
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
 pub struct Add {
     /// Amount
-    pub amount: u64,
+    pub amount: u8,
 }
 
 /// Instruction definition
@@ -85,6 +85,7 @@ pub fn add(
         AccountMeta::new(*node, false),
         AccountMeta::new(*heap, false),
         AccountMeta::new_readonly(authority, false),
+        AccountMeta::new_readonly(heap_storage::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
     ];
     Ok(Instruction {
