@@ -1,5 +1,6 @@
 //! Instruction types
 
+use crate::processor::Processor;
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     instruction::{AccountMeta, Instruction},
@@ -7,7 +8,6 @@ use solana_program::{
     pubkey::Pubkey,
     sysvar,
 };
-use crate::processor::Processor;
 
 /// input
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
@@ -112,6 +112,7 @@ pub fn remove(
         AccountMeta::new(*node, false),
         AccountMeta::new(*leaf, false),
         AccountMeta::new_readonly(authority, false),
+        AccountMeta::new_readonly(heap_storage::id(), false),
     ];
     Ok(Instruction {
         program_id: *program_id,
