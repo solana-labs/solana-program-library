@@ -7,11 +7,37 @@ use solana_program::{
     pubkey::Pubkey,
     sysvar::rent::Rent,
     sysvar::Sysvar,
+    program_error::ProgramError,
+    program::{invoke, invoke_signed},
+    instruction::Instruction,
 };
+use heap_storage::instruction as heap_instruction;
 
 /// Program state handler.
 pub struct Processor {}
 impl Processor {
+    fn invoke_init_heap<'a>(
+        heap: AccountInfo<'a>,
+        authority: AccountInfo<'a>,
+    ) -> ProgramResult {
+        let tx = heap_instruction::init(&heap_storage::id(), heap.key, authority.key)?;
+        Self::sign_and_send(&tx, heap.key, &[heap, authority])
+    }
+
+    fn sign_and_send(tx: &Instruction, heap_key: &Pubkey, account_infos: &[AccountInfo]) -> ProgramResult {
+        let bump_seed: u8 = Self::get_authority(heap_key).1;
+        let authority_signature_seeds = [
+        &heap_key.to_bytes()[..32],
+        &[bump_seed],
+        ];
+        invoke_signed(tx, account_infos, &[&authority_signature_seeds[..]])
+    }
+
+    /// Get authority data
+    pub fn get_authority(heap_key: &Pubkey) -> (Pubkey, u8) {
+        Pubkey::find_program_address(&[&heap_key.to_bytes()[..32]], &crate::id())
+    }
+
     /// Create storage
     pub fn process_init_storage(
         _program_id: &Pubkey,
@@ -20,11 +46,11 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
         let heap_account_info = next_account_info(account_info_iter)?;
         let authority_account_info = next_account_info(account_info_iter)?;
-        let rent_info = next_account_info(account_info_iter)?;
-        let rent = &Rent::from_account_info(rent_info)?;
+        let _heap_program_info = next_account_info(account_info_iter)?;
+        let _rent_info = next_account_info(account_info_iter)?;
 
-        // call heap-program to InitHeap
         // * we init heap through the program because we set authority as program address *
+        Self::invoke_init_heap(heap_account_info.clone(), authority_account_info.clone())?;
 
         Ok(())
     }
@@ -97,7 +123,7 @@ impl Processor {
         match instruction {
             ExampleInstruction::InitStorage => {
                 msg!("Instruction: InitStorage");
-                unimplemented!()
+                Self::process_init_storage(program_id, accounts)
             }
             ExampleInstruction::Add(input) => {
                 msg!("Instruction: Add");

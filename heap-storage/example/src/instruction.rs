@@ -7,6 +7,7 @@ use solana_program::{
     pubkey::Pubkey,
     sysvar,
 };
+use crate::processor::Processor;
 
 /// input
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
@@ -54,10 +55,11 @@ pub enum ExampleInstruction {
 pub fn init(program_id: &Pubkey, heap: &Pubkey) -> Result<Instruction, ProgramError> {
     let init_data = ExampleInstruction::InitStorage;
     let data = init_data.try_to_vec()?;
-    let authority = get_authority(heap);
+    let authority = Processor::get_authority(heap).0;
     let accounts = vec![
         AccountMeta::new(*heap, false),
         AccountMeta::new_readonly(authority, false),
+        AccountMeta::new_readonly(heap_storage::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
     ];
     Ok(Instruction {
@@ -77,7 +79,7 @@ pub fn add(
 ) -> Result<Instruction, ProgramError> {
     let init_data = ExampleInstruction::Add(input);
     let data = init_data.try_to_vec()?;
-    let authority = get_authority(heap);
+    let authority = Processor::get_authority(heap).0;
     let accounts = vec![
         AccountMeta::new(*data_acc, false),
         AccountMeta::new(*node, false),
@@ -102,7 +104,7 @@ pub fn remove(
 ) -> Result<Instruction, ProgramError> {
     let init_data = ExampleInstruction::Remove;
     let data = init_data.try_to_vec()?;
-    let authority = get_authority(heap);
+    let authority = Processor::get_authority(heap).0;
     let accounts = vec![
         AccountMeta::new(*data_acc, false),
         AccountMeta::new(*heap, false),
@@ -128,7 +130,7 @@ pub fn sort(
 ) -> Result<Instruction, ProgramError> {
     let init_data = ExampleInstruction::Sort;
     let data = init_data.try_to_vec()?;
-    let authority = get_authority(heap);
+    let authority = Processor::get_authority(heap).0;
     let accounts = vec![
         AccountMeta::new(*parent_node, false),
         AccountMeta::new_readonly(*parent_node_data, false),
@@ -141,9 +143,4 @@ pub fn sort(
         accounts,
         data,
     })
-}
-
-/// Generate program account
-pub fn get_authority(heap_key: &Pubkey) -> Pubkey {
-    Pubkey::find_program_address(&[&heap_key.to_bytes()[..32]], &crate::id()).0
 }
