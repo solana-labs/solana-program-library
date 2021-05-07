@@ -1157,7 +1157,7 @@ fn main() {
                 .long("dry-run")
                 .takes_value(false)
                 .global(true)
-                .help("Simluate transaction instead of executing"),
+                .help("Simulate transaction instead of executing"),
         )
         .arg(
             Arg::with_name("no_update")
