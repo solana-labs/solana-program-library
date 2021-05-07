@@ -73,10 +73,16 @@ async fn test_success() {
 
     let before_flash_loan_reserve_liquidity_token_balance =
         get_token_balance(&mut banks_client, usdc_reserve.liquidity_supply_pubkey).await;
-    assert_eq!(before_flash_loan_reserve_liquidity_token_balance, INITIAL_RESERVE_LIQUIDITY);
+    assert_eq!(
+        before_flash_loan_reserve_liquidity_token_balance,
+        INITIAL_RESERVE_LIQUIDITY
+    );
 
-    let before_flash_loan_reserve =  usdc_reserve.get_state(&mut banks_client).await;
-    assert_eq!(before_flash_loan_reserve.liquidity.available_amount, INITIAL_RESERVE_LIQUIDITY);
+    let before_flash_loan_reserve = usdc_reserve.get_state(&mut banks_client).await;
+    assert_eq!(
+        before_flash_loan_reserve.liquidity.available_amount,
+        INITIAL_RESERVE_LIQUIDITY
+    );
 
     let before_flash_loan_token_balance =
         get_token_balance(&mut banks_client, program_owned_token_account).await;
@@ -108,10 +114,16 @@ async fn test_success() {
 
     let after_flash_loan_reserve_liquidity_token_balance =
         get_token_balance(&mut banks_client, usdc_reserve.liquidity_supply_pubkey).await;
-    assert_eq!(after_flash_loan_reserve_liquidity_token_balance, INITIAL_RESERVE_LIQUIDITY);
+    assert_eq!(
+        after_flash_loan_reserve_liquidity_token_balance,
+        INITIAL_RESERVE_LIQUIDITY
+    );
 
-    let after_flash_loan_reserve =  usdc_reserve.get_state(&mut banks_client).await;
-    assert_eq!(after_flash_loan_reserve.liquidity.available_amount, INITIAL_RESERVE_LIQUIDITY);
+    let after_flash_loan_reserve = usdc_reserve.get_state(&mut banks_client).await;
+    assert_eq!(
+        after_flash_loan_reserve.liquidity.available_amount,
+        INITIAL_RESERVE_LIQUIDITY
+    );
 
     let after_flash_loan_token_balance =
         get_token_balance(&mut banks_client, program_owned_token_account).await;

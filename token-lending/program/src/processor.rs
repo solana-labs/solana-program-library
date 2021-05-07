@@ -1656,7 +1656,9 @@ fn process_flash_loan(program_id: &Pubkey, amount: u64, accounts: &[AccountInfo]
         msg!("Insufficient reserve liquidity after flash loan");
         return Err(LendingError::NotEnoughLiquidityAfterFlashLoan.into());
     }
-    reserve.liquidity.repay(flash_loan_amount, flash_loan_amount_decimal)?;
+    reserve
+        .liquidity
+        .repay(flash_loan_amount, flash_loan_amount_decimal)?;
 
     let mut owner_fee = origination_fee;
     if host_fee > 0 {

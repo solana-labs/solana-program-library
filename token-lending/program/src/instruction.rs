@@ -283,7 +283,7 @@ pub enum LendingInstruction {
     ///   2. `[writable]` Reserve account.
     ///   3. `[]` Lending market account.
     ///   4. `[]` Derived lending market authority.
-    ///   5. `[]` Flash loan receiver program account. 
+    ///   5. `[]` Flash loan receiver program account.
     ///             Must implement an instruction that has tag of 0 and a signature of `(repay_amount: u64)`
     ///             This instruction must return the amount to the source liquidity account.
     ///   6. `[]` Token program id.
