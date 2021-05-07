@@ -3824,6 +3824,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-program-metadata"
+version = "0.0.1"
+dependencies = [
+ "borsh 0.8.2",
+ "num-derive",
+ "num-traits",
+ "solana-program",
+ "thiserror",
+]
+
+[[package]]
 name = "spl-record"
 version = "0.1.0"
 dependencies = [
