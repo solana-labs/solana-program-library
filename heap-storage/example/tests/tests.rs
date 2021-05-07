@@ -1,7 +1,7 @@
 #![cfg(feature = "test-bpf")]
 
 use borsh::BorshDeserialize;
-use solana_program::{instruction::InstructionError, pubkey::Pubkey, system_instruction};
+use solana_program::{pubkey::Pubkey, system_instruction};
 use solana_program_template::*;
 use solana_program_test::*;
 use solana_sdk::{
@@ -149,6 +149,25 @@ pub async fn remove_node(
         .await
 }
 
+pub async fn sort_nodes(
+    program_context: &mut ProgramTestContext,
+    parent: &Pubkey,
+    parent_data: &Pubkey,
+    child: &Pubkey,
+    child_data: &Pubkey,
+    heap: &Pubkey,
+) -> Result<(), TransportError> {
+    let mut transaction = Transaction::new_with_payer(
+        &[instruction::sort(&id(), parent, parent_data, child, child_data, heap).unwrap()],
+        Some(&program_context.payer.pubkey()),
+    );
+    transaction.sign(&[&program_context.payer], program_context.last_blockhash);
+    program_context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+}
+
 #[tokio::test]
 async fn test_call_example_instruction() {
     let mut program_context = program_test().start_with_context().await;
@@ -285,4 +304,101 @@ async fn test_remove_node() {
         heap_storage::state::Node::try_from_slice(&node_acc_info.data.as_slice()).unwrap();
 
     assert_eq!(node_acc.is_initialized(), false);
+}
+
+#[tokio::test]
+async fn test_sort_nodes() {
+    let mut program_context = program_test().start_with_context().await;
+    let rent = program_context.banks_client.get_rent().await.unwrap();
+
+    let heap_acc = init_heap(&mut program_context).await.unwrap();
+
+    let heap_account_data = get_account(&mut program_context, &heap_acc.pubkey()).await;
+    let heap =
+        heap_storage::state::Heap::try_from_slice(&heap_account_data.data.as_slice()).unwrap();
+
+    let (first_node_key, _) = Pubkey::find_program_address(
+        &[
+            &heap_acc.pubkey().to_bytes()[..32],
+            &heap.size.to_le_bytes(),
+        ],
+        &heap_storage::id(),
+    );
+
+    create_node_account(&mut program_context, &heap_acc.pubkey(), &first_node_key)
+        .await
+        .unwrap();
+
+    let first_data_acc = Keypair::new();
+    let data_acc_min_rent = rent.minimum_balance(state::DataAccount::LEN);
+    create_account(
+        &mut program_context,
+        &first_data_acc,
+        data_acc_min_rent,
+        state::DataAccount::LEN as u64,
+        &id(),
+    )
+    .await
+    .unwrap();
+
+    let node_data = instruction::Add { amount: 5 };
+    add_node(
+        &mut program_context,
+        &first_data_acc.pubkey(),
+        &first_node_key,
+        &heap_acc.pubkey(),
+        node_data.clone(),
+    )
+    .await
+    .unwrap();
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    let heap_account_data = get_account(&mut program_context, &heap_acc.pubkey()).await;
+    let heap =
+        heap_storage::state::Heap::try_from_slice(&heap_account_data.data.as_slice()).unwrap();
+
+    let (second_node_key, _) = Pubkey::find_program_address(
+        &[
+            &heap_acc.pubkey().to_bytes()[..32],
+            &heap.size.to_le_bytes(),
+        ],
+        &heap_storage::id(),
+    );
+
+    create_node_account(&mut program_context, &heap_acc.pubkey(), &second_node_key)
+        .await
+        .unwrap();
+
+    let second_data_acc = Keypair::new();
+    let data_acc_min_rent = rent.minimum_balance(state::DataAccount::LEN);
+    create_account(
+        &mut program_context,
+        &second_data_acc,
+        data_acc_min_rent,
+        state::DataAccount::LEN as u64,
+        &id(),
+    )
+    .await
+    .unwrap();
+
+    let node_data = instruction::Add { amount: 2 };
+    add_node(
+        &mut program_context,
+        &second_data_acc.pubkey(),
+        &second_node_key,
+        &heap_acc.pubkey(),
+        node_data.clone(),
+    )
+    .await
+    .unwrap();
+
+    sort_nodes(
+        &mut program_context,
+        &first_node_key,
+        &first_data_acc.pubkey(),
+        &second_node_key,
+        &second_data_acc.pubkey(),
+        &heap_acc.pubkey(),
+    )
+    .await
+    .unwrap();
 }

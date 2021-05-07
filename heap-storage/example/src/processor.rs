@@ -1,23 +1,16 @@
 //! Program state processor
 
 use crate::{
-    error::ProgramTemplateError,
+    error::ExampleProgramError,
     instruction::{Add, ExampleInstruction},
     state::{DataAccount, UNINITIALIZED_VALUE},
 };
 use borsh::{BorshDeserialize, BorshSerialize};
 use heap_storage::instruction as heap_instruction;
 use solana_program::{
-    account_info::next_account_info,
-    account_info::AccountInfo,
-    entrypoint::ProgramResult,
-    instruction::Instruction,
-    msg,
-    program::{invoke, invoke_signed},
-    program_error::ProgramError,
-    pubkey::Pubkey,
-    sysvar::rent::Rent,
-    sysvar::Sysvar,
+    account_info::next_account_info, account_info::AccountInfo, entrypoint::ProgramResult,
+    instruction::Instruction, msg, program::invoke_signed, program_error::ProgramError,
+    pubkey::Pubkey, sysvar::rent::Rent, sysvar::Sysvar,
 };
 
 /// Program state handler.
@@ -58,6 +51,22 @@ impl Processor {
             authority.key,
         )?;
         Self::sign_and_send(&tx, heap.key, &[heap, node, leaf, authority])
+    }
+
+    fn invoke_swap_node<'a>(
+        heap: AccountInfo<'a>,
+        parent: AccountInfo<'a>,
+        child: AccountInfo<'a>,
+        authority: AccountInfo<'a>,
+    ) -> ProgramResult {
+        let tx = heap_instruction::swap(
+            &heap_storage::id(),
+            heap.key,
+            parent.key,
+            child.key,
+            authority.key,
+        )?;
+        Self::sign_and_send(&tx, heap.key, &[heap, parent, child, authority])
     }
 
     fn sign_and_send(
@@ -155,16 +164,45 @@ impl Processor {
     /// Sort data
     pub fn process_sort(_program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
+        let heap_account_info = next_account_info(account_info_iter)?;
         let parent_node_acc_info = next_account_info(account_info_iter)?;
         let parent_node_data_acc_info = next_account_info(account_info_iter)?;
         let child_node_acc_info = next_account_info(account_info_iter)?;
         let child_node_data_acc_info = next_account_info(account_info_iter)?;
         let authority_account_info = next_account_info(account_info_iter)?;
+        let _heap_program_info = next_account_info(account_info_iter)?;
 
-        // check that parent_node_acc_info data is parent_node_data_acc_info address
-        // check that child_node_acc_info data is child_node_data_acc_info address
-        // check that value of child_node_data_acc_info is less then value of parent_node_data_acc_info
-        // call heap-program Swap
+        let parent_node_acc =
+            heap_storage::state::Node::try_from_slice(&parent_node_acc_info.data.borrow())?;
+
+        let parent_data_acc =
+            DataAccount::try_from_slice(&parent_node_data_acc_info.data.borrow())?;
+        parent_data_acc.initialized()?;
+
+        let child_node_acc =
+            heap_storage::state::Node::try_from_slice(&child_node_acc_info.data.borrow())?;
+
+        let child_data_acc = DataAccount::try_from_slice(&child_node_data_acc_info.data.borrow())?;
+        child_data_acc.initialized()?;
+
+        if parent_node_acc.data != parent_node_data_acc_info.key.to_bytes() {
+            return Err(ExampleProgramError::WrongNodeDataAcc.into());
+        }
+
+        if child_node_acc.data != child_node_data_acc_info.key.to_bytes() {
+            return Err(ExampleProgramError::WrongNodeDataAcc.into());
+        }
+
+        if parent_data_acc.value < child_data_acc.value {
+            return Err(ExampleProgramError::ParentsValueLessThanChild.into());
+        }
+
+        Self::invoke_swap_node(
+            heap_account_info.clone(),
+            parent_node_acc_info.clone(),
+            child_node_acc_info.clone(),
+            authority_account_info.clone(),
+        )?;
 
         Ok(())
     }
@@ -185,13 +223,13 @@ impl Processor {
                 msg!("Instruction: Add");
                 Self::process_add(program_id, accounts, input)
             }
-            ExampleInstruction::Sort => {
-                msg!("Instruction: Sort");
-                Self::process_sort(program_id, accounts)
-            }
             ExampleInstruction::Remove => {
                 msg!("Instruction: Remove");
                 Self::process_remove(program_id, accounts)
+            }
+            ExampleInstruction::Sort => {
+                msg!("Instruction: Sort");
+                Self::process_sort(program_id, accounts)
             }
         }
     }

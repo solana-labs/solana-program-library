@@ -9,31 +9,33 @@ use solana_program::{
 };
 use thiserror::Error;
 
-/// Errors that may be returned by the Template program.
+/// Errors that may be returned by the Example program.
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
-pub enum ProgramTemplateError {
-    /// Example error
-    #[error("Example error")]
-    ExampleError,
+pub enum ExampleProgramError {
+    /// Inconsistency between node and node's data account
+    #[error("Inconsistency between node and node's data account")]
+    WrongNodeDataAcc,
+
+    /// Parent node's value is less then child node's value
+    #[error("Parent node's value is less then child node's value")]
+    ParentsValueLessThanChild,
 }
-impl From<ProgramTemplateError> for ProgramError {
-    fn from(e: ProgramTemplateError) -> Self {
+impl From<ExampleProgramError> for ProgramError {
+    fn from(e: ExampleProgramError) -> Self {
         ProgramError::Custom(e as u32)
     }
 }
-impl<T> DecodeError<T> for ProgramTemplateError {
+impl<T> DecodeError<T> for ExampleProgramError {
     fn type_of() -> &'static str {
-        "ProgramTemplateError"
+        "ExampleProgramError"
     }
 }
 
-impl PrintProgramError for ProgramTemplateError {
+impl PrintProgramError for ExampleProgramError {
     fn print<E>(&self)
     where
         E: 'static + std::error::Error + DecodeError<E> + PrintProgramError + FromPrimitive,
     {
-        match self {
-            ProgramTemplateError::ExampleError => msg!("Example error message"),
-        }
+        msg!(&self.to_string())
     }
 }

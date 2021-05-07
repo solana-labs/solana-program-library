@@ -134,11 +134,13 @@ pub fn sort(
     let data = init_data.try_to_vec()?;
     let authority = Processor::get_authority(heap).0;
     let accounts = vec![
+        AccountMeta::new(*heap, false),
         AccountMeta::new(*parent_node, false),
         AccountMeta::new_readonly(*parent_node_data, false),
         AccountMeta::new(*child_node, false),
         AccountMeta::new_readonly(*child_node_data, false),
         AccountMeta::new_readonly(authority, false),
+        AccountMeta::new_readonly(heap_storage::id(), false),
     ];
     Ok(Instruction {
         program_id: *program_id,
