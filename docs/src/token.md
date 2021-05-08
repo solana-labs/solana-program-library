@@ -237,9 +237,9 @@ CqAxDdBRnawzx9q4PYM3wrybLHBhDZ4P6BTV13WsRJYJ  AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe
 
 ### Example: Create a non-fungible token
 
-Create the token type,
+Create the token type with nine decimal places,
 ```
-$ spl-token create-token
+$ spl-token create-token --decimals 9
 Creating token 559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z
 Signature: 4kz82JUey1B9ki1McPW7NYv1NqPKCod6WNptSkYqtuiEsQb9exHaktSAHJJsm4YxuGNW4NugPJMFX9ee6WA2dXts
 ```
@@ -529,7 +529,7 @@ There is a rich set of JSON RPC methods available for use with SPL Token:
 
 See https://docs.solana.com/apps/jsonrpc-api for more details.
 
-Additionally the versatile `getProgramAcccounts` JSON RPC method can be employed in various ways to fetch SPL Token accounts of interest.
+Additionally the versatile `getProgramAccounts` JSON RPC method can be employed in various ways to fetch SPL Token accounts of interest.
 
 ### Finding all token accounts for a specific mint
 

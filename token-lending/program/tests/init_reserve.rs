@@ -26,7 +26,7 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(66_000);
+    test.set_bpf_compute_max_units(70_000);
 
     let user_accounts_owner = Keypair::new();
     let usdc_mint = add_usdc_mint(&mut test);
@@ -176,6 +176,7 @@ async fn test_invalid_fees() {
         let mut config = TEST_RESERVE_CONFIG;
         config.fees = ReserveFees {
             borrow_fee_wad: 1_000_000_000_000_000_001,
+            flash_loan_fee_wad: 1_000_000_000_000_000_001,
             host_fee_percentage: 0,
         };
 
@@ -206,6 +207,7 @@ async fn test_invalid_fees() {
         let mut config = TEST_RESERVE_CONFIG;
         config.fees = ReserveFees {
             borrow_fee_wad: 10_000_000_000_000_000,
+            flash_loan_fee_wad: 10_000_000_000_000_000,
             host_fee_percentage: 101,
         };
 

@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+pub mod flash_loan_receiver;
 pub mod genesis;
 
 use assert_matches::*;
@@ -53,6 +54,8 @@ pub const TEST_RESERVE_CONFIG: ReserveConfig = ReserveConfig {
     fees: ReserveFees {
         borrow_fee_wad: 100_000_000_000,
         /// 0.00001% (Aave borrow fee)
+        flash_loan_fee_wad: 3_000_000_000_000_000,
+        /// 0.3% (Aave flash loan fee)
         host_fee_percentage: 20,
     },
 };
@@ -463,6 +466,29 @@ pub fn add_reserve(
         liquidity_oracle_pubkey,
         market_price,
     }
+}
+
+pub fn add_account_for_program(
+    test: &mut ProgramTest,
+    program_derived_account: &Pubkey,
+    amount: u64,
+    mint_pubkey: &Pubkey,
+) -> Pubkey {
+    let program_owned_token_account = Keypair::new();
+    test.add_packable_account(
+        program_owned_token_account.pubkey(),
+        u32::MAX as u64,
+        &Token {
+            mint: *mint_pubkey,
+            owner: *program_derived_account,
+            amount,
+            state: AccountState::Initialized,
+            is_native: COption::None,
+            ..Token::default()
+        },
+        &spl_token::id(),
+    );
+    program_owned_token_account.pubkey()
 }
 
 pub struct TestLendingMarket {
