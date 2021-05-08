@@ -562,7 +562,7 @@ curl http://api.mainnet-beta.solana.com -X POST -H "Content-Type: application/js
 ```
 
 The `"dataSize": 165` filter selects all [Token
-Acccount](https://github.com/solana-labs/solana-program-library/blob/08d9999f997a8bf38719679be9d572f119d0d960/token/program/src/state.rs#L86-L106)s,
+Account](https://github.com/solana-labs/solana-program-library/blob/08d9999f997a8bf38719679be9d572f119d0d960/token/program/src/state.rs#L86-L106)s,
 and then the `"memcmp": ...` filter selects based on the
 [mint](https://github.com/solana-labs/solana-program-library/blob/08d9999f997a8bf38719679be9d572f119d0d960/token/program/src/state.rs#L88)
 address within each token account.
@@ -597,7 +597,7 @@ curl http://api.mainnet-beta.solana.com -X POST -H "Content-Type: application/js
 ```
 
 The `"dataSize": 165` filter selects all [Token
-Acccount](https://github.com/solana-labs/solana-program-library/blob/08d9999f997a8bf38719679be9d572f119d0d960/token/program/src/state.rs#L86-L106)s,
+Account](https://github.com/solana-labs/solana-program-library/blob/08d9999f997a8bf38719679be9d572f119d0d960/token/program/src/state.rs#L86-L106)s,
 and then the `"memcmp": ...` filter selects based on the
 [owner](https://github.com/solana-labs/solana-program-library/blob/08d9999f997a8bf38719679be9d572f119d0d960/token/program/src/state.rs#L90)
 address within each token account.
