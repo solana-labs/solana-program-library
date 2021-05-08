@@ -155,16 +155,6 @@ export class LendingMarket {
   }
 }
 
-export type CreateLendingMarketParams = {
-  connection: Connection;
-  tokenProgramId?: PublicKey;
-  lendingProgramId: PublicKey;
-  lendingMarketAccount: Account;
-  lendingMarketOwner: PublicKey;
-  quoteTokenMint: PublicKey;
-  payer: Account;
-};
-
 export class Reserve {
   account: Account;
   connection: Connection;

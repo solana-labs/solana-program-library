@@ -11,13 +11,13 @@ import {
   BPFLoader,
   Wallet,
 } from "solray";
-import fs from "fs"
+import {readFileSync} from "fs"
 
 let connection: Connection | undefined;
 async function getConnection(): Promise<Connection> {
   if (connection) return connection;
 
-  connection = new Connection(url, "recent");
+  connection = new Connection("https://devnet.solana.com", "recent");
   const version = await connection.getVersion();
 
   console.log("Connection to cluster established:", url, version);
@@ -57,7 +57,7 @@ export async function createLendingMarket(): Promise<void> {
 
 export async function deployPorgram(): Promise<void> {
   const conn = await getConnection();
-  const programBinary = fs.readFileSync(process.env.TOKEN_LENDING_SO_FILE_PATH!)
+  const programBinary = readFileSync(process.env.TOKEN_LENDING_SO_FILE_PATH!)
   const wallet = await Wallet.fromMnemonic(process.env.WALLET_MNEMONIC!, conn);
   console.log(`deploying token lending...`)
   const bpfLoader = new BPFLoader(wallet)

@@ -22,8 +22,9 @@ use spl_token::state::Account;
 const KEYPAIR_PATH: &str = "/Users/wangge/.config/solana";
 const LOCAL_NET_URL: &str = "http://127.0.0.1:8899";
 const DEV_NET_URL: &str = "https://devnet.solana.com";
-const DEV_NET_PROGRAM: &str = "BT42NaxYqZ3V2vV8bQYYs9pbmkRwK7T569kNwcgScPJt";
+const DEV_NET_PROGRAM: &str = "6p1ZK62XUPWAmAqbhumAz14waXrmeMp27bdY6pNsVz1j";
 const LOCAL_NET_PROGRAM: &str = "6isVZdDrR7dFpCjNJWvcBCGbUH3t4YdZSWxohRN5nRPE";
+// solana_program::declare_id!("8c3365TtDi9LdzNBTD5Dvj3f45NWEf18nJVDD9JmTPG5");
 solana_program::declare_id!("6isVZdDrR7dFpCjNJWvcBCGbUH3t4YdZSWxohRN5nRPE");
 // -------- UPDATE END ---------
 
@@ -31,8 +32,8 @@ pub fn main() {
     let mut client = RpcClient::new(LOCAL_NET_URL.to_owned());
 
     let payer = read_keypair_file(&format!("{}/id.json", KEYPAIR_PATH)).unwrap();
-    let srm_oracle_pubkey = Pubkey::from_str("HvpLGewKeV1aVBQVW8ua1ZhsA2mQMALPD957QjabNCtf").unwrap();
-    let sol_oracle_pubkey = Pubkey::from_str("J1NUig86EYdtBiSAKHN5p95yCJg9pdnxHkudLLcJevCs").unwrap();
+    let srm_oracle_pubkey = Pubkey::from_str("HPQiNURs5dRkp6S7zLhRu5f62fKvddeS6N8ffejab75E").unwrap();
+    let sol_oracle_pubkey = Pubkey::from_str("JDYA7PEs6AqAXJhgs9kcTAxxvX5L7vp1EYvd3X1VLBws").unwrap();
 
     let (fake_usdc_mint_pubkey, fake_usdc_token_account_pubkey) = create_and_mint_tokens(
         &mut client,
@@ -101,6 +102,7 @@ pub fn main() {
         lending_market_pubkey,
         &lending_market_owner,
         Some(sol_oracle_pubkey),
+        // None,
         fake_sol_token_account_pubkey,
         fake_usdc_mint_pubkey,
         &payer,
@@ -171,8 +173,9 @@ pub fn create_lending_market(
 
     let recent_blockhash = client.get_recent_blockhash().unwrap().0;
     transaction.sign(&[&payer, &keypair], recent_blockhash);
+    println!("wrong");
     client.send_and_confirm_transaction(&transaction).unwrap();
-
+    println!("wrong!");
     let account = client.get_account(&pubkey).unwrap();
     let lending_market = LendingMarket::unpack(&account.data).unwrap();
 
@@ -184,7 +187,7 @@ pub fn create_reserve(
     config: ReserveConfig,
     lending_market_pubkey: Pubkey,
     lending_market_owner: &Keypair,
-    oracle_pubkey: Option<Pubkey>,
+    liquidity_oracle_pubkey: Option<Pubkey>,
     liquidity_source_pubkey: Pubkey,
     quote_token_mint_pubkey: Pubkey,
     payer: &Keypair,
@@ -193,10 +196,10 @@ pub fn create_reserve(
     let reserve_pubkey = reserve_keypair.pubkey();
     let collateral_mint_keypair = Keypair::new();
     let collateral_supply_keypair = Keypair::new();
-    let liquidity_fees_receiver_keypair = Keypair::new();
     let liquidity_supply_keypair = Keypair::new();
+    let liquidity_fee_receiver_keypair = Keypair::new();
     let user_collateral_token_keypair = Keypair::new();
-    let user_transfer_authority = Keypair::new();
+    let user_transfer_authority_keypair = Keypair::new();
 
     let liquidity_source_account = client.get_account(&liquidity_source_pubkey).unwrap();
     let liquidity_source_token = Token::unpack(&liquidity_source_account.data).unwrap();
@@ -234,7 +237,7 @@ pub fn create_reserve(
             ),
             create_account(
                 &payer.pubkey(),
-                &liquidity_fees_receiver_keypair.pubkey(),
+                &liquidity_fee_receiver_keypair.pubkey(),
                 token_balance,
                 Token::LEN as u64,
                 &spl_token::id(),
@@ -258,10 +261,10 @@ pub fn create_reserve(
             approve(
                 &spl_token::id(),
                 &liquidity_source_pubkey,
-                &user_transfer_authority.pubkey(),
+                &user_transfer_authority_keypair.pubkey(),
                 &payer.pubkey(),
                 &[],
-                liquidity_source_token.amount,
+                10000u64,
             )
                 .unwrap(),
         ],
@@ -274,7 +277,7 @@ pub fn create_reserve(
             &reserve_keypair,
             &collateral_mint_keypair,
             &collateral_supply_keypair,
-            &liquidity_fees_receiver_keypair,
+            &liquidity_fee_receiver_keypair,
             &liquidity_supply_keypair,
             &user_collateral_token_keypair,
         ],
@@ -283,34 +286,38 @@ pub fn create_reserve(
 
     client.send_and_confirm_transaction(&transaction).unwrap();
 
-    println!("transaction successful, token account has: {}", liquidity_source_pubkey);
+    println!("transaction successful, token account has: {}", liquidity_source_token.amount);
+    println!("liquidity source pubkey {}", liquidity_source_pubkey);
+    if liquidity_oracle_pubkey.is_some() {
+        println!("oracle {}", liquidity_oracle_pubkey.unwrap());
+    }
 
     let mut transaction = Transaction::new_with_payer(
         &[
             init_reserve(
                 id(),
-                liquidity_source_token.amount,
+                1_00u64,
                 config,
                 liquidity_source_pubkey,
                 user_collateral_token_keypair.pubkey(),
                 reserve_pubkey,
                 liquidity_mint_pubkey,
                 liquidity_supply_keypair.pubkey(),
-                liquidity_fees_receiver_keypair.pubkey(),
+                liquidity_fee_receiver_keypair.pubkey(),
                 collateral_mint_keypair.pubkey(),
                 collateral_supply_keypair.pubkey(),
                 quote_token_mint_pubkey,
                 lending_market_pubkey,
                 lending_market_owner.pubkey(),
-                user_transfer_authority.pubkey(),
-                oracle_pubkey,
+                payer.pubkey(),
+                liquidity_oracle_pubkey,
             ),
         ],
         Some(&payer.pubkey()),
     );
 
     transaction.sign(
-        &vec![payer, &lending_market_owner, &user_transfer_authority],
+        &vec![payer, &lending_market_owner],
         recent_blockhash,
     );
 
@@ -370,7 +377,7 @@ pub fn create_and_mint_tokens(
                 &token_account_pubkey,
                 &payer.pubkey(),
                 &[],
-                100000000u64,
+                100_000_000u64,
             ).unwrap(),
         ],
         Some(&payer.pubkey()),
