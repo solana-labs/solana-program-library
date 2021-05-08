@@ -10,7 +10,7 @@ on:
     - 'docs/**'
 
 jobs:
-  all_github_action_checks:
+  docs_action_checks:
     runs-on: ubuntu-latest
     steps:
       - run: echo "Done"
