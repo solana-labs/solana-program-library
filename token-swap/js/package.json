@@ -38,7 +38,7 @@
     "start-with-test-validator": "start-server-and-test 'solana-test-validator --bpf-program SwaPpA9LAaLfeLi3a68M4DjnLqgtticKg6CnyNwgAC8 ../../target/deploy/spl_token_swap.so --reset --quiet' http://localhost:8899/health start",
     "lint": "npm run pretty && eslint .",
     "lint:fix": "npm run pretty:fix && eslint . --fix",
-    "generate:dts": "./scripts/typegen.sh",
+    "generate:dts": "tsc -p tsconfig.d.json -d && rollup -c rollup.config.types.js && npx prettier --write lib/index.d.ts",
     "generate:flow": "flowgen lib/index.d.ts -o module.flow.js",
     "lint:watch": "watch 'npm run lint:fix' . --wait=1",
     "build:program": "cargo build-bpf --manifest-path ../program/Cargo.toml",
