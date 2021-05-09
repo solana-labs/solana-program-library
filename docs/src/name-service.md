@@ -2,7 +2,7 @@
 title: Name Service
 ---
 
-A SPL program for issuing and managing ownership of: domain names, Solana Pubkeys, URLs, twitter handles, ipfs cid's etc..
+A SPL program for issuing and managing ownership of: domain names, Solana Pubkeys, URLs, Twitter handles, ipfs cid's etc..
 
 This program could be used for dns, pubkey etc lookups via a browser extension
 for example, the goal is to create an easy way to identify Solana public keys
@@ -17,18 +17,18 @@ Key points:
 - A name can have a parent name that is identified by the address of its record.
   The owner of the parent name (when it exists) needs to sign the issuance of
   the child name.
-- The data of a name registry is controlled byb the class keypair or, when it is
+- The data of a name registry is controlled by the class keypair or, when it is
   set to `Pubkey::default()`, by the name owner keypair.
 - Only the owner can delete a name registry.
 
 
 Remarks and use cases:
-- Domain name declarations: One could arbitrarly set-up a class that we can call
+- Domain name declarations: One could arbitrarily set-up a class that we can call
   Top-Level-Domain names. Names in this class can only be issued with the
   permission of the class keypair, ie the administrator, who can enforce that
   TLD names are of the type `".something"`. From then on one could create and
   own the TLD `".sol"` and create a class of ".sol" sub-domains, administrating
-  the issuance of the `"something.sol"` sub-domains that way (by setting tha
+  the issuance of the `"something.sol"` sub-domains that way (by setting the
   parent name to the address of the `".sol"` registry).
 
 An off-chain browser extension could then, similarly to DNS, parse the user SPL
@@ -42,8 +42,8 @@ centralized, the creation of new classes is permissionless and as a class owner
 any kind of decentralized governance signing program could be used.
 
 - Twitter handles can be added as names of one specific name class. The class
-  authority of will therefore hold the right to add a twitter handle name. This
-  enables the verification of twitter accounts for example by asking the user to
+  authority of will therefore hold the right to add a Twitter handle name. This
+  enables the verification of Twitter accounts for example by asking the user to
   tweet his pubkey or a signed message. A bot that holds the private issuing
   authority key can then sign the Create instruction (with a metadata_authority
   that is the tweeted pubkey) and send it back to the user who will then submit
@@ -51,7 +51,7 @@ any kind of decentralized governance signing program could be used.
 In this case the class will still be able to control the data of the name registry, and not the user for example.
 
 Therefore, another way of using this program would be to create a name
-(`"verified-twitter-handles"` for example) with the `Pubkey::default()` class
-and with the owner being the authority. That way verified twitter names could be
-issued as child names of this parent by the owner, leaving the user as being to
-able to modify the data of his twitter name registry.
+(`"verified-Twitter-handles"` for example) with the `Pubkey::default()` class
+and with the owner being the authority. That way verified Twitter names could be
+issued as child names of this parent by the owner, leaving the user as being
+able to modify the data of his Twitter name registry.
