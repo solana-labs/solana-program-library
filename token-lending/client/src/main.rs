@@ -17,6 +17,7 @@ use spl_token_lending::{
 use std::str::FromStr;
 use spl_token::instruction::{initialize_mint, initialize_account, mint_to};
 use spl_token::state::Account;
+use spl_token_lending::instruction::{deposit_reserve_liquidity, refresh_reserve};
 
 // -------- UPDATE START -------
 const KEYPAIR_PATH: &str = "/Users/wangge/.config/solana";
@@ -32,10 +33,78 @@ pub fn main() {
     let mut client = RpcClient::new(LOCAL_NET_URL.to_owned());
 
     let payer = read_keypair_file(&format!("{}/id.json", KEYPAIR_PATH)).unwrap();
-    let srm_oracle_pubkey = Pubkey::from_str("HPQiNURs5dRkp6S7zLhRu5f62fKvddeS6N8ffejab75E").unwrap();
-    let sol_oracle_pubkey = Pubkey::from_str("JDYA7PEs6AqAXJhgs9kcTAxxvX5L7vp1EYvd3X1VLBws").unwrap();
+    init_lending_market_and_reserves(&mut client, &payer);
+    // supply_fund_fund_to_reserve(
+    //     &mut client,
+    //     Pubkey::from_str("2nuWXPzNL4p9uGG7UthZNLG514qPdNk5wjrqXFqxQdz5").unwrap(),
+    //     Pubkey::from_str("82Hw1pc1MyUh4QnxkiK6UpKGrkY8q4G35zVxio4XABG2").unwrap(),
+    //     Pubkey::from_str("").unwrap(),
+    //
+    // )
+}
 
-    let (fake_usdc_mint_pubkey, fake_usdc_token_account_pubkey) = create_and_mint_tokens(
+fn supply_fund_fund_to_reserve(
+    client: &mut RpcClient,
+    lending_market_pubkey: Pubkey,
+    liquidity_source_pubkey: Pubkey,
+    destination_collateral_pubkey: Pubkey,
+    reserve_pubkey: Pubkey,
+    liquidity_supply_pubkey: Pubkey,
+    collateral_mint_pubkey: Pubkey,
+    payer: &Keypair,
+    token_account_owner_keypair: &Keypair,
+    oracle_pubkey: Option<Pubkey>,
+) {
+
+    let recent_blockhash = client.get_recent_blockhash().unwrap().0;
+
+    let user_transfer_authority_keypair = Keypair::new();
+
+    let mut transaction = Transaction::new_with_payer(
+        &[
+            approve(
+                &spl_token::id(),
+                &liquidity_source_pubkey,
+                &user_transfer_authority_keypair.pubkey(),
+                &token_account_owner_keypair.pubkey(),
+                &[],
+                1000u64,
+            )
+                .unwrap(),
+            refresh_reserve(
+                id(),
+                reserve_pubkey,
+                oracle_pubkey,
+            ),
+            deposit_reserve_liquidity(
+                id(),
+                1000u64,
+                liquidity_source_pubkey,
+                destination_collateral_pubkey,
+                reserve_pubkey,
+                liquidity_supply_pubkey,
+                collateral_mint_pubkey,
+                lending_market_pubkey,
+                user_transfer_authority_keypair.pubkey(),
+            ),
+        ],
+        Some(&payer.pubkey()),
+    );
+
+    transaction.sign(
+        &vec![payer, token_account_owner_keypair, &user_transfer_authority_keypair],
+        recent_blockhash,
+    );
+
+    client.send_and_confirm_transaction(&transaction).unwrap();
+
+}
+
+fn init_lending_market_and_reserves(mut client: &mut RpcClient, payer: &Keypair) {
+    let srm_oracle_pubkey = Pubkey::from_str("HTSz4AWyG57pWrYMijktSbvhARQmM67AW438gsPo2C9q").unwrap();
+    let sol_oracle_pubkey = Pubkey::from_str("6KXFGtnfcRyQAFBXYaLKviUktsRTdCeTmgsMfHU43LwL").unwrap();
+
+    let (fake_usdc_mint_pubkey, fake_usdc_token_account_pubkey, fake_usdc_token_account_owner) = create_and_mint_tokens(
         &mut client,
         6,
         &payer,
@@ -57,6 +126,7 @@ pub fn main() {
         max_borrow_rate: 30,
         fees: ReserveFees {
             borrow_fee_wad: 100_000_000_000_000, // 1 bp
+            flash_loan_fee_wad: 0,
             host_fee_percentage: 20,
         },
     };
@@ -70,11 +140,12 @@ pub fn main() {
         fake_usdc_token_account_pubkey,
         fake_usdc_mint_pubkey,
         &payer,
+        &fake_usdc_token_account_owner
     );
 
     println!("Created usdc reserve with pubkey: {}", usdc_reserve_pubkey);
 
-    let (fake_sol_mint_pubkey, fake_sol_token_account_pubkey) = create_and_mint_tokens(
+    let (fake_sol_mint_pubkey, fake_sol_token_account_pubkey, fake_sol_token_account_owner_keypair) = create_and_mint_tokens(
         &mut client,
         9,
         &payer,
@@ -92,6 +163,7 @@ pub fn main() {
         max_borrow_rate: 15,
         fees: ReserveFees {
             borrow_fee_wad: 1_000_000_000_000, // 0.01 bp
+            flash_loan_fee_wad: 0,
             host_fee_percentage: 20,
         },
     };
@@ -106,11 +178,12 @@ pub fn main() {
         fake_sol_token_account_pubkey,
         fake_usdc_mint_pubkey,
         &payer,
+        &fake_sol_token_account_owner_keypair
     );
 
     println!("Created sol reserve with pubkey: {}", sol_reserve_pubkey);
 
-    let (fake_srm_mint_pubkey, fake_srm_token_account_pubkey) = create_and_mint_tokens(
+    let (fake_srm_mint_pubkey, fake_srm_token_account_pubkey, fake_srm_token_account_owner_keypair) = create_and_mint_tokens(
         &mut client,
         6,
         &payer,
@@ -128,6 +201,7 @@ pub fn main() {
         max_borrow_rate: 15,
         fees: ReserveFees {
             borrow_fee_wad: 10_000_000_000_000, // 0.1 bp
+            flash_loan_fee_wad: 0,
             host_fee_percentage: 25,
         },
     };
@@ -141,6 +215,7 @@ pub fn main() {
         fake_srm_token_account_pubkey,
         fake_usdc_mint_pubkey,
         &payer,
+        &fake_srm_token_account_owner_keypair
     );
 
     println!("Created srm reserve with pubkey: {}", srm_reserve_pubkey);
@@ -173,9 +248,7 @@ pub fn create_lending_market(
 
     let recent_blockhash = client.get_recent_blockhash().unwrap().0;
     transaction.sign(&[&payer, &keypair], recent_blockhash);
-    println!("wrong");
     client.send_and_confirm_transaction(&transaction).unwrap();
-    println!("wrong!");
     let account = client.get_account(&pubkey).unwrap();
     let lending_market = LendingMarket::unpack(&account.data).unwrap();
 
@@ -191,6 +264,7 @@ pub fn create_reserve(
     liquidity_source_pubkey: Pubkey,
     quote_token_mint_pubkey: Pubkey,
     payer: &Keypair,
+    token_account_owner_keypair: &Keypair
 ) -> (Pubkey, Reserve) {
     let reserve_keypair = Keypair::new();
     let reserve_pubkey = reserve_keypair.pubkey();
@@ -258,15 +332,6 @@ pub fn create_reserve(
                 Reserve::LEN as u64,
                 &id(),
             ),
-            approve(
-                &spl_token::id(),
-                &liquidity_source_pubkey,
-                &user_transfer_authority_keypair.pubkey(),
-                &payer.pubkey(),
-                &[],
-                10000u64,
-            )
-                .unwrap(),
         ],
         Some(&payer.pubkey()),
     );
@@ -286,14 +351,17 @@ pub fn create_reserve(
 
     client.send_and_confirm_transaction(&transaction).unwrap();
 
-    println!("transaction successful, token account has: {}", liquidity_source_token.amount);
-    println!("liquidity source pubkey {}", liquidity_source_pubkey);
-    if liquidity_oracle_pubkey.is_some() {
-        println!("oracle {}", liquidity_oracle_pubkey.unwrap());
-    }
-
     let mut transaction = Transaction::new_with_payer(
         &[
+            approve(
+                &spl_token::id(),
+                &liquidity_source_pubkey,
+                &user_transfer_authority_keypair.pubkey(),
+                &token_account_owner_keypair.pubkey(),
+                &[],
+                10000u64,
+            )
+                .unwrap(),
             init_reserve(
                 id(),
                 1_00u64,
@@ -309,7 +377,7 @@ pub fn create_reserve(
                 quote_token_mint_pubkey,
                 lending_market_pubkey,
                 lending_market_owner.pubkey(),
-                payer.pubkey(),
+                user_transfer_authority_keypair.pubkey(),
                 liquidity_oracle_pubkey,
             ),
         ],
@@ -317,11 +385,24 @@ pub fn create_reserve(
     );
 
     transaction.sign(
-        &vec![payer, &lending_market_owner],
+        &vec![payer, &lending_market_owner, &user_transfer_authority_keypair, token_account_owner_keypair],
         recent_blockhash,
     );
 
     client.send_and_confirm_transaction(&transaction).unwrap();
+
+    supply_fund_fund_to_reserve(
+        client,
+        lending_market_pubkey,
+        liquidity_source_pubkey,
+        user_collateral_token_keypair.pubkey(),
+        reserve_pubkey,
+        liquidity_supply_keypair.pubkey(),
+        collateral_mint_keypair.pubkey(),
+        payer,
+        token_account_owner_keypair,
+        liquidity_oracle_pubkey,
+    );
 
     let account = client.get_account(&reserve_pubkey).unwrap();
     (reserve_pubkey, Reserve::unpack(&account.data).unwrap())
@@ -331,11 +412,13 @@ pub fn create_and_mint_tokens(
     client: &mut RpcClient,
     decimals: u8,
     payer: &Keypair
-) -> (Pubkey, Pubkey) {
+) -> (Pubkey, Pubkey, Keypair) {
     let mint_keypair = Keypair::new();
     let mint_pubkey = mint_keypair.pubkey();
     let token_account_keypair = Keypair::new();
     let token_account_pubkey = token_account_keypair.pubkey();
+    let token_account_owner_keypair = Keypair::new();
+    let token_account_owner_pubkey = token_account_owner_keypair.pubkey();
 
     let recent_blockhash = client.get_recent_blockhash().unwrap().0;
     let mut transaction = Transaction::new_with_payer(
@@ -369,7 +452,7 @@ pub fn create_and_mint_tokens(
                 &spl_token::id(),
                 &token_account_pubkey,
                 &mint_pubkey,
-                &payer.pubkey()
+                &token_account_owner_pubkey
             ).unwrap(),
             mint_to(
                 &spl_token::id(),
@@ -393,5 +476,5 @@ pub fn create_and_mint_tokens(
     );
 
     client.send_and_confirm_transaction(&transaction).unwrap();
-    (mint_pubkey, token_account_pubkey)
+    (mint_pubkey, token_account_pubkey, token_account_owner_keypair)
 }

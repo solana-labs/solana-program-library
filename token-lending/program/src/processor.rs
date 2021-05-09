@@ -228,7 +228,6 @@ fn process_init_reserve(
     let rent_info = next_account_info(account_info_iter)?;
     let rent = &Rent::from_account_info(rent_info)?;
     let token_program_id = next_account_info(account_info_iter)?;
-    msg!("loaded account");
     assert_rent_exempt(rent, reserve_info)?;
     let mut reserve = assert_uninitialized::<Reserve>(reserve_info)?;
     if reserve_info.owner != program_id {
@@ -301,7 +300,6 @@ fn process_init_reserve(
         lending_market_info.key.as_ref(),
         &[lending_market.bump_seed],
     ];
-    msg!("bump seed: {}", lending_market.bump_seed);
     let lending_market_authority_pubkey =
         Pubkey::create_program_address(authority_signer_seeds, program_id)?;
     if &lending_market_authority_pubkey != lending_market_authority_info.key {
@@ -377,7 +375,6 @@ fn process_init_reserve(
         rent: rent_info.clone(),
         token_program: token_program_id.clone(),
     })?;
-    msg!("weiwu!");
     spl_token_transfer(TokenTransferParams {
         source: source_liquidity_info.clone(),
         destination: reserve_liquidity_supply_info.clone(),
@@ -386,7 +383,6 @@ fn process_init_reserve(
         authority_signer_seeds: &[],
         token_program: token_program_id.clone(),
     })?;
-    msg!("I hope it can be here");
     spl_token_mint_to(TokenMintToParams {
         mint: reserve_collateral_mint_info.clone(),
         destination: destination_collateral_info.clone(),
@@ -1769,19 +1765,33 @@ fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> ProgramResult {
         amount,
         authority_signer_seeds,
     } = params;
-    msg!("transferred!");
-    let result = invoke_signed(
-        &spl_token::instruction::transfer(
-            token_program.key,
-            source.key,
-            destination.key,
-            authority.key,
-            &[],
-            amount,
-        )?,
-        &[source, destination, authority, token_program],
-        &[authority_signer_seeds],
-    );
+    let result = if authority_signer_seeds.is_empty() {
+        invoke(
+            &spl_token::instruction::transfer(
+                token_program.key,
+                source.key,
+                destination.key,
+                authority.key,
+                &[],
+                amount,
+            )?,
+            &[source, destination, authority, token_program],
+        )
+    } else {
+        invoke_signed(
+            &spl_token::instruction::transfer(
+                token_program.key,
+                source.key,
+                destination.key,
+                authority.key,
+                &[],
+                amount,
+            )?,
+            &[source, destination, authority, token_program],
+            &[authority_signer_seeds],
+        )
+    };
+
     result.map_err(|_| LendingError::TokenTransferFailed.into())
 }
 

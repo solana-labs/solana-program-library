@@ -586,11 +586,10 @@ pub fn init_reserve(
     user_transfer_authority_pubkey: Pubkey,
     reserve_liquidity_oracle_pubkey: Option<Pubkey>,
 ) -> Instruction {
-    let (lending_market_authority_pubkey, bump_seed) = Pubkey::find_program_address(
+    let (lending_market_authority_pubkey, _bump_seed) = Pubkey::find_program_address(
         &[lending_market_pubkey.as_ref()],
         &program_id,
     );
-    print!("seed {} !!!", bump_seed);
     let mut accounts = vec![
         AccountMeta::new(source_liquidity_pubkey, false),
         AccountMeta::new(destination_collateral_pubkey, false),
