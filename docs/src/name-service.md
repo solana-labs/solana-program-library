@@ -51,7 +51,7 @@ any kind of decentralized governance signing program could be used.
 In this case the class will still be able to control the data of the name registry, and not the user for example.
 
 Therefore, another way of using this program would be to create a name
-(`"verified-Twitter-handles"` for example) with the `Pubkey::default()` class
+(`"verified-twitter-handles"` for example) with the `Pubkey::default()` class
 and with the owner being the authority. That way verified Twitter names could be
 issued as child names of this parent by the owner, leaving the user as being
 able to modify the data of his Twitter name registry.
