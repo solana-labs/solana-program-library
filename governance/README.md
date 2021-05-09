@@ -10,10 +10,19 @@ a voting population to vote on disbursement of access or funds collectively.
 
 ![Accounts diagram](./resources/governance-accounts.jpg)
 
-### Governance account
+### Governance Realm account
 
-The basic building block of governance is the Governance account. It ties a governed Program ID to a Governance mint
-and an optional Council mint and holds configuration options defining governance rules.
+Governance Realm ties Governance Token Mint and optional Council Token mint to create a realm
+for any governance pertaining to the community of the token holders.
+For example a trading protocol can issue a governance token and use it to create its governance realm.
+
+Once a realm is created voters can deposit Governing tokens (Governance or Council) to the realm and
+use the deposited amount as their voting weight to vote on Proposals within that realm.
+
+### Program Governance account
+
+The basic building block of governance to update programs is the ProgramGovernance account.
+It ties a governed Program ID and holds configuration options defining governance rules.
 The governed Program ID is used as the seed for a [Program Derived Address](https://docs.solana.com/developing/programming-model/calling-between-programs#program-derived-addresses),
 and this program derived address is what is used as the address of the Governance account for your Program ID
 and the corresponding Governance mint and Council mint (if provided).
@@ -57,7 +66,7 @@ people holding Governance (or Council) tokens may vote on the Proposal.
 Once the Proposal is "tipped" it either enters the Defeated or Executing state.
 If Executed, it enters Completed state once all commands have been run.
 
-A command can be run by any one at any time after the `delay_slots` length has transpired on the given command.
+A command can be run by any one at any time after the `instruction_hold_up_time` length has transpired on the given command.
 
 ### CustomSingleSignerInstruction
 
@@ -67,13 +76,11 @@ These contain the actual data for a command, and how long after the voting phase
 
 ### Voting Dynamics
 
-Each Proposal that gets created creates a holding account for all source tokens that voters will deposit in order to vote.
-To vote, one needs to deposit the source token for a given Proposal. One may deposit let's say 1 Uniswap and get 1 vote.
-The source tokens must be provided to the Vote instruction and are put into the Source Token Holding account.
+When a Proposal is created and signed by its Signatories voters can start voting on it using their voting weight,
+equal to deposited governing tokens into the realm. A vote is tipped once it passes the defined `vote_threshold` of votes
+and enters Succeeded or Defeated state. If Succeeded then Proposal instructions can be executed after they hold_up_time passes.
 
-Once the vote completes, the source tokens can be withdrawn from the holding account of the Proposal.
-It's also possible to change your mind and withdraw your tokes before voting is completed but in such a case you vote
-won't count towards the final outcome of the Proposal.
+Users can relinquish their vote any time during Proposal lifetime, but once Proposal it tipped their vote can't be changed.
 
 ### Councils and Governance
 

@@ -8,22 +8,28 @@ pub const MAX_INSTRUCTIONS: usize = 5;
 /// Defines all Governance accounts types
 #[derive(Clone, Debug, PartialEq)]
 pub enum GovernanceAccountType {
-    /// 0 - Default uninitialized account state
+    /// Default uninitialized account state
     Uninitialized,
 
-    /// 1 - Governance account
-    Governance,
+    /// Top level aggregation for governances within Governance Token (and optional Council Token).
+    GovernanceRealm,
 
-    /// 2 - Proposal account for Governance account. A single Governance account can have multiple Proposal accounts
+    /// Voter record for each voter within a Realm.
+    VoterRecord,
+
+    /// Program Governance account.
+    ProgramGovernance,
+
+    /// Proposal account for Governance account. A single Governance account can have multiple Proposal accounts.
     Proposal,
 
-    /// 3 - Proposal voting state account. Every Proposal account has exactly one ProposalState account
+    /// Proposal voting state account. Every Proposal account has exactly one ProposalState account.
     ProposalState,
 
-    /// 4 - Vote record account for a given Proposal.  Proposal can have 0..n voting records
-    VoteRecord,
+    /// Vote record account for a given Proposal.  Proposal can have 0..n voting records.
+    ProposalVoteRecord,
 
-    /// 5 - Custom Single Signer Instruction account which holds an instruction to execute for Proposal
+    /// Custom Single Signer Instruction account which holds an instruction to execute for Proposal.
     CustomSingleSignerInstruction,
 }
 
@@ -42,15 +48,41 @@ pub enum Vote {
     /// No vote
     No(u64),
 }
+/// Governance Realm Account
+pub struct GovernanceRealm {
+    /// Governance account type
+    pub account_type: GovernanceAccountType,
+
+    /// Governance mint
+    pub governance_mint: Pubkey,
+
+    /// Council mint
+    pub council_mint: Option<Pubkey>,
+
+    /// Governance Realm name
+    pub name: String,
+}
+
+/// Governance Voter Record Account
+pub struct VoterRecord {
+    /// Governance account type.
+    pub account_type: GovernanceAccountType,
+
+    /// Amount of deposited Governance Tokens and voting weight on Proposals voted by Governance Token holders.
+    pub governance_token_amount: u64,
+
+    /// Amount of deposited Council Tokens and voting weight on Proposal voted by Council Token holders.
+    pub council_token_amount: u64,
+
+    /// Number of outstanding active votes.
+    pub active_votes_count: u8,
+}
 
 /// Governance Account
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct Governance {
+pub struct ProgramGovernance {
     /// Account type
     pub account_type: GovernanceAccountType,
-
-    /// Optional governance name
-    pub name: String,
 
     /// Voting threshold in % required to tip the vote
     /// It's the percentage of tokens out of the entire pool of governance tokens eligible to vote
@@ -62,12 +94,6 @@ pub struct Governance {
 
     /// Minimum waiting time in slots for an instruction to be executed after proposal is voted on
     pub min_instruction_hold_up_time: Slot,
-
-    /// Governance mint
-    pub governance_mint: Pubkey,
-
-    /// Council mint
-    pub council_mint: Option<Pubkey>,
 
     /// Program ID that is governed by this Governance
     pub program: Pubkey,
@@ -98,12 +124,6 @@ pub struct Proposal {
 
     /// Admin ownership mint. One token is minted, can be used to grant admin status to a new person.
     pub admin_mint: Pubkey,
-
-    /// Source Token Holding account
-    pub source_holding: Pubkey,
-
-    /// Source Mint - either governance or council mint from Governance
-    pub source_mint: Pubkey,
 }
 
 /// Proposal state
@@ -149,7 +169,7 @@ pub struct ProposalState {
     pub number_of_instructions: u8,
 
     /// Array of pubkeys pointing at Proposal instructions, up to 5
-    pub instruction: [Pubkey; MAX_INSTRUCTIONS],
+    pub instruction: Vec<Pubkey>,
 }
 
 /// What state a Proposal is in
@@ -188,7 +208,7 @@ impl Default for ProposalStateStatus {
 
 /// Governance Vote Record
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct GovernanceVoteRecord {
+pub struct ProposalVoteRecord {
     /// Governance account type
     pub account_type: GovernanceAccountType,
 
