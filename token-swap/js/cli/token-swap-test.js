@@ -98,6 +98,7 @@ export async function createTokenSwap(): Promise<void> {
   const connection = await getConnection();
   const payer = await newAccountWithLamports(connection, 1000000000);
   owner = await newAccountWithLamports(connection, 1000000000);
+  const swapPayer = await newAccountWithLamports(connection, 10000000000);
   const tokenSwapAccount = new Account();
 
   [authority, nonce] = await PublicKey.findProgramAddress(
@@ -151,7 +152,6 @@ export async function createTokenSwap(): Promise<void> {
   await mintB.mintTo(tokenAccountB, owner, [], currentSwapTokenB);
 
   console.log('creating token swap');
-  const swapPayer = await newAccountWithLamports(connection, 10000000000);
   tokenSwap = await TokenSwap.createTokenSwap(
     connection,
     swapPayer,

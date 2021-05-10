@@ -15,7 +15,9 @@ use spl_token_swap::{
 
 use spl_token::instruction::approve;
 
-use solana_program::{bpf_loader, entrypoint::ProgramResult, pubkey::Pubkey, system_program};
+use solana_program::{
+    bpf_loader, entrypoint::ProgramResult, program_option::COption, pubkey::Pubkey, system_program,
+};
 
 pub struct NativeTokenSwap {
     pub user_account: NativeAccountData,
@@ -89,6 +91,8 @@ impl NativeTokenSwap {
             nonce,
             fees.clone(),
             swap_curve.clone(),
+            COption::None,
+            0,
         )
         .unwrap();
 

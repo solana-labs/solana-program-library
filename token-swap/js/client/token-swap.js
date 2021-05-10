@@ -83,6 +83,9 @@ export const TokenSwapLayout: typeof BufferLayout.Structure = BufferLayout.struc
     Layout.uint64('hostFeeDenominator'),
     BufferLayout.u8('curveType'),
     BufferLayout.blob(32, 'curveParameters'),
+    BufferLayout.u32('freezeAuthorityOption'),
+    Layout.publicKey('freezeAuthority'),
+    BufferLayout.u8('freezeAuthorityBitMask'),
   ],
 );
 
@@ -306,6 +309,7 @@ export class TokenSwap {
       {pubkey: tokenAccountPool, isSigner: false, isWritable: true},
       {pubkey: tokenProgramId, isSigner: false, isWritable: false},
     ];
+
     const commandDataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
       BufferLayout.u8('nonce'),
@@ -319,6 +323,9 @@ export class TokenSwap {
       BufferLayout.nu64('hostFeeDenominator'),
       BufferLayout.u8('curveType'),
       BufferLayout.blob(32, 'curveParameters'),
+      BufferLayout.u32('freezeAuthorityOption'),
+      Layout.publicKey('freezeAuthority'),
+      BufferLayout.u8('freezeAuthorityBitMask'),
     ]);
     let data = Buffer.alloc(1024);
     {
@@ -335,6 +342,9 @@ export class TokenSwap {
           hostFeeNumerator,
           hostFeeDenominator,
           curveType,
+          freezeAuthorityOption: 0,
+          freezeAuthority: undefined,
+          freezeAuthorityBitMask: 0,
         },
         data,
       );
