@@ -34,13 +34,13 @@
     "cluster:mainnet-beta": "cp cluster-mainnet-beta.env .env"
   },
   "dependencies": {
-    "@solana/spl-token": "0.1.3",
+    "@solana/spl-token": "0.1.4",
     "@solana/web3.js": "^1.9.1",
     "bn.js": "^5.2.0",
     "mkdirp": "^1.0.4"
   },
   "devDependencies": {
-    "@rollup/plugin-commonjs": "^18.0.0",
+    "@rollup/plugin-commonjs": "^19.0.0",
     "@tsconfig/recommended": "^1.0.1",
     "@types/bn.js": "^5.1.0",
     "@types/eslint": "^7.2.10",
