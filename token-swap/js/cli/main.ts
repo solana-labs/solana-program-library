@@ -1,9 +1,3 @@
-/**
- * Exercises the token-swap program
- *
- * @flow
- */
-
 import {
   createAccountAndSwapAtomic,
   createTokenSwap,

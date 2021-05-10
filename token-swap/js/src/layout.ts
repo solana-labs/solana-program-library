@@ -1,5 +1,3 @@
-// @flow
-
 import * as BufferLayout from 'buffer-layout';
 
 /**
@@ -31,12 +29,12 @@ export const rustString = (property: string = 'string'): Object => {
   const _decode = rsl.decode.bind(rsl);
   const _encode = rsl.encode.bind(rsl);
 
-  rsl.decode = (buffer, offset) => {
+  rsl.decode = (buffer: Buffer, offset: number) => {
     const data = _decode(buffer, offset);
     return data.chars.toString('utf8');
   };
 
-  rsl.encode = (str, buffer, offset) => {
+  rsl.encode = (str: string, buffer: Buffer, offset: number) => {
     const data = {
       chars: Buffer.from(str, 'utf8'),
     };

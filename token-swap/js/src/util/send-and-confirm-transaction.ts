@@ -1,5 +1,3 @@
-// @flow
-
 import {sendAndConfirmTransaction as realSendAndConfirmTransaction} from '@solana/web3.js';
 import type {
   Account,

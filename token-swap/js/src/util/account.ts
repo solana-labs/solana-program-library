@@ -5,7 +5,7 @@ export async function loadAccount(
   connection: Connection,
   address: PublicKey,
   programId: PublicKey,
-): Buffer {
+): Promise<Buffer> {
   const accountInfo = await connection.getAccountInfo(address);
   if (accountInfo === null) {
     throw new Error('Failed to find account');

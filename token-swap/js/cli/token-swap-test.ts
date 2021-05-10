@@ -1,5 +1,3 @@
-// @flow
-
 import {
   Account,
   Connection,
@@ -9,15 +7,11 @@ import {
 } from '@solana/web3.js';
 import {AccountLayout, Token, TOKEN_PROGRAM_ID} from '@solana/spl-token';
 
-import {
-  TokenSwap,
-  CurveType,
-  TOKEN_SWAP_PROGRAM_ID,
-} from '../client/token-swap';
-import {sendAndConfirmTransaction} from '../client/util/send-and-confirm-transaction';
-import {newAccountWithLamports} from '../client/util/new-account-with-lamports';
-import {url} from '../url';
-import {sleep} from '../client/util/sleep';
+import {TokenSwap, CurveType, TOKEN_SWAP_PROGRAM_ID} from '../src';
+import {sendAndConfirmTransaction} from '../src/util/send-and-confirm-transaction';
+import {newAccountWithLamports} from '../src/util/new-account-with-lamports';
+import {url} from '../src/util/url';
+import {sleep} from '../src/util/sleep';
 
 // The following globals are created by `createTokenSwap` and used by subsequent tests
 // Token swap
@@ -76,14 +70,14 @@ const DEFAULT_POOL_TOKEN_AMOUNT = 1000000000;
 // Pool token amount to withdraw / deposit
 const POOL_TOKEN_AMOUNT = 10000000;
 
-function assert(condition, message) {
+function assert(condition: boolean, message?: string) {
   if (!condition) {
     console.log(Error().stack + ':token-test.js');
     throw message || 'Assertion failed';
   }
 }
 
-let connection;
+let connection: Connection;
 async function getConnection(): Promise<Connection> {
   if (connection) return connection;
 
@@ -356,7 +350,7 @@ export async function createAccountAndSwapAtomic(): Promise<void> {
   let userAccountA = await mintA.createAccount(owner.publicKey);
   await mintA.mintTo(userAccountA, owner, [], SWAP_AMOUNT_IN);
 
-  // $FlowFixMe[prop-missing]
+  // @ts-ignore
   const balanceNeeded = await Token.getMinBalanceRentForExemptAccount(
     connection,
   );
