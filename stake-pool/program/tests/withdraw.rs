@@ -345,8 +345,7 @@ async fn fail_with_wrong_token_program_id() {
             &stake_pool_accounts.pool_mint.pubkey(),
             &wrong_token_program.pubkey(),
             tokens_to_burn,
-        )
-        .unwrap()],
+        )],
         Some(&payer.pubkey()),
         &[&payer, &user_transfer_authority],
         recent_blockhash,

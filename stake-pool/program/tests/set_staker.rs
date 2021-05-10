@@ -47,8 +47,7 @@ async fn success_set_staker_as_manager() {
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
             &new_staker.pubkey(),
-        )
-        .unwrap()],
+        )],
         Some(&payer.pubkey()),
     );
     transaction.sign(&[&payer, &stake_pool_accounts.manager], recent_blockhash);
@@ -71,8 +70,7 @@ async fn success_set_staker_as_staker() {
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.staker.pubkey(),
             &new_staker.pubkey(),
-        )
-        .unwrap()],
+        )],
         Some(&payer.pubkey()),
     );
     transaction.sign(&[&payer, &stake_pool_accounts.staker], recent_blockhash);
@@ -89,8 +87,7 @@ async fn success_set_staker_as_staker() {
             &stake_pool_accounts.stake_pool.pubkey(),
             &new_staker.pubkey(),
             &stake_pool_accounts.staker.pubkey(),
-        )
-        .unwrap()],
+        )],
         Some(&payer.pubkey()),
     );
     transaction.sign(&[&payer, &new_staker], recent_blockhash);
@@ -113,8 +110,7 @@ async fn fail_wrong_manager() {
             &stake_pool_accounts.stake_pool.pubkey(),
             &new_staker.pubkey(),
             &new_staker.pubkey(),
-        )
-        .unwrap()],
+        )],
         Some(&payer.pubkey()),
     );
     transaction.sign(&[&payer, &new_staker], recent_blockhash);

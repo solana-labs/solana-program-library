@@ -178,8 +178,7 @@ async fn fail_with_wrong_validator_list_account() {
             &wrong_validator_list.pubkey(),
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
-        )
-        .unwrap()],
+        )],
         Some(&payer.pubkey()),
     );
     transaction.sign(&[&payer, &stake_pool_accounts.staker], recent_blockhash);
@@ -301,8 +300,7 @@ async fn fail_wrong_staker() {
             &stake_pool_accounts.validator_list.pubkey(),
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
-        )
-        .unwrap()],
+        )],
         Some(&payer.pubkey()),
     );
     transaction.sign(&[&payer, &malicious], recent_blockhash);

@@ -127,8 +127,7 @@ async fn fail_with_wrong_validator_list_account() {
             &stake_pool_accounts.withdraw_authority,
             &wrong_validator_list.pubkey(),
             &user_stake.stake_account,
-        )
-        .unwrap()],
+        )],
         Some(&payer.pubkey()),
     );
     transaction.sign(&[&payer, &stake_pool_accounts.staker], recent_blockhash);
@@ -316,8 +315,7 @@ async fn fail_wrong_staker() {
             &stake_pool_accounts.withdraw_authority,
             &stake_pool_accounts.validator_list.pubkey(),
             &user_stake.stake_account,
-        )
-        .unwrap()],
+        )],
         Some(&payer.pubkey()),
     );
     transaction.sign(&[&payer, &malicious], recent_blockhash);

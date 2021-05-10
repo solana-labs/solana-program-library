@@ -31,11 +31,9 @@ use {
     spl_stake_pool::{
         self,
         borsh::get_instance_packed_len,
-        find_stake_program_address, find_transient_stake_program_address,
-        find_withdraw_authority_program_address,
+        find_stake_program_address, find_withdraw_authority_program_address,
         stake_program::{self, StakeState},
         state::{Fee, StakePool, ValidatorList},
-        MAX_VALIDATORS_TO_UPDATE,
     },
     std::process::exit,
 };
@@ -243,7 +241,7 @@ fn command_create_pool(
                 deposit_authority,
                 fee,
                 max_validators,
-            )?,
+            ),
         ],
         Some(&config.fee_payer.pubkey()),
     );
@@ -283,22 +281,17 @@ fn command_vsa_create(
     stake_pool_address: &Pubkey,
     vote_account: &Pubkey,
 ) -> CommandResult {
-    let (stake_account, _) =
-        find_stake_program_address(&spl_stake_pool::id(), &vote_account, &stake_pool_address);
-
-    println!("Creating stake account {}", stake_account);
+    println!("Creating stake account on {}", vote_account);
 
     let mut transaction = Transaction::new_with_payer(
         &[
             // Create new validator stake account address
-            spl_stake_pool::instruction::create_validator_stake_account(
-                &spl_stake_pool::id(),
+            spl_stake_pool::instruction::create_validator_stake_account_with_vote(
                 &stake_pool_address,
                 &config.staker.pubkey(),
                 &config.fee_payer.pubkey(),
-                &stake_account,
                 &vote_account,
-            )?,
+            ),
         ],
         Some(&config.fee_payer.pubkey()),
     );
@@ -348,30 +341,18 @@ fn command_vsa_add(
         command_update(config, stake_pool_address, false, false)?;
     }
 
-    let mut instructions: Vec<Instruction> = vec![];
-    let mut signers = vec![config.fee_payer.as_ref(), config.staker.as_ref()];
-
-    // Calculate Withdraw stake pool authorities
-    let pool_withdraw_authority =
-        find_withdraw_authority_program_address(&spl_stake_pool::id(), stake_pool_address).0;
-
-    instructions.extend(vec![
-        // Add validator stake account to the pool
-        spl_stake_pool::instruction::add_validator_to_pool(
-            &spl_stake_pool::id(),
-            &stake_pool_address,
-            &config.staker.pubkey(),
-            &pool_withdraw_authority,
-            &stake_pool.validator_list,
-            &stake_account_address,
-        )?,
-    ]);
+    let instruction = spl_stake_pool::instruction::add_validator_to_pool_with_vote(
+        &stake_pool,
+        &stake_pool_address,
+        &vote_account,
+    );
 
     let mut transaction =
-        Transaction::new_with_payer(&instructions, Some(&config.fee_payer.pubkey()));
+        Transaction::new_with_payer(&[instruction], Some(&config.fee_payer.pubkey()));
 
     let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
     check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
+    let mut signers = vec![config.fee_payer.as_ref(), config.staker.as_ref()];
     unique_signers!(signers);
     transaction.sign(&signers, recent_blockhash);
     send_transaction(&config, transaction)?;
@@ -389,15 +370,6 @@ fn command_vsa_remove(
     }
 
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
-    let pool_withdraw_authority =
-        find_withdraw_authority_program_address(&spl_stake_pool::id(), stake_pool_address).0;
-    let (validator_stake_account, _) =
-        find_stake_program_address(&spl_stake_pool::id(), &vote_account, stake_pool_address);
-    let (transient_stake_account, _) = find_transient_stake_program_address(
-        &spl_stake_pool::id(),
-        &vote_account,
-        stake_pool_address,
-    );
 
     let staker_pubkey = config.staker.pubkey();
     let new_authority = new_authority.as_ref().unwrap_or(&staker_pubkey);
@@ -405,16 +377,12 @@ fn command_vsa_remove(
     let mut transaction = Transaction::new_with_payer(
         &[
             // Create new validator stake account address
-            spl_stake_pool::instruction::remove_validator_from_pool(
-                &spl_stake_pool::id(),
-                &stake_pool_address,
-                &config.staker.pubkey(),
-                &pool_withdraw_authority,
-                &new_authority,
-                &stake_pool.validator_list,
-                &validator_stake_account,
-                &transient_stake_account,
-            )?,
+            spl_stake_pool::instruction::remove_validator_from_pool_with_vote(
+                &stake_pool,
+                stake_pool_address,
+                vote_account,
+                new_authority,
+            ),
         ],
         Some(&config.fee_payer.pubkey()),
     );
@@ -441,28 +409,15 @@ fn command_increase_validator_stake(
     }
 
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
-    let pool_withdraw_authority =
-        find_withdraw_authority_program_address(&spl_stake_pool::id(), stake_pool_address).0;
-    let (transient_stake_address, _) = find_transient_stake_program_address(
-        &spl_stake_pool::id(),
-        &vote_account,
+    let instruction = spl_stake_pool::instruction::increase_validator_stake_with_vote(
+        &stake_pool,
         stake_pool_address,
+        vote_account,
+        lamports,
     );
 
-    let mut transaction = Transaction::new_with_payer(
-        &[spl_stake_pool::instruction::increase_validator_stake(
-            &spl_stake_pool::id(),
-            &stake_pool_address,
-            &config.staker.pubkey(),
-            &pool_withdraw_authority,
-            &stake_pool.validator_list,
-            &stake_pool.reserve_stake,
-            &transient_stake_address,
-            &vote_account,
-            lamports,
-        )],
-        Some(&config.fee_payer.pubkey()),
-    );
+    let mut transaction =
+        Transaction::new_with_payer(&[instruction], Some(&config.fee_payer.pubkey()));
 
     let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
     check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
@@ -486,29 +441,15 @@ fn command_decrease_validator_stake(
     }
 
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
-    let pool_withdraw_authority =
-        find_withdraw_authority_program_address(&spl_stake_pool::id(), stake_pool_address).0;
-    let (validator_stake_address, _) =
-        find_stake_program_address(&spl_stake_pool::id(), &vote_account, stake_pool_address);
-    let (transient_stake_address, _) = find_transient_stake_program_address(
-        &spl_stake_pool::id(),
-        &vote_account,
+    let instruction = spl_stake_pool::instruction::decrease_validator_stake_with_vote(
+        &stake_pool,
         stake_pool_address,
+        vote_account,
+        lamports,
     );
 
-    let mut transaction = Transaction::new_with_payer(
-        &[spl_stake_pool::instruction::decrease_validator_stake(
-            &spl_stake_pool::id(),
-            &stake_pool_address,
-            &config.staker.pubkey(),
-            &pool_withdraw_authority,
-            &stake_pool.validator_list,
-            &validator_stake_address,
-            &transient_stake_address,
-            lamports,
-        )],
-        Some(&config.fee_payer.pubkey()),
-    );
+    let mut transaction =
+        Transaction::new_with_payer(&[instruction], Some(&config.fee_payer.pubkey()));
 
     let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
     check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
@@ -745,41 +686,12 @@ fn command_update(
 
     let validator_list = get_validator_list(&config.rpc_client, &stake_pool.validator_list)?;
 
-    let vote_accounts: Vec<Pubkey> = validator_list
-        .validators
-        .iter()
-        .map(|item| item.vote_account_address)
-        .collect();
-
-    println!("Updating stake pool...");
-    let (withdraw_authority, _) =
-        find_withdraw_authority_program_address(&spl_stake_pool::id(), &stake_pool_address);
-
-    let mut instructions: Vec<Instruction> = vec![];
-    let mut start_index = 0;
-    for accounts_chunk in vote_accounts.chunks(MAX_VALIDATORS_TO_UPDATE) {
-        instructions.push(spl_stake_pool::instruction::update_validator_list_balance(
-            &spl_stake_pool::id(),
-            stake_pool_address,
-            &withdraw_authority,
-            &stake_pool.validator_list,
-            &stake_pool.reserve_stake,
-            &accounts_chunk,
-            start_index,
-            no_merge,
-        ));
-        start_index += MAX_VALIDATORS_TO_UPDATE as u32;
-    }
-
-    instructions.push(spl_stake_pool::instruction::update_stake_pool_balance(
-        &spl_stake_pool::id(),
+    let instructions = spl_stake_pool::instruction::update_stake_pool(
+        &stake_pool,
+        &validator_list,
         stake_pool_address,
-        &withdraw_authority,
-        &stake_pool.validator_list,
-        &stake_pool.reserve_stake,
-        &stake_pool.manager_fee_account,
-        &stake_pool.pool_mint,
-    ));
+        no_merge,
+    );
 
     // TODO: A faster solution would be to send all the `update_validator_list_balance` instructions concurrently
     for instruction in instructions {
@@ -1014,7 +926,7 @@ fn command_withdraw(
             &stake_pool.pool_mint,
             &spl_token::id(),
             withdraw_account.pool_amount,
-        )?);
+        ));
     }
 
     let mut transaction =
@@ -1066,7 +978,7 @@ fn command_set_manager(
             &config.manager.pubkey(),
             &new_manager,
             &new_fee_receiver,
-        )?],
+        )],
         Some(&config.fee_payer.pubkey()),
     );
 
@@ -1090,7 +1002,7 @@ fn command_set_staker(
             &stake_pool_address,
             &config.manager.pubkey(),
             &new_staker,
-        )?],
+        )],
         Some(&config.fee_payer.pubkey()),
     );
 
