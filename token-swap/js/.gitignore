@@ -1,4 +1,2 @@
 test-ledger/
-module.flow.js
-declarations
-lib
+dist

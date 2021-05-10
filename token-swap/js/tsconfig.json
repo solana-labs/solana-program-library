@@ -4,7 +4,8 @@
       "allowJs": true,
       "skipLibCheck": true,
       "declaration": true,
-      "declarationDir": "declarations",
+      "declarationDir": "./dist",
+      "outDir": "./dist",
       "esModuleInterop": true,
       "allowSyntheticDefaultImports": true,
       "strict": true,
@@ -13,10 +14,9 @@
       "moduleResolution": "node",
       "resolveJsonModule": true,
       "isolatedModules": true,
-      "baseUrl": "client",
+      "baseUrl": "./src",
       "noFallthroughCasesInSwitch": true,
       "noImplicitReturns": true
     },
-    "include": ["cli/**/*", "client/**/*"]
+    "include": ["src/**/*"]
 }
-  
