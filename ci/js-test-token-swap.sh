@@ -4,8 +4,6 @@ set -ex
 cd "$(dirname "$0")/.."
 source ./ci/solana-version.sh install
 
-(cd token/js && npm install)
-
 cd token-swap/js
 npm install
 npm run lint

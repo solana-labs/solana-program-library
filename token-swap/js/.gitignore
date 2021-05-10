@@ -1,2 +1,3 @@
 test-ledger/
-dist
+dist/
+dist.browser/
