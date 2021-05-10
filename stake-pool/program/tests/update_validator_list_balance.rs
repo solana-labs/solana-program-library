@@ -97,13 +97,8 @@ async fn setup(
     }
 
     // Warp forward so the stakes properly activate, and deposit
-    // TODO This is *bad* -- program-test needs to have some more active stake
-    // so we can warm up faster than this. Also, we need to do each of these
-    // warps by hand to get fully active stakes.
-    for i in 2..50 {
-        slot = first_normal_slot + i * slots_per_epoch;
-        context.warp_to_slot(slot).unwrap();
-    }
+    slot += 2 * slots_per_epoch;
+    context.warp_to_slot(slot).unwrap();
 
     stake_pool_accounts
         .update_all(
@@ -170,7 +165,6 @@ async fn setup(
 }
 
 #[tokio::test]
-#[ignore]
 async fn success() {
     let num_validators = 5;
     let (
@@ -239,7 +233,6 @@ async fn success() {
 }
 
 #[tokio::test]
-#[ignore]
 async fn merge_into_reserve() {
     let (mut context, stake_pool_accounts, stake_accounts, lamports, _, mut slot) =
         setup(MAX_VALIDATORS_TO_UPDATE).await;
@@ -350,7 +343,6 @@ async fn merge_into_reserve() {
 }
 
 #[tokio::test]
-#[ignore]
 async fn merge_into_validator_stake() {
     let (mut context, stake_pool_accounts, stake_accounts, lamports, reserve_lamports, mut slot) =
         setup(MAX_VALIDATORS_TO_UPDATE).await;
@@ -477,7 +469,6 @@ async fn merge_into_validator_stake() {
 }
 
 #[tokio::test]
-#[ignore]
 async fn merge_transient_stake_after_remove() {
     let (mut context, stake_pool_accounts, stake_accounts, lamports, reserve_lamports, mut slot) =
         setup(1).await;
