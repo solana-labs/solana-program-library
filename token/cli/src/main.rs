@@ -1,5 +1,5 @@
 use clap::{
-    crate_description, crate_name, crate_version, value_t_or_exit, App, AppSettings, Arg,
+    crate_description, crate_name, crate_version, value_t, value_t_or_exit, App, AppSettings, Arg,
     ArgMatches, SubCommand,
 };
 use console::Emoji;
@@ -36,7 +36,6 @@ use solana_sdk::{
     system_instruction, system_program,
     transaction::Transaction,
 };
-use spl_memo::id as spl_memo_id;
 use spl_associated_token_account::*;
 use spl_token::{
     self,
@@ -257,12 +256,12 @@ fn command_create_token(
         )?,
     ];
 
-    // check for memo text; if it exsits convert it to
+    // check for memo text; if it exists convert it to
     // bytes and add memo tx instructions
     match memo {
         Some(text) => {
             let memo_instruction = Instruction {
-                program_id: spl_memo_id(),
+                program_id: spl_memo::id(),
                 accounts: vec![solana_program::instruction::AccountMeta::new(
                     config.owner,
                     false,
@@ -2078,11 +2077,7 @@ fn main() {
     let _ = match (sub_command, sub_matches) {
         ("create-token", Some(arg_matches)) => {
             let decimals = value_t_or_exit!(arg_matches, "decimals", u8);
-            let memo = if arg_matches.is_present("memo") {
-                Some(value_t_or_exit!(arg_matches, "memo", String))
-            } else {
-                None
-            };
+            let memo = value_t!(arg_matches, "memo", String).ok();
             let (signer, token) = if arg_matches.is_present("token_keypair") {
                 signer_of(&arg_matches, "token_keypair", &mut wallet_manager).unwrap_or_else(|e| {
                     eprintln!("error: {}", e);
