@@ -36,6 +36,7 @@ use solana_sdk::{
     system_instruction, system_program,
     transaction::Transaction,
 };
+use spl_memo::id as spl_memo_id;
 use spl_associated_token_account::*;
 use spl_token::{
     self,
@@ -261,10 +262,7 @@ fn command_create_token(
     match memo {
         Some(text) => {
             let memo_instruction = Instruction {
-                program_id: Pubkey::new(&[
-                    5, 74, 83, 90, 153, 41, 33, 6, 77, 36, 232, 113, 96, 218, 56, 124, 124, 53,
-                    181, 221, 188, 146, 187, 129, 228, 31, 168, 64, 65, 5, 68, 141,
-                ]),
+                program_id: spl_memo_id(),
                 accounts: vec![solana_program::instruction::AccountMeta::new(
                     config.owner,
                     false,
