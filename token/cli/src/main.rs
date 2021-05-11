@@ -258,21 +258,17 @@ fn command_create_token(
 
     // check for memo text; if it exists convert it to
     // bytes and add memo tx instructions
-    match memo {
-        Some(text) => {
-            let memo_instruction = Instruction {
-                program_id: spl_memo::id(),
-                accounts: vec![solana_program::instruction::AccountMeta::new(
-                    config.owner,
-                    false,
-                )],
-                data: text.as_bytes().to_vec(),
-            };
-
-            instructions.push(memo_instruction);
-        }
-        None => {}
-    };
+    if let Some(text) = memo {
+        let memo_instruction = Instruction {
+            program_id: spl_memo::id(),
+            accounts: vec![solana_program::instruction::AccountMeta::new(
+                config.owner,
+                false,
+            )],
+            data: text.as_bytes().to_vec(),
+        };
+        instructions.push(memo_instruction);
+    }
 
     Ok(Some((
         minimum_balance_for_rent_exemption,
