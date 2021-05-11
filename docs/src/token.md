@@ -273,7 +273,7 @@ Now the `7KqpRwzkkeweW5jQoETyLzhvs9rcCj9dVQ1MnzudirsM` account holds the
 one and only `559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z` token:
 
 ```
-$ spl-token account-info 7KqpRwzkkeweW5jQoETyLzhvs9rcCj9dVQ1MnzudirsM
+$ spl-token account-info 559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z
 
 Address: 7KqpRwzkkeweW5jQoETyLzhvs9rcCj9dVQ1MnzudirsM
 Balance: 1
