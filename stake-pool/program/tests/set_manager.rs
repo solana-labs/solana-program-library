@@ -67,8 +67,7 @@ async fn test_set_manager() {
             &stake_pool_accounts.manager.pubkey(),
             &new_manager.pubkey(),
             &new_pool_fee.pubkey(),
-        )
-        .unwrap()],
+        )],
         Some(&payer.pubkey()),
     );
     transaction.sign(&[&payer, &stake_pool_accounts.manager], recent_blockhash);
@@ -92,8 +91,7 @@ async fn test_set_manager_by_malicious() {
             &new_manager.pubkey(),
             &new_manager.pubkey(),
             &new_pool_fee.pubkey(),
-        )
-        .unwrap()],
+        )],
         Some(&payer.pubkey()),
     );
     transaction.sign(&[&payer, &new_manager], recent_blockhash);
@@ -196,8 +194,7 @@ async fn test_set_manager_with_wrong_mint_for_pool_fee_acc() {
             &stake_pool_accounts.manager.pubkey(),
             &new_manager.pubkey(),
             &new_pool_fee.pubkey(),
-        )
-        .unwrap()],
+        )],
         Some(&payer.pubkey()),
     );
     transaction.sign(&[&payer, &stake_pool_accounts.manager], recent_blockhash);

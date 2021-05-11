@@ -229,8 +229,7 @@ async fn fail_with_wrong_max_validators() {
                 None,
                 stake_pool_accounts.fee,
                 stake_pool_accounts.max_validators,
-            )
-            .unwrap(),
+            ),
         ],
         Some(&payer.pubkey()),
     );
@@ -389,8 +388,7 @@ async fn fail_with_wrong_token_program_id() {
                 None,
                 stake_pool_accounts.fee,
                 stake_pool_accounts.max_validators,
-            )
-            .unwrap(),
+            ),
         ],
         Some(&payer.pubkey()),
     );
@@ -554,8 +552,7 @@ async fn fail_with_not_rent_exempt_pool() {
                 None,
                 stake_pool_accounts.fee,
                 stake_pool_accounts.max_validators,
-            )
-            .unwrap(),
+            ),
         ],
         Some(&payer.pubkey()),
     );
@@ -629,8 +626,7 @@ async fn fail_with_not_rent_exempt_validator_list() {
                 None,
                 stake_pool_accounts.fee,
                 stake_pool_accounts.max_validators,
-            )
-            .unwrap(),
+            ),
         ],
         Some(&payer.pubkey()),
     );

@@ -250,8 +250,7 @@ pub async fn create_stake_pool(
                 deposit_authority.as_ref().map(|k| k.pubkey()),
                 *fee,
                 max_validators,
-            )
-            .unwrap(),
+            ),
         ],
         Some(&payer.pubkey()),
     );
@@ -374,8 +373,7 @@ pub async fn create_validator_stake_account(
             &payer.pubkey(),
             &stake_account,
             &validator,
-        )
-        .unwrap()],
+        )],
         Some(&payer.pubkey()),
         &[payer, staker],
         *recent_blockhash,
@@ -677,8 +675,7 @@ impl StakePoolAccounts {
                 &self.pool_mint.pubkey(),
                 &spl_token::id(),
                 amount,
-            )
-            .unwrap()],
+            )],
             Some(&payer.pubkey()),
             &[payer, user_transfer_authority],
             *recent_blockhash,
@@ -787,8 +784,7 @@ impl StakePoolAccounts {
                 &self.withdraw_authority,
                 &self.validator_list.pubkey(),
                 stake,
-            )
-            .unwrap()],
+            )],
             Some(&payer.pubkey()),
             &[payer, &self.staker],
             *recent_blockhash,
@@ -815,8 +811,7 @@ impl StakePoolAccounts {
                 &self.validator_list.pubkey(),
                 validator_stake,
                 transient_stake,
-            )
-            .unwrap()],
+            )],
             Some(&payer.pubkey()),
             &[payer, &self.staker],
             *recent_blockhash,

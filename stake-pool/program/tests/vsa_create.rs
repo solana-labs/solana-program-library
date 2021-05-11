@@ -55,8 +55,7 @@ async fn success_create_validator_stake_account() {
             &payer.pubkey(),
             &stake_account,
             &vote.pubkey(),
-        )
-        .unwrap()],
+        )],
         Some(&payer.pubkey()),
     );
     transaction.sign(&[&payer, &stake_pool_accounts.staker], recent_blockhash);
@@ -103,8 +102,7 @@ async fn fail_create_validator_stake_account_on_non_vote_account() {
             &payer.pubkey(),
             &stake_account,
             &validator,
-        )
-        .unwrap()],
+        )],
         Some(&payer.pubkey()),
     );
     transaction.sign(&[&payer, &stake_pool_accounts.staker], recent_blockhash);
@@ -241,8 +239,7 @@ async fn fail_create_validator_stake_account_with_incorrect_address() {
             &payer.pubkey(),
             &stake_account.pubkey(),
             &validator,
-        )
-        .unwrap()],
+        )],
         Some(&payer.pubkey()),
     );
     transaction.sign(&[&payer, &stake_pool_accounts.staker], recent_blockhash);
