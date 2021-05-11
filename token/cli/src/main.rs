@@ -222,6 +222,7 @@ fn command_create_token(
     decimals: u8,
     token: Pubkey,
     enable_freeze: bool,
+    memo: Option<String>,
 ) -> CommandResult {
     println!("Creating token {}", token);
 
@@ -238,7 +239,7 @@ fn command_create_token(
         None
     };
 
-    let instructions = vec![
+    let mut instructions = vec![
         system_instruction::create_account(
             &config.fee_payer,
             &token,
@@ -254,6 +255,28 @@ fn command_create_token(
             decimals,
         )?,
     ];
+
+    // check for memo text; if it exsits convert it to
+    // bytes and add memo tx instructions
+    match memo {
+        Some(text) => {
+            let memo_instruction = Instruction {
+                program_id: Pubkey::new(&[
+                    5, 74, 83, 90, 153, 41, 33, 6, 77, 36, 232, 113, 96, 218, 56, 124, 124, 53,
+                    181, 221, 188, 146, 187, 129, 228, 31, 168, 64, 65, 5, 68, 141,
+                ]),
+                accounts: vec![solana_program::instruction::AccountMeta::new(
+                    config.owner,
+                    false,
+                )],
+                data: text.as_bytes().to_vec(),
+            };
+
+            instructions.push(memo_instruction);
+        }
+        None => {}
+    };
+
     Ok(Some((
         minimum_balance_for_rent_exemption,
         vec![instructions],
@@ -1403,6 +1426,12 @@ fn main() {
                             "Enable the mint authority to freeze associated token accounts."
                         ),
                 )
+                .arg(
+                    Arg::with_name("memo")
+                        .long("memo")
+                        .takes_value(true)
+                        .help("Specify text that should be written as a memo when the token is created"),
+                )
                 .nonce_args(true)
                 .offline_args(),
         )
@@ -2051,6 +2080,11 @@ fn main() {
     let _ = match (sub_command, sub_matches) {
         ("create-token", Some(arg_matches)) => {
             let decimals = value_t_or_exit!(arg_matches, "decimals", u8);
+            let memo = if arg_matches.is_present("memo") {
+                Some(value_t_or_exit!(arg_matches, "memo", String))
+            } else {
+                None
+            };
             let (signer, token) = if arg_matches.is_present("token_keypair") {
                 signer_of(&arg_matches, "token_keypair", &mut wallet_manager).unwrap_or_else(|e| {
                     eprintln!("error: {}", e);
@@ -2067,6 +2101,7 @@ fn main() {
                 decimals,
                 token,
                 arg_matches.is_present("enable_freeze"),
+                memo,
             )
         }
         ("create-account", Some(arg_matches)) => {
