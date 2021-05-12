@@ -3831,6 +3831,7 @@ dependencies = [
  "num-derive",
  "num-traits",
  "solana-program",
+ "spl-name-service",
  "thiserror",
 ]
 

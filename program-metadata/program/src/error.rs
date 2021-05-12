@@ -29,6 +29,14 @@ pub enum MetadataError {
     #[error("Uninitialized")]
     Uninitialized,
 
+    /// Program authority must sign
+    #[error("ProgramAuthorityMustBeSigner")]
+    ProgramAuthorityMustBeSigner,
+
+    /// Program must match program data
+    #[error("ProgramDoesNotMatchProgramData")]
+    ProgramDoesNotMatchProgramData,
+
     /// Metadata's key must match seed of ['metadata', target_program id, metadata_name] provided
     #[error(" Metadata's key must match seed of ['metadata', target_program id, metadata_name] provided")]
     InvalidMetadataAccount,

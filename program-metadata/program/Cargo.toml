@@ -18,6 +18,7 @@ num-traits = "0.2"
 solana-program = "1.6.2"
 thiserror = "1.0"
 borsh = "0.8.2"
+spl-name-service = { path = "../../name-service/program", version = "0.1.0", features = [ "no-entrypoint" ] }
 
 [lib]
 crate-type = ["cdylib", "lib"]
