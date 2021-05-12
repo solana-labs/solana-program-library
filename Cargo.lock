@@ -3899,7 +3899,7 @@ dependencies = [
 
 [[package]]
 name = "spl-stake-pool-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bincode",
  "borsh 0.8.2",
@@ -3962,6 +3962,7 @@ dependencies = [
  "solana-remote-wallet",
  "solana-sdk",
  "spl-associated-token-account 1.0.2",
+ "spl-memo 3.0.1",
  "spl-token 3.1.0",
 ]
 
