@@ -259,7 +259,7 @@ fn command_create_token(
     // check for memo text; if it exists convert it to
     // bytes and add memo tx instructions
     if let Some(text) = memo {
-        let memo_instruction = spl_memo::build_memo(text.as_bytes(),&[&config.owner] );
+        let memo_instruction = spl_memo::build_memo(text.as_bytes(), &[&config.owner]);
         instructions.push(memo_instruction);
     }
 
