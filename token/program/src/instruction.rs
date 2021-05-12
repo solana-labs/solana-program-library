@@ -1,6 +1,6 @@
 //! Instruction types
 
-use crate::{error::TokenError, check_program_account};
+use crate::{check_program_account, error::TokenError};
 use solana_program::{
     instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
