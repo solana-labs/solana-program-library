@@ -729,6 +729,69 @@ fn command_thaw(config: &Config, account: Pubkey, mint_address: Option<Pubkey>) 
     Ok(Some((0, vec![instructions])))
 }
 
+fn command_clawback(
+    config: &Config,
+    sender: Pubkey,
+    ui_amount: Option<f64>,
+    recipient: Pubkey,
+    mint_address: Option<Pubkey>,
+    mint_decimals: Option<u8>,
+) -> CommandResult {
+    let (token, decimals) = resolve_mint_info(config, &sender, mint_address, mint_decimals)?;
+
+    let maybe_transfer_balance =
+        ui_amount.map(|ui_amount| spl_token::ui_amount_to_amount(ui_amount, decimals));
+    let transfer_balance = if !config.sign_only {
+        let sender_token_amount = config
+            .rpc_client
+            .get_token_account_balance(&sender)
+            .map_err(|err| {
+                format!(
+                    "Error: Failed to get token balance of sender address {}: {}",
+                    sender, err
+                )
+            })?;
+        let sender_balance = sender_token_amount.amount.parse::<u64>().map_err(|err| {
+            format!(
+                "Token account {} balance could not be parsed: {}",
+                sender, err
+            )
+        })?;
+
+        let transfer_balance = maybe_transfer_balance.unwrap_or(sender_balance);
+        println!(
+            "Mint authority {}\n  Forcing transfer of {} tokens\n  Sender: {}\n  Recipient: {}",
+            config.owner,
+            spl_token::amount_to_ui_amount(transfer_balance, decimals),
+            sender,
+            recipient
+        );
+
+        if transfer_balance > sender_balance {
+            return Err(format!(
+                "Error: Sender has insufficient funds, current balance is {}",
+                sender_token_amount.real_number_string_trimmed()
+            )
+            .into());
+        }
+        transfer_balance
+    } else {
+        maybe_transfer_balance.unwrap()
+    };
+
+    let instructions = vec![clawback(
+        &spl_token::id(),
+        &sender,
+        &token,
+        &recipient,
+        &config.owner,
+        &config.multisigner_pubkeys,
+        transfer_balance,
+        decimals,
+    )?];
+    Ok(Some((0, vec![instructions])))
+}
+
 fn command_wrap(config: &Config, sol: f64, account: Option<Pubkey>) -> CommandResult {
     let lamports = sol_to_lamports(sol);
 
@@ -1708,6 +1771,42 @@ fn main() {
                 .offline_args_config(&SignOnlyNeedsMintAddress{}),
         )
         .subcommand(
+            SubCommand::with_name("clawback")
+                .about("Reverse a previous transfer")
+                .arg(
+                    Arg::with_name("from")
+                        .validator(is_valid_pubkey)
+                        .value_name("SENDER_TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .index(1)
+                        .required(true)
+                        .help("The address of the source token account"),
+                )
+                .arg(
+                    Arg::with_name("amount")
+                        .validator(is_amount_or_all)
+                        .value_name("TOKEN_AMOUNT")
+                        .takes_value(true)
+                        .index(2)
+                        .required(true)
+                        .help("Amount to send, in tokens; accepts keyword ALL"),
+                )
+                .arg(
+                    Arg::with_name("recipient")
+                        .validator(is_valid_pubkey)
+                        .value_name("RECIPIENT_TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .index(3)
+                        .required(true)
+                        .help("The address of the recipient token account"),
+                )
+                .arg(mint_address_arg())
+                .arg(mint_decimals_arg())
+                .arg(multisig_signer_arg())
+                .nonce_args(true)
+                .offline_args_config(&SignOnlyNeedsMintAddress{}),
+        )
+        .subcommand(
             SubCommand::with_name("wrap")
                 .about("Wrap native SOL in a SOL token account")
                 .arg(
@@ -2225,6 +2324,29 @@ fn main() {
             let mint_address =
                 pubkey_of_signer(arg_matches, MINT_ADDRESS_ARG.name, &mut wallet_manager).unwrap();
             command_thaw(&config, account, mint_address)
+        }
+        ("clawback", Some(arg_matches)) => {
+            let sender = pubkey_of_signer(arg_matches, "from", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+            let amount = match matches.value_of("amount").unwrap() {
+                "ALL" => None,
+                amount => Some(amount.parse::<f64>().unwrap()),
+            };
+            let recipient = pubkey_of_signer(arg_matches, "recipient", &mut wallet_manager)
+                .unwrap()
+                .unwrap();
+            let mint_address =
+                pubkey_of_signer(arg_matches, MINT_ADDRESS_ARG.name, &mut wallet_manager).unwrap();
+            let mint_decimals = value_of::<u8>(&arg_matches, MINT_DECIMALS_ARG.name);
+            command_clawback(
+                &config,
+                sender,
+                amount,
+                recipient,
+                mint_address,
+                mint_decimals,
+            )
         }
         ("wrap", Some(arg_matches)) => {
             let amount = value_t_or_exit!(arg_matches, "amount", f64);
