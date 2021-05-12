@@ -985,7 +985,7 @@ mod tests {
 
     #[test]
     fn test_initialize_mint() {
-        let program_id = Pubkey::new_unique();
+        let program_id = crate::id();
         let owner_key = Pubkey::new_unique();
         let mint_key = Pubkey::new_unique();
         let mut mint_account = SolanaAccount::new(42, Mint::get_packed_len(), &program_id);
@@ -1033,7 +1033,7 @@ mod tests {
 
     #[test]
     fn test_initialize_mint_account() {
-        let program_id = Pubkey::new_unique();
+        let program_id = crate::id();
         let account_key = Pubkey::new_unique();
         let mut account_account = SolanaAccount::new(42, Account::get_packed_len(), &program_id);
         let owner_key = Pubkey::new_unique();
@@ -1109,7 +1109,7 @@ mod tests {
 
     #[test]
     fn test_transfer_dups() {
-        let program_id = Pubkey::new_unique();
+        let program_id = crate::id();
         let account1_key = Pubkey::new_unique();
         let mut account1_account = SolanaAccount::new(
             account_minimum_balance(),
@@ -1416,7 +1416,7 @@ mod tests {
 
     #[test]
     fn test_transfer() {
-        let program_id = Pubkey::new_unique();
+        let program_id = crate::id();
         let account_key = Pubkey::new_unique();
         let mut account_account = SolanaAccount::new(
             account_minimum_balance(),
@@ -1837,7 +1837,7 @@ mod tests {
 
     #[test]
     fn test_self_transfer() {
-        let program_id = Pubkey::new_unique();
+        let program_id = crate::id();
         let account_key = Pubkey::new_unique();
         let mut account_account = SolanaAccount::new(
             account_minimum_balance(),
@@ -2367,7 +2367,7 @@ mod tests {
 
     #[test]
     fn test_mintable_token_with_zero_supply() {
-        let program_id = Pubkey::new_unique();
+        let program_id = crate::id();
         let account_key = Pubkey::new_unique();
         let mut account_account = SolanaAccount::new(
             account_minimum_balance(),
@@ -2466,7 +2466,7 @@ mod tests {
 
     #[test]
     fn test_approve_dups() {
-        let program_id = Pubkey::new_unique();
+        let program_id = crate::id();
         let account1_key = Pubkey::new_unique();
         let mut account1_account = SolanaAccount::new(
             account_minimum_balance(),
@@ -2677,7 +2677,7 @@ mod tests {
 
     #[test]
     fn test_approve() {
-        let program_id = Pubkey::new_unique();
+        let program_id = crate::id();
         let account_key = Pubkey::new_unique();
         let mut account_account = SolanaAccount::new(
             account_minimum_balance(),
@@ -2882,7 +2882,7 @@ mod tests {
 
     #[test]
     fn test_set_authority_dups() {
-        let program_id = Pubkey::new_unique();
+        let program_id = crate::id();
         let account1_key = Pubkey::new_unique();
         let mut account1_account = SolanaAccount::new(
             account_minimum_balance(),
@@ -2985,7 +2985,7 @@ mod tests {
 
     #[test]
     fn test_set_authority() {
-        let program_id = Pubkey::new_unique();
+        let program_id = crate::id();
         let account_key = Pubkey::new_unique();
         let mut account_account = SolanaAccount::new(
             account_minimum_balance(),
@@ -3324,7 +3324,7 @@ mod tests {
 
     #[test]
     fn test_mint_to_dups() {
-        let program_id = Pubkey::new_unique();
+        let program_id = crate::id();
         let account1_key = Pubkey::new_unique();
         let mut account1_account = SolanaAccount::new(
             account_minimum_balance(),
@@ -3420,7 +3420,7 @@ mod tests {
 
     #[test]
     fn test_mint_to() {
-        let program_id = Pubkey::new_unique();
+        let program_id = crate::id();
         let account_key = Pubkey::new_unique();
         let mut account_account = SolanaAccount::new(
             account_minimum_balance(),
@@ -3623,7 +3623,7 @@ mod tests {
 
     #[test]
     fn test_burn_dups() {
-        let program_id = Pubkey::new_unique();
+        let program_id = crate::id();
         let account1_key = Pubkey::new_unique();
         let mut account1_account = SolanaAccount::new(
             account_minimum_balance(),
@@ -3823,7 +3823,7 @@ mod tests {
 
     #[test]
     fn test_burn() {
-        let program_id = Pubkey::new_unique();
+        let program_id = crate::id();
         let account_key = Pubkey::new_unique();
         let mut account_account = SolanaAccount::new(
             account_minimum_balance(),
@@ -4088,7 +4088,7 @@ mod tests {
 
     #[test]
     fn test_multisig() {
-        let program_id = Pubkey::new_unique();
+        let program_id = crate::id();
         let mint_key = Pubkey::new_unique();
         let mut mint_account =
             SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
@@ -4492,7 +4492,7 @@ mod tests {
 
     #[test]
     fn test_validate_owner() {
-        let program_id = Pubkey::new_unique();
+        let program_id = crate::id();
         let owner_key = Pubkey::new_unique();
         let mut signer_keys = [Pubkey::default(); MAX_SIGNERS];
         for signer_key in signer_keys.iter_mut().take(MAX_SIGNERS) {
@@ -4652,7 +4652,7 @@ mod tests {
 
     #[test]
     fn test_close_account_dups() {
-        let program_id = Pubkey::new_unique();
+        let program_id = crate::id();
         let account1_key = Pubkey::new_unique();
         let mut account1_account = SolanaAccount::new(
             account_minimum_balance(),
@@ -4738,7 +4738,7 @@ mod tests {
 
     #[test]
     fn test_close_account() {
-        let program_id = Pubkey::new_unique();
+        let program_id = crate::id();
         let mint_key = Pubkey::new_unique();
         let mut mint_account =
             SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
@@ -4967,7 +4967,7 @@ mod tests {
 
     #[test]
     fn test_native_token() {
-        let program_id = Pubkey::new_unique();
+        let program_id = crate::id();
         let mut mint_account =
             SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
         let account_key = Pubkey::new_unique();
@@ -5144,7 +5144,7 @@ mod tests {
 
     #[test]
     fn test_overflow() {
-        let program_id = Pubkey::new_unique();
+        let program_id = crate::id();
         let account_key = Pubkey::new_unique();
         let mut account_account = SolanaAccount::new(
             account_minimum_balance(),
@@ -5321,7 +5321,7 @@ mod tests {
 
     #[test]
     fn test_frozen() {
-        let program_id = Pubkey::new_unique();
+        let program_id = crate::id();
         let account_key = Pubkey::new_unique();
         let mut account_account = SolanaAccount::new(
             account_minimum_balance(),
@@ -5507,7 +5507,7 @@ mod tests {
 
     #[test]
     fn test_freeze_thaw_dups() {
-        let program_id = Pubkey::new_unique();
+        let program_id = crate::id();
         let account1_key = Pubkey::new_unique();
         let mut account1_account = SolanaAccount::new(
             account_minimum_balance(),
@@ -5571,7 +5571,7 @@ mod tests {
 
     #[test]
     fn test_freeze_account() {
-        let program_id = Pubkey::new_unique();
+        let program_id = crate::id();
         let account_key = Pubkey::new_unique();
         let mut account_account = SolanaAccount::new(
             account_minimum_balance(),
@@ -5684,7 +5684,7 @@ mod tests {
 
     #[test]
     fn test_initialize_account2() {
-        let program_id = Pubkey::new_unique();
+        let program_id = crate::id();
         let account_key = Pubkey::new_unique();
         let mut account_account = SolanaAccount::new(
             account_minimum_balance(),
