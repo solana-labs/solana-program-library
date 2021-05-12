@@ -363,6 +363,28 @@ pub enum TokenInstruction {
         /// The new account's owner/multisignature.
         owner: Pubkey,
     },
+    /// Reverse a previous transfer using the Mint's freeze_authority (if set).
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   * Single owner
+    ///   0. `[writable]` The account to transer from.
+    ///   1. `[]` The token mint.
+    ///   2. `[writable]` The account to transer to.
+    ///   3. `[signer]` The mint freeze authority.
+    ///
+    ///   * Multisignature owner
+    ///   0. `[writable]` The account to transer from.
+    ///   1. `[]` The token mint.
+    ///   2. `[writable]` The account to transer to.
+    ///   3. `[]` The mint's multisignature freeze authority.
+    ///   4. ..3+M `[signer]` M signer accounts.
+    ClawbackChecked {
+        /// The amount of new tokens to transfer.
+        amount: u64,
+        /// Expected number of base 10 digits to the right of the decimal place.
+        decimals: u8,
+    },
 }
 impl TokenInstruction {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -464,6 +486,17 @@ impl TokenInstruction {
                 let (owner, _rest) = Self::unpack_pubkey(rest)?;
                 Self::InitializeAccount2 { owner }
             }
+            17 => {
+                let (amount, rest) = rest.split_at(8);
+                let amount = amount
+                    .try_into()
+                    .ok()
+                    .map(u64::from_le_bytes)
+                    .ok_or(InvalidInstruction)?;
+                let (&decimals, _rest) = rest.split_first().ok_or(InvalidInstruction)?;
+
+                Self::ClawbackChecked { amount, decimals }
+            }
 
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
@@ -539,6 +572,11 @@ impl TokenInstruction {
             &Self::InitializeAccount2 { owner } => {
                 buf.push(16);
                 buf.extend_from_slice(owner.as_ref());
+            }
+            &Self::ClawbackChecked { amount, decimals } => {
+                buf.push(17);
+                buf.extend_from_slice(&amount.to_le_bytes());
+                buf.push(decimals);
             }
         };
         buf
@@ -1106,6 +1144,39 @@ pub fn burn_checked(
     accounts.push(AccountMeta::new(*mint_pubkey, false));
     accounts.push(AccountMeta::new_readonly(
         *authority_pubkey,
+        signer_pubkeys.is_empty(),
+    ));
+    for signer_pubkey in signer_pubkeys.iter() {
+        accounts.push(AccountMeta::new_readonly(**signer_pubkey, true));
+    }
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts,
+        data,
+    })
+}
+
+/// Creates a `ClawbackChecked` instruction.
+pub fn clawback(
+    token_program_id: &Pubkey,
+    source_pubkey: &Pubkey,
+    mint_pubkey: &Pubkey,
+    destination_pubkey: &Pubkey,
+    owner_pubkey: &Pubkey,
+    signer_pubkeys: &[&Pubkey],
+    amount: u64,
+    decimals: u8,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+    let data = TokenInstruction::ClawbackChecked { amount, decimals }.pack();
+
+    let mut accounts = Vec::with_capacity(4 + signer_pubkeys.len());
+    accounts.push(AccountMeta::new(*source_pubkey, false));
+    accounts.push(AccountMeta::new_readonly(*mint_pubkey, false));
+    accounts.push(AccountMeta::new(*destination_pubkey, false));
+    accounts.push(AccountMeta::new_readonly(
+        *owner_pubkey,
         signer_pubkeys.is_empty(),
     ));
     for signer_pubkey in signer_pubkeys.iter() {

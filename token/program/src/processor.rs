@@ -641,6 +641,74 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes a [ClawbackChecked](enum.TokenInstruction.html) instruction.
+    pub fn process_clawback(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        amount: u64,
+        expected_decimals: Option<u8>,
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+
+        let source_account_info = next_account_info(account_info_iter)?;
+        let mint_info = next_account_info(account_info_iter)?;
+        let dest_account_info = next_account_info(account_info_iter)?;
+        let authority_info = next_account_info(account_info_iter)?;
+
+        let mut source_account = Account::unpack(&source_account_info.data.borrow())?;
+        let mut dest_account = Account::unpack(&dest_account_info.data.borrow())?;
+
+        if source_account.is_native() || dest_account.is_native() {
+            return Err(TokenError::NativeNotSupported.into());
+        }
+        if source_account.amount < amount {
+            return Err(TokenError::InsufficientFunds.into());
+        }
+        if source_account.mint != dest_account.mint {
+            return Err(TokenError::MintMismatch.into());
+        }
+        if source_account.mint != *mint_info.key {
+            return Err(TokenError::MintMismatch.into());
+        }
+
+        let mint = Mint::unpack(&mint_info.data.borrow_mut())?;
+        match mint.freeze_authority {
+            COption::Some(authority) => Self::validate_owner(
+                program_id,
+                &authority,
+                authority_info,
+                account_info_iter.as_slice(),
+            ),
+            COption::None => Err(TokenError::MintCannotFreeze.into()),
+        }?;
+        if let Some(decimals) = expected_decimals {
+            if decimals != mint.decimals {
+                return Err(TokenError::MintDecimalsMismatch.into());
+            }
+        }
+
+        let self_transfer = source_account_info.key == dest_account_info.key;
+        // This check MUST occur just before the amounts are manipulated
+        // to ensure self-transfers are fully validated
+        if self_transfer {
+            return Ok(());
+        }
+
+        source_account.amount = source_account
+            .amount
+            .checked_sub(amount)
+            .ok_or(TokenError::Overflow)?;
+        dest_account.amount = dest_account
+            .amount
+            .checked_add(amount)
+            .ok_or(TokenError::Overflow)?;
+
+        Account::pack(source_account, &mut source_account_info.data.borrow_mut())?;
+        Account::pack(dest_account, &mut dest_account_info.data.borrow_mut())?;
+
+        Ok(())
+    }
+
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         let instruction = TokenInstruction::unpack(input)?;
@@ -720,6 +788,10 @@ impl Processor {
             TokenInstruction::BurnChecked { amount, decimals } => {
                 msg!("Instruction: BurnChecked");
                 Self::process_burn(program_id, accounts, amount, Some(decimals))
+            }
+            TokenInstruction::ClawbackChecked { amount, decimals } => {
+                msg!("Instruction: ClawbackChecked");
+                Self::process_clawback(program_id, accounts, amount, Some(decimals))
             }
         }
     }
@@ -5728,5 +5800,230 @@ mod tests {
         .unwrap();
 
         assert_eq!(account_account, account2_account);
+    }
+
+    #[test]
+    fn test_clawback() {
+        let program_id = crate::id();
+        let sender_key = Pubkey::new_unique();
+        let mut sender_account = SolanaAccount::new(
+            account_minimum_balance(),
+            Account::get_packed_len(),
+            &program_id,
+        );
+        let recipient_key = Pubkey::new_unique();
+        let mut recipient_account = SolanaAccount::new(
+            account_minimum_balance(),
+            Account::get_packed_len(),
+            &program_id,
+        );
+        let account_owner_key = Pubkey::new_unique();
+        let mut account_owner_account = SolanaAccount::default();
+        let owner_key = Pubkey::new_unique();
+        let mut owner_account = SolanaAccount::default();
+        let owner2_key = Pubkey::new_unique();
+        let mut owner2_account = SolanaAccount::default();
+        let mint_key = Pubkey::new_unique();
+        let mut mint_account =
+            SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
+        let mut rent_sysvar = rent_sysvar();
+
+        // create new mint with owner different from account owner
+        do_process_instruction(
+            initialize_mint(&program_id, &mint_key, &owner_key, None, 2).unwrap(),
+            vec![&mut mint_account, &mut rent_sysvar],
+        )
+        .unwrap();
+
+        // create accounts
+        do_process_instruction(
+            initialize_account(&program_id, &sender_key, &mint_key, &account_owner_key).unwrap(),
+            vec![
+                &mut sender_account,
+                &mut mint_account,
+                &mut account_owner_account,
+                &mut rent_sysvar,
+            ],
+        )
+        .unwrap();
+        do_process_instruction(
+            initialize_account(&program_id, &recipient_key, &mint_key, &account_owner_key).unwrap(),
+            vec![
+                &mut recipient_account,
+                &mut mint_account,
+                &mut account_owner_account,
+                &mut rent_sysvar,
+            ],
+        )
+        .unwrap();
+
+        // mint to accounts
+        do_process_instruction(
+            mint_to(&program_id, &mint_key, &sender_key, &owner_key, &[], 1000).unwrap(),
+            vec![&mut mint_account, &mut sender_account, &mut owner_account],
+        )
+        .unwrap();
+        do_process_instruction(
+            mint_to(
+                &program_id,
+                &mint_key,
+                &recipient_key,
+                &owner_key,
+                &[],
+                1000,
+            )
+            .unwrap(),
+            vec![
+                &mut mint_account,
+                &mut recipient_account,
+                &mut owner_account,
+            ],
+        )
+        .unwrap();
+
+        // mint authority unset, cannot clawback
+        assert_eq!(
+            Err(TokenError::MintCannotFreeze.into()),
+            do_process_instruction(
+                clawback(
+                    &program_id,
+                    &sender_key,
+                    &mint_key,
+                    &recipient_key,
+                    &owner_key,
+                    &[],
+                    150,
+                    2
+                )
+                .unwrap(),
+                vec![
+                    &mut sender_account,
+                    &mut mint_account,
+                    &mut recipient_account,
+                    &mut owner_account
+                ],
+            )
+        );
+
+        // incorrect freeze_authority provided
+        let mut mint = Mint::unpack_unchecked(&mint_account.data).unwrap();
+        mint.freeze_authority = COption::Some(owner_key);
+        Mint::pack(mint, &mut mint_account.data).unwrap();
+        assert_eq!(
+            Err(TokenError::OwnerMismatch.into()),
+            do_process_instruction(
+                clawback(
+                    &program_id,
+                    &sender_key,
+                    &mint_key,
+                    &recipient_key,
+                    &owner2_key,
+                    &[],
+                    150,
+                    2
+                )
+                .unwrap(),
+                vec![
+                    &mut sender_account,
+                    &mut mint_account,
+                    &mut recipient_account,
+                    &mut owner2_account
+                ],
+            )
+        );
+
+        // clawback
+        do_process_instruction(
+            clawback(
+                &program_id,
+                &sender_key,
+                &mint_key,
+                &recipient_key,
+                &owner_key,
+                &[],
+                150,
+                2,
+            )
+            .unwrap(),
+            vec![
+                &mut sender_account,
+                &mut mint_account,
+                &mut recipient_account,
+                &mut owner_account,
+            ],
+        )
+        .unwrap();
+        let account = Account::unpack_unchecked(&sender_account.data).unwrap();
+        assert_eq!(account.amount, 850);
+
+        // freeze sender
+        do_process_instruction(
+            freeze_account(&program_id, &sender_key, &mint_key, &owner_key, &[]).unwrap(),
+            vec![&mut sender_account, &mut mint_account, &mut owner_account],
+        )
+        .unwrap();
+        let account = Account::unpack_unchecked(&sender_account.data).unwrap();
+        assert_eq!(account.state, AccountState::Frozen);
+
+        // clawback
+        do_process_instruction(
+            clawback(
+                &program_id,
+                &sender_key,
+                &mint_key,
+                &recipient_key,
+                &owner_key,
+                &[],
+                150,
+                2,
+            )
+            .unwrap(),
+            vec![
+                &mut sender_account,
+                &mut mint_account,
+                &mut recipient_account,
+                &mut owner_account,
+            ],
+        )
+        .unwrap();
+        let account = Account::unpack_unchecked(&sender_account.data).unwrap();
+        assert_eq!(account.amount, 700);
+
+        // freeze recipient
+        do_process_instruction(
+            freeze_account(&program_id, &recipient_key, &mint_key, &owner_key, &[]).unwrap(),
+            vec![
+                &mut recipient_account,
+                &mut mint_account,
+                &mut owner_account,
+            ],
+        )
+        .unwrap();
+        let account = Account::unpack_unchecked(&recipient_account.data).unwrap();
+        assert_eq!(account.state, AccountState::Frozen);
+
+        // clawback
+        do_process_instruction(
+            clawback(
+                &program_id,
+                &sender_key,
+                &mint_key,
+                &recipient_key,
+                &owner_key,
+                &[],
+                150,
+                2,
+            )
+            .unwrap(),
+            vec![
+                &mut sender_account,
+                &mut mint_account,
+                &mut recipient_account,
+                &mut owner_account,
+            ],
+        )
+        .unwrap();
+        let account = Account::unpack_unchecked(&sender_account.data).unwrap();
+        assert_eq!(account.amount, 550);
     }
 }
