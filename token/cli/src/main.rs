@@ -1,5 +1,5 @@
 use clap::{
-    crate_description, crate_name, crate_version, value_t_or_exit, App, AppSettings, Arg,
+    crate_description, crate_name, crate_version, value_t, value_t_or_exit, App, AppSettings, Arg,
     ArgMatches, SubCommand,
 };
 use console::Emoji;
@@ -222,6 +222,7 @@ fn command_create_token(
     decimals: u8,
     token: Pubkey,
     enable_freeze: bool,
+    memo: Option<String>,
 ) -> CommandResult {
     println!("Creating token {}", token);
 
@@ -238,7 +239,7 @@ fn command_create_token(
         None
     };
 
-    let instructions = vec![
+    let mut instructions = vec![
         system_instruction::create_account(
             &config.fee_payer,
             &token,
@@ -254,6 +255,9 @@ fn command_create_token(
             decimals,
         )?,
     ];
+    if let Some(text) = memo {
+        instructions.push(spl_memo::build_memo(text.as_bytes(), &[&config.owner]));
+    }
     Ok(Some((
         minimum_balance_for_rent_exemption,
         vec![instructions],
@@ -1403,6 +1407,12 @@ fn main() {
                             "Enable the mint authority to freeze associated token accounts."
                         ),
                 )
+                .arg(
+                    Arg::with_name("memo")
+                        .long("memo")
+                        .takes_value(true)
+                        .help("Specify text that should be written as a memo when the token is created"),
+                )
                 .nonce_args(true)
                 .offline_args(),
         )
@@ -2051,6 +2061,7 @@ fn main() {
     let _ = match (sub_command, sub_matches) {
         ("create-token", Some(arg_matches)) => {
             let decimals = value_t_or_exit!(arg_matches, "decimals", u8);
+            let memo = value_t!(arg_matches, "memo", String).ok();
             let (signer, token) = if arg_matches.is_present("token_keypair") {
                 signer_of(&arg_matches, "token_keypair", &mut wallet_manager).unwrap_or_else(|e| {
                     eprintln!("error: {}", e);
@@ -2067,6 +2078,7 @@ fn main() {
                 decimals,
                 token,
                 arg_matches.is_present("enable_freeze"),
+                memo,
             )
         }
         ("create-account", Some(arg_matches)) => {
