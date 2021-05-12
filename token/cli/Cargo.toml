@@ -22,6 +22,7 @@ solana-remote-wallet = "=1.6.7"
 solana-sdk = "=1.6.7"
 spl-token = { version = "3.1", path="../program", features = [ "no-entrypoint" ] }
 spl-associated-token-account = { version = "1.0", path="../../associated-token-account/program", features = [ "no-entrypoint" ] }
+spl-memo = { version = "3.0.1", path="../../memo/program", features = ["no-entrypoint"] }
 
 [[bin]]
 name = "spl-token"

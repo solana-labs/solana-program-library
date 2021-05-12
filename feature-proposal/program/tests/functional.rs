@@ -68,13 +68,13 @@ async fn test_basic() {
     banks_client.process_transaction(transaction).await.unwrap();
 
     // Confirm feature id account is now funded and allocated, but not assigned
-    let feature_id_acccount = banks_client
+    let feature_id_account = banks_client
         .get_account(feature_id_address)
         .await
         .expect("success")
         .expect("some account");
-    assert_eq!(feature_id_acccount.owner, system_program::id());
-    assert_eq!(feature_id_acccount.data.len(), Feature::size_of());
+    assert_eq!(feature_id_account.owner, system_program::id());
+    assert_eq!(feature_id_account.data.len(), Feature::size_of());
 
     // Confirm mint account state
     let mint = get_account_data::<spl_token::state::Mint>(&mut banks_client, mint_address)
@@ -115,12 +115,12 @@ async fn test_basic() {
     banks_client.process_transaction(transaction).await.unwrap();
 
     // Confirm feature id account is not yet assigned
-    let feature_id_acccount = banks_client
+    let feature_id_account = banks_client
         .get_account(feature_id_address)
         .await
         .expect("success")
         .expect("some account");
-    assert_eq!(feature_id_acccount.owner, system_program::id());
+    assert_eq!(feature_id_account.owner, system_program::id());
 
     assert!(matches!(
         get_account_data::<FeatureProposal>(&mut banks_client, feature_proposal.pubkey()).await,
@@ -158,12 +158,12 @@ async fn test_basic() {
     banks_client.process_transaction(transaction).await.unwrap();
 
     // Confirm feature id account is now assigned
-    let feature_id_acccount = banks_client
+    let feature_id_account = banks_client
         .get_account(feature_id_address)
         .await
         .expect("success")
         .expect("some account");
-    assert_eq!(feature_id_acccount.owner, feature::id());
+    assert_eq!(feature_id_account.owner, feature::id());
 
     // Confirm feature proposal account state
     assert!(matches!(

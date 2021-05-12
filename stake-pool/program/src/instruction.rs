@@ -5,12 +5,14 @@
 use {
     crate::{
         find_deposit_authority_program_address, find_stake_program_address,
-        find_transient_stake_program_address, stake_program, state::Fee,
+        find_transient_stake_program_address, find_withdraw_authority_program_address, id,
+        stake_program,
+        state::{Fee, StakePool, ValidatorList},
+        MAX_VALIDATORS_TO_UPDATE,
     },
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{
         instruction::{AccountMeta, Instruction},
-        program_error::ProgramError,
         pubkey::Pubkey,
         system_program, sysvar,
     },
@@ -275,12 +277,12 @@ pub fn initialize(
     deposit_authority: Option<Pubkey>,
     fee: Fee,
     max_validators: u32,
-) -> Result<Instruction, ProgramError> {
+) -> Instruction {
     let init_data = StakePoolInstruction::Initialize {
         fee,
         max_validators,
     };
-    let data = init_data.try_to_vec()?;
+    let data = init_data.try_to_vec().unwrap();
     let mut accounts = vec![
         AccountMeta::new(*stake_pool, true),
         AccountMeta::new_readonly(*manager, true),
@@ -296,11 +298,11 @@ pub fn initialize(
     if let Some(deposit_authority) = deposit_authority {
         accounts.push(AccountMeta::new_readonly(deposit_authority, true));
     }
-    Ok(Instruction {
+    Instruction {
         program_id: *program_id,
         accounts,
         data,
-    })
+    }
 }
 
 /// Creates `CreateValidatorStakeAccount` instruction (create new stake account for the validator)
@@ -311,7 +313,7 @@ pub fn create_validator_stake_account(
     funder: &Pubkey,
     stake_account: &Pubkey,
     validator: &Pubkey,
-) -> Result<Instruction, ProgramError> {
+) -> Instruction {
     let accounts = vec![
         AccountMeta::new_readonly(*stake_pool, false),
         AccountMeta::new_readonly(*staker, true),
@@ -325,11 +327,13 @@ pub fn create_validator_stake_account(
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(stake_program::id(), false),
     ];
-    Ok(Instruction {
+    Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::CreateValidatorStakeAccount.try_to_vec()?,
-    })
+        data: StakePoolInstruction::CreateValidatorStakeAccount
+            .try_to_vec()
+            .unwrap(),
+    }
 }
 
 /// Creates `AddValidatorToPool` instruction (add new validator stake account to the pool)
@@ -340,7 +344,7 @@ pub fn add_validator_to_pool(
     stake_pool_withdraw: &Pubkey,
     validator_list: &Pubkey,
     stake_account: &Pubkey,
-) -> Result<Instruction, ProgramError> {
+) -> Instruction {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
         AccountMeta::new_readonly(*staker, true),
@@ -351,11 +355,13 @@ pub fn add_validator_to_pool(
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
         AccountMeta::new_readonly(stake_program::id(), false),
     ];
-    Ok(Instruction {
+    Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::AddValidatorToPool.try_to_vec()?,
-    })
+        data: StakePoolInstruction::AddValidatorToPool
+            .try_to_vec()
+            .unwrap(),
+    }
 }
 
 /// Creates `RemoveValidatorFromPool` instruction (remove validator stake account from the pool)
@@ -368,7 +374,7 @@ pub fn remove_validator_from_pool(
     validator_list: &Pubkey,
     stake_account: &Pubkey,
     transient_stake_account: &Pubkey,
-) -> Result<Instruction, ProgramError> {
+) -> Instruction {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
         AccountMeta::new_readonly(*staker, true),
@@ -380,11 +386,13 @@ pub fn remove_validator_from_pool(
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(stake_program::id(), false),
     ];
-    Ok(Instruction {
+    Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::RemoveValidatorFromPool.try_to_vec()?,
-    })
+        data: StakePoolInstruction::RemoveValidatorFromPool
+            .try_to_vec()
+            .unwrap(),
+    }
 }
 
 /// Creates `DecreaseValidatorStake` instruction (rebalance from validator account to
@@ -455,6 +463,124 @@ pub fn increase_validator_stake(
             .try_to_vec()
             .unwrap(),
     }
+}
+
+/// Creates `CreateValidatorStakeAccount` instruction with a vote account
+pub fn create_validator_stake_account_with_vote(
+    stake_pool_address: &Pubkey,
+    staker: &Pubkey,
+    funder: &Pubkey,
+    vote_account_address: &Pubkey,
+) -> Instruction {
+    let (stake_account, _) =
+        find_stake_program_address(&id(), vote_account_address, stake_pool_address);
+    create_validator_stake_account(
+        &id(),
+        &stake_pool_address,
+        staker,
+        funder,
+        &stake_account,
+        vote_account_address,
+    )
+}
+
+/// Create an `AddValidatorToPool` instruction given an existing stake pool and
+/// vote account
+pub fn add_validator_to_pool_with_vote(
+    stake_pool: &StakePool,
+    stake_pool_address: &Pubkey,
+    vote_account_address: &Pubkey,
+) -> Instruction {
+    let pool_withdraw_authority =
+        find_withdraw_authority_program_address(&id(), stake_pool_address).0;
+    let (stake_account_address, _) =
+        find_stake_program_address(&id(), vote_account_address, stake_pool_address);
+    add_validator_to_pool(
+        &id(),
+        &stake_pool_address,
+        &stake_pool.staker,
+        &pool_withdraw_authority,
+        &stake_pool.validator_list,
+        &stake_account_address,
+    )
+}
+
+/// Create an `RemoveValidatorFromPool` instruction given an existing stake pool and
+/// vote account
+pub fn remove_validator_from_pool_with_vote(
+    stake_pool: &StakePool,
+    stake_pool_address: &Pubkey,
+    vote_account_address: &Pubkey,
+    new_stake_account_authority: &Pubkey,
+) -> Instruction {
+    let pool_withdraw_authority =
+        find_withdraw_authority_program_address(&id(), stake_pool_address).0;
+    let (stake_account_address, _) =
+        find_stake_program_address(&id(), vote_account_address, stake_pool_address);
+    let (transient_stake_account, _) =
+        find_transient_stake_program_address(&id(), &vote_account_address, stake_pool_address);
+    remove_validator_from_pool(
+        &id(),
+        &stake_pool_address,
+        &stake_pool.staker,
+        &pool_withdraw_authority,
+        &new_stake_account_authority,
+        &stake_pool.validator_list,
+        &stake_account_address,
+        &transient_stake_account,
+    )
+}
+
+/// Create an `IncreaseValidatorStake` instruction given an existing stake pool and
+/// vote account
+pub fn increase_validator_stake_with_vote(
+    stake_pool: &StakePool,
+    stake_pool_address: &Pubkey,
+    vote_account_address: &Pubkey,
+    lamports: u64,
+) -> Instruction {
+    let pool_withdraw_authority =
+        find_withdraw_authority_program_address(&id(), stake_pool_address).0;
+    let (transient_stake_address, _) =
+        find_transient_stake_program_address(&id(), &vote_account_address, stake_pool_address);
+
+    increase_validator_stake(
+        &id(),
+        &stake_pool_address,
+        &stake_pool.staker,
+        &pool_withdraw_authority,
+        &stake_pool.validator_list,
+        &stake_pool.reserve_stake,
+        &transient_stake_address,
+        &vote_account_address,
+        lamports,
+    )
+}
+
+/// Create a `DecreaseValidatorStake` instruction given an existing stake pool and
+/// vote account
+pub fn decrease_validator_stake_with_vote(
+    stake_pool: &StakePool,
+    stake_pool_address: &Pubkey,
+    vote_account_address: &Pubkey,
+    lamports: u64,
+) -> Instruction {
+    let pool_withdraw_authority =
+        find_withdraw_authority_program_address(&id(), stake_pool_address).0;
+    let (validator_stake_address, _) =
+        find_stake_program_address(&id(), &vote_account_address, stake_pool_address);
+    let (transient_stake_address, _) =
+        find_transient_stake_program_address(&id(), &vote_account_address, stake_pool_address);
+    decrease_validator_stake(
+        &id(),
+        &stake_pool_address,
+        &stake_pool.staker,
+        &pool_withdraw_authority,
+        &stake_pool.validator_list,
+        &validator_stake_address,
+        &transient_stake_address,
+        lamports,
+    )
 }
 
 /// Creates `UpdateValidatorListBalance` instruction (update validator stake account balances)
@@ -536,6 +662,51 @@ pub fn update_stake_pool_balance(
     }
 }
 
+/// Creates all `UpdateValidatorListBalance` and `UpdateStakePoolBalance`
+/// instructions for fully updating a stake pool each epoch
+pub fn update_stake_pool(
+    stake_pool: &StakePool,
+    validator_list: &ValidatorList,
+    stake_pool_address: &Pubkey,
+    no_merge: bool,
+) -> Vec<Instruction> {
+    let vote_accounts: Vec<Pubkey> = validator_list
+        .validators
+        .iter()
+        .map(|item| item.vote_account_address)
+        .collect();
+
+    let (withdraw_authority, _) =
+        find_withdraw_authority_program_address(&id(), &stake_pool_address);
+
+    let mut instructions: Vec<Instruction> = vec![];
+    let mut start_index = 0;
+    for accounts_chunk in vote_accounts.chunks(MAX_VALIDATORS_TO_UPDATE) {
+        instructions.push(update_validator_list_balance(
+            &id(),
+            stake_pool_address,
+            &withdraw_authority,
+            &stake_pool.validator_list,
+            &stake_pool.reserve_stake,
+            &accounts_chunk,
+            start_index,
+            no_merge,
+        ));
+        start_index += MAX_VALIDATORS_TO_UPDATE as u32;
+    }
+
+    instructions.push(update_stake_pool_balance(
+        &id(),
+        stake_pool_address,
+        &withdraw_authority,
+        &stake_pool.validator_list,
+        &stake_pool.reserve_stake,
+        &stake_pool.manager_fee_account,
+        &stake_pool.pool_mint,
+    ));
+    instructions
+}
+
 /// Creates instructions required to deposit into a stake pool, given a stake
 /// account owned by the user.
 pub fn deposit(
@@ -545,7 +716,7 @@ pub fn deposit(
     stake_pool_withdraw_authority: &Pubkey,
     deposit_stake_address: &Pubkey,
     deposit_stake_withdraw_authority: &Pubkey,
-    validator_stake_accont: &Pubkey,
+    validator_stake_account: &Pubkey,
     pool_tokens_to: &Pubkey,
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
@@ -558,7 +729,7 @@ pub fn deposit(
         AccountMeta::new_readonly(stake_pool_deposit_authority, false),
         AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
         AccountMeta::new(*deposit_stake_address, false),
-        AccountMeta::new(*validator_stake_accont, false),
+        AccountMeta::new(*validator_stake_account, false),
         AccountMeta::new(*pool_tokens_to, false),
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
@@ -598,7 +769,7 @@ pub fn deposit_with_authority(
     stake_pool_withdraw_authority: &Pubkey,
     deposit_stake_address: &Pubkey,
     deposit_stake_withdraw_authority: &Pubkey,
-    validator_stake_accont: &Pubkey,
+    validator_stake_account: &Pubkey,
     pool_tokens_to: &Pubkey,
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
@@ -609,7 +780,7 @@ pub fn deposit_with_authority(
         AccountMeta::new_readonly(*stake_pool_deposit_authority, true),
         AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
         AccountMeta::new(*deposit_stake_address, false),
-        AccountMeta::new(*validator_stake_accont, false),
+        AccountMeta::new(*validator_stake_account, false),
         AccountMeta::new(*pool_tokens_to, false),
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
@@ -652,7 +823,7 @@ pub fn withdraw(
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
     amount: u64,
-) -> Result<Instruction, ProgramError> {
+) -> Instruction {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
         AccountMeta::new(*validator_list_storage, false),
@@ -667,11 +838,11 @@ pub fn withdraw(
         AccountMeta::new_readonly(*token_program_id, false),
         AccountMeta::new_readonly(stake_program::id(), false),
     ];
-    Ok(Instruction {
+    Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::Withdraw(amount).try_to_vec()?,
-    })
+        data: StakePoolInstruction::Withdraw(amount).try_to_vec().unwrap(),
+    }
 }
 
 /// Creates a 'set manager' instruction.
@@ -681,18 +852,18 @@ pub fn set_manager(
     manager: &Pubkey,
     new_manager: &Pubkey,
     new_fee_receiver: &Pubkey,
-) -> Result<Instruction, ProgramError> {
+) -> Instruction {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
         AccountMeta::new_readonly(*manager, true),
         AccountMeta::new_readonly(*new_manager, false),
         AccountMeta::new_readonly(*new_fee_receiver, false),
     ];
-    Ok(Instruction {
+    Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::SetManager.try_to_vec()?,
-    })
+        data: StakePoolInstruction::SetManager.try_to_vec().unwrap(),
+    }
 }
 
 /// Creates a 'set fee' instruction.
@@ -720,15 +891,15 @@ pub fn set_staker(
     stake_pool: &Pubkey,
     set_staker_authority: &Pubkey,
     new_staker: &Pubkey,
-) -> Result<Instruction, ProgramError> {
+) -> Instruction {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
         AccountMeta::new_readonly(*set_staker_authority, true),
         AccountMeta::new_readonly(*new_staker, false),
     ];
-    Ok(Instruction {
+    Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::SetStaker.try_to_vec()?,
-    })
+        data: StakePoolInstruction::SetStaker.try_to_vec().unwrap(),
+    }
 }

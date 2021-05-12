@@ -1072,6 +1072,11 @@ impl Processor {
         }
         let mut validator_list_entry = maybe_validator_list_entry.unwrap();
 
+        if validator_list_entry.status != StakeStatus::Active {
+            msg!("Validator is marked for removal and no longer allows increases");
+            return Err(StakePoolError::ValidatorNotFound.into());
+        }
+
         let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
         let minimum_lamports = MINIMUM_ACTIVE_STAKE + stake_rent;
         if lamports < minimum_lamports {

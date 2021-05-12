@@ -34,15 +34,15 @@
     "cluster:mainnet-beta": "cp cluster-mainnet-beta.env .env"
   },
   "dependencies": {
-    "@solana/spl-token": "0.1.3",
-    "@solana/web3.js": "^1.9.1",
+    "@solana/spl-token": "0.1.4",
+    "@solana/web3.js": "^1.10.1",
     "bn.js": "^5.2.0",
     "keccak": "^3.0.1",
     "mkdirp": "^1.0.4",
     "solray": "^0.0.1"
   },
   "devDependencies": {
-    "@rollup/plugin-commonjs": "^18.0.0",
+    "@rollup/plugin-commonjs": "^19.0.0",
     "@tsconfig/recommended": "^1.0.1",
     "@types/bn.js": "^5.1.0",
     "@types/eslint": "^7.2.10",
@@ -52,10 +52,10 @@
     "@types/node": "^15.0.2",
     "@types/prettier": "^2.2.3",
     "@types/rollup-plugin-json": "^3.0.2",
-    "@typescript-eslint/eslint-plugin": "^4.22.1",
-    "@typescript-eslint/parser": "^4.22.1",
-    "dotenv": "^9.0.0",
-    "eslint": "^7.25.0",
+    "@typescript-eslint/eslint-plugin": "^4.23.0",
+    "@typescript-eslint/parser": "^4.23.0",
+    "dotenv": "^9.0.2",
+    "eslint": "^7.26.0",
     "eslint-config-prettier": "^7.2.0",
     "eslint-plugin-prettier": "^3.4.0",
     "prettier": "^2.2.1",
