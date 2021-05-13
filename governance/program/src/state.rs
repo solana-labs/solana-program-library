@@ -12,7 +12,7 @@ pub enum GovernanceAccountType {
     Uninitialized,
 
     /// Top level aggregation for governances within Governance Token (and optional Council Token).
-    GovernanceRealm,
+    Realm,
 
     /// Voter record for each voter within a Realm.
     VoterRecord,
@@ -29,8 +29,8 @@ pub enum GovernanceAccountType {
     /// Vote record account for a given Proposal.  Proposal can have 0..n voting records.
     ProposalVoteRecord,
 
-    /// Custom Single Signer Instruction account which holds an instruction to execute for Proposal.
-    CustomSingleSignerInstruction,
+    /// Single Signer Instruction account which holds an instruction to execute for Proposal.
+    SingleSignerInstruction,
 }
 
 impl Default for GovernanceAccountType {
@@ -41,15 +41,26 @@ impl Default for GovernanceAccountType {
 
 /// Vote  with number of votes
 #[derive(Clone, Debug, PartialEq)]
-pub enum Vote {
+pub enum VoteWeight {
     /// Yes vote
     Yes(u64),
 
     /// No vote
     No(u64),
 }
+
+/// Yes/No Vote
+#[derive(Clone, Debug, PartialEq)]
+pub enum Vote {
+    /// Yes vote
+    Yes,
+    /// No vote
+    No,
+}
+
 /// Governance Realm Account
-pub struct GovernanceRealm {
+/// Account PDA seeds" ['governance', name]
+pub struct Realm {
     /// Governance account type
     pub account_type: GovernanceAccountType,
 
@@ -63,21 +74,45 @@ pub struct GovernanceRealm {
     pub name: String,
 }
 
-/// Governance Voter Record Account
-pub struct VoterRecord {
-    /// Governance account type.
-    pub account_type: GovernanceAccountType,
-
-    /// Amount of deposited Governance Tokens and voting weight on Proposals voted by Governance Token holders.
-    pub governance_token_amount: u64,
-
-    /// Amount of deposited Council Tokens and voting weight on Proposal voted by Council Token holders.
-    pub council_token_amount: u64,
-
-    /// Number of outstanding active votes.
-    pub active_votes_count: u8,
+/// Governing Token type
+#[derive(Clone)]
+pub enum GoverningTokenType {
+    /// Governance token
+    Governance,
+    /// Council token
+    Council,
 }
 
+/// Governance Voter Record
+/// Account PDA seeds: ['governance', realm, token_mint, token_owner ]
+pub struct VoterRecord {
+    /// Governance account type
+    pub account_type: GovernanceAccountType,
+
+    /// The Realm the VoterRecord belongs to
+    pub realm: Pubkey,
+
+    /// The type of the Governing Token the VoteRecord is for
+    pub token_type: GoverningTokenType,
+
+    /// The owner (either single or multisig) of the deposited governing SPL Tokens
+    /// This is who can authorize a withdrawal
+    pub token_owner: Pubkey,
+
+    /// The amount of governing tokens deposited into the Realm
+    /// This amount is the voter weight used when voting on proposals
+    pub token_deposit_amount: u64,
+
+    /// A single account that is allowed to operate governance with the deposited governing tokens
+    /// It's delegated to by the token owner
+    pub vote_authority: Pubkey,
+
+    /// The number of active votes cast by voter
+    pub active_votes_count: u8,
+
+    /// The total number of votes cast by the voter
+    pub total_votes_count: u8,
+}
 /// Governance Account
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ProgramGovernance {
@@ -93,13 +128,13 @@ pub struct ProgramGovernance {
     pub token_threshold_to_create_proposal: u8,
 
     /// Minimum waiting time in slots for an instruction to be executed after proposal is voted on
-    pub min_instruction_hold_up_time: Slot,
+    pub min_instruction_hold_up_time: u64,
 
     /// Program ID that is governed by this Governance
     pub program: Pubkey,
 
     /// Time limit in slots for proposal to be open for voting
-    pub max_voting_time: Slot,
+    pub max_voting_time: u64,
 
     /// Running count of proposals
     pub proposal_count: u32,
@@ -124,6 +159,10 @@ pub struct Proposal {
 
     /// Admin ownership mint. One token is minted, can be used to grant admin status to a new person.
     pub admin_mint: Pubkey,
+
+    /// Indicates which Governing Token is used to vote on the Proposal.
+    /// Whether the general Governance token owners populations or the Council votes on this Proposal
+    pub voting_token_type: GoverningTokenType,
 }
 
 /// Proposal state
@@ -216,20 +255,21 @@ pub struct ProposalVoteRecord {
     pub proposal: Pubkey,
 
     /// The user who casted this vote
-    pub voter: Pubkey,
+    /// This is the Governing Token Owner who deposited governing tokens into the Realm
+    pub governing_token_owner: Pubkey,
 
-    /// Voter's vote Yes/No and amount
-    pub vote: Option<Vote>,
+    /// Voter's vote: Yes/No and amount
+    pub vote: Option<VoteWeight>,
 }
 
 /// Account for an instruction to be executed for Proposal
 #[derive(Clone)]
-pub struct CustomSingleSignerInstruction {
+pub struct SingleSignerInstruction {
     /// Governance Account type
     pub account_type: GovernanceAccountType,
 
     /// Minimum waiting time in slots for the  instruction to be executed once proposal is voted on
-    pub hold_up_time: Slot,
+    pub hold_up_time: u64,
 
     /// Instruction to execute
     pub instruction: Instruction,
