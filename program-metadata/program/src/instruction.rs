@@ -1,4 +1,3 @@
-use crate::state::SerializationMethod;
 use {
     borsh::{BorshDeserialize, BorshSerialize},
     solana_program::{
@@ -6,13 +5,16 @@ use {
         pubkey::Pubkey,
         sysvar,
     },
+    crate::state::{
+        SerializationMethod
+    }
 };
 
 /// Instructions supported by the Metadata program.
 #[derive(BorshSerialize, BorshDeserialize, Clone)]
 pub enum MetadataInstruction {
     ///   0. `[]` Class account (seed: ['program_metadata', target_program_id])
-    ///   1. `[writable]` Name record PDA (seed: [SHA256(HASH_PREFIX, 'Create::name')])
+    ///   1. `[writable]` Name record account (seed: [SHA256(HASH_PREFIX, 'Create::name')])
     ///   2. `[]` Target program
     ///   3. `[]` Target program ProgramData
     ///   4. `[signer]` Target program update authority
@@ -27,9 +29,11 @@ pub enum MetadataInstruction {
     },
 
     ///   0. `[writable]` Class account (seed: ['program_metadata', target_program_id])
-    ///   1. `[writable]` Name record PDA (seed: [SHA256(HASH_PREFIX, 'Create::name')])
+    ///   1. `[writable]` Name record account (seed: [SHA256(HASH_PREFIX, 'Create::name')])
     ///   2. `[]` Target program
     ///   3. `[]` Target program ProgramData
+    ///   4. `[signer]` Target program update authority
+    ///   5. `[]` Name service
     UpdateMetadataEntry { value: String },
 
     ///   0. `[writable]` Class account (seed: ['program_metadata', target_program_id])
@@ -37,17 +41,19 @@ pub enum MetadataInstruction {
     ///   2. `[]` Target program
     ///   3. `[]` Target program ProgramData
     ///   4. `[signer]` Target program update authority
+    ///   5. `[]` Refund account
+    ///   6. `[]` Name service
     DeleteMetadataEntry,
 
     ///   0. `[]` Class account (seed: ['program_metadata', target_program_id])
-    ///   1. `[writable]` Name record PDA (seed: [SHA256(HASH_PREFIX, 'Create::name')])
+    ///   1. `[writable]` Name record account (seed: [SHA256(HASH_PREFIX, 'Create::name')])
     ///   2. `[]` Target program
     ///   3. `[]` Target program ProgramData
     ///   4. `[signer]` Target program update authority
     ///   5. `[signer]` Payer
-    ///   6. `[signer]` Metadata update authority
-    ///   7. `[]` System program
-    ///   8. `[]` Rent info
+    ///   6. `[]` System program
+    ///   7. `[]` Rent info
+    ///   8. `[]` Name service
     CreateVersionedIdl {
         effective_slot: u64,
         idl_url: String,
@@ -58,8 +64,12 @@ pub enum MetadataInstruction {
         hashed_name: [u8; 32],
     },
 
-    ///   0. `[writeable]` Idl account
-    ///   1. `[signer]` Update authority
+    ///   0. `[writable]` Class account (seed: ['program_metadata', target_program_id])
+    ///   1. `[writable]` Name record account (seed: [SHA256(HASH_PREFIX, 'Create::name')])
+    ///   2. `[]` Target program
+    ///   3. `[]` Target program ProgramData
+    ///   4. `[signer]` Target program update authority
+    ///   5. `[]` Name service
     UpdateVersionedIdl {
         idl_url: String,
         idl_hash: [u8; 32],

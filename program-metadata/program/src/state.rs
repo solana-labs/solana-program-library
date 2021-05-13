@@ -18,12 +18,6 @@ pub const IDL_HASH_SIZE: usize = 32;
 pub const VERSIONED_IDL_SIZE: usize =
     1 + 32 + MAX_URL_LENGTH + IDL_HASH_SIZE + MAX_URL_LENGTH + 1 + MAX_URL_LENGTH;
 
-// sha256("SPL Name Service" + "_idl")
-pub const IDL_HASHED_NAME: [u8; 32] = [
-    57, 222, 41, 139, 11, 207, 178, 48, 116, 99, 94, 46, 189, 24, 76, 79, 93, 3, 125, 157, 240,
-    173, 14, 162, 89, 247, 248, 16, 251, 82, 91, 136,
-];
-
 #[repr(C)]
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
 pub enum AccountType {
