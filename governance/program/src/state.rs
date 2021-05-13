@@ -272,6 +272,8 @@ pub struct SingleSignerInstruction {
     pub hold_up_time: u64,
 
     /// Instruction to execute
+    /// The instruction will be signed by Governance PDA the Proposal belongs to
+    // For example for ProgramGovernance the instruction to upgrade program will be signed by ProgramGovernance PDA
     pub instruction: Instruction,
 
     /// Executed flag

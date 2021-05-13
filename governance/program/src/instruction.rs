@@ -145,7 +145,7 @@ pub enum GovernanceInstruction {
     /// [Requires Admin token]
     /// Adds an instruction to the Proposal. Max of 5 of any  type. More than 5 will throw error
     ///
-    ///   0. `[writable]` Uninitialized Proposal Instruction account
+    ///   0. `[writable]` Uninitialized Proposal SingleSignerInstruction account
     ///   1. `[writable]` Proposal state account
     ///   2. `[signer]` Admin account
     ///   3. `[]` Proposal account
@@ -165,7 +165,7 @@ pub enum GovernanceInstruction {
     /// Remove instruction from the Proposal
     ///
     ///   0. `[writable]` Proposal State account
-    ///   1. `[writable]` Proposal instruction account
+    ///   1. `[writable]` Proposal SingleSignerInstruction account
     ///   2. `[signer]` Admin account
     ///   3. `[]` Proposal account
     RemoveInstruction,
@@ -173,7 +173,7 @@ pub enum GovernanceInstruction {
     /// [Requires Admin token]
     /// Update instruction hold up time in the Proposal
     ///
-    ///   0. `[writable]` Proposal instruction account
+    ///   0. `[writable]` Proposal SingleSignerInstruction account
     ///   1. `[signer]` Admin account
     ///   2. `[]` Proposal State account
     ///   3. `[]` Proposal account
@@ -228,9 +228,13 @@ pub enum GovernanceInstruction {
     ///   1. `[writable]` Proposal State account
     ///   2. `[writable]` Voter Record account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
     ///   3. `[writable]` Proposal Vote Record account. PDA seeds: ['governance',proposal,governing_token_owner]
+    ///   4. `[signer]` Vote Authority account
     RelinquishVote,
 
     /// Executes an instruction in the Proposal
+    /// Anybody can execute transaction once Proposal has been voted Yes and transaction_hold_up time has passed
+    /// The actual instruction being executed will be signed by Governance PDA
+    /// For example to execute Program upgrade the ProgramGovernance PDA would be used as the singer
     ///
     ///   0. `[writable]` Instruction account you wish to execute
     ///   1. `[writable]` Proposal State account
