@@ -60,7 +60,7 @@
     "bn.js": "^5.1.0",
     "buffer": "6.0.3",
     "buffer-layout": "^1.2.0",
-    "dotenv": "8.2.0"
+    "dotenv": "9.0.2"
   },
   "devDependencies": {
     "@babel/cli": "^7.10.5",
