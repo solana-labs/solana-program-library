@@ -4,7 +4,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 pub const CLASS_PREFIX: &str = "program_metadata";
 
 // Metadata size
-pub const MAX_NAME_LENGTH: usize = 32;
+pub const MAX_NAME_LENGTH: usize = 36;
 
 pub const MAX_VALUE_LENGTH: usize = 256;
 

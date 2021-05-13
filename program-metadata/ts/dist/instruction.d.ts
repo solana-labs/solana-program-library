@@ -1,0 +1,5 @@
+/// <reference types="node" />
+import { PublicKey, TransactionInstruction } from "@solana/web3.js";
+export declare function createMetadataEntryIx(programId: PublicKey, classKey: PublicKey, nameKey: PublicKey, targetProgramKey: PublicKey, targetProgramDataKey: PublicKey, targetProgramAuthorityKey: PublicKey, payerKey: PublicKey, systemProgramId: PublicKey, rentKey: PublicKey, nameServiceKey: PublicKey, name: string, value: string, hashedName: Buffer): TransactionInstruction;
+export declare function updateMetadataEntryIx(programId: PublicKey, classKey: PublicKey, nameKey: PublicKey, targetProgramKey: PublicKey, targetProgramDataKey: PublicKey, targetProgramAuthorityKey: PublicKey, nameServiceKey: PublicKey, value: string): TransactionInstruction;
+export declare function deleteMetadataEntryIx(programId: PublicKey, classKey: PublicKey, nameKey: PublicKey, targetProgramKey: PublicKey, targetProgramDataKey: PublicKey, targetProgramAuthorityKey: PublicKey, refundKey: PublicKey, nameServiceKey: PublicKey): TransactionInstruction;
