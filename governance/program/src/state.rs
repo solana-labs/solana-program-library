@@ -6,6 +6,7 @@ use solana_program::{epoch_schedule::Slot, instruction::Instruction, pubkey::Pub
 pub const MAX_INSTRUCTIONS: usize = 5;
 
 /// Defines all Governance accounts types
+#[repr(C)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum GovernanceAccountType {
     /// Default uninitialized account state
@@ -40,6 +41,7 @@ impl Default for GovernanceAccountType {
 }
 
 /// Vote  with number of votes
+#[repr(C)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum VoteWeight {
     /// Yes vote
@@ -49,17 +51,9 @@ pub enum VoteWeight {
     No(u64),
 }
 
-/// Yes/No Vote
-#[derive(Clone, Debug, PartialEq)]
-pub enum Vote {
-    /// Yes vote
-    Yes,
-    /// No vote
-    No,
-}
-
 /// Governance Realm Account
 /// Account PDA seeds" ['governance', name]
+#[repr(C)]
 pub struct Realm {
     /// Governance account type
     pub account_type: GovernanceAccountType,
@@ -75,6 +69,7 @@ pub struct Realm {
 }
 
 /// Governing Token type
+#[repr(C)]
 #[derive(Clone)]
 pub enum GoverningTokenType {
     /// Governance token
@@ -85,6 +80,7 @@ pub enum GoverningTokenType {
 
 /// Governance Voter Record
 /// Account PDA seeds: ['governance', realm, token_mint, token_owner ]
+#[repr(C)]
 pub struct VoterRecord {
     /// Governance account type
     pub account_type: GovernanceAccountType,
@@ -114,6 +110,7 @@ pub struct VoterRecord {
     pub total_votes_count: u8,
 }
 /// Governance Account
+#[repr(C)]
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ProgramGovernance {
     /// Account type
@@ -141,6 +138,7 @@ pub struct ProgramGovernance {
 }
 
 /// Governance Proposal
+#[repr(C)]
 #[derive(Clone)]
 pub struct Proposal {
     /// Governance account type
@@ -166,6 +164,7 @@ pub struct Proposal {
 }
 
 /// Proposal state
+#[repr(C)]
 #[derive(Clone)]
 pub struct ProposalState {
     /// Governance account type
@@ -212,6 +211,7 @@ pub struct ProposalState {
 }
 
 /// What state a Proposal is in
+#[repr(C)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum ProposalStateStatus {
     /// Draft - Proposal enters Draft state when it's created
@@ -246,6 +246,7 @@ impl Default for ProposalStateStatus {
 }
 
 /// Governance Vote Record
+#[repr(C)]
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ProposalVoteRecord {
     /// Governance account type
@@ -263,6 +264,7 @@ pub struct ProposalVoteRecord {
 }
 
 /// Account for an instruction to be executed for Proposal
+#[repr(C)]
 #[derive(Clone)]
 pub struct SingleSignerInstruction {
     /// Governance Account type

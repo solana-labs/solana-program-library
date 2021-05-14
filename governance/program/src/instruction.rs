@@ -1,11 +1,22 @@
 //! Program instructions
 
-use solana_program::{epoch_schedule::Slot, instruction::Instruction, pubkey::Pubkey};
+use solana_program::{instruction::Instruction, pubkey::Pubkey};
 
-use crate::state::{GoverningTokenType, Vote, VoteWeight};
+use crate::state::GoverningTokenType;
+
+/// Yes/No Vote
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq)]
+pub enum Vote {
+    /// Yes vote
+    Yes,
+    /// No vote
+    No,
+}
 
 /// Instructions supported by the Governance program
 #[derive(Clone)]
+#[repr(C)]
 #[allow(clippy::large_enum_variant)]
 pub enum GovernanceInstruction {
     /// Creates Governance Realm account which aggregates governances for given Governance Mint and optional Council Mint
