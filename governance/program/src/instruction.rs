@@ -202,7 +202,7 @@ pub enum GovernanceInstruction {
     CancelProposal,
 
     /// [Requires Signatory token]
-    /// Burns signatory token, indicating you approve of moving this Proposal from Draft state to Voting state
+    /// Burns signatory token, indicating you approve and sign off on moving this Proposal from Draft state to Voting state
     /// The last Signatory token to be burned moves the state to Voting
     ///
     ///   0. `[writable]` Proposal State account
@@ -212,7 +212,7 @@ pub enum GovernanceInstruction {
     ///   4. `[signer]` Transfer authority
     ///   5. `[]` Token program account
     ///   6. `[]` Clock sysvar
-    SignProposal,
+    SignOffProposal,
 
     ///  Uses your voter weight (deposited Community or Council tokens) to cast a vote on a Proposal
     ///  By doing so you indicate you approve or disapprove of running the Proposal set of instructions
