@@ -12,25 +12,25 @@ pub enum GovernanceAccountType {
     /// Default uninitialized account state
     Uninitialized,
 
-    /// Top level aggregation for governances within Governance Token (and optional Council Token).
+    /// Top level aggregation for governances with Community Token (and optional Council Token)
     Realm,
 
-    /// Voter record for each voter within a Realm.
+    /// Voter record for each voter and given governing token type within a Realm
     VoterRecord,
 
-    /// Program Governance account.
+    /// Program Governance account
     ProgramGovernance,
 
-    /// Proposal account for Governance account. A single Governance account can have multiple Proposal accounts.
+    /// Proposal account for Governance account. A single Governance account can have multiple Proposal accounts
     Proposal,
 
-    /// Proposal voting state account. Every Proposal account has exactly one ProposalState account.
+    /// Proposal voting state account. Every Proposal account has exactly one ProposalState account
     ProposalState,
 
-    /// Vote record account for a given Proposal.  Proposal can have 0..n voting records.
+    /// Vote record account for a given Proposal.  Proposal can have 0..n voting records
     ProposalVoteRecord,
 
-    /// Single Signer Instruction account which holds an instruction to execute for Proposal.
+    /// Single Signer Instruction account which holds an instruction to execute for Proposal
     SingleSignerInstruction,
 }
 
@@ -58,8 +58,8 @@ pub struct Realm {
     /// Governance account type
     pub account_type: GovernanceAccountType,
 
-    /// Governance mint
-    pub governance_mint: Pubkey,
+    /// Community mint
+    pub community_mint: Pubkey,
 
     /// Council mint
     pub council_mint: Option<Pubkey>,
@@ -72,8 +72,8 @@ pub struct Realm {
 #[repr(C)]
 #[derive(Clone)]
 pub enum GoverningTokenType {
-    /// Governance token
-    Governance,
+    /// Community token
+    Community,
     /// Council token
     Council,
 }
@@ -155,11 +155,11 @@ pub struct Proposal {
     /// to move instruction to voting state) and bring mint to net 0 tokens outstanding. Each signatory gets 1 (serves as flag)
     pub signatory_mint: Pubkey,
 
-    /// Admin ownership mint. One token is minted, can be used to grant admin status to a new person.
+    /// Admin ownership mint. One token is minted, can be used to grant admin status to a new person
     pub admin_mint: Pubkey,
 
-    /// Indicates which Governing Token is used to vote on the Proposal.
-    /// Whether the general Governance token owners populations or the Council votes on this Proposal
+    /// Indicates which Governing Token is used to vote on the Proposal
+    /// Whether the general Community token owners or the Council tokens owners vote on this Proposal
     pub voting_token_type: GoverningTokenType,
 }
 
@@ -185,7 +185,7 @@ pub struct ProposalState {
     /// Proposal name
     pub name: String,
 
-    /// When the Proposal ended voting - this will also be when the set was defeated or began executing naturally.
+    /// When the Proposal ended voting - this will also be when the set was defeated or began executing naturally
     pub voting_ended_at: Option<Slot>,
 
     /// When the Proposal began voting

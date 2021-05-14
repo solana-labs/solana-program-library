@@ -19,24 +19,24 @@ pub enum Vote {
 #[repr(C)]
 #[allow(clippy::large_enum_variant)]
 pub enum GovernanceInstruction {
-    /// Creates Governance Realm account which aggregates governances for given Governance Mint and optional Council Mint
+    /// Creates Governance Realm account which aggregates governances for given Community Mint and optional Council Mint
     ///
     /// 0. `[writable]` Governance Realm account. PDA seeds:['governance',name]
-    /// 1. `[]` Governance Token Mint
-    /// 2. `[writable]` Governances Token Holding account
-    /// 3. `[signer]` Payer.
-    /// 4. `[]` System.
-    /// 5. `[]` SPL Token.
-    /// 6. `[]` Sysvar Rent.
+    /// 1. `[]` Community Token Mint
+    /// 2. `[writable]` Community Token Holding account
+    /// 3. `[signer]` Payer
+    /// 4. `[]` System
+    /// 5. `[]` SPL Token
+    /// 6. `[]` Sysvar Rent
     /// 7. `[]` Council Token Mint - optional
     /// 8. `[writable]` Council Token Holding account - optional
     CreateRealm {
-        /// UTF-8 encoded Governance Realm name.
+        /// UTF-8 encoded Governance Realm name
         name: String,
     },
 
-    /// Deposits governing tokens (Governance or Council) to Governance Realm and establishes your voter weight to be used for voting within the Realm
-    /// Note: If subsequent (top up) deposit is made and there are active votes for the Voter then the weights won't be updated automatically
+    /// Deposits governing tokens (Community or Council) to Governance Realm and establishes your voter weight to be used for voting within the Realm
+    /// Note: If subsequent (top up) deposit is made and there are active votes for the Voter then the vote weights won't be updated automatically
     /// It can be done by relinquishing votes on active Proposals and voting again with the new weight
     ///
     ///  0. `[]` Governance Realm account
@@ -44,12 +44,12 @@ pub enum GovernanceInstruction {
     ///  2. `[writable]` Governing Token Source account. All tokens from the account will be transferred to the Holding account
     ///  3. `[signer]` Governing Token Owner account
     ///  4. `[writable]` Voter Record account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
-    ///  5. `[signer]` Payer.
-    ///  6. `[]` System.
-    ///  7. `[]` SPL Token.
+    ///  5. `[signer]` Payer
+    ///  6. `[]` System
+    ///  7. `[]` SPL Token
     DepositGoverningTokens {},
 
-    /// Withdraws governing tokens (Governance or Council) from Governance Realm and downgrades your voter weight within the Realm
+    /// Withdraws governing tokens (Community or Council) from Governance Realm and downgrades your voter weight within the Realm
     /// Note: It's only possible to withdraw tokens if the Voter doesn't have any outstanding active votes
     /// If there are any outstanding votes then they must be relinquished before tokens could be withdrawn
     ///
@@ -58,10 +58,10 @@ pub enum GovernanceInstruction {
     ///  2. `[writable]` Governing Token Destination account. All tokens will be transferred to this account
     ///  3. `[signer]` Governing Token Owner account
     ///  4. `[writable]` Voter Record account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
-    ///  5. `[]` SPL Token.   
+    ///  5. `[]` SPL Token   
     WithdrawGoverningTokens {},
 
-    /// Sets vote authority for the given Realm and Governing Token Mint (Governance or Council)
+    /// Sets vote authority for the given Realm and Governing Token Mint (Community or Council)
     /// The vote authority would have voting rights and could vote on behalf of the Governing Token Owner
     ///
     /// 0. `[signer]` Governing Token Owner
@@ -80,7 +80,7 @@ pub enum GovernanceInstruction {
         vote_authority: Pubkey,
     },
 
-    /// Creates Program Governance account which governs an upgradable program.
+    /// Creates Program Governance account which governs an upgradable program
     ///
     ///   0. `[writable]` Governance account. PDA seeds: ['governance', governed_program]
     ///   1. `[]` Account of the Program governed by this Governance account
@@ -125,7 +125,7 @@ pub enum GovernanceInstruction {
         /// UTF-8 encoded name of the proposal
         name: String,
 
-        /// The Governing token (Governance or Council) which will be used for voting on the Proposal
+        /// The Governing token (Community or Council) which will be used for voting on the Proposal
         governing_token_type: GoverningTokenType,
     },
 
@@ -214,7 +214,7 @@ pub enum GovernanceInstruction {
     ///   6. `[]` Clock sysvar
     SignProposal,
 
-    ///  Uses your voter weight (deposited Governance or Council tokens) to cast a vote on a Proposal
+    ///  Uses your voter weight (deposited Community or Council tokens) to cast a vote on a Proposal
     ///  By doing so you indicate you approve or disapprove of running the Proposal set of instructions
     ///  If you tip the consensus then the instructions can begin to be run after their hold up time
     ///
