@@ -112,14 +112,13 @@ pub enum GovernanceInstruction {
     /// The instruction also grants Admin and Signatory token to the provided account
     ///
     ///   0. `[writable]` Uninitialized Proposal account
-    ///   1. `[writable]` Uninitialized Proposal State account
-    ///   2. `[writable]` Initialized Governance account
-    ///   3. `[writable]` Initialized Signatory Mint account
-    ///   4. `[writable]` Initialized Admin Mint account
-    ///   5. `[writable]` Initialized Admin account for the issued admin token
-    ///   6. `[writable]` Initialized Signatory account for the issued signatory token
-    ///   7. '[]` Token program account
-    ///   8. `[]` Rent sysvar
+    ///   1. `[writable]` Initialized Governance account
+    ///   2. `[writable]` Initialized Signatory Mint account
+    ///   3. `[writable]` Initialized Admin Mint account
+    ///   4. `[writable]` Initialized Admin account for the issued admin token
+    ///   5. `[writable]` Initialized Signatory account for the issued signatory token
+    ///   6. '[]` Token program account
+    ///   7. `[]` Rent sysvar
     CreateProposal {
         /// Link to gist explaining proposal
         description_link: String,
@@ -135,34 +134,29 @@ pub enum GovernanceInstruction {
     /// Adds a signatory to the Proposal which means this Proposal can't leave Draft state until yet another Signatory signs
     /// As a result of this call the new Signatory will receive a Signatory Token which then can be used to Sign proposal
     ///
-    ///   0. `[writable]` Initialized Signatory account
-    ///   1. `[writable]` Initialized Signatory Mint account
-    ///   2. `[signer]` Admin account
-    ///   3. `[writable]` Proposal State account
-    ///   4. `[]` Proposal account
-    ///   5. '[]` Token program account
+    ///   0. `[writable]` Proposal account
+    ///   1. `[writable]` Initialized Signatory account
+    ///   2. `[writable]` Initialized Signatory Mint account
+    ///   3. `[signer]` Admin account
+    ///   4. '[]` Token program account
     AddSignatory,
 
     /// [Requires Admin token]
     /// Removes a Signatory from the Proposal
     ///
-    ///   0. `[writable]` Signatory account to remove token from
-    ///   1. `[writable]` Signatory Mint account
-    ///   2. `[signer]` Admin account
-    ///   3. `[writable]` Proposal State account
-    ///   4. `[]` Proposal account
-    ///   5. `[signer]` Transfer authority
-    ///   6. '[]` Token program account
+    ///   0. `[writable]` Proposal account   
+    ///   1. `[writable]` Signatory account to remove token from
+    ///   2. `[writable]` Signatory Mint account
+    ///   3. `[signer]` Admin account
+    ///   4. '[]` Token program account
     RemoveSignatory,
 
     /// [Requires Admin token]
     /// Adds an instruction to the Proposal. Max of 5 of any  type. More than 5 will throw error
     ///
-    ///   0. `[writable]` Uninitialized Proposal SingleSignerInstruction account
-    ///   1. `[writable]` Proposal state account
+    ///   0. `[writable]` Proposal account   
+    ///   1. `[writable]` Uninitialized Proposal SingleSignerInstruction account
     ///   2. `[signer]` Admin account
-    ///   3. `[]` Proposal account
-    ///   4. `[]` Governance account
     AddSingleSignerInstruction {
         /// Slot waiting time between vote period ending and this being eligible for execution
         hold_up_time: u64,
@@ -177,19 +171,17 @@ pub enum GovernanceInstruction {
     /// [Requires Admin token]
     /// Remove instruction from the Proposal
     ///
-    ///   0. `[writable]` Proposal State account
+    ///   0. `[writable]` Proposal account
     ///   1. `[writable]` Proposal SingleSignerInstruction account
     ///   2. `[signer]` Admin account
-    ///   3. `[]` Proposal account
     RemoveInstruction,
 
     /// [Requires Admin token]
     /// Update instruction hold up time in the Proposal
     ///
-    ///   0. `[writable]` Proposal SingleSignerInstruction account
-    ///   1. `[signer]` Admin account
-    ///   2. `[]` Proposal State account
-    ///   3. `[]` Proposal account
+    ///   0. `[]` Proposal account   
+    ///   1. `[writable]` Proposal SingleSignerInstruction account
+    ///   2. `[signer]` Admin account
     UpdateInstructionHoldUpTime {
         /// Minimum waiting time in slots for an instruction to be executed after proposal is voted on
         hold_up_time: u64,
@@ -198,35 +190,30 @@ pub enum GovernanceInstruction {
     /// [Requires Admin token]
     /// Cancels Proposal and moves it into Canceled
     ///
-    ///   0. `[writable]` Proposal state account
+    ///   0. `[writable]` Proposal account
     ///   1. `[writable]` Admin account
-    ///   2. `[]` Proposal account
     CancelProposal,
 
     /// [Requires Signatory token]
     /// Burns signatory token, indicating you approve and sign off on moving this Proposal from Draft state to Voting state
     /// The last Signatory token to be burned moves the state to Voting
     ///
-    ///   0. `[writable]` Proposal State account
+    ///   0. `[writable]` Proposal account
     ///   1. `[writable]` Signatory account
     ///   2. `[writable]` Signatory Mint account
-    ///   3. `[]` Proposal account
-    ///   4. `[signer]` Transfer authority
-    ///   5. `[]` Token program account
-    ///   6. `[]` Clock sysvar
+    ///   3. `[]` Token program account
+    ///   4. `[]` Clock sysvar
     SignOffProposal,
 
     ///  Uses your voter weight (deposited Community or Council tokens) to cast a vote on a Proposal
     ///  By doing so you indicate you approve or disapprove of running the Proposal set of instructions
     ///  If you tip the consensus then the instructions can begin to be run after their hold up time
     ///
-    ///   0. `[]` Proposal account
-    ///   1. `[writable]` Proposal State account
-    ///   2. `[writable]` Voter Record account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
-    ///   3. `[writable]` Proposal Vote Record account. PDA seeds: ['governance',proposal,governing_token_owner]  
-    ///   4. `[signer]` Vote Authority account
-    ///   5. `[]` Governance account
-    ///   6. '[]' Voter Record account
+    ///   0. `[writable]` Proposal account
+    ///   1. `[writable]` Voter Record account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
+    ///   2. `[writable]` Proposal Vote Record account. PDA seeds: ['governance',proposal,governing_token_owner]  
+    ///   3. `[signer]` Vote Authority account
+    ///   4. `[]` Governance account
     Vote {
         /// Yes/No vote
         vote: Vote,
@@ -237,11 +224,10 @@ pub enum GovernanceInstruction {
     ///  If the Proposal is already in decided state then the instruction has no impact on the Proposal
     ///  and only allows voters to prune their outstanding votes in case they wanted to withdraw Governing tokens from the Realm
     ///
-    ///   0. `[]` Proposal account
-    ///   1. `[writable]` Proposal State account
-    ///   2. `[writable]` Voter Record account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
-    ///   3. `[writable]` Proposal Vote Record account. PDA seeds: ['governance',proposal,governing_token_owner]
-    ///   4. `[signer]` Vote Authority account
+    ///   0. `[writable]` Proposal account
+    ///   1. `[writable]` Voter Record account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
+    ///   2. `[writable]` Proposal Vote Record account. PDA seeds: ['governance',proposal,governing_token_owner]
+    ///   3. `[signer]` Vote Authority account
     RelinquishVote,
 
     /// Executes an instruction in the Proposal
@@ -249,12 +235,11 @@ pub enum GovernanceInstruction {
     /// The actual instruction being executed will be signed by Governance PDA
     /// For example to execute Program upgrade the ProgramGovernance PDA would be used as the singer
     ///
-    ///   0. `[writable]` Instruction account you wish to execute
-    ///   1. `[writable]` Proposal State account
+    ///   0. `[writable]` Proposal account   
+    ///   1. `[writable]` Instruction account you wish to execute
     ///   2. `[]` Program being invoked account
-    ///   3. `[]` Proposal account
-    ///   4. `[]` Governance account
-    ///   5. `[]` Clock sysvar
-    ///   6+ Any extra accounts that are part of the instruction, in order
+    ///   3. `[]` Governance account (PDA)
+    ///   4. `[]` Clock sysvar
+    ///   5+ Any extra accounts that are part of the instruction, in order
     Execute,
 }

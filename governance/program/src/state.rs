@@ -24,9 +24,6 @@ pub enum GovernanceAccountType {
     /// Proposal account for Governance account. A single Governance account can have multiple Proposal accounts
     Proposal,
 
-    /// Proposal voting state account. Every Proposal account has exactly one ProposalState account
-    ProposalState,
-
     /// Vote record account for a given Proposal.  Proposal can have 0..n voting records
     ProposalVoteRecord,
 
@@ -147,9 +144,6 @@ pub struct Proposal {
     /// Governance account the Proposal belongs to
     pub governance: Pubkey,
 
-    /// Proposal State account
-    pub state: Pubkey,
-
     /// Mint that creates signatory tokens of this Proposal
     /// If there are outstanding signatory tokens, then cannot leave draft state. Signatories must burn tokens (ie agree
     /// to move instruction to voting state) and bring mint to net 0 tokens outstanding. Each signatory gets 1 (serves as flag)
@@ -161,20 +155,9 @@ pub struct Proposal {
     /// Indicates which Governing Token is used to vote on the Proposal
     /// Whether the general Community token owners or the Council tokens owners vote on this Proposal
     pub voting_token_type: GoverningTokenType,
-}
 
-/// Proposal state
-#[repr(C)]
-#[derive(Clone)]
-pub struct ProposalState {
-    /// Governance account type
-    pub account_type: GovernanceAccountType,
-
-    /// Proposal account
-    pub proposal: Pubkey,
-
-    /// Current status of the proposal
-    pub status: ProposalStateStatus,
+    /// Current state of the proposal
+    pub state: ProposalState,
 
     /// Total signatory tokens minted, for use comparing to supply remaining during draft period
     pub total_signatory_tokens_minted: u64,
@@ -213,7 +196,7 @@ pub struct ProposalState {
 /// What state a Proposal is in
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq)]
-pub enum ProposalStateStatus {
+pub enum ProposalState {
     /// Draft - Proposal enters Draft state when it's created
     Draft,
 
@@ -239,9 +222,9 @@ pub enum ProposalStateStatus {
     Defeated,
 }
 
-impl Default for ProposalStateStatus {
+impl Default for ProposalState {
     fn default() -> Self {
-        ProposalStateStatus::Draft
+        ProposalState::Draft
     }
 }
 
