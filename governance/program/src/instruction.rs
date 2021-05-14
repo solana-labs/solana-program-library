@@ -23,13 +23,15 @@ pub enum GovernanceInstruction {
     ///
     /// 0. `[writable]` Governance Realm account. PDA seeds:['governance',name]
     /// 1. `[]` Community Token Mint
-    /// 2. `[writable]` Community Token Holding account
+    /// 2. `[writable]` Community Token Holding account. PDA seeds: ['governance',realm,community_mint]
+    ///     The account will be created with the Realm PDA as its owner
     /// 3. `[signer]` Payer
     /// 4. `[]` System
     /// 5. `[]` SPL Token
     /// 6. `[]` Sysvar Rent
     /// 7. `[]` Council Token Mint - optional
-    /// 8. `[writable]` Council Token Holding account - optional
+    /// 8. `[writable]` Council Token Holding account - optional. . PDA seeds: ['governance',realm,council_mint]
+    ///     The account will be created with the Realm PDA as its owner
     CreateRealm {
         /// UTF-8 encoded Governance Realm name
         name: String,
