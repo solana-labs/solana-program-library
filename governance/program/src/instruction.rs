@@ -1,12 +1,25 @@
 //! Program instructions
 
-use solana_program::{instruction::Instruction, pubkey::Pubkey};
-
-use crate::state::enums::GoverningTokenType;
+use crate::{
+    id,
+    state::{
+        enums::GoverningTokenType,
+        realm::{get_governing_token_holding_address, get_realm_address},
+        single_signer_instruction::InstructionData,
+        voter_record::get_voter_record_address,
+    },
+};
+use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
+use solana_program::{
+    instruction::{AccountMeta, Instruction},
+    program_error::ProgramError,
+    pubkey::Pubkey,
+    system_program, sysvar,
+};
 
 /// Yes/No Vote
 #[repr(C)]
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum Vote {
     /// Yes vote
     Yes,
@@ -15,7 +28,7 @@ pub enum Vote {
 }
 
 /// Instructions supported by the Governance program
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 #[repr(C)]
 #[allow(clippy::large_enum_variant)]
 pub enum GovernanceInstruction {
@@ -33,6 +46,7 @@ pub enum GovernanceInstruction {
     /// 8. `[writable]` Council Token Holding account - optional. . PDA seeds: ['governance',realm,council_mint]
     ///     The account will be created with the Realm PDA as its owner
     CreateRealm {
+        #[allow(dead_code)]
         /// UTF-8 encoded Governance Realm name
         name: String,
     },
@@ -93,16 +107,20 @@ pub enum GovernanceInstruction {
     ///   6. `[]` System account
     ///   7. `[]` Bpf_upgrade_loader account
     CreateProgramGovernance {
+        #[allow(dead_code)]
         /// Voting threshold in % required to tip the vote
         /// It's the percentage of tokens out of the entire pool of governance tokens eligible to vote
         vote_threshold: u8,
 
+        #[allow(dead_code)]
         /// Minimum waiting time in slots for an instruction to be executed after proposal is voted on
         min_instruction_hold_up_time: u64,
 
+        #[allow(dead_code)]
         /// Time limit in slots for proposal to be open for voting
         max_voting_time: u64,
 
+        #[allow(dead_code)]
         /// Minimum % of tokens for a governance token owner to be able to create proposal
         /// It's the percentage of tokens out of the entire pool of governance tokens eligible to vote
         token_threshold_to_create_proposal: u8,
@@ -120,12 +138,15 @@ pub enum GovernanceInstruction {
     ///   6. '[]` Token program account
     ///   7. `[]` Rent sysvar
     CreateProposal {
+        #[allow(dead_code)]
         /// Link to gist explaining proposal
         description_link: String,
 
+        #[allow(dead_code)]
         /// UTF-8 encoded name of the proposal
         name: String,
 
+        #[allow(dead_code)]
         /// The Governing token (Community or Council) which will be used for voting on the Proposal
         governing_token_type: GoverningTokenType,
     },
@@ -158,12 +179,15 @@ pub enum GovernanceInstruction {
     ///   1. `[writable]` Uninitialized Proposal SingleSignerInstruction account
     ///   2. `[signer]` Admin account
     AddSingleSignerInstruction {
+        #[allow(dead_code)]
         /// Slot waiting time between vote period ending and this being eligible for execution
         hold_up_time: u64,
 
+        #[allow(dead_code)]
         /// Instruction
-        instruction: Instruction,
+        instruction: InstructionData,
 
+        #[allow(dead_code)]
         /// Position in instruction array
         position: u8,
     },
@@ -183,6 +207,7 @@ pub enum GovernanceInstruction {
     ///   1. `[writable]` Proposal SingleSignerInstruction account
     ///   2. `[signer]` Admin account
     UpdateInstructionHoldUpTime {
+        #[allow(dead_code)]
         /// Minimum waiting time in slots for an instruction to be executed after proposal is voted on
         hold_up_time: u64,
     },
@@ -215,6 +240,7 @@ pub enum GovernanceInstruction {
     ///   3. `[signer]` Vote Authority account
     ///   4. `[]` Governance account
     Vote {
+        #[allow(dead_code)]
         /// Yes/No vote
         vote: Vote,
     },
@@ -242,4 +268,139 @@ pub enum GovernanceInstruction {
     ///   4. `[]` Clock sysvar
     ///   5+ Any extra accounts that are part of the instruction, in order
     Execute,
+}
+
+/// Creates CreateRealm instruction
+pub fn create_realm(
+    name: String,
+    // Accounts
+    community_token_mint: &Pubkey,
+    payer: &Pubkey,
+    council_token_mint: Option<Pubkey>,
+) -> Result<Instruction, ProgramError> {
+    let realm_address = get_realm_address(&name);
+    let community_token_holding_address =
+        get_governing_token_holding_address(&realm_address, &community_token_mint);
+
+    let mut accounts = vec![
+        AccountMeta::new(realm_address, false),
+        AccountMeta::new_readonly(*community_token_mint, false),
+        AccountMeta::new(community_token_holding_address, false),
+        AccountMeta::new_readonly(*payer, true),
+        AccountMeta::new_readonly(system_program::id(), false),
+        AccountMeta::new_readonly(spl_token::id(), false),
+        AccountMeta::new_readonly(sysvar::rent::id(), false),
+    ];
+
+    if let Some(council_token_mint) = council_token_mint {
+        let council_token_holding_address =
+            get_governing_token_holding_address(&realm_address, &council_token_mint);
+
+        accounts.push(AccountMeta::new_readonly(council_token_mint, false));
+        accounts.push(AccountMeta::new(council_token_holding_address, false));
+    }
+
+    let instruction = GovernanceInstruction::CreateRealm { name };
+
+    Ok(Instruction {
+        program_id: id(),
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    })
+}
+
+/// Creates DepositGoverningTokens instruction
+pub fn deposit_governing_tokens(
+    governing_token_mint: &Pubkey,
+    // Accounts
+    realm: &Pubkey,
+    governing_token_source: &Pubkey,
+    governing_token_owner: &Pubkey,
+    payer: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    let vote_record_address =
+        get_voter_record_address(realm, governing_token_mint, governing_token_owner);
+
+    let governing_token_holding_address =
+        get_governing_token_holding_address(realm, governing_token_mint);
+
+    let accounts = vec![
+        AccountMeta::new_readonly(*realm, false),
+        AccountMeta::new(governing_token_holding_address, false),
+        AccountMeta::new(*governing_token_source, false),
+        AccountMeta::new_readonly(*governing_token_owner, true),
+        AccountMeta::new(vote_record_address, false),
+        AccountMeta::new_readonly(*payer, true),
+        AccountMeta::new_readonly(system_program::id(), false),
+        AccountMeta::new_readonly(spl_token::id(), false),
+    ];
+
+    let instruction = GovernanceInstruction::DepositGoverningTokens {};
+
+    Ok(Instruction {
+        program_id: id(),
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    })
+}
+
+/// Creates WithdrawGoverningTokens instruction
+pub fn withdraw_governing_tokens(
+    governing_token_mint: &Pubkey,
+    // Accounts
+    realm: &Pubkey,
+    governing_token_destination: &Pubkey,
+    governing_token_owner: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    let vote_record_address =
+        get_voter_record_address(realm, governing_token_mint, governing_token_owner);
+
+    let governing_token_holding_address =
+        get_governing_token_holding_address(realm, governing_token_mint);
+
+    let accounts = vec![
+        AccountMeta::new_readonly(*realm, false),
+        AccountMeta::new(governing_token_holding_address, false),
+        AccountMeta::new(*governing_token_destination, false),
+        AccountMeta::new_readonly(*governing_token_owner, true),
+        AccountMeta::new(vote_record_address, false),
+        AccountMeta::new_readonly(spl_token::id(), false),
+    ];
+
+    let instruction = GovernanceInstruction::WithdrawGoverningTokens {};
+
+    Ok(Instruction {
+        program_id: id(),
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    })
+}
+
+/// Creates SetVoteAuthority instruction
+pub fn set_vote_authority(
+    realm: &Pubkey,
+    governing_token_mint: &Pubkey,
+    vote_authority: &Pubkey,
+    // Accounts
+    governing_token_owner: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    let vote_record_address =
+        get_voter_record_address(realm, governing_token_mint, governing_token_owner);
+
+    let accounts = vec![
+        AccountMeta::new_readonly(*governing_token_owner, true),
+        AccountMeta::new(vote_record_address, false),
+    ];
+
+    let instruction = GovernanceInstruction::SetVoteAuthority {
+        realm: *realm,
+        governing_token_mint: *governing_token_mint,
+        vote_authority: *vote_authority,
+    };
+
+    Ok(Instruction {
+        program_id: id(),
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    })
 }

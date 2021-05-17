@@ -1,12 +1,13 @@
 //! Program Governance Account
 
+use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::pubkey::Pubkey;
 
 use super::enums::GovernanceAccountType;
 
 /// Program Governance Account
 #[repr(C)]
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ProgramGovernance {
     /// Account type
     pub account_type: GovernanceAccountType,

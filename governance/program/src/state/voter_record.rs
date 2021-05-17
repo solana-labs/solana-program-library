@@ -1,12 +1,20 @@
 //! Voter Record Account
 
-use solana_program::pubkey::Pubkey;
+use crate::{
+    error::GovernanceError, id, tools::account::deserialize_account, PROGRAM_AUTHORITY_SEED,
+};
 
 use super::enums::{GovernanceAccountType, GoverningTokenType};
+use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
+use solana_program::{
+    account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
+    pubkey::Pubkey,
+};
 
 /// Governance Voter Record
 /// Account PDA seeds: ['governance', realm, token_mint, token_owner ]
 #[repr(C)]
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct VoterRecord {
     /// Governance account type
     pub account_type: GovernanceAccountType,
@@ -34,4 +42,54 @@ pub struct VoterRecord {
 
     /// The total number of votes cast by the voter
     pub total_votes_count: u8,
+}
+
+impl IsInitialized for VoterRecord {
+    fn is_initialized(&self) -> bool {
+        self.account_type == GovernanceAccountType::VoterRecord
+    }
+}
+
+/// Returns VoteRecord PDA address
+pub fn get_voter_record_address(
+    realm: &Pubkey,
+    governing_token_mint: &Pubkey,
+    governing_token_owner: &Pubkey,
+) -> Pubkey {
+    Pubkey::find_program_address(
+        &get_voter_record_address_seeds(realm, governing_token_mint, governing_token_owner)[..],
+        &id(),
+    )
+    .0
+}
+
+/// Returns VoterRecord PDA seeds
+pub fn get_voter_record_address_seeds<'a>(
+    realm: &'a Pubkey,
+    governing_token_mint: &'a Pubkey,
+    governing_token_owner: &'a Pubkey,
+) -> Vec<&'a [u8]> {
+    vec![
+        PROGRAM_AUTHORITY_SEED,
+        realm.as_ref(),
+        governing_token_mint.as_ref(),
+        governing_token_owner.as_ref(),
+    ]
+}
+
+/// Deserializes VoterRecord and checks account PDA and  owner program
+pub fn deserialize_voter_record(
+    voter_record_info: &AccountInfo,
+    voter_record_seeds: Vec<&[u8]>,
+) -> Result<VoterRecord, ProgramError> {
+    let (voter_record_address, _) = Pubkey::find_program_address(&voter_record_seeds[..], &id());
+
+    if voter_record_address != *voter_record_info.key {
+        return Err(GovernanceError::InvalidVoterAccountAddress.into());
+    }
+
+    Ok(deserialize_account::<VoterRecord>(
+        voter_record_info,
+        &id(),
+    )?)
 }

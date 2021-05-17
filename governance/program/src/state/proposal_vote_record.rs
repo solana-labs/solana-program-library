@@ -1,12 +1,13 @@
 //! Proposal Vote Record Account
 
+use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::pubkey::Pubkey;
 
 use super::enums::{GovernanceAccountType, VoteWeight};
 
 /// Proposal Vote Record
 #[repr(C)]
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ProposalVoteRecord {
     /// Governance account type
     pub account_type: GovernanceAccountType,

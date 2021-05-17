@@ -8,17 +8,49 @@ use solana_program::{
 };
 use thiserror::Error;
 
-/// Errors that may be returned by the Governance program.
+/// Errors that may be returned by the Governance program
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
 pub enum GovernanceError {
-    /// Invalid instruction passed to program.
+    /// Invalid instruction passed to program
     #[error("Invalid instruction passed to program")]
     InvalidInstruction,
+
+    /// Realm with the given name and governing mints already exists
+    #[error("Realm with the given name and governing mints already exists")]
+    RealmAlreadyExists,
+
+    /// Invalid Governing Token Mint
+    #[error("Invalid Governing Token Mint")]
+    InvalidGoverningTokenMint,
+
+    /// Governing Token Owner must sign transaction
+    #[error("Governing Token Owner must sign transaction")]
+    GoverningTokenOwnerMustSign,
+
+    /// All active votes must be relinquished to withdraw governing tokens
+    #[error("All active votes must be relinquished to withdraw governing tokens")]
+    CannotWithdrawGoverningTokensWhenActiveVotesExist,
+
+    /// Invalid Voter account address
+    #[error("Invalid Voter account address")]
+    InvalidVoterAccountAddress,
+
+    /// ---- Account Tools Errors -----
+
+    /// Invalid account owner
+    #[error("Invalid account owner")]
+    InvalidAccountOwnerError,
+
+    /// ---- Token Tools Errors -----
+
+    /// Invalid Token account owner
+    #[error("Invalid Token account owner")]
+    InvalidTokenAccountOwnerError,
 }
 
 impl PrintProgramError for GovernanceError {
     fn print<E>(&self) {
-        msg!(&self.to_string());
+        msg!("GOVERNANCE ERROR: {}", &self.to_string());
     }
 }
 
