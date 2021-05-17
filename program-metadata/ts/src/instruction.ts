@@ -52,7 +52,7 @@ export function createMetadataEntryIx(
 }
 
 class UpdateMetadataEntryInstruction {
-  instruction = [1];
+  instruction = 1;
   constructor(public value: string) {}
 }
 
@@ -62,7 +62,7 @@ const UpdateMetadataEntrySchema = new Map([
     {
       kind: "struct",
       fields: [
-        ["instruction", [1]],
+        ["instruction", 'u8'],
         ["value", "string"],
       ],
     },
@@ -135,7 +135,7 @@ export enum SerializationMethod {
 }
 
 class CreateVersionedIdlInstruction {
-  instruction = [3];
+  instruction = 3;
   serialization;
 
   constructor(
@@ -157,7 +157,7 @@ const CreateVersionedIdlSchema = new Map([
     {
       kind: "struct",
       fields: [
-        ["instruction", [1]],
+        ["instruction", 'u8'],
         ["effectiveSlot", "u64"],
         ["idlUrl", "string"],
         ["idlHash", [32]],
@@ -218,6 +218,84 @@ export function createVersionedIdlIx(
       { pubkey: payerKey, isSigner: true, isWritable: true },
       { pubkey: systemProgramId, isSigner: false, isWritable: false },
       { pubkey: rentKey, isSigner: false, isWritable: false },
+      { pubkey: nameServiceKey, isSigner: false, isWritable: false },
+    ],
+    data: Buffer.from(ixData),
+  });
+
+  return ix;
+}
+
+export class UpdateVersionedIdlInstruction {
+  instruction = 4;
+  serialization;
+
+  constructor(
+    public idlUrl: string,
+    public idlHash: Buffer,
+    public sourceUrl: string,
+    serialization: SerializationMethod,
+    public customLayoutUrl: null | string
+  ) {
+    this.serialization = [serialization];
+  }
+}
+
+const UpdateVersionedIdlSchema = new Map([
+  [
+    UpdateVersionedIdlInstruction,
+    {
+      kind: "struct",
+      fields: [
+        ["instruction", 'u8'],
+        ["idlUrl", "string"],
+        ["idlHash", [32]],
+        ["sourceUrl", "string"],
+        ["serialization", [1]],
+        [
+          "customLayoutUrl",
+          {
+            kind: "option",
+            type: "string",
+          },
+        ],
+      ],
+    },
+  ],
+]);
+
+export function updateVersionedIdlIx(
+  programId: PublicKey,
+  classKey: PublicKey,
+  nameKey: PublicKey,
+  targetProgramKey: PublicKey,
+  targetProgramDataKey: PublicKey,
+  targetProgramAuthorityKey: PublicKey,
+  nameServiceKey: PublicKey,
+  idlUrl: string,
+  idlHash: Buffer,
+  sourceUrl: string,
+  serialization: SerializationMethod,
+  customLayoutUrl: string | null
+): TransactionInstruction {
+  const ixDataObject = new UpdateVersionedIdlInstruction(
+    idlUrl,
+    idlHash,
+    sourceUrl,
+    serialization,
+    customLayoutUrl
+  );
+
+  const ixData = serialize(UpdateVersionedIdlSchema, ixDataObject);
+
+  const ix = new TransactionInstruction({
+    programId: programId,
+    keys: [
+      { pubkey: classKey, isSigner: false, isWritable: false },
+      { pubkey: nameKey, isSigner: false, isWritable: true },
+      { pubkey: targetProgramKey, isSigner: false, isWritable: false },
+      { pubkey: targetProgramDataKey, isSigner: false, isWritable: false },
+      { pubkey: targetProgramAuthorityKey, isSigner: true, isWritable: false },
       { pubkey: nameServiceKey, isSigner: false, isWritable: false },
     ],
     data: Buffer.from(ixData),

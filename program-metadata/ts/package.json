@@ -14,8 +14,8 @@
     "prepublish": "tsc",
     "lint": "yarn pretty && eslint .",
     "lint:fix": "yarn pretty:fix && eslint . --fix",
-    "pretty": "prettier --check 'src/*.[jt]s'",
-    "pretty:fix": "prettier --write 'src/*.[jt]s'",
+    "pretty": "prettier --check 'src/**/*.[jt]s'",
+    "pretty:fix": "prettier --write 'src/**/*.[jt]s'",
     "doc": "yarn typedoc src/index.ts",
     "test": "ts-mocha -p tsconfig.json src/**/*.spec.ts --timeout 30000"
   },

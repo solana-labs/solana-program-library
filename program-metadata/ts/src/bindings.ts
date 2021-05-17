@@ -12,6 +12,7 @@ import {
   deleteMetadataEntryIx,
   SerializationMethod,
   updateMetadataEntryIx,
+  updateVersionedIdlIx,
 } from "./instruction";
 
 export const NS_HASH_PREFIX = "SPL Name Service";
@@ -84,55 +85,6 @@ export class ProgramMetadata {
     return ix;
   }
 
-  async createVersionedIdl(
-    targetProgramId: PublicKey,
-    targetProgramAuthorityKey: PublicKey,
-    payerKey: PublicKey,
-    effectiveSlot: number,
-    idlUrl: string,
-    idlHash: Buffer,
-    sourceUrl: string,
-    serializiation: SerializationMethod,
-    customLayoutUrl: string | null
-  ) {
-    const name = `idl_${effectiveSlot}`;
-    const hashedName = this.getHashedName(name);
-    const classKey = await this.getClassKey(targetProgramId);
-    const nameKey = await this.getNameKey(hashedName, classKey);
-
-    const targetProgramAcct = await this.connection.getAccountInfo(
-      targetProgramId
-    );
-
-    if (!targetProgramAcct) {
-      throw new Error("Program not found");
-    }
-
-    const targetProgramDataKey = new PublicKey(targetProgramAcct.data.slice(3));
-
-    const ix = createVersionedIdlIx(
-      this.programMetadataKey,
-      classKey,
-      nameKey,
-      targetProgramId,
-      targetProgramDataKey,
-      targetProgramAuthorityKey,
-      payerKey,
-      SystemProgram.programId,
-      SYSVAR_RENT_PUBKEY,
-      this.nameServiceKey,
-      effectiveSlot,
-      idlUrl,
-      idlHash,
-      sourceUrl,
-      serializiation,
-      customLayoutUrl,
-      hashedName
-    );
-
-    return ix;
-  }
-
   async updateMetadataEntry(
     targetProgramId: PublicKey,
     targetProgramAuthorityKey: PublicKey,
@@ -196,6 +148,97 @@ export class ProgramMetadata {
       targetProgramAuthorityKey,
       refundKey,
       this.nameServiceKey
+    );
+
+    return ix;
+  }
+
+  async createVersionedIdl(
+    targetProgramId: PublicKey,
+    targetProgramAuthorityKey: PublicKey,
+    payerKey: PublicKey,
+    effectiveSlot: number,
+    idlUrl: string,
+    idlHash: Buffer,
+    sourceUrl: string,
+    serializiation: SerializationMethod,
+    customLayoutUrl: string | null
+  ) {
+    const name = `idl_${effectiveSlot}`;
+    const hashedName = this.getHashedName(name);
+    const classKey = await this.getClassKey(targetProgramId);
+    const nameKey = await this.getNameKey(hashedName, classKey);
+
+    const targetProgramAcct = await this.connection.getAccountInfo(
+      targetProgramId
+    );
+
+    if (!targetProgramAcct) {
+      throw new Error("Program not found");
+    }
+
+    const targetProgramDataKey = new PublicKey(targetProgramAcct.data.slice(3));
+
+    const ix = createVersionedIdlIx(
+      this.programMetadataKey,
+      classKey,
+      nameKey,
+      targetProgramId,
+      targetProgramDataKey,
+      targetProgramAuthorityKey,
+      payerKey,
+      SystemProgram.programId,
+      SYSVAR_RENT_PUBKEY,
+      this.nameServiceKey,
+      effectiveSlot,
+      idlUrl,
+      idlHash,
+      sourceUrl,
+      serializiation,
+      customLayoutUrl,
+      hashedName
+    );
+
+    return ix;
+  }
+
+  async updateVersionedIdl(
+    targetProgramId: PublicKey,
+    targetProgramAuthorityKey: PublicKey,
+    effectiveSlot: number,
+    idlUrl: string,
+    idlHash: Buffer,
+    sourceUrl: string,
+    serialization: SerializationMethod,
+    customLayoutUrl: string | null
+  ) {
+    const hashedName = this.getHashedName(`idl_${effectiveSlot}`);
+    const classKey = await this.getClassKey(targetProgramId);
+    const nameKey = await this.getNameKey(hashedName, classKey);
+
+    const targetProgramAcct = await this.connection.getAccountInfo(
+      targetProgramId
+    );
+
+    if (!targetProgramAcct) {
+      throw new Error("Program not found");
+    }
+
+    const targetProgramDataKey = new PublicKey(targetProgramAcct.data.slice(3));
+
+    const ix = updateVersionedIdlIx(
+      this.programMetadataKey,
+      classKey,
+      nameKey,
+      targetProgramId,
+      targetProgramDataKey,
+      targetProgramAuthorityKey,
+      this.nameServiceKey,
+      idlUrl,
+      idlHash,
+      sourceUrl,
+      serialization,
+      customLayoutUrl
     );
 
     return ix;
