@@ -73,7 +73,7 @@ pub fn deserialize_account<T: BorshDeserialize + IsInitialized>(
 
     let account: T = T::try_from_slice(&account_info.data.borrow())?;
     if !account.is_initialized() {
-        Err(ProgramError::UninitializedAccount.into())
+        Err(ProgramError::UninitializedAccount)
     } else {
         Ok(account)
     }

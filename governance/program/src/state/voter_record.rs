@@ -88,8 +88,5 @@ pub fn deserialize_voter_record(
         return Err(GovernanceError::InvalidVoterAccountAddress.into());
     }
 
-    Ok(deserialize_account::<VoterRecord>(
-        voter_record_info,
-        &id(),
-    )?)
+    deserialize_account::<VoterRecord>(voter_record_info, &id())
 }

@@ -40,12 +40,12 @@ pub fn deserialize_realm(realm_info: &AccountInfo) -> Result<Realm, ProgramError
 }
 
 /// Returns Realm PDA seeds
-pub fn get_realm_address_seeds(name: &String) -> Vec<&[u8]> {
+pub fn get_realm_address_seeds(name: &str) -> Vec<&[u8]> {
     vec![PROGRAM_AUTHORITY_SEED, &name.as_bytes()]
 }
 
 /// Returns Realm PDA address
-pub fn get_realm_address(name: &String) -> Pubkey {
+pub fn get_realm_address(name: &str) -> Pubkey {
     Pubkey::find_program_address(&get_realm_address_seeds(&name)[..], &id()).0
 }
 
