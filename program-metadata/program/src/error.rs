@@ -55,7 +55,7 @@ pub enum MetadataError {
 
     /// IDL url too long
     #[error("IDL url too long")]
-    IDLUrlTooLong,
+    IdlUrlTooLong,
 
     /// Source url too long
     #[error("Source url too long")]

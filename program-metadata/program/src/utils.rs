@@ -60,6 +60,7 @@ pub fn delete_name_service_account<'a>(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn create_name_service_account<'a>(
     rent_sysvar_info: &AccountInfo<'a>,
     name_account_info: &AccountInfo<'a>,
@@ -68,7 +69,7 @@ pub fn create_name_service_account<'a>(
     system_account_info: &AccountInfo<'a>,
     class_account_info: &AccountInfo<'a>,
     class_authority_signer_seeds: &[&[u8]],
-    hashed_name: &Vec<u8>,
+    hashed_name: &[u8],
     size: usize,
 ) -> ProgramResult {
     let lamports =
@@ -110,7 +111,7 @@ pub fn update_name_service_account<'a>(
     class_account_info: &AccountInfo<'a>,
     name_service_info: &AccountInfo<'a>,
     class_authority_signer_seeds: &[&[u8]],
-    data: &Vec<u8>,
+    data: &[u8],
 ) -> ProgramResult {
     let update_ix = update_name_instruction(
         *name_service_info.key,

@@ -159,8 +159,8 @@ pub fn process_create_metadata_entry(
 
     let metadata_entry = MetadataEntry {
         account_type: AccountType::MetadataPairV1,
-        name: name.to_owned(),
-        value: value.to_owned(),
+        name,
+        value,
     };
 
     let mut serialized: Vec<u8> = vec![];
@@ -225,7 +225,7 @@ pub fn process_update_metadata_entry(
 
     let name_record_data = name_account_info.data.borrow();
     let mut metadata_entry: MetadataEntry = try_from_slice_unchecked(&name_record_data[96..])?;
-    metadata_entry.value = value.to_owned();
+    metadata_entry.value = value;
 
     let mut serialized: Vec<u8> = vec![];
 
@@ -296,6 +296,7 @@ pub fn process_delete_metadata_entry(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn process_create_versioned_idl(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
@@ -319,7 +320,7 @@ pub fn process_create_versioned_idl(
     let name_service_info = next_account_info(account_info_iter)?;
 
     if idl_url.len() > MAX_URL_LENGTH {
-        return Err(MetadataError::IDLUrlTooLong.into());
+        return Err(MetadataError::IdlUrlTooLong.into());
     }
 
     if source_url.len() > MAX_URL_LENGTH {
@@ -415,7 +416,7 @@ pub fn process_update_versioned_idl(
     let name_service_info = next_account_info(account_info_iter)?;
 
     if idl_url.len() > MAX_URL_LENGTH {
-        return Err(MetadataError::IDLUrlTooLong.into());
+        return Err(MetadataError::IdlUrlTooLong.into());
     }
 
     if source_url.len() > MAX_URL_LENGTH {
@@ -460,11 +461,11 @@ pub fn process_update_versioned_idl(
     let name_record_data = name_account_info.data.borrow();
     let mut idl_entry: VersionedIdl = try_from_slice_unchecked(&name_record_data[96..])?;
 
-    idl_entry.idl_url = idl_url.to_owned();
+    idl_entry.idl_url = idl_url;
     idl_entry.idl_hash = idl_hash.to_owned();
-    idl_entry.serialization = serialization.to_owned();
-    idl_entry.source_url = source_url.to_owned();
-    idl_entry.custom_layout_url = custom_layout_url.to_owned();
+    idl_entry.serialization = serialization;
+    idl_entry.source_url = source_url;
+    idl_entry.custom_layout_url = custom_layout_url;
 
     let mut serialized: Vec<u8> = vec![];
     idl_entry.serialize(&mut serialized)?;

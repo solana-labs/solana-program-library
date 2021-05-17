@@ -77,6 +77,7 @@ pub enum MetadataInstruction {
     },
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn create_metadata_entry(
     program_id: Pubkey,
     class_account: Pubkey,
@@ -113,6 +114,7 @@ pub fn create_metadata_entry(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn update_metadata_entry(
     program_id: Pubkey,
     class_account: Pubkey,
@@ -164,6 +166,7 @@ pub fn delete_metadata_entry(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn create_versioned_id(
     program_id: Pubkey,
     class_account: Pubkey,
@@ -208,6 +211,7 @@ pub fn create_versioned_id(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn update_versioned_idl(
     program_id: Pubkey,
     class_account: Pubkey,
