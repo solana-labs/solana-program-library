@@ -26,11 +26,11 @@ export const VERIFICATION_AUTHORITY_OFFSET = 64;
 
 /// Twitter Verification Authority managed by Bonfida
 export const TWITTER_ROOT_PARENT_REGISTRY_KEY = new PublicKey(
-  "AFrGkxNmVLBn3mKhvfJJABvm8RJkTtRhHDoaF97pQZaA"
-  );
+  'AFrGkxNmVLBn3mKhvfJJABvm8RJkTtRhHDoaF97pQZaA'
+);
 export const TWITTER_VERIFICATION_AUTHORITY = new PublicKey(
-  "867BLob5b52i81SNaV9Awm5ejkZV6VGSv9SxLcwukDDJ"
-  );
+  '867BLob5b52i81SNaV9Awm5ejkZV6VGSv9SxLcwukDDJ'
+);
 export const TWITTER_ACCOUNT_LENGTH = 114;
 
 ////////////////////////////////////////////////////////////

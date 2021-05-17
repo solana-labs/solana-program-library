@@ -2,8 +2,8 @@ import assert from 'assert';
 import { createHash } from 'crypto';
 
 import {
-  Keypair,
   Connection,
+  Keypair,
   PublicKey,
   Transaction,
   TransactionInstruction,

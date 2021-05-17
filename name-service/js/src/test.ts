@@ -1,6 +1,6 @@
 import { readFile } from 'fs/promises';
 
-import { Keypair, AccountInfo, Connection, PublicKey } from '@solana/web3.js';
+import { AccountInfo, Connection, Keypair, PublicKey } from '@solana/web3.js';
 import { serialize } from 'borsh';
 import { sign } from 'tweetnacl';
 
