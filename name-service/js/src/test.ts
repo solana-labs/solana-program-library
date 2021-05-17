@@ -1,23 +1,31 @@
-import { serialize } from "@bonfida/borsh-js";
-import { Connection, Account, PublicKey, AccountInfo } from "@solana/web3.js";
-import { transferNameOwnership, updateNameRegistryData, createNameRegistry, deleteNameRegistry } from "./bindings";
-import { readFile } from "fs/promises";
-import { Numberu64, signAndSendTransactionInstructions } from "./utils";
-import { sign } from "tweetnacl";
-import { getHashedName, getNameAccountKey, Numberu32 } from ".";
-import { NameRegistryState } from "./state";
+import { readFile } from 'fs/promises';
+
+import { Account, AccountInfo, Connection, PublicKey } from '@solana/web3.js';
+import { serialize } from 'borsh';
+import { sign } from 'tweetnacl';
+
+import {
+  createNameRegistry,
+  deleteNameRegistry,
+  transferNameOwnership,
+  updateNameRegistryData,
+} from './bindings';
+import { NameRegistryState } from './state';
+import { Numberu64, signAndSendTransactionInstructions } from './utils';
+
+import { getHashedName, getNameAccountKey, Numberu32 } from '.';
 
 const ENDPOINT = 'https://devnet.solana.com/';
 // const ENDPOINT = 'https://solana-api.projectserum.com/';
 
 export async function test() {
-  let connection = new Connection(ENDPOINT);
-  let secretKey = JSON.parse(
-    (await readFile('/home/lcchy-work/.config/solana/id_devnet.json')).toString()
-  );
-  let adminAccount = new Account(secretKey);
+  const connection = new Connection(ENDPOINT);
+  // let secretKey = JSON.parse(
+  //   (await readFile('/home/lcchy-work/.config/solana/id_devnet.json')).toString()
+  // );
+  // let adminAccount = new Account(secretKey);
 
-  let root_name = ".sol";
+  const root_name = '.sol';
 
   // let create_instruction = await createNameRegistry(
   //   connection,
@@ -35,7 +43,6 @@ export async function test() {
   //     [create_instruction]
   //   )
   // );
-
 
   // let input_data = Buffer.from("Du");
   // let updateInstruction = await updateNameRegistryData(
@@ -70,7 +77,7 @@ export async function test() {
   //   )
   // );
 
-  // let deleteInstruction = await deleteNameRegistry( 
+  // let deleteInstruction = await deleteNameRegistry(
   //   connection,
   //   root_name,
   //   adminAccount.publicKey
@@ -85,8 +92,8 @@ export async function test() {
   //   )
   // );
 
-  let hashed_root_name = await getHashedName(root_name);
-  let nameAccountKey = await getNameAccountKey(hashed_root_name);
+  const hashed_root_name = await getHashedName(root_name);
+  const nameAccountKey = await getNameAccountKey(hashed_root_name);
   console.log(await NameRegistryState.retrieve(connection, nameAccountKey));
 }
 
