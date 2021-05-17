@@ -3805,6 +3805,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-governance"
+version = "0.1.0"
+dependencies = [
+ "assert_matches",
+ "num-derive",
+ "num-traits",
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "thiserror",
+]
+
+[[package]]
 name = "spl-math"
 version = "0.1.0"
 dependencies = [

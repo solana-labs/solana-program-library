@@ -1,0 +1,29 @@
+[package]
+name = "spl-governance"
+version = "0.1.0"
+description = "Solana Program Library Governance"
+authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+repository = "https://github.com/solana-labs/solana-program-library"
+license = "Apache-2.0"
+edition = "2018"
+
+
+[features]
+no-entrypoint = []
+test-bpf = []
+
+
+[dependencies]
+solana-program = "1.6.7"
+thiserror = "1.0"
+num-derive = "0.3"
+num-traits = "0.2"
+
+[dev-dependencies]
+assert_matches = "1.5.0"
+solana-program-test = "1.6.7"
+solana-sdk = "1.6.7"
+
+
+[lib]
+crate-type = ["cdylib", "lib"]
