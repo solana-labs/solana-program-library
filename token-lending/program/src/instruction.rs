@@ -235,10 +235,9 @@ pub enum LendingInstruction {
     ///   2. `[writable]` Repay reserve account - refreshed.
     ///   3. `[writable]` Obligation account - refreshed.
     ///   4. `[]` Lending market account.
-    ///   5. `[]` Derived lending market authority.
-    ///   6. `[signer]` User transfer authority ($authority).
-    ///   7. `[]` Clock sysvar.
-    ///   8. `[]` Token program id.
+    ///   5. `[signer]` User transfer authority ($authority).
+    ///   6. `[]` Clock sysvar.
+    ///   7. `[]` Token program id.
     RepayObligationLiquidity {
         /// Amount of liquidity to repay - u64::MAX for 100% of borrowed amount
         liquidity_amount: u64,
