@@ -1,13 +1,11 @@
 use {
+    crate::state::SerializationMethod,
     borsh::{BorshDeserialize, BorshSerialize},
     solana_program::{
         instruction::{AccountMeta, Instruction},
         pubkey::Pubkey,
         sysvar,
     },
-    crate::state::{
-        SerializationMethod
-    }
 };
 
 /// Instructions supported by the Metadata program.
@@ -203,7 +201,7 @@ pub fn create_versioned_id(
             source_url,
             serialization,
             custom_layout_url,
-            hashed_name
+            hashed_name,
         }
         .try_to_vec()
         .unwrap(),
@@ -239,9 +237,9 @@ pub fn update_versioned_idl(
             idl_hash,
             source_url,
             serialization,
-            custom_layout_url
+            custom_layout_url,
         }
-            .try_to_vec()
-            .unwrap(),
+        .try_to_vec()
+        .unwrap(),
     }
 }
