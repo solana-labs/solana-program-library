@@ -2,7 +2,7 @@ import assert from 'assert';
 import { createHash } from 'crypto';
 
 import {
-  Account,
+  Keypair,
   Connection,
   PublicKey,
   Transaction,
@@ -80,8 +80,8 @@ export class Numberu64 extends BN {
 export const signAndSendTransactionInstructions = async (
   // sign and send transaction
   connection: Connection,
-  signers: Array<Account>,
-  feePayer: Account,
+  signers: Array<Keypair>,
+  feePayer: Keypair,
   txInstructions: Array<TransactionInstruction>
 ): Promise<string> => {
   const tx = new Transaction();

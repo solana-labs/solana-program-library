@@ -1,6 +1,6 @@
 import { readFile } from 'fs/promises';
 
-import { Account, AccountInfo, Connection, PublicKey } from '@solana/web3.js';
+import { Keypair, AccountInfo, Connection, PublicKey } from '@solana/web3.js';
 import { serialize } from 'borsh';
 import { sign } from 'tweetnacl';
 
@@ -23,7 +23,7 @@ export async function test() {
   // let secretKey = JSON.parse(
   //   (await readFile('/home/lcchy-work/.config/solana/id_devnet.json')).toString()
   // );
-  // let adminAccount = new Account(secretKey);
+  // let adminAccount = new Keypair(secretKey);
 
   const root_name = '.sol';
 
