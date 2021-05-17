@@ -2,7 +2,7 @@
 
 use solana_program::{instruction::Instruction, pubkey::Pubkey};
 
-use crate::state::GoverningTokenType;
+use crate::state::enums::GoverningTokenType;
 
 /// Yes/No Vote
 #[repr(C)]
