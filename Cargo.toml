@@ -8,6 +8,7 @@ members = [
   "examples/rust/sysvar",
   "examples/rust/transfer-lamports",
   "feature-proposal/program",
+  "margin-pool/program",
   "feature-proposal/cli",
   "libraries/math",
   "memo/program",
