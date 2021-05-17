@@ -50,7 +50,7 @@ pub enum GovernanceError {
 
 impl PrintProgramError for GovernanceError {
     fn print<E>(&self) {
-        msg!("GOVERNANCE ERROR: {}", &self.to_string());
+        msg!("GOVERNANCE-ERROR: {}", &self.to_string());
     }
 }
 
