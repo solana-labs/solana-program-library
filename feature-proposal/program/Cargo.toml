@@ -18,7 +18,6 @@ solana-program = "1.6.7"
 spl-token = { version = "3.1", path = "../../token/program", features = ["no-entrypoint"] }
 
 [dev-dependencies]
-futures = "0.3"
 solana-program-test = "1.6.7"
 solana-sdk = "1.6.7"
 

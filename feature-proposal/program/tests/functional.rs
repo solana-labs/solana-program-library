@@ -1,21 +1,20 @@
 // Mark this test as BPF-only due to current `ProgramTest` limitations when CPIing into the system program
 #![cfg(feature = "test-bpf")]
 
-use futures::{Future, FutureExt};
-use solana_program::{
-    feature::{self, Feature},
-    program_option::COption,
-    program_pack::Pack,
-    pubkey::Pubkey,
-    system_program,
+use {
+    solana_program::{
+        feature::{self, Feature},
+        program_option::COption,
+        pubkey::Pubkey,
+        system_program,
+    },
+    solana_program_test::*,
+    solana_sdk::{
+        signature::{Keypair, Signer},
+        transaction::Transaction,
+    },
+    spl_feature_proposal::{instruction::*, state::*, *},
 };
-use solana_program_test::*;
-use solana_sdk::{
-    signature::{Keypair, Signer},
-    transaction::Transaction,
-};
-use spl_feature_proposal::{instruction::*, state::*, *};
-use std::io;
 
 fn program_test() -> ProgramTest {
     ProgramTest::new(
@@ -23,21 +22,6 @@ fn program_test() -> ProgramTest {
         id(),
         processor!(processor::process_instruction),
     )
-}
-
-/// Fetch and unpack account data
-fn get_account_data<T: Pack>(
-    banks_client: &mut BanksClient,
-    address: Pubkey,
-) -> impl Future<Output = std::io::Result<T>> + '_ {
-    banks_client.get_account(address).map(|result| {
-        let account =
-            result?.ok_or_else(|| io::Error::new(io::ErrorKind::Other, "account not found"))?;
-
-        T::unpack_from_slice(&account.data)
-            .ok()
-            .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "Failed to deserialize account"))
-    })
 }
 
 #[tokio::test]
@@ -77,7 +61,8 @@ async fn test_basic() {
     assert_eq!(feature_id_account.data.len(), Feature::size_of());
 
     // Confirm mint account state
-    let mint = get_account_data::<spl_token::state::Mint>(&mut banks_client, mint_address)
+    let mint = banks_client
+        .get_packed_account_data::<spl_token::state::Mint>(mint_address)
         .await
         .unwrap();
     assert_eq!(mint.supply, 42);
@@ -86,20 +71,20 @@ async fn test_basic() {
     assert_eq!(mint.mint_authority, COption::Some(mint_address));
 
     // Confirm distributor token account state
-    let distributor_token =
-        get_account_data::<spl_token::state::Account>(&mut banks_client, distributor_token_address)
-            .await
-            .unwrap();
+    let distributor_token = banks_client
+        .get_packed_account_data::<spl_token::state::Account>(distributor_token_address)
+        .await
+        .unwrap();
     assert_eq!(distributor_token.amount, 42);
     assert_eq!(distributor_token.mint, mint_address);
     assert_eq!(distributor_token.owner, feature_proposal.pubkey());
     assert!(distributor_token.close_authority.is_none());
 
     // Confirm acceptance token account state
-    let acceptance_token =
-        get_account_data::<spl_token::state::Account>(&mut banks_client, acceptance_token_address)
-            .await
-            .unwrap();
+    let acceptance_token = banks_client
+        .get_packed_account_data::<spl_token::state::Account>(acceptance_token_address)
+        .await
+        .unwrap();
     assert_eq!(acceptance_token.amount, 0);
     assert_eq!(acceptance_token.mint, mint_address);
     assert_eq!(acceptance_token.owner, id());
@@ -123,7 +108,9 @@ async fn test_basic() {
     assert_eq!(feature_id_account.owner, system_program::id());
 
     assert!(matches!(
-        get_account_data::<FeatureProposal>(&mut banks_client, feature_proposal.pubkey()).await,
+        banks_client
+            .get_packed_account_data::<FeatureProposal>(feature_proposal.pubkey())
+            .await,
         Ok(FeatureProposal::Pending(_))
     ));
 
@@ -167,7 +154,9 @@ async fn test_basic() {
 
     // Confirm feature proposal account state
     assert!(matches!(
-        get_account_data::<FeatureProposal>(&mut banks_client, feature_proposal.pubkey()).await,
+        banks_client
+            .get_packed_account_data::<FeatureProposal>(feature_proposal.pubkey())
+            .await,
         Ok(FeatureProposal::Accepted {
             tokens_upon_acceptance: 42
         })
@@ -197,7 +186,9 @@ async fn test_expired() {
     banks_client.process_transaction(transaction).await.unwrap();
 
     assert!(matches!(
-        get_account_data::<FeatureProposal>(&mut banks_client, feature_proposal.pubkey()).await,
+        banks_client
+            .get_packed_account_data::<FeatureProposal>(feature_proposal.pubkey())
+            .await,
         Ok(FeatureProposal::Pending(_))
     ));
 
@@ -208,7 +199,9 @@ async fn test_expired() {
     banks_client.process_transaction(transaction).await.unwrap();
 
     assert!(matches!(
-        get_account_data::<FeatureProposal>(&mut banks_client, feature_proposal.pubkey()).await,
+        banks_client
+            .get_packed_account_data::<FeatureProposal>(feature_proposal.pubkey())
+            .await,
         Ok(FeatureProposal::Expired)
     ));
 }
