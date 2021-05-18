@@ -54,6 +54,6 @@ pub fn process_instruction(
             &governing_token_mint,
             &vote_authority,
         ),
-        _ => panic!("Instruction not implemented"),
+        _ => todo!("Instruction not implemented yet"),
     }
 }
