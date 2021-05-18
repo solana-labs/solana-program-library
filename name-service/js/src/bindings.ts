@@ -13,8 +13,12 @@ import {
 } from './instructions';
 import { NameRegistryState } from './state';
 import { Numberu64 } from './utils';
-
-import { getHashedName, getNameAccountKey, getNameOwner, Numberu32 } from '.';
+import {
+  getHashedName,
+  getNameAccountKey,
+  getNameOwner,
+  Numberu32,
+} from './utils';
 
 ////////////////////////////////////////////////////////////
 
@@ -24,17 +28,7 @@ export const NAME_PROGRAM_ID = new PublicKey(
 export const HASH_PREFIX = 'SPL Name Service';
 export const VERIFICATION_AUTHORITY_OFFSET = 64;
 
-/// Twitter Verification Authority managed by Bonfida
-export const TWITTER_ROOT_PARENT_REGISTRY_KEY = new PublicKey(
-  'AFrGkxNmVLBn3mKhvfJJABvm8RJkTtRhHDoaF97pQZaA'
-);
-export const TWITTER_VERIFICATION_AUTHORITY = new PublicKey(
-  '867BLob5b52i81SNaV9Awm5ejkZV6VGSv9SxLcwukDDJ'
-);
-export const TWITTER_ACCOUNT_LENGTH = 114;
-
 ////////////////////////////////////////////////////////////
-
 /**
  * Creates a name account with the given rent budget, allocated space, owner and class.
  *
@@ -65,6 +59,8 @@ export async function createNameRegistry(
     parentName
   );
 
+  space += 96; // Accounting for the Registry State Header
+
   const balance = lamports
     ? lamports
     : await connection.getMinimumBalanceForRentExemption(space);
@@ -72,6 +68,7 @@ export async function createNameRegistry(
   let nameParentOwner: PublicKey | undefined;
   if (parentName) {
     const parentAccount = await getNameOwner(connection, parentName);
+    nameParentOwner = parentAccount.owner;
   }
 
   const createNameInstr = createInstruction(
@@ -98,7 +95,7 @@ export async function createNameRegistry(
  * @param name The name of the name registry to update
  * @param offset The offset to which the data should be written into the registry
  * @param input_data The data to be written
- * @param nameClass The class of this name, if it exists
+ * @param nameClass The class of this name, if it exsists
  * @param nameParent The parent name of this name, if it exists
  */
 export async function updateNameRegistryData(
@@ -150,7 +147,6 @@ export async function transferNameOwnership(
   connection: Connection,
   name: string,
   newOwner: PublicKey,
-  currentNameOwner: PublicKey,
   nameClass?: PublicKey,
   nameParent?: PublicKey
 ): Promise<TransactionInstruction> {

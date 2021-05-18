@@ -11,9 +11,13 @@ import {
   updateNameRegistryData,
 } from './bindings';
 import { NameRegistryState } from './state';
-import { Numberu64, signAndSendTransactionInstructions } from './utils';
-
-import { getHashedName, getNameAccountKey, Numberu32 } from '.';
+import {
+  getHashedName,
+  getNameAccountKey,
+  Numberu32,
+  Numberu64,
+  signAndSendTransactionInstructions,
+} from './utils';
 
 const ENDPOINT = 'https://devnet.solana.com/';
 // const ENDPOINT = 'https://solana-api.projectserum.com/';

@@ -2,6 +2,7 @@ import assert from 'assert';
 import { createHash } from 'crypto';
 
 import {
+  AccountInfo,
   Connection,
   Keypair,
   PublicKey,
@@ -130,5 +131,29 @@ export async function getNameOwner(
   if (!nameAccount) {
     throw 'Unable to find the given account.';
   }
-  return NameRegistryState.retrieve(connection, nameAccountKey); //TODO use borsh
+  return NameRegistryState.retrieve(connection, nameAccountKey);
+}
+
+//Taken from Serum
+export async function getFilteredProgramAccounts(
+  connection: Connection,
+  programId: PublicKey,
+  filters
+): Promise<{ publicKey: PublicKey; accountInfo: AccountInfo<Buffer> }[]> {
+  const resp = await connection.getProgramAccounts(programId, {
+    commitment: connection.commitment,
+    filters,
+    encoding: 'base64',
+  });
+  return resp.map(
+    ({ pubkey, account: { data, executable, owner, lamports } }) => ({
+      publicKey: pubkey,
+      accountInfo: {
+        data: data,
+        executable,
+        owner: owner,
+        lamports,
+      },
+    })
+  );
 }
