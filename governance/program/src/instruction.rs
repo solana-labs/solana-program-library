@@ -12,7 +12,6 @@ use crate::{
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
     instruction::{AccountMeta, Instruction},
-    program_error::ProgramError,
     pubkey::Pubkey,
     system_program, sysvar,
 };
@@ -277,7 +276,7 @@ pub fn create_realm(
     community_token_mint: &Pubkey,
     payer: &Pubkey,
     council_token_mint: Option<Pubkey>,
-) -> Result<Instruction, ProgramError> {
+) -> Instruction {
     let realm_address = get_realm_address(&name);
     let community_token_holding_address =
         get_governing_token_holding_address(&realm_address, &community_token_mint);
@@ -302,11 +301,11 @@ pub fn create_realm(
 
     let instruction = GovernanceInstruction::CreateRealm { name };
 
-    Ok(Instruction {
+    Instruction {
         program_id: id(),
         accounts,
         data: instruction.try_to_vec().unwrap(),
-    })
+    }
 }
 
 /// Creates DepositGoverningTokens instruction
@@ -317,7 +316,7 @@ pub fn deposit_governing_tokens(
     governing_token_source: &Pubkey,
     governing_token_owner: &Pubkey,
     payer: &Pubkey,
-) -> Result<Instruction, ProgramError> {
+) -> Instruction {
     let vote_record_address =
         get_voter_record_address(realm, governing_token_mint, governing_token_owner);
 
@@ -337,11 +336,11 @@ pub fn deposit_governing_tokens(
 
     let instruction = GovernanceInstruction::DepositGoverningTokens {};
 
-    Ok(Instruction {
+    Instruction {
         program_id: id(),
         accounts,
         data: instruction.try_to_vec().unwrap(),
-    })
+    }
 }
 
 /// Creates WithdrawGoverningTokens instruction
@@ -351,7 +350,7 @@ pub fn withdraw_governing_tokens(
     realm: &Pubkey,
     governing_token_destination: &Pubkey,
     governing_token_owner: &Pubkey,
-) -> Result<Instruction, ProgramError> {
+) -> Instruction {
     let vote_record_address =
         get_voter_record_address(realm, governing_token_mint, governing_token_owner);
 
@@ -369,11 +368,11 @@ pub fn withdraw_governing_tokens(
 
     let instruction = GovernanceInstruction::WithdrawGoverningTokens {};
 
-    Ok(Instruction {
+    Instruction {
         program_id: id(),
         accounts,
         data: instruction.try_to_vec().unwrap(),
-    })
+    }
 }
 
 /// Creates SetVoteAuthority instruction
@@ -383,7 +382,7 @@ pub fn set_vote_authority(
     vote_authority: &Pubkey,
     // Accounts
     governing_token_owner: &Pubkey,
-) -> Result<Instruction, ProgramError> {
+) -> Instruction {
     let vote_record_address =
         get_voter_record_address(realm, governing_token_mint, governing_token_owner);
 
@@ -398,9 +397,9 @@ pub fn set_vote_authority(
         vote_authority: *vote_authority,
     };
 
-    Ok(Instruction {
+    Instruction {
         program_id: id(),
         accounts,
         data: instruction.try_to_vec().unwrap(),
-    })
+    }
 }

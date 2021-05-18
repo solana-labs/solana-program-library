@@ -108,8 +108,7 @@ async fn test_withdraw_community_tokens_with_owner_must_sign_error() {
         &realm_cookie.address,
         &hacker_token_destination,
         &voter_record_cookie.token_owner.pubkey(),
-    )
-    .unwrap();
+    );
 
     instruction.accounts[3] =
         AccountMeta::new_readonly(voter_record_cookie.token_owner.pubkey(), false);
@@ -151,8 +150,7 @@ async fn test_withdraw_community_tokens_with_voter_record_address_mismatch_error
         &realm_cookie.address,
         &hacker_record_cookie.token_source,
         &hacker_record_cookie.token_owner.pubkey(),
-    )
-    .unwrap();
+    );
 
     instruction.accounts[4] = AccountMeta::new(vote_record_address, false);
 

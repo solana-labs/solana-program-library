@@ -75,8 +75,7 @@ async fn test_set_community_vote_authority_with_owner_must_sign_error() {
         &realm_cookie.account.community_mint,
         &hacker_vote_authority,
         &voter_record_cookie.token_owner.pubkey(),
-    )
-    .unwrap();
+    );
 
     instruction.accounts[0] =
         AccountMeta::new_readonly(voter_record_cookie.token_owner.pubkey(), false);

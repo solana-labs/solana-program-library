@@ -132,8 +132,7 @@ impl GovernanceProgramTest {
             &community_token_mint_keypair.pubkey(),
             &self.payer.pubkey(),
             Some(council_token_mint_keypair.pubkey()),
-        )
-        .unwrap();
+        );
 
         self.process_transaction(&[create_proposal_instruction], None)
             .await
@@ -249,8 +248,7 @@ impl GovernanceProgramTest {
             &token_source.pubkey(),
             &token_owner.pubkey(),
             &self.payer.pubkey(),
-        )
-        .unwrap();
+        );
 
         self.process_transaction(
             &[deposit_governing_tokens_instruction],
@@ -307,8 +305,7 @@ impl GovernanceProgramTest {
             &voter_record_cookie.token_source,
             &voter_record_cookie.token_owner.pubkey(),
             &self.payer.pubkey(),
-        )
-        .unwrap();
+        );
 
         self.process_transaction(
             &[deposit_governing_tokens_instruction],
@@ -358,8 +355,7 @@ impl GovernanceProgramTest {
             governing_token_mint,
             &voter_record_cookie.vote_authority.pubkey(),
             &voter_record_cookie.token_owner.pubkey(),
-        )
-        .unwrap();
+        );
 
         self.process_transaction(
             &[set_vote_authority_instruction],
@@ -413,8 +409,7 @@ impl GovernanceProgramTest {
             &realm_cookie.address,
             &voter_record_cookie.token_source,
             &governing_token_owner.pubkey(),
-        )
-        .unwrap();
+        );
 
         self.process_transaction(
             &[deposit_governing_tokens_instruction],
