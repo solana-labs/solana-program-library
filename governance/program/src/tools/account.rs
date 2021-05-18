@@ -17,6 +17,7 @@ pub fn create_and_serialize_account_signed<'a, T: BorshSerialize>(
     account_address_seeds: &[&[u8]],
     program_id: &Pubkey,
     system_info: &AccountInfo<'a>,
+    rent: &Rent,
 ) -> Result<(), ProgramError> {
     // Get PDA and assert it's the same as the requested account address
     let (account_address, bump_seed) =
@@ -35,7 +36,7 @@ pub fn create_and_serialize_account_signed<'a, T: BorshSerialize>(
     let create_account_instruction = create_account(
         payer_info.key,
         account_info.key,
-        Rent::default().minimum_balance(serialized_data.len()),
+        rent.minimum_balance(serialized_data.len()),
         serialized_data.len() as u64,
         program_id,
     );

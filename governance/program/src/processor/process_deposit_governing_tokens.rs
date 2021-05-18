@@ -5,6 +5,8 @@ use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
     pubkey::Pubkey,
+    rent::Rent,
+    sysvar::Sysvar,
 };
 
 use crate::{
@@ -35,6 +37,9 @@ pub fn process_deposit_governing_tokens(
     let payer_info = next_account_info(account_info_iter)?; // 5
     let system_info = next_account_info(account_info_iter)?; // 6
     let spl_token_info = next_account_info(account_info_iter)?; // 7
+    let rent_sysvar_info = next_account_info(account_info_iter)?; // 8
+
+    let rent = &Rent::from_account_info(rent_sysvar_info)?;
 
     let realm_data = deserialize_realm(realm_info)?;
     let governing_token_mint = get_mint_from_token_account(governing_token_holding_info)?;
@@ -82,6 +87,7 @@ pub fn process_deposit_governing_tokens(
             &voter_record_address_seeds,
             program_id,
             system_info,
+            rent,
         )?;
     } else {
         let mut voter_record_data =

@@ -4,6 +4,8 @@ use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
     pubkey::Pubkey,
+    rent::Rent,
+    sysvar::Sysvar,
 };
 
 use crate::{
@@ -31,6 +33,8 @@ pub fn process_create_realm(
     let spl_token_info = next_account_info(account_info_iter)?; // 5
     let rent_sysvar_info = next_account_info(account_info_iter)?; // 6
 
+    let rent = &Rent::from_account_info(rent_sysvar_info)?;
+
     if !realm_info.data_is_empty() {
         return Err(GovernanceError::RealmAlreadyExists.into());
     }
@@ -45,6 +49,7 @@ pub fn process_create_realm(
         system_info,
         spl_token_info,
         rent_sysvar_info,
+        rent,
     )?;
 
     let council_token_mint_address = if let Ok(council_token_mint_info) =
@@ -63,6 +68,7 @@ pub fn process_create_realm(
             system_info,
             spl_token_info,
             rent_sysvar_info,
+            rent,
         )?;
 
         Some(*council_token_mint_info.key)
@@ -84,6 +90,7 @@ pub fn process_create_realm(
         &get_realm_address_seeds(&name),
         program_id,
         system_info,
+        rent,
     )?;
 
     Ok(())

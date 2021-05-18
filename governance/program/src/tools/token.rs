@@ -27,11 +27,12 @@ pub fn create_spl_token_account_signed<'a>(
     system_info: &AccountInfo<'a>,
     spl_token_info: &AccountInfo<'a>,
     rent_sysvar_info: &AccountInfo<'a>,
+    rent: &Rent,
 ) -> Result<(), ProgramError> {
     let create_account_instruction = system_instruction::create_account(
         payer_info.key,
         token_account_info.key,
-        1.max(Rent::default().minimum_balance(spl_token::state::Account::get_packed_len())),
+        1.max(rent.minimum_balance(spl_token::state::Account::get_packed_len())),
         spl_token::state::Account::get_packed_len() as u64,
         &spl_token::id(),
     );

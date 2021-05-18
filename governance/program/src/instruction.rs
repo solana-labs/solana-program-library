@@ -334,6 +334,7 @@ pub fn deposit_governing_tokens(
         AccountMeta::new_readonly(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(spl_token::id(), false),
+        AccountMeta::new_readonly(sysvar::rent::id(), false),
     ];
 
     let instruction = GovernanceInstruction::DepositGoverningTokens {};
