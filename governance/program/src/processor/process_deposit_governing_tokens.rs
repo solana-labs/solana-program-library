@@ -18,7 +18,10 @@ use crate::{
     },
     tools::{
         account::create_and_serialize_account_signed,
-        token::{get_amount_from_token_account, get_mint_from_token_account, transfer_spl_tokens},
+        token::{
+            get_amount_from_token_account, get_mint_from_token_account,
+            get_owner_from_token_account, transfer_spl_tokens,
+        },
     },
 };
 
@@ -71,7 +74,11 @@ pub fn process_deposit_governing_tokens(
 
     if voter_record_info.data_is_empty() {
         // Deposited tokens can only be withdrawn by the owner so let's make sure the owner signed the transaction
-        if !governing_token_owner_info.is_signer {
+        let governing_token_owner = get_owner_from_token_account(&governing_token_source_info)?;
+
+        if !(governing_token_owner == *governing_token_owner_info.key
+            && governing_token_owner_info.is_signer)
+        {
             return Err(GovernanceError::GoverningTokenOwnerMustSign.into());
         }
 

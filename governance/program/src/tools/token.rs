@@ -194,3 +194,18 @@ pub fn get_mint_from_token_account(
     let mint_data = array_ref![data, 0, 32];
     Ok(Pubkey::new_from_array(*mint_data))
 }
+
+/// Computationally cheap method to get owner from a token account
+/// It reads owner without deserializing full account data
+pub fn get_owner_from_token_account(
+    token_account_info: &AccountInfo,
+) -> Result<Pubkey, ProgramError> {
+    if token_account_info.owner != &spl_token::id() {
+        return Err(GovernanceError::InvalidTokenAccountOwner.into());
+    }
+
+    // TokeAccount layout:   mint(32), owner(32), amount(8)
+    let data = token_account_info.try_borrow_data().unwrap();
+    let owner_data = array_ref![data, 32, 32];
+    Ok(Pubkey::new_from_array(*owner_data))
+}
