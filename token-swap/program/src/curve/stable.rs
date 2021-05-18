@@ -8,7 +8,6 @@ use {
         error::SwapError,
     },
     arrayref::{array_mut_ref, array_ref},
-    roots::{find_roots_cubic_normalized, Roots},
     solana_program::{
         program_error::ProgramError,
         program_pack::{IsInitialized, Pack, Sealed},
@@ -243,25 +242,38 @@ impl CurveCalculator for StableCurve {
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
     ) -> Option<PreciseNumber> {
-        let x = swap_token_a_amount as f64;
-        let y = swap_token_b_amount as f64;
-        let c = (4.0 * (self.amp as f64)) - 1.0;
-        let d = 16.0 * (self.amp as f64) * x * y * (x + y);
-        let roots = find_roots_cubic_normalized(0.0, c, d);
-        let x0 = match roots {
-            Roots::No(_) => panic!("No roots found for cubic equations"),
-            Roots::One(x) => x[0],
-            Roots::Two(_) => panic!("Two roots found for cubic, mathematically impossible"),
-            Roots::Three(x) => x[1],
-            Roots::Four(_) => panic!("Four roots found for cubic, mathematically impossible"),
-        };
+        #[cfg(not(test))]
+        {
+            let leverage = self.amp.checked_mul(N_COINS as u64)?;
+            PreciseNumber::new(compute_d(
+                leverage,
+                swap_token_a_amount,
+                swap_token_b_amount,
+            )?)
+        }
+        #[cfg(test)]
+        {
+            use roots::{find_roots_cubic_normalized, Roots};
+            let x = swap_token_a_amount as f64;
+            let y = swap_token_b_amount as f64;
+            let c = (4.0 * (self.amp as f64)) - 1.0;
+            let d = 16.0 * (self.amp as f64) * x * y * (x + y);
+            let roots = find_roots_cubic_normalized(0.0, c, d);
+            let x0 = match roots {
+                Roots::No(_) => panic!("No roots found for cubic equations"),
+                Roots::One(x) => x[0],
+                Roots::Two(_) => panic!("Two roots found for cubic, mathematically impossible"),
+                Roots::Three(x) => x[1],
+                Roots::Four(_) => panic!("Four roots found for cubic, mathematically impossible"),
+            };
 
-        let root_uint = (x0 * ((10 as f64).powf(11.0))).round() as u128;
-        let precision = PreciseNumber::new(10)?.checked_pow(11)?;
-        let two = PreciseNumber::new(2)?;
-        PreciseNumber::new(root_uint)?
-            .checked_div(&precision)?
-            .checked_div(&two)
+            let root_uint = (x0 * ((10f64).powf(11.0))).round() as u128;
+            let precision = PreciseNumber::new(10)?.checked_pow(11)?;
+            let two = PreciseNumber::new(2)?;
+            PreciseNumber::new(root_uint)?
+                .checked_div(&precision)?
+                .checked_div(&two)
+        }
     }
 
     fn validate(&self) -> Result<(), SwapError> {

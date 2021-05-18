@@ -22,12 +22,12 @@ spl-math = { version = "0.1", path = "../../libraries/math", features = [ "no-en
 spl-token = { version = "3.1", path = "../../token/program", features = [ "no-entrypoint" ] }
 thiserror = "1.0"
 arbitrary = { version = "0.4", features = ["derive"], optional = true }
-roots = "0.0.6"
 
 [dev-dependencies]
 solana-sdk = "1.6.2"
 proptest = "0.10"
 sim =  { path = "./sim" }
+roots = "0.0.6"
 
 [lib]
 crate-type = ["cdylib", "lib"]
