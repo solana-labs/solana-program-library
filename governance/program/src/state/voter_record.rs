@@ -37,7 +37,7 @@ pub struct VoterRecord {
     pub token_deposit_amount: u64,
 
     /// A single account that is allowed to operate governance with the deposited governing tokens
-    /// It's delegated to by the token owner
+    /// It's delegated to by the governing token owner or current vote_authority
     pub vote_authority: Option<Pubkey>,
 
     /// The number of active votes cast by voter

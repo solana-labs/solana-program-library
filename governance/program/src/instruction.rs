@@ -58,10 +58,11 @@ pub enum GovernanceInstruction {
     ///  1. `[writable]` Governing Token Holding account. PDA seeds: ['governance',realm, governing_token_mint]
     ///  2. `[writable]` Governing Token Source account. All tokens from the account will be transferred to the Holding account
     ///  3. `[signer]` Governing Token Owner account
-    ///  4. `[writable]` Voter Record account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
-    ///  5. `[signer]` Payer
-    ///  6. `[]` System
-    ///  7. `[]` SPL Token
+    ///  4. `[signer]` Governing Token Transfer authority   
+    ///  5. `[writable]` Voter Record account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
+    ///  6. `[signer]` Payer
+    ///  7. `[]` System
+    ///  8. `[]` SPL Token
     DepositGoverningTokens {},
 
     /// Withdraws governing tokens (Community or Council) from Governance Realm and downgrades your voter weight within the Realm
@@ -72,14 +73,13 @@ pub enum GovernanceInstruction {
     ///  1. `[writable]` Governing Token Holding account. PDA seeds: ['governance',realm, governing_token_mint]
     ///  2. `[writable]` Governing Token Destination account. All tokens will be transferred to this account
     ///  3. `[signer]` Governing Token Owner account
-    ///  3. `[signer]` Governing Token Transfer authority
     ///  4. `[writable]` Voter Record account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
     ///  5. `[]` SPL Token   
     WithdrawGoverningTokens {},
 
     /// Sets vote authority for the given Realm and Governing Token Mint (Community or Council)
     /// The vote authority would have voting rights and could vote on behalf of the Governing Token Owner
-    /// Note: This doesn't take voting rights from the Token Owner who still can vote
+    /// Note: This doesn't take voting rights from the Token Owner who still can vote and change vote_authority
     ///
     /// 0. `[signer]` Current Vote authority or Governing Token owner
     /// 1. `[writable]` Voter Record

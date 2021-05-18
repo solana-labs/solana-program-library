@@ -17,7 +17,7 @@ pub trait AccountMaxSize {
     }
 }
 
-/// Creates a new account and serializes data into it using the provided seeds to make signed CPI call
+/// Creates a new account and serializes data into it using the provided seeds to invoke signed CPI call
 /// Note: This functions also checks the provided account PDA matches the supplied seeds
 pub fn create_and_serialize_account_signed<'a, T: BorshSerialize + AccountMaxSize>(
     payer_info: &AccountInfo<'a>,
