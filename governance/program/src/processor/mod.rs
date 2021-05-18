@@ -44,13 +44,14 @@ pub fn process_instruction(
         GovernanceInstruction::SetVoteAuthority {
             realm,
             governing_token_mint,
-            vote_authority,
+            governing_token_owner,
+            new_vote_authority,
         } => process_set_vote_authority(
-            program_id,
             accounts,
             &realm,
             &governing_token_mint,
-            &vote_authority,
+            &governing_token_owner,
+            &new_vote_authority,
         ),
         _ => todo!("Instruction not implemented yet"),
     }

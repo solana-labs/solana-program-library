@@ -79,8 +79,9 @@ pub enum GovernanceInstruction {
 
     /// Sets vote authority for the given Realm and Governing Token Mint (Community or Council)
     /// The vote authority would have voting rights and could vote on behalf of the Governing Token Owner
+    /// Note: This doesn't take voting rights from the Token Owner who still can vote
     ///
-    /// 0. `[signer]` Governing Token Owner
+    /// 0. `[signer]` Current Vote authority or Governing Token owner
     /// 1. `[writable]` Voter Record
     SetVoteAuthority {
         #[allow(dead_code)]
@@ -92,8 +93,12 @@ pub enum GovernanceInstruction {
         governing_token_mint: Pubkey,
 
         #[allow(dead_code)]
+        /// Governing Token Owner the vote authority is set for
+        governing_token_owner: Pubkey,
+
+        #[allow(dead_code)]
         /// New vote authority
-        vote_authority: Pubkey,
+        new_vote_authority: Pubkey,
     },
 
     /// Creates Program Governance account which governs an upgradable program
@@ -385,24 +390,26 @@ pub fn withdraw_governing_tokens(
 /// Creates SetVoteAuthority instruction
 pub fn set_vote_authority(
     // Accounts
-    governing_token_owner: &Pubkey,
+    vote_authority: &Pubkey,
     // Args
     realm: &Pubkey,
     governing_token_mint: &Pubkey,
-    vote_authority: &Pubkey,
+    governing_token_owner: &Pubkey,
+    new_vote_authority: &Pubkey,
 ) -> Instruction {
     let vote_record_address =
         get_voter_record_address(realm, governing_token_mint, governing_token_owner);
 
     let accounts = vec![
-        AccountMeta::new_readonly(*governing_token_owner, true),
+        AccountMeta::new_readonly(*vote_authority, true),
         AccountMeta::new(vote_record_address, false),
     ];
 
     let instruction = GovernanceInstruction::SetVoteAuthority {
         realm: *realm,
         governing_token_mint: *governing_token_mint,
-        vote_authority: *vote_authority,
+        governing_token_owner: *governing_token_owner,
+        new_vote_authority: *new_vote_authority,
     };
 
     Instruction {

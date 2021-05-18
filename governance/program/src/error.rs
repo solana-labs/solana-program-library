@@ -27,6 +27,10 @@ pub enum GovernanceError {
     #[error("Governing Token Owner must sign transaction")]
     GoverningTokenOwnerMustSign,
 
+    /// Governing Token Owner or Vote Authority  must sign transaction
+    #[error("Governing Token Owner or Vote Authority  must sign transaction")]
+    GoverningTokenOwnerOrVoteAuthrotiyMustSign,
+
     /// All active votes must be relinquished to withdraw governing tokens
     #[error("All active votes must be relinquished to withdraw governing tokens")]
     CannotWithdrawGoverningTokensWhenActiveVotesExist,

@@ -231,7 +231,6 @@ impl GovernanceProgramTest {
         let token_source = Keypair::new();
 
         let source_amount = 100;
-        let vote_authority = Keypair::new();
         let transfer_authority = Keypair::new();
 
         self.create_token_account_with_transfer_authority(
@@ -273,6 +272,8 @@ impl GovernanceProgramTest {
             active_votes_count: 0,
             total_votes_count: 0,
         };
+
+        let vote_authority = Keypair::from_base58_string(&token_owner.to_base58_string());
 
         VoterRecordCookie {
             address: voter_record_address,
@@ -323,12 +324,12 @@ impl GovernanceProgramTest {
     pub async fn with_community_vote_authority(
         &mut self,
         realm_cookie: &RealmCookie,
-        voter_record_cookie: &VoterRecordCookie,
+        voter_record_cookie: &mut VoterRecordCookie,
     ) {
         self.with_governing_token_vote_authority(
             &realm_cookie.address,
             &realm_cookie.account.community_mint,
-            &voter_record_cookie,
+            voter_record_cookie,
         )
         .await;
     }
@@ -337,12 +338,12 @@ impl GovernanceProgramTest {
     pub async fn with_council_vote_authority(
         &mut self,
         realm_cookie: &RealmCookie,
-        voter_record_cookie: &VoterRecordCookie,
+        voter_record_cookie: &mut VoterRecordCookie,
     ) {
         self.with_governing_token_vote_authority(
             &realm_cookie.address,
             &realm_cookie.account.council_mint.unwrap(),
-            &voter_record_cookie,
+            voter_record_cookie,
         )
         .await;
     }
@@ -352,14 +353,19 @@ impl GovernanceProgramTest {
         &mut self,
         realm: &Pubkey,
         governing_token_mint: &Pubkey,
-        voter_record_cookie: &VoterRecordCookie,
+        voter_record_cookie: &mut VoterRecordCookie,
     ) {
+        let new_vote_authority = Keypair::new();
+
         let set_vote_authority_instruction = set_vote_authority(
             &voter_record_cookie.token_owner.pubkey(),
             realm,
             governing_token_mint,
-            &voter_record_cookie.vote_authority.pubkey(),
+            &voter_record_cookie.token_owner.pubkey(),
+            &new_vote_authority.pubkey(),
         );
+
+        voter_record_cookie.vote_authority = new_vote_authority;
 
         self.process_transaction(
             &[set_vote_authority_instruction],
