@@ -98,7 +98,7 @@ pub enum GovernanceInstruction {
 
         #[allow(dead_code)]
         /// New vote authority
-        new_vote_authority: Pubkey,
+        new_vote_authority: Option<Pubkey>,
     },
 
     /// Creates Program Governance account which governs an upgradable program
@@ -395,7 +395,7 @@ pub fn set_vote_authority(
     realm: &Pubkey,
     governing_token_mint: &Pubkey,
     governing_token_owner: &Pubkey,
-    new_vote_authority: &Pubkey,
+    new_vote_authority: &Option<Pubkey>,
 ) -> Instruction {
     let vote_record_address =
         get_voter_record_address(realm, governing_token_mint, governing_token_owner);

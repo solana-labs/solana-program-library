@@ -2,15 +2,24 @@
 
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
-    account_info::AccountInfo, msg, program::invoke_signed, program_error::ProgramError,
-    program_pack::IsInitialized, pubkey::Pubkey, rent::Rent, system_instruction::create_account,
+    account_info::AccountInfo, borsh::try_from_slice_unchecked, msg, program::invoke_signed,
+    program_error::ProgramError, program_pack::IsInitialized, pubkey::Pubkey, rent::Rent,
+    system_instruction::create_account,
 };
 
 use crate::error::GovernanceError;
 
+/// Trait for accounts to return their max size
+pub trait AccountMaxSize {
+    /// Returns max account size or None if max size is not known and actual instance size should be used
+    fn get_max_size(&self) -> Option<usize> {
+        None
+    }
+}
+
 /// Creates a new account and serializes data into it using the provided seeds to make signed CPI call
 /// Note: This functions also checks the provided account PDA matches the supplied seeds
-pub fn create_and_serialize_account_signed<'a, T: BorshSerialize>(
+pub fn create_and_serialize_account_signed<'a, T: BorshSerialize + AccountMaxSize>(
     payer_info: &AccountInfo<'a>,
     account_info: &AccountInfo<'a>,
     account_data: &T,
@@ -31,13 +40,20 @@ pub fn create_and_serialize_account_signed<'a, T: BorshSerialize>(
         );
         return Err(ProgramError::InvalidSeeds);
     }
-    let serialized_data = account_data.try_to_vec()?;
+
+    let (serialized_data, account_size) = if let Some(max_size) = account_data.get_max_size() {
+        (None, max_size)
+    } else {
+        let serialized_data = account_data.try_to_vec()?;
+        let account_size = serialized_data.len();
+        (Some(serialized_data), account_size)
+    };
 
     let create_account_instruction = create_account(
         payer_info.key,
         account_info.key,
-        rent.minimum_balance(serialized_data.len()),
-        serialized_data.len() as u64,
+        rent.minimum_balance(account_size),
+        account_size as u64,
         program_id,
     );
 
@@ -55,10 +71,14 @@ pub fn create_and_serialize_account_signed<'a, T: BorshSerialize>(
         &[&signers_seeds[..]],
     )?;
 
-    account_info
-        .data
-        .borrow_mut()
-        .copy_from_slice(&serialized_data);
+    if let Some(serialized_data) = serialized_data {
+        account_info
+            .data
+            .borrow_mut()
+            .copy_from_slice(&serialized_data);
+    } else {
+        account_data.serialize(&mut *account_info.data.borrow_mut())?;
+    }
 
     Ok(())
 }
@@ -72,7 +92,7 @@ pub fn deserialize_account<T: BorshDeserialize + IsInitialized>(
         return Err(GovernanceError::InvalidAccountOwner.into());
     }
 
-    let account: T = T::try_from_slice(&account_info.data.borrow())?;
+    let account: T = try_from_slice_unchecked(&account_info.data.borrow())?;
     if !account.is_initialized() {
         Err(ProgramError::UninitializedAccount)
     } else {

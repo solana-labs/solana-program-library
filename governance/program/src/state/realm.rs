@@ -6,7 +6,11 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-use crate::{id, tools::account::deserialize_account, PROGRAM_AUTHORITY_SEED};
+use crate::{
+    id,
+    tools::account::{deserialize_account, AccountMaxSize},
+    PROGRAM_AUTHORITY_SEED,
+};
 
 use super::enums::GovernanceAccountType;
 
@@ -27,6 +31,8 @@ pub struct Realm {
     /// Governance Realm name
     pub name: String,
 }
+
+impl AccountMaxSize for Realm {}
 
 impl IsInitialized for Realm {
     fn is_initialized(&self) -> bool {

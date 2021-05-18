@@ -29,9 +29,41 @@ async fn test_set_community_vote_authority() {
         .await;
 
     assert_eq!(
-        voter_record_cookie.vote_authority.pubkey(),
+        Some(voter_record_cookie.vote_authority.pubkey()),
         voter_record.vote_authority
     );
+}
+
+#[tokio::test]
+async fn test_set_vote_authority_to_none() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+    let realm_cookie = governance_test.with_realm().await;
+    let mut voter_record_cookie = governance_test
+        .with_initial_community_token_deposit(&realm_cookie)
+        .await;
+
+    governance_test
+        .with_community_vote_authority(&realm_cookie, &mut voter_record_cookie)
+        .await;
+
+    // Act
+    governance_test
+        .set_vote_authority(
+            &realm_cookie,
+            &voter_record_cookie,
+            &voter_record_cookie.token_owner,
+            &realm_cookie.account.community_mint,
+            &None,
+        )
+        .await;
+
+    // Assert
+    let voter_record = governance_test
+        .get_voter_record_account(&voter_record_cookie.address)
+        .await;
+
+    assert_eq!(None, voter_record.vote_authority);
 }
 
 #[tokio::test]
@@ -54,7 +86,7 @@ async fn test_set_council_vote_authority() {
         .await;
 
     assert_eq!(
-        voter_record_cookie.vote_authority.pubkey(),
+        Some(voter_record_cookie.vote_authority.pubkey()),
         voter_record.vote_authority
     );
 }
@@ -75,7 +107,7 @@ async fn test_set_community_vote_authority_with_owner_must_sign_error() {
         &realm_cookie.address,
         &realm_cookie.account.community_mint,
         &voter_record_cookie.token_owner.pubkey(),
-        &hacker_vote_authority.pubkey(),
+        &Some(hacker_vote_authority.pubkey()),
     );
 
     instruction.accounts[0] =
@@ -110,24 +142,24 @@ async fn test_set_community_vote_authority_signed_by_vote_authority() {
 
     let new_vote_authority = Keypair::new();
 
-    let instruction = set_vote_authority(
-        &voter_record_cookie.vote_authority.pubkey(),
-        &realm_cookie.address,
-        &realm_cookie.account.community_mint,
-        &voter_record_cookie.token_owner.pubkey(),
-        &new_vote_authority.pubkey(),
-    );
-
     // Act
     governance_test
-        .process_transaction(&[instruction], Some(&[&voter_record_cookie.vote_authority]))
-        .await
-        .unwrap();
+        .set_vote_authority(
+            &realm_cookie,
+            &voter_record_cookie,
+            &voter_record_cookie.vote_authority,
+            &realm_cookie.account.community_mint,
+            &Some(new_vote_authority.pubkey()),
+        )
+        .await;
 
     // Assert
     let voter_record = governance_test
         .get_voter_record_account(&voter_record_cookie.address)
         .await;
 
-    assert_eq!(new_vote_authority.pubkey(), voter_record.vote_authority);
+    assert_eq!(
+        Some(new_vote_authority.pubkey()),
+        voter_record.vote_authority
+    );
 }

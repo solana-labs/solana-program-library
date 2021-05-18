@@ -88,7 +88,7 @@ pub fn process_deposit_governing_tokens(
             token_owner: *governing_token_owner_info.key,
             token_deposit_amount: amount,
             token_type: governing_token_type,
-            vote_authority: *governing_token_owner_info.key,
+            vote_authority: None,
             active_votes_count: 0,
             total_votes_count: 0,
         };

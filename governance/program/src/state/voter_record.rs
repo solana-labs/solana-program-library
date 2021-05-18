@@ -1,7 +1,10 @@
 //! Voter Record Account
 
 use crate::{
-    error::GovernanceError, id, tools::account::deserialize_account, PROGRAM_AUTHORITY_SEED,
+    error::GovernanceError,
+    id,
+    tools::account::{deserialize_account, AccountMaxSize},
+    PROGRAM_AUTHORITY_SEED,
 };
 
 use super::enums::{GovernanceAccountType, GoverningTokenType};
@@ -35,13 +38,19 @@ pub struct VoterRecord {
 
     /// A single account that is allowed to operate governance with the deposited governing tokens
     /// It's delegated to by the token owner
-    pub vote_authority: Pubkey,
+    pub vote_authority: Option<Pubkey>,
 
     /// The number of active votes cast by voter
     pub active_votes_count: u8,
 
     /// The total number of votes cast by the voter
     pub total_votes_count: u8,
+}
+
+impl AccountMaxSize for VoterRecord {
+    fn get_max_size(&self) -> Option<usize> {
+        Some(109)
+    }
 }
 
 impl IsInitialized for VoterRecord {
@@ -89,4 +98,29 @@ pub fn deserialize_voter_record(
     }
 
     deserialize_account::<VoterRecord>(voter_record_info, &id())
+}
+
+#[cfg(test)]
+mod test {
+    use solana_program::borsh::get_packed_len;
+
+    use super::*;
+
+    #[test]
+    fn test_max_size() {
+        let vote_record = VoterRecord {
+            account_type: GovernanceAccountType::VoterRecord,
+            realm: Pubkey::new_unique(),
+            token_type: GoverningTokenType::Community,
+            token_owner: Pubkey::new_unique(),
+            token_deposit_amount: 10,
+            vote_authority: Some(Pubkey::new_unique()),
+            active_votes_count: 1,
+            total_votes_count: 1,
+        };
+
+        let size = get_packed_len::<VoterRecord>();
+
+        assert_eq!(vote_record.get_max_size(), Some(size));
+    }
 }

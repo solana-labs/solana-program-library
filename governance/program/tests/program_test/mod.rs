@@ -1,5 +1,6 @@
 use borsh::BorshDeserialize;
 use solana_program::{
+    borsh::try_from_slice_unchecked,
     instruction::Instruction,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack},
@@ -90,7 +91,7 @@ impl GovernanceProgramTest {
             .unwrap()
             .expect("GET-TEST-ACCOUNT-ERROR: Account not found");
 
-        T::try_from_slice(&raw_account.data).unwrap()
+        try_from_slice_unchecked(&raw_account.data).unwrap()
     }
 
     #[allow(dead_code)]
@@ -268,7 +269,7 @@ impl GovernanceProgramTest {
             token_type: governing_token_type,
             token_owner: token_owner.pubkey(),
             token_deposit_amount: source_amount,
-            vote_authority: token_owner.pubkey(),
+            vote_authority: None,
             active_votes_count: 0,
             total_votes_count: 0,
         };
@@ -327,7 +328,7 @@ impl GovernanceProgramTest {
         voter_record_cookie: &mut VoterRecordCookie,
     ) {
         self.with_governing_token_vote_authority(
-            &realm_cookie.address,
+            &realm_cookie,
             &realm_cookie.account.community_mint,
             voter_record_cookie,
         )
@@ -341,7 +342,7 @@ impl GovernanceProgramTest {
         voter_record_cookie: &mut VoterRecordCookie,
     ) {
         self.with_governing_token_vote_authority(
-            &realm_cookie.address,
+            &realm_cookie,
             &realm_cookie.account.council_mint.unwrap(),
             voter_record_cookie,
         )
@@ -351,25 +352,44 @@ impl GovernanceProgramTest {
     #[allow(dead_code)]
     pub async fn with_governing_token_vote_authority(
         &mut self,
-        realm: &Pubkey,
+        realm_cookie: &RealmCookie,
         governing_token_mint: &Pubkey,
         voter_record_cookie: &mut VoterRecordCookie,
     ) {
         let new_vote_authority = Keypair::new();
 
-        let set_vote_authority_instruction = set_vote_authority(
-            &voter_record_cookie.token_owner.pubkey(),
-            realm,
+        self.set_vote_authority(
+            realm_cookie,
+            voter_record_cookie,
+            &voter_record_cookie.token_owner,
             governing_token_mint,
-            &voter_record_cookie.token_owner.pubkey(),
-            &new_vote_authority.pubkey(),
-        );
+            &Some(new_vote_authority.pubkey()),
+        )
+        .await;
 
         voter_record_cookie.vote_authority = new_vote_authority;
+    }
+
+    #[allow(dead_code)]
+    pub async fn set_vote_authority(
+        &mut self,
+        realm_cookie: &RealmCookie,
+        voter_record_cookie: &VoterRecordCookie,
+        signing_vote_authority: &Keypair,
+        governing_token_mint: &Pubkey,
+        new_vote_authority: &Option<Pubkey>,
+    ) {
+        let set_vote_authority_instruction = set_vote_authority(
+            &signing_vote_authority.pubkey(),
+            &realm_cookie.address,
+            governing_token_mint,
+            &voter_record_cookie.token_owner.pubkey(),
+            new_vote_authority,
+        );
 
         self.process_transaction(
             &[set_vote_authority_instruction],
-            Some(&[&voter_record_cookie.token_owner]),
+            Some(&[&signing_vote_authority]),
         )
         .await
         .unwrap();
