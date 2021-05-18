@@ -5,8 +5,6 @@ pub mod process_deposit_governing_tokens;
 pub mod process_set_vote_authority;
 pub mod process_withdraw_governing_tokens;
 
-use core::panic;
-
 use crate::instruction::GovernanceInstruction;
 use borsh::BorshDeserialize;
 
