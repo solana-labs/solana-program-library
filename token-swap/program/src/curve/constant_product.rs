@@ -3,8 +3,8 @@
 use {
     crate::{
         curve::calculator::{
-            map_zero_to_none, CurveCalculator, DynPack, SwapWithoutFeesResult,
-            TradeDirection, TradingTokenResult, RoundDirection
+            map_zero_to_none, CurveCalculator, DynPack, RoundDirection, SwapWithoutFeesResult,
+            TradeDirection, TradingTokenResult,
         },
         error::SwapError,
     },

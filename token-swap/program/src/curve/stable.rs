@@ -1,21 +1,25 @@
 //! The curve.fi invariant calculator.
-use crate::error::SwapError;
-use solana_program::{
-    program_error::ProgramError,
-    program_pack::{IsInitialized, Pack, Sealed},
+use {
+    crate::{
+        curve::calculator::{
+            CurveCalculator, DynPack, RoundDirection, SwapWithoutFeesResult, TradeDirection,
+            TradingTokenResult,
+        },
+        error::SwapError,
+    },
+    arrayref::{array_mut_ref, array_ref},
+    roots::{find_roots_cubic_normalized, Roots},
+    solana_program::{
+        program_error::ProgramError,
+        program_pack::{IsInitialized, Pack, Sealed},
+    },
+    spl_math::{precise_number::PreciseNumber, uint::U256},
+    std::convert::TryFrom,
 };
-
-use crate::curve::calculator::{
-    CurveCalculator, DynPack, RoundDirection, SwapWithoutFeesResult, TradeDirection,
-    TradingTokenResult,
-};
-use arrayref::{array_mut_ref, array_ref};
-use spl_math::{precise_number::PreciseNumber, uint::U256};
-use std::convert::TryFrom;
-use roots::{Roots, find_roots_cubic_normalized};
 
 const N_COINS: u8 = 2;
 const N_COINS_SQUARED: u8 = 4;
+const ITERATIONS: u8 = 32;
 
 /// Returns self to the power of b
 fn checked_u8_power(a: &U256, b: u8) -> Option<U256> {
@@ -33,15 +37,6 @@ fn checked_u8_mul(a: &U256, b: u8) -> Option<U256> {
         result = result.checked_add(*a)?;
     }
     Some(result)
-}
-
-/// Returns true of values differ not more than by 1
-fn almost_equal(a: &U256, b: &U256) -> Option<bool> {
-    if a > b {
-        Some(a.checked_sub(*b)? <= U256::one())
-    } else {
-        Some(b.checked_sub(*a)? <= U256::one())
-    }
 }
 
 /// StableCurve struct implementing CurveCalculator
@@ -70,8 +65,10 @@ fn calculate_step(initial_d: &U256, leverage: u64, sum_x: u128, d_product: &U256
 /// Equation:
 /// A * sum(x_i) * n**n + D = A * D * n**n + D**(n+1) / (n**n * prod(x_i))
 fn compute_d(leverage: u64, amount_a: u128, amount_b: u128) -> Option<u128> {
-    let amount_a_times_coins = checked_u8_mul(&U256::from(amount_a), N_COINS)?;
-    let amount_b_times_coins = checked_u8_mul(&U256::from(amount_b), N_COINS)?;
+    let amount_a_times_coins =
+        checked_u8_mul(&U256::from(amount_a), N_COINS)?.checked_add(U256::one())?;
+    let amount_b_times_coins =
+        checked_u8_mul(&U256::from(amount_b), N_COINS)?.checked_add(U256::one())?;
     let sum_x = amount_a.checked_add(amount_b)?; // sum(x_i), a.k.a S
     if sum_x == 0 {
         Some(0)
@@ -80,7 +77,7 @@ fn compute_d(leverage: u64, amount_a: u128, amount_b: u128) -> Option<u128> {
         let mut d: U256 = sum_x.into();
 
         // Newton's method to approximate D
-        for _ in 0..32 {
+        for _ in 0..ITERATIONS {
             let mut d_product = d;
             d_product = d_product
                 .checked_mul(d)?
@@ -92,7 +89,7 @@ fn compute_d(leverage: u64, amount_a: u128, amount_b: u128) -> Option<u128> {
             //d = (leverage * sum_x + d_p * n_coins) * d / ((leverage - 1) * d + (n_coins + 1) * d_p);
             d = calculate_step(&d, leverage, sum_x, &d_product)?;
             // Equality with the precision of 1
-            if almost_equal(&d, &d_previous)? {
+            if d == d_previous {
                 break;
             }
         }
@@ -125,11 +122,11 @@ fn compute_new_destination_amount(
     // Solve for y by approximating: y**2 + b*y = c
     let mut y_prev: U256;
     let mut y = d_val;
-    for _ in 0..32 {
+    for _ in 0..ITERATIONS {
         y_prev = y;
         y = (checked_u8_power(&y, 2)?.checked_add(c)?)
             .checked_div(checked_u8_mul(&y, 2)?.checked_add(b)?.checked_sub(d_val)?)?;
-        if almost_equal(&y, &y_prev)? {
+        if y == y_prev {
             break;
         }
     }
@@ -213,6 +210,9 @@ impl CurveCalculator for StableCurve {
         trade_direction: TradeDirection,
         round_direction: RoundDirection,
     ) -> Option<u128> {
+        if source_amount == 0 {
+            return Some(0);
+        }
         let leverage = self.amp.checked_mul(N_COINS as u64)?;
         let d0 = PreciseNumber::new(compute_d(
             leverage,
@@ -253,13 +253,15 @@ impl CurveCalculator for StableCurve {
             Roots::One(x) => x[0],
             Roots::Two(_) => panic!("Two roots found for cubic, mathematically impossible"),
             Roots::Three(x) => x[1],
-            Roots::Four(_) => panic!("Four roots found for cubic, mathematically impossible")
+            Roots::Four(_) => panic!("Four roots found for cubic, mathematically impossible"),
         };
 
         let root_uint = (x0 * ((10 as f64).powf(11.0))).round() as u128;
         let precision = PreciseNumber::new(10)?.checked_pow(11)?;
         let two = PreciseNumber::new(2)?;
-        PreciseNumber::new(root_uint)?.checked_div(&precision)?.checked_div(&two)
+        PreciseNumber::new(root_uint)?
+            .checked_div(&precision)?
+            .checked_div(&two)
     }
 
     fn validate(&self) -> Result<(), SwapError> {
@@ -380,13 +382,14 @@ mod tests {
 
             assert!(
                 diff <= 1,
-                "result={}, sim_result={}, amp={}, source_amount={}, swap_source_amount={}, swap_destination_amount={}",
+                "result={}, sim_result={}, amp={}, source_amount={}, swap_source_amount={}, swap_destination_amount={}, diff={}",
                 result.destination_amount_swapped,
                 sim_result,
                 amp,
                 source_amount,
                 swap_source_amount,
-                swap_destination_amount
+                swap_destination_amount,
+                diff
             );
         }
     }
@@ -492,10 +495,11 @@ mod tests {
             // source_token_amount, so this needs to be at least 2
             source_token_amount in 2..u64::MAX,
             swap_source_amount in 1..u64::MAX,
-            swap_destination_amount in 1..u64::MAX,
+            swap_destination_amount in 2..u64::MAX,
             pool_supply in INITIAL_SWAP_POOL_AMOUNT..u64::MAX as u128,
+            amp in 1..100u64,
         ) {
-            let curve = StableCurve { amp: 1 };
+            let curve = StableCurve { amp };
             check_pool_token_conversion(
                 &curve,
                 source_token_amount as u128,
@@ -503,7 +507,7 @@ mod tests {
                 swap_destination_amount as u128,
                 TradeDirection::AtoB,
                 pool_supply,
-                CONVERSION_BASIS_POINTS_GUARANTEE,
+                CONVERSION_BASIS_POINTS_GUARANTEE * 100,
             );
 
             check_pool_token_conversion(
@@ -513,9 +517,8 @@ mod tests {
                 swap_destination_amount as u128,
                 TradeDirection::BtoA,
                 pool_supply,
-                CONVERSION_BASIS_POINTS_GUARANTEE,
+                CONVERSION_BASIS_POINTS_GUARANTEE * 100,
             );
         }
     }
-
 }

@@ -50,7 +50,7 @@ class Curve:
         while abs(D - Dprev) > 1:
             D_P = D
             for x in xp:
-                D_P = D_P * D // (self.n * x)
+                D_P = D_P * D // (self.n * x + 1)
             Dprev = D
             D = (Ann * S + D_P * self.n) * D // ((Ann - 1) * D + (self.n + 1) * D_P)
 
@@ -140,7 +140,7 @@ class Curve:
         y = self.y(i, j, x)
         dy = xp[j] - y
         fee = dy * self.fee // 10 ** 10
-        
+
         #assert dy > 0
         if dy == 0:
             return 0

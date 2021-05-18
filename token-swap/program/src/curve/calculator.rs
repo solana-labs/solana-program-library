@@ -267,7 +267,12 @@ pub mod test {
         } else {
             pool_tokens_total_separate - pool_tokens_from_one_side
         };
-        assert!(difference <= epsilon);
+        assert!(
+            difference <= epsilon,
+            "difference expected to be less than {}, actually {}",
+            epsilon,
+            difference
+        );
     }
 
     /// Test function checking that a swap never reduces the overall value of
@@ -398,7 +403,7 @@ pub mod test {
                 pool_token_supply,
                 swap_token_a_amount,
                 swap_token_b_amount,
-                RoundDirection::Floor
+                RoundDirection::Floor,
             )
             .unwrap();
         let new_swap_token_a_amount = swap_token_a_amount - withdraw_result.token_a_amount;
