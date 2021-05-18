@@ -40,21 +40,21 @@ pub fn deserialize_realm(realm_info: &AccountInfo) -> Result<Realm, ProgramError
 }
 
 /// Returns Realm PDA seeds
-pub fn get_realm_address_seeds(name: &str) -> Vec<&[u8]> {
-    vec![PROGRAM_AUTHORITY_SEED, &name.as_bytes()]
+pub fn get_realm_address_seeds(name: &str) -> [&[u8]; 2] {
+    [PROGRAM_AUTHORITY_SEED, &name.as_bytes()]
 }
 
 /// Returns Realm PDA address
 pub fn get_realm_address(name: &str) -> Pubkey {
-    Pubkey::find_program_address(&get_realm_address_seeds(&name)[..], &id()).0
+    Pubkey::find_program_address(&get_realm_address_seeds(&name), &id()).0
 }
 
 /// Returns Realm Token Holding PDA seeds
 pub fn get_governing_token_holding_address_seeds<'a>(
     realm: &'a Pubkey,
     governing_token_mint: &'a Pubkey,
-) -> Vec<&'a [u8]> {
-    vec![
+) -> [&'a [u8]; 3] {
+    [
         PROGRAM_AUTHORITY_SEED,
         realm.as_ref(),
         governing_token_mint.as_ref(),
@@ -67,7 +67,7 @@ pub fn get_governing_token_holding_address(
     governing_token_mint: &Pubkey,
 ) -> Pubkey {
     Pubkey::find_program_address(
-        &get_governing_token_holding_address_seeds(realm, governing_token_mint)[..],
+        &get_governing_token_holding_address_seeds(realm, governing_token_mint),
         &id(),
     )
     .0

@@ -37,7 +37,7 @@ pub fn create_spl_token_account_signed<'a>(
     );
 
     let (account_address, bump_seed) =
-        Pubkey::find_program_address(&token_account_address_seeds, program_id);
+        Pubkey::find_program_address(token_account_address_seeds, program_id);
 
     if account_address != *token_account_info.key {
         msg!(
@@ -125,7 +125,7 @@ pub fn transfer_spl_tokens_signed<'a>(
     amount: u64,
     spl_token_info: &AccountInfo<'a>,
 ) -> ProgramResult {
-    let (authority_address, bump_seed) = Pubkey::find_program_address(&authority_seeds, program_id);
+    let (authority_address, bump_seed) = Pubkey::find_program_address(authority_seeds, program_id);
 
     if authority_address != *authority_info.key {
         msg!(

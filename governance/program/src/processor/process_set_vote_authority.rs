@@ -36,7 +36,7 @@ pub fn process_set_vote_authority(
     );
 
     let mut voter_record_data =
-        deserialize_voter_record(voter_record_info, voter_record_address_seeds)?;
+        deserialize_voter_record(voter_record_info, &voter_record_address_seeds)?;
 
     voter_record_data.vote_authority = *vote_authority;
 

@@ -57,7 +57,7 @@ pub fn get_voter_record_address(
     governing_token_owner: &Pubkey,
 ) -> Pubkey {
     Pubkey::find_program_address(
-        &get_voter_record_address_seeds(realm, governing_token_mint, governing_token_owner)[..],
+        &get_voter_record_address_seeds(realm, governing_token_mint, governing_token_owner),
         &id(),
     )
     .0
@@ -68,8 +68,8 @@ pub fn get_voter_record_address_seeds<'a>(
     realm: &'a Pubkey,
     governing_token_mint: &'a Pubkey,
     governing_token_owner: &'a Pubkey,
-) -> Vec<&'a [u8]> {
-    vec![
+) -> [&'a [u8]; 4] {
+    [
         PROGRAM_AUTHORITY_SEED,
         realm.as_ref(),
         governing_token_mint.as_ref(),
@@ -80,9 +80,9 @@ pub fn get_voter_record_address_seeds<'a>(
 /// Deserializes VoterRecord and checks account PDA and  owner program
 pub fn deserialize_voter_record(
     voter_record_info: &AccountInfo,
-    voter_record_seeds: Vec<&[u8]>,
+    voter_record_seeds: &[&[u8]],
 ) -> Result<VoterRecord, ProgramError> {
-    let (voter_record_address, _) = Pubkey::find_program_address(&voter_record_seeds[..], &id());
+    let (voter_record_address, _) = Pubkey::find_program_address(voter_record_seeds, &id());
 
     if voter_record_address != *voter_record_info.key {
         return Err(GovernanceError::InvalidVoterAccountAddress.into());

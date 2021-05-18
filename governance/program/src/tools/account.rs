@@ -14,13 +14,13 @@ pub fn create_and_serialize_account_signed<'a, T: BorshSerialize>(
     payer_info: &AccountInfo<'a>,
     account_info: &AccountInfo<'a>,
     account_data: &T,
-    account_address_seeds: Vec<&[u8]>,
+    account_address_seeds: &[&[u8]],
     program_id: &Pubkey,
     system_info: &AccountInfo<'a>,
 ) -> Result<(), ProgramError> {
     // Get PDA and assert it's the same as the requested account address
     let (account_address, bump_seed) =
-        Pubkey::find_program_address(&account_address_seeds[..], program_id);
+        Pubkey::find_program_address(account_address_seeds, program_id);
 
     if account_address != *account_info.key {
         msg!(

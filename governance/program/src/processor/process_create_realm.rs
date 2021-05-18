@@ -81,7 +81,7 @@ pub fn process_create_realm(
         payer_info,
         &realm_info,
         &realm_data,
-        get_realm_address_seeds(&name),
+        &get_realm_address_seeds(&name),
         program_id,
         system_info,
     )?;
