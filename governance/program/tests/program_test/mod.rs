@@ -232,19 +232,22 @@ impl GovernanceProgramTest {
 
         let source_amount = 100;
         let vote_authority = Keypair::new();
+        let transfer_authority = Keypair::new();
 
-        self.create_token_account(
+        self.create_token_account_with_transfer_authority(
             &token_source,
             governing_mint,
             governing_mint_authority,
             source_amount,
-            token_owner.pubkey(),
+            &token_owner,
+            &transfer_authority.pubkey(),
         )
         .await;
 
         let deposit_governing_tokens_instruction = deposit_governing_tokens(
             realm_address,
             &token_source.pubkey(),
+            &token_owner.pubkey(),
             &token_owner.pubkey(),
             &self.payer.pubkey(),
             governing_mint,
@@ -302,6 +305,7 @@ impl GovernanceProgramTest {
         let deposit_governing_tokens_instruction = deposit_governing_tokens(
             realm,
             &voter_record_cookie.token_source,
+            &voter_record_cookie.token_owner.pubkey(),
             &voter_record_cookie.token_owner.pubkey(),
             &self.payer.pubkey(),
             governing_token_mint,
@@ -471,13 +475,14 @@ impl GovernanceProgramTest {
             .unwrap();
     }
 
+    #[allow(dead_code)]
     pub async fn create_token_account(
         &mut self,
         token_account_keypair: &Keypair,
         token_mint: &Pubkey,
         token_mint_authority: &Keypair,
         amount: u64,
-        owner: Pubkey,
+        owner: &Pubkey,
     ) {
         let create_account_instruction = system_instruction::create_account(
             &self.payer.pubkey(),
@@ -513,6 +518,66 @@ impl GovernanceProgramTest {
                 mint_instruction,
             ],
             Some(&[&token_account_keypair, &token_mint_authority]),
+        )
+        .await
+        .unwrap();
+    }
+
+    #[allow(dead_code)]
+    pub async fn create_token_account_with_transfer_authority(
+        &mut self,
+        token_account_keypair: &Keypair,
+        token_mint: &Pubkey,
+        token_mint_authority: &Keypair,
+        amount: u64,
+        owner: &Keypair,
+        transfer_authority: &Pubkey,
+    ) {
+        let create_account_instruction = system_instruction::create_account(
+            &self.payer.pubkey(),
+            &token_account_keypair.pubkey(),
+            self.rent
+                .minimum_balance(spl_token::state::Account::get_packed_len()),
+            spl_token::state::Account::get_packed_len() as u64,
+            &spl_token::id(),
+        );
+
+        let initialize_account_instruction = spl_token::instruction::initialize_account(
+            &spl_token::id(),
+            &token_account_keypair.pubkey(),
+            token_mint,
+            &owner.pubkey(),
+        )
+        .unwrap();
+
+        let mint_instruction = spl_token::instruction::mint_to(
+            &spl_token::id(),
+            token_mint,
+            &token_account_keypair.pubkey(),
+            &token_mint_authority.pubkey(),
+            &[],
+            amount,
+        )
+        .unwrap();
+
+        let approve_instruction = spl_token::instruction::approve(
+            &spl_token::id(),
+            &token_account_keypair.pubkey(),
+            transfer_authority,
+            &owner.pubkey(),
+            &[],
+            amount,
+        )
+        .unwrap();
+
+        self.process_transaction(
+            &[
+                create_account_instruction,
+                initialize_account_instruction,
+                mint_instruction,
+                approve_instruction,
+            ],
+            Some(&[&token_account_keypair, &token_mint_authority, &owner]),
         )
         .await
         .unwrap();

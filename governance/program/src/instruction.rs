@@ -72,6 +72,7 @@ pub enum GovernanceInstruction {
     ///  1. `[writable]` Governing Token Holding account. PDA seeds: ['governance',realm, governing_token_mint]
     ///  2. `[writable]` Governing Token Destination account. All tokens will be transferred to this account
     ///  3. `[signer]` Governing Token Owner account
+    ///  3. `[signer]` Governing Token Transfer authority
     ///  4. `[writable]` Voter Record account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
     ///  5. `[]` SPL Token   
     WithdrawGoverningTokens {},
@@ -315,6 +316,7 @@ pub fn deposit_governing_tokens(
     realm: &Pubkey,
     governing_token_source: &Pubkey,
     governing_token_owner: &Pubkey,
+    governing_token_transfer_authority: &Pubkey,
     payer: &Pubkey,
     // Args
     governing_token_mint: &Pubkey,
@@ -330,6 +332,7 @@ pub fn deposit_governing_tokens(
         AccountMeta::new(governing_token_holding_address, false),
         AccountMeta::new(*governing_token_source, false),
         AccountMeta::new_readonly(*governing_token_owner, true),
+        AccountMeta::new_readonly(*governing_token_transfer_authority, true),
         AccountMeta::new(vote_record_address, false),
         AccountMeta::new_readonly(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),

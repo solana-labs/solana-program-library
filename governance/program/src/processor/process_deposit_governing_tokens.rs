@@ -33,11 +33,12 @@ pub fn process_deposit_governing_tokens(
     let governing_token_holding_info = next_account_info(account_info_iter)?; // 1
     let governing_token_source_info = next_account_info(account_info_iter)?; // 2
     let governing_token_owner_info = next_account_info(account_info_iter)?; // 3
-    let voter_record_info = next_account_info(account_info_iter)?; // 4
-    let payer_info = next_account_info(account_info_iter)?; // 5
-    let system_info = next_account_info(account_info_iter)?; // 6
-    let spl_token_info = next_account_info(account_info_iter)?; // 7
-    let rent_sysvar_info = next_account_info(account_info_iter)?; // 8
+    let governing_token_transfer_authority_info = next_account_info(account_info_iter)?; // 4
+    let voter_record_info = next_account_info(account_info_iter)?; // 5
+    let payer_info = next_account_info(account_info_iter)?; // 6
+    let system_info = next_account_info(account_info_iter)?; // 7
+    let spl_token_info = next_account_info(account_info_iter)?; // 8
+    let rent_sysvar_info = next_account_info(account_info_iter)?; // 9
 
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
 
@@ -57,7 +58,7 @@ pub fn process_deposit_governing_tokens(
     transfer_spl_tokens(
         &governing_token_source_info,
         &governing_token_holding_info,
-        &governing_token_owner_info,
+        &governing_token_transfer_authority_info,
         amount,
         spl_token_info,
     )?;
@@ -69,6 +70,11 @@ pub fn process_deposit_governing_tokens(
     );
 
     if voter_record_info.data_is_empty() {
+        // Deposited tokens can only be withdrawn by the owner so let's make sure the owner signed the transaction
+        if !governing_token_owner_info.is_signer {
+            return Err(GovernanceError::GoverningTokenOwnerMustSign.into());
+        }
+
         let voter_record_data = VoterRecord {
             account_type: GovernanceAccountType::VoterRecord,
             realm: *realm_info.key,
