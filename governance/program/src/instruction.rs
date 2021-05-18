@@ -271,11 +271,12 @@ pub enum GovernanceInstruction {
 
 /// Creates CreateRealm instruction
 pub fn create_realm(
-    name: String,
     // Accounts
     community_token_mint: &Pubkey,
     payer: &Pubkey,
     council_token_mint: Option<Pubkey>,
+    // Args
+    name: String,
 ) -> Instruction {
     let realm_address = get_realm_address(&name);
     let community_token_holding_address =
@@ -310,12 +311,13 @@ pub fn create_realm(
 
 /// Creates DepositGoverningTokens instruction
 pub fn deposit_governing_tokens(
-    governing_token_mint: &Pubkey,
     // Accounts
     realm: &Pubkey,
     governing_token_source: &Pubkey,
     governing_token_owner: &Pubkey,
     payer: &Pubkey,
+    // Args
+    governing_token_mint: &Pubkey,
 ) -> Instruction {
     let vote_record_address =
         get_voter_record_address(realm, governing_token_mint, governing_token_owner);
@@ -345,11 +347,12 @@ pub fn deposit_governing_tokens(
 
 /// Creates WithdrawGoverningTokens instruction
 pub fn withdraw_governing_tokens(
-    governing_token_mint: &Pubkey,
     // Accounts
     realm: &Pubkey,
     governing_token_destination: &Pubkey,
     governing_token_owner: &Pubkey,
+    // Args
+    governing_token_mint: &Pubkey,
 ) -> Instruction {
     let vote_record_address =
         get_voter_record_address(realm, governing_token_mint, governing_token_owner);
@@ -377,11 +380,12 @@ pub fn withdraw_governing_tokens(
 
 /// Creates SetVoteAuthority instruction
 pub fn set_vote_authority(
+    // Accounts
+    governing_token_owner: &Pubkey,
+    // Args
     realm: &Pubkey,
     governing_token_mint: &Pubkey,
     vote_authority: &Pubkey,
-    // Accounts
-    governing_token_owner: &Pubkey,
 ) -> Instruction {
     let vote_record_address =
         get_voter_record_address(realm, governing_token_mint, governing_token_owner);

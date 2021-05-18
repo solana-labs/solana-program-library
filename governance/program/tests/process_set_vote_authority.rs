@@ -71,10 +71,10 @@ async fn test_set_community_vote_authority_with_owner_must_sign_error() {
     let hacker_vote_authority = Pubkey::new_unique();
 
     let mut instruction = set_vote_authority(
-        &realm_cookie.address,
         &realm_cookie.account.community_mint,
         &hacker_vote_authority,
         &voter_record_cookie.token_owner.pubkey(),
+        &realm_cookie.address,
     );
 
     instruction.accounts[0] =
