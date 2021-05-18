@@ -39,13 +39,13 @@ pub enum GovernanceError {
 
     /// Invalid account owner
     #[error("Invalid account owner")]
-    InvalidAccountOwnerError,
+    InvalidAccountOwner,
 
     /// ---- Token Tools Errors -----
 
     /// Invalid Token account owner
     #[error("Invalid Token account owner")]
-    InvalidTokenAccountOwnerError,
+    InvalidTokenAccountOwner,
 }
 
 impl PrintProgramError for GovernanceError {

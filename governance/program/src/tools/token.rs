@@ -170,7 +170,7 @@ pub fn get_amount_from_token_account(
     token_account_info: &AccountInfo,
 ) -> Result<u64, ProgramError> {
     if token_account_info.owner != &spl_token::id() {
-        return Err(GovernanceError::InvalidTokenAccountOwnerError.into());
+        return Err(GovernanceError::InvalidTokenAccountOwner.into());
     }
 
     // TokeAccount layout:   mint(32), owner(32), amount(8), ...
@@ -185,7 +185,7 @@ pub fn get_mint_from_token_account(
     token_account_info: &AccountInfo,
 ) -> Result<Pubkey, ProgramError> {
     if token_account_info.owner != &spl_token::id() {
-        return Err(GovernanceError::InvalidTokenAccountOwnerError.into());
+        return Err(GovernanceError::InvalidTokenAccountOwner.into());
     }
 
     // TokeAccount layout:   mint(32), owner(32), amount(8), ...

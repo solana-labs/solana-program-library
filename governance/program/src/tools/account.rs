@@ -68,7 +68,7 @@ pub fn deserialize_account<T: BorshDeserialize + IsInitialized>(
     owner_program_id: &Pubkey,
 ) -> Result<T, ProgramError> {
     if account_info.owner != owner_program_id {
-        return Err(GovernanceError::InvalidAccountOwnerError.into());
+        return Err(GovernanceError::InvalidAccountOwner.into());
     }
 
     let account: T = T::try_from_slice(&account_info.data.borrow())?;
