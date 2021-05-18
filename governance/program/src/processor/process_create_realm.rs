@@ -47,13 +47,10 @@ pub fn process_create_realm(
         rent_sysvar_info,
     )?;
 
-    let mut council_token_mint_address = Option::<Pubkey>::None;
-
-    if let Ok(council_token_mint_info) = next_account_info(account_info_iter)
+    let council_token_mint_address = if let Ok(council_token_mint_info) =
+        next_account_info(account_info_iter)
     // 7
     {
-        council_token_mint_address = Some(*council_token_mint_info.key);
-
         let council_token_holding_info = next_account_info(account_info_iter)?; //8
 
         create_spl_token_account_signed(
@@ -67,7 +64,11 @@ pub fn process_create_realm(
             spl_token_info,
             rent_sysvar_info,
         )?;
-    }
+
+        Some(*council_token_mint_info.key)
+    } else {
+        None
+    };
 
     let realm_data = Realm {
         account_type: GovernanceAccountType::Realm,
