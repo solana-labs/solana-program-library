@@ -162,7 +162,7 @@ impl GovernanceProgramTest {
         &mut self,
         realm_cookie: &RealmCookie,
     ) -> VoterRecordCookie {
-        self.with_initial_governaning_token_deposit(
+        self.with_initial_governing_token_deposit(
             &realm_cookie.address,
             GoverningTokenType::Community,
             &realm_cookie.account.community_mint,
@@ -210,7 +210,7 @@ impl GovernanceProgramTest {
         &mut self,
         realm_cookie: &RealmCookie,
     ) -> VoterRecordCookie {
-        self.with_initial_governaning_token_deposit(
+        self.with_initial_governing_token_deposit(
             &realm_cookie.address,
             GoverningTokenType::Council,
             &realm_cookie.account.council_mint.unwrap(),
@@ -220,7 +220,7 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn with_initial_governaning_token_deposit(
+    pub async fn with_initial_governing_token_deposit(
         &mut self,
         realm_address: &Pubkey,
         governing_token_type: GoverningTokenType,
