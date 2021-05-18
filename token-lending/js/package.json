@@ -50,7 +50,7 @@
     "@types/node": "^15.3.0",
     "@types/prettier": "^2.2.3",
     "@types/rollup-plugin-json": "^3.0.2",
-    "@typescript-eslint/eslint-plugin": "^4.23.0",
+    "@typescript-eslint/eslint-plugin": "^4.24.0",
     "@typescript-eslint/parser": "^4.23.0",
     "dotenv": "^9.0.2",
     "eslint": "^7.26.0",
