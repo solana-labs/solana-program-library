@@ -36,8 +36,7 @@ async fn test_success() {
     );
 
     let user_accounts_owner = Keypair::new();
-    let usdc_mint = add_usdc_mint(&mut test);
-    let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
+    let lending_market = add_lending_market(&mut test);
 
     let reserve_config = TEST_RESERVE_CONFIG;
     let flash_loan_amount = 1_000_000u64;
@@ -46,9 +45,12 @@ async fn test_success() {
         .calculate_flash_loan_fees(Decimal::from(flash_loan_amount))
         .unwrap();
 
+    let usdc_mint = add_usdc_mint(&mut test);
+    let usdc_oracle = add_usdc_oracle(&mut test);
     let usdc_reserve = add_reserve(
         &mut test,
         &lending_market,
+        &usdc_oracle,
         &user_accounts_owner,
         AddReserveArgs {
             liquidity_amount: INITIAL_RESERVE_LIQUIDITY,
@@ -160,8 +162,7 @@ async fn test_failure() {
     );
 
     let user_accounts_owner = Keypair::new();
-    let usdc_mint = add_usdc_mint(&mut test);
-    let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
+    let lending_market = add_lending_market(&mut test);
 
     let mut reserve_config = TEST_RESERVE_CONFIG;
     reserve_config.loan_to_value_ratio = 80;
@@ -171,9 +172,12 @@ async fn test_failure() {
         .calculate_flash_loan_fees(Decimal::from(flash_loan_amount))
         .unwrap();
 
+    let usdc_mint = add_usdc_mint(&mut test);
+    let usdc_oracle = add_usdc_oracle(&mut test);
     let usdc_reserve = add_reserve(
         &mut test,
         &lending_market,
+        &usdc_oracle,
         &user_accounts_owner,
         AddReserveArgs {
             liquidity_amount: INITIAL_RESERVE_LIQUIDITY,

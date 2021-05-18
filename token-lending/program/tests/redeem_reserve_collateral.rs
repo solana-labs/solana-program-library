@@ -27,15 +27,17 @@ async fn test_success() {
     test.set_bpf_compute_max_units(29_000);
 
     let user_accounts_owner = Keypair::new();
-    let usdc_mint = add_usdc_mint(&mut test);
-    let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
+    let lending_market = add_lending_market(&mut test);
 
     const USDC_RESERVE_LIQUIDITY_FRACTIONAL: u64 = 10 * FRACTIONAL_TO_USDC;
     const COLLATERAL_AMOUNT: u64 = USDC_RESERVE_LIQUIDITY_FRACTIONAL * INITIAL_COLLATERAL_RATIO;
 
+    let usdc_mint = add_usdc_mint(&mut test);
+    let usdc_oracle = add_usdc_oracle(&mut test);
     let usdc_test_reserve = add_reserve(
         &mut test,
         &lending_market,
+        &usdc_oracle,
         &user_accounts_owner,
         AddReserveArgs {
             collateral_amount: COLLATERAL_AMOUNT,
