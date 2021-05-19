@@ -41,8 +41,8 @@ pub fn process_deposit_governing_tokens(
     let payer_info = next_account_info(account_info_iter)?; // 6
     let system_info = next_account_info(account_info_iter)?; // 7
     let spl_token_info = next_account_info(account_info_iter)?; // 8
-    let rent_sysvar_info = next_account_info(account_info_iter)?; // 9
 
+    let rent_sysvar_info = next_account_info(account_info_iter)?; // 9
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
 
     let realm_data = deserialize_realm(realm_info)?;

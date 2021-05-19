@@ -1,7 +1,7 @@
 //! Program accounts
 
+pub mod account_governance;
 pub mod enums;
-pub mod program_governance;
 pub mod proposal;
 pub mod proposal_vote_record;
 pub mod realm;
