@@ -1,8 +1,10 @@
 //! State enumerations
 
+use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
+
 /// Defines all Governance accounts types
 #[repr(C)]
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum GovernanceAccountType {
     /// Default uninitialized account state
     Uninitialized,
@@ -34,7 +36,7 @@ impl Default for GovernanceAccountType {
 
 /// Vote  with number of votes
 #[repr(C)]
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum VoteWeight {
     /// Yes vote
     Yes(u64),
@@ -45,7 +47,7 @@ pub enum VoteWeight {
 
 /// Governing Token type
 #[repr(C)]
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum GoverningTokenType {
     /// Community token
     Community,
@@ -55,7 +57,7 @@ pub enum GoverningTokenType {
 
 /// What state a Proposal is in
 #[repr(C)]
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum ProposalState {
     /// Draft - Proposal enters Draft state when it's created
     Draft,

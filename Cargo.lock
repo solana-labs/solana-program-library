@@ -3813,12 +3813,18 @@ dependencies = [
 name = "spl-governance"
 version = "0.1.0"
 dependencies = [
+ "arrayref",
  "assert_matches",
+ "bincode",
+ "borsh 0.8.2",
  "num-derive",
  "num-traits",
+ "serde",
+ "serde_derive",
  "solana-program",
  "solana-program-test",
  "solana-sdk",
+ "spl-token 3.1.0",
  "thiserror",
 ]
 

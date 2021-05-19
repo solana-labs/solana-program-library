@@ -3,10 +3,11 @@
 use solana_program::{epoch_schedule::Slot, pubkey::Pubkey};
 
 use super::enums::{GovernanceAccountType, GoverningTokenType, ProposalState};
+use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 
 /// Governance Proposal
 #[repr(C)]
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct Proposal {
     /// Governance account type
     pub account_type: GovernanceAccountType,
