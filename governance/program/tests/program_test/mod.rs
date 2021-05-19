@@ -31,6 +31,7 @@ use spl_governance::{
         realm::{get_governing_token_holding_address, get_realm_address, Realm},
         voter_record::{get_voter_record_address, VoterRecord},
     },
+    tools::bpf_loader::get_program_data_address,
 };
 
 pub mod cookies;
@@ -511,14 +512,11 @@ impl GovernanceProgramTest {
 
     #[allow(dead_code)]
     pub async fn with_governed_program(&mut self) -> GovernedProgramCookie {
-        let program_address_keypair = Keypair::new();
+        let program_keypair = Keypair::new();
         let program_buffer_keypair = Keypair::new();
         let program_upgrade_authority_keypair = Keypair::new();
 
-        let (program_data_address, _) = Pubkey::find_program_address(
-            &[program_address_keypair.pubkey().as_ref()],
-            &bpf_loader_upgradeable::id(),
-        );
+        let program_data_address = get_program_data_address(&program_keypair.pubkey());
 
         // Load solana_bpf_rust_upgradeable program taken from solana test programs
         let program_data = read_test_program_elf("solana_bpf_rust_upgradeable");
@@ -553,7 +551,7 @@ impl GovernanceProgramTest {
 
         let deploy_instructions = bpf_loader_upgradeable::deploy_with_max_program_len(
             &self.payer.pubkey(),
-            &program_address_keypair.pubkey(),
+            &program_keypair.pubkey(),
             &program_buffer_keypair.pubkey(),
             &program_upgrade_authority_keypair.pubkey(),
             program_account_rent,
@@ -567,7 +565,7 @@ impl GovernanceProgramTest {
             &instructions[..],
             Some(&[
                 &program_upgrade_authority_keypair,
-                &program_address_keypair,
+                &program_keypair,
                 &program_buffer_keypair,
             ]),
         )
@@ -575,7 +573,7 @@ impl GovernanceProgramTest {
         .unwrap();
 
         GovernedProgramCookie {
-            address: program_address_keypair.pubkey(),
+            address: program_keypair.pubkey(),
             upgrade_authority: program_upgrade_authority_keypair,
             data_address: program_data_address,
         }
