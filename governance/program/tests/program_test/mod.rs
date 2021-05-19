@@ -593,7 +593,6 @@ impl GovernanceProgramTest {
         let token_threshold_to_create_proposal: u8 = 5;
 
         let create_program_governance_instruction = create_program_governance(
-            &governed_program_cookie.data_address,
             &governed_program_cookie.upgrade_authority.pubkey(),
             &self.payer.pubkey(),
             &realm_cookie.address,

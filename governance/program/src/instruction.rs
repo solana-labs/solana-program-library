@@ -9,6 +9,7 @@ use crate::{
         single_signer_instruction::InstructionData,
         voter_record::get_voter_record_address,
     },
+    tools::bpf_loader::get_program_data_address,
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
@@ -104,6 +105,40 @@ pub enum GovernanceInstruction {
         new_vote_authority: Option<Pubkey>,
     },
 
+    /// Creates Account Governance account which can be used to govern an arbitrary account
+    ///
+    ///   0. `[writable]` Account Governance account. PDA seeds: ['account-governance', realm, governed_account]
+    ///   1. `[signer]` Payer
+    ///   2. `[]` System account
+    ///   3. `[]` Sysvar Rent
+    CreateAccountGovernance {
+        /// Realm
+        #[allow(dead_code)]
+        realm: Pubkey,
+
+        /// Address of the governed program
+        #[allow(dead_code)]
+        governed_account: Pubkey,
+
+        /// Voting threshold in % required to tip the vote
+        /// It's the percentage of tokens out of the entire pool of governance tokens eligible to vote
+        #[allow(dead_code)]
+        vote_threshold: u8,
+
+        /// Minimum waiting time in slots for an instruction to be executed after proposal is voted on
+        #[allow(dead_code)]
+        min_instruction_hold_up_time: u64,
+
+        /// Time limit in slots for proposal to be open for voting
+        #[allow(dead_code)]
+        max_voting_time: u64,
+
+        /// Minimum % of tokens for a governance token owner to be able to create proposal
+        /// It's the percentage of tokens out of the entire pool of governance tokens eligible to vote
+        #[allow(dead_code)]
+        token_threshold_to_create_proposal: u8,
+    },
+
     /// Creates Program Governance account which governs an upgradable program
     ///
     ///   0. `[writable]` Program Governance account. PDA seeds: ['program-governance', realm, governed_program]
@@ -138,40 +173,6 @@ pub enum GovernanceInstruction {
         #[allow(dead_code)]
         /// Minimum % of tokens for a governance token owner to be able to create proposal
         /// It's the percentage of tokens out of the entire pool of governance tokens eligible to vote
-        token_threshold_to_create_proposal: u8,
-    },
-
-    /// Creates Account Governance account which can be used to govern an arbitrary account
-    ///
-    ///   0. `[writable]` Account Governance account. PDA seeds: ['account-governance', realm, governed_account]
-    ///   1. `[signer]` Payer
-    ///   2. `[]` System account
-    ///   3. `[]` Sysvar Rent
-    CreateAccountGovernance {
-        /// Realm
-        #[allow(dead_code)]
-        realm: Pubkey,
-
-        /// Address of the governed program
-        #[allow(dead_code)]
-        governed_account: Pubkey,
-
-        /// Voting threshold in % required to tip the vote
-        /// It's the percentage of tokens out of the entire pool of governance tokens eligible to vote
-        #[allow(dead_code)]
-        vote_threshold: u8,
-
-        /// Minimum waiting time in slots for an instruction to be executed after proposal is voted on
-        #[allow(dead_code)]
-        min_instruction_hold_up_time: u64,
-
-        /// Time limit in slots for proposal to be open for voting
-        #[allow(dead_code)]
-        max_voting_time: u64,
-
-        /// Minimum % of tokens for a governance token owner to be able to create proposal
-        /// It's the percentage of tokens out of the entire pool of governance tokens eligible to vote
-        #[allow(dead_code)]
         token_threshold_to_create_proposal: u8,
     },
 
@@ -463,49 +464,6 @@ pub fn set_vote_authority(
     }
 }
 
-/// Creates CreateProgramGovernance instruction
-#[allow(clippy::too_many_arguments)]
-pub fn create_program_governance(
-    // Accounts
-    governed_program_data: &Pubkey,
-    governed_program_upgrade_authority: &Pubkey,
-    payer: &Pubkey,
-    // Args
-    realm: &Pubkey,
-    governed_program: &Pubkey,
-    vote_threshold: u8,
-    min_instruction_hold_up_time: u64,
-    max_voting_time: u64,
-    token_threshold_to_create_proposal: u8,
-) -> Instruction {
-    let program_governance_address = get_program_governance_address(realm, governed_program);
-
-    let accounts = vec![
-        AccountMeta::new(program_governance_address, false),
-        AccountMeta::new(*governed_program_data, false),
-        AccountMeta::new_readonly(*governed_program_upgrade_authority, true),
-        AccountMeta::new_readonly(*payer, true),
-        AccountMeta::new_readonly(bpf_loader_upgradeable::id(), false),
-        AccountMeta::new_readonly(system_program::id(), false),
-        AccountMeta::new_readonly(sysvar::rent::id(), false),
-    ];
-
-    let instruction = GovernanceInstruction::CreateProgramGovernance {
-        realm: *realm,
-        governed_program: *governed_program,
-        vote_threshold,
-        min_instruction_hold_up_time,
-        max_voting_time,
-        token_threshold_to_create_proposal,
-    };
-
-    Instruction {
-        program_id: id(),
-        accounts,
-        data: instruction.try_to_vec().unwrap(),
-    }
-}
-
 /// Creates CreateAccountGovernance instruction
 pub fn create_account_governance(
     // Accounts
@@ -530,6 +488,49 @@ pub fn create_account_governance(
     let instruction = GovernanceInstruction::CreateAccountGovernance {
         realm: *realm,
         governed_account: *governed_account,
+        vote_threshold,
+        min_instruction_hold_up_time,
+        max_voting_time,
+        token_threshold_to_create_proposal,
+    };
+
+    Instruction {
+        program_id: id(),
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates CreateProgramGovernance instruction
+#[allow(clippy::too_many_arguments)]
+pub fn create_program_governance(
+    // Accounts
+    governed_program_upgrade_authority: &Pubkey,
+    payer: &Pubkey,
+    // Args
+    realm: &Pubkey,
+    governed_program: &Pubkey,
+    vote_threshold: u8,
+    min_instruction_hold_up_time: u64,
+    max_voting_time: u64,
+    token_threshold_to_create_proposal: u8,
+) -> Instruction {
+    let program_governance_address = get_program_governance_address(realm, governed_program);
+    let governed_program_data_address = get_program_data_address(governed_program);
+
+    let accounts = vec![
+        AccountMeta::new(program_governance_address, false),
+        AccountMeta::new(governed_program_data_address, false),
+        AccountMeta::new_readonly(*governed_program_upgrade_authority, true),
+        AccountMeta::new_readonly(*payer, true),
+        AccountMeta::new_readonly(bpf_loader_upgradeable::id(), false),
+        AccountMeta::new_readonly(system_program::id(), false),
+        AccountMeta::new_readonly(sysvar::rent::id(), false),
+    ];
+
+    let instruction = GovernanceInstruction::CreateProgramGovernance {
+        realm: *realm,
+        governed_program: *governed_program,
         vote_threshold,
         min_instruction_hold_up_time,
         max_voting_time,

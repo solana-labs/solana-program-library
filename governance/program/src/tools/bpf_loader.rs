@@ -57,6 +57,11 @@ impl<T> DecodeError<T> for BpfLoaderToolsError {
     }
 }
 
+/// Returns ProgramData account address for the given Program
+pub fn get_program_data_address(program: &Pubkey) -> Pubkey {
+    Pubkey::find_program_address(&[program.as_ref()], &bpf_loader_upgradeable::id()).0
+}
+
 /// Upgradeable loader account states.
 /// Note: The struct is taken as is from solana-sdk which doesn't support bpf and can't be referenced from a program
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone, Copy)]
@@ -98,8 +103,7 @@ pub fn assert_program_upgrade_authority(
         return Err(ProgramError::IncorrectProgramId);
     }
 
-    let (program_data_address, _) =
-        Pubkey::find_program_address(&[program_address.as_ref()], &bpf_loader_upgradeable::id());
+    let program_data_address = get_program_data_address(program_address);
 
     if program_data_address != *program_data_info.key {
         return Err(BpfLoaderToolsError::InvalidProgramDataAccountAddress.into());
