@@ -267,7 +267,12 @@ pub mod test {
         } else {
             pool_tokens_total_separate - pool_tokens_from_one_side
         };
-        assert!(difference <= epsilon);
+        assert!(
+            difference <= epsilon,
+            "difference expected to be less than {}, actually {}",
+            epsilon,
+            difference
+        );
     }
 
     /// Test function checking that a swap never reduces the overall value of

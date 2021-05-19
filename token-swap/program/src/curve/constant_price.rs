@@ -1,5 +1,4 @@
 //! Simple constant price swap curve, set at init
-
 use {
     crate::{
         curve::calculator::{
@@ -485,7 +484,7 @@ mod tests {
                     pool_token_supply,
                     swap_token_a_amount,
                     swap_token_b_amount,
-                    RoundDirection::Ceiling,
+                    RoundDirection::Ceiling
                 )
                 .unwrap();
             let new_swap_token_a_amount = swap_token_a_amount + deposit_result.token_a_amount;
