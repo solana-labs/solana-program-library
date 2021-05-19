@@ -83,15 +83,16 @@ impl GovernanceProgramTest {
             .map_err(map_transaction_error)
     }
 
-    pub async fn get_account<T: BorshDeserialize>(&mut self, address: &Pubkey) -> T {
-        let raw_account = self
-            .banks_client
+    pub async fn get_borsh_account<T: BorshDeserialize>(&mut self, address: &Pubkey) -> T {
+        self.banks_client
             .get_account(*address)
             .await
             .unwrap()
-            .expect("GET-TEST-ACCOUNT-ERROR: Account not found");
-
-        try_from_slice_unchecked(&raw_account.data).unwrap()
+            .map(|a| try_from_slice_unchecked(&a.data).unwrap())
+            .expect(format!(
+                "GET-TEST-ACCOUNT-ERROR: Account {} not found",
+                address
+            ))
     }
 
     #[allow(dead_code)]
@@ -450,24 +451,21 @@ impl GovernanceProgramTest {
 
     #[allow(dead_code)]
     pub async fn get_voter_record_account(&mut self, address: &Pubkey) -> VoterRecord {
-        self.get_account::<VoterRecord>(address).await
+        self.get_borsh_account::<VoterRecord>(address).await
     }
 
     #[allow(dead_code)]
     pub async fn get_realm_account(&mut self, root_governance_address: &Pubkey) -> Realm {
-        self.get_account::<Realm>(root_governance_address).await
+        self.get_borsh_account::<Realm>(root_governance_address)
+            .await
     }
 
     #[allow(dead_code)]
     async fn get_packed_account<T: Pack + IsInitialized>(&mut self, address: &Pubkey) -> T {
-        let raw_account = self
-            .banks_client
-            .get_account(*address)
+        self.banks_client
+            .get_packed_account_data::<T>(*address)
             .await
             .unwrap()
-            .unwrap();
-
-        T::unpack(&raw_account.data).unwrap()
     }
 
     #[allow(dead_code)]
