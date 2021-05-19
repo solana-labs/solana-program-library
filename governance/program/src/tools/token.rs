@@ -3,17 +3,45 @@
 use arrayref::array_ref;
 use solana_program::{
     account_info::AccountInfo,
+    decode_error::DecodeError,
     entrypoint::ProgramResult,
     msg,
     program::{invoke, invoke_signed},
-    program_error::ProgramError,
+    program_error::{PrintProgramError, ProgramError},
     program_pack::Pack,
     pubkey::Pubkey,
     rent::Rent,
     system_instruction,
 };
 
-use crate::error::GovernanceError;
+use num_derive::FromPrimitive;
+use thiserror::Error;
+
+/// SPL Token Tools errors  
+#[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
+pub enum SplTokenToolsError {
+    /// Invalid Token account owner
+    #[error("Invalid Token account owner")]
+    InvalidTokenAccountOwner,
+}
+
+impl PrintProgramError for SplTokenToolsError {
+    fn print<E>(&self) {
+        msg!("SPL-TOKEN-TOOLS-ERROR: {}", &self.to_string());
+    }
+}
+
+impl From<SplTokenToolsError> for ProgramError {
+    fn from(e: SplTokenToolsError) -> Self {
+        ProgramError::Custom(e as u32)
+    }
+}
+
+impl<T> DecodeError<T> for SplTokenToolsError {
+    fn type_of() -> &'static str {
+        "SPL Token Tools Error"
+    }
+}
 
 /// Creates and initializes SPL token account with PDA using the provided PDA seeds
 #[allow(clippy::too_many_arguments)]
@@ -171,7 +199,7 @@ pub fn get_amount_from_token_account(
     token_account_info: &AccountInfo,
 ) -> Result<u64, ProgramError> {
     if token_account_info.owner != &spl_token::id() {
-        return Err(GovernanceError::InvalidTokenAccountOwner.into());
+        return Err(SplTokenToolsError::InvalidTokenAccountOwner.into());
     }
 
     // TokeAccount layout:   mint(32), owner(32), amount(8), ...
@@ -186,7 +214,7 @@ pub fn get_mint_from_token_account(
     token_account_info: &AccountInfo,
 ) -> Result<Pubkey, ProgramError> {
     if token_account_info.owner != &spl_token::id() {
-        return Err(GovernanceError::InvalidTokenAccountOwner.into());
+        return Err(SplTokenToolsError::InvalidTokenAccountOwner.into());
     }
 
     // TokeAccount layout:   mint(32), owner(32), amount(8), ...
@@ -201,7 +229,7 @@ pub fn get_owner_from_token_account(
     token_account_info: &AccountInfo,
 ) -> Result<Pubkey, ProgramError> {
     if token_account_info.owner != &spl_token::id() {
-        return Err(GovernanceError::InvalidTokenAccountOwner.into());
+        return Err(SplTokenToolsError::InvalidTokenAccountOwner.into());
     }
 
     // TokeAccount layout:   mint(32), owner(32), amount(8)
