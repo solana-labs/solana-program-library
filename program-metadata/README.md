@@ -46,7 +46,7 @@ They also require the following accounts:
 ### create_metadata_entry
 ```
 ///   0. `[]` Class account (seed: ['program_metadata', target_program_key, program_metadata_key])
-///   1. `[writable]` Name record account (seed: [SHA256(HASH_PREFIX, 'Create::name'), class_key, ])
+///   1. `[writable]` Name record account (seed: [SHA256(HASH_PREFIX, name), class_key])
 ///   2. `[]` Target program
 ///   3. `[]` Target program ProgramData
 ///   4. `[signer]` Target program update authority
@@ -64,7 +64,7 @@ CreateMetadataEntry {
 ### update_metadata_entry
 ```
 ///   0. `[]` Class account (seed: ['program_metadata', target_program_key, program_metadata_key])
-///   1. `[writable]` Name record account (seed: [SHA256(HASH_PREFIX, 'Create::name')])
+///   1. `[writable]` Name record account (seed: [SHA256(HASH_PREFIX, name), class_key])
 ///   2. `[]` Target program
 ///   3. `[]` Target program ProgramData
 ///   4. `[signer]` Target program update authority
@@ -73,7 +73,7 @@ CreateMetadataEntry {
 ### delete_metadata_entry
 ```
 ///   0. `[]` Class account (seed: ['program_metadata', target_program_key, program_metadata_key])
-///   1. `[writable]` Name record PDA (seed: [SHA256(HASH_PREFIX, 'Create::name')])
+///   1. `[writable]` Name record PDA (seed: [SHA256(HASH_PREFIX, name), class_key])
 ///   2. `[]` Target program
 ///   3. `[]` Target program ProgramData
 ///   4. `[signer]` Target program update authority
@@ -85,7 +85,7 @@ DeleteMetadataEntry,
 ### create_versioned_idl
 ```
 ///   0. `[]` Class account (seed: ['program_metadata', target_program_key, program_metadata_key])
-///   1. `[writable]` Name record account (seed: [SHA256(HASH_PREFIX, 'Create::name')])
+///   1. `[writable]` Name record account (seed: [SHA256(HASH_PREFIX, name), class_key])
 ///   2. `[]` Target program
 ///   3. `[]` Target program ProgramData
 ///   4. `[signer]` Target program update authority
@@ -107,7 +107,7 @@ CreateVersionedIdl {
 ### update_versioned_dl
 ```
 ///   0. `[writable]` Class account (seed: ['program_metadata', target_program_key, program_metadata_key])
-///   1. `[writable]` Name record account (seed: [SHA256(HASH_PREFIX, 'Create::name')])
+///   1. `[writable]` Name record account (seed: [SHA256(HASH_PREFIX, name), class_key])
 ///   2. `[]` Target program
 ///   3. `[]` Target program ProgramData
 ///   4. `[signer]` Target program update authority

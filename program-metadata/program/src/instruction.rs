@@ -12,7 +12,7 @@ use {
 #[derive(BorshSerialize, BorshDeserialize, Clone)]
 pub enum MetadataInstruction {
     ///   0. `[]` Class account (seed: ['program_metadata', target_program_key, program_metadata_key])
-    ///   1. `[writable]` Name record account (seed: [SHA256(HASH_PREFIX, 'Create::name'), class_key, ])
+    ///   1. `[writable]` Name record account (seed: [SHA256(HASH_PREFIX, name), class_key])
     ///   2. `[]` Target program
     ///   3. `[]` Target program ProgramData
     ///   4. `[signer]` Target program update authority
@@ -27,7 +27,7 @@ pub enum MetadataInstruction {
     },
 
     ///   0. `[]` Class account (seed: ['program_metadata', target_program_key, program_metadata_key])
-    ///   1. `[writable]` Name record account (seed: [SHA256(HASH_PREFIX, 'Create::name')])
+    ///   1. `[writable]` Name record account (seed: [SHA256(HASH_PREFIX, name), class_key])
     ///   2. `[]` Target program
     ///   3. `[]` Target program ProgramData
     ///   4. `[signer]` Target program update authority
@@ -35,7 +35,7 @@ pub enum MetadataInstruction {
     UpdateMetadataEntry { value: String },
 
     ///   0. `[]` Class account (seed: ['program_metadata', target_program_key, program_metadata_key])
-    ///   1. `[writable]` Name record PDA (seed: [SHA256(HASH_PREFIX, 'Create::name')])
+    ///   1. `[writable]` Name record PDA (seed: [SHA256(HASH_PREFIX, name), class_key])
     ///   2. `[]` Target program
     ///   3. `[]` Target program ProgramData
     ///   4. `[signer]` Target program update authority
@@ -44,7 +44,7 @@ pub enum MetadataInstruction {
     DeleteMetadataEntry,
 
     ///   0. `[]` Class account (seed: ['program_metadata', target_program_key, program_metadata_key])
-    ///   1. `[writable]` Name record account (seed: [SHA256(HASH_PREFIX, 'Create::name')])
+    ///   1. `[writable]` Name record account (seed: [SHA256(HASH_PREFIX, name), class_key])
     ///   2. `[]` Target program
     ///   3. `[]` Target program ProgramData
     ///   4. `[signer]` Target program update authority
@@ -63,7 +63,7 @@ pub enum MetadataInstruction {
     },
 
     ///   0. `[writable]` Class account (seed: ['program_metadata', target_program_key, program_metadata_key])
-    ///   1. `[writable]` Name record account (seed: [SHA256(HASH_PREFIX, 'Create::name')])
+    ///   1. `[writable]` Name record account (seed: [SHA256(HASH_PREFIX, name), class_key])
     ///   2. `[]` Target program
     ///   3. `[]` Target program ProgramData
     ///   4. `[signer]` Target program update authority
