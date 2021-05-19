@@ -1,17 +1,18 @@
 //! Program processor
 
-pub mod process_create_realm;
-pub mod process_deposit_governing_tokens;
-pub mod process_set_vote_authority;
-pub mod process_withdraw_governing_tokens;
+mod process_create_realm;
+mod process_deposit_governing_tokens;
+mod process_set_vote_authority;
+mod process_withdraw_governing_tokens;
 
 use crate::instruction::GovernanceInstruction;
 use borsh::BorshDeserialize;
 
-use process_create_realm::process_create_realm;
-use process_deposit_governing_tokens::process_deposit_governing_tokens;
-use process_set_vote_authority::process_set_vote_authority;
-use process_withdraw_governing_tokens::process_withdraw_governing_tokens;
+use process_create_realm::*;
+use process_deposit_governing_tokens::*;
+use process_set_vote_authority::*;
+use process_withdraw_governing_tokens::*;
+
 use solana_program::{
     account_info::AccountInfo, entrypoint::ProgramResult, msg, program_error::ProgramError,
     pubkey::Pubkey,
