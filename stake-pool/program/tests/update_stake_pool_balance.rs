@@ -150,17 +150,18 @@ async fn success() {
         &stake_pool_accounts.pool_mint.pubkey(),
     )
     .await;
+    assert_eq!(pool_token_supply - pre_token_supply, actual_fee);
 
-    let stake_pool_info = get_account(
-        &mut context.banks_client,
-        &stake_pool_accounts.stake_pool.pubkey(),
-    )
-    .await;
-    let stake_pool = StakePool::try_from_slice(&stake_pool_info.data).unwrap();
-    let expected_fee = (post_balance - pre_balance) * pre_token_supply / pre_balance
-        * stake_pool.fee.numerator
-        / stake_pool.fee.denominator;
-    assert_eq!(actual_fee, expected_fee);
+    let expected_fee_lamports =
+        (post_balance - pre_balance) * stake_pool.fee.numerator / stake_pool.fee.denominator;
+    let actual_fee_lamports = stake_pool
+        .calc_pool_tokens_for_withdraw(actual_fee)
+        .unwrap();
+    assert!(actual_fee_lamports <= expected_fee_lamports);
+
+    let expected_fee = expected_fee_lamports * pool_token_supply / post_balance;
+    assert_eq!(expected_fee, actual_fee);
+
     assert_eq!(pool_token_supply, stake_pool.pool_token_supply);
 }
 
