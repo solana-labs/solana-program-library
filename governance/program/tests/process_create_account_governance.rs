@@ -1,8 +1,7 @@
 #![cfg(feature = "test-bpf")]
+mod program_test;
 
 use solana_program_test::*;
-
-mod program_test;
 
 use program_test::*;
 
@@ -21,7 +20,7 @@ async fn test_account_governance_created() {
 
     // Assert
     let account_governance_account = governance_test
-        .get_program_governance_account(&account_governance_cookie.address)
+        .get_account_governance_account(&account_governance_cookie.address)
         .await;
 
     assert_eq!(

@@ -1,13 +1,11 @@
 #![cfg(feature = "test-bpf")]
+mod program_test;
 
 use solana_program_test::*;
 
-mod program_test;
-
-use program_test::tools::ProgramInstructionError;
-use program_test::*;
+use program_test::{tools::ProgramInstructionError, *};
 use solana_sdk::signature::Keypair;
-use spl_governance::tools::bpf_loader::get_program_upgrade_authority;
+use spl_governance::tools::bpf_loader_upgradeable::get_program_upgrade_authority;
 
 #[tokio::test]
 async fn test_program_governance_created() {
@@ -25,7 +23,7 @@ async fn test_program_governance_created() {
 
     // Assert
     let program_governance_account = governance_test
-        .get_program_governance_account(&program_governance_cookie.address)
+        .get_account_governance_account(&program_governance_cookie.address)
         .await;
 
     assert_eq!(

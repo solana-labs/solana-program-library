@@ -30,12 +30,13 @@ use spl_governance::{
     state::{
         account_governance::{
             get_account_governance_address, get_program_governance_address, AccountGovernance,
+            GovernanceConfig,
         },
         enums::{GovernanceAccountType, GoverningTokenType},
         realm::{get_governing_token_holding_address, get_realm_address, Realm},
         voter_record::{get_voter_record_address, VoterRecord},
     },
-    tools::bpf_loader::get_program_data_address,
+    tools::bpf_loader_upgradeable::get_program_data_address,
 };
 
 pub mod cookies;
@@ -468,29 +469,21 @@ impl GovernanceProgramTest {
         realm_cookie: &RealmCookie,
         governed_account_cookie: &GovernedAccountCookie,
     ) -> AccountGovernanceCookie {
-        let vote_threshold: u8 = 60;
-        let min_instruction_hold_up_time: u64 = 10;
-        let max_voting_time: u64 = 100;
-        let token_threshold_to_create_proposal: u8 = 5;
+        let config = GovernanceConfig {
+            realm: realm_cookie.address,
+            governed_account: governed_account_cookie.address,
+            vote_threshold: 60,
+            token_threshold_to_create_proposal: 5,
+            min_instruction_hold_up_time: 10,
+            max_voting_time: 100,
+        };
 
-        let create_account_governance_instruction = create_account_governance(
-            &self.payer.pubkey(),
-            &realm_cookie.address,
-            &governed_account_cookie.address,
-            vote_threshold,
-            min_instruction_hold_up_time,
-            max_voting_time,
-            token_threshold_to_create_proposal,
-        );
+        let create_account_governance_instruction =
+            create_account_governance(&self.payer.pubkey(), config.clone());
 
         let account = AccountGovernance {
             account_type: GovernanceAccountType::AccountGovernance,
-            realm: realm_cookie.address,
-            vote_threshold,
-            token_threshold_to_create_proposal,
-            min_instruction_hold_up_time,
-            governed_account: governed_account_cookie.address,
-            max_voting_time,
+            config,
             proposal_count: 0,
         };
 
@@ -582,20 +575,19 @@ impl GovernanceProgramTest {
         realm_cookie: &RealmCookie,
         governed_program_cookie: &GovernedProgramCookie,
     ) -> Result<AccountGovernanceCookie, ProgramError> {
-        let vote_threshold: u8 = 60;
-        let min_instruction_hold_up_time: u64 = 10;
-        let max_voting_time: u64 = 100;
-        let token_threshold_to_create_proposal: u8 = 5;
+        let config = GovernanceConfig {
+            realm: realm_cookie.address,
+            governed_account: governed_program_cookie.address,
+            vote_threshold: 60,
+            token_threshold_to_create_proposal: 5,
+            min_instruction_hold_up_time: 10,
+            max_voting_time: 100,
+        };
 
         let create_program_governance_instruction = create_program_governance(
             &governed_program_cookie.upgrade_authority.pubkey(),
             &self.payer.pubkey(),
-            &realm_cookie.address,
-            &governed_program_cookie.address,
-            vote_threshold,
-            min_instruction_hold_up_time,
-            max_voting_time,
-            token_threshold_to_create_proposal,
+            config.clone(),
         );
 
         self.process_transaction(
@@ -606,12 +598,7 @@ impl GovernanceProgramTest {
 
         let account = AccountGovernance {
             account_type: GovernanceAccountType::AccountGovernance,
-            realm: realm_cookie.address,
-            vote_threshold,
-            token_threshold_to_create_proposal,
-            min_instruction_hold_up_time,
-            governed_account: governed_program_cookie.address,
-            max_voting_time,
+            config,
             proposal_count: 0,
         };
 
@@ -636,7 +623,7 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn get_program_governance_account(
+    pub async fn get_account_governance_account(
         &mut self,
         program_governance_address: &Pubkey,
     ) -> AccountGovernance {

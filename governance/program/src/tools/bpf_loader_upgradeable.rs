@@ -1,4 +1,4 @@
-//! General purpose bpf_loader utility functions
+//! General purpose bpf_loader_upgradeable utility functions
 
 use solana_program::{
     account_info::AccountInfo,
@@ -36,14 +36,14 @@ pub fn set_program_upgrade_authority<'a>(
     new_authority_info: &AccountInfo<'a>,
     bpf_upgrade_loader_info: &AccountInfo<'a>,
 ) -> Result<(), ProgramError> {
-    let set_upgrade_authority_ix = bpf_loader_upgradeable::set_upgrade_authority(
+    let set_upgrade_authority_instruction = bpf_loader_upgradeable::set_upgrade_authority(
         program_address,
         &program_upgrade_authority_info.key,
         Some(&new_authority_info.key),
     );
 
     invoke(
-        &set_upgrade_authority_ix,
+        &set_upgrade_authority_instruction,
         &[
             program_data_info.clone(),
             program_upgrade_authority_info.clone(),

@@ -58,40 +58,12 @@ pub fn process_instruction(
             &governing_token_owner,
             &new_vote_authority,
         ),
-        GovernanceInstruction::CreateProgramGovernance {
-            realm,
-            governed_program,
-            vote_threshold,
-            min_instruction_hold_up_time,
-            max_voting_time,
-            token_threshold_to_create_proposal,
-        } => process_create_program_governance(
-            program_id,
-            accounts,
-            &realm,
-            &governed_program,
-            vote_threshold,
-            min_instruction_hold_up_time,
-            max_voting_time,
-            token_threshold_to_create_proposal,
-        ),
-        GovernanceInstruction::CreateAccountGovernance {
-            realm,
-            governed_account,
-            vote_threshold,
-            min_instruction_hold_up_time,
-            max_voting_time,
-            token_threshold_to_create_proposal,
-        } => process_create_account_governance(
-            program_id,
-            accounts,
-            &realm,
-            &governed_account,
-            vote_threshold,
-            min_instruction_hold_up_time,
-            max_voting_time,
-            token_threshold_to_create_proposal,
-        ),
+        GovernanceInstruction::CreateProgramGovernance { config } => {
+            process_create_program_governance(program_id, accounts, config)
+        }
+        GovernanceInstruction::CreateAccountGovernance { config } => {
+            process_create_account_governance(program_id, accounts, config)
+        }
         _ => todo!("Instruction not implemented yet"),
     }
 }

@@ -1,10 +1,10 @@
 //! Program state processor
-//use crate::utils::assert_program_upgrade_authority;
 
 use crate::{
     state::account_governance::AccountGovernance,
     state::{
-        account_governance::get_account_governance_address_seeds, enums::GovernanceAccountType,
+        account_governance::{get_account_governance_address_seeds, GovernanceConfig},
+        enums::GovernanceAccountType,
     },
     tools::account::create_and_serialize_account_signed,
 };
@@ -21,12 +21,7 @@ use solana_program::{
 pub fn process_create_account_governance(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    realm: &Pubkey,
-    governed_account: &Pubkey,
-    vote_threshold: u8,
-    min_instruction_hold_up_time: u64,
-    max_voting_time: u64,
-    token_threshold_to_create_proposal: u8,
+    config: GovernanceConfig,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -39,12 +34,7 @@ pub fn process_create_account_governance(
 
     let account_governance_data = AccountGovernance {
         account_type: GovernanceAccountType::AccountGovernance,
-        realm: *realm,
-        vote_threshold,
-        token_threshold_to_create_proposal,
-        min_instruction_hold_up_time,
-        governed_account: *governed_account,
-        max_voting_time,
+        config: config.clone(),
         proposal_count: 0,
     };
 
@@ -52,7 +42,7 @@ pub fn process_create_account_governance(
         payer_info,
         &account_governance_info,
         &account_governance_data,
-        &get_account_governance_address_seeds(realm, governed_account),
+        &get_account_governance_address_seeds(&config.realm, &config.governed_account),
         program_id,
         system_info,
         rent,

@@ -1,13 +1,14 @@
 //! Program state processor
-//use crate::utils::assert_program_upgrade_authority;
 
 use crate::{
     state::account_governance::AccountGovernance,
     state::{
-        account_governance::get_program_governance_address_seeds, enums::GovernanceAccountType,
+        account_governance::{get_program_governance_address_seeds, GovernanceConfig},
+        enums::GovernanceAccountType,
     },
     tools::{
-        account::create_and_serialize_account_signed, bpf_loader::set_program_upgrade_authority,
+        account::create_and_serialize_account_signed,
+        bpf_loader_upgradeable::set_program_upgrade_authority,
     },
 };
 use solana_program::{
@@ -23,12 +24,7 @@ use solana_program::{
 pub fn process_create_program_governance(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    realm: &Pubkey,
-    governed_program: &Pubkey,
-    vote_threshold: u8,
-    min_instruction_hold_up_time: u64,
-    max_voting_time: u64,
-    token_threshold_to_create_proposal: u8,
+    config: GovernanceConfig,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -46,7 +42,7 @@ pub fn process_create_program_governance(
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
 
     set_program_upgrade_authority(
-        governed_program,
+        &config.governed_account,
         governed_program_data_info,
         governed_program_upgrade_authority_info,
         program_governance_info,
@@ -55,12 +51,7 @@ pub fn process_create_program_governance(
 
     let program_governance_data = AccountGovernance {
         account_type: GovernanceAccountType::AccountGovernance,
-        realm: *realm,
-        vote_threshold,
-        token_threshold_to_create_proposal,
-        min_instruction_hold_up_time,
-        governed_account: *governed_program,
-        max_voting_time,
+        config: config.clone(),
         proposal_count: 0,
     };
 
@@ -68,7 +59,7 @@ pub fn process_create_program_governance(
         payer_info,
         &program_governance_info,
         &program_governance_data,
-        &get_program_governance_address_seeds(realm, governed_program),
+        &get_program_governance_address_seeds(&config.realm, &config.governed_account),
         program_id,
         system_info,
         rent,
