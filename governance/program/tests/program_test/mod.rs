@@ -1,3 +1,5 @@
+use std::borrow::Borrow;
+
 use borsh::BorshDeserialize;
 use solana_program::{
     borsh::try_from_slice_unchecked,
@@ -9,6 +11,8 @@ use solana_program::{
     rent::Rent,
     system_instruction,
 };
+
+use bincode::deserialize;
 
 use solana_program_test::ProgramTest;
 use solana_program_test::*;
@@ -92,16 +96,9 @@ impl GovernanceProgramTest {
         self.banks_client
             .process_transaction(transaction)
             .await
-            .map_err(map_transaction_error)
-    }
+            .map_err(map_transaction_error)?;
 
-    pub async fn get_borsh_account<T: BorshDeserialize>(&mut self, address: &Pubkey) -> T {
-        self.banks_client
-            .get_account(*address)
-            .await
-            .unwrap()
-            .map(|a| try_from_slice_unchecked(&a.data).unwrap())
-            .expect(format!("GET-TEST-ACCOUNT-ERROR: Account {} not found", address).as_str())
+        Ok(())
     }
 
     #[allow(dead_code)]
@@ -584,7 +581,7 @@ impl GovernanceProgramTest {
         &mut self,
         realm_cookie: &RealmCookie,
         governed_program_cookie: &GovernedProgramCookie,
-    ) -> AccountGovernanceCookie {
+    ) -> Result<AccountGovernanceCookie, ProgramError> {
         let vote_threshold: u8 = 60;
         let min_instruction_hold_up_time: u64 = 10;
         let max_voting_time: u64 = 100;
@@ -605,8 +602,7 @@ impl GovernanceProgramTest {
             &[create_program_governance_instruction],
             Some(&[&governed_program_cookie.upgrade_authority]),
         )
-        .await
-        .unwrap();
+        .await?;
 
         let account = AccountGovernance {
             account_type: GovernanceAccountType::AccountGovernance,
@@ -622,10 +618,10 @@ impl GovernanceProgramTest {
         let program_governance_address =
             get_program_governance_address(&realm_cookie.address, &governed_program_cookie.address);
 
-        AccountGovernanceCookie {
+        Ok(AccountGovernanceCookie {
             address: program_governance_address,
             account,
-        }
+        })
     }
 
     #[allow(dead_code)]
@@ -654,6 +650,36 @@ impl GovernanceProgramTest {
             .get_packed_account_data::<T>(*address)
             .await
             .unwrap()
+    }
+
+    #[allow(dead_code)]
+    pub async fn get_bincode_account<T: serde::de::DeserializeOwned>(
+        &mut self,
+        address: &Pubkey,
+    ) -> T {
+        self.banks_client
+            .get_account(*address)
+            .await
+            .unwrap()
+            .map(|a| deserialize::<T>(&a.data.borrow()).unwrap())
+            .expect(format!("GET-TEST-ACCOUNT-ERROR: Account {}", address).as_str())
+    }
+
+    #[allow(dead_code)]
+    pub async fn get_upgradable_loader_account(
+        &mut self,
+        address: &Pubkey,
+    ) -> UpgradeableLoaderState {
+        self.get_bincode_account(address).await
+    }
+
+    pub async fn get_borsh_account<T: BorshDeserialize>(&mut self, address: &Pubkey) -> T {
+        self.banks_client
+            .get_account(*address)
+            .await
+            .unwrap()
+            .map(|a| try_from_slice_unchecked(&a.data).unwrap())
+            .expect(format!("GET-TEST-ACCOUNT-ERROR: Account {}", address).as_str())
     }
 
     #[allow(dead_code)]
