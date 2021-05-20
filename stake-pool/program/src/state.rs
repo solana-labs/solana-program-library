@@ -113,16 +113,24 @@ impl StakePool {
         )
         .ok()
     }
-    /// calculate the fee in pool tokens that goes to the manager
+
+    /// Calculate the fee in pool tokens that goes to the manager
+    ///
+    /// This function assumes that `reward_lamports` has not already been added
+    /// to the stake pool's `total_stake_lamports`
     pub fn calc_fee_amount(&self, reward_lamports: u64) -> Option<u64> {
         if self.fee.denominator == 0 {
             return Some(0);
         }
-        let pool_amount = self.calc_pool_tokens_for_deposit(reward_lamports)?;
+        let total_stake_lamports =
+            (self.total_stake_lamports as u128).checked_add(reward_lamports as u128)?;
+        let fee_lamports = (reward_lamports as u128)
+            .checked_mul(self.fee.numerator as u128)?
+            .checked_div(self.fee.denominator as u128)?;
         u64::try_from(
-            (pool_amount as u128)
-                .checked_mul(self.fee.numerator as u128)?
-                .checked_div(self.fee.denominator as u128)?,
+            (self.pool_token_supply as u128)
+                .checked_mul(fee_lamports)?
+                .checked_div(total_stake_lamports.checked_sub(fee_lamports)?)?,
         )
         .ok()
     }
@@ -388,6 +396,7 @@ mod test {
         crate::borsh::{get_instance_packed_len, try_from_slice_unchecked},
         proptest::prelude::*,
         solana_program::borsh::get_packed_len,
+        solana_program::native_token::LAMPORTS_PER_SOL,
     };
 
     #[test]
@@ -459,6 +468,84 @@ mod test {
             assert_eq!(ValidatorList::calculate_max_validators(size.saturating_add(1)), test_amount as usize);
             assert_eq!(ValidatorList::calculate_max_validators(size.saturating_add(get_packed_len::<ValidatorStakeInfo>())), (test_amount + 1)as usize);
             assert_eq!(ValidatorList::calculate_max_validators(size.saturating_sub(1)), (test_amount.saturating_sub(1)) as usize);
+        }
+    }
+
+    prop_compose! {
+        fn fee()(denominator in 1..=u16::MAX)(
+            denominator in Just(denominator),
+            numerator in 0..=denominator,
+        ) -> (u64, u64) {
+            (numerator as u64, denominator as u64)
+        }
+    }
+
+    prop_compose! {
+        fn total_stake_and_rewards()(total_stake_lamports in 1..u64::MAX)(
+            total_stake_lamports in Just(total_stake_lamports),
+            rewards in 0..=total_stake_lamports,
+        ) -> (u64, u64) {
+            (total_stake_lamports - rewards, rewards)
+        }
+    }
+
+    #[test]
+    fn specific_fee_calculation() {
+        // 10% of 10 SOL in rewards should be 1 SOL in fees
+        let fee = Fee {
+            numerator: 1,
+            denominator: 10,
+        };
+        let mut stake_pool = StakePool {
+            total_stake_lamports: 100 * LAMPORTS_PER_SOL,
+            pool_token_supply: 100 * LAMPORTS_PER_SOL,
+            fee,
+            ..StakePool::default()
+        };
+        let reward_lamports = 10 * LAMPORTS_PER_SOL;
+        let pool_token_fee = stake_pool.calc_fee_amount(reward_lamports).unwrap();
+
+        stake_pool.total_stake_lamports += reward_lamports;
+        stake_pool.pool_token_supply += pool_token_fee;
+
+        let fee_lamports = stake_pool
+            .calc_lamports_withdraw_amount(pool_token_fee)
+            .unwrap();
+        assert_eq!(fee_lamports, LAMPORTS_PER_SOL - 1); // lose 1 lamport of precision
+    }
+
+    proptest! {
+        #[test]
+        fn fee_calculation(
+            (numerator, denominator) in fee(),
+            (total_stake_lamports, reward_lamports) in total_stake_and_rewards(),
+        ) {
+            let fee = Fee { denominator, numerator };
+            let mut stake_pool = StakePool {
+                total_stake_lamports,
+                pool_token_supply: total_stake_lamports,
+                fee,
+                ..StakePool::default()
+            };
+            let pool_token_fee = stake_pool.calc_fee_amount(reward_lamports).unwrap();
+
+            stake_pool.total_stake_lamports += reward_lamports;
+            stake_pool.pool_token_supply += pool_token_fee;
+
+            let fee_lamports = stake_pool.calc_lamports_withdraw_amount(pool_token_fee).unwrap();
+            let max_fee_lamports = u64::try_from((reward_lamports as u128) * (fee.numerator as u128) / (fee.denominator as u128)).unwrap();
+            assert!(max_fee_lamports >= fee_lamports,
+                "Max possible fee must always be greater than or equal to what is actually withdrawn, max {} actual {}",
+                max_fee_lamports,
+                fee_lamports);
+
+            // since we do two "flooring" conversions, the max epsilon should be
+            // correct up to 2 lamports (one for each floor division), plus a
+            // correction for huge discrepancies between rewards and total stake
+            let epsilon = 2 + reward_lamports / total_stake_lamports;
+            assert!(max_fee_lamports - fee_lamports <= epsilon,
+                "Max expected fee in lamports {}, actually receive {}, epsilon {}",
+                max_fee_lamports, fee_lamports, epsilon);
         }
     }
 }
