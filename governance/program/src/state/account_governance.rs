@@ -16,11 +16,11 @@ pub struct GovernanceConfig {
 
     /// Voting threshold in % required to tip the vote
     /// It's the percentage of tokens out of the entire pool of governance tokens eligible to vote
-    pub vote_threshold: u8,
+    pub vote_threshold_percentage: u8,
 
     /// Minimum % of tokens for a governance token owner to be able to create a proposal
     /// It's the percentage of tokens out of the entire pool of governance tokens eligible to vote
-    pub token_threshold_to_create_proposal: u8,
+    pub token_threshold_percentage_to_create_proposal: u8,
 
     /// Minimum waiting time in slots for an instruction to be executed after proposal is voted on
     pub min_instruction_hold_up_time: u64,

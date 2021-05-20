@@ -469,8 +469,8 @@ impl GovernanceProgramTest {
         let config = GovernanceConfig {
             realm: realm_cookie.address,
             governed_account: governed_account_cookie.address,
-            vote_threshold: 60,
-            token_threshold_to_create_proposal: 5,
+            vote_threshold_percentage: 60,
+            token_threshold_percentage_to_create_proposal: 5,
             min_instruction_hold_up_time: 10,
             max_voting_time: 100,
         };
@@ -576,8 +576,8 @@ impl GovernanceProgramTest {
         let config = GovernanceConfig {
             realm: realm_cookie.address,
             governed_account: governed_program_cookie.address,
-            vote_threshold: 60,
-            token_threshold_to_create_proposal: 5,
+            vote_threshold_percentage: 60,
+            token_threshold_percentage_to_create_proposal: 5,
             min_instruction_hold_up_time: 10,
             max_voting_time: 100,
         };
