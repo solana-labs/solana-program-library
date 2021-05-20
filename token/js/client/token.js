@@ -7,7 +7,7 @@ import assert from 'assert';
 import BN from 'bn.js';
 import * as BufferLayout from 'buffer-layout';
 import {
-  Account,
+  Keypair,
   PublicKey,
   SystemProgram,
   Transaction,
@@ -17,6 +17,7 @@ import {
 import type {
   Connection,
   Commitment,
+  Signer,
   TransactionSignature,
 } from '@solana/web3.js';
 
@@ -306,7 +307,7 @@ export class Token {
   /**
    * Fee payer
    */
-  payer: Account;
+  payer: Signer;
 
   /**
    * Create a Token object attached to the specific mint
@@ -320,7 +321,7 @@ export class Token {
     connection: Connection,
     publicKey: PublicKey,
     programId: PublicKey,
-    payer: Account,
+    payer: Signer,
   ) {
     Object.assign(this, {
       connection,
@@ -382,13 +383,13 @@ export class Token {
    */
   static async createMint(
     connection: Connection,
-    payer: Account,
+    payer: Signer,
     mintAuthority: PublicKey,
     freezeAuthority: PublicKey | null,
     decimals: number,
     programId: PublicKey,
   ): Promise<Token> {
-    const mintAccount = new Account();
+    const mintAccount = Keypair.generate();
     const token = new Token(
       connection,
       mintAccount.publicKey,
@@ -448,7 +449,7 @@ export class Token {
       this.connection,
     );
 
-    const newAccount = new Account();
+    const newAccount = Keypair.generate();
     const transaction = new Transaction();
     transaction.add(
       SystemProgram.createAccount({
@@ -596,7 +597,7 @@ export class Token {
     connection: Connection,
     programId: PublicKey,
     owner: PublicKey,
-    payer: Account,
+    payer: Signer,
     amount: number,
   ): Promise<PublicKey> {
     // Allocate memory for the account
@@ -605,7 +606,7 @@ export class Token {
     );
 
     // Create a new account
-    const newAccount = new Account();
+    const newAccount = Keypair.generate();
     const transaction = new Transaction();
     transaction.add(
       SystemProgram.createAccount({
@@ -663,7 +664,7 @@ export class Token {
     m: number,
     signers: Array<PublicKey>,
   ): Promise<PublicKey> {
-    const multisigAccount = new Account();
+    const multisigAccount = Keypair.generate();
 
     // Allocate memory for the account
     const balanceNeeded = await Token.getMinBalanceRentForExemptMultisig(
@@ -862,7 +863,7 @@ export class Token {
     source: PublicKey,
     destination: PublicKey,
     owner: any,
-    multiSigners: Array<Account>,
+    multiSigners: Array<Signer>,
     amount: number | u64,
   ): Promise<TransactionSignature> {
     let ownerPublicKey;
@@ -905,7 +906,7 @@ export class Token {
     account: PublicKey,
     delegate: PublicKey,
     owner: any,
-    multiSigners: Array<Account>,
+    multiSigners: Array<Signer>,
     amount: number | u64,
   ): Promise<void> {
     let ownerPublicKey;
@@ -945,7 +946,7 @@ export class Token {
   async revoke(
     account: PublicKey,
     owner: any,
-    multiSigners: Array<Account>,
+    multiSigners: Array<Signer>,
   ): Promise<void> {
     let ownerPublicKey;
     let signers;
@@ -986,7 +987,7 @@ export class Token {
     newAuthority: PublicKey | null,
     authorityType: AuthorityType,
     currentAuthority: any,
-    multiSigners: Array<Account>,
+    multiSigners: Array<Signer>,
   ): Promise<void> {
     let currentAuthorityPublicKey: PublicKey;
     let signers;
@@ -1026,7 +1027,7 @@ export class Token {
   async mintTo(
     dest: PublicKey,
     authority: any,
-    multiSigners: Array<Account>,
+    multiSigners: Array<Signer>,
     amount: number | u64,
   ): Promise<void> {
     let ownerPublicKey;
@@ -1067,7 +1068,7 @@ export class Token {
   async burn(
     account: PublicKey,
     owner: any,
-    multiSigners: Array<Account>,
+    multiSigners: Array<Signer>,
     amount: number | u64,
   ): Promise<void> {
     let ownerPublicKey;
@@ -1109,7 +1110,7 @@ export class Token {
     account: PublicKey,
     dest: PublicKey,
     authority: any,
-    multiSigners: Array<Account>,
+    multiSigners: Array<Signer>,
   ): Promise<void> {
     let authorityPublicKey;
     let signers;
@@ -1147,7 +1148,7 @@ export class Token {
   async freezeAccount(
     account: PublicKey,
     authority: any,
-    multiSigners: Array<Account>,
+    multiSigners: Array<Signer>,
   ): Promise<void> {
     let authorityPublicKey;
     let signers;
@@ -1185,7 +1186,7 @@ export class Token {
   async thawAccount(
     account: PublicKey,
     authority: any,
-    multiSigners: Array<Account>,
+    multiSigners: Array<Signer>,
   ): Promise<void> {
     let authorityPublicKey;
     let signers;
@@ -1227,7 +1228,7 @@ export class Token {
     source: PublicKey,
     destination: PublicKey,
     owner: any,
-    multiSigners: Array<Account>,
+    multiSigners: Array<Signer>,
     amount: number | u64,
     decimals: number,
   ): Promise<TransactionSignature> {
@@ -1275,7 +1276,7 @@ export class Token {
     account: PublicKey,
     delegate: PublicKey,
     owner: any,
-    multiSigners: Array<Account>,
+    multiSigners: Array<Signer>,
     amount: number | u64,
     decimals: number,
   ): Promise<void> {
@@ -1320,7 +1321,7 @@ export class Token {
   async mintToChecked(
     dest: PublicKey,
     authority: any,
-    multiSigners: Array<Account>,
+    multiSigners: Array<Signer>,
     amount: number | u64,
     decimals: number,
   ): Promise<void> {
@@ -1364,7 +1365,7 @@ export class Token {
   async burnChecked(
     account: PublicKey,
     owner: any,
-    multiSigners: Array<Account>,
+    multiSigners: Array<Signer>,
     amount: number | u64,
     decimals: number,
   ): Promise<void> {
@@ -1496,7 +1497,7 @@ export class Token {
     source: PublicKey,
     destination: PublicKey,
     owner: PublicKey,
-    multiSigners: Array<Account>,
+    multiSigners: Array<Signer>,
     amount: number | u64,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
@@ -1555,7 +1556,7 @@ export class Token {
     account: PublicKey,
     delegate: PublicKey,
     owner: PublicKey,
-    multiSigners: Array<Account>,
+    multiSigners: Array<Signer>,
     amount: number | u64,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
@@ -1608,7 +1609,7 @@ export class Token {
     programId: PublicKey,
     account: PublicKey,
     owner: PublicKey,
-    multiSigners: Array<Account>,
+    multiSigners: Array<Signer>,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([BufferLayout.u8('instruction')]);
 
@@ -1657,7 +1658,7 @@ export class Token {
     newAuthority: PublicKey | null,
     authorityType: AuthorityType,
     currentAuthority: PublicKey,
-    multiSigners: Array<Account>,
+    multiSigners: Array<Signer>,
   ): TransactionInstruction {
     const commandDataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
@@ -1716,7 +1717,7 @@ export class Token {
     mint: PublicKey,
     dest: PublicKey,
     authority: PublicKey,
-    multiSigners: Array<Account>,
+    multiSigners: Array<Signer>,
     amount: number | u64,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
@@ -1776,7 +1777,7 @@ export class Token {
     mint: PublicKey,
     account: PublicKey,
     owner: PublicKey,
-    multiSigners: Array<Account>,
+    multiSigners: Array<Signer>,
     amount: number | u64,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
@@ -1835,7 +1836,7 @@ export class Token {
     account: PublicKey,
     dest: PublicKey,
     owner: PublicKey,
-    multiSigners: Array<Account>,
+    multiSigners: Array<Signer>,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([BufferLayout.u8('instruction')]);
     const data = Buffer.alloc(dataLayout.span);
@@ -1884,7 +1885,7 @@ export class Token {
     account: PublicKey,
     mint: PublicKey,
     authority: PublicKey,
-    multiSigners: Array<Account>,
+    multiSigners: Array<Signer>,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([BufferLayout.u8('instruction')]);
     const data = Buffer.alloc(dataLayout.span);
@@ -1933,7 +1934,7 @@ export class Token {
     account: PublicKey,
     mint: PublicKey,
     authority: PublicKey,
-    multiSigners: Array<Account>,
+    multiSigners: Array<Signer>,
   ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([BufferLayout.u8('instruction')]);
     const data = Buffer.alloc(dataLayout.span);
@@ -1986,7 +1987,7 @@ export class Token {
     mint: PublicKey,
     destination: PublicKey,
     owner: PublicKey,
-    multiSigners: Array<Account>,
+    multiSigners: Array<Signer>,
     amount: number | u64,
     decimals: number,
   ): TransactionInstruction {
@@ -2052,7 +2053,7 @@ export class Token {
     mint: PublicKey,
     delegate: PublicKey,
     owner: PublicKey,
-    multiSigners: Array<Account>,
+    multiSigners: Array<Signer>,
     amount: number | u64,
     decimals: number,
   ): TransactionInstruction {
@@ -2113,7 +2114,7 @@ export class Token {
     mint: PublicKey,
     dest: PublicKey,
     authority: PublicKey,
-    multiSigners: Array<Account>,
+    multiSigners: Array<Signer>,
     amount: number | u64,
     decimals: number,
   ): TransactionInstruction {
@@ -2176,7 +2177,7 @@ export class Token {
     mint: PublicKey,
     account: PublicKey,
     owner: PublicKey,
-    multiSigners: Array<Account>,
+    multiSigners: Array<Signer>,
     amount: number | u64,
     decimals: number,
   ): TransactionInstruction {

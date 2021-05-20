@@ -121,6 +121,58 @@ declare module '@solana/web3.js' {
   }
 
   /**
+   * Keypair signer interface
+   */
+  declare export interface Signer {
+    get publicKey(): PublicKey;
+    get secretKey(): Uint8Array;
+  }
+
+  /**
+   * An account keypair used for signing transactions.
+   */
+  declare export class Keypair {
+    /**
+     * Generate a new random keypair
+     */
+    static generate(): Keypair;
+
+    /**
+     * Create a keypair from a raw secret key byte array.
+     *
+     * This method should only be used to recreate a keypair from a previously
+     * generated secret key. Generating keypairs from a random seed should be done
+     * with the {@link Keypair.fromSeed} method.
+     *
+     * @throws error if the provided secret key is invalid and validation is not skipped.
+     *
+     * @param secretKey secret key byte array
+     * @param options: skip secret key validation
+     */
+    static fromSecretKey(
+      secretKey: Uint8Array,
+      options?: {skipValidation?: boolean},
+    ): Keypair;
+
+    /**
+     * Generate a keypair from a 32 byte seed.
+     *
+     * @param seed seed byte array
+     */
+    static fromSeed(seed: Uint8Array): Keypair;
+
+    /**
+     * The public key for this keypair
+     */
+    get publicKey(): PublicKey;
+
+    /**
+     * The raw secret key for this keypair
+     */
+    get secretKey(): Uint8Array
+  }
+
+  /**
    * Blockhash as Base58 string.
    */
   declare export type Blockhash = string;
@@ -466,7 +518,7 @@ declare module '@solana/web3.js' {
      *
      * The Transaction must be assigned a valid `recentBlockhash` before invoking this method
      */
-    sign(...signers: Array<Account>): void;
+    sign(...signers: Array<Signer>): void;
 
     /**
      * Partially sign a transaction with the specified accounts. All accounts must
@@ -475,7 +527,7 @@ declare module '@solana/web3.js' {
      *
      * All the caveats from the `sign` method apply to `partialSign`
      */
-    partialSign(...signers: Array<Account>): void;
+    partialSign(...signers: Array<Signer>): void;
 
     /**
      * Add an externally created signature to a transaction. The public key
@@ -2244,7 +2296,7 @@ feeCalculator: FeeCalculator,...
      */
     simulateTransaction(
       transaction: Transaction,
-      signers?: Array<Account>
+      signers?: Array<Signer>
     ): Promise<RpcResponseAndContext<SimulatedTransactionResponse>>;
 
     /**
@@ -2252,7 +2304,7 @@ feeCalculator: FeeCalculator,...
      */
     sendTransaction(
       transaction: Transaction,
-      signers: Array<Account>,
+      signers: Array<Signer>,
       options?: SendOptions
     ): Promise<TransactionSignature>;
 
@@ -2433,8 +2485,8 @@ feeCalculator: FeeCalculator,...
      */
     static load(
       connection: Connection,
-      payer: Account,
-      program: Account,
+      payer: Signer,
+      program: Signer,
       elf: Buffer | Uint8Array | Array<number>,
       loaderProgramId: PublicKey
     ): Promise<boolean>;
@@ -2468,8 +2520,8 @@ feeCalculator: FeeCalculator,...
      */
     static load(
       connection: Connection,
-      payer: Account,
-      program: Account,
+      payer: Signer,
+      program: Signer,
       programId: PublicKey,
       data: Buffer | Uint8Array | Array<number>
     ): Promise<boolean>;
@@ -3557,14 +3609,14 @@ feeCalculator: FeeCalculator,...
    * If `commitment` option is not specified, defaults to 'max' commitment.
    * @param {Connection} connection
    * @param {Transaction} transaction
-   * @param {Array<Account>} signers
+   * @param {Array<Signer>} signers
    * @param {ConfirmOptions} [options]
    * @returns {Promise<TransactionSignature>}
    */
   declare export function sendAndConfirmTransaction(
     connection: Connection,
     transaction: Transaction,
-    signers: Array<Account>,
+    signers: Array<Signer>,
     options?: ConfirmOptions
   ): Promise<TransactionSignature>;
 

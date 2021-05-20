@@ -2,10 +2,11 @@
 
 import fs from 'mz/fs';
 import {
-  Account,
+  Keypair,
   Connection,
   BpfLoader,
   PublicKey,
+  Signer,
   BPF_LOADER_PROGRAM_ID,
 } from '@solana/web3.js';
 
@@ -25,12 +26,12 @@ let programId: PublicKey;
 let associatedProgramId: PublicKey;
 
 // Accounts setup in createMint and used by all subsequent tests
-let testMintAuthority: Account;
+let testMintAuthority: Signer;
 let testToken: Token;
 let testTokenDecimals: number = 2;
 
 // Accounts setup in createAccount and used by all subsequent tests
-let testAccountOwner: Account;
+let testAccountOwner: Signer;
 let testAccount: PublicKey;
 
 function assert(condition, message) {
@@ -73,7 +74,7 @@ async function loadProgram(
     (await connection.getMinimumBalanceForRentExemption(data.length));
 
   const from = await newAccountWithLamports(connection, balanceNeeded);
-  const program_account = new Account();
+  const program_account = Keypair.generate();
   console.log('Loading program:', path);
   await BpfLoader.load(
     connection,
@@ -144,7 +145,7 @@ export async function loadTokenProgram(): Promise<void> {
 export async function createMint(): Promise<void> {
   const connection = await getConnection();
   const payer = await newAccountWithLamports(connection, 1000000000 /* wag */);
-  testMintAuthority = new Account();
+  testMintAuthority = Keypair.generate();
   testToken = await Token.createMint(
     connection,
     payer,
@@ -174,7 +175,7 @@ export async function createMint(): Promise<void> {
 }
 
 export async function createAccount(): Promise<void> {
-  testAccountOwner = new Account();
+  testAccountOwner = Keypair.generate();
   testAccount = await testToken.createAccount(testAccountOwner.publicKey);
   const accountInfo = await testToken.getAccountInfo(testAccount);
   assert(accountInfo.mint.equals(testToken.publicKey));
@@ -199,7 +200,7 @@ export async function createAssociatedAccount(): Promise<void> {
   let info;
   const connection = await getConnection();
 
-  const owner = new Account();
+  const owner = Keypair.generate();
   const associatedAddress = await Token.getAssociatedTokenAddress(
     associatedProgramId,
     programId,
@@ -262,7 +263,7 @@ export async function mintToChecked(): Promise<void> {
 }
 
 export async function transfer(): Promise<void> {
-  const destOwner = new Account();
+  const destOwner = Keypair.generate();
   const dest = await testToken.createAccount(destOwner.publicKey);
 
   await testToken.transfer(testAccount, dest, testAccountOwner, [], 100);
@@ -278,7 +279,7 @@ export async function transfer(): Promise<void> {
 }
 
 export async function transferChecked(): Promise<void> {
-  const destOwner = new Account();
+  const destOwner = Keypair.generate();
   const dest = await testToken.createAccount(destOwner.publicKey);
 
   assert(
@@ -312,7 +313,7 @@ export async function transferChecked(): Promise<void> {
 }
 
 export async function transferCheckedAssociated(): Promise<void> {
-  const dest = new Account().publicKey;
+  const dest = Keypair.generate().publicKey;
   let associatedAccount;
 
   associatedAccount = await testToken.getOrCreateAssociatedAccountInfo(dest);
@@ -332,7 +333,7 @@ export async function transferCheckedAssociated(): Promise<void> {
 }
 
 export async function approveRevoke(): Promise<void> {
-  const delegate = new Account().publicKey;
+  const delegate = Keypair.generate().publicKey;
 
   await testToken.approve(testAccount, delegate, testAccountOwner, [], 42);
 
@@ -354,10 +355,10 @@ export async function approveRevoke(): Promise<void> {
 }
 
 export async function failOnApproveOverspend(): Promise<void> {
-  const owner = new Account();
+  const owner = Keypair.generate();
   const account1 = await testToken.createAccount(owner.publicKey);
   const account2 = await testToken.createAccount(owner.publicKey);
-  const delegate = new Account();
+  const delegate = Keypair.generate();
 
   await testToken.transfer(testAccount, account1, testAccountOwner, [], 10);
 
@@ -397,7 +398,7 @@ export async function failOnApproveOverspend(): Promise<void> {
 }
 
 export async function setAuthority(): Promise<void> {
-  const newOwner = new Account();
+  const newOwner = Keypair.generate();
   await testToken.setAuthority(
     testAccount,
     newOwner.publicKey,
@@ -459,7 +460,7 @@ export async function freezeThawAccount(): Promise<void> {
 
   await testToken.freezeAccount(testAccount, testMintAuthority, []);
 
-  const destOwner = new Account();
+  const destOwner = Keypair.generate();
   const dest = await testToken.createAccount(destOwner.publicKey);
 
   assert(
@@ -481,7 +482,7 @@ export async function freezeThawAccount(): Promise<void> {
 }
 
 export async function closeAccount(): Promise<void> {
-  const closeAuthority = new Account();
+  const closeAuthority = Keypair.generate();
 
   await testToken.setAuthority(
     testAccount,
@@ -497,7 +498,7 @@ export async function closeAccount(): Promise<void> {
     assert(accountInfo.closeAuthority.equals(closeAuthority.publicKey));
   }
 
-  const dest = await testToken.createAccount(new Account().publicKey);
+  const dest = await testToken.createAccount(Keypair.generate().publicKey);
   const remaining = accountInfo.amount.toNumber();
 
   // Check that accounts with non-zero token balance cannot be closed
@@ -545,7 +546,7 @@ export async function multisig(): Promise<void> {
 
   let signerAccounts = [];
   for (var i = 0; i < n; i++) {
-    signerAccounts.push(new Account());
+    signerAccounts.push(Keypair.generate());
   }
   let signerPublicKeys = [];
   signerAccounts.forEach(account => signerPublicKeys.push(account.publicKey));
@@ -617,7 +618,7 @@ export async function nativeToken(): Promise<void> {
   const lamportsToWrap = 1000000000;
 
   const token = new Token(connection, NATIVE_MINT, programId, payer);
-  const owner = new Account();
+  const owner = Keypair.generate();
   const native = await Token.createWrappedNativeAccount(
     connection,
     programId,
