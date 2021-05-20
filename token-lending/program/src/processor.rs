@@ -14,6 +14,7 @@ use crate::{
 use num_traits::FromPrimitive;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
+    clock::{DEFAULT_TICKS_PER_SECOND, DEFAULT_TICKS_PER_SLOT},
     decode_error::DecodeError,
     entrypoint::ProgramResult,
     instruction::Instruction,
@@ -24,7 +25,6 @@ use solana_program::{
     pubkey::Pubkey,
     sysvar::{clock::Clock, rent::Rent, Sysvar},
 };
-use solana_sdk::clock::{DEFAULT_TICKS_PER_SECOND, DEFAULT_TICKS_PER_SLOT};
 use spl_token::solana_program::instruction::AccountMeta;
 use spl_token::state::{Account, Mint};
 use std::convert::TryInto;
