@@ -28,11 +28,11 @@ use spl_governance::{
     },
     processor::process_instruction,
     state::{
-        account_governance::{
-            get_account_governance_address, get_program_governance_address, AccountGovernance,
+        enums::{GovernanceAccountType, GoverningTokenType},
+        governance::{
+            get_account_governance_address, get_program_governance_address, Governance,
             GovernanceConfig,
         },
-        enums::{GovernanceAccountType, GoverningTokenType},
         realm::{get_governing_token_holding_address, get_realm_address, Realm},
         voter_record::{get_voter_record_address, VoterRecord},
     },
@@ -41,8 +41,7 @@ use spl_governance::{
 
 pub mod cookies;
 use self::cookies::{
-    AccountGovernanceCookie, GovernedAccountCookie, GovernedProgramCookie, RealmCookie,
-    VoterRecordCookie,
+    GovernanceCookie, GovernedAccountCookie, GovernedProgramCookie, RealmCookie, VoterRecordCookie,
 };
 
 pub mod tools;
@@ -465,7 +464,7 @@ impl GovernanceProgramTest {
         &mut self,
         realm_cookie: &RealmCookie,
         governed_account_cookie: &GovernedAccountCookie,
-    ) -> AccountGovernanceCookie {
+    ) -> GovernanceCookie {
         let config = GovernanceConfig {
             realm: realm_cookie.address,
             governed_account: governed_account_cookie.address,
@@ -478,7 +477,7 @@ impl GovernanceProgramTest {
         let create_account_governance_instruction =
             create_account_governance(&self.payer.pubkey(), config.clone());
 
-        let account = AccountGovernance {
+        let account = Governance {
             account_type: GovernanceAccountType::AccountGovernance,
             config,
             proposal_count: 0,
@@ -491,7 +490,7 @@ impl GovernanceProgramTest {
         let account_governance_address =
             get_account_governance_address(&realm_cookie.address, &governed_account_cookie.address);
 
-        AccountGovernanceCookie {
+        GovernanceCookie {
             address: account_governance_address,
             account,
         }
@@ -572,7 +571,7 @@ impl GovernanceProgramTest {
         &mut self,
         realm_cookie: &RealmCookie,
         governed_program_cookie: &GovernedProgramCookie,
-    ) -> Result<AccountGovernanceCookie, ProgramError> {
+    ) -> Result<GovernanceCookie, ProgramError> {
         let config = GovernanceConfig {
             realm: realm_cookie.address,
             governed_account: governed_program_cookie.address,
@@ -594,8 +593,8 @@ impl GovernanceProgramTest {
         )
         .await?;
 
-        let account = AccountGovernance {
-            account_type: GovernanceAccountType::AccountGovernance,
+        let account = Governance {
+            account_type: GovernanceAccountType::ProgramGovernance,
             config,
             proposal_count: 0,
         };
@@ -603,7 +602,7 @@ impl GovernanceProgramTest {
         let program_governance_address =
             get_program_governance_address(&realm_cookie.address, &governed_program_cookie.address);
 
-        Ok(AccountGovernanceCookie {
+        Ok(GovernanceCookie {
             address: program_governance_address,
             account,
         })
@@ -621,11 +620,11 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn get_account_governance_account(
+    pub async fn get_governance_account(
         &mut self,
         program_governance_address: &Pubkey,
-    ) -> AccountGovernance {
-        self.get_borsh_account::<AccountGovernance>(program_governance_address)
+    ) -> Governance {
+        self.get_borsh_account::<Governance>(program_governance_address)
             .await
     }
 

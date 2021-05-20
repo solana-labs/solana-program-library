@@ -23,7 +23,7 @@ async fn test_program_governance_created() {
 
     // Assert
     let program_governance_account = governance_test
-        .get_account_governance_account(&program_governance_cookie.address)
+        .get_governance_account(&program_governance_cookie.address)
         .await;
 
     assert_eq!(

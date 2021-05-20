@@ -3,10 +3,10 @@
 use crate::{
     id,
     state::{
-        account_governance::{
+        enums::GoverningTokenType,
+        governance::{
             get_account_governance_address, get_program_governance_address, GovernanceConfig,
         },
-        enums::GoverningTokenType,
         realm::{get_governing_token_holding_address, get_realm_address},
         single_signer_instruction::InstructionData,
         voter_record::get_voter_record_address,

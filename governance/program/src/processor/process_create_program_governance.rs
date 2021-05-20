@@ -1,10 +1,10 @@
 //! Program state processor
 
 use crate::{
-    state::account_governance::AccountGovernance,
+    state::governance::Governance,
     state::{
-        account_governance::{get_program_governance_address_seeds, GovernanceConfig},
         enums::GovernanceAccountType,
+        governance::{get_program_governance_address_seeds, GovernanceConfig},
     },
     tools::{
         account::create_and_serialize_account_signed,
@@ -48,13 +48,13 @@ pub fn process_create_program_governance(
         bpf_upgrade_loader_info,
     )?;
 
-    let program_governance_data = AccountGovernance {
-        account_type: GovernanceAccountType::AccountGovernance,
+    let program_governance_data = Governance {
+        account_type: GovernanceAccountType::ProgramGovernance,
         config: config.clone(),
         proposal_count: 0,
     };
 
-    create_and_serialize_account_signed::<AccountGovernance>(
+    create_and_serialize_account_signed::<Governance>(
         payer_info,
         &program_governance_info,
         &program_governance_data,

@@ -29,11 +29,11 @@ pub struct GovernanceConfig {
     pub max_voting_time: u64,
 }
 
-/// Account Governance
+/// Governance Account
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub struct AccountGovernance {
-    /// Account type
+pub struct Governance {
+    /// Account type. It can be Uninitialized, AccountGovernance or ProgramGovernance
     pub account_type: GovernanceAccountType,
 
     /// Governance config
@@ -43,15 +43,16 @@ pub struct AccountGovernance {
     pub proposal_count: u32,
 }
 
-impl AccountMaxSize for AccountGovernance {}
+impl AccountMaxSize for Governance {}
 
-impl IsInitialized for AccountGovernance {
+impl IsInitialized for Governance {
     fn is_initialized(&self) -> bool {
         self.account_type == GovernanceAccountType::AccountGovernance
+            || self.account_type == GovernanceAccountType::ProgramGovernance
     }
 }
 
-/// Returns Program AccountGovernance PDA seeds
+/// Returns ProgramGovernance PDA seeds
 pub fn get_program_governance_address_seeds<'a>(
     realm: &'a Pubkey,
     governed_program: &'a Pubkey,
@@ -65,7 +66,7 @@ pub fn get_program_governance_address_seeds<'a>(
     ]
 }
 
-/// Returns Program AccountGovernance PDA address
+/// Returns ProgramGovernance PDA address
 pub fn get_program_governance_address<'a>(
     realm: &'a Pubkey,
     governed_program: &'a Pubkey,

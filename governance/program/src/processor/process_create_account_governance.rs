@@ -2,10 +2,8 @@
 
 use crate::{
     state::{
-        account_governance::{
-            get_account_governance_address_seeds, AccountGovernance, GovernanceConfig,
-        },
         enums::GovernanceAccountType,
+        governance::{get_account_governance_address_seeds, Governance, GovernanceConfig},
     },
     tools::account::create_and_serialize_account_signed,
 };
@@ -32,13 +30,13 @@ pub fn process_create_account_governance(
     let rent_sysvar_info = next_account_info(account_info_iter)?; // 3
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
 
-    let account_governance_data = AccountGovernance {
+    let account_governance_data = Governance {
         account_type: GovernanceAccountType::AccountGovernance,
         config: config.clone(),
         proposal_count: 0,
     };
 
-    create_and_serialize_account_signed::<AccountGovernance>(
+    create_and_serialize_account_signed::<Governance>(
         payer_info,
         &account_governance_info,
         &account_governance_data,

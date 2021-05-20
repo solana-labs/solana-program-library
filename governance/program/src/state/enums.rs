@@ -15,8 +15,11 @@ pub enum GovernanceAccountType {
     /// Voter record for each voter and given governing token type within a Realm
     VoterRecord,
 
-    /// Account Governance account
+    /// Generic Account Governance account
     AccountGovernance,
+
+    /// Program Governance account
+    ProgramGovernance,
 
     /// Proposal account for Governance account. A single Governance account can have multiple Proposal accounts
     Proposal,
