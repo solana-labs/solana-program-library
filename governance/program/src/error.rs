@@ -38,6 +38,18 @@ pub enum GovernanceError {
     /// Invalid Voter account address
     #[error("Invalid Voter account address")]
     InvalidVoterAccountAddress,
+
+    /// ---- Account Tools Errors ----
+
+    /// Invalid account owner
+    #[error("Invalid account owner")]
+    InvalidAccountOwner,
+
+    /// ---- Token Tools Errors ----
+
+    /// Invalid Token account owner
+    #[error("Invalid Token account owner")]
+    InvalidTokenAccountOwner,
 }
 
 impl PrintProgramError for GovernanceError {

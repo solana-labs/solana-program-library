@@ -2,46 +2,12 @@
 
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
-    account_info::AccountInfo,
-    borsh::try_from_slice_unchecked,
-    decode_error::DecodeError,
-    msg,
-    program::invoke_signed,
-    program_error::{PrintProgramError, ProgramError},
-    program_pack::IsInitialized,
-    pubkey::Pubkey,
-    rent::Rent,
+    account_info::AccountInfo, borsh::try_from_slice_unchecked, msg, program::invoke_signed,
+    program_error::ProgramError, program_pack::IsInitialized, pubkey::Pubkey, rent::Rent,
     system_instruction::create_account,
 };
 
-use num_derive::FromPrimitive;
-use thiserror::Error;
-
-/// Account Tools errors  
-#[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
-pub enum AccountToolsError {
-    /// Invalid account owner
-    #[error("Invalid account owner")]
-    InvalidAccountOwner,
-}
-
-impl PrintProgramError for AccountToolsError {
-    fn print<E>(&self) {
-        msg!("ACCOUNT-TOOLS-ERROR: {}", &self.to_string());
-    }
-}
-
-impl From<AccountToolsError> for ProgramError {
-    fn from(e: AccountToolsError) -> Self {
-        ProgramError::Custom(e as u32)
-    }
-}
-
-impl<T> DecodeError<T> for AccountToolsError {
-    fn type_of() -> &'static str {
-        "Account Tools Error"
-    }
-}
+use crate::error::GovernanceError;
 
 /// Trait for accounts to return their max size
 pub trait AccountMaxSize {
@@ -123,7 +89,7 @@ pub fn deserialize_account<T: BorshDeserialize + IsInitialized>(
     owner_program_id: &Pubkey,
 ) -> Result<T, ProgramError> {
     if account_info.owner != owner_program_id {
-        return Err(AccountToolsError::InvalidAccountOwner.into());
+        return Err(GovernanceError::InvalidAccountOwner.into());
     }
 
     let account: T = try_from_slice_unchecked(&account_info.data.borrow())?;
