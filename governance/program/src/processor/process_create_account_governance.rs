@@ -1,9 +1,8 @@
 //! Program state processor
 
 use crate::{
-    state::account_governance::AccountGovernance,
     state::{
-        account_governance::{get_account_governance_address_seeds, GovernanceConfig},
+        account_governance::{get_account_governance_address_seeds, AccountGovernance, GovernanceConfig},
         enums::GovernanceAccountType,
     },
     tools::account::create_and_serialize_account_signed,
