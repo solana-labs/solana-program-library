@@ -506,7 +506,7 @@ impl GovernanceProgramTest {
         let program_data_address = get_program_data_address(&program_keypair.pubkey());
 
         // Load solana_bpf_rust_upgradeable program taken from solana test programs
-        let path_buf = find_file("solana_bpf_rust_upgradeable._so").unwrap();
+        let path_buf = find_file("solana_bpf_rust_upgradeable.so").unwrap();
         let program_data = read_file(path_buf);
 
         let program_buffer_rent = self
