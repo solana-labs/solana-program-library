@@ -111,7 +111,7 @@ pub enum GovernanceInstruction {
     ///
     ///   0. `[writable]` Account Governance account. PDA seeds: ['account-governance', realm, governed_account]
     ///   1. `[signer]` Payer
-    ///   2. `[]` System account
+    ///   2. `[]` System program
     ///   3. `[]` Sysvar Rent
     CreateAccountGovernance {
         /// Governance config
