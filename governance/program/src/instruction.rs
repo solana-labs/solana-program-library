@@ -125,7 +125,7 @@ pub enum GovernanceInstruction {
     ///   1. `[writable]` Program Data account of the Program governed by this Governance account
     ///   2. `[signer]` Current Upgrade Authority account of the Program governed by this Governance account
     ///   3. `[signer]` Payer
-    ///   4. `[]` Bpf_upgrade_loader account
+    ///   4. `[]` bpf_upgradeable_loader program
     ///   5. `[]` System account
     ///   6. `[]` Sysvar Rent
     CreateProgramGovernance {
