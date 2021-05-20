@@ -40,14 +40,6 @@ pub fn process_create_program_governance(
     let rent_sysvar_info = next_account_info(account_info_iter)?; // 6
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
 
-    set_program_upgrade_authority(
-        &config.governed_account,
-        governed_program_data_info,
-        governed_program_upgrade_authority_info,
-        program_governance_info,
-        bpf_upgrade_loader_info,
-    )?;
-
     let program_governance_data = Governance {
         account_type: GovernanceAccountType::ProgramGovernance,
         config: config.clone(),
@@ -62,6 +54,14 @@ pub fn process_create_program_governance(
         program_id,
         system_info,
         rent,
+    )?;
+
+    set_program_upgrade_authority(
+        &config.governed_account,
+        governed_program_data_info,
+        governed_program_upgrade_authority_info,
+        program_governance_info,
+        bpf_upgrade_loader_info,
     )?;
 
     Ok(())
