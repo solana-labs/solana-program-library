@@ -449,7 +449,6 @@ pub fn create_account_governance(
 }
 
 /// Creates CreateProgramGovernance instruction
-#[allow(clippy::too_many_arguments)]
 pub fn create_program_governance(
     // Accounts
     governed_program_upgrade_authority: &Pubkey,

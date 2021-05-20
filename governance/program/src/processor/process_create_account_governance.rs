@@ -2,7 +2,9 @@
 
 use crate::{
     state::{
-        account_governance::{get_account_governance_address_seeds, AccountGovernance, GovernanceConfig},
+        account_governance::{
+            get_account_governance_address_seeds, AccountGovernance, GovernanceConfig,
+        },
         enums::GovernanceAccountType,
     },
     tools::account::create_and_serialize_account_signed,
@@ -16,7 +18,6 @@ use solana_program::{
 };
 
 /// Processes CreateAccountGovernance instruction
-#[allow(clippy::too_many_arguments)]
 pub fn process_create_account_governance(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
