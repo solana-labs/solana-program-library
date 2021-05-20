@@ -129,7 +129,7 @@ export async function getNameOwner(
 ): Promise<NameRegistryState> {
   const nameAccount = await connection.getAccountInfo(nameAccountKey);
   if (!nameAccount) {
-    throw 'Unable to find the given account.';
+    throw new Error('Unable to find the given account.');
   }
   return NameRegistryState.retrieve(connection, nameAccountKey);
 }

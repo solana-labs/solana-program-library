@@ -19,3 +19,4 @@ js/dist
 js/lib
 js/docs
 js/src/secret.ts
+js/src/test.ts
