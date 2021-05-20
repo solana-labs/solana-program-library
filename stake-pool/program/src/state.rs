@@ -122,17 +122,15 @@ impl StakePool {
         if self.fee.denominator == 0 {
             return Some(0);
         }
-        let total_stake_lamports = self.total_stake_lamports.checked_add(reward_lamports)? as u128;
+        let total_stake_lamports =
+            (self.total_stake_lamports as u128).checked_add(reward_lamports as u128)?;
         let fee_lamports = (reward_lamports as u128)
-            .checked_mul(self.fee.numerator as u128)
-            .unwrap()
-            .checked_div(self.fee.denominator as u128)
-            .unwrap();
+            .checked_mul(self.fee.numerator as u128)?
+            .checked_div(self.fee.denominator as u128)?;
         u64::try_from(
             (self.pool_token_supply as u128)
-                .checked_mul(fee_lamports)
-                .unwrap()
-                .checked_div(total_stake_lamports.checked_sub(fee_lamports).unwrap())?,
+                .checked_mul(fee_lamports)?
+                .checked_div(total_stake_lamports.checked_sub(fee_lamports)?)?,
         )
         .ok()
     }
