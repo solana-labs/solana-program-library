@@ -78,14 +78,13 @@ impl CurveCalculator for OffsetCurve {
 
     /// Get the amount of pool tokens for the given amount of token A and B,
     /// taking into account the offset
-    fn trading_tokens_to_pool_tokens(
+    fn deposit_single_token_type(
         &self,
         source_amount: u128,
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
         pool_supply: u128,
         trade_direction: TradeDirection,
-        round_direction: RoundDirection,
     ) -> Option<u128> {
         let token_b_offset = self.token_b_offset as u128;
         trading_tokens_to_pool_tokens(
@@ -94,7 +93,26 @@ impl CurveCalculator for OffsetCurve {
             swap_token_b_amount.checked_add(token_b_offset)?,
             pool_supply,
             trade_direction,
-            round_direction,
+            RoundDirection::Floor,
+        )
+    }
+
+    fn withdraw_single_token_type(
+        &self,
+        source_amount: u128,
+        swap_token_a_amount: u128,
+        swap_token_b_amount: u128,
+        pool_supply: u128,
+        trade_direction: TradeDirection,
+    ) -> Option<u128> {
+        let token_b_offset = self.token_b_offset as u128;
+        trading_tokens_to_pool_tokens(
+            source_amount,
+            swap_token_a_amount,
+            swap_token_b_amount.checked_add(token_b_offset)?,
+            pool_supply,
+            trade_direction,
+            RoundDirection::Ceiling,
         )
     }
 

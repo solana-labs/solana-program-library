@@ -170,15 +170,14 @@ impl CurveCalculator for ConstantProductCurve {
         )
     }
 
-    /// Get the amount of pool tokens for the given amount of token A or B.
-    fn trading_tokens_to_pool_tokens(
+    /// Get the amount of pool tokens for the deposited amount of token A or B.
+    fn deposit_single_token_type(
         &self,
         source_amount: u128,
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
         pool_supply: u128,
         trade_direction: TradeDirection,
-        round_direction: RoundDirection,
     ) -> Option<u128> {
         trading_tokens_to_pool_tokens(
             source_amount,
@@ -186,7 +185,25 @@ impl CurveCalculator for ConstantProductCurve {
             swap_token_b_amount,
             pool_supply,
             trade_direction,
-            round_direction,
+            RoundDirection::Floor,
+        )
+    }
+
+    fn withdraw_single_token_type(
+        &self,
+        source_amount: u128,
+        swap_token_a_amount: u128,
+        swap_token_b_amount: u128,
+        pool_supply: u128,
+        trade_direction: TradeDirection,
+    ) -> Option<u128> {
+        trading_tokens_to_pool_tokens(
+            source_amount,
+            swap_token_a_amount,
+            swap_token_b_amount,
+            pool_supply,
+            trade_direction,
+            RoundDirection::Ceiling,
         )
     }
 

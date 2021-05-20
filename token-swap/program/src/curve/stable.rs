@@ -200,14 +200,13 @@ impl CurveCalculator for StableCurve {
 
     /// Get the amount of pool tokens for the given amount of token A or B.
     /// Re-implementation of `calc_token_amount`: https://github.com/curvefi/curve-contract/blob/80bbe179083c9a7062e4c482b0be3bfb7501f2bd/contracts/pool-templates/base/SwapTemplateBase.vy#L267
-    fn trading_tokens_to_pool_tokens(
+    fn deposit_single_token_type(
         &self,
         source_amount: u128,
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
         pool_supply: u128,
         trade_direction: TradeDirection,
-        round_direction: RoundDirection,
     ) -> Option<u128> {
         if source_amount == 0 {
             return Some(0);
@@ -231,10 +230,40 @@ impl CurveCalculator for StableCurve {
         let diff = d1.checked_sub(&d0)?;
         let final_amount =
             (diff.checked_mul(&PreciseNumber::new(pool_supply)?))?.checked_div(&d0)?;
-        match round_direction {
-            RoundDirection::Floor => final_amount.floor()?.to_imprecise(),
-            RoundDirection::Ceiling => final_amount.ceiling()?.to_imprecise(),
+        final_amount.floor()?.to_imprecise()
+    }
+
+    fn withdraw_single_token_type(
+        &self,
+        source_amount: u128,
+        swap_token_a_amount: u128,
+        swap_token_b_amount: u128,
+        pool_supply: u128,
+        trade_direction: TradeDirection,
+    ) -> Option<u128> {
+        if source_amount == 0 {
+            return Some(0);
         }
+        let leverage = self.amp.checked_mul(N_COINS as u64)?;
+        let d0 = PreciseNumber::new(compute_d(
+            leverage,
+            swap_token_a_amount,
+            swap_token_b_amount,
+        )?)?;
+        let (withdraw_token_amount, other_token_amount) = match trade_direction {
+            TradeDirection::AtoB => (swap_token_a_amount, swap_token_b_amount),
+            TradeDirection::BtoA => (swap_token_b_amount, swap_token_a_amount),
+        };
+        let updated_deposit_token_amount = withdraw_token_amount.checked_sub(source_amount)?;
+        let d1 = PreciseNumber::new(compute_d(
+            leverage,
+            updated_deposit_token_amount,
+            other_token_amount,
+        )?)?;
+        let diff = d0.checked_sub(&d1)?;
+        let final_amount =
+            (diff.checked_mul(&PreciseNumber::new(pool_supply)?))?.checked_div(&d0)?;
+        final_amount.ceiling()?.to_imprecise()
     }
 
     fn normalized_value(

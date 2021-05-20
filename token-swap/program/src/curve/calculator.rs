@@ -108,23 +108,39 @@ pub trait CurveCalculator: Debug + DynPack {
         round_direction: RoundDirection,
     ) -> Option<TradingTokenResult>;
 
-    /// Get the amount of pool tokens for the given amount of token A or B.
+    /// Get the amount of pool tokens for the deposited amount of token A or B.
     ///
-    /// This is used for single-sided deposits or withdrawals and owner trade
-    /// fee calculation. It essentially performs a swap followed by a deposit,
-    /// or a withdrawal followed by a swap.  Because a swap is implicitly
-    /// performed, this will change the spot price of the pool.
+    /// This is used for single-sided deposits.  It essentially performs a swap
+    /// followed by a deposit.  Because a swap is implicitly performed, this will
+    /// change the spot price of the pool.
     ///
     /// See more background for the calculation at:
     /// https://balancer.finance/whitepaper/#single-asset-deposit-withdrawal
-    fn trading_tokens_to_pool_tokens(
+    fn deposit_single_token_type(
         &self,
         source_amount: u128,
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
         pool_supply: u128,
         trade_direction: TradeDirection,
-        round_direction: RoundDirection,
+    ) -> Option<u128>;
+
+    /// Get the amount of pool tokens for the withdrawn amount of token A or B.
+    ///
+    /// This is used for single-sided withdrawals and owner trade fee
+    /// calculation. It essentially performs a withdrawal followed by a swap.
+    /// Because a swap is implicitly performed, this will change the spot price
+    /// of the pool.
+    ///
+    /// See more background for the calculation at:
+    /// https://balancer.finance/whitepaper/#single-asset-deposit-withdrawal
+    fn withdraw_single_token_type(
+        &self,
+        source_amount: u128,
+        swap_token_a_amount: u128,
+        swap_token_b_amount: u128,
+        pool_supply: u128,
+        trade_direction: TradeDirection,
     ) -> Option<u128>;
 
     /// Validate that the given curve has no invalid parameters
@@ -213,13 +229,12 @@ pub mod test {
 
         // base amount
         let pool_tokens_from_one_side = curve
-            .trading_tokens_to_pool_tokens(
+            .deposit_single_token_type(
                 source_token_amount,
                 swap_token_a_amount,
                 swap_token_b_amount,
                 pool_supply,
                 trade_direction,
-                RoundDirection::Floor,
             )
             .unwrap();
 
@@ -235,23 +250,21 @@ pub mod test {
             ),
         };
         let pool_tokens_from_source = curve
-            .trading_tokens_to_pool_tokens(
+            .deposit_single_token_type(
                 source_token_amount - results.source_amount_swapped,
                 swap_token_a_amount,
                 swap_token_b_amount,
                 pool_supply,
                 trade_direction,
-                RoundDirection::Floor,
             )
             .unwrap();
         let pool_tokens_from_destination = curve
-            .trading_tokens_to_pool_tokens(
+            .deposit_single_token_type(
                 results.destination_amount_swapped,
                 swap_token_a_amount,
                 swap_token_b_amount,
                 pool_supply + pool_tokens_from_source,
                 opposite_direction,
-                RoundDirection::Floor,
             )
             .unwrap();
 

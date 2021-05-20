@@ -107,14 +107,13 @@ impl CurveCalculator for ConstantPriceCurve {
     /// Get the amount of pool tokens for the given amount of token A and B
     /// For the constant price curve, the total value of the pool is weighted
     /// by the price of token B.
-    fn trading_tokens_to_pool_tokens(
+    fn deposit_single_token_type(
         &self,
         source_amount: u128,
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
         pool_supply: u128,
         trade_direction: TradeDirection,
-        round_direction: RoundDirection,
     ) -> Option<u128> {
         let token_b_price = U256::from(self.token_b_price);
         let given_value = match trade_direction {
@@ -125,21 +124,34 @@ impl CurveCalculator for ConstantPriceCurve {
             .checked_mul(token_b_price)?
             .checked_add(U256::from(swap_token_a_amount))?;
         let pool_supply = U256::from(pool_supply);
-        match round_direction {
-            RoundDirection::Floor => Some(
-                pool_supply
-                    .checked_mul(given_value)?
-                    .checked_div(total_value)?
-                    .as_u128(),
-            ),
-            RoundDirection::Ceiling => Some(
-                pool_supply
-                    .checked_mul(given_value)?
-                    .checked_ceil_div(total_value)?
-                    .0
-                    .as_u128(),
-            ),
-        }
+        Some(pool_supply
+            .checked_mul(given_value)?
+            .checked_div(total_value)?
+            .as_u128())
+    }
+
+    fn withdraw_single_token_type(
+        &self,
+        source_amount: u128,
+        swap_token_a_amount: u128,
+        swap_token_b_amount: u128,
+        pool_supply: u128,
+        trade_direction: TradeDirection,
+    ) -> Option<u128> {
+        let token_b_price = U256::from(self.token_b_price);
+        let given_value = match trade_direction {
+            TradeDirection::AtoB => U256::from(source_amount),
+            TradeDirection::BtoA => U256::from(source_amount).checked_mul(token_b_price)?,
+        };
+        let total_value = U256::from(swap_token_b_amount)
+            .checked_mul(token_b_price)?
+            .checked_add(U256::from(swap_token_a_amount))?;
+        let pool_supply = U256::from(pool_supply);
+        Some(pool_supply
+            .checked_mul(given_value)?
+            .checked_ceil_div(total_value)?
+            .0
+            .as_u128())
     }
 
     fn validate(&self) -> Result<(), SwapError> {
