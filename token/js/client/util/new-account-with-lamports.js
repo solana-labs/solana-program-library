@@ -1,14 +1,14 @@
 // @flow
 
-import {Account, Connection} from '@solana/web3.js';
+import {Keypair, Connection, Signer} from '@solana/web3.js';
 
 import {sleep} from './sleep';
 
 export async function newAccountWithLamports(
   connection: Connection,
   lamports: number = 1000000,
-): Promise<Account> {
-  const account = new Account();
+): Promise<Signer> {
+  const account = Keypair.generate();
 
   let retries = 30;
   await connection.requestAirdrop(account.publicKey, lamports);

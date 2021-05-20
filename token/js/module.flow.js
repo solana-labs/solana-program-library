@@ -7,13 +7,8 @@
 import BN from 'bn.js'; // eslint-disable-line
 import {Buffer} from 'buffer';
 import {Layout} from 'buffer-layout';
-import {
-  Account,
-  Connection,
-  PublicKey,
-  TransactionInstruction,
-} from '@solana/web3.js';
-import type {TransactionSignature} from '@solana/web3.js';
+import {Connection, PublicKey, TransactionInstruction} from '@solana/web3.js';
+import type {Signer, TransactionSignature} from '@solana/web3.js';
 
 declare module '@solana/spl-token' {
   declare export var TOKEN_PROGRAM_ID;
@@ -70,12 +65,12 @@ declare module '@solana/spl-token' {
     publicKey: PublicKey;
     programId: PublicKey;
     associatedProgramId: PublicKey;
-    payer: Account;
+    payer: Signer;
     constructor(
       connection: Connection,
       publicKey: PublicKey,
       programId: PublicKey,
-      payer: Account,
+      payer: Signer,
     ): Token;
     static getMinBalanceRentForExemptMint(
       connection: Connection,
@@ -94,7 +89,7 @@ declare module '@solana/spl-token' {
     ): Promise<PublicKey>;
     static createMint(
       connection: Connection,
-      payer: Account,
+      payer: Signer,
       mintAuthority: PublicKey,
       freezeAuthority: PublicKey | null,
       decimals: number,
@@ -106,7 +101,7 @@ declare module '@solana/spl-token' {
       connection: Connection,
       programId: PublicKey,
       owner: PublicKey,
-      payer: Account,
+      payer: Signer,
       amount: number,
     ): Promise<PublicKey>;
     createMultisig(m: number, signers: Array<PublicKey>): Promise<PublicKey>;
@@ -117,56 +112,56 @@ declare module '@solana/spl-token' {
     transfer(
       source: PublicKey,
       destination: PublicKey,
-      owner: Account | PublicKey,
-      multiSigners: Array<Account>,
+      owner: Signer | PublicKey,
+      multiSigners: Array<Signer>,
       amount: number | u64,
     ): Promise<TransactionSignature>;
     approve(
       account: PublicKey,
       delegate: PublicKey,
-      owner: Account | PublicKey,
-      multiSigners: Array<Account>,
+      owner: Signer | PublicKey,
+      multiSigners: Array<Signer>,
       amount: number | u64,
     ): Promise<void>;
     revoke(
       account: PublicKey,
-      owner: Account | PublicKey,
-      multiSigners: Array<Account>,
+      owner: Signer | PublicKey,
+      multiSigners: Array<Signer>,
     ): Promise<void>;
     setAuthority(
       account: PublicKey,
       newAuthority: PublicKey | null,
       authorityType: AuthorityType,
-      currentAuthority: Account | PublicKey,
-      multiSigners: Array<Account>,
+      currentAuthority: Signer | PublicKey,
+      multiSigners: Array<Signer>,
     ): Promise<void>;
     mintTo(
       dest: PublicKey,
-      authority: Account | PublicKey,
-      multiSigners: Array<Account>,
+      authority: Signer | PublicKey,
+      multiSigners: Array<Signer>,
       amount: number | u64,
     ): Promise<void>;
     burn(
       account: PublicKey,
-      owner: Account | PublicKey,
-      multiSigners: Array<Account>,
+      owner: Signer | PublicKey,
+      multiSigners: Array<Signer>,
       amount: number | u64,
     ): Promise<void>;
     freezeAccount(
       account: PublicKey,
       authority: any,
-      multiSigners: Array<Account>,
+      multiSigners: Array<Signer>,
     ): Promise<void>;
     thawAccount(
       account: PublicKey,
       authority: any,
-      multiSigners: Array<Account>,
+      multiSigners: Array<Signer>,
     ): Promise<void>;
     closeAccount(
       account: PublicKey,
       dest: PublicKey,
-      authority: Account | PublicKey,
-      multiSigners: Array<Account>,
+      authority: Signer | PublicKey,
+      multiSigners: Array<Signer>,
     ): Promise<void>;
     static createInitMintInstruction(
       programId: PublicKey,
@@ -186,7 +181,7 @@ declare module '@solana/spl-token' {
       source: PublicKey,
       destination: PublicKey,
       owner: PublicKey,
-      multiSigners: Array<Account>,
+      multiSigners: Array<Signer>,
       amount: number | u64,
     ): TransactionInstruction;
     static createApproveInstruction(
@@ -194,14 +189,14 @@ declare module '@solana/spl-token' {
       account: PublicKey,
       delegate: PublicKey,
       owner: PublicKey,
-      multiSigners: Array<Account>,
+      multiSigners: Array<Signer>,
       amount: number | u64,
     ): TransactionInstruction;
     static createRevokeInstruction(
       programId: PublicKey,
       account: PublicKey,
       owner: PublicKey,
-      multiSigners: Array<Account>,
+      multiSigners: Array<Signer>,
     ): TransactionInstruction;
     static createSetAuthorityInstruction(
       programId: PublicKey,
@@ -209,14 +204,14 @@ declare module '@solana/spl-token' {
       newAuthority: PublicKey | null,
       authorityType: AuthorityType,
       authority: PublicKey,
-      multiSigners: Array<Account>,
+      multiSigners: Array<Signer>,
     ): TransactionInstruction;
     static createMintToInstruction(
       programId: PublicKey,
       mint: PublicKey,
       dest: PublicKey,
       authority: PublicKey,
-      multiSigners: Array<Account>,
+      multiSigners: Array<Signer>,
       amount: number | u64,
     ): TransactionInstruction;
     static createBurnInstruction(
@@ -224,7 +219,7 @@ declare module '@solana/spl-token' {
       mint: PublicKey,
       account: PublicKey,
       owner: PublicKey,
-      multiSigners: Array<Account>,
+      multiSigners: Array<Signer>,
       amount: number | u64,
     ): TransactionInstruction;
     static createCloseAccountInstruction(
@@ -232,21 +227,21 @@ declare module '@solana/spl-token' {
       account: PublicKey,
       dest: PublicKey,
       authority: PublicKey,
-      multiSigners: Array<Account>,
+      multiSigners: Array<Signer>,
     ): TransactionInstruction;
     static createFreezeAccountInstruction(
       programId: PublicKey,
       account: PublicKey,
       mint: PublicKey,
       authority: PublicKey,
-      multiSigners: Array<Account>,
+      multiSigners: Array<Signer>,
     ): TransactionInstruction;
     static createThawAccountInstruction(
       programId: PublicKey,
       account: PublicKey,
       mint: PublicKey,
       authority: PublicKey,
-      multiSigners: Array<Account>,
+      multiSigners: Array<Signer>,
     ): TransactionInstruction;
     static createAssociatedTokenAccountInstruction(
       associatedProgramId: PublicKey,

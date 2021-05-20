@@ -1,7 +1,7 @@
 // @flow
 import chai from 'chai';
 import chaiAsPromised from 'chai-as-promised';
-import {Account, PublicKey} from '@solana/web3.js';
+import {Keypair, PublicKey} from '@solana/web3.js';
 
 import {ASSOCIATED_TOKEN_PROGRAM_ID, Token, TOKEN_PROGRAM_ID} from '../client/token';
 
@@ -12,10 +12,10 @@ describe('Token', () => {
   it('createTransfer', () => {
     const ix = Token.createTransferCheckedInstruction(
       TOKEN_PROGRAM_ID,
-      new Account().publicKey,
-      new Account().publicKey,
-      new Account().publicKey,
-      new Account().publicKey,
+      Keypair.generate().publicKey,
+      Keypair.generate().publicKey,
+      Keypair.generate().publicKey,
+      Keypair.generate().publicKey,
       [],
       1,
       9,
@@ -27,9 +27,9 @@ describe('Token', () => {
   it('createInitMint', () => {
     const ix = Token.createInitMintInstruction(
       TOKEN_PROGRAM_ID,
-      new Account().publicKey,
+      Keypair.generate().publicKey,
       9,
-      new Account().publicKey,
+      Keypair.generate().publicKey,
       null,
     );
     expect(ix.programId).to.eql(TOKEN_PROGRAM_ID);
@@ -58,10 +58,10 @@ describe('Token', () => {
     const ix = Token.createAssociatedTokenAccountInstruction(
       ASSOCIATED_TOKEN_PROGRAM_ID,
       TOKEN_PROGRAM_ID,
-      new Account().publicKey,
-      new Account().publicKey,
-      new Account().publicKey,
-      new Account().publicKey,
+      Keypair.generate().publicKey,
+      Keypair.generate().publicKey,
+      Keypair.generate().publicKey,
+      Keypair.generate().publicKey,
     );
     expect(ix.programId).to.eql(ASSOCIATED_TOKEN_PROGRAM_ID);
     expect(ix.keys).to.have.length(7);
