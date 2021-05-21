@@ -71,7 +71,7 @@ async fn test_create_account_governance_with_invalid_config_error() {
         realm: realm_cookie.address,
         governed_account: governed_account_cookie.address,
         vote_threshold_percentage: 49,
-        token_threshold_percentage_to_create_proposal: 5,
+        min_tokens_to_create_proposal: 5,
         min_instruction_hold_up_time: 10,
         max_voting_time: 100,
     };
@@ -92,7 +92,7 @@ async fn test_create_account_governance_with_invalid_config_error() {
         realm: realm_cookie.address,
         governed_account: governed_account_cookie.address,
         vote_threshold_percentage: 101,
-        token_threshold_percentage_to_create_proposal: 5,
+        min_tokens_to_create_proposal: 5,
         min_instruction_hold_up_time: 10,
         max_voting_time: 100,
     };

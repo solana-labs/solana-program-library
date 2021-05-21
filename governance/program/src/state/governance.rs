@@ -25,9 +25,8 @@ pub struct GovernanceConfig {
     /// It's the percentage of tokens out of the entire pool of governance tokens eligible to vote
     pub vote_threshold_percentage: u8,
 
-    /// Minimum % of tokens for a governance token owner to be able to create a proposal
-    /// It's the percentage of tokens out of the entire pool of governance tokens eligible to vote
-    pub token_threshold_percentage_to_create_proposal: u8,
+    /// Minimum number of tokens a governance token owner must possess to be able to create a proposal
+    pub min_tokens_to_create_proposal: u16,
 
     /// Minimum waiting time in slots for an instruction to be executed after proposal is voted on
     pub min_instruction_hold_up_time: u64,
