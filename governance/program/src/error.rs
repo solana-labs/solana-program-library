@@ -43,6 +43,10 @@ pub enum GovernanceError {
     #[error("Invalid Voter account address")]
     InvalidVoterAccountAddress,
 
+    /// Invalid Governance config
+    #[error("Invalid Governance config")]
+    InvalidGovernanceConfig,
+
     /// ---- Account Tools Errors ----
 
     /// Invalid account owner

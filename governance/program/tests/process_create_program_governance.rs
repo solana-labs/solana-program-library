@@ -1,7 +1,6 @@
 #![cfg(feature = "test-bpf")]
 mod program_test;
 
-use solana_program::pubkey::Pubkey;
 use solana_program_test::*;
 
 use program_test::{tools::ProgramInstructionError, *};

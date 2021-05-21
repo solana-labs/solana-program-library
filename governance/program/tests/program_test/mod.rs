@@ -474,12 +474,23 @@ impl GovernanceProgramTest {
             max_voting_time: 100,
         };
 
+        self.with_account_governance_config(realm_cookie, governed_account_cookie, config)
+            .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_account_governance_config(
+        &mut self,
+        realm_cookie: &RealmCookie,
+        governed_account_cookie: &GovernedAccountCookie,
+        governance_config: GovernanceConfig,
+    ) -> Result<GovernanceCookie, ProgramError> {
         let create_account_governance_instruction =
-            create_account_governance(&self.payer.pubkey(), config.clone());
+            create_account_governance(&self.payer.pubkey(), governance_config.clone());
 
         let account = Governance {
             account_type: GovernanceAccountType::AccountGovernance,
-            config,
+            config: governance_config,
             proposal_count: 0,
         };
 

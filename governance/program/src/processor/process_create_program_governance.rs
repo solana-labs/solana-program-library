@@ -4,8 +4,10 @@ use crate::{
     state::governance::Governance,
     state::{
         enums::GovernanceAccountType,
-        governance::{get_program_governance_address_seeds, GovernanceConfig},
-        realm::assert_is_valid_realm,
+        governance::{
+            assert_is_valid_governance_config, get_program_governance_address_seeds,
+            GovernanceConfig,
+        },
     },
     tools::{
         account::create_and_serialize_account_signed,
@@ -42,7 +44,7 @@ pub fn process_create_program_governance(
     let rent_sysvar_info = next_account_info(account_info_iter)?; // 6
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
 
-    assert_is_valid_realm(realm_info)?;
+    assert_is_valid_governance_config(&config, &realm_info)?;
 
     let program_governance_data = Governance {
         account_type: GovernanceAccountType::ProgramGovernance,

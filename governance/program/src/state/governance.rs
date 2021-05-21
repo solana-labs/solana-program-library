@@ -1,8 +1,15 @@
 //! Program Governance Account
 
-use crate::{id, state::enums::GovernanceAccountType, tools::account::AccountMaxSize};
+use crate::{
+    error::GovernanceError, id, state::enums::GovernanceAccountType, tools::account::AccountMaxSize,
+};
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
-use solana_program::{program_pack::IsInitialized, pubkey::Pubkey};
+use solana_program::{
+    account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
+    pubkey::Pubkey,
+};
+
+use super::realm::assert_is_valid_realm;
 
 /// Governance config
 #[repr(C)]
@@ -100,4 +107,24 @@ pub fn get_account_governance_address<'a>(
         &id(),
     )
     .0
+}
+
+/// Validates governance config
+pub fn assert_is_valid_governance_config(
+    governance_config: &GovernanceConfig,
+    realm_info: &AccountInfo,
+) -> Result<(), ProgramError> {
+    if realm_info.key != &governance_config.realm {
+        return Err(GovernanceError::InvalidGovernanceConfig.into());
+    }
+
+    assert_is_valid_realm(realm_info)?;
+
+    if governance_config.vote_threshold_percentage < 50
+        || governance_config.vote_threshold_percentage > 100
+    {
+        return Err(GovernanceError::InvalidGovernanceConfig.into());
+    }
+
+    Ok(())
 }
