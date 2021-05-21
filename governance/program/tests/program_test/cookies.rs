@@ -37,6 +37,7 @@ pub struct GovernedProgramCookie {
     pub address: Pubkey,
     pub upgrade_authority: Keypair,
     pub data_address: Pubkey,
+    pub transfer_upgrade_authority: bool,
 }
 
 #[derive(Debug)]

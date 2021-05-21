@@ -62,6 +62,28 @@ pub enum GovernanceError {
     /// Invalid Token account owner
     #[error("Invalid Token account owner")]
     InvalidTokenAccountOwner,
+
+    /// ---- Bpf Upgradable Loader Errors ----
+
+    /// Invalid ProgramData account Address
+    #[error("Invalid ProgramData account address")]
+    InvalidProgramDataAccountAddress,
+
+    /// Invalid ProgramData account data
+    #[error("Invalid ProgramData account Data")]
+    InvalidProgramDataAccountData,
+
+    /// Provided upgrade authority doesn't match current program upgrade authority
+    #[error("Provided upgrade authority doesn't match current program upgrade authority")]
+    InvalidUpgradeAuthority,
+
+    /// Current program upgrade authority must sign transaction
+    #[error("Current program upgrade authority must sign transaction")]
+    UpgradeAuthorityMustSign,
+
+    /// Given program is not upgradable
+    #[error("Given program is not upgradable")]
+    ProgramNotUpgradable,
 }
 
 impl PrintProgramError for GovernanceError {

@@ -573,6 +573,7 @@ impl GovernanceProgramTest {
             address: program_keypair.pubkey(),
             upgrade_authority: program_upgrade_authority_keypair,
             data_address: program_data_address,
+            transfer_upgrade_authority: true,
         }
     }
 
@@ -581,6 +582,23 @@ impl GovernanceProgramTest {
         &mut self,
         realm_cookie: &RealmCookie,
         governed_program_cookie: &GovernedProgramCookie,
+    ) -> Result<GovernanceCookie, ProgramError> {
+        self.with_program_governance_instruction(
+            realm_cookie,
+            governed_program_cookie,
+            |_| {},
+            None,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_program_governance_instruction<F: Fn(&mut Instruction)>(
+        &mut self,
+        realm_cookie: &RealmCookie,
+        governed_program_cookie: &GovernedProgramCookie,
+        instruction_setup: F,
+        signers_override: Option<&[&Keypair]>,
     ) -> Result<GovernanceCookie, ProgramError> {
         let config = GovernanceConfig {
             realm: realm_cookie.address,
@@ -591,17 +609,20 @@ impl GovernanceProgramTest {
             max_voting_time: 100,
         };
 
-        let create_program_governance_instruction = create_program_governance(
+        let mut create_program_governance_instruction = create_program_governance(
             &governed_program_cookie.upgrade_authority.pubkey(),
             &self.payer.pubkey(),
             config.clone(),
+            governed_program_cookie.transfer_upgrade_authority,
         );
 
-        self.process_transaction(
-            &[create_program_governance_instruction],
-            Some(&[&governed_program_cookie.upgrade_authority]),
-        )
-        .await?;
+        instruction_setup(&mut create_program_governance_instruction);
+
+        let default_signers = &[&governed_program_cookie.upgrade_authority];
+        let singers = signers_override.unwrap_or(default_signers);
+
+        self.process_transaction(&[create_program_governance_instruction], Some(singers))
+            .await?;
 
         let account = Governance {
             account_type: GovernanceAccountType::ProgramGovernance,

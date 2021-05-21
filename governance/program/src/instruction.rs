@@ -132,6 +132,11 @@ pub enum GovernanceInstruction {
         /// Governance config
         #[allow(dead_code)]
         config: GovernanceConfig,
+
+        #[allow(dead_code)]
+        /// Indicate whether Program's upgrade_authority should be transferred to the Governance PDA
+        /// If it's set to false then it can be done at later time but the instruction would validate the current upgrade_authority signed the transaction nonetheless
+        transfer_upgrade_authority: bool,
     },
 
     /// Create Proposal account for Instructions that will be executed at various slots in the future
@@ -456,6 +461,7 @@ pub fn create_program_governance(
     payer: &Pubkey,
     // Args
     config: GovernanceConfig,
+    transfer_upgrade_authority: bool,
 ) -> Instruction {
     let program_governance_address =
         get_program_governance_address(&config.realm, &config.governed_account);
@@ -472,7 +478,10 @@ pub fn create_program_governance(
         AccountMeta::new_readonly(sysvar::rent::id(), false),
     ];
 
-    let instruction = GovernanceInstruction::CreateProgramGovernance { config };
+    let instruction = GovernanceInstruction::CreateProgramGovernance {
+        config,
+        transfer_upgrade_authority,
+    };
 
     Instruction {
         program_id: id(),

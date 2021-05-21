@@ -58,9 +58,15 @@ pub fn process_instruction(
             &governing_token_owner,
             &new_vote_authority,
         ),
-        GovernanceInstruction::CreateProgramGovernance { config } => {
-            process_create_program_governance(program_id, accounts, config)
-        }
+        GovernanceInstruction::CreateProgramGovernance {
+            config,
+            transfer_upgrade_authority,
+        } => process_create_program_governance(
+            program_id,
+            accounts,
+            config,
+            transfer_upgrade_authority,
+        ),
         GovernanceInstruction::CreateAccountGovernance { config } => {
             process_create_account_governance(program_id, accounts, config)
         }

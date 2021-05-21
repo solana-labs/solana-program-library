@@ -11,7 +11,9 @@ use crate::{
     },
     tools::{
         account::create_and_serialize_account_signed,
-        bpf_loader_upgradeable::set_program_upgrade_authority,
+        bpf_loader_upgradeable::{
+            assert_program_upgrade_authority_is_signer, set_program_upgrade_authority,
+        },
     },
 };
 use solana_program::{
@@ -27,6 +29,7 @@ pub fn process_create_program_governance(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     config: GovernanceConfig,
+    transfer_upgrade_authority: bool,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -62,13 +65,21 @@ pub fn process_create_program_governance(
         rent,
     )?;
 
-    set_program_upgrade_authority(
-        &config.governed_account,
-        governed_program_data_info,
-        governed_program_upgrade_authority_info,
-        program_governance_info,
-        bpf_upgrade_loader_info,
-    )?;
+    if transfer_upgrade_authority {
+        set_program_upgrade_authority(
+            &config.governed_account,
+            governed_program_data_info,
+            governed_program_upgrade_authority_info,
+            program_governance_info,
+            bpf_upgrade_loader_info,
+        )?;
+    } else {
+        assert_program_upgrade_authority_is_signer(
+            &config.governed_account,
+            &governed_program_data_info,
+            &governed_program_upgrade_authority_info,
+        )?;
+    }
 
     Ok(())
 }
