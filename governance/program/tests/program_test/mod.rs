@@ -464,7 +464,7 @@ impl GovernanceProgramTest {
         &mut self,
         realm_cookie: &RealmCookie,
         governed_account_cookie: &GovernedAccountCookie,
-    ) -> GovernanceCookie {
+    ) -> Result<GovernanceCookie, ProgramError> {
         let config = GovernanceConfig {
             realm: realm_cookie.address,
             governed_account: governed_account_cookie.address,
@@ -484,16 +484,15 @@ impl GovernanceProgramTest {
         };
 
         self.process_transaction(&[create_account_governance_instruction], None)
-            .await
-            .unwrap();
+            .await?;
 
         let account_governance_address =
             get_account_governance_address(&realm_cookie.address, &governed_account_cookie.address);
 
-        GovernanceCookie {
+        Ok(GovernanceCookie {
             address: account_governance_address,
             account,
-        }
+        })
     }
 
     #[allow(dead_code)]

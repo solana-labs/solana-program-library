@@ -5,7 +5,7 @@ use crate::{
         enums::GovernanceAccountType,
         governance::{get_account_governance_address_seeds, Governance, GovernanceConfig},
     },
-    tools::account::create_and_serialize_account_signed,
+    tools::{account::create_and_serialize_account_signed, asserts::assert_is_valid_realm},
 };
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -23,12 +23,15 @@ pub fn process_create_account_governance(
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
+    let realm_info = next_account_info(account_info_iter)?; // 0
     let account_governance_info = next_account_info(account_info_iter)?; // 0
     let payer_info = next_account_info(account_info_iter)?; // 1
     let system_info = next_account_info(account_info_iter)?; // 2
 
     let rent_sysvar_info = next_account_info(account_info_iter)?; // 3
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
+
+    assert_is_valid_realm(realm_info)?;
 
     let account_governance_data = Governance {
         account_type: GovernanceAccountType::AccountGovernance,

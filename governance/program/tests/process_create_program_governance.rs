@@ -1,11 +1,14 @@
 #![cfg(feature = "test-bpf")]
 mod program_test;
 
+use solana_program::pubkey::Pubkey;
 use solana_program_test::*;
 
 use program_test::{tools::ProgramInstructionError, *};
 use solana_sdk::signature::Keypair;
-use spl_governance::tools::bpf_loader_upgradeable::get_program_upgrade_authority;
+use spl_governance::{
+    error::GovernanceError, tools::bpf_loader_upgradeable::get_program_upgrade_authority,
+};
 
 #[tokio::test]
 async fn test_program_governance_created() {
@@ -51,12 +54,33 @@ async fn test_program_governance_with_incorrect_upgrade_authority_error() {
     governed_program_cookie.upgrade_authority = Keypair::new();
 
     // Act
-    let error = governance_test
+    let err = governance_test
         .with_program_governance(&realm_cookie, &governed_program_cookie)
         .await
         .err()
         .unwrap();
 
     // Assert
-    assert_eq!(error, ProgramInstructionError::IncorrectAuthority.into());
+    assert_eq!(err, ProgramInstructionError::IncorrectAuthority.into());
+}
+
+#[tokio::test]
+async fn test_program_governance_with_with_invalid_realm_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let mut realm_cookie = governance_test.with_realm().await;
+    let governed_program_cookie = governance_test.with_governed_program().await;
+
+    realm_cookie.address = Pubkey::new_unique();
+
+    // Act
+    let err = governance_test
+        .with_program_governance(&realm_cookie, &governed_program_cookie)
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+    assert_eq!(err, GovernanceError::InvalidRealm.into());
 }

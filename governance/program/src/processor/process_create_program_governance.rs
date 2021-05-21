@@ -7,7 +7,7 @@ use crate::{
         governance::{get_program_governance_address_seeds, GovernanceConfig},
     },
     tools::{
-        account::create_and_serialize_account_signed,
+        account::create_and_serialize_account_signed, asserts::assert_is_valid_realm,
         bpf_loader_upgradeable::set_program_upgrade_authority,
     },
 };
@@ -27,6 +27,7 @@ pub fn process_create_program_governance(
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
+    let realm_info = next_account_info(account_info_iter)?; // 0
     let program_governance_info = next_account_info(account_info_iter)?; // 0
 
     let governed_program_data_info = next_account_info(account_info_iter)?; // 1
@@ -39,6 +40,8 @@ pub fn process_create_program_governance(
 
     let rent_sysvar_info = next_account_info(account_info_iter)?; // 6
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
+
+    assert_is_valid_realm(realm_info)?;
 
     let program_governance_data = Governance {
         account_type: GovernanceAccountType::ProgramGovernance,

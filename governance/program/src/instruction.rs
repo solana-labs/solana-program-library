@@ -433,6 +433,7 @@ pub fn create_account_governance(
         get_account_governance_address(&config.realm, &config.governed_account);
 
     let accounts = vec![
+        AccountMeta::new_readonly(config.realm, false),
         AccountMeta::new(account_governance_address, false),
         AccountMeta::new_readonly(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
@@ -461,6 +462,7 @@ pub fn create_program_governance(
     let governed_program_data_address = get_program_data_address(&config.governed_account);
 
     let accounts = vec![
+        AccountMeta::new_readonly(config.realm, false),
         AccountMeta::new(program_governance_address, false),
         AccountMeta::new(governed_program_data_address, false),
         AccountMeta::new_readonly(*governed_program_upgrade_authority, true),

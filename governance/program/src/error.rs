@@ -19,6 +19,10 @@ pub enum GovernanceError {
     #[error("Realm with the given name and governing mints already exists")]
     RealmAlreadyExists,
 
+    /// Invalid Realm
+    #[error("Invalid realm")]
+    InvalidRealm,
+
     /// Invalid Governing Token Mint
     #[error("Invalid Governing Token Mint")]
     InvalidGoverningTokenMint,

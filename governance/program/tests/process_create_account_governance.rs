@@ -1,9 +1,11 @@
 #![cfg(feature = "test-bpf")]
 mod program_test;
 
+use solana_program::pubkey::Pubkey;
 use solana_program_test::*;
 
 use program_test::*;
+use spl_governance::error::GovernanceError;
 
 #[tokio::test]
 async fn test_account_governance_created() {
@@ -16,7 +18,8 @@ async fn test_account_governance_created() {
     // Act
     let account_governance_cookie = governance_test
         .with_account_governance(&realm_cookie, &governed_account_cookie)
-        .await;
+        .await
+        .unwrap();
 
     // Assert
     let account_governance_account = governance_test
@@ -27,4 +30,26 @@ async fn test_account_governance_created() {
         account_governance_cookie.account,
         account_governance_account
     );
+}
+
+#[tokio::test]
+async fn test_create_account_governance_with_invalid_realm_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let mut realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    realm_cookie.address = Pubkey::new_unique();
+
+    // Act
+    let err = governance_test
+        .with_account_governance(&realm_cookie, &governed_account_cookie)
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+
+    assert_eq!(err, GovernanceError::InvalidRealm.into());
 }
