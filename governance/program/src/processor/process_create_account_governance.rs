@@ -4,8 +4,9 @@ use crate::{
     state::{
         enums::GovernanceAccountType,
         governance::{get_account_governance_address_seeds, Governance, GovernanceConfig},
+        realm::assert_is_valid_realm,
     },
-    tools::{account::create_and_serialize_account_signed, asserts::assert_is_valid_realm},
+    tools::account::create_and_serialize_account_signed,
 };
 use solana_program::{
     account_info::{next_account_info, AccountInfo},

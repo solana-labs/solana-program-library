@@ -72,7 +72,12 @@ async fn test_program_governance_with_with_invalid_realm_error() {
     let mut realm_cookie = governance_test.with_realm().await;
     let governed_program_cookie = governance_test.with_governed_program().await;
 
-    realm_cookie.address = Pubkey::new_unique();
+    let program_governance_cookie = governance_test
+        .with_program_governance(&realm_cookie, &governed_program_cookie)
+        .await
+        .unwrap();
+
+    realm_cookie.address = program_governance_cookie.address;
 
     // Act
     let err = governance_test
@@ -82,5 +87,5 @@ async fn test_program_governance_with_with_invalid_realm_error() {
         .unwrap();
 
     // Assert
-    assert_eq!(err, GovernanceError::InvalidRealm.into());
+    assert_eq!(err, GovernanceError::InvalidAccountType.into());
 }

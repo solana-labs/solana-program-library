@@ -5,9 +5,10 @@ use crate::{
     state::{
         enums::GovernanceAccountType,
         governance::{get_program_governance_address_seeds, GovernanceConfig},
+        realm::assert_is_valid_realm,
     },
     tools::{
-        account::create_and_serialize_account_signed, asserts::assert_is_valid_realm,
+        account::create_and_serialize_account_signed,
         bpf_loader_upgradeable::set_program_upgrade_authority,
     },
 };

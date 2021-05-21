@@ -2,7 +2,7 @@
 
 use solana_program::{account_info::AccountInfo, program_error::ProgramError};
 
-use crate::{error::GovernanceError, id, state::voter_record::VoterRecord};
+use crate::{error::GovernanceError, state::voter_record::VoterRecord};
 
 /// Checks whether the provided vote authority can set new  vote authority
 pub fn assert_is_signed_by_owner_or_vote_authority(
@@ -22,13 +22,4 @@ pub fn assert_is_signed_by_owner_or_vote_authority(
     }
 
     Err(GovernanceError::GoverningTokenOwnerOrVoteAuthrotiyMustSign.into())
-}
-
-/// Checks whether realm exists and is owned by Governance
-pub fn assert_is_valid_realm(realm_info: &AccountInfo) -> Result<(), ProgramError> {
-    if realm_info.data_len() == 0 || realm_info.owner != &id() {
-        return Err(GovernanceError::InvalidRealm.into());
-    }
-
-    Ok(())
 }

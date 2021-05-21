@@ -49,6 +49,10 @@ pub enum GovernanceError {
     #[error("Invalid account owner")]
     InvalidAccountOwner,
 
+    /// Invalid Account type
+    #[error("Invalid Account type")]
+    InvalidAccountType,
+
     /// ---- Token Tools Errors ----
 
     /// Invalid Token account owner
