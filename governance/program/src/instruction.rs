@@ -135,7 +135,8 @@ pub enum GovernanceInstruction {
 
         #[allow(dead_code)]
         /// Indicate whether Program's upgrade_authority should be transferred to the Governance PDA
-        /// If it's set to false then it can be done at later time but the instruction would validate the current upgrade_authority signed the transaction nonetheless
+        /// If it's set to false then it can be done at a later time
+        /// However the instruction would validate the current upgrade_authority signed the transaction nonetheless
         transfer_upgrade_authority: bool,
     },
 

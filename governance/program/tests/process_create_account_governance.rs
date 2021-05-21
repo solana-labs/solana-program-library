@@ -7,7 +7,7 @@ use program_test::*;
 use spl_governance::{error::GovernanceError, state::governance::GovernanceConfig};
 
 #[tokio::test]
-async fn test_account_governance_created() {
+async fn test_create_account_governance() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -66,14 +66,14 @@ async fn test_create_account_governance_with_invalid_config_error() {
     let realm_cookie = governance_test.with_realm().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
-    // Arrange
+    // Arrange below 50% threshold
     let config = GovernanceConfig {
         realm: realm_cookie.address,
         governed_account: governed_account_cookie.address,
-        vote_threshold_percentage: 49,
-        min_tokens_to_create_proposal: 5,
-        min_instruction_hold_up_time: 10,
-        max_voting_time: 100,
+        vote_threshold_percentage: 49, // below 50% threshold
+        min_tokens_to_create_proposal: 1,
+        min_instruction_hold_up_time: 1,
+        max_voting_time: 1,
     };
 
     // Act
@@ -87,14 +87,14 @@ async fn test_create_account_governance_with_invalid_config_error() {
 
     assert_eq!(err, GovernanceError::InvalidGovernanceConfig.into());
 
-    // Arrange
+    // Arrange  above 100% threshold
     let config = GovernanceConfig {
         realm: realm_cookie.address,
         governed_account: governed_account_cookie.address,
-        vote_threshold_percentage: 101,
-        min_tokens_to_create_proposal: 5,
-        min_instruction_hold_up_time: 10,
-        max_voting_time: 100,
+        vote_threshold_percentage: 101, // Above 100% threshold
+        min_tokens_to_create_proposal: 1,
+        min_instruction_hold_up_time: 1,
+        max_voting_time: 1,
     };
 
     // Act

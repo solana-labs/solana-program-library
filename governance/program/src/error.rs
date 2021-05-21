@@ -63,7 +63,7 @@ pub enum GovernanceError {
     #[error("Invalid Token account owner")]
     InvalidTokenAccountOwner,
 
-    /// ---- Bpf Upgradable Loader Errors ----
+    /// ---- Bpf Upgradable Loader Tools Errors ----
 
     /// Invalid ProgramData account Address
     #[error("Invalid ProgramData account address")]

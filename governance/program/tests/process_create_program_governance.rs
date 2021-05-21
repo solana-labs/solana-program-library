@@ -10,7 +10,7 @@ use spl_governance::{
 };
 
 #[tokio::test]
-async fn test_program_governance_created() {
+async fn test_create_program_governance() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -120,7 +120,7 @@ async fn test_create_program_governance_without_transferring_upgrade_authority_w
             &realm_cookie,
             &governed_program_cookie,
             |i| {
-                i.accounts[3].is_signer = false;
+                i.accounts[3].is_signer = false; // governed_program_upgrade_authority
             },
             Some(&[]),
         )
@@ -133,7 +133,7 @@ async fn test_create_program_governance_without_transferring_upgrade_authority_w
 }
 
 #[tokio::test]
-async fn test_program_governance_with_incorrect_upgrade_authority_error() {
+async fn test_create_program_governance_with_incorrect_upgrade_authority_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -154,7 +154,7 @@ async fn test_program_governance_with_incorrect_upgrade_authority_error() {
 }
 
 #[tokio::test]
-async fn test_program_governance_with_with_invalid_realm_error() {
+async fn test_create_program_governance_with_invalid_realm_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 

@@ -597,7 +597,7 @@ impl GovernanceProgramTest {
         &mut self,
         realm_cookie: &RealmCookie,
         governed_program_cookie: &GovernedProgramCookie,
-        instruction_setup: F,
+        instruction_override: F,
         signers_override: Option<&[&Keypair]>,
     ) -> Result<GovernanceCookie, ProgramError> {
         let config = GovernanceConfig {
@@ -616,7 +616,7 @@ impl GovernanceProgramTest {
             governed_program_cookie.transfer_upgrade_authority,
         );
 
-        instruction_setup(&mut create_program_governance_instruction);
+        instruction_override(&mut create_program_governance_instruction);
 
         let default_signers = &[&governed_program_cookie.upgrade_authority];
         let singers = signers_override.unwrap_or(default_signers);

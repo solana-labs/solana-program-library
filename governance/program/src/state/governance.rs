@@ -1,4 +1,4 @@
-//! Program Governance Account
+//! Governance Account
 
 use crate::{
     error::GovernanceError, id, state::enums::GovernanceAccountType, tools::account::AccountMaxSize,

@@ -103,7 +103,7 @@ pub fn deserialize_account<T: BorshDeserialize + IsInitialized>(
     }
 }
 
-/// Asserts the given account is not empty, owned by Governance program and of the expected type
+/// Asserts the given account is not empty, owned given program and of the expected type
 pub fn assert_is_valid_account<T: BorshDeserialize + PartialEq>(
     account_info: &AccountInfo,
     expected_account_type: T,
