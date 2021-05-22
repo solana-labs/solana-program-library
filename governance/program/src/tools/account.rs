@@ -88,13 +88,13 @@ pub fn deserialize_account<T: BorshDeserialize + IsInitialized>(
     account_info: &AccountInfo,
     owner_program_id: &Pubkey,
 ) -> Result<T, ProgramError> {
+    if account_info.data_is_empty() {
+        return Err(ProgramError::UninitializedAccount);
+    }
     if account_info.owner != owner_program_id {
         return Err(GovernanceError::InvalidAccountOwner.into());
     }
 
-    if account_info.data_is_empty() {
-        return Err(ProgramError::UninitializedAccount);
-    }
     let account: T = try_from_slice_unchecked(&account_info.data.borrow())?;
     if !account.is_initialized() {
         Err(ProgramError::UninitializedAccount)

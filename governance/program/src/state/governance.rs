@@ -1,7 +1,8 @@
 //! Governance Account
 
 use crate::{
-    error::GovernanceError, id, state::enums::GovernanceAccountType, tools::account::AccountMaxSize,
+    error::GovernanceError, id, state::enums::GovernanceAccountType,
+    tools::account::deserialize_account, tools::account::AccountMaxSize,
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
@@ -56,6 +57,13 @@ impl IsInitialized for Governance {
         self.account_type == GovernanceAccountType::AccountGovernance
             || self.account_type == GovernanceAccountType::ProgramGovernance
     }
+}
+
+/// Deserializes account and checks owner program
+pub fn deserialize_governance_raw(
+    governance_info: &AccountInfo,
+) -> Result<Governance, ProgramError> {
+    deserialize_account::<Governance>(governance_info, &id())
 }
 
 /// Returns ProgramGovernance PDA seeds

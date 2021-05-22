@@ -1,0 +1,3 @@
+cc c4e184f7da9cb0fadb2b7e2064e1797262f89324176acd14b84cf40098aea268 # shrinks to state = Draft
+cc 080b55413b4ab9ed3c82797ba67b20ab27d12f1baa788e1409bfa86eacedf567 # shrinks to state = SigningOff
+cc eb6a25d66f34f35a52e0dffdfd3182f698fb8dcc49e033379d497b615e5a0c24 # shrinks to state = SigningOff

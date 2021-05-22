@@ -31,21 +31,65 @@ pub enum GovernanceError {
     #[error("Governing Token Owner must sign transaction")]
     GoverningTokenOwnerMustSign,
 
-    /// Governing Token Owner or Vote Authority  must sign transaction
-    #[error("Governing Token Owner or Vote Authority  must sign transaction")]
-    GoverningTokenOwnerOrVoteAuthrotiyMustSign,
+    /// Governing Token Owner or Delegate  must sign transaction
+    #[error("Governing Token Owner or Delegate  must sign transaction")]
+    GoverningTokenOwnerOrDelegateMustSign,
 
     /// All active votes must be relinquished to withdraw governing tokens
     #[error("All active votes must be relinquished to withdraw governing tokens")]
     CannotWithdrawGoverningTokensWhenActiveVotesExist,
 
-    /// Invalid Voter account address
-    #[error("Invalid Voter account address")]
-    InvalidVoterAccountAddress,
+    /// Invalid Token Owner Record account address
+    #[error("Invalid Token Owner Record account address")]
+    InvalidTokenOwnerRecordAccountAddress,
+
+    /// Invalid Signatory account address
+    #[error("Invalid Signatory account address")]
+    InvalidSignatoryAddress,
+
+    /// Signatory already signed off
+    #[error("Signatory already signed off")]
+    SignatoryAlreadySignedOff,
+
+    /// Signatory must sign
+    #[error("Signatory must sign")]
+    SignatoryMustSign,
+
+    /// Invalid Proposal Owner
+    #[error("Invalid Proposal Owner")]
+    InvalidProposalOwnerAccount,
 
     /// Invalid Governance config
     #[error("Invalid Governance config")]
     InvalidGovernanceConfig,
+
+    /// Proposal for the given Governance, Governing Token Mint and Name already exists
+    #[error("Proposal for the given Governance, Governing Token Mint and Name already exists")]
+    ProposalAlreadyExists,
+
+    /// Owner doesn't have enough governing tokens to create Proposal
+    #[error("Owner doesn't have enough governing tokens to create Proposal")]
+    NotEnoughTokensToCreateProposal,
+
+    /// Invalid State: Can't add Signatory
+    #[error("Invalid State: Can't add Signatory")]
+    InvalidStateCannotAddSignatory,
+
+    /// Invalid State: Can't sign off
+    #[error("Invalid State: Can't sign off")]
+    InvalidStateCannotSignOff,
+
+    /// Proposal has no signatories
+    #[error("Proposal has no signatories")]
+    ProposalHasNoSignatories,
+
+    /// Invalid State: Can't remove Signatory
+    #[error("Invalid State: Can't remove Signatory")]
+    InvalidStateCannotRemoveSignatory,
+
+    /// Invalid Signatory Mint
+    #[error("Invalid Signatory Mint")]
+    InvalidSignatoryMint,
 
     /// ---- Account Tools Errors ----
 
