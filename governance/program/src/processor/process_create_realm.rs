@@ -31,8 +31,8 @@ pub fn process_create_realm(
     let payer_info = next_account_info(account_info_iter)?; // 3
     let system_info = next_account_info(account_info_iter)?; // 4
     let spl_token_info = next_account_info(account_info_iter)?; // 5
-    let rent_sysvar_info = next_account_info(account_info_iter)?; // 6
 
+    let rent_sysvar_info = next_account_info(account_info_iter)?; // 6
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
 
     if !realm_info.data_is_empty() {

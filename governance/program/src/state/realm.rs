@@ -8,7 +8,7 @@ use solana_program::{
 
 use crate::{
     id,
-    tools::account::{deserialize_account, AccountMaxSize},
+    tools::account::{assert_is_valid_account, deserialize_account, AccountMaxSize},
     PROGRAM_AUTHORITY_SEED,
 };
 
@@ -38,6 +38,11 @@ impl IsInitialized for Realm {
     fn is_initialized(&self) -> bool {
         self.account_type == GovernanceAccountType::Realm
     }
+}
+
+/// Checks whether realm account exists, is initialized and  owned by Governance program
+pub fn assert_is_valid_realm(realm_info: &AccountInfo) -> Result<(), ProgramError> {
+    assert_is_valid_account(realm_info, GovernanceAccountType::Realm, &id())
 }
 
 /// Deserializes account and checks owner program

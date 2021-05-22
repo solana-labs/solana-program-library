@@ -15,6 +15,9 @@ pub enum GovernanceAccountType {
     /// Voter record for each voter and given governing token type within a Realm
     VoterRecord,
 
+    /// Generic Account Governance account
+    AccountGovernance,
+
     /// Program Governance account
     ProgramGovernance,
 

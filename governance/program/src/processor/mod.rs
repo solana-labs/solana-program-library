@@ -1,5 +1,7 @@
 //! Program processor
 
+mod process_create_account_governance;
+mod process_create_program_governance;
 mod process_create_realm;
 mod process_deposit_governing_tokens;
 mod process_set_vote_authority;
@@ -8,6 +10,8 @@ mod process_withdraw_governing_tokens;
 use crate::instruction::GovernanceInstruction;
 use borsh::BorshDeserialize;
 
+use process_create_account_governance::*;
+use process_create_program_governance::*;
 use process_create_realm::*;
 use process_deposit_governing_tokens::*;
 use process_set_vote_authority::*;
@@ -54,6 +58,18 @@ pub fn process_instruction(
             &governing_token_owner,
             &new_vote_authority,
         ),
+        GovernanceInstruction::CreateProgramGovernance {
+            config,
+            transfer_upgrade_authority,
+        } => process_create_program_governance(
+            program_id,
+            accounts,
+            config,
+            transfer_upgrade_authority,
+        ),
+        GovernanceInstruction::CreateAccountGovernance { config } => {
+            process_create_account_governance(program_id, accounts, config)
+        }
         _ => todo!("Instruction not implemented yet"),
     }
 }

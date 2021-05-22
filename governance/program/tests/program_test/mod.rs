@@ -1,6 +1,9 @@
+use std::borrow::Borrow;
+
 use borsh::BorshDeserialize;
 use solana_program::{
     borsh::try_from_slice_unchecked,
+    bpf_loader_upgradeable::{self, UpgradeableLoaderState},
     instruction::Instruction,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack},
@@ -8,6 +11,8 @@ use solana_program::{
     rent::Rent,
     system_instruction,
 };
+
+use bincode::deserialize;
 
 use solana_program_test::ProgramTest;
 use solana_program_test::*;
@@ -18,18 +23,26 @@ use solana_sdk::{
 };
 use spl_governance::{
     instruction::{
-        create_realm, deposit_governing_tokens, set_vote_authority, withdraw_governing_tokens,
+        create_account_governance, create_program_governance, create_realm,
+        deposit_governing_tokens, set_vote_authority, withdraw_governing_tokens,
     },
     processor::process_instruction,
     state::{
         enums::{GovernanceAccountType, GoverningTokenType},
+        governance::{
+            get_account_governance_address, get_program_governance_address, Governance,
+            GovernanceConfig,
+        },
         realm::{get_governing_token_holding_address, get_realm_address, Realm},
         voter_record::{get_voter_record_address, VoterRecord},
     },
+    tools::bpf_loader_upgradeable::get_program_data_address,
 };
 
 pub mod cookies;
-use self::cookies::{RealmCookie, VoterRecordCookie};
+use self::cookies::{
+    GovernanceCookie, GovernedAccountCookie, GovernedProgramCookie, RealmCookie, VoterRecordCookie,
+};
 
 pub mod tools;
 use self::tools::map_transaction_error;
@@ -80,18 +93,9 @@ impl GovernanceProgramTest {
         self.banks_client
             .process_transaction(transaction)
             .await
-            .map_err(map_transaction_error)
-    }
+            .map_err(map_transaction_error)?;
 
-    pub async fn get_account<T: BorshDeserialize>(&mut self, address: &Pubkey) -> T {
-        let raw_account = self
-            .banks_client
-            .get_account(*address)
-            .await
-            .unwrap()
-            .expect("GET-TEST-ACCOUNT-ERROR: Account not found");
-
-        try_from_slice_unchecked(&raw_account.data).unwrap()
+        Ok(())
     }
 
     #[allow(dead_code)]
@@ -449,25 +453,249 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
+    pub async fn with_governed_account(&mut self) -> GovernedAccountCookie {
+        GovernedAccountCookie {
+            address: Pubkey::new_unique(),
+        }
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_account_governance(
+        &mut self,
+        realm_cookie: &RealmCookie,
+        governed_account_cookie: &GovernedAccountCookie,
+    ) -> Result<GovernanceCookie, ProgramError> {
+        let config = GovernanceConfig {
+            realm: realm_cookie.address,
+            governed_account: governed_account_cookie.address,
+            vote_threshold_percentage: 60,
+            min_tokens_to_create_proposal: 5,
+            min_instruction_hold_up_time: 10,
+            max_voting_time: 100,
+        };
+
+        self.with_account_governance_config(realm_cookie, governed_account_cookie, config)
+            .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_account_governance_config(
+        &mut self,
+        realm_cookie: &RealmCookie,
+        governed_account_cookie: &GovernedAccountCookie,
+        governance_config: GovernanceConfig,
+    ) -> Result<GovernanceCookie, ProgramError> {
+        let create_account_governance_instruction =
+            create_account_governance(&self.payer.pubkey(), governance_config.clone());
+
+        let account = Governance {
+            account_type: GovernanceAccountType::AccountGovernance,
+            config: governance_config,
+            proposal_count: 0,
+        };
+
+        self.process_transaction(&[create_account_governance_instruction], None)
+            .await?;
+
+        let account_governance_address =
+            get_account_governance_address(&realm_cookie.address, &governed_account_cookie.address);
+
+        Ok(GovernanceCookie {
+            address: account_governance_address,
+            account,
+        })
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_governed_program(&mut self) -> GovernedProgramCookie {
+        let program_keypair = Keypair::new();
+        let program_buffer_keypair = Keypair::new();
+        let program_upgrade_authority_keypair = Keypair::new();
+
+        let program_data_address = get_program_data_address(&program_keypair.pubkey());
+
+        // Load solana_bpf_rust_upgradeable program taken from solana test programs
+        let path_buf = find_file("solana_bpf_rust_upgradeable.so").unwrap();
+        let program_data = read_file(path_buf);
+
+        let program_buffer_rent = self
+            .rent
+            .minimum_balance(UpgradeableLoaderState::programdata_len(program_data.len()).unwrap());
+
+        let mut instructions = bpf_loader_upgradeable::create_buffer(
+            &self.payer.pubkey(),
+            &program_buffer_keypair.pubkey(),
+            &program_upgrade_authority_keypair.pubkey(),
+            program_buffer_rent,
+            program_data.len(),
+        )
+        .unwrap();
+
+        let chunk_size = 800;
+
+        for (chunk, i) in program_data.chunks(chunk_size).zip(0..) {
+            instructions.push(bpf_loader_upgradeable::write(
+                &program_buffer_keypair.pubkey(),
+                &program_upgrade_authority_keypair.pubkey(),
+                (i * chunk_size) as u32,
+                chunk.to_vec(),
+            ));
+        }
+
+        let program_account_rent = self
+            .rent
+            .minimum_balance(UpgradeableLoaderState::program_len().unwrap());
+
+        let deploy_instructions = bpf_loader_upgradeable::deploy_with_max_program_len(
+            &self.payer.pubkey(),
+            &program_keypair.pubkey(),
+            &program_buffer_keypair.pubkey(),
+            &program_upgrade_authority_keypair.pubkey(),
+            program_account_rent,
+            program_data.len(),
+        )
+        .unwrap();
+
+        instructions.extend_from_slice(&deploy_instructions);
+
+        self.process_transaction(
+            &instructions[..],
+            Some(&[
+                &program_upgrade_authority_keypair,
+                &program_keypair,
+                &program_buffer_keypair,
+            ]),
+        )
+        .await
+        .unwrap();
+
+        GovernedProgramCookie {
+            address: program_keypair.pubkey(),
+            upgrade_authority: program_upgrade_authority_keypair,
+            data_address: program_data_address,
+            transfer_upgrade_authority: true,
+        }
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_program_governance(
+        &mut self,
+        realm_cookie: &RealmCookie,
+        governed_program_cookie: &GovernedProgramCookie,
+    ) -> Result<GovernanceCookie, ProgramError> {
+        self.with_program_governance_instruction(
+            realm_cookie,
+            governed_program_cookie,
+            |_| {},
+            None,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_program_governance_instruction<F: Fn(&mut Instruction)>(
+        &mut self,
+        realm_cookie: &RealmCookie,
+        governed_program_cookie: &GovernedProgramCookie,
+        instruction_override: F,
+        signers_override: Option<&[&Keypair]>,
+    ) -> Result<GovernanceCookie, ProgramError> {
+        let config = GovernanceConfig {
+            realm: realm_cookie.address,
+            governed_account: governed_program_cookie.address,
+            vote_threshold_percentage: 60,
+            min_tokens_to_create_proposal: 5,
+            min_instruction_hold_up_time: 10,
+            max_voting_time: 100,
+        };
+
+        let mut create_program_governance_instruction = create_program_governance(
+            &governed_program_cookie.upgrade_authority.pubkey(),
+            &self.payer.pubkey(),
+            config.clone(),
+            governed_program_cookie.transfer_upgrade_authority,
+        );
+
+        instruction_override(&mut create_program_governance_instruction);
+
+        let default_signers = &[&governed_program_cookie.upgrade_authority];
+        let singers = signers_override.unwrap_or(default_signers);
+
+        self.process_transaction(&[create_program_governance_instruction], Some(singers))
+            .await?;
+
+        let account = Governance {
+            account_type: GovernanceAccountType::ProgramGovernance,
+            config,
+            proposal_count: 0,
+        };
+
+        let program_governance_address =
+            get_program_governance_address(&realm_cookie.address, &governed_program_cookie.address);
+
+        Ok(GovernanceCookie {
+            address: program_governance_address,
+            account,
+        })
+    }
+
+    #[allow(dead_code)]
     pub async fn get_voter_record_account(&mut self, address: &Pubkey) -> VoterRecord {
-        self.get_account::<VoterRecord>(address).await
+        self.get_borsh_account::<VoterRecord>(address).await
     }
 
     #[allow(dead_code)]
     pub async fn get_realm_account(&mut self, root_governance_address: &Pubkey) -> Realm {
-        self.get_account::<Realm>(root_governance_address).await
+        self.get_borsh_account::<Realm>(root_governance_address)
+            .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn get_governance_account(
+        &mut self,
+        program_governance_address: &Pubkey,
+    ) -> Governance {
+        self.get_borsh_account::<Governance>(program_governance_address)
+            .await
     }
 
     #[allow(dead_code)]
     async fn get_packed_account<T: Pack + IsInitialized>(&mut self, address: &Pubkey) -> T {
-        let raw_account = self
-            .banks_client
+        self.banks_client
+            .get_packed_account_data::<T>(*address)
+            .await
+            .unwrap()
+    }
+
+    #[allow(dead_code)]
+    pub async fn get_bincode_account<T: serde::de::DeserializeOwned>(
+        &mut self,
+        address: &Pubkey,
+    ) -> T {
+        self.banks_client
             .get_account(*address)
             .await
             .unwrap()
-            .unwrap();
+            .map(|a| deserialize::<T>(&a.data.borrow()).unwrap())
+            .expect(format!("GET-TEST-ACCOUNT-ERROR: Account {}", address).as_str())
+    }
 
-        T::unpack(&raw_account.data).unwrap()
+    #[allow(dead_code)]
+    pub async fn get_upgradable_loader_account(
+        &mut self,
+        address: &Pubkey,
+    ) -> UpgradeableLoaderState {
+        self.get_bincode_account(address).await
+    }
+
+    /// TODO: Add to SDK
+    pub async fn get_borsh_account<T: BorshDeserialize>(&mut self, address: &Pubkey) -> T {
+        self.banks_client
+            .get_account(*address)
+            .await
+            .unwrap()
+            .map(|a| try_from_slice_unchecked(&a.data).unwrap())
+            .expect(format!("GET-TEST-ACCOUNT-ERROR: Account {}", address).as_str())
     }
 
     #[allow(dead_code)]

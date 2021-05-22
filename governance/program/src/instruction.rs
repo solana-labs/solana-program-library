@@ -4,13 +4,18 @@ use crate::{
     id,
     state::{
         enums::GoverningTokenType,
+        governance::{
+            get_account_governance_address, get_program_governance_address, GovernanceConfig,
+        },
         realm::{get_governing_token_holding_address, get_realm_address},
         single_signer_instruction::InstructionData,
         voter_record::get_voter_record_address,
     },
+    tools::bpf_loader_upgradeable::get_program_data_address,
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
+    bpf_loader_upgradeable,
     instruction::{AccountMeta, Instruction},
     pubkey::Pubkey,
     system_program, sysvar,
@@ -63,6 +68,7 @@ pub enum GovernanceInstruction {
     ///  6. `[signer]` Payer
     ///  7. `[]` System
     ///  8. `[]` SPL Token
+    ///  9. `[]` Sysvar Rent
     DepositGoverningTokens {},
 
     /// Withdraws governing tokens (Community or Council) from Governance Realm and downgrades your voter weight within the Realm
@@ -101,34 +107,37 @@ pub enum GovernanceInstruction {
         new_vote_authority: Option<Pubkey>,
     },
 
+    /// Creates Account Governance account which can be used to govern an arbitrary account
+    ///
+    ///   0. `[writable]` Account Governance account. PDA seeds: ['account-governance', realm, governed_account]
+    ///   1. `[signer]` Payer
+    ///   2. `[]` System program
+    ///   3. `[]` Sysvar Rent
+    CreateAccountGovernance {
+        /// Governance config
+        #[allow(dead_code)]
+        config: GovernanceConfig,
+    },
+
     /// Creates Program Governance account which governs an upgradable program
     ///
-    ///   0. `[writable]` Governance account. PDA seeds: ['governance', governed_program]
-    ///   1. `[]` Account of the Program governed by this Governance account
-    ///   2. `[writable]` Program Data account of the Program governed by this Governance account
-    ///   3. `[signer]` Current Upgrade Authority account of the Program governed by this Governance account
-    ///   4. `[]` Governance Realm the Program Governance belongs to
-    ///   5. `[signer]` Payer
-    ///   6. `[]` System account
-    ///   7. `[]` Bpf_upgrade_loader account
+    ///   0. `[writable]` Program Governance account. PDA seeds: ['program-governance', realm, governed_program]
+    ///   1. `[writable]` Program Data account of the Program governed by this Governance account
+    ///   2. `[signer]` Current Upgrade Authority account of the Program governed by this Governance account
+    ///   3. `[signer]` Payer
+    ///   4. `[]` bpf_upgradeable_loader program
+    ///   5. `[]` System program
+    ///   6. `[]` Sysvar Rent
     CreateProgramGovernance {
+        /// Governance config
         #[allow(dead_code)]
-        /// Voting threshold in % required to tip the vote
-        /// It's the percentage of tokens out of the entire pool of governance tokens eligible to vote
-        vote_threshold: u8,
+        config: GovernanceConfig,
 
         #[allow(dead_code)]
-        /// Minimum waiting time in slots for an instruction to be executed after proposal is voted on
-        min_instruction_hold_up_time: u64,
-
-        #[allow(dead_code)]
-        /// Time limit in slots for proposal to be open for voting
-        max_voting_time: u64,
-
-        #[allow(dead_code)]
-        /// Minimum % of tokens for a governance token owner to be able to create proposal
-        /// It's the percentage of tokens out of the entire pool of governance tokens eligible to vote
-        token_threshold_to_create_proposal: u8,
+        /// Indicate whether Program's upgrade_authority should be transferred to the Governance PDA
+        /// If it's set to false then it can be done at a later time
+        /// However the instruction would validate the current upgrade_authority signed the transaction nonetheless
+        transfer_upgrade_authority: bool,
     },
 
     /// Create Proposal account for Instructions that will be executed at various slots in the future
@@ -410,6 +419,69 @@ pub fn set_vote_authority(
         governing_token_mint: *governing_token_mint,
         governing_token_owner: *governing_token_owner,
         new_vote_authority: *new_vote_authority,
+    };
+
+    Instruction {
+        program_id: id(),
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates CreateAccountGovernance instruction
+pub fn create_account_governance(
+    // Accounts
+    payer: &Pubkey,
+    // Args
+    config: GovernanceConfig,
+) -> Instruction {
+    let account_governance_address =
+        get_account_governance_address(&config.realm, &config.governed_account);
+
+    let accounts = vec![
+        AccountMeta::new_readonly(config.realm, false),
+        AccountMeta::new(account_governance_address, false),
+        AccountMeta::new_readonly(*payer, true),
+        AccountMeta::new_readonly(system_program::id(), false),
+        AccountMeta::new_readonly(sysvar::rent::id(), false),
+    ];
+
+    let instruction = GovernanceInstruction::CreateAccountGovernance { config };
+
+    Instruction {
+        program_id: id(),
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates CreateProgramGovernance instruction
+pub fn create_program_governance(
+    // Accounts
+    governed_program_upgrade_authority: &Pubkey,
+    payer: &Pubkey,
+    // Args
+    config: GovernanceConfig,
+    transfer_upgrade_authority: bool,
+) -> Instruction {
+    let program_governance_address =
+        get_program_governance_address(&config.realm, &config.governed_account);
+    let governed_program_data_address = get_program_data_address(&config.governed_account);
+
+    let accounts = vec![
+        AccountMeta::new_readonly(config.realm, false),
+        AccountMeta::new(program_governance_address, false),
+        AccountMeta::new(governed_program_data_address, false),
+        AccountMeta::new_readonly(*governed_program_upgrade_authority, true),
+        AccountMeta::new_readonly(*payer, true),
+        AccountMeta::new_readonly(bpf_loader_upgradeable::id(), false),
+        AccountMeta::new_readonly(system_program::id(), false),
+        AccountMeta::new_readonly(sysvar::rent::id(), false),
+    ];
+
+    let instruction = GovernanceInstruction::CreateProgramGovernance {
+        config,
+        transfer_upgrade_authority,
     };
 
     Instruction {

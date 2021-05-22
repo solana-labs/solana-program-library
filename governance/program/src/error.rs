@@ -19,6 +19,10 @@ pub enum GovernanceError {
     #[error("Realm with the given name and governing mints already exists")]
     RealmAlreadyExists,
 
+    /// Invalid Realm
+    #[error("Invalid realm")]
+    InvalidRealm,
+
     /// Invalid Governing Token Mint
     #[error("Invalid Governing Token Mint")]
     InvalidGoverningTokenMint,
@@ -39,17 +43,47 @@ pub enum GovernanceError {
     #[error("Invalid Voter account address")]
     InvalidVoterAccountAddress,
 
-    /// ---- Account Tools Errors -----
+    /// Invalid Governance config
+    #[error("Invalid Governance config")]
+    InvalidGovernanceConfig,
+
+    /// ---- Account Tools Errors ----
 
     /// Invalid account owner
     #[error("Invalid account owner")]
     InvalidAccountOwner,
 
-    /// ---- Token Tools Errors -----
+    /// Invalid Account type
+    #[error("Invalid Account type")]
+    InvalidAccountType,
+
+    /// ---- Token Tools Errors ----
 
     /// Invalid Token account owner
     #[error("Invalid Token account owner")]
     InvalidTokenAccountOwner,
+
+    /// ---- Bpf Upgradable Loader Tools Errors ----
+
+    /// Invalid ProgramData account Address
+    #[error("Invalid ProgramData account address")]
+    InvalidProgramDataAccountAddress,
+
+    /// Invalid ProgramData account data
+    #[error("Invalid ProgramData account Data")]
+    InvalidProgramDataAccountData,
+
+    /// Provided upgrade authority doesn't match current program upgrade authority
+    #[error("Provided upgrade authority doesn't match current program upgrade authority")]
+    InvalidUpgradeAuthority,
+
+    /// Current program upgrade authority must sign transaction
+    #[error("Current program upgrade authority must sign transaction")]
+    UpgradeAuthorityMustSign,
+
+    /// Given program is not upgradable
+    #[error("Given program is not upgradable")]
+    ProgramNotUpgradable,
 }
 
 impl PrintProgramError for GovernanceError {

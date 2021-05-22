@@ -92,10 +92,36 @@ pub fn deserialize_account<T: BorshDeserialize + IsInitialized>(
         return Err(GovernanceError::InvalidAccountOwner.into());
     }
 
+    if account_info.data_is_empty() {
+        return Err(ProgramError::UninitializedAccount);
+    }
     let account: T = try_from_slice_unchecked(&account_info.data.borrow())?;
     if !account.is_initialized() {
         Err(ProgramError::UninitializedAccount)
     } else {
         Ok(account)
     }
+}
+
+/// Asserts the given account is not empty, owned given program and of the expected type
+pub fn assert_is_valid_account<T: BorshDeserialize + PartialEq>(
+    account_info: &AccountInfo,
+    expected_account_type: T,
+    owner_program_id: &Pubkey,
+) -> Result<(), ProgramError> {
+    if account_info.owner != owner_program_id {
+        return Err(GovernanceError::InvalidAccountOwner.into());
+    }
+
+    if account_info.data_is_empty() {
+        return Err(ProgramError::UninitializedAccount);
+    }
+
+    let account_type: T = try_from_slice_unchecked(&account_info.data.borrow())?;
+
+    if account_type != expected_account_type {
+        return Err(GovernanceError::InvalidAccountType.into());
+    };
+
+    Ok(())
 }
