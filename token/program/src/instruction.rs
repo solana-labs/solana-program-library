@@ -1,6 +1,7 @@
 //! Instruction types
 
 use crate::{check_program_account, error::TokenError};
+use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
     instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
@@ -579,7 +580,14 @@ impl TokenInstruction {
 
 /// Specifies the authority type for SetAuthority instructions
 #[repr(u8)]
-#[derive(Clone, Debug, PartialEq)]
+#[derive(
+    BorshSerialize,
+    BorshDeserialize,
+    BorshSchema,
+    Clone,
+    Debug,
+    PartialEq
+)]
 pub enum AuthorityType {
     /// Authority to mint new tokens
     MintTokens,
