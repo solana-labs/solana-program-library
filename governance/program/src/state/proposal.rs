@@ -1,6 +1,8 @@
 //! Proposal  Account
 
-use solana_program::{epoch_schedule::Slot, pubkey::Pubkey};
+use solana_program::{epoch_schedule::Slot, program_error::ProgramError, pubkey::Pubkey};
+
+use crate::error::GovernanceError;
 
 use super::enums::{GovernanceAccountType, GoverningTokenType, ProposalState};
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
@@ -62,6 +64,41 @@ pub struct Proposal {
 
     /// Array of pubkeys pointing at Proposal instructions, up to 5
     pub instruction: Vec<Pubkey>,
+
+    /// Signatories count
+    pub signatories_count: u8,
+}
+
+impl Proposal {
+    /// Checks if Signatory can be added to the Proposal in the given state
+    pub fn assert_can_add_signatory(&self) -> Result<(), ProgramError> {
+        if !(self.state == ProposalState::Draft || self.state == ProposalState::SigningOff) {
+            return Err(GovernanceError::InvalidStateCannotAddSignatory.into());
+        }
+
+        Ok(())
+    }
+    /// Checks if Signatory can be removed from the Proposal in the given state
+    pub fn assert_can_remove_signatory(&self) -> Result<(), ProgramError> {
+        if !(self.state == ProposalState::Draft || self.state == ProposalState::SigningOff) {
+            return Err(GovernanceError::InvalidStateCannotRemoveSignatory.into());
+        }
+
+        Ok(())
+    }
+
+    /// Checks if Proposal can be singed off
+    pub fn assert_can_sign_off(&self) -> Result<(), ProgramError> {
+        if self.state != ProposalState::Draft && self.state != ProposalState::SigningOff {
+            return Err(GovernanceError::InvalidStateCannotSignOff.into());
+        }
+
+        if self.signatories_count == 0 {
+            return Err(GovernanceError::ProposalHasNoSignatories.into());
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -90,6 +127,7 @@ mod test {
             completed_at: Some(1),
             deleted_at: Some(1),
             instruction: vec![],
+            signatories_count: 1,
         }
     }
 

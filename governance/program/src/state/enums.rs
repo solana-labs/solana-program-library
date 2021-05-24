@@ -66,7 +66,7 @@ pub enum ProposalState {
     Draft,
 
     /// Signing - The Proposal is being signed by Signatories. Proposal enters the state when first Signatory Sings and leaves it when last Signatory signs
-    Signing,
+    SigningOff,
 
     /// Taking votes
     Voting,
