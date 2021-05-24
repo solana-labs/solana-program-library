@@ -63,3 +63,145 @@ pub struct Proposal {
     /// Array of pubkeys pointing at Proposal instructions, up to 5
     pub instruction: Vec<Pubkey>,
 }
+
+#[cfg(test)]
+mod test {
+
+    use {super::*, proptest::prelude::*};
+
+    fn create_test_proposal() -> Proposal {
+        Proposal {
+            account_type: GovernanceAccountType::VoterRecord,
+            governance: Pubkey::new_unique(),
+            state: ProposalState::Draft,
+
+            description_link: "This is my description".to_string(),
+            name: "This is my name".to_string(),
+
+            number_of_executed_instructions: 10,
+            number_of_instructions: 10,
+            signatory_mint: Pubkey::new_unique(),
+            admin_mint: Pubkey::new_unique(),
+            voting_token_type: GoverningTokenType::Community,
+            total_signatory_tokens_minted: 1,
+            voting_ended_at: Some(1),
+            voting_began_at: Some(1),
+            created_at: Some(1),
+            completed_at: Some(1),
+            deleted_at: Some(1),
+            instruction: vec![],
+        }
+    }
+
+    fn editable_signatory_states() -> impl Strategy<Value = ProposalState> {
+        prop_oneof![Just(ProposalState::Draft), Just(ProposalState::SigningOff),]
+    }
+
+    proptest! {
+        #[test]
+        fn test_assert_can_add_signatory(state in editable_signatory_states()) {
+
+            let mut proposal = create_test_proposal();
+            proposal.state = state;
+            proposal.assert_can_add_signatory().unwrap();
+
+        }
+        #[test]
+        fn test_assert_can_remove_signatory(state in editable_signatory_states()) {
+
+            let mut proposal = create_test_proposal();
+            proposal.state = state;
+            proposal.assert_can_add_signatory().unwrap();
+
+        }
+    }
+
+    fn none_editable_signatory_states() -> impl Strategy<Value = ProposalState> {
+        prop_oneof![
+            Just(ProposalState::Voting),
+            Just(ProposalState::Succeeded),
+            Just(ProposalState::Executing),
+            Just(ProposalState::Completed),
+            Just(ProposalState::Cancelled),
+            Just(ProposalState::Defeated),
+        ]
+    }
+
+    proptest! {
+        #[test]
+            fn test_assert_can_add_signatory_with_invalid_state_error(state in none_editable_signatory_states()) {
+                // Arrange
+                let mut proposal = create_test_proposal();
+                proposal.state = state;
+
+                // Act
+                let err = proposal.assert_can_add_signatory().err().unwrap();
+
+                // Assert
+                assert_eq!(err, GovernanceError::InvalidStateCannotAddSignatory.into());
+        }
+        #[test]
+        fn test_assert_can_remove_signatory_with_state_error(state in none_editable_signatory_states()) {
+            // Arrange
+            let mut proposal = create_test_proposal();
+            proposal.state = state;
+
+            // Act
+            let err = proposal.assert_can_remove_signatory().err().unwrap();
+
+            // Assert
+            assert_eq!(err, GovernanceError::InvalidStateCannotRemoveSignatory.into());
+         }
+    }
+
+    fn sign_off_states() -> impl Strategy<Value = ProposalState> {
+        prop_oneof![Just(ProposalState::SigningOff), Just(ProposalState::Draft),]
+    }
+    proptest! {
+        #[test]
+        fn test_assert_can_sign_off(state in sign_off_states()) {
+            let mut proposal = create_test_proposal();
+            proposal.state = state;
+            proposal.assert_can_sign_off().unwrap();
+        }
+    }
+
+    fn none_sign_off_states() -> impl Strategy<Value = ProposalState> {
+        prop_oneof![
+            Just(ProposalState::Voting),
+            Just(ProposalState::Succeeded),
+            Just(ProposalState::Executing),
+            Just(ProposalState::Completed),
+            Just(ProposalState::Cancelled),
+            Just(ProposalState::Defeated),
+        ]
+    }
+
+    proptest! {
+        #[test]
+        fn test_assert_can_sign_off_with_state_error(state in none_sign_off_states()) {
+                // Arrange
+                let mut proposal = create_test_proposal();
+                proposal.state = state;
+
+                // Act
+                let err = proposal.assert_can_sign_off().err().unwrap();
+
+                // Assert
+                assert_eq!(err, GovernanceError::InvalidStateCannotSignOff.into());
+        }
+    }
+
+    #[test]
+    fn test_assert_can_sign_off_with_proposal_without_signatories_error() {
+        // Arrange
+        let mut proposal = create_test_proposal();
+        proposal.signatories_count = 0;
+
+        // Act
+        let err = proposal.assert_can_sign_off().err().unwrap();
+
+        // Assert
+        assert_eq!(err, GovernanceError::ProposalHasNoSignatories.into());
+    }
+}
