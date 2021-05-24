@@ -89,9 +89,7 @@ export const signAndSendTransactionInstructions = async (
   tx.feePayer = feePayer.publicKey;
   signers.push(feePayer);
   tx.add(...txInstructions);
-  return await connection.sendTransaction(tx, signers, {
-    preflightCommitment: 'single',
-  });
+  return await connection.sendTransaction(tx, signers);
 };
 
 export async function getHashedName(name: string): Promise<Buffer> {

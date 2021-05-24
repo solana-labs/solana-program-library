@@ -26,12 +26,12 @@ import { deserialize, deserializeUnchecked, Schema, serialize } from 'borsh';
 // Global Variables
 
 export const TWITTER_VERIFICATION_AUTHORITY = new PublicKey(
-  '867BLob5b52i81SNaV9Awm5ejkZV6VGSv9SxLcwukDDJ'
+  'FvPH7PrVrLGKPfqaf3xJodFTjZriqrAXXLTVWEorTFBi'
 );
 // The address of the name registry that will be a parent to all twitter handle registries,
 // it should be owned by the TWITTER_VERIFICATION_AUTHORITY and it's name is irrelevant
 export const TWITTER_ROOT_PARENT_REGISTRY_KEY = new PublicKey(
-  'AFrGkxNmVLBn3mKhvfJJABvm8RJkTtRhHDoaF97pQZaA'
+  '4YcexoW3r78zz16J2aqmukBLRwGq6rAvWzJpkYAXqebv'
 );
 
 ////////////////////////////////////////////////////
@@ -250,14 +250,13 @@ export async function getHandleAndRegistryKey(
   const reverseRegistryKey = await getNameAccountKey(
     hashedVerifiedPubkey,
     TWITTER_VERIFICATION_AUTHORITY,
-    undefined
+    TWITTER_ROOT_PARENT_REGISTRY_KEY
   );
 
   let reverseRegistryState = await ReverseTwitterRegistryState.retrieve(
     connection,
     reverseRegistryKey
   );
-
   return [
     reverseRegistryState.twitterHandle,
     new PublicKey(reverseRegistryState.twitterRegistryKey),
