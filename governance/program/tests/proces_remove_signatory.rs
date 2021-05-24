@@ -52,6 +52,14 @@ async fn test_remove_signatory() {
 
     assert_eq!(0, proposal_account.signatories_count);
     assert_eq!(ProposalState::Draft, proposal_account.state);
+
+    let signatory_account = governance_test
+        .banks_client
+        .get_account(signatory_record_cookie.address)
+        .await
+        .unwrap();
+
+    assert_eq!(None, signatory_account);
 }
 
 #[tokio::test]

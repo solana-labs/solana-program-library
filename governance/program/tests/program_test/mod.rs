@@ -796,6 +796,7 @@ impl GovernanceProgramTest {
             &token_owner_record_cookie.address,
             &token_owner_record_cookie.token_owner.pubkey(),
             &signatory_record_cookie.account.signatory,
+            &token_owner_record_cookie.token_owner.pubkey(),
         );
 
         self.process_transaction(
@@ -897,7 +898,7 @@ impl GovernanceProgramTest {
             .await
             .unwrap()
             .map(|a| try_from_slice_unchecked(&a.data).unwrap())
-            .expect(format!("GET-TEST-ACCOUNT-ERROR: Account {}", address).as_str())
+            .expect(format!("GET-TEST-ACCOUNT-ERROR: Account {} not found", address).as_str())
     }
 
     #[allow(dead_code)]

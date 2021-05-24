@@ -125,3 +125,21 @@ pub fn assert_is_valid_account<T: BorshDeserialize + PartialEq>(
 
     Ok(())
 }
+
+/// Disposes account by transferring its lamports to the beneficiary account and zeros its data
+// After transaction completes the runtime would remove the account with no lamports
+pub fn dispose_account(account_info: &AccountInfo, beneficiary_account: &AccountInfo) {
+    let account_lamports = account_info.lamports();
+    **account_info.lamports.borrow_mut() = 0;
+
+    **beneficiary_account.lamports.borrow_mut() = beneficiary_account
+        .lamports()
+        .checked_add(account_lamports)
+        .unwrap();
+
+    let mut account_data = account_info.data.borrow_mut();
+
+    for i in 0..account_data.len() {
+        account_data[i] = 0;
+    }
+}

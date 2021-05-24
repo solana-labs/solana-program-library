@@ -15,7 +15,7 @@ use crate::{
         signatory_record::deserialize_signatory_record,
         token_owner_record::deserialize_token_owner_record_for_proposal_owner,
     },
-    tools::asserts::assert_token_owner_or_delegate_is_signer,
+    tools::{account::dispose_account, asserts::assert_token_owner_or_delegate_is_signer},
 };
 
 /// Processes RemoveSignatory instruction
@@ -31,8 +31,9 @@ pub fn process_remove_signatory(
     let governance_authority_info = next_account_info(account_info_iter)?; // 2
 
     let signatory_record_info = next_account_info(account_info_iter)?; // 3
+    let beneficiary_info = next_account_info(account_info_iter)?; // 4
 
-    let clock_info = next_account_info(account_info_iter)?; // 4
+    let clock_info = next_account_info(account_info_iter)?; // 5
     let clock = Clock::from_account_info(clock_info)?;
 
     let mut proposal_data = deserialize_proposal_raw(proposal_info)?;
@@ -45,7 +46,7 @@ pub fn process_remove_signatory(
 
     assert_token_owner_or_delegate_is_signer(&token_owner_record_data, governance_authority_info)?;
 
-    let mut signatory_record_data =
+    let signatory_record_data =
         deserialize_signatory_record(signatory_record_info, proposal_info.key, &signatory)?;
     signatory_record_data.assert_can_remove_signatory()?;
 
@@ -61,11 +62,7 @@ pub fn process_remove_signatory(
 
     proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
 
-    // Set signatory state as signed_off so it can't be removed again and decrease signatories_count
-    // TODO: Close signatory_record account and reclaim lamports
-    // If the account can't be removed then add SignatoryState { Pending, SignedOff, Suspended}
-    signatory_record_data.signed_off = true;
-    signatory_record_data.serialize(&mut *signatory_record_info.data.borrow_mut())?;
+    dispose_account(signatory_record_info, beneficiary_info);
 
     Ok(())
 }
