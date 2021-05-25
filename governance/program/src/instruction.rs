@@ -134,8 +134,8 @@ pub enum GovernanceInstruction {
 
     /// Creates Proposal account for Instructions that will be executed at various slots in the future
     ///
-    ///   0. `[writable]` Proposal account. PDA seeds ['governance',account_governance, governing_token_mint, name]
-    ///   1. `[writable]` Governance
+    ///   0. `[writable]` Proposal account. PDA seeds ['governance',governance, governing_token_mint, proposal_index]
+    ///   1. `[writable]` Governance account
     ///   2. `[]` Token Owner Record account
     ///   3. `[signer]` Governance Authority (Token Owner or Governance Delegate)    
     ///   4. `[signer]` Payer
