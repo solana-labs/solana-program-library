@@ -7,7 +7,7 @@ use crate::{
     PROGRAM_AUTHORITY_SEED,
 };
 
-use super::enums::GovernanceAccountType;
+use crate::state::enums::GovernanceAccountType;
 
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{

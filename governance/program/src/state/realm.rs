@@ -13,7 +13,7 @@ use crate::{
     PROGRAM_AUTHORITY_SEED,
 };
 
-use super::enums::GovernanceAccountType;
+use crate::state::enums::GovernanceAccountType;
 
 /// Governance Realm Account
 /// Account PDA seeds" ['governance', name]

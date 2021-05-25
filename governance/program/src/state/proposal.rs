@@ -12,7 +12,7 @@ use crate::{
     PROGRAM_AUTHORITY_SEED,
 };
 
-use super::enums::{GovernanceAccountType, ProposalState};
+use crate::state::enums::{GovernanceAccountType, ProposalState};
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 
 /// Governance Proposal
