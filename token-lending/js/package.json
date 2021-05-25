@@ -62,7 +62,7 @@
     "rollup-plugin-node-resolve": "^5.2.0",
     "rollup-plugin-sourcemaps": "^0.6.3",
     "rollup-plugin-typescript2": "^0.30.0",
-    "start-server-and-test": "^1.12.2",
+    "start-server-and-test": "^1.12.3",
     "ts-node": "^9.1.1",
     "typescript": "^4.2.4"
   },
