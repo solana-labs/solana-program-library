@@ -271,7 +271,7 @@ impl CurveCalculator for StableCurve {
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
     ) -> Option<PreciseNumber> {
-        #[cfg(not(test))]
+        #[cfg(not(any(test, feature = "fuzz")))]
         {
             let leverage = self.amp.checked_mul(N_COINS as u64)?;
             PreciseNumber::new(compute_d(
@@ -280,7 +280,7 @@ impl CurveCalculator for StableCurve {
                 swap_token_b_amount,
             )?)
         }
-        #[cfg(test)]
+        #[cfg(any(test, feature = "fuzz"))]
         {
             use roots::{find_roots_cubic_normalized, Roots};
             let x = swap_token_a_amount as f64;
