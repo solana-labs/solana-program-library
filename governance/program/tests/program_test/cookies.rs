@@ -71,6 +71,7 @@ pub struct GovernedAccountCookie {
 pub struct GovernanceCookie {
     pub address: Pubkey,
     pub account: Governance,
+    pub next_proposal_index: u16,
 }
 
 #[derive(Debug)]

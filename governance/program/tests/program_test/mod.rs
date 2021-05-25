@@ -60,7 +60,6 @@ pub struct GovernanceProgramTest {
     pub banks_client: BanksClient,
     pub payer: Keypair,
     pub rent: Rent,
-    pub next_proposal_id: u8,
 }
 
 impl GovernanceProgramTest {
@@ -79,7 +78,6 @@ impl GovernanceProgramTest {
             banks_client,
             payer,
             rent,
-            next_proposal_id: 0,
         }
     }
 
@@ -518,7 +516,7 @@ impl GovernanceProgramTest {
         let account = Governance {
             account_type: GovernanceAccountType::AccountGovernance,
             config: governance_config,
-            proposal_count: 0,
+            proposals_count: 0,
         };
 
         self.process_transaction(&[create_account_governance_instruction], None)
@@ -530,6 +528,7 @@ impl GovernanceProgramTest {
         Ok(GovernanceCookie {
             address: account_governance_address,
             account,
+            next_proposal_index: 0,
         })
     }
 
@@ -654,7 +653,7 @@ impl GovernanceProgramTest {
         let account = Governance {
             account_type: GovernanceAccountType::ProgramGovernance,
             config,
-            proposal_count: 0,
+            proposals_count: 0,
         };
 
         let program_governance_address =
@@ -663,6 +662,7 @@ impl GovernanceProgramTest {
         Ok(GovernanceCookie {
             address: program_governance_address,
             account,
+            next_proposal_index: 0,
         })
     }
 
@@ -670,7 +670,7 @@ impl GovernanceProgramTest {
     pub async fn with_proposal(
         &mut self,
         token_owner_record_cookie: &TokeOwnerRecordCookie,
-        governance_cookie: &GovernanceCookie,
+        governance_cookie: &mut GovernanceCookie,
     ) -> Result<ProposalCookie, ProgramError> {
         self.with_proposal_instruction(token_owner_record_cookie, governance_cookie, |_| {})
             .await
@@ -680,11 +680,13 @@ impl GovernanceProgramTest {
     pub async fn with_proposal_instruction<F: Fn(&mut Instruction)>(
         &mut self,
         token_owner_record_cookie: &TokeOwnerRecordCookie,
-        governance_cookie: &GovernanceCookie,
+        governance_cookie: &mut GovernanceCookie,
         instruction_override: F,
     ) -> Result<ProposalCookie, ProgramError> {
-        let name = format!("Proposal #{}", self.next_proposal_id);
-        self.next_proposal_id = self.next_proposal_id + 1;
+        let proposal_index = governance_cookie.next_proposal_index;
+        governance_cookie.next_proposal_index = governance_cookie.next_proposal_index + 1;
+
+        let name = format!("Proposal #{}", proposal_index);
 
         let description_link = "Proposal Description".to_string();
 
@@ -699,6 +701,7 @@ impl GovernanceProgramTest {
             name.clone(),
             description_link.clone(),
             &token_owner_record_cookie.governing_token_mint,
+            proposal_index,
         );
 
         instruction_override(&mut create_proposal_instruction);
@@ -733,7 +736,7 @@ impl GovernanceProgramTest {
         let proposal_address = get_proposal_address(
             &governance_cookie.address,
             &token_owner_record_cookie.governing_token_mint,
-            &name,
+            &proposal_index.to_le_bytes(),
         );
 
         Ok(ProposalCookie {

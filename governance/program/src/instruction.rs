@@ -492,8 +492,13 @@ pub fn create_proposal(
     name: String,
     description_link: String,
     governing_token_mint: &Pubkey,
+    proposal_index: u16,
 ) -> Instruction {
-    let proposal_address = get_proposal_address(governance, governing_token_mint, &name);
+    let proposal_address = get_proposal_address(
+        governance,
+        governing_token_mint,
+        &proposal_index.to_le_bytes(),
+    );
     let token_owner_record_address =
         get_token_owner_record_address(realm, governing_token_mint, governing_token_owner);
 

@@ -17,7 +17,7 @@ async fn test_community_proposal_created() {
     let realm_cookie = governance_test.with_realm().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
-    let account_governance_cookie = governance_test
+    let mut account_governance_cookie = governance_test
         .with_account_governance(&realm_cookie, &governed_account_cookie)
         .await
         .unwrap();
@@ -28,7 +28,7 @@ async fn test_community_proposal_created() {
 
     // Act
     let proposal_cookie = governance_test
-        .with_proposal(&token_owner_record_cookie, &account_governance_cookie)
+        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
         .await
         .unwrap();
 
@@ -43,7 +43,7 @@ async fn test_community_proposal_created() {
         .get_governance_account(&account_governance_cookie.address)
         .await;
 
-    assert_eq!(1, account_governance_account.proposal_count);
+    assert_eq!(1, account_governance_account.proposals_count);
 }
 
 #[tokio::test]
@@ -54,7 +54,7 @@ async fn test_multiple_proposals_created() {
     let realm_cookie = governance_test.with_realm().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
-    let account_governance_cookie = governance_test
+    let mut account_governance_cookie = governance_test
         .with_account_governance(&realm_cookie, &governed_account_cookie)
         .await
         .unwrap();
@@ -71,7 +71,7 @@ async fn test_multiple_proposals_created() {
     let community_proposal_cookie = governance_test
         .with_proposal(
             &community_token_owner_record_cookie,
-            &account_governance_cookie,
+            &mut account_governance_cookie,
         )
         .await
         .unwrap();
@@ -79,7 +79,7 @@ async fn test_multiple_proposals_created() {
     let council_proposal_cookie = governance_test
         .with_proposal(
             &council_token_owner_record_cookie,
-            &account_governance_cookie,
+            &mut account_governance_cookie,
         )
         .await
         .unwrap();
@@ -104,7 +104,7 @@ async fn test_multiple_proposals_created() {
         .get_governance_account(&account_governance_cookie.address)
         .await;
 
-    assert_eq!(2, account_governance_account.proposal_count);
+    assert_eq!(2, account_governance_account.proposals_count);
 }
 
 #[tokio::test]
@@ -115,7 +115,7 @@ async fn test_create_proposal_with_not_authorized_governance_authority_error() {
     let realm_cookie = governance_test.with_realm().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
-    let account_governance_cookie = governance_test
+    let mut account_governance_cookie = governance_test
         .with_account_governance(&realm_cookie, &governed_account_cookie)
         .await
         .unwrap();
@@ -128,7 +128,7 @@ async fn test_create_proposal_with_not_authorized_governance_authority_error() {
 
     // Act
     let err = governance_test
-        .with_proposal(&token_owner_record_cookie, &account_governance_cookie)
+        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
         .await
         .err()
         .unwrap();
@@ -148,7 +148,7 @@ async fn test_create_proposal_with_governance_delegate_signer() {
     let realm_cookie = governance_test.with_realm().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
-    let account_governance_cookie = governance_test
+    let mut account_governance_cookie = governance_test
         .with_account_governance(&realm_cookie, &governed_account_cookie)
         .await
         .unwrap();
@@ -165,7 +165,7 @@ async fn test_create_proposal_with_governance_delegate_signer() {
 
     // Act
     let proposal_cookie = governance_test
-        .with_proposal(&token_owner_record_cookie, &account_governance_cookie)
+        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
         .await
         .unwrap();
 
@@ -185,7 +185,7 @@ async fn test_create_proposal_with_not_enough_tokens_error() {
     let realm_cookie = governance_test.with_realm().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
-    let account_governance_cookie = governance_test
+    let mut account_governance_cookie = governance_test
         .with_account_governance(&realm_cookie, &governed_account_cookie)
         .await
         .unwrap();
@@ -202,7 +202,7 @@ async fn test_create_proposal_with_not_enough_tokens_error() {
 
     // Act
     let err = governance_test
-        .with_proposal(&token_owner_record_cookie, &account_governance_cookie)
+        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
         .await
         .err()
         .unwrap();
@@ -219,7 +219,7 @@ async fn test_create_proposal_with_invalid_token_owner_record_error() {
     let realm_cookie = governance_test.with_realm().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
-    let account_governance_cookie = governance_test
+    let mut account_governance_cookie = governance_test
         .with_account_governance(&realm_cookie, &governed_account_cookie)
         .await
         .unwrap();
@@ -236,7 +236,7 @@ async fn test_create_proposal_with_invalid_token_owner_record_error() {
     let err = governance_test
         .with_proposal_instruction(
             &token_owner_record_cookie,
-            &account_governance_cookie,
+            &mut account_governance_cookie,
             |i| {
                 // Set token_owner_record_address for different (Council) mint
                 i.accounts[2] =

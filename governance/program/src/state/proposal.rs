@@ -125,13 +125,13 @@ pub fn deserialize_proposal_raw(proposal_info: &AccountInfo) -> Result<Proposal,
 pub fn get_proposal_address_seeds<'a>(
     governance: &'a Pubkey,
     governing_token_mint: &'a Pubkey,
-    name: &'a str,
+    proposal_index_le_bytes: &'a [u8],
 ) -> [&'a [u8]; 4] {
     [
         PROGRAM_AUTHORITY_SEED,
         governance.as_ref(),
         governing_token_mint.as_ref(),
-        &name.as_bytes(),
+        &proposal_index_le_bytes,
     ]
 }
 
@@ -139,10 +139,10 @@ pub fn get_proposal_address_seeds<'a>(
 pub fn get_proposal_address<'a>(
     governance: &'a Pubkey,
     governing_token_mint: &'a Pubkey,
-    name: &'a str,
+    proposal_index_bytes: &'a [u8],
 ) -> Pubkey {
     Pubkey::find_program_address(
-        &get_proposal_address_seeds(governance, governing_token_mint, name),
+        &get_proposal_address_seeds(governance, governing_token_mint, &proposal_index_bytes),
         &id(),
     )
     .0

@@ -98,13 +98,17 @@ pub fn process_create_proposal(
         payer_info,
         proposal_info,
         &proposal_data,
-        &get_proposal_address_seeds(governance_info.key, &governing_token_mint, &name),
+        &get_proposal_address_seeds(
+            governance_info.key,
+            &governing_token_mint,
+            &governance_data.proposals_count.to_le_bytes(),
+        ),
         program_id,
         system_info,
         rent,
     )?;
 
-    governance_data.proposal_count = governance_data.proposal_count.checked_add(1).unwrap();
+    governance_data.proposals_count = governance_data.proposals_count.checked_add(1).unwrap();
     governance_data.serialize(&mut *governance_info.data.borrow_mut())?;
 
     Ok(())

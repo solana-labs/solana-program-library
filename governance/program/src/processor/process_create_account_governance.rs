@@ -39,7 +39,7 @@ pub fn process_create_account_governance(
     let account_governance_data = Governance {
         account_type: GovernanceAccountType::AccountGovernance,
         config: config.clone(),
-        proposal_count: 0,
+        proposals_count: 0,
     };
 
     create_and_serialize_account_signed::<Governance>(

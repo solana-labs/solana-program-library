@@ -16,7 +16,7 @@ async fn test_add_signatory() {
     let realm_cookie = governance_test.with_realm().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
-    let account_governance_cookie = governance_test
+    let mut account_governance_cookie = governance_test
         .with_account_governance(&realm_cookie, &governed_account_cookie)
         .await
         .unwrap();
@@ -26,7 +26,7 @@ async fn test_add_signatory() {
         .await;
 
     let proposal_cookie = governance_test
-        .with_proposal(&token_owner_record_cookie, &account_governance_cookie)
+        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
         .await
         .unwrap();
 
@@ -58,7 +58,7 @@ async fn test_add_signatory_with_owner_or_delegate_must_sign_error() {
     let realm_cookie = governance_test.with_realm().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
-    let account_governance_cookie = governance_test
+    let mut account_governance_cookie = governance_test
         .with_account_governance(&realm_cookie, &governed_account_cookie)
         .await
         .unwrap();
@@ -68,7 +68,7 @@ async fn test_add_signatory_with_owner_or_delegate_must_sign_error() {
         .await;
 
     let proposal_cookie = governance_test
-        .with_proposal(&token_owner_record_cookie, &account_governance_cookie)
+        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
         .await
         .unwrap();
 
@@ -100,7 +100,7 @@ async fn test_add_signatory_with_invalid_proposal_owner_error() {
     let realm_cookie = governance_test.with_realm().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
-    let account_governance_cookie = governance_test
+    let mut account_governance_cookie = governance_test
         .with_account_governance(&realm_cookie, &governed_account_cookie)
         .await
         .unwrap();
@@ -110,7 +110,7 @@ async fn test_add_signatory_with_invalid_proposal_owner_error() {
         .await;
 
     let proposal_cookie = governance_test
-        .with_proposal(&token_owner_record_cookie, &account_governance_cookie)
+        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
         .await
         .unwrap();
 

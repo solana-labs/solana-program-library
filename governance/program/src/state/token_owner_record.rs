@@ -42,15 +42,15 @@ pub struct TokenOwnerRecord {
     pub governance_delegate: Option<Pubkey>,
 
     /// The number of active votes cast by TokenOwner
-    pub active_votes_count: u8,
+    pub active_votes_count: u16,
 
     /// The total number of votes cast by the TokenOwner
-    pub total_votes_count: u8,
+    pub total_votes_count: u16,
 }
 
 impl AccountMaxSize for TokenOwnerRecord {
     fn get_max_size(&self) -> Option<usize> {
-        Some(140)
+        Some(142)
     }
 }
 

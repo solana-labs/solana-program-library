@@ -47,7 +47,7 @@ pub struct Governance {
     pub config: GovernanceConfig,
 
     /// Running count of proposals
-    pub proposal_count: u32,
+    pub proposals_count: u16,
 }
 
 impl AccountMaxSize for Governance {}

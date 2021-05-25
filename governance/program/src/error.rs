@@ -63,8 +63,8 @@ pub enum GovernanceError {
     #[error("Invalid Governance config")]
     InvalidGovernanceConfig,
 
-    /// Proposal for the given Governance, Governing Token Mint and Name already exists
-    #[error("Proposal for the given Governance, Governing Token Mint and Name already exists")]
+    /// Proposal for the given Governance, Governing Token Mint and index already exists
+    #[error("Proposal for the given Governance, Governing Token Mint and index already exists")]
     ProposalAlreadyExists,
 
     /// Owner doesn't have enough governing tokens to create Proposal

@@ -15,7 +15,7 @@ async fn test_sign_off_proposal() {
     let realm_cookie = governance_test.with_realm().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
-    let account_governance_cookie = governance_test
+    let mut account_governance_cookie = governance_test
         .with_account_governance(&realm_cookie, &governed_account_cookie)
         .await
         .unwrap();
@@ -25,7 +25,7 @@ async fn test_sign_off_proposal() {
         .await;
 
     let proposal_cookie = governance_test
-        .with_proposal(&token_owner_record_cookie, &account_governance_cookie)
+        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
         .await
         .unwrap();
 
