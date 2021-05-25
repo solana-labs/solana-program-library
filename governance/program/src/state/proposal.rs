@@ -88,7 +88,7 @@ impl Proposal {
     /// Checks if Signatories can be edited (added or removed) for the Proposal in the given state
     pub fn assert_can_edit_signatories(&self) -> Result<(), ProgramError> {
         if !(self.state == ProposalState::Draft || self.state == ProposalState::SigningOff) {
-            return Err(GovernanceError::InvalidStateCannotAddSignatory.into());
+            return Err(GovernanceError::InvalidStateCannotEditSignatories.into());
         }
 
         Ok(())
@@ -96,12 +96,8 @@ impl Proposal {
 
     /// Checks if Proposal can be singed off
     pub fn assert_can_sign_off(&self) -> Result<(), ProgramError> {
-        if self.state != ProposalState::Draft && self.state != ProposalState::SigningOff {
+        if !(self.state == ProposalState::Draft || self.state == ProposalState::SigningOff) {
             return Err(GovernanceError::InvalidStateCannotSignOff.into());
-        }
-
-        if self.signatories_count == 0 {
-            return Err(GovernanceError::ProposalHasNoSignatories.into());
         }
 
         Ok(())
@@ -213,7 +209,7 @@ mod test {
                 let err = proposal.assert_can_edit_signatories().err().unwrap();
 
                 // Assert
-                assert_eq!(err, GovernanceError::InvalidStateCannotAddSignatory.into());
+                assert_eq!(err, GovernanceError::InvalidStateCannotEditSignatories.into());
         }
 
     }
@@ -254,18 +250,5 @@ mod test {
                 // Assert
                 assert_eq!(err, GovernanceError::InvalidStateCannotSignOff.into());
         }
-    }
-
-    #[test]
-    fn test_assert_can_sign_off_with_proposal_without_signatories_error() {
-        // Arrange
-        let mut proposal = create_test_proposal();
-        proposal.signatories_count = 0;
-
-        // Act
-        let err = proposal.assert_can_sign_off().err().unwrap();
-
-        // Assert
-        assert_eq!(err, GovernanceError::ProposalHasNoSignatories.into());
     }
 }

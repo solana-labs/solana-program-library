@@ -79,21 +79,13 @@ pub enum GovernanceError {
     #[error("Owner doesn't have enough governing tokens to create Proposal")]
     NotEnoughTokensToCreateProposal,
 
-    /// Invalid State: Can't add Signatory
-    #[error("Invalid State: Can't add Signatory")]
-    InvalidStateCannotAddSignatory,
+    /// Invalid State: Can't edit Signatories
+    #[error("Invalid State: Can't edit Signatories")]
+    InvalidStateCannotEditSignatories,
 
     /// Invalid State: Can't sign off
     #[error("Invalid State: Can't sign off")]
     InvalidStateCannotSignOff,
-
-    /// Proposal has no signatories
-    #[error("Proposal has no signatories")]
-    ProposalHasNoSignatories,
-
-    /// Invalid State: Can't remove Signatory
-    #[error("Invalid State: Can't remove Signatory")]
-    InvalidStateCannotRemoveSignatory,
 
     /// Invalid Signatory Mint
     #[error("Invalid Signatory Mint")]
