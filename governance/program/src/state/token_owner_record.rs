@@ -27,15 +27,15 @@ pub struct TokenOwnerRecord {
     pub realm: Pubkey,
 
     /// Governing Token Mint the TokenOwnerRecord holds deposit for
-    pub token_mint: Pubkey,
+    pub governing_token_mint: Pubkey,
 
     /// The owner (either single or multisig) of the deposited governing SPL Tokens
     /// This is who can authorize a withdrawal
-    pub token_owner: Pubkey,
+    pub governing_token_owner: Pubkey,
 
     /// The amount of governing tokens deposited into the Realm
     /// This amount is the voter weight used when voting on proposals
-    pub token_deposit_amount: u64,
+    pub governing_token_deposit_amount: u64,
 
     /// A single account that is allowed to operate governance with the deposited governing tokens
     /// It's delegated to by the governing token owner or current governance_delegate
@@ -117,7 +117,7 @@ pub fn deserialize_token_owner_record_for_realm_and_governing_mint(
 ) -> Result<TokenOwnerRecord, ProgramError> {
     let token_owner_record_data = deserialize_token_owner_record_raw(token_owner_record_info)?;
 
-    if token_owner_record_data.token_mint != *governing_token_mint {
+    if token_owner_record_data.governing_token_mint != *governing_token_mint {
         return Err(GovernanceError::InvalidTokenOwnerRecordGoverningMint.into());
     }
 
@@ -151,9 +151,9 @@ mod test {
         let token_owner_record = TokenOwnerRecord {
             account_type: GovernanceAccountType::TokenOwnerRecord,
             realm: Pubkey::new_unique(),
-            token_mint: Pubkey::new_unique(),
-            token_owner: Pubkey::new_unique(),
-            token_deposit_amount: 10,
+            governing_token_mint: Pubkey::new_unique(),
+            governing_token_owner: Pubkey::new_unique(),
+            governing_token_deposit_amount: 10,
             governance_delegate: Some(Pubkey::new_unique()),
             active_votes_count: 1,
             total_votes_count: 1,

@@ -81,9 +81,9 @@ pub fn process_deposit_governing_tokens(
         let token_owner_record_data = TokenOwnerRecord {
             account_type: GovernanceAccountType::TokenOwnerRecord,
             realm: *realm_info.key,
-            token_owner: *governing_token_owner_info.key,
-            token_deposit_amount: amount,
-            token_mint: governing_token_mint,
+            governing_token_owner: *governing_token_owner_info.key,
+            governing_token_deposit_amount: amount,
+            governing_token_mint,
             governance_delegate: None,
             active_votes_count: 0,
             total_votes_count: 0,
@@ -104,8 +104,8 @@ pub fn process_deposit_governing_tokens(
             &token_owner_record_address_seeds,
         )?;
 
-        token_owner_record_data.token_deposit_amount = token_owner_record_data
-            .token_deposit_amount
+        token_owner_record_data.governing_token_deposit_amount = token_owner_record_data
+            .governing_token_deposit_amount
             .checked_add(amount)
             .unwrap();
 

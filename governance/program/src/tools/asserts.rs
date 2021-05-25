@@ -10,7 +10,7 @@ pub fn assert_token_owner_or_delegate_is_signer(
     governance_authority_info: &AccountInfo,
 ) -> Result<(), ProgramError> {
     if governance_authority_info.is_signer {
-        if &token_owner_record.token_owner == governance_authority_info.key {
+        if &token_owner_record.governing_token_owner == governance_authority_info.key {
             return Ok(());
         }
 

@@ -64,7 +64,7 @@ pub fn process_create_proposal(
     // proposal_owner must be either governing token owner or governance_delegate and must sign this transaction
     assert_token_owner_or_delegate_is_signer(&token_owner_record_data, governance_authority_info)?;
 
-    if token_owner_record_data.token_deposit_amount
+    if token_owner_record_data.governing_token_deposit_amount
         < governance_data.config.min_tokens_to_create_proposal as u64
     {
         return Err(GovernanceError::NotEnoughTokensToCreateProposal.into());

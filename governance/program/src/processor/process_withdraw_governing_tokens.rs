@@ -58,11 +58,11 @@ pub fn process_withdraw_governing_tokens(
         &realm_info,
         &get_realm_address_seeds(&realm_data.name),
         program_id,
-        token_owner_record_data.token_deposit_amount,
+        token_owner_record_data.governing_token_deposit_amount,
         spl_token_info,
     )?;
 
-    token_owner_record_data.token_deposit_amount = 0;
+    token_owner_record_data.governing_token_deposit_amount = 0;
     token_owner_record_data.serialize(&mut *token_owner_record_info.data.borrow_mut())?;
 
     Ok(())

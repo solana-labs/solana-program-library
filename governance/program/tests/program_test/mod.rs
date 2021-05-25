@@ -293,9 +293,9 @@ impl GovernanceProgramTest {
         let account = TokenOwnerRecord {
             account_type: GovernanceAccountType::TokenOwnerRecord,
             realm: *realm_address,
-            token_mint: *governing_mint,
-            token_owner: token_owner.pubkey(),
-            token_deposit_amount: amount,
+            governing_token_mint: *governing_mint,
+            governing_token_owner: token_owner.pubkey(),
+            governing_token_deposit_amount: amount,
             governance_delegate: None,
             active_votes_count: 0,
             total_votes_count: 0,

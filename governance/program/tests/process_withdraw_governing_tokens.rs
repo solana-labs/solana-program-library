@@ -34,7 +34,7 @@ async fn test_withdraw_community_tokens() {
         .get_token_owner_record_account(&token_owner_record_cookie.address)
         .await;
 
-    assert_eq!(0, token_owner_record.token_deposit_amount);
+    assert_eq!(0, token_owner_record.governing_token_deposit_amount);
 
     let holding_account = governance_test
         .get_token_account(&realm_cookie.community_token_holding_account)
@@ -73,7 +73,7 @@ async fn test_withdraw_council_tokens() {
         .get_token_owner_record_account(&token_owner_record_cookie.address)
         .await;
 
-    assert_eq!(0, token_owner_record.token_deposit_amount);
+    assert_eq!(0, token_owner_record.governing_token_deposit_amount);
 
     let holding_account = governance_test
         .get_token_account(&realm_cookie.council_token_holding_account.unwrap())

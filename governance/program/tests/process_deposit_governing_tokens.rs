@@ -34,7 +34,9 @@ async fn test_deposit_initial_community_tokens() {
 
     assert_eq!(
         token_owner_record_cookie.token_source_amount
-            - token_owner_record_cookie.account.token_deposit_amount,
+            - token_owner_record_cookie
+                .account
+                .governing_token_deposit_amount,
         source_account.amount
     );
 
@@ -43,7 +45,7 @@ async fn test_deposit_initial_community_tokens() {
         .await;
 
     assert_eq!(
-        token_owner_record.token_deposit_amount,
+        token_owner_record.governing_token_deposit_amount,
         holding_account.amount
     );
 }
@@ -74,7 +76,9 @@ async fn test_deposit_initial_council_tokens() {
 
     assert_eq!(
         token_owner_record_cookie.token_source_amount
-            - token_owner_record_cookie.account.token_deposit_amount,
+            - token_owner_record_cookie
+                .account
+                .governing_token_deposit_amount,
         source_account.amount
     );
 
@@ -83,7 +87,7 @@ async fn test_deposit_initial_council_tokens() {
         .await;
 
     assert_eq!(
-        token_owner_record.token_deposit_amount,
+        token_owner_record.governing_token_deposit_amount,
         holding_account.amount
     );
 }
@@ -99,8 +103,10 @@ async fn test_deposit_subsequent_community_tokens() {
         .await;
 
     let deposit_amount = 5;
-    let total_deposit_amount =
-        token_owner_record_cookie.account.token_deposit_amount + deposit_amount;
+    let total_deposit_amount = token_owner_record_cookie
+        .account
+        .governing_token_deposit_amount
+        + deposit_amount;
 
     // Act
     governance_test
@@ -114,7 +120,7 @@ async fn test_deposit_subsequent_community_tokens() {
 
     assert_eq!(
         total_deposit_amount,
-        token_owner_record.token_deposit_amount
+        token_owner_record.governing_token_deposit_amount
     );
 
     let holding_account = governance_test
@@ -137,8 +143,10 @@ async fn test_deposit_subsequent_council_tokens() {
         .await;
 
     let deposit_amount = 5;
-    let total_deposit_amount =
-        token_owner_record_cookie.account.token_deposit_amount + deposit_amount;
+    let total_deposit_amount = token_owner_record_cookie
+        .account
+        .governing_token_deposit_amount
+        + deposit_amount;
 
     // Act
     governance_test
@@ -152,7 +160,7 @@ async fn test_deposit_subsequent_council_tokens() {
 
     assert_eq!(
         total_deposit_amount,
-        token_owner_record.token_deposit_amount
+        token_owner_record.governing_token_deposit_amount
     );
 
     let holding_account = governance_test
