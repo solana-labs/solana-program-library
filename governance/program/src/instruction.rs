@@ -99,10 +99,11 @@ pub enum GovernanceInstruction {
 
     /// Creates Account Governance account which can be used to govern an arbitrary account
     ///
-    ///   0. `[writable]` Account Governance account. PDA seeds: ['account-governance', realm, governed_account]
-    ///   1. `[signer]` Payer
-    ///   2. `[]` System program
-    ///   3. `[]` Sysvar Rent
+    ///   0. `[]` Realm account the created Governance belongs to
+    ///   1. `[writable]` Account Governance account. PDA seeds: ['account-governance', realm, governed_account]
+    ///   2. `[signer]` Payer
+    ///   3. `[]` System program
+    ///   4. `[]` Sysvar Rent
     CreateAccountGovernance {
         /// Governance config
         #[allow(dead_code)]
@@ -111,13 +112,14 @@ pub enum GovernanceInstruction {
 
     /// Creates Program Governance account which governs an upgradable program
     ///
-    ///   0. `[writable]` Program Governance account. PDA seeds: ['program-governance', realm, governed_program]
-    ///   1. `[writable]` Program Data account of the Program governed by this Governance account
-    ///   2. `[signer]` Current Upgrade Authority account of the Program governed by this Governance account
-    ///   3. `[signer]` Payer
-    ///   4. `[]` bpf_upgradeable_loader program
-    ///   5. `[]` System program
-    ///   6. `[]` Sysvar Rent
+    ///   0. `[]` Realm account the created Governance belongs to    
+    ///   1. `[writable]` Program Governance account. PDA seeds: ['program-governance', realm, governed_program]
+    ///   2. `[writable]` Program Data account of the Program governed by this Governance account
+    ///   3. `[signer]` Current Upgrade Authority account of the Program governed by this Governance account
+    ///   4. `[signer]` Payer
+    ///   5. `[]` bpf_upgradeable_loader program
+    ///   6. `[]` System program
+    ///   7. `[]` Sysvar Rent
     CreateProgramGovernance {
         /// Governance config
         #[allow(dead_code)]
