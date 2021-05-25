@@ -65,7 +65,7 @@ pub enum GovernanceInstruction {
     ///  2. `[writable]` Governing Token Source account. All tokens from the account will be transferred to the Holding account
     ///  3. `[signer]` Governing Token Owner account
     ///  4. `[signer]` Governing Token Transfer authority   
-    ///  5. `[writable] Token Owner Record account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
+    ///  5. `[writable]` Token Owner Record account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
     ///  6. `[signer]` Payer
     ///  7. `[]` System
     ///  8. `[]` SPL Token
