@@ -17,7 +17,11 @@ use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use std::convert::{TryFrom, TryInto};
 use std::fmt::Debug;
 
+#[cfg(feature = "fuzz")]
+use arbitrary::Arbitrary;
+
 /// Curve types supported by the token-swap program.
+#[cfg_attr(feature = "fuzz", derive(Arbitrary))]
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum CurveType {
@@ -129,7 +133,7 @@ impl SwapCurve {
     }
 
     /// Get the amount of pool tokens for the withdrawn amount of token A or B
-    pub fn withdraw_single_token_type(
+    pub fn withdraw_single_token_type_exact_out(
         &self,
         source_amount: u128,
         swap_token_a_amount: u128,
@@ -147,7 +151,7 @@ impl SwapCurve {
         let half_source_amount = std::cmp::max(1, source_amount.checked_div(2)?);
         let trade_fee = fees.trading_fee(half_source_amount)?;
         let source_amount = source_amount.checked_sub(trade_fee)?;
-        self.calculator.withdraw_single_token_type(
+        self.calculator.withdraw_single_token_type_exact_out(
             source_amount,
             swap_token_a_amount,
             swap_token_b_amount,
