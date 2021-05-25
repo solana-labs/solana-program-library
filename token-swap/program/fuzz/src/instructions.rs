@@ -1,30 +1,37 @@
-use spl_token_swap_fuzz::{
-    native_account_data::NativeAccountData,
-    native_token::{get_token_balance, transfer},
-    native_token_swap::NativeTokenSwap,
+use {
+    arbitrary::Arbitrary,
+    honggfuzz::fuzz,
+    spl_math::precise_number::PreciseNumber,
+    spl_token::error::TokenError,
+    spl_token_swap::{
+        curve::{
+            base::{CurveType, SwapCurve},
+            calculator::TradeDirection,
+            constant_price::ConstantPriceCurve,
+            constant_product::ConstantProductCurve,
+            fees::Fees,
+            offset::OffsetCurve,
+            stable::StableCurve,
+        },
+        error::SwapError,
+        instruction::{
+            DepositAllTokenTypes, DepositSingleTokenTypeExactAmountIn, Swap, WithdrawAllTokenTypes,
+            WithdrawSingleTokenTypeExactAmountOut,
+        },
+    },
+    spl_token_swap_fuzz::{
+        native_account_data::NativeAccountData,
+        native_token::{get_token_balance, transfer},
+        native_token_swap::NativeTokenSwap,
+    },
+    std::collections::{HashMap, HashSet},
 };
 
-use spl_token_swap::{
-    curve::{
-        base::{CurveType, SwapCurve},
-        calculator::{CurveCalculator, TradeDirection},
-        constant_product::ConstantProductCurve,
-        fees::Fees,
-    },
-    error::SwapError,
-    instruction::{
-        DepositAllTokenTypes, DepositSingleTokenTypeExactAmountIn, Swap, WithdrawAllTokenTypes,
-        WithdrawSingleTokenTypeExactAmountOut,
-    },
-};
-
-use spl_math::precise_number::PreciseNumber;
-use spl_token::error::TokenError;
-
-use honggfuzz::fuzz;
-
-use arbitrary::Arbitrary;
-use std::collections::{HashMap, HashSet};
+#[derive(Debug, Arbitrary, Clone)]
+struct FuzzData {
+    curve_type: CurveType,
+    instructions: Vec<FuzzInstruction>,
+}
 
 #[derive(Debug, Arbitrary, Clone)]
 enum FuzzInstruction {
@@ -72,13 +79,11 @@ const INITIAL_USER_TOKEN_B_AMOUNT: u64 = 3_000_000_000;
 
 fn main() {
     loop {
-        fuzz!(|fuzz_instructions: Vec<FuzzInstruction>| {
-            run_fuzz_instructions(fuzz_instructions)
-        });
+        fuzz!(|fuzz_data: FuzzData| { run_fuzz(fuzz_data) });
     }
 }
 
-fn run_fuzz_instructions(fuzz_instructions: Vec<FuzzInstruction>) {
+fn run_fuzz(fuzz_data: FuzzData) {
     let trade_fee_numerator = 25;
     let trade_fee_denominator = 10000;
     let owner_trade_fee_numerator = 5;
@@ -97,14 +102,10 @@ fn run_fuzz_instructions(fuzz_instructions: Vec<FuzzInstruction>) {
         host_fee_numerator,
         host_fee_denominator,
     };
-    let curve = ConstantProductCurve {};
-    let swap_curve = SwapCurve {
-        curve_type: CurveType::ConstantProduct,
-        calculator: Box::new(curve.clone()),
-    };
+    let swap_curve = get_swap_curve(fuzz_data.curve_type);
     let mut token_swap = NativeTokenSwap::new(
         fees,
-        swap_curve,
+        swap_curve.clone(),
         INITIAL_SWAP_TOKEN_A_AMOUNT,
         INITIAL_SWAP_TOKEN_B_AMOUNT,
     );
@@ -115,7 +116,7 @@ fn run_fuzz_instructions(fuzz_instructions: Vec<FuzzInstruction>) {
     let mut pool_accounts: HashMap<AccountId, NativeAccountData> = HashMap::new();
 
     // add all the pool and token accounts that will be needed
-    for fuzz_instruction in &fuzz_instructions {
+    for fuzz_instruction in &fuzz_data.instructions {
         let (token_a_id, token_b_id, pool_token_id) = match fuzz_instruction.clone() {
             FuzzInstruction::Swap {
                 token_a_id,
@@ -185,11 +186,11 @@ fn run_fuzz_instructions(fuzz_instructions: Vec<FuzzInstruction>) {
 
     // to ensure that we never create or remove base tokens
     let before_total_token_a =
-        INITIAL_SWAP_TOKEN_A_AMOUNT + get_total_token_a_amount(&fuzz_instructions);
+        INITIAL_SWAP_TOKEN_A_AMOUNT + get_total_token_a_amount(&fuzz_data.instructions);
     let before_total_token_b =
-        INITIAL_SWAP_TOKEN_B_AMOUNT + get_total_token_b_amount(&fuzz_instructions);
+        INITIAL_SWAP_TOKEN_B_AMOUNT + get_total_token_b_amount(&fuzz_data.instructions);
 
-    for fuzz_instruction in fuzz_instructions {
+    for fuzz_instruction in fuzz_data.instructions {
         run_fuzz_instruction(
             fuzz_instruction,
             &mut token_swap,
@@ -209,10 +210,12 @@ fn run_fuzz_instructions(fuzz_instructions: Vec<FuzzInstruction>) {
     let swap_token_a_amount = get_token_balance(&token_swap.token_a_account) as u128;
     let swap_token_b_amount = get_token_balance(&token_swap.token_b_account) as u128;
 
-    let initial_pool_value = curve
+    let initial_pool_value = swap_curve
+        .calculator
         .normalized_value(initial_swap_token_a_amount, initial_swap_token_b_amount)
         .unwrap();
-    let pool_value = curve
+    let pool_value = swap_curve
+        .calculator
         .normalized_value(swap_token_a_amount, swap_token_b_amount)
         .unwrap();
 
@@ -378,8 +381,10 @@ fn run_fuzz_instruction(
                 || e == SwapError::FeeCalculationFailure.into()
                 || e == SwapError::ExceededSlippage.into()
                 || e == SwapError::ZeroTradingTokens.into()
+                || e == SwapError::UnsupportedCurveOperation.into()
                 || e == TokenError::InsufficientFunds.into())
             {
+                println!("{:?}", e);
                 Err(e).unwrap()
             }
         })
@@ -448,4 +453,20 @@ fn get_total_token_b_amount(fuzz_instructions: &[FuzzInstruction]) -> u64 {
         };
     }
     (token_b_ids.len() as u64) * INITIAL_USER_TOKEN_B_AMOUNT
+}
+
+fn get_swap_curve(curve_type: CurveType) -> SwapCurve {
+    SwapCurve {
+        curve_type,
+        calculator: match curve_type {
+            CurveType::ConstantProduct => Box::new(ConstantProductCurve),
+            CurveType::ConstantPrice => Box::new(ConstantPriceCurve {
+                token_b_price: 10_000_000,
+            }),
+            CurveType::Stable => Box::new(StableCurve { amp: 100 }),
+            CurveType::Offset => Box::new(OffsetCurve {
+                token_b_offset: 100_000_000_000,
+            }),
+        },
+    }
 }

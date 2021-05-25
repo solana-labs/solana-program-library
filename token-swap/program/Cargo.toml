@@ -10,7 +10,7 @@ edition = "2018"
 [features]
 no-entrypoint = []
 production = []
-fuzz = ["arbitrary"]
+fuzz = ["arbitrary", "roots"]
 
 [dependencies]
 arrayref = "0.3.6"
@@ -22,6 +22,7 @@ spl-math = { version = "0.1", path = "../../libraries/math", features = [ "no-en
 spl-token = { version = "3.1", path = "../../token/program", features = [ "no-entrypoint" ] }
 thiserror = "1.0"
 arbitrary = { version = "0.4", features = ["derive"], optional = true }
+roots = { version = "0.0.6", optional = true }
 
 [dev-dependencies]
 solana-sdk = "1.6.7"
