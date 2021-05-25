@@ -85,18 +85,10 @@ impl IsInitialized for Proposal {
 }
 
 impl Proposal {
-    /// Checks if Signatory can be added to the Proposal in the given state
-    pub fn assert_can_add_signatory(&self) -> Result<(), ProgramError> {
+    /// Checks if Signatories can be edited (added or removed) for the Proposal in the given state
+    pub fn assert_can_edit_signatories(&self) -> Result<(), ProgramError> {
         if !(self.state == ProposalState::Draft || self.state == ProposalState::SigningOff) {
             return Err(GovernanceError::InvalidStateCannotAddSignatory.into());
-        }
-
-        Ok(())
-    }
-    /// Checks if Signatory can be removed from the Proposal in the given state
-    pub fn assert_can_remove_signatory(&self) -> Result<(), ProgramError> {
-        if !(self.state == ProposalState::Draft || self.state == ProposalState::SigningOff) {
-            return Err(GovernanceError::InvalidStateCannotRemoveSignatory.into());
         }
 
         Ok(())
@@ -189,21 +181,14 @@ mod test {
 
     proptest! {
         #[test]
-        fn test_assert_can_add_signatory(state in editable_signatory_states()) {
+        fn test_assert_can_edit_signatories(state in editable_signatory_states()) {
 
             let mut proposal = create_test_proposal();
             proposal.state = state;
-            proposal.assert_can_add_signatory().unwrap();
+            proposal.assert_can_edit_signatories().unwrap();
 
         }
-        #[test]
-        fn test_assert_can_remove_signatory(state in editable_signatory_states()) {
 
-            let mut proposal = create_test_proposal();
-            proposal.state = state;
-            proposal.assert_can_add_signatory().unwrap();
-
-        }
     }
 
     fn none_editable_signatory_states() -> impl Strategy<Value = ProposalState> {
@@ -219,29 +204,18 @@ mod test {
 
     proptest! {
         #[test]
-            fn test_assert_can_add_signatory_with_invalid_state_error(state in none_editable_signatory_states()) {
+            fn test_assert_can_edit_signatories_with_invalid_state_error(state in none_editable_signatory_states()) {
                 // Arrange
                 let mut proposal = create_test_proposal();
                 proposal.state = state;
 
                 // Act
-                let err = proposal.assert_can_add_signatory().err().unwrap();
+                let err = proposal.assert_can_edit_signatories().err().unwrap();
 
                 // Assert
                 assert_eq!(err, GovernanceError::InvalidStateCannotAddSignatory.into());
         }
-        #[test]
-        fn test_assert_can_remove_signatory_with_state_error(state in none_editable_signatory_states()) {
-            // Arrange
-            let mut proposal = create_test_proposal();
-            proposal.state = state;
 
-            // Act
-            let err = proposal.assert_can_remove_signatory().err().unwrap();
-
-            // Assert
-            assert_eq!(err, GovernanceError::InvalidStateCannotRemoveSignatory.into());
-         }
     }
 
     fn sign_off_states() -> impl Strategy<Value = ProposalState> {

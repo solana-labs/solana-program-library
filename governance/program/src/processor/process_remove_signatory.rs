@@ -37,7 +37,7 @@ pub fn process_remove_signatory(
     let clock = Clock::from_account_info(clock_info)?;
 
     let mut proposal_data = deserialize_proposal_raw(proposal_info)?;
-    proposal_data.assert_can_remove_signatory()?;
+    proposal_data.assert_can_edit_signatories()?;
 
     let token_owner_record_data = deserialize_token_owner_record_for_proposal_owner(
         token_owner_record_info,

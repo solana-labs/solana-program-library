@@ -43,7 +43,7 @@ pub fn process_add_signatory(
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
 
     let mut proposal_data = deserialize_proposal_raw(proposal_info)?;
-    proposal_data.assert_can_add_signatory()?;
+    proposal_data.assert_can_edit_signatories()?;
 
     let token_owner_record_data = deserialize_token_owner_record_for_proposal_owner(
         token_owner_record_info,
