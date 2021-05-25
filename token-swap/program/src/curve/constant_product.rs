@@ -92,12 +92,12 @@ pub fn pool_tokens_to_trading_tokens(
     })
 }
 
-/// Get the amount of pool tokens for the given amount of token A or B.
+/// Get the amount of pool tokens for the deposited amount of token A or B.
 ///
 /// The constant product implementation uses the Balancer formulas found at
 /// https://balancer.finance/whitepaper/#single-asset-deposit, specifically
 /// in the case for 2 tokens, each weighted at 1/2.
-pub fn trading_tokens_to_pool_tokens(
+pub fn deposit_single_token_type(
     source_amount: u128,
     swap_token_a_amount: u128,
     swap_token_b_amount: u128,
@@ -115,6 +115,37 @@ pub fn trading_tokens_to_pool_tokens(
     let one = PreciseNumber::new(1)?;
     let base = one.checked_add(&ratio)?;
     let root = base.sqrt()?.checked_sub(&one)?;
+    let pool_supply = PreciseNumber::new(pool_supply)?;
+    let pool_tokens = pool_supply.checked_mul(&root)?;
+    match round_direction {
+        RoundDirection::Floor => pool_tokens.floor()?.to_imprecise(),
+        RoundDirection::Ceiling => pool_tokens.ceiling()?.to_imprecise(),
+    }
+}
+
+/// Get the amount of pool tokens for the withdrawn amount of token A or B.
+///
+/// The constant product implementation uses the Balancer formulas found at
+/// https://balancer.finance/whitepaper/#single-asset-withdrawal, specifically
+/// in the case for 2 tokens, each weighted at 1/2.
+pub fn withdraw_single_token_type_exact_out(
+    source_amount: u128,
+    swap_token_a_amount: u128,
+    swap_token_b_amount: u128,
+    pool_supply: u128,
+    trade_direction: TradeDirection,
+    round_direction: RoundDirection,
+) -> Option<u128> {
+    let swap_source_amount = match trade_direction {
+        TradeDirection::AtoB => swap_token_a_amount,
+        TradeDirection::BtoA => swap_token_b_amount,
+    };
+    let swap_source_amount = PreciseNumber::new(swap_source_amount)?;
+    let source_amount = PreciseNumber::new(source_amount)?;
+    let ratio = source_amount.checked_div(&swap_source_amount)?;
+    let one = PreciseNumber::new(1)?;
+    let base = one.checked_sub(&ratio)?;
+    let root = one.checked_sub(&base.sqrt()?)?;
     let pool_supply = PreciseNumber::new(pool_supply)?;
     let pool_tokens = pool_supply.checked_mul(&root)?;
     match round_direction {
@@ -170,23 +201,40 @@ impl CurveCalculator for ConstantProductCurve {
         )
     }
 
-    /// Get the amount of pool tokens for the given amount of token A or B.
-    fn trading_tokens_to_pool_tokens(
+    /// Get the amount of pool tokens for the deposited amount of token A or B.
+    fn deposit_single_token_type(
         &self,
         source_amount: u128,
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
         pool_supply: u128,
         trade_direction: TradeDirection,
-        round_direction: RoundDirection,
     ) -> Option<u128> {
-        trading_tokens_to_pool_tokens(
+        deposit_single_token_type(
             source_amount,
             swap_token_a_amount,
             swap_token_b_amount,
             pool_supply,
             trade_direction,
-            round_direction,
+            RoundDirection::Floor,
+        )
+    }
+
+    fn withdraw_single_token_type_exact_out(
+        &self,
+        source_amount: u128,
+        swap_token_a_amount: u128,
+        swap_token_b_amount: u128,
+        pool_supply: u128,
+        trade_direction: TradeDirection,
+    ) -> Option<u128> {
+        withdraw_single_token_type_exact_out(
+            source_amount,
+            swap_token_a_amount,
+            swap_token_b_amount,
+            pool_supply,
+            trade_direction,
+            RoundDirection::Ceiling,
         )
     }
 
@@ -230,8 +278,9 @@ mod tests {
     use super::*;
     use crate::curve::calculator::{
         test::{
-            check_curve_value_from_swap, check_pool_token_conversion,
-            check_pool_value_from_deposit, check_pool_value_from_withdraw, total_and_intermediate,
+            check_curve_value_from_swap, check_deposit_token_conversion,
+            check_pool_value_from_deposit, check_pool_value_from_withdraw,
+            check_withdraw_token_conversion, total_and_intermediate,
             CONVERSION_BASIS_POINTS_GUARANTEE,
         },
         RoundDirection, INITIAL_SWAP_POOL_AMOUNT,
@@ -367,7 +416,7 @@ mod tests {
 
     proptest! {
         #[test]
-        fn pool_token_conversion(
+        fn deposit_token_conversion(
             // in the pool token conversion calcs, we simulate trading half of
             // source_token_amount, so this needs to be at least 2
             source_token_amount in 2..u64::MAX,
@@ -376,7 +425,7 @@ mod tests {
             pool_supply in INITIAL_SWAP_POOL_AMOUNT..u64::MAX as u128,
         ) {
             let curve = ConstantProductCurve {};
-            check_pool_token_conversion(
+            check_deposit_token_conversion(
                 &curve,
                 source_token_amount as u128,
                 swap_source_amount as u128,
@@ -386,7 +435,7 @@ mod tests {
                 CONVERSION_BASIS_POINTS_GUARANTEE,
             );
 
-            check_pool_token_conversion(
+            check_deposit_token_conversion(
                 &curve,
                 source_token_amount as u128,
                 swap_source_amount as u128,
@@ -394,6 +443,35 @@ mod tests {
                 TradeDirection::BtoA,
                 pool_supply,
                 CONVERSION_BASIS_POINTS_GUARANTEE,
+            );
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn withdraw_token_conversion(
+            (pool_token_supply, pool_token_amount) in total_and_intermediate(),
+            swap_token_a_amount in 1..u64::MAX,
+            swap_token_b_amount in 1..u64::MAX,
+        ) {
+            let curve = ConstantProductCurve {};
+            check_withdraw_token_conversion(
+                &curve,
+                pool_token_amount as u128,
+                pool_token_supply as u128,
+                swap_token_a_amount as u128,
+                swap_token_b_amount as u128,
+                TradeDirection::AtoB,
+                CONVERSION_BASIS_POINTS_GUARANTEE
+            );
+            check_withdraw_token_conversion(
+                &curve,
+                pool_token_amount as u128,
+                pool_token_supply as u128,
+                swap_token_a_amount as u128,
+                swap_token_b_amount as u128,
+                TradeDirection::BtoA,
+                CONVERSION_BASIS_POINTS_GUARANTEE
             );
         }
     }

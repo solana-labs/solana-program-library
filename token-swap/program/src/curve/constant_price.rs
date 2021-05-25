@@ -15,6 +15,46 @@ use {
     spl_math::{checked_ceil_div::CheckedCeilDiv, precise_number::PreciseNumber, uint::U256},
 };
 
+/// Get the amount of pool tokens for the given amount of token A or B.
+///
+/// The constant product implementation uses the Balancer formulas found at
+/// https://balancer.finance/whitepaper/#single-asset-deposit, specifically
+/// in the case for 2 tokens, each weighted at 1/2.
+pub fn trading_tokens_to_pool_tokens(
+    token_b_price: u64,
+    source_amount: u128,
+    swap_token_a_amount: u128,
+    swap_token_b_amount: u128,
+    pool_supply: u128,
+    trade_direction: TradeDirection,
+    round_direction: RoundDirection,
+) -> Option<u128> {
+    let token_b_price = U256::from(token_b_price);
+    let given_value = match trade_direction {
+        TradeDirection::AtoB => U256::from(source_amount),
+        TradeDirection::BtoA => U256::from(source_amount).checked_mul(token_b_price)?,
+    };
+    let total_value = U256::from(swap_token_b_amount)
+        .checked_mul(token_b_price)?
+        .checked_add(U256::from(swap_token_a_amount))?;
+    let pool_supply = U256::from(pool_supply);
+    match round_direction {
+        RoundDirection::Floor => Some(
+            pool_supply
+                .checked_mul(given_value)?
+                .checked_div(total_value)?
+                .as_u128(),
+        ),
+        RoundDirection::Ceiling => Some(
+            pool_supply
+                .checked_mul(given_value)?
+                .checked_ceil_div(total_value)?
+                .0
+                .as_u128(),
+        ),
+    }
+}
+
 /// ConstantPriceCurve struct implementing CurveCalculator
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ConstantPriceCurve {
@@ -107,39 +147,42 @@ impl CurveCalculator for ConstantPriceCurve {
     /// Get the amount of pool tokens for the given amount of token A and B
     /// For the constant price curve, the total value of the pool is weighted
     /// by the price of token B.
-    fn trading_tokens_to_pool_tokens(
+    fn deposit_single_token_type(
         &self,
         source_amount: u128,
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
         pool_supply: u128,
         trade_direction: TradeDirection,
-        round_direction: RoundDirection,
     ) -> Option<u128> {
-        let token_b_price = U256::from(self.token_b_price);
-        let given_value = match trade_direction {
-            TradeDirection::AtoB => U256::from(source_amount),
-            TradeDirection::BtoA => U256::from(source_amount).checked_mul(token_b_price)?,
-        };
-        let total_value = U256::from(swap_token_b_amount)
-            .checked_mul(token_b_price)?
-            .checked_add(U256::from(swap_token_a_amount))?;
-        let pool_supply = U256::from(pool_supply);
-        match round_direction {
-            RoundDirection::Floor => Some(
-                pool_supply
-                    .checked_mul(given_value)?
-                    .checked_div(total_value)?
-                    .as_u128(),
-            ),
-            RoundDirection::Ceiling => Some(
-                pool_supply
-                    .checked_mul(given_value)?
-                    .checked_ceil_div(total_value)?
-                    .0
-                    .as_u128(),
-            ),
-        }
+        trading_tokens_to_pool_tokens(
+            self.token_b_price,
+            source_amount,
+            swap_token_a_amount,
+            swap_token_b_amount,
+            pool_supply,
+            trade_direction,
+            RoundDirection::Floor,
+        )
+    }
+
+    fn withdraw_single_token_type_exact_out(
+        &self,
+        source_amount: u128,
+        swap_token_a_amount: u128,
+        swap_token_b_amount: u128,
+        pool_supply: u128,
+        trade_direction: TradeDirection,
+    ) -> Option<u128> {
+        trading_tokens_to_pool_tokens(
+            self.token_b_price,
+            source_amount,
+            swap_token_a_amount,
+            swap_token_b_amount,
+            pool_supply,
+            trade_direction,
+            RoundDirection::Ceiling,
+        )
     }
 
     fn validate(&self) -> Result<(), SwapError> {
@@ -221,7 +264,8 @@ mod tests {
     use super::*;
     use crate::curve::calculator::{
         test::{
-            check_curve_value_from_swap, check_pool_token_conversion, total_and_intermediate,
+            check_curve_value_from_swap, check_deposit_token_conversion,
+            check_withdraw_token_conversion, total_and_intermediate,
             CONVERSION_BASIS_POINTS_GUARANTEE,
         },
         INITIAL_SWAP_POOL_AMOUNT,
@@ -343,7 +387,7 @@ mod tests {
 
     proptest! {
         #[test]
-        fn pool_token_conversion_a_to_b(
+        fn deposit_token_conversion_a_to_b(
             // in the pool token conversion calcs, we simulate trading half of
             // source_token_amount, so this needs to be at least 2
             source_token_amount in 2..u64::MAX,
@@ -361,7 +405,7 @@ mod tests {
             let curve = ConstantPriceCurve {
                 token_b_price,
             };
-            check_pool_token_conversion(
+            check_deposit_token_conversion(
                 &curve,
                 source_token_amount as u128,
                 swap_source_amount as u128,
@@ -375,7 +419,7 @@ mod tests {
 
     proptest! {
         #[test]
-        fn pool_token_conversion_b_to_a(
+        fn deposit_token_conversion_b_to_a(
             // in the pool token conversion calcs, we simulate trading half of
             // source_token_amount, so this needs to be at least 2
             source_token_amount in 2..u32::MAX, // kept small to avoid proptest rejections
@@ -395,7 +439,7 @@ mod tests {
             // on the other side to complete the swap
             prop_assume!(token_b_price * source_token_amount / 2 <= swap_destination_amount);
 
-            check_pool_token_conversion(
+            check_deposit_token_conversion(
                 &curve,
                 source_token_amount,
                 swap_source_amount,
@@ -403,6 +447,61 @@ mod tests {
                 TradeDirection::BtoA,
                 pool_supply,
                 CONVERSION_BASIS_POINTS_GUARANTEE,
+            );
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn withdraw_token_conversion(
+            (pool_token_supply, pool_token_amount) in total_and_intermediate(),
+            swap_token_a_amount in 1..u64::MAX,
+            swap_token_b_amount in 1..u32::MAX, // kept small to avoid proptest rejections
+            token_b_price in 1..u32::MAX, // kept small to avoid proptest rejections
+        ) {
+            let curve = ConstantPriceCurve {
+                token_b_price: token_b_price as u64,
+            };
+            let token_b_price = token_b_price as u128;
+            let pool_token_amount = pool_token_amount as u128;
+            let pool_token_supply = pool_token_supply as u128;
+            let swap_token_a_amount = swap_token_a_amount as u128;
+            let swap_token_b_amount = swap_token_b_amount as u128;
+
+            let value = curve.normalized_value(swap_token_a_amount, swap_token_b_amount).unwrap();
+
+            // Make sure we trade at least one of each token
+            prop_assume!(pool_token_amount * value.to_imprecise().unwrap() >= 2 * token_b_price * pool_token_supply);
+
+            let withdraw_result = curve
+                .pool_tokens_to_trading_tokens(
+                    pool_token_amount,
+                    pool_token_supply,
+                    swap_token_a_amount,
+                    swap_token_b_amount,
+                    RoundDirection::Floor,
+                )
+                .unwrap();
+            prop_assume!(withdraw_result.token_a_amount <= swap_token_a_amount);
+            prop_assume!(withdraw_result.token_b_amount <= swap_token_b_amount);
+
+            check_withdraw_token_conversion(
+                &curve,
+                pool_token_amount,
+                pool_token_supply,
+                swap_token_a_amount,
+                swap_token_b_amount,
+                TradeDirection::AtoB,
+                CONVERSION_BASIS_POINTS_GUARANTEE
+            );
+            check_withdraw_token_conversion(
+                &curve,
+                pool_token_amount,
+                pool_token_supply,
+                swap_token_a_amount,
+                swap_token_b_amount,
+                TradeDirection::BtoA,
+                CONVERSION_BASIS_POINTS_GUARANTEE
             );
         }
     }

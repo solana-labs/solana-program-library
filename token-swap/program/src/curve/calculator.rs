@@ -2,6 +2,9 @@
 
 use {crate::error::SwapError, spl_math::precise_number::PreciseNumber, std::fmt::Debug};
 
+#[cfg(feature = "fuzz")]
+use arbitrary::Arbitrary;
+
 /// Initial amount of pool tokens for swap contract, hard-coded to something
 /// "sensible" given a maximum of u128.
 /// Note that on Ethereum, Uniswap uses the geometric mean of all provided
@@ -23,6 +26,7 @@ pub fn map_zero_to_none(x: u128) -> Option<u128> {
 
 /// The direction of a trade, since curves can be specialized to treat each
 /// token differently (by adding offsets or weights)
+#[cfg_attr(feature = "fuzz", derive(Arbitrary))]
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum TradeDirection {
@@ -108,23 +112,39 @@ pub trait CurveCalculator: Debug + DynPack {
         round_direction: RoundDirection,
     ) -> Option<TradingTokenResult>;
 
-    /// Get the amount of pool tokens for the given amount of token A or B.
+    /// Get the amount of pool tokens for the deposited amount of token A or B.
     ///
-    /// This is used for single-sided deposits or withdrawals and owner trade
-    /// fee calculation. It essentially performs a swap followed by a deposit,
-    /// or a withdrawal followed by a swap.  Because a swap is implicitly
-    /// performed, this will change the spot price of the pool.
+    /// This is used for single-sided deposits.  It essentially performs a swap
+    /// followed by a deposit.  Because a swap is implicitly performed, this will
+    /// change the spot price of the pool.
     ///
     /// See more background for the calculation at:
     /// https://balancer.finance/whitepaper/#single-asset-deposit-withdrawal
-    fn trading_tokens_to_pool_tokens(
+    fn deposit_single_token_type(
         &self,
         source_amount: u128,
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
         pool_supply: u128,
         trade_direction: TradeDirection,
-        round_direction: RoundDirection,
+    ) -> Option<u128>;
+
+    /// Get the amount of pool tokens for the withdrawn amount of token A or B.
+    ///
+    /// This is used for single-sided withdrawals and owner trade fee
+    /// calculation. It essentially performs a withdrawal followed by a swap.
+    /// Because a swap is implicitly performed, this will change the spot price
+    /// of the pool.
+    ///
+    /// See more background for the calculation at:
+    /// https://balancer.finance/whitepaper/#single-asset-deposit-withdrawal
+    fn withdraw_single_token_type_exact_out(
+        &self,
+        source_amount: u128,
+        swap_token_a_amount: u128,
+        swap_token_b_amount: u128,
+        pool_supply: u128,
+        trade_direction: TradeDirection,
     ) -> Option<u128>;
 
     /// Validate that the given curve has no invalid parameters
@@ -187,7 +207,7 @@ pub mod test {
     /// We guarantee that the relative error between depositing one side and
     /// performing a swap plus deposit will be at most some epsilon provided by
     /// the curve. Most curves guarantee accuracy within 0.5%.
-    pub fn check_pool_token_conversion(
+    pub fn check_deposit_token_conversion(
         curve: &dyn CurveCalculator,
         source_token_amount: u128,
         swap_source_amount: u128,
@@ -213,13 +233,12 @@ pub mod test {
 
         // base amount
         let pool_tokens_from_one_side = curve
-            .trading_tokens_to_pool_tokens(
+            .deposit_single_token_type(
                 source_token_amount,
                 swap_token_a_amount,
                 swap_token_b_amount,
                 pool_supply,
                 trade_direction,
-                RoundDirection::Floor,
             )
             .unwrap();
 
@@ -235,23 +254,21 @@ pub mod test {
             ),
         };
         let pool_tokens_from_source = curve
-            .trading_tokens_to_pool_tokens(
+            .deposit_single_token_type(
                 source_token_amount - results.source_amount_swapped,
                 swap_token_a_amount,
                 swap_token_b_amount,
                 pool_supply,
                 trade_direction,
-                RoundDirection::Floor,
             )
             .unwrap();
         let pool_tokens_from_destination = curve
-            .trading_tokens_to_pool_tokens(
+            .deposit_single_token_type(
                 results.destination_amount_swapped,
                 swap_token_a_amount,
                 swap_token_b_amount,
                 pool_supply + pool_tokens_from_source,
                 opposite_direction,
-                RoundDirection::Floor,
             )
             .unwrap();
 
@@ -266,6 +283,90 @@ pub mod test {
             pool_tokens_from_one_side - pool_tokens_total_separate
         } else {
             pool_tokens_total_separate - pool_tokens_from_one_side
+        };
+        assert!(
+            difference <= epsilon,
+            "difference expected to be less than {}, actually {}",
+            epsilon,
+            difference
+        );
+    }
+
+    /// Test function to check that withdrawing token A is the same as withdrawing
+    /// both and swapping one side.
+    /// Since calculations use unsigned integers, there will be truncation at
+    /// some point, meaning we can't have perfect equality.
+    /// We guarantee that the relative error between withdrawing one side and
+    /// performing a withdraw plus a swap will be at most some epsilon provided by
+    /// the curve. Most curves guarantee accuracy within 0.5%.
+    pub fn check_withdraw_token_conversion(
+        curve: &dyn CurveCalculator,
+        pool_token_amount: u128,
+        pool_token_supply: u128,
+        swap_token_a_amount: u128,
+        swap_token_b_amount: u128,
+        trade_direction: TradeDirection,
+        epsilon_in_basis_points: u128,
+    ) {
+        // withdraw the pool tokens
+        let withdraw_result = curve
+            .pool_tokens_to_trading_tokens(
+                pool_token_amount,
+                pool_token_supply,
+                swap_token_a_amount,
+                swap_token_b_amount,
+                RoundDirection::Floor,
+            )
+            .unwrap();
+
+        let new_swap_token_a_amount = swap_token_a_amount - withdraw_result.token_a_amount;
+        let new_swap_token_b_amount = swap_token_b_amount - withdraw_result.token_b_amount;
+
+        // swap one side of them
+        let source_token_amount = match trade_direction {
+            TradeDirection::AtoB => {
+                let results = curve
+                    .swap_without_fees(
+                        withdraw_result.token_a_amount,
+                        new_swap_token_a_amount,
+                        new_swap_token_b_amount,
+                        trade_direction,
+                    )
+                    .unwrap();
+                withdraw_result.token_b_amount + results.destination_amount_swapped
+            }
+            TradeDirection::BtoA => {
+                let results = curve
+                    .swap_without_fees(
+                        withdraw_result.token_b_amount,
+                        new_swap_token_b_amount,
+                        new_swap_token_a_amount,
+                        trade_direction,
+                    )
+                    .unwrap();
+                withdraw_result.token_a_amount + results.destination_amount_swapped
+            }
+        };
+
+        // see how many pool tokens it would cost to withdraw one side for the
+        // total amount of tokens, should be close!
+        let opposite_direction = trade_direction.opposite();
+        let pool_token_amount_from_single_side_withdraw = curve
+            .withdraw_single_token_type_exact_out(
+                source_token_amount,
+                swap_token_a_amount,
+                swap_token_b_amount,
+                pool_token_supply,
+                opposite_direction,
+            )
+            .unwrap();
+
+        // slippage due to rounding or truncation errors
+        let epsilon = std::cmp::max(1, pool_token_amount * epsilon_in_basis_points / 10000);
+        let difference = if pool_token_amount >= pool_token_amount_from_single_side_withdraw {
+            pool_token_amount - pool_token_amount_from_single_side_withdraw
+        } else {
+            pool_token_amount_from_single_side_withdraw - pool_token_amount
         };
         assert!(
             difference <= epsilon,

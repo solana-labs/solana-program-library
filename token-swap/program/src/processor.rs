@@ -427,13 +427,12 @@ impl Processor {
 
         let mut pool_token_amount = token_swap
             .swap_curve()
-            .trading_tokens_to_pool_tokens(
+            .withdraw_single_token_type_exact_out(
                 result.owner_fee,
                 swap_token_a_amount,
                 swap_token_b_amount,
                 to_u128(pool_mint.supply)?,
                 trade_direction,
-                RoundDirection::Ceiling,
                 token_swap.fees(),
             )
             .ok_or(SwapError::FeeCalculationFailure)?;
@@ -782,13 +781,12 @@ impl Processor {
         let pool_token_amount = if pool_mint_supply > 0 {
             token_swap
                 .swap_curve()
-                .trading_tokens_to_pool_tokens(
+                .deposit_single_token_type(
                     to_u128(source_token_amount)?,
                     to_u128(swap_token_a.amount)?,
                     to_u128(swap_token_b.amount)?,
                     pool_mint_supply,
                     trade_direction,
-                    RoundDirection::Floor,
                     token_swap.fees(),
                 )
                 .ok_or(SwapError::ZeroTradingTokens)?
@@ -896,36 +894,17 @@ impl Processor {
 
         let pool_mint = Self::unpack_mint(pool_mint_info, &token_swap.token_program_id())?;
         let pool_mint_supply = to_u128(pool_mint.supply)?;
-        let (swap_token_a_amount, swap_token_b_amount) = match trade_direction {
-            TradeDirection::AtoB => (
-                to_u128(
-                    swap_token_a
-                        .amount
-                        .checked_sub(destination_token_amount)
-                        .ok_or(SwapError::CalculationFailure)?,
-                )?,
-                to_u128(swap_token_b.amount)?,
-            ),
-            TradeDirection::BtoA => (
-                to_u128(swap_token_a.amount)?,
-                to_u128(
-                    swap_token_b
-                        .amount
-                        .checked_sub(destination_token_amount)
-                        .ok_or(SwapError::CalculationFailure)?,
-                )?,
-            ),
-        };
+        let swap_token_a_amount = to_u128(swap_token_a.amount)?;
+        let swap_token_b_amount = to_u128(swap_token_b.amount)?;
 
         let burn_pool_token_amount = token_swap
             .swap_curve()
-            .trading_tokens_to_pool_tokens(
+            .withdraw_single_token_type_exact_out(
                 to_u128(destination_token_amount)?,
                 swap_token_a_amount,
                 swap_token_b_amount,
                 pool_mint_supply,
                 trade_direction,
-                RoundDirection::Ceiling,
                 token_swap.fees(),
             )
             .ok_or(SwapError::ZeroTradingTokens)?;
@@ -5330,15 +5309,12 @@ mod tests {
 
             let pool_token_amount = accounts
                 .swap_curve
-                .trading_tokens_to_pool_tokens(
+                .withdraw_single_token_type_exact_out(
                     destination_a_amount.try_into().unwrap(),
-                    (swap_token_a.amount - destination_a_amount)
-                        .try_into()
-                        .unwrap(),
+                    swap_token_a.amount.try_into().unwrap(),
                     swap_token_b.amount.try_into().unwrap(),
                     pool_mint.supply.try_into().unwrap(),
                     TradeDirection::AtoB,
-                    RoundDirection::Ceiling,
                     &accounts.fees,
                 )
                 .unwrap();
@@ -5505,13 +5481,12 @@ mod tests {
         );
 
         let first_fee = swap_curve
-            .trading_tokens_to_pool_tokens(
+            .withdraw_single_token_type_exact_out(
                 results.owner_fee,
                 token_a_amount.try_into().unwrap(),
                 token_b_amount.try_into().unwrap(),
                 initial_supply.try_into().unwrap(),
                 TradeDirection::AtoB,
-                RoundDirection::Ceiling,
                 &fees,
             )
             .unwrap();
@@ -5582,13 +5557,12 @@ mod tests {
         );
 
         let second_fee = swap_curve
-            .trading_tokens_to_pool_tokens(
+            .withdraw_single_token_type_exact_out(
                 results.owner_fee,
                 token_a_amount.try_into().unwrap(),
                 token_b_amount.try_into().unwrap(),
                 initial_supply.try_into().unwrap(),
                 TradeDirection::BtoA,
-                RoundDirection::Ceiling,
                 &fees,
             )
             .unwrap();

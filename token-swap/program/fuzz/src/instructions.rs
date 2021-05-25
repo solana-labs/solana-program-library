@@ -7,7 +7,7 @@ use spl_token_swap_fuzz::{
 use spl_token_swap::{
     curve::{
         base::{CurveType, SwapCurve},
-        calculator::CurveCalculator,
+        calculator::{CurveCalculator, TradeDirection},
         constant_product::ConstantProductCurve,
         fees::Fees,
     },
@@ -58,13 +58,6 @@ enum FuzzInstruction {
         pool_token_id: AccountId,
         instruction: WithdrawSingleTokenTypeExactAmountOut,
     },
-}
-
-/// Helper enum to tell which direction a swap is meant to go.
-#[derive(Debug, Arbitrary, Clone)]
-enum TradeDirection {
-    AtoB,
-    BtoA,
 }
 
 /// Use u8 as an account id to simplify the address space and re-use accounts

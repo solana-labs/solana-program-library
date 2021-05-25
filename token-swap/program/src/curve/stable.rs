@@ -200,14 +200,13 @@ impl CurveCalculator for StableCurve {
 
     /// Get the amount of pool tokens for the given amount of token A or B.
     /// Re-implementation of `calc_token_amount`: https://github.com/curvefi/curve-contract/blob/80bbe179083c9a7062e4c482b0be3bfb7501f2bd/contracts/pool-templates/base/SwapTemplateBase.vy#L267
-    fn trading_tokens_to_pool_tokens(
+    fn deposit_single_token_type(
         &self,
         source_amount: u128,
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
         pool_supply: u128,
         trade_direction: TradeDirection,
-        round_direction: RoundDirection,
     ) -> Option<u128> {
         if source_amount == 0 {
             return Some(0);
@@ -231,10 +230,40 @@ impl CurveCalculator for StableCurve {
         let diff = d1.checked_sub(&d0)?;
         let final_amount =
             (diff.checked_mul(&PreciseNumber::new(pool_supply)?))?.checked_div(&d0)?;
-        match round_direction {
-            RoundDirection::Floor => final_amount.floor()?.to_imprecise(),
-            RoundDirection::Ceiling => final_amount.ceiling()?.to_imprecise(),
+        final_amount.floor()?.to_imprecise()
+    }
+
+    fn withdraw_single_token_type_exact_out(
+        &self,
+        source_amount: u128,
+        swap_token_a_amount: u128,
+        swap_token_b_amount: u128,
+        pool_supply: u128,
+        trade_direction: TradeDirection,
+    ) -> Option<u128> {
+        if source_amount == 0 {
+            return Some(0);
         }
+        let leverage = self.amp.checked_mul(N_COINS as u64)?;
+        let d0 = PreciseNumber::new(compute_d(
+            leverage,
+            swap_token_a_amount,
+            swap_token_b_amount,
+        )?)?;
+        let (withdraw_token_amount, other_token_amount) = match trade_direction {
+            TradeDirection::AtoB => (swap_token_a_amount, swap_token_b_amount),
+            TradeDirection::BtoA => (swap_token_b_amount, swap_token_a_amount),
+        };
+        let updated_deposit_token_amount = withdraw_token_amount.checked_sub(source_amount)?;
+        let d1 = PreciseNumber::new(compute_d(
+            leverage,
+            updated_deposit_token_amount,
+            other_token_amount,
+        )?)?;
+        let diff = d0.checked_sub(&d1)?;
+        let final_amount =
+            (diff.checked_mul(&PreciseNumber::new(pool_supply)?))?.checked_div(&d0)?;
+        final_amount.ceiling()?.to_imprecise()
     }
 
     fn normalized_value(
@@ -315,8 +344,9 @@ mod tests {
     use super::*;
     use crate::curve::calculator::{
         test::{
-            check_curve_value_from_swap, check_pool_token_conversion,
-            check_pool_value_from_deposit, check_pool_value_from_withdraw, total_and_intermediate,
+            check_curve_value_from_swap, check_deposit_token_conversion,
+            check_pool_value_from_deposit, check_pool_value_from_withdraw,
+            check_withdraw_token_conversion, total_and_intermediate,
             CONVERSION_BASIS_POINTS_GUARANTEE,
         },
         RoundDirection, INITIAL_SWAP_POOL_AMOUNT,
@@ -502,7 +532,7 @@ mod tests {
 
     proptest! {
         #[test]
-        fn pool_token_conversion(
+        fn deposit_token_conversion(
             // in the pool token conversion calcs, we simulate trading half of
             // source_token_amount, so this needs to be at least 2
             source_token_amount in 2..u64::MAX,
@@ -512,7 +542,7 @@ mod tests {
             amp in 1..100u64,
         ) {
             let curve = StableCurve { amp };
-            check_pool_token_conversion(
+            check_deposit_token_conversion(
                 &curve,
                 source_token_amount as u128,
                 swap_source_amount as u128,
@@ -522,7 +552,7 @@ mod tests {
                 CONVERSION_BASIS_POINTS_GUARANTEE * 100,
             );
 
-            check_pool_token_conversion(
+            check_deposit_token_conversion(
                 &curve,
                 source_token_amount as u128,
                 swap_source_amount as u128,
@@ -530,6 +560,36 @@ mod tests {
                 TradeDirection::BtoA,
                 pool_supply,
                 CONVERSION_BASIS_POINTS_GUARANTEE * 100,
+            );
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn withdraw_token_conversion(
+            (pool_token_supply, pool_token_amount) in total_and_intermediate(),
+            swap_token_a_amount in 1..u64::MAX,
+            swap_token_b_amount in 1..u64::MAX,
+            amp in 1..100u64,
+        ) {
+            let curve = StableCurve { amp };
+            check_withdraw_token_conversion(
+                &curve,
+                pool_token_amount as u128,
+                pool_token_supply as u128,
+                swap_token_a_amount as u128,
+                swap_token_b_amount as u128,
+                TradeDirection::AtoB,
+                CONVERSION_BASIS_POINTS_GUARANTEE
+            );
+            check_withdraw_token_conversion(
+                &curve,
+                pool_token_amount as u128,
+                pool_token_supply as u128,
+                swap_token_a_amount as u128,
+                swap_token_b_amount as u128,
+                TradeDirection::BtoA,
+                CONVERSION_BASIS_POINTS_GUARANTEE
             );
         }
     }
