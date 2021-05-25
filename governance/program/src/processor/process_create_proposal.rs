@@ -80,7 +80,7 @@ pub fn process_create_proposal(
         signatories_count: 0,
         signatories_signed_off_count: 0,
 
-        name: name.clone(),
+        name,
         description_link,
 
         draft_at: clock.slot,

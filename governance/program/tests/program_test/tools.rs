@@ -37,7 +37,7 @@ pub fn map_transaction_error(transport_error: TransportError) -> ProgramError {
 }
 
 pub fn clone_keypair(source: &Keypair) -> Keypair {
-    Keypair::from_base58_string(&source.to_base58_string())
+    Keypair::from_bytes(&source.to_bytes()).unwrap()
 }
 
 /// NOP (No Operation) Override function

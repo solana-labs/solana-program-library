@@ -139,7 +139,5 @@ pub fn dispose_account(account_info: &AccountInfo, beneficiary_account: &Account
 
     let mut account_data = account_info.data.borrow_mut();
 
-    for i in 0..account_data.len() {
-        account_data[i] = 0;
-    }
+    account_data.fill(0);
 }
