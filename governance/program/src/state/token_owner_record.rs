@@ -116,15 +116,13 @@ pub fn deserialize_token_owner_record_for_realm_and_governing_mint(
     governing_token_mint: &Pubkey,
 ) -> Result<TokenOwnerRecord, ProgramError> {
     let token_owner_record_data = deserialize_token_owner_record_raw(token_owner_record_info)?;
-    let token_owner_record_address = get_token_owner_record_address(
-        realm,
-        &governing_token_mint,
-        &token_owner_record_data.token_owner,
-    );
 
-    // Check the deserialized TokenOwnerRecord matches the given realm and governing_token_mint
-    if token_owner_record_address != *token_owner_record_info.key {
-        return Err(GovernanceError::InvalidTokenOwnerRecordAccountAddress.into());
+    if token_owner_record_data.token_mint != *governing_token_mint {
+        return Err(GovernanceError::InvalidTokenOwnerRecordGoverningMint.into());
+    }
+
+    if token_owner_record_data.realm != *realm {
+        return Err(GovernanceError::InvalidTokenOwnerRecordRealm.into());
     }
 
     Ok(token_owner_record_data)

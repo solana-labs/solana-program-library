@@ -250,6 +250,6 @@ async fn test_create_proposal_with_invalid_token_owner_record_error() {
     // Assert
     assert_eq!(
         err,
-        GovernanceError::InvalidTokenOwnerRecordAccountAddress.into()
+        GovernanceError::InvalidTokenOwnerRecordGoverningMint.into()
     );
 }

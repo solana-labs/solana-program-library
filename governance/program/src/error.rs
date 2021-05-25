@@ -43,6 +43,14 @@ pub enum GovernanceError {
     #[error("Invalid Token Owner Record account address")]
     InvalidTokenOwnerRecordAccountAddress,
 
+    /// Invalid Token Owner Record Governing mint
+    #[error("Invalid Token Owner Record Governing mint")]
+    InvalidTokenOwnerRecordGoverningMint,
+
+    /// Invalid Token Owner Record Realm
+    #[error("Invalid Token Owner Record Realm")]
+    InvalidTokenOwnerRecordRealm,
+
     /// Invalid Signatory account address
     #[error("Invalid Signatory account address")]
     InvalidSignatoryAddress,
