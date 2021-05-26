@@ -21,7 +21,7 @@ export interface decodedValidatorList {
   account: solanaWeb3.AccountInfo<schema.ValidatorListAccount>;
 }
 
-async function getStakePoolAccount(
+export async function getStakePoolAccount(
   connection: solanaWeb3.Connection,
   stakePoolPubKey: solanaWeb3.PublicKey,
 ): Promise<decodedStakePool> {
@@ -47,7 +47,7 @@ async function getStakePoolAccount(
   }
 }
 
-async function getValidatorListAccount(
+export async function getValidatorListAccount(
   connection: solanaWeb3.Connection,
   validatorListPubKey: solanaWeb3.PublicKey,
 ): Promise<decodedValidatorList> {
@@ -73,7 +73,7 @@ async function getValidatorListAccount(
   }
 }
 
-async function getStakePoolAccounts(
+export async function getStakePoolAccounts(
   connection: solanaWeb3.Connection,
   stakePoolProgramAddress: solanaWeb3.PublicKey,
 ): Promise<(decodedStakePool | decodedValidatorList)[]> {
@@ -113,7 +113,7 @@ async function getStakePoolAccounts(
   }
 }
 
-function prettyPrintPubKey(pubKey: schema.PublicKey): string {
+export function prettyPrintPubKey(pubKey: schema.PublicKey): string {
   /**
    * Helper function to pretty print a schema.PublicKey
    * Pretty prints a PublicKey in base58 format */
@@ -122,7 +122,7 @@ function prettyPrintPubKey(pubKey: schema.PublicKey): string {
   ).toString();
 }
 
-function prettyPrintAccount(
+export function prettyPrintAccount(
   account: decodedValidatorList | decodedStakePool,
 ): void {
   /**
@@ -143,7 +143,7 @@ function prettyPrintAccount(
   console.log('Owner PubKey:', account.account.owner.toString());
 }
 
-function testOnDevnet() {
+export default function testOnDevnet() {
   /**
    * Test function on devnet: get accounts, deserialize them, then log them
    * FIXME: This is no substitute for a proper test suite, but is a sanity-check for now.
