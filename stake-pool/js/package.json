@@ -4,13 +4,18 @@
   "description": "JS bindings for the stake pool program",
   "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "compile": "tsc",
+    "test": "ts-mocha -r esm -p tsconfig.json src/**/*.spec.ts"
   },
   "keywords": [],
   "author": "Lieu Zheng Hong",
   "license": "ISC",
   "devDependencies": {
+    "esm": "^3.2.25",
+    "mocha": "^8.4.0",
     "prettier": "^2.2.1",
+    "ts-mocha": "^8.0.0",
+    "ts-node": "^7.0.1",
     "typescript": "^4.2.4",
     "webpack": "^5.36.2",
     "webpack-cli": "^4.6.0"
