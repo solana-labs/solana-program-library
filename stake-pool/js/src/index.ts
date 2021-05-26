@@ -157,10 +157,14 @@ export default function testOnDevnet() {
     'poo1B9L9nR3CrcaziKVYVpRX6A9Y1LAXYasjjfCbApj',
   );
 
+  /*
   getStakePoolAccounts(connection, STAKE_POOL_PROGRAM_ADDR).then(accounts => {
     accounts.map(account => {
       prettyPrintAccount(account);
       console.log('\n');
     });
   });
+  */
+
+  getStakePoolAccounts(connection, STAKE_POOL_PROGRAM_ADDR)
 }
