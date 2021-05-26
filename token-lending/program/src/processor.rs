@@ -1740,7 +1740,7 @@ where
 fn get_pyth_price(
     pyth_price_account_info: &AccountInfo,
     clock: &Clock,
-) -> Result<u64, ProgramError> {
+) -> Result<Decimal, ProgramError> {
     let pyth_price_data = &pyth_price_account_info.try_borrow_data()?;
     let pyth_price = pyth_client::cast::<pyth_client::Price>(pyth_price_data);
 
@@ -1776,13 +1776,7 @@ fn get_pyth_price(
         .checked_pow(pyth_exponent)
         .ok_or(LendingError::MathOverflow)?;
 
-    // @FIXME: magic number
-    let quote_decimals = 10u64.pow(6);
-
-    let market_price = Decimal::from(price)
-        .try_div(pyth_decimals)?
-        .try_mul(quote_decimals)?
-        .try_round_u64()?;
+    let market_price = Decimal::from(price).try_div(pyth_decimals)?;
 
     Ok(market_price)
 }

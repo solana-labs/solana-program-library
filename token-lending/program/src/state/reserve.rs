@@ -363,9 +363,8 @@ pub struct ReserveLiquidity {
     pub borrowed_amount_wads: Decimal,
     /// Reserve liquidity cumulative borrow rate
     pub cumulative_borrow_rate_wads: Decimal,
-    // @TODO: make Decimal
     /// Reserve liquidity market price in quote currency
-    pub market_price: u64,
+    pub market_price: Decimal,
 }
 
 impl ReserveLiquidity {
@@ -481,7 +480,7 @@ pub struct NewReserveLiquidityParams {
     /// Reserve liquidity oracle account
     pub oracle_pubkey: Pubkey,
     /// Reserve liquidity market price in quote currency
-    pub market_price: u64,
+    pub market_price: Decimal,
 }
 
 /// Reserve collateral
@@ -712,7 +711,7 @@ impl IsInitialized for Reserve {
     }
 }
 
-const RESERVE_LEN: usize = 563; // 1 + 8 + 1 + 32 + 32 + 1 + 32 + 32 + 32 + 16 + 8 + 8 + 16 + 32 + 32 + 8 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 8 + 8 + 1 + 248
+const RESERVE_LEN: usize = 571; // 1 + 8 + 1 + 32 + 32 + 1 + 32 + 32 + 32 + 8 + 16 + 16 + 16 + 32 + 8 + 32 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 8 + 8 + 1 + 248
 impl Pack for Reserve {
     const LEN: usize = RESERVE_LEN;
 
@@ -762,7 +761,7 @@ impl Pack for Reserve {
             8,
             16,
             16,
-            8,
+            16,
             PUBKEY_BYTES,
             8,
             PUBKEY_BYTES,
@@ -800,7 +799,7 @@ impl Pack for Reserve {
             self.liquidity.cumulative_borrow_rate_wads,
             liquidity_cumulative_borrow_rate_wads,
         );
-        *liquidity_market_price = self.liquidity.market_price.to_le_bytes();
+        pack_decimal(self.liquidity.market_price, liquidity_market_price);
 
         // collateral
         collateral_mint_pubkey.copy_from_slice(self.collateral.mint_pubkey.as_ref());
@@ -866,7 +865,7 @@ impl Pack for Reserve {
             8,
             16,
             16,
-            8,
+            16,
             PUBKEY_BYTES,
             8,
             PUBKEY_BYTES,
@@ -905,7 +904,7 @@ impl Pack for Reserve {
                 available_amount: u64::from_le_bytes(*liquidity_available_amount),
                 borrowed_amount_wads: unpack_decimal(liquidity_borrowed_amount_wads),
                 cumulative_borrow_rate_wads: unpack_decimal(liquidity_cumulative_borrow_rate_wads),
-                market_price: u64::from_le_bytes(*liquidity_market_price),
+                market_price: unpack_decimal(liquidity_market_price),
             },
             collateral: ReserveCollateral {
                 mint_pubkey: Pubkey::new_from_array(*collateral_mint_pubkey),

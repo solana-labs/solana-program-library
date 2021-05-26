@@ -161,12 +161,6 @@ async fn test_success() {
         liquidity.borrowed_amount_wads
     );
     assert_eq!(liquidity.borrowed_amount_wads, compound_borrow_wads);
-    assert_eq!(
-        Decimal::from(sol_reserve.liquidity.market_price),
-        collateral_price,
-    );
-    assert_eq!(
-        Decimal::from(usdc_reserve.liquidity.market_price),
-        liquidity_price,
-    );
+    assert_eq!(sol_reserve.liquidity.market_price, collateral_price,);
+    assert_eq!(usdc_reserve.liquidity.market_price, liquidity_price,);
 }

@@ -250,13 +250,6 @@ pub fn add_reserve(
 
     let current_slot = slots_elapsed + 1;
 
-    let market_price = oracle
-        .price
-        .checked_div(oracle.decimals)
-        .unwrap()
-        .checked_mul(10u64.pow(6))
-        .unwrap();
-
     let collateral_mint_pubkey = Pubkey::new_unique();
     test.add_packable_account(
         collateral_mint_pubkey,
@@ -345,7 +338,7 @@ pub fn add_reserve(
             supply_pubkey: liquidity_supply_pubkey,
             fee_receiver: liquidity_fee_receiver_pubkey,
             oracle_pubkey: oracle.price_pubkey,
-            market_price,
+            market_price: oracle.price,
         }),
         collateral: ReserveCollateral::new(NewReserveCollateralParams {
             mint_pubkey: collateral_mint_pubkey,
@@ -421,7 +414,7 @@ pub fn add_reserve(
         collateral_supply_pubkey,
         user_liquidity_pubkey,
         user_collateral_pubkey,
-        market_price,
+        market_price: oracle.price,
     }
 }
 
@@ -697,7 +690,7 @@ pub struct TestReserve {
     pub collateral_supply_pubkey: Pubkey,
     pub user_liquidity_pubkey: Pubkey,
     pub user_collateral_pubkey: Pubkey,
-    pub market_price: u64,
+    pub market_price: Decimal,
 }
 
 impl TestReserve {
@@ -723,13 +716,6 @@ impl TestReserve {
         let liquidity_host_keypair = Keypair::new();
         let user_collateral_token_keypair = Keypair::new();
         let user_transfer_authority_keypair = Keypair::new();
-
-        let market_price = oracle
-            .price
-            .checked_div(oracle.decimals)
-            .unwrap()
-            .checked_mul(10u64.pow(6))
-            .unwrap();
 
         let liquidity_mint_account = banks_client
             .get_account(liquidity_mint_pubkey)
@@ -857,7 +843,7 @@ impl TestReserve {
                 collateral_supply_pubkey: collateral_supply_keypair.pubkey(),
                 user_liquidity_pubkey,
                 user_collateral_pubkey: user_collateral_token_keypair.pubkey(),
-                market_price,
+                market_price: oracle.price,
             })
             .map_err(|e| e.unwrap())
     }
@@ -1066,8 +1052,7 @@ pub fn add_usdc_mint(test: &mut ProgramTest) -> TestMint {
 pub struct TestOracle {
     pub product_pubkey: Pubkey,
     pub price_pubkey: Pubkey,
-    pub decimals: u64,
-    pub price: u64,
+    pub price: Decimal,
 }
 
 pub fn add_sol_oracle(test: &mut ProgramTest) -> TestOracle {
@@ -1076,7 +1061,7 @@ pub fn add_sol_oracle(test: &mut ProgramTest) -> TestOracle {
         Pubkey::from_str(SOL_PYTH_PRODUCT).unwrap(),
         Pubkey::from_str(SOL_PYTH_PRICE).unwrap(),
         // Set SOL price to $20
-        20 * LAMPORTS_TO_SOL,
+        Decimal::from(20u64),
     )
 }
 
@@ -1087,7 +1072,7 @@ pub fn add_usdc_oracle(test: &mut ProgramTest) -> TestOracle {
         Pubkey::from_str(SRM_PYTH_PRODUCT).unwrap(),
         Pubkey::from_str(SRM_PYTH_PRICE).unwrap(),
         // Set USDC price to $1
-        1 * LAMPORTS_TO_SOL,
+        Decimal::from(1u64),
     )
 }
 
@@ -1095,7 +1080,7 @@ pub fn add_oracle(
     test: &mut ProgramTest,
     product_pubkey: Pubkey,
     price_pubkey: Pubkey,
-    price: u64,
+    price: Decimal,
 ) -> TestOracle {
     let owner = Pubkey::new_unique();
 
@@ -1119,7 +1104,13 @@ pub fn add_oracle(
         .checked_pow(pyth_price.expo.checked_abs().unwrap().try_into().unwrap())
         .unwrap();
 
-    pyth_price.agg.price = price.try_into().unwrap();
+    pyth_price.agg.price = price
+        .try_round_u64()
+        .unwrap()
+        .checked_mul(decimals)
+        .unwrap()
+        .try_into()
+        .unwrap();
 
     test.add_account(
         price_pubkey,
@@ -1135,7 +1126,6 @@ pub fn add_oracle(
     TestOracle {
         product_pubkey,
         price_pubkey,
-        decimals,
         price,
     }
 }
