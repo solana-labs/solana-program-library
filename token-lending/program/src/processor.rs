@@ -726,8 +726,8 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
         let market_value = deposit_reserve
             .collateral_exchange_rate()?
             .decimal_collateral_to_liquidity(collateral.deposited_amount.into())?
-            .try_div(decimals)?
-            .try_mul(deposit_reserve.liquidity.market_price)?;
+            .try_mul(deposit_reserve.liquidity.market_price)?
+            .try_div(decimals)?;
         collateral.market_value = market_value;
 
         let loan_to_value_rate = Rate::from_percent(deposit_reserve.config.loan_to_value_ratio);
@@ -776,8 +776,8 @@ fn process_refresh_obligation(program_id: &Pubkey, accounts: &[AccountInfo]) -> 
 
         let market_value = liquidity
             .borrowed_amount_wads
-            .try_div(decimals)?
-            .try_mul(borrow_reserve.liquidity.market_price)?;
+            .try_mul(borrow_reserve.liquidity.market_price)?
+            .try_div(decimals)?;
         liquidity.market_value = market_value;
 
         borrowed_value = borrowed_value.try_add(market_value)?;
