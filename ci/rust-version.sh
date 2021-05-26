@@ -18,7 +18,7 @@
 if [[ -n $RUST_STABLE_VERSION ]]; then
   stable_version="$RUST_STABLE_VERSION"
 else
-  stable_version=1.51.0
+  stable_version=1.52.1
 fi
 
 if [[ -n $RUST_NIGHTLY_VERSION ]]; then

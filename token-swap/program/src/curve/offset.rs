@@ -8,8 +8,8 @@ use {
                 TradingTokenResult,
             },
             constant_product::{
-                normalized_value, pool_tokens_to_trading_tokens, swap,
-                trading_tokens_to_pool_tokens,
+                deposit_single_token_type, normalized_value, pool_tokens_to_trading_tokens, swap,
+                withdraw_single_token_type_exact_out,
             },
         },
         error::SwapError,
@@ -78,23 +78,41 @@ impl CurveCalculator for OffsetCurve {
 
     /// Get the amount of pool tokens for the given amount of token A and B,
     /// taking into account the offset
-    fn trading_tokens_to_pool_tokens(
+    fn deposit_single_token_type(
         &self,
         source_amount: u128,
         swap_token_a_amount: u128,
         swap_token_b_amount: u128,
         pool_supply: u128,
         trade_direction: TradeDirection,
-        round_direction: RoundDirection,
     ) -> Option<u128> {
         let token_b_offset = self.token_b_offset as u128;
-        trading_tokens_to_pool_tokens(
+        deposit_single_token_type(
             source_amount,
             swap_token_a_amount,
             swap_token_b_amount.checked_add(token_b_offset)?,
             pool_supply,
             trade_direction,
-            round_direction,
+            RoundDirection::Floor,
+        )
+    }
+
+    fn withdraw_single_token_type_exact_out(
+        &self,
+        source_amount: u128,
+        swap_token_a_amount: u128,
+        swap_token_b_amount: u128,
+        pool_supply: u128,
+        trade_direction: TradeDirection,
+    ) -> Option<u128> {
+        let token_b_offset = self.token_b_offset as u128;
+        withdraw_single_token_type_exact_out(
+            source_amount,
+            swap_token_a_amount,
+            swap_token_b_amount.checked_add(token_b_offset)?,
+            pool_supply,
+            trade_direction,
+            RoundDirection::Ceiling,
         )
     }
 
@@ -170,8 +188,9 @@ mod tests {
     use super::*;
     use crate::curve::calculator::{
         test::{
-            check_curve_value_from_swap, check_pool_token_conversion,
-            check_pool_value_from_deposit, check_pool_value_from_withdraw, total_and_intermediate,
+            check_curve_value_from_swap, check_deposit_token_conversion,
+            check_pool_value_from_deposit, check_pool_value_from_withdraw,
+            check_withdraw_token_conversion, total_and_intermediate,
             CONVERSION_BASIS_POINTS_GUARANTEE,
         },
         INITIAL_SWAP_POOL_AMOUNT,
@@ -297,7 +316,7 @@ mod tests {
 
     proptest! {
         #[test]
-        fn pool_token_conversion_a_to_b(
+        fn deposit_token_conversion_a_to_b(
             // in the pool token conversion calcs, we simulate trading half of
             // source_token_amount, so this needs to be at least 2
             source_token_amount in 2..u64::MAX,
@@ -326,7 +345,7 @@ mod tests {
             // The invariant needs to fit in a u128.
             // invariant = swap_source_amount * (swap_destination_amount + token_b_offset)
             prop_assume!(!(swap_destination_amount + token_b_offset).overflowing_mul(swap_source_amount).1);
-            check_pool_token_conversion(
+            check_deposit_token_conversion(
                 &curve,
                 source_token_amount,
                 swap_source_amount,
@@ -340,7 +359,7 @@ mod tests {
 
     proptest! {
         #[test]
-        fn pool_token_conversion_b_to_a(
+        fn deposit_token_conversion_b_to_a(
             // in the pool token conversion calcs, we simulate trading half of
             // source_token_amount, so this needs to be at least 2
             source_token_amount in 2..u64::MAX,
@@ -360,7 +379,7 @@ mod tests {
             // The invariant needs to fit in a u128
             // invariant = swap_destination_amount * (swap_source_amount + token_b_offset)
             prop_assume!(!(swap_source_amount + token_b_offset).overflowing_mul(swap_destination_amount).1);
-            check_pool_token_conversion(
+            check_deposit_token_conversion(
                 &curve,
                 source_token_amount,
                 swap_source_amount,
@@ -368,6 +387,59 @@ mod tests {
                 TradeDirection::BtoA,
                 pool_supply,
                 CONVERSION_BASIS_POINTS_GUARANTEE,
+            );
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn withdraw_token_conversion(
+            (pool_token_supply, pool_token_amount) in total_and_intermediate(),
+            swap_token_a_amount in 1..u64::MAX,
+            (swap_token_b_amount, token_b_offset) in values_sum_within_u64(),
+        ) {
+            let curve = OffsetCurve {
+                token_b_offset,
+            };
+
+            let swap_token_a_amount = swap_token_a_amount as u128;
+            let swap_token_b_amount = swap_token_b_amount as u128;
+            let token_b_offset = token_b_offset as u128;
+            let pool_token_amount = pool_token_amount as u128;
+            let pool_token_supply = pool_token_supply as u128;
+            // The invariant needs to fit in a u128
+            // invariant = swap_destination_amount * (swap_source_amount + token_b_offset)
+            prop_assume!(!(swap_token_b_amount + token_b_offset).overflowing_mul(swap_token_a_amount).1);
+            prop_assume!(pool_token_amount * swap_token_a_amount / pool_token_supply >= 1);
+            prop_assume!(pool_token_amount * (swap_token_b_amount + token_b_offset) / pool_token_supply >= 1);
+            // make sure we don't overdraw from either side
+            let withdraw_result = curve
+                .pool_tokens_to_trading_tokens(
+                    pool_token_amount,
+                    pool_token_supply,
+                    swap_token_a_amount,
+                    swap_token_b_amount,
+                    RoundDirection::Floor,
+                )
+                .unwrap();
+            prop_assume!(withdraw_result.token_b_amount <= swap_token_b_amount); // avoid overdrawing to 0 for calc
+            check_withdraw_token_conversion(
+                &curve,
+                pool_token_amount,
+                pool_token_supply,
+                swap_token_a_amount,
+                swap_token_b_amount,
+                TradeDirection::AtoB,
+                CONVERSION_BASIS_POINTS_GUARANTEE
+            );
+            check_withdraw_token_conversion(
+                &curve,
+                pool_token_amount,
+                pool_token_supply,
+                swap_token_a_amount,
+                swap_token_b_amount,
+                TradeDirection::BtoA,
+                CONVERSION_BASIS_POINTS_GUARANTEE
             );
         }
     }

@@ -1,10 +1,19 @@
 {
-  "name": "spl-name-service",
-  "version": "0.1.0",
+  "name": "@solana/spl-name-service",
+  "version": "0.1.2",
+  "description": "SPL Name Service JavaScript API",
   "license": "MIT",
+  "author": "Solana Maintainers <maintainers@solana.foundation>",
+  "homepage": "https://solana.com/",
   "repository": {
     "type": "git",
     "url": "https://github.com/solana-labs/solana-program-library"
+  },
+  "bugs": {
+    "url": "https://github.com/solana-labs/solana-program-library/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -18,13 +27,21 @@
     "pretty:fix": "prettier --write 'src/*.[jt]s'",
     "doc": "yarn typedoc src/index.ts"
   },
+  "prettier": {
+    "singleQuote": true
+  },
   "devDependencies": {
     "@tsconfig/recommended": "^1.0.1",
     "@types/bs58": "^4.0.1",
     "@types/node": "^14.14.20",
+    "@typescript-eslint/eslint-plugin": "^4.0.1",
+    "@typescript-eslint/parser": "^4.0.1",
     "babel-eslint": "^10.1.0",
-    "eslint": "^7.17.0",
-    "eslint-plugin-import": "^2.22.1",
+    "eslint": "^7.8.0",
+    "eslint-config-prettier": "^6.11.0",
+    "eslint-plugin-eslint-comments": "^3.2.0",
+    "eslint-plugin-functional": "^3.0.2",
+    "eslint-plugin-import": "^2.22.0",
     "nodemon": "^2.0.7",
     "prettier": "^2.2.1",
     "save-dev": "0.0.1-security",
@@ -34,12 +51,10 @@
     "typescript": "^4.1.3"
   },
   "dependencies": {
-    "@project-serum/sol-wallet-adapter": "^0.1.5",
-    "@solana/spl-token": "0.1.3",
-    "@solana/web3.js": "^1.2.6",
+    "@solana/spl-token": "0.1.4",
+    "@solana/web3.js": "^1.11.0",
     "bip32": "^2.0.6",
     "bn.js": "^5.1.3",
-    "@bonfida/borsh-js": "^0.3.1",
     "bs58": "4.0.1",
     "buffer-layout": "^1.2.0",
     "core-util-is": "^1.0.2",

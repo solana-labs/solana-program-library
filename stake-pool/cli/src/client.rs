@@ -86,6 +86,7 @@ pub(crate) fn get_stake_accounts_by_withdraw_authority(
     rpc_client
         .get_program_accounts_with_config(
             &stake_program::id(),
+            #[allow(clippy::needless_update)] // TODO: Remove after updating to solana >=1.6.10
             RpcProgramAccountsConfig {
                 filters: Some(vec![RpcFilterType::Memcmp(Memcmp {
                     offset: 44, // 44 is Withdrawer authority offset in stake account stake
@@ -96,6 +97,7 @@ pub(crate) fn get_stake_accounts_by_withdraw_authority(
                     encoding: Some(UiAccountEncoding::Base64),
                     ..RpcAccountInfoConfig::default()
                 },
+                ..RpcProgramAccountsConfig::default()
             },
         )
         .map(|accounts| {

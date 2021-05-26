@@ -702,7 +702,7 @@ impl Processor {
                 Self::process_toggle_freeze_account(program_id, accounts, true)
             }
             TokenInstruction::ThawAccount => {
-                msg!("Instruction: FreezeAccount");
+                msg!("Instruction: ThawAccount");
                 Self::process_toggle_freeze_account(program_id, accounts, false)
             }
             TokenInstruction::TransferChecked { amount, decimals } => {
