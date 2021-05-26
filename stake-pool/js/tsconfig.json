@@ -4,6 +4,7 @@
         "module": "ES6",
         "esModuleInterop": true,
         "moduleResolution": "Node",
+        "outDir": "dist",
     },
     "include": [
         "src/*.ts"
