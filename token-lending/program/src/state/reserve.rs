@@ -1173,6 +1173,49 @@ mod test {
                 assert_eq!(host_fee, 0);
             }
         }
+
+        #[test]
+        fn flash_loan_fee_calculation(
+            borrow_fee_wad in 0..WAD, // at WAD, fee == borrow amount, which fails
+            flash_loan_fee_wad in 0..WAD, // at WAD, fee == borrow amount, which fails
+            host_fee_percentage in 0..=100u8,
+            borrow_amount in 3..=u64::MAX, // start at 3 to ensure calculation success
+                                           // 0, 1, and 2 are covered in the minimum tests
+                                           // @FIXME: ^ no longer true
+        ) {
+            let fees = ReserveFees {
+                borrow_fee_wad,
+                flash_loan_fee_wad,
+                host_fee_percentage,
+            };
+            let (total_fee, host_fee) = fees.calculate_flash_loan_fees(Decimal::from(borrow_amount))?;
+
+            // The total fee can't be greater than the amount borrowed, as long
+            // as amount borrowed is greater than 2.
+            // At a borrow amount of 2, we can get a total fee of 2 if a host
+            // fee is also specified.
+            assert!(total_fee <= borrow_amount);
+
+            // the host fee can't be greater than the total fee
+            assert!(host_fee <= total_fee);
+
+            // for all fee rates greater than 0, we must have some fee
+            if borrow_fee_wad > 0 {
+                assert!(total_fee > 0);
+            }
+
+            if host_fee_percentage == 100 {
+                // if the host fee percentage is maxed at 100%, it should get all the fee
+                assert_eq!(host_fee, total_fee);
+            }
+
+            // if there's a host fee and some borrow fee, host fee must be greater than 0
+            if host_fee_percentage > 0 && borrow_fee_wad > 0 {
+                assert!(host_fee > 0);
+            } else {
+                assert_eq!(host_fee, 0);
+            }
+        }
     }
 
     #[test]
