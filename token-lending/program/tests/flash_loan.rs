@@ -12,9 +12,7 @@ use solana_sdk::{
 };
 use spl_token::solana_program::instruction::InstructionError;
 use spl_token_lending::{
-    error::LendingError,
-    instruction::flash_loan,
-    processor::process_instruction
+    error::LendingError, instruction::flash_loan, processor::process_instruction,
 };
 
 #[tokio::test]

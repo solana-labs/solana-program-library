@@ -126,7 +126,6 @@ async fn test_borrow_quote_currency() {
             FeeCalculation::Exclusive,
         )
         .unwrap();
-
     assert_eq!(total_fee, FEE_AMOUNT);
     assert_eq!(host_fee, HOST_FEE_AMOUNT);
 
