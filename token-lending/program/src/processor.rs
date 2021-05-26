@@ -14,7 +14,6 @@ use crate::{
 use num_traits::FromPrimitive;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
-    clock::{DEFAULT_TICKS_PER_SECOND, DEFAULT_TICKS_PER_SLOT},
     decode_error::DecodeError,
     entrypoint::ProgramResult,
     instruction::Instruction,
@@ -28,9 +27,6 @@ use solana_program::{
 use spl_token::solana_program::instruction::AccountMeta;
 use spl_token::state::{Account, Mint};
 use std::convert::TryInto;
-
-/// Estimated number of slots in 60 seconds
-const SLOTS_PER_MINUTE: u64 = (DEFAULT_TICKS_PER_SECOND / DEFAULT_TICKS_PER_SLOT) * 60;
 
 /// Processes an instruction
 pub fn process_instruction(
@@ -1752,7 +1748,9 @@ fn get_pyth_price(
         }
     }
 
-    if pyth_price.valid_slot < clock.slot - SLOTS_PER_MINUTE {
+    const STALE_AFTER_SLOTS_ELAPSED: u64 = 5;
+
+    if pyth_price.valid_slot - STALE_AFTER_SLOTS_ELAPSED < clock.slot {
         msg!("Oracle price is stale");
         return Err(LendingError::InvalidOracleConfig.into());
     }
