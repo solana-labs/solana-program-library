@@ -1,13 +1,13 @@
 {
-  "name": "js",
-  "version": "1.0.0",
-  "description": "",
+  "name": "stake-pool-js",
+  "version": "0.0.1",
+  "description": "JS bindings for the stake pool program",
   "private": true,
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
+  "author": "Lieu Zheng Hong",
   "license": "ISC",
   "devDependencies": {
     "prettier": "^2.2.1",
