@@ -1,20 +1,28 @@
 //! Program processor
 
+mod process_add_signatory;
 mod process_create_account_governance;
 mod process_create_program_governance;
+mod process_create_proposal;
 mod process_create_realm;
 mod process_deposit_governing_tokens;
-mod process_set_vote_authority;
+mod process_remove_signatory;
+mod process_set_governance_delegate;
+mod process_sign_off_proposal;
 mod process_withdraw_governing_tokens;
 
 use crate::instruction::GovernanceInstruction;
 use borsh::BorshDeserialize;
 
+use process_add_signatory::*;
 use process_create_account_governance::*;
 use process_create_program_governance::*;
+use process_create_proposal::*;
 use process_create_realm::*;
 use process_deposit_governing_tokens::*;
-use process_set_vote_authority::*;
+use process_remove_signatory::*;
+use process_set_governance_delegate::*;
+use process_sign_off_proposal::*;
 use process_withdraw_governing_tokens::*;
 
 use solana_program::{
@@ -31,7 +39,7 @@ pub fn process_instruction(
     let instruction = GovernanceInstruction::try_from_slice(input)
         .map_err(|_| ProgramError::InvalidInstructionData)?;
 
-    msg!("Instruction: {:?}", instruction);
+    msg!("GOVERNANCE-INSTRUCTION: {:?}", instruction);
 
     match instruction {
         GovernanceInstruction::CreateRealm { name } => {
@@ -46,18 +54,9 @@ pub fn process_instruction(
             process_withdraw_governing_tokens(program_id, accounts)
         }
 
-        GovernanceInstruction::SetVoteAuthority {
-            realm,
-            governing_token_mint,
-            governing_token_owner,
-            new_vote_authority,
-        } => process_set_vote_authority(
-            accounts,
-            &realm,
-            &governing_token_mint,
-            &governing_token_owner,
-            &new_vote_authority,
-        ),
+        GovernanceInstruction::SetGovernanceDelegate {
+            new_governance_delegate,
+        } => process_set_governance_delegate(accounts, &new_governance_delegate),
         GovernanceInstruction::CreateProgramGovernance {
             config,
             transfer_upgrade_authority,
@@ -69,6 +68,26 @@ pub fn process_instruction(
         ),
         GovernanceInstruction::CreateAccountGovernance { config } => {
             process_create_account_governance(program_id, accounts, config)
+        }
+        GovernanceInstruction::CreateProposal {
+            name,
+            description_link,
+            governing_token_mint,
+        } => process_create_proposal(
+            program_id,
+            accounts,
+            name,
+            description_link,
+            governing_token_mint,
+        ),
+        GovernanceInstruction::AddSignatory { signatory } => {
+            process_add_signatory(program_id, accounts, signatory)
+        }
+        GovernanceInstruction::RemoveSignatory { signatory } => {
+            process_remove_signatory(program_id, accounts, signatory)
+        }
+        GovernanceInstruction::SignOffProposal {} => {
+            process_sign_off_proposal(program_id, accounts)
         }
         _ => todo!("Instruction not implemented yet"),
     }

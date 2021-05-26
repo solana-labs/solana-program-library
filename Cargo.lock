@@ -3819,6 +3819,7 @@ dependencies = [
  "borsh 0.8.2",
  "num-derive",
  "num-traits",
+ "proptest",
  "serde",
  "serde_derive",
  "solana-program",

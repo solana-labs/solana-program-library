@@ -52,7 +52,7 @@ pub fn process_create_program_governance(
     let program_governance_data = Governance {
         account_type: GovernanceAccountType::ProgramGovernance,
         config: config.clone(),
-        proposal_count: 0,
+        proposals_count: 0,
     };
 
     create_and_serialize_account_signed::<Governance>(

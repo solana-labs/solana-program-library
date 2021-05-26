@@ -190,7 +190,7 @@ pub fn get_mint_from_token_account(
     }
 
     // TokeAccount layout:   mint(32), owner(32), amount(8), ...
-    let data = token_account_info.try_borrow_data().unwrap();
+    let data = token_account_info.try_borrow_data()?;
     let mint_data = array_ref![data, 0, 32];
     Ok(Pubkey::new_from_array(*mint_data))
 }
@@ -205,7 +205,7 @@ pub fn get_owner_from_token_account(
     }
 
     // TokeAccount layout:   mint(32), owner(32), amount(8)
-    let data = token_account_info.try_borrow_data().unwrap();
+    let data = token_account_info.try_borrow_data()?;
     let owner_data = array_ref![data, 32, 32];
     Ok(Pubkey::new_from_array(*owner_data))
 }

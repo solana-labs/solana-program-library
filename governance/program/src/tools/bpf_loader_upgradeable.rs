@@ -72,26 +72,24 @@ pub fn assert_program_upgrade_authority_is_signer(
         return Err(GovernanceError::InvalidProgramDataAccountAddress.into());
     }
 
-    let upgrade_authority = match deserialize(&program_data_info.data.borrow())
+    let upgrade_authority = if let UpgradeableLoaderState::ProgramData {
+        slot: _,
+        upgrade_authority_address,
+    } = deserialize(&program_data_info.data.borrow())
         .map_err(|_| GovernanceError::InvalidProgramDataAccountData)?
     {
-        UpgradeableLoaderState::ProgramData {
-            slot: _,
-            upgrade_authority_address,
-        } => upgrade_authority_address,
-        _ => None,
+        upgrade_authority_address
+    } else {
+        None
     };
 
-    match upgrade_authority {
-        Some(upgrade_authority) => {
-            if upgrade_authority != *program_upgrade_authority_info.key {
-                return Err(GovernanceError::InvalidUpgradeAuthority.into());
-            }
-            if !program_upgrade_authority_info.is_signer {
-                return Err(GovernanceError::UpgradeAuthorityMustSign.into());
-            }
-        }
-        None => return Err(GovernanceError::ProgramNotUpgradable.into()),
+    let upgrade_authority = upgrade_authority.ok_or(GovernanceError::ProgramNotUpgradable)?;
+
+    if upgrade_authority != *program_upgrade_authority_info.key {
+        return Err(GovernanceError::InvalidUpgradeAuthority.into());
+    }
+    if !program_upgrade_authority_info.is_signer {
+        return Err(GovernanceError::UpgradeAuthorityMustSign.into());
     }
 
     Ok(())

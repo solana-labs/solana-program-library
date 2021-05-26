@@ -1,6 +1,6 @@
 //! SingleSignerInstruction Account
 
-use super::enums::GovernanceAccountType;
+use crate::state::enums::GovernanceAccountType;
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 
 /// Account for an instruction to be executed for Proposal

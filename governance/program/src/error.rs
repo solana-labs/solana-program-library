@@ -31,21 +31,65 @@ pub enum GovernanceError {
     #[error("Governing Token Owner must sign transaction")]
     GoverningTokenOwnerMustSign,
 
-    /// Governing Token Owner or Vote Authority  must sign transaction
-    #[error("Governing Token Owner or Vote Authority  must sign transaction")]
-    GoverningTokenOwnerOrVoteAuthrotiyMustSign,
+    /// Governing Token Owner or Delegate  must sign transaction
+    #[error("Governing Token Owner or Delegate  must sign transaction")]
+    GoverningTokenOwnerOrDelegateMustSign,
 
     /// All active votes must be relinquished to withdraw governing tokens
     #[error("All active votes must be relinquished to withdraw governing tokens")]
     CannotWithdrawGoverningTokensWhenActiveVotesExist,
 
-    /// Invalid Voter account address
-    #[error("Invalid Voter account address")]
-    InvalidVoterAccountAddress,
+    /// Invalid Token Owner Record account address
+    #[error("Invalid Token Owner Record account address")]
+    InvalidTokenOwnerRecordAccountAddress,
+
+    /// Invalid Token Owner Record Governing mint
+    #[error("Invalid Token Owner Record Governing mint")]
+    InvalidTokenOwnerRecordGoverningMint,
+
+    /// Invalid Token Owner Record Realm
+    #[error("Invalid Token Owner Record Realm")]
+    InvalidTokenOwnerRecordRealm,
+
+    /// Invalid Signatory account address
+    #[error("Invalid Signatory account address")]
+    InvalidSignatoryAddress,
+
+    /// Signatory already signed off
+    #[error("Signatory already signed off")]
+    SignatoryAlreadySignedOff,
+
+    /// Signatory must sign
+    #[error("Signatory must sign")]
+    SignatoryMustSign,
+
+    /// Invalid Proposal Owner
+    #[error("Invalid Proposal Owner")]
+    InvalidProposalOwnerAccount,
 
     /// Invalid Governance config
     #[error("Invalid Governance config")]
     InvalidGovernanceConfig,
+
+    /// Proposal for the given Governance, Governing Token Mint and index already exists
+    #[error("Proposal for the given Governance, Governing Token Mint and index already exists")]
+    ProposalAlreadyExists,
+
+    /// Owner doesn't have enough governing tokens to create Proposal
+    #[error("Owner doesn't have enough governing tokens to create Proposal")]
+    NotEnoughTokensToCreateProposal,
+
+    /// Invalid State: Can't edit Signatories
+    #[error("Invalid State: Can't edit Signatories")]
+    InvalidStateCannotEditSignatories,
+
+    /// Invalid State: Can't sign off
+    #[error("Invalid State: Can't sign off")]
+    InvalidStateCannotSignOff,
+
+    /// Invalid Signatory Mint
+    #[error("Invalid Signatory Mint")]
+    InvalidSignatoryMint,
 
     /// ---- Account Tools Errors ----
 

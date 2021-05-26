@@ -2,24 +2,24 @@
 
 use solana_program::{account_info::AccountInfo, program_error::ProgramError};
 
-use crate::{error::GovernanceError, state::voter_record::VoterRecord};
+use crate::{error::GovernanceError, state::token_owner_record::TokenOwnerRecord};
 
-/// Checks whether the provided vote authority can set new  vote authority
-pub fn assert_is_signed_by_owner_or_vote_authority(
-    voter_record: &VoterRecord,
-    vote_authority_info: &AccountInfo,
+/// Checks whether the provided Governance Authority signed transaction
+pub fn assert_token_owner_or_delegate_is_signer(
+    token_owner_record: &TokenOwnerRecord,
+    governance_authority_info: &AccountInfo,
 ) -> Result<(), ProgramError> {
-    if vote_authority_info.is_signer {
-        if &voter_record.token_owner == vote_authority_info.key {
+    if governance_authority_info.is_signer {
+        if &token_owner_record.governing_token_owner == governance_authority_info.key {
             return Ok(());
         }
 
-        if let Some(vote_authority) = voter_record.vote_authority {
-            if &vote_authority == vote_authority_info.key {
+        if let Some(governance_delegate) = token_owner_record.governance_delegate {
+            if &governance_delegate == governance_authority_info.key {
                 return Ok(());
             }
         };
     }
 
-    Err(GovernanceError::GoverningTokenOwnerOrVoteAuthrotiyMustSign.into())
+    Err(GovernanceError::GoverningTokenOwnerOrDelegateMustSign.into())
 }

@@ -10,7 +10,7 @@ use solana_sdk::signature::Signer;
 
 use spl_governance::{
     error::GovernanceError, instruction::withdraw_governing_tokens,
-    state::voter_record::get_voter_record_address,
+    state::token_owner_record::get_token_owner_record_address,
 };
 
 #[tokio::test]
@@ -19,22 +19,22 @@ async fn test_withdraw_community_tokens() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
     let realm_cookie = governance_test.with_realm().await;
 
-    let voter_record_cookie = governance_test
+    let token_owner_record_cookie = governance_test
         .with_initial_community_token_deposit(&realm_cookie)
         .await;
 
     // Act
     governance_test
-        .withdraw_community_tokens(&realm_cookie, &voter_record_cookie)
+        .withdraw_community_tokens(&realm_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
     // Assert
-    let voter_record = governance_test
-        .get_voter_record_account(&voter_record_cookie.address)
+    let token_owner_record = governance_test
+        .get_token_owner_record_account(&token_owner_record_cookie.address)
         .await;
 
-    assert_eq!(0, voter_record.token_deposit_amount);
+    assert_eq!(0, token_owner_record.governing_token_deposit_amount);
 
     let holding_account = governance_test
         .get_token_account(&realm_cookie.community_token_holding_account)
@@ -43,11 +43,11 @@ async fn test_withdraw_community_tokens() {
     assert_eq!(0, holding_account.amount);
 
     let source_account = governance_test
-        .get_token_account(&voter_record_cookie.token_source)
+        .get_token_account(&token_owner_record_cookie.token_source)
         .await;
 
     assert_eq!(
-        voter_record_cookie.token_source_amount,
+        token_owner_record_cookie.token_source_amount,
         source_account.amount
     );
 }
@@ -58,22 +58,22 @@ async fn test_withdraw_council_tokens() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
     let realm_cookie = governance_test.with_realm().await;
 
-    let voter_record_cookie = governance_test
+    let token_owner_record_cookie = governance_test
         .with_initial_council_token_deposit(&realm_cookie)
         .await;
 
     // Act
     governance_test
-        .withdraw_council_tokens(&realm_cookie, &voter_record_cookie)
+        .withdraw_council_tokens(&realm_cookie, &token_owner_record_cookie)
         .await
         .unwrap();
 
     // Assert
-    let voter_record = governance_test
-        .get_voter_record_account(&voter_record_cookie.address)
+    let token_owner_record = governance_test
+        .get_token_owner_record_account(&token_owner_record_cookie.address)
         .await;
 
-    assert_eq!(0, voter_record.token_deposit_amount);
+    assert_eq!(0, token_owner_record.governing_token_deposit_amount);
 
     let holding_account = governance_test
         .get_token_account(&realm_cookie.council_token_holding_account.unwrap())
@@ -82,11 +82,11 @@ async fn test_withdraw_council_tokens() {
     assert_eq!(0, holding_account.amount);
 
     let source_account = governance_test
-        .get_token_account(&voter_record_cookie.token_source)
+        .get_token_account(&token_owner_record_cookie.token_source)
         .await;
 
     assert_eq!(
-        voter_record_cookie.token_source_amount,
+        token_owner_record_cookie.token_source_amount,
         source_account.amount
     );
 }
@@ -97,7 +97,7 @@ async fn test_withdraw_community_tokens_with_owner_must_sign_error() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
     let realm_cookie = governance_test.with_realm().await;
 
-    let voter_record_cookie = governance_test
+    let token_owner_record_cookie = governance_test
         .with_initial_community_token_deposit(&realm_cookie)
         .await;
 
@@ -106,12 +106,12 @@ async fn test_withdraw_community_tokens_with_owner_must_sign_error() {
     let mut instruction = withdraw_governing_tokens(
         &realm_cookie.address,
         &hacker_token_destination,
-        &voter_record_cookie.token_owner.pubkey(),
+        &token_owner_record_cookie.token_owner.pubkey(),
         &realm_cookie.account.community_mint,
     );
 
     instruction.accounts[3] =
-        AccountMeta::new_readonly(voter_record_cookie.token_owner.pubkey(), false);
+        AccountMeta::new_readonly(token_owner_record_cookie.token_owner.pubkey(), false);
 
     // Act
     let err = governance_test
@@ -126,19 +126,19 @@ async fn test_withdraw_community_tokens_with_owner_must_sign_error() {
 }
 
 #[tokio::test]
-async fn test_withdraw_community_tokens_with_voter_record_address_mismatch_error() {
+async fn test_withdraw_community_tokens_with_token_owner_record_address_mismatch_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
     let realm_cookie = governance_test.with_realm().await;
 
-    let voter_record_cookie = governance_test
+    let token_owner_record_cookie = governance_test
         .with_initial_community_token_deposit(&realm_cookie)
         .await;
 
-    let vote_record_address = get_voter_record_address(
+    let vote_record_address = get_token_owner_record_address(
         &realm_cookie.address,
         &realm_cookie.account.community_mint,
-        &voter_record_cookie.token_owner.pubkey(),
+        &token_owner_record_cookie.token_owner.pubkey(),
     );
 
     let hacker_record_cookie = governance_test
@@ -163,5 +163,8 @@ async fn test_withdraw_community_tokens_with_voter_record_address_mismatch_error
 
     // Assert
 
-    assert_eq!(err, GovernanceError::InvalidVoterAccountAddress.into());
+    assert_eq!(
+        err,
+        GovernanceError::InvalidTokenOwnerRecordAccountAddress.into()
+    );
 }

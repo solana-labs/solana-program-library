@@ -3,13 +3,14 @@
 use crate::{
     id,
     state::{
-        enums::GoverningTokenType,
         governance::{
             get_account_governance_address, get_program_governance_address, GovernanceConfig,
         },
+        proposal::get_proposal_address,
         realm::{get_governing_token_holding_address, get_realm_address},
+        signatory_record::get_signatory_record_address,
         single_signer_instruction::InstructionData,
-        voter_record::get_voter_record_address,
+        token_owner_record::get_token_owner_record_address,
     },
     tools::bpf_loader_upgradeable::get_program_data_address,
 };
@@ -64,7 +65,7 @@ pub enum GovernanceInstruction {
     ///  2. `[writable]` Governing Token Source account. All tokens from the account will be transferred to the Holding account
     ///  3. `[signer]` Governing Token Owner account
     ///  4. `[signer]` Governing Token Transfer authority   
-    ///  5. `[writable]` Voter Record account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
+    ///  5. `[writable]` Token Owner Record account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
     ///  6. `[signer]` Payer
     ///  7. `[]` System
     ///  8. `[]` SPL Token
@@ -79,40 +80,30 @@ pub enum GovernanceInstruction {
     ///  1. `[writable]` Governing Token Holding account. PDA seeds: ['governance',realm, governing_token_mint]
     ///  2. `[writable]` Governing Token Destination account. All tokens will be transferred to this account
     ///  3. `[signer]` Governing Token Owner account
-    ///  4. `[writable]` Voter Record account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
+    ///  4. `[writable]` Token Owner  Record account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
     ///  5. `[]` SPL Token   
     WithdrawGoverningTokens {},
 
-    /// Sets vote authority for the given Realm and Governing Token Mint (Community or Council)
-    /// The vote authority would have voting rights and could vote on behalf of the Governing Token Owner
-    /// Note: This doesn't take voting rights from the Token Owner who still can vote and change vote_authority
+    /// Sets Governance Delegate for the given Realm and Governing Token Mint (Community or Council)
+    /// The Delegate would have voting rights and could vote on behalf of the Governing Token Owner
+    /// The Delegate would also be able to create Proposals on behalf of the Governing Token Owner
+    /// Note: This doesn't take voting rights from the Token Owner who still can vote and change governance_delegate
     ///
-    /// 0. `[signer]` Current Vote authority or Governing Token owner
-    /// 1. `[writable]` Voter Record
-    SetVoteAuthority {
+    /// 0. `[signer]` Current Governance Delegate or Governing Token owner
+    /// 1. `[writable]` Token Owner  Record
+    SetGovernanceDelegate {
         #[allow(dead_code)]
-        /// Governance Realm the new vote authority is set for
-        realm: Pubkey,
-
-        #[allow(dead_code)]
-        /// Governing Token Mint the vote authority is granted over
-        governing_token_mint: Pubkey,
-
-        #[allow(dead_code)]
-        /// Governing Token Owner the vote authority is set for
-        governing_token_owner: Pubkey,
-
-        #[allow(dead_code)]
-        /// New vote authority
-        new_vote_authority: Option<Pubkey>,
+        /// New Governance Delegate
+        new_governance_delegate: Option<Pubkey>,
     },
 
     /// Creates Account Governance account which can be used to govern an arbitrary account
     ///
-    ///   0. `[writable]` Account Governance account. PDA seeds: ['account-governance', realm, governed_account]
-    ///   1. `[signer]` Payer
-    ///   2. `[]` System program
-    ///   3. `[]` Sysvar Rent
+    ///   0. `[]` Realm account the created Governance belongs to
+    ///   1. `[writable]` Account Governance account. PDA seeds: ['account-governance', realm, governed_account]
+    ///   2. `[signer]` Payer
+    ///   3. `[]` System program
+    ///   4. `[]` Sysvar Rent
     CreateAccountGovernance {
         /// Governance config
         #[allow(dead_code)]
@@ -121,13 +112,14 @@ pub enum GovernanceInstruction {
 
     /// Creates Program Governance account which governs an upgradable program
     ///
-    ///   0. `[writable]` Program Governance account. PDA seeds: ['program-governance', realm, governed_program]
-    ///   1. `[writable]` Program Data account of the Program governed by this Governance account
-    ///   2. `[signer]` Current Upgrade Authority account of the Program governed by this Governance account
-    ///   3. `[signer]` Payer
-    ///   4. `[]` bpf_upgradeable_loader program
-    ///   5. `[]` System program
-    ///   6. `[]` Sysvar Rent
+    ///   0. `[]` Realm account the created Governance belongs to    
+    ///   1. `[writable]` Program Governance account. PDA seeds: ['program-governance', realm, governed_program]
+    ///   2. `[writable]` Program Data account of the Program governed by this Governance account
+    ///   3. `[signer]` Current Upgrade Authority account of the Program governed by this Governance account
+    ///   4. `[signer]` Payer
+    ///   5. `[]` bpf_upgradeable_loader program
+    ///   6. `[]` System program
+    ///   7. `[]` Sysvar Rent
     CreateProgramGovernance {
         /// Governance config
         #[allow(dead_code)]
@@ -140,58 +132,64 @@ pub enum GovernanceInstruction {
         transfer_upgrade_authority: bool,
     },
 
-    /// Create Proposal account for Instructions that will be executed at various slots in the future
-    /// The instruction also grants Admin and Signatory token to the provided account
+    /// Creates Proposal account for Instructions that will be executed at various slots in the future
     ///
-    ///   0. `[writable]` Uninitialized Proposal account
-    ///   1. `[writable]` Initialized Governance account
-    ///   2. `[writable]` Initialized Signatory Mint account
-    ///   3. `[writable]` Initialized Admin Mint account
-    ///   4. `[writable]` Initialized Admin account for the issued admin token
-    ///   5. `[writable]` Initialized Signatory account for the issued signatory token
-    ///   6. '[]` Token program account
-    ///   7. `[]` Rent sysvar
+    ///   0. `[writable]` Proposal account. PDA seeds ['governance',governance, governing_token_mint, proposal_index]
+    ///   1. `[writable]` Governance account
+    ///   2. `[]` Token Owner Record account
+    ///   3. `[signer]` Governance Authority (Token Owner or Governance Delegate)    
+    ///   4. `[signer]` Payer
+    ///   5. `[]` System program
+    ///   6. `[]` Rent sysvar
+    ///   7. `[]` Clock sysvar    
     CreateProposal {
-        #[allow(dead_code)]
-        /// Link to gist explaining proposal
-        description_link: String,
-
         #[allow(dead_code)]
         /// UTF-8 encoded name of the proposal
         name: String,
 
         #[allow(dead_code)]
-        /// The Governing token (Community or Council) which will be used for voting on the Proposal
-        governing_token_type: GoverningTokenType,
+        /// Link to gist explaining proposal
+        description_link: String,
+
+        #[allow(dead_code)]
+        /// Governing Token Mint the Proposal is created for
+        governing_token_mint: Pubkey,
     },
 
-    /// [Requires Admin token]
     /// Adds a signatory to the Proposal which means this Proposal can't leave Draft state until yet another Signatory signs
-    /// As a result of this call the new Signatory will receive a Signatory Token which then can be used to Sign proposal
     ///
     ///   0. `[writable]` Proposal account
-    ///   1. `[writable]` Initialized Signatory account
-    ///   2. `[writable]` Initialized Signatory Mint account
-    ///   3. `[signer]` Admin account
-    ///   4. '[]` Token program account
-    AddSignatory,
+    ///   1. `[]` Token Owner Record account
+    ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)    
+    ///   3. `[writable]` Signatory Record Account
+    ///   4. `[signer]` Payer
+    ///   5. `[]` System program
+    ///   6. `[]` Rent sysvar
+    AddSignatory {
+        #[allow(dead_code)]
+        /// Signatory to add to the Proposal
+        signatory: Pubkey,
+    },
 
-    /// [Requires Admin token]
     /// Removes a Signatory from the Proposal
     ///
     ///   0. `[writable]` Proposal account   
-    ///   1. `[writable]` Signatory account to remove token from
-    ///   2. `[writable]` Signatory Mint account
-    ///   3. `[signer]` Admin account
-    ///   4. '[]` Token program account
-    RemoveSignatory,
+    ///   1. `[]` Token Owner Record account
+    ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)
+    ///   3. `[writable]` Signatory Record Account
+    ///   4. `[writable]` Beneficiary Account which would receive lamports from the disposed Signatory Record Account
+    ///   5. `[]` Clock sysvar
+    RemoveSignatory {
+        #[allow(dead_code)]
+        /// Signatory to remove from the Proposal
+        signatory: Pubkey,
+    },
 
-    /// [Requires Admin token]
     /// Adds an instruction to the Proposal. Max of 5 of any  type. More than 5 will throw error
     ///
     ///   0. `[writable]` Proposal account   
     ///   1. `[writable]` Uninitialized Proposal SingleSignerInstruction account
-    ///   2. `[signer]` Admin account
+    ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)
     AddSingleSignerInstruction {
         #[allow(dead_code)]
         /// Slot waiting time between vote period ending and this being eligible for execution
@@ -206,42 +204,37 @@ pub enum GovernanceInstruction {
         position: u8,
     },
 
-    /// [Requires Admin token]
     /// Remove instruction from the Proposal
     ///
     ///   0. `[writable]` Proposal account
     ///   1. `[writable]` Proposal SingleSignerInstruction account
-    ///   2. `[signer]` Admin account
+    ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)
     RemoveInstruction,
 
-    /// [Requires Admin token]
     /// Update instruction hold up time in the Proposal
     ///
     ///   0. `[]` Proposal account   
     ///   1. `[writable]` Proposal SingleSignerInstruction account
-    ///   2. `[signer]` Admin account
+    ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)
     UpdateInstructionHoldUpTime {
         #[allow(dead_code)]
         /// Minimum waiting time in slots for an instruction to be executed after proposal is voted on
         hold_up_time: u64,
     },
 
-    /// [Requires Admin token]
     /// Cancels Proposal and moves it into Canceled
     ///
     ///   0. `[writable]` Proposal account
-    ///   1. `[writable]` Admin account
+    ///   1. `[signer]` Governance Authority (Token Owner or Governance Delegate)
     CancelProposal,
 
-    /// [Requires Signatory token]
-    /// Burns signatory token, indicating you approve and sign off on moving this Proposal from Draft state to Voting state
-    /// The last Signatory token to be burned moves the state to Voting
+    /// Signs off Proposal indicating the Signatory approves the Proposal
+    /// When the last Signatory signs the Proposal state moves to Voting state
     ///
     ///   0. `[writable]` Proposal account
-    ///   1. `[writable]` Signatory account
-    ///   2. `[writable]` Signatory Mint account
-    ///   3. `[]` Token program account
-    ///   4. `[]` Clock sysvar
+    ///   1. `[writable]` Signatory Record account
+    ///   2. `[signer]` Signatory account
+    ///   3. `[]` Clock sysvar
     SignOffProposal,
 
     ///  Uses your voter weight (deposited Community or Council tokens) to cast a vote on a Proposal
@@ -249,9 +242,9 @@ pub enum GovernanceInstruction {
     ///  If you tip the consensus then the instructions can begin to be run after their hold up time
     ///
     ///   0. `[writable]` Proposal account
-    ///   1. `[writable]` Voter Record account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
+    ///   1. `[writable]` Token Owner Record account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
     ///   2. `[writable]` Proposal Vote Record account. PDA seeds: ['governance',proposal,governing_token_owner]  
-    ///   3. `[signer]` Vote Authority account
+    ///   3. `[signer]` Governance Authority account
     ///   4. `[]` Governance account
     Vote {
         #[allow(dead_code)]
@@ -265,9 +258,9 @@ pub enum GovernanceInstruction {
     ///  and only allows voters to prune their outstanding votes in case they wanted to withdraw Governing tokens from the Realm
     ///
     ///   0. `[writable]` Proposal account
-    ///   1. `[writable]` Voter Record account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
+    ///   1. `[writable]` Token Owner Record account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
     ///   2. `[writable]` Proposal Vote Record account. PDA seeds: ['governance',proposal,governing_token_owner]
-    ///   3. `[signer]` Vote Authority account
+    ///   3. `[signer]` Governance Authority account
     RelinquishVote,
 
     /// Executes an instruction in the Proposal
@@ -336,7 +329,7 @@ pub fn deposit_governing_tokens(
     governing_token_mint: &Pubkey,
 ) -> Instruction {
     let vote_record_address =
-        get_voter_record_address(realm, governing_token_mint, governing_token_owner);
+        get_token_owner_record_address(realm, governing_token_mint, governing_token_owner);
 
     let governing_token_holding_address =
         get_governing_token_holding_address(realm, governing_token_mint);
@@ -373,7 +366,7 @@ pub fn withdraw_governing_tokens(
     governing_token_mint: &Pubkey,
 ) -> Instruction {
     let vote_record_address =
-        get_voter_record_address(realm, governing_token_mint, governing_token_owner);
+        get_token_owner_record_address(realm, governing_token_mint, governing_token_owner);
 
     let governing_token_holding_address =
         get_governing_token_holding_address(realm, governing_token_mint);
@@ -396,29 +389,26 @@ pub fn withdraw_governing_tokens(
     }
 }
 
-/// Creates SetVoteAuthority instruction
-pub fn set_vote_authority(
+/// Creates SetGovernanceDelegate instruction
+pub fn set_governance_delegate(
     // Accounts
-    vote_authority: &Pubkey,
+    governance_authority: &Pubkey,
     // Args
     realm: &Pubkey,
     governing_token_mint: &Pubkey,
     governing_token_owner: &Pubkey,
-    new_vote_authority: &Option<Pubkey>,
+    new_governance_delegate: &Option<Pubkey>,
 ) -> Instruction {
     let vote_record_address =
-        get_voter_record_address(realm, governing_token_mint, governing_token_owner);
+        get_token_owner_record_address(realm, governing_token_mint, governing_token_owner);
 
     let accounts = vec![
-        AccountMeta::new_readonly(*vote_authority, true),
+        AccountMeta::new_readonly(*governance_authority, true),
         AccountMeta::new(vote_record_address, false),
     ];
 
-    let instruction = GovernanceInstruction::SetVoteAuthority {
-        realm: *realm,
-        governing_token_mint: *governing_token_mint,
-        governing_token_owner: *governing_token_owner,
-        new_vote_authority: *new_vote_authority,
+    let instruction = GovernanceInstruction::SetGovernanceDelegate {
+        new_governance_delegate: *new_governance_delegate,
     };
 
     Instruction {
@@ -483,6 +473,141 @@ pub fn create_program_governance(
         config,
         transfer_upgrade_authority,
     };
+
+    Instruction {
+        program_id: id(),
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates CreateProposal instruction
+#[allow(clippy::too_many_arguments)]
+pub fn create_proposal(
+    // Accounts
+    governance: &Pubkey,
+    governing_token_owner: &Pubkey,
+    governance_authority: &Pubkey,
+    payer: &Pubkey,
+    // Args
+    realm: &Pubkey,
+    name: String,
+    description_link: String,
+    governing_token_mint: &Pubkey,
+    proposal_index: u16,
+) -> Instruction {
+    let proposal_address = get_proposal_address(
+        governance,
+        governing_token_mint,
+        &proposal_index.to_le_bytes(),
+    );
+    let token_owner_record_address =
+        get_token_owner_record_address(realm, governing_token_mint, governing_token_owner);
+
+    let accounts = vec![
+        AccountMeta::new(proposal_address, false),
+        AccountMeta::new(*governance, false),
+        AccountMeta::new_readonly(token_owner_record_address, false),
+        AccountMeta::new_readonly(*governance_authority, true),
+        AccountMeta::new_readonly(*payer, true),
+        AccountMeta::new_readonly(system_program::id(), false),
+        AccountMeta::new_readonly(sysvar::rent::id(), false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+    ];
+
+    let instruction = GovernanceInstruction::CreateProposal {
+        name,
+        description_link,
+        governing_token_mint: *governing_token_mint,
+    };
+
+    Instruction {
+        program_id: id(),
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates AddSignatory instruction
+pub fn add_signatory(
+    // Accounts
+    proposal: &Pubkey,
+    token_owner_record: &Pubkey,
+    governance_authority: &Pubkey,
+    payer: &Pubkey,
+    // Args
+    signatory: &Pubkey,
+) -> Instruction {
+    let signatory_record_address = get_signatory_record_address(proposal, signatory);
+
+    let accounts = vec![
+        AccountMeta::new(*proposal, false),
+        AccountMeta::new_readonly(*token_owner_record, false),
+        AccountMeta::new_readonly(*governance_authority, true),
+        AccountMeta::new(signatory_record_address, false),
+        AccountMeta::new_readonly(*payer, true),
+        AccountMeta::new_readonly(system_program::id(), false),
+        AccountMeta::new_readonly(sysvar::rent::id(), false),
+    ];
+
+    let instruction = GovernanceInstruction::AddSignatory {
+        signatory: *signatory,
+    };
+
+    Instruction {
+        program_id: id(),
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates RemoveSignatory instruction
+pub fn remove_signatory(
+    // Accounts
+    proposal: &Pubkey,
+    token_owner_record: &Pubkey,
+    governance_authority: &Pubkey,
+    signatory: &Pubkey,
+    beneficiary: &Pubkey,
+) -> Instruction {
+    let signatory_record_address = get_signatory_record_address(proposal, signatory);
+
+    let accounts = vec![
+        AccountMeta::new(*proposal, false),
+        AccountMeta::new_readonly(*token_owner_record, false),
+        AccountMeta::new_readonly(*governance_authority, true),
+        AccountMeta::new(signatory_record_address, false),
+        AccountMeta::new(*beneficiary, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+    ];
+
+    let instruction = GovernanceInstruction::RemoveSignatory {
+        signatory: *signatory,
+    };
+
+    Instruction {
+        program_id: id(),
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates SignOffProposal instruction
+pub fn sign_off_proposal(
+    // Accounts
+    proposal: &Pubkey,
+    signatory: &Pubkey,
+) -> Instruction {
+    let signatory_record_address = get_signatory_record_address(proposal, signatory);
+
+    let accounts = vec![
+        AccountMeta::new(*proposal, false),
+        AccountMeta::new(signatory_record_address, false),
+        AccountMeta::new_readonly(*signatory, true),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+    ];
+
+    let instruction = GovernanceInstruction::SignOffProposal;
 
     Instruction {
         program_id: id(),

@@ -3,7 +3,7 @@
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::pubkey::Pubkey;
 
-use super::enums::{GovernanceAccountType, VoteWeight};
+use crate::state::enums::{GovernanceAccountType, VoteWeight};
 
 /// Proposal Vote Record
 #[repr(C)]

@@ -7,12 +7,13 @@ use solana_program::{
 };
 
 use crate::{
+    error::GovernanceError,
     id,
     tools::account::{assert_is_valid_account, deserialize_account, AccountMaxSize},
     PROGRAM_AUTHORITY_SEED,
 };
 
-use super::enums::GovernanceAccountType;
+use crate::state::enums::GovernanceAccountType;
 
 /// Governance Realm Account
 /// Account PDA seeds" ['governance', name]
@@ -40,13 +41,31 @@ impl IsInitialized for Realm {
     }
 }
 
+impl Realm {
+    /// Asserts the given mint is either Community or Council mint of the Realm
+    pub fn assert_is_valid_governing_token_mint(
+        &self,
+        governing_token_mint: &Pubkey,
+    ) -> Result<(), ProgramError> {
+        if self.community_mint == *governing_token_mint {
+            return Ok(());
+        }
+
+        if self.council_mint == Some(*governing_token_mint) {
+            return Ok(());
+        }
+
+        Err(GovernanceError::InvalidGoverningTokenMint.into())
+    }
+}
+
 /// Checks whether realm account exists, is initialized and  owned by Governance program
 pub fn assert_is_valid_realm(realm_info: &AccountInfo) -> Result<(), ProgramError> {
     assert_is_valid_account(realm_info, GovernanceAccountType::Realm, &id())
 }
 
 /// Deserializes account and checks owner program
-pub fn deserialize_realm(realm_info: &AccountInfo) -> Result<Realm, ProgramError> {
+pub fn deserialize_realm_raw(realm_info: &AccountInfo) -> Result<Realm, ProgramError> {
     deserialize_account::<Realm>(realm_info, &id())
 }
 
