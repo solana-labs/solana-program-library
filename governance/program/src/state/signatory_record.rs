@@ -9,7 +9,7 @@ use solana_program::{
 use crate::{
     error::GovernanceError,
     id,
-    tools::account::{deserialize_account, AccountMaxSize},
+    tools::account::{get_account_data, AccountMaxSize},
     PROGRAM_AUTHORITY_SEED,
 };
 
@@ -83,14 +83,14 @@ pub fn get_signatory_record_address<'a>(proposal: &'a Pubkey, signatory: &'a Pub
 }
 
 /// Deserializes SignatoryRecord account and checks owner program
-pub fn deserialize_signatory_record_raw(
+pub fn get_signatory_record_data(
     signatory_record_info: &AccountInfo,
 ) -> Result<SignatoryRecord, ProgramError> {
-    deserialize_account::<SignatoryRecord>(signatory_record_info, &id())
+    get_account_data::<SignatoryRecord>(signatory_record_info, &id())
 }
 
 /// Deserializes SignatoryRecord  and validates its PDA
-pub fn deserialize_signatory_record(
+pub fn get_signatory_record_data_for_seeds(
     signatory_record_info: &AccountInfo,
     proposal: &Pubkey,
     signatory: &Pubkey,
@@ -104,5 +104,5 @@ pub fn deserialize_signatory_record(
         return Err(GovernanceError::InvalidSignatoryAddress.into());
     }
 
-    deserialize_signatory_record_raw(signatory_record_info)
+    get_signatory_record_data(signatory_record_info)
 }

@@ -2,7 +2,7 @@
 
 use crate::{
     error::GovernanceError, id, state::enums::GovernanceAccountType,
-    tools::account::deserialize_account, tools::account::AccountMaxSize,
+    tools::account::get_account_data, tools::account::AccountMaxSize,
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
@@ -10,7 +10,7 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-use super::realm::assert_is_valid_realm;
+use crate::state::realm::assert_is_valid_realm;
 
 /// Governance config
 #[repr(C)]
@@ -47,7 +47,7 @@ pub struct Governance {
     pub config: GovernanceConfig,
 
     /// Running count of proposals
-    pub proposals_count: u16,
+    pub proposals_count: u32,
 }
 
 impl AccountMaxSize for Governance {}
@@ -60,10 +60,8 @@ impl IsInitialized for Governance {
 }
 
 /// Deserializes account and checks owner program
-pub fn deserialize_governance_raw(
-    governance_info: &AccountInfo,
-) -> Result<Governance, ProgramError> {
-    deserialize_account::<Governance>(governance_info, &id())
+pub fn get_governance_data(governance_info: &AccountInfo) -> Result<Governance, ProgramError> {
+    get_account_data::<Governance>(governance_info, &id())
 }
 
 /// Returns ProgramGovernance PDA seeds
@@ -127,7 +125,7 @@ pub fn assert_is_valid_governance_config(
 
     assert_is_valid_realm(realm_info)?;
 
-    if governance_config.vote_threshold_percentage < 50
+    if governance_config.vote_threshold_percentage < 1
         || governance_config.vote_threshold_percentage > 100
     {
         return Err(GovernanceError::InvalidGovernanceConfig.into());

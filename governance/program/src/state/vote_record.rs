@@ -1,8 +1,12 @@
 //! Proposal Vote Record Account
 
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
+use solana_program::account_info::AccountInfo;
+use solana_program::program_error::ProgramError;
 use solana_program::{program_pack::IsInitialized, pubkey::Pubkey};
 
+use crate::error::GovernanceError;
+use crate::tools::account::get_account_data;
 use crate::{id, tools::account::AccountMaxSize, PROGRAM_AUTHORITY_SEED};
 
 use crate::state::enums::{GovernanceAccountType, VoteWeight};
@@ -21,6 +25,9 @@ pub struct VoteRecord {
     /// This is the Governing Token Owner who deposited governing tokens into the Realm
     pub governing_token_owner: Pubkey,
 
+    /// Indicates whether the vote was relinquished by voter
+    pub is_relinquished: bool,
+
     /// Voter's vote: Yes/No and amount
     pub vote_weight: VoteWeight,
 }
@@ -31,6 +38,40 @@ impl IsInitialized for VoteRecord {
     fn is_initialized(&self) -> bool {
         self.account_type == GovernanceAccountType::VoteRecord
     }
+}
+impl VoteRecord {
+    /// Checks the vote can be relinquished
+    pub fn assert_can_relinquish_vote(&self) -> Result<(), ProgramError> {
+        if self.is_relinquished {
+            return Err(GovernanceError::VoteAlreadyRelinquished.into());
+        }
+
+        Ok(())
+    }
+}
+
+/// Deserializes VoteRecord account and checks owner program
+pub fn get_vote_record_data(vote_record_info: &AccountInfo) -> Result<VoteRecord, ProgramError> {
+    get_account_data::<VoteRecord>(vote_record_info, &id())
+}
+
+/// Deserializes VoteRecord and checks it belongs to the provided Proposal and Governing Token Owner
+pub fn get_vote_record_data_for_proposal_and_token_owner(
+    vote_record_info: &AccountInfo,
+    proposal: &Pubkey,
+    governing_token_owner: &Pubkey,
+) -> Result<VoteRecord, ProgramError> {
+    let vote_record_data = get_vote_record_data(vote_record_info)?;
+
+    if vote_record_data.proposal != *proposal {
+        return Err(GovernanceError::InvalidProposalForVoterRecord.into());
+    }
+
+    if vote_record_data.governing_token_owner != *governing_token_owner {
+        return Err(GovernanceError::InvalidGoverningTokenOwnerForVoteRecord.into());
+    }
+
+    Ok(vote_record_data)
 }
 
 /// Returns VoteRecord PDA seeds

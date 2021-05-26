@@ -14,14 +14,11 @@ use crate::{
     error::GovernanceError,
     state::{
         enums::{GovernanceAccountType, ProposalState},
-        governance::deserialize_governance_raw,
+        governance::get_governance_data,
         proposal::{get_proposal_address_seeds, Proposal},
-        token_owner_record::deserialize_token_owner_record_for_realm_and_governing_mint,
+        token_owner_record::get_token_owner_record_data_for_realm_and_governing_mint,
     },
-    tools::{
-        account::create_and_serialize_account_signed,
-        asserts::assert_token_owner_or_delegate_is_signer,
-    },
+    tools::account::create_and_serialize_account_signed,
 };
 
 /// Processes CreateProposal instruction
@@ -53,16 +50,16 @@ pub fn process_create_proposal(
         return Err(GovernanceError::ProposalAlreadyExists.into());
     }
 
-    let mut governance_data = deserialize_governance_raw(governance_info)?;
+    let mut governance_data = get_governance_data(governance_info)?;
 
-    let token_owner_record_data = deserialize_token_owner_record_for_realm_and_governing_mint(
+    let token_owner_record_data = get_token_owner_record_data_for_realm_and_governing_mint(
         &token_owner_record_info,
         &governance_data.config.realm,
         &governing_token_mint,
     )?;
 
     // proposal_owner must be either governing token owner or governance_delegate and must sign this transaction
-    assert_token_owner_or_delegate_is_signer(&token_owner_record_data, governance_authority_info)?;
+    token_owner_record_data.assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
     if token_owner_record_data.governing_token_deposit_amount
         < governance_data.config.min_tokens_to_create_proposal as u64
@@ -92,6 +89,9 @@ pub fn process_create_proposal(
 
         number_of_executed_instructions: 0,
         number_of_instructions: 0,
+
+        yes_votes_count: 0,
+        no_votes_count: 0,
     };
 
     create_and_serialize_account_signed::<Proposal>(

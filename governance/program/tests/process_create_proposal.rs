@@ -234,7 +234,7 @@ async fn test_create_proposal_with_invalid_token_owner_record_error() {
 
     // Act
     let err = governance_test
-        .with_proposal_instruction(
+        .with_proposal_using_instruction(
             &token_owner_record_cookie,
             &mut account_governance_cookie,
             |i| {
@@ -250,6 +250,6 @@ async fn test_create_proposal_with_invalid_token_owner_record_error() {
     // Assert
     assert_eq!(
         err,
-        GovernanceError::InvalidTokenOwnerRecordGoverningMint.into()
+        GovernanceError::InvalidGoverningMintForTokenOwnerRecord.into()
     );
 }

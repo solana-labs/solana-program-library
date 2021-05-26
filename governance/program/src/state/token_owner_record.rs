@@ -3,7 +3,7 @@
 use crate::{
     error::GovernanceError,
     id,
-    tools::account::{deserialize_account, AccountMaxSize},
+    tools::account::{get_account_data, AccountMaxSize},
     PROGRAM_AUTHORITY_SEED,
 };
 
@@ -30,7 +30,7 @@ pub struct TokenOwnerRecord {
     pub governing_token_mint: Pubkey,
 
     /// The owner (either single or multisig) of the deposited governing SPL Tokens
-    /// This is who can authorize a withdrawal
+    /// This is who can authorize a withdrawal of the tokens
     pub governing_token_owner: Pubkey,
 
     /// The amount of governing tokens deposited into the Realm
@@ -38,25 +38,47 @@ pub struct TokenOwnerRecord {
     pub governing_token_deposit_amount: u64,
 
     /// A single account that is allowed to operate governance with the deposited governing tokens
-    /// It's delegated to by the governing token owner or current governance_delegate
+    /// It can be delegated to by the governing_token_owner or current governance_delegate
     pub governance_delegate: Option<Pubkey>,
 
     /// The number of active votes cast by TokenOwner
-    pub active_votes_count: u16,
+    pub active_votes_count: u32,
 
     /// The total number of votes cast by the TokenOwner
-    pub total_votes_count: u16,
+    pub total_votes_count: u32,
 }
 
 impl AccountMaxSize for TokenOwnerRecord {
     fn get_max_size(&self) -> Option<usize> {
-        Some(142)
+        Some(146)
     }
 }
 
 impl IsInitialized for TokenOwnerRecord {
     fn is_initialized(&self) -> bool {
         self.account_type == GovernanceAccountType::TokenOwnerRecord
+    }
+}
+
+impl TokenOwnerRecord {
+    /// Checks whether the provided Governance Authority signed transaction
+    pub fn assert_token_owner_or_delegate_is_signer(
+        &self,
+        governance_authority_info: &AccountInfo,
+    ) -> Result<(), ProgramError> {
+        if governance_authority_info.is_signer {
+            if &self.governing_token_owner == governance_authority_info.key {
+                return Ok(());
+            }
+
+            if let Some(governance_delegate) = self.governance_delegate {
+                if &governance_delegate == governance_authority_info.key {
+                    return Ok(());
+                }
+            };
+        }
+
+        Err(GovernanceError::GoverningTokenOwnerOrDelegateMustSign.into())
     }
 }
 
@@ -88,14 +110,14 @@ pub fn get_token_owner_record_address_seeds<'a>(
 }
 
 /// Deserializes TokenOwnerRecord account and checks owner program
-pub fn deserialize_token_owner_record_raw(
+pub fn get_token_owner_record_data(
     token_owner_record_info: &AccountInfo,
 ) -> Result<TokenOwnerRecord, ProgramError> {
-    deserialize_account::<TokenOwnerRecord>(token_owner_record_info, &id())
+    get_account_data::<TokenOwnerRecord>(token_owner_record_info, &id())
 }
 
 /// Deserializes TokenOwnerRecord account and checks its PDA against the provided seeds
-pub fn deserialize_token_owner_record(
+pub fn get_token_owner_record_data_for_seeds(
     token_owner_record_info: &AccountInfo,
     token_owner_record_seeds: &[&[u8]],
 ) -> Result<TokenOwnerRecord, ProgramError> {
@@ -106,30 +128,30 @@ pub fn deserialize_token_owner_record(
         return Err(GovernanceError::InvalidTokenOwnerRecordAccountAddress.into());
     }
 
-    deserialize_token_owner_record_raw(token_owner_record_info)
+    get_token_owner_record_data(token_owner_record_info)
 }
 
 /// Deserializes TokenOwnerRecord account and checks that its PDA matches the given realm and governing mint
-pub fn deserialize_token_owner_record_for_realm_and_governing_mint(
+pub fn get_token_owner_record_data_for_realm_and_governing_mint(
     token_owner_record_info: &AccountInfo,
     realm: &Pubkey,
     governing_token_mint: &Pubkey,
 ) -> Result<TokenOwnerRecord, ProgramError> {
-    let token_owner_record_data = deserialize_token_owner_record_raw(token_owner_record_info)?;
+    let token_owner_record_data = get_token_owner_record_data(token_owner_record_info)?;
 
     if token_owner_record_data.governing_token_mint != *governing_token_mint {
-        return Err(GovernanceError::InvalidTokenOwnerRecordGoverningMint.into());
+        return Err(GovernanceError::InvalidGoverningMintForTokenOwnerRecord.into());
     }
 
     if token_owner_record_data.realm != *realm {
-        return Err(GovernanceError::InvalidTokenOwnerRecordRealm.into());
+        return Err(GovernanceError::InvalidRealmForTokenOwnerRecord.into());
     }
 
     Ok(token_owner_record_data)
 }
 
 ///  Deserializes TokenOwnerRecord account and checks its address is the give proposal_owner
-pub fn deserialize_token_owner_record_for_proposal_owner(
+pub fn get_token_owner_record_data_for_proposal_owner(
     token_owner_record_info: &AccountInfo,
     proposal_owner: &Pubkey,
 ) -> Result<TokenOwnerRecord, ProgramError> {
@@ -137,7 +159,7 @@ pub fn deserialize_token_owner_record_for_proposal_owner(
         return Err(GovernanceError::InvalidProposalOwnerAccount.into());
     }
 
-    deserialize_token_owner_record_raw(token_owner_record_info)
+    get_token_owner_record_data(token_owner_record_info)
 }
 
 #[cfg(test)]

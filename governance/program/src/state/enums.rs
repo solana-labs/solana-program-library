@@ -28,7 +28,7 @@ pub enum GovernanceAccountType {
     SignatoryRecord,
 
     /// Vote record account for a given Proposal.  Proposal can have 0..n voting records
-    ProposalVoteRecord,
+    VoteRecord,
 
     /// Single Signer Instruction account which holds an instruction to execute for Proposal
     SingleSignerInstruction,

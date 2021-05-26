@@ -12,6 +12,7 @@ use solana_program::{
     rent::Rent,
     system_instruction,
 };
+use spl_token::state::{Account, Mint};
 
 use crate::error::GovernanceError;
 
@@ -165,14 +166,44 @@ pub fn transfer_spl_tokens_signed<'a>(
     Ok(())
 }
 
+/// Asserts the given account_info represents a valid SPL Token account which is initialized and belongs to spl_token program
+pub fn assert_is_valid_spl_token_account(account_info: &AccountInfo) -> Result<(), ProgramError> {
+    if account_info.data_is_empty() {
+        return Err(GovernanceError::SplTokenAccountNotInitialized.into());
+    }
+
+    if account_info.owner != &spl_token::id() {
+        return Err(GovernanceError::SplTokenAccountWithInvalidOwner.into());
+    }
+
+    if account_info.data_len() != Account::LEN {
+        return Err(GovernanceError::SplTokenInvalidTokenAccountData.into());
+    }
+
+    Ok(())
+}
+
+/// Asserts the given mint_info represents a valid SPL Token Mint account  which is initialized and belongs to spl_token program
+pub fn assert_is_valid_spl_token_mint(mint_info: &AccountInfo) -> Result<(), ProgramError> {
+    if mint_info.data_is_empty() {
+        return Err(GovernanceError::SplTokenMintNotInitialized.into());
+    }
+
+    if mint_info.owner != &spl_token::id() {
+        return Err(GovernanceError::SplTokenMintWithInvalidOwner.into());
+    }
+
+    if mint_info.data_len() != Mint::LEN {
+        return Err(GovernanceError::SplTokenInvalidMintAccountData.into());
+    }
+
+    Ok(())
+}
+
 /// Computationally cheap method to get amount from a token account
 /// It reads amount without deserializing full account data
-pub fn get_amount_from_token_account(
-    token_account_info: &AccountInfo,
-) -> Result<u64, ProgramError> {
-    if token_account_info.owner != &spl_token::id() {
-        return Err(GovernanceError::InvalidTokenAccountOwner.into());
-    }
+pub fn get_spl_token_amount(token_account_info: &AccountInfo) -> Result<u64, ProgramError> {
+    assert_is_valid_spl_token_account(token_account_info)?;
 
     // TokeAccount layout:   mint(32), owner(32), amount(8), ...
     let data = token_account_info.try_borrow_data()?;
@@ -182,12 +213,8 @@ pub fn get_amount_from_token_account(
 
 /// Computationally cheap method to get mint from a token account
 /// It reads mint without deserializing full account data
-pub fn get_mint_from_token_account(
-    token_account_info: &AccountInfo,
-) -> Result<Pubkey, ProgramError> {
-    if token_account_info.owner != &spl_token::id() {
-        return Err(GovernanceError::InvalidTokenAccountOwner.into());
-    }
+pub fn get_spl_token_mint(token_account_info: &AccountInfo) -> Result<Pubkey, ProgramError> {
+    assert_is_valid_spl_token_account(token_account_info)?;
 
     // TokeAccount layout:   mint(32), owner(32), amount(8), ...
     let data = token_account_info.try_borrow_data()?;
@@ -197,15 +224,22 @@ pub fn get_mint_from_token_account(
 
 /// Computationally cheap method to get owner from a token account
 /// It reads owner without deserializing full account data
-pub fn get_owner_from_token_account(
-    token_account_info: &AccountInfo,
-) -> Result<Pubkey, ProgramError> {
-    if token_account_info.owner != &spl_token::id() {
-        return Err(GovernanceError::InvalidTokenAccountOwner.into());
-    }
+pub fn get_spl_token_owner(token_account_info: &AccountInfo) -> Result<Pubkey, ProgramError> {
+    assert_is_valid_spl_token_account(token_account_info)?;
 
     // TokeAccount layout:   mint(32), owner(32), amount(8)
     let data = token_account_info.try_borrow_data()?;
     let owner_data = array_ref![data, 32, 32];
     Ok(Pubkey::new_from_array(*owner_data))
+}
+
+/// Computationally cheap method to just get supply from a mint without unpacking the whole object
+pub fn get_spl_token_mint_supply(mint_info: &AccountInfo) -> Result<u64, ProgramError> {
+    assert_is_valid_spl_token_mint(mint_info)?;
+    // In token program, 36, 8, 1, 1 is the layout, where the first 8 is supply u64.
+    // so we start at 36.
+    let data = mint_info.try_borrow_data().unwrap();
+    let bytes = array_ref![data, 36, 8];
+
+    Ok(u64::from_le_bytes(*bytes))
 }

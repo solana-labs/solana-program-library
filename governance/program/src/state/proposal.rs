@@ -8,12 +8,14 @@ use solana_program::{
 use crate::{
     error::GovernanceError,
     id,
-    tools::account::{deserialize_account, AccountMaxSize},
+    tools::account::{get_account_data, AccountMaxSize},
     PROGRAM_AUTHORITY_SEED,
 };
 
 use crate::state::enums::{GovernanceAccountType, ProposalState};
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
+
+use crate::state::governance::GovernanceConfig;
 
 /// Governance Proposal
 #[repr(C)]
@@ -47,6 +49,12 @@ pub struct Proposal {
     /// Proposal name
     pub name: String,
 
+    /// The number of Yes votes
+    pub yes_votes_count: u64,
+
+    /// The number of No votes
+    pub no_votes_count: u64,
+
     /// When the Proposal was created and entered Draft state
     pub draft_at: Slot,
 
@@ -74,7 +82,7 @@ pub struct Proposal {
 
 impl AccountMaxSize for Proposal {
     fn get_max_size(&self) -> Option<usize> {
-        Some(self.name.len() + self.description_link.len() + 163)
+        Some(self.name.len() + self.description_link.len() + 179)
     }
 }
 
@@ -102,11 +110,182 @@ impl Proposal {
 
         Ok(())
     }
+
+    /// Checks if Proposal can be voted on
+    pub fn assert_can_vote(
+        &self,
+        config: &GovernanceConfig,
+        current_slot: Slot,
+    ) -> Result<(), ProgramError> {
+        if self.state != ProposalState::Voting {
+            return Err(GovernanceError::InvalidStateCannotVote.into());
+        }
+
+        // Check if we are still within the configured max_voting_time period
+        if self
+            .voting_at
+            .unwrap()
+            .checked_add(config.max_voting_time)
+            .unwrap()
+            < current_slot
+        {
+            return Err(GovernanceError::ProposalVotingTimeExpired.into());
+        }
+
+        Ok(())
+    }
+
+    /// Checks if Proposal can be finalized
+    pub fn assert_can_finalize_vote(
+        &self,
+        config: &GovernanceConfig,
+        current_slot: Slot,
+    ) -> Result<(), ProgramError> {
+        if self.state != ProposalState::Voting {
+            return Err(GovernanceError::InvalidStateCannotFinalize.into());
+        }
+
+        // Check if we passed the configured max_voting_time period yet
+        if self
+            .voting_at
+            .unwrap()
+            .checked_add(config.max_voting_time)
+            .unwrap()
+            >= current_slot
+        {
+            return Err(GovernanceError::CannotFinalizeVotingInProgress.into());
+        }
+
+        Ok(())
+    }
+
+    /// Finalizes vote by moving it to final state Succeeded or Defeated if max_voting_time has passed
+    /// If Proposal is still within max_voting_time period then error is returned
+    pub fn finalize_vote(
+        &mut self,
+        governing_token_supply: u64,
+        config: &GovernanceConfig,
+        current_slot: Slot,
+    ) -> Result<(), ProgramError> {
+        self.assert_can_finalize_vote(config, current_slot)?;
+
+        let current_yes_vote_threshold =
+            self.get_current_vote_threshold(self.yes_votes_count, governing_token_supply);
+
+        let final_state = if current_yes_vote_threshold > config.vote_threshold_percentage as u64 {
+            ProposalState::Succeeded
+        } else {
+            ProposalState::Defeated
+        };
+
+        self.state = final_state;
+        self.voting_completed_at = Some(current_slot);
+
+        Ok(())
+    }
+
+    /// Returns current vote threshold in relation to the total governing token supply
+    fn get_current_vote_threshold(&self, vote_count: u64, governing_token_supply: u64) -> u64 {
+        vote_count
+            .checked_mul(100)
+            .unwrap()
+            .checked_div(governing_token_supply)
+            .unwrap()
+    }
+
+    /// Checks if vote can be tipped and automatically transitioned to Succeeded or Defeated state
+    /// If the conditions are met the state is updated accordingly
+    pub fn try_tip_vote(
+        &mut self,
+        governing_token_supply: u64,
+        config: &GovernanceConfig,
+        current_slot: Slot,
+    ) -> Result<(), ProgramError> {
+        if let Some(tipped_state) = self.try_get_tipped_vote_state(governing_token_supply, config) {
+            self.state = tipped_state;
+            self.voting_completed_at = Some(current_slot);
+        }
+
+        Ok(())
+    }
+
+    /// Checks if vote can be tipped and automatically transitioned to Succeeded or Defeated state
+    /// If yes then Some(ProposalState) is returned and None otherwise
+    pub fn try_get_tipped_vote_state(
+        &self,
+        governing_token_supply: u64,
+        config: &GovernanceConfig,
+    ) -> Option<ProposalState> {
+        if self.yes_votes_count == governing_token_supply {
+            return Some(ProposalState::Succeeded);
+        }
+        if self.no_votes_count == governing_token_supply {
+            return Some(ProposalState::Defeated);
+        }
+
+        let current_yes_vote_threshold =
+            self.get_current_vote_threshold(self.yes_votes_count, governing_token_supply);
+
+        // We can only tip the vote automatically to Succeeded if more than 50% votes have been cast as Yeah
+        // and the Nay sayers can't change the outcome any longer
+        if current_yes_vote_threshold >= 50
+            && current_yes_vote_threshold > config.vote_threshold_percentage as u64
+        {
+            return Some(ProposalState::Succeeded);
+        } else {
+            let current_no_vote_threshold =
+                self.get_current_vote_threshold(self.no_votes_count, governing_token_supply);
+
+            // We can  tip the vote automatically to Defeated if more than 50% votes have been cast as Nay
+            // or the Yeah sayers can't outvote Nay any longer
+            // Note: Even splits  resolve to Defeated
+            if current_no_vote_threshold >= 50
+                || current_no_vote_threshold >= 100 - config.vote_threshold_percentage as u64
+            {
+                return Some(ProposalState::Defeated);
+            }
+        }
+
+        None
+    }
+
+    /// Checks if Proposal can be canceled in the given state
+    pub fn assert_can_cancel(&self) -> Result<(), ProgramError> {
+        if self.state == ProposalState::Executing
+            || self.state == ProposalState::Completed
+            || self.state == ProposalState::Cancelled
+            || self.state == ProposalState::Succeeded
+            || self.state == ProposalState::Defeated
+        {
+            return Err(GovernanceError::InvalidStateCannotCancelProposal.into());
+        }
+
+        Ok(())
+    }
 }
 
 /// Deserializes Proposal account and checks owner program
-pub fn deserialize_proposal_raw(proposal_info: &AccountInfo) -> Result<Proposal, ProgramError> {
-    deserialize_account::<Proposal>(proposal_info, &id())
+pub fn get_proposal_data(proposal_info: &AccountInfo) -> Result<Proposal, ProgramError> {
+    get_account_data::<Proposal>(proposal_info, &id())
+}
+
+/// Deserializes Proposal and validates it belongs to the given Governance and Governing Mint
+pub fn get_proposal_data_for_governance_and_governing_mint(
+    proposal_info: &AccountInfo,
+    governance: &Pubkey,
+    governing_token_mint: &Pubkey,
+) -> Result<Proposal, ProgramError> {
+    let proposal_data = get_proposal_data(proposal_info)?;
+
+    if proposal_data.governance != *governance {
+        return Err(GovernanceError::InvalidGovernanceForProposal.into());
+    }
+
+    if proposal_data.governing_token_mint != *governing_token_mint {
+        return Err(GovernanceError::InvalidGoverningMintForProposal.into());
+    }
+
+    Ok(proposal_data)
 }
 
 /// Returns Proposal PDA seeds
@@ -127,10 +306,10 @@ pub fn get_proposal_address_seeds<'a>(
 pub fn get_proposal_address<'a>(
     governance: &'a Pubkey,
     governing_token_mint: &'a Pubkey,
-    proposal_index_bytes: &'a [u8],
+    proposal_index_le_bytes: &'a [u8],
 ) -> Pubkey {
     Pubkey::find_program_address(
-        &get_proposal_address_seeds(governance, governing_token_mint, &proposal_index_bytes),
+        &get_proposal_address_seeds(governance, governing_token_mint, &proposal_index_le_bytes),
         &id(),
     )
     .0
@@ -160,6 +339,19 @@ mod test {
             closed_at: Some(10),
             number_of_executed_instructions: 10,
             number_of_instructions: 10,
+            yes_votes_count: 0,
+            no_votes_count: 0,
+        }
+    }
+
+    fn create_test_governance_config() -> GovernanceConfig {
+        GovernanceConfig {
+            realm: Pubkey::new_unique(),
+            governed_account: Pubkey::new_unique(),
+            vote_threshold_percentage: 60,
+            min_tokens_to_create_proposal: 5,
+            min_instruction_hold_up_time: 10,
+            max_voting_time: 5,
         }
     }
 
@@ -250,5 +442,270 @@ mod test {
                 // Assert
                 assert_eq!(err, GovernanceError::InvalidStateCannotSignOff.into());
         }
+    }
+
+    fn cancellable_states() -> impl Strategy<Value = ProposalState> {
+        prop_oneof![
+            Just(ProposalState::Draft),
+            Just(ProposalState::SigningOff),
+            Just(ProposalState::Voting),
+        ]
+    }
+
+    proptest! {
+        #[test]
+        fn test_assert_can_cancel(state in cancellable_states()) {
+
+            let mut proposal = create_test_proposal();
+            proposal.state = state;
+            proposal.assert_can_cancel().unwrap();
+
+        }
+
+    }
+
+    fn none_cancellable_states() -> impl Strategy<Value = ProposalState> {
+        prop_oneof![
+            Just(ProposalState::Succeeded),
+            Just(ProposalState::Executing),
+            Just(ProposalState::Completed),
+            Just(ProposalState::Cancelled),
+            Just(ProposalState::Defeated),
+        ]
+    }
+
+    proptest! {
+        #[test]
+            fn test_assert_can_cancel_with_invalid_state_error(state in none_cancellable_states()) {
+                // Arrange
+                let mut proposal = create_test_proposal();
+                proposal.state = state;
+
+                // Act
+                let err = proposal.assert_can_cancel().err().unwrap();
+
+                // Assert
+                assert_eq!(err, GovernanceError::InvalidStateCannotCancelProposal.into());
+        }
+
+    }
+
+    #[derive(Clone, Debug)]
+    pub struct VoteTippingTestCase {
+        governing_token_supply: u64,
+        vote_threshold_percentage: u8,
+        yes_votes_count: u64,
+        no_votes_count: u64,
+        expected_state: ProposalState,
+    }
+
+    fn vote_tipping_test_cases() -> impl Strategy<Value = VoteTippingTestCase> {
+        prop_oneof![
+            //  threshold < 50%
+            Just(VoteTippingTestCase {
+                governing_token_supply: 100,
+                vote_threshold_percentage: 40,
+                yes_votes_count: 45,
+                no_votes_count: 10,
+                expected_state: ProposalState::Voting
+            }),
+            Just(VoteTippingTestCase {
+                governing_token_supply: 100,
+                vote_threshold_percentage: 40,
+                yes_votes_count: 50,
+                no_votes_count: 10,
+                expected_state: ProposalState::Succeeded
+            }),
+            Just(VoteTippingTestCase {
+                governing_token_supply: 100,
+                vote_threshold_percentage: 40,
+                yes_votes_count: 50,
+                no_votes_count: 50,
+                expected_state: ProposalState::Succeeded
+            }),
+            Just(VoteTippingTestCase {
+                governing_token_supply: 100,
+                vote_threshold_percentage: 40,
+                yes_votes_count: 45,
+                no_votes_count: 51,
+                expected_state: ProposalState::Defeated
+            }),
+            // threshold >= 50%
+            Just(VoteTippingTestCase {
+                governing_token_supply: 100,
+                vote_threshold_percentage: 50,
+                yes_votes_count: 50,
+                no_votes_count: 10,
+                expected_state: ProposalState::Voting
+            }),
+            Just(VoteTippingTestCase {
+                governing_token_supply: 100,
+                vote_threshold_percentage: 50,
+                yes_votes_count: 50,
+                no_votes_count: 50,
+                expected_state: ProposalState::Defeated
+            }),
+            Just(VoteTippingTestCase {
+                governing_token_supply: 100,
+                vote_threshold_percentage: 50,
+                yes_votes_count: 51,
+                no_votes_count: 10,
+                expected_state: ProposalState::Succeeded
+            }),
+            Just(VoteTippingTestCase {
+                governing_token_supply: 100,
+                vote_threshold_percentage: 50,
+                yes_votes_count: 10,
+                no_votes_count: 51,
+                expected_state: ProposalState::Defeated
+            }),
+            Just(VoteTippingTestCase {
+                governing_token_supply: 100,
+                vote_threshold_percentage: 60,
+                yes_votes_count: 10,
+                no_votes_count: 10,
+                expected_state: ProposalState::Voting
+            }),
+            Just(VoteTippingTestCase {
+                governing_token_supply: 100,
+                vote_threshold_percentage: 60,
+                yes_votes_count: 60,
+                no_votes_count: 10,
+                expected_state: ProposalState::Voting
+            }),
+            Just(VoteTippingTestCase {
+                governing_token_supply: 100,
+                vote_threshold_percentage: 60,
+                yes_votes_count: 61,
+                no_votes_count: 10,
+                expected_state: ProposalState::Succeeded
+            }),
+            Just(VoteTippingTestCase {
+                governing_token_supply: 100,
+                vote_threshold_percentage: 60,
+                yes_votes_count: 10,
+                no_votes_count: 40,
+                expected_state: ProposalState::Defeated
+            }),
+            Just(VoteTippingTestCase {
+                governing_token_supply: 100,
+                vote_threshold_percentage: 60,
+                yes_votes_count: 10,
+                no_votes_count: 41,
+                expected_state: ProposalState::Defeated
+            }),
+            // 100% Yes
+            Just(VoteTippingTestCase {
+                governing_token_supply: 100,
+                vote_threshold_percentage: 100,
+                yes_votes_count: 100,
+                no_votes_count: 0,
+                expected_state: ProposalState::Succeeded
+            }),
+            // 100% No
+            Just(VoteTippingTestCase {
+                governing_token_supply: 100,
+                vote_threshold_percentage: 100,
+                yes_votes_count: 0,
+                no_votes_count: 100,
+                expected_state: ProposalState::Defeated
+            }),
+        ]
+    }
+
+    proptest! {
+        #[test]
+        fn test_try_tip_vote(test_case in vote_tipping_test_cases()) {
+            // Arrange
+            let mut proposal = create_test_proposal();
+            proposal.yes_votes_count = test_case.yes_votes_count;
+            proposal.no_votes_count = test_case.no_votes_count;
+            proposal.state = ProposalState::Voting;
+
+            let mut governance_config = create_test_governance_config();
+            governance_config.vote_threshold_percentage = test_case.vote_threshold_percentage;
+
+            let current_slot = 15_u64;
+
+            // Act
+            proposal.try_tip_vote(test_case.governing_token_supply, &governance_config,current_slot).unwrap();
+
+            // Assert
+            assert_eq!(proposal.state,test_case.expected_state,"CASE: {:?}",test_case);
+
+            if test_case.expected_state != ProposalState::Voting {
+                assert_eq!(Some(current_slot),proposal.voting_completed_at)
+            }
+        }
+    }
+
+    #[test]
+    pub fn test_finalize_vote_with_expired_voting_time_error() {
+        // Arrange
+        let mut proposal = create_test_proposal();
+        proposal.state = ProposalState::Voting;
+        let governance_config = create_test_governance_config();
+
+        let current_slot = proposal.voting_at.unwrap() + governance_config.max_voting_time;
+
+        // Act
+        let err = proposal
+            .finalize_vote(100, &governance_config, current_slot)
+            .err()
+            .unwrap();
+
+        // Assert
+        assert_eq!(err, GovernanceError::CannotFinalizeVotingInProgress.into());
+    }
+
+    #[test]
+    pub fn test_finalize_vote_after_voting_time() {
+        // Arrange
+        let mut proposal = create_test_proposal();
+        proposal.state = ProposalState::Voting;
+        let governance_config = create_test_governance_config();
+
+        let current_slot = proposal.voting_at.unwrap() + governance_config.max_voting_time + 1;
+
+        // Act
+        let result = proposal.finalize_vote(100, &governance_config, current_slot);
+
+        // Assert
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    pub fn test_assert_can_vote_with_expired_voting_time_error() {
+        // Arrange
+        let mut proposal = create_test_proposal();
+        proposal.state = ProposalState::Voting;
+        let governance_config = create_test_governance_config();
+
+        let current_slot = proposal.voting_at.unwrap() + governance_config.max_voting_time + 1;
+
+        // Act
+        let err = proposal
+            .assert_can_vote(&governance_config, current_slot)
+            .err()
+            .unwrap();
+
+        // Assert
+        assert_eq!(err, GovernanceError::ProposalVotingTimeExpired.into());
+    }
+
+    #[test]
+    pub fn test_assert_can_vote_within_voting_time() {
+        // Arrange
+        let mut proposal = create_test_proposal();
+        proposal.state = ProposalState::Voting;
+        let governance_config = create_test_governance_config();
+
+        let current_slot = proposal.voting_at.unwrap() + governance_config.max_voting_time;
+
+        // Act
+        let result = proposal.assert_can_vote(&governance_config, current_slot);
+
+        // Assert
+        assert_eq!(result, Ok(()));
     }
 }
