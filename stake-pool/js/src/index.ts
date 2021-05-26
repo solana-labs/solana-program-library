@@ -118,7 +118,7 @@ function prettyPrintPubKey(pubKey: schema.PublicKey): string {
    * Helper function to pretty print a schema.PublicKey
    * Pretty prints a PublicKey in base58 format */
   return new solanaWeb3.PublicKey(
-    new solanaWeb3.PublicKey(pubKey.value).toBytes().reverse(),
+    new solanaWeb3.PublicKey(pubKey.value.toBuffer()).toBytes().reverse(),
   ).toString();
 }
 
