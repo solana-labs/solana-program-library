@@ -1524,10 +1524,6 @@ fn process_liquidate_obligation(
     Ok(())
 }
 
-const RECEIVE_FLASH_LOAN_INSTRUCTION_DATA_SIZE: usize = 9;
-
-const RECEIVE_FLASH_LOAN_INSTRUCTION_TAG: u8 = 0u8;
-
 #[inline(never)] // avoid stack frame limit
 fn process_flash_loan(
     program_id: &Pubkey,
@@ -1589,11 +1585,6 @@ fn process_flash_loan(
         liquidity_amount
     };
 
-    if reserve.liquidity.available_amount < flash_loan_amount {
-        msg!("Flash loan amount cannot exceed available amount");
-        return Err(LendingError::InsufficientLiquidity.into());
-    }
-
     let flash_loan_amount_decimal = Decimal::from(flash_loan_amount);
     let (origination_fee, host_fee) = reserve
         .config
@@ -1608,15 +1599,8 @@ fn process_flash_loan(
         .checked_add(origination_fee)
         .ok_or(LendingError::MathOverflow)?;
 
-    reserve.liquidity.borrow(flash_loan_amount_decimal)?;
-    spl_token_transfer(TokenTransferParams {
-        source: source_liquidity_info.clone(),
-        destination: destination_liquidity_info.clone(),
-        amount: flash_loan_amount,
-        authority: derived_lending_market_account_info.clone(),
-        authority_signer_seeds,
-        token_program: token_program_id.clone(),
-    })?;
+    const RECEIVE_FLASH_LOAN_INSTRUCTION_DATA_SIZE: usize = 9;
+    const RECEIVE_FLASH_LOAN_INSTRUCTION_TAG: u8 = 0u8;
 
     let mut data = Vec::with_capacity(RECEIVE_FLASH_LOAN_INSTRUCTION_DATA_SIZE);
     data.push(RECEIVE_FLASH_LOAN_INSTRUCTION_TAG);
@@ -1644,15 +1628,32 @@ fn process_flash_loan(
         });
     }
 
-    let flash_loan_receiver_instruction = Instruction {
-        program_id: *flash_loan_receiver_program_info.key,
-        accounts: flash_loan_instruction_accounts,
-        data,
-    };
+    reserve.liquidity.borrow(flash_loan_amount_decimal)?;
+    Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
+
+    spl_token_transfer(TokenTransferParams {
+        source: source_liquidity_info.clone(),
+        destination: destination_liquidity_info.clone(),
+        amount: flash_loan_amount,
+        authority: lending_market_authority_info.clone(),
+        authority_signer_seeds,
+        token_program: token_program_id.clone(),
+    })?;
+
     invoke(
-        &flash_loan_receiver_instruction,
+        &Instruction {
+            program_id: *flash_loan_receiver_program_id.key,
+            accounts: flash_loan_instruction_accounts,
+            data,
+        },
         &flash_loan_instruction_account_infos[..],
     )?;
+
+    reserve = Reserve::unpack(&reserve_info.data.borrow())?;
+    reserve
+        .liquidity
+        .repay(flash_loan_amount, flash_loan_amount_decimal)?;
+    Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
 
     let actual_balance_after_flash_loan =
         Account::unpack(&source_liquidity_info.data.borrow())?.amount;
@@ -1660,9 +1661,6 @@ fn process_flash_loan(
         msg!("Insufficient reserve liquidity after flash loan");
         return Err(LendingError::NotEnoughLiquidityAfterFlashLoan.into());
     }
-    reserve
-        .liquidity
-        .repay(flash_loan_amount, flash_loan_amount_decimal)?;
 
     let mut owner_fee = origination_fee;
     if host_fee > 0 {
