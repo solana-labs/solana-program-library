@@ -1,5 +1,4 @@
 import * as schema from './schema.js';
-import borsh from 'borsh';
 import solanaWeb3 from '@solana/web3.js';
 
 export class StakePool {
@@ -117,6 +116,7 @@ export function prettyPrintPubKey(pubKey: schema.PublicKey): string {
   /**
    * Helper function to pretty print a schema.PublicKey
    * Pretty prints a PublicKey in base58 format */
+
   return new solanaWeb3.PublicKey(
     new solanaWeb3.PublicKey(pubKey.value.toBuffer()).toBytes().reverse(),
   ).toString();
@@ -129,6 +129,7 @@ export function prettyPrintAccount(
    * Very rough helper function to pretty print an account
    * Note that this is not a pure function: it console.logs
    */
+  console.log(account)
   console.log('Address:', account.pubkey.toString());
   const sp = account.account.data;
   for (const val in sp) {
