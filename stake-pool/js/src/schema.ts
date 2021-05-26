@@ -1,20 +1,20 @@
-import borsh from 'borsh';
+import { Schema, serialize, deserializeUnchecked } from 'borsh';
 import BN from 'bn.js';
 
 // Class wrapping a plain object
 export abstract class Assignable {
-  constructor(properties: {[key: string]: any}) {
+  constructor(properties: { [key: string]: any }) {
     Object.keys(properties).forEach((key: string) => {
       this[key] = properties[key];
     });
   }
 
   encode(): Buffer {
-    return Buffer.from(borsh.serialize(SCHEMA, this));
+    return Buffer.from(serialize(SCHEMA, this));
   }
 
   static decode<T extends Assignable>(data: Buffer): T {
-    return borsh.deserializeUnchecked(SCHEMA, this, data);
+    return deserializeUnchecked(SCHEMA, this, data);
   }
 }
 
@@ -39,9 +39,9 @@ export class Fee extends Assignable {
   numerator: BN;
 }
 
-export class AccountType extends Enum {}
+export class AccountType extends Enum { }
 
-export class AccountTypeEnum extends Assignable {}
+export class AccountTypeEnum extends Assignable { }
 
 export enum AccountTypeKind {
   Uninitialized = 'Uninitialized',
@@ -76,9 +76,9 @@ export class ValidatorStakeInfo extends Assignable {
   stakeLamports: BN;
   lastUpdateEpoch: BN;
 }
-export class StakeStatus extends Enum {}
+export class StakeStatus extends Enum { }
 
-export class StakeStatusEnum extends Assignable {}
+export class StakeStatusEnum extends Assignable { }
 
 export enum StakeStatusKind {
   Active = 'Active',
@@ -90,14 +90,14 @@ export class PublicKey extends Assignable {
   value: BN;
 }
 
-export const SCHEMA: borsh.Schema = constructStakePoolSchema();
+export const SCHEMA: Schema = constructStakePoolSchema();
 
 /**
  * Borsh requires something called a Schema,
  * which is a Map (key-value pairs) that tell borsh how to deserialise the raw data
  * This function creates, populates and returns such a schema
  */
-export function constructStakePoolSchema(): borsh.Schema {
+export function constructStakePoolSchema(): Schema {
   const SCHEMA = new Map();
 
   SCHEMA.set(PublicKey, {
@@ -124,7 +124,7 @@ export function constructStakePoolSchema(): borsh.Schema {
     ],
   });
 
-  SCHEMA.set(AccountTypeEnum, {kind: 'struct', fields: []});
+  SCHEMA.set(AccountTypeEnum, { kind: 'struct', fields: [] });
 
   SCHEMA.set(StakePoolAccount, {
     kind: 'struct',
@@ -165,7 +165,7 @@ export function constructStakePoolSchema(): borsh.Schema {
     ],
   });
 
-  SCHEMA.set(StakeStatusEnum, {kind: 'struct', fields: []});
+  SCHEMA.set(StakeStatusEnum, { kind: 'struct', fields: [] });
 
   SCHEMA.set(ValidatorStakeInfo, {
     kind: 'struct',
