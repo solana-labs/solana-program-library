@@ -5,17 +5,15 @@
   "private": true,
   "scripts": {
     "compile": "tsc",
-    "test": "ts-mocha -r esm -p tsconfig.json src/**/*.spec.ts"
+    "test": "./node_modules/mocha/bin/mocha -p ./dist"
   },
   "keywords": [],
   "author": "Lieu Zheng Hong",
   "license": "ISC",
   "devDependencies": {
-    "esm": "^3.2.25",
+    "@types/mocha": "^8.2.2",
     "mocha": "^8.4.0",
     "prettier": "^2.2.1",
-    "ts-mocha": "^8.0.0",
-    "ts-node": "^7.0.1",
     "typescript": "^4.2.4",
     "webpack": "^5.36.2",
     "webpack-cli": "^4.6.0"
