@@ -1138,6 +1138,7 @@ mod test {
             host_fee_percentage in 0..=100u8,
             borrow_amount in 3..=u64::MAX, // start at 3 to ensure calculation success
                                            // 0, 1, and 2 are covered in the minimum tests
+                                           // @FIXME: ^ no longer true
         ) {
             let fees = ReserveFees {
                 borrow_fee_wad,
