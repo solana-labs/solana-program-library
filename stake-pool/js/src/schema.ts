@@ -1,9 +1,9 @@
-import { Schema, serialize, deserializeUnchecked } from 'borsh';
+import {Schema, serialize, deserializeUnchecked} from 'borsh';
 import BN from 'bn.js';
 
 // Class wrapping a plain object
 export abstract class Assignable {
-  constructor(properties: { [key: string]: any }) {
+  constructor(properties: {[key: string]: any}) {
     Object.keys(properties).forEach((key: string) => {
       this[key] = properties[key];
     });
@@ -39,9 +39,9 @@ export class Fee extends Assignable {
   numerator: BN;
 }
 
-export class AccountType extends Enum { }
+export class AccountType extends Enum {}
 
-export class AccountTypeEnum extends Assignable { }
+export class AccountTypeEnum extends Assignable {}
 
 export enum AccountTypeKind {
   Uninitialized = 'Uninitialized',
@@ -76,9 +76,9 @@ export class ValidatorStakeInfo extends Assignable {
   stakeLamports: BN;
   lastUpdateEpoch: BN;
 }
-export class StakeStatus extends Enum { }
+export class StakeStatus extends Enum {}
 
-export class StakeStatusEnum extends Assignable { }
+export class StakeStatusEnum extends Assignable {}
 
 export enum StakeStatusKind {
   Active = 'Active',
@@ -124,7 +124,7 @@ export function constructStakePoolSchema(): Schema {
     ],
   });
 
-  SCHEMA.set(AccountTypeEnum, { kind: 'struct', fields: [] });
+  SCHEMA.set(AccountTypeEnum, {kind: 'struct', fields: []});
 
   SCHEMA.set(StakePoolAccount, {
     kind: 'struct',
@@ -165,7 +165,7 @@ export function constructStakePoolSchema(): Schema {
     ],
   });
 
-  SCHEMA.set(StakeStatusEnum, { kind: 'struct', fields: [] });
+  SCHEMA.set(StakeStatusEnum, {kind: 'struct', fields: []});
 
   SCHEMA.set(ValidatorStakeInfo, {
     kind: 'struct',

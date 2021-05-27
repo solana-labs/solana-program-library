@@ -129,7 +129,7 @@ export function prettyPrintAccount(
    * Very rough helper function to pretty print an account
    * Note that this is not a pure function: it console.logs
    */
-  console.log(account)
+  console.log(account);
   console.log('Address:', account.pubkey.toString());
   const sp = account.account.data;
   for (const val in sp) {
@@ -166,5 +166,5 @@ export default function testOnDevnet() {
   });
   */
 
-  getStakePoolAccounts(connection, STAKE_POOL_PROGRAM_ADDR)
+  getStakePoolAccounts(connection, STAKE_POOL_PROGRAM_ADDR);
 }
