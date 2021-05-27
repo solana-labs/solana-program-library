@@ -5,7 +5,7 @@
 use {
     crate::{
         find_deposit_authority_program_address, find_stake_program_address,
-        find_transient_stake_program_address, find_withdraw_authority_program_address, id,
+        find_transient_stake_program_address, find_withdraw_authority_program_address,
         stake_program,
         state::{Fee, StakePool, ValidatorList},
         MAX_VALIDATORS_TO_UPDATE,
@@ -467,16 +467,17 @@ pub fn increase_validator_stake(
 
 /// Creates `CreateValidatorStakeAccount` instruction with a vote account
 pub fn create_validator_stake_account_with_vote(
+    program_id: &Pubkey,
     stake_pool_address: &Pubkey,
     staker: &Pubkey,
     funder: &Pubkey,
     vote_account_address: &Pubkey,
 ) -> Instruction {
     let (stake_account, _) =
-        find_stake_program_address(&id(), vote_account_address, stake_pool_address);
+        find_stake_program_address(program_id, vote_account_address, stake_pool_address);
     create_validator_stake_account(
-        &id(),
-        &stake_pool_address,
+        program_id,
+        stake_pool_address,
         staker,
         funder,
         &stake_account,
@@ -487,17 +488,18 @@ pub fn create_validator_stake_account_with_vote(
 /// Create an `AddValidatorToPool` instruction given an existing stake pool and
 /// vote account
 pub fn add_validator_to_pool_with_vote(
+    program_id: &Pubkey,
     stake_pool: &StakePool,
     stake_pool_address: &Pubkey,
     vote_account_address: &Pubkey,
 ) -> Instruction {
     let pool_withdraw_authority =
-        find_withdraw_authority_program_address(&id(), stake_pool_address).0;
+        find_withdraw_authority_program_address(program_id, stake_pool_address).0;
     let (stake_account_address, _) =
-        find_stake_program_address(&id(), vote_account_address, stake_pool_address);
+        find_stake_program_address(program_id, vote_account_address, stake_pool_address);
     add_validator_to_pool(
-        &id(),
-        &stake_pool_address,
+        program_id,
+        stake_pool_address,
         &stake_pool.staker,
         &pool_withdraw_authority,
         &stake_pool.validator_list,
@@ -508,23 +510,24 @@ pub fn add_validator_to_pool_with_vote(
 /// Create an `RemoveValidatorFromPool` instruction given an existing stake pool and
 /// vote account
 pub fn remove_validator_from_pool_with_vote(
+    program_id: &Pubkey,
     stake_pool: &StakePool,
     stake_pool_address: &Pubkey,
     vote_account_address: &Pubkey,
     new_stake_account_authority: &Pubkey,
 ) -> Instruction {
     let pool_withdraw_authority =
-        find_withdraw_authority_program_address(&id(), stake_pool_address).0;
+        find_withdraw_authority_program_address(program_id, stake_pool_address).0;
     let (stake_account_address, _) =
-        find_stake_program_address(&id(), vote_account_address, stake_pool_address);
+        find_stake_program_address(program_id, vote_account_address, stake_pool_address);
     let (transient_stake_account, _) =
-        find_transient_stake_program_address(&id(), &vote_account_address, stake_pool_address);
+        find_transient_stake_program_address(program_id, &vote_account_address, stake_pool_address);
     remove_validator_from_pool(
-        &id(),
-        &stake_pool_address,
+        program_id,
+        stake_pool_address,
         &stake_pool.staker,
         &pool_withdraw_authority,
-        &new_stake_account_authority,
+        new_stake_account_authority,
         &stake_pool.validator_list,
         &stake_account_address,
         &transient_stake_account,
@@ -534,25 +537,26 @@ pub fn remove_validator_from_pool_with_vote(
 /// Create an `IncreaseValidatorStake` instruction given an existing stake pool and
 /// vote account
 pub fn increase_validator_stake_with_vote(
+    program_id: &Pubkey,
     stake_pool: &StakePool,
     stake_pool_address: &Pubkey,
     vote_account_address: &Pubkey,
     lamports: u64,
 ) -> Instruction {
     let pool_withdraw_authority =
-        find_withdraw_authority_program_address(&id(), stake_pool_address).0;
+        find_withdraw_authority_program_address(program_id, stake_pool_address).0;
     let (transient_stake_address, _) =
-        find_transient_stake_program_address(&id(), &vote_account_address, stake_pool_address);
+        find_transient_stake_program_address(program_id, vote_account_address, stake_pool_address);
 
     increase_validator_stake(
-        &id(),
-        &stake_pool_address,
+        program_id,
+        stake_pool_address,
         &stake_pool.staker,
         &pool_withdraw_authority,
         &stake_pool.validator_list,
         &stake_pool.reserve_stake,
         &transient_stake_address,
-        &vote_account_address,
+        vote_account_address,
         lamports,
     )
 }
@@ -560,19 +564,20 @@ pub fn increase_validator_stake_with_vote(
 /// Create a `DecreaseValidatorStake` instruction given an existing stake pool and
 /// vote account
 pub fn decrease_validator_stake_with_vote(
+    program_id: &Pubkey,
     stake_pool: &StakePool,
     stake_pool_address: &Pubkey,
     vote_account_address: &Pubkey,
     lamports: u64,
 ) -> Instruction {
     let pool_withdraw_authority =
-        find_withdraw_authority_program_address(&id(), stake_pool_address).0;
+        find_withdraw_authority_program_address(program_id, stake_pool_address).0;
     let (validator_stake_address, _) =
-        find_stake_program_address(&id(), &vote_account_address, stake_pool_address);
+        find_stake_program_address(program_id, &vote_account_address, stake_pool_address);
     let (transient_stake_address, _) =
-        find_transient_stake_program_address(&id(), &vote_account_address, stake_pool_address);
+        find_transient_stake_program_address(program_id, &vote_account_address, stake_pool_address);
     decrease_validator_stake(
-        &id(),
+        program_id,
         &stake_pool_address,
         &stake_pool.staker,
         &pool_withdraw_authority,
@@ -665,6 +670,7 @@ pub fn update_stake_pool_balance(
 /// Creates all `UpdateValidatorListBalance` and `UpdateStakePoolBalance`
 /// instructions for fully updating a stake pool each epoch
 pub fn update_stake_pool(
+    program_id: &Pubkey,
     stake_pool: &StakePool,
     validator_list: &ValidatorList,
     stake_pool_address: &Pubkey,
@@ -677,13 +683,13 @@ pub fn update_stake_pool(
         .collect();
 
     let (withdraw_authority, _) =
-        find_withdraw_authority_program_address(&id(), &stake_pool_address);
+        find_withdraw_authority_program_address(program_id, stake_pool_address);
 
     let mut instructions: Vec<Instruction> = vec![];
     let mut start_index = 0;
     for accounts_chunk in vote_accounts.chunks(MAX_VALIDATORS_TO_UPDATE) {
         instructions.push(update_validator_list_balance(
-            &id(),
+            program_id,
             stake_pool_address,
             &withdraw_authority,
             &stake_pool.validator_list,
@@ -696,7 +702,7 @@ pub fn update_stake_pool(
     }
 
     instructions.push(update_stake_pool_balance(
-        &id(),
+        program_id,
         stake_pool_address,
         &withdraw_authority,
         &stake_pool.validator_list,
