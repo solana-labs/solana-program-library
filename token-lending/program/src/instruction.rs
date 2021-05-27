@@ -551,9 +551,10 @@ impl LendingInstruction {
 /// Creates an 'InitLendingMarket' instruction.
 pub fn init_lending_market(
     program_id: Pubkey,
-    lending_market_pubkey: Pubkey,
-    lending_market_owner: Pubkey,
+    owner: Pubkey,
     quote_currency: [u8; 32],
+    lending_market_pubkey: Pubkey,
+    oracle_program_id: Pubkey,
 ) -> Instruction {
     Instruction {
         program_id,
@@ -561,9 +562,10 @@ pub fn init_lending_market(
             AccountMeta::new(lending_market_pubkey, false),
             AccountMeta::new_readonly(sysvar::rent::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
+            AccountMeta::new_readonly(oracle_program_id, false),
         ],
         data: LendingInstruction::InitLendingMarket {
-            owner: lending_market_owner,
+            owner,
             quote_currency,
         }
         .pack(),

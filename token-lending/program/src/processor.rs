@@ -111,6 +111,7 @@ fn process_init_lending_market(
     let lending_market_info = next_account_info(account_info_iter)?;
     let rent = &Rent::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
+    let oracle_program_id = next_account_info(account_info_iter)?;
 
     assert_rent_exempt(rent, lending_market_info)?;
     let mut lending_market = assert_uninitialized::<LendingMarket>(lending_market_info)?;
@@ -124,6 +125,7 @@ fn process_init_lending_market(
         owner,
         quote_currency,
         token_program_id: *token_program_id.key,
+        oracle_program_id: *oracle_program_id.key,
     });
     LendingMarket::pack(lending_market, &mut lending_market_info.data.borrow_mut())?;
 
@@ -253,6 +255,15 @@ fn process_init_reserve(
     if !lending_market_owner_info.is_signer {
         msg!("Lending market owner provided must be a signer");
         return Err(LendingError::InvalidSigner.into());
+    }
+
+    if &lending_market.oracle_program_id != pyth_product_info.owner {
+        msg!("Pyth product account provided is not owned by the lending market oracle program");
+        return Err(LendingError::InvalidOracleConfig.into());
+    }
+    if &lending_market.oracle_program_id != pyth_price_info.owner {
+        msg!("Pyth price account provided is not owned by the lending market oracle program");
+        return Err(LendingError::InvalidOracleConfig.into());
     }
 
     let pyth_product_data = &pyth_product_info.try_borrow_data()?;

@@ -94,6 +94,9 @@ pub fn add_lending_market(test: &mut ProgramTest) -> TestLendingMarket {
 
     let lending_market_owner =
         read_keypair_file("tests/fixtures/lending_market_owner.json").unwrap();
+    let oracle_program_id = read_keypair_file("tests/fixtures/oracle_program_id.json")
+        .unwrap()
+        .pubkey();
 
     test.add_packable_account(
         lending_market_pubkey,
@@ -103,6 +106,7 @@ pub fn add_lending_market(test: &mut ProgramTest) -> TestLendingMarket {
             owner: lending_market_owner.pubkey(),
             quote_currency: QUOTE_CURRENCY,
             token_program_id: spl_token::id(),
+            oracle_program_id,
         }),
         &spl_token_lending::id(),
     );
@@ -112,6 +116,7 @@ pub fn add_lending_market(test: &mut ProgramTest) -> TestLendingMarket {
         owner: lending_market_owner,
         authority: lending_market_authority,
         quote_currency: QUOTE_CURRENCY,
+        oracle_program_id,
     }
 }
 
@@ -446,6 +451,7 @@ pub struct TestLendingMarket {
     pub owner: Keypair,
     pub authority: Pubkey,
     pub quote_currency: [u8; 32],
+    pub oracle_program_id: Pubkey,
 }
 
 pub struct BorrowArgs<'a> {
@@ -467,6 +473,10 @@ impl TestLendingMarket {
     pub async fn init(banks_client: &mut BanksClient, payer: &Keypair) -> Self {
         let lending_market_owner =
             read_keypair_file("tests/fixtures/lending_market_owner.json").unwrap();
+        let oracle_program_id = read_keypair_file("tests/fixtures/oracle_program_id.json")
+            .unwrap()
+            .pubkey();
+
         let lending_market_keypair = Keypair::new();
         let lending_market_pubkey = lending_market_keypair.pubkey();
         let (lending_market_authority, _bump_seed) = Pubkey::find_program_address(
@@ -486,9 +496,10 @@ impl TestLendingMarket {
                 ),
                 init_lending_market(
                     spl_token_lending::id(),
-                    lending_market_pubkey,
                     lending_market_owner.pubkey(),
                     QUOTE_CURRENCY,
+                    lending_market_pubkey,
+                    oracle_program_id,
                 ),
             ],
             Some(&payer.pubkey()),
@@ -503,6 +514,7 @@ impl TestLendingMarket {
             pubkey: lending_market_pubkey,
             authority: lending_market_authority,
             quote_currency: QUOTE_CURRENCY,
+            oracle_program_id,
         }
     }
 
@@ -1082,13 +1094,13 @@ pub fn add_oracle(
     price_pubkey: Pubkey,
     price: Decimal,
 ) -> TestOracle {
-    let owner = Pubkey::new_unique();
+    let oracle_program_id = read_keypair_file("tests/fixtures/oracle_program_id.json").unwrap();
 
     // Add Pyth product account
     test.add_account_with_file_data(
         product_pubkey,
         u32::MAX as u64,
-        owner,
+        oracle_program_id.pubkey(),
         &format!("{}.bin", product_pubkey.to_string()),
     );
 
@@ -1117,7 +1129,7 @@ pub fn add_oracle(
         Account {
             lamports: u32::MAX as u64,
             data: pyth_price_data,
-            owner,
+            owner: oracle_program_id.pubkey(),
             executable: false,
             rent_epoch: 0,
         },

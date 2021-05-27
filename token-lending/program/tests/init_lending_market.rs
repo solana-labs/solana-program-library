@@ -46,9 +46,10 @@ async fn test_already_initialized() {
     let mut transaction = Transaction::new_with_payer(
         &[init_lending_market(
             spl_token_lending::id(),
-            existing_market.pubkey,
             existing_market.owner.pubkey(),
             existing_market.quote_currency,
+            existing_market.pubkey,
+            existing_market.oracle_program_id,
         )],
         Some(&payer.pubkey()),
     );
