@@ -105,6 +105,7 @@ describe('schema.decode', () => {
 
         it('should successfully decode ValidatorListAccount with nonempty ValidatorInfo', () => {
             // TODO also test for decoding ValidatorListAccount with actual ValidatorInfo
+            // Do this once we have a stake pool with validators deployed on testnet
             assert.equal(true, true)
         })
     })
