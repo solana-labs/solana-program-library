@@ -4,7 +4,7 @@
   "description": "JS bindings for the stake pool program",
   "private": true,
   "scripts": {
-    "lint": "npx prettier src/*.ts",
+    "lint": "npx prettier src/*.ts -w",
     "compile": "tsc",
     "test": "./node_modules/mocha/bin/mocha -p ./dist"
   },
