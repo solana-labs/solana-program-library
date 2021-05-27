@@ -169,5 +169,4 @@ export default function testOnDevnet() {
       console.log('\n');
     });
   });
-
 }
