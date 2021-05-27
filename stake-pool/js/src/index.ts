@@ -1,6 +1,11 @@
 import * as schema from './schema.js';
 import solanaWeb3 from '@solana/web3.js';
 
+/**
+ * Sample code to demonstrate how to use the JS bindings
+ * Also contains several useful helper functions
+ */
+
 export class StakePool {
   /**
    * Wrapper class for a stake pool.
@@ -126,10 +131,9 @@ export function prettyPrintAccount(
   account: decodedValidatorList | decodedStakePool,
 ): void {
   /**
-   * Very rough helper function to pretty print an account
-   * Note that this is not a pure function: it console.logs
+   * Helper function to pretty print a decoded account
    */
-  console.log(account);
+
   console.log('Address:', account.pubkey.toString());
   const sp = account.account.data;
   for (const val in sp) {
@@ -146,8 +150,10 @@ export function prettyPrintAccount(
 
 export default function testOnDevnet() {
   /**
-   * Test function on devnet: get accounts, deserialize them, then log them
-   * FIXME: This is no substitute for a proper test suite, but is a sanity-check for now.
+   * Example function to demonstrate how to use the helper functions
+   * and JS bindings.
+   * Makes a connection to devnet, gets all stake pool accounts there,
+   * decodes them, and prints their details.
    */
   const connection = new solanaWeb3.Connection(
     'https://devnet.solana.com/',
@@ -157,14 +163,11 @@ export default function testOnDevnet() {
     'poo1B9L9nR3CrcaziKVYVpRX6A9Y1LAXYasjjfCbApj',
   );
 
-  /*
   getStakePoolAccounts(connection, STAKE_POOL_PROGRAM_ADDR).then(accounts => {
     accounts.map(account => {
       prettyPrintAccount(account);
       console.log('\n');
     });
   });
-  */
 
-  getStakePoolAccounts(connection, STAKE_POOL_PROGRAM_ADDR);
 }
