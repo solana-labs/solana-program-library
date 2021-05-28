@@ -187,10 +187,10 @@ impl Proposal {
         self.assert_can_finalize_vote(config, current_slot)?;
 
         let current_yes_vote_threshold =
-            get_vote_threshold(self.yes_votes_count, governing_token_supply);
+            get_vote_threshold_percentage(self.yes_votes_count, governing_token_supply);
 
         let final_state =
-            if current_yes_vote_threshold > config.yes_vote_threshold_percentage as u64 {
+            if current_yes_vote_threshold > config.yes_vote_threshold_percentage as f64 {
                 ProposalState::Succeeded
             } else {
                 ProposalState::Defeated
@@ -231,23 +231,23 @@ impl Proposal {
         }
 
         let current_yes_vote_threshold =
-            get_vote_threshold(self.yes_votes_count, governing_token_supply);
+            get_vote_threshold_percentage(self.yes_votes_count, governing_token_supply);
 
         // We can only tip the vote automatically to Succeeded if more than 50% votes have been cast as Yeah
         // and the Nay sayers can't change the outcome any longer
-        if current_yes_vote_threshold >= 50
-            && current_yes_vote_threshold > config.yes_vote_threshold_percentage as u64
+        if current_yes_vote_threshold >= 50.0
+            && current_yes_vote_threshold > config.yes_vote_threshold_percentage as f64
         {
             return Some(ProposalState::Succeeded);
         } else {
             let current_no_vote_threshold =
-                get_vote_threshold(self.no_votes_count, governing_token_supply);
+                get_vote_threshold_percentage(self.no_votes_count, governing_token_supply);
 
             // We can  tip the vote automatically to Defeated if more than 50% votes have been cast as Nay
             // or the Yeah sayers can't outvote Nay any longer
             // Note: Even splits  resolve to Defeated
-            if current_no_vote_threshold >= 50
-                || current_no_vote_threshold >= 100 - config.yes_vote_threshold_percentage as u64
+            if current_no_vote_threshold >= 50.0
+                || current_no_vote_threshold >= 100.0 - config.yes_vote_threshold_percentage as f64
             {
                 return Some(ProposalState::Defeated);
             }
@@ -271,13 +271,19 @@ impl Proposal {
     }
 }
 
-/// Returns current vote threshold in relation to the total governing token supply
-fn get_vote_threshold(vote_count: u64, governing_token_supply: u64) -> u64 {
-    (vote_count as u128)
-        .checked_mul(100)
-        .unwrap()
-        .checked_div(governing_token_supply as u128)
-        .unwrap() as u64
+/// Returns current vote threshold percentage in relation to the total governing token supply
+fn get_vote_threshold_percentage(vote_count: u64, governing_token_supply: u64) -> f64 {
+    let percentage = (vote_count as u128 * 100) / (governing_token_supply as u128);
+
+    // Add 10 basis points if the result is above the percentage level to compare against percent values
+    let basis_points = if percentage * (governing_token_supply as u128) < (vote_count as u128) * 100
+    {
+        0.1
+    } else {
+        0.0
+    };
+
+    percentage as f64 + basis_points
 }
 
 /// Deserializes Proposal account and checks owner program
@@ -380,9 +386,21 @@ mod test {
     }
 
     #[test]
-    fn test_get_vote_threshold_within_max_bounds() {
-        let result = get_vote_threshold(u64::MAX, u64::MAX);
-        assert_eq!(result, 100);
+    fn test_get_vote_threshold_percentage_extremes() {
+        let result = get_vote_threshold_percentage(u64::MAX, u64::MAX);
+        assert_eq!(result, 100.0);
+
+        let result = get_vote_threshold_percentage(u64::MAX / 2, u64::MAX);
+        assert_eq!(result, 49.1);
+
+        let result = get_vote_threshold_percentage(u64::MAX / 2, u64::MAX-1);
+        assert_eq!(result, 50.0);
+
+        let result = get_vote_threshold_percentage(u64::MAX / 2 + 1, u64::MAX);
+        assert_eq!(result, 50.1);
+
+        let result = get_vote_threshold_percentage(1, u64::MAX);
+        assert_eq!(result, 0.1);
     }
 
     prop_compose! {
@@ -400,9 +418,9 @@ mod test {
             (vote_count, governing_token_supply) in vote_results(),
 
         ) {
-            let result = get_vote_threshold(vote_count, governing_token_supply);
+            let result = get_vote_threshold_percentage(vote_count, governing_token_supply);
 
-            assert_eq!(true, result <= 100);
+            assert_eq!(true, result <= 100.0);
         }
     }
 
