@@ -317,6 +317,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3b5ca7a04898ad4bcd41c90c5285445ff5b791899bb1b0abdd2a2aa791211d7"
 
 [[package]]
+name = "bytemuck"
+version = "1.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bed57e2090563b83ba8f83366628ce535a7584c9afa4c9fc0612a03925c6df58"
+
+[[package]]
 name = "byteorder"
 version = "1.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2352,12 +2358,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pyth-client"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b7ba5bd380b4035ac54ca201f241b66507c296b164bad3f7c7f5ca6f4ecdbcf"
-
-[[package]]
 name = "qstring"
 version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3945,11 +3945,11 @@ dependencies = [
  "arrayref",
  "assert_matches",
  "base64 0.13.0",
+ "bytemuck",
  "log",
  "num-derive",
  "num-traits",
  "proptest",
- "pyth-client",
  "serde",
  "serde_yaml",
  "solana-program",

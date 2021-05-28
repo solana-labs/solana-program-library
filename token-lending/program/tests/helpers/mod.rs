@@ -22,6 +22,7 @@ use spl_token_lending::{
         init_obligation, init_reserve, liquidate_obligation, refresh_reserve,
     },
     math::{Decimal, Rate, TryAdd, TryMul},
+    pyth,
     state::{
         InitLendingMarketParams, InitObligationParams, InitReserveParams, LendingMarket,
         NewReserveCollateralParams, NewReserveLiquidityParams, Obligation, ObligationCollateral,
@@ -29,8 +30,7 @@ use spl_token_lending::{
         ReserveLiquidity, INITIAL_COLLATERAL_RATIO, PROGRAM_VERSION,
     },
 };
-use std::convert::TryInto;
-use std::str::FromStr;
+use std::{convert::TryInto, str::FromStr};
 
 pub const QUOTE_CURRENCY: [u8; 32] =
     *b"USD\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
@@ -1110,12 +1110,13 @@ pub fn add_oracle(
         panic!("Unable to locate {}", filename);
     }));
 
-    let pyth_price = cast_mut::<pyth_client::Price>(pyth_price_data.as_mut_slice());
+    let mut pyth_price = pyth::load_mut::<pyth::Price>(pyth_price_data.as_mut_slice()).unwrap();
 
     let decimals = 10u64
         .checked_pow(pyth_price.expo.checked_abs().unwrap().try_into().unwrap())
         .unwrap();
 
+    pyth_price.valid_slot = 0;
     pyth_price.agg.price = price
         .try_round_u64()
         .unwrap()
