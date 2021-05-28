@@ -287,6 +287,7 @@ fn command_vsa_create(
         &[
             // Create new validator stake account address
             spl_stake_pool::instruction::create_validator_stake_account_with_vote(
+                &spl_stake_pool::id(),
                 &stake_pool_address,
                 &config.staker.pubkey(),
                 &config.fee_payer.pubkey(),
@@ -342,6 +343,7 @@ fn command_vsa_add(
     }
 
     let instruction = spl_stake_pool::instruction::add_validator_to_pool_with_vote(
+        &spl_stake_pool::id(),
         &stake_pool,
         &stake_pool_address,
         &vote_account,
@@ -378,6 +380,7 @@ fn command_vsa_remove(
         &[
             // Create new validator stake account address
             spl_stake_pool::instruction::remove_validator_from_pool_with_vote(
+                &spl_stake_pool::id(),
                 &stake_pool,
                 stake_pool_address,
                 vote_account,
@@ -410,6 +413,7 @@ fn command_increase_validator_stake(
 
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
     let instruction = spl_stake_pool::instruction::increase_validator_stake_with_vote(
+        &spl_stake_pool::id(),
         &stake_pool,
         stake_pool_address,
         vote_account,
@@ -442,6 +446,7 @@ fn command_decrease_validator_stake(
 
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
     let instruction = spl_stake_pool::instruction::decrease_validator_stake_with_vote(
+        &spl_stake_pool::id(),
         &stake_pool,
         stake_pool_address,
         vote_account,
@@ -687,6 +692,7 @@ fn command_update(
     let validator_list = get_validator_list(&config.rpc_client, &stake_pool.validator_list)?;
 
     let instructions = spl_stake_pool::instruction::update_stake_pool(
+        &spl_stake_pool::id(),
         &stake_pool,
         &validator_list,
         stake_pool_address,
