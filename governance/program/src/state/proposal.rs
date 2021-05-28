@@ -131,7 +131,7 @@ impl Proposal {
             | ProposalState::SigningOff
             | ProposalState::Cancelled
             | ProposalState::Succeeded
-            | ProposalState::Defeated => return Err(ProgramError::InvalidArgument),
+            | ProposalState::Defeated => Err(ProgramError::InvalidArgument),
         }
     }
 
@@ -213,13 +213,11 @@ impl Proposal {
         governing_token_supply: u64,
         config: &GovernanceConfig,
         current_slot: Slot,
-    ) -> Result<(), ProgramError> {
+    ) {
         if let Some(tipped_state) = self.try_get_tipped_vote_state(governing_token_supply, config) {
             self.state = tipped_state;
             self.voting_completed_at = Some(current_slot);
         }
-
-        Ok(())
     }
 
     /// Checks if vote can be tipped and automatically transitioned to Succeeded or Defeated state
@@ -677,7 +675,7 @@ mod test {
             let current_slot = 15_u64;
 
             // Act
-            proposal.try_tip_vote(test_case.governing_token_supply, &governance_config,current_slot).unwrap();
+            proposal.try_tip_vote(test_case.governing_token_supply, &governance_config,current_slot);
 
             // Assert
             assert_eq!(proposal.state,test_case.expected_state,"CASE: {:?}",test_case);

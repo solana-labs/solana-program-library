@@ -98,7 +98,7 @@ pub fn process_cast_vote(
     };
 
     let governing_token_supply = get_spl_token_mint_supply(&governing_token_mint_info)?;
-    proposal_data.try_tip_vote(governing_token_supply, &governance_data.config, clock.slot)?;
+    proposal_data.try_tip_vote(governing_token_supply, &governance_data.config, clock.slot);
 
     proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
 
