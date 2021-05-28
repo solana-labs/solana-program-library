@@ -192,7 +192,7 @@ impl Proposal {
         self.assert_can_finalize_vote(config, current_slot)?;
 
         let current_yes_vote_threshold =
-            self.get_current_vote_threshold(self.yes_votes_count, governing_token_supply);
+            get_vote_threshold(self.yes_votes_count, governing_token_supply);
 
         let final_state = if current_yes_vote_threshold > config.vote_threshold_percentage as u64 {
             ProposalState::Succeeded
@@ -204,15 +204,6 @@ impl Proposal {
         self.voting_completed_at = Some(current_slot);
 
         Ok(())
-    }
-
-    /// Returns current vote threshold in relation to the total governing token supply
-    fn get_current_vote_threshold(&self, vote_count: u64, governing_token_supply: u64) -> u64 {
-        vote_count
-            .checked_mul(100)
-            .unwrap()
-            .checked_div(governing_token_supply)
-            .unwrap()
     }
 
     /// Checks if vote can be tipped and automatically transitioned to Succeeded or Defeated state
@@ -246,7 +237,7 @@ impl Proposal {
         }
 
         let current_yes_vote_threshold =
-            self.get_current_vote_threshold(self.yes_votes_count, governing_token_supply);
+            get_vote_threshold(self.yes_votes_count, governing_token_supply);
 
         // We can only tip the vote automatically to Succeeded if more than 50% votes have been cast as Yeah
         // and the Nay sayers can't change the outcome any longer
@@ -256,7 +247,7 @@ impl Proposal {
             return Some(ProposalState::Succeeded);
         } else {
             let current_no_vote_threshold =
-                self.get_current_vote_threshold(self.no_votes_count, governing_token_supply);
+                get_vote_threshold(self.no_votes_count, governing_token_supply);
 
             // We can  tip the vote automatically to Defeated if more than 50% votes have been cast as Nay
             // or the Yeah sayers can't outvote Nay any longer
@@ -284,6 +275,15 @@ impl Proposal {
             }
         }
     }
+}
+
+/// Returns current vote threshold in relation to the total governing token supply
+fn get_vote_threshold(vote_count: u64, governing_token_supply: u64) -> u64 {
+    (vote_count as u128)
+        .checked_mul(100)
+        .unwrap()
+        .checked_div(governing_token_supply as u128)
+        .unwrap() as u64
 }
 
 /// Deserializes Proposal account and checks owner program
@@ -383,6 +383,33 @@ mod test {
         let size = proposal.try_to_vec().unwrap().len();
 
         assert_eq!(proposal.get_max_size(), Some(size));
+    }
+
+    #[test]
+    fn test_get_vote_threshold_within_max_bounds() {
+        let result = get_vote_threshold(u64::MAX, u64::MAX);
+        assert_eq!(result, 100);
+    }
+
+    prop_compose! {
+        fn vote_results()(governing_token_supply in 1..=u64::MAX)(
+            governing_token_supply in Just(governing_token_supply),
+            vote_count in 0..=governing_token_supply,
+        ) -> (u64, u64) {
+            (vote_count as u64, governing_token_supply as u64)
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn test_get_vote_threshold(
+            (vote_count, governing_token_supply) in vote_results(),
+
+        ) {
+            let result = get_vote_threshold(vote_count, governing_token_supply);
+
+            assert_eq!(true, result <= 100);
+        }
     }
 
     fn editable_signatory_states() -> impl Strategy<Value = ProposalState> {
