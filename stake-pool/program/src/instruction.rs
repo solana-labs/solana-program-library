@@ -517,7 +517,9 @@ pub fn set_preferred_validator(
         data: StakePoolInstruction::SetPreferredValidator {
             validator_type,
             validator_vote_address,
-        }.try_to_vec().unwrap()
+        }
+        .try_to_vec()
+        .unwrap(),
     }
 }
 

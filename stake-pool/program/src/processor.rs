@@ -864,6 +864,13 @@ impl Processor {
                 .retain(|item| item.vote_account_address != vote_account_address),
             _ => unreachable!(),
         }
+
+        if validator_list.preferred_deposit_validator_vote_address == Some(vote_account_address) {
+            validator_list.preferred_deposit_validator_vote_address = None;
+        }
+        if validator_list.preferred_withdraw_validator_vote_address == Some(vote_account_address) {
+            validator_list.preferred_withdraw_validator_vote_address = None;
+        }
         validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
 
         Ok(())
@@ -1190,8 +1197,12 @@ impl Processor {
         }
 
         match validator_type {
-            PreferredValidatorType::Deposit => validator_list.preferred_deposit_validator_vote_address = vote_account_address,
-            PreferredValidatorType::Withdraw => validator_list.preferred_withdraw_validator_vote_address = vote_account_address,
+            PreferredValidatorType::Deposit => {
+                validator_list.preferred_deposit_validator_vote_address = vote_account_address
+            }
+            PreferredValidatorType::Withdraw => {
+                validator_list.preferred_withdraw_validator_vote_address = vote_account_address
+            }
         };
         validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
         Ok(())
@@ -1579,6 +1590,11 @@ impl Processor {
             validator_stake_account_info.key,
             &vote_account_address,
         )?;
+        if let Some(preferred_deposit) = validator_list.preferred_deposit_validator_vote_address {
+            if preferred_deposit != vote_account_address {
+                return Err(StakePoolError::IncorrectDepositVoteAddress.into());
+            }
+        }
 
         let validator_list_item = validator_list
             .find_mut(&vote_account_address)
@@ -1762,6 +1778,20 @@ impl Processor {
                 stake_split_from.key,
                 &vote_account_address,
             )?;
+
+            if let Some(preferred_withdraw_validator) =
+                validator_list.preferred_withdraw_validator_vote_address
+            {
+                let preferred_validator_info = validator_list
+                    .find(&preferred_withdraw_validator)
+                    .ok_or(StakePoolError::ValidatorNotFound)?;
+                if preferred_withdraw_validator != vote_account_address
+                    && preferred_validator_info.stake_lamports > 0
+                {
+                    msg!("Validator vote address {} is preferred for withdrawals, it currently has {} lamports available. Please withdraw those before using other validator stake accounts.", preferred_withdraw_validator, preferred_validator_info.stake_lamports);
+                    return Err(StakePoolError::IncorrectWithdrawVoteAddress.into());
+                }
+            }
 
             let validator_list_item = validator_list
                 .find_mut(&vote_account_address)
@@ -1952,7 +1982,12 @@ impl Processor {
                 validator_vote_address,
             } => {
                 msg!("Instruction: SetPreferredValidator");
-                Self::process_set_preferred_validator(program_id, accounts, validator_type, validator_vote_address)
+                Self::process_set_preferred_validator(
+                    program_id,
+                    accounts,
+                    validator_type,
+                    validator_vote_address,
+                )
             }
             StakePoolInstruction::UpdateValidatorListBalance {
                 start_index,
@@ -2026,6 +2061,8 @@ impl PrintProgramError for StakePoolError {
             StakePoolError::WrongStaker=> msg!("Error: Wrong pool staker account"),
             StakePoolError::NonZeroPoolTokenSupply => msg!("Error: Pool token supply is not zero on initialization"),
             StakePoolError::StakeLamportsNotEqualToMinimum => msg!("Error: The lamports in the validator stake account is not equal to the minimum"),
+            StakePoolError::IncorrectDepositVoteAddress => msg!("Error: The provided deposit stake account is not delegated to the preferred deposit vote account"),
+            StakePoolError::IncorrectWithdrawVoteAddress => msg!("Error: The provided withdraw stake account is not the preferred deposit vote account"),
         }
     }
 }
