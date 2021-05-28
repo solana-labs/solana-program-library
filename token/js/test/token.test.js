@@ -52,6 +52,16 @@ describe('Token', () => {
       new PublicKey('7o36UsWR1JQLpZ9PE2gn9L4SQ69CNNiWAXd4Jt7rqz9Z'),
       associatedPublicKey,
     )).to.be.rejectedWith(`Owner cannot sign: ${associatedPublicKey.toString()}`);
+    const associatedPublicKey2 = await Token.getAssociatedTokenAddress(
+      ASSOCIATED_TOKEN_PROGRAM_ID,
+      TOKEN_PROGRAM_ID,
+      new PublicKey('7o36UsWR1JQLpZ9PE2gn9L4SQ69CNNiWAXd4Jt7rqz9Z'),
+      associatedPublicKey,
+      true,
+    )
+    expect(associatedPublicKey2.toString()).to.eql(
+      new PublicKey('F3DmXZFqkfEWFA7MN2vDPs813GeEWPaT6nLk4PSGuWJd').toString(),
+    );
   });
 
   it('createAssociatedTokenAccount', () => {
