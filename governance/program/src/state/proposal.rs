@@ -275,7 +275,7 @@ impl Proposal {
 fn get_vote_threshold_percentage(vote_count: u64, governing_token_supply: u64) -> f64 {
     let percentage = (vote_count as u128 * 100) / (governing_token_supply as u128);
 
-    // Add 10 basis points if the result is above the percentage level to compare against percent values
+    // Add 10 basis points if the result is above the percentage level to compare against percentage values
     let basis_points = if percentage * (governing_token_supply as u128) < (vote_count as u128) * 100
     {
         0.1
@@ -393,7 +393,7 @@ mod test {
         let result = get_vote_threshold_percentage(u64::MAX / 2, u64::MAX);
         assert_eq!(result, 49.1);
 
-        let result = get_vote_threshold_percentage(u64::MAX / 2, u64::MAX-1);
+        let result = get_vote_threshold_percentage(u64::MAX / 2, u64::MAX - 1);
         assert_eq!(result, 50.0);
 
         let result = get_vote_threshold_percentage(u64::MAX / 2 + 1, u64::MAX);
