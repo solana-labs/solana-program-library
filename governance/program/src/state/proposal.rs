@@ -194,11 +194,12 @@ impl Proposal {
         let current_yes_vote_threshold =
             get_vote_threshold(self.yes_votes_count, governing_token_supply);
 
-        let final_state = if current_yes_vote_threshold > config.vote_threshold_percentage as u64 {
-            ProposalState::Succeeded
-        } else {
-            ProposalState::Defeated
-        };
+        let final_state =
+            if current_yes_vote_threshold > config.yes_vote_threshold_percentage as u64 {
+                ProposalState::Succeeded
+            } else {
+                ProposalState::Defeated
+            };
 
         self.state = final_state;
         self.voting_completed_at = Some(current_slot);
@@ -240,7 +241,7 @@ impl Proposal {
         // We can only tip the vote automatically to Succeeded if more than 50% votes have been cast as Yeah
         // and the Nay sayers can't change the outcome any longer
         if current_yes_vote_threshold >= 50
-            && current_yes_vote_threshold > config.vote_threshold_percentage as u64
+            && current_yes_vote_threshold > config.yes_vote_threshold_percentage as u64
         {
             return Some(ProposalState::Succeeded);
         } else {
@@ -251,7 +252,7 @@ impl Proposal {
             // or the Yeah sayers can't outvote Nay any longer
             // Note: Even splits  resolve to Defeated
             if current_no_vote_threshold >= 50
-                || current_no_vote_threshold >= 100 - config.vote_threshold_percentage as u64
+                || current_no_vote_threshold >= 100 - config.yes_vote_threshold_percentage as u64
             {
                 return Some(ProposalState::Defeated);
             }
@@ -368,7 +369,7 @@ mod test {
         GovernanceConfig {
             realm: Pubkey::new_unique(),
             governed_account: Pubkey::new_unique(),
-            vote_threshold_percentage: 60,
+            yes_vote_threshold_percentage: 60,
             min_tokens_to_create_proposal: 5,
             min_instruction_hold_up_time: 10,
             max_voting_time: 5,
@@ -670,7 +671,7 @@ mod test {
             proposal.state = ProposalState::Voting;
 
             let mut governance_config = create_test_governance_config();
-            governance_config.vote_threshold_percentage = test_case.vote_threshold_percentage;
+            governance_config.yes_vote_threshold_percentage = test_case.vote_threshold_percentage;
 
             let current_slot = 15_u64;
 

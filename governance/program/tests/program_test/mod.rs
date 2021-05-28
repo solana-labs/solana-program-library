@@ -568,7 +568,7 @@ impl GovernanceProgramTest {
         GovernanceConfig {
             realm: realm_cookie.address,
             governed_account: governed_account_cookie.address,
-            vote_threshold_percentage: 60,
+            yes_vote_threshold_percentage: 60,
             min_tokens_to_create_proposal: 5,
             min_instruction_hold_up_time: 10,
             max_voting_time: 10,
@@ -715,7 +715,7 @@ impl GovernanceProgramTest {
             min_tokens_to_create_proposal: 5,
             min_instruction_hold_up_time: 10,
             max_voting_time: 100,
-            vote_threshold_percentage: 60,
+            yes_vote_threshold_percentage: 60,
         };
 
         let mut create_program_governance_instruction = create_program_governance(

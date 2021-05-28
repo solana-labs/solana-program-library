@@ -24,7 +24,7 @@ pub struct GovernanceConfig {
 
     /// Voting threshold in % required to tip the vote
     /// It's the percentage of tokens out of the entire pool of governance tokens eligible to vote
-    pub vote_threshold_percentage: u8,
+    pub yes_vote_threshold_percentage: u8,
 
     /// Minimum number of tokens a governance token owner must possess to be able to create a proposal
     pub min_tokens_to_create_proposal: u16,
@@ -125,8 +125,8 @@ pub fn assert_is_valid_governance_config(
 
     assert_is_valid_realm(realm_info)?;
 
-    if governance_config.vote_threshold_percentage < 1
-        || governance_config.vote_threshold_percentage > 100
+    if governance_config.yes_vote_threshold_percentage < 1
+        || governance_config.yes_vote_threshold_percentage > 100
     {
         return Err(GovernanceError::InvalidGovernanceConfig.into());
     }

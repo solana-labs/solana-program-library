@@ -70,7 +70,7 @@ async fn test_create_account_governance_with_invalid_config_error() {
     let config = GovernanceConfig {
         realm: realm_cookie.address,
         governed_account: governed_account_cookie.address,
-        vote_threshold_percentage: 0, // below 1% threshold
+        yes_vote_threshold_percentage: 0, // below 1% threshold
         min_tokens_to_create_proposal: 1,
         min_instruction_hold_up_time: 1,
         max_voting_time: 1,
@@ -91,7 +91,7 @@ async fn test_create_account_governance_with_invalid_config_error() {
     let config = GovernanceConfig {
         realm: realm_cookie.address,
         governed_account: governed_account_cookie.address,
-        vote_threshold_percentage: 101, // Above 100% threshold
+        yes_vote_threshold_percentage: 101, // Above 100% threshold
         min_tokens_to_create_proposal: 1,
         min_instruction_hold_up_time: 1,
         max_voting_time: 1,

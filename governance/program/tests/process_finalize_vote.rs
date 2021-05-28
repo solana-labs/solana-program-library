@@ -19,7 +19,7 @@ async fn test_finalize_vote_to_succeeded() {
     let mut governance_config =
         governance_test.get_default_governance_config(&realm_cookie, &governed_account_cookie);
 
-    governance_config.vote_threshold_percentage = 40;
+    governance_config.yes_vote_threshold_percentage = 40;
 
     let mut account_governance_cookie = governance_test
         .with_account_governance_using_config(
