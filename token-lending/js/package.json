@@ -34,7 +34,7 @@
     "cluster:mainnet-beta": "cp cluster-mainnet-beta.env .env"
   },
   "dependencies": {
-    "@solana/spl-token": "0.1.4",
+    "@solana/spl-token": "0.1.5",
     "@solana/web3.js": "^1.13.0",
     "bn.js": "^5.2.0",
     "mkdirp": "^1.0.4"
@@ -53,7 +53,7 @@
     "@typescript-eslint/eslint-plugin": "^4.24.0",
     "@typescript-eslint/parser": "^4.25.0",
     "dotenv": "^10.0.0",
-    "eslint": "^7.26.0",
+    "eslint": "^7.27.0",
     "eslint-config-prettier": "^7.2.0",
     "eslint-plugin-prettier": "^3.4.0",
     "prettier": "^2.2.1",
