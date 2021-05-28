@@ -41,11 +41,12 @@ pub struct TokenOwnerRecord {
     /// It can be delegated to by the governing_token_owner or current governance_delegate
     pub governance_delegate: Option<Pubkey>,
 
-    /// The number of votes cast by TokenOwner and not relinquished yet
+    /// The number of votes cast by TokenOwner but not relinquished yet
+    /// Every time a vote is cast this number is increased and it's always decreased when relinquishing a vote regardless of the vote state
     pub unrelinquished_votes_count: u32,
 
     /// The total number of votes cast by the TokenOwner
-    /// If TokenOwner withdraws vote while voting is still in progress total_votes_count is decreased
+    /// If TokenOwner withdraws vote while voting is still in progress total_votes_count is decreased  and the vote doesn't count towards the total
     pub total_votes_count: u32,
 }
 

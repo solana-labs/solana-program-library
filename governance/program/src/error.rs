@@ -83,6 +83,10 @@ pub enum GovernanceError {
     #[error("Proposal for the given Governance, Governing Token Mint and index already exists")]
     ProposalAlreadyExists,
 
+    /// Token Owner already voted on the Proposal
+    #[error("Token Owner already voted on the Proposal")]
+    VoteAlreadyExists,
+
     /// Owner doesn't have enough governing tokens to create Proposal
     #[error("Owner doesn't have enough governing tokens to create Proposal")]
     NotEnoughTokensToCreateProposal,

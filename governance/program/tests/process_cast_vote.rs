@@ -520,3 +520,47 @@ async fn test_cast_vote_with_voting_time_expired_error() {
 
     assert_eq!(err, GovernanceError::ProposalVotingTimeExpired.into());
 }
+
+#[tokio::test]
+async fn test_cast_vote_with_cast_twice_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let mut account_governance_cookie = governance_test
+        .with_account_governance(&realm_cookie, &governed_account_cookie)
+        .await
+        .unwrap();
+
+    let token_owner_record_cookie = governance_test
+        .with_initial_community_token_deposit(&realm_cookie)
+        .await;
+
+    governance_test
+        .mint_community_tokens(&realm_cookie, 200)
+        .await;
+
+    let proposal_cookie = governance_test
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .await
+        .unwrap();
+
+    governance_test
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::Yes)
+        .await
+        .unwrap();
+
+    governance_test.context.warp_to_slot(5).unwrap();
+
+    // Act
+    let err = governance_test
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::Yes)
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+    assert_eq!(err, GovernanceError::VoteAlreadyExists.into());
+}

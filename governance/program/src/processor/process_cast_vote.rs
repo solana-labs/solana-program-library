@@ -10,6 +10,7 @@ use solana_program::{
 };
 
 use crate::{
+    error::GovernanceError,
     instruction::Vote,
     state::{
         enums::{GovernanceAccountType, VoteWeight},
@@ -47,6 +48,10 @@ pub fn process_cast_vote(
 
     let clock_info = next_account_info(account_info_iter)?; // 9
     let clock = Clock::from_account_info(clock_info)?;
+
+    if !vote_record_info.data_is_empty() {
+        return Err(GovernanceError::VoteAlreadyExists.into());
+    }
 
     let governance_data = get_governance_data(governance_info)?;
 
