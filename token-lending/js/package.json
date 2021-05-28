@@ -34,7 +34,7 @@
     "cluster:mainnet-beta": "cp cluster-mainnet-beta.env .env"
   },
   "dependencies": {
-    "@solana/spl-token": "0.1.4",
+    "@solana/spl-token": "0.1.5",
     "@solana/web3.js": "^1.13.0",
     "bn.js": "^5.2.0",
     "mkdirp": "^1.0.4"
