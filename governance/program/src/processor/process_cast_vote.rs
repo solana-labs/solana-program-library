@@ -65,8 +65,8 @@ pub fn process_cast_vote(
     token_owner_record_data.assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
     // Update TokenOwnerRecord vote counts
-    token_owner_record_data.active_votes_count = token_owner_record_data
-        .active_votes_count
+    token_owner_record_data.unrelinquished_votes_count = token_owner_record_data
+        .unrelinquished_votes_count
         .checked_add(1)
         .unwrap();
 

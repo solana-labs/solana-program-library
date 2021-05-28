@@ -354,7 +354,7 @@ impl GovernanceProgramTest {
             governing_token_owner: token_owner.pubkey(),
             governing_token_deposit_amount: amount,
             governance_delegate: None,
-            active_votes_count: 0,
+            unrelinquished_votes_count: 0,
             total_votes_count: 0,
         };
 

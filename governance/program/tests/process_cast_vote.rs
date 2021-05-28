@@ -59,7 +59,7 @@ async fn test_cast_vote() {
         .get_token_owner_record_account(&token_owner_record_cookie.address)
         .await;
 
-    assert_eq!(1, token_owner_record.active_votes_count);
+    assert_eq!(1, token_owner_record.unrelinquished_votes_count);
     assert_eq!(1, token_owner_record.total_votes_count);
 }
 

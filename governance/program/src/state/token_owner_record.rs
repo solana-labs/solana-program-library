@@ -41,10 +41,11 @@ pub struct TokenOwnerRecord {
     /// It can be delegated to by the governing_token_owner or current governance_delegate
     pub governance_delegate: Option<Pubkey>,
 
-    /// The number of active votes cast by TokenOwner
-    pub active_votes_count: u32,
+    /// The number of votes cast by TokenOwner and not relinquished yet
+    pub unrelinquished_votes_count: u32,
 
     /// The total number of votes cast by the TokenOwner
+    /// If TokenOwner withdraws vote while voting is still in progress total_votes_count is decreased
     pub total_votes_count: u32,
 }
 
@@ -177,7 +178,7 @@ mod test {
             governing_token_owner: Pubkey::new_unique(),
             governing_token_deposit_amount: 10,
             governance_delegate: Some(Pubkey::new_unique()),
-            active_votes_count: 1,
+            unrelinquished_votes_count: 1,
             total_votes_count: 1,
         };
 

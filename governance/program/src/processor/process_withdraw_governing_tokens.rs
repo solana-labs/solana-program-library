@@ -50,8 +50,8 @@ pub fn process_withdraw_governing_tokens(
         &token_owner_record_address_seeds,
     )?;
 
-    if token_owner_record_data.active_votes_count > 0 {
-        return Err(GovernanceError::CannotWithdrawGoverningTokensWhenActiveVotesExist.into());
+    if token_owner_record_data.unrelinquished_votes_count > 0 {
+        return Err(GovernanceError::AllVotesMustBeRelinquishedToWithdrawGoverningTokens.into());
     }
 
     transfer_spl_tokens_signed(

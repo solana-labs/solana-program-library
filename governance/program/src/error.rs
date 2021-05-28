@@ -35,9 +35,9 @@ pub enum GovernanceError {
     #[error("Governing Token Owner or Delegate  must sign transaction")]
     GoverningTokenOwnerOrDelegateMustSign,
 
-    /// All active votes must be relinquished to withdraw governing tokens
-    #[error("All active votes must be relinquished to withdraw governing tokens")]
-    CannotWithdrawGoverningTokensWhenActiveVotesExist,
+    /// All votes must be relinquished to withdraw governing tokens
+    #[error("All votes must be relinquished to withdraw governing tokens")]
+    AllVotesMustBeRelinquishedToWithdrawGoverningTokens,
 
     /// Invalid Token Owner Record account address
     #[error("Invalid Token Owner Record account address")]

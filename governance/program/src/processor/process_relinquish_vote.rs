@@ -88,9 +88,9 @@ pub fn process_relinquish_vote(_program_id: &Pubkey, accounts: &[AccountInfo]) -
         vote_record_data.serialize(&mut *vote_record_info.data.borrow_mut())?;
     }
 
-    // If the Proposal has been already voted on then we only have to decrease active_votes_count
-    token_owner_record_data.active_votes_count = token_owner_record_data
-        .active_votes_count
+    // If the Proposal has been already voted on then we only have to decrease unrelinquished_votes_count
+    token_owner_record_data.unrelinquished_votes_count = token_owner_record_data
+        .unrelinquished_votes_count
         .checked_sub(1)
         .unwrap();
 
