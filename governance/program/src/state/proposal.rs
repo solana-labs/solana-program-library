@@ -95,17 +95,8 @@ impl IsInitialized for Proposal {
 impl Proposal {
     /// Checks if Signatories can be edited (added or removed) for the Proposal in the given state
     pub fn assert_can_edit_signatories(&self) -> Result<(), ProgramError> {
-        match self.state {
-            ProposalState::Draft | ProposalState::SigningOff => Ok(()),
-            ProposalState::Executing
-            | ProposalState::Completed
-            | ProposalState::Cancelled
-            | ProposalState::Voting
-            | ProposalState::Succeeded
-            | ProposalState::Defeated => {
-                Err(GovernanceError::InvalidStateCannotEditSignatories.into())
-            }
-        }
+        self.assert_is_draft_state()
+            .map_err(|_| GovernanceError::InvalidStateCannotEditSignatories.into())
     }
 
     /// Checks if Proposal can be singed off
@@ -121,18 +112,22 @@ impl Proposal {
         }
     }
 
-    /// Check the Proposal is in Voting state
+    /// Checks the Proposal is in Voting state
     fn assert_is_voting_state(&self) -> Result<(), ProgramError> {
-        match self.state {
-            ProposalState::Voting => Ok(()),
-            ProposalState::Executing
-            | ProposalState::Completed
-            | ProposalState::Draft
-            | ProposalState::SigningOff
-            | ProposalState::Cancelled
-            | ProposalState::Succeeded
-            | ProposalState::Defeated => Err(ProgramError::InvalidArgument),
+        if self.state != ProposalState::Voting {
+            return Err(GovernanceError::InvalidProposalState.into());
         }
+
+        Ok(())
+    }
+
+    /// Checks the Proposal is in Draft state
+    fn assert_is_draft_state(&self) -> Result<(), ProgramError> {
+        if self.state != ProposalState::Draft {
+            return Err(GovernanceError::InvalidProposalState.into());
+        }
+
+        Ok(())
     }
 
     /// Checks if Proposal can be voted on
@@ -412,7 +407,7 @@ mod test {
     }
 
     fn editable_signatory_states() -> impl Strategy<Value = ProposalState> {
-        prop_oneof![Just(ProposalState::Draft), Just(ProposalState::SigningOff),]
+        prop_oneof![Just(ProposalState::Draft)]
     }
 
     proptest! {
@@ -435,6 +430,7 @@ mod test {
             Just(ProposalState::Completed),
             Just(ProposalState::Cancelled),
             Just(ProposalState::Defeated),
+            Just(ProposalState::SigningOff),
         ]
     }
 

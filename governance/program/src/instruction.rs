@@ -179,7 +179,6 @@ pub enum GovernanceInstruction {
     ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)
     ///   3. `[writable]` Signatory Record Account
     ///   4. `[writable]` Beneficiary Account which would receive lamports from the disposed Signatory Record Account
-    ///   5. `[]` Clock sysvar
     RemoveSignatory {
         #[allow(dead_code)]
         /// Signatory to remove from the Proposal
@@ -599,7 +598,6 @@ pub fn remove_signatory(
         AccountMeta::new_readonly(*governance_authority, true),
         AccountMeta::new(signatory_record_address, false),
         AccountMeta::new(*beneficiary, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];
 
     let instruction = GovernanceInstruction::RemoveSignatory {

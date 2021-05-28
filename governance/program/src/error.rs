@@ -95,6 +95,10 @@ pub enum GovernanceError {
     #[error("Invalid State: Can't edit Signatories")]
     InvalidStateCannotEditSignatories,
 
+    /// Invalid Proposal state
+    #[error("Invalid Proposal state")]
+    InvalidProposalState,
+
     /// Invalid State: Can't sign off
     #[error("Invalid State: Can't sign off")]
     InvalidStateCannotSignOff,
