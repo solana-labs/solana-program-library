@@ -95,31 +95,54 @@ impl IsInitialized for Proposal {
 impl Proposal {
     /// Checks if Signatories can be edited (added or removed) for the Proposal in the given state
     pub fn assert_can_edit_signatories(&self) -> Result<(), ProgramError> {
-        if !(self.state == ProposalState::Draft || self.state == ProposalState::SigningOff) {
-            return Err(GovernanceError::InvalidStateCannotEditSignatories.into());
+        match self.state {
+            ProposalState::Draft | ProposalState::SigningOff => Ok(()),
+            ProposalState::Executing
+            | ProposalState::Completed
+            | ProposalState::Cancelled
+            | ProposalState::Voting
+            | ProposalState::Succeeded
+            | ProposalState::Defeated => {
+                Err(GovernanceError::InvalidStateCannotEditSignatories.into())
+            }
         }
-
-        Ok(())
     }
 
     /// Checks if Proposal can be singed off
     pub fn assert_can_sign_off(&self) -> Result<(), ProgramError> {
-        if !(self.state == ProposalState::Draft || self.state == ProposalState::SigningOff) {
-            return Err(GovernanceError::InvalidStateCannotSignOff.into());
+        match self.state {
+            ProposalState::Draft | ProposalState::SigningOff => Ok(()),
+            ProposalState::Executing
+            | ProposalState::Completed
+            | ProposalState::Cancelled
+            | ProposalState::Voting
+            | ProposalState::Succeeded
+            | ProposalState::Defeated => Err(GovernanceError::InvalidStateCannotSignOff.into()),
         }
+    }
 
-        Ok(())
+    /// Check the Proposal is in Voting state
+    fn assert_is_voting_state(&self) -> Result<(), ProgramError> {
+        match self.state {
+            ProposalState::Voting => Ok(()),
+            ProposalState::Executing
+            | ProposalState::Completed
+            | ProposalState::Draft
+            | ProposalState::SigningOff
+            | ProposalState::Cancelled
+            | ProposalState::Succeeded
+            | ProposalState::Defeated => return Err(ProgramError::InvalidArgument),
+        }
     }
 
     /// Checks if Proposal can be voted on
-    pub fn assert_can_vote(
+    pub fn assert_can_cast_vote(
         &self,
         config: &GovernanceConfig,
         current_slot: Slot,
     ) -> Result<(), ProgramError> {
-        if self.state != ProposalState::Voting {
-            return Err(GovernanceError::InvalidStateCannotVote.into());
-        }
+        self.assert_is_voting_state()
+            .map_err(|_| GovernanceError::InvalidStateCannotVote)?;
 
         // Check if we are still within the configured max_voting_time period
         if self
@@ -141,9 +164,8 @@ impl Proposal {
         config: &GovernanceConfig,
         current_slot: Slot,
     ) -> Result<(), ProgramError> {
-        if self.state != ProposalState::Voting {
-            return Err(GovernanceError::InvalidStateCannotFinalize.into());
-        }
+        self.assert_is_voting_state()
+            .map_err(|_| GovernanceError::InvalidStateCannotFinalize)?;
 
         // Check if we passed the configured max_voting_time period yet
         if self
@@ -251,16 +273,16 @@ impl Proposal {
 
     /// Checks if Proposal can be canceled in the given state
     pub fn assert_can_cancel(&self) -> Result<(), ProgramError> {
-        if self.state == ProposalState::Executing
-            || self.state == ProposalState::Completed
-            || self.state == ProposalState::Cancelled
-            || self.state == ProposalState::Succeeded
-            || self.state == ProposalState::Defeated
-        {
-            return Err(GovernanceError::InvalidStateCannotCancelProposal.into());
+        match self.state {
+            ProposalState::Draft | ProposalState::SigningOff | ProposalState::Voting => Ok(()),
+            ProposalState::Executing
+            | ProposalState::Completed
+            | ProposalState::Cancelled
+            | ProposalState::Succeeded
+            | ProposalState::Defeated => {
+                Err(GovernanceError::InvalidStateCannotCancelProposal.into())
+            }
         }
-
-        Ok(())
     }
 }
 
@@ -685,7 +707,7 @@ mod test {
 
         // Act
         let err = proposal
-            .assert_can_vote(&governance_config, current_slot)
+            .assert_can_cast_vote(&governance_config, current_slot)
             .err()
             .unwrap();
 
@@ -703,7 +725,7 @@ mod test {
         let current_slot = proposal.voting_at.unwrap() + governance_config.max_voting_time;
 
         // Act
-        let result = proposal.assert_can_vote(&governance_config, current_slot);
+        let result = proposal.assert_can_cast_vote(&governance_config, current_slot);
 
         // Assert
         assert_eq!(result, Ok(()));

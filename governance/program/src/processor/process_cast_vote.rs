@@ -55,7 +55,7 @@ pub fn process_cast_vote(
         governance_info.key,
         governing_token_mint_info.key,
     )?;
-    proposal_data.assert_can_vote(&governance_data.config, clock.slot)?;
+    proposal_data.assert_can_cast_vote(&governance_data.config, clock.slot)?;
 
     let mut token_owner_record_data = get_token_owner_record_data_for_realm_and_governing_mint(
         &token_owner_record_info,
