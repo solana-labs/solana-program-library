@@ -386,6 +386,7 @@ mod test {
     }
 
     #[test]
+    #[allow(clippy::float_cmp)]
     fn test_get_vote_threshold_percentage_extremes() {
         let result = get_vote_threshold_percentage(u64::MAX, u64::MAX);
         assert_eq!(result, 100.0);
