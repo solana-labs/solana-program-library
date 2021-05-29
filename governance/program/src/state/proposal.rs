@@ -826,16 +826,12 @@ mod test {
             if yes_votes_count >= yes_vote_threshold_count && yes_votes_count > (governing_token_supply - yes_votes_count)
             {
                 assert_eq!(proposal.state,ProposalState::Succeeded);
-            }
-            else if proposal.no_votes_count > (governing_token_supply - yes_vote_threshold_count)
+            } else if proposal.no_votes_count > (governing_token_supply - yes_vote_threshold_count)
                 || proposal.no_votes_count >= (governing_token_supply - proposal.no_votes_count ) {
                 assert_eq!(proposal.state,ProposalState::Defeated);
-            }
-            else
-            {
+            } else {
                 assert_eq!(proposal.state,ProposalState::Voting);
             }
-
         }
     }
 
@@ -866,9 +862,7 @@ mod test {
             if yes_votes_count >= yes_vote_threshold_count &&  yes_votes_count > proposal.no_votes_count
             {
                 assert_eq!(proposal.state,ProposalState::Succeeded);
-            }
-            else
-            {
+            } else {
                 assert_eq!(proposal.state,ProposalState::Defeated);
             }
         }
