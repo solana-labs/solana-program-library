@@ -2,10 +2,11 @@ use solana_program::pubkey::Pubkey;
 use solana_sdk::signature::Keypair;
 use spl_governance::state::{
     governance::Governance, realm::Realm, token_owner_record::TokenOwnerRecord,
+    vote_record::VoteRecord,
 };
 use spl_governance::state::{proposal::Proposal, signatory_record::SignatoryRecord};
 
-use super::tools::clone_keypair;
+use crate::tools::clone_keypair;
 
 #[derive(Debug)]
 pub struct RealmCookie {
@@ -37,8 +38,6 @@ pub struct TokeOwnerRecordCookie {
     pub governance_authority: Option<Keypair>,
 
     pub governance_delegate: Keypair,
-
-    pub governing_token_mint: Pubkey,
 }
 
 impl TokeOwnerRecordCookie {
@@ -71,7 +70,7 @@ pub struct GovernedAccountCookie {
 pub struct GovernanceCookie {
     pub address: Pubkey,
     pub account: Governance,
-    pub next_proposal_index: u16,
+    pub next_proposal_index: u32,
 }
 
 #[derive(Debug)]
@@ -87,4 +86,10 @@ pub struct SignatoryRecordCookie {
     pub address: Pubkey,
     pub account: SignatoryRecord,
     pub signatory: Keypair,
+}
+
+#[derive(Debug)]
+pub struct VoteRecordCookie {
+    pub address: Pubkey,
+    pub account: VoteRecord,
 }

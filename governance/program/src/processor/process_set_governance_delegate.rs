@@ -7,10 +7,7 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-use crate::{
-    state::token_owner_record::deserialize_token_owner_record_raw,
-    tools::asserts::assert_token_owner_or_delegate_is_signer,
-};
+use crate::state::token_owner_record::get_token_owner_record_data;
 
 /// Processes SetGovernanceDelegate instruction
 pub fn process_set_governance_delegate(
@@ -22,9 +19,9 @@ pub fn process_set_governance_delegate(
     let governance_authority_info = next_account_info(account_info_iter)?; // 0
     let token_owner_record_info = next_account_info(account_info_iter)?; // 1
 
-    let mut token_owner_record_data = deserialize_token_owner_record_raw(token_owner_record_info)?;
+    let mut token_owner_record_data = get_token_owner_record_data(token_owner_record_info)?;
 
-    assert_token_owner_or_delegate_is_signer(&token_owner_record_data, &governance_authority_info)?;
+    token_owner_record_data.assert_token_owner_or_delegate_is_signer(&governance_authority_info)?;
 
     token_owner_record_data.governance_delegate = *new_governance_delegate;
     token_owner_record_data.serialize(&mut *token_owner_record_info.data.borrow_mut())?;

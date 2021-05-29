@@ -1,11 +1,15 @@
 //! Program processor
 
 mod process_add_signatory;
+mod process_cancel_proposal;
+mod process_cast_vote;
 mod process_create_account_governance;
 mod process_create_program_governance;
 mod process_create_proposal;
 mod process_create_realm;
 mod process_deposit_governing_tokens;
+mod process_finalize_vote;
+mod process_relinquish_vote;
 mod process_remove_signatory;
 mod process_set_governance_delegate;
 mod process_sign_off_proposal;
@@ -15,11 +19,15 @@ use crate::instruction::GovernanceInstruction;
 use borsh::BorshDeserialize;
 
 use process_add_signatory::*;
+use process_cancel_proposal::*;
+use process_cast_vote::*;
 use process_create_account_governance::*;
 use process_create_program_governance::*;
 use process_create_proposal::*;
 use process_create_realm::*;
 use process_deposit_governing_tokens::*;
+use process_finalize_vote::*;
+use process_relinquish_vote::*;
 use process_remove_signatory::*;
 use process_set_governance_delegate::*;
 use process_sign_off_proposal::*;
@@ -57,6 +65,7 @@ pub fn process_instruction(
         GovernanceInstruction::SetGovernanceDelegate {
             new_governance_delegate,
         } => process_set_governance_delegate(accounts, &new_governance_delegate),
+
         GovernanceInstruction::CreateProgramGovernance {
             config,
             transfer_upgrade_authority,
@@ -66,9 +75,11 @@ pub fn process_instruction(
             config,
             transfer_upgrade_authority,
         ),
+
         GovernanceInstruction::CreateAccountGovernance { config } => {
             process_create_account_governance(program_id, accounts, config)
         }
+
         GovernanceInstruction::CreateProposal {
             name,
             description_link,
@@ -89,6 +100,14 @@ pub fn process_instruction(
         GovernanceInstruction::SignOffProposal {} => {
             process_sign_off_proposal(program_id, accounts)
         }
+        GovernanceInstruction::CastVote { vote } => process_cast_vote(program_id, accounts, vote),
+
+        GovernanceInstruction::FinalizeVote {} => process_finalize_vote(program_id, accounts),
+
+        GovernanceInstruction::RelinquishVote {} => process_relinquish_vote(program_id, accounts),
+
+        GovernanceInstruction::CancelProposal {} => process_cancel_proposal(program_id, accounts),
+
         _ => todo!("Instruction not implemented yet"),
     }
 }

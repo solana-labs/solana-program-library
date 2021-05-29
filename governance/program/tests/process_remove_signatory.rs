@@ -54,10 +54,8 @@ async fn test_remove_signatory() {
     assert_eq!(ProposalState::Draft, proposal_account.state);
 
     let signatory_account = governance_test
-        .banks_client
-        .get_account(signatory_record_cookie.address)
-        .await
-        .unwrap();
+        .get_account(&signatory_record_cookie.address)
+        .await;
 
     assert_eq!(None, signatory_account);
 }
@@ -162,7 +160,7 @@ async fn test_remove_signatory_with_invalid_proposal_owner_error() {
 }
 
 #[tokio::test]
-async fn test_remove_signatory_when_all_remaining_signed() {
+async fn test_remove_signatory_with_not_editable_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -199,21 +197,19 @@ async fn test_remove_signatory_when_all_remaining_signed() {
         .unwrap();
 
     // Act
-    governance_test
+    let err = governance_test
         .remove_signatory(
             &proposal_cookie,
             &token_owner_record_cookie,
             &signatory_record_cookie2,
         )
         .await
+        .err()
         .unwrap();
 
     // Assert
-    let proposal_account = governance_test
-        .get_proposal_account(&proposal_cookie.address)
-        .await;
-
-    assert_eq!(1, proposal_account.signatories_count);
-    assert_eq!(1, proposal_account.signatories_signed_off_count);
-    assert_eq!(ProposalState::Voting, proposal_account.state);
+    assert_eq!(
+        err,
+        GovernanceError::InvalidStateCannotEditSignatories.into()
+    );
 }

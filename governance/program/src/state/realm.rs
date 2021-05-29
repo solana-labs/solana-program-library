@@ -9,7 +9,7 @@ use solana_program::{
 use crate::{
     error::GovernanceError,
     id,
-    tools::account::{assert_is_valid_account, deserialize_account, AccountMaxSize},
+    tools::account::{assert_is_valid_account, get_account_data, AccountMaxSize},
     PROGRAM_AUTHORITY_SEED,
 };
 
@@ -65,8 +65,8 @@ pub fn assert_is_valid_realm(realm_info: &AccountInfo) -> Result<(), ProgramErro
 }
 
 /// Deserializes account and checks owner program
-pub fn deserialize_realm_raw(realm_info: &AccountInfo) -> Result<Realm, ProgramError> {
-    deserialize_account::<Realm>(realm_info, &id())
+pub fn get_realm_data(realm_info: &AccountInfo) -> Result<Realm, ProgramError> {
+    get_account_data::<Realm>(realm_info, &id())
 }
 
 /// Returns Realm PDA seeds

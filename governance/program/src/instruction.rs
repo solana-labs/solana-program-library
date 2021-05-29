@@ -11,6 +11,7 @@ use crate::{
         signatory_record::get_signatory_record_address,
         single_signer_instruction::InstructionData,
         token_owner_record::get_token_owner_record_address,
+        vote_record::get_vote_record_address,
     },
     tools::bpf_loader_upgradeable::get_program_data_address,
 };
@@ -178,7 +179,6 @@ pub enum GovernanceInstruction {
     ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)
     ///   3. `[writable]` Signatory Record Account
     ///   4. `[writable]` Beneficiary Account which would receive lamports from the disposed Signatory Record Account
-    ///   5. `[]` Clock sysvar
     RemoveSignatory {
         #[allow(dead_code)]
         /// Signatory to remove from the Proposal
@@ -222,10 +222,11 @@ pub enum GovernanceInstruction {
         hold_up_time: u64,
     },
 
-    /// Cancels Proposal and moves it into Canceled
+    /// Cancels Proposal by changing its state to Canceled
     ///
     ///   0. `[writable]` Proposal account
-    ///   1. `[signer]` Governance Authority (Token Owner or Governance Delegate)
+    ///   1. `[]` Token Owner Record account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]    
+    ///   2 `[signer]` Governance Authority (Token Owner or Governance Delegate)
     CancelProposal,
 
     /// Signs off Proposal indicating the Signatory approves the Proposal
@@ -241,26 +242,45 @@ pub enum GovernanceInstruction {
     ///  By doing so you indicate you approve or disapprove of running the Proposal set of instructions
     ///  If you tip the consensus then the instructions can begin to be run after their hold up time
     ///
-    ///   0. `[writable]` Proposal account
-    ///   1. `[writable]` Token Owner Record account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
-    ///   2. `[writable]` Proposal Vote Record account. PDA seeds: ['governance',proposal,governing_token_owner]  
-    ///   3. `[signer]` Governance Authority account
-    ///   4. `[]` Governance account
-    Vote {
+    ///   0. `[]` Governance account
+    ///   1. `[writable]` Proposal account
+    ///   2. `[writable]` Token Owner Record account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
+    ///   3. `[signer]` Governance Authority (Token Owner or Governance Delegate)
+    ///   4. `[writable]` Proposal VoteRecord account. PDA seeds: ['governance',proposal,governing_token_owner_record]  
+    ///   5. `[]` Governing Token Mint
+    ///   6. `[signer]` Payer
+    ///   7. `[]` System program
+    ///   8. `[]` Rent sysvar
+    ///   9. `[]` Clock sysvar    
+    CastVote {
         #[allow(dead_code)]
         /// Yes/No vote
         vote: Vote,
     },
+
+    /// Finalizes vote in case the Vote was not automatically tipped within max_voting_time period
+    ///
+    ///   0. `[]` Governance account
+    ///   1. `[writable]` Proposal account    
+    ///   2. `[]` Governing Token Mint    
+    ///   3. `[]` Clock sysvar        
+    FinalizeVote {},
 
     ///  Relinquish Vote removes voter weight from a Proposal and removes it from voter's active votes
     ///  If the Proposal is still being voted on then the voter's weight won't count towards the vote outcome
     ///  If the Proposal is already in decided state then the instruction has no impact on the Proposal
     ///  and only allows voters to prune their outstanding votes in case they wanted to withdraw Governing tokens from the Realm
     ///
-    ///   0. `[writable]` Proposal account
-    ///   1. `[writable]` Token Owner Record account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
-    ///   2. `[writable]` Proposal Vote Record account. PDA seeds: ['governance',proposal,governing_token_owner]
-    ///   3. `[signer]` Governance Authority account
+    ///   0. `[]` Governance account    
+    ///   1. `[writable]` Proposal account
+    ///   2. `[writable]` TokenOwnerRecord account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
+    ///   3. `[writable]` Proposal VoteRecord account. PDA seeds: ['governance',proposal,governing_token_owner_record]
+    ///   4. `[]` Governing Token Mint    
+
+    ///   5. `[signer]` Optional Governance Authority (Token Owner or Governance Delegate)
+    ///       It's required only when Proposal is still being voted on    
+    ///   6. `[writable]` Optional Beneficiary account which would receive lamports when VoteRecord Account is disposed      
+    ///       It's required only when Proposal is still being voted on
     RelinquishVote,
 
     /// Executes an instruction in the Proposal
@@ -494,7 +514,7 @@ pub fn create_proposal(
     name: String,
     description_link: String,
     governing_token_mint: &Pubkey,
-    proposal_index: u16,
+    proposal_index: u32,
 ) -> Instruction {
     let proposal_address = get_proposal_address(
         governance,
@@ -578,7 +598,6 @@ pub fn remove_signatory(
         AccountMeta::new_readonly(*governance_authority, true),
         AccountMeta::new(signatory_record_address, false),
         AccountMeta::new(*beneficiary, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];
 
     let instruction = GovernanceInstruction::RemoveSignatory {
@@ -608,6 +627,121 @@ pub fn sign_off_proposal(
     ];
 
     let instruction = GovernanceInstruction::SignOffProposal;
+
+    Instruction {
+        program_id: id(),
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates CastVote instruction
+pub fn cast_vote(
+    // Accounts
+    governance: &Pubkey,
+    proposal: &Pubkey,
+    token_owner_record: &Pubkey,
+    governance_authority: &Pubkey,
+    governing_token_mint: &Pubkey,
+    payer: &Pubkey,
+    // Args
+    vote: Vote,
+) -> Instruction {
+    let vote_record_address = get_vote_record_address(&proposal, &token_owner_record);
+
+    let accounts = vec![
+        AccountMeta::new_readonly(*governance, false),
+        AccountMeta::new(*proposal, false),
+        AccountMeta::new(*token_owner_record, false),
+        AccountMeta::new_readonly(*governance_authority, true),
+        AccountMeta::new(vote_record_address, false),
+        AccountMeta::new_readonly(*governing_token_mint, false),
+        AccountMeta::new_readonly(*payer, true),
+        AccountMeta::new_readonly(system_program::id(), false),
+        AccountMeta::new_readonly(sysvar::rent::id(), false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+    ];
+
+    let instruction = GovernanceInstruction::CastVote { vote };
+
+    Instruction {
+        program_id: id(),
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates FinalizeVote instruction
+pub fn finalize_vote(
+    // Accounts
+    governance: &Pubkey,
+    proposal: &Pubkey,
+    governing_token_mint: &Pubkey,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new_readonly(*governance, false),
+        AccountMeta::new(*proposal, false),
+        AccountMeta::new_readonly(*governing_token_mint, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+    ];
+
+    let instruction = GovernanceInstruction::FinalizeVote {};
+
+    Instruction {
+        program_id: id(),
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates RelinquishVote instruction
+pub fn relinquish_vote(
+    // Accounts
+    governance: &Pubkey,
+    proposal: &Pubkey,
+    token_owner_record: &Pubkey,
+    governing_token_mint: &Pubkey,
+    governance_authority: Option<Pubkey>,
+    beneficiary: Option<Pubkey>,
+) -> Instruction {
+    let vote_record_address = get_vote_record_address(&proposal, &token_owner_record);
+
+    let mut accounts = vec![
+        AccountMeta::new_readonly(*governance, false),
+        AccountMeta::new(*proposal, false),
+        AccountMeta::new(*token_owner_record, false),
+        AccountMeta::new(vote_record_address, false),
+        AccountMeta::new_readonly(*governing_token_mint, false),
+    ];
+
+    if let Some(governance_authority) = governance_authority {
+        accounts.push(AccountMeta::new_readonly(governance_authority, true));
+        accounts.push(AccountMeta::new(beneficiary.unwrap(), false));
+    }
+
+    let instruction = GovernanceInstruction::RelinquishVote {};
+
+    Instruction {
+        program_id: id(),
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates CancelProposal instruction
+pub fn cancel_proposal(
+    // Accounts
+    proposal: &Pubkey,
+    token_owner_record: &Pubkey,
+    governance_authority: &Pubkey,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new(*proposal, false),
+        AccountMeta::new_readonly(*token_owner_record, false),
+        AccountMeta::new_readonly(*governance_authority, true),
+    ];
+
+    let instruction = GovernanceInstruction::CancelProposal {};
 
     Instruction {
         program_id: id(),

@@ -84,7 +84,7 @@ pub fn create_and_serialize_account_signed<'a, T: BorshSerialize + AccountMaxSiz
 }
 
 /// Deserializes account and checks it's initialized and owned by the specified program
-pub fn deserialize_account<T: BorshDeserialize + IsInitialized>(
+pub fn get_account_data<T: BorshDeserialize + IsInitialized>(
     account_info: &AccountInfo,
     owner_program_id: &Pubkey,
 ) -> Result<T, ProgramError> {
@@ -128,11 +128,11 @@ pub fn assert_is_valid_account<T: BorshDeserialize + PartialEq>(
 
 /// Disposes account by transferring its lamports to the beneficiary account and zeros its data
 // After transaction completes the runtime would remove the account with no lamports
-pub fn dispose_account(account_info: &AccountInfo, beneficiary_account: &AccountInfo) {
+pub fn dispose_account(account_info: &AccountInfo, beneficiary_info: &AccountInfo) {
     let account_lamports = account_info.lamports();
     **account_info.lamports.borrow_mut() = 0;
 
-    **beneficiary_account.lamports.borrow_mut() = beneficiary_account
+    **beneficiary_info.lamports.borrow_mut() = beneficiary_info
         .lamports()
         .checked_add(account_lamports)
         .unwrap();

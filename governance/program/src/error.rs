@@ -35,21 +35,21 @@ pub enum GovernanceError {
     #[error("Governing Token Owner or Delegate  must sign transaction")]
     GoverningTokenOwnerOrDelegateMustSign,
 
-    /// All active votes must be relinquished to withdraw governing tokens
-    #[error("All active votes must be relinquished to withdraw governing tokens")]
-    CannotWithdrawGoverningTokensWhenActiveVotesExist,
+    /// All votes must be relinquished to withdraw governing tokens
+    #[error("All votes must be relinquished to withdraw governing tokens")]
+    AllVotesMustBeRelinquishedToWithdrawGoverningTokens,
 
     /// Invalid Token Owner Record account address
     #[error("Invalid Token Owner Record account address")]
     InvalidTokenOwnerRecordAccountAddress,
 
-    /// Invalid Token Owner Record Governing mint
-    #[error("Invalid Token Owner Record Governing mint")]
-    InvalidTokenOwnerRecordGoverningMint,
+    /// Invalid GoverningMint for TokenOwnerRecord
+    #[error("Invalid GoverningMint for TokenOwnerRecord")]
+    InvalidGoverningMintForTokenOwnerRecord,
 
-    /// Invalid Token Owner Record Realm
-    #[error("Invalid Token Owner Record Realm")]
-    InvalidTokenOwnerRecordRealm,
+    /// Invalid Realm for TokenOwnerRecord
+    #[error("Invalid Realm for TokenOwnerRecord")]
+    InvalidRealmForTokenOwnerRecord,
 
     /// Invalid Signatory account address
     #[error("Invalid Signatory account address")]
@@ -67,6 +67,14 @@ pub enum GovernanceError {
     #[error("Invalid Proposal Owner")]
     InvalidProposalOwnerAccount,
 
+    /// Invalid Proposal for VoterRecord
+    #[error("Invalid Proposal for VoterRecord")]
+    InvalidProposalForVoterRecord,
+
+    /// Invalid GoverningTokenOwner  for VoteRecord
+    #[error("Invalid GoverningTokenOwner for VoteRecord")]
+    InvalidGoverningTokenOwnerForVoteRecord,
+
     /// Invalid Governance config
     #[error("Invalid Governance config")]
     InvalidGovernanceConfig,
@@ -74,6 +82,10 @@ pub enum GovernanceError {
     /// Proposal for the given Governance, Governing Token Mint and index already exists
     #[error("Proposal for the given Governance, Governing Token Mint and index already exists")]
     ProposalAlreadyExists,
+
+    /// Token Owner already voted on the Proposal
+    #[error("Token Owner already voted on the Proposal")]
+    VoteAlreadyExists,
 
     /// Owner doesn't have enough governing tokens to create Proposal
     #[error("Owner doesn't have enough governing tokens to create Proposal")]
@@ -83,9 +95,37 @@ pub enum GovernanceError {
     #[error("Invalid State: Can't edit Signatories")]
     InvalidStateCannotEditSignatories,
 
+    /// Invalid Proposal state
+    #[error("Invalid Proposal state")]
+    InvalidProposalState,
+
     /// Invalid State: Can't sign off
     #[error("Invalid State: Can't sign off")]
     InvalidStateCannotSignOff,
+
+    /// Invalid State: Can't vote
+    #[error("Invalid State: Can't vote")]
+    InvalidStateCannotVote,
+
+    /// Invalid State: Can't finalize vote
+    #[error("Invalid State: Can't finalize vote")]
+    InvalidStateCannotFinalize,
+
+    /// Invalid State: Can't cancel Proposal
+    #[error("Invalid State: Can't cancel Proposal")]
+    InvalidStateCannotCancelProposal,
+
+    /// Vote already relinquished
+    #[error("Vote already relinquished")]
+    VoteAlreadyRelinquished,
+
+    /// Can't finalize vote. Voting still in progress
+    #[error("Can't finalize vote. Voting still in progress")]
+    CannotFinalizeVotingInProgress,
+
+    /// Proposal voting time expired
+    #[error("Proposal voting time expired")]
+    ProposalVotingTimeExpired,
 
     /// Invalid Signatory Mint
     #[error("Invalid Signatory Mint")]
@@ -101,11 +141,39 @@ pub enum GovernanceError {
     #[error("Invalid Account type")]
     InvalidAccountType,
 
-    /// ---- Token Tools Errors ----
+    /// Proposal does not belong to the given Governance
+    #[error("Proposal does not belong to the given Governance")]
+    InvalidGovernanceForProposal,
+
+    /// Proposal does not belong to given Governing Mint"
+    #[error("Proposal does not belong to given Governing Mint")]
+    InvalidGoverningMintForProposal,
+
+    /// ---- SPL Token Tools Errors ----
 
     /// Invalid Token account owner
     #[error("Invalid Token account owner")]
-    InvalidTokenAccountOwner,
+    SplTokenAccountWithInvalidOwner,
+
+    /// Invalid Mint account owner
+    #[error("Invalid Mint account owner")]
+    SplTokenMintWithInvalidOwner,
+
+    /// Token Account is not initialized
+    #[error("Token Account is not initialized")]
+    SplTokenAccountNotInitialized,
+
+    /// Token account data is invalid
+    #[error("Token account data is invalid")]
+    SplTokenInvalidTokenAccountData,
+
+    /// Token mint account data is invalid
+    #[error("Token mint account data is invalid")]
+    SplTokenInvalidMintAccountData,
+
+    /// Token Mint is not initialized
+    #[error("Token Mint account is not initialized")]
+    SplTokenMintNotInitialized,
 
     /// ---- Bpf Upgradable Loader Tools Errors ----
 

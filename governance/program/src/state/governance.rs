@@ -2,7 +2,7 @@
 
 use crate::{
     error::GovernanceError, id, state::enums::GovernanceAccountType,
-    tools::account::deserialize_account, tools::account::AccountMaxSize,
+    tools::account::get_account_data, tools::account::AccountMaxSize,
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
@@ -10,7 +10,7 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-use super::realm::assert_is_valid_realm;
+use crate::state::realm::assert_is_valid_realm;
 
 /// Governance config
 #[repr(C)]
@@ -22,9 +22,11 @@ pub struct GovernanceConfig {
     /// Account governed by this Governance. It can be for example Program account, Mint account or Token Account
     pub governed_account: Pubkey,
 
-    /// Voting threshold in % required to tip the vote
+    /// Voting threshold of Yes votes in % required to tip the vote
     /// It's the percentage of tokens out of the entire pool of governance tokens eligible to vote
-    pub vote_threshold_percentage: u8,
+    // Note: If the threshold is below or equal to 50% then an even split of votes ex: 50:50 or 40:40 is always resolved as Defeated
+    // In other words +1 vote tie breaker is required to have successful vote
+    pub yes_vote_threshold_percentage: u8,
 
     /// Minimum number of tokens a governance token owner must possess to be able to create a proposal
     pub min_tokens_to_create_proposal: u16,
@@ -47,7 +49,7 @@ pub struct Governance {
     pub config: GovernanceConfig,
 
     /// Running count of proposals
-    pub proposals_count: u16,
+    pub proposals_count: u32,
 }
 
 impl AccountMaxSize for Governance {}
@@ -60,10 +62,8 @@ impl IsInitialized for Governance {
 }
 
 /// Deserializes account and checks owner program
-pub fn deserialize_governance_raw(
-    governance_info: &AccountInfo,
-) -> Result<Governance, ProgramError> {
-    deserialize_account::<Governance>(governance_info, &id())
+pub fn get_governance_data(governance_info: &AccountInfo) -> Result<Governance, ProgramError> {
+    get_account_data::<Governance>(governance_info, &id())
 }
 
 /// Returns ProgramGovernance PDA seeds
@@ -127,8 +127,8 @@ pub fn assert_is_valid_governance_config(
 
     assert_is_valid_realm(realm_info)?;
 
-    if governance_config.vote_threshold_percentage < 50
-        || governance_config.vote_threshold_percentage > 100
+    if governance_config.yes_vote_threshold_percentage < 1
+        || governance_config.yes_vote_threshold_percentage > 100
     {
         return Err(GovernanceError::InvalidGovernanceConfig.into());
     }
