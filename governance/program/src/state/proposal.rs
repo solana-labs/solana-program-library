@@ -5,12 +5,8 @@ use solana_program::{
     program_pack::IsInitialized, pubkey::Pubkey,
 };
 
-use crate::{
-    error::GovernanceError,
-    id,
-    tools::account::{get_account_data, AccountMaxSize},
-    PROGRAM_AUTHORITY_SEED,
-};
+use crate::tools::account::get_account_data;
+use crate::{error::GovernanceError, id, tools::account::AccountMaxSize, PROGRAM_AUTHORITY_SEED};
 
 use crate::state::enums::{GovernanceAccountType, ProposalState};
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
@@ -186,20 +182,30 @@ impl Proposal {
     ) -> Result<(), ProgramError> {
         self.assert_can_finalize_vote(config, current_slot)?;
 
-        let current_yes_vote_threshold =
-            get_vote_threshold_percentage(self.yes_votes_count, governing_token_supply);
-
-        let final_state =
-            if current_yes_vote_threshold > config.yes_vote_threshold_percentage as f64 {
-                ProposalState::Succeeded
-            } else {
-                ProposalState::Defeated
-            };
-
-        self.state = final_state;
+        self.state = self.get_final_vote_state(governing_token_supply, config);
         self.voting_completed_at = Some(current_slot);
 
         Ok(())
+    }
+
+    fn get_final_vote_state(
+        &mut self,
+        governing_token_supply: u64,
+        config: &GovernanceConfig,
+    ) -> ProposalState {
+        let yes_vote_threshold_count =
+            get_vote_threshold_count(config.yes_vote_threshold_percentage, governing_token_supply);
+
+        // Yes vote must be equal or above the required yes_vote_threshold_percentage and higher than No vote
+        // The same number of Yes and No votes is a tie and resolved as Defeated
+        // In other words  +1 vote as a tie breaker is required to Succeed
+        if self.yes_votes_count >= yes_vote_threshold_count
+            && self.yes_votes_count > self.no_votes_count
+        {
+            ProposalState::Succeeded
+        } else {
+            ProposalState::Defeated
+        }
     }
 
     /// Checks if vote can be tipped and automatically transitioned to Succeeded or Defeated state
@@ -218,6 +224,7 @@ impl Proposal {
 
     /// Checks if vote can be tipped and automatically transitioned to Succeeded or Defeated state
     /// If yes then Some(ProposalState) is returned and None otherwise
+    #[allow(clippy::float_cmp)]
     pub fn try_get_tipped_vote_state(
         &self,
         governing_token_supply: u64,
@@ -230,27 +237,17 @@ impl Proposal {
             return Some(ProposalState::Defeated);
         }
 
-        let current_yes_vote_threshold =
-            get_vote_threshold_percentage(self.yes_votes_count, governing_token_supply);
+        let yes_vote_threshold_count =
+            get_vote_threshold_count(config.yes_vote_threshold_percentage, governing_token_supply);
 
-        // We can only tip the vote automatically to Succeeded if more than 50% votes have been cast as Yeah
-        // and the Nay sayers can't change the outcome any longer
-        if current_yes_vote_threshold >= 50.0
-            && current_yes_vote_threshold > config.yes_vote_threshold_percentage as f64
+        if self.yes_votes_count >= yes_vote_threshold_count
+            && self.yes_votes_count > (governing_token_supply - self.yes_votes_count)
         {
             return Some(ProposalState::Succeeded);
-        } else {
-            let current_no_vote_threshold =
-                get_vote_threshold_percentage(self.no_votes_count, governing_token_supply);
-
-            // We can  tip the vote automatically to Defeated if more than 50% votes have been cast as Nay
-            // or the Yeah sayers can't outvote Nay any longer
-            // Note: Even splits  resolve to Defeated
-            if current_no_vote_threshold >= 50.0
-                || current_no_vote_threshold >= 100.0 - config.yes_vote_threshold_percentage as f64
-            {
-                return Some(ProposalState::Defeated);
-            }
+        } else if self.no_votes_count > (governing_token_supply - yes_vote_threshold_count)
+            || self.no_votes_count >= (governing_token_supply - self.no_votes_count)
+        {
+            return Some(ProposalState::Defeated);
         }
 
         None
@@ -271,19 +268,19 @@ impl Proposal {
     }
 }
 
-/// Returns current vote threshold percentage in relation to the total governing token supply
-fn get_vote_threshold_percentage(vote_count: u64, governing_token_supply: u64) -> f64 {
-    let percentage = (vote_count as u128 * 100) / (governing_token_supply as u128);
+/// Converts threshold in percentages to actual vote count
+fn get_vote_threshold_count(threshold_percentage: u8, total_supply: u64) -> u64 {
+    let numerator = (threshold_percentage as u128)
+        .checked_mul(total_supply as u128)
+        .unwrap();
 
-    // Add 10 basis points if the result is above the percentage level to compare against percentage values
-    let basis_points = if percentage * (governing_token_supply as u128) < (vote_count as u128) * 100
-    {
-        0.1
-    } else {
-        0.0
-    };
+    let mut threshold = numerator.checked_div(100).unwrap();
 
-    percentage as f64 + basis_points
+    if threshold * 100 < numerator {
+        threshold += 1;
+    }
+
+    threshold as u64
 }
 
 /// Deserializes Proposal account and checks owner program
@@ -385,43 +382,12 @@ mod test {
         assert_eq!(proposal.get_max_size(), Some(size));
     }
 
-    #[test]
-    #[allow(clippy::float_cmp)]
-    fn test_get_vote_threshold_percentage_extremes() {
-        let result = get_vote_threshold_percentage(u64::MAX, u64::MAX);
-        assert_eq!(result, 100.0);
-
-        let result = get_vote_threshold_percentage(u64::MAX / 2, u64::MAX);
-        assert_eq!(result, 49.1);
-
-        let result = get_vote_threshold_percentage(u64::MAX / 2, u64::MAX - 1);
-        assert_eq!(result, 50.0);
-
-        let result = get_vote_threshold_percentage(u64::MAX / 2 + 1, u64::MAX);
-        assert_eq!(result, 50.1);
-
-        let result = get_vote_threshold_percentage(1, u64::MAX);
-        assert_eq!(result, 0.1);
-    }
-
     prop_compose! {
         fn vote_results()(governing_token_supply in 1..=u64::MAX)(
             governing_token_supply in Just(governing_token_supply),
             vote_count in 0..=governing_token_supply,
         ) -> (u64, u64) {
             (vote_count as u64, governing_token_supply as u64)
-        }
-    }
-
-    proptest! {
-        #[test]
-        fn test_get_vote_threshold(
-            (vote_count, governing_token_supply) in vote_results(),
-
-        ) {
-            let result = get_vote_threshold_percentage(vote_count, governing_token_supply);
-
-            assert_eq!(true, result <= 100.0);
         }
     }
 
@@ -554,131 +520,225 @@ mod test {
     }
 
     #[derive(Clone, Debug)]
-    pub struct VoteTippingTestCase {
+    pub struct VoteCastTestCase {
+        name: &'static str,
         governing_token_supply: u64,
         vote_threshold_percentage: u8,
         yes_votes_count: u64,
         no_votes_count: u64,
-        expected_state: ProposalState,
+        expected_tipped_state: ProposalState,
+        expected_finalized_state: ProposalState,
     }
 
-    fn vote_tipping_test_cases() -> impl Strategy<Value = VoteTippingTestCase> {
+    fn vote_casting_test_cases() -> impl Strategy<Value = VoteCastTestCase> {
         prop_oneof![
             //  threshold < 50%
-            Just(VoteTippingTestCase {
+            Just(VoteCastTestCase {
+                name: "45:10 @40 -- Nays can still outvote Yeahs",
                 governing_token_supply: 100,
                 vote_threshold_percentage: 40,
                 yes_votes_count: 45,
                 no_votes_count: 10,
-                expected_state: ProposalState::Voting
+                expected_tipped_state: ProposalState::Voting,
+                expected_finalized_state: ProposalState::Succeeded,
             }),
-            Just(VoteTippingTestCase {
+            Just(VoteCastTestCase {
+                name: "49:50 @40 -- In best case scenario it can be 50:50 tie and hence Defeated",
+                governing_token_supply: 100,
+                vote_threshold_percentage: 40,
+                yes_votes_count: 49,
+                no_votes_count: 50,
+                expected_tipped_state: ProposalState::Defeated,
+                expected_finalized_state: ProposalState::Defeated,
+            }),
+            Just(VoteCastTestCase {
+                name: "40:40 @40 -- Still can go either way",
+                governing_token_supply: 100,
+                vote_threshold_percentage: 40,
+                yes_votes_count: 40,
+                no_votes_count: 40,
+                expected_tipped_state: ProposalState::Voting,
+                expected_finalized_state: ProposalState::Defeated,
+            }),
+            Just(VoteCastTestCase {
+                name: "45:45 @40 -- Still can go either way",
+                governing_token_supply: 100,
+                vote_threshold_percentage: 40,
+                yes_votes_count: 45,
+                no_votes_count: 45,
+                expected_tipped_state: ProposalState::Voting,
+                expected_finalized_state: ProposalState::Defeated,
+            }),
+            Just(VoteCastTestCase {
+                name: "50:10 @40 -- Nay sayers can still tie up",
                 governing_token_supply: 100,
                 vote_threshold_percentage: 40,
                 yes_votes_count: 50,
                 no_votes_count: 10,
-                expected_state: ProposalState::Succeeded
+                expected_tipped_state: ProposalState::Voting,
+                expected_finalized_state: ProposalState::Succeeded,
             }),
-            Just(VoteTippingTestCase {
+            Just(VoteCastTestCase {
+                name: "50:50 @40 -- It's a tie and hence Defeated",
                 governing_token_supply: 100,
                 vote_threshold_percentage: 40,
                 yes_votes_count: 50,
                 no_votes_count: 50,
-                expected_state: ProposalState::Succeeded
+                expected_tipped_state: ProposalState::Defeated,
+                expected_finalized_state: ProposalState::Defeated,
             }),
-            Just(VoteTippingTestCase {
+            Just(VoteCastTestCase {
+                name: "45:51 @ 40 -- Nays won",
                 governing_token_supply: 100,
                 vote_threshold_percentage: 40,
                 yes_votes_count: 45,
                 no_votes_count: 51,
-                expected_state: ProposalState::Defeated
+                expected_tipped_state: ProposalState::Defeated,
+                expected_finalized_state: ProposalState::Defeated,
             }),
-            // threshold >= 50%
-            Just(VoteTippingTestCase {
+            Just(VoteCastTestCase {
+                name: "40:55 @ 40 -- Nays won",
+                governing_token_supply: 100,
+                vote_threshold_percentage: 40,
+                yes_votes_count: 40,
+                no_votes_count: 55,
+                expected_tipped_state: ProposalState::Defeated,
+                expected_finalized_state: ProposalState::Defeated,
+            }),
+            // threshold == 50%
+            Just(VoteCastTestCase {
+                name: "50:10 @50 -- +1 tie breaker required to tip",
                 governing_token_supply: 100,
                 vote_threshold_percentage: 50,
                 yes_votes_count: 50,
                 no_votes_count: 10,
-                expected_state: ProposalState::Voting
+                expected_tipped_state: ProposalState::Voting,
+                expected_finalized_state: ProposalState::Succeeded,
             }),
-            Just(VoteTippingTestCase {
+            Just(VoteCastTestCase {
+                name: "10:50 @50 -- +1 tie breaker vote not possible any longer",
+                governing_token_supply: 100,
+                vote_threshold_percentage: 50,
+                yes_votes_count: 10,
+                no_votes_count: 50,
+                expected_tipped_state: ProposalState::Defeated,
+                expected_finalized_state: ProposalState::Defeated,
+            }),
+            Just(VoteCastTestCase {
+                name: "50:50 @50 -- +1 tie breaker vote not possible any longer",
                 governing_token_supply: 100,
                 vote_threshold_percentage: 50,
                 yes_votes_count: 50,
                 no_votes_count: 50,
-                expected_state: ProposalState::Defeated
+                expected_tipped_state: ProposalState::Defeated,
+                expected_finalized_state: ProposalState::Defeated,
             }),
-            Just(VoteTippingTestCase {
+            Just(VoteCastTestCase {
+                name: "51:10 @ 50 -- Nay sayers can't outvote any longer",
                 governing_token_supply: 100,
                 vote_threshold_percentage: 50,
                 yes_votes_count: 51,
                 no_votes_count: 10,
-                expected_state: ProposalState::Succeeded
+                expected_tipped_state: ProposalState::Succeeded,
+                expected_finalized_state: ProposalState::Succeeded,
             }),
-            Just(VoteTippingTestCase {
+            Just(VoteCastTestCase {
+                name: "10:51 @ 50 -- Nays won",
                 governing_token_supply: 100,
                 vote_threshold_percentage: 50,
                 yes_votes_count: 10,
                 no_votes_count: 51,
-                expected_state: ProposalState::Defeated
+                expected_tipped_state: ProposalState::Defeated,
+                expected_finalized_state: ProposalState::Defeated,
             }),
-            Just(VoteTippingTestCase {
+            // threshold > 50%
+            Just(VoteCastTestCase {
+                name: "10:10 @ 60 -- Can still go either way",
                 governing_token_supply: 100,
                 vote_threshold_percentage: 60,
                 yes_votes_count: 10,
                 no_votes_count: 10,
-                expected_state: ProposalState::Voting
+                expected_tipped_state: ProposalState::Voting,
+                expected_finalized_state: ProposalState::Defeated,
             }),
-            Just(VoteTippingTestCase {
+            Just(VoteCastTestCase {
+                name: "55:10 @ 60 -- Can still go either way",
+                governing_token_supply: 100,
+                vote_threshold_percentage: 60,
+                yes_votes_count: 55,
+                no_votes_count: 10,
+                expected_tipped_state: ProposalState::Voting,
+                expected_finalized_state: ProposalState::Defeated,
+            }),
+            Just(VoteCastTestCase {
+                name: "60:10 @ 60 -- Yeah reached the required threshold",
                 governing_token_supply: 100,
                 vote_threshold_percentage: 60,
                 yes_votes_count: 60,
                 no_votes_count: 10,
-                expected_state: ProposalState::Voting
+                expected_tipped_state: ProposalState::Succeeded,
+                expected_finalized_state: ProposalState::Succeeded,
             }),
-            Just(VoteTippingTestCase {
+            Just(VoteCastTestCase {
+                name: "61:10 @ 60 -- Yeah won",
                 governing_token_supply: 100,
                 vote_threshold_percentage: 60,
                 yes_votes_count: 61,
                 no_votes_count: 10,
-                expected_state: ProposalState::Succeeded
+                expected_tipped_state: ProposalState::Succeeded,
+                expected_finalized_state: ProposalState::Succeeded,
             }),
-            Just(VoteTippingTestCase {
+            Just(VoteCastTestCase {
+                name: "10:40 @ 60 -- Yeah can still outvote Nay",
                 governing_token_supply: 100,
                 vote_threshold_percentage: 60,
                 yes_votes_count: 10,
                 no_votes_count: 40,
-                expected_state: ProposalState::Defeated
+                expected_tipped_state: ProposalState::Voting,
+                expected_finalized_state: ProposalState::Defeated,
             }),
-            Just(VoteTippingTestCase {
+            Just(VoteCastTestCase {
+                name: "60:40 @ 60 -- Yeah won",
+                governing_token_supply: 100,
+                vote_threshold_percentage: 60,
+                yes_votes_count: 60,
+                no_votes_count: 40,
+                expected_tipped_state: ProposalState::Succeeded,
+                expected_finalized_state: ProposalState::Succeeded,
+            }),
+            Just(VoteCastTestCase {
+                name: "10:41 @ 60 -- Aye can't outvote Nay any longer",
                 governing_token_supply: 100,
                 vote_threshold_percentage: 60,
                 yes_votes_count: 10,
                 no_votes_count: 41,
-                expected_state: ProposalState::Defeated
+                expected_tipped_state: ProposalState::Defeated,
+                expected_finalized_state: ProposalState::Defeated,
             }),
-            // 100% Yes
-            Just(VoteTippingTestCase {
+            Just(VoteCastTestCase {
+                name: "100:0",
                 governing_token_supply: 100,
                 vote_threshold_percentage: 100,
                 yes_votes_count: 100,
                 no_votes_count: 0,
-                expected_state: ProposalState::Succeeded
+                expected_tipped_state: ProposalState::Succeeded,
+                expected_finalized_state: ProposalState::Succeeded,
             }),
-            // 100% No
-            Just(VoteTippingTestCase {
+            Just(VoteCastTestCase {
+                name: "0:100",
                 governing_token_supply: 100,
                 vote_threshold_percentage: 100,
                 yes_votes_count: 0,
                 no_votes_count: 100,
-                expected_state: ProposalState::Defeated
+                expected_tipped_state: ProposalState::Defeated,
+                expected_finalized_state: ProposalState::Defeated,
             }),
         ]
     }
 
     proptest! {
         #[test]
-        fn test_try_tip_vote(test_case in vote_tipping_test_cases()) {
+        fn test_try_tip_vote(test_case in vote_casting_test_cases()) {
             // Arrange
             let mut proposal = create_test_proposal();
             proposal.yes_votes_count = test_case.yes_votes_count;
@@ -694,10 +754,122 @@ mod test {
             proposal.try_tip_vote(test_case.governing_token_supply, &governance_config,current_slot);
 
             // Assert
-            assert_eq!(proposal.state,test_case.expected_state,"CASE: {:?}",test_case);
+            assert_eq!(proposal.state,test_case.expected_tipped_state,"CASE: {:?}",test_case);
 
-            if test_case.expected_state != ProposalState::Voting {
+            if test_case.expected_tipped_state != ProposalState::Voting {
                 assert_eq!(Some(current_slot),proposal.voting_completed_at)
+            }
+        }
+
+        #[test]
+        fn test_finalize_vote(test_case in vote_casting_test_cases()) {
+            // Arrange
+            let mut proposal = create_test_proposal();
+            proposal.yes_votes_count = test_case.yes_votes_count;
+            proposal.no_votes_count = test_case.no_votes_count;
+            proposal.state = ProposalState::Voting;
+
+            let mut governance_config = create_test_governance_config();
+            governance_config.yes_vote_threshold_percentage = test_case.vote_threshold_percentage;
+
+            let current_slot = 16_u64;
+
+            // Act
+            proposal.finalize_vote(test_case.governing_token_supply, &governance_config,current_slot).unwrap();
+
+            // Assert
+            assert_eq!(proposal.state,test_case.expected_finalized_state,"CASE: {:?}",test_case);
+            assert_eq!(Some(current_slot),proposal.voting_completed_at);
+
+        }
+    }
+
+    prop_compose! {
+        fn full_vote_results()(governing_token_supply in 1..=u64::MAX, yes_vote_threshold in 1..100)(
+            governing_token_supply in Just(governing_token_supply),
+            yes_vote_threshold in Just(yes_vote_threshold),
+
+            yes_votes_count in 0..=governing_token_supply,
+            no_votes_count in 0..=governing_token_supply,
+
+        ) -> (u64, u64, u64, u8) {
+            (yes_votes_count as u64, no_votes_count as u64, governing_token_supply as u64,yes_vote_threshold as u8)
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn test_try_tip_vote_with_full_vote_results(
+            (yes_votes_count, no_votes_count, governing_token_supply, yes_vote_threshold_percentage) in full_vote_results(),
+
+        ) {
+            // Arrange
+
+            let mut proposal = create_test_proposal();
+            proposal.yes_votes_count = yes_votes_count;
+            proposal.no_votes_count =no_votes_count.min(governing_token_supply-yes_votes_count);
+            proposal.state = ProposalState::Voting;
+
+
+            let mut governance_config = create_test_governance_config();
+            governance_config.yes_vote_threshold_percentage = yes_vote_threshold_percentage;
+
+            let current_slot = 15_u64;
+
+
+            // Act
+            proposal.try_tip_vote(governing_token_supply, &governance_config,current_slot);
+
+            // Assert
+            let yes_vote_threshold_count = get_vote_threshold_count(yes_vote_threshold_percentage,governing_token_supply);
+
+            if yes_votes_count >= yes_vote_threshold_count && yes_votes_count > (governing_token_supply - yes_votes_count)
+            {
+                assert_eq!(proposal.state,ProposalState::Succeeded);
+            }
+            else if proposal.no_votes_count > (governing_token_supply - yes_vote_threshold_count)
+                || proposal.no_votes_count >= (governing_token_supply - proposal.no_votes_count ) {
+                assert_eq!(proposal.state,ProposalState::Defeated);
+            }
+            else
+            {
+                assert_eq!(proposal.state,ProposalState::Voting);
+            }
+
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn test_finalize_vote_with_full_vote_results(
+            (yes_votes_count, no_votes_count, governing_token_supply, yes_vote_threshold_percentage) in full_vote_results(),
+
+        ) {
+            // Arrange
+            let mut proposal = create_test_proposal();
+            proposal.yes_votes_count = yes_votes_count;
+            proposal.no_votes_count = no_votes_count.min(governing_token_supply-yes_votes_count);
+            proposal.state = ProposalState::Voting;
+
+
+            let mut governance_config = create_test_governance_config();
+            governance_config.yes_vote_threshold_percentage = yes_vote_threshold_percentage;
+
+            let current_slot = 16_u64;
+
+            // Act
+            proposal.finalize_vote(governing_token_supply, &governance_config,current_slot).unwrap();
+
+            // Assert
+            let yes_vote_threshold_count = get_vote_threshold_count(yes_vote_threshold_percentage,governing_token_supply);
+
+            if yes_votes_count >= yes_vote_threshold_count &&  yes_votes_count > proposal.no_votes_count
+            {
+                assert_eq!(proposal.state,ProposalState::Succeeded);
+            }
+            else
+            {
+                assert_eq!(proposal.state,ProposalState::Defeated);
             }
         }
     }

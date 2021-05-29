@@ -22,8 +22,10 @@ pub struct GovernanceConfig {
     /// Account governed by this Governance. It can be for example Program account, Mint account or Token Account
     pub governed_account: Pubkey,
 
-    /// Voting threshold in % required to tip the vote
+    /// Voting threshold of Yes votes in % required to tip the vote
     /// It's the percentage of tokens out of the entire pool of governance tokens eligible to vote
+    // Note: If the threshold is below or equal to 50% then an even split of votes ex: 50:50 or 40:40 is always resolved as Defeated
+    // In other words +1 vote tie breaker is required to have successful vote
     pub yes_vote_threshold_percentage: u8,
 
     /// Minimum number of tokens a governance token owner must possess to be able to create a proposal
