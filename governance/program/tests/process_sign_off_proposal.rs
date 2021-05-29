@@ -21,7 +21,7 @@ async fn test_sign_off_proposal() {
         .unwrap();
 
     let token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     let proposal_cookie = governance_test

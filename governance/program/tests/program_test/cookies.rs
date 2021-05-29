@@ -1,5 +1,7 @@
+use solana_program::instruction::Instruction;
 use solana_program::pubkey::Pubkey;
 use solana_sdk::signature::Keypair;
+use spl_governance::state::proposal_instruction::ProposalInstruction;
 use spl_governance::state::{
     governance::Governance, realm::Realm, token_owner_record::TokenOwnerRecord,
     vote_record::VoteRecord,
@@ -92,4 +94,11 @@ pub struct SignatoryRecordCookie {
 pub struct VoteRecordCookie {
     pub address: Pubkey,
     pub account: VoteRecord,
+}
+
+#[derive(Debug)]
+pub struct ProposalInstructionCookie {
+    pub address: Pubkey,
+    pub account: ProposalInstruction,
+    pub instruction: Instruction,
 }

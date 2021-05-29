@@ -22,7 +22,7 @@ async fn test_relinquish_voted_proposal() {
         .unwrap();
 
     let token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     let proposal_cookie = governance_test
@@ -79,7 +79,7 @@ async fn test_relinquish_active_yes_vote() {
         .unwrap();
 
     let token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     // Total 300 tokens
@@ -141,7 +141,7 @@ async fn test_relinquish_active_no_vote() {
         .unwrap();
 
     let token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     // Total 300 tokens
@@ -203,7 +203,7 @@ async fn test_relinquish_vote_with_invalid_mint_error() {
         .unwrap();
 
     let token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     let mut proposal_cookie = governance_test
@@ -245,7 +245,7 @@ async fn test_relinquish_vote_with_governance_authority_must_sign_error() {
         .unwrap();
 
     let mut token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     // Total 300 tokens
@@ -265,7 +265,7 @@ async fn test_relinquish_vote_with_governance_authority_must_sign_error() {
 
     // Try to use a different owner to sign
     let token_owner_record_cookie2 = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     token_owner_record_cookie.token_owner = token_owner_record_cookie2.token_owner;
@@ -300,11 +300,11 @@ async fn test_relinquish_vote_with_invalid_vote_record_error() {
         .unwrap();
 
     let token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     let token_owner_record_cookie2 = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     // Total 400 tokens
@@ -360,7 +360,7 @@ async fn test_relinquish_vote_with_already_relinquished_error() {
         .unwrap();
 
     let token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     let proposal_cookie = governance_test

@@ -17,7 +17,7 @@ async fn test_deposit_initial_community_tokens() {
 
     // Act
     let token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     // Assert
@@ -60,7 +60,7 @@ async fn test_deposit_initial_council_tokens() {
 
     // Act
     let token_owner_record_cookie = governance_test
-        .with_initial_council_token_deposit(&realm_cookie)
+        .with_council_token_deposit(&realm_cookie)
         .await;
 
     // Assert
@@ -99,7 +99,7 @@ async fn test_deposit_subsequent_community_tokens() {
     let realm_cookie = governance_test.with_realm().await;
 
     let token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     let deposit_amount = 5;
@@ -108,9 +108,15 @@ async fn test_deposit_subsequent_community_tokens() {
         .governing_token_deposit_amount
         + deposit_amount;
 
+    governance_test.context.warp_to_slot(5).unwrap();
+
     // Act
     governance_test
-        .with_community_token_deposit(&realm_cookie, &token_owner_record_cookie, deposit_amount)
+        .with_subsequent_community_token_deposit(
+            &realm_cookie,
+            &token_owner_record_cookie,
+            deposit_amount,
+        )
         .await;
 
     // Assert
@@ -139,7 +145,7 @@ async fn test_deposit_subsequent_council_tokens() {
     let council_token_holding_account = realm_cookie.council_token_holding_account.unwrap();
 
     let token_owner_record_cookie = governance_test
-        .with_initial_council_token_deposit(&realm_cookie)
+        .with_council_token_deposit(&realm_cookie)
         .await;
 
     let deposit_amount = 5;
@@ -148,9 +154,15 @@ async fn test_deposit_subsequent_council_tokens() {
         .governing_token_deposit_amount
         + deposit_amount;
 
+    governance_test.context.warp_to_slot(5).unwrap();
+
     // Act
     governance_test
-        .with_council_token_deposit(&realm_cookie, &token_owner_record_cookie, deposit_amount)
+        .with_subsequent_council_token_deposit(
+            &realm_cookie,
+            &token_owner_record_cookie,
+            deposit_amount,
+        )
         .await;
 
     // Assert

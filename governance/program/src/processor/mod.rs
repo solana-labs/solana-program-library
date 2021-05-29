@@ -8,8 +8,11 @@ mod process_create_program_governance;
 mod process_create_proposal;
 mod process_create_realm;
 mod process_deposit_governing_tokens;
+mod process_execute_instruction;
 mod process_finalize_vote;
+mod process_insert_instruction;
 mod process_relinquish_vote;
+mod process_remove_instruction;
 mod process_remove_signatory;
 mod process_set_governance_delegate;
 mod process_sign_off_proposal;
@@ -26,8 +29,11 @@ use process_create_program_governance::*;
 use process_create_proposal::*;
 use process_create_realm::*;
 use process_deposit_governing_tokens::*;
+use process_execute_instruction::*;
 use process_finalize_vote::*;
+use process_insert_instruction::*;
 use process_relinquish_vote::*;
+use process_remove_instruction::*;
 use process_remove_signatory::*;
 use process_set_governance_delegate::*;
 use process_sign_off_proposal::*;
@@ -47,7 +53,21 @@ pub fn process_instruction(
     let instruction = GovernanceInstruction::try_from_slice(input)
         .map_err(|_| ProgramError::InvalidInstructionData)?;
 
-    msg!("GOVERNANCE-INSTRUCTION: {:?}", instruction);
+    if let GovernanceInstruction::InsertInstruction {
+        index,
+        hold_up_time,
+        instruction: _,
+    } = instruction
+    {
+        // Do not dump instruction data into logs
+        msg!(
+            "GOVERNANCE-INSTRUCTION: InsertInstruction {{ index: {:?}, hold_up_time: {:?} }}",
+            index,
+            hold_up_time
+        );
+    } else {
+        msg!("GOVERNANCE-INSTRUCTION: {:?}", instruction);
+    }
 
     match instruction {
         GovernanceInstruction::CreateRealm { name } => {
@@ -108,6 +128,17 @@ pub fn process_instruction(
 
         GovernanceInstruction::CancelProposal {} => process_cancel_proposal(program_id, accounts),
 
-        _ => todo!("Instruction not implemented yet"),
+        GovernanceInstruction::InsertInstruction {
+            index,
+            hold_up_time,
+            instruction,
+        } => process_insert_instruction(program_id, accounts, index, hold_up_time, instruction),
+
+        GovernanceInstruction::RemoveInstruction {} => {
+            process_remove_instruction(program_id, accounts)
+        }
+        GovernanceInstruction::ExecuteInstruction {} => {
+            process_execute_instruction(program_id, accounts)
+        }
     }
 }

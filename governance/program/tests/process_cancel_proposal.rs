@@ -21,7 +21,7 @@ async fn test_cancel_proposal() {
         .unwrap();
 
     let token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     let proposal_cookie = governance_test
@@ -41,6 +41,7 @@ async fn test_cancel_proposal() {
         .await;
 
     assert_eq!(ProposalState::Cancelled, proposal_account.state);
+    assert_eq!(Some(1), proposal_account.closed_at);
 }
 
 #[tokio::test]
@@ -57,7 +58,7 @@ async fn test_cancel_proposal_with_already_completed_error() {
         .unwrap();
 
     let token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     let proposal_cookie = governance_test
@@ -99,7 +100,7 @@ async fn test_cancel_proposal_with_owner_or_delegate_must_sign_error() {
         .unwrap();
 
     let mut token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     let proposal_cookie = governance_test
@@ -108,7 +109,7 @@ async fn test_cancel_proposal_with_owner_or_delegate_must_sign_error() {
         .unwrap();
 
     let token_owner_record_cookie2 = governance_test
-        .with_initial_council_token_deposit(&realm_cookie)
+        .with_council_token_deposit(&realm_cookie)
         .await;
 
     token_owner_record_cookie.token_owner = token_owner_record_cookie2.token_owner;

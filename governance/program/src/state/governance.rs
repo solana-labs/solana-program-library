@@ -61,6 +61,25 @@ impl IsInitialized for Governance {
     }
 }
 
+impl Governance {
+    /// Returns Governance PDA seeds
+    pub fn get_governance_address_seeds(&self) -> Result<[&[u8]; 3], ProgramError> {
+        let seeds = match self.account_type {
+            GovernanceAccountType::AccountGovernance => get_account_governance_address_seeds(
+                &self.config.realm,
+                &self.config.governed_account,
+            ),
+            GovernanceAccountType::ProgramGovernance => get_program_governance_address_seeds(
+                &self.config.realm,
+                &self.config.governed_account,
+            ),
+            _ => return Err(GovernanceError::InvalidAccountType.into()),
+        };
+
+        Ok(seeds)
+    }
+}
+
 /// Deserializes account and checks owner program
 pub fn get_governance_data(governance_info: &AccountInfo) -> Result<Governance, ProgramError> {
     get_account_data::<Governance>(governance_info, &id())

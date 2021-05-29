@@ -23,7 +23,7 @@ async fn test_community_proposal_created() {
         .unwrap();
 
     let token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     // Act
@@ -44,6 +44,7 @@ async fn test_community_proposal_created() {
         .await;
 
     assert_eq!(1, account_governance_account.proposals_count);
+    assert_eq!(proposal_account.draft_at, 1);
 }
 
 #[tokio::test]
@@ -60,11 +61,11 @@ async fn test_multiple_proposals_created() {
         .unwrap();
 
     let community_token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     let council_token_owner_record_cookie = governance_test
-        .with_initial_council_token_deposit(&realm_cookie)
+        .with_council_token_deposit(&realm_cookie)
         .await;
 
     // Act
@@ -121,7 +122,7 @@ async fn test_create_proposal_with_not_authorized_governance_authority_error() {
         .unwrap();
 
     let mut token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     token_owner_record_cookie.governance_authority = Some(Keypair::new());
@@ -154,7 +155,7 @@ async fn test_create_proposal_with_governance_delegate_signer() {
         .unwrap();
 
     let mut token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
     governance_test
         .with_community_governance_delegate(&realm_cookie, &mut token_owner_record_cookie)
@@ -197,7 +198,7 @@ async fn test_create_proposal_with_not_enough_tokens_error() {
         - 1;
 
     let token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit_amount(&realm_cookie, token_amount)
+        .with_community_token_deposit_amount(&realm_cookie, token_amount)
         .await;
 
     // Act
@@ -225,11 +226,11 @@ async fn test_create_proposal_with_invalid_token_owner_record_error() {
         .unwrap();
 
     let token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     let council_token_owner_record_cookie = governance_test
-        .with_initial_council_token_deposit(&realm_cookie)
+        .with_council_token_deposit(&realm_cookie)
         .await;
 
     // Act

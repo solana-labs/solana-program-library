@@ -20,7 +20,7 @@ async fn test_withdraw_community_tokens() {
     let realm_cookie = governance_test.with_realm().await;
 
     let token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     // Act
@@ -59,7 +59,7 @@ async fn test_withdraw_council_tokens() {
     let realm_cookie = governance_test.with_realm().await;
 
     let token_owner_record_cookie = governance_test
-        .with_initial_council_token_deposit(&realm_cookie)
+        .with_council_token_deposit(&realm_cookie)
         .await;
 
     // Act
@@ -98,7 +98,7 @@ async fn test_withdraw_community_tokens_with_owner_must_sign_error() {
     let realm_cookie = governance_test.with_realm().await;
 
     let token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     let hacker_token_destination = Pubkey::new_unique();
@@ -132,7 +132,7 @@ async fn test_withdraw_community_tokens_with_token_owner_record_address_mismatch
     let realm_cookie = governance_test.with_realm().await;
 
     let token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     let vote_record_address = get_token_owner_record_address(
@@ -142,7 +142,7 @@ async fn test_withdraw_community_tokens_with_token_owner_record_address_mismatch
     );
 
     let hacker_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     let mut instruction = withdraw_governing_tokens(
