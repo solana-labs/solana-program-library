@@ -114,6 +114,10 @@ pub enum GovernanceError {
     #[error("Can't execute instruction within its hold up time")]
     CannotExecuteInstructionWithinHoldUpTime,
 
+    /// Instruction already executed
+    #[error("Instruction already executed")]
+    InstructionAlreadyExecuted,
+
     /// Invalid Instruction index
     #[error("Invalid Instruction index")]
     InvalidInstructionIndex,

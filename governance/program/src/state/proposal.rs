@@ -302,6 +302,10 @@ impl Proposal {
             return Err(GovernanceError::CannotExecuteInstructionWithinHoldUpTime.into());
         }
 
+        if proposal_instruction_data.executed {
+            return Err(GovernanceError::InstructionAlreadyExecuted.into());
+        }
+
         Ok(())
     }
 }

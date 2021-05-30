@@ -16,7 +16,7 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-/// Temp. placeholder until Borsh serialization for Instruction is supported in the SDK
+/// InstructionData wrapper. It can be removed once Borsh serialization for Instruction is supported in the SDK
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 #[repr(C)]
 pub struct InstructionData {
