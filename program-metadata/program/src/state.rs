@@ -15,23 +15,13 @@ pub const MAX_URL_LENGTH: usize = 200;
 
 pub const IDL_HASH_SIZE: usize = 32;
 
-pub const VERSIONED_IDL_SIZE: usize =
-    1 + 32 + MAX_URL_LENGTH + IDL_HASH_SIZE + MAX_URL_LENGTH + 1 + MAX_URL_LENGTH;
+pub const VERSIONED_IDL_SIZE: usize = 1 + 32 + MAX_URL_LENGTH + IDL_HASH_SIZE + MAX_URL_LENGTH;
 
 #[repr(C)]
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
 pub enum AccountType {
     MetadataPairV1,
     VersionedIdlV1,
-}
-
-#[repr(C)]
-#[derive(Clone, BorshSerialize, BorshDeserialize, Debug)]
-pub enum SerializationMethod {
-    Bincode,
-    Borsh,
-    Anchor,
-    CustomLayoutUrl,
 }
 
 #[repr(C)]
@@ -50,6 +40,4 @@ pub struct VersionedIdl {
     pub idl_url: String,
     pub idl_hash: [u8; 32],
     pub source_url: String,
-    pub serialization: SerializationMethod,
-    pub custom_layout_url: Option<String>,
 }

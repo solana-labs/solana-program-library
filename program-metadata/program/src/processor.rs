@@ -3,9 +3,8 @@ use {
         error::MetadataError,
         instruction::MetadataInstruction,
         state::{
-            AccountType, MetadataEntry, SerializationMethod, VersionedIdl, CLASS_PREFIX,
-            MAX_NAME_LENGTH, MAX_URL_LENGTH, MAX_VALUE_LENGTH, METADATA_ENTRY_SIZE,
-            VERSIONED_IDL_SIZE,
+            AccountType, MetadataEntry, VersionedIdl, CLASS_PREFIX, MAX_NAME_LENGTH,
+            MAX_URL_LENGTH, MAX_VALUE_LENGTH, METADATA_ENTRY_SIZE, VERSIONED_IDL_SIZE,
         },
         utils::{
             assert_program_authority_has_authority_over_program,
@@ -52,8 +51,6 @@ pub fn process_instruction(
             idl_url,
             idl_hash,
             source_url,
-            serialization,
-            custom_layout_url,
             hashed_name,
         } => {
             msg!("Instruction: Create Versioned Idl");
@@ -64,8 +61,6 @@ pub fn process_instruction(
                 idl_url,
                 idl_hash,
                 source_url,
-                serialization,
-                custom_layout_url,
                 hashed_name,
             )
         }
@@ -73,19 +68,9 @@ pub fn process_instruction(
             idl_url,
             idl_hash,
             source_url,
-            serialization,
-            custom_layout_url,
         } => {
             msg!("Instruction: Update Versioned IDL");
-            process_update_versioned_idl(
-                program_id,
-                accounts,
-                idl_url,
-                idl_hash,
-                source_url,
-                serialization,
-                custom_layout_url,
-            )
+            process_update_versioned_idl(program_id, accounts, idl_url, idl_hash, source_url)
         }
     }
 }
@@ -304,8 +289,6 @@ pub fn process_create_versioned_idl(
     idl_url: String,
     idl_hash: [u8; 32],
     source_url: String,
-    serialization: SerializationMethod,
-    custom_layout_url: Option<String>,
     hashed_name: [u8; 32],
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
@@ -325,12 +308,6 @@ pub fn process_create_versioned_idl(
 
     if source_url.len() > MAX_URL_LENGTH {
         return Err(MetadataError::SourceUrlTooLong.into());
-    }
-
-    if let Some(custom_layout_url) = custom_layout_url.clone() {
-        if custom_layout_url.len() > MAX_URL_LENGTH {
-            return Err(MetadataError::CustomLayoutUrlTooLong.into());
-        }
     }
 
     if !target_program_authority_info.is_signer {
@@ -380,8 +357,6 @@ pub fn process_create_versioned_idl(
         idl_url,
         idl_hash,
         source_url,
-        serialization,
-        custom_layout_url,
     };
 
     let mut serialized: Vec<u8> = vec![];
@@ -404,8 +379,6 @@ pub fn process_update_versioned_idl(
     idl_url: String,
     idl_hash: [u8; 32],
     source_url: String,
-    serialization: SerializationMethod,
-    custom_layout_url: Option<String>,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let class_account_info = next_account_info(account_info_iter)?;
@@ -421,12 +394,6 @@ pub fn process_update_versioned_idl(
 
     if source_url.len() > MAX_URL_LENGTH {
         return Err(MetadataError::SourceUrlTooLong.into());
-    }
-
-    if let Some(custom_layout_url) = custom_layout_url.clone() {
-        if custom_layout_url.len() > MAX_URL_LENGTH {
-            return Err(MetadataError::CustomLayoutUrlTooLong.into());
-        }
     }
 
     if !target_program_authority_info.is_signer {
@@ -463,9 +430,7 @@ pub fn process_update_versioned_idl(
 
     idl_entry.idl_url = idl_url;
     idl_entry.idl_hash = idl_hash.to_owned();
-    idl_entry.serialization = serialization;
     idl_entry.source_url = source_url;
-    idl_entry.custom_layout_url = custom_layout_url;
 
     let mut serialized: Vec<u8> = vec![];
     idl_entry.serialize(&mut serialized)?;

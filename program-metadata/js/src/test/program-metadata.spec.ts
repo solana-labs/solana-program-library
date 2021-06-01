@@ -6,7 +6,6 @@ import bs58 from "bs58";
 import { expect } from "chai";
 import { v4 as uuid } from "uuid";
 import { createHash } from "crypto";
-import { SerializationMethod } from "../idl/idl-coder";
 
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -20,7 +19,7 @@ const programMetadata = new ProgramMetadata(connection, {
 });
 
 describe("ProgramMetadata: metadata entries", async () => {
-  describe.only("create metadata entry", async () => {
+  describe("create metadata entry", async () => {
     it("should create a metadata entry", async () => {
       const name = uuid();
 
@@ -217,6 +216,31 @@ describe("ProgramMetadata: IDL entries", async () => {
     it("should create versioned idl", async () => {
       const effectiveSlot = 3000;
       const idlHash = createHash("sha256").update("some idl", "utf8").digest();
+
+      const signers: Keypair[] = [];
+      signers.push(privateKeypair);
+
+      try {
+        // clean up
+        const deleteIx = await programMetadata.deleteMetadataEntry(
+          targetProgramKey,
+          privateKeypair.publicKey,
+          privateKeypair.publicKey,
+          `idl_${effectiveSlot}`
+        );
+
+        let tx = new Transaction();
+        tx.add(deleteIx);
+
+        let res = await connection.sendTransaction(tx, signers, {
+          preflightCommitment: "single",
+        });
+
+        await timeout(5000);
+      } catch (error) {
+        // delete just in case (ignore if fails)
+      }
+
       const ix = await programMetadata.createVersionedIdl(
         targetProgramKey,
         privateKeypair.publicKey,
@@ -224,14 +248,10 @@ describe("ProgramMetadata: IDL entries", async () => {
         effectiveSlot,
         "http://www.test.com",
         idlHash,
-        "https://github.com/source",
-        SerializationMethod.Borsh,
-        null
+        "https://github.com/source"
       );
 
       let tx = new Transaction();
-      const signers: Keypair[] = [];
-      signers.push(privateKeypair);
       tx.add(ix);
 
       let res = await connection.sendTransaction(tx, signers, {
@@ -270,9 +290,7 @@ describe("ProgramMetadata: IDL entries", async () => {
         effectiveSlot,
         "http://www.test.com",
         idlHash,
-        "https://github.com/source",
-        SerializationMethod.Borsh,
-        null
+        "https://github.com/source"
       );
 
       let tx = new Transaction();

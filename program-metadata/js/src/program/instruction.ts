@@ -1,9 +1,7 @@
 import { PublicKey, TransactionInstruction } from "@solana/web3.js";
-import { Numberu32 } from "../util";
 import { UpdateMetadataEntryInstruction } from "./instruction/update-metadata-entry";
 import { CreateVersionedIdlInstruction } from "./instruction/create-versioned-idl";
 import { UpdateVersionedIdlInstruction } from "./instruction/update-versioned-idl";
-import { SerializationMethod } from "../idl/idl-coder";
 import { CreateMetadataEntryInstruction } from "./instruction/create-metadata-entry";
 import { DeleteMetadataEntry } from "./instruction/delete-metadata-entry";
 
@@ -125,8 +123,6 @@ export function createVersionedIdlIx(
   idlUrl: string,
   idlHash: Buffer,
   sourceUrl: string,
-  serialization: SerializationMethod,
-  customLayoutUrl: string | null,
   hashedName: Buffer
 ) {
   const ixDataObject = new CreateVersionedIdlInstruction(
@@ -134,8 +130,6 @@ export function createVersionedIdlIx(
     idlUrl,
     idlHash,
     sourceUrl,
-    serialization,
-    customLayoutUrl,
     hashedName
   );
 
@@ -170,16 +164,12 @@ export function updateVersionedIdlIx(
   nameServiceKey: PublicKey,
   idlUrl: string,
   idlHash: Buffer,
-  sourceUrl: string,
-  serialization: SerializationMethod,
-  customLayoutUrl: string | null
+  sourceUrl: string
 ): TransactionInstruction {
   const ixDataObject = new UpdateVersionedIdlInstruction(
     idlUrl,
     idlHash,
-    sourceUrl,
-    serialization,
-    customLayoutUrl
+    sourceUrl
   );
 
   const ixData = ixDataObject.encode();

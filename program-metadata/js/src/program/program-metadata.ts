@@ -6,7 +6,6 @@ import {
   TransactionInstruction,
 } from "@solana/web3.js";
 import { createHash } from "crypto";
-import { SerializationMethod } from "../idl/idl-coder";
 import {
   createMetadataEntryIx,
   createVersionedIdlIx,
@@ -160,9 +159,7 @@ export class ProgramMetadata {
     effectiveSlot: number,
     idlUrl: string,
     idlHash: Buffer,
-    sourceUrl: string,
-    serializiation: SerializationMethod,
-    customLayoutUrl: string | null
+    sourceUrl: string
   ) {
     const name = `idl_${effectiveSlot}`;
     const hashedName = this.getHashedName(name);
@@ -194,8 +191,6 @@ export class ProgramMetadata {
       idlUrl,
       idlHash,
       sourceUrl,
-      serializiation,
-      customLayoutUrl,
       hashedName
     );
 
@@ -208,9 +203,7 @@ export class ProgramMetadata {
     effectiveSlot: number,
     idlUrl: string,
     idlHash: Buffer,
-    sourceUrl: string,
-    serialization: SerializationMethod,
-    customLayoutUrl: string | null
+    sourceUrl: string
   ) {
     const hashedName = this.getHashedName(`idl_${effectiveSlot}`);
     const classKey = await this.getClassKey(targetProgramId);
@@ -236,9 +229,7 @@ export class ProgramMetadata {
       this.nameServiceKey,
       idlUrl,
       idlHash,
-      sourceUrl,
-      serialization,
-      customLayoutUrl
+      sourceUrl
     );
 
     return ix;

@@ -2,6 +2,12 @@
  * TODO: export from anchor library or begin seperate module
  */
 
+export enum SerializationMethod {
+  Bincode = "bincode",
+  Borsh = "borsh",
+  Anchor = "anchor",
+}
+
 export type Idl = {
   version: string;
   name: string;
@@ -11,6 +17,7 @@ export type Idl = {
   types?: IdlTypeDef[];
   events?: IdlEvent[];
   errors?: IdlErrorCode[];
+  serializationMethod?: SerializationMethod;
 };
 
 export type IdlEvent = {

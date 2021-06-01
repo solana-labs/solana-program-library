@@ -1,5 +1,4 @@
 use {
-    crate::state::SerializationMethod,
     borsh::{BorshDeserialize, BorshSerialize},
     solana_program::{
         instruction::{AccountMeta, Instruction},
@@ -57,8 +56,6 @@ pub enum MetadataInstruction {
         idl_url: String,
         idl_hash: [u8; 32],
         source_url: String,
-        serialization: SerializationMethod,
-        custom_layout_url: Option<String>,
         hashed_name: [u8; 32],
     },
 
@@ -72,8 +69,6 @@ pub enum MetadataInstruction {
         idl_url: String,
         idl_hash: [u8; 32],
         source_url: String,
-        serialization: SerializationMethod,
-        custom_layout_url: Option<String>,
     },
 }
 
@@ -180,8 +175,6 @@ pub fn create_versioned_id(
     idl_url: String,
     idl_hash: [u8; 32],
     source_url: String,
-    serialization: SerializationMethod,
-    custom_layout_url: Option<String>,
     hashed_name: [u8; 32],
 ) -> Instruction {
     Instruction {
@@ -202,8 +195,6 @@ pub fn create_versioned_id(
             idl_url,
             idl_hash,
             source_url,
-            serialization,
-            custom_layout_url,
             hashed_name,
         }
         .try_to_vec()
@@ -223,8 +214,6 @@ pub fn update_versioned_idl(
     idl_url: String,
     idl_hash: [u8; 32],
     source_url: String,
-    serialization: SerializationMethod,
-    custom_layout_url: Option<String>,
 ) -> Instruction {
     Instruction {
         program_id,
@@ -240,8 +229,6 @@ pub fn update_versioned_idl(
             idl_url,
             idl_hash,
             source_url,
-            serialization,
-            custom_layout_url,
         }
         .try_to_vec()
         .unwrap(),

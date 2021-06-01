@@ -1,5 +1,6 @@
 {
   "name": "Program Metadata",
+  "serializationMethod": "borsh",
   "instructions": [
     {
       "name": "createMetadataEntry",

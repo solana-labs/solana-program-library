@@ -1,13 +1,9 @@
 import { TransactionInstruction } from "@solana/web3.js";
 import { Coder, DecodedInstruction } from "./coder";
 import { Borsh } from "./coders/borsh";
-import { Idl } from "./idl";
+import { Idl, SerializationMethod } from "./idl";
 
-export enum SerializationMethod {
-  Bincode = 0,
-  Borsh = 1,
-  Anchor = 2,
-}
+const DEFAULT_SERIALIZATION_METHOD = SerializationMethod.Anchor;
 
 export const CODER_MAP = new Map<SerializationMethod, new (idl: Idl) => Coder>([
   [SerializationMethod.Borsh, Borsh],
@@ -16,10 +12,10 @@ export const CODER_MAP = new Map<SerializationMethod, new (idl: Idl) => Coder>([
 export class IdlCoder {
   private coder: Coder;
 
-  constructor(
-    private idl: Idl,
-    private serializationMethod: SerializationMethod
-  ) {
+  constructor(private idl: Idl) {
+    const serializationMethod =
+      idl.serializationMethod || DEFAULT_SERIALIZATION_METHOD;
+
     const coder = CODER_MAP.get(serializationMethod);
     if (!coder) {
       throw new Error("Serialization method not supported");

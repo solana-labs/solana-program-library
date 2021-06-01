@@ -1,4 +1,3 @@
-import { SerializationMethod } from "../../idl/idl-coder";
 import { PROGRAM_METADATA_SCHEMA, Struct } from "../util/borsh-struct";
 
 export class CreateMetadataEntryInstruction extends Struct {

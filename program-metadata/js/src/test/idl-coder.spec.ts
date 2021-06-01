@@ -1,5 +1,5 @@
 import { Keypair, PublicKey } from "@solana/web3.js";
-import { IdlCoder, SerializationMethod } from "../idl/idl-coder";
+import { IdlCoder } from "../idl/idl-coder";
 import { updateMetadataEntryIx } from "../program/instruction";
 import { expect } from "chai";
 
@@ -23,7 +23,7 @@ describe("IDL Coder", async () => {
 
   it("should decode a Borsh instruction", async () => {
     const value = "test value";
-    const coder = new IdlCoder(idl, SerializationMethod.Borsh);
+    const coder = new IdlCoder(idl);
 
     const transactionInstruction = updateMetadataEntryIx(
       programId,
