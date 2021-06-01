@@ -1603,33 +1603,24 @@ fn process_flash_loan(
         .checked_add(origination_fee)
         .ok_or(LendingError::MathOverflow)?;
 
-    const RECEIVE_FLASH_LOAN_INSTRUCTION_DATA_SIZE: usize = 9;
-    const RECEIVE_FLASH_LOAN_INSTRUCTION_TAG: u8 = 0u8;
-
-    let mut data = Vec::with_capacity(RECEIVE_FLASH_LOAN_INSTRUCTION_DATA_SIZE);
-    data.push(RECEIVE_FLASH_LOAN_INSTRUCTION_TAG);
-    data.extend_from_slice(&returned_amount_required.to_le_bytes());
-
     let mut flash_loan_instruction_accounts = vec![
         AccountMeta::new(*destination_liquidity_info.key, false),
         AccountMeta::new(*source_liquidity_info.key, false),
         AccountMeta::new_readonly(*token_program_id.key, false),
     ];
-
     let mut flash_loan_instruction_account_infos = vec![
         destination_liquidity_info.clone(),
         flash_loan_receiver_program_id.clone(),
         source_liquidity_info.clone(),
         token_program_id.clone(),
     ];
-
     for account_info in account_info_iter {
-        flash_loan_instruction_account_infos.push(account_info.clone());
         flash_loan_instruction_accounts.push(AccountMeta {
             pubkey: *account_info.key,
             is_signer: account_info.is_signer,
             is_writable: account_info.is_writable,
         });
+        flash_loan_instruction_account_infos.push(account_info.clone());
     }
 
     reserve.liquidity.borrow(flash_loan_amount_decimal)?;
@@ -1643,6 +1634,13 @@ fn process_flash_loan(
         authority_signer_seeds,
         token_program: token_program_id.clone(),
     })?;
+
+    const RECEIVE_FLASH_LOAN_INSTRUCTION_DATA_SIZE: usize = 9;
+    const RECEIVE_FLASH_LOAN_INSTRUCTION_TAG: u8 = 0u8;
+
+    let mut data = Vec::with_capacity(RECEIVE_FLASH_LOAN_INSTRUCTION_DATA_SIZE);
+    data.push(RECEIVE_FLASH_LOAN_INSTRUCTION_TAG);
+    data.extend_from_slice(&returned_amount_required.to_le_bytes());
 
     invoke(
         &Instruction {
