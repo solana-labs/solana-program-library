@@ -1546,6 +1546,11 @@ fn process_flash_loan(
     let token_program_id = next_account_info(account_info_iter)?;
     let flash_loan_receiver_program_id = next_account_info(account_info_iter)?;
 
+    if program_id == flash_loan_receiver_program_id.key {
+        msg!("Lending program cannot be used as the flash loan receiver program provided");
+        return Err(LendingError::InvalidFlashLoanReceiverProgram.into());
+    }
+
     let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
     if lending_market_info.owner != program_id {
         return Err(LendingError::InvalidAccountOwner.into());
@@ -1636,6 +1641,7 @@ fn process_flash_loan(
     })?;
 
     const RECEIVE_FLASH_LOAN_INSTRUCTION_DATA_SIZE: usize = 9;
+    // @FIXME: don't use 0 to indicate a flash loan receiver instruction https://git.io/JGzz9
     const RECEIVE_FLASH_LOAN_INSTRUCTION_TAG: u8 = 0u8;
 
     let mut data = Vec::with_capacity(RECEIVE_FLASH_LOAN_INSTRUCTION_DATA_SIZE);
