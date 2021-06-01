@@ -6,7 +6,7 @@ import bs58 from "bs58";
 import { expect } from "chai";
 import { v4 as uuid } from "uuid";
 import { createHash } from "crypto";
-import { SerializationMethod } from "../instruction";
+import { SerializationMethod } from "../idl/idl-coder";
 
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -20,7 +20,7 @@ const programMetadata = new ProgramMetadata(connection, {
 });
 
 describe("ProgramMetadata: metadata entries", async () => {
-  describe("create metadata entry", async () => {
+  describe.only("create metadata entry", async () => {
     it("should create a metadata entry", async () => {
       const name = uuid();
 
@@ -260,7 +260,7 @@ describe("ProgramMetadata: IDL entries", async () => {
   });
 
   describe("update versioned idl", async () => {
-    it('should update a versioned idl', async () => {
+    it("should update a versioned idl", async () => {
       const effectiveSlot = 3000;
       const idlHash = createHash("sha256").update("some idl", "utf8").digest();
       const ix = await programMetadata.createVersionedIdl(
@@ -285,7 +285,6 @@ describe("ProgramMetadata: IDL entries", async () => {
       });
 
       await timeout(5000);
-      
     });
   });
 });

@@ -1,0 +1,299 @@
+{
+  "name": "Program Metadata",
+  "instructions": [
+    {
+      "name": "createMetadataEntry",
+      "accounts": [
+        {
+          "name": "class",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "nameRecord",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "targetProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "targetProgramProgramData",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "updateAuthority",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "payer",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "nameService",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "value",
+          "type": "string"
+        },
+        {
+          "name": "hashed_name",
+          "type": {
+            "vec": "u8"
+          }
+        }
+      ]
+    },
+    {
+      "name": "updateMetadataEntry",
+      "accounts": [
+        {
+          "name": "class",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "nameRecord",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "targetProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "targetProgramProgramData",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "updateAuthority",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "nameService",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "value",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "deleteMetadataEntry",
+      "accounts": [
+        {
+          "name": "class",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "nameRecord",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "targetProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "targetProgramProgramData",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "updateAuthority",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "nameService",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "createVersionedIdl",
+      "accounts": [
+        {
+          "name": "class",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "nameRecord",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "targetProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "targetProgramProgramData",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "updateAuthority",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "payer",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "nameService",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "effective_slot",
+          "type": "u64"
+        },
+        {
+          "name": "idl_url",
+          "type": "string"
+        },
+        {
+          "name": "idl_hash",
+          "type": {
+            "vec": "u8"
+          }
+        },
+        {
+          "name": "source_url",
+          "type": "string"
+        },
+        {
+          "name": "serialization",
+          "type": {
+            "defined": "SerializationMethod"
+          }
+        },
+        {
+          "name": "custom_layout_url",
+          "type": {
+            "option": "string"
+          }
+        },
+        {
+          "name": "hashed_name",
+          "type": {
+            "vec": "u8"
+          }
+        }
+      ]
+    },
+    {
+      "name": "updateVersionedIdl",
+      "accounts": [
+        {
+          "name": "class",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "nameRecord",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "targetProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "targetProgramProgramData",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "updateAuthority",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "nameService",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "idl_url",
+          "type": "string"
+        },
+        {
+          "name": "idl_hash",
+          "type": {
+            "vec": "u8"
+          }
+        },
+        {
+          "name": "source_url",
+          "type": "string"
+        },
+        {
+          "name": "serialization",
+          "type": {
+            "defined": "SerializationMethod"
+          }
+        },
+        {
+          "name": "custom_layout_url",
+          "type": {
+            "option": "string"
+          }
+        }
+      ]
+    }
+  ]
+}

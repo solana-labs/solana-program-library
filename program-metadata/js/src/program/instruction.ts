@@ -1,6 +1,11 @@
 import { PublicKey, TransactionInstruction } from "@solana/web3.js";
-import { serialize } from "borsh";
-import { Numberu32 } from "./util";
+import { Numberu32 } from "../util";
+import { UpdateMetadataEntryInstruction } from "./instruction/update-metadata-entry";
+import { CreateVersionedIdlInstruction } from "./instruction/create-versioned-idl";
+import { UpdateVersionedIdlInstruction } from "./instruction/update-versioned-idl";
+import { SerializationMethod } from "../idl/idl-coder";
+import { CreateMetadataEntryInstruction } from "./instruction/create-metadata-entry";
+import { DeleteMetadataEntry } from "./instruction/delete-metadata-entry";
 
 export function createMetadataEntryIx(
   programId: PublicKey,
@@ -17,20 +22,13 @@ export function createMetadataEntryIx(
   value: string,
   hashedName: Buffer
 ): TransactionInstruction {
-  const encodedName = Buffer.from(name);
-  const encodedData = Buffer.from(value);
+  const ixDataObject = new CreateMetadataEntryInstruction(
+    name,
+    value,
+    hashedName
+  );
 
-  let buffers = [
-    Buffer.from(Int8Array.from([0])),
-    new Numberu32(encodedName.length).toBuffer(),
-    encodedName,
-    new Numberu32(encodedData.length).toBuffer(),
-    encodedData,
-    new Numberu32(hashedName.length).toBuffer(),
-    hashedName,
-  ];
-
-  const ixData = Buffer.concat(buffers);
+  const ixData = ixDataObject.encode();
 
   const ix = new TransactionInstruction({
     programId: programId,
@@ -45,29 +43,11 @@ export function createMetadataEntryIx(
       { pubkey: rentKey, isSigner: false, isWritable: false },
       { pubkey: nameServiceKey, isSigner: false, isWritable: false },
     ],
-    data: Buffer.from(ixData),
+    data: ixData,
   });
 
   return ix;
 }
-
-class UpdateMetadataEntryInstruction {
-  instruction = 1;
-  constructor(public value: string) {}
-}
-
-const UpdateMetadataEntrySchema = new Map([
-  [
-    UpdateMetadataEntryInstruction,
-    {
-      kind: "struct",
-      fields: [
-        ["instruction", 'u8'],
-        ["value", "string"],
-      ],
-    },
-  ],
-]);
 
 export function updateMetadataEntryIx(
   programId: PublicKey,
@@ -81,7 +61,7 @@ export function updateMetadataEntryIx(
 ): TransactionInstruction {
   const ixDataObject = new UpdateMetadataEntryInstruction(value);
 
-  const ixData = serialize(UpdateMetadataEntrySchema, ixDataObject);
+  const ixData = ixDataObject.encode();
 
   const ix = new TransactionInstruction({
     programId: programId,
@@ -93,7 +73,7 @@ export function updateMetadataEntryIx(
       { pubkey: targetProgramAuthorityKey, isSigner: true, isWritable: false },
       { pubkey: nameServiceKey, isSigner: false, isWritable: false },
     ],
-    data: Buffer.from(ixData),
+    data: ixData,
   });
 
   return ix;
@@ -109,7 +89,10 @@ export function deleteMetadataEntryIx(
   refundKey: PublicKey,
   nameServiceKey: PublicKey
 ) {
-  const ixData = Buffer.from(Int8Array.from([2]));
+  const ixDataObject = new DeleteMetadataEntry();
+
+  const ixData = ixDataObject.encode();
+
   const ix = new TransactionInstruction({
     programId: programId,
     keys: [
@@ -126,55 +109,6 @@ export function deleteMetadataEntryIx(
 
   return ix;
 }
-
-export enum SerializationMethod {
-  Bincode = 0,
-  Borsh = 1,
-  Anchor = 2,
-  CustomLayoutUrl = 3,
-}
-
-class CreateVersionedIdlInstruction {
-  instruction = 3;
-  serialization;
-
-  constructor(
-    public effectiveSlot: number,
-    public idlUrl: string,
-    public idlHash: Buffer,
-    public sourceUrl: string,
-    serialization: SerializationMethod,
-    public customLayoutUrl: null | string,
-    public hashedName: Buffer
-  ) {
-    this.serialization = [serialization];
-  }
-}
-
-const CreateVersionedIdlSchema = new Map([
-  [
-    CreateVersionedIdlInstruction,
-    {
-      kind: "struct",
-      fields: [
-        ["instruction", 'u8'],
-        ["effectiveSlot", "u64"],
-        ["idlUrl", "string"],
-        ["idlHash", [32]],
-        ["sourceUrl", "string"],
-        ["serialization", [1]],
-        [
-          "customLayoutUrl",
-          {
-            kind: "option",
-            type: "string",
-          },
-        ],
-        ["hashedName", [32]],
-      ],
-    },
-  ],
-]);
 
 export function createVersionedIdlIx(
   programId: PublicKey,
@@ -205,7 +139,7 @@ export function createVersionedIdlIx(
     hashedName
   );
 
-  const ixData = serialize(CreateVersionedIdlSchema, ixDataObject);
+  const ixData = ixDataObject.encode();
 
   const ix = new TransactionInstruction({
     programId: programId,
@@ -220,49 +154,11 @@ export function createVersionedIdlIx(
       { pubkey: rentKey, isSigner: false, isWritable: false },
       { pubkey: nameServiceKey, isSigner: false, isWritable: false },
     ],
-    data: Buffer.from(ixData),
+    data: ixData,
   });
 
   return ix;
 }
-
-export class UpdateVersionedIdlInstruction {
-  instruction = 4;
-  serialization;
-
-  constructor(
-    public idlUrl: string,
-    public idlHash: Buffer,
-    public sourceUrl: string,
-    serialization: SerializationMethod,
-    public customLayoutUrl: null | string
-  ) {
-    this.serialization = [serialization];
-  }
-}
-
-const UpdateVersionedIdlSchema = new Map([
-  [
-    UpdateVersionedIdlInstruction,
-    {
-      kind: "struct",
-      fields: [
-        ["instruction", 'u8'],
-        ["idlUrl", "string"],
-        ["idlHash", [32]],
-        ["sourceUrl", "string"],
-        ["serialization", [1]],
-        [
-          "customLayoutUrl",
-          {
-            kind: "option",
-            type: "string",
-          },
-        ],
-      ],
-    },
-  ],
-]);
 
 export function updateVersionedIdlIx(
   programId: PublicKey,
@@ -286,7 +182,7 @@ export function updateVersionedIdlIx(
     customLayoutUrl
   );
 
-  const ixData = serialize(UpdateVersionedIdlSchema, ixDataObject);
+  const ixData = ixDataObject.encode();
 
   const ix = new TransactionInstruction({
     programId: programId,
@@ -298,7 +194,7 @@ export function updateVersionedIdlIx(
       { pubkey: targetProgramAuthorityKey, isSigner: true, isWritable: false },
       { pubkey: nameServiceKey, isSigner: false, isWritable: false },
     ],
-    data: Buffer.from(ixData),
+    data: ixData,
   });
 
   return ix;

@@ -1,1 +1,1 @@
-export * from "./bindings";
+export * from "./program/program-metadata";

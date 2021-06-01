@@ -95,7 +95,7 @@ pub fn process_create_metadata_entry(
     accounts: &[AccountInfo],
     name: String,
     value: String,
-    hashed_name: Vec<u8>,
+    hashed_name: [u8; 32],
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let class_account_info = next_account_info(account_info_iter)?;

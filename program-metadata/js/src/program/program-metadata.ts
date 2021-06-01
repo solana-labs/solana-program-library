@@ -6,11 +6,11 @@ import {
   TransactionInstruction,
 } from "@solana/web3.js";
 import { createHash } from "crypto";
+import { SerializationMethod } from "../idl/idl-coder";
 import {
   createMetadataEntryIx,
   createVersionedIdlIx,
   deleteMetadataEntryIx,
-  SerializationMethod,
   updateMetadataEntryIx,
   updateVersionedIdlIx,
 } from "./instruction";

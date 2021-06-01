@@ -23,7 +23,7 @@ pub enum MetadataInstruction {
     CreateMetadataEntry {
         name: String,
         value: String,
-        hashed_name: Vec<u8>,
+        hashed_name: [u8; 32],
     },
 
     ///   0. `[]` Class account (seed: ['program_metadata', target_program_key, program_metadata_key])
@@ -89,7 +89,7 @@ pub fn create_metadata_entry(
     name_service: Pubkey,
     name: String,
     value: String,
-    hashed_name: Vec<u8>,
+    hashed_name: [u8; 32],
 ) -> Instruction {
     Instruction {
         program_id,

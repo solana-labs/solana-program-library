@@ -1,10 +1,10 @@
 /// <reference types="node" />
-import BN from 'bn.js';
+import BN from "bn.js";
 export declare class Numberu32 extends BN {
     constructor(n: number);
     /**
-   * Convert to Buffer representation
-   */
+     * Convert to Buffer representation
+     */
     toBuffer(): Buffer;
     /**
      * Construct a Numberu64 from Buffer representation

@@ -5,14 +5,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Assignable = exports.Numberu32 = void 0;
 const bn_js_1 = __importDefault(require("bn.js"));
-const assert = require('assert');
+const assert = require("assert");
 class Numberu32 extends bn_js_1.default {
     constructor(n) {
         super(n);
     }
     /**
-   * Convert to Buffer representation
-   */
+     * Convert to Buffer representation
+     */
     toBuffer() {
         const a = super.toArray().reverse();
         const b = Buffer.from(a);
