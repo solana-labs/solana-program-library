@@ -280,15 +280,15 @@ pub enum LendingInstruction {
     ///   1. `[writable]` Destination liquidity token account.
     ///                     Minted by reserve liquidity mint.
     ///   2. `[writable]` Reserve account.
-    ///   3. `[]` Lending market account.
-    ///   4. `[]` Derived lending market authority.
-    ///   5. `[]` Flash loan receiver program account.
-    ///             Must implement an instruction that has tag of 0 and a signature of `(repay_amount: u64)`
-    ///             This instruction must return the amount to the source liquidity account.
-    ///   6. `[]` Token program id.
-    ///   7. `[writable]` Flash loan fee receiver account.
+    ///   3. `[writable]` Flash loan fee receiver account.
     ///                     Must match the reserve liquidity fee receiver.
-    ///   8. `[writable]` Host fee receiver.
+    ///   4. `[writable]` Host fee receiver.
+    ///   5. `[]` Lending market account.
+    ///   6. `[]` Derived lending market authority.
+    ///   7. `[]` Token program id.
+    ///   8. `[]` Flash loan receiver program id.
+    ///             Must implement an instruction that has tag of 0 and a signature of `(amount: u64)`
+    ///             This instruction must return the amount to the source liquidity account.
     ///   .. `[any]` Additional accounts expected by the receiving program's `ReceiveFlashLoan` instruction.
     ///
     ///   The flash loan receiver program that is to be invoked should contain an instruction with
@@ -302,7 +302,7 @@ pub enum LendingInstruction {
     ///   2. `[]` Token program id
     ///   .. `[any]` Additional accounts provided to the lending program's `FlashLoan` instruction above.
     ///   ReceiveFlashLoan {
-    ///       // Amount that is loaned to the receiver program
+    ///       // Amount that must be repaid by the receiver program
     ///       amount: u64
     ///   }
     FlashLoan {
@@ -942,28 +942,31 @@ pub fn liquidate_obligation(
 pub fn flash_loan(
     program_id: Pubkey,
     amount: u64,
-    reserve_liquidity_pubkey: Pubkey,
+    source_liquidity_pubkey: Pubkey,
     destination_liquidity_pubkey: Pubkey,
     reserve_pubkey: Pubkey,
-    lending_market_pubkey: Pubkey,
-    derived_lending_market_authority_pubkey: Pubkey,
-    flash_loan_receiver_pubkey: Pubkey,
-    flash_loan_fee_receiver_pubkey: Pubkey,
+    reserve_liquidity_fee_receiver_pubkey: Pubkey,
     host_fee_receiver_pubkey: Pubkey,
-    flash_loan_receiver_program_account_meta: Vec<AccountMeta>,
+    lending_market_pubkey: Pubkey,
+    flash_loan_receiver_program_id: Pubkey,
+    flash_loan_receiver_program_accounts: Vec<AccountMeta>,
 ) -> Instruction {
+    let (lending_market_authority_pubkey, _bump_seed) = Pubkey::find_program_address(
+        &[&lending_market_pubkey.to_bytes()[..PUBKEY_BYTES]],
+        &program_id,
+    );
     let mut accounts = vec![
-        AccountMeta::new(reserve_liquidity_pubkey, false),
+        AccountMeta::new(source_liquidity_pubkey, false),
         AccountMeta::new(destination_liquidity_pubkey, false),
-        AccountMeta::new_readonly(reserve_pubkey, false),
-        AccountMeta::new_readonly(lending_market_pubkey, false),
-        AccountMeta::new_readonly(derived_lending_market_authority_pubkey, false),
-        AccountMeta::new_readonly(flash_loan_receiver_pubkey, false),
-        AccountMeta::new(flash_loan_fee_receiver_pubkey, false),
+        AccountMeta::new(reserve_pubkey, false),
+        AccountMeta::new(reserve_liquidity_fee_receiver_pubkey, false),
         AccountMeta::new(host_fee_receiver_pubkey, false),
+        AccountMeta::new_readonly(lending_market_pubkey, false),
+        AccountMeta::new_readonly(lending_market_authority_pubkey, false),
         AccountMeta::new_readonly(spl_token::id(), false),
+        AccountMeta::new_readonly(flash_loan_receiver_program_id, false),
     ];
-    accounts.extend(flash_loan_receiver_program_account_meta);
+    accounts.extend(flash_loan_receiver_program_accounts);
     Instruction {
         program_id,
         accounts,

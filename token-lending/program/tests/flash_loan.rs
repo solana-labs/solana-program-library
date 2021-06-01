@@ -5,16 +5,15 @@ mod helpers;
 use helpers::*;
 use solana_program::instruction::AccountMeta;
 use solana_program_test::*;
-use solana_sdk::signature::Signer;
-use solana_sdk::transaction::{Transaction, TransactionError};
-use solana_sdk::{pubkey::Pubkey, signature::Keypair};
+use solana_sdk::{
+    pubkey::Pubkey,
+    signature::{Keypair, Signer},
+    transaction::{Transaction, TransactionError},
+};
 use spl_token::solana_program::instruction::InstructionError;
-use spl_token_lending::error::LendingError;
-use spl_token_lending::instruction::flash_loan;
-use spl_token_lending::math::Decimal;
-use spl_token_lending::processor::process_instruction;
-
-const INITIAL_RESERVE_LIQUIDITY: u64 = 1_000_000;
+use spl_token_lending::{
+    error::LendingError, instruction::flash_loan, processor::process_instruction,
+};
 
 #[tokio::test]
 async fn test_success() {
@@ -25,131 +24,11 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(118_000);
+    test.set_bpf_compute_max_units(50_000);
 
-    let receiver_program_account = Keypair::new();
-    let receiver_program_id = receiver_program_account.pubkey();
-    test.add_program(
-        "flash_loan_receiver",
-        receiver_program_id.clone(),
-        processor!(helpers::flash_loan_receiver::process_instruction),
-    );
-
-    let user_accounts_owner = Keypair::new();
-    let usdc_mint = add_usdc_mint(&mut test);
-    let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
-
-    let reserve_config = TEST_RESERVE_CONFIG;
-    let flash_loan_amount = 1_000_000u64;
-    let (flash_loan_fee, host_fee) = TEST_RESERVE_CONFIG
-        .fees
-        .calculate_flash_loan_fees(Decimal::from(flash_loan_amount))
-        .unwrap();
-
-    let usdc_reserve = add_reserve(
-        &mut test,
-        &lending_market,
-        &user_accounts_owner,
-        AddReserveArgs {
-            liquidity_amount: INITIAL_RESERVE_LIQUIDITY,
-            liquidity_mint_pubkey: usdc_mint.pubkey,
-            liquidity_mint_decimals: usdc_mint.decimals,
-            config: reserve_config,
-            user_liquidity_amount: flash_loan_fee,
-            ..AddReserveArgs::default()
-        },
-    );
-
-    let (receiver_authority_pubkey, _) =
-        Pubkey::find_program_address(&[b"flashloan"], &receiver_program_id);
-    let program_owned_token_account = add_account_for_program(
-        &mut test,
-        &receiver_authority_pubkey,
-        flash_loan_fee,
-        &usdc_mint.pubkey,
-    );
-
-    let (mut banks_client, payer, recent_blockhash) = test.start().await;
-
-    let before_flash_loan_reserve_liquidity_token_balance =
-        get_token_balance(&mut banks_client, usdc_reserve.liquidity_supply_pubkey).await;
-    assert_eq!(
-        before_flash_loan_reserve_liquidity_token_balance,
-        INITIAL_RESERVE_LIQUIDITY
-    );
-
-    let before_flash_loan_reserve = usdc_reserve.get_state(&mut banks_client).await;
-    assert_eq!(
-        before_flash_loan_reserve.liquidity.available_amount,
-        INITIAL_RESERVE_LIQUIDITY
-    );
-
-    let before_flash_loan_token_balance =
-        get_token_balance(&mut banks_client, program_owned_token_account).await;
-    // There should be enough token at the beginning to pay back the flash loan fee.
-    assert_eq!(before_flash_loan_token_balance, flash_loan_fee);
-
-    let mut transaction = Transaction::new_with_payer(
-        &[flash_loan(
-            spl_token_lending::id(),
-            flash_loan_amount,
-            usdc_reserve.liquidity_supply_pubkey,
-            program_owned_token_account,
-            usdc_reserve.pubkey,
-            lending_market.pubkey,
-            lending_market.authority,
-            receiver_program_id.clone(),
-            usdc_reserve.liquidity_fee_receiver_pubkey,
-            usdc_reserve.liquidity_host_pubkey,
-            vec![AccountMeta::new_readonly(
-                receiver_authority_pubkey.clone(),
-                false,
-            )],
-        )],
-        Some(&payer.pubkey()),
-    );
-
-    transaction.sign(&[&payer], recent_blockhash);
-    assert!(banks_client.process_transaction(transaction).await.is_ok());
-
-    let after_flash_loan_reserve_liquidity_token_balance =
-        get_token_balance(&mut banks_client, usdc_reserve.liquidity_supply_pubkey).await;
-    assert_eq!(
-        after_flash_loan_reserve_liquidity_token_balance,
-        INITIAL_RESERVE_LIQUIDITY
-    );
-
-    let after_flash_loan_reserve = usdc_reserve.get_state(&mut banks_client).await;
-    assert_eq!(
-        after_flash_loan_reserve.liquidity.available_amount,
-        INITIAL_RESERVE_LIQUIDITY
-    );
-
-    let after_flash_loan_token_balance =
-        get_token_balance(&mut banks_client, program_owned_token_account).await;
-    assert_eq!(after_flash_loan_token_balance, 0);
-    let fee_balance = get_token_balance(
-        &mut banks_client,
-        usdc_reserve.liquidity_fee_receiver_pubkey,
-    )
-    .await;
-    assert_eq!(fee_balance, flash_loan_fee - host_fee);
-
-    let host_fee_balance =
-        get_token_balance(&mut banks_client, usdc_reserve.liquidity_host_pubkey).await;
-    assert_eq!(host_fee_balance, host_fee);
-}
-
-#[tokio::test]
-async fn test_failure() {
-    let mut test = ProgramTest::new(
-        "spl_token_lending",
-        spl_token_lending::id(),
-        processor!(process_instruction),
-    );
-
-    // limit to track compute unit increase
-    test.set_bpf_compute_max_units(118_000);
+    const FLASH_LOAN_AMOUNT: u64 = 1_000 * FRACTIONAL_TO_USDC;
+    const FEE_AMOUNT: u64 = 3_000_000;
+    const HOST_FEE_AMOUNT: u64 = 600_000;
 
     let receiver_program_account = Keypair::new();
     let receiver_program_id = receiver_program_account.pubkey();
@@ -164,55 +43,164 @@ async fn test_failure() {
     let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
 
     let mut reserve_config = TEST_RESERVE_CONFIG;
-    reserve_config.loan_to_value_ratio = 80;
-    let flash_loan_amount = 1_000_000u64;
-    let (flash_loan_fee, _host_fee) = TEST_RESERVE_CONFIG
-        .fees
-        .calculate_flash_loan_fees(Decimal::from(flash_loan_amount))
-        .unwrap();
+    reserve_config.fees.flash_loan_fee_wad = 3_000_000_000_000_000;
 
-    let usdc_reserve = add_reserve(
+    let usdc_test_reserve = add_reserve(
         &mut test,
         &lending_market,
         &user_accounts_owner,
         AddReserveArgs {
-            liquidity_amount: INITIAL_RESERVE_LIQUIDITY,
+            liquidity_amount: FLASH_LOAN_AMOUNT,
             liquidity_mint_pubkey: usdc_mint.pubkey,
             liquidity_mint_decimals: usdc_mint.decimals,
             config: reserve_config,
-            user_liquidity_amount: flash_loan_fee,
             ..AddReserveArgs::default()
         },
     );
+
     let (receiver_authority_pubkey, _) =
         Pubkey::find_program_address(&[b"flashloan"], &receiver_program_id);
     let program_owned_token_account = add_account_for_program(
         &mut test,
         &receiver_authority_pubkey,
-        // Provide Insufficient fund to exercise the flash loan returned fund check.
-        flash_loan_fee - 1,
+        FEE_AMOUNT,
         &usdc_mint.pubkey,
     );
 
     let (mut banks_client, payer, recent_blockhash) = test.start().await;
 
-    let before_flash_loan_token_balance =
+    let initial_liquidity_supply =
+        get_token_balance(&mut banks_client, usdc_test_reserve.liquidity_supply_pubkey).await;
+    assert_eq!(initial_liquidity_supply, FLASH_LOAN_AMOUNT);
+
+    let usdc_reserve = usdc_test_reserve.get_state(&mut banks_client).await;
+    let initial_available_amount = usdc_reserve.liquidity.available_amount;
+    assert_eq!(initial_available_amount, FLASH_LOAN_AMOUNT);
+
+    let initial_token_balance =
         get_token_balance(&mut banks_client, program_owned_token_account).await;
-    // There should be not enough token at the beginning.
-    assert_eq!(before_flash_loan_token_balance, flash_loan_fee - 1);
+    assert_eq!(initial_token_balance, FEE_AMOUNT);
 
     let mut transaction = Transaction::new_with_payer(
         &[flash_loan(
             spl_token_lending::id(),
-            flash_loan_amount,
-            usdc_reserve.liquidity_supply_pubkey,
+            FLASH_LOAN_AMOUNT,
+            usdc_test_reserve.liquidity_supply_pubkey,
             program_owned_token_account,
-            usdc_reserve.pubkey,
+            usdc_test_reserve.pubkey,
+            usdc_test_reserve.liquidity_fee_receiver_pubkey,
+            usdc_test_reserve.liquidity_host_pubkey,
             lending_market.pubkey,
-            lending_market.authority,
             receiver_program_id.clone(),
-            usdc_reserve.liquidity_fee_receiver_pubkey,
-            usdc_reserve.liquidity_host_pubkey,
+            vec![AccountMeta::new_readonly(
+                receiver_authority_pubkey.clone(),
+                false,
+            )],
+        )],
+        Some(&payer.pubkey()),
+    );
+
+    transaction.sign(&[&payer], recent_blockhash);
+    assert!(banks_client.process_transaction(transaction).await.is_ok());
+
+    let usdc_reserve = usdc_test_reserve.get_state(&mut banks_client).await;
+    assert_eq!(
+        usdc_reserve.liquidity.available_amount,
+        initial_available_amount
+    );
+
+    let (total_fee, host_fee) = usdc_reserve
+        .config
+        .fees
+        .calculate_flash_loan_fees(FLASH_LOAN_AMOUNT.into())
+        .unwrap();
+    assert_eq!(total_fee, FEE_AMOUNT);
+    assert_eq!(host_fee, HOST_FEE_AMOUNT);
+
+    let liquidity_supply =
+        get_token_balance(&mut banks_client, usdc_test_reserve.liquidity_supply_pubkey).await;
+    assert_eq!(liquidity_supply, initial_liquidity_supply);
+
+    let token_balance = get_token_balance(&mut banks_client, program_owned_token_account).await;
+    assert_eq!(token_balance, initial_token_balance - FEE_AMOUNT);
+
+    let fee_balance = get_token_balance(
+        &mut banks_client,
+        usdc_test_reserve.liquidity_fee_receiver_pubkey,
+    )
+    .await;
+    assert_eq!(fee_balance, FEE_AMOUNT - HOST_FEE_AMOUNT);
+
+    let host_fee_balance =
+        get_token_balance(&mut banks_client, usdc_test_reserve.liquidity_host_pubkey).await;
+    assert_eq!(host_fee_balance, HOST_FEE_AMOUNT);
+}
+
+#[tokio::test]
+async fn test_failure() {
+    let mut test = ProgramTest::new(
+        "spl_token_lending",
+        spl_token_lending::id(),
+        processor!(process_instruction),
+    );
+
+    const FLASH_LOAN_AMOUNT: u64 = 1_000 * FRACTIONAL_TO_USDC;
+    const FEE_AMOUNT: u64 = 3_000_000;
+
+    let flash_loan_receiver_program_keypair = Keypair::new();
+    let flash_loan_receiver_program_id = flash_loan_receiver_program_keypair.pubkey();
+    test.add_program(
+        "flash_loan_receiver",
+        flash_loan_receiver_program_id.clone(),
+        processor!(helpers::flash_loan_receiver::process_instruction),
+    );
+
+    let user_accounts_owner = Keypair::new();
+    let usdc_mint = add_usdc_mint(&mut test);
+    let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
+
+    let mut reserve_config = TEST_RESERVE_CONFIG;
+    reserve_config.fees.flash_loan_fee_wad = 3_000_000_000_000_000;
+
+    let usdc_test_reserve = add_reserve(
+        &mut test,
+        &lending_market,
+        &user_accounts_owner,
+        AddReserveArgs {
+            liquidity_amount: FLASH_LOAN_AMOUNT,
+            liquidity_mint_pubkey: usdc_mint.pubkey,
+            liquidity_mint_decimals: usdc_mint.decimals,
+            config: reserve_config,
+            ..AddReserveArgs::default()
+        },
+    );
+
+    let (receiver_authority_pubkey, _) =
+        Pubkey::find_program_address(&[b"flashloan"], &flash_loan_receiver_program_id);
+    let program_owned_token_account = add_account_for_program(
+        &mut test,
+        &receiver_authority_pubkey,
+        FEE_AMOUNT - 1,
+        &usdc_mint.pubkey,
+    );
+
+    let (mut banks_client, payer, recent_blockhash) = test.start().await;
+
+    let initial_token_balance =
+        get_token_balance(&mut banks_client, program_owned_token_account).await;
+    assert_eq!(initial_token_balance, FEE_AMOUNT - 1);
+
+    let mut transaction = Transaction::new_with_payer(
+        &[flash_loan(
+            spl_token_lending::id(),
+            FLASH_LOAN_AMOUNT,
+            usdc_test_reserve.liquidity_supply_pubkey,
+            program_owned_token_account,
+            usdc_test_reserve.pubkey,
+            usdc_test_reserve.liquidity_fee_receiver_pubkey,
+            usdc_test_reserve.liquidity_host_pubkey,
+            lending_market.pubkey,
+            flash_loan_receiver_program_id.clone(),
             vec![AccountMeta::new_readonly(
                 receiver_authority_pubkey.clone(),
                 false,

@@ -153,9 +153,13 @@ pub enum LendingError {
     /// Oracle config is invalid
     #[error("Input oracle config is invalid")]
     InvalidOracleConfig,
+    /// Expected a different flash loan receiver program
+    #[error("Input flash loan receiver program account is not valid")]
+    InvalidFlashLoanReceiverProgram,
     /// Not enough liquidity after flash loan
     #[error("Not enough liquidity after flash loan")]
     NotEnoughLiquidityAfterFlashLoan,
+    // 45
 }
 
 impl From<LendingError> for ProgramError {
