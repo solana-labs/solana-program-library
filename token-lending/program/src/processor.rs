@@ -1550,6 +1550,10 @@ fn process_flash_loan(
     if lending_market_info.owner != program_id {
         return Err(LendingError::InvalidAccountOwner.into());
     }
+    if &lending_market.token_program_id != token_program_id.key {
+        msg!("Lending market token program does not match the token program provided");
+        return Err(LendingError::InvalidTokenProgram.into());
+    }
 
     let authority_signer_seeds = &[
         lending_market_info.key.as_ref(),
