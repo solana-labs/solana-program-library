@@ -97,6 +97,8 @@ async fn success() {
         validator_list,
         state::ValidatorList {
             account_type: state::AccountType::ValidatorList,
+            preferred_deposit_validator_vote_address: None,
+            preferred_withdraw_validator_vote_address: None,
             max_validators: stake_pool_accounts.max_validators,
             validators: vec![]
         }
@@ -520,6 +522,8 @@ async fn success_with_deactivating_transient_stake() {
         try_from_slice_unchecked::<state::ValidatorList>(validator_list.data.as_slice()).unwrap();
     let expected_list = state::ValidatorList {
         account_type: state::AccountType::ValidatorList,
+        preferred_deposit_validator_vote_address: None,
+        preferred_withdraw_validator_vote_address: None,
         max_validators: stake_pool_accounts.max_validators,
         validators: vec![state::ValidatorStakeInfo {
             status: state::StakeStatus::DeactivatingTransient,
@@ -550,6 +554,74 @@ async fn success_with_deactivating_transient_stake() {
     let validator_list =
         try_from_slice_unchecked::<state::ValidatorList>(validator_list.data.as_slice()).unwrap();
     assert_eq!(validator_list, expected_list);
+}
+
+#[tokio::test]
+async fn success_resets_preferred_validator() {
+    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
+        setup().await;
+
+    stake_pool_accounts
+        .set_preferred_validator(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            instruction::PreferredValidatorType::Deposit,
+            Some(validator_stake.vote.pubkey()),
+        )
+        .await;
+    stake_pool_accounts
+        .set_preferred_validator(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            instruction::PreferredValidatorType::Withdraw,
+            Some(validator_stake.vote.pubkey()),
+        )
+        .await;
+
+    let new_authority = Pubkey::new_unique();
+    let error = stake_pool_accounts
+        .remove_validator_from_pool(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            &new_authority,
+            &validator_stake.stake_account,
+            &validator_stake.transient_stake_account,
+        )
+        .await;
+    assert!(error.is_none());
+
+    // Check if account was removed from the list of stake accounts
+    let validator_list = get_account(
+        &mut banks_client,
+        &stake_pool_accounts.validator_list.pubkey(),
+    )
+    .await;
+    let validator_list =
+        try_from_slice_unchecked::<state::ValidatorList>(validator_list.data.as_slice()).unwrap();
+    assert_eq!(
+        validator_list,
+        state::ValidatorList {
+            account_type: state::AccountType::ValidatorList,
+            preferred_deposit_validator_vote_address: None,
+            preferred_withdraw_validator_vote_address: None,
+            max_validators: stake_pool_accounts.max_validators,
+            validators: vec![]
+        }
+    );
+
+    // Check of stake account authority has changed
+    let stake = get_account(&mut banks_client, &validator_stake.stake_account).await;
+    let stake_state = deserialize::<stake_program::StakeState>(&stake.data).unwrap();
+    match stake_state {
+        stake_program::StakeState::Stake(meta, _) => {
+            assert_eq!(&meta.authorized.staker, &new_authority);
+            assert_eq!(&meta.authorized.withdrawer, &new_authority);
+        }
+        _ => panic!(),
+    }
 }
 
 #[tokio::test]

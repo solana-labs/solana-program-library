@@ -606,7 +606,7 @@ impl StakePoolAccounts {
         pool_account: &Pubkey,
         validator_stake_account: &Pubkey,
         current_staker: &Keypair,
-    ) -> Result<(), TransportError> {
+    ) -> Option<TransportError> {
         let mut signers = vec![payer, current_staker];
         let instructions = if let Some(deposit_authority) = self.deposit_authority_keypair.as_ref()
         {
@@ -644,8 +644,7 @@ impl StakePoolAccounts {
             &signers,
             *recent_blockhash,
         );
-        banks_client.process_transaction(transaction).await?;
-        Ok(())
+        banks_client.process_transaction(transaction).await.err()
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -873,6 +872,30 @@ impl StakePoolAccounts {
         );
         banks_client.process_transaction(transaction).await.err()
     }
+
+    pub async fn set_preferred_validator(
+        &self,
+        banks_client: &mut BanksClient,
+        payer: &Keypair,
+        recent_blockhash: &Hash,
+        validator_type: instruction::PreferredValidatorType,
+        validator: Option<Pubkey>,
+    ) -> Option<TransportError> {
+        let transaction = Transaction::new_signed_with_payer(
+            &[instruction::set_preferred_validator(
+                &id(),
+                &self.stake_pool.pubkey(),
+                &self.staker.pubkey(),
+                &self.validator_list.pubkey(),
+                validator_type,
+                validator,
+            )],
+            Some(&payer.pubkey()),
+            &[payer, &self.staker],
+            *recent_blockhash,
+        );
+        banks_client.process_transaction(transaction).await.err()
+    }
 }
 
 pub async fn simple_add_validator_to_pool(
@@ -986,7 +1009,7 @@ impl DepositStakeAccount {
         .await
         .unwrap();
 
-        stake_pool_accounts
+        let error = stake_pool_accounts
             .deposit_stake(
                 banks_client,
                 payer,
@@ -996,8 +1019,8 @@ impl DepositStakeAccount {
                 &self.validator_stake_account,
                 &self.authority,
             )
-            .await
-            .unwrap();
+            .await;
+        assert!(error.is_none());
     }
 }
 
@@ -1051,7 +1074,7 @@ pub async fn simple_deposit(
     .unwrap();
 
     let validator_stake_account = validator_stake_account.stake_account;
-    stake_pool_accounts
+    let error = stake_pool_accounts
         .deposit_stake(
             banks_client,
             payer,
@@ -1061,8 +1084,11 @@ pub async fn simple_deposit(
             &validator_stake_account,
             &authority,
         )
-        .await
-        .ok()?;
+        .await;
+    // backwards, but oh well!
+    if error.is_some() {
+        return None;
+    }
 
     let pool_tokens = get_token_balance(banks_client, &pool_account.pubkey()).await;
 

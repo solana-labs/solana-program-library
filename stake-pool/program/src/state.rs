@@ -286,6 +286,12 @@ pub struct ValidatorList {
     /// Account type, must be ValidatorList currently
     pub account_type: AccountType,
 
+    /// Preferred deposit validator vote account pubkey
+    pub preferred_deposit_validator_vote_address: Option<Pubkey>,
+
+    /// Preferred withdraw validator vote account pubkey
+    pub preferred_withdraw_validator_vote_address: Option<Pubkey>,
+
     /// Maximum allowable number of validators
     pub max_validators: u32,
 
@@ -332,10 +338,12 @@ pub struct ValidatorStakeInfo {
 }
 
 impl ValidatorList {
-    /// Create an empty instance containing space for `max_validators`
+    /// Create an empty instance containing space for `max_validators` and preferred validator keys
     pub fn new(max_validators: u32) -> Self {
         Self {
             account_type: AccountType::ValidatorList,
+            preferred_deposit_validator_vote_address: Some(Pubkey::default()),
+            preferred_withdraw_validator_vote_address: Some(Pubkey::default()),
             max_validators,
             validators: vec![ValidatorStakeInfo::default(); max_validators as usize],
         }
@@ -343,7 +351,7 @@ impl ValidatorList {
 
     /// Calculate the number of validator entries that fit in the provided length
     pub fn calculate_max_validators(buffer_length: usize) -> usize {
-        let header_size = 1 + 4 + 4;
+        let header_size = 1 + 4 + 4 + 33 + 33;
         buffer_length.saturating_sub(header_size) / 49
     }
 
@@ -406,6 +414,8 @@ mod test {
         // Not initialized
         let stake_list = ValidatorList {
             account_type: AccountType::Uninitialized,
+            preferred_deposit_validator_vote_address: None,
+            preferred_withdraw_validator_vote_address: None,
             max_validators: 0,
             validators: vec![],
         };
@@ -415,9 +425,11 @@ mod test {
         let stake_list_unpacked = try_from_slice_unchecked::<ValidatorList>(&byte_vec).unwrap();
         assert_eq!(stake_list_unpacked, stake_list);
 
-        // Empty
+        // Empty, one preferred key
         let stake_list = ValidatorList {
             account_type: AccountType::ValidatorList,
+            preferred_deposit_validator_vote_address: Some(Pubkey::new_unique()),
+            preferred_withdraw_validator_vote_address: None,
             max_validators: 0,
             validators: vec![],
         };
@@ -430,6 +442,8 @@ mod test {
         // With several accounts
         let stake_list = ValidatorList {
             account_type: AccountType::ValidatorList,
+            preferred_deposit_validator_vote_address: Some(Pubkey::new_unique()),
+            preferred_withdraw_validator_vote_address: Some(Pubkey::new_unique()),
             max_validators,
             validators: vec![
                 ValidatorStakeInfo {

@@ -32,6 +32,7 @@ use {
         self,
         borsh::get_instance_packed_len,
         find_stake_program_address, find_withdraw_authority_program_address,
+        instruction::PreferredValidatorType,
         stake_program::{self, StakeState},
         state::{Fee, StakePool, ValidatorList},
     },
@@ -462,6 +463,34 @@ fn command_decrease_validator_stake(
         &[config.fee_payer.as_ref(), config.staker.as_ref()],
         recent_blockhash,
     );
+    send_transaction(&config, transaction)?;
+    Ok(())
+}
+
+fn command_set_preferred_validator(
+    config: &Config,
+    stake_pool_address: &Pubkey,
+    preferred_type: PreferredValidatorType,
+    vote_address: Option<Pubkey>,
+) -> CommandResult {
+    let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
+    let mut transaction = Transaction::new_with_payer(
+        &[spl_stake_pool::instruction::set_preferred_validator(
+            &spl_stake_pool::id(),
+            &stake_pool_address,
+            &config.staker.pubkey(),
+            &stake_pool.validator_list,
+            preferred_type,
+            vote_address,
+        )],
+        Some(&config.fee_payer.pubkey()),
+    );
+
+    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+    check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
+    let mut signers = vec![config.fee_payer.as_ref(), config.staker.as_ref()];
+    unique_signers!(signers);
+    transaction.sign(&signers, recent_blockhash);
     send_transaction(&config, transaction)?;
     Ok(())
 }
@@ -1340,6 +1369,46 @@ fn main() {
                     .help("Amount in lamports to remove from the validator stake account. Must be at least the rent-exempt amount for a stake."),
             )
         )
+        .subcommand(SubCommand::with_name("set-preferred-validator")
+            .about("Set the preferred validator for deposits or withdrawals. Must be signed by the pool staker.")
+            .arg(
+                Arg::with_name("pool")
+                    .index(1)
+                    .validator(is_pubkey)
+                    .value_name("POOL_ADDRESS")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Stake pool address"),
+            )
+            .arg(
+                Arg::with_name("preferred_type")
+                    .index(2)
+                    .value_name("OPERATION")
+                    .possible_values(&["deposit", "withdraw"]) // PreferredValidatorType enum
+                    .takes_value(true)
+                    .required(true)
+                    .help("Operation for which to restrict the validator"),
+            )
+            .arg(
+                Arg::with_name("vote_account")
+                    .long("vote-account")
+                    .validator(is_pubkey)
+                    .value_name("VOTE_ACCOUNT_ADDRESS")
+                    .takes_value(true)
+                    .help("Vote account for the validator that users must deposit into."),
+            )
+            .arg(
+                Arg::with_name("unset")
+                    .long("unset")
+                    .takes_value(false)
+                    .help("Unset the preferred validator."),
+            )
+            .group(ArgGroup::with_name("validator")
+                .arg("vote_account")
+                .arg("unset")
+                .required(true)
+            )
+        )
         .subcommand(SubCommand::with_name("deposit")
             .about("Add stake account to the stake pool")
             .arg(
@@ -1677,6 +1746,24 @@ fn main() {
             let vote_account = pubkey_of(arg_matches, "vote_account").unwrap();
             let amount = value_t_or_exit!(arg_matches, "amount", f64);
             command_decrease_validator_stake(&config, &stake_pool_address, &vote_account, amount)
+        }
+        ("set-preferred-validator", Some(arg_matches)) => {
+            let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
+            let preferred_type = match arg_matches.value_of("preferred_type").unwrap() {
+                "deposit" => PreferredValidatorType::Deposit,
+                "withdraw" => PreferredValidatorType::Withdraw,
+                _ => unreachable!(),
+            };
+            let vote_account = pubkey_of(arg_matches, "vote_account");
+            let _unset = arg_matches.is_present("unset");
+            // since unset and vote_account can't both be set, if unset is set
+            // then vote_account will be None, which is valid for the program
+            command_set_preferred_validator(
+                &config,
+                &stake_pool_address,
+                preferred_type,
+                vote_account,
+            )
         }
         ("deposit", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();

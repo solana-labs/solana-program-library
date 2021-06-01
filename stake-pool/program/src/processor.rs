@@ -5,7 +5,7 @@ use {
         borsh::try_from_slice_unchecked,
         error::StakePoolError,
         find_deposit_authority_program_address,
-        instruction::StakePoolInstruction,
+        instruction::{PreferredValidatorType, StakePoolInstruction},
         minimum_reserve_lamports, minimum_stake_lamports, stake_program,
         state::{AccountType, Fee, StakePool, StakeStatus, ValidatorList, ValidatorStakeInfo},
         AUTHORITY_DEPOSIT, AUTHORITY_WITHDRAW, MINIMUM_ACTIVE_STAKE, TRANSIENT_STAKE_SEED,
@@ -432,6 +432,8 @@ impl Processor {
             return Err(StakePoolError::UnexpectedValidatorListAccountSize.into());
         }
         validator_list.account_type = AccountType::ValidatorList;
+        validator_list.preferred_deposit_validator_vote_address = None;
+        validator_list.preferred_withdraw_validator_vote_address = None;
         validator_list.validators.clear();
         validator_list.max_validators = max_validators;
 
@@ -862,6 +864,13 @@ impl Processor {
                 .retain(|item| item.vote_account_address != vote_account_address),
             _ => unreachable!(),
         }
+
+        if validator_list.preferred_deposit_validator_vote_address == Some(vote_account_address) {
+            validator_list.preferred_deposit_validator_vote_address = None;
+        }
+        if validator_list.preferred_withdraw_validator_vote_address == Some(vote_account_address) {
+            validator_list.preferred_withdraw_validator_vote_address = None;
+        }
         validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
 
         Ok(())
@@ -1147,6 +1156,55 @@ impl Processor {
             .ok_or(StakePoolError::CalculationFailure)?;
         validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
 
+        Ok(())
+    }
+
+    /// Process `SetPreferredValidator` instruction
+    fn process_set_preferred_validator(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        validator_type: PreferredValidatorType,
+        vote_account_address: Option<Pubkey>,
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let stake_pool_info = next_account_info(account_info_iter)?;
+        let staker_info = next_account_info(account_info_iter)?;
+        let validator_list_info = next_account_info(account_info_iter)?;
+
+        check_account_owner(stake_pool_info, program_id)?;
+        check_account_owner(validator_list_info, program_id)?;
+
+        let stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
+        if !stake_pool.is_valid() {
+            msg!("Expected valid stake pool");
+            return Err(StakePoolError::InvalidState.into());
+        }
+
+        stake_pool.check_staker(staker_info)?;
+        stake_pool.check_validator_list(validator_list_info)?;
+
+        let mut validator_list =
+            try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
+        if !validator_list.is_valid() {
+            return Err(StakePoolError::InvalidState.into());
+        }
+
+        if let Some(vote_account_address) = vote_account_address {
+            if !validator_list.contains(&vote_account_address) {
+                msg!("Validator for {} not present in the stake pool, cannot set as preferred deposit account");
+                return Err(StakePoolError::ValidatorNotFound.into());
+            }
+        }
+
+        match validator_type {
+            PreferredValidatorType::Deposit => {
+                validator_list.preferred_deposit_validator_vote_address = vote_account_address
+            }
+            PreferredValidatorType::Withdraw => {
+                validator_list.preferred_withdraw_validator_vote_address = vote_account_address
+            }
+        };
+        validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
         Ok(())
     }
 
@@ -1484,7 +1542,6 @@ impl Processor {
         let clock_info = next_account_info(account_info_iter)?;
         let clock = &Clock::from_account_info(clock_info)?;
         let stake_history_info = next_account_info(account_info_iter)?;
-        //let stake_history = &StakeHistory::from_account_info(stake_history_info)?;
         let token_program_info = next_account_info(account_info_iter)?;
         let stake_program_info = next_account_info(account_info_iter)?;
 
@@ -1533,6 +1590,11 @@ impl Processor {
             validator_stake_account_info.key,
             &vote_account_address,
         )?;
+        if let Some(preferred_deposit) = validator_list.preferred_deposit_validator_vote_address {
+            if preferred_deposit != vote_account_address {
+                return Err(StakePoolError::IncorrectDepositVoteAddress.into());
+            }
+        }
 
         let validator_list_item = validator_list
             .find_mut(&vote_account_address)
@@ -1716,6 +1778,20 @@ impl Processor {
                 stake_split_from.key,
                 &vote_account_address,
             )?;
+
+            if let Some(preferred_withdraw_validator) =
+                validator_list.preferred_withdraw_validator_vote_address
+            {
+                let preferred_validator_info = validator_list
+                    .find(&preferred_withdraw_validator)
+                    .ok_or(StakePoolError::ValidatorNotFound)?;
+                if preferred_withdraw_validator != vote_account_address
+                    && preferred_validator_info.stake_lamports > 0
+                {
+                    msg!("Validator vote address {} is preferred for withdrawals, it currently has {} lamports available. Please withdraw those before using other validator stake accounts.", preferred_withdraw_validator, preferred_validator_info.stake_lamports);
+                    return Err(StakePoolError::IncorrectWithdrawVoteAddress.into());
+                }
+            }
 
             let validator_list_item = validator_list
                 .find_mut(&vote_account_address)
@@ -1901,6 +1977,18 @@ impl Processor {
                 msg!("Instruction: IncreaseValidatorStake");
                 Self::process_increase_validator_stake(program_id, accounts, amount)
             }
+            StakePoolInstruction::SetPreferredValidator {
+                validator_type,
+                validator_vote_address,
+            } => {
+                msg!("Instruction: SetPreferredValidator");
+                Self::process_set_preferred_validator(
+                    program_id,
+                    accounts,
+                    validator_type,
+                    validator_vote_address,
+                )
+            }
             StakePoolInstruction::UpdateValidatorListBalance {
                 start_index,
                 no_merge,
@@ -1973,6 +2061,8 @@ impl PrintProgramError for StakePoolError {
             StakePoolError::WrongStaker=> msg!("Error: Wrong pool staker account"),
             StakePoolError::NonZeroPoolTokenSupply => msg!("Error: Pool token supply is not zero on initialization"),
             StakePoolError::StakeLamportsNotEqualToMinimum => msg!("Error: The lamports in the validator stake account is not equal to the minimum"),
+            StakePoolError::IncorrectDepositVoteAddress => msg!("Error: The provided deposit stake account is not delegated to the preferred deposit vote account"),
+            StakePoolError::IncorrectWithdrawVoteAddress => msg!("Error: The provided withdraw stake account is not the preferred deposit vote account"),
         }
     }
 }

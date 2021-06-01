@@ -18,6 +18,17 @@ use {
     },
 };
 
+/// Defines which validator vote account is set during the
+/// `SetPreferredValidator` instruction
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, BorshSchema)]
+pub enum PreferredValidatorType {
+    /// Set preferred validator for deposits
+    Deposit,
+    /// Set preferred validator for withdraws
+    Withdraw,
+}
+
 /// Instructions supported by the StakePool program.
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, BorshSchema)]
@@ -153,6 +164,28 @@ pub enum StakePoolInstruction {
     /// 12. `[]` Stake program
     ///  userdata: amount of lamports to split into the transient stake account
     IncreaseValidatorStake(u64),
+
+    /// (Staker only) Set the preferred deposit or withdraw stake account for the
+    /// stake pool
+    ///
+    /// In order to avoid users abusing the stake pool as a free conversion
+    /// between SOL staked on different validators, the staker can force all
+    /// deposits and/or withdraws to go to one chosen account, or unset that account.
+    ///
+    /// 0. `[]` Stake pool
+    /// 1. `[s]` Stake pool staker
+    /// 2. `[w]` Validator list
+    ///
+    /// Fails if the validator is not part of the stake pool.
+    SetPreferredValidator {
+        /// Affected operation (deposit or withdraw)
+        #[allow(dead_code)] // but it's not
+        validator_type: PreferredValidatorType,
+        /// Validator vote account that deposits or withdraws must go through,
+        /// unset with None
+        #[allow(dead_code)] // but it's not
+        validator_vote_address: Option<Pubkey>,
+    },
 
     ///  Updates balances of validator and transient stake accounts in the pool
     ///
@@ -462,6 +495,31 @@ pub fn increase_validator_stake(
         data: StakePoolInstruction::IncreaseValidatorStake(lamports)
             .try_to_vec()
             .unwrap(),
+    }
+}
+
+/// Creates `SetPreferredDepositValidator` instruction
+pub fn set_preferred_validator(
+    program_id: &Pubkey,
+    stake_pool_address: &Pubkey,
+    staker: &Pubkey,
+    validator_list_address: &Pubkey,
+    validator_type: PreferredValidatorType,
+    validator_vote_address: Option<Pubkey>,
+) -> Instruction {
+    Instruction {
+        program_id: *program_id,
+        accounts: vec![
+            AccountMeta::new_readonly(*stake_pool_address, false),
+            AccountMeta::new_readonly(*staker, true),
+            AccountMeta::new(*validator_list_address, false),
+        ],
+        data: StakePoolInstruction::SetPreferredValidator {
+            validator_type,
+            validator_vote_address,
+        }
+        .try_to_vec()
+        .unwrap(),
     }
 }
 
