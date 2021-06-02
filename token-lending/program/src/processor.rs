@@ -1752,7 +1752,7 @@ fn get_pyth_price(pyth_price_info: &AccountInfo, clock: &Clock) -> Result<Decima
     let pyth_price = pyth::load::<pyth::Price>(&pyth_price_data)
         .map_err(|_| ProgramError::InvalidAccountData)?;
 
-    if pyth_price.ptype as u32 != pyth::PriceType::Price as u32 {
+    if pyth_price.ptype != pyth::PriceType::Price {
         msg!("Oracle price type is invalid");
         return Err(LendingError::InvalidOracleConfig.into());
     }

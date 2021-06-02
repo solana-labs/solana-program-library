@@ -74,7 +74,7 @@ pub struct PriceComp {
     latest: PriceInfo,
 }
 
-#[derive(Copy, Clone)]
+#[derive(PartialEq, Copy, Clone)]
 #[repr(C)]
 pub enum PriceType {
     Unknown,
