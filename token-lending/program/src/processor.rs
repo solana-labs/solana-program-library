@@ -283,12 +283,12 @@ fn process_init_reserve(
         return Err(LendingError::InvalidOracleConfig.into());
     }
 
-    let pyth_product_pubkey_bytes: &[u8; 32] = pyth_price_info
+    let pyth_price_pubkey_bytes: &[u8; 32] = pyth_price_info
         .key
         .as_ref()
         .try_into()
         .map_err(|_| LendingError::InvalidAccountInput)?;
-    if &pyth_product.px_acc.val != pyth_product_pubkey_bytes {
+    if &pyth_product.px_acc.val != pyth_price_pubkey_bytes {
         msg!("Pyth product price account does not match the Pyth price provided");
         return Err(LendingError::InvalidOracleConfig.into());
     }
