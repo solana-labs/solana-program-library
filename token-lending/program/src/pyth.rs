@@ -14,7 +14,7 @@ pub const PROD_ACCT_SIZE: usize = 512;
 pub const PROD_HDR_SIZE: usize = 48;
 pub const PROD_ATTR_SIZE: usize = PROD_ACCT_SIZE - PROD_HDR_SIZE;
 
-#[derive(Default, Copy, Clone)]
+#[derive(Copy, Clone)]
 #[repr(C)]
 pub struct AccKey {
     pub val: [u8; 32],
@@ -38,25 +38,13 @@ pub enum PriceStatus {
     Auction,
 }
 
-impl Default for PriceStatus {
-    fn default() -> Self {
-        PriceStatus::Trading
-    }
-}
-
 #[derive(Copy, Clone)]
 #[repr(C)]
 pub enum CorpAction {
     NoCorpAct,
 }
 
-impl Default for CorpAction {
-    fn default() -> Self {
-        CorpAction::NoCorpAct
-    }
-}
-
-#[derive(Default, Copy, Clone)]
+#[derive(Copy, Clone)]
 #[repr(C)]
 pub struct PriceInfo {
     pub price: i64,
@@ -66,7 +54,7 @@ pub struct PriceInfo {
     pub pub_slot: u64,
 }
 
-#[derive(Default, Copy, Clone)]
+#[derive(Copy, Clone)]
 #[repr(C)]
 pub struct PriceComp {
     publisher: AccKey,
@@ -84,13 +72,7 @@ pub enum PriceType {
     Volatility,
 }
 
-impl Default for PriceType {
-    fn default() -> Self {
-        PriceType::Price
-    }
-}
-
-#[derive(Default, Copy, Clone)]
+#[derive(Copy, Clone)]
 #[repr(C)]
 pub struct Price {
     pub magic: u32,       // Pyth magic number.
