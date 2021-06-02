@@ -1766,27 +1766,32 @@ fn get_pyth_price(pyth_price_info: &AccountInfo, clock: &Clock) -> Result<Decima
         return Err(LendingError::InvalidOracleConfig.into());
     }
 
-    let price: u64 = pyth_price
-        .agg
-        .price
-        .checked_abs()
-        .ok_or(LendingError::MathOverflow)?
-        .try_into()
-        .map_err(|_| LendingError::MathOverflow)?;
+    let price: u64 = pyth_price.agg.price.try_into().map_err(|_| {
+        msg!("Oracle price cannot be negative");
+        LendingError::InvalidOracleConfig
+    })?;
 
-    // @TODO: handle the case that the exponent is positive?
-    let pyth_exponent = pyth_price
-        .expo
-        .checked_abs()
-        .ok_or(LendingError::MathOverflow)?
-        .try_into()
-        .map_err(|_| LendingError::MathOverflow)?;
-
-    let pyth_decimals = 10u64
-        .checked_pow(pyth_exponent)
-        .ok_or(LendingError::MathOverflow)?;
-
-    let market_price = Decimal::from(price).try_div(pyth_decimals)?;
+    let market_price = if pyth_price.expo >= 0 {
+        let exponent = pyth_price
+            .expo
+            .try_into()
+            .map_err(|_| LendingError::MathOverflow)?;
+        let zeros = 10u64
+            .checked_pow(exponent)
+            .ok_or(LendingError::MathOverflow)?;
+        Decimal::from(price).try_mul(zeros)?
+    } else {
+        let exponent = pyth_price
+            .expo
+            .checked_abs()
+            .ok_or(LendingError::MathOverflow)?
+            .try_into()
+            .map_err(|_| LendingError::MathOverflow)?;
+        let decimals = 10u64
+            .checked_pow(exponent)
+            .ok_or(LendingError::MathOverflow)?;
+        Decimal::from(price).try_div(decimals)?
+    };
 
     Ok(market_price)
 }
