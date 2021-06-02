@@ -1,20 +1,16 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.IdlCoder = exports.CODER_MAP = exports.SerializationMethod = void 0;
+exports.IdlCoder = exports.CODER_MAP = void 0;
 const borsh_1 = require("./coders/borsh");
-var SerializationMethod;
-(function (SerializationMethod) {
-    SerializationMethod[SerializationMethod["Bincode"] = 0] = "Bincode";
-    SerializationMethod[SerializationMethod["Borsh"] = 1] = "Borsh";
-    SerializationMethod[SerializationMethod["Anchor"] = 2] = "Anchor";
-})(SerializationMethod = exports.SerializationMethod || (exports.SerializationMethod = {}));
+const idl_1 = require("./idl");
+const DEFAULT_SERIALIZATION_METHOD = idl_1.SerializationMethod.Anchor;
 exports.CODER_MAP = new Map([
-    [SerializationMethod.Borsh, borsh_1.Borsh]
+    [idl_1.SerializationMethod.Borsh, borsh_1.Borsh],
 ]);
 class IdlCoder {
-    constructor(idl, serializationMethod) {
+    constructor(idl) {
         this.idl = idl;
-        this.serializationMethod = serializationMethod;
+        const serializationMethod = idl.serializationMethod || DEFAULT_SERIALIZATION_METHOD;
         const coder = exports.CODER_MAP.get(serializationMethod);
         if (!coder) {
             throw new Error("Serialization method not supported");
@@ -23,8 +19,6 @@ class IdlCoder {
     }
     decodeInstruction(instruction) {
         return this.coder.decodeInstruction(instruction);
-    }
-    decodeAccount(account) {
     }
 }
 exports.IdlCoder = IdlCoder;

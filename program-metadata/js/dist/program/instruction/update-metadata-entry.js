@@ -13,7 +13,7 @@ exports.UpdateMetadataEntryInstruction = UpdateMetadataEntryInstruction;
 borsh_struct_1.PROGRAM_METADATA_SCHEMA.set(UpdateMetadataEntryInstruction, {
     kind: "struct",
     fields: [
-        ["instruction", 'u8'],
+        ["instruction", "u8"],
         ["value", "string"],
     ],
 });

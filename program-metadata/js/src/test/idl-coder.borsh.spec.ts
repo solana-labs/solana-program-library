@@ -2,17 +2,16 @@ import { Keypair, PublicKey } from "@solana/web3.js";
 import { IdlCoder } from "../idl/idl-coder";
 import { updateMetadataEntryIx } from "../program/instruction";
 import { expect } from "chai";
-
-require("dotenv").config();
-
-const idl = require("./idl.json");
+import { Idl } from "../idl/idl";
 
 function getRandomPublicKey(): PublicKey {
   const acct = Keypair.generate();
   return acct.publicKey;
 }
 
-describe("IDL Coder", async () => {
+describe("IDL Coder - Borsh", async () => {
+  const idl: Idl = require("./test-idl.json");
+
   const programId = getRandomPublicKey();
   const classKey = getRandomPublicKey();
   const nameKey = getRandomPublicKey();
@@ -49,5 +48,9 @@ describe("IDL Coder", async () => {
     expect("value" in decoded.args[0] && decoded.args[0].type).to.equal(
       "string"
     );
+  });
+
+  it("should encode a Borsh instruction", async () => {
+    expect(true); // future
   });
 });

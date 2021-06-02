@@ -1,3 +1,8 @@
-import { IdlField, IdlTypeDef } from "../idl";
+import { IdlField, IdlType, IdlTypeDef } from "../idl";
 import { Layout } from "buffer-layout";
-export declare function fieldLayout(field: IdlField, types?: IdlTypeDef[]): Layout;
+declare type IdlFieldWithoutName = {
+    type: IdlType;
+};
+export declare function fieldLayout(field: IdlField | IdlFieldWithoutName, types?: IdlTypeDef[]): Layout;
+export declare function typeDefLayout(typeDef: IdlTypeDef, types: IdlTypeDef[], name?: string): Layout;
+export {};

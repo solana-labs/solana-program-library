@@ -1,1 +1,1 @@
-{"version":3,"file":"idl.js","sourceRoot":"","sources":["../../src/idl/idl.ts"],"names":[],"mappings":""}
+{"version":3,"file":"idl.js","sourceRoot":"","sources":["../../src/idl/idl.ts"],"names":[],"mappings":";AAAA;;GAEG;;;AAEH,IAAY,mBAIX;AAJD,WAAY,mBAAmB;IAC7B,0CAAmB,CAAA;IACnB,sCAAe,CAAA;IACf,wCAAiB,CAAA;AACnB,CAAC,EAJW,mBAAmB,GAAnB,2BAAmB,KAAnB,2BAAmB,QAI9B;AAuHD,MAAa,QAAS,SAAQ,KAAK;CAAG;AAAtC,4BAAsC"}

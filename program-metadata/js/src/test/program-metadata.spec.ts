@@ -9,13 +9,13 @@ import { createHash } from "crypto";
 
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const privateSecretKey = require(process.env.PRIVATE_KEY_PATH);
+const privateSecretKey = require(process.env.PRIVATE_KEY_PATH || "");
 const privateKeypair = Keypair.fromSecretKey(new Uint8Array(privateSecretKey));
-const connection = new Connection(process.env.API_URL, "single");
-const targetProgramKey = new PublicKey(process.env.TARGET_PROGRAM_KEY);
+const connection = new Connection(process.env.API_URL || "", "single");
+const targetProgramKey = new PublicKey(process.env.TARGET_PROGRAM_KEY || "");
 const programMetadata = new ProgramMetadata(connection, {
-  programMetadataKey: new PublicKey(process.env.PROGRAM_METADATA_KEY),
-  nameServiceKey: new PublicKey(process.env.NAME_SERVICE_KEY),
+  programMetadataKey: new PublicKey(process.env.PROGRAM_METADATA_KEY || ""),
+  nameServiceKey: new PublicKey(process.env.NAME_SERVICE_KEY || ""),
 });
 
 describe("ProgramMetadata: metadata entries", async () => {

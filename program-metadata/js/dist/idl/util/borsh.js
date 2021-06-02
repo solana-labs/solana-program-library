@@ -22,12 +22,15 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fieldLayout = void 0;
-const borsh = __importStar(require("borsh"));
+exports.typeDefLayout = exports.fieldLayout = void 0;
+const idl_1 = require("../idl");
+const borsh = __importStar(require("@project-serum/borsh"));
 const camelcase_1 = __importDefault(require("camelcase"));
-const buffer_layout_1 = require("buffer-layout");
 function fieldLayout(field, types) {
-    const fieldName = field.name !== undefined ? camelcase_1.default(field.name) : undefined;
+    let fieldName;
+    if ("name" in field) {
+        fieldName = camelcase_1.default(field.name);
+    }
     switch (field.type) {
         case "bool": {
             return borsh.bool(fieldName);
@@ -74,7 +77,7 @@ function fieldLayout(field, types) {
         default: {
             // @ts-ignore
             if (field.type.vec) {
-                return borsh.vec(IdlCoder.fieldLayout({
+                return borsh.vec(fieldLayout({
                     name: undefined,
                     // @ts-ignore
                     type: field.type.vec,
@@ -82,7 +85,7 @@ function fieldLayout(field, types) {
                 // @ts-ignore
             }
             else if (field.type.option) {
-                return borsh.option(IdlCoder.fieldLayout({
+                return borsh.option(fieldLayout({
                     name: undefined,
                     // @ts-ignore
                     type: field.type.option,
@@ -92,14 +95,14 @@ function fieldLayout(field, types) {
             else if (field.type.defined) {
                 // User defined type.
                 if (types === undefined) {
-                    throw new IdlError("User defined types not provided");
+                    throw new idl_1.IdlError("User defined types not provided");
                 }
                 // @ts-ignore
                 const filtered = types.filter((t) => t.name === field.type.defined);
                 if (filtered.length !== 1) {
-                    throw new IdlError(`Type not found: ${JSON.stringify(field)}`);
+                    throw new idl_1.IdlError(`Type not found: ${JSON.stringify(field)}`);
                 }
-                return IdlCoder.typeDefLayout(filtered[0], types, fieldName);
+                return typeDefLayout(filtered[0], types, fieldName);
                 // @ts-ignore
             }
             else if (field.type.array) {
@@ -107,7 +110,7 @@ function fieldLayout(field, types) {
                 let arrayTy = field.type.array[0];
                 // @ts-ignore
                 let arrayLen = field.type.array[1];
-                let innerLayout = IdlCoder.fieldLayout({
+                let innerLayout = fieldLayout({
                     name: undefined,
                     type: arrayTy,
                 }, types);
@@ -120,18 +123,16 @@ function fieldLayout(field, types) {
     }
 }
 exports.fieldLayout = fieldLayout;
-typeDefLayout(typeDef, IdlTypeDef, types, IdlTypeDef[], name ?  : string);
-buffer_layout_1.Layout;
-{
+function typeDefLayout(typeDef, types, name) {
     if (typeDef.type.kind === "struct") {
-        const fieldLayouts = typeDef.type.fields.map((field) => {
-            const x = IdlCoder.fieldLayout(field, types);
+        const fieldLayouts = (typeDef.type.fields || []).map((field) => {
+            const x = fieldLayout(field, types);
             return x;
         });
         return borsh.struct(fieldLayouts, name);
     }
     else if (typeDef.type.kind === "enum") {
-        let variants = typeDef.type.variants.map((variant) => {
+        let variants = (typeDef.type.variants || []).map((variant) => {
             const name = camelcase_1.default(variant.name);
             if (variant.fields === undefined) {
                 return borsh.struct([], name);
@@ -158,4 +159,5 @@ buffer_layout_1.Layout;
         throw new Error(`Unknown type kint: ${typeDef}`);
     }
 }
+exports.typeDefLayout = typeDefLayout;
 //# sourceMappingURL=borsh.js.map

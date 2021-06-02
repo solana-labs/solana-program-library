@@ -56,7 +56,7 @@ class ProgramMetadata {
         const ix = instruction_1.deleteMetadataEntryIx(this.programMetadataKey, classKey, nameKey, targetProgramId, targetProgramDataKey, targetProgramAuthorityKey, refundKey, this.nameServiceKey);
         return ix;
     }
-    async createVersionedIdl(targetProgramId, targetProgramAuthorityKey, payerKey, effectiveSlot, idlUrl, idlHash, sourceUrl, serializiation, customLayoutUrl) {
+    async createVersionedIdl(targetProgramId, targetProgramAuthorityKey, payerKey, effectiveSlot, idlUrl, idlHash, sourceUrl) {
         const name = `idl_${effectiveSlot}`;
         const hashedName = this.getHashedName(name);
         const classKey = await this.getClassKey(targetProgramId);
@@ -66,10 +66,10 @@ class ProgramMetadata {
             throw new Error("Program not found");
         }
         const targetProgramDataKey = new web3_js_1.PublicKey(targetProgramAcct.data.slice(3));
-        const ix = instruction_1.createVersionedIdlIx(this.programMetadataKey, classKey, nameKey, targetProgramId, targetProgramDataKey, targetProgramAuthorityKey, payerKey, web3_js_1.SystemProgram.programId, web3_js_1.SYSVAR_RENT_PUBKEY, this.nameServiceKey, effectiveSlot, idlUrl, idlHash, sourceUrl, serializiation, customLayoutUrl, hashedName);
+        const ix = instruction_1.createVersionedIdlIx(this.programMetadataKey, classKey, nameKey, targetProgramId, targetProgramDataKey, targetProgramAuthorityKey, payerKey, web3_js_1.SystemProgram.programId, web3_js_1.SYSVAR_RENT_PUBKEY, this.nameServiceKey, effectiveSlot, idlUrl, idlHash, sourceUrl, hashedName);
         return ix;
     }
-    async updateVersionedIdl(targetProgramId, targetProgramAuthorityKey, effectiveSlot, idlUrl, idlHash, sourceUrl, serialization, customLayoutUrl) {
+    async updateVersionedIdl(targetProgramId, targetProgramAuthorityKey, effectiveSlot, idlUrl, idlHash, sourceUrl) {
         const hashedName = this.getHashedName(`idl_${effectiveSlot}`);
         const classKey = await this.getClassKey(targetProgramId);
         const nameKey = await this.getNameKey(hashedName, classKey);
@@ -78,7 +78,7 @@ class ProgramMetadata {
             throw new Error("Program not found");
         }
         const targetProgramDataKey = new web3_js_1.PublicKey(targetProgramAcct.data.slice(3));
-        const ix = instruction_1.updateVersionedIdlIx(this.programMetadataKey, classKey, nameKey, targetProgramId, targetProgramDataKey, targetProgramAuthorityKey, this.nameServiceKey, idlUrl, idlHash, sourceUrl, serialization, customLayoutUrl);
+        const ix = instruction_1.updateVersionedIdlIx(this.programMetadataKey, classKey, nameKey, targetProgramId, targetProgramDataKey, targetProgramAuthorityKey, this.nameServiceKey, idlUrl, idlHash, sourceUrl);
         return ix;
     }
     getHashedName(name) {

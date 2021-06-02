@@ -2,23 +2,14 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.updateVersionedIdlIx = exports.createVersionedIdlIx = exports.deleteMetadataEntryIx = exports.updateMetadataEntryIx = exports.createMetadataEntryIx = void 0;
 const web3_js_1 = require("@solana/web3.js");
-const util_1 = require("../util");
 const update_metadata_entry_1 = require("./instruction/update-metadata-entry");
 const create_versioned_idl_1 = require("./instruction/create-versioned-idl");
 const update_versioned_idl_1 = require("./instruction/update-versioned-idl");
+const create_metadata_entry_1 = require("./instruction/create-metadata-entry");
+const delete_metadata_entry_1 = require("./instruction/delete-metadata-entry");
 function createMetadataEntryIx(programId, classKey, nameKey, targetProgramKey, targetProgramDataKey, targetProgramAuthorityKey, payerKey, systemProgramId, rentKey, nameServiceKey, name, value, hashedName) {
-    const encodedName = Buffer.from(name);
-    const encodedData = Buffer.from(value);
-    let buffers = [
-        Buffer.from(Int8Array.from([0])),
-        new util_1.Numberu32(encodedName.length).toBuffer(),
-        encodedName,
-        new util_1.Numberu32(encodedData.length).toBuffer(),
-        encodedData,
-        new util_1.Numberu32(hashedName.length).toBuffer(),
-        hashedName,
-    ];
-    const ixData = Buffer.concat(buffers);
+    const ixDataObject = new create_metadata_entry_1.CreateMetadataEntryInstruction(name, value, hashedName);
+    const ixData = ixDataObject.encode();
     const ix = new web3_js_1.TransactionInstruction({
         programId: programId,
         keys: [
@@ -32,7 +23,7 @@ function createMetadataEntryIx(programId, classKey, nameKey, targetProgramKey, t
             { pubkey: rentKey, isSigner: false, isWritable: false },
             { pubkey: nameServiceKey, isSigner: false, isWritable: false },
         ],
-        data: Buffer.from(ixData),
+        data: ixData,
     });
     return ix;
 }
@@ -50,13 +41,14 @@ function updateMetadataEntryIx(programId, classKey, nameKey, targetProgramKey, t
             { pubkey: targetProgramAuthorityKey, isSigner: true, isWritable: false },
             { pubkey: nameServiceKey, isSigner: false, isWritable: false },
         ],
-        data: Buffer.from(ixData),
+        data: ixData,
     });
     return ix;
 }
 exports.updateMetadataEntryIx = updateMetadataEntryIx;
 function deleteMetadataEntryIx(programId, classKey, nameKey, targetProgramKey, targetProgramDataKey, targetProgramAuthorityKey, refundKey, nameServiceKey) {
-    const ixData = Buffer.from(Int8Array.from([2]));
+    const ixDataObject = new delete_metadata_entry_1.DeleteMetadataEntry();
+    const ixData = ixDataObject.encode();
     const ix = new web3_js_1.TransactionInstruction({
         programId: programId,
         keys: [
@@ -73,8 +65,8 @@ function deleteMetadataEntryIx(programId, classKey, nameKey, targetProgramKey, t
     return ix;
 }
 exports.deleteMetadataEntryIx = deleteMetadataEntryIx;
-function createVersionedIdlIx(programId, classKey, nameKey, targetProgramKey, targetProgramDataKey, targetProgramAuthorityKey, payerKey, systemProgramId, rentKey, nameServiceKey, effectiveSlot, idlUrl, idlHash, sourceUrl, serialization, customLayoutUrl, hashedName) {
-    const ixDataObject = new create_versioned_idl_1.CreateVersionedIdlInstruction(effectiveSlot, idlUrl, idlHash, sourceUrl, serialization, customLayoutUrl, hashedName);
+function createVersionedIdlIx(programId, classKey, nameKey, targetProgramKey, targetProgramDataKey, targetProgramAuthorityKey, payerKey, systemProgramId, rentKey, nameServiceKey, effectiveSlot, idlUrl, idlHash, sourceUrl, hashedName) {
+    const ixDataObject = new create_versioned_idl_1.CreateVersionedIdlInstruction(effectiveSlot, idlUrl, idlHash, sourceUrl, hashedName);
     const ixData = ixDataObject.encode();
     const ix = new web3_js_1.TransactionInstruction({
         programId: programId,
@@ -89,13 +81,13 @@ function createVersionedIdlIx(programId, classKey, nameKey, targetProgramKey, ta
             { pubkey: rentKey, isSigner: false, isWritable: false },
             { pubkey: nameServiceKey, isSigner: false, isWritable: false },
         ],
-        data: Buffer.from(ixData),
+        data: ixData,
     });
     return ix;
 }
 exports.createVersionedIdlIx = createVersionedIdlIx;
-function updateVersionedIdlIx(programId, classKey, nameKey, targetProgramKey, targetProgramDataKey, targetProgramAuthorityKey, nameServiceKey, idlUrl, idlHash, sourceUrl, serialization, customLayoutUrl) {
-    const ixDataObject = new update_versioned_idl_1.UpdateVersionedIdlInstruction(idlUrl, idlHash, sourceUrl, serialization, customLayoutUrl);
+function updateVersionedIdlIx(programId, classKey, nameKey, targetProgramKey, targetProgramDataKey, targetProgramAuthorityKey, nameServiceKey, idlUrl, idlHash, sourceUrl) {
+    const ixDataObject = new update_versioned_idl_1.UpdateVersionedIdlInstruction(idlUrl, idlHash, sourceUrl);
     const ixData = ixDataObject.encode();
     const ix = new web3_js_1.TransactionInstruction({
         programId: programId,
@@ -107,7 +99,7 @@ function updateVersionedIdlIx(programId, classKey, nameKey, targetProgramKey, ta
             { pubkey: targetProgramAuthorityKey, isSigner: true, isWritable: false },
             { pubkey: nameServiceKey, isSigner: false, isWritable: false },
         ],
-        data: Buffer.from(ixData),
+        data: ixData,
     });
     return ix;
 }
