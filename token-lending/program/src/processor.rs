@@ -293,11 +293,7 @@ fn process_init_reserve(
         return Err(LendingError::InvalidOracleConfig.into());
     }
 
-    let quote_currency = get_pyth_product_quote_currency(pyth_product);
-    if quote_currency == [0u8; 32] {
-        msg!("Oracle quote currency not found");
-        return Err(LendingError::InvalidOracleConfig.into());
-    }
+    let quote_currency = get_pyth_product_quote_currency(pyth_product)?;
     if lending_market.quote_currency != quote_currency {
         msg!("Lending market quote currency does not match the oracle quote currency");
         return Err(LendingError::InvalidOracleConfig.into());
@@ -1719,37 +1715,34 @@ fn unpack_mint(data: &[u8]) -> Result<Mint, LendingError> {
     Mint::unpack(data).map_err(|_| LendingError::InvalidTokenMint)
 }
 
-fn get_pyth_product_quote_currency(pyth_product: &pyth::Product) -> [u8; 32] {
-    let mut quote_currency = [0u8; 32];
+fn get_pyth_product_quote_currency(pyth_product: &pyth::Product) -> Result<[u8; 32], ProgramError> {
+    const LEN: usize = 14;
+    const KEY: &[u8; LEN] = b"quote_currency";
 
-    let mut attribute_iter = pyth_product.attr[..].iter();
-    let mut attributes_size = pyth::PROD_ATTR_SIZE;
+    let mut offset = 0;
+    while offset < pyth::PROD_ATTR_SIZE {
+        let mut len = pyth_product.attr[offset] as usize;
+        offset += 1;
 
-    while attributes_size > 0 {
-        let mut size = *attribute_iter.next().unwrap() as usize;
-        let mut key = Vec::with_capacity(size);
-        for _ in 0..size {
-            key.push(*attribute_iter.next().unwrap());
-        }
+        if len == LEN {
+            let key = &pyth_product.attr[offset..(offset + len)];
+            if key == KEY {
+                offset += len;
+                len = pyth_product.attr[offset] as usize;
+                offset += 1;
 
-        if &key[..] == b"quote_currency" {
-            size = *attribute_iter.next().unwrap() as usize;
-            #[allow(clippy::needless_range_loop)]
-            for i in 0..size {
-                quote_currency[i] = *attribute_iter.next().unwrap();
+                let mut value = [0u8; 32];
+                value[0..len].copy_from_slice(&pyth_product.attr[offset..(offset + len)]);
+                return Ok(value);
             }
-            break;
         }
 
-        size = *attribute_iter.next().unwrap() as usize;
-        for _ in 0..size {
-            attribute_iter.next();
-        }
-
-        attributes_size -= 2 + key.len() + size;
+        offset += len;
+        offset += 1 + pyth_product.attr[offset] as usize;
     }
 
-    quote_currency
+    msg!("Oracle quote currency not found");
+    Err(LendingError::InvalidOracleConfig.into())
 }
 
 fn get_pyth_price(pyth_price_info: &AccountInfo, clock: &Clock) -> Result<Decimal, ProgramError> {
