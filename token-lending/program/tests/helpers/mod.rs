@@ -1253,8 +1253,3 @@ pub async fn get_token_balance(banks_client: &mut BanksClient, pubkey: Pubkey) -
         .unwrap()
         .amount
 }
-
-fn cast_mut<T>(d: &mut [u8]) -> &mut T {
-    let (_, pxa, _) = unsafe { d.align_to_mut::<T>() };
-    &mut pxa[0]
-}
