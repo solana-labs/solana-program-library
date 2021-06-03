@@ -838,7 +838,7 @@ At the moment there exist two solutions for Token Mint registries:
 
 * hard coded addresses in the wallet or dapp
 * [spl-token-registry](https://www.npmjs.com/package/@solana/spl-token-registry)
-package, maintained at [solana-labs/token-list](https://github.com/solana-labs/token-list)
+package, maintained at [https://github.com/solana-labs/token-list](https://github.com/solana-labs/token-list)
 
 **A decentralized solution is in progress.**
 
