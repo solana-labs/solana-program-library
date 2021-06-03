@@ -834,7 +834,13 @@ The sender's wallet must not require that the recipient's main wallet address
 hold a balance before allowing the transfer.
 
 ### Registry for token details
-At the moment Token Mint addresses need to be hard coded by each wallet.  **Improving this situation is a work in progress.**
+At the moment there exist two solutions for Token Mint registries:
+
+* hard coded addresses in the wallet or dapp
+* [spl-token-registry](https://www.npmjs.com/package/@solana/spl-token-registry)
+package, maintained at [https://github.com/solana-labs/token-list](https://github.com/solana-labs/token-list)
+
+**A decentralized solution is in progress.**
 
 ### Garbage Collecting Ancillary Token Accounts
 Wallets should empty ancillary token accounts as quickly as practical by
