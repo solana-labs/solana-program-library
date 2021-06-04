@@ -408,12 +408,14 @@ impl Processor {
             return Err(StakePoolError::SignatureMissing.into());
         }
 
+        check_account_owner(stake_pool_info, program_id)?;
         let mut stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_uninitialized() {
             msg!("Provided stake pool already in use");
             return Err(StakePoolError::AlreadyInUse.into());
         }
 
+        check_account_owner(validator_list_info, program_id)?;
         let mut validator_list =
             try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
         if !validator_list.is_uninitialized() {
@@ -566,9 +568,7 @@ impl Processor {
         let system_program_info = next_account_info(account_info_iter)?;
         let stake_program_info = next_account_info(account_info_iter)?;
 
-        if stake_pool_info.owner != program_id {
-            return Err(ProgramError::IncorrectProgramId);
-        }
+        check_account_owner(stake_pool_info, program_id)?;
         let stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
@@ -662,9 +662,7 @@ impl Processor {
 
         check_stake_program(stake_program_info.key)?;
 
-        if stake_pool_info.owner != program_id {
-            return Err(ProgramError::IncorrectProgramId);
-        }
+        check_account_owner(stake_pool_info, program_id)?;
         let stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
@@ -677,15 +675,13 @@ impl Processor {
         )?;
 
         stake_pool.check_staker(staker_info)?;
+        stake_pool.check_validator_list(validator_list_info)?;
 
         if stake_pool.last_update_epoch < clock.epoch {
             return Err(StakePoolError::StakeListAndPoolOutOfDate.into());
         }
 
-        if *validator_list_info.key != stake_pool.validator_list {
-            return Err(StakePoolError::InvalidValidatorStakeList.into());
-        }
-
+        check_account_owner(validator_list_info, program_id)?;
         let mut validator_list =
             try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
         if !validator_list.is_valid() {
@@ -786,6 +782,7 @@ impl Processor {
 
         stake_pool.check_validator_list(validator_list_info)?;
 
+        check_account_owner(validator_list_info, program_id)?;
         let mut validator_list =
             try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
         if !validator_list.is_valid() {
@@ -918,7 +915,7 @@ impl Processor {
         }
 
         stake_pool.check_validator_list(validator_list_info)?;
-
+        check_account_owner(validator_list_info, program_id)?;
         let validator_list =
             try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
         if !validator_list.is_valid() {
@@ -1047,6 +1044,8 @@ impl Processor {
         }
 
         stake_pool.check_validator_list(validator_list_info)?;
+        stake_pool.check_reserve_stake(reserve_stake_account_info)?;
+        check_account_owner(validator_list_info, program_id)?;
 
         let mut validator_list =
             try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
@@ -1054,10 +1053,7 @@ impl Processor {
             return Err(StakePoolError::InvalidState.into());
         }
 
-        stake_pool.check_reserve_stake(reserve_stake_account_info)?;
-
         let vote_account_address = validator_vote_account_info.key;
-
         let transient_stake_bump_seed = check_transient_stake_address(
             program_id,
             stake_pool_info.key,
@@ -1240,6 +1236,7 @@ impl Processor {
         stake_pool.check_reserve_stake(reserve_stake_info)?;
         check_stake_program(stake_program_info.key)?;
 
+        check_account_owner(validator_list_info, program_id)?;
         let mut validator_list =
             try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
         if !validator_list.is_valid() {
@@ -1423,6 +1420,7 @@ impl Processor {
         let clock = &Clock::from_account_info(clock_info)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
+        check_account_owner(stake_pool_info, program_id)?;
         let mut stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
@@ -1441,6 +1439,7 @@ impl Processor {
             return Err(ProgramError::IncorrectProgramId);
         }
 
+        check_account_owner(validator_list_info, program_id)?;
         let mut validator_list =
             try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
         if !validator_list.is_valid() {
@@ -1550,6 +1549,7 @@ impl Processor {
             return Err(ProgramError::IncorrectProgramId);
         }
 
+        check_account_owner(stake_pool_info, program_id)?;
         let mut stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
@@ -1564,19 +1564,17 @@ impl Processor {
         )?;
         stake_pool.check_deposit_authority(deposit_authority_info.key)?;
         stake_pool.check_mint(pool_mint_info)?;
+        stake_pool.check_validator_list(validator_list_info)?;
 
         if stake_pool.token_program_id != *token_program_info.key {
             return Err(ProgramError::IncorrectProgramId);
-        }
-
-        if *validator_list_info.key != stake_pool.validator_list {
-            return Err(StakePoolError::InvalidValidatorStakeList.into());
         }
 
         if stake_pool.last_update_epoch < clock.epoch {
             return Err(StakePoolError::StakeListAndPoolOutOfDate.into());
         }
 
+        check_account_owner(validator_list_info, program_id)?;
         let mut validator_list =
             try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
         if !validator_list.is_valid() {
@@ -1706,16 +1704,15 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
         let stake_program_info = next_account_info(account_info_iter)?;
 
-        if *stake_program_info.key != stake_program::id() {
-            return Err(ProgramError::IncorrectProgramId);
-        }
-
+        check_stake_program(stake_program_info.key)?;
+        check_account_owner(stake_pool_info, program_id)?;
         let mut stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
 
         stake_pool.check_mint(pool_mint_info)?;
+        stake_pool.check_validator_list(validator_list_info)?;
         stake_pool.check_authority_withdraw(
             withdraw_authority_info.key,
             program_id,
@@ -1726,14 +1723,11 @@ impl Processor {
             return Err(ProgramError::IncorrectProgramId);
         }
 
-        if *validator_list_info.key != stake_pool.validator_list {
-            return Err(StakePoolError::InvalidValidatorStakeList.into());
-        }
-
         if stake_pool.last_update_epoch < clock.epoch {
             return Err(StakePoolError::StakeListAndPoolOutOfDate.into());
         }
 
+        check_account_owner(validator_list_info, program_id)?;
         let mut validator_list =
             try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
         if !validator_list.is_valid() {
@@ -1864,13 +1858,14 @@ impl Processor {
     }
 
     /// Processes [SetManager](enum.Instruction.html).
-    fn process_set_manager(_program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+    fn process_set_manager(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
         let manager_info = next_account_info(account_info_iter)?;
         let new_manager_info = next_account_info(account_info_iter)?;
         let new_manager_fee_info = next_account_info(account_info_iter)?;
 
+        check_account_owner(stake_pool_info, program_id)?;
         let mut stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
@@ -1892,13 +1887,14 @@ impl Processor {
     }
 
     /// Processes [SetFee](enum.Instruction.html).
-    fn process_set_fee(_program_id: &Pubkey, accounts: &[AccountInfo], fee: Fee) -> ProgramResult {
+    fn process_set_fee(program_id: &Pubkey, accounts: &[AccountInfo], fee: Fee) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
         let manager_info = next_account_info(account_info_iter)?;
         let clock_info = next_account_info(account_info_iter)?;
         let clock = &Clock::from_account_info(clock_info)?;
 
+        check_account_owner(stake_pool_info, program_id)?;
         let mut stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
@@ -1926,12 +1922,13 @@ impl Processor {
     }
 
     /// Processes [SetManager](enum.Instruction.html).
-    fn process_set_staker(_program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+    fn process_set_staker(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
         let set_staker_authority_info = next_account_info(account_info_iter)?;
         let new_staker_info = next_account_info(account_info_iter)?;
 
+        check_account_owner(stake_pool_info, program_id)?;
         let mut stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
