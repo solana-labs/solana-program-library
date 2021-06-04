@@ -219,7 +219,7 @@ pub enum StakePoolInstruction {
     ///
     ///   0. `[w]` Stake pool
     ///   1. `[]` Stake pool withdraw authority
-    ///   2. `[]` Validator stake list storage account
+    ///   2. `[w]` Validator stake list storage account
     ///   3. `[]` Reserve stake account
     ///   4. `[w]` Account to receive pool fee tokens
     ///   5. `[w]` Pool mint account
