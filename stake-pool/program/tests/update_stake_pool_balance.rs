@@ -224,6 +224,32 @@ async fn fail_with_wrong_pool_fee_account() {
 }
 
 #[tokio::test]
+async fn fail_with_wrong_reserve() {
+    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
+    let mut stake_pool_accounts = StakePoolAccounts::new();
+    stake_pool_accounts
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
+        .await
+        .unwrap();
+
+    let wrong_reserve_stake = Keypair::new();
+    stake_pool_accounts.reserve_stake = wrong_reserve_stake;
+    let error = stake_pool_accounts
+        .update_stake_pool_balance(&mut banks_client, &payer, &recent_blockhash)
+        .await
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(StakePoolError::InvalidProgramAddress as u32),
+        )
+    );
+}
+
+#[tokio::test]
 async fn test_update_stake_pool_balance_with_uninitialized_validator_list() {} // TODO
 
 #[tokio::test]

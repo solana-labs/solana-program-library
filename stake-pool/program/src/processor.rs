@@ -1429,6 +1429,7 @@ impl Processor {
         }
         stake_pool.check_mint(pool_mint_info)?;
         stake_pool.check_authority_withdraw(withdraw_info.key, program_id, stake_pool_info.key)?;
+        stake_pool.check_reserve_stake(reserve_stake_info)?;
         if stake_pool.manager_fee_account != *manager_fee_info.key {
             return Err(StakePoolError::InvalidFeeAccount.into());
         }
