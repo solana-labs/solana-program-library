@@ -1,4 +1,4 @@
-//! SingleSignerInstruction Account
+//! ProposalInstruction Account
 
 use crate::{
     error::GovernanceError,
