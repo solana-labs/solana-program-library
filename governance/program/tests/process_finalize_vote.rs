@@ -31,7 +31,7 @@ async fn test_finalize_vote_to_succeeded() {
         .unwrap();
 
     let token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     // Total 210 tokens
@@ -78,7 +78,11 @@ async fn test_finalize_vote_to_succeeded() {
         .get_proposal_account(&proposal_cookie.address)
         .await;
 
-    assert_eq!(ProposalState::Succeeded, proposal_account.state);
+    assert_eq!(proposal_account.state, ProposalState::Succeeded);
+    assert_eq!(
+        Some(vote_expired_at_slot),
+        proposal_account.voting_completed_at
+    );
 }
 
 #[tokio::test]
@@ -95,7 +99,7 @@ async fn test_finalize_vote_to_defeated() {
         .unwrap();
 
     let token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     // Total 300 tokens
@@ -159,7 +163,7 @@ async fn test_finalize_vote_with_invalid_mint_error() {
         .unwrap();
 
     let token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     // Total 300 tokens
@@ -213,7 +217,7 @@ async fn test_finalize_vote_with_invalid_governance_error() {
         .unwrap();
 
     let token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     // Total 300 tokens

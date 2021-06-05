@@ -4,7 +4,7 @@ use borsh::BorshDeserialize;
 use solana_program::{
     borsh::try_from_slice_unchecked,
     bpf_loader_upgradeable::{self, UpgradeableLoaderState},
-    instruction::Instruction,
+    instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack},
     pubkey::Pubkey,
@@ -26,8 +26,9 @@ use spl_governance::{
     instruction::{
         add_signatory, cancel_proposal, cast_vote, create_account_governance,
         create_program_governance, create_proposal, create_realm, deposit_governing_tokens,
-        finalize_vote, relinquish_vote, remove_signatory, set_governance_delegate,
-        sign_off_proposal, withdraw_governing_tokens, Vote,
+        execute_instruction, finalize_vote, insert_instruction, relinquish_vote,
+        remove_instruction, remove_signatory, set_governance_delegate, sign_off_proposal,
+        withdraw_governing_tokens, Vote,
     },
     processor::process_instruction,
     state::{
@@ -37,6 +38,9 @@ use spl_governance::{
             GovernanceConfig,
         },
         proposal::{get_proposal_address, Proposal},
+        proposal_instruction::{
+            get_proposal_instruction_address, InstructionData, ProposalInstruction,
+        },
         realm::{get_governing_token_holding_address, get_realm_address, Realm},
         signatory_record::{get_signatory_record_address, SignatoryRecord},
         token_owner_record::{get_token_owner_record_address, TokenOwnerRecord},
@@ -51,7 +55,7 @@ use crate::program_test::{cookies::SignatoryRecordCookie, tools::clone_keypair};
 use self::{
     cookies::{
         GovernanceCookie, GovernedAccountCookie, GovernedProgramCookie, ProposalCookie,
-        RealmCookie, TokeOwnerRecordCookie, VoteRecordCookie,
+        ProposalInstructionCookie, RealmCookie, TokeOwnerRecordCookie, VoteRecordCookie,
     },
     tools::NopOverride,
 };
@@ -229,7 +233,7 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn with_initial_community_token_deposit(
+    pub async fn with_community_token_deposit(
         &mut self,
         realm_cookie: &RealmCookie,
     ) -> TokeOwnerRecordCookie {
@@ -243,7 +247,7 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn with_initial_community_token_deposit_amount(
+    pub async fn with_community_token_deposit_amount(
         &mut self,
         realm_cookie: &RealmCookie,
         amount: u64,
@@ -258,13 +262,13 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn with_community_token_deposit(
+    pub async fn with_subsequent_community_token_deposit(
         &mut self,
         realm_cookie: &RealmCookie,
         token_owner_record_cookie: &TokeOwnerRecordCookie,
         amount: u64,
     ) {
-        self.with_governing_token_deposit(
+        self.with_subsequent_governing_token_deposit(
             &realm_cookie.address,
             &realm_cookie.account.community_mint,
             &realm_cookie.community_mint_authority,
@@ -275,13 +279,13 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn with_council_token_deposit(
+    pub async fn with_subsequent_council_token_deposit(
         &mut self,
         realm_cookie: &RealmCookie,
         token_owner_record_cookie: &TokeOwnerRecordCookie,
         amount: u64,
     ) {
-        self.with_governing_token_deposit(
+        self.with_subsequent_governing_token_deposit(
             &realm_cookie.address,
             &realm_cookie.account.council_mint.unwrap(),
             &realm_cookie.council_mint_authority.as_ref().unwrap(),
@@ -292,7 +296,7 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn with_initial_council_token_deposit(
+    pub async fn with_council_token_deposit(
         &mut self,
         realm_cookie: &RealmCookie,
     ) -> TokeOwnerRecordCookie {
@@ -393,7 +397,7 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    async fn with_governing_token_deposit(
+    async fn with_subsequent_governing_token_deposit(
         &mut self,
         realm: &Pubkey,
         governing_token_mint: &Pubkey,
@@ -834,8 +838,9 @@ impl GovernanceProgramTest {
             voting_completed_at: None,
             executing_at: None,
             closed_at: None,
-            number_of_executed_instructions: 0,
-            number_of_instructions: 0,
+            instructions_executed_count: 0,
+            instructions_count: 0,
+            instructions_next_index: 0,
             token_owner_record: token_owner_record_cookie.address,
             signatories_signed_off_count: 0,
             yes_votes_count: 0,
@@ -945,13 +950,13 @@ impl GovernanceProgramTest {
         &mut self,
         proposal_cookie: &ProposalCookie,
     ) -> Result<(), ProgramError> {
-        let sign_off_proposal_instruction = finalize_vote(
+        let finalize_vote_instruction = finalize_vote(
             &proposal_cookie.account.governance,
             &proposal_cookie.address,
             &proposal_cookie.account.governing_token_mint,
         );
 
-        self.process_transaction(&[sign_off_proposal_instruction], None)
+        self.process_transaction(&[finalize_vote_instruction], None)
             .await?;
 
         Ok(())
@@ -1071,6 +1076,246 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
+    pub async fn with_mint_tokens_instruction(
+        &mut self,
+        proposal_cookie: &mut ProposalCookie,
+        token_owner_record_cookie: &TokeOwnerRecordCookie,
+        index: Option<u16>,
+    ) -> Result<ProposalInstructionCookie, ProgramError> {
+        let token_mint_keypair = Keypair::new();
+
+        // Create mint with minting authority granted to Proposal Governance
+        // Note the actual governed_account in the Governance account is irrelevant in this scenario because we don't support CreateMintGovernance instruction yet
+        // Once implemented CreateMintGovernance should take over mint_authority (or ensure the current authority signed the transaction)
+        // as it is done with CreateProgramGovernance and upgrade_authority
+        self.create_mint(&token_mint_keypair, &proposal_cookie.account.governance)
+            .await;
+
+        let token_account_keypair = Keypair::new();
+        self.create_empty_token_account(
+            &token_account_keypair,
+            &token_mint_keypair.pubkey(),
+            &self.context.payer.pubkey(),
+        )
+        .await;
+
+        let mut instruction = spl_token::instruction::mint_to(
+            &spl_token::id(),
+            &token_mint_keypair.pubkey(),
+            &token_account_keypair.pubkey(),
+            &proposal_cookie.account.governance,
+            &[],
+            10,
+        )
+        .unwrap();
+
+        self.with_instruction_impl(
+            proposal_cookie,
+            token_owner_record_cookie,
+            index,
+            &mut instruction,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_upgrade_program_instruction(
+        &mut self,
+        governance_cookie: &GovernanceCookie,
+        proposal_cookie: &mut ProposalCookie,
+        token_owner_record_cookie: &TokeOwnerRecordCookie,
+    ) -> Result<ProposalInstructionCookie, ProgramError> {
+        let program_buffer_keypair = Keypair::new();
+        let buffer_authority_keypair = Keypair::new();
+
+        // Load solana_bpf_rust_upgraded program taken from solana test programs
+        let path_buf = find_file("solana_bpf_rust_upgraded.so").unwrap();
+        let program_data = read_file(path_buf);
+
+        let program_buffer_rent = self
+            .rent
+            .minimum_balance(UpgradeableLoaderState::programdata_len(program_data.len()).unwrap());
+
+        let mut instructions = bpf_loader_upgradeable::create_buffer(
+            &self.context.payer.pubkey(),
+            &program_buffer_keypair.pubkey(),
+            &buffer_authority_keypair.pubkey(),
+            program_buffer_rent,
+            program_data.len(),
+        )
+        .unwrap();
+
+        let chunk_size = 800;
+
+        for (chunk, i) in program_data.chunks(chunk_size).zip(0..) {
+            instructions.push(bpf_loader_upgradeable::write(
+                &program_buffer_keypair.pubkey(),
+                &buffer_authority_keypair.pubkey(),
+                (i * chunk_size) as u32,
+                chunk.to_vec(),
+            ));
+        }
+
+        instructions.push(bpf_loader_upgradeable::set_buffer_authority(
+            &program_buffer_keypair.pubkey(),
+            &buffer_authority_keypair.pubkey(),
+            &governance_cookie.address,
+        ));
+
+        self.process_transaction(
+            &instructions[..],
+            Some(&[&program_buffer_keypair, &buffer_authority_keypair]),
+        )
+        .await
+        .unwrap();
+
+        let mut upgrade_instruction = bpf_loader_upgradeable::upgrade(
+            &governance_cookie.account.config.governed_account,
+            &program_buffer_keypair.pubkey(),
+            &governance_cookie.address,
+            &governance_cookie.address,
+        );
+
+        self.with_instruction_impl(
+            proposal_cookie,
+            token_owner_record_cookie,
+            None,
+            &mut upgrade_instruction,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_instruction(
+        &mut self,
+        proposal_cookie: &mut ProposalCookie,
+        token_owner_record_cookie: &TokeOwnerRecordCookie,
+        index: Option<u16>,
+    ) -> Result<ProposalInstructionCookie, ProgramError> {
+        let mut instruction = Instruction {
+            program_id: Pubkey::new_unique(),
+            accounts: vec![],
+            data: vec![],
+        };
+
+        self.with_instruction_impl(
+            proposal_cookie,
+            token_owner_record_cookie,
+            index,
+            &mut instruction,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
+    async fn with_instruction_impl(
+        &mut self,
+        proposal_cookie: &mut ProposalCookie,
+        token_owner_record_cookie: &TokeOwnerRecordCookie,
+        index: Option<u16>,
+        instruction: &mut Instruction,
+    ) -> Result<ProposalInstructionCookie, ProgramError> {
+        let hold_up_time = 15;
+
+        let instruction_data: InstructionData = instruction.clone().into();
+
+        let index = index.unwrap_or(proposal_cookie.account.instructions_next_index);
+
+        proposal_cookie.account.instructions_next_index =
+            proposal_cookie.account.instructions_next_index + 1;
+
+        let insert_instruction_instruction = insert_instruction(
+            &proposal_cookie.account.governance,
+            &proposal_cookie.address,
+            &token_owner_record_cookie.address,
+            &token_owner_record_cookie.token_owner.pubkey(),
+            &self.context.payer.pubkey(),
+            index,
+            hold_up_time,
+            instruction_data.clone(),
+        );
+
+        self.process_transaction(
+            &[insert_instruction_instruction],
+            Some(&[&token_owner_record_cookie.token_owner]),
+        )
+        .await?;
+
+        let proposal_instruction_address =
+            get_proposal_instruction_address(&proposal_cookie.address, &index.to_le_bytes());
+
+        let proposal_instruction_data = ProposalInstruction {
+            account_type: GovernanceAccountType::ProposalInstruction,
+            hold_up_time,
+            instruction: instruction_data,
+            executed_at: None,
+            proposal: proposal_cookie.address,
+        };
+
+        instruction.accounts = instruction
+            .accounts
+            .iter()
+            .map(|a| AccountMeta {
+                pubkey: a.pubkey,
+                is_signer: false, // Remove signer since the Governance account PDA will be signing the instruction for us
+                is_writable: a.is_writable,
+            })
+            .collect();
+
+        let proposal_instruction_cookie = ProposalInstructionCookie {
+            address: proposal_instruction_address,
+            account: proposal_instruction_data,
+            instruction: instruction.clone(),
+        };
+
+        Ok(proposal_instruction_cookie)
+    }
+
+    #[allow(dead_code)]
+    pub async fn remove_instruction(
+        &mut self,
+        proposal_cookie: &mut ProposalCookie,
+        token_owner_record_cookie: &TokeOwnerRecordCookie,
+        proposal_instruction_cookie: &ProposalInstructionCookie,
+    ) -> Result<(), ProgramError> {
+        let remove_instruction_instruction = remove_instruction(
+            &proposal_cookie.address,
+            &token_owner_record_cookie.address,
+            &token_owner_record_cookie.token_owner.pubkey(),
+            &proposal_instruction_cookie.address,
+            &self.context.payer.pubkey(),
+        );
+
+        self.process_transaction(
+            &[remove_instruction_instruction],
+            Some(&[&token_owner_record_cookie.token_owner]),
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    #[allow(dead_code)]
+    pub async fn execute_instruction(
+        &mut self,
+        proposal_cookie: &ProposalCookie,
+        proposal_instruction_cookie: &ProposalInstructionCookie,
+    ) -> Result<(), ProgramError> {
+        let execute_instruction_instruction = execute_instruction(
+            &proposal_cookie.account.governance,
+            &proposal_cookie.address,
+            &proposal_instruction_cookie.address,
+            &proposal_instruction_cookie.instruction.program_id,
+            &proposal_instruction_cookie.instruction.accounts,
+        );
+
+        self.process_transaction(&[execute_instruction_instruction], None)
+            .await?;
+
+        Ok(())
+    }
+
+    #[allow(dead_code)]
     pub async fn get_token_owner_record_account(&mut self, address: &Pubkey) -> TokenOwnerRecord {
         self.get_borsh_account::<TokenOwnerRecord>(address).await
     }
@@ -1098,6 +1343,15 @@ impl GovernanceProgramTest {
     #[allow(dead_code)]
     pub async fn get_vote_record_account(&mut self, vote_record_address: &Pubkey) -> VoteRecord {
         self.get_borsh_account::<VoteRecord>(vote_record_address)
+            .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn get_proposal_instruction_account(
+        &mut self,
+        proposal_instruction_address: &Pubkey,
+    ) -> ProposalInstruction {
+        self.get_borsh_account::<ProposalInstruction>(proposal_instruction_address)
             .await
     }
 

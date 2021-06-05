@@ -13,6 +13,8 @@ use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 
 use crate::state::governance::GovernanceConfig;
 
+use crate::state::proposal_instruction::ProposalInstruction;
+
 /// Governance Proposal
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
@@ -70,15 +72,18 @@ pub struct Proposal {
     pub closed_at: Option<Slot>,
 
     /// The number of the instructions already executed
-    pub number_of_executed_instructions: u8,
+    pub instructions_executed_count: u16,
 
     /// The number of instructions included in the proposal
-    pub number_of_instructions: u8,
+    pub instructions_count: u16,
+
+    /// The index of the the next instruction to be added
+    pub instructions_next_index: u16,
 }
 
 impl AccountMaxSize for Proposal {
     fn get_max_size(&self) -> Option<usize> {
-        Some(self.name.len() + self.description_link.len() + 179)
+        Some(self.name.len() + self.description_link.len() + 183)
     }
 }
 
@@ -266,6 +271,47 @@ impl Proposal {
             }
         }
     }
+
+    /// Checks if Instructions can be edited (inserted or removed) for the Proposal in the given state
+    pub fn assert_can_edit_instructions(&self) -> Result<(), ProgramError> {
+        self.assert_is_draft_state()
+            .map_err(|_| GovernanceError::InvalidStateCannotEditInstructions.into())
+    }
+
+    /// Checks if Instructions can be executed for the Proposal in the given state
+    pub fn assert_can_execute_instruction(
+        &self,
+        proposal_instruction_data: &ProposalInstruction,
+        current_slot: Slot,
+    ) -> Result<(), ProgramError> {
+        match self.state {
+            ProposalState::Succeeded | ProposalState::Executing => {}
+            ProposalState::Draft
+            | ProposalState::SigningOff
+            | ProposalState::Completed
+            | ProposalState::Voting
+            | ProposalState::Cancelled
+            | ProposalState::Defeated => {
+                return Err(GovernanceError::InvalidStateCannotExecuteInstruction.into())
+            }
+        }
+
+        if self
+            .voting_completed_at
+            .unwrap()
+            .checked_add(proposal_instruction_data.hold_up_time)
+            .unwrap()
+            >= current_slot
+        {
+            return Err(GovernanceError::CannotExecuteInstructionWithinHoldUpTime.into());
+        }
+
+        if proposal_instruction_data.executed_at.is_some() {
+            return Err(GovernanceError::InstructionAlreadyExecuted.into());
+        }
+
+        Ok(())
+    }
 }
 
 /// Converts threshold in percentages to actual vote count
@@ -294,14 +340,24 @@ pub fn get_proposal_data_for_governance_and_governing_mint(
     governance: &Pubkey,
     governing_token_mint: &Pubkey,
 ) -> Result<Proposal, ProgramError> {
+    let proposal_data = get_proposal_data_for_governance(proposal_info, governance)?;
+
+    if proposal_data.governing_token_mint != *governing_token_mint {
+        return Err(GovernanceError::InvalidGoverningMintForProposal.into());
+    }
+
+    Ok(proposal_data)
+}
+
+/// Deserializes Proposal and validates it belongs to the given Governance
+pub fn get_proposal_data_for_governance(
+    proposal_info: &AccountInfo,
+    governance: &Pubkey,
+) -> Result<Proposal, ProgramError> {
     let proposal_data = get_proposal_data(proposal_info)?;
 
     if proposal_data.governance != *governance {
         return Err(GovernanceError::InvalidGovernanceForProposal.into());
-    }
-
-    if proposal_data.governing_token_mint != *governing_token_mint {
-        return Err(GovernanceError::InvalidGoverningMintForProposal.into());
     }
 
     Ok(proposal_data)
@@ -356,10 +412,13 @@ mod test {
             voting_completed_at: Some(10),
             executing_at: Some(10),
             closed_at: Some(10),
-            number_of_executed_instructions: 10,
-            number_of_instructions: 10,
+
             yes_votes_count: 0,
             no_votes_count: 0,
+
+            instructions_executed_count: 10,
+            instructions_count: 10,
+            instructions_next_index: 10,
         }
     }
 

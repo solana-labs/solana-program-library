@@ -15,7 +15,7 @@ async fn test_set_community_governance_delegate() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
     let realm_cookie = governance_test.with_realm().await;
     let mut token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     // Act
@@ -40,7 +40,7 @@ async fn test_set_governance_delegate_to_none() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
     let realm_cookie = governance_test.with_realm().await;
     let mut token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     governance_test
@@ -72,7 +72,7 @@ async fn test_set_council_governance_delegate() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
     let realm_cookie = governance_test.with_realm().await;
     let mut token_owner_record_cookie = governance_test
-        .with_initial_council_token_deposit(&realm_cookie)
+        .with_council_token_deposit(&realm_cookie)
         .await;
 
     // Act
@@ -97,7 +97,7 @@ async fn test_set_community_governance_delegate_with_owner_must_sign_error() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
     let realm_cookie = governance_test.with_realm().await;
     let token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     let hacker_governance_delegate = Keypair::new();
@@ -133,7 +133,7 @@ async fn test_set_community_governance_delegate_signed_by_governance_delegate() 
     let mut governance_test = GovernanceProgramTest::start_new().await;
     let realm_cookie = governance_test.with_realm().await;
     let mut token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     governance_test

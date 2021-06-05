@@ -51,6 +51,10 @@ pub enum GovernanceError {
     #[error("Invalid Realm for TokenOwnerRecord")]
     InvalidRealmForTokenOwnerRecord,
 
+    /// Invalid Proposal for ProposalInstruction
+    #[error("Invalid Proposal for ProposalInstruction")]
+    InvalidProposalForProposalInstruction,
+
     /// Invalid Signatory account address
     #[error("Invalid Signatory account address")]
     InvalidSignatoryAddress,
@@ -98,6 +102,33 @@ pub enum GovernanceError {
     /// Invalid Proposal state
     #[error("Invalid Proposal state")]
     InvalidProposalState,
+    /// Invalid State: Can't edit instructions
+    #[error("Invalid State: Can't edit instructions")]
+    InvalidStateCannotEditInstructions,
+
+    /// Invalid State: Can't execute instruction
+    #[error("Invalid State: Can't execute instruction")]
+    InvalidStateCannotExecuteInstruction,
+
+    /// Can't execute instruction within its hold up time
+    #[error("Can't execute instruction within its hold up time")]
+    CannotExecuteInstructionWithinHoldUpTime,
+
+    /// Instruction already executed
+    #[error("Instruction already executed")]
+    InstructionAlreadyExecuted,
+
+    /// Invalid Instruction index
+    #[error("Invalid Instruction index")]
+    InvalidInstructionIndex,
+
+    /// Instruction hold up time is below the min specified by Governance
+    #[error("Instruction hold up time is below the min specified by Governance")]
+    InstructionHoldUpTimeBelowRequiredMin,
+
+    /// Instruction at the given index for the Proposal already exists
+    #[error("Instruction at the given index for the Proposal already exists")]
+    InstructionAlreadyExists,
 
     /// Invalid State: Can't sign off
     #[error("Invalid State: Can't sign off")]

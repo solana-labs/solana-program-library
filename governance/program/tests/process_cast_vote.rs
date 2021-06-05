@@ -21,7 +21,7 @@ async fn test_cast_vote() {
         .unwrap();
 
     let token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     let proposal_cookie = governance_test
@@ -54,6 +54,7 @@ async fn test_cast_vote() {
     );
 
     assert_eq!(proposal_account.state, ProposalState::Succeeded);
+    assert_eq!(proposal_account.voting_completed_at, Some(1));
 
     let token_owner_record = governance_test
         .get_token_owner_record_account(&token_owner_record_cookie.address)
@@ -77,7 +78,7 @@ async fn test_cast_vote_with_invalid_governance_error() {
         .unwrap();
 
     let token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     let mut proposal_cookie = governance_test
@@ -119,7 +120,7 @@ async fn test_cast_vote_with_invalid_mint_error() {
         .unwrap();
 
     let token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     let mut proposal_cookie = governance_test
@@ -154,7 +155,7 @@ async fn test_cast_vote_with_invalid_token_owner_record_mint_error() {
         .unwrap();
 
     let mut token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     let proposal_cookie = governance_test
@@ -164,7 +165,7 @@ async fn test_cast_vote_with_invalid_token_owner_record_mint_error() {
 
     // Try to use token_owner_record for Council Mint with Community Proposal
     let token_owner_record_cookie2 = governance_test
-        .with_initial_council_token_deposit(&realm_cookie)
+        .with_council_token_deposit(&realm_cookie)
         .await;
 
     token_owner_record_cookie.address = token_owner_record_cookie2.address;
@@ -196,7 +197,7 @@ async fn test_cast_vote_with_invalid_token_owner_record_from_different_realm_err
         .unwrap();
 
     let mut token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     let proposal_cookie = governance_test
@@ -208,7 +209,7 @@ async fn test_cast_vote_with_invalid_token_owner_record_from_different_realm_err
     let realm_cookie2 = governance_test.with_realm_using_mints(&realm_cookie).await;
 
     let token_owner_record_cookie2 = governance_test
-        .with_initial_community_token_deposit(&realm_cookie2)
+        .with_community_token_deposit(&realm_cookie2)
         .await;
 
     token_owner_record_cookie.address = token_owner_record_cookie2.address;
@@ -237,7 +238,7 @@ async fn test_cast_vote_with_governance_authority_must_sign_error() {
         .unwrap();
 
     let mut token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     let proposal_cookie = governance_test
@@ -247,7 +248,7 @@ async fn test_cast_vote_with_governance_authority_must_sign_error() {
 
     // Try to use a different owner to sign
     let token_owner_record_cookie2 = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     token_owner_record_cookie.token_owner = token_owner_record_cookie2.token_owner;
@@ -279,15 +280,15 @@ async fn test_cast_vote_with_vote_tipped_to_succeeded() {
         .unwrap();
 
     let token_owner_record_cookie1 = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     let token_owner_record_cookie2 = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     let token_owner_record_cookie3 = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     governance_test
@@ -357,17 +358,17 @@ async fn test_cast_vote_with_vote_tipped_to_defeated() {
 
     // 100 votes
     let token_owner_record_cookie1 = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     // 100 votes
     let token_owner_record_cookie2 = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     // 100 votes
     let token_owner_record_cookie3 = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     // Total 320 votes
@@ -446,7 +447,7 @@ async fn test_cast_vote_with_threshold_below_50_and_vote_not_tipped() {
         .unwrap();
 
     let token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     // Total 210 tokens
@@ -488,7 +489,7 @@ async fn test_cast_vote_with_voting_time_expired_error() {
         .unwrap();
 
     let token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     let proposal_cookie = governance_test
@@ -535,7 +536,7 @@ async fn test_cast_vote_with_cast_twice_error() {
         .unwrap();
 
     let token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     governance_test

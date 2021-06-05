@@ -22,7 +22,7 @@ async fn test_add_signatory() {
         .unwrap();
 
     let token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     let proposal_cookie = governance_test
@@ -64,7 +64,7 @@ async fn test_add_signatory_with_owner_or_delegate_must_sign_error() {
         .unwrap();
 
     let mut token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     let proposal_cookie = governance_test
@@ -73,7 +73,7 @@ async fn test_add_signatory_with_owner_or_delegate_must_sign_error() {
         .unwrap();
 
     let other_token_owner_record_cookie = governance_test
-        .with_initial_council_token_deposit(&realm_cookie)
+        .with_council_token_deposit(&realm_cookie)
         .await;
 
     token_owner_record_cookie.token_owner = other_token_owner_record_cookie.token_owner;
@@ -106,7 +106,7 @@ async fn test_add_signatory_with_invalid_proposal_owner_error() {
         .unwrap();
 
     let mut token_owner_record_cookie = governance_test
-        .with_initial_community_token_deposit(&realm_cookie)
+        .with_community_token_deposit(&realm_cookie)
         .await;
 
     let proposal_cookie = governance_test
@@ -115,7 +115,7 @@ async fn test_add_signatory_with_invalid_proposal_owner_error() {
         .unwrap();
 
     let other_token_owner_record_cookie = governance_test
-        .with_initial_council_token_deposit(&realm_cookie)
+        .with_council_token_deposit(&realm_cookie)
         .await;
 
     token_owner_record_cookie.address = other_token_owner_record_cookie.address;

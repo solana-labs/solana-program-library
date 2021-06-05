@@ -30,8 +30,8 @@ pub enum GovernanceAccountType {
     /// Vote record account for a given Proposal.  Proposal can have 0..n voting records
     VoteRecord,
 
-    /// Single Signer Instruction account which holds an instruction to execute for Proposal
-    SingleSignerInstruction,
+    /// ProposalInstruction account which holds an instruction to execute for Proposal
+    ProposalInstruction,
 }
 
 impl Default for GovernanceAccountType {

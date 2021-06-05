@@ -87,8 +87,9 @@ pub fn process_create_proposal(
         executing_at: None,
         closed_at: None,
 
-        number_of_executed_instructions: 0,
-        number_of_instructions: 0,
+        instructions_executed_count: 0,
+        instructions_count: 0,
+        instructions_next_index: 0,
 
         yes_votes_count: 0,
         no_votes_count: 0,
