@@ -83,7 +83,10 @@ async fn test_execute_mint_instruction() {
         .get_proposal_instruction_account(&proposal_instruction_cookie.address)
         .await;
 
-    assert_eq!(true, proposal_instruction_account.executed);
+    assert_eq!(
+        Some(execute_at_slot),
+        proposal_instruction_account.executed_at
+    );
 
     let instruction_token_account = governance_test
         .get_token_account(&proposal_instruction_cookie.account.instruction.accounts[1].pubkey)
@@ -187,7 +190,10 @@ async fn test_execute_upgrade_program_instruction() {
         .get_proposal_instruction_account(&proposal_instruction_cookie.address)
         .await;
 
-    assert_eq!(true, proposal_instruction_account.executed);
+    assert_eq!(
+        Some(execute_at_slot),
+        proposal_instruction_account.executed_at
+    );
 
     // Assert we can invoke the governed program after upgrade
     governance_test

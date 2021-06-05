@@ -344,7 +344,7 @@ pub fn deposit_governing_tokens(
     // Args
     governing_token_mint: &Pubkey,
 ) -> Instruction {
-    let vote_record_address =
+    let token_owner_record_address =
         get_token_owner_record_address(realm, governing_token_mint, governing_token_owner);
 
     let governing_token_holding_address =
@@ -356,7 +356,7 @@ pub fn deposit_governing_tokens(
         AccountMeta::new(*governing_token_source, false),
         AccountMeta::new_readonly(*governing_token_owner, true),
         AccountMeta::new_readonly(*governing_token_transfer_authority, true),
-        AccountMeta::new(vote_record_address, false),
+        AccountMeta::new(token_owner_record_address, false),
         AccountMeta::new_readonly(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(spl_token::id(), false),
@@ -381,7 +381,7 @@ pub fn withdraw_governing_tokens(
     // Args
     governing_token_mint: &Pubkey,
 ) -> Instruction {
-    let vote_record_address =
+    let token_owner_record_address =
         get_token_owner_record_address(realm, governing_token_mint, governing_token_owner);
 
     let governing_token_holding_address =
@@ -392,7 +392,7 @@ pub fn withdraw_governing_tokens(
         AccountMeta::new(governing_token_holding_address, false),
         AccountMeta::new(*governing_token_destination, false),
         AccountMeta::new_readonly(*governing_token_owner, true),
-        AccountMeta::new(vote_record_address, false),
+        AccountMeta::new(token_owner_record_address, false),
         AccountMeta::new_readonly(spl_token::id(), false),
     ];
 

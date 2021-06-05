@@ -296,13 +296,17 @@ impl Proposal {
             }
         }
 
-        if self.voting_completed_at.unwrap() + proposal_instruction_data.hold_up_time
+        if self
+            .voting_completed_at
+            .unwrap()
+            .checked_add(proposal_instruction_data.hold_up_time)
+            .unwrap()
             >= current_slot
         {
             return Err(GovernanceError::CannotExecuteInstructionWithinHoldUpTime.into());
         }
 
-        if proposal_instruction_data.executed {
+        if proposal_instruction_data.executed_at.is_some() {
             return Err(GovernanceError::InstructionAlreadyExecuted.into());
         }
 

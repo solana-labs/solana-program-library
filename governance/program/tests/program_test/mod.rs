@@ -1248,7 +1248,7 @@ impl GovernanceProgramTest {
             account_type: GovernanceAccountType::ProposalInstruction,
             hold_up_time,
             instruction: instruction_data,
-            executed: false,
+            executed_at: None,
             proposal: proposal_cookie.address,
         };
 

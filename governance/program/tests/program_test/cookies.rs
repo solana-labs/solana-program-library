@@ -1,12 +1,10 @@
-use solana_program::instruction::Instruction;
-use solana_program::pubkey::Pubkey;
+use solana_program::{instruction::Instruction, pubkey::Pubkey};
 use solana_sdk::signature::Keypair;
-use spl_governance::state::proposal_instruction::ProposalInstruction;
 use spl_governance::state::{
-    governance::Governance, realm::Realm, token_owner_record::TokenOwnerRecord,
+    governance::Governance, proposal::Proposal, proposal_instruction::ProposalInstruction,
+    realm::Realm, signatory_record::SignatoryRecord, token_owner_record::TokenOwnerRecord,
     vote_record::VoteRecord,
 };
-use spl_governance::state::{proposal::Proposal, signatory_record::SignatoryRecord};
 
 use crate::tools::clone_keypair;
 

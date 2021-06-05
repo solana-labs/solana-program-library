@@ -88,7 +88,7 @@ pub fn process_insert_instruction(
         account_type: GovernanceAccountType::ProposalInstruction,
         hold_up_time,
         instruction,
-        executed: false,
+        executed_at: None,
         proposal: *proposal_info.key,
     };
 
