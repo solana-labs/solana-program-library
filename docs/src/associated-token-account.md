@@ -55,7 +55,7 @@ The [get_associated_token_address](https://docs.rs/spl-associated-token-account/
 Rust function may be used by clients to derive the wallet's associated token address.
 
 
-The associated account address can be derived in Javascript with:
+The associated account address can be derived in TypeScript with:
 ```ts
 import { PublicKey } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';

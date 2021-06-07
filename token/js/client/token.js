@@ -2239,8 +2239,9 @@ export class Token {
     programId: PublicKey,
     mint: PublicKey,
     owner: PublicKey,
+    allowOwnerOffCurve: boolean = false,
   ): Promise<PublicKey> {
-    if (!PublicKey.isOnCurve(owner.toBuffer())) {
+    if (!allowOwnerOffCurve && !PublicKey.isOnCurve(owner.toBuffer())) {
       throw new Error(`Owner cannot sign: ${owner.toString()}`);
     }
     return (

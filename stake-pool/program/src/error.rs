@@ -88,6 +88,14 @@ pub enum StakePoolError {
     /// The lamports in the validator stake account is not equal to the minimum
     #[error("StakeLamportsNotEqualToMinimum")]
     StakeLamportsNotEqualToMinimum,
+    /// The provided deposit stake account is not delegated to the preferred deposit vote account
+    #[error("IncorrectDepositVoteAddress")]
+    IncorrectDepositVoteAddress,
+
+    // 25.
+    /// The provided withdraw stake account is not the preferred deposit vote account
+    #[error("IncorrectWithdrawVoteAddress")]
+    IncorrectWithdrawVoteAddress,
 }
 impl From<StakePoolError> for ProgramError {
     fn from(e: StakePoolError) -> Self {

@@ -13,16 +13,16 @@ use crate::{
     error::GovernanceError,
     state::{
         enums::GovernanceAccountType,
-        realm::deserialize_realm_raw,
+        realm::get_realm_data,
         token_owner_record::{
-            deserialize_token_owner_record, get_token_owner_record_address_seeds, TokenOwnerRecord,
+            get_token_owner_record_address_seeds, get_token_owner_record_data_for_seeds,
+            TokenOwnerRecord,
         },
     },
     tools::{
         account::create_and_serialize_account_signed,
-        token::{
-            get_amount_from_token_account, get_mint_from_token_account,
-            get_owner_from_token_account, transfer_spl_tokens,
+        spl_token::{
+            get_spl_token_amount, get_spl_token_mint, get_spl_token_owner, transfer_spl_tokens,
         },
     },
 };
@@ -47,12 +47,12 @@ pub fn process_deposit_governing_tokens(
     let rent_sysvar_info = next_account_info(account_info_iter)?; // 9
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
 
-    let realm_data = deserialize_realm_raw(realm_info)?;
-    let governing_token_mint = get_mint_from_token_account(governing_token_holding_info)?;
+    let realm_data = get_realm_data(realm_info)?;
+    let governing_token_mint = get_spl_token_mint(governing_token_holding_info)?;
 
     realm_data.assert_is_valid_governing_token_mint(&governing_token_mint)?;
 
-    let amount = get_amount_from_token_account(governing_token_source_info)?;
+    let amount = get_spl_token_amount(governing_token_source_info)?;
 
     transfer_spl_tokens(
         &governing_token_source_info,
@@ -70,7 +70,7 @@ pub fn process_deposit_governing_tokens(
 
     if token_owner_record_info.data_is_empty() {
         // Deposited tokens can only be withdrawn by the owner so let's make sure the owner signed the transaction
-        let governing_token_owner = get_owner_from_token_account(&governing_token_source_info)?;
+        let governing_token_owner = get_spl_token_owner(&governing_token_source_info)?;
 
         if !(governing_token_owner == *governing_token_owner_info.key
             && governing_token_owner_info.is_signer)
@@ -85,7 +85,7 @@ pub fn process_deposit_governing_tokens(
             governing_token_deposit_amount: amount,
             governing_token_mint,
             governance_delegate: None,
-            active_votes_count: 0,
+            unrelinquished_votes_count: 0,
             total_votes_count: 0,
         };
 
@@ -99,7 +99,7 @@ pub fn process_deposit_governing_tokens(
             rent,
         )?;
     } else {
-        let mut token_owner_record_data = deserialize_token_owner_record(
+        let mut token_owner_record_data = get_token_owner_record_data_for_seeds(
             token_owner_record_info,
             &token_owner_record_address_seeds,
         )?;

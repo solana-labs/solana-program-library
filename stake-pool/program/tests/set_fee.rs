@@ -8,8 +8,9 @@ use {
     solana_program::hash::Hash,
     solana_program_test::*,
     solana_sdk::{
-        instruction::InstructionError, signature::Keypair, signature::Signer,
-        transaction::Transaction, transaction::TransactionError,
+        instruction::InstructionError,
+        signature::{Keypair, Signer},
+        transaction::{Transaction, TransactionError},
     },
     spl_stake_pool::{
         error, id, instruction,

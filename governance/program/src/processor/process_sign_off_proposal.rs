@@ -10,8 +10,8 @@ use solana_program::{
 };
 
 use crate::state::{
-    enums::ProposalState, proposal::deserialize_proposal_raw,
-    signatory_record::deserialize_signatory_record,
+    enums::ProposalState, proposal::get_proposal_data,
+    signatory_record::get_signatory_record_data_for_seeds,
 };
 
 /// Processes SignOffProposal instruction
@@ -26,11 +26,14 @@ pub fn process_sign_off_proposal(_program_id: &Pubkey, accounts: &[AccountInfo])
     let clock_info = next_account_info(account_info_iter)?; // 3
     let clock = Clock::from_account_info(clock_info)?;
 
-    let mut proposal_data = deserialize_proposal_raw(proposal_info)?;
+    let mut proposal_data = get_proposal_data(proposal_info)?;
     proposal_data.assert_can_sign_off()?;
 
-    let mut signatory_record_data =
-        deserialize_signatory_record(signatory_record_info, proposal_info.key, signatory_info.key)?;
+    let mut signatory_record_data = get_signatory_record_data_for_seeds(
+        signatory_record_info,
+        proposal_info.key,
+        signatory_info.key,
+    )?;
     signatory_record_data.assert_can_sign_off(signatory_info)?;
 
     signatory_record_data.signed_off = true;
