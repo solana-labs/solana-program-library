@@ -1719,29 +1719,41 @@ fn get_pyth_product_quote_currency(pyth_product: &pyth::Product) -> Result<[u8; 
     const LEN: usize = 14;
     const KEY: &[u8; LEN] = b"quote_currency";
 
-    let mut offset = 0;
-    while offset < pyth::PROD_ATTR_SIZE {
-        let mut len = pyth_product.attr[offset] as usize;
-        offset += 1;
+    let mut start = 0;
+    while start < pyth::PROD_ATTR_SIZE {
+        let mut length = pyth_product.attr[start] as usize;
+        start += 1;
 
-        if len == LEN {
-            let key = &pyth_product.attr[offset..(offset + len)];
+        if length == LEN {
+            let mut end = start + length;
+            if end > pyth::PROD_ATTR_SIZE {
+                msg!("Pyth product attribute key length too long");
+                return Err(LendingError::InvalidOracleConfig.into());
+            }
+
+            let key = &pyth_product.attr[start..end];
             if key == KEY {
-                offset += len;
-                len = pyth_product.attr[offset] as usize;
-                offset += 1;
+                start += length;
+                length = pyth_product.attr[start] as usize;
+                start += 1;
+
+                end = start + length;
+                if length > 32 || end > pyth::PROD_ATTR_SIZE {
+                    msg!("Pyth product quote currency value too long");
+                    return Err(LendingError::InvalidOracleConfig.into());
+                }
 
                 let mut value = [0u8; 32];
-                value[0..len].copy_from_slice(&pyth_product.attr[offset..(offset + len)]);
+                value[0..length].copy_from_slice(&pyth_product.attr[start..end]);
                 return Ok(value);
             }
         }
 
-        offset += len;
-        offset += 1 + pyth_product.attr[offset] as usize;
+        start += length;
+        start += 1 + pyth_product.attr[start] as usize;
     }
 
-    msg!("Oracle quote currency not found");
+    msg!("Pyth product quote currency not found");
     Err(LendingError::InvalidOracleConfig.into())
 }
 
