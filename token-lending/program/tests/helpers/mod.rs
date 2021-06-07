@@ -4,17 +4,10 @@ pub mod flash_loan_receiver;
 pub mod genesis;
 
 use assert_matches::*;
-use flux_aggregator::{
-    borsh_state::BorshState,
-    borsh_utils,
-    state::{Aggregator, AggregatorConfig, Answer},
-};
-use genesis::GenesisAccounts;
 use solana_program::{program_option::COption, program_pack::Pack, pubkey::Pubkey};
 use solana_program_test::*;
 use solana_sdk::{
     account::Account,
-    account_info::IntoAccountInfo,
     signature::{read_keypair_file, Keypair, Signer},
     system_instruction::create_account,
     transaction::{Transaction, TransactionError},
@@ -29,7 +22,7 @@ use spl_token_lending::{
         init_obligation, init_reserve, liquidate_obligation, refresh_reserve,
     },
     math::{Decimal, Rate, TryAdd, TryMul},
-    processor::process_instruction,
+    pyth,
     state::{
         InitLendingMarketParams, InitObligationParams, InitReserveParams, LendingMarket,
         NewReserveCollateralParams, NewReserveLiquidityParams, Obligation, ObligationCollateral,
@@ -37,11 +30,13 @@ use spl_token_lending::{
         ReserveLiquidity, INITIAL_COLLATERAL_RATIO, PROGRAM_VERSION,
     },
 };
-use std::str::FromStr;
+use std::{convert::TryInto, str::FromStr};
+
+pub const QUOTE_CURRENCY: [u8; 32] =
+    *b"USD\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0";
 
 pub const LAMPORTS_TO_SOL: u64 = 1_000_000_000;
 pub const FRACTIONAL_TO_USDC: u64 = 1_000_000;
-pub const FRACTIONAL_TO_SRM: u64 = 1_000_000;
 
 pub const TEST_RESERVE_CONFIG: ReserveConfig = ReserveConfig {
     optimal_utilization_rate: 80,
@@ -60,45 +55,13 @@ pub const TEST_RESERVE_CONFIG: ReserveConfig = ReserveConfig {
     },
 };
 
+pub const SOL_PYTH_PRODUCT: &str = "8yrQMUyJRnCJ72NWwMiPV9dNGw465Z8bKUvnUC8P5L6F";
+pub const SOL_PYTH_PRICE: &str = "BdgHsXrH1mXqhdosXavYxZgX6bGqTdj5mh2sxDhF8bJy";
+
+pub const SRM_PYTH_PRODUCT: &str = "5agdsn3jogTt8F537GW3g8BuLaBGrg9Q2gPKUNqBV6Dh";
+pub const SRM_PYTH_PRICE: &str = "2Mt2wcRXpCAbTRp2VjFqGa8SbJVzjJvyK4Tx7aqbRtBJ";
+
 pub const USDC_MINT: &str = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
-pub const SRM_MINT: &str = "SRMuApVNdxXokk5GT7XD5cUUgXMBCoAz2LHeuAoKWRt";
-
-#[allow(non_camel_case_types)]
-pub enum TestAggregatorPair {
-    SRM_USDC,
-    SOL_USDC,
-}
-
-pub struct LendingTest {
-    pub sol_usdc_aggregator: TestAggregator,
-    pub srm_usdc_aggregator: TestAggregator,
-    pub usdc_mint: TestQuoteMint,
-    pub srm_mint: TestQuoteMint,
-}
-
-pub fn setup_test() -> (ProgramTest, LendingTest) {
-    let mut test = ProgramTest::new(
-        "spl_token_lending",
-        spl_token_lending::id(),
-        processor!(process_instruction),
-    );
-
-    let usdc_mint = add_usdc_mint(&mut test);
-    let srm_mint = add_srm_mint(&mut test);
-
-    let sol_usdc_aggregator = add_aggregator(&mut test, TestAggregatorPair::SOL_USDC);
-    let srm_usdc_aggregator = add_aggregator(&mut test, TestAggregatorPair::SRM_USDC);
-
-    (
-        test,
-        LendingTest {
-            sol_usdc_aggregator,
-            srm_usdc_aggregator,
-            usdc_mint,
-            srm_mint,
-        },
-    )
-}
 
 trait AddPacked {
     fn add_packable_account<T: Pack>(
@@ -124,13 +87,16 @@ impl AddPacked for ProgramTest {
     }
 }
 
-pub fn add_lending_market(test: &mut ProgramTest, quote_token_mint: Pubkey) -> TestLendingMarket {
+pub fn add_lending_market(test: &mut ProgramTest) -> TestLendingMarket {
     let lending_market_pubkey = Pubkey::new_unique();
     let (lending_market_authority, bump_seed) =
         Pubkey::find_program_address(&[lending_market_pubkey.as_ref()], &spl_token_lending::id());
 
     let lending_market_owner =
         read_keypair_file("tests/fixtures/lending_market_owner.json").unwrap();
+    let oracle_program_id = read_keypair_file("tests/fixtures/oracle_program_id.json")
+        .unwrap()
+        .pubkey();
 
     test.add_packable_account(
         lending_market_pubkey,
@@ -138,8 +104,9 @@ pub fn add_lending_market(test: &mut ProgramTest, quote_token_mint: Pubkey) -> T
         &LendingMarket::new(InitLendingMarketParams {
             bump_seed,
             owner: lending_market_owner.pubkey(),
-            quote_token_mint,
+            quote_currency: QUOTE_CURRENCY,
             token_program_id: spl_token::id(),
+            oracle_program_id,
         }),
         &spl_token_lending::id(),
     );
@@ -148,7 +115,8 @@ pub fn add_lending_market(test: &mut ProgramTest, quote_token_mint: Pubkey) -> T
         pubkey: lending_market_pubkey,
         owner: lending_market_owner,
         authority: lending_market_authority,
-        quote_token_mint,
+        quote_currency: QUOTE_CURRENCY,
+        oracle_program_id,
     }
 }
 
@@ -256,12 +224,12 @@ pub struct AddReserveArgs {
     pub collateral_amount: u64,
     pub mark_fresh: bool,
     pub slots_elapsed: u64,
-    pub aggregator_pair: Option<TestAggregatorPair>,
 }
 
 pub fn add_reserve(
     test: &mut ProgramTest,
     lending_market: &TestLendingMarket,
+    oracle: &TestOracle,
     user_accounts_owner: &Keypair,
     args: AddReserveArgs,
 ) -> TestReserve {
@@ -277,20 +245,7 @@ pub fn add_reserve(
         collateral_amount,
         mark_fresh,
         slots_elapsed,
-        aggregator_pair,
     } = args;
-
-    let (liquidity_oracle_pubkey, market_price) = if let Some(aggregator_pair) = aggregator_pair {
-        let aggregator = add_aggregator(test, aggregator_pair);
-        (Some(aggregator.pubkey), aggregator.price)
-    } else if liquidity_mint_pubkey == spl_token::native_mint::id() {
-        let aggregator = add_aggregator(test, TestAggregatorPair::SOL_USDC);
-        (Some(aggregator.pubkey), aggregator.price)
-    } else if liquidity_mint_pubkey == lending_market.quote_token_mint {
-        (None, 1 * FRACTIONAL_TO_USDC)
-    } else {
-        panic!("aggregator pair is required");
-    };
 
     let is_native = if liquidity_mint_pubkey == spl_token::native_mint::id() {
         COption::Some(1)
@@ -387,8 +342,8 @@ pub fn add_reserve(
             mint_decimals: liquidity_mint_decimals,
             supply_pubkey: liquidity_supply_pubkey,
             fee_receiver: liquidity_fee_receiver_pubkey,
-            oracle_pubkey: liquidity_oracle_pubkey.into(),
-            market_price,
+            oracle_pubkey: oracle.price_pubkey,
+            market_price: oracle.price,
         }),
         collateral: ReserveCollateral::new(NewReserveCollateralParams {
             mint_pubkey: collateral_mint_pubkey,
@@ -459,12 +414,12 @@ pub fn add_reserve(
         liquidity_supply_pubkey,
         liquidity_fee_receiver_pubkey,
         liquidity_host_pubkey,
+        liquidity_oracle_pubkey: oracle.price_pubkey,
         collateral_mint_pubkey,
         collateral_supply_pubkey,
         user_liquidity_pubkey,
         user_collateral_pubkey,
-        liquidity_oracle_pubkey,
-        market_price,
+        market_price: oracle.price,
     }
 }
 
@@ -495,7 +450,8 @@ pub struct TestLendingMarket {
     pub pubkey: Pubkey,
     pub owner: Keypair,
     pub authority: Pubkey,
-    pub quote_token_mint: Pubkey,
+    pub quote_currency: [u8; 32],
+    pub oracle_program_id: Pubkey,
 }
 
 pub struct BorrowArgs<'a> {
@@ -514,13 +470,13 @@ pub struct LiquidateArgs<'a> {
 }
 
 impl TestLendingMarket {
-    pub async fn init(
-        banks_client: &mut BanksClient,
-        quote_token_mint: Pubkey,
-        payer: &Keypair,
-    ) -> Self {
+    pub async fn init(banks_client: &mut BanksClient, payer: &Keypair) -> Self {
         let lending_market_owner =
             read_keypair_file("tests/fixtures/lending_market_owner.json").unwrap();
+        let oracle_program_id = read_keypair_file("tests/fixtures/oracle_program_id.json")
+            .unwrap()
+            .pubkey();
+
         let lending_market_keypair = Keypair::new();
         let lending_market_pubkey = lending_market_keypair.pubkey();
         let (lending_market_authority, _bump_seed) = Pubkey::find_program_address(
@@ -540,9 +496,10 @@ impl TestLendingMarket {
                 ),
                 init_lending_market(
                     spl_token_lending::id(),
-                    lending_market_pubkey,
                     lending_market_owner.pubkey(),
-                    quote_token_mint,
+                    QUOTE_CURRENCY,
+                    lending_market_pubkey,
+                    oracle_program_id,
                 ),
             ],
             Some(&payer.pubkey()),
@@ -556,7 +513,8 @@ impl TestLendingMarket {
             owner: lending_market_owner,
             pubkey: lending_market_pubkey,
             authority: lending_market_authority,
-            quote_token_mint,
+            quote_currency: QUOTE_CURRENCY,
+            oracle_program_id,
         }
     }
 
@@ -724,18 +682,7 @@ impl TestLendingMarket {
         let lending_market = self.get_state(banks_client).await;
         assert_eq!(lending_market.version, PROGRAM_VERSION);
         assert_eq!(lending_market.owner, self.owner.pubkey());
-        assert_eq!(lending_market.quote_token_mint, self.quote_token_mint);
-    }
-
-    pub async fn add_to_genesis(
-        &self,
-        banks_client: &mut BanksClient,
-        genesis_accounts: &mut GenesisAccounts,
-    ) {
-        println!("lending_market: {}", self.pubkey);
-        genesis_accounts
-            .fetch_and_insert(banks_client, self.pubkey)
-            .await;
+        assert_eq!(lending_market.quote_currency, self.quote_currency);
     }
 }
 
@@ -750,12 +697,12 @@ pub struct TestReserve {
     pub liquidity_supply_pubkey: Pubkey,
     pub liquidity_fee_receiver_pubkey: Pubkey,
     pub liquidity_host_pubkey: Pubkey,
-    pub liquidity_oracle_pubkey: Option<Pubkey>,
+    pub liquidity_oracle_pubkey: Pubkey,
     pub collateral_mint_pubkey: Pubkey,
     pub collateral_supply_pubkey: Pubkey,
     pub user_liquidity_pubkey: Pubkey,
     pub user_collateral_pubkey: Pubkey,
-    pub market_price: u64,
+    pub market_price: Decimal,
 }
 
 impl TestReserve {
@@ -764,13 +711,13 @@ impl TestReserve {
         name: String,
         banks_client: &mut BanksClient,
         lending_market: &TestLendingMarket,
+        oracle: &TestOracle,
         liquidity_amount: u64,
         config: ReserveConfig,
         liquidity_mint_pubkey: Pubkey,
         user_liquidity_pubkey: Pubkey,
         payer: &Keypair,
         user_accounts_owner: &Keypair,
-        aggregator: Option<&TestAggregator>,
     ) -> Result<Self, TransactionError> {
         let reserve_keypair = Keypair::new();
         let reserve_pubkey = reserve_keypair.pubkey();
@@ -781,14 +728,6 @@ impl TestReserve {
         let liquidity_host_keypair = Keypair::new();
         let user_collateral_token_keypair = Keypair::new();
         let user_transfer_authority_keypair = Keypair::new();
-
-        let (liquidity_oracle_pubkey, market_price) = if let Some(aggregator) = aggregator {
-            (Some(aggregator.pubkey), aggregator.price)
-        } else if liquidity_mint_pubkey == lending_market.quote_token_mint {
-            (None, 1 * FRACTIONAL_TO_USDC)
-        } else {
-            panic!("aggregator is required");
-        };
 
         let liquidity_mint_account = banks_client
             .get_account(liquidity_mint_pubkey)
@@ -870,11 +809,11 @@ impl TestReserve {
                     liquidity_fee_receiver_keypair.pubkey(),
                     collateral_mint_keypair.pubkey(),
                     collateral_supply_keypair.pubkey(),
-                    lending_market.quote_token_mint,
+                    oracle.product_pubkey,
+                    oracle.price_pubkey,
                     lending_market.pubkey,
                     lending_market.owner.pubkey(),
                     user_transfer_authority_keypair.pubkey(),
-                    liquidity_oracle_pubkey,
                 ),
             ],
             Some(&payer.pubkey()),
@@ -911,76 +850,14 @@ impl TestReserve {
                 liquidity_supply_pubkey: liquidity_supply_keypair.pubkey(),
                 liquidity_fee_receiver_pubkey: liquidity_fee_receiver_keypair.pubkey(),
                 liquidity_host_pubkey: liquidity_host_keypair.pubkey(),
+                liquidity_oracle_pubkey: oracle.price_pubkey,
                 collateral_mint_pubkey: collateral_mint_keypair.pubkey(),
                 collateral_supply_pubkey: collateral_supply_keypair.pubkey(),
                 user_liquidity_pubkey,
                 user_collateral_pubkey: user_collateral_token_keypair.pubkey(),
-                liquidity_oracle_pubkey,
-                market_price,
+                market_price: oracle.price,
             })
             .map_err(|e| e.unwrap())
-    }
-
-    pub async fn add_to_genesis(
-        &self,
-        banks_client: &mut BanksClient,
-        genesis_accounts: &mut GenesisAccounts,
-    ) {
-        println!("{}_reserve: {}", self.name, self.pubkey);
-        genesis_accounts
-            .fetch_and_insert(banks_client, self.pubkey)
-            .await;
-        println!(
-            "{}_collateral_mint: {}",
-            self.name, self.collateral_mint_pubkey
-        );
-        genesis_accounts
-            .fetch_and_insert(banks_client, self.collateral_mint_pubkey)
-            .await;
-        println!(
-            "{}_collateral_supply: {}",
-            self.name, self.collateral_supply_pubkey
-        );
-        genesis_accounts
-            .fetch_and_insert(banks_client, self.liquidity_fee_receiver_pubkey)
-            .await;
-        println!(
-            "{}_liquidity_fee_receiver: {}",
-            self.name, self.liquidity_fee_receiver_pubkey
-        );
-        genesis_accounts
-            .fetch_and_insert(banks_client, self.collateral_supply_pubkey)
-            .await;
-        if &self.name != "sol" {
-            println!(
-                "{}_liquidity_mint: {}",
-                self.name, self.liquidity_mint_pubkey
-            );
-            genesis_accounts
-                .fetch_and_insert(banks_client, self.liquidity_mint_pubkey)
-                .await;
-        }
-        println!(
-            "{}_liquidity_supply: {}",
-            self.name, self.liquidity_supply_pubkey
-        );
-        genesis_accounts
-            .fetch_and_insert(banks_client, self.liquidity_supply_pubkey)
-            .await;
-        println!(
-            "{}_user_collateral: {}",
-            self.name, self.user_collateral_pubkey
-        );
-        genesis_accounts
-            .fetch_and_insert(banks_client, self.user_collateral_pubkey)
-            .await;
-        println!(
-            "{}_user_liquidity: {}",
-            self.name, self.user_liquidity_pubkey
-        );
-        genesis_accounts
-            .fetch_and_insert(banks_client, self.user_liquidity_pubkey)
-            .await;
     }
 
     pub async fn get_state(&self, banks_client: &mut BanksClient) -> Reserve {
@@ -1009,14 +886,10 @@ impl TestReserve {
         );
         assert_eq!(self.config, reserve.config);
 
-        let liquidity_oracle_coption =
-            if let Some(liquidity_oracle_pubkey) = self.liquidity_oracle_pubkey {
-                COption::Some(liquidity_oracle_pubkey)
-            } else {
-                COption::None
-            };
-
-        assert_eq!(liquidity_oracle_coption, reserve.liquidity.oracle_pubkey);
+        assert_eq!(
+            self.liquidity_oracle_pubkey,
+            reserve.liquidity.oracle_pubkey
+        );
         assert_eq!(
             reserve.liquidity.cumulative_borrow_rate_wads,
             Decimal::one()
@@ -1160,13 +1033,13 @@ impl TestObligationLiquidity {
     }
 }
 
-pub struct TestQuoteMint {
+pub struct TestMint {
     pub pubkey: Pubkey,
     pub authority: Keypair,
     pub decimals: u8,
 }
 
-pub fn add_usdc_mint(test: &mut ProgramTest) -> TestQuoteMint {
+pub fn add_usdc_mint(test: &mut ProgramTest) -> TestMint {
     let authority = Keypair::new();
     let pubkey = Pubkey::from_str(USDC_MINT).unwrap();
     let decimals = 6;
@@ -1181,96 +1054,92 @@ pub fn add_usdc_mint(test: &mut ProgramTest) -> TestQuoteMint {
         },
         &spl_token::id(),
     );
-    TestQuoteMint {
+    TestMint {
         pubkey,
         authority,
         decimals,
     }
 }
 
-pub fn add_srm_mint(test: &mut ProgramTest) -> TestQuoteMint {
-    let authority = Keypair::new();
-    let pubkey = Pubkey::from_str(SRM_MINT).unwrap();
-    let decimals = 6;
-    test.add_packable_account(
-        pubkey,
-        u32::MAX as u64,
-        &Mint {
-            is_initialized: true,
-            mint_authority: COption::Some(authority.pubkey()),
-            decimals,
-            ..Mint::default()
-        },
-        &spl_token::id(),
-    );
-    TestQuoteMint {
-        pubkey,
-        authority,
-        decimals,
-    }
+pub struct TestOracle {
+    pub product_pubkey: Pubkey,
+    pub price_pubkey: Pubkey,
+    pub price: Decimal,
 }
 
-pub struct TestAggregator {
-    pub name: String,
-    pub pubkey: Pubkey,
-    pub price: u64,
+pub fn add_sol_oracle(test: &mut ProgramTest) -> TestOracle {
+    add_oracle(
+        test,
+        Pubkey::from_str(SOL_PYTH_PRODUCT).unwrap(),
+        Pubkey::from_str(SOL_PYTH_PRICE).unwrap(),
+        // Set SOL price to $20
+        Decimal::from(20u64),
+    )
 }
 
-pub fn add_aggregator(test: &mut ProgramTest, pair: TestAggregatorPair) -> TestAggregator {
-    let (name, decimals, price) = match pair {
-        // price @ 1 SOL = 20 USDC
-        TestAggregatorPair::SOL_USDC => ("SOL:USDC", 6, 20 * FRACTIONAL_TO_USDC),
-        // price @ 1 SRM = 5 USDC
-        TestAggregatorPair::SRM_USDC => ("SRM:USDC", 6, 5 * FRACTIONAL_TO_USDC),
-    };
+pub fn add_usdc_oracle(test: &mut ProgramTest) -> TestOracle {
+    add_oracle(
+        test,
+        // Mock with SRM since Pyth doesn't have USDC yet
+        Pubkey::from_str(SRM_PYTH_PRODUCT).unwrap(),
+        Pubkey::from_str(SRM_PYTH_PRICE).unwrap(),
+        // Set USDC price to $1
+        Decimal::from(1u64),
+    )
+}
 
-    let pubkey = Pubkey::new_unique();
+pub fn add_oracle(
+    test: &mut ProgramTest,
+    product_pubkey: Pubkey,
+    price_pubkey: Pubkey,
+    price: Decimal,
+) -> TestOracle {
+    let oracle_program_id = read_keypair_file("tests/fixtures/oracle_program_id.json").unwrap();
 
-    let mut description = [0u8; 32];
-    let size = name.len().min(description.len());
-    description[0..size].copy_from_slice(&name.as_bytes()[0..size]);
-
-    let aggregator = Aggregator {
-        config: AggregatorConfig {
-            description,
-            decimals,
-            ..AggregatorConfig::default()
-        },
-        is_initialized: true,
-        answer: Answer {
-            median: price,
-            created_at: 1, // set to > 0 to initialize
-            ..Answer::default()
-        },
-        ..Aggregator::default()
-    };
-
-    let mut account = Account::new(
+    // Add Pyth product account
+    test.add_account_with_file_data(
+        product_pubkey,
         u32::MAX as u64,
-        borsh_utils::get_packed_len::<Aggregator>(),
-        &spl_token_lending::id(),
+        oracle_program_id.pubkey(),
+        &format!("{}.bin", product_pubkey.to_string()),
     );
-    let account_info = (&pubkey, false, &mut account).into_account_info();
-    aggregator.save(&account_info).unwrap();
-    test.add_account(pubkey, account);
 
-    TestAggregator {
-        name: name.to_string(),
-        pubkey,
+    // Add Pyth price account after setting the price
+    let filename = &format!("{}.bin", price_pubkey.to_string());
+    let mut pyth_price_data = read_file(find_file(filename).unwrap_or_else(|| {
+        panic!("Unable to locate {}", filename);
+    }));
+
+    let mut pyth_price = pyth::load_mut::<pyth::Price>(pyth_price_data.as_mut_slice()).unwrap();
+
+    let decimals = 10u64
+        .checked_pow(pyth_price.expo.checked_abs().unwrap().try_into().unwrap())
+        .unwrap();
+
+    pyth_price.valid_slot = 0;
+    pyth_price.agg.price = price
+        .try_round_u64()
+        .unwrap()
+        .checked_mul(decimals)
+        .unwrap()
+        .try_into()
+        .unwrap();
+
+    test.add_account(
+        price_pubkey,
+        Account {
+            lamports: u32::MAX as u64,
+            data: pyth_price_data,
+            owner: oracle_program_id.pubkey(),
+            executable: false,
+            rent_epoch: 0,
+        },
+    );
+
+    TestOracle {
+        product_pubkey,
+        price_pubkey,
         price,
-    }
-}
-
-impl TestAggregator {
-    pub async fn add_to_genesis(
-        &self,
-        banks_client: &mut BanksClient,
-        genesis_accounts: &mut GenesisAccounts,
-    ) {
-        println!("{}_aggregator: {}", self.name, self.pubkey);
-        genesis_accounts
-            .fetch_and_insert(banks_client, self.pubkey)
-            .await;
     }
 }
 

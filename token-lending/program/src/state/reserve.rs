@@ -9,7 +9,6 @@ use solana_program::{
     entrypoint::ProgramResult,
     msg,
     program_error::ProgramError,
-    program_option::COption,
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::{Pubkey, PUBKEY_BYTES},
 };
@@ -356,8 +355,8 @@ pub struct ReserveLiquidity {
     pub supply_pubkey: Pubkey,
     /// Reserve liquidity fee receiver address
     pub fee_receiver: Pubkey,
-    /// Optional reserve liquidity oracle state account
-    pub oracle_pubkey: COption<Pubkey>,
+    /// Reserve liquidity oracle account
+    pub oracle_pubkey: Pubkey,
     /// Reserve liquidity available
     pub available_amount: u64,
     /// Reserve liquidity borrowed
@@ -365,7 +364,7 @@ pub struct ReserveLiquidity {
     /// Reserve liquidity cumulative borrow rate
     pub cumulative_borrow_rate_wads: Decimal,
     /// Reserve liquidity market price in quote currency
-    pub market_price: u64,
+    pub market_price: Decimal,
 }
 
 impl ReserveLiquidity {
@@ -377,10 +376,10 @@ impl ReserveLiquidity {
             supply_pubkey: params.supply_pubkey,
             fee_receiver: params.fee_receiver,
             oracle_pubkey: params.oracle_pubkey,
-            cumulative_borrow_rate_wads: Decimal::one(),
-            market_price: params.market_price,
             available_amount: 0,
             borrowed_amount_wads: Decimal::zero(),
+            cumulative_borrow_rate_wads: Decimal::one(),
+            market_price: params.market_price,
         }
     }
 
@@ -478,10 +477,10 @@ pub struct NewReserveLiquidityParams {
     pub supply_pubkey: Pubkey,
     /// Reserve liquidity fee receiver address
     pub fee_receiver: Pubkey,
-    /// Optional reserve liquidity oracle state account
-    pub oracle_pubkey: COption<Pubkey>,
+    /// Reserve liquidity oracle account
+    pub oracle_pubkey: Pubkey,
     /// Reserve liquidity market price in quote currency
-    pub market_price: u64,
+    pub market_price: Decimal,
 }
 
 /// Reserve collateral
@@ -713,11 +712,11 @@ impl IsInitialized for Reserve {
     }
 }
 
-const RESERVE_LEN: usize = 567; // 1 + 8 + 1 + 32 + 32 + 1 + 32 + 32 + (4 + 32) + 16 + 8 + 8 + 16 + 32 + 32 + 8 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 8 + 8 + 1 + 248
-                                // @TODO: break this up by reserve / liquidity / collateral / config https://git.io/JOCca
+const RESERVE_LEN: usize = 571; // 1 + 8 + 1 + 32 + 32 + 1 + 32 + 32 + 32 + 8 + 16 + 16 + 16 + 32 + 8 + 32 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 8 + 8 + 1 + 248
 impl Pack for Reserve {
     const LEN: usize = RESERVE_LEN;
 
+    // @TODO: break this up by reserve / liquidity / collateral / config https://git.io/JOCca
     fn pack_into_slice(&self, output: &mut [u8]) {
         let output = array_mut_ref![output, 0, RESERVE_LEN];
         #[allow(clippy::ptr_offset_with_cast)]
@@ -759,11 +758,11 @@ impl Pack for Reserve {
             1,
             PUBKEY_BYTES,
             PUBKEY_BYTES,
-            4 + PUBKEY_BYTES,
+            PUBKEY_BYTES,
             8,
             16,
             16,
-            8,
+            16,
             PUBKEY_BYTES,
             8,
             PUBKEY_BYTES,
@@ -791,7 +790,7 @@ impl Pack for Reserve {
         *liquidity_mint_decimals = self.liquidity.mint_decimals.to_le_bytes();
         liquidity_supply_pubkey.copy_from_slice(self.liquidity.supply_pubkey.as_ref());
         liquidity_fee_receiver.copy_from_slice(self.liquidity.fee_receiver.as_ref());
-        pack_coption_key(&self.liquidity.oracle_pubkey, liquidity_oracle_pubkey);
+        liquidity_oracle_pubkey.copy_from_slice(self.liquidity.oracle_pubkey.as_ref());
         *liquidity_available_amount = self.liquidity.available_amount.to_le_bytes();
         pack_decimal(
             self.liquidity.borrowed_amount_wads,
@@ -801,7 +800,7 @@ impl Pack for Reserve {
             self.liquidity.cumulative_borrow_rate_wads,
             liquidity_cumulative_borrow_rate_wads,
         );
-        *liquidity_market_price = self.liquidity.market_price.to_le_bytes();
+        pack_decimal(self.liquidity.market_price, liquidity_market_price);
 
         // collateral
         collateral_mint_pubkey.copy_from_slice(self.collateral.mint_pubkey.as_ref());
@@ -863,11 +862,11 @@ impl Pack for Reserve {
             1,
             PUBKEY_BYTES,
             PUBKEY_BYTES,
-            4 + PUBKEY_BYTES,
+            PUBKEY_BYTES,
             8,
             16,
             16,
-            8,
+            16,
             PUBKEY_BYTES,
             8,
             PUBKEY_BYTES,
@@ -902,11 +901,11 @@ impl Pack for Reserve {
                 mint_decimals: u8::from_le_bytes(*liquidity_mint_decimals),
                 supply_pubkey: Pubkey::new_from_array(*liquidity_supply_pubkey),
                 fee_receiver: Pubkey::new_from_array(*liquidity_fee_receiver),
-                oracle_pubkey: unpack_coption_key(liquidity_oracle_pubkey)?,
+                oracle_pubkey: Pubkey::new_from_array(*liquidity_oracle_pubkey),
                 available_amount: u64::from_le_bytes(*liquidity_available_amount),
                 borrowed_amount_wads: unpack_decimal(liquidity_borrowed_amount_wads),
                 cumulative_borrow_rate_wads: unpack_decimal(liquidity_cumulative_borrow_rate_wads),
-                market_price: u64::from_le_bytes(*liquidity_market_price),
+                market_price: unpack_decimal(liquidity_market_price),
             },
             collateral: ReserveCollateral {
                 mint_pubkey: Pubkey::new_from_array(*collateral_mint_pubkey),

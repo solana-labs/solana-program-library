@@ -34,15 +34,16 @@ async fn test_success() {
 
     let user_accounts_owner = Keypair::new();
     let user_transfer_authority = Keypair::new();
-    let usdc_mint = add_usdc_mint(&mut test);
-    let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
+    let lending_market = add_lending_market(&mut test);
 
     let mut reserve_config = TEST_RESERVE_CONFIG;
     reserve_config.loan_to_value_ratio = 50;
 
+    let sol_oracle = add_sol_oracle(&mut test);
     let sol_test_reserve = add_reserve(
         &mut test,
         &lending_market,
+        &sol_oracle,
         &user_accounts_owner,
         AddReserveArgs {
             collateral_amount: SOL_RESERVE_COLLATERAL_LAMPORTS,
@@ -54,9 +55,12 @@ async fn test_success() {
         },
     );
 
+    let usdc_mint = add_usdc_mint(&mut test);
+    let usdc_oracle = add_usdc_oracle(&mut test);
     let usdc_test_reserve = add_reserve(
         &mut test,
         &lending_market,
+        &usdc_oracle,
         &user_accounts_owner,
         AddReserveArgs {
             borrow_amount: USDC_BORROW_AMOUNT_FRACTIONAL,

@@ -25,16 +25,11 @@ async fn test_success() {
     // limit to track compute unit increase
     test.set_bpf_compute_max_units(15_000);
 
-    let usdc_mint = add_usdc_mint(&mut test);
     let (mut banks_client, payer, _recent_blockhash) = test.start().await;
 
-    let test_lending_market =
-        TestLendingMarket::init(&mut banks_client, usdc_mint.pubkey, &payer).await;
+    let test_lending_market = TestLendingMarket::init(&mut banks_client, &payer).await;
 
     test_lending_market.validate_state(&mut banks_client).await;
-
-    let lending_market = test_lending_market.get_state(&mut banks_client).await;
-    assert_eq!(lending_market.quote_token_mint, usdc_mint.pubkey);
 }
 
 #[tokio::test]
@@ -45,16 +40,16 @@ async fn test_already_initialized() {
         processor!(process_instruction),
     );
 
-    let usdc_mint = add_usdc_mint(&mut test);
-    let existing_market = add_lending_market(&mut test, usdc_mint.pubkey);
+    let existing_market = add_lending_market(&mut test);
     let (mut banks_client, payer, recent_blockhash) = test.start().await;
 
     let mut transaction = Transaction::new_with_payer(
         &[init_lending_market(
             spl_token_lending::id(),
-            existing_market.pubkey,
             existing_market.owner.pubkey(),
-            usdc_mint.pubkey,
+            existing_market.quote_currency,
+            existing_market.pubkey,
+            existing_market.oracle_program_id,
         )],
         Some(&payer.pubkey()),
     );

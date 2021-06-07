@@ -10,11 +10,10 @@ edition = "2018"
 [features]
 no-entrypoint = []
 test-bpf = []
-test-dump-genesis-accounts = []
 
 [dependencies]
 arrayref = "0.3.6"
-flux-aggregator = { git = "https://github.com/octopus-network/solana-flux-aggregator", rev = "9cfaec5", features = ["no-entrypoint"] }
+bytemuck = "1.5.1"
 num-derive = "0.3"
 num-traits = "0.2"
 solana-program = "1.6.7"

@@ -22,12 +22,14 @@ pub enum LendingInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` Lending market account - uninitialized.
-    ///   1. `[]` Quote currency SPL Token mint.
-    ///   2. `[]` Rent sysvar.
-    ///   3. `[]` Token program id.
+    ///   1. `[]` Rent sysvar.
+    ///   2. `[]` Token program id.
     InitLendingMarket {
         /// Owner authority which can add new reserves
         owner: Pubkey,
+        /// Currency market prices are quoted in
+        /// e.g. "USD" null padded (`*b"USD\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"`) or a SPL token mint pubkey
+        quote_currency: [u8; 32],
     },
 
     // 1
@@ -54,19 +56,18 @@ pub enum LendingInstruction {
     ///   3. `[]` Reserve liquidity SPL Token mint.
     ///   4. `[writable]` Reserve liquidity supply SPL Token account - uninitialized.
     ///   5. `[writable]` Reserve liquidity fee receiver - uninitialized.
-    ///   6. `[writable]` Reserve collateral SPL Token mint - uninitialized.
-    ///   7. `[writable]` Reserve collateral token supply - uninitialized.
-    ///   8. `[]` Quote currency SPL Token mint.
-    ///   9. `[]` Lending market account.
-    ///   10 `[]` Derived lending market authority.
-    ///   11 `[signer]` Lending market owner.
-    ///   12 `[signer]` User transfer authority ($authority).
-    ///   13 `[]` Clock sysvar.
-    ///   13 `[]` Rent sysvar.
-    ///   14 `[]` Token program id.
-    ///   15 `[optional]` Reserve liquidity oracle account.
-    ///                     Not required for quote currency reserves.
-    ///                     Must match base and quote currency mint, and quote currency decimals.
+    ///   6. `[]` Pyth product account.
+    ///   7. `[]` Pyth price account.
+    ///             This will be used as the reserve liquidity oracle account.
+    ///   8. `[writable]` Reserve collateral SPL Token mint - uninitialized.
+    ///   9. `[writable]` Reserve collateral token supply - uninitialized.
+    ///   10 `[]` Lending market account.
+    ///   11 `[]` Derived lending market authority.
+    ///   12 `[signer]` Lending market owner.
+    ///   13 `[signer]` User transfer authority ($authority).
+    ///   14 `[]` Clock sysvar.
+    ///   15 `[]` Rent sysvar.
+    ///   16 `[]` Token program id.
     InitReserve {
         /// Initial amount of liquidity to deposit into the new reserve
         liquidity_amount: u64,
@@ -81,9 +82,8 @@ pub enum LendingInstruction {
     ///
     ///   0. `[writable]` Reserve account.
     ///   1. `[]` Clock sysvar.
-    ///   2. `[optional]` Reserve liquidity oracle account.
-    ///                     Required if the reserve currency is not the lending market quote
-    ///                     currency.
+    ///   2. `[]` Reserve liquidity oracle account.
+    ///             Must be the Pyth price account specified at InitReserve.
     RefreshReserve,
 
     // 4
@@ -319,8 +319,12 @@ impl LendingInstruction {
             .ok_or(LendingError::InstructionUnpackError)?;
         Ok(match tag {
             0 => {
-                let (owner, _rest) = Self::unpack_pubkey(rest)?;
-                Self::InitLendingMarket { owner }
+                let (owner, rest) = Self::unpack_pubkey(rest)?;
+                let (quote_currency, _rest) = Self::unpack_bytes32(rest)?;
+                Self::InitLendingMarket {
+                    owner,
+                    quote_currency: *quote_currency,
+                }
             }
             1 => {
                 let (new_owner, _rest) = Self::unpack_pubkey(rest)?;
@@ -403,13 +407,13 @@ impl LendingInstruction {
             msg!("u64 cannot be unpacked");
             return Err(LendingError::InstructionUnpackError.into());
         }
-        let (amount, rest) = input.split_at(8);
-        let amount = amount
+        let (bytes, rest) = input.split_at(8);
+        let value = bytes
             .get(..8)
             .and_then(|slice| slice.try_into().ok())
             .map(u64::from_le_bytes)
             .ok_or(LendingError::InstructionUnpackError)?;
-        Ok((amount, rest))
+        Ok((value, rest))
     }
 
     fn unpack_u8(input: &[u8]) -> Result<(u8, &[u8]), ProgramError> {
@@ -417,13 +421,27 @@ impl LendingInstruction {
             msg!("u8 cannot be unpacked");
             return Err(LendingError::InstructionUnpackError.into());
         }
-        let (amount, rest) = input.split_at(1);
-        let amount = amount
+        let (bytes, rest) = input.split_at(1);
+        let value = bytes
             .get(..1)
             .and_then(|slice| slice.try_into().ok())
             .map(u8::from_le_bytes)
             .ok_or(LendingError::InstructionUnpackError)?;
-        Ok((amount, rest))
+        Ok((value, rest))
+    }
+
+    fn unpack_bytes32(input: &[u8]) -> Result<(&[u8; 32], &[u8]), ProgramError> {
+        if input.len() < 32 {
+            msg!("32 bytes cannot be unpacked");
+            return Err(LendingError::InstructionUnpackError.into());
+        }
+        let (bytes, rest) = input.split_at(32);
+        Ok((
+            bytes
+                .try_into()
+                .map_err(|_| LendingError::InstructionUnpackError)?,
+            rest,
+        ))
     }
 
     fn unpack_pubkey(input: &[u8]) -> Result<(Pubkey, &[u8]), ProgramError> {
@@ -440,9 +458,13 @@ impl LendingInstruction {
     pub fn pack(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(size_of::<Self>());
         match *self {
-            Self::InitLendingMarket { owner } => {
+            Self::InitLendingMarket {
+                owner,
+                quote_currency,
+            } => {
                 buf.push(0);
                 buf.extend_from_slice(owner.as_ref());
+                buf.extend_from_slice(quote_currency.as_ref());
             }
             Self::SetLendingMarketOwner { new_owner } => {
                 buf.push(1);
@@ -529,20 +551,22 @@ impl LendingInstruction {
 /// Creates an 'InitLendingMarket' instruction.
 pub fn init_lending_market(
     program_id: Pubkey,
+    owner: Pubkey,
+    quote_currency: [u8; 32],
     lending_market_pubkey: Pubkey,
-    lending_market_owner: Pubkey,
-    quote_token_mint: Pubkey,
+    oracle_program_id: Pubkey,
 ) -> Instruction {
     Instruction {
         program_id,
         accounts: vec![
             AccountMeta::new(lending_market_pubkey, false),
-            AccountMeta::new_readonly(quote_token_mint, false),
             AccountMeta::new_readonly(sysvar::rent::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
+            AccountMeta::new_readonly(oracle_program_id, false),
         ],
         data: LendingInstruction::InitLendingMarket {
-            owner: lending_market_owner,
+            owner,
+            quote_currency,
         }
         .pack(),
     }
@@ -579,17 +603,17 @@ pub fn init_reserve(
     reserve_liquidity_fee_receiver_pubkey: Pubkey,
     reserve_collateral_mint_pubkey: Pubkey,
     reserve_collateral_supply_pubkey: Pubkey,
-    quote_token_mint_pubkey: Pubkey,
+    pyth_product_pubkey: Pubkey,
+    pyth_price_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
     lending_market_owner_pubkey: Pubkey,
     user_transfer_authority_pubkey: Pubkey,
-    reserve_liquidity_oracle_pubkey: Option<Pubkey>,
 ) -> Instruction {
     let (lending_market_authority_pubkey, _bump_seed) = Pubkey::find_program_address(
         &[&lending_market_pubkey.to_bytes()[..PUBKEY_BYTES]],
         &program_id,
     );
-    let mut accounts = vec![
+    let accounts = vec![
         AccountMeta::new(source_liquidity_pubkey, false),
         AccountMeta::new(destination_collateral_pubkey, false),
         AccountMeta::new(reserve_pubkey, false),
@@ -598,7 +622,8 @@ pub fn init_reserve(
         AccountMeta::new(reserve_liquidity_fee_receiver_pubkey, false),
         AccountMeta::new(reserve_collateral_mint_pubkey, false),
         AccountMeta::new(reserve_collateral_supply_pubkey, false),
-        AccountMeta::new_readonly(quote_token_mint_pubkey, false),
+        AccountMeta::new_readonly(pyth_product_pubkey, false),
+        AccountMeta::new_readonly(pyth_price_pubkey, false),
         AccountMeta::new_readonly(lending_market_pubkey, false),
         AccountMeta::new_readonly(lending_market_authority_pubkey, false),
         AccountMeta::new_readonly(lending_market_owner_pubkey, true),
@@ -607,12 +632,6 @@ pub fn init_reserve(
         AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(spl_token::id(), false),
     ];
-    if let Some(reserve_liquidity_oracle_pubkey) = reserve_liquidity_oracle_pubkey {
-        accounts.push(AccountMeta::new_readonly(
-            reserve_liquidity_oracle_pubkey,
-            false,
-        ));
-    }
     Instruction {
         program_id,
         accounts,
@@ -628,18 +647,13 @@ pub fn init_reserve(
 pub fn refresh_reserve(
     program_id: Pubkey,
     reserve_pubkey: Pubkey,
-    reserve_liquidity_oracle_pubkey: Option<Pubkey>,
+    reserve_liquidity_oracle_pubkey: Pubkey,
 ) -> Instruction {
-    let mut accounts = vec![
+    let accounts = vec![
         AccountMeta::new(reserve_pubkey, false),
+        AccountMeta::new_readonly(reserve_liquidity_oracle_pubkey, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];
-    if let Some(reserve_liquidity_oracle_pubkey) = reserve_liquidity_oracle_pubkey {
-        accounts.push(AccountMeta::new_readonly(
-            reserve_liquidity_oracle_pubkey,
-            false,
-        ));
-    }
     Instruction {
         program_id,
         accounts,
