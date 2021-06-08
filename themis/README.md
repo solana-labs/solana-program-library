@@ -4,7 +4,7 @@ An implementation of Brave's THEMIS research project. This project contains
 two privacy-oriented smart contracts, the Policy Smart Contract (PSC) and
 the Fund Smart Contract (FSC). Together, the two contracts allow users to
 be compensated for engaging with ad publishers. The users do not expose
-their identities or preferences. 
+their identities or preferences.
 
 ## Build and Run the TPS demo client
 
@@ -58,7 +58,7 @@ cargo build --example tps
 Point to the testnet cluster (default is mainnet-beta):
 
 ```bash
-solana config set --url http://testnet.solana.com
+solana config set --url http://api.testnet.solana.com
 ```
 
 Create a keypair and airdrop it some SOL:

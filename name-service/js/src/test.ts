@@ -19,7 +19,7 @@ import {
   signAndSendTransactionInstructions,
 } from './utils';
 
-const ENDPOINT = 'https://devnet.solana.com/';
+const ENDPOINT = 'https://api.devnet.solana.com/';
 // const ENDPOINT = 'https://solana-api.projectserum.com/';
 
 export async function test() {
