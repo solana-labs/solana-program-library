@@ -1747,8 +1747,7 @@ impl Processor {
             .calc_lamports_withdraw_amount(pool_tokens)
             .ok_or(StakePoolError::CalculationFailure)?;
 
-        let mut withdrawing_from_transient_stake_account = false;
-        let validator_list_item = if *stake_split_from.key == stake_pool.reserve_stake {
+        let validator_list_item_info = if *stake_split_from.key == stake_pool.reserve_stake {
             // check that the validator stake accounts have no withdrawable stake
             if let Some(withdrawable_entry) = validator_list
                 .validators
@@ -1794,13 +1793,14 @@ impl Processor {
 
             // if there's any active stake, we must withdraw from an active
             // stake account
-            if validator_list.has_active_stake() {
+            let withdrawing_from_transient_stake = if validator_list.has_active_stake() {
                 check_validator_stake_address(
                     program_id,
                     stake_pool_info.key,
                     stake_split_from.key,
                     &vote_account_address,
                 )?;
+                false
             } else {
                 check_transient_stake_address(
                     program_id,
@@ -1808,8 +1808,8 @@ impl Processor {
                     stake_split_from.key,
                     &vote_account_address,
                 )?;
-                withdrawing_from_transient_stake_account = true;
-            }
+                true
+            };
 
             let validator_list_item = validator_list
                 .find_mut(&vote_account_address)
@@ -1827,7 +1827,7 @@ impl Processor {
                 msg!("Attempting to withdraw {} lamports from validator account with {} lamports, {} must remain", withdraw_lamports, current_lamports, required_lamports);
                 return Err(StakePoolError::StakeLamportsNotEqualToMinimum.into());
             }
-            Some(validator_list_item)
+            Some((validator_list_item, withdrawing_from_transient_stake))
         };
 
         Self::token_burn(
@@ -1869,7 +1869,9 @@ impl Processor {
             .ok_or(StakePoolError::CalculationFailure)?;
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
 
-        if let Some(validator_list_item) = validator_list_item {
+        if let Some((validator_list_item, withdrawing_from_transient_stake_account)) =
+            validator_list_item_info
+        {
             if withdrawing_from_transient_stake_account {
                 validator_list_item.transient_stake_lamports = validator_list_item
                     .transient_stake_lamports
