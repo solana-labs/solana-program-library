@@ -115,7 +115,7 @@ Keypair Path: ${HOME}/.config/solana/id.json
 
 See [Solana clusters](https://docs.solana.com/clusters) for cluster-specific RPC URLs
 ```sh
-solana config set --url https://devnet.solana.com
+solana config set --url https://api.devnet.solana.com
 ```
 
 #### Default Keypair
@@ -658,7 +658,7 @@ be able to withdraw their funds.
 
 To get around this case, it is also possible to withdraw from the stake pool's
 reserve, but only if all of the validator stake accounts are at the minimum amount of
-`1 SOL + stake account rent exemption`. 
+`1 SOL + stake account rent exemption`.
 
 ```sh
 $ spl-stake-pool withdraw EjspffVUi2Tivszzs2JVj4GiSiMNYKyqZpgP3NeefBU1 0.02 --use-reserve
