@@ -104,7 +104,7 @@ fn command_create_lending_market(
                 lending_market_owner,
                 quote_currency,
                 lending_market_keypair.pubkey(),
-                oracle_program_id
+                oracle_program_id,
             ),
         ],
         Some(&config.payer.pubkey()),
@@ -614,7 +614,12 @@ fn main() {
             let lending_market_owner = pubkey_of(arg_matches, "lending_market_owner").unwrap();
             let quote_currency = quote_currency_of(arg_matches, "quote_currency").unwrap();
             let oracle_program_id = pubkey_of(arg_matches, "oracle_program_id").unwrap();
-            command_create_lending_market(&config, lending_market_owner, quote_currency, oracle_program_id)
+            command_create_lending_market(
+                &config,
+                lending_market_owner,
+                quote_currency,
+                oracle_program_id,
+            )
         }
         ("add-reserve", Some(arg_matches)) => {
             let source_liquidity_pubkey = pubkey_of(arg_matches, "source_liquidity").unwrap();
