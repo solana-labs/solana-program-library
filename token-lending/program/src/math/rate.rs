@@ -51,11 +51,6 @@ impl Rate {
         U128::from(WAD)
     }
 
-    // OPTIMIZE: use const slice when fixed in BPF toolchain
-    fn half_wad() -> U128 {
-        U128::from(HALF_WAD)
-    }
-
     /// Create scaled decimal from percent value
     pub fn from_percent(percent: u8) -> Self {
         Self(U128::from(percent as u64 * PERCENT_SCALER))
