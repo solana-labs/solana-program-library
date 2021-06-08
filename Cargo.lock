@@ -3827,7 +3827,7 @@ dependencies = [
 name = "spl-program-metadata"
 version = "0.0.1"
 dependencies = [
- "borsh 0.8.2",
+ "borsh",
  "num-derive",
  "num-traits",
  "solana-program",

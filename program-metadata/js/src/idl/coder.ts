@@ -1,5 +1,4 @@
-import { Idl } from "@project-serum/anchor";
-import { IdlAccountItem, IdlInstruction, IdlType } from "./idl";
+import { Idl, IdlAccountItem, IdlInstruction } from "./idl";
 import { PublicKey, TransactionInstruction } from "@solana/web3.js";
 import { IdlField } from "@project-serum/anchor/dist/idl";
 import { startCase } from "../program/util/helpers";
