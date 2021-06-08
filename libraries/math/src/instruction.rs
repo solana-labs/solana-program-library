@@ -43,7 +43,16 @@ pub enum MathInstruction {
         /// The multipier
         multiplier: u64,
     },
-    /// Multiply two float valies
+    /// Divide two u64 values
+    ///
+    /// No accounts required for this instruction
+    U64Divide {
+        /// The dividend
+        dividend: u64,
+        /// The divisor
+        divisor: u64,
+    },
+    /// Multiply two float values
     ///
     /// No accounts required for this instruction
     F32Multiply {
@@ -52,7 +61,7 @@ pub enum MathInstruction {
         /// The multipier
         multiplier: f32,
     },
-    /// Divide two float valies
+    /// Divide two float values
     ///
     /// No accounts required for this instruction
     F32Divide {
@@ -111,6 +120,17 @@ pub fn u64_multiply(multiplicand: u64, multiplier: u64) -> Instruction {
         }
         .try_to_vec()
         .unwrap(),
+    }
+}
+
+/// Create PreciseSquareRoot instruction
+pub fn u64_divide(dividend: u64, divisor: u64) -> Instruction {
+    Instruction {
+        program_id: id(),
+        accounts: vec![],
+        data: MathInstruction::U64Divide { dividend, divisor }
+            .try_to_vec()
+            .unwrap(),
     }
 }
 

@@ -155,13 +155,12 @@ pub fn tally(feature_proposal_address: &Pubkey) -> Instruction {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::borsh_utils;
 
     #[test]
     fn test_get_packed_len() {
         assert_eq!(
             FeatureProposalInstruction::get_packed_len(),
-            borsh_utils::get_packed_len::<FeatureProposalInstruction>()
+            solana_program::borsh::get_packed_len::<FeatureProposalInstruction>()
         )
     }
 

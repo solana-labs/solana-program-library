@@ -28,16 +28,16 @@ pub enum StakePoolError {
     /// Token account is associated with the wrong mint.
     #[error("WrongAccountMint")]
     WrongAccountMint,
-    /// Wrong pool owner account.
-    #[error("WrongOwner")]
-    WrongOwner,
+    /// Wrong pool manager account.
+    #[error("WrongManager")]
+    WrongManager,
     /// Required signature is missing.
     #[error("SignatureMissing")]
     SignatureMissing,
     /// Invalid validator stake list account.
     #[error("InvalidValidatorStakeList")]
     InvalidValidatorStakeList,
-    /// Invalid owner fee account.
+    /// Invalid manager fee account.
     #[error("InvalidFeeAccount")]
     InvalidFeeAccount,
 
@@ -79,6 +79,23 @@ pub enum StakePoolError {
     /// The size of the given validator stake list does match the expected amount
     #[error("UnexpectedValidatorListAccountSize")]
     UnexpectedValidatorListAccountSize,
+    /// Wrong pool staker account.
+    #[error("WrongStaker")]
+    WrongStaker,
+    /// Pool token supply is not zero on initialization
+    #[error("NonZeroPoolTokenSupply")]
+    NonZeroPoolTokenSupply,
+    /// The lamports in the validator stake account is not equal to the minimum
+    #[error("StakeLamportsNotEqualToMinimum")]
+    StakeLamportsNotEqualToMinimum,
+    /// The provided deposit stake account is not delegated to the preferred deposit vote account
+    #[error("IncorrectDepositVoteAddress")]
+    IncorrectDepositVoteAddress,
+
+    // 25.
+    /// The provided withdraw stake account is not the preferred deposit vote account
+    #[error("IncorrectWithdrawVoteAddress")]
+    IncorrectWithdrawVoteAddress,
 }
 impl From<StakePoolError> for ProgramError {
     fn from(e: StakePoolError) -> Self {

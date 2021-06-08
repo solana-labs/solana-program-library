@@ -22,7 +22,7 @@ extern uint64_t do_invoke(SolParameters *params) {
   const SolSignerSeeds signers_seeds[] = {{seeds, SOL_ARRAY_SIZE(seeds)}};
 
   SolPubkey expected_allocated_key;
-  if (SUCCESS == sol_create_program_address(seeds, SOL_ARRAY_SIZE(seeds),
+  if (SUCCESS != sol_create_program_address(seeds, SOL_ARRAY_SIZE(seeds),
                                             params->program_id,
                                             &expected_allocated_key)) {
     return ERROR_INVALID_INSTRUCTION_DATA;
@@ -31,8 +31,7 @@ extern uint64_t do_invoke(SolParameters *params) {
     return ERROR_INVALID_ARGUMENT;
   }
 
-  SolAccountMeta arguments[] = {{system_program_info->key, false, false},
-                                {allocated_info->key, true, true}};
+  SolAccountMeta arguments[] = {{allocated_info->key, true, true}};
   uint8_t data[4 + 8];            // Enough room for the Allocate instruction
   *(uint16_t *)data = 8;          // Allocate instruction enum value
   *(uint64_t *)(data + 4) = SIZE; // Size to allocate

@@ -62,7 +62,7 @@ Logging ends with the status of the instruction, one of:
 
 For more information about exposing program logs on a node, head to the
 [developer
-docs](https://docs.solana.com/developing/deployed-programs/debugging#logging)
+docs](https://docs.solana.com/developing/on-chain-programs/debugging#logging)
 
 ### Compute Limits
 

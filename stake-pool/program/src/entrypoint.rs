@@ -17,7 +17,8 @@ fn process_instruction(
     if let Err(error) = Processor::process(program_id, accounts, instruction_data) {
         // catch the error so we can print it
         error.print::<StakePoolError>();
-        return Err(error);
+        Err(error)
+    } else {
+        Ok(())
     }
-    Ok(())
 }

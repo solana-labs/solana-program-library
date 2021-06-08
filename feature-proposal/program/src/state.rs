@@ -59,13 +59,12 @@ impl Pack for FeatureProposal {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::borsh_utils;
 
     #[test]
     fn test_get_packed_len() {
         assert_eq!(
             FeatureProposal::get_packed_len(),
-            borsh_utils::get_packed_len::<FeatureProposal>()
+            solana_program::borsh::get_packed_len::<FeatureProposal>()
         );
     }
 

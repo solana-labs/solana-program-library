@@ -9,14 +9,15 @@ members = [
   "examples/rust/transfer-lamports",
   "feature-proposal/program",
   "feature-proposal/cli",
+  "governance/program",
   "libraries/math",
   "memo/program",
+  "name-service/program",
   "record/program",
   "shared-memory/program",
   "stake-pool/cli",
   "stake-pool/program",
   "token-lending/program",
-  "token-lending/client",
   "token-swap/program",
   "token-swap/program/fuzz",
   "token/cli",
@@ -29,3 +30,6 @@ exclude = [
   "themis/program_ristretto",
   "token/perf-monitor", # TODO: Rework perf-monitor to use solana-program-test, avoiding the need to link directly with the BPF VM
 ]
+
+[profile.dev]
+split-debuginfo = "unpacked"

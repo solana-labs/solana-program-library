@@ -3,7 +3,7 @@
 
 use {
     borsh::{maybestd::io::Error, BorshDeserialize, BorshSerialize},
-    std::io::{Result as IoResult, Write},
+    std::io::{self, Write},
 };
 
 /// Deserializes something and allows for incomplete reading
@@ -20,13 +20,13 @@ struct WriteCounter {
 }
 
 impl Write for WriteCounter {
-    fn write(&mut self, data: &[u8]) -> IoResult<usize> {
+    fn write(&mut self, data: &[u8]) -> io::Result<usize> {
         let amount = data.len();
         self.count += amount;
         Ok(amount)
     }
 
-    fn flush(&mut self) -> IoResult<()> {
+    fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
 }

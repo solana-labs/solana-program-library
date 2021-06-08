@@ -62,7 +62,7 @@ async fn test_sqrt_u128() {
     let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
 
     // Dial down the BPF compute budget to detect if the operation gets bloated in the future
-    pc.set_bpf_compute_max_units(5_500);
+    pc.set_bpf_compute_max_units(4_000);
 
     let (mut banks_client, payer, recent_blockhash) = pc.start().await;
 
@@ -78,8 +78,7 @@ async fn test_sqrt_u128() {
 async fn test_sqrt_u128_max() {
     let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
 
-    // This is pretty big too!
-    pc.set_bpf_compute_max_units(90_000);
+    pc.set_bpf_compute_max_units(6_000);
 
     let (mut banks_client, payer, recent_blockhash) = pc.start().await;
 
@@ -99,6 +98,20 @@ async fn test_u64_multiply() {
 
     let mut transaction =
         Transaction::new_with_payer(&[instruction::u64_multiply(42, 84)], Some(&payer.pubkey()));
+    transaction.sign(&[&payer], recent_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
+}
+
+#[tokio::test]
+async fn test_u64_divide() {
+    let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
+
+    pc.set_bpf_compute_max_units(1650);
+
+    let (mut banks_client, payer, recent_blockhash) = pc.start().await;
+
+    let mut transaction =
+        Transaction::new_with_payer(&[instruction::u64_divide(3, 1)], Some(&payer.pubkey()));
     transaction.sign(&[&payer], recent_blockhash);
     banks_client.process_transaction(transaction).await.unwrap();
 }

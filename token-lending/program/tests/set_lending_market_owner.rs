@@ -1,3 +1,5 @@
+#![cfg(feature = "test-bpf")]
+
 mod helpers;
 
 use helpers::*;
@@ -24,7 +26,7 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(4_000);
+    test.set_bpf_compute_max_units(2_000);
 
     let usdc_mint = add_usdc_mint(&mut test);
     let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
@@ -60,9 +62,6 @@ async fn test_invalid_owner() {
         spl_token_lending::id(),
         processor!(process_instruction),
     );
-
-    // limit to track compute unit increase
-    test.set_bpf_compute_max_units(4_000);
 
     let usdc_mint = add_usdc_mint(&mut test);
     let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);
@@ -102,9 +101,6 @@ async fn test_owner_not_signer() {
         spl_token_lending::id(),
         processor!(process_instruction),
     );
-
-    // limit to track compute unit increase
-    test.set_bpf_compute_max_units(4_000);
 
     let usdc_mint = add_usdc_mint(&mut test);
     let lending_market = add_lending_market(&mut test, usdc_mint.pubkey);

@@ -7,6 +7,7 @@ use thiserror::Error;
 /// Errors that may be returned by the TokenSwap program.
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
 pub enum SwapError {
+    // 0.
     /// The account cannot be initialized because it is already being used.
     #[error("Swap account already in use")]
     AlreadyInUse,
@@ -22,6 +23,8 @@ pub enum SwapError {
     /// The deserialization of the account returned something besides State::Mint.
     #[error("Deserialized account is not an SPL Token mint")]
     ExpectedMint,
+
+    // 5.
     /// The deserialization of the account returned something besides State::Account.
     #[error("Deserialized account is not an SPL Token account")]
     ExpectedAccount,
@@ -37,6 +40,8 @@ pub enum SwapError {
     /// The input token is invalid for swap.
     #[error("InvalidInput")]
     InvalidInput,
+
+    // 10.
     /// Address of the provided swap token account is incorrect.
     #[error("Address of the provided swap token account is incorrect")]
     IncorrectSwapAccount,
@@ -52,6 +57,8 @@ pub enum SwapError {
     /// Invalid instruction number passed in.
     #[error("Invalid instruction")]
     InvalidInstruction,
+
+    // 15.
     /// Swap input token accounts have the same mint
     #[error("Swap input token accounts have the same mint")]
     RepeatedMint,
@@ -67,6 +74,8 @@ pub enum SwapError {
     /// The pool fee token account is incorrect
     #[error("Pool fee token account incorrect")]
     IncorrectFeeAccount,
+
+    // 20.
     /// Given pool token amount results in zero trading tokens
     #[error("Given pool token amount results in zero trading tokens")]
     ZeroTradingTokens,
@@ -82,6 +91,8 @@ pub enum SwapError {
     /// The provided token program does not match the token program expected by the swap
     #[error("The provided token program does not match the token program expected by the swap")]
     IncorrectTokenProgramId,
+
+    // 25.
     /// The provided curve type is not supported by the program owner
     #[error("The provided curve type is not supported by the program owner")]
     UnsupportedCurveType,

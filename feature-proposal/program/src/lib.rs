@@ -2,7 +2,6 @@
 #![deny(missing_docs)]
 #![forbid(unsafe_code)]
 
-pub mod borsh_utils;
 mod entrypoint;
 pub mod instruction;
 pub mod processor;

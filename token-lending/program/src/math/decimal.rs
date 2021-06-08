@@ -12,11 +12,12 @@
 #![allow(clippy::ptr_offset_with_cast)]
 #![allow(clippy::manual_range_contains)]
 
-use crate::math::Rate;
-use crate::{error::LendingError, math::common::*};
+use crate::{
+    error::LendingError,
+    math::{common::*, Rate},
+};
 use solana_program::program_error::ProgramError;
-use std::convert::TryFrom;
-use std::fmt;
+use std::{convert::TryFrom, fmt};
 use uint::construct_uint;
 
 // U192 with 192 bits consisting of 3 x 64-bit words
@@ -55,6 +56,7 @@ impl Decimal {
     }
 
     /// Return raw scaled value if it fits within u128
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_scaled_val(&self) -> Result<u128, ProgramError> {
         Ok(u128::try_from(self.0).map_err(|_| LendingError::MathOverflow)?)
     }

@@ -83,6 +83,15 @@ Hardware Wallet URL (See [URL spec](https://docs.solana.com/wallet-guide/hardwar
 solana config set --keypair usb://ledger/
 ```
 
+#### Airdrop SOL
+
+Creating tokens and accounts requires SOL for account rent deposits and
+transaction fees. If the cluster you are targeting offers a faucet, you can get
+a little SOL for testing:
+```
+solana airdrop 1
+```
+
 ### Example: Creating your own fungible token
 
 ```sh
@@ -109,7 +118,7 @@ Signature: 42Sa5eK9dMEQyvD9GMHuKxXf55WLZ7tfjabUKDhNoZRAxj9MsnN7omriWMEHXLea3aYpj
 
 `7UX2i7SucgLMQcfZ75s3VXmZZY4YRUyJN9X1RgfMoDUi` is now an empty account:
 ```sh
-$ spl-token balance 7UX2i7SucgLMQcfZ75s3VXmZZY4YRUyJN9X1RgfMoDUi
+$ spl-token balance AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM
 0
 ```
 
@@ -126,7 +135,7 @@ The token `supply` and account `balance` now reflect the result of minting:
 ```sh
 $ spl-token supply AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM
 100
-$ spl-token balance 7UX2i7SucgLMQcfZ75s3VXmZZY4YRUyJN9X1RgfMoDUi
+$ spl-token balance AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM
 100
 ```
 
@@ -166,7 +175,7 @@ address by running `solana address` and provides it to the sender.
 
 The sender then runs:
 ```
-$ spl-token transfer 7UX2i7SucgLMQcfZ75s3VXmZZY4YRUyJN9X1RgfMoDUi 50 vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg
+$ spl-token transfer AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM 50 vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg
 Transfer 50 tokens
   Sender: 7UX2i7SucgLMQcfZ75s3VXmZZY4YRUyJN9X1RgfMoDUi
   Recipient: vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg
@@ -184,7 +193,7 @@ The receiver obtains their wallet address by running `solana address` and provid
 The sender then runs to fund the receiver's associated token account, at the
 sender's expense, and then transfers 50 tokens into it:
 ```
-$ spl-token transfer --fund-recipient 7UX2i7SucgLMQcfZ75s3VXmZZY4YRUyJN9X1RgfMoDUi 50 vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg
+$ spl-token transfer --fund-recipient AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM 50 vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg
 Transfer 50 tokens
   Sender: 7UX2i7SucgLMQcfZ75s3VXmZZY4YRUyJN9X1RgfMoDUi
   Recipient: vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg
@@ -228,9 +237,9 @@ CqAxDdBRnawzx9q4PYM3wrybLHBhDZ4P6BTV13WsRJYJ  AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe
 
 ### Example: Create a non-fungible token
 
-Create the token type,
+Create the token type with nine decimal places,
 ```
-$ spl-token create-token
+$ spl-token create-token --decimals 9
 Creating token 559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z
 Signature: 4kz82JUey1B9ki1McPW7NYv1NqPKCod6WNptSkYqtuiEsQb9exHaktSAHJJsm4YxuGNW4NugPJMFX9ee6WA2dXts
 ```
@@ -264,7 +273,7 @@ Now the `7KqpRwzkkeweW5jQoETyLzhvs9rcCj9dVQ1MnzudirsM` account holds the
 one and only `559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z` token:
 
 ```
-$ spl-token account-info 7KqpRwzkkeweW5jQoETyLzhvs9rcCj9dVQ1MnzudirsM
+$ spl-token account-info 559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z
 
 Address: 7KqpRwzkkeweW5jQoETyLzhvs9rcCj9dVQ1MnzudirsM
 Balance: 1
@@ -520,7 +529,7 @@ There is a rich set of JSON RPC methods available for use with SPL Token:
 
 See https://docs.solana.com/apps/jsonrpc-api for more details.
 
-Additionally the versatile `getProgramAcccounts` JSON RPC method can be employed in various ways to fetch SPL Token accounts of interest.
+Additionally the versatile `getProgramAccounts` JSON RPC method can be employed in various ways to fetch SPL Token accounts of interest.
 
 ### Finding all token accounts for a specific mint
 
@@ -553,7 +562,7 @@ curl http://api.mainnet-beta.solana.com -X POST -H "Content-Type: application/js
 ```
 
 The `"dataSize": 165` filter selects all [Token
-Acccount](https://github.com/solana-labs/solana-program-library/blob/08d9999f997a8bf38719679be9d572f119d0d960/token/program/src/state.rs#L86-L106)s,
+Account](https://github.com/solana-labs/solana-program-library/blob/08d9999f997a8bf38719679be9d572f119d0d960/token/program/src/state.rs#L86-L106)s,
 and then the `"memcmp": ...` filter selects based on the
 [mint](https://github.com/solana-labs/solana-program-library/blob/08d9999f997a8bf38719679be9d572f119d0d960/token/program/src/state.rs#L88)
 address within each token account.
@@ -588,7 +597,7 @@ curl http://api.mainnet-beta.solana.com -X POST -H "Content-Type: application/js
 ```
 
 The `"dataSize": 165` filter selects all [Token
-Acccount](https://github.com/solana-labs/solana-program-library/blob/08d9999f997a8bf38719679be9d572f119d0d960/token/program/src/state.rs#L86-L106)s,
+Account](https://github.com/solana-labs/solana-program-library/blob/08d9999f997a8bf38719679be9d572f119d0d960/token/program/src/state.rs#L86-L106)s,
 and then the `"memcmp": ...` filter selects based on the
 [owner](https://github.com/solana-labs/solana-program-library/blob/08d9999f997a8bf38719679be9d572f119d0d960/token/program/src/state.rs#L90)
 address within each token account.
@@ -852,3 +861,13 @@ the maximum allowed transaction size, remove those extra clean up instructions.
 They can be cleaned up during the next send operation.
 
 The `spl-token gc` command provides an example implementation of this cleanup process.
+
+
+### Token Vesting Contract:
+This program allows you to lock arbitrary SPL tokens and release the locked tokens with a determined unlock schedule. An `unlock schedule` is made of a `unix timestamp` and a token `amount`, when initializing a vesting contract, the creator can pass an array of `unlock schedule` with an arbitrary size giving the creator of the contract complete control of how the tokens unlock over time. 
+
+Unlocking works by pushing a permissionless crank on the contract that moves the tokens to the pre-specified address. The recipient address of a vesting contract can be modified by the owner of the current recipient key, meaning that vesting contract locked tokens can be traded.
+
+- Code: [https://github.com/Bonfida/token-vesting](https://github.com/Bonfida/token-vesting)
+- UI: [https://vesting.bonfida.com/#/](https://vesting.bonfida.com/#/)
+- Audit: The audit was conducted by Kudelski, the report can be found [here](https://github.com/Bonfida/token-vesting/blob/master/audit/Bonfida_SecurityAssessment_Vesting_Final050521.pdf)

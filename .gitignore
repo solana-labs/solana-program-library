@@ -8,3 +8,5 @@ node_modules
 hfuzz_target
 hfuzz_workspace
 **/*.so
+**/.DS_Store
+test-ledger

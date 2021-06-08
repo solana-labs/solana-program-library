@@ -62,6 +62,7 @@ impl Rate {
     }
 
     /// Return raw scaled value
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_scaled_val(&self) -> u128 {
         self.0.as_u128()
     }
