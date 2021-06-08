@@ -6,7 +6,6 @@ import bs58 from "bs58";
 import { expect } from "chai";
 import { v4 as uuid } from "uuid";
 import { createHash } from "crypto";
-import { assert } from "console";
 import { VersionedIdl } from "../program/accounts/versioned-idl";
 import {
   NAME_SERVICE_ACCOUNT_OFFSET,

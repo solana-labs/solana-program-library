@@ -7,7 +7,7 @@ use {
     },
 };
 
-/// Instructions supported by the Metadata program.
+/// Instructions supported by the program metadata program.
 #[derive(BorshSerialize, BorshDeserialize, Clone)]
 pub enum MetadataInstruction {
     ///   0. `[]` Class account (seed: ['program_metadata', target_program_key, program_metadata_key])

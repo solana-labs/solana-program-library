@@ -5,9 +5,7 @@ title: SPL Program Metadata
 
 ## Summary
 
-This program allows for programs to be associated with metadata. For metadata, this includes arbitrary key / value pairs and a special type of metadata for describing how to interact with a program -- an IDL (Interface Definition Language). Only those with authority over a given program are allowed to add or remove metadata. All data is stored through the SPL Name Service program with SPL Program Metadata as the class (see [SPL Name Service](https://spl.solana.com/name-service)).
-
-[SPL Program Metadata Proposal]()
+This program allows metadata to be associated with Solana programs. For metadata, this includes arbitrary key / value pairs and a special type of metadata for describing how to interact with a program -- an IDL (Interface Definition Language). Only those with authority over a given program are allowed to add or remove metadata. All data is stored through the SPL Name Service program with SPL Program Metadata as the class (see [SPL Name Service](https://spl.solana.com/name-service)).
 
 ## Background
 
@@ -19,13 +17,13 @@ document are available at:
 
 ## Source
 
-The Program Metadata program source is available on [github](https://github.com/solana-labs/solana-program-library)
+The Program Metadata program source is available at [github](https://github.com/solana-labs/solana-program-library)
 
-There is also a JavaScript client located at [github](https://github.com/solana-labs/solana-program-library/tree/master/program_metadata/ts).
+There is also a JavaScript / TypeScript client located at [github](https://github.com/solana-labs/solana-program-library/tree/master/program_metadata/js).
 
 ## Interface
 
-The on-chain Token Metadata program is written in Rust and available on crates.io as [spl-program-metadata](https://crates.io/crates/spl-program-metadata) and [docs.rs](https://docs.rs/spl-program-metadata).
+The on-chain Program Metadata program is written in Rust and available on crates.io as [spl-program-metadata](https://crates.io/crates/spl-program-metadata) and [docs.rs](https://docs.rs/spl-program-metadata).
 
 The crate provides five instructions, `create_metadata_entry()`, `update_metadata_entry()`, `delete_metadata_entry()`, `create_versioned_idl()`, `update_versioned_idl()` to create instructions for the program.
 
@@ -98,8 +96,6 @@ CreateVersionedIdl {
     idl_url: String,
     idl_hash: [u8; 32],
     source_url: String,
-    serialization: SerializationMethod,
-    custom_layout_url: Option<String>,
     hashed_name: [u8; 32],
 },
 ```
@@ -116,7 +112,5 @@ UpdateVersionedIdl {
     idl_url: String,
     idl_hash: [u8; 32],
     source_url: String,
-    serialization: SerializationMethod,
-    custom_layout_url: Option<String>,
 },
 ```
