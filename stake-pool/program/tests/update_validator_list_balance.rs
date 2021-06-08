@@ -536,8 +536,9 @@ async fn merge_transient_stake_after_remove() {
         validator_list.validators[0].status,
         StakeStatus::DeactivatingTransient
     );
+    assert_eq!(validator_list.validators[0].active_stake_lamports, 0);
     assert_eq!(
-        validator_list.validators[0].stake_lamports,
+        validator_list.validators[0].transient_stake_lamports,
         deactivated_lamports
     );
 
@@ -569,7 +570,7 @@ async fn merge_transient_stake_after_remove() {
         validator_list.validators[0].status,
         StakeStatus::ReadyForRemoval
     );
-    assert_eq!(validator_list.validators[0].stake_lamports, 0);
+    assert_eq!(validator_list.validators[0].stake_lamports(), 0);
 
     let reserve_stake = context
         .banks_client

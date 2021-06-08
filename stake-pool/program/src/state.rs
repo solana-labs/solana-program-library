@@ -328,13 +328,27 @@ pub struct ValidatorStakeInfo {
     /// Validator vote account address
     pub vote_account_address: Pubkey,
 
-    /// Amount of stake delegated to this validator
-    /// Note that if `last_update_epoch` does not match the current epoch then this field may not
-    /// be accurate
-    pub stake_lamports: u64,
+    /// Amount of active stake delegated to this validator
+    /// Note that if `last_update_epoch` does not match the current epoch then
+    /// this field may not be accurate
+    pub active_stake_lamports: u64,
 
-    /// Last epoch the `stake_lamports` field was updated
+    /// Amount of transient stake delegated to this validator
+    /// Note that if `last_update_epoch` does not match the current epoch then
+    /// this field may not be accurate
+    pub transient_stake_lamports: u64,
+
+    /// Last epoch the active and transient stake lamports fields were updated
     pub last_update_epoch: u64,
+}
+
+impl ValidatorStakeInfo {
+    /// Get the total lamports delegated to this validator (active and transient)
+    pub fn stake_lamports(&self) -> u64 {
+        self.active_stake_lamports
+            .checked_add(self.transient_stake_lamports)
+            .unwrap()
+    }
 }
 
 impl ValidatorList {
@@ -352,7 +366,7 @@ impl ValidatorList {
     /// Calculate the number of validator entries that fit in the provided length
     pub fn calculate_max_validators(buffer_length: usize) -> usize {
         let header_size = 1 + 4 + 4 + 33 + 33;
-        buffer_length.saturating_sub(header_size) / 49
+        buffer_length.saturating_sub(header_size) / 57
     }
 
     /// Check if contains validator with particular pubkey
@@ -384,6 +398,11 @@ impl ValidatorList {
     pub fn is_uninitialized(&self) -> bool {
         self.account_type == AccountType::Uninitialized
     }
+
+    /// Check if the list has any active stake
+    pub fn has_active_stake(&self) -> bool {
+        self.validators.iter().any(|x| x.active_stake_lamports > 0)
+    }
 }
 
 /// Fee rate as a ratio, minted on `UpdateStakePoolBalance` as a proportion of
@@ -407,18 +426,53 @@ mod test {
         solana_program::native_token::LAMPORTS_PER_SOL,
     };
 
-    #[test]
-    fn test_state_packing() {
-        let max_validators = 10_000;
-        let size = get_instance_packed_len(&ValidatorList::new(max_validators)).unwrap();
-        // Not initialized
-        let stake_list = ValidatorList {
+    fn uninitialized_validator_list() -> ValidatorList {
+        ValidatorList {
             account_type: AccountType::Uninitialized,
             preferred_deposit_validator_vote_address: None,
             preferred_withdraw_validator_vote_address: None,
             max_validators: 0,
             validators: vec![],
-        };
+        }
+    }
+
+    fn test_validator_list(max_validators: u32) -> ValidatorList {
+        ValidatorList {
+            account_type: AccountType::ValidatorList,
+            preferred_deposit_validator_vote_address: Some(Pubkey::new_unique()),
+            preferred_withdraw_validator_vote_address: Some(Pubkey::new_unique()),
+            max_validators,
+            validators: vec![
+                ValidatorStakeInfo {
+                    status: StakeStatus::Active,
+                    vote_account_address: Pubkey::new_from_array([1; 32]),
+                    active_stake_lamports: 123456789,
+                    transient_stake_lamports: 1111111,
+                    last_update_epoch: 987654321,
+                },
+                ValidatorStakeInfo {
+                    status: StakeStatus::DeactivatingTransient,
+                    vote_account_address: Pubkey::new_from_array([2; 32]),
+                    active_stake_lamports: 998877665544,
+                    transient_stake_lamports: 222222222,
+                    last_update_epoch: 11223445566,
+                },
+                ValidatorStakeInfo {
+                    status: StakeStatus::ReadyForRemoval,
+                    vote_account_address: Pubkey::new_from_array([3; 32]),
+                    active_stake_lamports: 0,
+                    transient_stake_lamports: 0,
+                    last_update_epoch: 999999999999999,
+                },
+            ],
+        }
+    }
+
+    #[test]
+    fn state_packing() {
+        let max_validators = 10_000;
+        let size = get_instance_packed_len(&ValidatorList::new(max_validators)).unwrap();
+        let stake_list = uninitialized_validator_list();
         let mut byte_vec = vec![0u8; size];
         let mut bytes = byte_vec.as_mut_slice();
         stake_list.serialize(&mut bytes).unwrap();
@@ -440,37 +494,23 @@ mod test {
         assert_eq!(stake_list_unpacked, stake_list);
 
         // With several accounts
-        let stake_list = ValidatorList {
-            account_type: AccountType::ValidatorList,
-            preferred_deposit_validator_vote_address: Some(Pubkey::new_unique()),
-            preferred_withdraw_validator_vote_address: Some(Pubkey::new_unique()),
-            max_validators,
-            validators: vec![
-                ValidatorStakeInfo {
-                    status: StakeStatus::Active,
-                    vote_account_address: Pubkey::new_from_array([1; 32]),
-                    stake_lamports: 123456789,
-                    last_update_epoch: 987654321,
-                },
-                ValidatorStakeInfo {
-                    status: StakeStatus::DeactivatingTransient,
-                    vote_account_address: Pubkey::new_from_array([2; 32]),
-                    stake_lamports: 998877665544,
-                    last_update_epoch: 11223445566,
-                },
-                ValidatorStakeInfo {
-                    status: StakeStatus::ReadyForRemoval,
-                    vote_account_address: Pubkey::new_from_array([3; 32]),
-                    stake_lamports: 0,
-                    last_update_epoch: 999999999999999,
-                },
-            ],
-        };
+        let stake_list = test_validator_list(max_validators);
         let mut byte_vec = vec![0u8; size];
         let mut bytes = byte_vec.as_mut_slice();
         stake_list.serialize(&mut bytes).unwrap();
         let stake_list_unpacked = try_from_slice_unchecked::<ValidatorList>(&byte_vec).unwrap();
         assert_eq!(stake_list_unpacked, stake_list);
+    }
+
+    #[test]
+    fn validator_list_active_stake() {
+        let max_validators = 10_000;
+        let mut validator_list = test_validator_list(max_validators);
+        assert!(validator_list.has_active_stake());
+        for validator in validator_list.validators.iter_mut() {
+            validator.active_stake_lamports = 0;
+        }
+        assert!(!validator_list.has_active_stake());
     }
 
     proptest! {

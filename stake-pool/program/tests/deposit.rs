@@ -191,8 +191,8 @@ async fn success() {
         .find(&validator_stake_account.vote.pubkey())
         .unwrap();
     assert_eq!(
-        validator_stake_item.stake_lamports,
-        validator_stake_item_before.stake_lamports + stake_lamports
+        validator_stake_item.stake_lamports(),
+        validator_stake_item_before.stake_lamports() + stake_lamports
     );
 
     // Check validator stake account actual SOL balance
@@ -203,8 +203,9 @@ async fn success() {
     let meta = stake_state.meta().unwrap();
     assert_eq!(
         validator_stake_account.lamports - minimum_stake_lamports(&meta),
-        validator_stake_item.stake_lamports
+        validator_stake_item.stake_lamports()
     );
+    assert_eq!(validator_stake_item.transient_stake_lamports, 0);
 }
 
 #[tokio::test]

@@ -181,8 +181,12 @@ async fn success() {
         .find(&validator_stake_account.vote.pubkey())
         .unwrap();
     assert_eq!(
-        validator_stake_item.stake_lamports,
-        validator_stake_item_before.stake_lamports - tokens_to_burn
+        validator_stake_item.stake_lamports(),
+        validator_stake_item_before.stake_lamports() - tokens_to_burn
+    );
+    assert_eq!(
+        validator_stake_item.active_stake_lamports,
+        validator_stake_item.stake_lamports(),
     );
 
     // Check tokens burned
@@ -201,7 +205,7 @@ async fn success() {
     let meta = stake_state.meta().unwrap();
     assert_eq!(
         validator_stake_account.lamports - minimum_stake_lamports(&meta),
-        validator_stake_item.stake_lamports
+        validator_stake_item.active_stake_lamports
     );
 
     // Check user recipient stake account balance
@@ -1130,4 +1134,173 @@ async fn fail_with_wrong_preferred_withdraw() {
         }
         _ => panic!("Wrong error occurs while try to make a deposit with wrong stake program ID"),
     }
+}
+
+#[tokio::test]
+async fn success_withdraw_from_transient() {
+    let mut context = program_test().start_with_context().await;
+    let stake_pool_accounts = StakePoolAccounts::new();
+    let initial_reserve_lamports = 1;
+    stake_pool_accounts
+        .initialize_stake_pool(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            initial_reserve_lamports,
+        )
+        .await
+        .unwrap();
+
+    // add a preferred withdraw validator, keep it empty, to be sure that this works
+    let preferred_validator = simple_add_validator_to_pool(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &stake_pool_accounts,
+    )
+    .await;
+
+    stake_pool_accounts
+        .set_preferred_validator(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            instruction::PreferredValidatorType::Withdraw,
+            Some(preferred_validator.vote.pubkey()),
+        )
+        .await;
+
+    let validator_stake = simple_add_validator_to_pool(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &stake_pool_accounts,
+    )
+    .await;
+
+    let deposit_lamports = TEST_STAKE_AMOUNT;
+    let rent = context.banks_client.get_rent().await.unwrap();
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
+
+    let deposit_info = simple_deposit(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &stake_pool_accounts,
+        &validator_stake,
+        deposit_lamports,
+    )
+    .await
+    .unwrap();
+
+    // Delegate tokens for burning during withdraw
+    let user_transfer_authority = Keypair::new();
+    delegate_tokens(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &deposit_info.pool_account.pubkey(),
+        &deposit_info.authority,
+        &user_transfer_authority.pubkey(),
+        deposit_info.pool_tokens,
+    )
+    .await;
+
+    // decrease minimum stake
+    let error = stake_pool_accounts
+        .decrease_validator_stake(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &validator_stake.stake_account,
+            &validator_stake.transient_stake_account,
+            stake_rent + 1,
+        )
+        .await;
+    assert!(error.is_none());
+
+    let withdraw_destination = Keypair::new();
+    let withdraw_destination_authority = Pubkey::new_unique();
+    let _initial_stake_lamports = create_blank_stake_account(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &withdraw_destination,
+    )
+    .await;
+
+    // fail withdrawing from transient, still a lamport in the validator stake account
+    let error = stake_pool_accounts
+        .withdraw_stake(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &withdraw_destination.pubkey(),
+            &user_transfer_authority,
+            &deposit_info.pool_account.pubkey(),
+            &validator_stake.transient_stake_account,
+            &withdraw_destination_authority,
+            deposit_info.pool_tokens / 2,
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(StakePoolError::InvalidStakeAccountAddress as u32)
+        )
+    );
+
+    // warp forward to deactivation
+    let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
+    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
+    context
+        .warp_to_slot(first_normal_slot + slots_per_epoch)
+        .unwrap();
+
+    // update to merge deactivated stake into reserve
+    stake_pool_accounts
+        .update_all(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &[
+                preferred_validator.vote.pubkey(),
+                validator_stake.vote.pubkey(),
+            ],
+            false,
+        )
+        .await;
+
+    // decrease rest of stake
+    let error = stake_pool_accounts
+        .decrease_validator_stake(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &validator_stake.stake_account,
+            &validator_stake.transient_stake_account,
+            deposit_lamports - 1,
+        )
+        .await;
+    assert!(error.is_none());
+
+    // nothing left in the validator stake account (or any others), so withdrawing
+    // from the transient account is ok!
+    let error = stake_pool_accounts
+        .withdraw_stake(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &withdraw_destination.pubkey(),
+            &user_transfer_authority,
+            &deposit_info.pool_account.pubkey(),
+            &validator_stake.transient_stake_account,
+            &withdraw_destination_authority,
+            deposit_info.pool_tokens / 4,
+        )
+        .await;
+    assert!(error.is_none());
 }

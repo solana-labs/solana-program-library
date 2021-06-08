@@ -529,7 +529,8 @@ async fn success_with_deactivating_transient_stake() {
             status: state::StakeStatus::DeactivatingTransient,
             vote_account_address: validator_stake.vote.pubkey(),
             last_update_epoch: 0,
-            stake_lamports: TEST_STAKE_AMOUNT + stake_rent,
+            active_stake_lamports: 0,
+            transient_stake_lamports: TEST_STAKE_AMOUNT + stake_rent,
         }],
     };
     assert_eq!(validator_list, expected_list);
