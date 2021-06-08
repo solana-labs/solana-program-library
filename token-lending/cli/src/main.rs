@@ -1,8 +1,7 @@
-use clap::ArgMatches;
-use std::str::FromStr;
 use {
     clap::{
-        crate_description, crate_name, crate_version, value_t, App, AppSettings, Arg, SubCommand,
+        crate_description, crate_name, crate_version, value_t, App, AppSettings, Arg, ArgMatches,
+        SubCommand,
     },
     solana_clap_utils::{
         input_parsers::{pubkey_of, value_of},
@@ -27,7 +26,7 @@ use {
         instruction::{init_lending_market, init_reserve},
         state::{LendingMarket, Reserve, ReserveConfig, ReserveFees},
     },
-    std::{borrow::Borrow, process::exit},
+    std::{borrow::Borrow, process::exit, str::FromStr},
     system_instruction::create_account,
 };
 
