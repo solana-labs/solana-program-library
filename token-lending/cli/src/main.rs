@@ -76,6 +76,7 @@ fn command_create_lending_market(
     config: &Config,
     lending_market_owner: Pubkey,
     quote_currency: [u8; 32],
+    oracle_program_id: Pubkey,
 ) -> CommandResult {
     let lending_market_keypair = Keypair::new();
     println!(
@@ -100,9 +101,10 @@ fn command_create_lending_market(
             // Initialize lending market account
             init_lending_market(
                 spl_token_lending::id(),
-                lending_market_keypair.pubkey(),
                 lending_market_owner,
                 quote_currency,
+                lending_market_keypair.pubkey(),
+                oracle_program_id
             ),
         ],
         Some(&config.payer.pubkey()),
@@ -328,10 +330,7 @@ fn command_add_reserve(
         recent_blockhash,
     );
     init_reserve_transaction.sign(
-        &vec![
-            config.payer.as_ref(),
-            &user_transfer_authority_keypair,
-        ],
+        &vec![config.payer.as_ref(), &user_transfer_authority_keypair],
         recent_blockhash,
     );
     send_transaction(&config, create_accounts_transaction_1)?;
@@ -407,6 +406,15 @@ fn main() {
                         .takes_value(true)
                         .required(true)
                         .help("Owner required to sign when adding reserves to the lending market"),
+                )
+                .arg(
+                    Arg::with_name("oracle_program_id")
+                        .long("oracle")
+                        .validator(is_pubkey)
+                        .value_name("PUBKEY")
+                        .takes_value(true)
+                        .required(true)
+                        .help("Oracle (Pyth) program ID for quoting market prices"),
                 )
                 .arg(
                     Arg::with_name("quote_currency")
@@ -605,7 +613,8 @@ fn main() {
         ("create-market", Some(arg_matches)) => {
             let lending_market_owner = pubkey_of(arg_matches, "lending_market_owner").unwrap();
             let quote_currency = quote_currency_of(arg_matches, "quote_currency").unwrap();
-            command_create_lending_market(&config, lending_market_owner, quote_currency)
+            let oracle_program_id = pubkey_of(arg_matches, "oracle_program_id").unwrap();
+            command_create_lending_market(&config, lending_market_owner, quote_currency, oracle_program_id)
         }
         ("add-reserve", Some(arg_matches)) => {
             let source_liquidity_pubkey = pubkey_of(arg_matches, "source_liquidity").unwrap();

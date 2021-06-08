@@ -94,7 +94,8 @@ See https://spl.solana.com/token-lending for more details
 1. Create a lending market, using the pubkey from the previous step as the `owner`:
    ```shell
    > target/debug/spl-token-lending create-market \
-         --owner BFa2aEPaqnMmqWeo1cBZYCaj9urU111r3UaYLRGrjJzs
+         --owner BFa2aEPaqnMmqWeo1cBZYCaj9urU111r3UaYLRGrjJzs \
+         --oracle 5mkqGkkWSaSk2NL9p4XptwEQu4d5jFTJiurbbzdqYexF
 
    Creating lending market 9X3NxthBgMkiJphbyrXbRRGPAFuKbiLYf78PnRhwekNP
    Signature: 3MyAUTNpmnZ2X6KRP39Drf9paGTU4o2AUKkkjecvGDn9HbXqaDviHxSDkDyBNjtZm2zpcmyM6zcNemFv4mEdQdRN
