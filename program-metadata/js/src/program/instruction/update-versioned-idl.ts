@@ -3,12 +3,8 @@ import { PROGRAM_METADATA_SCHEMA, Struct } from "../util/borsh-struct";
 export class UpdateVersionedIdlInstruction extends Struct {
   instruction = 4;
 
-  constructor(
-    public idlUrl: string,
-    public idlHash: Buffer,
-    public sourceUrl: string
-  ) {
-    super();
+  constructor(params: { idlUrl: string; idlHash: Buffer; sourceUrl: string }) {
+    super(params);
   }
 }
 

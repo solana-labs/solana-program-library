@@ -5,8 +5,7 @@ import { expect } from "chai";
 import { Idl } from "../idl/idl";
 
 function getRandomPublicKey(): PublicKey {
-  const acct = Keypair.generate();
-  return acct.publicKey;
+  return Keypair.generate().publicKey;
 }
 
 describe("IDL Coder - Borsh", async () => {

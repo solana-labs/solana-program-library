@@ -6,9 +6,11 @@ import { startCase } from "../program/util/helpers";
 
 export abstract class Coder {
   constructor(protected idl: Idl) {}
+
   abstract decodeInstruction(
     instruction: TransactionInstruction
   ): DecodedInstruction;
+
   public getFormattedName() {
     return startCase(this.idl.name);
   }

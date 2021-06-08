@@ -5,11 +5,10 @@ import { Idl } from "../idl/idl";
 import { expect } from "chai";
 
 function getRandomPublicKey(): PublicKey {
-  const acct = Keypair.generate();
-  return acct.publicKey;
+  return Keypair.generate().publicKey;
 }
 
-describe.only("IDL Coder - Anchor", async () => {
+describe("IDL Coder - Anchor", async () => {
   const idl: Idl = require("./test-idl-anchor.json");
   const programId = getRandomPublicKey();
   const counterKey = getRandomPublicKey();

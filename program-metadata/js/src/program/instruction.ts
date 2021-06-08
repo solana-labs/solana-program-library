@@ -20,11 +20,11 @@ export function createMetadataEntryIx(
   value: string,
   hashedName: Buffer
 ): TransactionInstruction {
-  const ixDataObject = new CreateMetadataEntryInstruction(
+  const ixDataObject = new CreateMetadataEntryInstruction({
     name,
     value,
-    hashedName
-  );
+    hashedName,
+  });
 
   const ixData = ixDataObject.encode();
 
@@ -57,7 +57,7 @@ export function updateMetadataEntryIx(
   nameServiceKey: PublicKey,
   value: string
 ): TransactionInstruction {
-  const ixDataObject = new UpdateMetadataEntryInstruction(value);
+  const ixDataObject = new UpdateMetadataEntryInstruction({ value });
 
   const ixData = ixDataObject.encode();
 
@@ -125,13 +125,13 @@ export function createVersionedIdlIx(
   sourceUrl: string,
   hashedName: Buffer
 ) {
-  const ixDataObject = new CreateVersionedIdlInstruction(
+  const ixDataObject = new CreateVersionedIdlInstruction({
     effectiveSlot,
     idlUrl,
     idlHash,
     sourceUrl,
-    hashedName
-  );
+    hashedName,
+  });
 
   const ixData = ixDataObject.encode();
 
@@ -166,11 +166,11 @@ export function updateVersionedIdlIx(
   idlHash: Buffer,
   sourceUrl: string
 ): TransactionInstruction {
-  const ixDataObject = new UpdateVersionedIdlInstruction(
+  const ixDataObject = new UpdateVersionedIdlInstruction({
     idlUrl,
     idlHash,
-    sourceUrl
-  );
+    sourceUrl,
+  });
 
   const ixData = ixDataObject.encode();
 

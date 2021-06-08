@@ -6,6 +6,13 @@ import bs58 from "bs58";
 import { expect } from "chai";
 import { v4 as uuid } from "uuid";
 import { createHash } from "crypto";
+import { assert } from "console";
+import { VersionedIdl } from "../program/accounts/versioned-idl";
+import {
+  NAME_SERVICE_ACCOUNT_OFFSET,
+  NAME_SERVICE_CLASS_OFFSET,
+} from "../program/program-metadata";
+import BN from "bn.js";
 
 const timeout = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -18,10 +25,12 @@ const programMetadata = new ProgramMetadata(connection, {
   nameServiceKey: new PublicKey(process.env.NAME_SERVICE_KEY || ""),
 });
 
-describe("ProgramMetadata: metadata entries", async () => {
-  describe("create metadata entry", async () => {
-    it("should create a metadata entry", async () => {
-      const name = uuid();
+describe("ProgramMetadata: MetadataEntry", async () => {
+  describe("create, update, delete", async () => {
+    let name;
+
+    before(async () => {
+      name = uuid();
 
       const ix = await programMetadata.createMetadataEntry(
         targetProgramKey,
@@ -31,17 +40,17 @@ describe("ProgramMetadata: metadata entries", async () => {
         "some metadata"
       );
 
-      let tx = new Transaction();
+      const tx = new Transaction();
       const signers: Keypair[] = [];
       signers.push(privateKeypair);
       tx.add(ix);
 
-      let res = await connection.sendTransaction(tx, signers, {
-        preflightCommitment: "single",
-      });
+      await connection.sendTransaction(tx, signers);
 
       await timeout(5000);
+    });
 
+    it("should create a metadata entry", async () => {
       const accts = await connection.getProgramAccounts(
         programMetadata.nameServiceKey,
         {
@@ -57,49 +66,9 @@ describe("ProgramMetadata: metadata entries", async () => {
       );
 
       expect(accts.length).to.equal(1);
-
-      // clean up
-      const deleteIx = await programMetadata.deleteMetadataEntry(
-        targetProgramKey,
-        privateKeypair.publicKey,
-        privateKeypair.publicKey,
-        name
-      );
-
-      tx = new Transaction();
-      tx.add(deleteIx);
-
-      res = await connection.sendTransaction(tx, signers, {
-        preflightCommitment: "single",
-      });
-
-      await timeout(5000);
     });
-  });
 
-  describe("update metadata entry", async () => {
     it("should update metadata entry", async () => {
-      const name = uuid();
-
-      const ix = await programMetadata.createMetadataEntry(
-        targetProgramKey,
-        privateKeypair.publicKey,
-        privateKeypair.publicKey,
-        name,
-        "some metadata"
-      );
-
-      let tx = new Transaction();
-      const signers: Keypair[] = [];
-      signers.push(privateKeypair);
-      tx.add(ix);
-
-      let res = await connection.sendTransaction(tx, signers, {
-        preflightCommitment: "single",
-      });
-
-      await timeout(5000);
-
       const updateIx = await programMetadata.updateMetadataEntry(
         targetProgramKey,
         privateKeypair.publicKey,
@@ -107,12 +76,13 @@ describe("ProgramMetadata: metadata entries", async () => {
         "new metadata"
       );
 
-      tx = new Transaction();
+      const tx = new Transaction();
+      const signers: Keypair[] = [];
+      signers.push(privateKeypair);
+
       tx.add(updateIx);
 
-      res = await connection.sendTransaction(tx, signers, {
-        preflightCommitment: "single",
-      });
+      const res = await connection.sendTransaction(tx, signers);
 
       await timeout(5000);
 
@@ -132,8 +102,9 @@ describe("ProgramMetadata: metadata entries", async () => {
 
       expect(accts.length).to.equal(1);
       expect(!!accts[0].account.data.toString().match(/new metadata/));
+    });
 
-      // clean up
+    it("should delete a metadata entry", async () => {
       const deleteIx = await programMetadata.deleteMetadataEntry(
         targetProgramKey,
         privateKeypair.publicKey,
@@ -141,54 +112,13 @@ describe("ProgramMetadata: metadata entries", async () => {
         name
       );
 
-      tx = new Transaction();
-      tx.add(deleteIx);
-
-      res = await connection.sendTransaction(tx, signers, {
-        preflightCommitment: "single",
-      });
-
-      await timeout(5000);
-    });
-  });
-
-  describe("delete metadata entry", async () => {
-    it("should delete a metadata entry", async () => {
-      const name = uuid();
-
-      const ix = await programMetadata.createMetadataEntry(
-        targetProgramKey,
-        privateKeypair.publicKey,
-        privateKeypair.publicKey,
-        name,
-        "some metadata"
-      );
-
-      let tx = new Transaction();
+      const tx = new Transaction();
       const signers: Keypair[] = [];
       signers.push(privateKeypair);
-      tx.add(ix);
 
-      let res = await connection.sendTransaction(tx, signers, {
-        preflightCommitment: "single",
-      });
-
-      await timeout(5000);
-
-      // clean up
-      const deleteIx = await programMetadata.deleteMetadataEntry(
-        targetProgramKey,
-        privateKeypair.publicKey,
-        privateKeypair.publicKey,
-        name
-      );
-
-      tx = new Transaction();
       tx.add(deleteIx);
 
-      res = await connection.sendTransaction(tx, signers, {
-        preflightCommitment: "single",
-      });
+      await connection.sendTransaction(tx, signers);
 
       await timeout(5000);
 
@@ -208,20 +138,242 @@ describe("ProgramMetadata: metadata entries", async () => {
 
       expect(accts.length).to.equal(0);
     });
+
+    after(async () => {
+      const deleteIx = await programMetadata.deleteMetadataEntry(
+        targetProgramKey,
+        privateKeypair.publicKey,
+        privateKeypair.publicKey,
+        name
+      );
+
+      const tx = new Transaction();
+      const signers: Keypair[] = [];
+      signers.push(privateKeypair);
+      tx.add(deleteIx);
+
+      try {
+        await connection.sendTransaction(tx, signers);
+      } catch (error) {
+        // we don't care if this fails here
+      }
+
+      await timeout(5000);
+    });
+  });
+
+  describe("retrieve metadata entries", async () => {
+    before(async () => {
+      const ix1 = await programMetadata.createMetadataEntry(
+        targetProgramKey,
+        privateKeypair.publicKey,
+        privateKeypair.publicKey,
+        "Name",
+        "My Program"
+      );
+
+      const ix2 = await programMetadata.createMetadataEntry(
+        targetProgramKey,
+        privateKeypair.publicKey,
+        privateKeypair.publicKey,
+        "Version",
+        "1.0.0"
+      );
+
+      let tx = new Transaction();
+      const signers: Keypair[] = [];
+      signers.push(privateKeypair);
+      tx.add(ix1);
+      tx.add(ix2);
+
+      let res = await connection.sendTransaction(tx, signers);
+
+      await timeout(5000);
+    });
+
+    it("should retrieve all metadata entries", async () => {
+      const entries = await programMetadata.getMetadataEntries(
+        targetProgramKey
+      );
+      const nameEntry = entries.find((value) => value.name === "Name");
+      expect(nameEntry?.value).to.equal("My Program");
+      const versionEntry = entries.find((value) => value.name === "Version");
+      expect(versionEntry?.value).to.equal("1.0.0");
+    });
+
+    after(async () => {
+      const deleteIx1 = await programMetadata.deleteMetadataEntry(
+        targetProgramKey,
+        privateKeypair.publicKey,
+        privateKeypair.publicKey,
+        "Name"
+      );
+
+      const deleteIx2 = await programMetadata.deleteMetadataEntry(
+        targetProgramKey,
+        privateKeypair.publicKey,
+        privateKeypair.publicKey,
+        "Version"
+      );
+
+      let tx = new Transaction();
+      const signers: Keypair[] = [];
+      signers.push(privateKeypair);
+      tx = new Transaction();
+      tx.add(deleteIx1);
+      tx.add(deleteIx2);
+
+      const res = await connection.sendTransaction(tx, signers);
+
+      await timeout(5000);
+    });
   });
 });
 
-describe("ProgramMetadata: IDL entries", async () => {
-  describe("create versioned idl", async () => {
-    it("should create versioned idl", async () => {
-      const effectiveSlot = 3000;
+describe("ProgramMetadata: VersionedIdl", async () => {
+  describe("create, update, delete", async () => {
+    const effectiveSlot = 3000;
+
+    const signers: Keypair[] = [privateKeypair];
+
+    before(async () => {
       const idlHash = createHash("sha256").update("some idl", "utf8").digest();
 
-      const signers: Keypair[] = [];
-      signers.push(privateKeypair);
+      const ix = await programMetadata.createVersionedIdl(
+        targetProgramKey,
+        privateKeypair.publicKey,
+        privateKeypair.publicKey,
+        effectiveSlot,
+        "http://www.test.com",
+        idlHash,
+        "https://github.com/source"
+      );
 
+      const tx = new Transaction();
+      tx.add(ix);
+
+      await connection.sendTransaction(tx, signers);
+
+      await timeout(5000);
+    });
+
+    it("should create a versioned idl", async () => {
+      const classKey = await programMetadata.getClassKey(targetProgramKey);
+
+      const accts = await connection.getProgramAccounts(
+        programMetadata.nameServiceKey,
+        {
+          filters: [
+            {
+              memcmp: {
+                bytes: classKey.toBase58(),
+                offset: NAME_SERVICE_CLASS_OFFSET,
+              },
+            },
+            {
+              memcmp: {
+                bytes: bs58.encode(Buffer.from([1])),
+                offset: NAME_SERVICE_ACCOUNT_OFFSET,
+              },
+            },
+          ],
+        }
+      );
+
+      expect(accts.length).to.equal(1);
+    });
+
+    it("should update a versioned idl", async () => {
+      const idlHash = createHash("sha256").update("some idl", "utf8").digest();
+
+      const ix = await programMetadata.updateVersionedIdl(
+        targetProgramKey,
+        privateKeypair.publicKey,
+        effectiveSlot,
+        "http://www.test2.com",
+        idlHash,
+        "http://www.github.com/source"
+      );
+
+      const tx = new Transaction();
+      tx.add(ix);
+
+      await connection.sendTransaction(tx, signers);
+
+      await timeout(5000);
+
+      const classKey = await programMetadata.getClassKey(targetProgramKey);
+
+      const accts = await connection.getProgramAccounts(
+        programMetadata.nameServiceKey,
+        {
+          filters: [
+            {
+              memcmp: {
+                bytes: classKey.toBase58(),
+                offset: NAME_SERVICE_CLASS_OFFSET,
+              },
+            },
+            {
+              memcmp: {
+                bytes: bs58.encode(Buffer.from([1])),
+                offset: NAME_SERVICE_ACCOUNT_OFFSET,
+              },
+            },
+          ],
+        }
+      );
+
+      expect(accts.length).to.equal(1);
+
+      const idl: VersionedIdl = VersionedIdl.decodeUnchecked(
+        accts[0].account.data.slice(96)
+      );
+      expect(idl.idlUrl).to.equal("http://www.test2.com");
+    });
+
+    it("should delete a versioned idl", async () => {
+      const deleteIx = await programMetadata.deleteMetadataEntry(
+        targetProgramKey,
+        privateKeypair.publicKey,
+        privateKeypair.publicKey,
+        `idl_${effectiveSlot}`
+      );
+
+      let tx = new Transaction();
+      tx.add(deleteIx);
+
+      await connection.sendTransaction(tx, signers);
+
+      await timeout(5000);
+
+      const classKey = await programMetadata.getClassKey(targetProgramKey);
+
+      const accts = await connection.getProgramAccounts(
+        programMetadata.nameServiceKey,
+        {
+          filters: [
+            {
+              memcmp: {
+                bytes: classKey.toBase58(),
+                offset: NAME_SERVICE_CLASS_OFFSET,
+              },
+            },
+            {
+              memcmp: {
+                bytes: bs58.encode(Buffer.from([1])),
+                offset: NAME_SERVICE_ACCOUNT_OFFSET,
+              },
+            },
+          ],
+        }
+      );
+
+      expect(accts.length).to.equal(0);
+    });
+
+    after(async () => {
       try {
-        // clean up
         const deleteIx = await programMetadata.deleteMetadataEntry(
           targetProgramKey,
           privateKeypair.publicKey,
@@ -232,77 +384,87 @@ describe("ProgramMetadata: IDL entries", async () => {
         let tx = new Transaction();
         tx.add(deleteIx);
 
-        let res = await connection.sendTransaction(tx, signers, {
-          preflightCommitment: "single",
-        });
+        await connection.sendTransaction(tx, signers);
 
         await timeout(5000);
-      } catch (error) {
-        // delete just in case (ignore if fails)
-      }
-
-      const ix = await programMetadata.createVersionedIdl(
-        targetProgramKey,
-        privateKeypair.publicKey,
-        privateKeypair.publicKey,
-        effectiveSlot,
-        "http://www.test.com",
-        idlHash,
-        "https://github.com/source"
-      );
-
-      let tx = new Transaction();
-      tx.add(ix);
-
-      let res = await connection.sendTransaction(tx, signers, {
-        preflightCommitment: "single",
-      });
-
-      await timeout(5000);
-
-      // clean up
-      const deleteIx = await programMetadata.deleteMetadataEntry(
-        targetProgramKey,
-        privateKeypair.publicKey,
-        privateKeypair.publicKey,
-        `idl_${effectiveSlot}`
-      );
-
-      tx = new Transaction();
-      tx.add(deleteIx);
-
-      res = await connection.sendTransaction(tx, signers, {
-        preflightCommitment: "single",
-      });
-
-      await timeout(5000);
+      } catch (error) {}
     });
   });
 
-  describe("update versioned idl", async () => {
-    it("should update a versioned idl", async () => {
-      const effectiveSlot = 3000;
+  describe("retrieve IDL entries", async () => {
+    const signers: Keypair[] = [];
+    signers.push(privateKeypair);
+
+    before(async () => {
       const idlHash = createHash("sha256").update("some idl", "utf8").digest();
-      const ix = await programMetadata.createVersionedIdl(
+
+      const ix1 = await programMetadata.createVersionedIdl(
         targetProgramKey,
         privateKeypair.publicKey,
         privateKeypair.publicKey,
-        effectiveSlot,
+        0,
         "http://www.test.com",
         idlHash,
         "https://github.com/source"
       );
 
-      let tx = new Transaction();
-      const signers: Keypair[] = [];
-      signers.push(privateKeypair);
-      tx.add(ix);
+      const ix2 = await programMetadata.createVersionedIdl(
+        targetProgramKey,
+        privateKeypair.publicKey,
+        privateKeypair.publicKey,
+        3000,
+        "http://www.test.com",
+        idlHash,
+        "https://github.com/source"
+      );
 
-      let res = await connection.sendTransaction(tx, signers, {
-        preflightCommitment: "single",
-      });
+      const tx = new Transaction();
+      tx.add(ix1).add(ix2);
+
+      await connection.sendTransaction(tx, signers);
 
       await timeout(5000);
+    });
+
+    it("should get the versioned idl accounts", async () => {
+      const idls = await programMetadata.getVersionedIdls(targetProgramKey);
+      expect(idls.length).to.equal(2);
+    });
+
+    it("should get the version appropriate for the slot", async () => {
+      let idl = await programMetadata.getVersionedIdlForSlot(
+        targetProgramKey,
+        3001
+      );
+      expect(idl?.effectiveSlot.eq(new BN(3000)));
+
+      idl = await programMetadata.getVersionedIdlForSlot(targetProgramKey, 50);
+      expect(idl?.effectiveSlot.eq(new BN(0)));
+    });
+
+    after(async () => {
+      try {
+        const deleteIx1 = await programMetadata.deleteVersionedIdl(
+          targetProgramKey,
+          privateKeypair.publicKey,
+          privateKeypair.publicKey,
+          0
+        );
+
+        const deleteIx2 = await programMetadata.deleteVersionedIdl(
+          targetProgramKey,
+          privateKeypair.publicKey,
+          privateKeypair.publicKey,
+          3000
+        );
+
+        let tx = new Transaction();
+        tx.add(deleteIx1).add(deleteIx2);
+
+        await connection.sendTransaction(tx, signers);
+
+        await timeout(5000);
+      } catch (error) {}
     });
   });
 });

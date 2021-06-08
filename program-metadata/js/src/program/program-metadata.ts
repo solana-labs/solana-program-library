@@ -5,7 +5,11 @@ import {
   SYSVAR_RENT_PUBKEY,
   TransactionInstruction,
 } from "@solana/web3.js";
+import BN from "bn.js";
+import bs58 from "bs58";
 import { createHash } from "crypto";
+import { MetadataEntry } from "./accounts/metadata-entry";
+import { VersionedIdl } from "./accounts/versioned-idl";
 import {
   createMetadataEntryIx,
   createVersionedIdlIx,
@@ -23,6 +27,9 @@ export const METADATA_PREFIX = "program_metadata";
 export const PROGRAM_METADATA_ID = new PublicKey(
   "6cQ31NiNjrTTvjFbXiDUxo2ao29jQrGpV2JkN1Ztm2Gy"
 );
+
+export const NAME_SERVICE_CLASS_OFFSET = 64;
+export const NAME_SERVICE_ACCOUNT_OFFSET = 96;
 
 export interface ProgramMetadataConfig {
   programMetadataKey?: PublicKey;
@@ -42,6 +49,93 @@ export class ProgramMetadata {
     if (config?.nameServiceKey) {
       this.nameServiceKey = config.nameServiceKey;
     }
+  }
+
+  async getVersionedIdls(programId: PublicKey) {
+    const classKey = await this.getClassKey(programId);
+
+    let accounts = await this.connection.getProgramAccounts(
+      this.nameServiceKey,
+      {
+        filters: [
+          {
+            memcmp: {
+              bytes: classKey.toBase58(),
+              offset: NAME_SERVICE_CLASS_OFFSET,
+            },
+          },
+          {
+            memcmp: {
+              bytes: bs58.encode(Buffer.from([1])),
+              offset: NAME_SERVICE_ACCOUNT_OFFSET,
+            },
+          },
+        ],
+      }
+    );
+
+    return accounts
+      .map((account) => {
+        try {
+          return VersionedIdl.decodeUnchecked(account.account.data.slice(96));
+        } catch (error) {
+          console.error(error);
+        }
+      })
+      .filter((i) => i instanceof VersionedIdl);
+  }
+
+  async getVersionedIdlForSlot(
+    programId: PublicKey,
+    slot: number
+  ): Promise<VersionedIdl | undefined> {
+    const idls = await this.getVersionedIdls(programId);
+    const sorted: VersionedIdl[] = idls.sort(
+      (idlA: VersionedIdl, idlB: VersionedIdl) => {
+        return idlA.effectiveSlot.gt(idlB.effectiveSlot) ? 0 : -1;
+      }
+    );
+    let result;
+    for (let idl of sorted) {
+      if (idl.effectiveSlot.lte(new BN(slot))) {
+        result = idl;
+      }
+    }
+    return result;
+  }
+
+  async getMetadataEntries(programId: PublicKey): Promise<MetadataEntry[]> {
+    const classKey = await this.getClassKey(programId);
+
+    let accounts = await this.connection.getProgramAccounts(
+      this.nameServiceKey,
+      {
+        filters: [
+          {
+            memcmp: {
+              bytes: classKey.toBase58(),
+              offset: NAME_SERVICE_CLASS_OFFSET,
+            },
+          },
+          {
+            memcmp: {
+              bytes: bs58.encode(Buffer.from([0])),
+              offset: NAME_SERVICE_ACCOUNT_OFFSET,
+            },
+          },
+        ],
+      }
+    );
+
+    return accounts
+      .map((account) => {
+        try {
+          return MetadataEntry.decodeUnchecked(account.account.data.slice(96));
+        } catch (error) {
+          console.error(error);
+        }
+      })
+      .filter((i) => i instanceof MetadataEntry);
   }
 
   async createMetadataEntry(
@@ -89,7 +183,7 @@ export class ProgramMetadata {
     targetProgramAuthorityKey: PublicKey,
     name: string,
     value: string
-  ) {
+  ): Promise<TransactionInstruction> {
     const hashedName = this.getHashedName(name);
     const classKey = await this.getClassKey(targetProgramId);
     const nameKey = await this.getNameKey(hashedName, classKey);
@@ -123,7 +217,7 @@ export class ProgramMetadata {
     targetProgramAuthorityKey: PublicKey,
     refundKey: PublicKey,
     name: string
-  ) {
+  ): Promise<TransactionInstruction> {
     const hashedName = this.getHashedName(name);
     const classKey = await this.getClassKey(targetProgramId);
     const nameKey = await this.getNameKey(hashedName, classKey);
@@ -152,6 +246,20 @@ export class ProgramMetadata {
     return ix;
   }
 
+  async deleteVersionedIdl(
+    targetProgramId: PublicKey,
+    targetProgramAuthorityKey: PublicKey,
+    refundKey: PublicKey,
+    effectiveSlot: number
+  ): Promise<TransactionInstruction> {
+    return this.deleteMetadataEntry(
+      targetProgramId,
+      targetProgramAuthorityKey,
+      refundKey,
+      `idl_${effectiveSlot}`
+    );
+  }
+
   async createVersionedIdl(
     targetProgramId: PublicKey,
     targetProgramAuthorityKey: PublicKey,
@@ -160,7 +268,7 @@ export class ProgramMetadata {
     idlUrl: string,
     idlHash: Buffer,
     sourceUrl: string
-  ) {
+  ): Promise<TransactionInstruction> {
     const name = `idl_${effectiveSlot}`;
     const hashedName = this.getHashedName(name);
     const classKey = await this.getClassKey(targetProgramId);
@@ -204,7 +312,7 @@ export class ProgramMetadata {
     idlUrl: string,
     idlHash: Buffer,
     sourceUrl: string
-  ) {
+  ): Promise<TransactionInstruction> {
     const hashedName = this.getHashedName(`idl_${effectiveSlot}`);
     const classKey = await this.getClassKey(targetProgramId);
     const nameKey = await this.getNameKey(hashedName, classKey);

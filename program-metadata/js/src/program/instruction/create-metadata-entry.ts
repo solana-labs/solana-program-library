@@ -3,12 +3,8 @@ import { PROGRAM_METADATA_SCHEMA, Struct } from "../util/borsh-struct";
 export class CreateMetadataEntryInstruction extends Struct {
   instruction = 0;
 
-  constructor(
-    public name: string,
-    public value: string,
-    public hashedName: Buffer
-  ) {
-    super();
+  constructor(params: { name: string; value: string; hashedName: Buffer }) {
+    super(params);
   }
 }
 
