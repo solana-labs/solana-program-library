@@ -72,16 +72,6 @@ impl Rate {
         Self(U128::from(scaled_val))
     }
 
-    /// Round scaled decimal to u64
-    pub fn try_round_u64(&self) -> Result<u64, ProgramError> {
-        let rounded_val = Self::half_wad()
-            .checked_add(self.0)
-            .ok_or(LendingError::MathOverflow)?
-            .checked_div(Self::wad())
-            .ok_or(LendingError::MathOverflow)?;
-        Ok(u64::try_from(rounded_val).map_err(|_| LendingError::MathOverflow)?)
-    }
-
     /// Calculates base^exp
     pub fn try_pow(&self, mut exp: u64) -> Result<Rate, ProgramError> {
         let mut base = *self;
