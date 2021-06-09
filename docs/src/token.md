@@ -65,7 +65,7 @@ Keypair Path: ${HOME}/.config/solana/id.json
 
 See [Solana clusters](https://docs.solana.com/clusters) for cluster-specific RPC URLs
 ```
-solana config set --url https://devnet.solana.com
+solana config set --url https://api.devnet.solana.com
 ```
 
 #### Default Keypair
@@ -870,7 +870,7 @@ The `spl-token gc` command provides an example implementation of this cleanup pr
 
 
 ### Token Vesting Contract:
-This program allows you to lock arbitrary SPL tokens and release the locked tokens with a determined unlock schedule. An `unlock schedule` is made of a `unix timestamp` and a token `amount`, when initializing a vesting contract, the creator can pass an array of `unlock schedule` with an arbitrary size giving the creator of the contract complete control of how the tokens unlock over time. 
+This program allows you to lock arbitrary SPL tokens and release the locked tokens with a determined unlock schedule. An `unlock schedule` is made of a `unix timestamp` and a token `amount`, when initializing a vesting contract, the creator can pass an array of `unlock schedule` with an arbitrary size giving the creator of the contract complete control of how the tokens unlock over time.
 
 Unlocking works by pushing a permissionless crank on the contract that moves the tokens to the pre-specified address. The recipient address of a vesting contract can be modified by the owner of the current recipient key, meaning that vesting contract locked tokens can be traded.
 
