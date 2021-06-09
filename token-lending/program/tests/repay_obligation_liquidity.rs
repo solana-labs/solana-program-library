@@ -10,7 +10,7 @@ use solana_sdk::{
     transaction::Transaction,
 };
 use spl_token::instruction::approve;
-use spl_token_lending::instruction::refresh_obligation;
+use spl_token_lending::instruction::{refresh_obligation, refresh_reserve};
 use spl_token_lending::{
     instruction::repay_obligation_liquidity, processor::process_instruction,
     state::INITIAL_COLLATERAL_RATIO,
@@ -159,6 +159,7 @@ async fn test_repay_sol_max_amount() {
 
     const USDC_DEPOSIT_AMOUNT_FRACTIONAL: u64 = 1_000 * FRACTIONAL_TO_USDC;
     const SOL_BORROW_AMOUNT_LAMPORTS: u64 = 100 * LAMPORTS_TO_SOL * INITIAL_COLLATERAL_RATIO;
+    const SOL_REPAY_AMOUNT_LAMPORTS: u64 = SOL_BORROW_AMOUNT_LAMPORTS + 40;
     const USDC_RESERVE_COLLATERAL_FRACTIONAL: u64 = 2 * USDC_DEPOSIT_AMOUNT_FRACTIONAL;
     const SOL_RESERVE_LIQUIDITY_LAMPORTS: u64 = 2 * SOL_BORROW_AMOUNT_LAMPORTS;
 
@@ -181,7 +182,7 @@ async fn test_repay_sol_max_amount() {
             liquidity_mint_pubkey: usdc_mint.pubkey,
             liquidity_mint_decimals: usdc_mint.decimals,
             config: reserve_config,
-            mark_fresh: true,
+            slots_elapsed: 1, // elapsed from 1; clock.slot = 2
             ..AddReserveArgs::default()
         },
     );
@@ -194,12 +195,12 @@ async fn test_repay_sol_max_amount() {
         &user_accounts_owner,
         AddReserveArgs {
             borrow_amount: SOL_BORROW_AMOUNT_LAMPORTS,
-            user_liquidity_amount: SOL_BORROW_AMOUNT_LAMPORTS,
+            user_liquidity_amount: SOL_REPAY_AMOUNT_LAMPORTS,
             liquidity_amount: SOL_RESERVE_LIQUIDITY_LAMPORTS,
             liquidity_mint_pubkey: spl_token::native_mint::id(),
             liquidity_mint_decimals: 9,
             config: reserve_config,
-            mark_fresh: true,
+            slots_elapsed: 1, // elapsed from 1; clock.slot = 2
             ..AddReserveArgs::default()
         },
     );
@@ -211,11 +212,20 @@ async fn test_repay_sol_max_amount() {
         AddObligationArgs {
             deposits: &[(&usdc_test_reserve, USDC_DEPOSIT_AMOUNT_FRACTIONAL)],
             borrows: &[(&sol_test_reserve, SOL_BORROW_AMOUNT_LAMPORTS)],
+            slots_elapsed: 1, // elapsed from 1; clock.slot = 2
             ..AddObligationArgs::default()
         },
     );
 
-    let (mut banks_client, payer, recent_blockhash) = test.start().await;
+    let mut test_context = test.start_with_context().await;
+    test_context.warp_to_slot(3).unwrap(); // clock.slot = 3
+
+    let ProgramTestContext {
+        mut banks_client,
+        payer,
+        last_blockhash: recent_blockhash,
+        ..
+    } = test_context;
 
     let initial_user_liquidity_balance =
         get_token_balance(&mut banks_client, sol_test_reserve.user_liquidity_pubkey).await;
@@ -230,9 +240,19 @@ async fn test_repay_sol_max_amount() {
                 &user_transfer_authority.pubkey(),
                 &user_accounts_owner.pubkey(),
                 &[],
-                SOL_BORROW_AMOUNT_LAMPORTS,
+                SOL_REPAY_AMOUNT_LAMPORTS,
             )
             .unwrap(),
+            refresh_reserve(
+                spl_token_lending::id(),
+                usdc_test_reserve.pubkey,
+                usdc_test_reserve.liquidity_oracle_pubkey
+            ),
+            refresh_reserve(
+                spl_token_lending::id(),
+                sol_test_reserve.pubkey,
+                sol_test_reserve.liquidity_oracle_pubkey
+            ),
             refresh_obligation(
                 spl_token_lending::id(),
                 test_obligation.pubkey,
@@ -262,14 +282,14 @@ async fn test_repay_sol_max_amount() {
         get_token_balance(&mut banks_client, sol_test_reserve.user_liquidity_pubkey).await;
     assert_eq!(
         user_liquidity_balance,
-        initial_user_liquidity_balance - SOL_BORROW_AMOUNT_LAMPORTS
+        initial_user_liquidity_balance - SOL_REPAY_AMOUNT_LAMPORTS
     );
 
     let liquidity_supply_balance =
         get_token_balance(&mut banks_client, sol_test_reserve.liquidity_supply_pubkey).await;
     assert_eq!(
         liquidity_supply_balance,
-        initial_liquidity_supply_balance + SOL_BORROW_AMOUNT_LAMPORTS
+        initial_liquidity_supply_balance + SOL_REPAY_AMOUNT_LAMPORTS
     );
 
     let obligation = test_obligation.get_state(&mut banks_client).await;
