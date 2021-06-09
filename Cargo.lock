@@ -3984,7 +3984,7 @@ dependencies = [
  "log",
  "num-derive",
  "num-traits",
- "proptest 0.10.1",
+ "proptest 1.0.0",
  "serde",
  "serde_yaml",
  "solana-program",
