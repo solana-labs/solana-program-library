@@ -246,12 +246,12 @@ async fn test_repay_sol_max_amount() {
             refresh_reserve(
                 spl_token_lending::id(),
                 usdc_test_reserve.pubkey,
-                usdc_test_reserve.liquidity_oracle_pubkey
+                usdc_test_reserve.liquidity_oracle_pubkey,
             ),
             refresh_reserve(
                 spl_token_lending::id(),
                 sol_test_reserve.pubkey,
-                sol_test_reserve.liquidity_oracle_pubkey
+                sol_test_reserve.liquidity_oracle_pubkey,
             ),
             refresh_obligation(
                 spl_token_lending::id(),
