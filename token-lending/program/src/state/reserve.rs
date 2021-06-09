@@ -553,8 +553,7 @@ pub struct CollateralExchangeRate(Rate);
 impl CollateralExchangeRate {
     /// Convert reserve collateral to liquidity
     pub fn collateral_to_liquidity(&self, collateral_amount: u64) -> Result<u64, ProgramError> {
-        Decimal::from(collateral_amount)
-            .try_div(self.0)?
+        self.decimal_collateral_to_liquidity(collateral_amount.into())?
             .try_floor_u64()
     }
 
@@ -568,8 +567,7 @@ impl CollateralExchangeRate {
 
     /// Convert reserve liquidity to collateral
     pub fn liquidity_to_collateral(&self, liquidity_amount: u64) -> Result<u64, ProgramError> {
-        Decimal::from(liquidity_amount)
-            .try_mul(self.0)?
+        self.decimal_liquidity_to_collateral(liquidity_amount.into())?
             .try_floor_u64()
     }
 
