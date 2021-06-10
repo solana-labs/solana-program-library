@@ -24,6 +24,5 @@ thiserror = "1.0.24"
 solana-program-test = "1.6.7"
 solana-sdk = "1.6.7"
 
-
 [lib]
 crate-type = ["cdylib", "lib"]
