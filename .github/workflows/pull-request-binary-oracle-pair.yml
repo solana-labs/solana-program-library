@@ -13,6 +13,6 @@ jobs:
   cargo-test-bpf:
     runs-on: ubuntu-latest
     steps:
-      - uses: ci/cargo-test-bpf@v1
+      - uses: ./ci/cargo-test-bpf
         with:
           program_directory: binary-oracle-pair
