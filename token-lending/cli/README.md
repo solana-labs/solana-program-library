@@ -73,7 +73,10 @@ See https://spl.solana.com/token-lending for more details
 
 1. Deploy the program:
    ```shell
-   solana program deploy -k owner.json --program-id lending.json target/deploy/spl_token_lending.so
+   solana program deploy \
+     -k owner.json \
+     --program-id lending.json \
+     target/deploy/spl_token_lending.so
    ```
    If the deployment doesn't succeed, follow [this guide](https://docs.solana.com/cli/deploy-a-program#resuming-a-failed-deploy) to resume it.
 
