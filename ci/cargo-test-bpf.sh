@@ -26,7 +26,17 @@ fi
 
 set -x
 
-cd $program_directory/program
+cd $program_directory
+run_dir=$(pwd)
 
-# Build/test BPF program
-cargo +"$rust_stable" test-bpf -- --nocapture
+if [[ -d $run_dir/program ]]; then
+  # Build/test just one BPF program
+  cd $run_dir/program
+  cargo +"$rust_stable" test-bpf -- --nocapture
+else
+  # Build/test all BPF programs
+  for directory in $(ls -d $run_dir/*/); do
+    cd $directory
+    cargo +"$rust_stable" test-bpf -- --nocapture
+  done
+fi

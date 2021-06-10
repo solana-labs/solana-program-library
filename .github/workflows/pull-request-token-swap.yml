@@ -4,21 +4,16 @@ on:
   pull_request:
     paths:
     - 'token-swap/**'
+    - 'token/**'
+    - 'libraries/math/**'
   push:
     branches: [master]
     paths:
     - 'token-swap/**'
+    - 'token/**'
+    - 'libraries/math/**'
 
 jobs:
-  all_github_action_checks:
-    runs-on: ubuntu-latest
-    needs:
-      - cargo-test-bpf
-      - js-test
-      - fuzz
-    steps:
-      - run: echo "Done"
-
   cargo-test-bpf:
     runs-on: ubuntu-latest
     steps:
