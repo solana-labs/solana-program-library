@@ -16,7 +16,6 @@ jobs:
       - rustfmt
       - clippy
       - cargo-build-test
-      - cargo-test-bpf
     steps:
       - run: echo "Done"
 
