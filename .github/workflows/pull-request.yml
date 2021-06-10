@@ -16,6 +16,7 @@ jobs:
       - rustfmt
       - clippy
       - cargo-build-test
+      - cargo-test-bpf
     steps:
       - run: echo "Done"
 
@@ -129,7 +130,16 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        program_directory: [binary-oracle-pair]
+        program_directory: [
+          binary-oracle-pair,
+          feature-proposal,
+          governance,
+          memo,
+          name-service,
+          record,
+          shared-memory,
+          stake-pool,
+        ]
       fail-fast: false
     steps:
       - uses: actions/checkout@v2
