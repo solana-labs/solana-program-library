@@ -4,15 +4,15 @@ use {
         SubCommand,
     },
     solana_clap_utils::{
-        input_parsers::{pubkey_of, value_of},
-        input_validators::{is_keypair, is_parsable, is_pubkey, is_url},
+        fee_payer::fee_payer_arg,
+        input_parsers::{keypair_of, pubkey_of, value_of},
+        input_validators::{is_amount, is_keypair, is_parsable, is_pubkey, is_url},
         keypair::signer_from_path,
     },
     solana_client::rpc_client::RpcClient,
-    solana_program::{program_pack::Pack, pubkey::Pubkey},
+    solana_program::{native_token::lamports_to_sol, program_pack::Pack, pubkey::Pubkey},
     solana_sdk::{
         commitment_config::CommitmentConfig,
-        native_token::Sol,
         signature::{Keypair, Signer},
         system_instruction,
         transaction::Transaction,
@@ -20,6 +20,7 @@ use {
     spl_token::{
         instruction::approve,
         state::{Account as Token, Mint},
+        ui_amount_to_amount,
     },
     spl_token_lending::{
         self,
@@ -33,21 +34,21 @@ use {
 struct Config {
     rpc_client: RpcClient,
     verbose: bool,
-    payer: Box<dyn Signer>,
+    fee_payer: Box<dyn Signer>,
     dry_run: bool,
 }
 
 type Error = Box<dyn std::error::Error>;
 type CommandResult = Result<(), Error>;
 
-fn check_payer_balance(config: &Config, required_balance: u64) -> Result<(), Error> {
-    let balance = config.rpc_client.get_balance(&config.payer.pubkey())?;
+fn check_fee_payer_balance(config: &Config, required_balance: u64) -> Result<(), Error> {
+    let balance = config.rpc_client.get_balance(&config.fee_payer.pubkey())?;
     if balance < required_balance {
         Err(format!(
             "Fee payer, {}, has insufficient balance: {} required, {} available",
-            config.payer.pubkey(),
-            Sol(required_balance),
-            Sol(balance)
+            config.fee_payer.pubkey(),
+            lamports_to_sol(required_balance),
+            lamports_to_sol(balance)
         )
         .into())
     } else {
@@ -91,7 +92,7 @@ fn command_create_lending_market(
         &[
             // Account for the lending market
             create_account(
-                &config.payer.pubkey(),
+                &config.fee_payer.pubkey(),
                 &lending_market_keypair.pubkey(),
                 lending_market_balance,
                 LendingMarket::LEN as u64,
@@ -106,36 +107,40 @@ fn command_create_lending_market(
                 oracle_program_id,
             ),
         ],
-        Some(&config.payer.pubkey()),
+        Some(&config.fee_payer.pubkey()),
     );
 
     let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-    check_payer_balance(
+    check_fee_payer_balance(
         config,
         lending_market_balance + fee_calculator.calculate_fee(&transaction.message()),
     )?;
     transaction.sign(
-        &vec![config.payer.as_ref(), &lending_market_keypair],
+        &vec![config.fee_payer.as_ref(), &lending_market_keypair],
         recent_blockhash,
     );
     send_transaction(&config, transaction)?;
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn command_add_reserve(
     config: &Config,
-    liquidity_amount: u64,
+    ui_amount: f64,
     reserve_config: ReserveConfig,
     source_liquidity_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
+    lending_market_owner_keypair: Keypair,
     pyth_product_pubkey: Pubkey,
     pyth_price_pubkey: Pubkey,
 ) -> CommandResult {
     let source_liquidity_account = config.rpc_client.get_account(&source_liquidity_pubkey)?;
     let source_liquidity = Token::unpack_from_slice(source_liquidity_account.data.borrow())?;
 
-    let lending_market_account = config.rpc_client.get_account(&lending_market_pubkey)?;
-    let lending_market = LendingMarket::unpack(&lending_market_account.data.borrow())?;
+    let source_liquidity_mint_account = config.rpc_client.get_account(&source_liquidity.mint)?;
+    let source_liquidity_mint =
+        Mint::unpack_from_slice(source_liquidity_mint_account.data.borrow())?;
+    let liquidity_amount = ui_amount_to_amount(ui_amount, source_liquidity_mint.decimals);
 
     let reserve_keypair = Keypair::new();
     let collateral_mint_keypair = Keypair::new();
@@ -208,62 +213,62 @@ fn command_add_reserve(
     let mut create_accounts_transaction_1 = Transaction::new_with_payer(
         &[
             create_account(
-                &config.payer.pubkey(),
+                &config.fee_payer.pubkey(),
                 &reserve_keypair.pubkey(),
                 reserve_balance,
                 Reserve::LEN as u64,
                 &spl_token_lending::id(),
             ),
             create_account(
-                &config.payer.pubkey(),
+                &config.fee_payer.pubkey(),
                 &collateral_mint_keypair.pubkey(),
                 collateral_mint_balance,
                 Mint::LEN as u64,
                 &spl_token::id(),
             ),
             create_account(
-                &config.payer.pubkey(),
+                &config.fee_payer.pubkey(),
                 &collateral_supply_keypair.pubkey(),
                 collateral_supply_balance,
                 Token::LEN as u64,
                 &spl_token::id(),
             ),
             create_account(
-                &config.payer.pubkey(),
+                &config.fee_payer.pubkey(),
                 &user_collateral_keypair.pubkey(),
                 user_collateral_balance,
                 Token::LEN as u64,
                 &spl_token::id(),
             ),
         ],
-        Some(&config.payer.pubkey()),
+        Some(&config.fee_payer.pubkey()),
     );
 
     let mut create_accounts_transaction_2 = Transaction::new_with_payer(
         &[
             create_account(
-                &config.payer.pubkey(),
+                &config.fee_payer.pubkey(),
                 &liquidity_supply_keypair.pubkey(),
                 liquidity_supply_balance,
                 Token::LEN as u64,
                 &spl_token::id(),
             ),
             create_account(
-                &config.payer.pubkey(),
+                &config.fee_payer.pubkey(),
                 &liquidity_fee_receiver_keypair.pubkey(),
                 liquidity_fee_receiver_balance,
                 Token::LEN as u64,
                 &spl_token::id(),
             ),
             create_account(
-                &config.payer.pubkey(),
+                &config.fee_payer.pubkey(),
                 &liquidity_host_keypair.pubkey(),
                 liquidity_host_balance,
                 Token::LEN as u64,
                 &spl_token::id(),
             ),
         ],
-        Some(&config.payer.pubkey()),
+        Some(&config.fee_payer.pubkey()),
     );
 
     let mut init_reserve_transaction = Transaction::new_with_payer(
@@ -272,8 +277,7 @@ fn command_add_reserve(
                 &spl_token::id(),
                 &source_liquidity_pubkey,
                 &user_transfer_authority_keypair.pubkey(),
-                // @TODO: allow signing with different token owner key
-                &config.payer.pubkey(),
+                &config.fee_payer.pubkey(),
                 &[],
                 liquidity_amount,
             )
@@ -293,16 +297,15 @@ fn command_add_reserve(
                 pyth_product_pubkey,
                 pyth_price_pubkey,
                 lending_market_pubkey,
-                // @TODO: allow signing with different lending market owner key
-                lending_market.owner,
+                lending_market_owner_keypair.pubkey(),
                 user_transfer_authority_keypair.pubkey(),
             ),
         ],
-        Some(&config.payer.pubkey()),
+        Some(&config.fee_payer.pubkey()),
     );
 
     let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-    check_payer_balance(
+    check_fee_payer_balance(
         config,
         total_balance
             + fee_calculator.calculate_fee(&create_accounts_transaction_1.message())
@@ -311,7 +314,7 @@ fn command_add_reserve(
     )?;
     create_accounts_transaction_1.sign(
         &vec![
-            config.payer.as_ref(),
+            config.fee_payer.as_ref(),
             &reserve_keypair,
             &collateral_mint_keypair,
             &collateral_supply_keypair,
@@ -321,7 +324,7 @@ fn command_add_reserve(
     );
     create_accounts_transaction_2.sign(
         &vec![
-            config.payer.as_ref(),
+            config.fee_payer.as_ref(),
             &liquidity_supply_keypair,
             &liquidity_fee_receiver_keypair,
             &liquidity_host_keypair,
@@ -329,7 +332,11 @@ fn command_add_reserve(
         recent_blockhash,
     );
     init_reserve_transaction.sign(
-        &vec![config.payer.as_ref(), &user_transfer_authority_keypair],
+        &vec![
+            config.fee_payer.as_ref(),
+            &lending_market_owner_keypair,
+            &user_transfer_authority_keypair,
+        ],
         recent_blockhash,
     );
     send_transaction(&config, create_accounts_transaction_1)?;
@@ -383,16 +390,9 @@ fn main() {
                 .help("JSON RPC URL for the cluster.  Default from the configuration file."),
         )
         .arg(
-            Arg::with_name("payer")
-                .long("payer")
-                .value_name("KEYPAIR")
-                .validator(is_keypair)
-                .takes_value(true)
-                .help(
-                    "Specify the payer account. \
-                     This may be a keypair file, or the ASK keyword. \
-                     Defaults to the client keypair.",
-                ),
+            fee_payer_arg()
+                .short("p")
+                .global(true)
         )
         .subcommand(
             SubCommand::with_name("create-market")
@@ -438,6 +438,15 @@ fn main() {
                         .help("Lending market address"),
                 )
                 .arg(
+                    Arg::with_name("lending_market_owner")
+                        .long("owner")
+                        .validator(is_keypair)
+                        .value_name("KEYPAIR")
+                        .takes_value(true)
+                        .required(true)
+                        .help("Owner required to sign when adding reserves to the lending market"),
+                )
+                .arg(
                     Arg::with_name("source_liquidity")
                         .long("source")
                         .validator(is_pubkey)
@@ -449,9 +458,8 @@ fn main() {
                 .arg(
                     Arg::with_name("liquidity_amount")
                         .long("amount")
-                        // @FIXME: parse as float and convert by mint
-                        .validator(is_parsable::<u64>)
-                        .value_name("INTEGER")
+                        .validator(is_amount)
+                        .value_name("AMOUNT")
                         .takes_value(true)
                         .required(true)
                         .help("Initial amount of liquidity to deposit into the new reserve"),
@@ -548,7 +556,7 @@ fn main() {
                     Arg::with_name("borrow_fee_wad")
                         .long("borrow-fee-wad")
                         .validator(is_parsable::<u64>)
-                        .value_name("WAD")
+                        .value_name("INTEGER")
                         .takes_value(true)
                         .required(true)
                         .default_value("100000000000")
@@ -558,7 +566,7 @@ fn main() {
                     Arg::with_name("flash_loan_fee_wad")
                         .long("flash-loan-fee-wad")
                         .validator(is_parsable::<u64>)
-                        .value_name("WAD")
+                        .value_name("INTEGER")
                         .takes_value(true)
                         .required(true)
                         .default_value("3000000000000000")
@@ -587,23 +595,26 @@ fn main() {
         let json_rpc_url = value_t!(matches, "json_rpc_url", String)
             .unwrap_or_else(|_| cli_config.json_rpc_url.clone());
 
-        let payer = signer_from_path(
+        let fee_payer = signer_from_path(
             &matches,
-            &cli_config.keypair_path,
-            "payer",
+            matches
+                .value_of("fee_payer")
+                .unwrap_or(&cli_config.keypair_path),
+            "fee_payer",
             &mut wallet_manager,
         )
         .unwrap_or_else(|e| {
             eprintln!("error: {}", e);
             exit(1);
         });
+
         let verbose = matches.is_present("verbose");
         let dry_run = matches.is_present("dry_run");
 
         Config {
             rpc_client: RpcClient::new_with_commitment(json_rpc_url, CommitmentConfig::confirmed()),
+            fee_payer,
             verbose,
-            payer,
             dry_run,
         }
     };
@@ -623,7 +634,9 @@ fn main() {
         ("add-reserve", Some(arg_matches)) => {
             let source_liquidity_pubkey = pubkey_of(arg_matches, "source_liquidity").unwrap();
             let lending_market_pubkey = pubkey_of(arg_matches, "lending_market").unwrap();
-            let liquidity_amount = value_of(arg_matches, "liquidity_amount").unwrap();
+            let lending_market_owner_keypair =
+                keypair_of(arg_matches, "lending_market_owner").unwrap();
+            let ui_amount = value_of(arg_matches, "liquidity_amount").unwrap();
             let pyth_product_pubkey = pubkey_of(arg_matches, "pyth_product").unwrap();
             let pyth_price_pubkey = pubkey_of(arg_matches, "pyth_price").unwrap();
             let optimal_utilization_rate =
@@ -640,7 +653,7 @@ fn main() {
 
             command_add_reserve(
                 &config,
-                liquidity_amount,
+                ui_amount,
                 ReserveConfig {
                     optimal_utilization_rate,
                     loan_to_value_ratio,
@@ -657,6 +670,7 @@ fn main() {
                 },
                 source_liquidity_pubkey,
                 lending_market_pubkey,
+                lending_market_owner_keypair,
                 pyth_product_pubkey,
                 pyth_price_pubkey,
             )
@@ -673,14 +687,12 @@ fn quote_currency_of(matches: &ArgMatches<'_>, name: &str) -> Option<[u8; 32]> {
     if let Some(value) = matches.value_of(name) {
         if value == "USD" {
             Some(*b"USD\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0")
-        } else if value.len() == 44 {
-            Some(Pubkey::from_str(value).unwrap().to_bytes())
-        } else if value.len() > 32 {
-            panic!("quote currency is too long");
-        } else {
+        } else if value.len() <= 32 {
             let mut bytes32 = [0u8; 32];
             bytes32[0..value.len()].clone_from_slice(value.as_bytes());
             Some(bytes32)
+        } else {
+            Some(Pubkey::from_str(value).unwrap().to_bytes())
         }
     } else {
         None
