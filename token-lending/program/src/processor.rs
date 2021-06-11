@@ -44,6 +44,10 @@ pub fn process_instruction(
             msg!("Instruction: Init Lending Market");
             process_init_lending_market(program_id, owner, quote_currency, accounts)
         }
+        LendingInstruction::SetLendingMarketOwner { new_owner } => {
+            msg!("Instruction: Set Lending Market Owner");
+            process_set_lending_market_owner(program_id, new_owner, accounts)
+        }
         LendingInstruction::InitReserve {
             liquidity_amount,
             config,
@@ -51,9 +55,9 @@ pub fn process_instruction(
             msg!("Instruction: Init Reserve");
             process_init_reserve(program_id, liquidity_amount, config, accounts)
         }
-        LendingInstruction::InitObligation => {
-            msg!("Instruction: Init Obligation");
-            process_init_obligation(program_id, accounts)
+        LendingInstruction::RefreshReserve => {
+            msg!("Instruction: Refresh Reserve");
+            process_refresh_reserve(program_id, accounts)
         }
         LendingInstruction::DepositReserveLiquidity { liquidity_amount } => {
             msg!("Instruction: Deposit Reserve Liquidity");
@@ -62,6 +66,22 @@ pub fn process_instruction(
         LendingInstruction::RedeemReserveCollateral { collateral_amount } => {
             msg!("Instruction: Redeem Reserve Collateral");
             process_redeem_reserve_collateral(program_id, collateral_amount, accounts)
+        }
+        LendingInstruction::InitObligation => {
+            msg!("Instruction: Init Obligation");
+            process_init_obligation(program_id, accounts)
+        }
+        LendingInstruction::RefreshObligation => {
+            msg!("Instruction: Refresh Obligation");
+            process_refresh_obligation(program_id, accounts)
+        }
+        LendingInstruction::DepositObligationCollateral { collateral_amount } => {
+            msg!("Instruction: Deposit Obligation Collateral");
+            process_deposit_obligation_collateral(program_id, collateral_amount, accounts)
+        }
+        LendingInstruction::WithdrawObligationCollateral { collateral_amount } => {
+            msg!("Instruction: Withdraw Obligation Collateral");
+            process_withdraw_obligation_collateral(program_id, collateral_amount, accounts)
         }
         LendingInstruction::BorrowObligationLiquidity { liquidity_amount } => {
             msg!("Instruction: Borrow Obligation Liquidity");
@@ -74,26 +94,6 @@ pub fn process_instruction(
         LendingInstruction::LiquidateObligation { liquidity_amount } => {
             msg!("Instruction: Liquidate Obligation");
             process_liquidate_obligation(program_id, liquidity_amount, accounts)
-        }
-        LendingInstruction::RefreshReserve => {
-            msg!("Instruction: Refresh Reserve");
-            process_refresh_reserve(program_id, accounts)
-        }
-        LendingInstruction::DepositObligationCollateral { collateral_amount } => {
-            msg!("Instruction: Deposit Obligation Collateral");
-            process_deposit_obligation_collateral(program_id, collateral_amount, accounts)
-        }
-        LendingInstruction::WithdrawObligationCollateral { collateral_amount } => {
-            msg!("Instruction: Withdraw Obligation Collateral");
-            process_withdraw_obligation_collateral(program_id, collateral_amount, accounts)
-        }
-        LendingInstruction::SetLendingMarketOwner { new_owner } => {
-            msg!("Instruction: Set Lending Market Owner");
-            process_set_lending_market_owner(program_id, new_owner, accounts)
-        }
-        LendingInstruction::RefreshObligation => {
-            msg!("Instruction: Refresh Obligation");
-            process_refresh_obligation(program_id, accounts)
         }
         LendingInstruction::FlashLoan { amount } => {
             msg!("Instruction: Flash Loan");
