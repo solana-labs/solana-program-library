@@ -641,7 +641,7 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
         println!(
             "Validator Vote Account: {}\tBalance: {}\tLast Update Epoch: {}{}",
             validator.vote_account_address,
-            Sol(validator.stake_lamports),
+            Sol(validator.stake_lamports()),
             validator.last_update_epoch,
             if validator.last_update_epoch != epoch_info.epoch {
                 " [UPDATE REQUIRED]"

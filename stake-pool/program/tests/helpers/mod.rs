@@ -1124,7 +1124,7 @@ pub async fn get_validator_list_sum(
     let validator_sum: u64 = validator_list
         .validators
         .iter()
-        .map(|info| info.stake_lamports)
+        .map(|info| info.stake_lamports())
         .sum();
     let rent = banks_client.get_rent().await.unwrap();
     let rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());

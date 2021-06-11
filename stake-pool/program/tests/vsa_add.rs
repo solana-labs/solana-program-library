@@ -91,7 +91,8 @@ async fn success() {
                 status: state::StakeStatus::Active,
                 vote_account_address: user_stake.vote.pubkey(),
                 last_update_epoch: 0,
-                stake_lamports: 0,
+                active_stake_lamports: 0,
+                transient_stake_lamports: 0,
             }]
         }
     );
