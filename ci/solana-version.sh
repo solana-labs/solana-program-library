@@ -18,7 +18,6 @@ else
 fi
 
 export solana_version="$solana_version"
-export solana_docker_image=solanalabs/solana:"$solana_version"
 export PATH="$HOME"/.local/share/solana/install/active_release/bin:"$PATH"
 
 if [[ -n $1 ]]; then

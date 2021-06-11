@@ -26,7 +26,7 @@ roots = { version = "0.0.6", optional = true }
 
 [dev-dependencies]
 solana-sdk = "1.6.7"
-proptest = "0.10"
+proptest = "1.0"
 sim =  { path = "./sim" }
 roots = "0.0.6"
 
