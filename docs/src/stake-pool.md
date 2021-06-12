@@ -141,7 +141,7 @@ to activate and deactivate, you can run the stake pool locally using the
 from devnet, testnet, or mainnet.
 
 ```sh
-$ solana-test-validator -c poo1B9L9nR3CrcaziKVYVpRX6A9Y1LAXYasjjfCbApj --url devnet --slots-per-epoch 32
+$ solana-test-validator -c poo1B9L9nR3CrcaziKVYVpRX6A9Y1LAXYasjjfCbApj -c 5TfMPP2zwrXWTUvkg5AG54QWpEkwjeBUhpP7x99kkvEj --url devnet --slots-per-epoch 32
 $ solana config set --url http://127.0.0.1:8899
 ```
 
