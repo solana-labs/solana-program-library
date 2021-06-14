@@ -3957,7 +3957,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token-cli"
-version = "2.0.11"
+version = "2.0.12"
 dependencies = [
  "clap",
  "console 0.14.1",
