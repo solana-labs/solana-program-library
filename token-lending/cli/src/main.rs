@@ -33,8 +33,9 @@ use {
 
 struct Config {
     rpc_client: RpcClient,
-    verbose: bool,
     fee_payer: Box<dyn Signer>,
+    lending_program_id: Pubkey,
+    verbose: bool,
     dry_run: bool,
 }
 
@@ -65,6 +66,29 @@ fn main() {
             }
         })
         .arg(
+            Arg::with_name("json_rpc_url")
+                .long("url")
+                .value_name("URL")
+                .takes_value(true)
+                .validator(is_url)
+                .help("JSON RPC URL for the cluster.  Default from the configuration file."),
+        )
+        .arg(
+            fee_payer_arg()
+                .short("p")
+                .global(true)
+        )
+        .arg(
+            Arg::with_name("lending_program_id")
+                .long("program")
+                .validator(is_pubkey)
+                .value_name("PUBKEY")
+                .takes_value(true)
+                .required(true)
+                .default_value(spl_token_lending::id())
+                .help("Lending program ID"),
+        )
+        .arg(
             Arg::with_name("verbose")
                 .long("verbose")
                 .short("v")
@@ -78,19 +102,6 @@ fn main() {
                 .takes_value(false)
                 .global(true)
                 .help("Simulate transaction instead of executing"),
-        )
-        .arg(
-            Arg::with_name("json_rpc_url")
-                .long("url")
-                .value_name("URL")
-                .takes_value(true)
-                .validator(is_url)
-                .help("JSON RPC URL for the cluster.  Default from the configuration file."),
-        )
-        .arg(
-            fee_payer_arg()
-                .short("p")
-                .global(true)
         )
         .subcommand(
             SubCommand::with_name("create-market")
@@ -307,12 +318,14 @@ fn main() {
             exit(1);
         });
 
+        let lending_program_id = pubkey_of(arg_matches, "lending_program_id").unwrap();
         let verbose = matches.is_present("verbose");
         let dry_run = matches.is_present("dry_run");
 
         Config {
             rpc_client: RpcClient::new_with_commitment(json_rpc_url, CommitmentConfig::confirmed()),
             fee_payer,
+            lending_program_id,
             verbose,
             dry_run,
         }
@@ -426,7 +439,7 @@ fn command_create_lending_market(
             ),
             // Initialize lending market account
             init_lending_market(
-                spl_token_lending::id(),
+                config.lending_program_id,
                 lending_market_owner,
                 quote_currency,
                 lending_market_keypair.pubkey(),
@@ -591,7 +604,7 @@ fn command_add_reserve(
             )
             .unwrap(),
             init_reserve(
-                spl_token_lending::id(),
+                config.lending_program_id,
                 liquidity_amount,
                 reserve_config,
                 source_liquidity_pubkey,
