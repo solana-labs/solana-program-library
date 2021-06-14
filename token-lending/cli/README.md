@@ -17,6 +17,12 @@ See https://spl.solana.com/token-lending for more details
    cd solana-program-library
    ```
 
+1. Install the token and lending CLIs:
+   ```shell
+   cargo install spl-token-cli
+   cargo install spl-token-lending-cli
+   ```
+
 1. Generate a keypair for yourself:
    ```shell
    solana-keygen new -o owner.json
@@ -89,7 +95,7 @@ See https://spl.solana.com/token-lending for more details
 
 1. Create a lending market, using the pubkey from the previous step as the `owner`:
    ```shell
-   target/debug/spl-token-lending create-market \
+   spl-token-lending create-market \
      --fee-payer owner.json \
      --owner F5242QU7NC4jM8yjqqiv8pZRjL9K8229EBTXHBYtSAo5 \
      --oracle 5mkqGkkWSaSk2NL9p4XptwEQu4d5jFTJiurbbzdqYexF
@@ -99,11 +105,11 @@ See https://spl.solana.com/token-lending for more details
    ```
    Note the lending market pubkey (e.g. `CyUJdNpYoAhnUeYk6kfFWbZnhuaPXW6KoAxNuhs2ssYN`).
 
-   Run `target/debug/spl-token-lending create-market --help` for more details and options.
+   Run `spl-token-lending create-market --help` for more details and options.
 
 1. Wrap some of your SOL as an SPL Token:
    ```shell
-   target/debug/spl-token --owner owner.json wrap 2
+   spl-token --owner owner.json wrap 2
 
    # Wrapping 2 SOL into CsbAUDhZfPpkv8jCcV9PPQqfBkUVd5kntubhBLLgMLVF
    ```
@@ -111,7 +117,7 @@ See https://spl.solana.com/token-lending for more details
 
 1. Add a SOL reserve to your market, using the pubkey from the previous step as the `source`:
    ```shell
-   target/debug/spl-token-lending add-reserve \
+   spl-token-lending add-reserve \
      --fee-payer owner.json \
      --owner owner.json \
      --market CyUJdNpYoAhnUeYk6kfFWbZnhuaPXW6KoAxNuhs2ssYN \
@@ -126,4 +132,4 @@ See https://spl.solana.com/token-lending for more details
    - `--pyth-product` and `--pyth-price` are SOL/USD oracle
      accounts [provided by Pyth](https://github.com/pyth-network).
 
-   Run `target/debug/spl-token-lending add-reserve --help` for more details and options.
+   Run `spl-token-lending add-reserve --help` for more details and options.
