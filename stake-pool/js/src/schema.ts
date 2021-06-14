@@ -60,16 +60,12 @@ export class PublicKey extends Struct {
 
 export const SCHEMA: Schema = constructStakePoolSchema(SOLANA_SCHEMA);
 
-// constructStakePoolSchema(SOLANA_SCHEMA);
-
-/**
- * Borsh requires something called a Schema,
- * which is a Map (key-value pairs) that tell borsh how to deserialise the raw data
- * This function creates, populates and returns such a schema
- */
 export function constructStakePoolSchema(SCHEMA: Schema): Schema {
-  // const SCHEMA = new Map();
-
+  /**
+   * Borsh requires something called a Schema,
+   * which is a Map (key-value pairs) that tell borsh how to deserialise the raw data
+   * This function creates, populates and returns such a schema
+   */
   SCHEMA.set(PublicKey, {
     kind: 'struct',
     fields: [['value', 'u256']],
