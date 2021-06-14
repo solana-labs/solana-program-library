@@ -113,6 +113,7 @@ export async function getStakePoolAccounts(
 
     return stakePoolAccounts;
   } catch (error) {
+    console.log('I have an error');
     console.log(error);
   }
 }
@@ -146,27 +147,4 @@ export function prettyPrintAccount(
   console.log('Executable?:', account.account.executable);
   console.log('Lamports:', account.account.lamports);
   console.log('Owner PubKey:', account.account.owner.toString());
-}
-
-export default function testOnDevnet() {
-  /**
-   * Example function to demonstrate how to use the helper functions
-   * and JS bindings.
-   * Makes a connection to devnet, gets all stake pool accounts there,
-   * decodes them, and prints their details.
-   */
-  const connection = new solanaWeb3.Connection(
-    'https://devnet.solana.com/',
-    'confirmed',
-  );
-  const STAKE_POOL_PROGRAM_ADDR = new solanaWeb3.PublicKey(
-    'poo1B9L9nR3CrcaziKVYVpRX6A9Y1LAXYasjjfCbApj',
-  );
-
-  getStakePoolAccounts(connection, STAKE_POOL_PROGRAM_ADDR).then(accounts => {
-    accounts.map(account => {
-      prettyPrintAccount(account);
-      console.log('\n');
-    });
-  });
 }

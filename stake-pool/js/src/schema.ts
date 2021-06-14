@@ -1,47 +1,15 @@
 import {Schema, serialize, deserializeUnchecked} from 'borsh';
 import BN from 'bn.js';
+import {SOLANA_SCHEMA, Struct, Enum} from '@solana/web3.js';
 
-// Class wrapping a plain object
-export abstract class Assignable {
-  constructor(properties: {[key: string]: any}) {
-    Object.keys(properties).forEach((key: string) => {
-      this[key] = properties[key];
-    });
-  }
-
-  encode(): Buffer {
-    return Buffer.from(serialize(SCHEMA, this));
-  }
-
-  static decode<T extends Assignable>(data: Buffer): T {
-    return deserializeUnchecked(SCHEMA, this, data);
-  }
-}
-
-// Class representing a Rust-compatible enum, since enums are only strings or
-// numbers in pure JS
-export abstract class Enum extends Assignable {
-  enum: string;
-  constructor(properties: any) {
-    super(properties);
-    if (Object.keys(properties).length !== 1) {
-      throw new Error('Enum can only take single value');
-    }
-    this.enum = '';
-    Object.keys(properties).forEach(key => {
-      this.enum = key;
-    });
-  }
-}
-
-export class Fee extends Assignable {
+export class Fee extends Struct {
   denominator: BN;
   numerator: BN;
 }
 
 export class AccountType extends Enum {}
 
-export class AccountTypeEnum extends Assignable {}
+export class AccountTypeEnum extends Struct {}
 
 export enum AccountTypeKind {
   Uninitialized = 'Uninitialized',
@@ -49,7 +17,7 @@ export enum AccountTypeKind {
   ValidatorList = 'ValidatorList',
 }
 
-export class StakePoolAccount extends Assignable {
+export class StakePoolAccount extends Struct {
   accountType: AccountType;
   manager: PublicKey;
   staker: PublicKey;
@@ -65,12 +33,12 @@ export class StakePoolAccount extends Assignable {
   fee: Fee;
 }
 
-export class ValidatorListAccount extends Assignable {
+export class ValidatorListAccount extends Struct {
   accountType: AccountType;
   maxValidators: number;
   validators: [ValidatorStakeInfo];
 }
-export class ValidatorStakeInfo extends Assignable {
+export class ValidatorStakeInfo extends Struct {
   status: StakeStatus;
   voteAccountAddress: PublicKey;
   stakeLamports: BN;
@@ -78,7 +46,7 @@ export class ValidatorStakeInfo extends Assignable {
 }
 export class StakeStatus extends Enum {}
 
-export class StakeStatusEnum extends Assignable {}
+export class StakeStatusEnum extends Struct {}
 
 export enum StakeStatusKind {
   Active = 'Active',
@@ -86,19 +54,21 @@ export enum StakeStatusKind {
   ReadyForRemoval = 'ReadyForRemoval',
 }
 
-export class PublicKey extends Assignable {
+export class PublicKey extends Struct {
   value: BN;
 }
 
-export const SCHEMA: Schema = constructStakePoolSchema();
+export const SCHEMA: Schema = constructStakePoolSchema(SOLANA_SCHEMA);
+
+// constructStakePoolSchema(SOLANA_SCHEMA);
 
 /**
  * Borsh requires something called a Schema,
  * which is a Map (key-value pairs) that tell borsh how to deserialise the raw data
  * This function creates, populates and returns such a schema
  */
-export function constructStakePoolSchema(): Schema {
-  const SCHEMA = new Map();
+export function constructStakePoolSchema(SCHEMA: Schema): Schema {
+  // const SCHEMA = new Map();
 
   SCHEMA.set(PublicKey, {
     kind: 'struct',

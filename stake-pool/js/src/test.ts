@@ -2,7 +2,7 @@ import * as index from './index.js';
 import * as schema from './schema.js';
 import BN from 'bn.js';
 import assert from 'assert';
-import {PublicKey} from '@solana/web3.js';
+import { PublicKey, Connection } from '@solana/web3.js';
 
 describe('schema.decode', () => {
   describe('StakePoolAccount', () => {
@@ -142,5 +142,29 @@ describe('index.ts/PrettyPrintPubkey', () => {
       ),
       '6MfzrQUzB2mozveRWU9a77zMoQzSrYa4Gq46KswjupQB',
     );
+  });
+});
+
+describe('testOnDevnet', () => {
+  it('should successfully decode all validators from devnet', async () => {
+    /**
+     * Makes a connection to devnet, gets all stake pool accounts there,
+     * decodes them, and prints their details.
+     */
+    const connection = new Connection(
+      'https://api.devnet.solana.com/',
+      'confirmed',
+    );
+    const STAKE_POOL_PROGRAM_ADDR = new PublicKey(
+      'poo1B9L9nR3CrcaziKVYVpRX6A9Y1LAXYasjjfCbApj',
+    );
+
+    const accounts = await index
+      .getStakePoolAccounts(connection, STAKE_POOL_PROGRAM_ADDR)
+
+    accounts.map(account => {
+      index.prettyPrintAccount(account);
+      console.log('\n');
+    });
   });
 });
