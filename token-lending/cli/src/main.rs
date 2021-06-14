@@ -18,7 +18,7 @@ use {
         transaction::Transaction,
     },
     spl_token::{
-        instruction::approve,
+        instruction::{approve, revoke},
         state::{Account as Token, Mint},
         ui_amount_to_amount,
     },
@@ -282,6 +282,12 @@ fn command_add_reserve(
                 lending_market_owner_keypair.pubkey(),
                 user_transfer_authority_keypair.pubkey(),
             ),
+            revoke(
+                &spl_token::id(),
+                &source_liquidity_pubkey,
+                &config.fee_payer.pubkey(),
+                &[]
+            )
         ],
         Some(&config.fee_payer.pubkey()),
     );
