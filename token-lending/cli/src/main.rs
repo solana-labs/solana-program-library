@@ -199,7 +199,7 @@ fn command_add_reserve(
         + liquidity_supply_balance
         + liquidity_fee_receiver_balance;
 
-    let mut create_accounts_transaction_1 = Transaction::new_with_payer(
+    let mut transaction_1 = Transaction::new_with_payer(
         &[
             create_account(
                 &config.fee_payer.pubkey(),
@@ -233,7 +233,7 @@ fn command_add_reserve(
         Some(&config.fee_payer.pubkey()),
     );
 
-    let mut create_accounts_transaction_2 = Transaction::new_with_payer(
+    let mut transaction_2 = Transaction::new_with_payer(
         &[
             create_account(
                 &config.fee_payer.pubkey(),
@@ -253,7 +253,7 @@ fn command_add_reserve(
         Some(&config.fee_payer.pubkey()),
     );
 
-    let mut init_reserve_transaction = Transaction::new_with_payer(
+    let mut transaction_3 = Transaction::new_with_payer(
         &[
             approve(
                 &spl_token::id(),
@@ -290,11 +290,11 @@ fn command_add_reserve(
     check_fee_payer_balance(
         config,
         total_balance
-            + fee_calculator.calculate_fee(&create_accounts_transaction_1.message())
-            + fee_calculator.calculate_fee(&create_accounts_transaction_2.message())
-            + fee_calculator.calculate_fee(&init_reserve_transaction.message()),
+            + fee_calculator.calculate_fee(&transaction_1.message())
+            + fee_calculator.calculate_fee(&transaction_2.message())
+            + fee_calculator.calculate_fee(&transaction_3.message()),
     )?;
-    create_accounts_transaction_1.sign(
+    transaction_1.sign(
         &vec![
             config.fee_payer.as_ref(),
             &reserve_keypair,
@@ -304,7 +304,7 @@ fn command_add_reserve(
         ],
         recent_blockhash,
     );
-    create_accounts_transaction_2.sign(
+    transaction_2.sign(
         &vec![
             config.fee_payer.as_ref(),
             &liquidity_supply_keypair,
@@ -312,7 +312,7 @@ fn command_add_reserve(
         ],
         recent_blockhash,
     );
-    init_reserve_transaction.sign(
+    transaction_3.sign(
         &vec![
             config.fee_payer.as_ref(),
             &lending_market_owner_keypair,
@@ -320,9 +320,9 @@ fn command_add_reserve(
         ],
         recent_blockhash,
     );
-    send_transaction(&config, create_accounts_transaction_1)?;
-    send_transaction(&config, create_accounts_transaction_2)?;
-    send_transaction(&config, init_reserve_transaction)?;
+    send_transaction(&config, transaction_1)?;
+    send_transaction(&config, transaction_2)?;
+    send_transaction(&config, transaction_3)?;
     Ok(())
 }
 
