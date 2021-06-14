@@ -332,6 +332,8 @@ fn command_add_reserve(
     Ok(())
 }
 
+const PYTH_PROGRAM_ID: &str = "5mkqGkkWSaSk2NL9p4XptwEQu4d5jFTJiurbbzdqYexF";
+
 fn main() {
     solana_logger::setup_with_default("solana=info");
 
@@ -400,6 +402,7 @@ fn main() {
                         .value_name("PUBKEY")
                         .takes_value(true)
                         .required(true)
+                        .default_value(PYTH_PROGRAM_ID)
                         .help("Oracle (Pyth) program ID for quoting market prices"),
                 )
                 .arg(
