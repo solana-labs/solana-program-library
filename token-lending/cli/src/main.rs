@@ -147,7 +147,6 @@ fn command_add_reserve(
     let collateral_supply_keypair = Keypair::new();
     let liquidity_supply_keypair = Keypair::new();
     let liquidity_fee_receiver_keypair = Keypair::new();
-    let liquidity_host_keypair = Keypair::new();
     let user_collateral_keypair = Keypair::new();
     let user_transfer_authority_keypair = Keypair::new();
 
@@ -169,7 +168,6 @@ fn command_add_reserve(
             "Adding liquidity fee receiver {}",
             liquidity_fee_receiver_keypair.pubkey()
         );
-        println!("Adding liquidity host {}", liquidity_host_keypair.pubkey());
         println!(
             "Adding user collateral {}",
             user_collateral_keypair.pubkey()
@@ -186,29 +184,20 @@ fn command_add_reserve(
     let collateral_mint_balance = config
         .rpc_client
         .get_minimum_balance_for_rent_exemption(Mint::LEN)?;
-    let collateral_supply_balance = config
+    let token_account_balance = config
         .rpc_client
         .get_minimum_balance_for_rent_exemption(Token::LEN)?;
-    let user_collateral_balance = config
-        .rpc_client
-        .get_minimum_balance_for_rent_exemption(Token::LEN)?;
-    let liquidity_supply_balance = config
-        .rpc_client
-        .get_minimum_balance_for_rent_exemption(Token::LEN)?;
-    let liquidity_fee_receiver_balance = config
-        .rpc_client
-        .get_minimum_balance_for_rent_exemption(Token::LEN)?;
-    let liquidity_host_balance = config
-        .rpc_client
-        .get_minimum_balance_for_rent_exemption(Token::LEN)?;
+    let collateral_supply_balance = token_account_balance;
+    let user_collateral_balance = token_account_balance;
+    let liquidity_supply_balance = token_account_balance;
+    let liquidity_fee_receiver_balance = token_account_balance;
 
     let total_balance = reserve_balance
         + collateral_mint_balance
         + collateral_supply_balance
         + user_collateral_balance
         + liquidity_supply_balance
-        + liquidity_fee_receiver_balance
-        + liquidity_host_balance;
+        + liquidity_fee_receiver_balance;
 
     let mut create_accounts_transaction_1 = Transaction::new_with_payer(
         &[
@@ -257,13 +246,6 @@ fn command_add_reserve(
                 &config.fee_payer.pubkey(),
                 &liquidity_fee_receiver_keypair.pubkey(),
                 liquidity_fee_receiver_balance,
-                Token::LEN as u64,
-                &spl_token::id(),
-            ),
-            create_account(
-                &config.fee_payer.pubkey(),
-                &liquidity_host_keypair.pubkey(),
-                liquidity_host_balance,
                 Token::LEN as u64,
                 &spl_token::id(),
             ),
@@ -326,8 +308,7 @@ fn command_add_reserve(
         &vec![
             config.fee_payer.as_ref(),
             &liquidity_supply_keypair,
-            &liquidity_fee_receiver_keypair,
-            &liquidity_host_keypair,
+            &liquidity_fee_receiver_keypair
         ],
         recent_blockhash,
     );
