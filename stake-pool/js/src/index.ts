@@ -95,7 +95,9 @@ export async function getStakePoolAccounts(
       if (a.account.data.readUInt8() === 1) {
         decodedData = schema.StakePoolAccount.decode(a.account.data);
       } else if (a.account.data.readUInt8() === 2) {
-        decodedData = schema.ValidatorListAccount.decode(a.account.data);
+        decodedData = schema.ValidatorListAccount.decodeUnchecked(
+          a.account.data,
+        );
       } else {
         throw `StakePoolAccount Enum is ${a.account.data.readUInt8()}, expected 1 or 2!`;
       }
