@@ -2,7 +2,7 @@ import * as index from './index.js';
 import * as schema from './schema.js';
 import BN from 'bn.js';
 import assert from 'assert';
-import { PublicKey, Connection } from '@solana/web3.js';
+import {PublicKey, Connection} from '@solana/web3.js';
 
 describe('schema.decode', () => {
   describe('StakePoolAccount', () => {

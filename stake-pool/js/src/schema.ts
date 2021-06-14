@@ -1,15 +1,15 @@
-import { Schema, serialize, deserializeUnchecked } from 'borsh';
+import {Schema, serialize, deserializeUnchecked} from 'borsh';
 import BN from 'bn.js';
-import { SOLANA_SCHEMA, Struct, Enum } from '@solana/web3.js';
+import {SOLANA_SCHEMA, Struct, Enum} from '@solana/web3.js';
 
 export class Fee extends Struct {
   denominator: BN;
   numerator: BN;
 }
 
-export class AccountType extends Enum { }
+export class AccountType extends Enum {}
 
-export class AccountTypeEnum extends Struct { }
+export class AccountTypeEnum extends Struct {}
 
 export enum AccountTypeKind {
   Uninitialized = 'Uninitialized',
@@ -44,9 +44,9 @@ export class ValidatorStakeInfo extends Struct {
   stakeLamports: BN;
   lastUpdateEpoch: BN;
 }
-export class StakeStatus extends Enum { }
+export class StakeStatus extends Enum {}
 
-export class StakeStatusEnum extends Struct { }
+export class StakeStatusEnum extends Struct {}
 
 export enum StakeStatusKind {
   Active = 'Active',
@@ -90,7 +90,7 @@ export function constructStakePoolSchema(SCHEMA: Schema): Schema {
     ],
   });
 
-  SCHEMA.set(AccountTypeEnum, { kind: 'struct', fields: [] });
+  SCHEMA.set(AccountTypeEnum, {kind: 'struct', fields: []});
 
   SCHEMA.set(StakePool, {
     kind: 'struct',
@@ -131,7 +131,7 @@ export function constructStakePoolSchema(SCHEMA: Schema): Schema {
     ],
   });
 
-  SCHEMA.set(StakeStatusEnum, { kind: 'struct', fields: [] });
+  SCHEMA.set(StakeStatusEnum, {kind: 'struct', fields: []});
 
   SCHEMA.set(ValidatorStakeInfo, {
     kind: 'struct',

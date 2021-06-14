@@ -95,9 +95,7 @@ export async function getStakePoolAccounts(
       if (a.account.data.readUInt8() === 1) {
         decodedData = schema.StakePool.decode(a.account.data);
       } else if (a.account.data.readUInt8() === 2) {
-        decodedData = schema.ValidatorList.decodeUnchecked(
-          a.account.data,
-        );
+        decodedData = schema.ValidatorList.decodeUnchecked(a.account.data);
       } else {
         throw `StakePoolAccount Enum is ${a.account.data.readUInt8()}, expected 1 or 2!`;
       }
@@ -130,7 +128,9 @@ export function prettyPrintPubKey(pubKey: schema.PublicKey): string {
   ).toString();
 }
 
-export function prettyPrintAccount(account: ValidatorListAccount | StakePoolAccount): void {
+export function prettyPrintAccount(
+  account: ValidatorListAccount | StakePoolAccount,
+): void {
   /**
    * Helper function to pretty print a decoded account
    */
