@@ -1,5 +1,6 @@
 import * as schema from './schema.js';
 import solanaWeb3 from '@solana/web3.js';
+import assert from 'assert';
 
 /**
  * Sample code to demonstrate how to use the JS bindings
@@ -66,7 +67,7 @@ export async function getValidatorListAccount(
     return {
       pubkey: validatorListPubKey,
       account: {
-        data: schema.ValidatorList.decode(account.data),
+        data: schema.ValidatorList.decodeUnchecked(account.data),
         executable: account.executable,
         lamports: account.lamports,
         owner: account.owner,
@@ -93,11 +94,24 @@ export async function getStakePoolAccounts(
       let decodedData;
 
       if (a.account.data.readUInt8() === 1) {
-        decodedData = schema.StakePool.decode(a.account.data);
+        try {
+          decodedData = schema.StakePool.decode(a.account.data);
+        } catch (error) {
+          console.log('Could not decode StakeAccount. Error:', error);
+          decodedData = undefined;
+        }
       } else if (a.account.data.readUInt8() === 2) {
-        decodedData = schema.ValidatorList.decodeUnchecked(a.account.data);
+        try {
+          decodedData = schema.ValidatorList.decodeUnchecked(a.account.data);
+        } catch (error) {
+          console.log('Could not decode ValidatorList. Error:', error);
+          decodedData = undefined;
+        }
       } else {
-        throw `StakePoolAccount Enum is ${a.account.data.readUInt8()}, expected 1 or 2!`;
+        console.error(
+          `Could not decode. StakePoolAccount Enum is ${a.account.data.readUInt8()}, expected 1 or 2!`,
+        );
+        decodedData = undefined;
       }
 
       return {
@@ -113,7 +127,6 @@ export async function getStakePoolAccounts(
 
     return stakePoolAccounts;
   } catch (error) {
-    console.log('I have an error');
     console.log(error);
   }
 }
@@ -137,6 +150,10 @@ export function prettyPrintAccount(
 
   console.log('Address:', account.pubkey.toString());
   const sp = account.account.data;
+  if (typeof sp === 'undefined') {
+    console.log('Account could not be decoded');
+  }
+
   for (const val in sp) {
     if (sp[val] instanceof schema.PublicKey) {
       console.log(val, prettyPrintPubKey(sp[val]));
