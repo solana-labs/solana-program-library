@@ -108,12 +108,12 @@ fn main() {
                 .about("Create a new lending market")
                 .arg(
                     Arg::with_name("lending_market_owner")
-                        .long("owner")
+                        .long("market-owner")
                         .validator(is_pubkey)
                         .value_name("PUBKEY")
                         .takes_value(true)
                         .required(true)
-                        .help("Owner required to sign when adding reserves to the lending market"),
+                        .help("Owner that can add reserves to the market"),
                 )
                 .arg(
                     Arg::with_name("oracle_program_id")
@@ -149,12 +149,21 @@ fn main() {
                 )
                 .arg(
                     Arg::with_name("lending_market_owner")
-                        .long("owner")
+                        .long("market-owner")
                         .validator(is_keypair)
                         .value_name("KEYPAIR")
                         .takes_value(true)
                         .required(true)
-                        .help("Owner required to sign when adding reserves to the lending market"),
+                        .help("Owner of the lending market"),
+                )
+                .arg(
+                    Arg::with_name("source_liquidity_owner")
+                        .long("source-owner")
+                        .validator(is_keypair)
+                        .value_name("KEYPAIR")
+                        .takes_value(true)
+                        .required(true)
+                        .help("Owner of the SPL Token account to deposit initial liquidity from"),
                 )
                 .arg(
                     Arg::with_name("source_liquidity")
@@ -344,10 +353,12 @@ fn main() {
             )
         }
         ("add-reserve", Some(arg_matches)) => {
-            let source_liquidity_pubkey = pubkey_of(arg_matches, "source_liquidity").unwrap();
             let lending_market_pubkey = pubkey_of(arg_matches, "lending_market").unwrap();
             let lending_market_owner_keypair =
                 keypair_of(arg_matches, "lending_market_owner").unwrap();
+            let source_liquidity_pubkey = pubkey_of(arg_matches, "source_liquidity").unwrap();
+            let source_liquidity_owner_keypair =
+                keypair_of(arg_matches, "source_liquidity_owner").unwrap();
             let ui_amount = value_of(arg_matches, "liquidity_amount").unwrap();
             let pyth_product_pubkey = pubkey_of(arg_matches, "pyth_product").unwrap();
             let pyth_price_pubkey = pubkey_of(arg_matches, "pyth_price").unwrap();
@@ -381,6 +392,7 @@ fn main() {
                     },
                 },
                 source_liquidity_pubkey,
+                source_liquidity_owner_keypair,
                 lending_market_pubkey,
                 lending_market_owner_keypair,
                 pyth_product_pubkey,
@@ -468,6 +480,7 @@ fn command_add_reserve(
     ui_amount: f64,
     reserve_config: ReserveConfig,
     source_liquidity_pubkey: Pubkey,
+    source_liquidity_owner_keypair: Keypair,
     lending_market_pubkey: Pubkey,
     lending_market_owner_keypair: Keypair,
     pyth_product_pubkey: Pubkey,
@@ -598,7 +611,7 @@ fn command_add_reserve(
                 &spl_token::id(),
                 &source_liquidity_pubkey,
                 &user_transfer_authority_keypair.pubkey(),
-                &config.fee_payer.pubkey(),
+                &source_liquidity_owner_keypair.pubkey(),
                 &[],
                 liquidity_amount,
             )
@@ -624,7 +637,7 @@ fn command_add_reserve(
             revoke(
                 &spl_token::id(),
                 &source_liquidity_pubkey,
-                &config.fee_payer.pubkey(),
+                &source_liquidity_owner_keypair.pubkey(),
                 &[]
             )
         ],
@@ -660,6 +673,7 @@ fn command_add_reserve(
     transaction_3.sign(
         &vec![
             config.fee_payer.as_ref(),
+            &source_liquidity_owner_keypair,
             &lending_market_owner_keypair,
             &user_transfer_authority_keypair,
         ],
