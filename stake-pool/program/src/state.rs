@@ -122,7 +122,7 @@ impl StakePool {
     /// This function assumes that `reward_lamports` has not already been added
     /// to the stake pool's `total_stake_lamports`
     pub fn calc_fee_amount(&self, reward_lamports: u64) -> Option<u64> {
-        if self.fee.denominator == 0 {
+        if self.fee.denominator == 0 || reward_lamports == 0 {
             return Some(0);
         }
         let total_stake_lamports =

@@ -1501,6 +1501,11 @@ impl Processor {
                 .checked_add(fee)
                 .ok_or(StakePoolError::CalculationFailure)?;
         }
+
+        if let Some(next_epoch_fee) = stake_pool.next_epoch_fee {
+            stake_pool.fee = next_epoch_fee;
+            stake_pool.next_epoch_fee = None;
+        }
         validator_list
             .validators
             .retain(|item| item.status != StakeStatus::ReadyForRemoval);
@@ -1949,7 +1954,7 @@ impl Processor {
             return Err(StakePoolError::FeeTooHigh.into());
         }
 
-        stake_pool.fee = fee;
+        stake_pool.next_epoch_fee = Some(fee);
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
         Ok(())
     }
