@@ -4,9 +4,10 @@ mod helpers;
 
 use {
     bincode::deserialize,
-    borsh::{BorshDeserialize, BorshSerialize},
+    borsh::BorshSerialize,
     helpers::*,
     solana_program::{
+        borsh::try_from_slice_unchecked,
         hash::Hash,
         instruction::{AccountMeta, Instruction, InstructionError},
         pubkey::Pubkey,
@@ -19,8 +20,7 @@ use {
         transport::TransportError,
     },
     spl_stake_pool::{
-        borsh::try_from_slice_unchecked, error::StakePoolError, id, instruction,
-        minimum_stake_lamports, stake_program, state,
+        error::StakePoolError, id, instruction, minimum_stake_lamports, stake_program, state,
     },
     spl_token::error::TokenError,
 };
@@ -118,7 +118,7 @@ async fn success() {
     let stake_pool_before =
         get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
     let stake_pool_before =
-        state::StakePool::try_from_slice(&stake_pool_before.data.as_slice()).unwrap();
+        try_from_slice_unchecked::<state::StakePool>(&stake_pool_before.data.as_slice()).unwrap();
 
     // Check user recipient stake account balance
     let initial_stake_lamports = get_account(&mut banks_client, &user_stake_recipient.pubkey())
@@ -159,7 +159,8 @@ async fn success() {
 
     // Check pool stats
     let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
-    let stake_pool = state::StakePool::try_from_slice(&stake_pool.data.as_slice()).unwrap();
+    let stake_pool =
+        try_from_slice_unchecked::<state::StakePool>(&stake_pool.data.as_slice()).unwrap();
     assert_eq!(
         stake_pool.total_stake_lamports,
         stake_pool_before.total_stake_lamports - tokens_to_burn

@@ -80,8 +80,11 @@ pub struct StakePool {
     /// Last epoch the `total_stake_lamports` field was updated
     pub last_update_epoch: u64,
 
-    /// Fee applied to deposits
+    /// Fee taken as a proportion of rewards each epoch
     pub fee: Fee,
+
+    /// Fee for next epoch
+    pub next_epoch_fee: Option<Fee>,
 }
 impl StakePool {
     /// calculate the pool tokens that should be minted for a deposit of `stake_lamports`
@@ -119,7 +122,7 @@ impl StakePool {
     /// This function assumes that `reward_lamports` has not already been added
     /// to the stake pool's `total_stake_lamports`
     pub fn calc_fee_amount(&self, reward_lamports: u64) -> Option<u64> {
-        if self.fee.denominator == 0 {
+        if self.fee.denominator == 0 || reward_lamports == 0 {
             return Some(0);
         }
         let total_stake_lamports =
@@ -420,9 +423,10 @@ pub struct Fee {
 mod test {
     use {
         super::*,
-        crate::borsh::{get_instance_packed_len, try_from_slice_unchecked},
         proptest::prelude::*,
-        solana_program::borsh::get_packed_len,
+        solana_program::borsh::{
+            get_instance_packed_len, get_packed_len, try_from_slice_unchecked,
+        },
         solana_program::native_token::LAMPORTS_PER_SOL,
     };
 

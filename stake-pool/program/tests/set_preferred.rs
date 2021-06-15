@@ -7,13 +7,13 @@ use {
     solana_program::hash::Hash,
     solana_program_test::*,
     solana_sdk::{
+        borsh::try_from_slice_unchecked,
         instruction::InstructionError,
         pubkey::Pubkey,
         signature::{Keypair, Signer},
         transaction::{Transaction, TransactionError},
     },
     spl_stake_pool::{
-        borsh::try_from_slice_unchecked,
         error, id,
         instruction::{self, PreferredValidatorType},
         state::ValidatorList,

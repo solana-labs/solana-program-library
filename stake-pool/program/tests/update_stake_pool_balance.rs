@@ -3,9 +3,10 @@
 mod helpers;
 
 use {
-    borsh::BorshDeserialize,
     helpers::*,
-    solana_program::{instruction::InstructionError, pubkey::Pubkey},
+    solana_program::{
+        borsh::try_from_slice_unchecked, instruction::InstructionError, pubkey::Pubkey,
+    },
     solana_program_test::*,
     solana_sdk::{
         signature::{Keypair, Signer},
@@ -75,7 +76,7 @@ async fn success() {
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let stake_pool = StakePool::try_from_slice(&stake_pool.data.as_slice()).unwrap();
+    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
     assert_eq!(pre_balance, stake_pool.total_stake_lamports);
 
     let pre_token_supply = get_token_supply(
@@ -137,7 +138,7 @@ async fn success() {
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let stake_pool = StakePool::try_from_slice(&stake_pool.data.as_slice()).unwrap();
+    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
     assert_eq!(post_balance, stake_pool.total_stake_lamports);
 
     let actual_fee = get_token_balance(

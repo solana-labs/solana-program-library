@@ -2,7 +2,6 @@
 
 use {
     crate::{
-        borsh::try_from_slice_unchecked,
         error::StakePoolError,
         find_deposit_authority_program_address,
         instruction::{PreferredValidatorType, StakePoolInstruction},
@@ -15,6 +14,7 @@ use {
     solana_program::{
         account_info::next_account_info,
         account_info::AccountInfo,
+        borsh::try_from_slice_unchecked,
         clock::{Clock, Epoch},
         decode_error::DecodeError,
         entrypoint::ProgramResult,
@@ -409,7 +409,7 @@ impl Processor {
         }
 
         check_account_owner(stake_pool_info, program_id)?;
-        let mut stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
+        let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_uninitialized() {
             msg!("Provided stake pool already in use");
             return Err(StakePoolError::AlreadyInUse.into());
@@ -541,8 +541,9 @@ impl Processor {
         stake_pool.manager_fee_account = *manager_fee_info.key;
         stake_pool.token_program_id = *token_program_info.key;
         stake_pool.last_update_epoch = clock.epoch;
-        stake_pool.fee = fee;
         stake_pool.total_stake_lamports = total_stake_lamports;
+        stake_pool.fee = fee;
+        stake_pool.next_epoch_fee = None;
 
         stake_pool
             .serialize(&mut *stake_pool_info.data.borrow_mut())
@@ -569,7 +570,7 @@ impl Processor {
         let stake_program_info = next_account_info(account_info_iter)?;
 
         check_account_owner(stake_pool_info, program_id)?;
-        let stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
+        let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
@@ -663,7 +664,7 @@ impl Processor {
         check_stake_program(stake_program_info.key)?;
 
         check_account_owner(stake_pool_info, program_id)?;
-        let stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
+        let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
@@ -765,7 +766,7 @@ impl Processor {
         check_stake_program(stake_program_info.key)?;
         check_account_owner(stake_pool_info, program_id)?;
 
-        let stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
+        let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
@@ -898,7 +899,7 @@ impl Processor {
         check_stake_program(stake_program_info.key)?;
         check_account_owner(stake_pool_info, program_id)?;
 
-        let stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
+        let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_valid() {
             msg!("Expected valid stake pool");
             return Err(StakePoolError::InvalidState.into());
@@ -1036,7 +1037,7 @@ impl Processor {
         check_stake_program(stake_program_info.key)?;
         check_account_owner(stake_pool_info, program_id)?;
 
-        let stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
+        let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_valid() {
             msg!("Expected valid stake pool");
             return Err(StakePoolError::InvalidState.into());
@@ -1177,7 +1178,7 @@ impl Processor {
         check_account_owner(stake_pool_info, program_id)?;
         check_account_owner(validator_list_info, program_id)?;
 
-        let stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
+        let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_valid() {
             msg!("Expected valid stake pool");
             return Err(StakePoolError::InvalidState.into());
@@ -1230,7 +1231,7 @@ impl Processor {
         let validator_stake_accounts = account_info_iter.as_slice();
 
         check_account_owner(stake_pool_info, program_id)?;
-        let stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
+        let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
@@ -1430,7 +1431,7 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         check_account_owner(stake_pool_info, program_id)?;
-        let mut stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
+        let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
@@ -1500,6 +1501,11 @@ impl Processor {
                 .checked_add(fee)
                 .ok_or(StakePoolError::CalculationFailure)?;
         }
+
+        if let Some(next_epoch_fee) = stake_pool.next_epoch_fee {
+            stake_pool.fee = next_epoch_fee;
+            stake_pool.next_epoch_fee = None;
+        }
         validator_list
             .validators
             .retain(|item| item.status != StakeStatus::ReadyForRemoval);
@@ -1559,7 +1565,7 @@ impl Processor {
         }
 
         check_account_owner(stake_pool_info, program_id)?;
-        let mut stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
+        let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
@@ -1715,7 +1721,7 @@ impl Processor {
 
         check_stake_program(stake_program_info.key)?;
         check_account_owner(stake_pool_info, program_id)?;
-        let mut stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
+        let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
@@ -1898,7 +1904,7 @@ impl Processor {
         let new_manager_fee_info = next_account_info(account_info_iter)?;
 
         check_account_owner(stake_pool_info, program_id)?;
-        let mut stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
+        let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
@@ -1927,7 +1933,7 @@ impl Processor {
         let clock = &Clock::from_account_info(clock_info)?;
 
         check_account_owner(stake_pool_info, program_id)?;
-        let mut stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
+        let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
@@ -1948,7 +1954,7 @@ impl Processor {
             return Err(StakePoolError::FeeTooHigh.into());
         }
 
-        stake_pool.fee = fee;
+        stake_pool.next_epoch_fee = Some(fee);
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
         Ok(())
     }
@@ -1961,7 +1967,7 @@ impl Processor {
         let new_staker_info = next_account_info(account_info_iter)?;
 
         check_account_owner(stake_pool_info, program_id)?;
-        let mut stake_pool = StakePool::try_from_slice(&stake_pool_info.data.borrow())?;
+        let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }

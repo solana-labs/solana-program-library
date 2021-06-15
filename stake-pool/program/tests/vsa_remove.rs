@@ -7,6 +7,7 @@ use {
     borsh::BorshSerialize,
     helpers::*,
     solana_program::{
+        borsh::try_from_slice_unchecked,
         hash::Hash,
         instruction::{AccountMeta, Instruction, InstructionError},
         pubkey::Pubkey,
@@ -18,10 +19,7 @@ use {
         transaction::{Transaction, TransactionError},
         transport::TransportError,
     },
-    spl_stake_pool::{
-        borsh::try_from_slice_unchecked, error::StakePoolError, id, instruction, stake_program,
-        state,
-    },
+    spl_stake_pool::{error::StakePoolError, id, instruction, stake_program, state},
 };
 
 async fn setup() -> (

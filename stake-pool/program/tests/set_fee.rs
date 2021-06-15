@@ -3,11 +3,10 @@
 mod helpers;
 
 use {
-    borsh::BorshDeserialize,
     helpers::*,
-    solana_program::hash::Hash,
     solana_program_test::*,
     solana_sdk::{
+        borsh::try_from_slice_unchecked,
         instruction::InstructionError,
         signature::{Keypair, Signer},
         transaction::{Transaction, TransactionError},
@@ -18,11 +17,16 @@ use {
     },
 };
 
-async fn setup() -> (BanksClient, Keypair, Hash, StakePoolAccounts, Fee) {
-    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
+async fn setup() -> (ProgramTestContext, StakePoolAccounts, Fee) {
+    let mut context = program_test().start_with_context().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
+        .initialize_stake_pool(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            1,
+        )
         .await
         .unwrap();
     let new_fee = Fee {
@@ -30,18 +34,20 @@ async fn setup() -> (BanksClient, Keypair, Hash, StakePoolAccounts, Fee) {
         denominator: 10,
     };
 
-    (
-        banks_client,
-        payer,
-        recent_blockhash,
-        stake_pool_accounts,
-        new_fee,
-    )
+    (context, stake_pool_accounts, new_fee)
 }
 
 #[tokio::test]
 async fn success() {
-    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, new_fee) = setup().await;
+    let (mut context, stake_pool_accounts, new_fee) = setup().await;
+
+    let stake_pool = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
+    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
+    let old_fee = stake_pool.fee;
 
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::set_fee(
@@ -50,21 +56,55 @@ async fn success() {
             &stake_pool_accounts.manager.pubkey(),
             new_fee,
         )],
-        Some(&payer.pubkey()),
-        &[&payer, &stake_pool_accounts.manager],
-        recent_blockhash,
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &stake_pool_accounts.manager],
+        context.last_blockhash,
     );
-    banks_client.process_transaction(transaction).await.unwrap();
+    context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap();
 
-    let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
-    let stake_pool = StakePool::try_from_slice(&stake_pool.data.as_slice()).unwrap();
+    let stake_pool = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
+    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
 
+    assert_eq!(stake_pool.fee, old_fee);
+    assert_eq!(stake_pool.next_epoch_fee, Some(new_fee));
+
+    let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
+    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
+
+    context
+        .warp_to_slot(first_normal_slot + slots_per_epoch)
+        .unwrap();
+    stake_pool_accounts
+        .update_all(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &[],
+            false,
+        )
+        .await;
+
+    let stake_pool = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
+    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
     assert_eq!(stake_pool.fee, new_fee);
+    assert_eq!(stake_pool.next_epoch_fee, None);
 }
 
 #[tokio::test]
 async fn fail_wrong_manager() {
-    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, new_fee) = setup().await;
+    let (mut context, stake_pool_accounts, new_fee) = setup().await;
 
     let wrong_manager = Keypair::new();
     let transaction = Transaction::new_signed_with_payer(
@@ -74,11 +114,12 @@ async fn fail_wrong_manager() {
             &wrong_manager.pubkey(),
             new_fee,
         )],
-        Some(&payer.pubkey()),
-        &[&payer, &wrong_manager],
-        recent_blockhash,
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &wrong_manager],
+        context.last_blockhash,
     );
-    let error = banks_client
+    let error = context
+        .banks_client
         .process_transaction(transaction)
         .await
         .err()
@@ -96,7 +137,7 @@ async fn fail_wrong_manager() {
 
 #[tokio::test]
 async fn fail_bad_fee() {
-    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, _new_fee) = setup().await;
+    let (mut context, stake_pool_accounts, _new_fee) = setup().await;
 
     let new_fee = Fee {
         numerator: 11,
@@ -109,11 +150,12 @@ async fn fail_bad_fee() {
             &stake_pool_accounts.manager.pubkey(),
             new_fee,
         )],
-        Some(&payer.pubkey()),
-        &[&payer, &stake_pool_accounts.manager],
-        recent_blockhash,
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &stake_pool_accounts.manager],
+        context.last_blockhash,
     );
-    let error = banks_client
+    let error = context
+        .banks_client
         .process_transaction(transaction)
         .await
         .err()

@@ -18,7 +18,10 @@ use {
     },
     solana_client::rpc_client::RpcClient,
     solana_program::{
-        borsh::get_packed_len, instruction::Instruction, program_pack::Pack, pubkey::Pubkey,
+        borsh::{get_instance_packed_len, get_packed_len},
+        instruction::Instruction,
+        program_pack::Pack,
+        pubkey::Pubkey,
     },
     solana_sdk::{
         commitment_config::CommitmentConfig,
@@ -29,9 +32,7 @@ use {
     },
     spl_associated_token_account::{create_associated_token_account, get_associated_token_address},
     spl_stake_pool::{
-        self,
-        borsh::get_instance_packed_len,
-        find_stake_program_address, find_withdraw_authority_program_address,
+        self, find_stake_program_address, find_withdraw_authority_program_address,
         instruction::PreferredValidatorType,
         stake_program::{self, StakeState},
         state::{Fee, StakePool, ValidatorList},

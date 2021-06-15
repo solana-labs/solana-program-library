@@ -211,6 +211,12 @@ $ spl-stake-pool set-fee EjspffVUi2Tivszzs2JVj4GiSiMNYKyqZpgP3NeefBU1 10 100
 Signature: 5yPXfVj5cbKBfZiEVi2UR5bXzVDuc2c3ruBwSjkAqpvxPHigwGHiS1mXQVE4qwok5moMWT5RNYAMvkE9bnfQ1i93
 ```
 
+In order to protect stake pool depositors from malicious managers, the program
+applies the new fee for the following epoch. For example, if the fee is 1% at
+epoch 100, and the manager sets it to 10%, the manager will still gain 1% for
+the rewards earned during epoch 100. Starting with epoch 101, the manager will
+earn 10%.
+
 #### Set staker
 
 In order to manage the stake accounts, the stake pool manager or
