@@ -3,9 +3,10 @@
 mod helpers;
 
 use {
-    borsh::{BorshDeserialize, BorshSerialize},
+    borsh::BorshSerialize,
     helpers::*,
     solana_program::{
+        borsh::try_from_slice_unchecked,
         hash::Hash,
         instruction::{AccountMeta, Instruction},
     },
@@ -74,7 +75,8 @@ async fn test_set_manager() {
     banks_client.process_transaction(transaction).await.unwrap();
 
     let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
-    let stake_pool = state::StakePool::try_from_slice(&stake_pool.data.as_slice()).unwrap();
+    let stake_pool =
+        try_from_slice_unchecked::<state::StakePool>(&stake_pool.data.as_slice()).unwrap();
 
     assert_eq!(stake_pool.manager, new_manager.pubkey());
 }

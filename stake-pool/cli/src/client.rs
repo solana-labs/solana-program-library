@@ -1,6 +1,5 @@
 use {
     bincode::deserialize,
-    borsh::BorshDeserialize,
     solana_account_decoder::UiAccountEncoding,
     solana_client::{
         client_error::ClientError,
@@ -8,9 +7,8 @@ use {
         rpc_config::{RpcAccountInfoConfig, RpcProgramAccountsConfig},
         rpc_filter::{Memcmp, MemcmpEncodedBytes, RpcFilterType},
     },
-    solana_program::{program_pack::Pack, pubkey::Pubkey},
+    solana_program::{borsh::try_from_slice_unchecked, program_pack::Pack, pubkey::Pubkey},
     spl_stake_pool::{
-        borsh::try_from_slice_unchecked,
         stake_program,
         state::{StakePool, ValidatorList},
     },
@@ -23,7 +21,7 @@ pub fn get_stake_pool(
     stake_pool_address: &Pubkey,
 ) -> Result<StakePool, Error> {
     let account_data = rpc_client.get_account_data(stake_pool_address)?;
-    let stake_pool = StakePool::try_from_slice(account_data.as_slice())
+    let stake_pool = try_from_slice_unchecked::<StakePool>(account_data.as_slice())
         .map_err(|err| format!("Invalid stake pool {}: {}", stake_pool_address, err))?;
     Ok(stake_pool)
 }

@@ -3,10 +3,10 @@
 mod helpers;
 
 use {
-    borsh::{BorshDeserialize, BorshSerialize},
+    borsh::BorshSerialize,
     helpers::*,
     solana_program::{
-        borsh::get_packed_len,
+        borsh::{get_instance_packed_len, get_packed_len, try_from_slice_unchecked},
         hash::Hash,
         instruction::{AccountMeta, Instruction},
         program_pack::Pack,
@@ -18,10 +18,7 @@ use {
         instruction::InstructionError, signature::Keypair, signature::Signer,
         transaction::Transaction, transaction::TransactionError, transport::TransportError,
     },
-    spl_stake_pool::{
-        borsh::{get_instance_packed_len, try_from_slice_unchecked},
-        error, id, instruction, stake_program, state,
-    },
+    spl_stake_pool::{error, id, instruction, stake_program, state},
 };
 
 async fn create_required_accounts(
@@ -1029,7 +1026,8 @@ async fn success_with_required_deposit_authority() {
     // Stake pool now exists
     let stake_pool_account =
         get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
-    let stake_pool = state::StakePool::try_from_slice(stake_pool_account.data.as_slice()).unwrap();
+    let stake_pool =
+        try_from_slice_unchecked::<state::StakePool>(stake_pool_account.data.as_slice()).unwrap();
     assert_eq!(
         stake_pool.deposit_authority,
         stake_pool_accounts.deposit_authority

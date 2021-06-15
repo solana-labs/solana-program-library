@@ -3,11 +3,11 @@
 mod helpers;
 
 use {
-    borsh::BorshDeserialize,
     helpers::*,
     solana_program::hash::Hash,
     solana_program_test::*,
     solana_sdk::{
+        borsh::try_from_slice_unchecked,
         instruction::InstructionError,
         signature::{Keypair, Signer},
         transaction::{Transaction, TransactionError},
@@ -57,7 +57,7 @@ async fn success() {
     banks_client.process_transaction(transaction).await.unwrap();
 
     let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
-    let stake_pool = StakePool::try_from_slice(&stake_pool.data.as_slice()).unwrap();
+    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
 
     assert_eq!(stake_pool.fee, new_fee);
 }
