@@ -190,7 +190,7 @@ fn main() {
                         .value_name("PUBKEY")
                         .takes_value(true)
                         .required(true)
-                        .help("Pyth product account"),
+                        .help("Pyth product account: https://pyth.network/developers/consumers/accounts"),
                 )
                 .arg(
                     Arg::with_name("pyth_price")
@@ -199,7 +199,7 @@ fn main() {
                         .value_name("PUBKEY")
                         .takes_value(true)
                         .required(true)
-                        .help("Pyth price account"),
+                        .help("Pyth price account: https://pyth.network/developers/consumers/accounts"),
                 )
                 .arg(
                     Arg::with_name("optimal_utilization_rate")
