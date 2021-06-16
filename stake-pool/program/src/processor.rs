@@ -358,6 +358,7 @@ impl Processor {
     }
 
     /// Issue stake_program::withdraw instruction to move additional lamports
+    #[allow(clippy::too_many_arguments)]
     fn stake_withdraw<'a>(
         stake_pool: &Pubkey,
         source_account: AccountInfo<'a>,
