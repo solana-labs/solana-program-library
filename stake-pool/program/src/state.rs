@@ -101,6 +101,9 @@ impl StakePool {
     }
     /// calculate the pool tokens that should be burned for a withdrawal of `stake_lamports`
     pub fn calc_pool_tokens_for_withdraw(&self, stake_lamports: u64) -> Option<u64> {
+        if stake_lamports == 0 || self.total_stake_lamports == 0 {
+            return Some(0);
+        }
         let (quotient, _) = (stake_lamports as u128)
             .checked_mul(self.pool_token_supply as u128)?
             .checked_ceil_div(self.total_stake_lamports as u128)?;
