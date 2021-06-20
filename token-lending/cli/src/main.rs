@@ -46,6 +46,7 @@ const PYTH_PROGRAM_ID: &str = "5mkqGkkWSaSk2NL9p4XptwEQu4d5jFTJiurbbzdqYexF";
 
 fn main() {
     solana_logger::setup_with_default("solana=info");
+    let token_lending_id_string = &format!("{}",spl_token_lending::id());
 
     let matches = App::new(crate_name!())
         .about(crate_description!())
@@ -85,7 +86,7 @@ fn main() {
                 .value_name("PUBKEY")
                 .takes_value(true)
                 .required(true)
-                .default_value(spl_token_lending::id())
+                .default_value(token_lending_id_string)
                 .help("Lending program ID"),
         )
         .arg(
@@ -327,6 +328,7 @@ fn main() {
             exit(1);
         });
 
+        let arg_matches = &matches;
         let lending_program_id = pubkey_of(arg_matches, "lending_program_id").unwrap();
         let verbose = matches.is_present("verbose");
         let dry_run = matches.is_present("dry_run");
@@ -639,7 +641,7 @@ fn command_add_reserve(
                 &source_liquidity_pubkey,
                 &source_liquidity_owner_keypair.pubkey(),
                 &[]
-            )
+            )?
         ],
         Some(&config.fee_payer.pubkey()),
     );
