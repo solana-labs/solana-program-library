@@ -647,7 +647,7 @@ pub fn deactivate_stake(stake_pubkey: &Pubkey, authorized_pubkey: &Pubkey) -> In
 
 #[cfg(test)]
 mod test {
-    use {super::*, crate::borsh::try_from_slice_unchecked, bincode::serialize};
+    use {super::*, bincode::serialize, solana_program::borsh::try_from_slice_unchecked};
 
     fn check_borsh_deserialization(stake: StakeState) {
         let serialized = serialize(&stake).unwrap();

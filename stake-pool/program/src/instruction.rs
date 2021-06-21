@@ -129,8 +129,8 @@ pub enum StakePoolInstruction {
     ///  0. `[]` Stake pool
     ///  1. `[s]` Stake pool staker
     ///  2. `[]` Stake pool withdraw authority
-    ///  3. `[]` Validator list
-    ///  5. `[w]` Canonical stake account to split from
+    ///  3. `[w]` Validator list
+    ///  4. `[w]` Canonical stake account to split from
     ///  5. `[w]` Transient stake account to receive split
     ///  6. `[]` Clock sysvar
     ///  7. `[]` Rent sysvar
@@ -444,7 +444,7 @@ pub fn decrease_validator_stake(
         AccountMeta::new_readonly(*stake_pool, false),
         AccountMeta::new_readonly(*staker, true),
         AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
-        AccountMeta::new_readonly(*validator_list, false),
+        AccountMeta::new(*validator_list, false),
         AccountMeta::new(*validator_stake, false),
         AccountMeta::new(*transient_stake, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),

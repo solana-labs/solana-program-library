@@ -14,11 +14,10 @@
 if [[ -n $SOLANA_VERSION ]]; then
   solana_version="$SOLANA_VERSION"
 else
-  solana_version=v1.6.7
+  solana_version=v1.6.11
 fi
 
 export solana_version="$solana_version"
-export solana_docker_image=solanalabs/solana:"$solana_version"
 export PATH="$HOME"/.local/share/solana/install/active_release/bin:"$PATH"
 
 if [[ -n $1 ]]; then

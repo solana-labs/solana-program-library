@@ -2,8 +2,11 @@
 
 use {
     solana_program::{
-        borsh::get_packed_len, hash::Hash, program_pack::Pack, pubkey::Pubkey, system_instruction,
-        system_program,
+        borsh::{get_instance_packed_len, get_packed_len, try_from_slice_unchecked},
+        hash::Hash,
+        program_pack::Pack,
+        pubkey::Pubkey,
+        system_instruction, system_program,
     },
     solana_program_test::*,
     solana_sdk::{
@@ -17,7 +20,6 @@ use {
         vote_state::{VoteInit, VoteState},
     },
     spl_stake_pool::{
-        borsh::{get_instance_packed_len, try_from_slice_unchecked},
         find_stake_program_address, find_transient_stake_program_address, id, instruction,
         processor, stake_program, state,
     },
@@ -1124,7 +1126,7 @@ pub async fn get_validator_list_sum(
     let validator_sum: u64 = validator_list
         .validators
         .iter()
-        .map(|info| info.stake_lamports)
+        .map(|info| info.stake_lamports())
         .sum();
     let rent = banks_client.get_rent().await.unwrap();
     let rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());

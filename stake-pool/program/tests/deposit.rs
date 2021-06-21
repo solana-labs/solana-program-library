@@ -4,9 +4,10 @@ mod helpers;
 
 use {
     bincode::deserialize,
-    borsh::{BorshDeserialize, BorshSerialize},
+    borsh::BorshSerialize,
     helpers::*,
     solana_program::{
+        borsh::try_from_slice_unchecked,
         hash::Hash,
         instruction::{AccountMeta, Instruction, InstructionError},
         pubkey::Pubkey,
@@ -19,10 +20,7 @@ use {
         transaction::TransactionError,
         transport::TransportError,
     },
-    spl_stake_pool::{
-        borsh::try_from_slice_unchecked, error, id, instruction, minimum_stake_lamports,
-        stake_program, state,
-    },
+    spl_stake_pool::{error, id, instruction, minimum_stake_lamports, stake_program, state},
     spl_token::error as token_error,
 };
 
@@ -127,7 +125,7 @@ async fn success() {
     let stake_pool_before =
         get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
     let stake_pool_before =
-        state::StakePool::try_from_slice(&stake_pool_before.data.as_slice()).unwrap();
+        try_from_slice_unchecked::<state::StakePool>(&stake_pool_before.data.as_slice()).unwrap();
 
     // Save validator stake account record before depositing
     let validator_list = get_account(
@@ -165,7 +163,8 @@ async fn success() {
 
     // Stake pool should add its balance to the pool balance
     let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
-    let stake_pool = state::StakePool::try_from_slice(&stake_pool.data.as_slice()).unwrap();
+    let stake_pool =
+        try_from_slice_unchecked::<state::StakePool>(&stake_pool.data.as_slice()).unwrap();
     assert_eq!(
         stake_pool.total_stake_lamports,
         stake_pool_before.total_stake_lamports + stake_lamports
@@ -191,8 +190,8 @@ async fn success() {
         .find(&validator_stake_account.vote.pubkey())
         .unwrap();
     assert_eq!(
-        validator_stake_item.stake_lamports,
-        validator_stake_item_before.stake_lamports + stake_lamports
+        validator_stake_item.stake_lamports(),
+        validator_stake_item_before.stake_lamports() + stake_lamports
     );
 
     // Check validator stake account actual SOL balance
@@ -203,8 +202,9 @@ async fn success() {
     let meta = stake_state.meta().unwrap();
     assert_eq!(
         validator_stake_account.lamports - minimum_stake_lamports(&meta),
-        validator_stake_item.stake_lamports
+        validator_stake_item.stake_lamports()
     );
+    assert_eq!(validator_stake_item.transient_stake_lamports, 0);
 }
 
 #[tokio::test]

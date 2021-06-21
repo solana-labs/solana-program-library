@@ -3,13 +3,11 @@
 mod helpers;
 
 use {
-    borsh::BorshDeserialize,
     helpers::*,
-    solana_program::pubkey::Pubkey,
+    solana_program::{borsh::try_from_slice_unchecked, pubkey::Pubkey},
     solana_program_test::*,
     solana_sdk::signature::{Keypair, Signer},
     spl_stake_pool::{
-        borsh::try_from_slice_unchecked,
         stake_program,
         state::{StakePool, StakeStatus, ValidatorList},
         MAX_VALIDATORS_TO_UPDATE, MINIMUM_ACTIVE_STAKE,
@@ -228,7 +226,7 @@ async fn success() {
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let stake_pool = StakePool::try_from_slice(&stake_pool_info.data).unwrap();
+    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data).unwrap();
     assert_eq!(new_lamports, stake_pool.total_stake_lamports);
 }
 
@@ -295,7 +293,7 @@ async fn merge_into_reserve() {
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let stake_pool = StakePool::try_from_slice(&stake_pool_info.data).unwrap();
+    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data).unwrap();
     assert_eq!(expected_lamports, stake_pool.total_stake_lamports);
 
     // Warp one more epoch so the stakes deactivate
@@ -338,7 +336,7 @@ async fn merge_into_reserve() {
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let stake_pool = StakePool::try_from_slice(&stake_pool_info.data).unwrap();
+    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data).unwrap();
     assert_eq!(expected_lamports, stake_pool.total_stake_lamports);
 }
 
@@ -401,7 +399,7 @@ async fn merge_into_validator_stake() {
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let stake_pool = StakePool::try_from_slice(&stake_pool_info.data).unwrap();
+    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data).unwrap();
     assert_eq!(expected_lamports, stake_pool.total_stake_lamports);
 
     let stake_pool_info = get_account(
@@ -409,7 +407,7 @@ async fn merge_into_validator_stake() {
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let stake_pool = StakePool::try_from_slice(&stake_pool_info.data).unwrap();
+    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data).unwrap();
     assert_eq!(expected_lamports, stake_pool.total_stake_lamports);
 
     // Warp one more epoch so the stakes activate, ready to merge
@@ -442,7 +440,7 @@ async fn merge_into_validator_stake() {
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let stake_pool = StakePool::try_from_slice(&stake_pool_info.data).unwrap();
+    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data).unwrap();
     assert_eq!(current_lamports, stake_pool.total_stake_lamports);
 
     // Check that transient accounts are gone
@@ -536,8 +534,9 @@ async fn merge_transient_stake_after_remove() {
         validator_list.validators[0].status,
         StakeStatus::DeactivatingTransient
     );
+    assert_eq!(validator_list.validators[0].active_stake_lamports, 0);
     assert_eq!(
-        validator_list.validators[0].stake_lamports,
+        validator_list.validators[0].transient_stake_lamports,
         deactivated_lamports
     );
 
@@ -569,7 +568,7 @@ async fn merge_transient_stake_after_remove() {
         validator_list.validators[0].status,
         StakeStatus::ReadyForRemoval
     );
-    assert_eq!(validator_list.validators[0].stake_lamports, 0);
+    assert_eq!(validator_list.validators[0].stake_lamports(), 0);
 
     let reserve_stake = context
         .banks_client

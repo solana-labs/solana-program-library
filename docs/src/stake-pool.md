@@ -141,7 +141,7 @@ to activate and deactivate, you can run the stake pool locally using the
 from devnet, testnet, or mainnet.
 
 ```sh
-$ solana-test-validator -c poo1B9L9nR3CrcaziKVYVpRX6A9Y1LAXYasjjfCbApj --url devnet --slots-per-epoch 32
+$ solana-test-validator -c poo1B9L9nR3CrcaziKVYVpRX6A9Y1LAXYasjjfCbApj -c 5TfMPP2zwrXWTUvkg5AG54QWpEkwjeBUhpP7x99kkvEj --url devnet --slots-per-epoch 32
 $ solana config set --url http://127.0.0.1:8899
 ```
 
@@ -210,6 +210,12 @@ numerator and denominator for the fraction that make up the fee. For a fee of
 $ spl-stake-pool set-fee EjspffVUi2Tivszzs2JVj4GiSiMNYKyqZpgP3NeefBU1 10 100
 Signature: 5yPXfVj5cbKBfZiEVi2UR5bXzVDuc2c3ruBwSjkAqpvxPHigwGHiS1mXQVE4qwok5moMWT5RNYAMvkE9bnfQ1i93
 ```
+
+In order to protect stake pool depositors from malicious managers, the program
+applies the new fee for the following epoch. For example, if the fee is 1% at
+epoch 100, and the manager sets it to 10%, the manager will still gain 1% for
+the rewards earned during epoch 100. Starting with epoch 101, the manager will
+earn 10%.
 
 #### Set staker
 

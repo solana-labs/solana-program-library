@@ -24,11 +24,12 @@ pub enum LendingInstruction {
     ///   0. `[writable]` Lending market account - uninitialized.
     ///   1. `[]` Rent sysvar.
     ///   2. `[]` Token program id.
+    ///   3. `[]` Oracle program id.
     InitLendingMarket {
         /// Owner authority which can add new reserves
         owner: Pubkey,
         /// Currency market prices are quoted in
-        /// e.g. "USD" null padded (`*b"USD\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"`) or a SPL token mint pubkey
+        /// e.g. "USD" null padded (`*b"USD\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"`) or SPL token mint pubkey
         quote_currency: [u8; 32],
     },
 
@@ -81,9 +82,9 @@ pub enum LendingInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` Reserve account.
-    ///   1. `[]` Clock sysvar.
-    ///   2. `[]` Reserve liquidity oracle account.
+    ///   1. `[]` Reserve liquidity oracle account.
     ///             Must be the Pyth price account specified at InitReserve.
+    ///   2. `[]` Clock sysvar.
     RefreshReserve,
 
     // 4
@@ -197,7 +198,6 @@ pub enum LendingInstruction {
         collateral_amount: u64,
     },
 
-    // @TODO: rename cf. https://git.io/JOOE6
     // 10
     /// Borrow liquidity from a reserve by depositing collateral tokens. Requires a refreshed
     /// obligation and reserve.
