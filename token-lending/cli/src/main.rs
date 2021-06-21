@@ -44,6 +44,299 @@ type CommandResult = Result<(), Error>;
 
 const PYTH_PROGRAM_ID: &str = "5mkqGkkWSaSk2NL9p4XptwEQu4d5jFTJiurbbzdqYexF";
 
+fn check_fee_payer_balance(config: &Config, required_balance: u64) -> Result<(), Error> {
+    let balance = config.rpc_client.get_balance(&config.fee_payer.pubkey())?;
+    if balance < required_balance {
+        Err(format!(
+            "Fee payer, {}, has insufficient balance: {} required, {} available",
+            config.fee_payer.pubkey(),
+            lamports_to_sol(required_balance),
+            lamports_to_sol(balance)
+        )
+        .into())
+    } else {
+        Ok(())
+    }
+}
+
+fn send_transaction(
+    config: &Config,
+    transaction: Transaction,
+) -> solana_client::client_error::Result<()> {
+    if config.dry_run {
+        let result = config.rpc_client.simulate_transaction(&transaction)?;
+        println!("Simulate result: {:?}", result);
+    } else {
+        let signature = config
+            .rpc_client
+            .send_and_confirm_transaction_with_spinner(&transaction)?;
+        println!("Signature: {}", signature);
+    }
+    Ok(())
+}
+
+fn command_create_lending_market(
+    config: &Config,
+    lending_market_owner: Pubkey,
+    quote_currency: [u8; 32],
+    oracle_program_id: Pubkey,
+) -> CommandResult {
+    let lending_market_keypair = Keypair::new();
+    println!(
+        "Creating lending market {}",
+        lending_market_keypair.pubkey()
+    );
+
+    let lending_market_balance = config
+        .rpc_client
+        .get_minimum_balance_for_rent_exemption(LendingMarket::LEN)?;
+
+    let mut transaction = Transaction::new_with_payer(
+        &[
+            // Account for the lending market
+            create_account(
+                &config.fee_payer.pubkey(),
+                &lending_market_keypair.pubkey(),
+                lending_market_balance,
+                LendingMarket::LEN as u64,
+                &config.lending_program_id,
+            ),
+            // Initialize lending market account
+            init_lending_market(
+                config.lending_program_id,
+                lending_market_owner,
+                quote_currency,
+                lending_market_keypair.pubkey(),
+                oracle_program_id,
+            ),
+        ],
+        Some(&config.fee_payer.pubkey()),
+    );
+
+    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+    check_fee_payer_balance(
+        config,
+        lending_market_balance + fee_calculator.calculate_fee(&transaction.message()),
+    )?;
+    transaction.sign(
+        &vec![config.fee_payer.as_ref(), &lending_market_keypair],
+        recent_blockhash,
+    );
+    send_transaction(&config, transaction)?;
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn command_add_reserve(
+    config: &Config,
+    ui_amount: f64,
+    reserve_config: ReserveConfig,
+    source_liquidity_pubkey: Pubkey,
+    source_liquidity_owner_keypair: Keypair,
+    lending_market_pubkey: Pubkey,
+    lending_market_owner_keypair: Keypair,
+    pyth_product_pubkey: Pubkey,
+    pyth_price_pubkey: Pubkey,
+) -> CommandResult {
+    let source_liquidity_account = config.rpc_client.get_account(&source_liquidity_pubkey)?;
+    let source_liquidity = Token::unpack_from_slice(source_liquidity_account.data.borrow())?;
+
+    let source_liquidity_mint_account = config.rpc_client.get_account(&source_liquidity.mint)?;
+    let source_liquidity_mint =
+        Mint::unpack_from_slice(source_liquidity_mint_account.data.borrow())?;
+    let liquidity_amount = ui_amount_to_amount(ui_amount, source_liquidity_mint.decimals);
+
+    let reserve_keypair = Keypair::new();
+    let collateral_mint_keypair = Keypair::new();
+    let collateral_supply_keypair = Keypair::new();
+    let liquidity_supply_keypair = Keypair::new();
+    let liquidity_fee_receiver_keypair = Keypair::new();
+    let user_collateral_keypair = Keypair::new();
+    let user_transfer_authority_keypair = Keypair::new();
+
+    println!("Adding reserve {}", reserve_keypair.pubkey());
+    if config.verbose {
+        println!(
+            "Adding collateral mint {}",
+            collateral_mint_keypair.pubkey()
+        );
+        println!(
+            "Adding collateral supply {}",
+            collateral_supply_keypair.pubkey()
+        );
+        println!(
+            "Adding liquidity supply {}",
+            liquidity_supply_keypair.pubkey()
+        );
+        println!(
+            "Adding liquidity fee receiver {}",
+            liquidity_fee_receiver_keypair.pubkey()
+        );
+        println!(
+            "Adding user collateral {}",
+            user_collateral_keypair.pubkey()
+        );
+        println!(
+            "Adding user transfer authority {}",
+            user_transfer_authority_keypair.pubkey()
+        );
+    }
+
+    let reserve_balance = config
+        .rpc_client
+        .get_minimum_balance_for_rent_exemption(Reserve::LEN)?;
+    let collateral_mint_balance = config
+        .rpc_client
+        .get_minimum_balance_for_rent_exemption(Mint::LEN)?;
+    let token_account_balance = config
+        .rpc_client
+        .get_minimum_balance_for_rent_exemption(Token::LEN)?;
+    let collateral_supply_balance = token_account_balance;
+    let user_collateral_balance = token_account_balance;
+    let liquidity_supply_balance = token_account_balance;
+    let liquidity_fee_receiver_balance = token_account_balance;
+
+    let total_balance = reserve_balance
+        + collateral_mint_balance
+        + collateral_supply_balance
+        + user_collateral_balance
+        + liquidity_supply_balance
+        + liquidity_fee_receiver_balance;
+
+    let mut transaction_1 = Transaction::new_with_payer(
+        &[
+            create_account(
+                &config.fee_payer.pubkey(),
+                &reserve_keypair.pubkey(),
+                reserve_balance,
+                Reserve::LEN as u64,
+                &config.lending_program_id,
+            ),
+            create_account(
+                &config.fee_payer.pubkey(),
+                &collateral_mint_keypair.pubkey(),
+                collateral_mint_balance,
+                Mint::LEN as u64,
+                &spl_token::id(),
+            ),
+            create_account(
+                &config.fee_payer.pubkey(),
+                &collateral_supply_keypair.pubkey(),
+                collateral_supply_balance,
+                Token::LEN as u64,
+                &spl_token::id(),
+            ),
+            create_account(
+                &config.fee_payer.pubkey(),
+                &user_collateral_keypair.pubkey(),
+                user_collateral_balance,
+                Token::LEN as u64,
+                &spl_token::id(),
+            ),
+        ],
+        Some(&config.fee_payer.pubkey()),
+    );
+
+    let mut transaction_2 = Transaction::new_with_payer(
+        &[
+            create_account(
+                &config.fee_payer.pubkey(),
+                &liquidity_supply_keypair.pubkey(),
+                liquidity_supply_balance,
+                Token::LEN as u64,
+                &spl_token::id(),
+            ),
+            create_account(
+                &config.fee_payer.pubkey(),
+                &liquidity_fee_receiver_keypair.pubkey(),
+                liquidity_fee_receiver_balance,
+                Token::LEN as u64,
+                &spl_token::id(),
+            ),
+        ],
+        Some(&config.fee_payer.pubkey()),
+    );
+
+    let mut transaction_3 = Transaction::new_with_payer(
+        &[
+            approve(
+                &spl_token::id(),
+                &source_liquidity_pubkey,
+                &user_transfer_authority_keypair.pubkey(),
+                &source_liquidity_owner_keypair.pubkey(),
+                &[],
+                liquidity_amount,
+            )
+            .unwrap(),
+            init_reserve(
+                config.lending_program_id,
+                liquidity_amount,
+                reserve_config,
+                source_liquidity_pubkey,
+                user_collateral_keypair.pubkey(),
+                reserve_keypair.pubkey(),
+                source_liquidity.mint,
+                liquidity_supply_keypair.pubkey(),
+                liquidity_fee_receiver_keypair.pubkey(),
+                collateral_mint_keypair.pubkey(),
+                collateral_supply_keypair.pubkey(),
+                pyth_product_pubkey,
+                pyth_price_pubkey,
+                lending_market_pubkey,
+                lending_market_owner_keypair.pubkey(),
+                user_transfer_authority_keypair.pubkey(),
+            ),
+            revoke(
+                &spl_token::id(),
+                &source_liquidity_pubkey,
+                &source_liquidity_owner_keypair.pubkey(),
+                &[]
+            ).unwrap()
+        ],
+        Some(&config.fee_payer.pubkey()),
+    );
+
+    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+    check_fee_payer_balance(
+        config,
+        total_balance
+            + fee_calculator.calculate_fee(&transaction_1.message())
+            + fee_calculator.calculate_fee(&transaction_2.message())
+            + fee_calculator.calculate_fee(&transaction_3.message()),
+    )?;
+    transaction_1.sign(
+        &vec![
+            config.fee_payer.as_ref(),
+            &reserve_keypair,
+            &collateral_mint_keypair,
+            &collateral_supply_keypair,
+            &user_collateral_keypair,
+        ],
+        recent_blockhash,
+    );
+    transaction_2.sign(
+        &vec![
+            config.fee_payer.as_ref(),
+            &liquidity_supply_keypair,
+            &liquidity_fee_receiver_keypair
+        ],
+        recent_blockhash,
+    );
+    transaction_3.sign(
+        &vec![
+            config.fee_payer.as_ref(),
+            &source_liquidity_owner_keypair,
+            &lending_market_owner_keypair,
+            &user_transfer_authority_keypair,
+        ],
+        recent_blockhash,
+    );
+    send_transaction(&config, transaction_1)?;
+    send_transaction(&config, transaction_2)?;
+    send_transaction(&config, transaction_3)?;
+    Ok(())
+}
+
 fn main() {
     solana_logger::setup_with_default("solana=info");
 
@@ -428,297 +721,4 @@ fn quote_currency_of(matches: &ArgMatches<'_>, name: &str) -> Option<[u8; 32]> {
     } else {
         None
     }
-}
-
-fn command_create_lending_market(
-    config: &Config,
-    lending_market_owner: Pubkey,
-    quote_currency: [u8; 32],
-    oracle_program_id: Pubkey,
-) -> CommandResult {
-    let lending_market_keypair = Keypair::new();
-    println!(
-        "Creating lending market {}",
-        lending_market_keypair.pubkey()
-    );
-
-    let lending_market_balance = config
-        .rpc_client
-        .get_minimum_balance_for_rent_exemption(LendingMarket::LEN)?;
-
-    let mut transaction = Transaction::new_with_payer(
-        &[
-            // Account for the lending market
-            create_account(
-                &config.fee_payer.pubkey(),
-                &lending_market_keypair.pubkey(),
-                lending_market_balance,
-                LendingMarket::LEN as u64,
-                &config.lending_program_id,
-            ),
-            // Initialize lending market account
-            init_lending_market(
-                config.lending_program_id,
-                lending_market_owner,
-                quote_currency,
-                lending_market_keypair.pubkey(),
-                oracle_program_id,
-            ),
-        ],
-        Some(&config.fee_payer.pubkey()),
-    );
-
-    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-    check_fee_payer_balance(
-        config,
-        lending_market_balance + fee_calculator.calculate_fee(&transaction.message()),
-    )?;
-    transaction.sign(
-        &vec![config.fee_payer.as_ref(), &lending_market_keypair],
-        recent_blockhash,
-    );
-    send_transaction(&config, transaction)?;
-    Ok(())
-}
-
-#[allow(clippy::too_many_arguments)]
-fn command_add_reserve(
-    config: &Config,
-    ui_amount: f64,
-    reserve_config: ReserveConfig,
-    source_liquidity_pubkey: Pubkey,
-    source_liquidity_owner_keypair: Keypair,
-    lending_market_pubkey: Pubkey,
-    lending_market_owner_keypair: Keypair,
-    pyth_product_pubkey: Pubkey,
-    pyth_price_pubkey: Pubkey,
-) -> CommandResult {
-    let source_liquidity_account = config.rpc_client.get_account(&source_liquidity_pubkey)?;
-    let source_liquidity = Token::unpack_from_slice(source_liquidity_account.data.borrow())?;
-
-    let source_liquidity_mint_account = config.rpc_client.get_account(&source_liquidity.mint)?;
-    let source_liquidity_mint =
-        Mint::unpack_from_slice(source_liquidity_mint_account.data.borrow())?;
-    let liquidity_amount = ui_amount_to_amount(ui_amount, source_liquidity_mint.decimals);
-
-    let reserve_keypair = Keypair::new();
-    let collateral_mint_keypair = Keypair::new();
-    let collateral_supply_keypair = Keypair::new();
-    let liquidity_supply_keypair = Keypair::new();
-    let liquidity_fee_receiver_keypair = Keypair::new();
-    let user_collateral_keypair = Keypair::new();
-    let user_transfer_authority_keypair = Keypair::new();
-
-    println!("Adding reserve {}", reserve_keypair.pubkey());
-    if config.verbose {
-        println!(
-            "Adding collateral mint {}",
-            collateral_mint_keypair.pubkey()
-        );
-        println!(
-            "Adding collateral supply {}",
-            collateral_supply_keypair.pubkey()
-        );
-        println!(
-            "Adding liquidity supply {}",
-            liquidity_supply_keypair.pubkey()
-        );
-        println!(
-            "Adding liquidity fee receiver {}",
-            liquidity_fee_receiver_keypair.pubkey()
-        );
-        println!(
-            "Adding user collateral {}",
-            user_collateral_keypair.pubkey()
-        );
-        println!(
-            "Adding user transfer authority {}",
-            user_transfer_authority_keypair.pubkey()
-        );
-    }
-
-    let reserve_balance = config
-        .rpc_client
-        .get_minimum_balance_for_rent_exemption(Reserve::LEN)?;
-    let collateral_mint_balance = config
-        .rpc_client
-        .get_minimum_balance_for_rent_exemption(Mint::LEN)?;
-    let token_account_balance = config
-        .rpc_client
-        .get_minimum_balance_for_rent_exemption(Token::LEN)?;
-    let collateral_supply_balance = token_account_balance;
-    let user_collateral_balance = token_account_balance;
-    let liquidity_supply_balance = token_account_balance;
-    let liquidity_fee_receiver_balance = token_account_balance;
-
-    let total_balance = reserve_balance
-        + collateral_mint_balance
-        + collateral_supply_balance
-        + user_collateral_balance
-        + liquidity_supply_balance
-        + liquidity_fee_receiver_balance;
-
-    let mut transaction_1 = Transaction::new_with_payer(
-        &[
-            create_account(
-                &config.fee_payer.pubkey(),
-                &reserve_keypair.pubkey(),
-                reserve_balance,
-                Reserve::LEN as u64,
-                &config.lending_program_id,
-            ),
-            create_account(
-                &config.fee_payer.pubkey(),
-                &collateral_mint_keypair.pubkey(),
-                collateral_mint_balance,
-                Mint::LEN as u64,
-                &spl_token::id(),
-            ),
-            create_account(
-                &config.fee_payer.pubkey(),
-                &collateral_supply_keypair.pubkey(),
-                collateral_supply_balance,
-                Token::LEN as u64,
-                &spl_token::id(),
-            ),
-            create_account(
-                &config.fee_payer.pubkey(),
-                &user_collateral_keypair.pubkey(),
-                user_collateral_balance,
-                Token::LEN as u64,
-                &spl_token::id(),
-            ),
-        ],
-        Some(&config.fee_payer.pubkey()),
-    );
-
-    let mut transaction_2 = Transaction::new_with_payer(
-        &[
-            create_account(
-                &config.fee_payer.pubkey(),
-                &liquidity_supply_keypair.pubkey(),
-                liquidity_supply_balance,
-                Token::LEN as u64,
-                &spl_token::id(),
-            ),
-            create_account(
-                &config.fee_payer.pubkey(),
-                &liquidity_fee_receiver_keypair.pubkey(),
-                liquidity_fee_receiver_balance,
-                Token::LEN as u64,
-                &spl_token::id(),
-            ),
-        ],
-        Some(&config.fee_payer.pubkey()),
-    );
-
-    let mut transaction_3 = Transaction::new_with_payer(
-        &[
-            approve(
-                &spl_token::id(),
-                &source_liquidity_pubkey,
-                &user_transfer_authority_keypair.pubkey(),
-                &source_liquidity_owner_keypair.pubkey(),
-                &[],
-                liquidity_amount,
-            )
-            .unwrap(),
-            init_reserve(
-                config.lending_program_id,
-                liquidity_amount,
-                reserve_config,
-                source_liquidity_pubkey,
-                user_collateral_keypair.pubkey(),
-                reserve_keypair.pubkey(),
-                source_liquidity.mint,
-                liquidity_supply_keypair.pubkey(),
-                liquidity_fee_receiver_keypair.pubkey(),
-                collateral_mint_keypair.pubkey(),
-                collateral_supply_keypair.pubkey(),
-                pyth_product_pubkey,
-                pyth_price_pubkey,
-                lending_market_pubkey,
-                lending_market_owner_keypair.pubkey(),
-                user_transfer_authority_keypair.pubkey(),
-            ),
-            revoke(
-                &spl_token::id(),
-                &source_liquidity_pubkey,
-                &source_liquidity_owner_keypair.pubkey(),
-                &[]
-            ).unwrap()
-        ],
-        Some(&config.fee_payer.pubkey()),
-    );
-
-    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-    check_fee_payer_balance(
-        config,
-        total_balance
-            + fee_calculator.calculate_fee(&transaction_1.message())
-            + fee_calculator.calculate_fee(&transaction_2.message())
-            + fee_calculator.calculate_fee(&transaction_3.message()),
-    )?;
-    transaction_1.sign(
-        &vec![
-            config.fee_payer.as_ref(),
-            &reserve_keypair,
-            &collateral_mint_keypair,
-            &collateral_supply_keypair,
-            &user_collateral_keypair,
-        ],
-        recent_blockhash,
-    );
-    transaction_2.sign(
-        &vec![
-            config.fee_payer.as_ref(),
-            &liquidity_supply_keypair,
-            &liquidity_fee_receiver_keypair
-        ],
-        recent_blockhash,
-    );
-    transaction_3.sign(
-        &vec![
-            config.fee_payer.as_ref(),
-            &source_liquidity_owner_keypair,
-            &lending_market_owner_keypair,
-            &user_transfer_authority_keypair,
-        ],
-        recent_blockhash,
-    );
-    send_transaction(&config, transaction_1)?;
-    send_transaction(&config, transaction_2)?;
-    send_transaction(&config, transaction_3)?;
-    Ok(())
-}
-
-fn check_fee_payer_balance(config: &Config, required_balance: u64) -> Result<(), Error> {
-    let balance = config.rpc_client.get_balance(&config.fee_payer.pubkey())?;
-    if balance < required_balance {
-        Err(format!(
-            "Fee payer, {}, has insufficient balance: {} required, {} available",
-            config.fee_payer.pubkey(),
-            lamports_to_sol(required_balance),
-            lamports_to_sol(balance)
-        )
-        .into())
-    } else {
-        Ok(())
-    }
-}
-
-fn send_transaction(
-    config: &Config,
-    transaction: Transaction,
-) -> solana_client::client_error::Result<()> {
-    if config.dry_run {
-        let result = config.rpc_client.simulate_transaction(&transaction)?;
-        println!("Simulate result: {:?}", result);
-    } else {
-        let signature = config
-            .rpc_client
-            .send_and_confirm_transaction_with_spinner(&transaction)?;
-        println!("Signature: {}", signature);
-    }
-    Ok(())
 }
