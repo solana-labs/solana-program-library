@@ -11,8 +11,8 @@ Web3 bindings are available in the `./js` directory.
 | Cluster | Program Address |
 | --- | --- |
 | Mainnet Beta | [`LendZqTs8gn5CTSJU1jWKhKuVpjJGom45nnwPb2AMTi`](https://explorer.solana.com/address/LendZqTs7gn5CTSJU1jWKhKuVpjJGom45nnwPb2AMTi) |
-| Testnet | [`LendZqTs8gn5CTSJU1jWKhKuVpjJGom45nnwPb2AMTi`](https://explorer.solana.com/address/LendZqTs8gn5CTSJU1jWKhKuVpjJGom45nnwPb2AMTi?cluster=testnet) |
-| Devnet | [`LendZqTs8gn5CTSJU1jWKhKuVpjJGom45nnwPb2AMTi`](https://explorer.solana.com/address/LendZqTs8gn5CTSJU1jWKhKuVpjJGom45nnwPb2AMTi?cluster=devnet) |
+| Testnet | [`25MruiXVk27KoQPNKpMr44UDPHPCcSpRBfhXcgMDTwqQ`](https://explorer.solana.com/address/LendZqTs8gn5CTSJU1jWKhKuVpjJGom45nnwPb2AMTi?cluster=testnet) |
+| Devnet | [`25MruiXVk27KoQPNKpMr44UDPHPCcSpRBfhXcgMDTwqQ`](https://explorer.solana.com/address/LendZqTs8gn5CTSJU1jWKhKuVpjJGom45nnwPb2AMTi?cluster=devnet) |
 
 ### Deploy a lending program
 

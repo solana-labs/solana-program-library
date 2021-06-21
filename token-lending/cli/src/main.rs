@@ -47,6 +47,8 @@ const PYTH_PROGRAM_ID: &str = "5mkqGkkWSaSk2NL9p4XptwEQu4d5jFTJiurbbzdqYexF";
 fn main() {
     solana_logger::setup_with_default("solana=info");
 
+    let default_lending_program_id: &str = &spl_token_lending::id().to_string();
+
     let matches = App::new(crate_name!())
         .about(crate_description!())
         .version(crate_version!())
@@ -85,7 +87,7 @@ fn main() {
                 .value_name("PUBKEY")
                 .takes_value(true)
                 .required(true)
-                .default_value(spl_token_lending::id())
+                .default_value(default_lending_program_id)
                 .help("Lending program ID"),
         )
         .arg(
@@ -138,15 +140,7 @@ fn main() {
         .subcommand(
             SubCommand::with_name("add-reserve")
                 .about("Add a reserve to a lending market")
-                .arg(
-                    Arg::with_name("lending_market")
-                        .long("market")
-                        .validator(is_pubkey)
-                        .value_name("PUBKEY")
-                        .takes_value(true)
-                        .required(true)
-                        .help("Lending market address"),
-                )
+                // @TODO: use is_valid_signer
                 .arg(
                     Arg::with_name("lending_market_owner")
                         .long("market-owner")
@@ -156,6 +150,7 @@ fn main() {
                         .required(true)
                         .help("Owner of the lending market"),
                 )
+                // @TODO: use is_valid_signer
                 .arg(
                     Arg::with_name("source_liquidity_owner")
                         .long("source-owner")
@@ -166,6 +161,15 @@ fn main() {
                         .help("Owner of the SPL Token account to deposit initial liquidity from"),
                 )
                 .arg(
+                    Arg::with_name("lending_market")
+                        .long("market")
+                        .validator(is_pubkey)
+                        .value_name("PUBKEY")
+                        .takes_value(true)
+                        .required(true)
+                        .help("Lending market address"),
+                )
+                .arg(
                     Arg::with_name("source_liquidity")
                         .long("source")
                         .validator(is_pubkey)
@@ -174,6 +178,7 @@ fn main() {
                         .required(true)
                         .help("SPL Token account to deposit initial liquidity from"),
                 )
+                // @TODO: use is_amount_or_all
                 .arg(
                     Arg::with_name("liquidity_amount")
                         .long("amount")
@@ -271,6 +276,7 @@ fn main() {
                         .default_value("30")
                         .help("Max borrow APY: min <= optimal <= max"),
                 )
+                // @TODO: use is_amount
                 .arg(
                     Arg::with_name("borrow_fee_wad")
                         .long("borrow-fee-wad")
@@ -281,6 +287,7 @@ fn main() {
                         .default_value("100000000000")
                         .help("Fee assessed on borrow, expressed as a Wad: [0, 1000000000000000000)"),
                 )
+                // @TODO: use is_amount
                 .arg(
                     Arg::with_name("flash_loan_fee_wad")
                         .long("flash-loan-fee-wad")
@@ -327,7 +334,7 @@ fn main() {
             exit(1);
         });
 
-        let lending_program_id = pubkey_of(arg_matches, "lending_program_id").unwrap();
+        let lending_program_id = pubkey_of(&matches, "lending_program_id").unwrap();
         let verbose = matches.is_present("verbose");
         let dry_run = matches.is_present("dry_run");
 
@@ -353,12 +360,12 @@ fn main() {
             )
         }
         ("add-reserve", Some(arg_matches)) => {
-            let lending_market_pubkey = pubkey_of(arg_matches, "lending_market").unwrap();
             let lending_market_owner_keypair =
                 keypair_of(arg_matches, "lending_market_owner").unwrap();
-            let source_liquidity_pubkey = pubkey_of(arg_matches, "source_liquidity").unwrap();
             let source_liquidity_owner_keypair =
                 keypair_of(arg_matches, "source_liquidity_owner").unwrap();
+            let lending_market_pubkey = pubkey_of(arg_matches, "lending_market").unwrap();
+            let source_liquidity_pubkey = pubkey_of(arg_matches, "source_liquidity").unwrap();
             let ui_amount = value_of(arg_matches, "liquidity_amount").unwrap();
             let pyth_product_pubkey = pubkey_of(arg_matches, "pyth_product").unwrap();
             let pyth_price_pubkey = pubkey_of(arg_matches, "pyth_price").unwrap();
@@ -447,7 +454,7 @@ fn command_create_lending_market(
                 &lending_market_keypair.pubkey(),
                 lending_market_balance,
                 LendingMarket::LEN as u64,
-                &spl_token_lending::id(),
+                &config.lending_program_id,
             ),
             // Initialize lending market account
             init_lending_market(
@@ -558,7 +565,7 @@ fn command_add_reserve(
                 &reserve_keypair.pubkey(),
                 reserve_balance,
                 Reserve::LEN as u64,
-                &spl_token_lending::id(),
+                &config.lending_program_id,
             ),
             create_account(
                 &config.fee_payer.pubkey(),
@@ -639,7 +646,7 @@ fn command_add_reserve(
                 &source_liquidity_pubkey,
                 &source_liquidity_owner_keypair.pubkey(),
                 &[]
-            )
+            ).unwrap()
         ],
         Some(&config.fee_payer.pubkey()),
     );
