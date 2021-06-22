@@ -1,8 +1,8 @@
 //! Governance Account
 
 use crate::{
-    error::GovernanceError, id, state::enums::GovernanceAccountType,
-    tools::account::get_account_data, tools::account::AccountMaxSize,
+    error::GovernanceError, state::enums::GovernanceAccountType, tools::account::get_account_data,
+    tools::account::AccountMaxSize,
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
@@ -81,8 +81,11 @@ impl Governance {
 }
 
 /// Deserializes account and checks owner program
-pub fn get_governance_data(governance_info: &AccountInfo) -> Result<Governance, ProgramError> {
-    get_account_data::<Governance>(governance_info, &id())
+pub fn get_governance_data(
+    program_id: &Pubkey,
+    governance_info: &AccountInfo,
+) -> Result<Governance, ProgramError> {
+    get_account_data::<Governance>(governance_info, program_id)
 }
 
 /// Returns ProgramGovernance PDA seeds
@@ -101,12 +104,13 @@ pub fn get_program_governance_address_seeds<'a>(
 
 /// Returns ProgramGovernance PDA address
 pub fn get_program_governance_address<'a>(
+    program_id: &Pubkey,
     realm: &'a Pubkey,
     governed_program: &'a Pubkey,
 ) -> Pubkey {
     Pubkey::find_program_address(
         &get_program_governance_address_seeds(realm, governed_program),
-        &id(),
+        program_id,
     )
     .0
 }
@@ -125,18 +129,20 @@ pub fn get_account_governance_address_seeds<'a>(
 
 /// Returns AccountGovernance PDA address
 pub fn get_account_governance_address<'a>(
+    program_id: &Pubkey,
     realm: &'a Pubkey,
     governed_account: &'a Pubkey,
 ) -> Pubkey {
     Pubkey::find_program_address(
         &get_account_governance_address_seeds(realm, governed_account),
-        &id(),
+        program_id,
     )
     .0
 }
 
 /// Validates governance config
 pub fn assert_is_valid_governance_config(
+    program_id: &Pubkey,
     governance_config: &GovernanceConfig,
     realm_info: &AccountInfo,
 ) -> Result<(), ProgramError> {
@@ -144,7 +150,7 @@ pub fn assert_is_valid_governance_config(
         return Err(GovernanceError::InvalidGovernanceConfig.into());
     }
 
-    assert_is_valid_realm(realm_info)?;
+    assert_is_valid_realm(program_id, realm_info)?;
 
     if governance_config.yes_vote_threshold_percentage < 1
         || governance_config.yes_vote_threshold_percentage > 100

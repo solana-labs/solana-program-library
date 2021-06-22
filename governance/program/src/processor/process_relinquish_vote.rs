@@ -20,7 +20,7 @@ use crate::{
 use borsh::BorshSerialize;
 
 /// Processes RelinquishVote instruction
-pub fn process_relinquish_vote(_program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+pub fn process_relinquish_vote(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
     let governance_info = next_account_info(account_info_iter)?; // 0
@@ -30,21 +30,24 @@ pub fn process_relinquish_vote(_program_id: &Pubkey, accounts: &[AccountInfo]) -
     let vote_record_info = next_account_info(account_info_iter)?; // 3
     let governing_token_mint_info = next_account_info(account_info_iter)?; // 4
 
-    let governance_data = get_governance_data(governance_info)?;
+    let governance_data = get_governance_data(program_id, governance_info)?;
 
     let mut proposal_data = get_proposal_data_for_governance_and_governing_mint(
+        program_id,
         &proposal_info,
         governance_info.key,
         governing_token_mint_info.key,
     )?;
 
     let mut token_owner_record_data = get_token_owner_record_data_for_realm_and_governing_mint(
+        program_id,
         &token_owner_record_info,
         &governance_data.config.realm,
         governing_token_mint_info.key,
     )?;
 
     let mut vote_record_data = get_vote_record_data_for_proposal_and_token_owner(
+        program_id,
         vote_record_info,
         proposal_info.key,
         &token_owner_record_data.governing_token_owner,

@@ -53,9 +53,10 @@ pub fn process_cast_vote(
         return Err(GovernanceError::VoteAlreadyExists.into());
     }
 
-    let governance_data = get_governance_data(governance_info)?;
+    let governance_data = get_governance_data(program_id, governance_info)?;
 
     let mut proposal_data = get_proposal_data_for_governance_and_governing_mint(
+        program_id,
         &proposal_info,
         governance_info.key,
         governing_token_mint_info.key,
@@ -63,6 +64,7 @@ pub fn process_cast_vote(
     proposal_data.assert_can_cast_vote(&governance_data.config, clock.slot)?;
 
     let mut token_owner_record_data = get_token_owner_record_data_for_realm_and_governing_mint(
+        program_id,
         &token_owner_record_info,
         &governance_data.config.realm,
         governing_token_mint_info.key,

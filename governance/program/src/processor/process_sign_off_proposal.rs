@@ -15,7 +15,7 @@ use crate::state::{
 };
 
 /// Processes SignOffProposal instruction
-pub fn process_sign_off_proposal(_program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+pub fn process_sign_off_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
     let proposal_info = next_account_info(account_info_iter)?; // 0
@@ -26,10 +26,11 @@ pub fn process_sign_off_proposal(_program_id: &Pubkey, accounts: &[AccountInfo])
     let clock_info = next_account_info(account_info_iter)?; // 3
     let clock = Clock::from_account_info(clock_info)?;
 
-    let mut proposal_data = get_proposal_data(proposal_info)?;
+    let mut proposal_data = get_proposal_data(program_id, proposal_info)?;
     proposal_data.assert_can_sign_off()?;
 
     let mut signatory_record_data = get_signatory_record_data_for_seeds(
+        program_id,
         signatory_record_info,
         proposal_info.key,
         signatory_info.key,

@@ -28,12 +28,16 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
     let clock_info = next_account_info(account_info_iter)?; // 3
     let clock = Clock::from_account_info(clock_info)?;
 
-    let governance_data = get_governance_data(governance_info)?;
+    let governance_data = get_governance_data(program_id, governance_info)?;
 
-    let mut proposal_data = get_proposal_data_for_governance(proposal_info, governance_info.key)?;
+    let mut proposal_data =
+        get_proposal_data_for_governance(program_id, proposal_info, governance_info.key)?;
 
-    let mut proposal_instruction_data =
-        get_proposal_instruction_data_for_proposal(proposal_instruction_info, proposal_info.key)?;
+    let mut proposal_instruction_data = get_proposal_instruction_data_for_proposal(
+        program_id,
+        proposal_instruction_info,
+        proposal_info.key,
+    )?;
 
     proposal_data.assert_can_execute_instruction(&proposal_instruction_data, clock.slot)?;
 

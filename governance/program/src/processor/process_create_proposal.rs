@@ -50,9 +50,10 @@ pub fn process_create_proposal(
         return Err(GovernanceError::ProposalAlreadyExists.into());
     }
 
-    let mut governance_data = get_governance_data(governance_info)?;
+    let mut governance_data = get_governance_data(program_id, governance_info)?;
 
     let token_owner_record_data = get_token_owner_record_data_for_realm_and_governing_mint(
+        program_id,
         &token_owner_record_info,
         &governance_data.config.realm,
         &governing_token_mint,

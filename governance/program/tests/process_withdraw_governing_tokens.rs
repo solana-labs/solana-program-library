@@ -104,6 +104,7 @@ async fn test_withdraw_community_tokens_with_owner_must_sign_error() {
     let hacker_token_destination = Pubkey::new_unique();
 
     let mut instruction = withdraw_governing_tokens(
+        &governance_test.program_id,
         &realm_cookie.address,
         &hacker_token_destination,
         &token_owner_record_cookie.token_owner.pubkey(),
@@ -136,6 +137,7 @@ async fn test_withdraw_community_tokens_with_token_owner_record_address_mismatch
         .await;
 
     let vote_record_address = get_token_owner_record_address(
+        &governance_test.program_id,
         &realm_cookie.address,
         &realm_cookie.account.community_mint,
         &token_owner_record_cookie.token_owner.pubkey(),
@@ -146,6 +148,7 @@ async fn test_withdraw_community_tokens_with_token_owner_record_address_mismatch
         .await;
 
     let mut instruction = withdraw_governing_tokens(
+        &governance_test.program_id,
         &realm_cookie.address,
         &hacker_record_cookie.token_source,
         &hacker_record_cookie.token_owner.pubkey(),

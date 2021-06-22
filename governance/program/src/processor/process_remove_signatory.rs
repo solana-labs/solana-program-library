@@ -17,7 +17,7 @@ use crate::{
 
 /// Processes RemoveSignatory instruction
 pub fn process_remove_signatory(
-    _program_id: &Pubkey,
+    program_id: &Pubkey,
     accounts: &[AccountInfo],
     signatory: Pubkey,
 ) -> ProgramResult {
@@ -30,18 +30,23 @@ pub fn process_remove_signatory(
     let signatory_record_info = next_account_info(account_info_iter)?; // 3
     let beneficiary_info = next_account_info(account_info_iter)?; // 4
 
-    let mut proposal_data = get_proposal_data(proposal_info)?;
+    let mut proposal_data = get_proposal_data(program_id, proposal_info)?;
     proposal_data.assert_can_edit_signatories()?;
 
     let token_owner_record_data = get_token_owner_record_data_for_proposal_owner(
+        program_id,
         token_owner_record_info,
         &proposal_data.token_owner_record,
     )?;
 
     token_owner_record_data.assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
-    let signatory_record_data =
-        get_signatory_record_data_for_seeds(signatory_record_info, proposal_info.key, &signatory)?;
+    let signatory_record_data = get_signatory_record_data_for_seeds(
+        program_id,
+        signatory_record_info,
+        proposal_info.key,
+        &signatory,
+    )?;
     signatory_record_data.assert_can_remove_signatory()?;
 
     proposal_data.signatories_count = proposal_data.signatories_count.checked_sub(1).unwrap();

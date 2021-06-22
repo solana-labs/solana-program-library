@@ -2,7 +2,6 @@
 
 use crate::{
     error::GovernanceError,
-    id,
     state::enums::GovernanceAccountType,
     tools::account::{get_account_data, AccountMaxSize},
     PROGRAM_AUTHORITY_SEED,
@@ -125,29 +124,33 @@ pub fn get_proposal_instruction_address_seeds<'a>(
 
 /// Returns ProposalInstruction PDA address
 pub fn get_proposal_instruction_address<'a>(
+    program_id: &Pubkey,
     proposal: &'a Pubkey,
     instruction_index_le_bytes: &'a [u8],
 ) -> Pubkey {
     Pubkey::find_program_address(
         &get_proposal_instruction_address_seeds(proposal, &instruction_index_le_bytes),
-        &id(),
+        program_id,
     )
     .0
 }
 
 /// Deserializes ProposalInstruction account and checks owner program
 pub fn get_proposal_instruction_data(
+    program_id: &Pubkey,
     proposal_instruction_info: &AccountInfo,
 ) -> Result<ProposalInstruction, ProgramError> {
-    get_account_data::<ProposalInstruction>(proposal_instruction_info, &id())
+    get_account_data::<ProposalInstruction>(proposal_instruction_info, program_id)
 }
 
 ///  Deserializes and returns ProposalInstruction account and checks it belongs to the given Proposal
 pub fn get_proposal_instruction_data_for_proposal(
+    program_id: &Pubkey,
     proposal_instruction_info: &AccountInfo,
     proposal: &Pubkey,
 ) -> Result<ProposalInstruction, ProgramError> {
-    let proposal_instruction_data = get_proposal_instruction_data(proposal_instruction_info)?;
+    let proposal_instruction_data =
+        get_proposal_instruction_data(program_id, proposal_instruction_info)?;
 
     if proposal_instruction_data.proposal != *proposal {
         return Err(GovernanceError::InvalidProposalForProposalInstruction.into());
@@ -158,10 +161,12 @@ pub fn get_proposal_instruction_data_for_proposal(
 
 ///  Deserializes ProposalInstruction account and checks it belongs to the given Proposal
 pub fn assert_proposal_instruction_for_proposal(
+    program_id: &Pubkey,
     proposal_instruction_info: &AccountInfo,
     proposal: &Pubkey,
 ) -> Result<(), ProgramError> {
-    get_proposal_instruction_data_for_proposal(proposal_instruction_info, proposal).map(|_| ())
+    get_proposal_instruction_data_for_proposal(program_id, proposal_instruction_info, proposal)
+        .map(|_| ())
 }
 
 #[cfg(test)]

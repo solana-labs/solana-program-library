@@ -204,6 +204,7 @@ async fn test_deposit_initial_community_tokens_with_owner_must_sign_error() {
         .await;
 
     let mut instruction = deposit_governing_tokens(
+        &governance_test.program_id,
         &realm_cookie.address,
         &token_source.pubkey(),
         &token_owner.pubkey(),
@@ -249,6 +250,7 @@ async fn test_deposit_initial_community_tokens_with_invalid_owner_error() {
         .await;
 
     let instruction = deposit_governing_tokens(
+        &governance_test.program_id,
         &realm_cookie.address,
         &token_source.pubkey(),
         &invalid_owner.pubkey(),

@@ -19,7 +19,7 @@ use crate::{
 use borsh::BorshSerialize;
 
 /// Processes FinalizeVote instruction
-pub fn process_finalize_vote(_program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+pub fn process_finalize_vote(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
     let governance_info = next_account_info(account_info_iter)?; // 0
@@ -30,9 +30,10 @@ pub fn process_finalize_vote(_program_id: &Pubkey, accounts: &[AccountInfo]) -> 
     let clock_info = next_account_info(account_info_iter)?; // 3
     let clock = Clock::from_account_info(clock_info)?;
 
-    let governance_data = get_governance_data(governance_info)?;
+    let governance_data = get_governance_data(program_id, governance_info)?;
 
     let mut proposal_data = get_proposal_data_for_governance_and_governing_mint(
+        program_id,
         &proposal_info,
         governance_info.key,
         governing_token_mint_info.key,

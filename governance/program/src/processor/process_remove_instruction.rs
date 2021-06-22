@@ -17,7 +17,7 @@ use crate::{
 };
 
 /// Processes RemoveInstruction instruction
-pub fn process_remove_instruction(_program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+pub fn process_remove_instruction(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
     let proposal_info = next_account_info(account_info_iter)?; // 0
@@ -28,17 +28,22 @@ pub fn process_remove_instruction(_program_id: &Pubkey, accounts: &[AccountInfo]
 
     let beneficiary_info = next_account_info(account_info_iter)?; // 4
 
-    let mut proposal_data = get_proposal_data(&proposal_info)?;
+    let mut proposal_data = get_proposal_data(program_id, proposal_info)?;
     proposal_data.assert_can_edit_instructions()?;
 
     let token_owner_record_data = get_token_owner_record_data_for_proposal_owner(
+        program_id,
         token_owner_record_info,
         &proposal_data.token_owner_record,
     )?;
 
     token_owner_record_data.assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
-    assert_proposal_instruction_for_proposal(proposal_instruction_info, proposal_info.key)?;
+    assert_proposal_instruction_for_proposal(
+        program_id,
+        proposal_instruction_info,
+        proposal_info.key,
+    )?;
 
     dispose_account(proposal_instruction_info, beneficiary_info);
 
