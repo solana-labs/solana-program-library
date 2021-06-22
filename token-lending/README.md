@@ -11,10 +11,14 @@ Web3 bindings are available in the `./js` directory.
 | Cluster | Program Address |
 | --- | --- |
 | Mainnet Beta | [`LendZqTs8gn5CTSJU1jWKhKuVpjJGom45nnwPb2AMTi`](https://explorer.solana.com/address/LendZqTs7gn5CTSJU1jWKhKuVpjJGom45nnwPb2AMTi) |
-| Testnet | [`25MruiXVk27KoQPNKpMr44UDPHPCcSpRBfhXcgMDTwqQ`](https://explorer.solana.com/address/LendZqTs8gn5CTSJU1jWKhKuVpjJGom45nnwPb2AMTi?cluster=testnet) |
-| Devnet | [`25MruiXVk27KoQPNKpMr44UDPHPCcSpRBfhXcgMDTwqQ`](https://explorer.solana.com/address/LendZqTs8gn5CTSJU1jWKhKuVpjJGom45nnwPb2AMTi?cluster=devnet) |
+| Testnet | [`6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH`](https://explorer.solana.com/address/LendZqTs8gn5CTSJU1jWKhKuVpjJGom45nnwPb2AMTi?cluster=testnet) |
+| Devnet | [`6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH`](https://explorer.solana.com/address/LendZqTs8gn5CTSJU1jWKhKuVpjJGom45nnwPb2AMTi?cluster=devnet) |
 
-### Deploy a lending program
+### Deploy a lending program (optional)
+
+This is optional! You can simply add your own market and reserves to the existing on-chain programs.
+
+You can skip these steps and use the [Token Lending CLI](./cli/README.md) to create a lending market and add reserves to it.
 
 1. [Install the Solana CLI](https://docs.solana.com/cli/install-solana-cli-tools)
 
@@ -40,7 +44,7 @@ Web3 bindings are available in the `./js` directory.
 
    # Wrote new keypair to owner.json
    # ================================================================================
-   # pubkey: F5242QU7NC4jM8yjqqiv8pZRjL9K8229EBTXHBYtSAo5
+   # pubkey: JAgN4SZLNeCo9KTnr8EWt4FzEV1UDgHkcZwkVtWtfp6P
    # ================================================================================
    # Save this seed phrase and your BIP39 passphrase to recover your new keypair:
    # your seed words here never share them not even with your mom
@@ -54,7 +58,7 @@ Web3 bindings are available in the `./js` directory.
 
    # Wrote new keypair to lending.json
    # ============================================================================
-   # pubkey: 25MruiXVk27KoQPNKpMr44UDPHPCcSpRBfhXcgMDTwqQ
+   # pubkey: 6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH
    # ============================================================================
    # Save this seed phrase and your BIP39 passphrase to recover your new keypair:
    # your seed words here never share them not even with your mom
@@ -68,7 +72,7 @@ Web3 bindings are available in the `./js` directory.
    ```
    replace the Program ID with yours, e.g.:
    ```rust
-   solana_program::declare_id!("25MruiXVk27KoQPNKpMr44UDPHPCcSpRBfhXcgMDTwqQ");
+   solana_program::declare_id!("6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH");
    ```
 
 1. Build the program binaries:
@@ -84,7 +88,7 @@ Web3 bindings are available in the `./js` directory.
 
 1. Score yourself some sweet SOL:
    ```shell
-   solana airdrop -k owner.json 10
+   solana airdrop -k owner.json 30
    ```
    You'll use this for transaction fees, rent for your program accounts, and initial reserve liquidity.
 
@@ -94,14 +98,16 @@ Web3 bindings are available in the `./js` directory.
      -k owner.json \
      --program-id lending.json \
      target/deploy/spl_token_lending.so
+
+   # Program Id: 6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH
    ```
    If the deployment doesn't succeed, follow [this guide](https://docs.solana.com/cli/deploy-a-program#resuming-a-failed-deploy) to resume it.
 
 1. Wrap some of your SOL as an SPL Token:
    ```shell
-   spl-token --owner owner.json wrap 2
+   spl-token wrap 10 -- owner.json
 
-   # Wrapping 2 SOL into CsbAUDhZfPpkv8jCcV9PPQqfBkUVd5kntubhBLLgMLVF
+   # Wrapping 10 SOL into AJ2sgpgj6ZeQazPPiDyTYqN9vbj58QMaZQykB9Sr6XY
    ```
    You'll use this for initial reserve liquidity. Note the SPL Token account pubkey (e.g. `CsbAUDhZfPpkv8jCcV9PPQqfBkUVd5kntubhBLLgMLVF`).
 
