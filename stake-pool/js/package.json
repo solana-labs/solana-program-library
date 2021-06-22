@@ -1,6 +1,6 @@
 {
   "name": "@solana/spl-stake-pool",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "SPL Stake Pool Program JS API",
   "scripts": {
     "lint": "npx prettier src/*.ts -w",
