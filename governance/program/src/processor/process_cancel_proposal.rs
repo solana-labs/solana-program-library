@@ -15,7 +15,7 @@ use crate::state::{
 };
 
 /// Processes CancelProposal instruction
-pub fn process_cancel_proposal(_program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+pub fn process_cancel_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
     let proposal_info = next_account_info(account_info_iter)?; // 0
@@ -25,10 +25,11 @@ pub fn process_cancel_proposal(_program_id: &Pubkey, accounts: &[AccountInfo]) -
     let clock_info = next_account_info(account_info_iter)?; // 3
     let clock = Clock::from_account_info(clock_info)?;
 
-    let mut proposal_data = get_proposal_data(proposal_info)?;
+    let mut proposal_data = get_proposal_data(program_id, proposal_info)?;
     proposal_data.assert_can_cancel()?;
 
     let token_owner_record_data = get_token_owner_record_data_for_proposal_owner(
+        program_id,
         token_owner_record_info,
         &proposal_data.token_owner_record,
     )?;

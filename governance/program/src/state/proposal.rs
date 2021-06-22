@@ -6,7 +6,7 @@ use solana_program::{
 };
 
 use crate::tools::account::get_account_data;
-use crate::{error::GovernanceError, id, tools::account::AccountMaxSize, PROGRAM_AUTHORITY_SEED};
+use crate::{error::GovernanceError, tools::account::AccountMaxSize, PROGRAM_AUTHORITY_SEED};
 
 use crate::state::enums::{GovernanceAccountType, ProposalState};
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
@@ -330,17 +330,21 @@ fn get_vote_threshold_count(threshold_percentage: u8, total_supply: u64) -> u64 
 }
 
 /// Deserializes Proposal account and checks owner program
-pub fn get_proposal_data(proposal_info: &AccountInfo) -> Result<Proposal, ProgramError> {
-    get_account_data::<Proposal>(proposal_info, &id())
+pub fn get_proposal_data(
+    program_id: &Pubkey,
+    proposal_info: &AccountInfo,
+) -> Result<Proposal, ProgramError> {
+    get_account_data::<Proposal>(proposal_info, program_id)
 }
 
 /// Deserializes Proposal and validates it belongs to the given Governance and Governing Mint
 pub fn get_proposal_data_for_governance_and_governing_mint(
+    program_id: &Pubkey,
     proposal_info: &AccountInfo,
     governance: &Pubkey,
     governing_token_mint: &Pubkey,
 ) -> Result<Proposal, ProgramError> {
-    let proposal_data = get_proposal_data_for_governance(proposal_info, governance)?;
+    let proposal_data = get_proposal_data_for_governance(program_id, proposal_info, governance)?;
 
     if proposal_data.governing_token_mint != *governing_token_mint {
         return Err(GovernanceError::InvalidGoverningMintForProposal.into());
@@ -351,10 +355,11 @@ pub fn get_proposal_data_for_governance_and_governing_mint(
 
 /// Deserializes Proposal and validates it belongs to the given Governance
 pub fn get_proposal_data_for_governance(
+    program_id: &Pubkey,
     proposal_info: &AccountInfo,
     governance: &Pubkey,
 ) -> Result<Proposal, ProgramError> {
-    let proposal_data = get_proposal_data(proposal_info)?;
+    let proposal_data = get_proposal_data(program_id, proposal_info)?;
 
     if proposal_data.governance != *governance {
         return Err(GovernanceError::InvalidGovernanceForProposal.into());
@@ -379,13 +384,14 @@ pub fn get_proposal_address_seeds<'a>(
 
 /// Returns Proposal PDA address
 pub fn get_proposal_address<'a>(
+    program_id: &Pubkey,
     governance: &'a Pubkey,
     governing_token_mint: &'a Pubkey,
     proposal_index_le_bytes: &'a [u8],
 ) -> Pubkey {
     Pubkey::find_program_address(
         &get_proposal_address_seeds(governance, governing_token_mint, &proposal_index_le_bytes),
-        &id(),
+        program_id,
     )
     .0
 }

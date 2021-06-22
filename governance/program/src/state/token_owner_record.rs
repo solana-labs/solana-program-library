@@ -2,7 +2,6 @@
 
 use crate::{
     error::GovernanceError,
-    id,
     tools::account::{get_account_data, AccountMaxSize},
     PROGRAM_AUTHORITY_SEED,
 };
@@ -86,13 +85,14 @@ impl TokenOwnerRecord {
 
 /// Returns TokenOwnerRecord PDA address
 pub fn get_token_owner_record_address(
+    program_id: &Pubkey,
     realm: &Pubkey,
     governing_token_mint: &Pubkey,
     governing_token_owner: &Pubkey,
 ) -> Pubkey {
     Pubkey::find_program_address(
         &get_token_owner_record_address_seeds(realm, governing_token_mint, governing_token_owner),
-        &id(),
+        program_id,
     )
     .0
 }
@@ -113,33 +113,36 @@ pub fn get_token_owner_record_address_seeds<'a>(
 
 /// Deserializes TokenOwnerRecord account and checks owner program
 pub fn get_token_owner_record_data(
+    program_id: &Pubkey,
     token_owner_record_info: &AccountInfo,
 ) -> Result<TokenOwnerRecord, ProgramError> {
-    get_account_data::<TokenOwnerRecord>(token_owner_record_info, &id())
+    get_account_data::<TokenOwnerRecord>(token_owner_record_info, program_id)
 }
 
 /// Deserializes TokenOwnerRecord account and checks its PDA against the provided seeds
 pub fn get_token_owner_record_data_for_seeds(
+    program_id: &Pubkey,
     token_owner_record_info: &AccountInfo,
     token_owner_record_seeds: &[&[u8]],
 ) -> Result<TokenOwnerRecord, ProgramError> {
     let (token_owner_record_address, _) =
-        Pubkey::find_program_address(token_owner_record_seeds, &id());
+        Pubkey::find_program_address(token_owner_record_seeds, program_id);
 
     if token_owner_record_address != *token_owner_record_info.key {
         return Err(GovernanceError::InvalidTokenOwnerRecordAccountAddress.into());
     }
 
-    get_token_owner_record_data(token_owner_record_info)
+    get_token_owner_record_data(program_id, token_owner_record_info)
 }
 
 /// Deserializes TokenOwnerRecord account and checks that its PDA matches the given realm and governing mint
 pub fn get_token_owner_record_data_for_realm_and_governing_mint(
+    program_id: &Pubkey,
     token_owner_record_info: &AccountInfo,
     realm: &Pubkey,
     governing_token_mint: &Pubkey,
 ) -> Result<TokenOwnerRecord, ProgramError> {
-    let token_owner_record_data = get_token_owner_record_data(token_owner_record_info)?;
+    let token_owner_record_data = get_token_owner_record_data(program_id, token_owner_record_info)?;
 
     if token_owner_record_data.governing_token_mint != *governing_token_mint {
         return Err(GovernanceError::InvalidGoverningMintForTokenOwnerRecord.into());
@@ -154,6 +157,7 @@ pub fn get_token_owner_record_data_for_realm_and_governing_mint(
 
 ///  Deserializes TokenOwnerRecord account and checks its address is the give proposal_owner
 pub fn get_token_owner_record_data_for_proposal_owner(
+    program_id: &Pubkey,
     token_owner_record_info: &AccountInfo,
     proposal_owner: &Pubkey,
 ) -> Result<TokenOwnerRecord, ProgramError> {
@@ -161,7 +165,7 @@ pub fn get_token_owner_record_data_for_proposal_owner(
         return Err(GovernanceError::InvalidProposalOwnerAccount.into());
     }
 
-    get_token_owner_record_data(token_owner_record_info)
+    get_token_owner_record_data(program_id, token_owner_record_info)
 }
 
 #[cfg(test)]

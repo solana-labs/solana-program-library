@@ -36,7 +36,7 @@ pub fn process_withdraw_governing_tokens(
         return Err(GovernanceError::GoverningTokenOwnerMustSign.into());
     }
 
-    let realm_data = get_realm_data(realm_info)?;
+    let realm_data = get_realm_data(program_id, realm_info)?;
     let governing_token_mint = get_spl_token_mint(governing_token_holding_info)?;
 
     let token_owner_record_address_seeds = get_token_owner_record_address_seeds(
@@ -46,6 +46,7 @@ pub fn process_withdraw_governing_tokens(
     );
 
     let mut token_owner_record_data = get_token_owner_record_data_for_seeds(
+        program_id,
         token_owner_record_info,
         &token_owner_record_address_seeds,
     )?;

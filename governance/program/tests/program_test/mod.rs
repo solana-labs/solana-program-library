@@ -1,4 +1,4 @@
-use std::borrow::Borrow;
+use std::{borrow::Borrow, str::FromStr};
 
 use borsh::BorshDeserialize;
 use solana_program::{
@@ -67,13 +67,16 @@ pub struct GovernanceProgramTest {
     pub context: ProgramTestContext,
     pub rent: Rent,
     pub next_realm_id: u8,
+    pub program_id: Pubkey,
 }
 
 impl GovernanceProgramTest {
     pub async fn start_new() -> Self {
+        let program_id = Pubkey::from_str("Governance111111111111111111111111111111111").unwrap();
+
         let program_test = ProgramTest::new(
             "spl_governance",
-            spl_governance::id(),
+            program_id.clone(),
             processor!(process_instruction),
         );
 
@@ -84,6 +87,7 @@ impl GovernanceProgramTest {
             context,
             rent,
             next_realm_id: 0,
+            program_id,
         }
     }
 
@@ -124,12 +128,13 @@ impl GovernanceProgramTest {
         let name = format!("Realm #{}", self.next_realm_id).to_string();
         self.next_realm_id = self.next_realm_id + 1;
 
-        let realm_address = get_realm_address(&name);
+        let realm_address = get_realm_address(&self.program_id, &name);
 
         let community_token_mint_keypair = Keypair::new();
         let community_token_mint_authority = Keypair::new();
 
         let community_token_holding_address = get_governing_token_holding_address(
+            &self.program_id,
             &realm_address,
             &community_token_mint_keypair.pubkey(),
         );
@@ -144,6 +149,7 @@ impl GovernanceProgramTest {
         let council_token_mint_authority = Keypair::new();
 
         let council_token_holding_address = get_governing_token_holding_address(
+            &self.program_id,
             &realm_address,
             &council_token_mint_keypair.pubkey(),
         );
@@ -155,6 +161,7 @@ impl GovernanceProgramTest {
         .await;
 
         let create_realm_instruction = create_realm(
+            &self.program_id,
             &community_token_mint_keypair.pubkey(),
             &self.context.payer.pubkey(),
             Some(council_token_mint_keypair.pubkey()),
@@ -189,10 +196,11 @@ impl GovernanceProgramTest {
         let name = format!("Realm #{}", self.next_realm_id).to_string();
         self.next_realm_id = self.next_realm_id + 1;
 
-        let realm_address = get_realm_address(&name);
+        let realm_address = get_realm_address(&self.program_id, &name);
         let council_mint = realm_cookie.account.council_mint.unwrap();
 
         let create_realm_instruction = create_realm(
+            &self.program_id,
             &realm_cookie.account.community_mint,
             &self.context.payer.pubkey(),
             Some(council_mint),
@@ -211,12 +219,13 @@ impl GovernanceProgramTest {
         };
 
         let community_token_holding_address = get_governing_token_holding_address(
+            &self.program_id,
             &realm_address,
             &realm_cookie.account.community_mint,
         );
 
         let council_token_holding_address =
-            get_governing_token_holding_address(&realm_address, &council_mint);
+            get_governing_token_holding_address(&self.program_id, &realm_address, &council_mint);
 
         RealmCookie {
             address: realm_address,
@@ -333,6 +342,7 @@ impl GovernanceProgramTest {
         .await;
 
         let deposit_governing_tokens_instruction = deposit_governing_tokens(
+            &self.program_id,
             realm_address,
             &token_source.pubkey(),
             &token_owner.pubkey(),
@@ -348,8 +358,12 @@ impl GovernanceProgramTest {
         .await
         .unwrap();
 
-        let token_owner_record_address =
-            get_token_owner_record_address(realm_address, &governing_mint, &token_owner.pubkey());
+        let token_owner_record_address = get_token_owner_record_address(
+            &self.program_id,
+            realm_address,
+            &governing_mint,
+            &token_owner.pubkey(),
+        );
 
         let account = TokenOwnerRecord {
             account_type: GovernanceAccountType::TokenOwnerRecord,
@@ -414,6 +428,7 @@ impl GovernanceProgramTest {
         .await;
 
         let deposit_governing_tokens_instruction = deposit_governing_tokens(
+            &self.program_id,
             realm,
             &token_owner_record_cookie.token_source,
             &token_owner_record_cookie.token_owner.pubkey(),
@@ -489,6 +504,7 @@ impl GovernanceProgramTest {
         new_governance_delegate: &Option<Pubkey>,
     ) {
         let set_governance_delegate_instruction = set_governance_delegate(
+            &self.program_id,
             &signing_governance_authority.pubkey(),
             &realm_cookie.address,
             governing_token_mint,
@@ -544,6 +560,7 @@ impl GovernanceProgramTest {
         governing_token_owner: &Keypair,
     ) -> Result<(), ProgramError> {
         let deposit_governing_tokens_instruction = withdraw_governing_tokens(
+            &self.program_id,
             &realm_cookie.address,
             &token_owner_record_cookie.token_source,
             &governing_token_owner.pubkey(),
@@ -597,8 +614,11 @@ impl GovernanceProgramTest {
         governed_account_cookie: &GovernedAccountCookie,
         governance_config: &GovernanceConfig,
     ) -> Result<GovernanceCookie, ProgramError> {
-        let create_account_governance_instruction =
-            create_account_governance(&self.context.payer.pubkey(), governance_config.clone());
+        let create_account_governance_instruction = create_account_governance(
+            &self.program_id,
+            &self.context.payer.pubkey(),
+            governance_config.clone(),
+        );
 
         let account = Governance {
             account_type: GovernanceAccountType::AccountGovernance,
@@ -609,8 +629,11 @@ impl GovernanceProgramTest {
         self.process_transaction(&[create_account_governance_instruction], None)
             .await?;
 
-        let account_governance_address =
-            get_account_governance_address(&realm_cookie.address, &governed_account_cookie.address);
+        let account_governance_address = get_account_governance_address(
+            &self.program_id,
+            &realm_cookie.address,
+            &governed_account_cookie.address,
+        );
 
         Ok(GovernanceCookie {
             address: account_governance_address,
@@ -723,6 +746,7 @@ impl GovernanceProgramTest {
         };
 
         let mut create_program_governance_instruction = create_program_governance(
+            &self.program_id,
             &governed_program_cookie.upgrade_authority.pubkey(),
             &self.context.payer.pubkey(),
             config.clone(),
@@ -743,8 +767,11 @@ impl GovernanceProgramTest {
             proposals_count: 0,
         };
 
-        let program_governance_address =
-            get_program_governance_address(&realm_cookie.address, &governed_program_cookie.address);
+        let program_governance_address = get_program_governance_address(
+            &self.program_id,
+            &realm_cookie.address,
+            &governed_program_cookie.address,
+        );
 
         Ok(GovernanceCookie {
             address: program_governance_address,
@@ -804,6 +831,7 @@ impl GovernanceProgramTest {
         let governance_authority = token_owner_record_cookie.get_governance_authority();
 
         let mut create_proposal_instruction = create_proposal(
+            &self.program_id,
             &governance_cookie.address,
             &token_owner_record_cookie.token_owner.pubkey(),
             &governance_authority.pubkey(),
@@ -848,6 +876,7 @@ impl GovernanceProgramTest {
         };
 
         let proposal_address = get_proposal_address(
+            &self.program_id,
             &governance_cookie.address,
             &token_owner_record_cookie.account.governing_token_mint,
             &proposal_index.to_le_bytes(),
@@ -869,6 +898,7 @@ impl GovernanceProgramTest {
         let signatory = Keypair::new();
 
         let add_signatory_instruction = add_signatory(
+            &self.program_id,
             &proposal_cookie.address,
             &token_owner_record_cookie.address,
             &token_owner_record_cookie.token_owner.pubkey(),
@@ -882,8 +912,11 @@ impl GovernanceProgramTest {
         )
         .await?;
 
-        let signatory_record_address =
-            get_signatory_record_address(&proposal_cookie.address, &signatory.pubkey());
+        let signatory_record_address = get_signatory_record_address(
+            &self.program_id,
+            &proposal_cookie.address,
+            &signatory.pubkey(),
+        );
 
         let signatory_record_data = SignatoryRecord {
             account_type: GovernanceAccountType::SignatoryRecord,
@@ -909,6 +942,7 @@ impl GovernanceProgramTest {
         signatory_record_cookie: &SignatoryRecordCookie,
     ) -> Result<(), ProgramError> {
         let remove_signatory_instruction = remove_signatory(
+            &self.program_id,
             &proposal_cookie.address,
             &token_owner_record_cookie.address,
             &token_owner_record_cookie.token_owner.pubkey(),
@@ -932,6 +966,7 @@ impl GovernanceProgramTest {
         signatory_record_cookie: &SignatoryRecordCookie,
     ) -> Result<(), ProgramError> {
         let sign_off_proposal_instruction = sign_off_proposal(
+            &self.program_id,
             &proposal_cookie.address,
             &signatory_record_cookie.signatory.pubkey(),
         );
@@ -951,6 +986,7 @@ impl GovernanceProgramTest {
         proposal_cookie: &ProposalCookie,
     ) -> Result<(), ProgramError> {
         let finalize_vote_instruction = finalize_vote(
+            &self.program_id,
             &proposal_cookie.account.governance,
             &proposal_cookie.address,
             &proposal_cookie.account.governing_token_mint,
@@ -984,6 +1020,7 @@ impl GovernanceProgramTest {
         instruction_override: F,
     ) -> Result<(), ProgramError> {
         let mut relinquish_vote_instruction = relinquish_vote(
+            &self.program_id,
             &proposal_cookie.account.governance,
             &proposal_cookie.address,
             &token_owner_record_cookie.address,
@@ -1010,6 +1047,7 @@ impl GovernanceProgramTest {
         token_owner_record_cookie: &TokeOwnerRecordCookie,
     ) -> Result<(), ProgramError> {
         let cancel_proposal_instruction = cancel_proposal(
+            &self.program_id,
             &proposal_cookie.address,
             &token_owner_record_cookie.address,
             &token_owner_record_cookie.token_owner.pubkey(),
@@ -1032,6 +1070,7 @@ impl GovernanceProgramTest {
         vote: Vote,
     ) -> Result<VoteRecordCookie, ProgramError> {
         let vote_instruction = cast_vote(
+            &self.program_id,
             &proposal_cookie.account.governance,
             &proposal_cookie.address,
             &token_owner_record_cookie.address,
@@ -1066,6 +1105,7 @@ impl GovernanceProgramTest {
 
         let vote_record_cookie = VoteRecordCookie {
             address: get_vote_record_address(
+                &self.program_id,
                 &proposal_cookie.address,
                 &token_owner_record_cookie.address,
             ),
@@ -1225,6 +1265,7 @@ impl GovernanceProgramTest {
             proposal_cookie.account.instructions_next_index + 1;
 
         let insert_instruction_instruction = insert_instruction(
+            &self.program_id,
             &proposal_cookie.account.governance,
             &proposal_cookie.address,
             &token_owner_record_cookie.address,
@@ -1241,8 +1282,11 @@ impl GovernanceProgramTest {
         )
         .await?;
 
-        let proposal_instruction_address =
-            get_proposal_instruction_address(&proposal_cookie.address, &index.to_le_bytes());
+        let proposal_instruction_address = get_proposal_instruction_address(
+            &self.program_id,
+            &proposal_cookie.address,
+            &index.to_le_bytes(),
+        );
 
         let proposal_instruction_data = ProposalInstruction {
             account_type: GovernanceAccountType::ProposalInstruction,
@@ -1279,6 +1323,7 @@ impl GovernanceProgramTest {
         proposal_instruction_cookie: &ProposalInstructionCookie,
     ) -> Result<(), ProgramError> {
         let remove_instruction_instruction = remove_instruction(
+            &self.program_id,
             &proposal_cookie.address,
             &token_owner_record_cookie.address,
             &token_owner_record_cookie.token_owner.pubkey(),
@@ -1302,6 +1347,7 @@ impl GovernanceProgramTest {
         proposal_instruction_cookie: &ProposalInstructionCookie,
     ) -> Result<(), ProgramError> {
         let execute_instruction_instruction = execute_instruction(
+            &self.program_id,
             &proposal_cookie.account.governance,
             &proposal_cookie.address,
             &proposal_instruction_cookie.address,

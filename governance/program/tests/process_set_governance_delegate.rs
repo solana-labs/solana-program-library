@@ -103,6 +103,7 @@ async fn test_set_community_governance_delegate_with_owner_must_sign_error() {
     let hacker_governance_delegate = Keypair::new();
 
     let mut instruction = set_governance_delegate(
+        &governance_test.program_id,
         &token_owner_record_cookie.token_owner.pubkey(),
         &realm_cookie.address,
         &realm_cookie.account.community_mint,

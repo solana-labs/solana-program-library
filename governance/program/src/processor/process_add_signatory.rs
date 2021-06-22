@@ -39,10 +39,11 @@ pub fn process_add_signatory(
     let rent_sysvar_info = next_account_info(account_info_iter)?; // 6
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
 
-    let mut proposal_data = get_proposal_data(proposal_info)?;
+    let mut proposal_data = get_proposal_data(program_id, proposal_info)?;
     proposal_data.assert_can_edit_signatories()?;
 
     let token_owner_record_data = get_token_owner_record_data_for_proposal_owner(
+        program_id,
         token_owner_record_info,
         &proposal_data.token_owner_record,
     )?;

@@ -52,16 +52,18 @@ pub fn process_insert_instruction(
         return Err(GovernanceError::InstructionAlreadyExists.into());
     }
 
-    let governance_data = get_governance_data(governance_info)?;
+    let governance_data = get_governance_data(program_id, governance_info)?;
 
     if hold_up_time < governance_data.config.min_instruction_hold_up_time {
         return Err(GovernanceError::InstructionHoldUpTimeBelowRequiredMin.into());
     }
 
-    let mut proposal_data = get_proposal_data_for_governance(&proposal_info, governance_info.key)?;
+    let mut proposal_data =
+        get_proposal_data_for_governance(program_id, &proposal_info, governance_info.key)?;
     proposal_data.assert_can_edit_instructions()?;
 
     let token_owner_record_data = get_token_owner_record_data_for_proposal_owner(
+        program_id,
         token_owner_record_info,
         &proposal_data.token_owner_record,
     )?;

@@ -8,7 +8,6 @@ use solana_program::{
 
 use crate::{
     error::GovernanceError,
-    id,
     tools::account::{get_account_data, AccountMaxSize},
     PROGRAM_AUTHORITY_SEED,
 };
@@ -74,35 +73,41 @@ pub fn get_signatory_record_address_seeds<'a>(
 }
 
 /// Returns SignatoryRecord PDA address
-pub fn get_signatory_record_address<'a>(proposal: &'a Pubkey, signatory: &'a Pubkey) -> Pubkey {
+pub fn get_signatory_record_address<'a>(
+    program_id: &Pubkey,
+    proposal: &'a Pubkey,
+    signatory: &'a Pubkey,
+) -> Pubkey {
     Pubkey::find_program_address(
         &get_signatory_record_address_seeds(proposal, signatory),
-        &id(),
+        program_id,
     )
     .0
 }
 
 /// Deserializes SignatoryRecord account and checks owner program
 pub fn get_signatory_record_data(
+    program_id: &Pubkey,
     signatory_record_info: &AccountInfo,
 ) -> Result<SignatoryRecord, ProgramError> {
-    get_account_data::<SignatoryRecord>(signatory_record_info, &id())
+    get_account_data::<SignatoryRecord>(signatory_record_info, program_id)
 }
 
 /// Deserializes SignatoryRecord  and validates its PDA
 pub fn get_signatory_record_data_for_seeds(
+    program_id: &Pubkey,
     signatory_record_info: &AccountInfo,
     proposal: &Pubkey,
     signatory: &Pubkey,
 ) -> Result<SignatoryRecord, ProgramError> {
     let (signatory_record_address, _) = Pubkey::find_program_address(
         &get_signatory_record_address_seeds(proposal, signatory),
-        &id(),
+        program_id,
     );
 
     if signatory_record_address != *signatory_record_info.key {
         return Err(GovernanceError::InvalidSignatoryAddress.into());
     }
 
-    get_signatory_record_data(signatory_record_info)
+    get_signatory_record_data(program_id, signatory_record_info)
 }

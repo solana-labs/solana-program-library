@@ -1,7 +1,6 @@
 //! Program instructions
 
 use crate::{
-    id,
     state::{
         governance::{
             get_account_governance_address, get_program_governance_address, GovernanceConfig,
@@ -295,6 +294,7 @@ pub enum GovernanceInstruction {
 
 /// Creates CreateRealm instruction
 pub fn create_realm(
+    program_id: &Pubkey,
     // Accounts
     community_token_mint: &Pubkey,
     payer: &Pubkey,
@@ -302,9 +302,9 @@ pub fn create_realm(
     // Args
     name: String,
 ) -> Instruction {
-    let realm_address = get_realm_address(&name);
+    let realm_address = get_realm_address(program_id, &name);
     let community_token_holding_address =
-        get_governing_token_holding_address(&realm_address, &community_token_mint);
+        get_governing_token_holding_address(program_id, &realm_address, &community_token_mint);
 
     let mut accounts = vec![
         AccountMeta::new(realm_address, false),
@@ -318,7 +318,7 @@ pub fn create_realm(
 
     if let Some(council_token_mint) = council_token_mint {
         let council_token_holding_address =
-            get_governing_token_holding_address(&realm_address, &council_token_mint);
+            get_governing_token_holding_address(program_id, &realm_address, &council_token_mint);
 
         accounts.push(AccountMeta::new_readonly(council_token_mint, false));
         accounts.push(AccountMeta::new(council_token_holding_address, false));
@@ -327,7 +327,7 @@ pub fn create_realm(
     let instruction = GovernanceInstruction::CreateRealm { name };
 
     Instruction {
-        program_id: id(),
+        program_id: *program_id,
         accounts,
         data: instruction.try_to_vec().unwrap(),
     }
@@ -335,6 +335,7 @@ pub fn create_realm(
 
 /// Creates DepositGoverningTokens instruction
 pub fn deposit_governing_tokens(
+    program_id: &Pubkey,
     // Accounts
     realm: &Pubkey,
     governing_token_source: &Pubkey,
@@ -344,11 +345,15 @@ pub fn deposit_governing_tokens(
     // Args
     governing_token_mint: &Pubkey,
 ) -> Instruction {
-    let token_owner_record_address =
-        get_token_owner_record_address(realm, governing_token_mint, governing_token_owner);
+    let token_owner_record_address = get_token_owner_record_address(
+        program_id,
+        realm,
+        governing_token_mint,
+        governing_token_owner,
+    );
 
     let governing_token_holding_address =
-        get_governing_token_holding_address(realm, governing_token_mint);
+        get_governing_token_holding_address(program_id, realm, governing_token_mint);
 
     let accounts = vec![
         AccountMeta::new_readonly(*realm, false),
@@ -366,7 +371,7 @@ pub fn deposit_governing_tokens(
     let instruction = GovernanceInstruction::DepositGoverningTokens {};
 
     Instruction {
-        program_id: id(),
+        program_id: *program_id,
         accounts,
         data: instruction.try_to_vec().unwrap(),
     }
@@ -374,6 +379,7 @@ pub fn deposit_governing_tokens(
 
 /// Creates WithdrawGoverningTokens instruction
 pub fn withdraw_governing_tokens(
+    program_id: &Pubkey,
     // Accounts
     realm: &Pubkey,
     governing_token_destination: &Pubkey,
@@ -381,11 +387,15 @@ pub fn withdraw_governing_tokens(
     // Args
     governing_token_mint: &Pubkey,
 ) -> Instruction {
-    let token_owner_record_address =
-        get_token_owner_record_address(realm, governing_token_mint, governing_token_owner);
+    let token_owner_record_address = get_token_owner_record_address(
+        program_id,
+        realm,
+        governing_token_mint,
+        governing_token_owner,
+    );
 
     let governing_token_holding_address =
-        get_governing_token_holding_address(realm, governing_token_mint);
+        get_governing_token_holding_address(program_id, realm, governing_token_mint);
 
     let accounts = vec![
         AccountMeta::new_readonly(*realm, false),
@@ -399,7 +409,7 @@ pub fn withdraw_governing_tokens(
     let instruction = GovernanceInstruction::WithdrawGoverningTokens {};
 
     Instruction {
-        program_id: id(),
+        program_id: *program_id,
         accounts,
         data: instruction.try_to_vec().unwrap(),
     }
@@ -407,6 +417,7 @@ pub fn withdraw_governing_tokens(
 
 /// Creates SetGovernanceDelegate instruction
 pub fn set_governance_delegate(
+    program_id: &Pubkey,
     // Accounts
     governance_authority: &Pubkey,
     // Args
@@ -415,8 +426,12 @@ pub fn set_governance_delegate(
     governing_token_owner: &Pubkey,
     new_governance_delegate: &Option<Pubkey>,
 ) -> Instruction {
-    let vote_record_address =
-        get_token_owner_record_address(realm, governing_token_mint, governing_token_owner);
+    let vote_record_address = get_token_owner_record_address(
+        program_id,
+        realm,
+        governing_token_mint,
+        governing_token_owner,
+    );
 
     let accounts = vec![
         AccountMeta::new_readonly(*governance_authority, true),
@@ -428,7 +443,7 @@ pub fn set_governance_delegate(
     };
 
     Instruction {
-        program_id: id(),
+        program_id: *program_id,
         accounts,
         data: instruction.try_to_vec().unwrap(),
     }
@@ -436,13 +451,14 @@ pub fn set_governance_delegate(
 
 /// Creates CreateAccountGovernance instruction
 pub fn create_account_governance(
+    program_id: &Pubkey,
     // Accounts
     payer: &Pubkey,
     // Args
     config: GovernanceConfig,
 ) -> Instruction {
     let account_governance_address =
-        get_account_governance_address(&config.realm, &config.governed_account);
+        get_account_governance_address(program_id, &config.realm, &config.governed_account);
 
     let accounts = vec![
         AccountMeta::new_readonly(config.realm, false),
@@ -455,7 +471,7 @@ pub fn create_account_governance(
     let instruction = GovernanceInstruction::CreateAccountGovernance { config };
 
     Instruction {
-        program_id: id(),
+        program_id: *program_id,
         accounts,
         data: instruction.try_to_vec().unwrap(),
     }
@@ -463,6 +479,7 @@ pub fn create_account_governance(
 
 /// Creates CreateProgramGovernance instruction
 pub fn create_program_governance(
+    program_id: &Pubkey,
     // Accounts
     governed_program_upgrade_authority: &Pubkey,
     payer: &Pubkey,
@@ -471,7 +488,7 @@ pub fn create_program_governance(
     transfer_upgrade_authority: bool,
 ) -> Instruction {
     let program_governance_address =
-        get_program_governance_address(&config.realm, &config.governed_account);
+        get_program_governance_address(program_id, &config.realm, &config.governed_account);
     let governed_program_data_address = get_program_data_address(&config.governed_account);
 
     let accounts = vec![
@@ -491,7 +508,7 @@ pub fn create_program_governance(
     };
 
     Instruction {
-        program_id: id(),
+        program_id: *program_id,
         accounts,
         data: instruction.try_to_vec().unwrap(),
     }
@@ -500,6 +517,7 @@ pub fn create_program_governance(
 /// Creates CreateProposal instruction
 #[allow(clippy::too_many_arguments)]
 pub fn create_proposal(
+    program_id: &Pubkey,
     // Accounts
     governance: &Pubkey,
     governing_token_owner: &Pubkey,
@@ -513,12 +531,17 @@ pub fn create_proposal(
     proposal_index: u32,
 ) -> Instruction {
     let proposal_address = get_proposal_address(
+        program_id,
         governance,
         governing_token_mint,
         &proposal_index.to_le_bytes(),
     );
-    let token_owner_record_address =
-        get_token_owner_record_address(realm, governing_token_mint, governing_token_owner);
+    let token_owner_record_address = get_token_owner_record_address(
+        program_id,
+        realm,
+        governing_token_mint,
+        governing_token_owner,
+    );
 
     let accounts = vec![
         AccountMeta::new(proposal_address, false),
@@ -538,7 +561,7 @@ pub fn create_proposal(
     };
 
     Instruction {
-        program_id: id(),
+        program_id: *program_id,
         accounts,
         data: instruction.try_to_vec().unwrap(),
     }
@@ -546,6 +569,7 @@ pub fn create_proposal(
 
 /// Creates AddSignatory instruction
 pub fn add_signatory(
+    program_id: &Pubkey,
     // Accounts
     proposal: &Pubkey,
     token_owner_record: &Pubkey,
@@ -554,7 +578,7 @@ pub fn add_signatory(
     // Args
     signatory: &Pubkey,
 ) -> Instruction {
-    let signatory_record_address = get_signatory_record_address(proposal, signatory);
+    let signatory_record_address = get_signatory_record_address(program_id, proposal, signatory);
 
     let accounts = vec![
         AccountMeta::new(*proposal, false),
@@ -571,7 +595,7 @@ pub fn add_signatory(
     };
 
     Instruction {
-        program_id: id(),
+        program_id: *program_id,
         accounts,
         data: instruction.try_to_vec().unwrap(),
     }
@@ -579,6 +603,7 @@ pub fn add_signatory(
 
 /// Creates RemoveSignatory instruction
 pub fn remove_signatory(
+    program_id: &Pubkey,
     // Accounts
     proposal: &Pubkey,
     token_owner_record: &Pubkey,
@@ -586,7 +611,7 @@ pub fn remove_signatory(
     signatory: &Pubkey,
     beneficiary: &Pubkey,
 ) -> Instruction {
-    let signatory_record_address = get_signatory_record_address(proposal, signatory);
+    let signatory_record_address = get_signatory_record_address(program_id, proposal, signatory);
 
     let accounts = vec![
         AccountMeta::new(*proposal, false),
@@ -601,7 +626,7 @@ pub fn remove_signatory(
     };
 
     Instruction {
-        program_id: id(),
+        program_id: *program_id,
         accounts,
         data: instruction.try_to_vec().unwrap(),
     }
@@ -609,11 +634,12 @@ pub fn remove_signatory(
 
 /// Creates SignOffProposal instruction
 pub fn sign_off_proposal(
+    program_id: &Pubkey,
     // Accounts
     proposal: &Pubkey,
     signatory: &Pubkey,
 ) -> Instruction {
-    let signatory_record_address = get_signatory_record_address(proposal, signatory);
+    let signatory_record_address = get_signatory_record_address(program_id, proposal, signatory);
 
     let accounts = vec![
         AccountMeta::new(*proposal, false),
@@ -625,14 +651,16 @@ pub fn sign_off_proposal(
     let instruction = GovernanceInstruction::SignOffProposal;
 
     Instruction {
-        program_id: id(),
+        program_id: *program_id,
         accounts,
         data: instruction.try_to_vec().unwrap(),
     }
 }
 
 /// Creates CastVote instruction
+#[allow(clippy::too_many_arguments)]
 pub fn cast_vote(
+    program_id: &Pubkey,
     // Accounts
     governance: &Pubkey,
     proposal: &Pubkey,
@@ -643,7 +671,7 @@ pub fn cast_vote(
     // Args
     vote: Vote,
 ) -> Instruction {
-    let vote_record_address = get_vote_record_address(&proposal, &token_owner_record);
+    let vote_record_address = get_vote_record_address(program_id, &proposal, &token_owner_record);
 
     let accounts = vec![
         AccountMeta::new_readonly(*governance, false),
@@ -661,7 +689,7 @@ pub fn cast_vote(
     let instruction = GovernanceInstruction::CastVote { vote };
 
     Instruction {
-        program_id: id(),
+        program_id: *program_id,
         accounts,
         data: instruction.try_to_vec().unwrap(),
     }
@@ -669,6 +697,7 @@ pub fn cast_vote(
 
 /// Creates FinalizeVote instruction
 pub fn finalize_vote(
+    program_id: &Pubkey,
     // Accounts
     governance: &Pubkey,
     proposal: &Pubkey,
@@ -684,7 +713,7 @@ pub fn finalize_vote(
     let instruction = GovernanceInstruction::FinalizeVote {};
 
     Instruction {
-        program_id: id(),
+        program_id: *program_id,
         accounts,
         data: instruction.try_to_vec().unwrap(),
     }
@@ -692,6 +721,7 @@ pub fn finalize_vote(
 
 /// Creates RelinquishVote instruction
 pub fn relinquish_vote(
+    program_id: &Pubkey,
     // Accounts
     governance: &Pubkey,
     proposal: &Pubkey,
@@ -700,7 +730,7 @@ pub fn relinquish_vote(
     governance_authority: Option<Pubkey>,
     beneficiary: Option<Pubkey>,
 ) -> Instruction {
-    let vote_record_address = get_vote_record_address(&proposal, &token_owner_record);
+    let vote_record_address = get_vote_record_address(program_id, &proposal, &token_owner_record);
 
     let mut accounts = vec![
         AccountMeta::new_readonly(*governance, false),
@@ -718,7 +748,7 @@ pub fn relinquish_vote(
     let instruction = GovernanceInstruction::RelinquishVote {};
 
     Instruction {
-        program_id: id(),
+        program_id: *program_id,
         accounts,
         data: instruction.try_to_vec().unwrap(),
     }
@@ -726,6 +756,7 @@ pub fn relinquish_vote(
 
 /// Creates CancelProposal instruction
 pub fn cancel_proposal(
+    program_id: &Pubkey,
     // Accounts
     proposal: &Pubkey,
     token_owner_record: &Pubkey,
@@ -741,7 +772,7 @@ pub fn cancel_proposal(
     let instruction = GovernanceInstruction::CancelProposal {};
 
     Instruction {
-        program_id: id(),
+        program_id: *program_id,
         accounts,
         data: instruction.try_to_vec().unwrap(),
     }
@@ -750,6 +781,7 @@ pub fn cancel_proposal(
 /// Creates InsertInstruction instruction
 #[allow(clippy::too_many_arguments)]
 pub fn insert_instruction(
+    program_id: &Pubkey,
     // Accounts
     governance: &Pubkey,
     proposal: &Pubkey,
@@ -762,7 +794,7 @@ pub fn insert_instruction(
     instruction: InstructionData,
 ) -> Instruction {
     let proposal_instruction_address =
-        get_proposal_instruction_address(&proposal, &index.to_le_bytes());
+        get_proposal_instruction_address(program_id, &proposal, &index.to_le_bytes());
 
     let accounts = vec![
         AccountMeta::new_readonly(*governance, false),
@@ -782,7 +814,7 @@ pub fn insert_instruction(
     };
 
     Instruction {
-        program_id: id(),
+        program_id: *program_id,
         accounts,
         data: instruction.try_to_vec().unwrap(),
     }
@@ -790,6 +822,7 @@ pub fn insert_instruction(
 
 /// Creates RemoveInstruction instruction
 pub fn remove_instruction(
+    program_id: &Pubkey,
     // Accounts
     proposal: &Pubkey,
     token_owner_record: &Pubkey,
@@ -808,7 +841,7 @@ pub fn remove_instruction(
     let instruction = GovernanceInstruction::RemoveInstruction {};
 
     Instruction {
-        program_id: id(),
+        program_id: *program_id,
         accounts,
         data: instruction.try_to_vec().unwrap(),
     }
@@ -816,6 +849,7 @@ pub fn remove_instruction(
 
 /// Creates ExecuteInstruction instruction
 pub fn execute_instruction(
+    program_id: &Pubkey,
     // Accounts
     governance: &Pubkey,
     proposal: &Pubkey,
@@ -836,7 +870,7 @@ pub fn execute_instruction(
     let instruction = GovernanceInstruction::ExecuteInstruction {};
 
     Instruction {
-        program_id: id(),
+        program_id: *program_id,
         accounts,
         data: instruction.try_to_vec().unwrap(),
     }
