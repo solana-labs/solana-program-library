@@ -374,13 +374,14 @@ impl Processor {
         let me_bytes = stake_pool.to_bytes();
         let authority_signature_seeds = [&me_bytes[..32], authority_type, &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
+        let custodian_pubkey = None;
 
         let withdraw_instruction = stake_program::withdraw(
             source_account.key,
             authority.key,
             destination_account.key,
             lamports,
-            None,
+            custodian_pubkey,
         );
 
         invoke_signed(
@@ -1659,7 +1660,7 @@ impl Processor {
         }
 
         let (_, validator_stake) = get_stake_state(validator_stake_account_info)?;
-        let validator_stake_lamports = validator_stake_account_info.lamports();
+        let pre_all_validator_lamports = validator_stake_account_info.lamports();
         let vote_account_address = validator_stake.delegation.voter_pubkey;
         check_validator_stake_address(
             program_id,
@@ -1720,12 +1721,12 @@ impl Processor {
         )?;
 
         let (_, post_validator_stake) = get_stake_state(validator_stake_account_info)?;
-        let post_validator_stake_lamports = validator_stake_account_info.lamports();
+        let post_all_validator_lamports = validator_stake_account_info.lamports();
         msg!("Stake post merge {}", post_validator_stake.delegation.stake);
-        let all_deposit_lamports = post_validator_stake_lamports
-            .checked_sub(validator_stake_lamports)
+        let all_deposit_lamports = post_all_validator_lamports
+            .checked_sub(pre_all_validator_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
-        let deposit_stake_lamports = post_validator_stake
+        let stake_deposit_lamports = post_validator_stake
             .delegation
             .stake
             .checked_sub(validator_stake.delegation.stake)
@@ -1747,7 +1748,7 @@ impl Processor {
 
         // withdraw additional lamports to the reserve
         let additional_lamports = all_deposit_lamports
-            .checked_sub(deposit_stake_lamports)
+            .checked_sub(stake_deposit_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
         if additional_lamports > 0 {
             Self::stake_withdraw(
@@ -1770,7 +1771,7 @@ impl Processor {
             .ok_or(StakePoolError::CalculationFailure)?;
         stake_pool.total_stake_lamports = stake_pool
             .total_stake_lamports
-            .checked_add(deposit_stake_lamports)
+            .checked_add(stake_deposit_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
 
