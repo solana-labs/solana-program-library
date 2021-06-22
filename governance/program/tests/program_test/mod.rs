@@ -72,7 +72,7 @@ pub struct GovernanceProgramTest {
 
 impl GovernanceProgramTest {
     pub async fn start_new() -> Self {
-        let program_id =  Pubkey::from_str("Governance111111111111111111111111111111111").unwrap();
+        let program_id = Pubkey::from_str("Governance111111111111111111111111111111111").unwrap();
 
         let program_test = ProgramTest::new(
             "spl_governance",

@@ -658,6 +658,7 @@ pub fn sign_off_proposal(
 }
 
 /// Creates CastVote instruction
+#[allow(clippy::too_many_arguments)]
 pub fn cast_vote(
     program_id: &Pubkey,
     // Accounts
