@@ -8,11 +8,13 @@ Web3 bindings are available in the `./js` directory.
 
 ### On-chain programs
 
+Please note that only the lending program deployed to devnet is currently operational.
+
 | Cluster | Program Address |
 | --- | --- |
 | Mainnet Beta | [`LendZqTs8gn5CTSJU1jWKhKuVpjJGom45nnwPb2AMTi`](https://explorer.solana.com/address/LendZqTs7gn5CTSJU1jWKhKuVpjJGom45nnwPb2AMTi) |
-| Testnet | [`6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH`](https://explorer.solana.com/address/LendZqTs8gn5CTSJU1jWKhKuVpjJGom45nnwPb2AMTi?cluster=testnet) |
-| Devnet | [`6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH`](https://explorer.solana.com/address/LendZqTs8gn5CTSJU1jWKhKuVpjJGom45nnwPb2AMTi?cluster=devnet) |
+| Testnet | [`6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH`](https://explorer.solana.com/address/6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH?cluster=testnet) |
+| Devnet | [`6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH`](https://explorer.solana.com/address/6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH?cluster=devnet) |
 
 ### Deploy a lending program (optional)
 
@@ -68,12 +70,9 @@ You can skip these steps and use the [Token Lending CLI](./cli/README.md) to cre
 
 1. Open `./token-lending/program/src/lib.rs` in your editor. In the line
    ```rust
-   solana_program::declare_id!("LendZqTs8gn5CTSJU1jWKhKuVpjJGom45nnwPb2AMTi");
-   ```
-   replace the Program ID with yours, e.g.:
-   ```rust
    solana_program::declare_id!("6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH");
    ```
+   replace the Program ID with yours.
 
 1. Build the program binaries:
    ```shell
@@ -88,7 +87,9 @@ You can skip these steps and use the [Token Lending CLI](./cli/README.md) to cre
 
 1. Score yourself some sweet SOL:
    ```shell
-   solana airdrop -k owner.json 30
+   solana airdrop -k owner.json 10
+   solana airdrop -k owner.json 10
+   solana airdrop -k owner.json 10
    ```
    You'll use this for transaction fees, rent for your program accounts, and initial reserve liquidity.
 
@@ -105,10 +106,13 @@ You can skip these steps and use the [Token Lending CLI](./cli/README.md) to cre
 
 1. Wrap some of your SOL as an SPL Token:
    ```shell
-   spl-token wrap 10 -- owner.json
+   spl-token wrap \
+      --fee-payer owner.json \
+      10.0 \
+      -- owner.json
 
    # Wrapping 10 SOL into AJ2sgpgj6ZeQazPPiDyTYqN9vbj58QMaZQykB9Sr6XY
    ```
-   You'll use this for initial reserve liquidity. Note the SPL Token account pubkey (e.g. `CsbAUDhZfPpkv8jCcV9PPQqfBkUVd5kntubhBLLgMLVF`).
+   You'll use this for initial reserve liquidity. Note the SPL Token account pubkey (e.g. `AJ2sgpgj6ZeQazPPiDyTYqN9vbj58QMaZQykB9Sr6XY`).
 
 1. Use the [Token Lending CLI](./cli/README.md) to create a lending market and add reserves to it.

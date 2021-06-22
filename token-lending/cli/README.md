@@ -62,7 +62,7 @@ spl-token-lending \
   --source-owner SIGNER \
   --market       PUBKEY \
   --source       PUBKEY \
-  --amount       FLOAT  \
+  --amount       DECIMAL_AMOUNT \
   --pyth-product PUBKEY \
   --pyth-price   PUBKEY
 ```
@@ -98,4 +98,4 @@ spl-token-lending \
 # Signature: 3dk79hSgzFhxPrmctYnS5dxRhojfKkDwwLxEda9bTXqVELHSL4ux8au4jwvL8xuraVhaZAmugCn4TA1YCfLM4sVL
 ```
 
-Note the reserve pubkey (e.g. `BEnpQRzjn1CN9GJBXyePEga91m8FBqiHoceJ2HoKQW1t`). You'll use this to deposit liquidity, redeem collateral, borrow, repay, and liquidate.
+Note the reserve pubkey (e.g. `69BwFhpQBzZfcp9MCj9V8TLvdv9zGfQQPQbb8dUHsaEa`). You'll use this to deposit liquidity, redeem collateral, borrow, repay, and liquidate.
