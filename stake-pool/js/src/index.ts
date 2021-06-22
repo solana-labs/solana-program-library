@@ -30,21 +30,17 @@ export async function getStakePoolAccount(
   connection: solanaWeb3.Connection,
   stakePoolPubKey: solanaWeb3.PublicKey,
 ): Promise<StakePoolAccount> {
-  try {
-    const account = await connection.getAccountInfo(stakePoolPubKey);
+  const account = await connection.getAccountInfo(stakePoolPubKey);
 
-    return {
-      pubkey: stakePoolPubKey,
-      account: {
-        data: schema.StakePool.decode(account.data),
-        executable: account.executable,
-        lamports: account.lamports,
-        owner: account.owner,
-      },
-    };
-  } catch (error) {
-    console.log(error);
-  }
+  return {
+    pubkey: stakePoolPubKey,
+    account: {
+      data: schema.StakePool.decode(account.data),
+      executable: account.executable,
+      lamports: account.lamports,
+      owner: account.owner,
+    },
+  };
 }
 
 /**
