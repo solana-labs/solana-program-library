@@ -255,12 +255,14 @@ impl Processor {
         new_stake_authority: &Pubkey,
         clock: AccountInfo<'a>,
         stake_program_info: AccountInfo<'a>,
+        custodian_info: Option<AccountInfo<'a>>,
     ) -> Result<(), ProgramError> {
         let authorize_instruction = stake_program::authorize(
             stake_account.key,
             stake_authority.key,
             new_stake_authority,
             stake_program::StakeAuthorize::Staker,
+            None, // no custodian required
         );
 
         invoke(
@@ -278,12 +280,26 @@ impl Processor {
             stake_authority.key,
             new_stake_authority,
             stake_program::StakeAuthorize::Withdrawer,
+            custodian_info.as_ref().map(|i| i.key),
         );
 
-        invoke(
-            &authorize_instruction,
-            &[stake_account, clock, stake_authority, stake_program_info],
-        )
+        if let Some(custodian_info) = custodian_info {
+            invoke(
+                &authorize_instruction,
+                &[
+                    stake_account,
+                    clock,
+                    stake_authority,
+                    custodian_info,
+                    stake_program_info,
+                ],
+            )
+        } else {
+            invoke(
+                &authorize_instruction,
+                &[stake_account, clock, stake_authority, stake_program_info],
+            )
+        }
     }
 
     /// Issue stake_program::authorize instructions to update both authorities
@@ -297,6 +313,7 @@ impl Processor {
         new_stake_authority: &Pubkey,
         clock: AccountInfo<'a>,
         stake_program_info: AccountInfo<'a>,
+        custodian_info: Option<AccountInfo<'a>>,
     ) -> Result<(), ProgramError> {
         let me_bytes = stake_pool.to_bytes();
         let authority_signature_seeds = [&me_bytes[..32], authority_type, &[bump_seed]];
@@ -307,6 +324,7 @@ impl Processor {
             stake_authority.key,
             new_stake_authority,
             stake_program::StakeAuthorize::Staker,
+            None, // custodian not required
         );
 
         invoke_signed(
@@ -325,12 +343,27 @@ impl Processor {
             stake_authority.key,
             new_stake_authority,
             stake_program::StakeAuthorize::Withdrawer,
+            custodian_info.as_ref().map(|i| i.key),
         );
-        invoke_signed(
-            &authorize_instruction,
-            &[stake_account, clock, stake_authority, stake_program_info],
-            signers,
-        )
+        if let Some(custodian_info) = custodian_info {
+            invoke_signed(
+                &authorize_instruction,
+                &[
+                    stake_account,
+                    clock,
+                    stake_authority,
+                    custodian_info,
+                    stake_program_info,
+                ],
+                signers,
+            )
+        } else {
+            invoke_signed(
+                &authorize_instruction,
+                &[stake_account, clock, stake_authority, stake_program_info],
+                signers,
+            )
+        }
     }
 
     /// Issue a spl_token `Burn` instruction.
@@ -386,6 +419,7 @@ impl Processor {
     fn process_initialize(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
+        lockup: stake_program::Lockup,
         fee: Fee,
         max_validators: u32,
     ) -> ProgramResult {
@@ -497,9 +531,13 @@ impl Processor {
         )?;
         let total_stake_lamports = if let stake_program::StakeState::Initialized(meta) = stake_state
         {
-            if meta.lockup != stake_program::Lockup::default() {
-                msg!("Reserve stake account has some lockup");
-                return Err(StakePoolError::WrongStakeState.into());
+            if meta.lockup != lockup {
+                msg!(
+                    "Reserve stake account has incorrect lockup, expected {:?}, received {:?}",
+                    lockup,
+                    meta.lockup
+                );
+                return Err(StakePoolError::IncorrectLockup.into());
             }
 
             if meta.authorized.staker != withdraw_authority_key {
@@ -542,6 +580,7 @@ impl Processor {
         stake_pool.token_program_id = *token_program_info.key;
         stake_pool.last_update_epoch = clock.epoch;
         stake_pool.total_stake_lamports = total_stake_lamports;
+        stake_pool.lockup = lockup;
         stake_pool.fee = fee;
         stake_pool.next_epoch_fee = None;
 
@@ -618,7 +657,7 @@ impl Processor {
                     staker: *staker_info.key,
                     withdrawer: *staker_info.key,
                 },
-                &stake_program::Lockup::default(),
+                &stake_pool.lockup,
             ),
             &[
                 stake_account_info.clone(),
@@ -660,6 +699,7 @@ impl Processor {
         let _stake_history_info = next_account_info(account_info_iter)?;
         //let stake_history = &StakeHistory::from_account_info(stake_history_info)?;
         let stake_program_info = next_account_info(account_info_iter)?;
+        let custodian_info = next_account_info(account_info_iter).ok().cloned();
 
         check_stake_program(stake_program_info.key)?;
 
@@ -701,10 +741,7 @@ impl Processor {
             &vote_account_address,
         )?;
 
-        if meta.lockup != stake_program::Lockup::default() {
-            msg!("Validator stake account has a lockup");
-            return Err(StakePoolError::WrongStakeState.into());
-        }
+        stake_pool.check_lockup(&meta.lockup)?;
 
         if validator_list.contains(&vote_account_address) {
             return Err(StakePoolError::ValidatorAlreadyAdded.into());
@@ -732,6 +769,7 @@ impl Processor {
             withdraw_authority_info.key,
             clock_info.clone(),
             stake_program_info.clone(),
+            custodian_info,
         )?;
 
         validator_list.validators.push(ValidatorStakeInfo {
@@ -762,6 +800,7 @@ impl Processor {
         let clock_info = next_account_info(account_info_iter)?;
         let clock = &Clock::from_account_info(clock_info)?;
         let stake_program_info = next_account_info(account_info_iter)?;
+        let custodian_info = next_account_info(account_info_iter).ok().cloned();
 
         check_stake_program(stake_program_info.key)?;
         check_account_owner(stake_pool_info, program_id)?;
@@ -854,6 +893,7 @@ impl Processor {
             new_stake_authority_info.key,
             clock_info.clone(),
             stake_program_info.clone(),
+            custodian_info,
         )?;
 
         match new_status {
@@ -1560,6 +1600,8 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
         let stake_program_info = next_account_info(account_info_iter)?;
 
+        let custodian_info = next_account_info(account_info_iter).ok().cloned();
+
         if *stake_program_info.key != stake_program::id() {
             return Err(ProgramError::IncorrectProgramId);
         }
@@ -1641,6 +1683,7 @@ impl Processor {
                 withdraw_authority_info.key,
                 clock_info.clone(),
                 stake_program_info.clone(),
+                custodian_info,
             )?;
         } else {
             Self::stake_authorize(
@@ -1649,6 +1692,7 @@ impl Processor {
                 withdraw_authority_info.key,
                 clock_info.clone(),
                 stake_program_info.clone(),
+                custodian_info,
             )?;
         }
 
@@ -1718,6 +1762,7 @@ impl Processor {
         let clock = &Clock::from_account_info(clock_info)?;
         let token_program_info = next_account_info(account_info_iter)?;
         let stake_program_info = next_account_info(account_info_iter)?;
+        let custodian_info = next_account_info(account_info_iter).ok().cloned();
 
         check_stake_program(stake_program_info.key)?;
         check_account_owner(stake_pool_info, program_id)?;
@@ -1863,6 +1908,7 @@ impl Processor {
             user_stake_authority_info.key,
             clock_info.clone(),
             stake_program_info.clone(),
+            custodian_info,
         )?;
 
         stake_pool.pool_token_supply = stake_pool
@@ -1987,11 +2033,12 @@ impl Processor {
         let instruction = StakePoolInstruction::try_from_slice(input)?;
         match instruction {
             StakePoolInstruction::Initialize {
+                lockup,
                 fee,
                 max_validators,
             } => {
                 msg!("Instruction: Initialize stake pool");
-                Self::process_initialize(program_id, accounts, fee, max_validators)
+                Self::process_initialize(program_id, accounts, lockup, fee, max_validators)
             }
             StakePoolInstruction::CreateValidatorStakeAccount => {
                 msg!("Instruction: CreateValidatorStakeAccount");
@@ -2099,6 +2146,7 @@ impl PrintProgramError for StakePoolError {
             StakePoolError::StakeLamportsNotEqualToMinimum => msg!("Error: The lamports in the validator stake account is not equal to the minimum"),
             StakePoolError::IncorrectDepositVoteAddress => msg!("Error: The provided deposit stake account is not delegated to the preferred deposit vote account"),
             StakePoolError::IncorrectWithdrawVoteAddress => msg!("Error: The provided withdraw stake account is not the preferred deposit vote account"),
+            StakePoolError::IncorrectLockup => msg!("Error: The lockup on the provided stake does not match the pool lockup"),
         }
     }
 }

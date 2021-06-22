@@ -22,7 +22,7 @@ use {
 };
 
 #[tokio::test]
-async fn success_create_validator_stake_account() {
+async fn success() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
@@ -81,7 +81,7 @@ async fn success_create_validator_stake_account() {
 }
 
 #[tokio::test]
-async fn fail_create_validator_stake_account_on_non_vote_account() {
+async fn fail_on_non_vote_account() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
@@ -120,7 +120,7 @@ async fn fail_create_validator_stake_account_on_non_vote_account() {
 }
 
 #[tokio::test]
-async fn fail_create_validator_stake_account_with_wrong_system_program() {
+async fn fail_with_wrong_system_program() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
@@ -170,7 +170,7 @@ async fn fail_create_validator_stake_account_with_wrong_system_program() {
 }
 
 #[tokio::test]
-async fn fail_create_validator_stake_account_with_wrong_stake_program() {
+async fn fail_with_wrong_stake_program() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
@@ -220,7 +220,7 @@ async fn fail_create_validator_stake_account_with_wrong_stake_program() {
 }
 
 #[tokio::test]
-async fn fail_create_validator_stake_account_with_incorrect_address() {
+async fn fail_with_incorrect_address() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
@@ -261,4 +261,62 @@ async fn fail_create_validator_stake_account_with_incorrect_address() {
             "Wrong error occurs while try to create validator stake account with incorrect address"
         ),
     }
+}
+
+#[tokio::test]
+async fn success_with_lockup() {
+    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
+    let deposit_authority = Keypair::new();
+    let lockup = stake_program::Lockup {
+        custodian: deposit_authority.pubkey(),
+        epoch: 100,
+        unix_timestamp: 100_000_000,
+    };
+    let stake_pool_accounts = StakePoolAccounts::new_with_lockup(lockup, deposit_authority);
+    stake_pool_accounts
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
+        .await
+        .unwrap();
+
+    let validator = Keypair::new();
+    let vote = Keypair::new();
+    create_vote(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &validator,
+        &vote,
+    )
+    .await;
+
+    let (stake_account, _) = find_stake_program_address(
+        &id(),
+        &vote.pubkey(),
+        &stake_pool_accounts.stake_pool.pubkey(),
+    );
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction::create_validator_stake_account(
+            &id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.staker.pubkey(),
+            &payer.pubkey(),
+            &stake_account,
+            &vote.pubkey(),
+        )],
+        Some(&payer.pubkey()),
+        &[&payer, &stake_pool_accounts.staker],
+        recent_blockhash,
+    );
+
+    banks_client.process_transaction(transaction).await.unwrap();
+
+    // Check that stake account has the right lockup
+    let validator_stake_account = get_account(&mut banks_client, &stake_account).await;
+    let validator_stake =
+        deserialize::<stake_program::StakeState>(&validator_stake_account.data).unwrap();
+    assert_eq!(
+        validator_stake.meta().unwrap().lockup,
+        stake_pool_accounts.lockup
+    );
 }

@@ -96,6 +96,9 @@ pub enum StakePoolError {
     /// The provided withdraw stake account is not the preferred deposit vote account
     #[error("IncorrectWithdrawVoteAddress")]
     IncorrectWithdrawVoteAddress,
+    /// The lockup on the provided stake does not match the pool lockup
+    #[error("IncorrectLockup")]
+    IncorrectLockup,
 }
 impl From<StakePoolError> for ProgramError {
     fn from(e: StakePoolError) -> Self {

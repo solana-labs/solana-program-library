@@ -3,6 +3,7 @@
 mod helpers;
 
 use {
+    bincode::deserialize,
     borsh::BorshSerialize,
     helpers::*,
     solana_program::{
@@ -57,7 +58,7 @@ async fn create_required_accounts(
             staker: stake_pool_accounts.withdraw_authority,
             withdrawer: stake_pool_accounts.withdraw_authority,
         },
-        &stake_program::Lockup::default(),
+        &stake_pool_accounts.lockup,
         1,
     )
     .await;
@@ -85,7 +86,7 @@ async fn success() {
     .await;
     let validator_list =
         try_from_slice_unchecked::<state::ValidatorList>(validator_list.data.as_slice()).unwrap();
-    assert_eq!(validator_list.is_valid(), true);
+    assert!(validator_list.is_valid());
 }
 
 #[tokio::test]
@@ -224,6 +225,7 @@ async fn fail_with_wrong_max_validators() {
                 &stake_pool_accounts.pool_fee_account.pubkey(),
                 &spl_token::id(),
                 None,
+                stake_pool_accounts.lockup,
                 stake_pool_accounts.fee,
                 stake_pool_accounts.max_validators,
             ),
@@ -294,6 +296,7 @@ async fn fail_with_wrong_mint_authority() {
         &stake_pool_accounts.manager,
         &stake_pool_accounts.staker.pubkey(),
         &None,
+        &stake_pool_accounts.lockup,
         &stake_pool_accounts.fee,
         stake_pool_accounts.max_validators,
     )
@@ -383,6 +386,7 @@ async fn fail_with_wrong_token_program_id() {
                 &stake_pool_accounts.pool_fee_account.pubkey(),
                 &wrong_token_program.pubkey(),
                 None,
+                stake_pool_accounts.lockup,
                 stake_pool_accounts.fee,
                 stake_pool_accounts.max_validators,
             ),
@@ -459,6 +463,7 @@ async fn fail_with_wrong_fee_account() {
         &stake_pool_accounts.manager,
         &stake_pool_accounts.staker.pubkey(),
         &None,
+        &stake_pool_accounts.lockup,
         &stake_pool_accounts.fee,
         stake_pool_accounts.max_validators,
     )
@@ -547,6 +552,7 @@ async fn fail_with_not_rent_exempt_pool() {
                 &stake_pool_accounts.pool_fee_account.pubkey(),
                 &spl_token::id(),
                 None,
+                stake_pool_accounts.lockup,
                 stake_pool_accounts.fee,
                 stake_pool_accounts.max_validators,
             ),
@@ -621,6 +627,7 @@ async fn fail_with_not_rent_exempt_validator_list() {
                 &stake_pool_accounts.pool_fee_account.pubkey(),
                 &spl_token::id(),
                 None,
+                stake_pool_accounts.lockup,
                 stake_pool_accounts.fee,
                 stake_pool_accounts.max_validators,
             ),
@@ -672,6 +679,7 @@ async fn fail_without_manager_signature() {
     let rent_validator_list = rent.minimum_balance(validator_list_size);
 
     let init_data = instruction::StakePoolInstruction::Initialize {
+        lockup: stake_pool_accounts.lockup,
         fee: stake_pool_accounts.fee,
         max_validators: stake_pool_accounts.max_validators,
     };
@@ -793,6 +801,7 @@ async fn fail_with_pre_minted_pool_tokens() {
         &stake_pool_accounts.manager,
         &stake_pool_accounts.staker.pubkey(),
         &None,
+        &stake_pool_accounts.lockup,
         &stake_pool_accounts.fee,
         stake_pool_accounts.max_validators,
     )
@@ -854,6 +863,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.manager,
             &stake_pool_accounts.staker.pubkey(),
             &None,
+            &stake_pool_accounts.lockup,
             &stake_pool_accounts.fee,
             stake_pool_accounts.max_validators,
         )
@@ -899,6 +909,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.manager,
             &stake_pool_accounts.staker.pubkey(),
             &None,
+            &stake_pool_accounts.lockup,
             &stake_pool_accounts.fee,
             stake_pool_accounts.max_validators,
         )
@@ -947,6 +958,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.manager,
             &stake_pool_accounts.staker.pubkey(),
             &None,
+            &stake_pool_accounts.lockup,
             &stake_pool_accounts.fee,
             stake_pool_accounts.max_validators,
         )
@@ -959,7 +971,7 @@ async fn fail_with_bad_reserve() {
             error,
             TransactionError::InstructionError(
                 2,
-                InstructionError::Custom(error::StakePoolError::WrongStakeState as u32),
+                InstructionError::Custom(error::StakePoolError::IncorrectLockup as u32),
             )
         );
     }
@@ -995,6 +1007,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.manager,
             &stake_pool_accounts.staker.pubkey(),
             &None,
+            &stake_pool_accounts.lockup,
             &stake_pool_accounts.fee,
             stake_pool_accounts.max_validators,
         )
@@ -1031,5 +1044,104 @@ async fn success_with_required_deposit_authority() {
     assert_eq!(
         stake_pool.deposit_authority,
         stake_pool_accounts.deposit_authority
+    );
+}
+
+#[tokio::test]
+async fn success_with_lockup() {
+    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
+    let deposit_authority = Keypair::new();
+    let lockup = stake_program::Lockup {
+        custodian: deposit_authority.pubkey(),
+        epoch: 100,
+        unix_timestamp: 100_000_000,
+    };
+    let stake_pool_accounts = StakePoolAccounts::new_with_lockup(lockup, deposit_authority);
+    stake_pool_accounts
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
+        .await
+        .unwrap();
+
+    // Stake pool now exists
+    let stake_pool_account =
+        get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
+    let stake_pool =
+        try_from_slice_unchecked::<state::StakePool>(stake_pool_account.data.as_slice()).unwrap();
+    assert_eq!(stake_pool.lockup, stake_pool_accounts.lockup,);
+
+    // Check that reserve has the right lockup too
+    let reserve_stake_account = get_account(
+        &mut banks_client,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+    )
+    .await;
+    let reserve_stake =
+        deserialize::<stake_program::StakeState>(&reserve_stake_account.data).unwrap();
+    assert_eq!(
+        reserve_stake.meta().unwrap().lockup,
+        stake_pool_accounts.lockup
+    );
+}
+
+#[tokio::test]
+async fn fail_with_incorrect_lockup() {
+    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
+    let deposit_authority = Keypair::new();
+    let lockup = stake_program::Lockup {
+        custodian: deposit_authority.pubkey(),
+        epoch: 100,
+        unix_timestamp: 100_000_000,
+    };
+    let stake_pool_accounts = StakePoolAccounts::new_with_lockup(lockup, deposit_authority);
+    create_required_accounts(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts,
+    )
+    .await;
+
+    let bad_reserve_stake = Keypair::new();
+    create_independent_stake_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &bad_reserve_stake,
+        &stake_program::Authorized {
+            staker: stake_pool_accounts.withdraw_authority,
+            withdrawer: stake_pool_accounts.withdraw_authority,
+        },
+        &stake_program::Lockup::default(),
+        1,
+    )
+    .await;
+
+    let transaction_error = create_stake_pool(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts.stake_pool,
+        &stake_pool_accounts.validator_list,
+        &bad_reserve_stake.pubkey(),
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &stake_pool_accounts.pool_fee_account.pubkey(),
+        &stake_pool_accounts.manager,
+        &stake_pool_accounts.staker.pubkey(),
+        &stake_pool_accounts.deposit_authority_keypair,
+        &stake_pool_accounts.lockup,
+        &stake_pool_accounts.fee,
+        stake_pool_accounts.max_validators,
+    )
+    .await
+    .err()
+    .unwrap()
+    .unwrap();
+
+    assert_eq!(
+        transaction_error,
+        TransactionError::InstructionError(
+            2,
+            InstructionError::Custom(error::StakePoolError::IncorrectLockup as u32),
+        ),
     );
 }

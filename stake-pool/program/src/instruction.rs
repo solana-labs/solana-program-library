@@ -6,7 +6,7 @@ use {
     crate::{
         find_deposit_authority_program_address, find_stake_program_address,
         find_transient_stake_program_address, find_withdraw_authority_program_address,
-        stake_program,
+        stake_program::{self, Lockup},
         state::{Fee, StakePool, ValidatorList},
         MAX_VALIDATORS_TO_UPDATE,
     },
@@ -50,6 +50,9 @@ pub enum StakePoolInstruction {
     ///      Defaults to the program address generated using
     ///      `find_deposit_authority_program_address`, making deposits permissionless.
     Initialize {
+        /// Lockup that all stakes must have
+        #[allow(dead_code)] // but it's not
+        lockup: Lockup,
         /// Fee assessed as percentage of perceived rewards
         #[allow(dead_code)] // but it's not
         fee: Fee,
@@ -308,10 +311,12 @@ pub fn initialize(
     manager_pool_account: &Pubkey,
     token_program_id: &Pubkey,
     deposit_authority: Option<Pubkey>,
+    lockup: Lockup,
     fee: Fee,
     max_validators: u32,
 ) -> Instruction {
     let init_data = StakePoolInstruction::Initialize {
+        lockup,
         fee,
         max_validators,
     };
@@ -377,8 +382,9 @@ pub fn add_validator_to_pool(
     stake_pool_withdraw: &Pubkey,
     validator_list: &Pubkey,
     stake_account: &Pubkey,
+    lockup_custodian: Option<&Pubkey>,
 ) -> Instruction {
-    let accounts = vec![
+    let mut accounts = vec![
         AccountMeta::new(*stake_pool, false),
         AccountMeta::new_readonly(*staker, true),
         AccountMeta::new_readonly(*stake_pool_withdraw, false),
@@ -388,6 +394,9 @@ pub fn add_validator_to_pool(
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
         AccountMeta::new_readonly(stake_program::id(), false),
     ];
+    if let Some(lockup_custodian) = lockup_custodian {
+        accounts.push(AccountMeta::new_readonly(*lockup_custodian, true));
+    }
     Instruction {
         program_id: *program_id,
         accounts,
@@ -407,8 +416,9 @@ pub fn remove_validator_from_pool(
     validator_list: &Pubkey,
     stake_account: &Pubkey,
     transient_stake_account: &Pubkey,
+    lockup_custodian: Option<&Pubkey>,
 ) -> Instruction {
-    let accounts = vec![
+    let mut accounts = vec![
         AccountMeta::new(*stake_pool, false),
         AccountMeta::new_readonly(*staker, true),
         AccountMeta::new_readonly(*stake_pool_withdraw, false),
@@ -419,6 +429,9 @@ pub fn remove_validator_from_pool(
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(stake_program::id(), false),
     ];
+    if let Some(lockup_custodian) = lockup_custodian {
+        accounts.push(AccountMeta::new_readonly(*lockup_custodian, true));
+    }
     Instruction {
         program_id: *program_id,
         accounts,
@@ -550,6 +563,7 @@ pub fn add_validator_to_pool_with_vote(
     stake_pool: &StakePool,
     stake_pool_address: &Pubkey,
     vote_account_address: &Pubkey,
+    lockup_custodian: Option<&Pubkey>,
 ) -> Instruction {
     let pool_withdraw_authority =
         find_withdraw_authority_program_address(program_id, stake_pool_address).0;
@@ -562,6 +576,7 @@ pub fn add_validator_to_pool_with_vote(
         &pool_withdraw_authority,
         &stake_pool.validator_list,
         &stake_account_address,
+        lockup_custodian,
     )
 }
 
@@ -573,6 +588,7 @@ pub fn remove_validator_from_pool_with_vote(
     stake_pool_address: &Pubkey,
     vote_account_address: &Pubkey,
     new_stake_account_authority: &Pubkey,
+    lockup_custodian: Option<&Pubkey>,
 ) -> Instruction {
     let pool_withdraw_authority =
         find_withdraw_authority_program_address(program_id, stake_pool_address).0;
@@ -589,6 +605,7 @@ pub fn remove_validator_from_pool_with_vote(
         &stake_pool.validator_list,
         &stake_account_address,
         &transient_stake_account,
+        lockup_custodian,
     )
 }
 
@@ -784,10 +801,11 @@ pub fn deposit(
     pool_tokens_to: &Pubkey,
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
+    lockup_custodian: Option<&Pubkey>,
 ) -> Vec<Instruction> {
     let stake_pool_deposit_authority =
         find_deposit_authority_program_address(program_id, stake_pool).0;
-    let accounts = vec![
+    let mut accounts = vec![
         AccountMeta::new(*stake_pool, false),
         AccountMeta::new(*validator_list_storage, false),
         AccountMeta::new_readonly(stake_pool_deposit_authority, false),
@@ -801,18 +819,23 @@ pub fn deposit(
         AccountMeta::new_readonly(*token_program_id, false),
         AccountMeta::new_readonly(stake_program::id(), false),
     ];
+    if let Some(lockup_custodian) = lockup_custodian {
+        accounts.push(AccountMeta::new_readonly(*lockup_custodian, true));
+    }
     vec![
         stake_program::authorize(
             deposit_stake_address,
             deposit_stake_withdraw_authority,
             &stake_pool_deposit_authority,
             stake_program::StakeAuthorize::Staker,
+            lockup_custodian,
         ),
         stake_program::authorize(
             deposit_stake_address,
             deposit_stake_withdraw_authority,
             &stake_pool_deposit_authority,
             stake_program::StakeAuthorize::Withdrawer,
+            lockup_custodian,
         ),
         Instruction {
             program_id: *program_id,
@@ -837,8 +860,9 @@ pub fn deposit_with_authority(
     pool_tokens_to: &Pubkey,
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
+    lockup_custodian: Option<&Pubkey>,
 ) -> Vec<Instruction> {
-    let accounts = vec![
+    let mut accounts = vec![
         AccountMeta::new(*stake_pool, false),
         AccountMeta::new(*validator_list_storage, false),
         AccountMeta::new_readonly(*stake_pool_deposit_authority, true),
@@ -852,18 +876,23 @@ pub fn deposit_with_authority(
         AccountMeta::new_readonly(*token_program_id, false),
         AccountMeta::new_readonly(stake_program::id(), false),
     ];
+    if let Some(lockup_custodian) = lockup_custodian {
+        accounts.push(AccountMeta::new_readonly(*lockup_custodian, true));
+    }
     vec![
         stake_program::authorize(
             deposit_stake_address,
             deposit_stake_withdraw_authority,
             stake_pool_deposit_authority,
             stake_program::StakeAuthorize::Staker,
+            lockup_custodian,
         ),
         stake_program::authorize(
             deposit_stake_address,
             deposit_stake_withdraw_authority,
             stake_pool_deposit_authority,
             stake_program::StakeAuthorize::Withdrawer,
+            lockup_custodian,
         ),
         Instruction {
             program_id: *program_id,
@@ -887,8 +916,9 @@ pub fn withdraw(
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
     amount: u64,
+    lockup_custodian: Option<&Pubkey>,
 ) -> Instruction {
-    let accounts = vec![
+    let mut accounts = vec![
         AccountMeta::new(*stake_pool, false),
         AccountMeta::new(*validator_list_storage, false),
         AccountMeta::new_readonly(*stake_pool_withdraw, false),
@@ -902,6 +932,9 @@ pub fn withdraw(
         AccountMeta::new_readonly(*token_program_id, false),
         AccountMeta::new_readonly(stake_program::id(), false),
     ];
+    if let Some(lockup_custodian) = lockup_custodian {
+        accounts.push(AccountMeta::new_readonly(*lockup_custodian, true));
+    }
     Instruction {
         program_id: *program_id,
         accounts,

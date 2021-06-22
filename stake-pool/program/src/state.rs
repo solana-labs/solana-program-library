@@ -1,7 +1,7 @@
 //! State transition types
 
 use {
-    crate::error::StakePoolError,
+    crate::{error::StakePoolError, stake_program::Lockup},
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{account_info::AccountInfo, msg, program_error::ProgramError, pubkey::Pubkey},
     spl_math::checked_ceil_div::CheckedCeilDiv,
@@ -79,6 +79,9 @@ pub struct StakePool {
 
     /// Last epoch the `total_stake_lamports` field was updated
     pub last_update_epoch: u64,
+
+    /// Lockup that all stakes in the pool must have
+    pub lockup: Lockup,
 
     /// Fee taken as a proportion of rewards each epoch
     pub fee: Fee,
@@ -266,6 +269,20 @@ impl StakePool {
                 reserve_stake_info.key
             );
             Err(StakePoolError::InvalidProgramAddress.into())
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Check that the provided stake meta has the correct lockup
+    pub fn check_lockup(&self, lockup: &Lockup) -> Result<(), ProgramError> {
+        if self.lockup != *lockup {
+            msg!(
+                "Lockup does not match stake pool configuration, received {:?}, expected {:?}",
+                lockup,
+                self.lockup
+            );
+            Err(StakePoolError::IncorrectLockup.into())
         } else {
             Ok(())
         }

@@ -25,7 +25,9 @@ use {
     spl_token::error::TokenError,
 };
 
-async fn setup() -> (
+async fn setup(
+    lockup: Option<stake_program::Lockup>,
+) -> (
     BanksClient,
     Keypair,
     Hash,
@@ -37,7 +39,13 @@ async fn setup() -> (
     u64,
 ) {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = if let Some(mut lockup) = lockup {
+        let custodian = Keypair::new();
+        lockup.custodian = custodian.pubkey();
+        StakePoolAccounts::new_with_lockup(lockup, custodian)
+    } else {
+        StakePoolAccounts::new()
+    };
     stake_pool_accounts
         .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
         .await
@@ -112,7 +120,7 @@ async fn success() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup().await;
+    ) = setup(None).await;
 
     // Save stake pool state before withdrawal
     let stake_pool_before =
@@ -230,7 +238,7 @@ async fn fail_with_wrong_stake_program() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup().await;
+    ) = setup(None).await;
 
     let new_authority = Pubkey::new_unique();
     let wrong_stake_program = Pubkey::new_unique();
@@ -289,7 +297,7 @@ async fn fail_with_wrong_withdraw_authority() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup().await;
+    ) = setup(None).await;
 
     let new_authority = Pubkey::new_unique();
     stake_pool_accounts.withdraw_authority = Keypair::new().pubkey();
@@ -333,7 +341,7 @@ async fn fail_with_wrong_token_program_id() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup().await;
+    ) = setup(None).await;
 
     let new_authority = Pubkey::new_unique();
     let wrong_token_program = Keypair::new();
@@ -352,6 +360,7 @@ async fn fail_with_wrong_token_program_id() {
             &stake_pool_accounts.pool_mint.pubkey(),
             &wrong_token_program.pubkey(),
             tokens_to_burn,
+            None,
         )],
         Some(&payer.pubkey()),
         &[&payer, &user_transfer_authority],
@@ -383,7 +392,7 @@ async fn fail_with_wrong_validator_list() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup().await;
+    ) = setup(None).await;
 
     let new_authority = Pubkey::new_unique();
     stake_pool_accounts.validator_list = Keypair::new();
@@ -429,7 +438,7 @@ async fn fail_with_unknown_validator() {
         user_transfer_authority,
         user_stake_recipient,
         _,
-    ) = setup().await;
+    ) = setup(None).await;
 
     let validator_stake_account =
         ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey());
@@ -552,7 +561,7 @@ async fn fail_double_withdraw_to_the_same_account() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup().await;
+    ) = setup(None).await;
 
     let new_authority = Pubkey::new_unique();
     let error = stake_pool_accounts
@@ -773,7 +782,7 @@ async fn fail_overdraw_validator() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup().await;
+    ) = setup(None).await;
 
     let validator_stake_account = simple_add_validator_to_pool(
         &mut banks_client,
@@ -1011,7 +1020,7 @@ async fn success_with_preferred_validator() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup().await;
+    ) = setup(None).await;
 
     stake_pool_accounts
         .set_preferred_validator(
@@ -1052,7 +1061,7 @@ async fn fail_with_wrong_preferred_withdraw() {
         user_transfer_authority,
         user_stake_recipient,
         tokens_to_burn,
-    ) = setup().await;
+    ) = setup(None).await;
 
     let preferred_validator = simple_add_validator_to_pool(
         &mut banks_client,
@@ -1304,4 +1313,76 @@ async fn success_withdraw_from_transient() {
         )
         .await;
     assert!(error.is_none());
+}
+
+#[tokio::test]
+async fn success_with_lockup() {
+    let (
+        mut banks_client,
+        payer,
+        recent_blockhash,
+        stake_pool_accounts,
+        validator_stake_account,
+        deposit_info,
+        user_transfer_authority,
+        user_stake_recipient,
+        tokens_to_burn,
+    ) = setup(Some(TEST_LOCKUP)).await;
+
+    let new_authority = Pubkey::new_unique();
+    let error = stake_pool_accounts
+        .withdraw_stake(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            &user_stake_recipient.pubkey(),
+            &user_transfer_authority,
+            &deposit_info.pool_account.pubkey(),
+            &validator_stake_account.stake_account,
+            &new_authority,
+            tokens_to_burn,
+        )
+        .await;
+    assert!(error.is_none());
+}
+
+#[tokio::test]
+async fn fail_without_custodian() {
+    let (
+        mut banks_client,
+        payer,
+        recent_blockhash,
+        mut stake_pool_accounts,
+        validator_stake_account,
+        deposit_info,
+        user_transfer_authority,
+        user_stake_recipient,
+        tokens_to_burn,
+    ) = setup(Some(TEST_LOCKUP)).await;
+
+    stake_pool_accounts.custodian = None;
+
+    let new_authority = Pubkey::new_unique();
+    let error = stake_pool_accounts
+        .withdraw_stake(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            &user_stake_recipient.pubkey(),
+            &user_transfer_authority,
+            &deposit_info.pool_account.pubkey(),
+            &validator_stake_account.stake_account,
+            &new_authority,
+            tokens_to_burn,
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(StakePoolError::SignatureMissing as u32),
+        )
+    );
 }

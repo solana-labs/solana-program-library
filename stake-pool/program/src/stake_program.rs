@@ -98,7 +98,7 @@ pub enum StakeInstruction {
     /// # Account references
     ///   0. [WRITE] Initialized stake account
     ///   1. [SIGNER] Lockup authority
-    SetLockup,
+    SetLockup(LockupArgs),
 
     /// Merge two stake accounts. Both accounts must be deactivated and have identical lockup and
     /// authority keys.
@@ -282,6 +282,17 @@ pub struct Lockup {
     /// custodian signature on a transaction exempts the operation from
     ///  lockup constraints
     pub custodian: Pubkey,
+}
+
+/// FIXME copied from the stake program
+#[derive(Default, Debug, Serialize, Deserialize, PartialEq, Clone, Copy)]
+pub struct LockupArgs {
+    ///
+    pub unix_timestamp: Option<UnixTimestamp>,
+    ///
+    pub epoch: Option<Epoch>,
+    ///
+    pub custodian: Option<Pubkey>,
 }
 
 /// FIXME copied from the stake program
@@ -555,12 +566,17 @@ pub fn authorize(
     authorized_pubkey: &Pubkey,
     new_authorized_pubkey: &Pubkey,
     stake_authorize: StakeAuthorize,
+    custodian_pubkey: Option<&Pubkey>,
 ) -> Instruction {
-    let account_metas = vec![
+    let mut account_metas = vec![
         AccountMeta::new(*stake_pubkey, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(*authorized_pubkey, true),
     ];
+
+    if let Some(custodian_pubkey) = custodian_pubkey {
+        account_metas.push(AccountMeta::new_readonly(*custodian_pubkey, true));
+    }
 
     Instruction::new_with_bincode(
         id(),
@@ -643,6 +659,19 @@ pub fn deactivate_stake(stake_pubkey: &Pubkey, authorized_pubkey: &Pubkey) -> In
         AccountMeta::new_readonly(*authorized_pubkey, true),
     ];
     Instruction::new_with_bincode(id(), &StakeInstruction::Deactivate, account_metas)
+}
+
+/// FIXME copied from stake program
+pub fn set_lockup(
+    stake_pubkey: &Pubkey,
+    lockup: &LockupArgs,
+    custodian_pubkey: &Pubkey,
+) -> Instruction {
+    let account_metas = vec![
+        AccountMeta::new(*stake_pubkey, false),
+        AccountMeta::new_readonly(*custodian_pubkey, true),
+    ];
+    Instruction::new_with_bincode(id(), &StakeInstruction::SetLockup(*lockup), account_metas)
 }
 
 #[cfg(test)]
