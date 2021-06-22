@@ -28,6 +28,12 @@ use {
 pub const TEST_STAKE_AMOUNT: u64 = 1_500_000_000;
 pub const MAX_TEST_VALIDATORS: u32 = 10_000;
 
+pub const TEST_LOCKUP: stake_program::Lockup = stake_program::Lockup {
+    custodian: Pubkey::new_from_array([1; 32]),
+    epoch: 100,
+    unix_timestamp: 100_000_000,
+};
+
 pub fn program_test() -> ProgramTest {
     ProgramTest::new(
         "spl_stake_pool",
@@ -214,6 +220,7 @@ pub async fn create_stake_pool(
     manager: &Keypair,
     staker: &Pubkey,
     deposit_authority: &Option<Keypair>,
+    lockup: &stake_program::Lockup,
     fee: &state::Fee,
     max_validators: u32,
 ) -> Result<(), TransportError> {
@@ -250,6 +257,7 @@ pub async fn create_stake_pool(
                 pool_token_account,
                 &spl_token::id(),
                 deposit_authority.as_ref().map(|k| k.pubkey()),
+                *lockup,
                 *fee,
                 max_validators,
             ),
@@ -418,10 +426,32 @@ pub async fn authorize_stake_account(
             &authorized.pubkey(),
             &new_authorized,
             stake_authorize,
+            None,
         )],
         Some(&payer.pubkey()),
     );
     transaction.sign(&[payer, authorized], *recent_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
+}
+
+pub async fn set_stake_lockup(
+    banks_client: &mut BanksClient,
+    payer: &Keypair,
+    recent_blockhash: &Hash,
+    stake: &Pubkey,
+    custodian: &Keypair,
+    lockup: stake_program::LockupArgs,
+) {
+    let transaction = Transaction::new_signed_with_payer(
+        &[stake_program::set_lockup(
+            &stake,
+            &lockup,
+            &custodian.pubkey(),
+        )],
+        Some(&payer.pubkey()),
+        &[payer, custodian],
+        *recent_blockhash,
+    );
     banks_client.process_transaction(transaction).await.unwrap();
 }
 
@@ -489,6 +519,8 @@ pub struct StakePoolAccounts {
     pub withdraw_authority: Pubkey,
     pub deposit_authority: Pubkey,
     pub deposit_authority_keypair: Option<Keypair>,
+    pub lockup: stake_program::Lockup,
+    pub custodian: Option<Keypair>,
     pub fee: state::Fee,
     pub max_validators: u32,
 }
@@ -523,12 +555,24 @@ impl StakePoolAccounts {
             withdraw_authority,
             deposit_authority,
             deposit_authority_keypair: None,
+            lockup: stake_program::Lockup::default(),
+            custodian: None,
             fee: state::Fee {
                 numerator: 1,
                 denominator: 100,
             },
             max_validators: MAX_TEST_VALIDATORS,
         }
+    }
+
+    pub fn new_with_lockup(lockup: stake_program::Lockup, custodian: Keypair) -> Self {
+        if lockup.custodian != custodian.pubkey() {
+            panic!("Custodian must be the deposit authority");
+        }
+        let mut stake_pool_accounts = Self::new();
+        stake_pool_accounts.lockup = lockup;
+        stake_pool_accounts.custodian = Some(custodian);
+        stake_pool_accounts
     }
 
     pub fn new_with_deposit_authority(deposit_authority: Keypair) -> Self {
@@ -575,7 +619,7 @@ impl StakePoolAccounts {
                 staker: self.withdraw_authority,
                 withdrawer: self.withdraw_authority,
             },
-            &stake_program::Lockup::default(),
+            &self.lockup,
             reserve_lamports,
         )
         .await;
@@ -591,6 +635,7 @@ impl StakePoolAccounts {
             &self.manager,
             &self.staker.pubkey(),
             &self.deposit_authority_keypair,
+            &self.lockup,
             &self.fee,
             self.max_validators,
         )
@@ -610,6 +655,9 @@ impl StakePoolAccounts {
         current_staker: &Keypair,
     ) -> Option<TransportError> {
         let mut signers = vec![payer, current_staker];
+        if let Some(custodian) = &self.custodian {
+            signers.push(custodian);
+        }
         let instructions = if let Some(deposit_authority) = self.deposit_authority_keypair.as_ref()
         {
             signers.push(deposit_authority);
@@ -625,6 +673,7 @@ impl StakePoolAccounts {
                 pool_account,
                 &self.pool_mint.pubkey(),
                 &spl_token::id(),
+                self.custodian.as_ref().map(|k| k.pubkey()).as_ref(),
             )
         } else {
             instruction::deposit(
@@ -638,6 +687,7 @@ impl StakePoolAccounts {
                 pool_account,
                 &self.pool_mint.pubkey(),
                 &spl_token::id(),
+                self.custodian.as_ref().map(|k| k.pubkey()).as_ref(),
             )
         };
         let transaction = Transaction::new_signed_with_payer(
@@ -662,6 +712,10 @@ impl StakePoolAccounts {
         recipient_new_authority: &Pubkey,
         amount: u64,
     ) -> Option<TransportError> {
+        let mut signers = vec![payer, user_transfer_authority];
+        if let Some(custodian) = &self.custodian {
+            signers.push(custodian);
+        }
         let transaction = Transaction::new_signed_with_payer(
             &[instruction::withdraw(
                 &id(),
@@ -676,9 +730,10 @@ impl StakePoolAccounts {
                 &self.pool_mint.pubkey(),
                 &spl_token::id(),
                 amount,
+                self.custodian.as_ref().map(|k| k.pubkey()).as_ref(),
             )],
             Some(&payer.pubkey()),
-            &[payer, user_transfer_authority],
+            &signers,
             *recent_blockhash,
         );
         banks_client.process_transaction(transaction).await.err()
@@ -777,6 +832,10 @@ impl StakePoolAccounts {
         recent_blockhash: &Hash,
         stake: &Pubkey,
     ) -> Option<TransportError> {
+        let mut signers = vec![payer, &self.staker];
+        if let Some(custodian) = &self.custodian {
+            signers.push(custodian);
+        }
         let transaction = Transaction::new_signed_with_payer(
             &[instruction::add_validator_to_pool(
                 &id(),
@@ -785,9 +844,10 @@ impl StakePoolAccounts {
                 &self.withdraw_authority,
                 &self.validator_list.pubkey(),
                 stake,
+                self.custodian.as_ref().map(|k| k.pubkey()).as_ref(),
             )],
             Some(&payer.pubkey()),
-            &[payer, &self.staker],
+            &signers,
             *recent_blockhash,
         );
         banks_client.process_transaction(transaction).await.err()
@@ -802,6 +862,10 @@ impl StakePoolAccounts {
         validator_stake: &Pubkey,
         transient_stake: &Pubkey,
     ) -> Option<TransportError> {
+        let mut signers = vec![payer, &self.staker];
+        if let Some(custodian) = &self.custodian {
+            signers.push(custodian);
+        }
         let transaction = Transaction::new_signed_with_payer(
             &[instruction::remove_validator_from_pool(
                 &id(),
@@ -812,9 +876,10 @@ impl StakePoolAccounts {
                 &self.validator_list.pubkey(),
                 validator_stake,
                 transient_stake,
+                self.custodian.as_ref().map(|k| k.pubkey()).as_ref(),
             )],
             Some(&payer.pubkey()),
-            &[payer, &self.staker],
+            &signers,
             *recent_blockhash,
         );
         banks_client.process_transaction(transaction).await.err()
@@ -965,8 +1030,8 @@ impl DepositStakeAccount {
         banks_client: &mut BanksClient,
         payer: &Keypair,
         recent_blockhash: &Hash,
+        lockup: &stake_program::Lockup,
     ) {
-        let lockup = stake_program::Lockup::default();
         let authorized = stake_program::Authorized {
             staker: self.authority.pubkey(),
             withdrawer: self.authority.pubkey(),
@@ -1037,7 +1102,6 @@ pub async fn simple_deposit(
     let authority = Keypair::new();
     // make stake account
     let stake = Keypair::new();
-    let lockup = stake_program::Lockup::default();
     let authorized = stake_program::Authorized {
         staker: authority.pubkey(),
         withdrawer: authority.pubkey(),
@@ -1048,7 +1112,7 @@ pub async fn simple_deposit(
         recent_blockhash,
         &stake,
         &authorized,
-        &lockup,
+        &stake_pool_accounts.lockup,
         stake_lamports,
     )
     .await;

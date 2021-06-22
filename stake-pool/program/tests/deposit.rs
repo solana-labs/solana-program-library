@@ -24,7 +24,9 @@ use {
     spl_token::error as token_error,
 };
 
-async fn setup() -> (
+async fn setup(
+    lockup: Option<stake_program::Lockup>,
+) -> (
     BanksClient,
     Keypair,
     Hash,
@@ -36,7 +38,13 @@ async fn setup() -> (
     u64,
 ) {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = if let Some(mut lockup) = lockup {
+        let custodian = Keypair::new();
+        lockup.custodian = custodian.pubkey();
+        StakePoolAccounts::new_with_lockup(lockup, custodian)
+    } else {
+        StakePoolAccounts::new()
+    };
     stake_pool_accounts
         .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
         .await
@@ -53,7 +61,6 @@ async fn setup() -> (
     let user = Keypair::new();
     // make stake account
     let deposit_stake = Keypair::new();
-    let lockup = stake_program::Lockup::default();
 
     let authorized = stake_program::Authorized {
         staker: user.pubkey(),
@@ -66,7 +73,7 @@ async fn setup() -> (
         &recent_blockhash,
         &deposit_stake,
         &authorized,
-        &lockup,
+        &stake_pool_accounts.lockup,
         TEST_STAKE_AMOUNT,
     )
     .await;
@@ -119,7 +126,7 @@ async fn success() {
         deposit_stake,
         pool_token_account,
         stake_lamports,
-    ) = setup().await;
+    ) = setup(None).await;
 
     // Save stake pool state before depositing
     let stake_pool_before =
@@ -219,7 +226,7 @@ async fn fail_with_wrong_stake_program_id() {
         deposit_stake,
         pool_token_account,
         _stake_lamports,
-    ) = setup().await;
+    ) = setup(None).await;
 
     let wrong_stake_program = Pubkey::new_unique();
 
@@ -273,7 +280,7 @@ async fn fail_with_wrong_token_program_id() {
         deposit_stake,
         pool_token_account,
         _stake_lamports,
-    ) = setup().await;
+    ) = setup(None).await;
 
     let wrong_token_program = Keypair::new();
 
@@ -289,6 +296,7 @@ async fn fail_with_wrong_token_program_id() {
             &pool_token_account,
             &stake_pool_accounts.pool_mint.pubkey(),
             &wrong_token_program.pubkey(),
+            None,
         ),
         Some(&payer.pubkey()),
     );
@@ -319,7 +327,7 @@ async fn fail_with_wrong_validator_list_account() {
         deposit_stake,
         pool_token_account,
         _stake_lamports,
-    ) = setup().await;
+    ) = setup(None).await;
 
     let wrong_validator_list = Keypair::new();
     stake_pool_accounts.validator_list = wrong_validator_list;
@@ -438,7 +446,7 @@ async fn fail_with_wrong_withdraw_authority() {
         deposit_stake,
         pool_token_account,
         _stake_lamports,
-    ) = setup().await;
+    ) = setup(None).await;
 
     stake_pool_accounts.withdraw_authority = Pubkey::new_unique();
 
@@ -477,7 +485,7 @@ async fn fail_with_wrong_mint_for_receiver_acc() {
         deposit_stake,
         _pool_token_account,
         _stake_lamports,
-    ) = setup().await;
+    ) = setup(None).await;
 
     let outside_mint = Keypair::new();
     let outside_withdraw_auth = Keypair::new();
@@ -723,7 +731,7 @@ async fn success_with_preferred_deposit() {
         deposit_stake,
         pool_token_account,
         _stake_lamports,
-    ) = setup().await;
+    ) = setup(None).await;
 
     stake_pool_accounts
         .set_preferred_validator(
@@ -761,7 +769,7 @@ async fn fail_with_wrong_preferred_deposit() {
         deposit_stake,
         pool_token_account,
         _stake_lamports,
-    ) = setup().await;
+    ) = setup(None).await;
 
     let preferred_validator = simple_add_validator_to_pool(
         &mut banks_client,
@@ -803,4 +811,81 @@ async fn fail_with_wrong_preferred_deposit() {
         }
         _ => panic!("Wrong error occurs while try to make a deposit with wrong stake program ID"),
     }
+}
+
+#[tokio::test]
+async fn success_with_lockup() {
+    let (
+        mut banks_client,
+        payer,
+        recent_blockhash,
+        stake_pool_accounts,
+        validator_stake,
+        user,
+        deposit_stake,
+        pool_token_account,
+        _stake_lamports,
+    ) = setup(Some(TEST_LOCKUP)).await;
+
+    let error = stake_pool_accounts
+        .deposit_stake(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            &deposit_stake,
+            &pool_token_account,
+            &validator_stake.stake_account,
+            &user,
+        )
+        .await;
+    assert!(error.is_none());
+}
+
+#[tokio::test]
+async fn fail_with_incorrect_lockup() {
+    let (
+        mut banks_client,
+        payer,
+        recent_blockhash,
+        stake_pool_accounts,
+        validator_stake,
+        user,
+        deposit_stake,
+        pool_token_account,
+        _stake_lamports,
+    ) = setup(Some(TEST_LOCKUP)).await;
+
+    set_stake_lockup(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &deposit_stake,
+        stake_pool_accounts.custodian.as_ref().unwrap(),
+        stake_program::LockupArgs {
+            epoch: Some(101),
+            ..stake_program::LockupArgs::default()
+        },
+    )
+    .await;
+
+    let error = stake_pool_accounts
+        .deposit_stake(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            &deposit_stake,
+            &pool_token_account,
+            &validator_stake.stake_account,
+            &user,
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(
+            2,
+            InstructionError::Custom(6) // stake::instruction::StakeError::MergeMismatch
+        ),
+    );
 }

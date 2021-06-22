@@ -22,7 +22,9 @@ use {
     spl_stake_pool::{error::StakePoolError, id, instruction, stake_program, state},
 };
 
-async fn setup() -> (
+async fn setup(
+    lockup: Option<stake_program::Lockup>,
+) -> (
     BanksClient,
     Keypair,
     Hash,
@@ -30,7 +32,13 @@ async fn setup() -> (
     ValidatorStakeAccount,
 ) {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let stake_pool_accounts = StakePoolAccounts::new();
+    let stake_pool_accounts = if let Some(mut lockup) = lockup {
+        let custodian = Keypair::new();
+        lockup.custodian = custodian.pubkey();
+        StakePoolAccounts::new_with_lockup(lockup, custodian)
+    } else {
+        StakePoolAccounts::new()
+    };
     stake_pool_accounts
         .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 10_000_000_000)
         .await
@@ -68,7 +76,7 @@ async fn setup() -> (
 #[tokio::test]
 async fn success() {
     let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
-        setup().await;
+        setup(None).await;
 
     let new_authority = Pubkey::new_unique();
     let error = stake_pool_accounts
@@ -117,7 +125,7 @@ async fn success() {
 #[tokio::test]
 async fn fail_with_wrong_stake_program_id() {
     let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
-        setup().await;
+        setup(None).await;
 
     let wrong_stake_program = Pubkey::new_unique();
 
@@ -163,7 +171,7 @@ async fn fail_with_wrong_stake_program_id() {
 #[tokio::test]
 async fn fail_with_wrong_validator_list_account() {
     let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
-        setup().await;
+        setup(None).await;
 
     let wrong_validator_list = Keypair::new();
 
@@ -178,6 +186,7 @@ async fn fail_with_wrong_validator_list_account() {
             &wrong_validator_list.pubkey(),
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
+            None,
         )],
         Some(&payer.pubkey()),
     );
@@ -203,7 +212,7 @@ async fn fail_with_wrong_validator_list_account() {
 #[tokio::test]
 async fn fail_not_at_minimum() {
     let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
-        setup().await;
+        setup(None).await;
 
     transfer(
         &mut banks_client,
@@ -239,7 +248,7 @@ async fn fail_not_at_minimum() {
 #[tokio::test]
 async fn fail_double_remove() {
     let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
-        setup().await;
+        setup(None).await;
 
     let new_authority = Pubkey::new_unique();
     let error = stake_pool_accounts
@@ -285,7 +294,7 @@ async fn fail_double_remove() {
 #[tokio::test]
 async fn fail_wrong_staker() {
     let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
-        setup().await;
+        setup(None).await;
 
     let malicious = Keypair::new();
 
@@ -300,6 +309,7 @@ async fn fail_wrong_staker() {
             &stake_pool_accounts.validator_list.pubkey(),
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
+            None,
         )],
         Some(&payer.pubkey()),
     );
@@ -327,7 +337,7 @@ async fn fail_wrong_staker() {
 #[tokio::test]
 async fn fail_no_signature() {
     let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
-        setup().await;
+        setup(None).await;
 
     let new_authority = Pubkey::new_unique();
 
@@ -377,7 +387,7 @@ async fn fail_no_signature() {
 #[tokio::test]
 async fn fail_with_activating_transient_stake() {
     let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
-        setup().await;
+        setup(None).await;
 
     // increase the validator stake
     let error = stake_pool_accounts
@@ -420,7 +430,7 @@ async fn fail_with_activating_transient_stake() {
 #[tokio::test]
 async fn success_with_deactivating_transient_stake() {
     let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
-        setup().await;
+        setup(None).await;
 
     let rent = banks_client.get_rent().await.unwrap();
     let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
@@ -558,7 +568,7 @@ async fn success_with_deactivating_transient_stake() {
 #[tokio::test]
 async fn success_resets_preferred_validator() {
     let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
-        setup().await;
+        setup(None).await;
 
     stake_pool_accounts
         .set_preferred_validator(
@@ -621,6 +631,54 @@ async fn success_resets_preferred_validator() {
         }
         _ => panic!(),
     }
+}
+
+#[tokio::test]
+async fn success_with_lockup() {
+    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
+        setup(Some(TEST_LOCKUP)).await;
+
+    let new_authority = Pubkey::new_unique();
+    let error = stake_pool_accounts
+        .remove_validator_from_pool(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            &new_authority,
+            &validator_stake.stake_account,
+            &validator_stake.transient_stake_account,
+        )
+        .await;
+    assert!(error.is_none());
+}
+
+#[tokio::test]
+async fn fail_without_custodian() {
+    let (mut banks_client, payer, recent_blockhash, mut stake_pool_accounts, validator_stake) =
+        setup(Some(TEST_LOCKUP)).await;
+
+    stake_pool_accounts.custodian = None;
+
+    let new_authority = Pubkey::new_unique();
+    let error = stake_pool_accounts
+        .remove_validator_from_pool(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            &new_authority,
+            &validator_stake.stake_account,
+            &validator_stake.transient_stake_account,
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(StakePoolError::SignatureMissing as u32),
+        )
+    );
 }
 
 #[tokio::test]

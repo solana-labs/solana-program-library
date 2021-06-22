@@ -60,6 +60,7 @@ async fn setup(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
+            &stake_pool_accounts.lockup,
         )
         .await;
 
@@ -87,6 +88,7 @@ async fn setup(
                 &mut context.banks_client,
                 &context.payer,
                 &context.last_blockhash,
+                &stake_pool_accounts.lockup,
             )
             .await;
 
