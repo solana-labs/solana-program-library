@@ -1,5 +1,5 @@
 {
-  "name": "stake-pool-js",
+  "name": "@solana/spl-stake-pool",
   "version": "0.0.1",
   "description": "JS bindings for the stake pool program",
   "scripts": {
