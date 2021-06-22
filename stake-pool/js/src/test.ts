@@ -61,63 +61,64 @@ describe('schema.decode', () => {
           'hex',
         ),
       );
+
       const expectedData = new schema.StakePool({
         accountType: new schema.AccountType({
           StakePool: new schema.AccountTypeEnum({}),
         }),
-        manager: new schema.PublicKey({
-          value: new BN(
+        manager: new PublicKey(
+          new BN(
             'dc23cda2ad09ddec126f89ed7f67d06a4d167cca996503f1a1b3b5a13625964f',
             'hex',
           ),
-        }),
-        staker: new schema.PublicKey({
-          value: new BN(
+        ),
+        staker: new PublicKey(
+          new BN(
             'dc23cda2ad09ddec126f89ed7f67d06a4d167cca996503f1a1b3b5a13625964f',
             'hex',
           ),
-        }),
-        depositAuthority: new schema.PublicKey({
-          value: new BN(
+        ),
+        depositAuthority: new PublicKey(
+          new BN(
             new Buffer(
               '5911e7451a1a854fdc9e495081790f293eba623f8ec7e2b9d34a5fd25c7009bb',
               'hex',
             ),
           ),
-        }),
+        ),
         withdrawBumpSeed: 255,
-        validatorList: new schema.PublicKey({
-          value: new BN(
+        validatorList: new PublicKey(
+          new BN(
             '7103ba4895b8804263197364da9e791db96ec8f0c8ca184dd666e69013838610',
             'hex',
           ),
-        }),
-        reserveStake: new schema.PublicKey({
-          value: new BN(
+        ),
+        reserveStake: new PublicKey(
+          new BN(
             '74a5b1ab8442103baa8bd39ab8494eb034e96035ac664e1693bb3eef458761ee',
             'hex',
           ),
-        }),
-        poolMint: new schema.PublicKey({
-          value: new BN(
+        ),
+        poolMint: new PublicKey(
+          new BN(
             '8722bf107b95d2620008d256b18c13fa3a46ab7f643c24cf7656f57267563e00',
             'hex',
           ),
-        }),
-        managerFeeAccount: new schema.PublicKey({
-          value: new BN(
+        ),
+        managerFeeAccount: new PublicKey(
+          new BN(
             new Buffer(
               'b783b4dcd341cbca22e781bbd49b2d16908a844a21b98e26b69d44fc50e1db0f',
               'hex',
             ),
           ),
-        }),
-        tokenProgramId: new schema.PublicKey({
-          value: new BN(
+        ),
+        tokenProgramId: new PublicKey(
+          new BN(
             'a900ff7e85f58c3a91375b5fed85b41cac79ebce46e1cbd993a165d7e1f6dd06',
             'hex',
           ),
-        }),
+        ),
         totalStakeLamports: new BN('0', 'hex'),
         poolTokenSupply: new BN('0', 'hex'),
         lastUpdateEpoch: new BN('7c', 'hex'),
@@ -171,12 +172,12 @@ describe('schema.decode', () => {
             status: new schema.StakeStatus({
               Active: new schema.StakeStatusEnum({}),
             }),
-            voteAccountAddress: new schema.PublicKey({
-              value: new BN(
+            voteAccountAddress: new PublicKey(
+              new BN(
                 'a9946a889af14fd3c9b33d5df309489d9699271a6b09ff3190fcb41cf21a2f8c',
                 'hex',
               ),
-            }),
+            ),
             stakeLamports: new BN('0', 'hex'),
             lastUpdateEpoch: new BN('c3', 'hex'),
           }),
@@ -184,12 +185,12 @@ describe('schema.decode', () => {
             status: new schema.StakeStatus({
               Active: new schema.StakeStatusEnum({}),
             }),
-            voteAccountAddress: new schema.PublicKey({
-              value: new BN(
+            voteAccountAddress: new PublicKey(
+              new BN(
                 '3796d40645ee07e3c64117e3f73430471d4c40465f696ebc9b034c1fc06a9f7d',
                 'hex',
               ),
-            }),
+            ),
             stakeLamports: new BN('0', 'hex'),
             lastUpdateEpoch: new BN('c3', 'hex'),
           }),
@@ -197,12 +198,12 @@ describe('schema.decode', () => {
             status: new schema.StakeStatus({
               Active: new schema.StakeStatusEnum({}),
             }),
-            voteAccountAddress: new schema.PublicKey({
-              value: new BN(
+            voteAccountAddress: new PublicKey(
+              new BN(
                 'e4e37d6f2e80c0bb0f3da8a06304e57be5cda6efa2825b86780aa320d9784cf8',
                 'hex',
               ),
-            }),
+            ),
             stakeLamports: new BN('0', 'hex'),
             lastUpdateEpoch: new BN('c3', 'hex'),
           }),
@@ -218,11 +219,11 @@ describe('index.ts/PrettyPrintPubkey', () => {
   it('should successfully pretty print a pubkey', () => {
     assert.equal(
       index.prettyPrintPubKey(
-        new schema.PublicKey({
-          value: new BN(
+        new PublicKey(
+          new BN(
             '99572085579321386496717000324290408927851378839748241098946587626478579848783',
           ),
-        }),
+        ),
       ),
       '6MfzrQUzB2mozveRWU9a77zMoQzSrYa4Gq46KswjupQB',
     );
@@ -252,8 +253,8 @@ describe('Integration test', () => {
     console.log('Number of stake pool accounts in devnet: ', accounts.length);
 
     accounts.map(account => {
-      // index.prettyPrintAccount(account);
-      // console.log('\n');
+      index.prettyPrintAccount(account);
+      console.log('\n');
     });
   });
 
@@ -280,9 +281,9 @@ describe('Integration test', () => {
     console.log('Number of stake pool accounts in testnet: ', accounts.length);
 
     accounts.map(account => {
-      // console.log(account)
-      // index.prettyPrintAccount(account);
-      // console.log('\n');
+      console.log(account);
+      index.prettyPrintAccount(account);
+      console.log('\n');
     });
   });
 });

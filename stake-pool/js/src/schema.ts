@@ -1,6 +1,6 @@
 import {Schema, serialize, deserializeUnchecked} from 'borsh';
 import BN from 'bn.js';
-import {Struct, Enum} from '@solana/web3.js';
+import {Struct, Enum, PublicKey} from '@solana/web3.js';
 
 export class Fee extends Struct {
   denominator: BN;
@@ -54,10 +54,6 @@ export enum StakeStatusKind {
   ReadyForRemoval = 'ReadyForRemoval',
 }
 
-export class PublicKey extends Struct {
-  value: BN;
-}
-
 export function addStakePoolSchema(schema: Schema): void {
   /**
    * Borsh requires something called a Schema,
@@ -66,7 +62,7 @@ export function addStakePoolSchema(schema: Schema): void {
    */
   schema.set(PublicKey, {
     kind: 'struct',
-    fields: [['value', 'u256']],
+    fields: [['_bn', 'u256']],
   });
 
   schema.set(Fee, {

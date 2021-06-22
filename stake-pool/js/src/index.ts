@@ -125,9 +125,9 @@ export async function getStakePoolAccounts(
 /**
  * Helper function to pretty print a schema.PublicKey
  * Pretty prints a PublicKey in base58 format */
-export function prettyPrintPubKey(pubKey: schema.PublicKey): string {
+export function prettyPrintPubKey(pubKey: solanaWeb3.PublicKey): string {
   return new solanaWeb3.PublicKey(
-    new solanaWeb3.PublicKey(pubKey.value.toBuffer()).toBytes().reverse(),
+    new solanaWeb3.PublicKey(pubKey.toBuffer()).toBytes().reverse(),
   ).toString();
 }
 
@@ -144,7 +144,7 @@ export function prettyPrintAccount(
   }
 
   for (const val in sp) {
-    if (sp[val] instanceof schema.PublicKey) {
+    if (sp[val] instanceof solanaWeb3.PublicKey) {
       console.log(val, prettyPrintPubKey(sp[val]));
     } else {
       console.log(val, sp[val]);
