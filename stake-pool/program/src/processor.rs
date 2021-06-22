@@ -132,6 +132,30 @@ fn check_account_owner(
     }
 }
 
+/// Create a transient stake account without transferring lamports
+fn create_transient_stake_account<'a>(
+    transient_stake_account_info: AccountInfo<'a>,
+    transient_stake_account_signer_seeds: &[&[u8]],
+    system_program_info: AccountInfo<'a>,
+) -> Result<(), ProgramError> {
+    invoke_signed(
+        &system_instruction::allocate(
+            transient_stake_account_info.key,
+            std::mem::size_of::<stake_program::StakeState>() as u64,
+        ),
+        &[
+            transient_stake_account_info.clone(),
+            system_program_info.clone(),
+        ],
+        &[&transient_stake_account_signer_seeds],
+    )?;
+    invoke_signed(
+        &system_instruction::assign(transient_stake_account_info.key, &stake_program::id()),
+        &[transient_stake_account_info, system_program_info],
+        &[&transient_stake_account_signer_seeds],
+    )
+}
+
 /// Program state handler.
 pub struct Processor {}
 impl Processor {
@@ -970,17 +994,10 @@ impl Processor {
             return Err(ProgramError::AccountNotRentExempt);
         }
 
-        // create transient stake account
-        invoke_signed(
-            &system_instruction::create_account(
-                &transient_stake_account_info.key, // doesn't matter since no lamports are transferred
-                &transient_stake_account_info.key,
-                0,
-                std::mem::size_of::<stake_program::StakeState>() as u64,
-                &stake_program::id(),
-            ),
-            &[transient_stake_account_info.clone()],
-            &[&transient_stake_account_signer_seeds],
+        create_transient_stake_account(
+            transient_stake_account_info.clone(),
+            &transient_stake_account_signer_seeds,
+            system_program_info.clone(),
         )?;
 
         // split into transient stake account
@@ -1124,17 +1141,10 @@ impl Processor {
             return Err(ProgramError::InsufficientFunds);
         }
 
-        // create transient stake account
-        invoke_signed(
-            &system_instruction::create_account(
-                &transient_stake_account_info.key, // doesn't matter since no lamports are transferred
-                &transient_stake_account_info.key,
-                0,
-                std::mem::size_of::<stake_program::StakeState>() as u64,
-                &stake_program::id(),
-            ),
-            &[transient_stake_account_info.clone()],
-            &[&transient_stake_account_signer_seeds],
+        create_transient_stake_account(
+            transient_stake_account_info.clone(),
+            &transient_stake_account_signer_seeds,
+            system_program_info.clone(),
         )?;
 
         // split into transient stake account
