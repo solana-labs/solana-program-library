@@ -10,9 +10,10 @@ use {
         Arg, ArgGroup, SubCommand,
     },
     solana_clap_utils::{
-        input_parsers::{keypair_of, pubkey_of},
+        input_parsers::{keypair_of, pubkey_of, unix_timestamp_from_rfc3339_datetime, value_of},
         input_validators::{
-            is_amount, is_keypair, is_keypair_or_ask_keyword, is_parsable, is_pubkey, is_url,
+            is_amount, is_keypair, is_keypair_or_ask_keyword, is_parsable, is_pubkey,
+            is_rfc3339_datetime, is_url,
         },
         keypair::signer_from_path,
     },
@@ -24,6 +25,7 @@ use {
         pubkey::Pubkey,
     },
     solana_sdk::{
+        clock::{Epoch, UnixTimestamp},
         commitment_config::CommitmentConfig,
         native_token::{self, Sol},
         signature::{Keypair, Signer},
@@ -48,6 +50,7 @@ struct Config {
     depositor: Option<Box<dyn Signer>>,
     token_owner: Box<dyn Signer>,
     fee_payer: Box<dyn Signer>,
+    custodian: Option<Box<dyn Signer>>,
     dry_run: bool,
     no_update: bool,
 }
@@ -98,9 +101,12 @@ fn send_transaction(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn command_create_pool(
     config: &Config,
     deposit_authority: Option<Pubkey>,
+    lockup_timestamp: Option<UnixTimestamp>,
+    lockup_epoch: Option<Epoch>,
     fee: Fee,
     max_validators: u32,
     stake_pool_keypair: Option<Keypair>,
@@ -117,6 +123,16 @@ fn command_create_pool(
         "Creating pool fee collection account {}",
         pool_fee_account.pubkey()
     );
+
+    let mut lockup = stake_program::Lockup::default();
+    if let Some(lockup_timestamp) = lockup_timestamp {
+        lockup.unix_timestamp = lockup_timestamp;
+        lockup.custodian = config.custodian.as_ref().unwrap().pubkey();
+    }
+    if let Some(lockup_epoch) = lockup_epoch {
+        lockup.epoch = lockup_epoch;
+        lockup.custodian = config.custodian.as_ref().unwrap().pubkey();
+    }
 
     let stake_pool_keypair = stake_pool_keypair.unwrap_or_else(Keypair::new);
 
@@ -174,7 +190,7 @@ fn command_create_pool(
                     staker: withdraw_authority,
                     withdrawer: withdraw_authority,
                 },
-                &stake_program::Lockup::default(),
+                &lockup,
             ),
             // Account for the stake pool mint
             system_instruction::create_account(
@@ -241,6 +257,7 @@ fn command_create_pool(
                 &pool_fee_account.pubkey(),
                 &spl_token::id(),
                 deposit_authority,
+                lockup,
                 fee,
                 max_validators,
             ),
@@ -349,6 +366,7 @@ fn command_vsa_add(
         &stake_pool,
         &stake_pool_address,
         &vote_account,
+        config.custodian.as_ref().map(|k| k.pubkey()).as_ref(),
     );
 
     let mut transaction =
@@ -357,6 +375,9 @@ fn command_vsa_add(
     let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
     check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
     let mut signers = vec![config.fee_payer.as_ref(), config.staker.as_ref()];
+    if let Some(custodian) = config.custodian.as_ref() {
+        signers.push(custodian.as_ref());
+    }
     unique_signers!(signers);
     transaction.sign(&signers, recent_blockhash);
     send_transaction(&config, transaction)?;
@@ -387,6 +408,7 @@ fn command_vsa_remove(
                 stake_pool_address,
                 vote_account,
                 new_authority,
+                config.custodian.as_ref().map(|k| k.pubkey()).as_ref(),
             ),
         ],
         Some(&config.fee_payer.pubkey()),
@@ -394,10 +416,11 @@ fn command_vsa_remove(
 
     let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
     check_fee_payer_balance(config, fee_calculator.calculate_fee(&transaction.message()))?;
-    transaction.sign(
-        &[config.fee_payer.as_ref(), config.staker.as_ref()],
-        recent_blockhash,
-    );
+    let mut signers = vec![config.fee_payer.as_ref(), config.staker.as_ref()];
+    if let Some(custodian) = config.custodian.as_ref() {
+        signers.push(custodian.as_ref());
+    }
+    transaction.sign(&signers, recent_blockhash);
     send_transaction(&config, transaction)?;
     Ok(())
 }
@@ -563,6 +586,9 @@ fn command_deposit(
 
     let mut instructions: Vec<Instruction> = vec![];
     let mut signers = vec![config.fee_payer.as_ref(), config.staker.as_ref()];
+    if let Some(custodian) = config.custodian.as_ref() {
+        signers.push(custodian.as_ref());
+    }
 
     let mut total_rent_free_balances: u64 = 0;
 
@@ -600,6 +626,7 @@ fn command_deposit(
             &token_receiver,
             &stake_pool.pool_mint,
             &spl_token::id(),
+            config.custodian.as_ref().map(|k| k.pubkey()).as_ref(),
         )
     } else {
         spl_stake_pool::instruction::deposit(
@@ -613,6 +640,7 @@ fn command_deposit(
             &token_receiver,
             &stake_pool.pool_mint,
             &spl_token::id(),
+            config.custodian.as_ref().map(|k| k.pubkey()).as_ref(),
         )
     };
 
@@ -887,6 +915,9 @@ fn command_withdraw(
         config.token_owner.as_ref(),
         &user_transfer_authority,
     ];
+    if let Some(custodian) = config.custodian.as_ref() {
+        signers.push(custodian.as_ref());
+    }
     let stake_receiver_account = Keypair::new(); // Will be added to signers if creating new account
 
     instructions.push(
@@ -962,6 +993,7 @@ fn command_withdraw(
             &stake_pool.pool_mint,
             &spl_token::id(),
             withdraw_account.pool_amount,
+            config.custodian.as_ref().map(|k| k.pubkey()).as_ref(),
         ));
     }
 
@@ -1158,6 +1190,17 @@ fn main() {
                 ),
         )
         .arg(
+            Arg::with_name("custodian")
+                .long("custodian")
+                .value_name("KEYPAIR")
+                .validator(is_keypair)
+                .takes_value(true)
+                .help(
+                    "Specify the stake pool custodian. \
+                     This may be a keypair file, the ASK keyword.",
+                ),
+        )
+        .arg(
             Arg::with_name("token_owner")
                 .long("token-owner")
                 .value_name("KEYPAIR")
@@ -1202,6 +1245,21 @@ fn main() {
                     .takes_value(true)
                     .required(true)
                     .help("Fee denominator, fee amount is numerator divided by denominator."),
+            )
+            .arg(
+                Arg::with_name("lockup_epoch")
+                    .long("lockup-epoch")
+                    .value_name("NUMBER")
+                    .takes_value(true)
+                    .help("The epoch heigh at which accounts in the stake pool will be available for withdrawal"),
+            )
+            .arg(
+                Arg::with_name("lockup_date")
+                    .long("lockup-date")
+                    .value_name("RFC3339 DATETIME")
+                    .validator(is_rfc3339_datetime)
+                    .takes_value(true)
+                    .help("The date and time at which stake accounts in the stake pool will be available for withdrawal")
             )
             .arg(
                 Arg::with_name("max_validators")
@@ -1663,6 +1721,22 @@ fn main() {
             eprintln!("error: {}", e);
             exit(1);
         });
+        let custodian = if matches.is_present("custodian") {
+            Some(
+                signer_from_path(
+                    &matches,
+                    &cli_config.keypair_path,
+                    "custodian",
+                    &mut wallet_manager,
+                )
+                .unwrap_or_else(|e| {
+                    eprintln!("error: {}", e);
+                    exit(1);
+                }),
+            )
+        } else {
+            None
+        };
         let token_owner = signer_from_path(
             &matches,
             &cli_config.keypair_path,
@@ -1694,6 +1768,7 @@ fn main() {
             staker,
             depositor,
             token_owner,
+            custodian,
             fee_payer,
             dry_run,
             no_update,
@@ -1706,11 +1781,15 @@ fn main() {
             let numerator = value_t_or_exit!(arg_matches, "fee_numerator", u64);
             let denominator = value_t_or_exit!(arg_matches, "fee_denominator", u64);
             let max_validators = value_t_or_exit!(arg_matches, "max_validators", u32);
+            let lockup_timestamp = unix_timestamp_from_rfc3339_datetime(arg_matches, "lockup_date");
+            let lockup_epoch = value_of(arg_matches, "lockup_epoch");
             let pool_keypair = keypair_of(arg_matches, "pool_keypair");
             let mint_keypair = keypair_of(arg_matches, "mint_keypair");
             command_create_pool(
                 &config,
                 deposit_authority,
+                lockup_timestamp,
+                lockup_epoch,
                 Fee {
                     denominator,
                     numerator,

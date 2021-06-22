@@ -266,13 +266,13 @@ async fn fail_with_incorrect_address() {
 #[tokio::test]
 async fn success_with_lockup() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let deposit_authority = Keypair::new();
+    let custodian = Keypair::new();
     let lockup = stake_program::Lockup {
-        custodian: deposit_authority.pubkey(),
+        custodian: custodian.pubkey(),
         epoch: 100,
         unix_timestamp: 100_000_000,
     };
-    let stake_pool_accounts = StakePoolAccounts::new_with_lockup(lockup, deposit_authority);
+    let stake_pool_accounts = StakePoolAccounts::new_with_lockup(lockup, custodian);
     stake_pool_accounts
         .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
         .await

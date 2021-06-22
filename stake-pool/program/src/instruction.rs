@@ -97,6 +97,7 @@ pub enum StakePoolInstruction {
     ///   5. `[]` Clock sysvar
     ///   6. '[]' Sysvar stake history account
     ///   7. `[]` Stake program
+    ///   8. `[s]` (Optional) Lockup custodian, if stake pool has a lockup
     AddValidatorToPool,
 
     ///   (Staker only) Removes validator from the pool
@@ -113,6 +114,7 @@ pub enum StakePoolInstruction {
     ///   6. `[]` Transient stake account, to check that that we're not trying to activate
     ///   7. '[]' Sysvar clock
     ///   8. `[]` Stake program id,
+    ///   9. `[s]` (Optional) Lockup custodian, if stake pool has a lockup
     RemoveValidatorFromPool,
 
     /// (Staker only) Decrease active stake on a validator, eventually moving it to the reserve
@@ -245,6 +247,7 @@ pub enum StakePoolInstruction {
     ///   10. '[]' Sysvar stake history account
     ///   11. `[]` Pool token program id,
     ///   12. `[]` Stake program id,
+    ///   13. `[s]` (Optional) Lockup custodian, if stake pool has a lockup
     Deposit,
 
     ///   Withdraw the token from the pool at the current ratio.
@@ -269,6 +272,7 @@ pub enum StakePoolInstruction {
     ///   9. `[]` Sysvar clock account (required)
     ///  10. `[]` Pool token program id
     ///  11. `[]` Stake program id,
+    ///  12. `[s]` (Optional) Lockup custodian, if stake pool has a lockup
     ///  userdata: amount of pool tokens to withdraw
     Withdraw(u64),
 
