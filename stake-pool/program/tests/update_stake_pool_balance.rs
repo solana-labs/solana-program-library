@@ -148,10 +148,8 @@ async fn success() {
 
     let expected_fee_lamports =
         (post_balance - pre_balance) * stake_pool.fee.numerator / stake_pool.fee.denominator;
-    let actual_fee_lamports = stake_pool
-        .calc_pool_tokens_for_withdraw(actual_fee)
-        .unwrap();
-    assert!(actual_fee_lamports <= expected_fee_lamports);
+    let actual_fee_lamports = stake_pool.calc_pool_tokens_for_deposit(actual_fee).unwrap();
+    assert_eq!(actual_fee_lamports, expected_fee_lamports);
 
     let expected_fee = expected_fee_lamports * pool_token_supply / post_balance;
     assert_eq!(expected_fee, actual_fee);
