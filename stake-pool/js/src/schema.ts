@@ -58,18 +58,18 @@ export class PublicKey extends Struct {
   value: BN;
 }
 
-export function addStakePoolSchema(SCHEMA: Schema): void {
+export function addStakePoolSchema(schema: Schema): void {
   /**
    * Borsh requires something called a Schema,
    * which is a Map (key-value pairs) that tell borsh how to deserialise the raw data
    * This function adds a new schema to an existing schema object.
    */
-  SCHEMA.set(PublicKey, {
+  schema.set(PublicKey, {
     kind: 'struct',
     fields: [['value', 'u256']],
   });
 
-  SCHEMA.set(Fee, {
+  schema.set(Fee, {
     kind: 'struct',
     fields: [
       ['denominator', 'u64'],
@@ -77,7 +77,7 @@ export function addStakePoolSchema(SCHEMA: Schema): void {
     ],
   });
 
-  SCHEMA.set(AccountType, {
+  schema.set(AccountType, {
     kind: 'enum',
     field: 'enum',
     values: [
@@ -88,9 +88,9 @@ export function addStakePoolSchema(SCHEMA: Schema): void {
     ],
   });
 
-  SCHEMA.set(AccountTypeEnum, {kind: 'struct', fields: []});
+  schema.set(AccountTypeEnum, {kind: 'struct', fields: []});
 
-  SCHEMA.set(StakePool, {
+  schema.set(StakePool, {
     kind: 'struct',
     fields: [
       ['accountType', AccountType],
@@ -110,7 +110,7 @@ export function addStakePoolSchema(SCHEMA: Schema): void {
     ],
   });
 
-  SCHEMA.set(ValidatorList, {
+  schema.set(ValidatorList, {
     kind: 'struct',
     fields: [
       ['accountType', AccountType],
@@ -119,7 +119,7 @@ export function addStakePoolSchema(SCHEMA: Schema): void {
     ],
   });
 
-  SCHEMA.set(StakeStatus, {
+  schema.set(StakeStatus, {
     kind: 'enum',
     field: 'enum',
     values: [
@@ -129,9 +129,9 @@ export function addStakePoolSchema(SCHEMA: Schema): void {
     ],
   });
 
-  SCHEMA.set(StakeStatusEnum, {kind: 'struct', fields: []});
+  schema.set(StakeStatusEnum, {kind: 'struct', fields: []});
 
-  SCHEMA.set(ValidatorStakeInfo, {
+  schema.set(ValidatorStakeInfo, {
     kind: 'struct',
     fields: [
       ['status', StakeStatus],
