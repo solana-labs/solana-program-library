@@ -314,6 +314,89 @@ async fn fail_with_wrong_mint_authority() {
 }
 
 #[tokio::test]
+async fn fail_with_freeze_authority() {
+    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
+    let stake_pool_accounts = StakePoolAccounts::new();
+
+    create_required_accounts(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts,
+    )
+    .await;
+
+    // create mint with freeze authority
+    let wrong_mint = Keypair::new();
+    let rent = banks_client.get_rent().await.unwrap();
+    let mint_rent = rent.minimum_balance(spl_token::state::Mint::LEN);
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[
+            system_instruction::create_account(
+                &payer.pubkey(),
+                &wrong_mint.pubkey(),
+                mint_rent,
+                spl_token::state::Mint::LEN as u64,
+                &spl_token::id(),
+            ),
+            spl_token::instruction::initialize_mint(
+                &spl_token::id(),
+                &wrong_mint.pubkey(),
+                &stake_pool_accounts.withdraw_authority,
+                Some(&stake_pool_accounts.withdraw_authority),
+                0,
+            )
+            .unwrap(),
+        ],
+        Some(&payer.pubkey()),
+        &[&payer, &wrong_mint],
+        recent_blockhash,
+    );
+    banks_client.process_transaction(transaction).await.unwrap();
+
+    let pool_fee_account = Keypair::new();
+    create_token_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &pool_fee_account,
+        &wrong_mint.pubkey(),
+        &stake_pool_accounts.manager.pubkey(),
+    )
+    .await
+    .unwrap();
+
+    let error = create_stake_pool(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts.stake_pool,
+        &stake_pool_accounts.validator_list,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+        &wrong_mint.pubkey(),
+        &pool_fee_account.pubkey(),
+        &stake_pool_accounts.manager,
+        &stake_pool_accounts.staker.pubkey(),
+        &None,
+        &stake_pool_accounts.fee,
+        stake_pool_accounts.max_validators,
+    )
+    .await
+    .err()
+    .unwrap()
+    .unwrap();
+
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(
+            2,
+            InstructionError::Custom(error::StakePoolError::InvalidMintFreezeAuthority as u32),
+        )
+    );
+}
+
+#[tokio::test]
 async fn fail_with_wrong_token_program_id() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();

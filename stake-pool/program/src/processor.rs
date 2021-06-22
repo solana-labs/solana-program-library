@@ -488,6 +488,10 @@ impl Processor {
             return Err(StakePoolError::WrongMintingAuthority.into());
         }
 
+        if pool_mint.freeze_authority.is_some() {
+            return Err(StakePoolError::InvalidMintFreezeAuthority.into());
+        }
+
         if *reserve_stake_info.owner != stake_program::id() {
             msg!("Reserve stake account not owned by stake program");
             return Err(ProgramError::IncorrectProgramId);
@@ -2099,6 +2103,7 @@ impl PrintProgramError for StakePoolError {
             StakePoolError::StakeLamportsNotEqualToMinimum => msg!("Error: The lamports in the validator stake account is not equal to the minimum"),
             StakePoolError::IncorrectDepositVoteAddress => msg!("Error: The provided deposit stake account is not delegated to the preferred deposit vote account"),
             StakePoolError::IncorrectWithdrawVoteAddress => msg!("Error: The provided withdraw stake account is not the preferred deposit vote account"),
+            StakePoolError::InvalidMintFreezeAuthority => msg!("Error: The mint has an invalid freeze authority"),
         }
     }
 }
