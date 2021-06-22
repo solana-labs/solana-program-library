@@ -2,11 +2,6 @@ import * as schema from './schema.js';
 import solanaWeb3 from '@solana/web3.js';
 import assert from 'assert';
 
-/**
- * Sample code to demonstrate how to use the JS bindings
- * Also contains several useful helper functions
- */
-
 export class StakePoolAccounts {
   /**
    * Wrapper class for a stake pool.
@@ -26,15 +21,15 @@ export interface ValidatorListAccount {
   account: solanaWeb3.AccountInfo<schema.ValidatorList>;
 }
 
+/**
+ * Retrieves and deserializes a StakePool account using a web3js connection and the stake pool address.
+ * @param connection: An active web3js connection.
+ * @param stakePoolPubKey: The public key (address) of the stake pool account.
+ */
 export async function getStakePoolAccount(
   connection: solanaWeb3.Connection,
   stakePoolPubKey: solanaWeb3.PublicKey,
 ): Promise<StakePoolAccount> {
-  /**
-   * Retrieves and deserializes a StakePool account using a web3js connection and the stake pool address.
-   * @param connection: An active web3js connection.
-   * @param stakePoolPubKey: The public key (address) of the stake pool account.
-   */
   try {
     const account = await connection.getAccountInfo(stakePoolPubKey);
 
@@ -52,15 +47,15 @@ export async function getStakePoolAccount(
   }
 }
 
+/**
+ * Retrieves and deserializes a ValidatorList account using a web3js connection and the validator list address.
+ * @param connection: An active web3js connection.
+ * @param validatorListPubKey: The public key (address) of the validator list account.
+ */
 export async function getValidatorListAccount(
   connection: solanaWeb3.Connection,
   validatorListPubKey: solanaWeb3.PublicKey,
 ): Promise<ValidatorListAccount> {
-  /**
-   * Retrieves and deserializes a ValidatorList account using a web3js connection and the validator list address.
-   * @param connection: An active web3js connection.
-   * @param validatorListPubKey: The public key (address) of the validator list account.
-   */
   try {
     const account = await connection.getAccountInfo(validatorListPubKey);
 
@@ -78,15 +73,15 @@ export async function getValidatorListAccount(
   }
 }
 
+/**
+ * Retrieves all StakePool and ValidatorList accounts that are running a particular StakePool program.
+ * @param connection: An active web3js connection.
+ * @param stakePoolProgramAddress: The public key (address) of the StakePool program.
+ */
 export async function getStakePoolAccounts(
   connection: solanaWeb3.Connection,
   stakePoolProgramAddress: solanaWeb3.PublicKey,
 ): Promise<(StakePoolAccount | ValidatorListAccount)[]> {
-  /**
-   * Retrieves all StakePool and ValidatorList accounts that are running a particular StakePool program.
-   * @param connection: An active web3js connection.
-   * @param stakePoolProgramAddress: The public key (address) of the StakePool program.
-   */
   try {
     let response = await connection.getProgramAccounts(stakePoolProgramAddress);
 
@@ -131,23 +126,21 @@ export async function getStakePoolAccounts(
   }
 }
 
+/**
+ * Helper function to pretty print a schema.PublicKey
+ * Pretty prints a PublicKey in base58 format */
 export function prettyPrintPubKey(pubKey: schema.PublicKey): string {
-  /**
-   * Helper function to pretty print a schema.PublicKey
-   * Pretty prints a PublicKey in base58 format */
-
   return new solanaWeb3.PublicKey(
     new solanaWeb3.PublicKey(pubKey.value.toBuffer()).toBytes().reverse(),
   ).toString();
 }
 
+/**
+ * Helper function to pretty print a decoded account
+ */
 export function prettyPrintAccount(
   account: ValidatorListAccount | StakePoolAccount,
 ): void {
-  /**
-   * Helper function to pretty print a decoded account
-   */
-
   console.log('Address:', account.pubkey.toString());
   const sp = account.account.data;
   if (typeof sp === 'undefined') {
