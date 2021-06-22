@@ -27,7 +27,7 @@ use solana_program::{
 };
 use spl_token::solana_program::instruction::AccountMeta;
 use spl_token::state::{Account, Mint};
-use std::convert::TryInto;
+use std::{convert::TryInto};
 
 /// Processes an instruction
 pub fn process_instruction(
@@ -1870,18 +1870,32 @@ fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> ProgramResult {
         amount,
         authority_signer_seeds,
     } = params;
-    let result = invoke_signed(
-        &spl_token::instruction::transfer(
-            token_program.key,
-            source.key,
-            destination.key,
-            authority.key,
-            &[],
-            amount,
-        )?,
-        &[source, destination, authority, token_program],
-        &[authority_signer_seeds],
-    );
+    let result = if authority_signer_seeds.is_empty() {
+        invoke(
+            &spl_token::instruction::transfer(
+                token_program.key,
+                source.key,
+                destination.key,
+                authority.key,
+                &[],
+                amount,
+            )?,
+            &[source, destination, authority, token_program],
+        )
+    } else {
+        invoke_signed(
+            &spl_token::instruction::transfer(
+                token_program.key,
+                source.key,
+                destination.key,
+                authority.key,
+                &[],
+                amount,
+            )?,
+            &[source, destination, authority, token_program],
+            &[authority_signer_seeds],
+        )
+    };
     result.map_err(|_| LendingError::TokenTransferFailed.into())
 }
 
