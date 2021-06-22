@@ -2,10 +2,10 @@ import * as index from './index.js';
 import * as schema from './schema.js';
 import BN from 'bn.js';
 import assert from 'assert';
-import { SOLANA_SCHEMA, PublicKey, Connection } from '@solana/web3.js';
+import {SOLANA_SCHEMA, PublicKey, Connection} from '@solana/web3.js';
 
 // First populate schema
-schema.addStakePoolSchema(SOLANA_SCHEMA)
+schema.addStakePoolSchema(SOLANA_SCHEMA);
 
 describe('schema.decode', () => {
   describe('StakePoolAccount', () => {
@@ -163,7 +163,7 @@ describe('Integration test', () => {
       STAKE_POOL_PROGRAM_ADDR,
     );
 
-    console.log("Number of stake pool accounts in devnet: ", (accounts).length)
+    console.log('Number of stake pool accounts in devnet: ', accounts.length);
 
     accounts.map(account => {
       index.prettyPrintAccount(account);
@@ -191,7 +191,7 @@ describe('Integration test', () => {
       STAKE_POOL_PROGRAM_ADDR,
     );
 
-    console.log("Number of stake pool accounts in testnet: ", accounts.length)
+    console.log('Number of stake pool accounts in testnet: ', accounts.length);
 
     accounts.map(account => {
       // index.prettyPrintAccount(account);
