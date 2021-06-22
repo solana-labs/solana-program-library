@@ -2,7 +2,6 @@
   "name": "stake-pool-js",
   "version": "0.0.1",
   "description": "JS bindings for the stake pool program",
-  "private": true,
   "scripts": {
     "lint": "npx prettier src/*.ts -w",
     "compile": "tsc",
