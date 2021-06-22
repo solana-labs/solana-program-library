@@ -1,15 +1,15 @@
-import {Schema, serialize, deserializeUnchecked} from 'borsh';
+import { Schema, serialize, deserializeUnchecked } from 'borsh';
 import BN from 'bn.js';
-import {SOLANA_SCHEMA, Struct, Enum} from '@solana/web3.js';
+import { Struct, Enum } from '@solana/web3.js';
 
 export class Fee extends Struct {
   denominator: BN;
   numerator: BN;
 }
 
-export class AccountType extends Enum {}
+export class AccountType extends Enum { }
 
-export class AccountTypeEnum extends Struct {}
+export class AccountTypeEnum extends Struct { }
 
 export enum AccountTypeKind {
   Uninitialized = 'Uninitialized',
@@ -44,9 +44,9 @@ export class ValidatorStakeInfo extends Struct {
   stakeLamports: BN;
   lastUpdateEpoch: BN;
 }
-export class StakeStatus extends Enum {}
+export class StakeStatus extends Enum { }
 
-export class StakeStatusEnum extends Struct {}
+export class StakeStatusEnum extends Struct { }
 
 export enum StakeStatusKind {
   Active = 'Active',
@@ -58,13 +58,11 @@ export class PublicKey extends Struct {
   value: BN;
 }
 
-export const SCHEMA: Schema = constructStakePoolSchema(SOLANA_SCHEMA);
-
-export function constructStakePoolSchema(SCHEMA: Schema): Schema {
+export function addStakePoolSchema(SCHEMA: Schema): void {
   /**
    * Borsh requires something called a Schema,
    * which is a Map (key-value pairs) that tell borsh how to deserialise the raw data
-   * This function creates, populates and returns such a schema
+   * This function adds a new schema to an existing schema object.
    */
   SCHEMA.set(PublicKey, {
     kind: 'struct',
@@ -90,7 +88,7 @@ export function constructStakePoolSchema(SCHEMA: Schema): Schema {
     ],
   });
 
-  SCHEMA.set(AccountTypeEnum, {kind: 'struct', fields: []});
+  SCHEMA.set(AccountTypeEnum, { kind: 'struct', fields: [] });
 
   SCHEMA.set(StakePool, {
     kind: 'struct',
@@ -131,7 +129,7 @@ export function constructStakePoolSchema(SCHEMA: Schema): Schema {
     ],
   });
 
-  SCHEMA.set(StakeStatusEnum, {kind: 'struct', fields: []});
+  SCHEMA.set(StakeStatusEnum, { kind: 'struct', fields: [] });
 
   SCHEMA.set(ValidatorStakeInfo, {
     kind: 'struct',
@@ -142,6 +140,4 @@ export function constructStakePoolSchema(SCHEMA: Schema): Schema {
       ['lastUpdateEpoch', 'u64'],
     ],
   });
-
-  return SCHEMA;
 }
