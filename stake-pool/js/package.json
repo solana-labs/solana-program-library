@@ -4,7 +4,7 @@
   "description": "SPL Stake Pool Program JS API",
   "scripts": {
     "lint": "npx prettier src/*.ts -w",
-    "compile": "tsc",
+    "build": "tsc",
     "test": "./node_modules/mocha/bin/mocha -p ./dist"
   },
   "keywords": [],
