@@ -18,9 +18,7 @@ Please note that only the lending program deployed to devnet is currently operat
 
 ### Deploy a lending program (optional)
 
-This is optional! You can simply add your own market and reserves to the existing on-chain programs.
-
-You can skip these steps and use the [Token Lending CLI](./cli/README.md) to create a lending market and add reserves to it.
+This is optional! You can skip these steps and use the [Token Lending CLI](./cli/README.md) with one of the on-chain programs listed above to create a lending market and add reserves to it.
 
 1. [Install the Solana CLI](https://docs.solana.com/cli/install-solana-cli-tools)
 
