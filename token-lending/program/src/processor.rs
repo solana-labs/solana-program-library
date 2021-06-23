@@ -494,7 +494,8 @@ fn process_deposit_reserve_liquidity(
         &[lending_market.bump_seed],
     ];
     let lending_market_authority_pubkey =
-        Pubkey::create_program_address(authority_signer_seeds, program_id)?;
+    Pubkey::create_program_address(authority_signer_seeds, program_id)?;
+    msg!(&lending_market_authority_pubkey.to_string());
     if &lending_market_authority_pubkey != lending_market_authority_info.key {
         msg!(
             "Derived lending market authority does not match the lending market authority provided"
