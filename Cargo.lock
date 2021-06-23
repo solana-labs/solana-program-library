@@ -3998,6 +3998,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-token-lending-cli"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "solana-clap-utils",
+ "solana-cli-config",
+ "solana-client",
+ "solana-logger",
+ "solana-program",
+ "solana-sdk",
+ "spl-token 3.1.1",
+ "spl-token-lending",
+]
+
+[[package]]
 name = "spl-token-swap"
 version = "2.1.0"
 dependencies = [

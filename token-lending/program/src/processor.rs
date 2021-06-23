@@ -1277,6 +1277,7 @@ fn process_repay_obligation_liquidity(
         msg!("Repay reserve liquidity supply must be used as the destination liquidity provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
+    // @FIXME: why is it necessary to refresh before repay?
     if repay_reserve.last_update.is_stale(clock.slot)? {
         msg!("Repay reserve is stale and must be refreshed in the current slot");
         return Err(LendingError::ReserveStale.into());
@@ -1291,6 +1292,7 @@ fn process_repay_obligation_liquidity(
         msg!("Obligation lending market does not match the lending market provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
+    // @FIXME: why is it necessary to refresh before repay?
     if obligation.last_update.is_stale(clock.slot)? {
         msg!("Obligation is stale and must be refreshed in the current slot");
         return Err(LendingError::ObligationStale.into());
@@ -1859,6 +1861,20 @@ fn spl_token_init_mint(params: TokenInitializeMintParams<'_, '_>) -> ProgramResu
     result.map_err(|_| LendingError::TokenInitializeMintFailed.into())
 }
 
+/// Invoke signed unless signers seeds are empty
+#[inline(always)]
+fn invoke_optionally_signed(
+    instruction: &Instruction,
+    account_infos: &[AccountInfo],
+    authority_signer_seeds: &[&[u8]],
+) -> ProgramResult {
+    if authority_signer_seeds.is_empty() {
+        invoke(instruction, account_infos)
+    } else {
+        invoke_signed(instruction, account_infos, &[authority_signer_seeds])
+    }
+}
+
 /// Issue a spl_token `Transfer` instruction.
 #[inline(always)]
 fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> ProgramResult {
@@ -1870,7 +1886,7 @@ fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> ProgramResult {
         amount,
         authority_signer_seeds,
     } = params;
-    let result = invoke_signed(
+    let result = invoke_optionally_signed(
         &spl_token::instruction::transfer(
             token_program.key,
             source.key,
@@ -1880,7 +1896,7 @@ fn spl_token_transfer(params: TokenTransferParams<'_, '_>) -> ProgramResult {
             amount,
         )?,
         &[source, destination, authority, token_program],
-        &[authority_signer_seeds],
+        authority_signer_seeds,
     );
     result.map_err(|_| LendingError::TokenTransferFailed.into())
 }
@@ -1895,7 +1911,7 @@ fn spl_token_mint_to(params: TokenMintToParams<'_, '_>) -> ProgramResult {
         amount,
         authority_signer_seeds,
     } = params;
-    let result = invoke_signed(
+    let result = invoke_optionally_signed(
         &spl_token::instruction::mint_to(
             token_program.key,
             mint.key,
@@ -1905,7 +1921,7 @@ fn spl_token_mint_to(params: TokenMintToParams<'_, '_>) -> ProgramResult {
             amount,
         )?,
         &[mint, destination, authority, token_program],
-        &[authority_signer_seeds],
+        authority_signer_seeds,
     );
     result.map_err(|_| LendingError::TokenMintToFailed.into())
 }
@@ -1921,7 +1937,7 @@ fn spl_token_burn(params: TokenBurnParams<'_, '_>) -> ProgramResult {
         amount,
         authority_signer_seeds,
     } = params;
-    let result = invoke_signed(
+    let result = invoke_optionally_signed(
         &spl_token::instruction::burn(
             token_program.key,
             source.key,
@@ -1931,7 +1947,7 @@ fn spl_token_burn(params: TokenBurnParams<'_, '_>) -> ProgramResult {
             amount,
         )?,
         &[source, mint, authority, token_program],
-        &[authority_signer_seeds],
+        authority_signer_seeds,
     );
     result.map_err(|_| LendingError::TokenBurnFailed.into())
 }
