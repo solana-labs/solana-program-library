@@ -7,14 +7,18 @@ use solana_program::{
     msg,
     program::{invoke, invoke_signed},
     program_error::ProgramError,
+    program_option::COption,
     program_pack::Pack,
     pubkey::Pubkey,
     rent::Rent,
     system_instruction,
 };
-use spl_token::state::{Account, Mint};
+use spl_token::{
+    instruction::set_authority,
+    state::{Account, Mint},
+};
 
-use crate::error::GovernanceError;
+use crate::{error::GovernanceError, tools::pack::unpack_coption_pubkey};
 
 /// Creates and initializes SPL token account with PDA using the provided PDA seeds
 #[allow(clippy::too_many_arguments)]
@@ -242,4 +246,66 @@ pub fn get_spl_token_mint_supply(mint_info: &AccountInfo) -> Result<u64, Program
     let bytes = array_ref![data, 36, 8];
 
     Ok(u64::from_le_bytes(*bytes))
+}
+
+/// Computationally cheap method to just get authority from a mint without unpacking the whole object
+pub fn get_spl_token_mint_authority(
+    mint_info: &AccountInfo,
+) -> Result<COption<Pubkey>, ProgramError> {
+    assert_is_valid_spl_token_mint(mint_info)?;
+    // In token program, 36, 8, 1, 1 is the layout, where the first 36 is authority.
+    let data = mint_info.try_borrow_data().unwrap();
+    let bytes = array_ref![data, 0, 36];
+
+    unpack_coption_pubkey(bytes)
+}
+
+/// Asserts current mint authority matches the given authority and it's signer of the transaction
+pub fn assert_spl_token_mint_authority_is_signer(
+    mint_info: &AccountInfo,
+    mint_authority_info: &AccountInfo,
+) -> Result<(), ProgramError> {
+    let mint_authority = get_spl_token_mint_authority(&mint_info)?;
+
+    if mint_authority.is_none() {
+        return Err(GovernanceError::MintHasNoAuthority.into());
+    }
+
+    if !mint_authority.contains(mint_authority_info.key) {
+        return Err(GovernanceError::InvalidMintAuthority.into());
+    }
+
+    if !mint_authority_info.is_signer {
+        return Err(GovernanceError::MintAuthorityMustSign.into());
+    }
+
+    Ok(())
+}
+
+/// Sets new mint authority
+pub fn set_spl_token_mint_authority<'a>(
+    mint_info: &AccountInfo<'a>,
+    mint_authority: &AccountInfo<'a>,
+    new_mint_authority: &Pubkey,
+    spl_token_info: &AccountInfo<'a>,
+) -> Result<(), ProgramError> {
+    let set_authority_ix = set_authority(
+        &spl_token::id(),
+        mint_info.key,
+        Some(new_mint_authority),
+        spl_token::instruction::AuthorityType::MintTokens,
+        mint_authority.key,
+        &[],
+    )?;
+
+    invoke(
+        &set_authority_ix,
+        &[
+            mint_info.clone(),
+            mint_authority.clone(),
+            spl_token_info.clone(),
+        ],
+    )?;
+
+    Ok(())
 }

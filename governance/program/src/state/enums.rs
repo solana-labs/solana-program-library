@@ -21,6 +21,9 @@ pub enum GovernanceAccountType {
     /// Program Governance account
     ProgramGovernance,
 
+    /// Mint Governance account
+    MintGovernance,
+
     /// Proposal account for Governance account. A single Governance account can have multiple Proposal accounts
     Proposal,
 

@@ -18,10 +18,10 @@ async fn test_execute_mint_instruction() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let realm_cookie = governance_test.with_realm().await;
-    let governed_account_cookie = governance_test.with_governed_account().await;
+    let governed_mint_cookie = governance_test.with_governed_mint().await;
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(&realm_cookie, &governed_account_cookie)
+    let mut mint_governance_cookie = governance_test
+        .with_mint_governance(&realm_cookie, &governed_mint_cookie)
         .await
         .unwrap();
 
@@ -30,7 +30,7 @@ async fn test_execute_mint_instruction() {
         .await;
 
     let mut proposal_cookie = governance_test
-        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_proposal(&token_owner_record_cookie, &mut mint_governance_cookie)
         .await
         .unwrap();
 
@@ -40,7 +40,12 @@ async fn test_execute_mint_instruction() {
         .unwrap();
 
     let proposal_instruction_cookie = governance_test
-        .with_mint_tokens_instruction(&mut proposal_cookie, &token_owner_record_cookie, None)
+        .with_mint_tokens_instruction(
+            &governed_mint_cookie,
+            &mut proposal_cookie,
+            &token_owner_record_cookie,
+            None,
+        )
         .await
         .unwrap();
 
@@ -219,10 +224,10 @@ async fn test_execute_instruction_with_invalid_state_errors() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let realm_cookie = governance_test.with_realm().await;
-    let governed_account_cookie = governance_test.with_governed_account().await;
+    let governed_mint_cookie = governance_test.with_governed_mint().await;
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(&realm_cookie, &governed_account_cookie)
+    let mut mint_governance_cookie = governance_test
+        .with_mint_governance(&realm_cookie, &governed_mint_cookie)
         .await
         .unwrap();
 
@@ -231,7 +236,7 @@ async fn test_execute_instruction_with_invalid_state_errors() {
         .await;
 
     let mut proposal_cookie = governance_test
-        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_proposal(&token_owner_record_cookie, &mut mint_governance_cookie)
         .await
         .unwrap();
 
@@ -246,7 +251,12 @@ async fn test_execute_instruction_with_invalid_state_errors() {
         .unwrap();
 
     let proposal_instruction_cookie = governance_test
-        .with_mint_tokens_instruction(&mut proposal_cookie, &token_owner_record_cookie, None)
+        .with_mint_tokens_instruction(
+            &governed_mint_cookie,
+            &mut proposal_cookie,
+            &token_owner_record_cookie,
+            None,
+        )
         .await
         .unwrap();
 
@@ -378,10 +388,10 @@ async fn test_execute_instruction_for_other_proposal_error() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let realm_cookie = governance_test.with_realm().await;
-    let governed_account_cookie = governance_test.with_governed_account().await;
+    let governed_mint_cookie = governance_test.with_governed_mint().await;
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(&realm_cookie, &governed_account_cookie)
+    let mut mint_governance_cookie = governance_test
+        .with_mint_governance(&realm_cookie, &governed_mint_cookie)
         .await
         .unwrap();
 
@@ -390,7 +400,7 @@ async fn test_execute_instruction_for_other_proposal_error() {
         .await;
 
     let mut proposal_cookie = governance_test
-        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_proposal(&token_owner_record_cookie, &mut mint_governance_cookie)
         .await
         .unwrap();
 
@@ -400,7 +410,12 @@ async fn test_execute_instruction_for_other_proposal_error() {
         .unwrap();
 
     let proposal_instruction_cookie = governance_test
-        .with_mint_tokens_instruction(&mut proposal_cookie, &token_owner_record_cookie, None)
+        .with_mint_tokens_instruction(
+            &governed_mint_cookie,
+            &mut proposal_cookie,
+            &token_owner_record_cookie,
+            None,
+        )
         .await
         .unwrap();
 
@@ -423,7 +438,7 @@ async fn test_execute_instruction_for_other_proposal_error() {
         .unwrap();
 
     let proposal_cookie2 = governance_test
-        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_proposal(&token_owner_record_cookie, &mut mint_governance_cookie)
         .await
         .unwrap();
 
@@ -447,10 +462,10 @@ async fn test_execute_mint_instruction_twice_error() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let realm_cookie = governance_test.with_realm().await;
-    let governed_account_cookie = governance_test.with_governed_account().await;
+    let governed_mint_cookie = governance_test.with_governed_mint().await;
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(&realm_cookie, &governed_account_cookie)
+    let mut mint_governance_cookie = governance_test
+        .with_mint_governance(&realm_cookie, &governed_mint_cookie)
         .await
         .unwrap();
 
@@ -459,7 +474,7 @@ async fn test_execute_mint_instruction_twice_error() {
         .await;
 
     let mut proposal_cookie = governance_test
-        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_proposal(&token_owner_record_cookie, &mut mint_governance_cookie)
         .await
         .unwrap();
 
@@ -469,7 +484,12 @@ async fn test_execute_mint_instruction_twice_error() {
         .unwrap();
 
     let proposal_instruction_cookie = governance_test
-        .with_mint_tokens_instruction(&mut proposal_cookie, &token_owner_record_cookie, None)
+        .with_mint_tokens_instruction(
+            &governed_mint_cookie,
+            &mut proposal_cookie,
+            &token_owner_record_cookie,
+            None,
+        )
         .await
         .unwrap();
 

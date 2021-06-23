@@ -180,6 +180,18 @@ pub enum GovernanceError {
     #[error("Proposal does not belong to given Governing Mint")]
     InvalidGoverningMintForProposal,
 
+    /// Current mint authority must sign transaction
+    #[error("Current mint authority must sign transaction")]
+    MintAuthorityMustSign,
+
+    /// Invalid mint authority
+    #[error("Invalid mint authority")]
+    InvalidMintAuthority,
+
+    /// Mint has no authority
+    #[error("Mint has no authority")]
+    MintHasNoAuthority,
+
     /// ---- SPL Token Tools Errors ----
 
     /// Invalid Token account owner

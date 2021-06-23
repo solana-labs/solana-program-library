@@ -3,7 +3,8 @@
 use crate::{
     state::{
         governance::{
-            get_account_governance_address, get_program_governance_address, GovernanceConfig,
+            get_account_governance_address, get_mint_governance_address,
+            get_program_governance_address, GovernanceConfig,
         },
         proposal::get_proposal_address,
         proposal_instruction::{get_proposal_instruction_address, InstructionData},
@@ -126,10 +127,32 @@ pub enum GovernanceInstruction {
         config: GovernanceConfig,
 
         #[allow(dead_code)]
-        /// Indicate whether Program's upgrade_authority should be transferred to the Governance PDA
+        /// Indicates whether Program's upgrade_authority should be transferred to the Governance PDA
         /// If it's set to false then it can be done at a later time
         /// However the instruction would validate the current upgrade_authority signed the transaction nonetheless
         transfer_upgrade_authority: bool,
+    },
+
+    /// Creates Mint Governance account which governs a mint
+    ///
+    ///   0. `[]` Realm account the created Governance belongs to    
+    ///   1. `[writable]` Mint Governance account. PDA seeds: ['mint-governance', realm, governed_mint]
+    ///   2. `[writable]` Mint governed by this Governance account
+    ///   3. `[signer]` Current Mint Authority
+    ///   4. `[signer]` Payer
+    ///   5. `[]` SPL Token program
+    ///   6. `[]` System program
+    ///   7. `[]` Sysvar Rent
+    CreateMintGovernance {
+        /// Governance config
+        #[allow(dead_code)]
+        config: GovernanceConfig,
+
+        #[allow(dead_code)]
+        /// Indicates whether Mint's authority should be transferred to the Governance PDA
+        /// If it's set to false then it can be done at a later time
+        /// However the instruction would validate the current mint authority signed the transaction nonetheless
+        transfer_mint_authority: bool,
     },
 
     /// Creates Proposal account for Instructions that will be executed at various slots in the future
@@ -505,6 +528,42 @@ pub fn create_program_governance(
     let instruction = GovernanceInstruction::CreateProgramGovernance {
         config,
         transfer_upgrade_authority,
+    };
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates CreateMintGovernance instruction
+pub fn create_mint_governance(
+    program_id: &Pubkey,
+    // Accounts
+    governed_mint_authority: &Pubkey,
+    payer: &Pubkey,
+    // Args
+    config: GovernanceConfig,
+    transfer_mint_authority: bool,
+) -> Instruction {
+    let mint_governance_address =
+        get_mint_governance_address(program_id, &config.realm, &config.governed_account);
+
+    let accounts = vec![
+        AccountMeta::new_readonly(config.realm, false),
+        AccountMeta::new(mint_governance_address, false),
+        AccountMeta::new(config.governed_account, false),
+        AccountMeta::new_readonly(*governed_mint_authority, true),
+        AccountMeta::new_readonly(*payer, true),
+        AccountMeta::new_readonly(spl_token::id(), false),
+        AccountMeta::new_readonly(system_program::id(), false),
+        AccountMeta::new_readonly(sysvar::rent::id(), false),
+    ];
+
+    let instruction = GovernanceInstruction::CreateMintGovernance {
+        config,
+        transfer_mint_authority,
     };
 
     Instruction {

@@ -4,6 +4,7 @@ mod process_add_signatory;
 mod process_cancel_proposal;
 mod process_cast_vote;
 mod process_create_account_governance;
+mod process_create_mint_governance;
 mod process_create_program_governance;
 mod process_create_proposal;
 mod process_create_realm;
@@ -25,6 +26,7 @@ use process_add_signatory::*;
 use process_cancel_proposal::*;
 use process_cast_vote::*;
 use process_create_account_governance::*;
+use process_create_mint_governance::*;
 use process_create_program_governance::*;
 use process_create_proposal::*;
 use process_create_realm::*;
@@ -95,6 +97,11 @@ pub fn process_instruction(
             config,
             transfer_upgrade_authority,
         ),
+
+        GovernanceInstruction::CreateMintGovernance {
+            config,
+            transfer_mint_authority,
+        } => process_create_mint_governance(program_id, accounts, config, transfer_mint_authority),
 
         GovernanceInstruction::CreateAccountGovernance { config } => {
             process_create_account_governance(program_id, accounts, config)
