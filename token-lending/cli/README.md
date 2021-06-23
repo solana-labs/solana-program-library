@@ -11,9 +11,9 @@ cargo install spl-token-lending-cli
 
 ## Deploy a lending program (optional)
 
-This is optional! You can simply add your own market and reserves to the existing [on-chain programs](../README.md#On-chain-programs).
+This is optional! You can simply add your own market and reserves to the existing [on-chain programs](../README.md#on-chain-programs).
 
-If you want to deploy your own program, follow [this guide](../README.md#Deploy-a-lending-program) and note the program ID.
+If you want to deploy your own program, follow [this guide](../README.md#deploy-a-lending-program-optional) and note the program ID.
 
 ## Create a lending market
 
