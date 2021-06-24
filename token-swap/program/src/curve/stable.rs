@@ -422,8 +422,10 @@ mod tests {
             let diff =
                 (sim_result as i128 - result.destination_amount_swapped as i128).abs();
 
+            let tolerance = std::cmp::max(1, sim_result as i128 / 1_000_000_000);
+
             assert!(
-                diff <= 1,
+                diff <= tolerance,
                 "result={}, sim_result={}, amp={}, source_amount={}, swap_source_amount={}, swap_destination_amount={}, diff={}",
                 result.destination_amount_swapped,
                 sim_result,
