@@ -1277,7 +1277,6 @@ fn process_repay_obligation_liquidity(
         msg!("Repay reserve liquidity supply must be used as the destination liquidity provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    // @FIXME: why is it necessary to refresh before repay?
     if repay_reserve.last_update.is_stale(clock.slot)? {
         msg!("Repay reserve is stale and must be refreshed in the current slot");
         return Err(LendingError::ReserveStale.into());
@@ -1292,7 +1291,6 @@ fn process_repay_obligation_liquidity(
         msg!("Obligation lending market does not match the lending market provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    // @FIXME: why is it necessary to refresh before repay?
     if obligation.last_update.is_stale(clock.slot)? {
         msg!("Obligation is stale and must be refreshed in the current slot");
         return Err(LendingError::ObligationStale.into());

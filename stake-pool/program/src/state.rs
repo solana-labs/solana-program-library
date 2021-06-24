@@ -4,7 +4,6 @@ use {
     crate::error::StakePoolError,
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{account_info::AccountInfo, msg, program_error::ProgramError, pubkey::Pubkey},
-    spl_math::checked_ceil_div::CheckedCeilDiv,
     std::convert::TryFrom,
 };
 
@@ -98,13 +97,6 @@ impl StakePool {
                 .checked_div(self.total_stake_lamports as u128)?,
         )
         .ok()
-    }
-    /// calculate the pool tokens that should be burned for a withdrawal of `stake_lamports`
-    pub fn calc_pool_tokens_for_withdraw(&self, stake_lamports: u64) -> Option<u64> {
-        let (quotient, _) = (stake_lamports as u128)
-            .checked_mul(self.pool_token_supply as u128)?
-            .checked_ceil_div(self.total_stake_lamports as u128)?;
-        u64::try_from(quotient).ok()
     }
 
     /// calculate lamports amount on withdrawal

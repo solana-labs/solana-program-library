@@ -645,6 +645,29 @@ pub fn deactivate_stake(stake_pubkey: &Pubkey, authorized_pubkey: &Pubkey) -> In
     Instruction::new_with_bincode(id(), &StakeInstruction::Deactivate, account_metas)
 }
 
+/// FIXME copied from the stake program
+pub fn withdraw(
+    stake_pubkey: &Pubkey,
+    withdrawer_pubkey: &Pubkey,
+    to_pubkey: &Pubkey,
+    lamports: u64,
+    custodian_pubkey: Option<&Pubkey>,
+) -> Instruction {
+    let mut account_metas = vec![
+        AccountMeta::new(*stake_pubkey, false),
+        AccountMeta::new(*to_pubkey, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
+        AccountMeta::new_readonly(*withdrawer_pubkey, true),
+    ];
+
+    if let Some(custodian_pubkey) = custodian_pubkey {
+        account_metas.push(AccountMeta::new_readonly(*custodian_pubkey, true));
+    }
+
+    Instruction::new_with_bincode(id(), &StakeInstruction::Withdraw(lamports), account_metas)
+}
+
 #[cfg(test)]
 mod test {
     use {super::*, bincode::serialize, solana_program::borsh::try_from_slice_unchecked};
