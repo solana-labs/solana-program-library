@@ -168,6 +168,10 @@ pub enum GovernanceError {
     #[error("Invalid account owner")]
     InvalidAccountOwner,
 
+    /// Account doesn't exist
+    #[error("Account doesn't exist")]
+    AccountDoesNotExist,
+
     /// Invalid Account type
     #[error("Invalid Account type")]
     InvalidAccountType,
@@ -205,6 +209,10 @@ pub enum GovernanceError {
     /// Token Account is not initialized
     #[error("Token Account is not initialized")]
     SplTokenAccountNotInitialized,
+
+    /// Token Account doesn't exist
+    #[error("Token Account doesn't exist")]
+    SplTokenAccountDoesNotExist,
 
     /// Token account data is invalid
     #[error("Token account data is invalid")]

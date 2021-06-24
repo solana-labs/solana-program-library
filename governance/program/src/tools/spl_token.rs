@@ -173,7 +173,7 @@ pub fn transfer_spl_tokens_signed<'a>(
 /// Asserts the given account_info represents a valid SPL Token account which is initialized and belongs to spl_token program
 pub fn assert_is_valid_spl_token_account(account_info: &AccountInfo) -> Result<(), ProgramError> {
     if account_info.data_is_empty() {
-        return Err(GovernanceError::SplTokenAccountNotInitialized.into());
+        return Err(GovernanceError::SplTokenAccountDoesNotExist.into());
     }
 
     if account_info.owner != &spl_token::id() {
@@ -182,6 +182,14 @@ pub fn assert_is_valid_spl_token_account(account_info: &AccountInfo) -> Result<(
 
     if account_info.data_len() != Account::LEN {
         return Err(GovernanceError::SplTokenInvalidTokenAccountData.into());
+    }
+
+    // TokeAccount layout:   mint(32), owner(32), amount(8), delegate(36), state(1), ...
+    let data = account_info.try_borrow_data()?;
+    let state = array_ref![data, 108, 1];
+
+    if state == &[0] {
+        return Err(GovernanceError::SplTokenAccountNotInitialized.into());
     }
 
     Ok(())
@@ -205,7 +213,7 @@ pub fn assert_is_valid_spl_token_mint(mint_info: &AccountInfo) -> Result<(), Pro
     let data = mint_info.try_borrow_data().unwrap();
     let is_initialized = array_ref![data, 45, 1];
 
-    if is_initialized != &[1] {
+    if is_initialized == &[0] {
         return Err(GovernanceError::SplTokenMintNotInitialized.into());
     }
 
