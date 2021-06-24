@@ -2788,7 +2788,7 @@ mod tests {
             );
         }
         let swap_state = SwapVersion::unpack(&accounts.swap_account.data).unwrap();
-        assert_eq!(swap_state.is_initialized(), true);
+        assert!(swap_state.is_initialized());
         assert_eq!(swap_state.nonce(), accounts.nonce);
         assert_eq!(
             swap_state.swap_curve().curve_type,
