@@ -1230,15 +1230,13 @@ mod test {
         fn random_deposit_withdraw(
             total_liquidity in 0..=MAX_LIQUIDITY,
             borrowed_percent in 0..=WAD,
-            collateral_multiplier in 0..=(5*WAD),
             borrow_rate in 0..=u8::MAX,
             initial_deposit_amount in 1..=u32::MAX,
             (first_remaining, second_remaining, third_remaining) in generate_remaining(),
         ) {
             let borrowed_liquidity_wads = Decimal::from(total_liquidity).try_mul(Rate::from_scaled_val(borrowed_percent))?;
             let available_liquidity = total_liquidity - borrowed_liquidity_wads.try_round_u64()?;
-            let mint_total_supply = Decimal::from(total_liquidity)
-              .try_mul(Rate::from_scaled_val(collateral_multiplier))?.try_round_u64()?;
+            let mint_total_supply = Decimal::from(total_liquidity).try_mul(Rate::from_scaled_val(5*WAD))?.try_round_u64()?;
 
             let mut reserve = Reserve {
                 collateral: ReserveCollateral {
@@ -1265,24 +1263,22 @@ mod test {
             current_collateral_amount += reserve.deposit_liquidity(current_liquidity_amount).unwrap();
             current_liquidity_amount = 0;
 
-            reserve.accrue_interest(1);
+            reserve.accrue_interest(1)?;
             current_liquidity_amount += reserve.redeem_collateral(current_collateral_amount - first_remaining).unwrap();
             current_collateral_amount = first_remaining;
 
-            reserve.accrue_interest(1);
+            reserve.accrue_interest(1)?;
             current_collateral_amount += reserve.deposit_liquidity(current_liquidity_amount).unwrap();
-            current_liquidity_amount = 0;
 
-            reserve.accrue_interest(1);
+            reserve.accrue_interest(1)?;
             current_liquidity_amount = reserve.redeem_collateral(current_collateral_amount - second_remaining).unwrap();
             current_collateral_amount = second_remaining;
 
-            reserve.accrue_interest(1);
+            reserve.accrue_interest(1)?;
             current_collateral_amount += reserve.deposit_liquidity(current_liquidity_amount).unwrap();
             current_liquidity_amount = 0;
 
             current_liquidity_amount += reserve.redeem_collateral(current_collateral_amount - third_remaining).unwrap();
-            current_collateral_amount = third_remaining;
 
             assert!(current_liquidity_amount <= initial_deposit_amount.into());
         }
