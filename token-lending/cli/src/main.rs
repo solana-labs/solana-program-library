@@ -63,7 +63,7 @@ fn main() {
                 .global(true)
                 .help("Configuration file to use");
             if let Some(ref config_file) = *solana_cli_config::CONFIG_FILE {
-                arg.default_value(&config_file)
+                arg.default_value(config_file)
             } else {
                 arg
             }
@@ -459,13 +459,13 @@ fn command_create_lending_market(
     let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
     check_fee_payer_balance(
         config,
-        lending_market_balance + fee_calculator.calculate_fee(&transaction.message()),
+        lending_market_balance + fee_calculator.calculate_fee(transaction.message()),
     )?;
     transaction.sign(
         &vec![config.fee_payer.as_ref(), &lending_market_keypair],
         recent_blockhash,
     );
-    send_transaction(&config, transaction)?;
+    send_transaction(config, transaction)?;
     Ok(())
 }
 
@@ -644,9 +644,9 @@ fn command_add_reserve(
     check_fee_payer_balance(
         config,
         total_balance
-            + fee_calculator.calculate_fee(&transaction_1.message())
-            + fee_calculator.calculate_fee(&transaction_2.message())
-            + fee_calculator.calculate_fee(&transaction_3.message()),
+            + fee_calculator.calculate_fee(transaction_1.message())
+            + fee_calculator.calculate_fee(transaction_2.message())
+            + fee_calculator.calculate_fee(transaction_3.message()),
     )?;
     transaction_1.sign(
         &vec![
@@ -675,9 +675,9 @@ fn command_add_reserve(
         ],
         recent_blockhash,
     );
-    send_transaction(&config, transaction_1)?;
-    send_transaction(&config, transaction_2)?;
-    send_transaction(&config, transaction_3)?;
+    send_transaction(config, transaction_1)?;
+    send_transaction(config, transaction_2)?;
+    send_transaction(config, transaction_3)?;
     Ok(())
 }
 

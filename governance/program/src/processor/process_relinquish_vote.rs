@@ -34,14 +34,14 @@ pub fn process_relinquish_vote(program_id: &Pubkey, accounts: &[AccountInfo]) ->
 
     let mut proposal_data = get_proposal_data_for_governance_and_governing_mint(
         program_id,
-        &proposal_info,
+        proposal_info,
         governance_info.key,
         governing_token_mint_info.key,
     )?;
 
     let mut token_owner_record_data = get_token_owner_record_data_for_realm_and_governing_mint(
         program_id,
-        &token_owner_record_info,
+        token_owner_record_info,
         &governance_data.config.realm,
         governing_token_mint_info.key,
     )?;

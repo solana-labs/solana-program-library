@@ -87,7 +87,7 @@ pub fn process_create_realm(
 
     create_and_serialize_account_signed::<Realm>(
         payer_info,
-        &realm_info,
+        realm_info,
         &realm_data,
         &get_realm_address_seeds(&name),
         program_id,

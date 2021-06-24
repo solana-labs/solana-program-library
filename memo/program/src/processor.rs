@@ -52,7 +52,7 @@ mod tests {
         let emoji = "🐆".as_bytes();
         let bytes = [0xF0, 0x9F, 0x90, 0x86];
         assert_eq!(emoji, bytes);
-        assert_eq!(Ok(()), process_instruction(&program_id, &[], &emoji));
+        assert_eq!(Ok(()), process_instruction(&program_id, &[], emoji));
 
         let mut bad_utf8 = bytes;
         bad_utf8[3] = 0xFF; // Invalid UTF-8 byte

@@ -55,9 +55,9 @@ pub fn process_deposit_governing_tokens(
     let amount = get_spl_token_amount(governing_token_source_info)?;
 
     transfer_spl_tokens(
-        &governing_token_source_info,
-        &governing_token_holding_info,
-        &governing_token_transfer_authority_info,
+        governing_token_source_info,
+        governing_token_holding_info,
+        governing_token_transfer_authority_info,
         amount,
         spl_token_info,
     )?;
@@ -70,7 +70,7 @@ pub fn process_deposit_governing_tokens(
 
     if token_owner_record_info.data_is_empty() {
         // Deposited tokens can only be withdrawn by the owner so let's make sure the owner signed the transaction
-        let governing_token_owner = get_spl_token_owner(&governing_token_source_info)?;
+        let governing_token_owner = get_spl_token_owner(governing_token_source_info)?;
 
         if !(governing_token_owner == *governing_token_owner_info.key
             && governing_token_owner_info.is_signer)

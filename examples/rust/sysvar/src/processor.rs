@@ -21,7 +21,7 @@ pub fn process_instruction(
     let clock_via_sysvar = Clock::get()?;
     // Or deserialize the account into a clock struct
     let clock_sysvar_info = next_account_info(account_info_iter)?;
-    let clock_via_account = Clock::from_account_info(&clock_sysvar_info)?;
+    let clock_via_account = Clock::from_account_info(clock_sysvar_info)?;
     // Both produce the same sysvar
     assert_eq!(clock_via_sysvar, clock_via_account);
     // Note: `format!` can be very expensive, use cautiously
@@ -31,7 +31,7 @@ pub fn process_instruction(
     let rent_via_sysvar = Rent::get()?;
     // Or deserialize the account into a rent struct
     let rent_sysvar_info = next_account_info(account_info_iter)?;
-    let rent_via_account = Rent::from_account_info(&rent_sysvar_info)?;
+    let rent_via_account = Rent::from_account_info(rent_sysvar_info)?;
     // Both produce the same sysvar
     assert_eq!(rent_via_sysvar, rent_via_account);
     // Can't print `exemption_threshold` because BPF does not support printing floats

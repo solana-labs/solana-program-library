@@ -34,12 +34,12 @@ pub fn process_finalize_vote(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
 
     let mut proposal_data = get_proposal_data_for_governance_and_governing_mint(
         program_id,
-        &proposal_info,
+        proposal_info,
         governance_info.key,
         governing_token_mint_info.key,
     )?;
 
-    let governing_token_supply = get_spl_token_mint_supply(&governing_token_mint_info)?;
+    let governing_token_supply = get_spl_token_mint_supply(governing_token_mint_info)?;
 
     proposal_data.finalize_vote(governing_token_supply, &governance_data.config, clock.slot)?;
 

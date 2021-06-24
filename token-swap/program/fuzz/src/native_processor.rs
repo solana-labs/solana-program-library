@@ -26,7 +26,7 @@ impl program_stubs::SyscallStubs for TestSyscallStubs {
                     let mut new_account_info = account_info.clone();
                     for seeds in signers_seeds.iter() {
                         let signer =
-                            Pubkey::create_program_address(&seeds, &spl_token_swap::id()).unwrap();
+                            Pubkey::create_program_address(seeds, &spl_token_swap::id()).unwrap();
                         if *account_info.key == signer {
                             new_account_info.is_signer = true;
                         }

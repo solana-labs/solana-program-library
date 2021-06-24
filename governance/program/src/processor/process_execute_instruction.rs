@@ -53,7 +53,7 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
 
     invoke_signed(
         &instruction,
-        &instruction_account_infos,
+        instruction_account_infos,
         &[&governance_seeds[..]],
     )?;
 

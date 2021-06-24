@@ -1482,8 +1482,8 @@ fn process_liquidate_obligation(
     } = withdraw_reserve.calculate_liquidation(
         liquidity_amount,
         &obligation,
-        &liquidity,
-        &collateral,
+        liquidity,
+        collateral,
     )?;
 
     if repay_amount == 0 {

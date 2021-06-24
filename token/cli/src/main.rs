@@ -503,7 +503,7 @@ fn resolve_mint_info(
     if !config.sign_only {
         let source_account = config
             .rpc_client
-            .get_token_account(&token_account)?
+            .get_token_account(token_account)?
             .ok_or_else(|| format!("Could not find token account {}", token_account))?;
         let source_mint = Pubkey::from_str(&source_account.mint)?;
         if let Some(mint) = mint_address {
@@ -1175,7 +1175,7 @@ fn command_account_info(config: &Config, address: Pubkey) -> CommandResult {
     }
     println_name_value(
         "Close authority:",
-        &account.close_authority.as_ref().unwrap_or(&String::new()),
+        account.close_authority.as_ref().unwrap_or(&String::new()),
     );
     if !is_associated {
         println!();
@@ -1185,7 +1185,7 @@ fn command_account_info(config: &Config, address: Pubkey) -> CommandResult {
 }
 
 fn get_multisig(config: &Config, address: &Pubkey) -> Result<Multisig, Error> {
-    let account = config.rpc_client.get_account(&address)?;
+    let account = config.rpc_client.get_account(address)?;
     Multisig::unpack(&account.data).map_err(|e| e.into())
 }
 
@@ -1376,7 +1376,7 @@ fn main() {
                 .global(true)
                 .help("Configuration file to use");
             if let Some(ref config_file) = *solana_cli_config::CONFIG_FILE {
-                arg.default_value(&config_file)
+                arg.default_value(config_file)
             } else {
                 arg
             }
@@ -1435,7 +1435,7 @@ fn main() {
                         .validator(is_mint_decimals)
                         .value_name("DECIMALS")
                         .takes_value(true)
-                        .default_value(&default_decimals)
+                        .default_value(default_decimals)
                         .help("Number of base 10 digits to the right of the decimal place"),
                 )
                 .arg(
@@ -2125,7 +2125,7 @@ fn main() {
         );
 
         let (signer, fee_payer) = signer_from_path(
-            &matches,
+            matches,
             matches
                 .value_of("fee_payer")
                 .unwrap_or(&cli_config.keypair_path),
@@ -2144,14 +2144,14 @@ fn main() {
 
         let verbose = matches.is_present("verbose");
 
-        let nonce_account = pubkey_of_signer(&matches, NONCE_ARG.name, &mut wallet_manager)
+        let nonce_account = pubkey_of_signer(matches, NONCE_ARG.name, &mut wallet_manager)
             .unwrap_or_else(|e| {
                 eprintln!("error: {}", e);
                 exit(1);
             });
         let nonce_authority = if nonce_account.is_some() {
             let (signer, nonce_authority) = signer_from_path(
-                &matches,
+                matches,
                 matches
                     .value_of(NONCE_AUTHORITY_ARG.name)
                     .unwrap_or(&cli_config.keypair_path),
@@ -2176,7 +2176,7 @@ fn main() {
         let blockhash_query = BlockhashQuery::new_from_matches(matches);
         let sign_only = matches.is_present(SIGN_ONLY_ARG.name);
 
-        let multisig_signers = signers_of(&matches, MULTISIG_SIGNER_ARG.name, &mut wallet_manager)
+        let multisig_signers = signers_of(matches, MULTISIG_SIGNER_ARG.name, &mut wallet_manager)
             .unwrap_or_else(|e| {
                 eprintln!("error: {}", e);
                 exit(1);
@@ -2242,9 +2242,9 @@ fn main() {
             command_create_account(&config, token, owner, account)
         }
         ("create-multisig", Some(arg_matches)) => {
-            let minimum_signers = value_of::<u8>(&arg_matches, "minimum_signers").unwrap();
+            let minimum_signers = value_of::<u8>(arg_matches, "minimum_signers").unwrap();
             let multisig_members =
-                pubkeys_of_multiple_signers(&arg_matches, "multisig_member", &mut wallet_manager)
+                pubkeys_of_multiple_signers(arg_matches, "multisig_member", &mut wallet_manager)
                     .unwrap_or_else(|e| {
                         eprintln!("error: {}", e);
                         exit(1);
@@ -2310,7 +2310,7 @@ fn main() {
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
             bulk_signers.push(owner_signer);
 
-            let mint_decimals = value_of::<u8>(&arg_matches, MINT_DECIMALS_ARG.name);
+            let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
             let fund_recipient = matches.is_present("fund_recipient");
             let allow_unfunded_recipient = matches.is_present("allow_empty_recipient")
                 || matches.is_present("allow_unfunded_recipient");
@@ -2342,7 +2342,7 @@ fn main() {
             let amount = value_t_or_exit!(arg_matches, "amount", f64);
             let mint_address =
                 pubkey_of_signer(arg_matches, MINT_ADDRESS_ARG.name, &mut wallet_manager).unwrap();
-            let mint_decimals = value_of::<u8>(&arg_matches, MINT_DECIMALS_ARG.name);
+            let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
             command_burn(&config, source, owner, amount, mint_address, mint_decimals)
         }
         ("mint", Some(arg_matches)) => {
@@ -2359,7 +2359,7 @@ fn main() {
                 "recipient",
                 &mut wallet_manager,
             );
-            let mint_decimals = value_of::<u8>(&arg_matches, MINT_DECIMALS_ARG.name);
+            let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
             command_mint(
                 &config,
                 token,
@@ -2432,7 +2432,7 @@ fn main() {
                 .unwrap();
             let mint_address =
                 pubkey_of_signer(arg_matches, MINT_ADDRESS_ARG.name, &mut wallet_manager).unwrap();
-            let mint_decimals = value_of::<u8>(&arg_matches, MINT_DECIMALS_ARG.name);
+            let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
             command_approve(
                 &config,
                 account,

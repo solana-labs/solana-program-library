@@ -580,7 +580,7 @@ pub fn remove_validator_from_pool_with_vote(
     let (stake_account_address, _) =
         find_stake_program_address(program_id, vote_account_address, stake_pool_address);
     let (transient_stake_account, _) =
-        find_transient_stake_program_address(program_id, &vote_account_address, stake_pool_address);
+        find_transient_stake_program_address(program_id, vote_account_address, stake_pool_address);
     remove_validator_from_pool(
         program_id,
         stake_pool_address,
@@ -632,12 +632,12 @@ pub fn decrease_validator_stake_with_vote(
     let pool_withdraw_authority =
         find_withdraw_authority_program_address(program_id, stake_pool_address).0;
     let (validator_stake_address, _) =
-        find_stake_program_address(program_id, &vote_account_address, stake_pool_address);
+        find_stake_program_address(program_id, vote_account_address, stake_pool_address);
     let (transient_stake_address, _) =
-        find_transient_stake_program_address(program_id, &vote_account_address, stake_pool_address);
+        find_transient_stake_program_address(program_id, vote_account_address, stake_pool_address);
     decrease_validator_stake(
         program_id,
-        &stake_pool_address,
+        stake_pool_address,
         &stake_pool.staker,
         &pool_withdraw_authority,
         &stake_pool.validator_list,
@@ -753,7 +753,7 @@ pub fn update_stake_pool(
             &withdraw_authority,
             &stake_pool.validator_list,
             &stake_pool.reserve_stake,
-            &accounts_chunk,
+            accounts_chunk,
             start_index,
             no_merge,
         ));

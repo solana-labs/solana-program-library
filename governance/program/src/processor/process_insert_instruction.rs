@@ -59,7 +59,7 @@ pub fn process_insert_instruction(
     }
 
     let mut proposal_data =
-        get_proposal_data_for_governance(program_id, &proposal_info, governance_info.key)?;
+        get_proposal_data_for_governance(program_id, proposal_info, governance_info.key)?;
     proposal_data.assert_can_edit_instructions()?;
 
     let token_owner_record_data = get_token_owner_record_data_for_proposal_owner(

@@ -97,8 +97,8 @@ pub fn get_program_governance_address_seeds<'a>(
     // Note: Only the current program upgrade authority can create an account with this PDA using CreateProgramGovernance instruction
     [
         b"program-governance",
-        &realm.as_ref(),
-        &governed_program.as_ref(),
+        realm.as_ref(),
+        governed_program.as_ref(),
     ]
 }
 
@@ -122,8 +122,8 @@ pub fn get_account_governance_address_seeds<'a>(
 ) -> [&'a [u8]; 3] {
     [
         b"account-governance",
-        &realm.as_ref(),
-        &governed_account.as_ref(),
+        realm.as_ref(),
+        governed_account.as_ref(),
     ]
 }
 

@@ -322,7 +322,7 @@ impl PreciseNumber {
                 Some(num) => self.checked_div(&num)?,
                 None => Self::new(0)?,
             };
-            guess = first_term.checked_add(&second_term)?.checked_div(&root)?;
+            guess = first_term.checked_add(&second_term)?.checked_div(root)?;
             if last_guess.almost_eq(&guess, precision) {
                 break;
             } else {
