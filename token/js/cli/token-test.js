@@ -226,8 +226,8 @@ export async function createAssociatedAccount(): Promise<void> {
 
   // creating again should cause TX error for the associated token account
   assert(
-    await didThrow(() => {
-      testToken.createAssociatedTokenAccount(owner.publicKey);
+    await didThrow(async () => {
+      await testToken.createAssociatedTokenAccount(owner.publicKey);
     }),
   );
 }
