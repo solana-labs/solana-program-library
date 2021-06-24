@@ -14,7 +14,7 @@ async fn test_create_mint_governance() {
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
     let realm_cookie = governance_test.with_realm().await;
-    let governed_mint_cookie = governance_test.with_governed_mint().await;
+    let mut governed_mint_cookie = governance_test.with_governed_mint().await;
 
     // Act
     let mint_governance_cookie = governance_test

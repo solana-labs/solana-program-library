@@ -218,6 +218,10 @@ pub enum GovernanceError {
     #[error("Token Mint account is not initialized")]
     SplTokenMintNotInitialized,
 
+    /// Token Mint account doesn't exist
+    #[error("Token Mint account doesn't exist")]
+    SplTokenMintDoesNotExist,
+
     /// ---- Bpf Upgradable Loader Tools Errors ----
 
     /// Invalid ProgramData account Address

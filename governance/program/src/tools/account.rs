@@ -103,7 +103,8 @@ pub fn get_account_data<T: BorshDeserialize + IsInitialized>(
     }
 }
 
-/// Asserts the given account is not empty, owned given program and of the expected type
+/// Asserts the given account is not empty, owned by the given program and of the expected type
+/// Note: The function assumes the account type T is stored as the first element in the account data
 pub fn assert_is_valid_account<T: BorshDeserialize + PartialEq>(
     account_info: &AccountInfo,
     expected_account_type: T,
