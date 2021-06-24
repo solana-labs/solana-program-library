@@ -55,11 +55,11 @@ pub const TEST_RESERVE_CONFIG: ReserveConfig = ReserveConfig {
     },
 };
 
-pub const SOL_PYTH_PRODUCT: &str = "8yrQMUyJRnCJ72NWwMiPV9dNGw465Z8bKUvnUC8P5L6F";
-pub const SOL_PYTH_PRICE: &str = "BdgHsXrH1mXqhdosXavYxZgX6bGqTdj5mh2sxDhF8bJy";
+pub const SOL_PYTH_PRODUCT: &str = "3Mnn2fX6rQyUsyELYms1sBJyChWofzSNRoqYzvgMVz5E";
+pub const SOL_PYTH_PRICE: &str = "J83w4HKfqxwcq3BEMMkPFSppX3gqekLyLJBexebFVkix";
 
-pub const SRM_PYTH_PRODUCT: &str = "5agdsn3jogTt8F537GW3g8BuLaBGrg9Q2gPKUNqBV6Dh";
-pub const SRM_PYTH_PRICE: &str = "2Mt2wcRXpCAbTRp2VjFqGa8SbJVzjJvyK4Tx7aqbRtBJ";
+pub const SRM_PYTH_PRODUCT: &str = "6MEwdxe4g1NeAF9u6KDG14anJpFsVEa2cvr5H6iriFZ8";
+pub const SRM_PYTH_PRICE: &str = "992moaMQKs32GKZ9dxi8keyM2bUmbrwBZpK4p2K6X5Vs";
 
 pub const USDC_MINT: &str = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 
