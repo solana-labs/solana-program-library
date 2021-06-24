@@ -2,5 +2,5 @@
 
 // Configure Node.js tests
 module.exports = {
-  require: ['@babel/register'],
+  require: ['@babel/register', 'esm'],
 };
