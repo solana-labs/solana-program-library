@@ -380,10 +380,10 @@ impl Processor {
         }
 
         let source_account =
-            Self::unpack_token_account(swap_source_info, &token_swap.token_program_id())?;
+            Self::unpack_token_account(swap_source_info, token_swap.token_program_id())?;
         let dest_account =
-            Self::unpack_token_account(swap_destination_info, &token_swap.token_program_id())?;
-        let pool_mint = Self::unpack_mint(pool_mint_info, &token_swap.token_program_id())?;
+            Self::unpack_token_account(swap_destination_info, token_swap.token_program_id())?;
+        let pool_mint = Self::unpack_mint(pool_mint_info, token_swap.token_program_id())?;
 
         let trade_direction = if *swap_source_info.key == *token_swap.token_a_account() {
             TradeDirection::AtoB
@@ -529,9 +529,9 @@ impl Processor {
             None,
         )?;
 
-        let token_a = Self::unpack_token_account(token_a_info, &token_swap.token_program_id())?;
-        let token_b = Self::unpack_token_account(token_b_info, &token_swap.token_program_id())?;
-        let pool_mint = Self::unpack_mint(pool_mint_info, &token_swap.token_program_id())?;
+        let token_a = Self::unpack_token_account(token_a_info, token_swap.token_program_id())?;
+        let token_b = Self::unpack_token_account(token_b_info, token_swap.token_program_id())?;
+        let pool_mint = Self::unpack_mint(pool_mint_info, token_swap.token_program_id())?;
         let current_pool_mint_supply = to_u128(pool_mint.supply)?;
         let (pool_token_amount, pool_mint_supply) = if current_pool_mint_supply > 0 {
             (to_u128(pool_token_amount)?, current_pool_mint_supply)
@@ -743,11 +743,11 @@ impl Processor {
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
         let source_account =
-            Self::unpack_token_account(source_info, &token_swap.token_program_id())?;
+            Self::unpack_token_account(source_info, token_swap.token_program_id())?;
         let swap_token_a =
-            Self::unpack_token_account(swap_token_a_info, &token_swap.token_program_id())?;
+            Self::unpack_token_account(swap_token_a_info, token_swap.token_program_id())?;
         let swap_token_b =
-            Self::unpack_token_account(swap_token_b_info, &token_swap.token_program_id())?;
+            Self::unpack_token_account(swap_token_b_info, token_swap.token_program_id())?;
 
         let trade_direction = if source_account.mint == swap_token_a.mint {
             TradeDirection::AtoB
@@ -776,7 +776,7 @@ impl Processor {
             None,
         )?;
 
-        let pool_mint = Self::unpack_mint(pool_mint_info, &token_swap.token_program_id())?;
+        let pool_mint = Self::unpack_mint(pool_mint_info, token_swap.token_program_id())?;
         let pool_mint_supply = to_u128(pool_mint.supply)?;
         let pool_token_amount = if pool_mint_supply > 0 {
             token_swap
@@ -860,11 +860,11 @@ impl Processor {
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
         let destination_account =
-            Self::unpack_token_account(destination_info, &token_swap.token_program_id())?;
+            Self::unpack_token_account(destination_info, token_swap.token_program_id())?;
         let swap_token_a =
-            Self::unpack_token_account(swap_token_a_info, &token_swap.token_program_id())?;
+            Self::unpack_token_account(swap_token_a_info, token_swap.token_program_id())?;
         let swap_token_b =
-            Self::unpack_token_account(swap_token_b_info, &token_swap.token_program_id())?;
+            Self::unpack_token_account(swap_token_b_info, token_swap.token_program_id())?;
 
         let trade_direction = if destination_account.mint == swap_token_a.mint {
             TradeDirection::AtoB
@@ -892,7 +892,7 @@ impl Processor {
             Some(pool_fee_account_info),
         )?;
 
-        let pool_mint = Self::unpack_mint(pool_mint_info, &token_swap.token_program_id())?;
+        let pool_mint = Self::unpack_mint(pool_mint_info, token_swap.token_program_id())?;
         let pool_mint_supply = to_u128(pool_mint.supply)?;
         let swap_token_a_amount = to_u128(swap_token_a.amount)?;
         let swap_token_b_amount = to_u128(swap_token_b.amount)?;
@@ -1200,7 +1200,7 @@ mod tests {
                         let mut new_account_info = account_info.clone();
                         for seeds in signers_seeds.iter() {
                             let signer =
-                                Pubkey::create_program_address(&seeds, &SWAP_PROGRAM_ID).unwrap();
+                                Pubkey::create_program_address(seeds, &SWAP_PROGRAM_ID).unwrap();
                             if *account_info.key == signer {
                                 new_account_info.is_signer = true;
                             }
@@ -1270,7 +1270,7 @@ mod tests {
                 &pool_mint_key,
                 &mut pool_mint_account,
                 &authority_key,
-                &user_key,
+                user_key,
                 0,
             );
             let (pool_fee_key, pool_fee_account) = mint_token(
@@ -1278,26 +1278,26 @@ mod tests {
                 &pool_mint_key,
                 &mut pool_mint_account,
                 &authority_key,
-                &user_key,
+                user_key,
                 0,
             );
             let (token_a_mint_key, mut token_a_mint_account) =
-                create_mint(&spl_token::id(), &user_key, None);
+                create_mint(&spl_token::id(), user_key, None);
             let (token_a_key, token_a_account) = mint_token(
                 &spl_token::id(),
                 &token_a_mint_key,
                 &mut token_a_mint_account,
-                &user_key,
+                user_key,
                 &authority_key,
                 token_a_amount,
             );
             let (token_b_mint_key, mut token_b_mint_account) =
-                create_mint(&spl_token::id(), &user_key, None);
+                create_mint(&spl_token::id(), user_key, None);
             let (token_b_key, token_b_account) = mint_token(
                 &spl_token::id(),
                 &token_b_mint_key,
                 &mut token_b_mint_account,
-                &user_key,
+                user_key,
                 &authority_key,
                 token_b_amount,
             );
@@ -1368,16 +1368,16 @@ mod tests {
                 &spl_token::id(),
                 &self.token_a_mint_key,
                 &mut self.token_a_mint_account,
-                &mint_owner,
-                &account_owner,
+                mint_owner,
+                account_owner,
                 a_amount,
             );
             let (token_b_key, token_b_account) = mint_token(
                 &spl_token::id(),
                 &self.token_b_mint_key,
                 &mut self.token_b_mint_account,
-                &mint_owner,
-                &account_owner,
+                mint_owner,
+                account_owner,
                 b_amount,
             );
             let (pool_key, pool_account) = mint_token(
@@ -1385,7 +1385,7 @@ mod tests {
                 &self.pool_mint_key,
                 &mut self.pool_mint_account,
                 &self.authority_key,
-                &account_owner,
+                account_owner,
                 pool_amount,
             );
             (
@@ -1436,9 +1436,9 @@ mod tests {
             do_process_instruction(
                 approve(
                     &spl_token::id(),
-                    &user_source_key,
+                    user_source_key,
                     &user_transfer_key,
-                    &user_key,
+                    user_key,
                     &[],
                     amount_in,
                 )
@@ -1462,10 +1462,10 @@ mod tests {
                     &self.swap_key,
                     &self.authority_key,
                     &user_transfer_key,
-                    &user_source_key,
-                    &swap_source_key,
-                    &swap_destination_key,
-                    &user_destination_key,
+                    user_source_key,
+                    swap_source_key,
+                    swap_destination_key,
+                    user_destination_key,
                     &self.pool_mint_key,
                     &self.pool_fee_key,
                     None,
@@ -1513,9 +1513,9 @@ mod tests {
             do_process_instruction(
                 approve(
                     &spl_token::id(),
-                    &depositor_token_a_key,
+                    depositor_token_a_key,
                     &user_transfer_authority,
-                    &depositor_key,
+                    depositor_key,
                     &[],
                     maximum_token_a_amount,
                 )
@@ -1531,9 +1531,9 @@ mod tests {
             do_process_instruction(
                 approve(
                     &spl_token::id(),
-                    &depositor_token_b_key,
+                    depositor_token_b_key,
                     &user_transfer_authority,
-                    &depositor_key,
+                    depositor_key,
                     &[],
                     maximum_token_b_amount,
                 )
@@ -1553,12 +1553,12 @@ mod tests {
                     &self.swap_key,
                     &self.authority_key,
                     &user_transfer_authority,
-                    &depositor_token_a_key,
-                    &depositor_token_b_key,
+                    depositor_token_a_key,
+                    depositor_token_b_key,
                     &self.token_a_key,
                     &self.token_b_key,
                     &self.pool_mint_key,
-                    &depositor_pool_key,
+                    depositor_pool_key,
                     DepositAllTokenTypes {
                         pool_token_amount,
                         maximum_token_a_amount,
@@ -1600,9 +1600,9 @@ mod tests {
             do_process_instruction(
                 approve(
                     &spl_token::id(),
-                    &pool_key,
+                    pool_key,
                     &user_transfer_authority_key,
-                    &user_key,
+                    user_key,
                     &[],
                     pool_token_amount,
                 )
@@ -1625,11 +1625,11 @@ mod tests {
                     &user_transfer_authority_key,
                     &self.pool_mint_key,
                     &self.pool_fee_key,
-                    &pool_key,
+                    pool_key,
                     &self.token_a_key,
                     &self.token_b_key,
-                    &token_a_key,
-                    &token_b_key,
+                    token_a_key,
+                    token_b_key,
                     WithdrawAllTokenTypes {
                         pool_token_amount,
                         minimum_token_a_amount,
@@ -1668,9 +1668,9 @@ mod tests {
             do_process_instruction(
                 approve(
                     &spl_token::id(),
-                    &deposit_account_key,
+                    deposit_account_key,
                     &user_transfer_authority_key,
-                    &depositor_key,
+                    depositor_key,
                     &[],
                     source_token_amount,
                 )
@@ -1690,11 +1690,11 @@ mod tests {
                     &self.swap_key,
                     &self.authority_key,
                     &user_transfer_authority_key,
-                    &deposit_account_key,
+                    deposit_account_key,
                     &self.token_a_key,
                     &self.token_b_key,
                     &self.pool_mint_key,
-                    &deposit_pool_key,
+                    deposit_pool_key,
                     DepositSingleTokenTypeExactAmountIn {
                         source_token_amount,
                         minimum_pool_token_amount,
@@ -1731,9 +1731,9 @@ mod tests {
             do_process_instruction(
                 approve(
                     &spl_token::id(),
-                    &pool_key,
+                    pool_key,
                     &user_transfer_authority_key,
-                    &user_key,
+                    user_key,
                     &[],
                     maximum_pool_token_amount,
                 )
@@ -1755,10 +1755,10 @@ mod tests {
                     &user_transfer_authority_key,
                     &self.pool_mint_key,
                     &self.pool_fee_key,
-                    &pool_key,
+                    pool_key,
                     &self.token_a_key,
                     &self.token_b_key,
-                    &destination_key,
+                    destination_key,
                     WithdrawSingleTokenTypeExactAmountOut {
                         destination_token_amount,
                         maximum_pool_token_amount,
@@ -1861,13 +1861,13 @@ mod tests {
         let mut account_account = Account::new(
             account_minimum_balance(),
             spl_token::state::Account::get_packed_len(),
-            &program_id,
+            program_id,
         );
         let mut mint_authority_account = Account::default();
         let mut rent_sysvar_account = create_account_for_test(&Rent::free());
 
         do_process_instruction(
-            initialize_account(&program_id, &account_key, &mint_key, account_owner_key).unwrap(),
+            initialize_account(program_id, &account_key, mint_key, account_owner_key).unwrap(),
             vec![
                 &mut account_account,
                 &mut mint_account,
@@ -1880,10 +1880,10 @@ mod tests {
         if amount > 0 {
             do_process_instruction(
                 mint_to(
-                    &program_id,
-                    &mint_key,
+                    program_id,
+                    mint_key,
                     &account_key,
-                    &mint_authority_key,
+                    mint_authority_key,
                     &[],
                     amount,
                 )
@@ -1909,12 +1909,12 @@ mod tests {
         let mut mint_account = Account::new(
             mint_minimum_balance(),
             spl_token::state::Mint::get_packed_len(),
-            &program_id,
+            program_id,
         );
         let mut rent_sysvar_account = create_account_for_test(&Rent::free());
 
         do_process_instruction(
-            initialize_mint(&program_id, &mint_key, authority_key, freeze_authority, 2).unwrap(),
+            initialize_mint(program_id, &mint_key, authority_key, freeze_authority, 2).unwrap(),
             vec![&mut mint_account, &mut rent_sysvar_account],
         )
         .unwrap();
@@ -2788,7 +2788,7 @@ mod tests {
             );
         }
         let swap_state = SwapVersion::unpack(&accounts.swap_account.data).unwrap();
-        assert_eq!(swap_state.is_initialized(), true);
+        assert!(swap_state.is_initialized());
         assert_eq!(swap_state.nonce(), accounts.nonce);
         assert_eq!(
             swap_state.swap_curve().curve_type,

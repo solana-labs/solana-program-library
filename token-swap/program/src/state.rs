@@ -304,7 +304,7 @@ mod tests {
         SwapVersion::pack(swap_info, &mut packed).unwrap();
         let unpacked = SwapVersion::unpack(&packed).unwrap();
 
-        assert_eq!(unpacked.is_initialized(), true);
+        assert!(unpacked.is_initialized());
         assert_eq!(unpacked.nonce(), TEST_NONCE);
         assert_eq!(*unpacked.token_program_id(), TEST_TOKEN_PROGRAM_ID);
         assert_eq!(*unpacked.token_a_account(), TEST_TOKEN_A);

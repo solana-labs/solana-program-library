@@ -44,7 +44,7 @@ pub fn process_create_account_governance(
 
     create_and_serialize_account_signed::<Governance>(
         payer_info,
-        &account_governance_info,
+        account_governance_info,
         &account_governance_data,
         &get_account_governance_address_seeds(&config.realm, &config.governed_account),
         program_id,

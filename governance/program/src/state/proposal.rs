@@ -378,7 +378,7 @@ pub fn get_proposal_address_seeds<'a>(
         PROGRAM_AUTHORITY_SEED,
         governance.as_ref(),
         governing_token_mint.as_ref(),
-        &proposal_index_le_bytes,
+        proposal_index_le_bytes,
     ]
 }
 
@@ -390,7 +390,7 @@ pub fn get_proposal_address<'a>(
     proposal_index_le_bytes: &'a [u8],
 ) -> Pubkey {
     Pubkey::find_program_address(
-        &get_proposal_address_seeds(governance, governing_token_mint, &proposal_index_le_bytes),
+        &get_proposal_address_seeds(governance, governing_token_mint, proposal_index_le_bytes),
         program_id,
     )
     .0

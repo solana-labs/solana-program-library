@@ -246,7 +246,7 @@ fn run_fuzz(fuzz_data: FuzzData) {
     // fees and a potential crash when withdrawing just 1 pool token.
     let mut fee_account = token_swap.pool_fee_account.clone();
     for mut pool_account in pool_accounts.values_mut() {
-        let pool_token_amount = get_token_balance(&pool_account);
+        let pool_token_amount = get_token_balance(pool_account);
         if pool_token_amount > 0 {
             transfer(&mut pool_account, &mut fee_account, pool_token_amount);
         }

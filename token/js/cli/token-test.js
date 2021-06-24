@@ -41,9 +41,9 @@ function assert(condition, message) {
   }
 }
 
-async function didThrow(obj, func, args): Promise<boolean> {
+async function didThrow(func): Promise<boolean> {
   try {
-    await func.apply(testToken, args);
+    await func();
   } catch (e) {
     return true;
   }
@@ -226,9 +226,9 @@ export async function createAssociatedAccount(): Promise<void> {
 
   // creating again should cause TX error for the associated token account
   assert(
-    await didThrow(testToken, testToken.createAssociatedTokenAccount, [
-      owner.publicKey,
-    ]),
+    await didThrow(async () => {
+      await testToken.createAssociatedTokenAccount(owner.publicKey);
+    }),
   );
 }
 
@@ -244,13 +244,15 @@ export async function mintTo(): Promise<void> {
 
 export async function mintToChecked(): Promise<void> {
   assert(
-    await didThrow(testToken, testToken.mintToChecked, [
-      testAccount,
-      testMintAuthority,
-      [],
-      1000,
-      1,
-    ]),
+    await didThrow(async () => {
+      await testToken.mintToChecked(
+        testAccount,
+        testMintAuthority,
+        [],
+        1000,
+        1,
+      );
+    }),
   );
 
   await testToken.mintToChecked(testAccount, testMintAuthority, [], 1000, 2);
@@ -283,14 +285,16 @@ export async function transferChecked(): Promise<void> {
   const dest = await testToken.createAccount(destOwner.publicKey);
 
   assert(
-    await didThrow(testToken, testToken.transferChecked, [
-      testAccount,
-      dest,
-      testAccountOwner,
-      [],
-      100,
-      testTokenDecimals - 1,
-    ]),
+    await didThrow(async () => {
+      await testToken.transferChecked(
+        testAccount,
+        dest,
+        testAccountOwner,
+        [],
+        100,
+        testTokenDecimals - 1,
+      );
+    }),
   );
 
   await testToken.transferChecked(
@@ -387,13 +391,9 @@ export async function failOnApproveOverspend(): Promise<void> {
   assert(account1Info.delegatedAmount.toNumber() == 0);
 
   assert(
-    await didThrow(testToken, testToken.transfer, [
-      account1,
-      account2,
-      delegate,
-      [],
-      1,
-    ]),
+    await didThrow(async () => {
+      await testToken.transfer(account1, account2, delegate, [], 1);
+    }),
   );
 }
 
@@ -407,13 +407,15 @@ export async function setAuthority(): Promise<void> {
     [],
   );
   assert(
-    await didThrow(testToken, testToken.setAuthority, [
-      testAccount,
-      newOwner.publicKey,
-      'AccountOwner',
-      testAccountOwner,
-      [],
-    ]),
+    await didThrow(async () => {
+      await testToken.setAuthority(
+        testAccount,
+        newOwner.publicKey,
+        'AccountOwner',
+        testAccountOwner,
+        [],
+      );
+    }),
   );
   await testToken.setAuthority(
     testAccount,
@@ -439,13 +441,9 @@ export async function burnChecked(): Promise<void> {
   const amount = accountInfo.amount.toNumber();
 
   assert(
-    await didThrow(testToken, testToken.burnChecked, [
-      testAccount,
-      testAccountOwner,
-      [],
-      1,
-      1,
-    ]),
+    await didThrow(async () => {
+      await testToken.burnChecked(testAccount, testAccountOwner, [], 1, 1);
+    }),
   );
 
   await testToken.burnChecked(testAccount, testAccountOwner, [], 1, 2);
@@ -464,13 +462,9 @@ export async function freezeThawAccount(): Promise<void> {
   const dest = await testToken.createAccount(destOwner.publicKey);
 
   assert(
-    await didThrow(testToken, testToken.transfer, [
-      testAccount,
-      dest,
-      testAccountOwner,
-      [],
-      100,
-    ]),
+    await didThrow(async () => {
+      await testToken.transfer(testAccount, dest, testAccountOwner, [], 100);
+    }),
   );
 
   await testToken.thawAccount(testAccount, testMintAuthority, []);
@@ -503,12 +497,9 @@ export async function closeAccount(): Promise<void> {
 
   // Check that accounts with non-zero token balance cannot be closed
   assert(
-    await didThrow(testToken, testToken.closeAccount, [
-      testAccount,
-      dest,
-      closeAuthority,
-      [],
-    ]),
+    await didThrow(async () => {
+      await testToken.closeAccount(testAccount, dest, closeAuthority, []);
+    }),
   );
 
   const connection = await getConnection();

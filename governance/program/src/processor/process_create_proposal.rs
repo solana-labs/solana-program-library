@@ -54,7 +54,7 @@ pub fn process_create_proposal(
 
     let token_owner_record_data = get_token_owner_record_data_for_realm_and_governing_mint(
         program_id,
-        &token_owner_record_info,
+        token_owner_record_info,
         &governance_data.config.realm,
         &governing_token_mint,
     )?;

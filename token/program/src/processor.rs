@@ -1927,9 +1927,9 @@ mod tests {
         // transfer
         let instruction = transfer(
             &program_id,
-            &account_info.key,
-            &account_info.key,
-            &owner_info.key,
+            account_info.key,
+            account_info.key,
+            owner_info.key,
             &[],
             1000,
         )
@@ -1953,10 +1953,10 @@ mod tests {
         // transfer checked
         let instruction = transfer_checked(
             &program_id,
-            &account_info.key,
-            &mint_info.key,
-            &account_info.key,
-            &owner_info.key,
+            account_info.key,
+            mint_info.key,
+            account_info.key,
+            owner_info.key,
             &[],
             1000,
             2,
@@ -1983,9 +1983,9 @@ mod tests {
         let mut owner_no_sign_info = owner_info.clone();
         let mut instruction = transfer(
             &program_id,
-            &account_info.key,
-            &account_info.key,
-            &owner_no_sign_info.key,
+            account_info.key,
+            account_info.key,
+            owner_no_sign_info.key,
             &[],
             1000,
         )
@@ -2008,10 +2008,10 @@ mod tests {
         // missing signer checked
         let mut instruction = transfer_checked(
             &program_id,
-            &account_info.key,
-            &mint_info.key,
-            &account_info.key,
-            &owner_no_sign_info.key,
+            account_info.key,
+            mint_info.key,
+            account_info.key,
+            owner_no_sign_info.key,
             &[],
             1000,
             2,
@@ -2035,9 +2035,9 @@ mod tests {
         // missing owner
         let instruction = transfer(
             &program_id,
-            &account_info.key,
-            &account_info.key,
-            &owner2_info.key,
+            account_info.key,
+            account_info.key,
+            owner2_info.key,
             &[],
             1000,
         )
@@ -2058,10 +2058,10 @@ mod tests {
         // missing owner checked
         let instruction = transfer_checked(
             &program_id,
-            &account_info.key,
-            &mint_info.key,
-            &account_info.key,
-            &owner2_info.key,
+            account_info.key,
+            mint_info.key,
+            account_info.key,
+            owner2_info.key,
             &[],
             1000,
             2,
@@ -2084,9 +2084,9 @@ mod tests {
         // insufficient funds
         let instruction = transfer(
             &program_id,
-            &account_info.key,
-            &account_info.key,
-            &owner_info.key,
+            account_info.key,
+            account_info.key,
+            owner_info.key,
             &[],
             1001,
         )
@@ -2107,10 +2107,10 @@ mod tests {
         // insufficient funds checked
         let instruction = transfer_checked(
             &program_id,
-            &account_info.key,
-            &mint_info.key,
-            &account_info.key,
-            &owner_info.key,
+            account_info.key,
+            mint_info.key,
+            account_info.key,
+            owner_info.key,
             &[],
             1001,
             2,
@@ -2133,10 +2133,10 @@ mod tests {
         // incorrect decimals
         let instruction = transfer_checked(
             &program_id,
-            &account_info.key,
-            &mint_info.key,
-            &account_info.key,
-            &owner_info.key,
+            account_info.key,
+            mint_info.key,
+            account_info.key,
+            owner_info.key,
             &[],
             1,
             10, // <-- incorrect decimals
@@ -2159,10 +2159,10 @@ mod tests {
         // incorrect mint
         let instruction = transfer_checked(
             &program_id,
-            &account_info.key,
-            &account3_info.key, // <-- incorrect mint
-            &account_info.key,
-            &owner_info.key,
+            account_info.key,
+            account3_info.key, // <-- incorrect mint
+            account_info.key,
+            owner_info.key,
             &[],
             1,
             2,
@@ -2185,9 +2185,9 @@ mod tests {
         // approve delegate
         let instruction = approve(
             &program_id,
-            &account_info.key,
-            &delegate_info.key,
-            &owner_info.key,
+            account_info.key,
+            delegate_info.key,
+            owner_info.key,
             &[],
             100,
         )
@@ -2206,9 +2206,9 @@ mod tests {
         // delegate transfer
         let instruction = transfer(
             &program_id,
-            &account_info.key,
-            &account_info.key,
-            &delegate_info.key,
+            account_info.key,
+            account_info.key,
+            delegate_info.key,
             &[],
             100,
         )
@@ -2233,10 +2233,10 @@ mod tests {
         // delegate transfer checked
         let instruction = transfer_checked(
             &program_id,
-            &account_info.key,
-            &mint_info.key,
-            &account_info.key,
-            &delegate_info.key,
+            account_info.key,
+            mint_info.key,
+            account_info.key,
+            delegate_info.key,
             &[],
             100,
             2,
@@ -2263,9 +2263,9 @@ mod tests {
         // delegate insufficient funds
         let instruction = transfer(
             &program_id,
-            &account_info.key,
-            &account_info.key,
-            &delegate_info.key,
+            account_info.key,
+            account_info.key,
+            delegate_info.key,
             &[],
             101,
         )
@@ -2286,10 +2286,10 @@ mod tests {
         // delegate insufficient funds checked
         let instruction = transfer_checked(
             &program_id,
-            &account_info.key,
-            &mint_info.key,
-            &account_info.key,
-            &delegate_info.key,
+            account_info.key,
+            mint_info.key,
+            account_info.key,
+            delegate_info.key,
             &[],
             101,
             2,
@@ -2312,9 +2312,9 @@ mod tests {
         // owner transfer with delegate assigned
         let instruction = transfer(
             &program_id,
-            &account_info.key,
-            &account_info.key,
-            &owner_info.key,
+            account_info.key,
+            account_info.key,
+            owner_info.key,
             &[],
             1000,
         )
@@ -2338,10 +2338,10 @@ mod tests {
         // owner transfer with delegate assigned checked
         let instruction = transfer_checked(
             &program_id,
-            &account_info.key,
-            &mint_info.key,
-            &account_info.key,
-            &owner_info.key,
+            account_info.key,
+            mint_info.key,
+            account_info.key,
+            owner_info.key,
             &[],
             1000,
             2,

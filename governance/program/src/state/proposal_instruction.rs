@@ -118,7 +118,7 @@ pub fn get_proposal_instruction_address_seeds<'a>(
     [
         PROGRAM_AUTHORITY_SEED,
         proposal.as_ref(),
-        &instruction_index_le_bytes,
+        instruction_index_le_bytes,
     ]
 }
 
@@ -129,7 +129,7 @@ pub fn get_proposal_instruction_address<'a>(
     instruction_index_le_bytes: &'a [u8],
 ) -> Pubkey {
     Pubkey::find_program_address(
-        &get_proposal_instruction_address_seeds(proposal, &instruction_index_le_bytes),
+        &get_proposal_instruction_address_seeds(proposal, instruction_index_le_bytes),
         program_id,
     )
     .0

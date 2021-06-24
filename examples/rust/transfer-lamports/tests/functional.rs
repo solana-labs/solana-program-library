@@ -11,7 +11,7 @@ use {
 
 #[tokio::test]
 async fn test_lamport_transfer() {
-    let program_id = Pubkey::from_str(&"TransferLamports111111111111111111111111111").unwrap();
+    let program_id = Pubkey::from_str("TransferLamports111111111111111111111111111").unwrap();
     let source_pubkey = Pubkey::new_unique();
     let destination_pubkey = Pubkey::new_unique();
     let mut program_test = ProgramTest::new(

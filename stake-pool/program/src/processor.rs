@@ -53,7 +53,7 @@ fn check_validator_stake_address(
 ) -> Result<(), ProgramError> {
     // Check stake account address validity
     let (validator_stake_address, _) =
-        crate::find_stake_program_address(&program_id, &vote_address, &stake_pool_address);
+        crate::find_stake_program_address(program_id, vote_address, stake_pool_address);
     if validator_stake_address != *stake_account_address {
         msg!(
             "Incorrect stake account address for vote {}, expected {}, received {}",
@@ -75,11 +75,8 @@ fn check_transient_stake_address(
     vote_address: &Pubkey,
 ) -> Result<u8, ProgramError> {
     // Check stake account address validity
-    let (transient_stake_address, bump_seed) = crate::find_transient_stake_program_address(
-        &program_id,
-        &vote_address,
-        &stake_pool_address,
-    );
+    let (transient_stake_address, bump_seed) =
+        crate::find_transient_stake_program_address(program_id, vote_address, stake_pool_address);
     if transient_stake_address != *stake_account_address {
         Err(StakePoolError::InvalidStakeAccountAddress.into())
     } else {
@@ -147,12 +144,12 @@ fn create_transient_stake_account<'a>(
             transient_stake_account_info.clone(),
             system_program_info.clone(),
         ],
-        &[&transient_stake_account_signer_seeds],
+        &[transient_stake_account_signer_seeds],
     )?;
     invoke_signed(
         &system_instruction::assign(transient_stake_account_info.key, &stake_program::id()),
         &[transient_stake_account_info, system_program_info],
-        &[&transient_stake_account_signer_seeds],
+        &[transient_stake_account_signer_seeds],
     )
 }
 
@@ -648,11 +645,8 @@ impl Processor {
         check_system_program(system_program_info.key)?;
         check_stake_program(stake_program_info.key)?;
 
-        let (stake_address, bump_seed) = crate::find_stake_program_address(
-            &program_id,
-            &validator_info.key,
-            &stake_pool_info.key,
-        );
+        let (stake_address, bump_seed) =
+            crate::find_stake_program_address(program_id, validator_info.key, stake_pool_info.key);
         if stake_address != *stake_account_info.key {
             return Err(StakePoolError::InvalidStakeAccountAddress.into());
         }
@@ -670,19 +664,19 @@ impl Processor {
         // Create new stake account
         invoke_signed(
             &system_instruction::create_account(
-                &funder_info.key,
-                &stake_account_info.key,
+                funder_info.key,
+                stake_account_info.key,
                 required_lamports,
                 std::mem::size_of::<stake_program::StakeState>() as u64,
                 &stake_program::id(),
             ),
             &[funder_info.clone(), stake_account_info.clone()],
-            &[&stake_account_signer_seeds],
+            &[stake_account_signer_seeds],
         )?;
 
         invoke(
             &stake_program::initialize(
-                &stake_account_info.key,
+                stake_account_info.key,
                 &stake_program::Authorized {
                     staker: *staker_info.key,
                     withdrawer: *staker_info.key,
@@ -698,9 +692,9 @@ impl Processor {
 
         invoke(
             &stake_program::delegate_stake(
-                &stake_account_info.key,
-                &staker_info.key,
-                &validator_info.key,
+                stake_account_info.key,
+                staker_info.key,
+                validator_info.key,
             ),
             &[
                 stake_account_info.clone(),
@@ -1037,7 +1031,7 @@ impl Processor {
 
         create_transient_stake_account(
             transient_stake_account_info.clone(),
-            &transient_stake_account_signer_seeds,
+            transient_stake_account_signer_seeds,
             system_program_info.clone(),
         )?;
 
@@ -1131,7 +1125,7 @@ impl Processor {
             program_id,
             stake_pool_info.key,
             transient_stake_account_info.key,
-            &vote_account_address,
+            vote_account_address,
         )?;
         let transient_stake_account_signer_seeds: &[&[_]] = &[
             TRANSIENT_STAKE_SEED,
@@ -1140,7 +1134,7 @@ impl Processor {
             &[transient_stake_bump_seed],
         ];
 
-        let maybe_validator_list_entry = validator_list.find_mut(&vote_account_address);
+        let maybe_validator_list_entry = validator_list.find_mut(vote_account_address);
         if maybe_validator_list_entry.is_none() {
             msg!(
                 "Vote account {} not found in stake pool",
@@ -1184,7 +1178,7 @@ impl Processor {
 
         create_transient_stake_account(
             transient_stake_account_info.clone(),
-            &transient_stake_account_signer_seeds,
+            transient_stake_account_signer_seeds,
             system_program_info.clone(),
         )?;
 
@@ -1290,7 +1284,7 @@ impl Processor {
         if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
-        stake_pool.check_validator_list(&validator_list_info)?;
+        stake_pool.check_validator_list(validator_list_info)?;
         stake_pool.check_authority_withdraw(
             withdraw_authority_info.key,
             program_id,
@@ -1848,7 +1842,7 @@ impl Processor {
                 .find(|&&x| x.stake_lamports() != 0)
             {
                 let (validator_stake_address, _) = crate::find_stake_program_address(
-                    &program_id,
+                    program_id,
                     &withdrawable_entry.vote_account_address,
                     stake_pool_info.key,
                 );
@@ -1863,7 +1857,7 @@ impl Processor {
             let meta = stake_state.meta().ok_or(StakePoolError::WrongStakeState)?;
             stake_split_from
                 .lamports()
-                .checked_sub(minimum_reserve_lamports(&meta))
+                .checked_sub(minimum_reserve_lamports(meta))
                 .ok_or(StakePoolError::StakeLamportsNotEqualToMinimum)?;
             None
         } else {
