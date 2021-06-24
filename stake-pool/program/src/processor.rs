@@ -75,11 +75,8 @@ fn check_transient_stake_address(
     vote_address: &Pubkey,
 ) -> Result<u8, ProgramError> {
     // Check stake account address validity
-    let (transient_stake_address, bump_seed) = crate::find_transient_stake_program_address(
-        program_id,
-        vote_address,
-        stake_pool_address,
-    );
+    let (transient_stake_address, bump_seed) =
+        crate::find_transient_stake_program_address(program_id, vote_address, stake_pool_address);
     if transient_stake_address != *stake_account_address {
         Err(StakePoolError::InvalidStakeAccountAddress.into())
     } else {
@@ -648,11 +645,8 @@ impl Processor {
         check_system_program(system_program_info.key)?;
         check_stake_program(stake_program_info.key)?;
 
-        let (stake_address, bump_seed) = crate::find_stake_program_address(
-            program_id,
-            validator_info.key,
-            stake_pool_info.key,
-        );
+        let (stake_address, bump_seed) =
+            crate::find_stake_program_address(program_id, validator_info.key, stake_pool_info.key);
         if stake_address != *stake_account_info.key {
             return Err(StakePoolError::InvalidStakeAccountAddress.into());
         }

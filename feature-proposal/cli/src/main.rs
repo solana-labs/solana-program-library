@@ -399,8 +399,7 @@ fn process_tally(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let feature_proposal = get_feature_proposal(rpc_client, feature_proposal_address)?;
 
-    let feature_id_address =
-        spl_feature_proposal::get_feature_id_address(feature_proposal_address);
+    let feature_id_address = spl_feature_proposal::get_feature_id_address(feature_proposal_address);
     let acceptance_token_address =
         spl_feature_proposal::get_acceptance_token_address(feature_proposal_address);
 
