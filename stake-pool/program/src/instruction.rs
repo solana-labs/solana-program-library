@@ -236,9 +236,10 @@ pub enum StakePoolInstruction {
     ///   3. `[]` Stake pool withdraw authority
     ///   4. `[w]` Stake account to join the pool (withdraw authority for the stake account should be first set to the stake pool deposit authority)
     ///   5. `[w]` Validator stake account for the stake account to be merged with
-    ///   6. `[w]` User account to receive pool tokens
+    ///   6. `[w]` Reserve stake account, to withdraw rent exempt reserve
+    ///   7. `[w]` User account to receive pool tokens
     ///   8. `[w]` Pool token mint account
-    ///   9. '[]' Sysvar clock account (required)
+    ///   9. '[]' Sysvar clock account
     ///   10. '[]' Sysvar stake history account
     ///   11. `[]` Pool token program id,
     ///   12. `[]` Stake program id,
@@ -781,6 +782,7 @@ pub fn deposit(
     deposit_stake_address: &Pubkey,
     deposit_stake_withdraw_authority: &Pubkey,
     validator_stake_account: &Pubkey,
+    reserve_stake_account: &Pubkey,
     pool_tokens_to: &Pubkey,
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
@@ -794,6 +796,7 @@ pub fn deposit(
         AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
         AccountMeta::new(*deposit_stake_address, false),
         AccountMeta::new(*validator_stake_account, false),
+        AccountMeta::new(*reserve_stake_account, false),
         AccountMeta::new(*pool_tokens_to, false),
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
@@ -834,6 +837,7 @@ pub fn deposit_with_authority(
     deposit_stake_address: &Pubkey,
     deposit_stake_withdraw_authority: &Pubkey,
     validator_stake_account: &Pubkey,
+    reserve_stake_account: &Pubkey,
     pool_tokens_to: &Pubkey,
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
@@ -845,6 +849,7 @@ pub fn deposit_with_authority(
         AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
         AccountMeta::new(*deposit_stake_address, false),
         AccountMeta::new(*validator_stake_account, false),
+        AccountMeta::new(*reserve_stake_account, false),
         AccountMeta::new(*pool_tokens_to, false),
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
