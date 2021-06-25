@@ -168,6 +168,10 @@ pub enum GovernanceError {
     #[error("Invalid account owner")]
     InvalidAccountOwner,
 
+    /// Account doesn't exist
+    #[error("Account doesn't exist")]
+    AccountDoesNotExist,
+
     /// Invalid Account type
     #[error("Invalid Account type")]
     InvalidAccountType,
@@ -179,6 +183,18 @@ pub enum GovernanceError {
     /// Proposal does not belong to given Governing Mint"
     #[error("Proposal does not belong to given Governing Mint")]
     InvalidGoverningMintForProposal,
+
+    /// Current mint authority must sign transaction
+    #[error("Current mint authority must sign transaction")]
+    MintAuthorityMustSign,
+
+    /// Invalid mint authority
+    #[error("Invalid mint authority")]
+    InvalidMintAuthority,
+
+    /// Mint has no authority
+    #[error("Mint has no authority")]
+    MintHasNoAuthority,
 
     /// ---- SPL Token Tools Errors ----
 
@@ -194,6 +210,10 @@ pub enum GovernanceError {
     #[error("Token Account is not initialized")]
     SplTokenAccountNotInitialized,
 
+    /// Token Account doesn't exist
+    #[error("Token Account doesn't exist")]
+    SplTokenAccountDoesNotExist,
+
     /// Token account data is invalid
     #[error("Token account data is invalid")]
     SplTokenInvalidTokenAccountData,
@@ -205,6 +225,10 @@ pub enum GovernanceError {
     /// Token Mint is not initialized
     #[error("Token Mint account is not initialized")]
     SplTokenMintNotInitialized,
+
+    /// Token Mint account doesn't exist
+    #[error("Token Mint account doesn't exist")]
+    SplTokenMintDoesNotExist,
 
     /// ---- Bpf Upgradable Loader Tools Errors ----
 

@@ -58,6 +58,7 @@ impl IsInitialized for Governance {
     fn is_initialized(&self) -> bool {
         self.account_type == GovernanceAccountType::AccountGovernance
             || self.account_type == GovernanceAccountType::ProgramGovernance
+            || self.account_type == GovernanceAccountType::MintGovernance
     }
 }
 
@@ -73,6 +74,9 @@ impl Governance {
                 &self.config.realm,
                 &self.config.governed_account,
             ),
+            GovernanceAccountType::MintGovernance => {
+                get_mint_governance_address_seeds(&self.config.realm, &self.config.governed_account)
+            }
             _ => return Err(GovernanceError::InvalidAccountType.into()),
         };
 
@@ -110,6 +114,29 @@ pub fn get_program_governance_address<'a>(
 ) -> Pubkey {
     Pubkey::find_program_address(
         &get_program_governance_address_seeds(realm, governed_program),
+        program_id,
+    )
+    .0
+}
+
+/// Returns MintGovernance PDA seeds
+pub fn get_mint_governance_address_seeds<'a>(
+    realm: &'a Pubkey,
+    governed_mint: &'a Pubkey,
+) -> [&'a [u8]; 3] {
+    // 'mint-governance' prefix ensures uniqueness of the PDA
+    // Note: Only the current mint authority can create an account with this PDA using CreateMintGovernance instruction
+    [b"mint-governance", realm.as_ref(), governed_mint.as_ref()]
+}
+
+/// Returns MintGovernance PDA address
+pub fn get_mint_governance_address<'a>(
+    program_id: &Pubkey,
+    realm: &'a Pubkey,
+    governed_mint: &'a Pubkey,
+) -> Pubkey {
+    Pubkey::find_program_address(
+        &get_mint_governance_address_seeds(realm, governed_mint),
         program_id,
     )
     .0

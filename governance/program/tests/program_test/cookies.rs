@@ -62,6 +62,13 @@ pub struct GovernedProgramCookie {
 }
 
 #[derive(Debug)]
+pub struct GovernedMintCookie {
+    pub address: Pubkey,
+    pub mint_authority: Keypair,
+    pub transfer_mint_authority: bool,
+}
+
+#[derive(Debug)]
 pub struct GovernedAccountCookie {
     pub address: Pubkey,
 }

@@ -32,6 +32,9 @@ pub enum GovernanceAccountType {
 
     /// ProposalInstruction account which holds an instruction to execute for Proposal
     ProposalInstruction,
+
+    /// Mint Governance account
+    MintGovernance,
 }
 
 impl Default for GovernanceAccountType {
