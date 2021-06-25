@@ -101,4 +101,4 @@ pub fn find_transient_stake_program_address(
     )
 }
 
-solana_program::declare_id!("poo1B9L9nR3CrcaziKVYVpRX6A9Y1LAXYasjjfCbApj");
+solana_program::declare_id!("SPoo1XJbrC5pXDfg5NQAXo2RKyfimXKm6KpqicGvpbo");
