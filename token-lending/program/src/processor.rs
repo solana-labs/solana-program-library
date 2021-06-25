@@ -100,6 +100,14 @@ pub fn process_instruction(
             msg!("Instruction: Flash Loan");
             process_flash_loan(program_id, amount, accounts)
         }
+        LendingInstruction::DepositReserveLiquidityAndObligationCollateral { liquidity_amount } => {
+            msg!("Instruction Deposit Reserve Liquidity and Obligation Collateral");
+            process_deposit_reserve_liquidity_and_obligation_collateral(
+                program_id,
+                liquidity_amount,
+                accounts,
+            )
+        }
     }
 }
 
@@ -451,7 +459,7 @@ fn process_deposit_reserve_liquidity(
     let token_program_id = next_account_info(account_info_iter)?;
 
     // We don't care about the return value here, so just ignore it.
-    _process_deposit_reserve_liquidity(
+    _deposit_reserve_liquidity(
         program_id,
         liquidity_amount,
         source_liquidity_info,
@@ -469,7 +477,7 @@ fn process_deposit_reserve_liquidity(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn _process_deposit_reserve_liquidity<'a>(
+fn _deposit_reserve_liquidity<'a>(
     program_id: &Pubkey,
     liquidity_amount: u64,
     source_liquidity_info: &AccountInfo<'a>,
@@ -967,6 +975,63 @@ fn _deposit_obligation_collateral<'a>(
         token_program: token_program_id.clone(),
     })?;
 
+    Ok(())
+}
+
+#[inline(never)] // avoid stack frame limit
+fn process_deposit_reserve_liquidity_and_obligation_collateral(
+    program_id: &Pubkey,
+    liquidity_amount: u64,
+    accounts: &[AccountInfo],
+) -> ProgramResult {
+    if liquidity_amount == 0 {
+        msg!("Liquidity amount provided cannot be zero");
+        return Err(LendingError::InvalidAmount.into());
+    }
+
+    let account_info_iter = &mut accounts.iter();
+    let source_liquidity_info = next_account_info(account_info_iter)?;
+    let user_collateral_info = next_account_info(account_info_iter)?;
+    let reserve_info = next_account_info(account_info_iter)?;
+    let reserve_liquidity_supply_info = next_account_info(account_info_iter)?;
+    let reserve_collateral_mint_info = next_account_info(account_info_iter)?;
+    let lending_market_info = next_account_info(account_info_iter)?;
+    let lending_market_authority_info = next_account_info(account_info_iter)?;
+    let destination_collateral_info = next_account_info(account_info_iter)?;
+    let obligation_info = next_account_info(account_info_iter)?;
+    let obligation_owner_info = next_account_info(account_info_iter)?;
+    let user_transfer_authority_info = next_account_info(account_info_iter)?;
+    let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
+    let token_program_id = next_account_info(account_info_iter)?;
+
+    let collateral_amount = _deposit_reserve_liquidity(
+        program_id,
+        liquidity_amount,
+        source_liquidity_info,
+        user_collateral_info,
+        reserve_info,
+        reserve_liquidity_supply_info,
+        reserve_collateral_mint_info,
+        lending_market_info,
+        lending_market_authority_info,
+        user_transfer_authority_info,
+        clock,
+        token_program_id,
+    )?;
+    _deposit_obligation_collateral(
+        program_id,
+        collateral_amount,
+        user_collateral_info,
+        destination_collateral_info,
+        reserve_info,
+        obligation_info,
+        lending_market_info,
+        lending_market_authority_info,
+        obligation_owner_info,
+        user_transfer_authority_info,
+        clock,
+        token_program_id,
+    )?;
     Ok(())
 }
 
