@@ -12,6 +12,14 @@ on:
     - 'token/**'
 
 jobs:
+  all_github_action_checks:
+    runs-on: ubuntu-latest
+    needs:
+      - cargo-test-bpf
+      - js-test
+    steps:
+      - run: echo "Done"
+
   cargo-test-bpf:
     runs-on: ubuntu-latest
     steps:

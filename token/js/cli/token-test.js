@@ -365,7 +365,6 @@ export async function failOnApproveOverspend(): Promise<void> {
   const delegate = Keypair.generate();
 
   await testToken.transfer(testAccount, account1, testAccountOwner, [], 10);
-
   await testToken.approve(account1, delegate.publicKey, owner, [], 2);
 
   let account1Info = await testToken.getAccountInfo(account1);
