@@ -281,7 +281,7 @@ pub fn assert_spl_token_mint_authority_is_signer(
     mint_info: &AccountInfo,
     mint_authority_info: &AccountInfo,
 ) -> Result<(), ProgramError> {
-    let mint_authority = get_spl_token_mint_authority(&mint_info)?;
+    let mint_authority = get_spl_token_mint_authority(mint_info)?;
 
     if mint_authority.is_none() {
         return Err(GovernanceError::MintHasNoAuthority.into());

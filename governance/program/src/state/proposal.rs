@@ -378,7 +378,7 @@ pub fn get_proposal_address_seeds<'a>(
         PROGRAM_AUTHORITY_SEED,
         governance.as_ref(),
         governing_token_mint.as_ref(),
-        &proposal_index_le_bytes,
+        proposal_index_le_bytes,
     ]
 }
 

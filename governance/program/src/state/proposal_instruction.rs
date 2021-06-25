@@ -118,7 +118,7 @@ pub fn get_proposal_instruction_address_seeds<'a>(
     [
         PROGRAM_AUTHORITY_SEED,
         proposal.as_ref(),
-        &instruction_index_le_bytes,
+        instruction_index_le_bytes,
     ]
 }
 

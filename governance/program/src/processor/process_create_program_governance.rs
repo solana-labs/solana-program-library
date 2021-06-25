@@ -47,7 +47,7 @@ pub fn process_create_program_governance(
     let rent_sysvar_info = next_account_info(account_info_iter)?; // 6
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
 
-    assert_is_valid_governance_config(program_id, &config, &realm_info)?;
+    assert_is_valid_governance_config(program_id, &config, realm_info)?;
 
     let program_governance_data = Governance {
         account_type: GovernanceAccountType::ProgramGovernance,
@@ -57,7 +57,7 @@ pub fn process_create_program_governance(
 
     create_and_serialize_account_signed::<Governance>(
         payer_info,
-        &program_governance_info,
+        program_governance_info,
         &program_governance_data,
         &get_program_governance_address_seeds(&config.realm, &config.governed_account),
         program_id,
@@ -76,8 +76,8 @@ pub fn process_create_program_governance(
     } else {
         assert_program_upgrade_authority_is_signer(
             &config.governed_account,
-            &governed_program_data_info,
-            &governed_program_upgrade_authority_info,
+            governed_program_data_info,
+            governed_program_upgrade_authority_info,
         )?;
     }
 

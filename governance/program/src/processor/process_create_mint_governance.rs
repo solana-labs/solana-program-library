@@ -44,7 +44,7 @@ pub fn process_create_mint_governance(
     let rent_sysvar_info = next_account_info(account_info_iter)?; // 7
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
 
-    assert_is_valid_governance_config(program_id, &config, &realm_info)?;
+    assert_is_valid_governance_config(program_id, &config, realm_info)?;
 
     let mint_governance_data = Governance {
         account_type: GovernanceAccountType::MintGovernance,
@@ -54,7 +54,7 @@ pub fn process_create_mint_governance(
 
     create_and_serialize_account_signed::<Governance>(
         payer_info,
-        &mint_governance_info,
+        mint_governance_info,
         &mint_governance_data,
         &get_mint_governance_address_seeds(&config.realm, &config.governed_account),
         program_id,
@@ -71,8 +71,8 @@ pub fn process_create_mint_governance(
         )?;
     } else {
         assert_spl_token_mint_authority_is_signer(
-            &governed_mint_info,
-            &governed_mint_authority_info,
+            governed_mint_info,
+            governed_mint_authority_info,
         )?;
     }
 
