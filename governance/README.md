@@ -34,14 +34,14 @@ of the governed program to the Governance PDA at the creation time of the Govern
 ### Mint Governance account
 
 Mint governance account allows to setup a governance over a Mint account.
-The Governance program validates at creation time the current mint authority sing the transaction to
+The Governance program validates at creation time the current mint authority sign the transaction to
 create the governance and optionally can transfer the authority to the Governance account.
 Once setup the Mint Governance allows to create Proposals to execute mint instructions for the governed Mint.
 
 ### Token Governance account
 
 Token governance account allows to setup a governance over a Token account.
-The Governance program validates at creation time the current owner sing the transaction to
+The Governance program validates at creation time the current owner sign the transaction to
 create the governance and optionally can transfer the owner to the Governance account.
 Once setup the Token Governance allows to create Proposals to execute transfer instructions from the governed token account.
 
@@ -57,7 +57,7 @@ by the Solana program deploy cli command.
 However, in order for Governance to be useful, Governance now needs this authority.
 
 In similar fashion for Mint and Token governances the relevant authorities to mint and transfer tokens
-are transferer to the Governance account which allows to create and vote on Proposals which can then execute
+are transferer to the Governance account. It in turns allows to create and vote on Proposals which can then execute
 mint and transfer instructions for the governed accounts.
 
 ### Proposal accounts
