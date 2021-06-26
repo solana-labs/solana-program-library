@@ -59,6 +59,7 @@ impl IsInitialized for Governance {
         self.account_type == GovernanceAccountType::AccountGovernance
             || self.account_type == GovernanceAccountType::ProgramGovernance
             || self.account_type == GovernanceAccountType::MintGovernance
+            || self.account_type == GovernanceAccountType::TokenGovernance
     }
 }
 
@@ -77,6 +78,10 @@ impl Governance {
             GovernanceAccountType::MintGovernance => {
                 get_mint_governance_address_seeds(&self.config.realm, &self.config.governed_account)
             }
+            GovernanceAccountType::TokenGovernance => get_token_governance_address_seeds(
+                &self.config.realm,
+                &self.config.governed_account,
+            ),
             _ => return Err(GovernanceError::InvalidAccountType.into()),
         };
 
@@ -137,6 +142,29 @@ pub fn get_mint_governance_address<'a>(
 ) -> Pubkey {
     Pubkey::find_program_address(
         &get_mint_governance_address_seeds(realm, governed_mint),
+        program_id,
+    )
+    .0
+}
+
+/// Returns TokenGovernance PDA seeds
+pub fn get_token_governance_address_seeds<'a>(
+    realm: &'a Pubkey,
+    governed_token: &'a Pubkey,
+) -> [&'a [u8]; 3] {
+    // 'token-governance' prefix ensures uniqueness of the PDA
+    // Note: Only the current token account owner can create an account with this PDA using CreateTokenGovernance instruction
+    [b"token-governance", realm.as_ref(), governed_token.as_ref()]
+}
+
+/// Returns TokenGovernance PDA address
+pub fn get_token_governance_address<'a>(
+    program_id: &Pubkey,
+    realm: &'a Pubkey,
+    governed_token: &'a Pubkey,
+) -> Pubkey {
+    Pubkey::find_program_address(
+        &get_token_governance_address_seeds(realm, governed_token),
         program_id,
     )
     .0

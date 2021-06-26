@@ -251,6 +251,14 @@ pub enum GovernanceError {
     /// Given program is not upgradable
     #[error("Given program is not upgradable")]
     ProgramNotUpgradable,
+
+    /// Invalid token owner
+    #[error("Invalid token owner")]
+    InvalidTokenOwner,
+
+    /// Current token owner must sign transaction
+    #[error("Current token owner must sign transaction")]
+    TokenOwnerMustSign,
 }
 
 impl PrintProgramError for GovernanceError {

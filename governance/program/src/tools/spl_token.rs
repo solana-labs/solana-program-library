@@ -325,3 +325,49 @@ pub fn set_spl_token_mint_authority<'a>(
 
     Ok(())
 }
+
+/// Asserts current token owner matches the given owner and it's signer of the transaction
+pub fn assert_spl_token_owner_is_signer(
+    token_info: &AccountInfo,
+    token_owner_info: &AccountInfo,
+) -> Result<(), ProgramError> {
+    let token_owner = get_spl_token_owner(token_info)?;
+
+    if token_owner != *token_owner_info.key {
+        return Err(GovernanceError::InvalidTokenOwner.into());
+    }
+
+    if !token_owner_info.is_signer {
+        return Err(GovernanceError::TokenOwnerMustSign.into());
+    }
+
+    Ok(())
+}
+
+/// Sets new token account owner
+pub fn set_spl_token_owner<'a>(
+    token_info: &AccountInfo<'a>,
+    token_owner: &AccountInfo<'a>,
+    new_token_owner: &Pubkey,
+    spl_token_info: &AccountInfo<'a>,
+) -> Result<(), ProgramError> {
+    let set_authority_ix = set_authority(
+        &spl_token::id(),
+        token_info.key,
+        Some(new_token_owner),
+        spl_token::instruction::AuthorityType::AccountOwner,
+        token_owner.key,
+        &[],
+    )?;
+
+    invoke(
+        &set_authority_ix,
+        &[
+            token_info.clone(),
+            token_owner.clone(),
+            spl_token_info.clone(),
+        ],
+    )?;
+
+    Ok(())
+}
