@@ -628,6 +628,7 @@ impl GovernanceProgramTest {
             address: token_keypair.pubkey(),
             token_owner: token_owner,
             transfer_token_owner: true,
+            token_mint: mint_keypair.pubkey(),
         }
     }
 
@@ -1322,6 +1323,41 @@ impl GovernanceProgramTest {
             &proposal_cookie.account.governance,
             &[],
             10,
+        )
+        .unwrap();
+
+        self.with_instruction_impl(
+            proposal_cookie,
+            token_owner_record_cookie,
+            index,
+            &mut instruction,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_transfer_tokens_instruction(
+        &mut self,
+        governed_token_cookie: &GovernedTokenCookie,
+        proposal_cookie: &mut ProposalCookie,
+        token_owner_record_cookie: &TokeOwnerRecordCookie,
+        index: Option<u16>,
+    ) -> Result<ProposalInstructionCookie, ProgramError> {
+        let token_account_keypair = Keypair::new();
+        self.create_empty_token_account(
+            &token_account_keypair,
+            &governed_token_cookie.token_mint,
+            &self.context.payer.pubkey(),
+        )
+        .await;
+
+        let mut instruction = spl_token::instruction::transfer(
+            &spl_token::id(),
+            &governed_token_cookie.address,
+            &token_account_keypair.pubkey(),
+            &proposal_cookie.account.governance,
+            &[],
+            15,
         )
         .unwrap();
 
