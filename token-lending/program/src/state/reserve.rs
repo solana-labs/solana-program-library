@@ -717,7 +717,7 @@ impl IsInitialized for Reserve {
     }
 }
 
-const RESERVE_LEN: usize = 571; // 1 + 8 + 1 + 32 + 32 + 1 + 32 + 32 + 32 + 8 + 16 + 16 + 16 + 32 + 8 + 32 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 8 + 8 + 1 + 248
+const RESERVE_LEN: usize = 603; // 1 + 8 + 1 + 32 + 32 + 1 + 32 + 32 + 32 + 32 + 8 + 16 + 16 + 16 + 32 + 8 + 32 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 8 + 8 + 1 + 248
 impl Pack for Reserve {
     const LEN: usize = RESERVE_LEN;
 
@@ -734,7 +734,8 @@ impl Pack for Reserve {
             liquidity_mint_decimals,
             liquidity_supply_pubkey,
             liquidity_fee_receiver,
-            liquidity_oracle_pubkey,
+            liquidity_pyth_oracle_pubkey,
+            liquidity_switchboard_oracle_pubkey,
             liquidity_available_amount,
             liquidity_borrowed_amount_wads,
             liquidity_cumulative_borrow_rate_wads,
@@ -761,6 +762,7 @@ impl Pack for Reserve {
             PUBKEY_BYTES,
             PUBKEY_BYTES,
             1,
+            PUBKEY_BYTES,
             PUBKEY_BYTES,
             PUBKEY_BYTES,
             PUBKEY_BYTES,
