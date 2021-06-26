@@ -30,11 +30,7 @@ use spl_token::state::{Account, Mint};
 use std::convert::TryInto;
 use std::result::Result;
 use switchboard_program::{
-    get_aggregator,
-    get_aggregator_result,
-    AggregatorState,
-    RoundResult,
-    SwitchboardAccountType,
+    get_aggregator, get_aggregator_result, AggregatorState, RoundResult, SwitchboardAccountType,
 };
 
 /// Processes an instruction
@@ -316,7 +312,6 @@ fn process_init_reserve(
         return Err(LendingError::InvalidOracleConfig.into());
     }
 
-    
     // let market_price = get_pyth_price(pyth_price_info, clock)?;
     let market_price = get_price(switchboard_feed_info, pyth_price_info, clock)?;
 
@@ -2001,9 +1996,12 @@ fn get_pyth_price(pyth_price_info: &AccountInfo, clock: &Clock) -> Result<Decima
     Ok(market_price)
 }
 
-fn get_switchboard_price(switchboard_feed_info: &AccountInfo, clock: &Clock) -> Result<Decimal, ProgramError> {
+fn get_switchboard_price(
+    switchboard_feed_info: &AccountInfo,
+    clock: &Clock,
+) -> Result<Decimal, ProgramError> {
     const STALE_AFTER_SLOTS_ELAPSED: u64 = 30;
-    
+
     let account_buf = switchboard_feed_info.try_borrow_data()?;
     if account_buf[0] != SwitchboardAccountType::TYPE_AGGREGATOR as u8 {
         msg!("switchboard address not of type aggregator");
@@ -2014,7 +2012,7 @@ fn get_switchboard_price(switchboard_feed_info: &AccountInfo, clock: &Clock) -> 
     // if aggregator.version != 1 {
     //     msg!("switchboard version incorrect");
     //     return Err(LendingError::InvalidAccountInput.into());
-    // }    
+    // }
     let round_result: RoundResult = get_aggregator_result(&aggregator)?;
 
     let slots_elapsed = clock
@@ -2032,7 +2030,7 @@ fn get_switchboard_price(switchboard_feed_info: &AccountInfo, clock: &Clock) -> 
     let price_quotient = 10u64.pow(9);
 
     let price = ((price_quotient as f64) * price_float).round() as u128;
-    
+
     let decimal_price = Decimal::from(price).try_div(price_quotient)?;
 
     Ok(decimal_price)
