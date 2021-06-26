@@ -680,11 +680,13 @@ pub fn init_reserve(
 pub fn refresh_reserve(
     program_id: Pubkey,
     reserve_pubkey: Pubkey,
-    reserve_liquidity_oracle_pubkey: Pubkey,
+    reserve_liquidity_pyth_oracle_pubkey: Pubkey,
+    reserve_liquidity_switchboard_oracle_pubkey: Pubkey,
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(reserve_pubkey, false),
-        AccountMeta::new_readonly(reserve_liquidity_oracle_pubkey, false),
+        AccountMeta::new_readonly(reserve_liquidity_pyth_oracle_pubkey, false),
+        AccountMeta::new_readonly(reserve_liquidity_switchboard_oracle_pubkey, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];
     Instruction {

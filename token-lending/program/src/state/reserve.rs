@@ -355,8 +355,10 @@ pub struct ReserveLiquidity {
     pub supply_pubkey: Pubkey,
     /// Reserve liquidity fee receiver address
     pub fee_receiver: Pubkey,
-    /// Reserve liquidity oracle account
-    pub oracle_pubkey: Pubkey,
+    /// Reserve liquidity pyth oracle account
+    pub pyth_oracle_pubkey: Pubkey,
+    /// Reserve liquidity switchboard oracle account
+    pub switchboard_oracle_pubkey: Pubkey,
     /// Reserve liquidity available
     pub available_amount: u64,
     /// Reserve liquidity borrowed
@@ -375,7 +377,8 @@ impl ReserveLiquidity {
             mint_decimals: params.mint_decimals,
             supply_pubkey: params.supply_pubkey,
             fee_receiver: params.fee_receiver,
-            oracle_pubkey: params.oracle_pubkey,
+            pyth_oracle_pubkey: params.pyth_oracle_pubkey,
+            switchboard_oracle_pubkey: params.switchboard_oracle_pubkey,
             available_amount: 0,
             borrowed_amount_wads: Decimal::zero(),
             cumulative_borrow_rate_wads: Decimal::one(),
@@ -477,8 +480,10 @@ pub struct NewReserveLiquidityParams {
     pub supply_pubkey: Pubkey,
     /// Reserve liquidity fee receiver address
     pub fee_receiver: Pubkey,
-    /// Reserve liquidity oracle account
-    pub oracle_pubkey: Pubkey,
+    /// Reserve liquidity pyth oracle account
+    pub pyth_oracle_pubkey: Pubkey,
+    /// Reserve liquidity switchboard oracle account
+    pub switchboard_oracle_pubkey: Pubkey,
     /// Reserve liquidity market price in quote currency
     pub market_price: Decimal,
 }
@@ -790,7 +795,8 @@ impl Pack for Reserve {
         *liquidity_mint_decimals = self.liquidity.mint_decimals.to_le_bytes();
         liquidity_supply_pubkey.copy_from_slice(self.liquidity.supply_pubkey.as_ref());
         liquidity_fee_receiver.copy_from_slice(self.liquidity.fee_receiver.as_ref());
-        liquidity_oracle_pubkey.copy_from_slice(self.liquidity.oracle_pubkey.as_ref());
+        liquidity_pyth_oracle_pubkey.copy_from_slice(self.liquidity.pyth_oracle_pubkey.as_ref());
+        liquidity_switchboard_oracle_pubkey.copy_from_slice(self.liquidity.switchboard_oracle_pubkey.as_ref());
         *liquidity_available_amount = self.liquidity.available_amount.to_le_bytes();
         pack_decimal(
             self.liquidity.borrowed_amount_wads,
@@ -833,7 +839,8 @@ impl Pack for Reserve {
             liquidity_mint_decimals,
             liquidity_supply_pubkey,
             liquidity_fee_receiver,
-            liquidity_oracle_pubkey,
+            liquidity_pyth_oracle_pubkey,
+            liquidity_switchboard_oracle_pubkey,
             liquidity_available_amount,
             liquidity_borrowed_amount_wads,
             liquidity_cumulative_borrow_rate_wads,
@@ -860,6 +867,7 @@ impl Pack for Reserve {
             PUBKEY_BYTES,
             PUBKEY_BYTES,
             1,
+            PUBKEY_BYTES,
             PUBKEY_BYTES,
             PUBKEY_BYTES,
             PUBKEY_BYTES,
@@ -901,7 +909,8 @@ impl Pack for Reserve {
                 mint_decimals: u8::from_le_bytes(*liquidity_mint_decimals),
                 supply_pubkey: Pubkey::new_from_array(*liquidity_supply_pubkey),
                 fee_receiver: Pubkey::new_from_array(*liquidity_fee_receiver),
-                oracle_pubkey: Pubkey::new_from_array(*liquidity_oracle_pubkey),
+                pyth_oracle_pubkey: Pubkey::new_from_array(*liquidity_pyth_oracle_pubkey),
+                switchboard_oracle_pubkey: Pubkey::new_from_array(*liquidity_switchboard_oracle_pubkey),
                 available_amount: u64::from_le_bytes(*liquidity_available_amount),
                 borrowed_amount_wads: unpack_decimal(liquidity_borrowed_amount_wads),
                 cumulative_borrow_rate_wads: unpack_decimal(liquidity_cumulative_borrow_rate_wads),

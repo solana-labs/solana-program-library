@@ -29,6 +29,10 @@ use spl_token::solana_program::instruction::AccountMeta;
 use spl_token::state::{Account, Mint};
 use std::convert::TryInto;
 use std::result::Result;
+use switchboard_program::{
+    get_aggregator, get_aggregator_result, AggregatorState, FastRoundResultAccountData,
+    RoundResult, SwitchboardAccountType,
+};
 
 /// Processes an instruction
 pub fn process_instruction(
@@ -228,6 +232,7 @@ fn process_init_reserve(
     let reserve_collateral_supply_info = next_account_info(account_info_iter)?;
     let pyth_product_info = next_account_info(account_info_iter)?;
     let pyth_price_info = next_account_info(account_info_iter)?;
+    let switchboard_feed_account = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
     let lending_market_owner_info = next_account_info(account_info_iter)?;
@@ -308,7 +313,14 @@ fn process_init_reserve(
         return Err(LendingError::InvalidOracleConfig.into());
     }
 
+    
+    if lending_market.quote_currency != switchboard_feed_account {
+        msg!("Lending market quote currency does not match the oracle quote currency");
+        return Err(LendingError::InvalidOracleConfig.into());
+    }
+
     let market_price = get_pyth_price(pyth_price_info, clock)?;
+    let market_price = get_price(switchboard_feed_account, pyth_price_info, clock)?;
 
     let authority_signer_seeds = &[
         lending_market_info.key.as_ref(),
@@ -337,7 +349,7 @@ fn process_init_reserve(
             mint_decimals: reserve_liquidity_mint.decimals,
             supply_pubkey: *reserve_liquidity_supply_info.key,
             fee_receiver: *reserve_liquidity_fee_receiver_info.key,
-            oracle_pubkey: *pyth_price_info.key,
+            pyth_oracle_pubkey: *pyth_price_info.key,
             market_price,
         }),
         collateral: ReserveCollateral::new(NewReserveCollateralParams {
@@ -414,7 +426,8 @@ fn process_init_reserve(
 fn process_refresh_reserve(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter().peekable();
     let reserve_info = next_account_info(account_info_iter)?;
-    let reserve_liquidity_oracle_info = next_account_info(account_info_iter)?;
+    let pyth_price_info = next_account_info(account_info_iter)?;
+    let switchboard_feed_account = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     _refresh_reserve(
         program_id,
@@ -435,12 +448,13 @@ fn _refresh_reserve<'a>(
         msg!("Reserve provided is not owned by the lending program");
         return Err(LendingError::InvalidAccountOwner.into());
     }
-    if &reserve.liquidity.oracle_pubkey != reserve_liquidity_oracle_info.key {
+    if &reserve.liquidity.pyth_oracle_pubkey != pyth_price_info.key {
         msg!("Reserve liquidity oracle does not match the reserve liquidity oracle provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
 
     reserve.liquidity.market_price = get_pyth_price(reserve_liquidity_oracle_info, clock)?;
+    reserve.liquidity.market_price = get_price(switchboard_feed_account, pyth_price_info, clock)?;
 
     reserve.accrue_interest(clock.slot)?;
     reserve.last_update.update_slot(clock.slot);
@@ -1918,6 +1932,20 @@ fn get_pyth_product_quote_currency(pyth_product: &pyth::Product) -> Result<[u8; 
     Err(LendingError::InvalidOracleConfig.into())
 }
 
+fn get_price(
+    switchboard_feed_account: &AccountInfo,
+    pyth_price_account_info: &AccountInfo,
+    clock: &Clock,
+) -> Result<Decimal, ProgramError> {
+    let pyth_price = get_pyth_price(pyth_price_account_info, clock).unwrap_or_default();
+    if pyth_price != 0 {
+        return Ok(pyth_price);
+    }
+    let switchboard_price = get_switchboard_price(switchboard_feed_account, clock)?;
+
+    Ok(switchboard_price)
+}
+
 fn get_pyth_price(pyth_price_info: &AccountInfo, clock: &Clock) -> Result<Decimal, ProgramError> {
     const STALE_AFTER_SLOTS_ELAPSED: u64 = 5;
 
@@ -1967,6 +1995,31 @@ fn get_pyth_price(pyth_price_info: &AccountInfo, clock: &Clock) -> Result<Decima
     };
 
     Ok(market_price)
+}
+
+fn get_switchboard_price(switchboard_feed_account: &AccountInfo, clock: &Clock) -> Result<Decimal, ProgramError> {
+    let account_buf = switchboard_feed_account.try_borrow_data()?;
+    if account_buf[0] != SwitchboardAccountType::TYPE_AGGREGATOR as u8 {
+        msg!("switchboard address not of type aggregator");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+
+    let aggregator: AggregatorState = get_aggregator(switchboard_feed_account)?;
+    if aggregator.version != 1 {
+        msg!("switchboard version incorrect");
+        return Err(LendingError::InvalidAccountInput.into());
+    }    
+    let round_result: RoundResult = get_aggregator_result(&aggregator)?;
+    let price_float = round_result.result.unwrap_or(0.0);
+
+    // we just do this so we can parse coins with low usd value
+    let price_quotient = 10f128.powi(9);
+
+    let price = (price_quotient * price_float).round() as u128;
+
+    let decimal_price = Decimal::from(price).try_div(price_quotient)?;
+
+    Ok(decimal_price)
 }
 
 /// Issue a spl_token `InitializeAccount` instruction.
