@@ -983,12 +983,11 @@ mod test {
     }
 
     prop_compose! {
-        fn generate_remaining() (
-            first in 1..=5,
-            second in 1..=5,
-            third in 1..=5,
-        ) -> (u64, u64, u64){
-            (first as u64, second as u64, third as u64)
+        fn generate_deposit_withdraw_sequence()(initial_deposit in 0u64..=100u64)
+        (deposit in initial_deposit..=(initial_deposit + 1u64),
+            collateral_remainings in prop::collection::vec(1u64..=initial_deposit, 1..10)
+        ) -> (u64, Vec<u64>){
+            (deposit, collateral_remainings)
         }
     }
 
@@ -1231,8 +1230,7 @@ mod test {
             total_liquidity in 0..=MAX_LIQUIDITY,
             borrowed_percent in 0..=WAD,
             borrow_rate in 0..=u8::MAX,
-            initial_deposit_amount in 1..=u32::MAX,
-            (first_remaining, second_remaining, third_remaining) in generate_remaining(),
+            (initial_liquidity_amount, collateral_remainings) in generate_deposit_withdraw_sequence(),
         ) {
             let borrowed_liquidity_wads = Decimal::from(total_liquidity).try_mul(Rate::from_scaled_val(borrowed_percent))?;
             let available_liquidity = total_liquidity - borrowed_liquidity_wads.try_round_u64()?;
@@ -1257,30 +1255,23 @@ mod test {
                 ..Reserve::default()
             };
 
-            let mut current_liquidity_amount = initial_deposit_amount as u64;
-            let mut current_collateral_amount = 0u64;
+            let mut current_liquidity_amount = initial_liquidity_amount;
+            let mut current_collateral_amount = reserve.deposit_liquidity(current_liquidity_amount).unwrap();
 
-            current_collateral_amount += reserve.deposit_liquidity(current_liquidity_amount).unwrap();
-            current_liquidity_amount = 0;
+            // Repeatedly withdraw a portion of the liquidity using collateral token to see if we can reach a state where
+            // we end up with more than what we have originally put into.
+            for collateral_remain in collateral_remainings.into_iter() {
+                reserve.accrue_interest(1)?;
+                current_liquidity_amount = reserve.redeem_collateral(current_collateral_amount - collateral_remain).unwrap();
+                current_collateral_amount = collateral_remain;
 
-            reserve.accrue_interest(1)?;
-            current_liquidity_amount += reserve.redeem_collateral(current_collateral_amount - first_remaining).unwrap();
-            current_collateral_amount = first_remaining;
+                reserve.accrue_interest(1)?;
+                current_collateral_amount += reserve.deposit_liquidity(current_liquidity_amount).unwrap();
+            }
 
-            reserve.accrue_interest(1)?;
-            current_collateral_amount += reserve.deposit_liquidity(current_liquidity_amount).unwrap();
+            let final_liquidity_deposited_amount = reserve.redeem_collateral(current_collateral_amount).unwrap();
 
-            reserve.accrue_interest(1)?;
-            current_liquidity_amount = reserve.redeem_collateral(current_collateral_amount - second_remaining).unwrap();
-            current_collateral_amount = second_remaining;
-
-            reserve.accrue_interest(1)?;
-            current_collateral_amount += reserve.deposit_liquidity(current_liquidity_amount).unwrap();
-            current_liquidity_amount = 0;
-
-            current_liquidity_amount += reserve.redeem_collateral(current_collateral_amount - third_remaining).unwrap();
-
-            assert!(current_liquidity_amount <= initial_deposit_amount.into());
+            assert!(final_liquidity_deposited_amount <= initial_liquidity_amount.into());
         }
     }
 
