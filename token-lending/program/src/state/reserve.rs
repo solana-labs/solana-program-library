@@ -985,7 +985,7 @@ mod test {
     prop_compose! {
         fn generate_deposit_withdraw_sequence()(initial_deposit in 0u64..=100u64)
         (deposit in initial_deposit..=(initial_deposit + 1u64),
-            collateral_remainings in prop::collection::vec(1u64..=initial_deposit, 1..10)
+            collateral_remainings in prop::collection::vec(0u64..=initial_deposit, 1..10)
         ) -> (u64, Vec<u64>){
             (deposit, collateral_remainings)
         }
