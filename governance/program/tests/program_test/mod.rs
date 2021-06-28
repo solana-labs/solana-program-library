@@ -1037,6 +1037,8 @@ impl GovernanceProgramTest {
         )
         .await?;
 
+        let clock = self.get_clock().await;
+
         let account = Proposal {
             account_type: GovernanceAccountType::Proposal,
             description_link,
@@ -1046,7 +1048,7 @@ impl GovernanceProgramTest {
             state: ProposalState::Draft,
             signatories_count: 0,
             // Clock always returns 1 when running under the test
-            draft_at: 1,
+            draft_at: clock.unix_timestamp,
             signing_off_at: None,
             voting_at: None,
             voting_completed_at: None,

@@ -2,8 +2,8 @@
 
 use solana_program::clock::UnixTimestamp;
 use solana_program::{
-    account_info::AccountInfo, epoch_schedule::Slot, program_error::ProgramError,
-    program_pack::IsInitialized, pubkey::Pubkey,
+    account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
+    pubkey::Pubkey,
 };
 
 use crate::tools::account::get_account_data;
@@ -55,7 +55,7 @@ pub struct Proposal {
     pub no_votes_count: u64,
 
     /// When the Proposal was created and entered Draft state
-    pub draft_at: Slot,
+    pub draft_at: UnixTimestamp,
 
     /// When Signatories started signing off the Proposal
     pub signing_off_at: Option<UnixTimestamp>,
