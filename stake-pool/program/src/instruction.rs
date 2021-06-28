@@ -162,7 +162,11 @@ pub enum StakePoolInstruction {
     /// 10. `[]` Stake Config sysvar
     /// 11. `[]` System program
     /// 12. `[]` Stake program
-    ///  userdata: amount of lamports to split into the transient stake account
+    ///  userdata: amount of lamports to increase on the given validator.
+    ///  The actual amount split into the transient stake account is:
+    ///  `lamports + stake_rent_exemption`
+    ///  The rent-exemption of the stake account is withdrawn back to the reserve
+    ///  after it is merged.
     IncreaseValidatorStake(u64),
 
     /// (Staker only) Set the preferred deposit or withdraw stake account for the

@@ -1150,19 +1150,21 @@ impl Processor {
         }
 
         let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
-        let minimum_lamports = MINIMUM_ACTIVE_STAKE + stake_rent;
-        if lamports < minimum_lamports {
+        if lamports < MINIMUM_ACTIVE_STAKE {
             msg!(
                 "Need more than {} lamports for transient stake to be rent-exempt and mergeable, {} provided",
-                minimum_lamports,
+                MINIMUM_ACTIVE_STAKE,
                 lamports
             );
             return Err(ProgramError::AccountNotRentExempt);
         }
 
+        // the stake account rent exemption is withdrawn after the merge, so
+        let total_lamports = lamports.saturating_add(stake_rent);
+
         if reserve_stake_account_info
             .lamports()
-            .saturating_sub(lamports)
+            .saturating_sub(total_lamports)
             <= stake_rent
         {
             let max_split_amount = reserve_stake_account_info
@@ -1189,7 +1191,7 @@ impl Processor {
             withdraw_authority_info.clone(),
             AUTHORITY_WITHDRAW,
             stake_pool.withdraw_bump_seed,
-            lamports,
+            total_lamports,
             transient_stake_account_info.clone(),
         )?;
 
@@ -1206,7 +1208,7 @@ impl Processor {
             stake_pool.withdraw_bump_seed,
         )?;
 
-        validator_list_entry.transient_stake_lamports = lamports;
+        validator_list_entry.transient_stake_lamports = total_lamports;
         validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
 
         Ok(())
@@ -1404,6 +1406,9 @@ impl Processor {
                             if stake_program::active_stakes_can_merge(&stake, &validator_stake)
                                 .is_ok()
                             {
+                                let additional_lamports = transient_stake_info
+                                    .lamports()
+                                    .saturating_sub(stake.delegation.stake);
                                 Self::stake_merge(
                                     stake_pool_info.key,
                                     transient_stake_info.clone(),
@@ -1415,6 +1420,23 @@ impl Processor {
                                     stake_history_info.clone(),
                                     stake_program_info.clone(),
                                 )?;
+
+                                // post merge of two active stakes, withdraw
+                                // the extra back to the reserve
+                                if additional_lamports > 0 {
+                                    Self::stake_withdraw(
+                                        stake_pool_info.key,
+                                        validator_stake_info.clone(),
+                                        withdraw_authority_info.clone(),
+                                        AUTHORITY_WITHDRAW,
+                                        stake_pool.withdraw_bump_seed,
+                                        reserve_stake_info.clone(),
+                                        clock_info.clone(),
+                                        stake_history_info.clone(),
+                                        stake_program_info.clone(),
+                                        additional_lamports,
+                                    )?;
+                                }
                             } else {
                                 msg!("Stake activating or just active, not ready to merge");
                                 transient_stake_lamports = account_stake;
@@ -1436,6 +1458,10 @@ impl Processor {
             // Status for validator stake
             //  * active -> do everything
             //  * any other state / not a stake -> error state, but account for transient stake
+            let validator_stake_state = try_from_slice_unchecked::<stake_program::StakeState>(
+                &validator_stake_info.data.borrow(),
+            )
+            .ok();
             match validator_stake_state {
                 Some(stake_program::StakeState::Stake(_, stake)) => {
                     if validator_stake_record.status == StakeStatus::Active {
@@ -1782,8 +1808,8 @@ impl Processor {
     /// Processes [Withdraw](enum.Instruction.html).
     fn process_withdraw(
         program_id: &Pubkey,
-        pool_tokens: u64,
         accounts: &[AccountInfo],
+        pool_tokens: u64,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
@@ -2126,7 +2152,7 @@ impl Processor {
             }
             StakePoolInstruction::Withdraw(amount) => {
                 msg!("Instruction: Withdraw");
-                Self::process_withdraw(program_id, amount, accounts)
+                Self::process_withdraw(program_id, accounts, amount)
             }
             StakePoolInstruction::SetManager => {
                 msg!("Instruction: SetManager");
