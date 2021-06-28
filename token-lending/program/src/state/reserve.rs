@@ -1275,7 +1275,7 @@ mod test {
 
             let final_liquidity_deposited_amount = reserve.redeem_collateral(current_collateral_amount).unwrap();
 
-            assert!(final_liquidity_deposited_amount <= initial_liquidity_amount.into());
+            assert!(final_liquidity_deposited_amount <= initial_liquidity_amount);
         }
     }
 
