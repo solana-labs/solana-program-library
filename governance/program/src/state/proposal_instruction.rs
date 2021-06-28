@@ -9,7 +9,7 @@ use crate::{
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
     account_info::AccountInfo,
-    epoch_schedule::Slot,
+    clock::UnixTimestamp,
     instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
     program_pack::IsInitialized,
@@ -86,8 +86,8 @@ pub struct ProposalInstruction {
     /// The Proposal the instruction belongs to
     pub proposal: Pubkey,
 
-    /// Minimum waiting time in slots for the  instruction to be executed once proposal is voted on
-    pub hold_up_time: u64,
+    /// Minimum waiting time in seconds for the  instruction to be executed once proposal is voted on
+    pub hold_up_time: u32,
 
     /// Instruction to execute
     /// The instruction will be signed by Governance PDA the Proposal belongs to
@@ -95,12 +95,12 @@ pub struct ProposalInstruction {
     pub instruction: InstructionData,
 
     /// Executed at flag
-    pub executed_at: Option<Slot>,
+    pub executed_at: Option<UnixTimestamp>,
 }
 
 impl AccountMaxSize for ProposalInstruction {
     fn get_max_size(&self) -> Option<usize> {
-        Some(self.instruction.accounts.len() * 34 + self.instruction.data.len() + 90)
+        Some(self.instruction.accounts.len() * 34 + self.instruction.data.len() + 86)
     }
 }
 

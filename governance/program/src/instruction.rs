@@ -203,7 +203,7 @@ pub enum GovernanceInstruction {
         index: u16,
         #[allow(dead_code)]
         /// Slot waiting time between vote period ending and this being eligible for execution
-        hold_up_time: u64,
+        hold_up_time: u32,
 
         #[allow(dead_code)]
         /// Instruction Data
@@ -907,7 +907,7 @@ pub fn insert_instruction(
     payer: &Pubkey,
     // Args
     index: u16,
-    hold_up_time: u64,
+    hold_up_time: u32,
     instruction: InstructionData,
 ) -> Instruction {
     let proposal_instruction_address =

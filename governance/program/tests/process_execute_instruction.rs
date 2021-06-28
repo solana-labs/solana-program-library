@@ -59,13 +59,10 @@ async fn test_execute_mint_instruction() {
         .await
         .unwrap();
 
-    // Advance slot past hold_up_time
-    let execute_at_slot = 1 + proposal_instruction_cookie.account.hold_up_time + 1;
-
+    // Advance timestamp past hold_up_time
     governance_test
-        .context
-        .warp_to_slot(execute_at_slot)
-        .unwrap();
+        .advance_clock_by_min_timespan(proposal_instruction_cookie.account.hold_up_time as u64)
+        .await;
 
     let clock = governance_test.get_clock().await;
 
@@ -91,7 +88,7 @@ async fn test_execute_mint_instruction() {
         .await;
 
     assert_eq!(
-        Some(execute_at_slot),
+        Some(clock.unix_timestamp),
         proposal_instruction_account.executed_at
     );
 
@@ -236,13 +233,10 @@ async fn test_execute_upgrade_program_instruction() {
         .await
         .unwrap();
 
-    // Advance slot past hold_up_time
-    let execute_at_slot = 1 + proposal_instruction_cookie.account.hold_up_time + 1;
-
+    // Advance timestamp past hold_up_time
     governance_test
-        .context
-        .warp_to_slot(execute_at_slot)
-        .unwrap();
+        .advance_clock_by_min_timespan(proposal_instruction_cookie.account.hold_up_time as u64)
+        .await;
 
     // Ensure we can invoke the governed program before upgrade
     let governed_program_instruction = Instruction::new_with_bytes(
@@ -288,15 +282,13 @@ async fn test_execute_upgrade_program_instruction() {
         .await;
 
     assert_eq!(
-        Some(execute_at_slot),
+        Some(clock.unix_timestamp),
         proposal_instruction_account.executed_at
     );
 
     // Assert we can invoke the governed program after upgrade
-    governance_test
-        .context
-        .warp_to_slot(execute_at_slot + 10)
-        .unwrap();
+
+    governance_test.advance_clock().await;
 
     let err = governance_test
         .process_transaction(&[governed_program_instruction.clone()], None)
@@ -415,7 +407,7 @@ async fn test_execute_instruction_with_invalid_state_errors() {
         .await
         .unwrap();
 
-    governance_test.context.warp_to_slot(5).unwrap();
+    governance_test.context.warp_to_slot(3).unwrap();
 
     // Act
     let err = governance_test
@@ -431,13 +423,10 @@ async fn test_execute_instruction_with_invalid_state_errors() {
     );
 
     // Arrange
-    // Advance slot past hold_up_time
-    let execute_at_slot = 1 + proposal_instruction_cookie.account.hold_up_time + 1;
-
+    // Advance timestamp past hold_up_time
     governance_test
-        .context
-        .warp_to_slot(execute_at_slot)
-        .unwrap();
+        .advance_clock_by_min_timespan(proposal_instruction_cookie.account.hold_up_time as u64)
+        .await;
 
     // Act
     governance_test
@@ -455,10 +444,7 @@ async fn test_execute_instruction_with_invalid_state_errors() {
 
     // Arrange
 
-    governance_test
-        .context
-        .warp_to_slot(execute_at_slot + 10)
-        .unwrap();
+    governance_test.advance_clock().await;
 
     // Act
     let err = governance_test
@@ -526,7 +512,7 @@ async fn test_execute_instruction_for_other_proposal_error() {
 
     governance_test
         .context
-        .warp_to_slot(execute_at_slot)
+        .warp_to_slot(execute_at_slot as u64)
         .unwrap();
 
     let proposal_cookie2 = governance_test
@@ -601,22 +587,17 @@ async fn test_execute_mint_instruction_twice_error() {
         .unwrap();
 
     // Advance slot past hold_up_time
-    let execute_at_slot = 1 + proposal_instruction_cookie.account.hold_up_time + 1;
 
     governance_test
-        .context
-        .warp_to_slot(execute_at_slot)
-        .unwrap();
+        .advance_clock_by_min_timespan(proposal_instruction_cookie.account.hold_up_time as u64)
+        .await;
 
     governance_test
         .execute_instruction(&proposal_cookie, &proposal_instruction_cookie)
         .await
         .unwrap();
 
-    governance_test
-        .context
-        .warp_to_slot(execute_at_slot + 10)
-        .unwrap();
+    governance_test.advance_clock().await;
 
     // Act
 

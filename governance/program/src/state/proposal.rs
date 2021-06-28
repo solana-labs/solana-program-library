@@ -61,10 +61,10 @@ pub struct Proposal {
     pub signing_off_at: Option<UnixTimestamp>,
 
     /// When the Proposal began voting
-    pub voting_at: Option<Slot>,
+    pub voting_at: Option<UnixTimestamp>,
 
     /// When the Proposal ended voting and entered either Succeeded or Defeated
-    pub voting_completed_at: Option<Slot>,
+    pub voting_completed_at: Option<UnixTimestamp>,
 
     /// When the Proposal entered Executing state
     pub executing_at: Option<UnixTimestamp>,
@@ -136,7 +136,7 @@ impl Proposal {
     pub fn assert_can_cast_vote(
         &self,
         config: &GovernanceConfig,
-        current_slot: Slot,
+        current_unix_timestamp: UnixTimestamp,
     ) -> Result<(), ProgramError> {
         self.assert_is_voting_state()
             .map_err(|_| GovernanceError::InvalidStateCannotVote)?;
@@ -145,9 +145,9 @@ impl Proposal {
         if self
             .voting_at
             .unwrap()
-            .checked_add(config.max_voting_time)
+            .checked_add(config.max_voting_time as i64)
             .unwrap()
-            < current_slot
+            < current_unix_timestamp
         {
             return Err(GovernanceError::ProposalVotingTimeExpired.into());
         }
@@ -159,7 +159,7 @@ impl Proposal {
     pub fn assert_can_finalize_vote(
         &self,
         config: &GovernanceConfig,
-        current_slot: Slot,
+        current_unix_timestamp: UnixTimestamp,
     ) -> Result<(), ProgramError> {
         self.assert_is_voting_state()
             .map_err(|_| GovernanceError::InvalidStateCannotFinalize)?;
@@ -168,9 +168,9 @@ impl Proposal {
         if self
             .voting_at
             .unwrap()
-            .checked_add(config.max_voting_time)
+            .checked_add(config.max_voting_time as i64)
             .unwrap()
-            >= current_slot
+            >= current_unix_timestamp
         {
             return Err(GovernanceError::CannotFinalizeVotingInProgress.into());
         }
@@ -184,12 +184,12 @@ impl Proposal {
         &mut self,
         governing_token_supply: u64,
         config: &GovernanceConfig,
-        current_slot: Slot,
+        current_unix_timestamp: UnixTimestamp,
     ) -> Result<(), ProgramError> {
-        self.assert_can_finalize_vote(config, current_slot)?;
+        self.assert_can_finalize_vote(config, current_unix_timestamp)?;
 
         self.state = self.get_final_vote_state(governing_token_supply, config);
-        self.voting_completed_at = Some(current_slot);
+        self.voting_completed_at = Some(current_unix_timestamp);
 
         Ok(())
     }
@@ -220,11 +220,11 @@ impl Proposal {
         &mut self,
         governing_token_supply: u64,
         config: &GovernanceConfig,
-        current_slot: Slot,
+        current_unix_timestamp: UnixTimestamp,
     ) {
         if let Some(tipped_state) = self.try_get_tipped_vote_state(governing_token_supply, config) {
             self.state = tipped_state;
-            self.voting_completed_at = Some(current_slot);
+            self.voting_completed_at = Some(current_unix_timestamp);
         }
     }
 
@@ -283,7 +283,7 @@ impl Proposal {
     pub fn assert_can_execute_instruction(
         &self,
         proposal_instruction_data: &ProposalInstruction,
-        current_slot: Slot,
+        current_unix_timestamp: UnixTimestamp,
     ) -> Result<(), ProgramError> {
         match self.state {
             ProposalState::Succeeded | ProposalState::Executing => {}
@@ -300,9 +300,9 @@ impl Proposal {
         if self
             .voting_completed_at
             .unwrap()
-            .checked_add(proposal_instruction_data.hold_up_time)
+            .checked_add(proposal_instruction_data.hold_up_time as i64)
             .unwrap()
-            >= current_slot
+            >= current_unix_timestamp
         {
             return Err(GovernanceError::CannotExecuteInstructionWithinHoldUpTime.into());
         }
@@ -814,16 +814,16 @@ mod test {
             let mut governance_config = create_test_governance_config();
             governance_config.yes_vote_threshold_percentage = test_case.vote_threshold_percentage;
 
-            let current_slot = 15_u64;
+            let current_timestamp = 15_i64;
 
             // Act
-            proposal.try_tip_vote(test_case.governing_token_supply, &governance_config,current_slot);
+            proposal.try_tip_vote(test_case.governing_token_supply, &governance_config,current_timestamp);
 
             // Assert
             assert_eq!(proposal.state,test_case.expected_tipped_state,"CASE: {:?}",test_case);
 
             if test_case.expected_tipped_state != ProposalState::Voting {
-                assert_eq!(Some(current_slot),proposal.voting_completed_at)
+                assert_eq!(Some(current_timestamp),proposal.voting_completed_at)
             }
         }
 
@@ -838,14 +838,14 @@ mod test {
             let mut governance_config = create_test_governance_config();
             governance_config.yes_vote_threshold_percentage = test_case.vote_threshold_percentage;
 
-            let current_slot = 16_u64;
+            let current_timestamp = 16_i64;
 
             // Act
-            proposal.finalize_vote(test_case.governing_token_supply, &governance_config,current_slot).unwrap();
+            proposal.finalize_vote(test_case.governing_token_supply, &governance_config,current_timestamp).unwrap();
 
             // Assert
             assert_eq!(proposal.state,test_case.expected_finalized_state,"CASE: {:?}",test_case);
-            assert_eq!(Some(current_slot),proposal.voting_completed_at);
+            assert_eq!(Some(current_timestamp),proposal.voting_completed_at);
 
         }
     }
@@ -880,11 +880,10 @@ mod test {
             let mut governance_config = create_test_governance_config();
             governance_config.yes_vote_threshold_percentage = yes_vote_threshold_percentage;
 
-            let current_slot = 15_u64;
-
+            let current_timestamp = 15_i64;
 
             // Act
-            proposal.try_tip_vote(governing_token_supply, &governance_config,current_slot);
+            proposal.try_tip_vote(governing_token_supply, &governance_config,current_timestamp);
 
             // Assert
             let yes_vote_threshold_count = get_vote_threshold_count(yes_vote_threshold_percentage,governing_token_supply);
@@ -917,10 +916,10 @@ mod test {
             let mut governance_config = create_test_governance_config();
             governance_config.yes_vote_threshold_percentage = yes_vote_threshold_percentage;
 
-            let current_slot = 16_u64;
+            let current_timestamp = 16_i64;
 
             // Act
-            proposal.finalize_vote(governing_token_supply, &governance_config,current_slot).unwrap();
+            proposal.finalize_vote(governing_token_supply, &governance_config,current_timestamp).unwrap();
 
             // Assert
             let yes_vote_threshold_count = get_vote_threshold_count(yes_vote_threshold_percentage,governing_token_supply);
@@ -941,11 +940,12 @@ mod test {
         proposal.state = ProposalState::Voting;
         let governance_config = create_test_governance_config();
 
-        let current_slot = proposal.voting_at.unwrap() + governance_config.max_voting_time;
+        let current_timestamp =
+            proposal.voting_at.unwrap() + governance_config.max_voting_time as i64;
 
         // Act
         let err = proposal
-            .finalize_vote(100, &governance_config, current_slot)
+            .finalize_vote(100, &governance_config, current_timestamp)
             .err()
             .unwrap();
 
@@ -960,10 +960,11 @@ mod test {
         proposal.state = ProposalState::Voting;
         let governance_config = create_test_governance_config();
 
-        let current_slot = proposal.voting_at.unwrap() + governance_config.max_voting_time + 1;
+        let current_timestamp =
+            proposal.voting_at.unwrap() + governance_config.max_voting_time as i64 + 1;
 
         // Act
-        let result = proposal.finalize_vote(100, &governance_config, current_slot);
+        let result = proposal.finalize_vote(100, &governance_config, current_timestamp);
 
         // Assert
         assert_eq!(result, Ok(()));
@@ -976,11 +977,12 @@ mod test {
         proposal.state = ProposalState::Voting;
         let governance_config = create_test_governance_config();
 
-        let current_slot = proposal.voting_at.unwrap() + governance_config.max_voting_time + 1;
+        let current_timestamp =
+            proposal.voting_at.unwrap() + governance_config.max_voting_time as i64 + 1;
 
         // Act
         let err = proposal
-            .assert_can_cast_vote(&governance_config, current_slot)
+            .assert_can_cast_vote(&governance_config, current_timestamp)
             .err()
             .unwrap();
 
@@ -995,10 +997,11 @@ mod test {
         proposal.state = ProposalState::Voting;
         let governance_config = create_test_governance_config();
 
-        let current_slot = proposal.voting_at.unwrap() + governance_config.max_voting_time;
+        let current_timestamp =
+            proposal.voting_at.unwrap() + governance_config.max_voting_time as i64;
 
         // Act
-        let result = proposal.assert_can_cast_vote(&governance_config, current_slot);
+        let result = proposal.assert_can_cast_vote(&governance_config, current_timestamp);
 
         // Assert
         assert_eq!(result, Ok(()));

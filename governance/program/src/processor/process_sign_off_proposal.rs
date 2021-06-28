@@ -52,7 +52,7 @@ pub fn process_sign_off_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) 
 
     // If all Signatories signed off we can start voting
     if proposal_data.signatories_signed_off_count == proposal_data.signatories_count {
-        proposal_data.voting_at = Some(clock.slot);
+        proposal_data.voting_at = Some(clock.unix_timestamp);
         proposal_data.state = ProposalState::Voting;
     }
 

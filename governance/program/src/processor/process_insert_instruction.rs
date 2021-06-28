@@ -30,7 +30,7 @@ pub fn process_insert_instruction(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     index: u16,
-    hold_up_time: u64,
+    hold_up_time: u32,
     instruction: InstructionData,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
