@@ -125,7 +125,7 @@ async fn test_finalize_vote_to_defeated() {
 
     assert_eq!(ProposalState::Voting, proposal_account.state);
 
-    // Advance slot past max_voting_time
+    // Advance clock past max_voting_time
     governance_test
         .advance_clock_past_timestamp(
             account_governance_cookie.account.config.max_voting_time as i64

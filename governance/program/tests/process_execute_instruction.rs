@@ -407,7 +407,7 @@ async fn test_execute_instruction_with_invalid_state_errors() {
         .await
         .unwrap();
 
-    governance_test.context.warp_to_slot(3).unwrap();
+    governance_test.advance_clock().await;
 
     // Act
     let err = governance_test
@@ -507,13 +507,11 @@ async fn test_execute_instruction_for_other_proposal_error() {
         .await
         .unwrap();
 
-    // Advance slot past hold_up_time
-    let execute_at_slot = 1 + proposal_instruction_cookie.account.hold_up_time + 1;
+    // Advance clock past hold_up_time
 
     governance_test
-        .context
-        .warp_to_slot(execute_at_slot as u64)
-        .unwrap();
+        .advance_clock_by_min_timespan(proposal_instruction_cookie.account.hold_up_time as u64)
+        .await;
 
     let proposal_cookie2 = governance_test
         .with_proposal(&token_owner_record_cookie, &mut mint_governance_cookie)
@@ -586,7 +584,7 @@ async fn test_execute_mint_instruction_twice_error() {
         .await
         .unwrap();
 
-    // Advance slot past hold_up_time
+    // Advance clock past hold_up_time
 
     governance_test
         .advance_clock_by_min_timespan(proposal_instruction_cookie.account.hold_up_time as u64)

@@ -133,7 +133,7 @@ pub enum GovernanceInstruction {
         transfer_upgrade_authority: bool,
     },
 
-    /// Creates Proposal account for Instructions that will be executed at various slots in the future
+    /// Creates Proposal account for Instructions that will be executed at some point in the future
     ///
     ///   0. `[writable]` Proposal account. PDA seeds ['governance',governance, governing_token_mint, proposal_index]
     ///   1. `[writable]` Governance account
@@ -202,7 +202,7 @@ pub enum GovernanceInstruction {
         /// Instruction index to be inserted at.
         index: u16,
         #[allow(dead_code)]
-        /// Slot waiting time between vote period ending and this being eligible for execution
+        /// Waiting time (in seconds) between vote period ending and this being eligible for execution
         hold_up_time: u32,
 
         #[allow(dead_code)]

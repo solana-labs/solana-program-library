@@ -1657,7 +1657,7 @@ impl GovernanceProgramTest {
         let mut n = 1;
 
         while clock.unix_timestamp <= unix_timestamp {
-            // Since the exact time is not deterministic wrap by arbitrary 400 slots until we pass the timestamp
+            // Since the exact time is not deterministic keep wrapping by arbitrary 400 slots until we pass the requested timestamp
             self.context.warp_to_slot(clock.slot + n * 400).unwrap();
 
             n = n + 1;

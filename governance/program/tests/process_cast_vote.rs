@@ -557,7 +557,7 @@ async fn test_cast_vote_with_cast_twice_error() {
         .await
         .unwrap();
 
-    governance_test.context.warp_to_slot(5).unwrap();
+    governance_test.advance_clock().await;
 
     // Act
     let err = governance_test
