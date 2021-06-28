@@ -67,7 +67,7 @@ pub struct Proposal {
     pub voting_completed_at: Option<Slot>,
 
     /// When the Proposal entered Executing state
-    pub executing_at: Option<Slot>,
+    pub executing_at: Option<UnixTimestamp>,
 
     /// When the Proposal entered final state Completed or Cancelled and was closed
     pub closed_at: Option<UnixTimestamp>,

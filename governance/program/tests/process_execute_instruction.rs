@@ -84,7 +84,7 @@ async fn test_execute_mint_instruction() {
     assert_eq!(1, proposal_account.instructions_executed_count);
     assert_eq!(ProposalState::Completed, proposal_account.state);
     assert_eq!(Some(clock.unix_timestamp), proposal_account.closed_at);
-    assert_eq!(Some(execute_at_slot), proposal_account.executing_at);
+    assert_eq!(Some(clock.unix_timestamp), proposal_account.executing_at);
 
     let proposal_instruction_account = governance_test
         .get_proposal_instruction_account(&proposal_instruction_cookie.address)
@@ -281,7 +281,7 @@ async fn test_execute_upgrade_program_instruction() {
     assert_eq!(1, proposal_account.instructions_executed_count);
     assert_eq!(ProposalState::Completed, proposal_account.state);
     assert_eq!(Some(clock.unix_timestamp), proposal_account.closed_at);
-    assert_eq!(Some(execute_at_slot), proposal_account.executing_at);
+    assert_eq!(Some(clock.unix_timestamp), proposal_account.executing_at);
 
     let proposal_instruction_account = governance_test
         .get_proposal_instruction_account(&proposal_instruction_cookie.address)

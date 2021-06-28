@@ -59,7 +59,7 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
 
     // Update proposal and instruction accounts
     if proposal_data.state == ProposalState::Succeeded {
-        proposal_data.executing_at = Some(clock.slot);
+        proposal_data.executing_at = Some(clock.unix_timestamp);
         proposal_data.state = ProposalState::Executing;
     }
 
