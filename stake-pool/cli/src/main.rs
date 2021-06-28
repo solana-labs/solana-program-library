@@ -105,9 +105,10 @@ fn command_create_pool(
     max_validators: u32,
     stake_pool_keypair: Option<Keypair>,
     mint_keypair: Option<Keypair>,
+    reserve_keypair: Option<Keypair>,
 ) -> CommandResult {
-    let reserve_stake = Keypair::new();
-    println!("Creating reserve stake {}", reserve_stake.pubkey());
+    let reserve_keypair = reserve_keypair.unwrap_or_else(Keypair::new);
+    println!("Creating reserve stake {}", reserve_keypair.pubkey());
 
     let mint_keypair = mint_keypair.unwrap_or_else(Keypair::new);
     println!("Creating mint {}", mint_keypair.pubkey());
@@ -163,13 +164,13 @@ fn command_create_pool(
             // Account for the stake pool reserve
             system_instruction::create_account(
                 &config.fee_payer.pubkey(),
-                &reserve_stake.pubkey(),
+                &reserve_keypair.pubkey(),
                 reserve_stake_balance,
                 STAKE_STATE_LEN as u64,
                 &stake_program::id(),
             ),
             stake_program::initialize(
-                &reserve_stake.pubkey(),
+                &reserve_keypair.pubkey(),
                 &stake_program::Authorized {
                     staker: withdraw_authority,
                     withdrawer: withdraw_authority,
@@ -236,7 +237,7 @@ fn command_create_pool(
                 &config.manager.pubkey(),
                 &config.staker.pubkey(),
                 &validator_list.pubkey(),
-                &reserve_stake.pubkey(),
+                &reserve_keypair.pubkey(),
                 &mint_keypair.pubkey(),
                 &pool_fee_account.pubkey(),
                 &spl_token::id(),
@@ -259,7 +260,7 @@ fn command_create_pool(
         config.fee_payer.as_ref(),
         &mint_keypair,
         &pool_fee_account,
-        &reserve_stake,
+        &reserve_keypair,
     ];
     unique_signers!(setup_signers);
     setup_transaction.sign(&setup_signers, recent_blockhash);
@@ -639,6 +640,13 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
     let validator_list = get_validator_list(&config.rpc_client, &stake_pool.validator_list)?;
     let pool_mint = get_token_mint(&config.rpc_client, &stake_pool.pool_mint)?;
     let epoch_info = config.rpc_client.get_epoch_info()?;
+
+    let reserve_stake = config.rpc_client.get_account(&stake_pool.reserve_stake)?;
+    println!(
+        "Reserve Account: {}\tBalance: {}",
+        stake_pool.reserve_stake,
+        Sol(reserve_stake.lamports),
+    );
 
     for validator in validator_list.validators {
         println!(
@@ -1241,6 +1249,14 @@ fn main() {
                     .takes_value(true)
                     .help("Stake pool mint keypair [default: new keypair]"),
             )
+            .arg(
+                Arg::with_name("reserve_keypair")
+                    .long("reserve-keypair")
+                    .validator(is_keypair_or_ask_keyword)
+                    .value_name("PATH")
+                    .takes_value(true)
+                    .help("Stake pool reserve keypair [default: new keypair]"),
+            )
         )
         .subcommand(SubCommand::with_name("create-validator-stake")
             .about("Create a new stake account to use with the pool. Must be signed by the pool staker.")
@@ -1710,6 +1726,7 @@ fn main() {
             let max_validators = value_t_or_exit!(arg_matches, "max_validators", u32);
             let pool_keypair = keypair_of(arg_matches, "pool_keypair");
             let mint_keypair = keypair_of(arg_matches, "mint_keypair");
+            let reserve_keypair = keypair_of(arg_matches, "reserve_keypair");
             command_create_pool(
                 &config,
                 deposit_authority,
@@ -1720,6 +1737,7 @@ fn main() {
                 max_validators,
                 pool_keypair,
                 mint_keypair,
+                reserve_keypair,
             )
         }
         ("create-validator-stake", Some(arg_matches)) => {
