@@ -1261,12 +1261,16 @@ mod test {
             // Repeatedly withdraw a portion of the liquidity using collateral token to see if we can reach a state where
             // we end up with more than what we have originally put into.
             for collateral_remain in collateral_remainings.into_iter() {
-                reserve.accrue_interest(1)?;
-                current_liquidity_amount = reserve.redeem_collateral(current_collateral_amount - collateral_remain).unwrap();
-                current_collateral_amount = collateral_remain;
+                // After repeated deposit and withdrawal, the collateral token that we obtain in the end can keep
+                // decreases since we *round down* on the amount of liquidity that the user can withdraw.
+                if collateral_remain <= current_collateral_amount {
+                    reserve.accrue_interest(1)?;
+                    current_liquidity_amount = reserve.redeem_collateral(current_collateral_amount - collateral_remain).unwrap();
+                    current_collateral_amount = collateral_remain;
 
-                reserve.accrue_interest(1)?;
-                current_collateral_amount += reserve.deposit_liquidity(current_liquidity_amount).unwrap();
+                    reserve.accrue_interest(1)?;
+                    current_collateral_amount += reserve.deposit_liquidity(current_liquidity_amount).unwrap();
+                }
             }
 
             let final_liquidity_deposited_amount = reserve.redeem_collateral(current_collateral_amount).unwrap();
