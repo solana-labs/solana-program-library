@@ -1,5 +1,6 @@
 //! Proposal  Account
 
+use solana_program::clock::UnixTimestamp;
 use solana_program::{
     account_info::AccountInfo, epoch_schedule::Slot, program_error::ProgramError,
     program_pack::IsInitialized, pubkey::Pubkey,
@@ -57,7 +58,7 @@ pub struct Proposal {
     pub draft_at: Slot,
 
     /// When Signatories started signing off the Proposal
-    pub signing_off_at: Option<Slot>,
+    pub signing_off_at: Option<UnixTimestamp>,
 
     /// When the Proposal began voting
     pub voting_at: Option<Slot>,
@@ -69,7 +70,7 @@ pub struct Proposal {
     pub executing_at: Option<Slot>,
 
     /// When the Proposal entered final state Completed or Cancelled and was closed
-    pub closed_at: Option<Slot>,
+    pub closed_at: Option<UnixTimestamp>,
 
     /// The number of the instructions already executed
     pub instructions_executed_count: u16,

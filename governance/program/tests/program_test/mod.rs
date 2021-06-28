@@ -4,12 +4,13 @@ use borsh::BorshDeserialize;
 use solana_program::{
     borsh::try_from_slice_unchecked,
     bpf_loader_upgradeable::{self, UpgradeableLoaderState},
+    clock::Clock,
     instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack},
     pubkey::Pubkey,
     rent::Rent,
-    system_instruction,
+    system_instruction, sysvar,
 };
 
 use bincode::deserialize;
@@ -1640,6 +1641,12 @@ impl GovernanceProgramTest {
             .unwrap()
             .map(|a| deserialize::<T>(&a.data.borrow()).unwrap())
             .expect(format!("GET-TEST-ACCOUNT-ERROR: Account {}", address).as_str())
+    }
+
+    #[allow(dead_code)]
+    pub async fn get_clock(&mut self) -> Clock {
+        self.get_bincode_account::<Clock>(&sysvar::clock::id())
+            .await
     }
 
     #[allow(dead_code)]

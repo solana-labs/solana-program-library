@@ -71,7 +71,7 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
     if proposal_data.state == ProposalState::Executing
         && proposal_data.instructions_executed_count == proposal_data.instructions_count
     {
-        proposal_data.closed_at = Some(clock.slot);
+        proposal_data.closed_at = Some(clock.unix_timestamp);
         proposal_data.state = ProposalState::Completed;
     }
 

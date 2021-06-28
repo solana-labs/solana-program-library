@@ -41,7 +41,7 @@ pub fn process_sign_off_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) 
     signatory_record_data.serialize(&mut *signatory_record_info.data.borrow_mut())?;
 
     if proposal_data.signatories_signed_off_count == 0 {
-        proposal_data.signing_off_at = Some(clock.slot);
+        proposal_data.signing_off_at = Some(clock.unix_timestamp);
         proposal_data.state = ProposalState::SigningOff;
     }
 

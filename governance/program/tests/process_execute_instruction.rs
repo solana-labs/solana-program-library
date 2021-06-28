@@ -67,6 +67,8 @@ async fn test_execute_mint_instruction() {
         .warp_to_slot(execute_at_slot)
         .unwrap();
 
+    let clock = governance_test.get_clock().await;
+
     // Act
     governance_test
         .execute_instruction(&proposal_cookie, &proposal_instruction_cookie)
@@ -81,7 +83,7 @@ async fn test_execute_mint_instruction() {
 
     assert_eq!(1, proposal_account.instructions_executed_count);
     assert_eq!(ProposalState::Completed, proposal_account.state);
-    assert_eq!(Some(execute_at_slot), proposal_account.closed_at);
+    assert_eq!(Some(clock.unix_timestamp), proposal_account.closed_at);
     assert_eq!(Some(execute_at_slot), proposal_account.executing_at);
 
     let proposal_instruction_account = governance_test
@@ -262,6 +264,8 @@ async fn test_execute_upgrade_program_instruction() {
     // solana_bpf_rust_upgradable returns CustomError == 42
     assert_eq!(ProgramError::Custom(42), err);
 
+    let clock = governance_test.get_clock().await;
+
     // Act
     governance_test
         .execute_instruction(&proposal_cookie, &proposal_instruction_cookie)
@@ -276,7 +280,7 @@ async fn test_execute_upgrade_program_instruction() {
 
     assert_eq!(1, proposal_account.instructions_executed_count);
     assert_eq!(ProposalState::Completed, proposal_account.state);
-    assert_eq!(Some(execute_at_slot), proposal_account.closed_at);
+    assert_eq!(Some(clock.unix_timestamp), proposal_account.closed_at);
     assert_eq!(Some(execute_at_slot), proposal_account.executing_at);
 
     let proposal_instruction_account = governance_test
