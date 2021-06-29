@@ -2,7 +2,7 @@ import { PublicKey, TransactionInstruction } from '@solana/web3.js';
 import { struct, u8 } from 'buffer-layout';
 import { LendingInstruction } from './instruction';
 import { LENDING_PROGRAM_ID } from '../constants';
-import { publicKey, u64 } from '../util';
+import { publicKey } from '../util';
 
 /// 1
 /// Sets the new owner of a lending market.

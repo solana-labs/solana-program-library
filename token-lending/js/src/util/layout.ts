@@ -1,14 +1,25 @@
-import { PublicKey } from '@solana/web3.js';
+import { AccountInfo, PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import { blob, Layout, offset, struct, u32 } from 'buffer-layout';
 
-export const publicKey = (property = 'publicKey') => {
+export type Parser<T> = (
+    pubkey: PublicKey,
+    info: AccountInfo<Buffer>
+) =>
+    | {
+          pubkey: PublicKey;
+          account: AccountInfo<Buffer>;
+          info: T;
+      }
+    | undefined;
+
+export const publicKey = (property = 'publicKey'): Layout<PublicKey> => {
     const layout = blob(32, property);
 
     const _decode = layout.decode.bind(layout);
     const _encode = layout.encode.bind(layout);
 
-    const publicKeyLayout = layout as Layout<any> as Layout<PublicKey>;
+    const publicKeyLayout = layout as Layout<PublicKey>;
 
     publicKeyLayout.decode = (buffer: Buffer, offset: number) => {
         const data = _decode(buffer, offset);
@@ -24,13 +35,13 @@ export const publicKey = (property = 'publicKey') => {
 
 export const bn =
     (length: number) =>
-    (property = 'bn') => {
+    (property = 'bn'): Layout<BN> => {
         const layout = blob(length, property);
 
         const _decode = layout.decode.bind(layout);
         const _encode = layout.encode.bind(layout);
 
-        const bnLayout = layout as Layout<any> as Layout<BN>;
+        const bnLayout = layout as Layout<BN>;
 
         bnLayout.decode = (buffer: Buffer, offset: number) => {
             const src = _decode(buffer, offset);
@@ -70,7 +81,7 @@ interface RustString {
 /**
  * Layout for a Rust String type
  */
-export const rustString = (property = 'string') => {
+export const rustString = (property = 'string'): Layout<string> => {
     const layout = struct<RustString>(
         [u32('length'), u32('lengthPadding'), blob(offset(u32(), -8), 'chars')],
         property
@@ -79,7 +90,7 @@ export const rustString = (property = 'string') => {
     const _decode = layout.decode.bind(layout);
     const _encode = layout.encode.bind(layout);
 
-    const stringLayout = layout as Layout<any> as Layout<string>;
+    const stringLayout = layout as Layout<string>;
 
     stringLayout.decode = (buffer: Buffer, offset: number) => {
         const data = _decode(buffer, offset);

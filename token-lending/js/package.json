@@ -22,8 +22,8 @@
     ],
     "scripts": {
         "build": "rm -rf lib/* && tsc",
-        "lint": "eslint --ext .ts src/**/* && prettier --check '**/*.{ts,js,json}'",
-        "lint:fix": "eslint --ext .ts src/**/* --fix && prettier --write '**/*.{ts,js,json}'"
+        "lint": "eslint . --ext .ts && prettier --check '**/*.{ts,js,json}'",
+        "lint:fix": "eslint . --ext .ts --fix && prettier --write '**/*.{ts,js,json}'"
     },
     "dependencies": {
         "@solana/spl-token": "0.1.6",

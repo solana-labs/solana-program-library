@@ -1,6 +1,6 @@
 import { AccountInfo, PublicKey } from '@solana/web3.js';
 import { blob, struct, u8 } from 'buffer-layout';
-import { publicKey } from '../util';
+import { Parser, publicKey } from '../util';
 
 export interface LendingMarket {
     version: number;
@@ -21,11 +21,11 @@ export const LendingMarketLayout = struct<LendingMarket>([
     blob(128, 'padding'),
 ]);
 
-export const isLendingMarket = (info: AccountInfo<Buffer>) => {
+export const isLendingMarket = (info: AccountInfo<Buffer>): boolean => {
     return info.data.length === LendingMarketLayout.span;
 };
 
-export const LendingMarketParser = (pubkey: PublicKey, info: AccountInfo<Buffer>) => {
+export const LendingMarketParser: Parser<LendingMarket> = (pubkey: PublicKey, info: AccountInfo<Buffer>) => {
     if (!isLendingMarket(info)) return;
 
     const buffer = Buffer.from(info.data);

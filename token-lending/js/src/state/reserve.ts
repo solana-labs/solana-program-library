@@ -1,7 +1,7 @@
 import { AccountInfo, PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import { blob, struct, u8 } from 'buffer-layout';
-import { publicKey, u64, u128 } from '../util';
+import { publicKey, u64, u128, Parser } from '../util';
 import { LastUpdate, LastUpdateLayout } from './lastUpdate';
 
 export interface Reserve {
@@ -86,11 +86,11 @@ export const ReserveLayout = struct<Reserve>([
     blob(248, 'padding'),
 ]);
 
-export const isReserve = (info: AccountInfo<Buffer>) => {
+export const isReserve = (info: AccountInfo<Buffer>): boolean => {
     return info.data.length === ReserveLayout.span;
 };
 
-export const ReserveParser = (pubkey: PublicKey, info: AccountInfo<Buffer>) => {
+export const ReserveParser: Parser<Reserve> = (pubkey: PublicKey, info: AccountInfo<Buffer>) => {
     if (!isReserve(info)) return;
 
     const buffer = Buffer.from(info.data);

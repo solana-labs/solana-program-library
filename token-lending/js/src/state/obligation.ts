@@ -1,7 +1,7 @@
 import { AccountInfo, PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import { blob, seq, struct, u8 } from 'buffer-layout';
-import { publicKey, u64, u128 } from '../util';
+import { publicKey, u64, u128, Parser } from '../util';
 import { LastUpdate, LastUpdateLayout } from './lastUpdate';
 
 export interface Obligation {
@@ -74,11 +74,11 @@ export const ObligationLayout = struct<ProtoObligation>([
     blob(776, 'dataFlat'),
 ]);
 
-export const isObligation = (info: AccountInfo<Buffer>) => {
+export const isObligation = (info: AccountInfo<Buffer>): boolean => {
     return info.data.length === ObligationLayout.span;
 };
 
-export const ObligationParser = (pubkey: PublicKey, info: AccountInfo<Buffer>) => {
+export const ObligationParser: Parser<Obligation> = (pubkey: PublicKey, info: AccountInfo<Buffer>) => {
     if (!isObligation(info)) return;
 
     const buffer = Buffer.from(info.data);
