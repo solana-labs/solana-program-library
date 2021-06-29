@@ -57,9 +57,11 @@ pub const TEST_RESERVE_CONFIG: ReserveConfig = ReserveConfig {
 
 pub const SOL_PYTH_PRODUCT: &str = "3Mnn2fX6rQyUsyELYms1sBJyChWofzSNRoqYzvgMVz5E";
 pub const SOL_PYTH_PRICE: &str = "J83w4HKfqxwcq3BEMMkPFSppX3gqekLyLJBexebFVkix";
+pub const SOL_SWITCHBOARD_FEED: &str = "AdtRGGhmqvom3Jemp5YNrxd9q9unX36BZk1pujkkXijL";
 
 pub const SRM_PYTH_PRODUCT: &str = "6MEwdxe4g1NeAF9u6KDG14anJpFsVEa2cvr5H6iriFZ8";
 pub const SRM_PYTH_PRICE: &str = "992moaMQKs32GKZ9dxi8keyM2bUmbrwBZpK4p2K6X5Vs";
+pub const SRM_SWITCHBOARD_FEED: &str = "BAoygKcKN7wk8yKzLD6sxzUQUqLvhBV1rjMA4UJqfZuH";
 
 pub const USDC_MINT: &str = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 
@@ -342,8 +344,8 @@ pub fn add_reserve(
             mint_decimals: liquidity_mint_decimals,
             supply_pubkey: liquidity_supply_pubkey,
             fee_receiver: liquidity_fee_receiver_pubkey,
-            pyth_oracle_pubkey: oracle.price_pubkey,
-            switchboard_oracle_pubkey: oracle.price_pubkey,
+            pyth_oracle_pubkey: oracle.pyth_price_pubkey,
+            switchboard_oracle_pubkey: oracle.switchboard_feed_pubkey,
             market_price: oracle.price,
         }),
         collateral: ReserveCollateral::new(NewReserveCollateralParams {
@@ -415,8 +417,8 @@ pub fn add_reserve(
         liquidity_supply_pubkey,
         liquidity_fee_receiver_pubkey,
         liquidity_host_pubkey,
-        liquidity_pyth_oracle_pubkey: oracle.price_pubkey,
-        liquidity_switchboard_oracle_pubkey: oracle.price_pubkey,
+        liquidity_pyth_oracle_pubkey: oracle.pyth_price_pubkey,
+        liquidity_switchboard_oracle_pubkey: oracle.switchboard_feed_pubkey,
         collateral_mint_pubkey,
         collateral_supply_pubkey,
         user_liquidity_pubkey,
@@ -813,8 +815,9 @@ impl TestReserve {
                     liquidity_fee_receiver_keypair.pubkey(),
                     collateral_mint_keypair.pubkey(),
                     collateral_supply_keypair.pubkey(),
-                    oracle.product_pubkey,
-                    oracle.price_pubkey,
+                    oracle.pyth_product_pubkey,
+                    oracle.pyth_price_pubkey,
+                    oracle.switchboard_feed_pubkey,
                     lending_market.pubkey,
                     lending_market.owner.pubkey(),
                     user_transfer_authority_keypair.pubkey(),
@@ -854,8 +857,8 @@ impl TestReserve {
                 liquidity_supply_pubkey: liquidity_supply_keypair.pubkey(),
                 liquidity_fee_receiver_pubkey: liquidity_fee_receiver_keypair.pubkey(),
                 liquidity_host_pubkey: liquidity_host_keypair.pubkey(),
-                liquidity_pyth_oracle_pubkey: oracle.price_pubkey,
-                liquidity_switchboard_oracle_pubkey: oracle.price_pubkey,
+                liquidity_pyth_oracle_pubkey: oracle.pyth_price_pubkey,
+                liquidity_switchboard_oracle_pubkey: oracle.switchboard_feed_pubkey,
                 collateral_mint_pubkey: collateral_mint_keypair.pubkey(),
                 collateral_supply_pubkey: collateral_supply_keypair.pubkey(),
                 user_liquidity_pubkey,
@@ -1071,8 +1074,9 @@ pub fn add_usdc_mint(test: &mut ProgramTest) -> TestMint {
 }
 
 pub struct TestOracle {
-    pub product_pubkey: Pubkey,
-    pub price_pubkey: Pubkey,
+    pub pyth_product_pubkey: Pubkey,
+    pub pyth_price_pubkey: Pubkey,
+    pub switchboard_feed_pubkey: Pubkey,
     pub price: Decimal,
 }
 
@@ -1081,6 +1085,7 @@ pub fn add_sol_oracle(test: &mut ProgramTest) -> TestOracle {
         test,
         Pubkey::from_str(SOL_PYTH_PRODUCT).unwrap(),
         Pubkey::from_str(SOL_PYTH_PRICE).unwrap(),
+        Pubkey::from_str(SOL_SWITCHBOARD_FEED).unwrap(),
         // Set SOL price to $20
         Decimal::from(20u64),
     )
@@ -1092,6 +1097,7 @@ pub fn add_usdc_oracle(test: &mut ProgramTest) -> TestOracle {
         // Mock with SRM since Pyth doesn't have USDC yet
         Pubkey::from_str(SRM_PYTH_PRODUCT).unwrap(),
         Pubkey::from_str(SRM_PYTH_PRICE).unwrap(),
+        Pubkey::from_str(SRM_SWITCHBOARD_FEED).unwrap(),
         // Set USDC price to $1
         Decimal::from(1u64),
     )
@@ -1099,22 +1105,23 @@ pub fn add_usdc_oracle(test: &mut ProgramTest) -> TestOracle {
 
 pub fn add_oracle(
     test: &mut ProgramTest,
-    product_pubkey: Pubkey,
-    price_pubkey: Pubkey,
+    pyth_product_pubkey: Pubkey,
+    pyth_price_pubkey: Pubkey,
+    switchboard_feed_pubkey: Pubkey,
     price: Decimal,
 ) -> TestOracle {
     let oracle_program_id = read_keypair_file("tests/fixtures/oracle_program_id.json").unwrap();
 
     // Add Pyth product account
     test.add_account_with_file_data(
-        product_pubkey,
+        pyth_product_pubkey,
         u32::MAX as u64,
         oracle_program_id.pubkey(),
-        &format!("{}.bin", product_pubkey.to_string()),
+        &format!("{}.bin", pyth_product_pubkey.to_string()),
     );
 
     // Add Pyth price account after setting the price
-    let filename = &format!("{}.bin", price_pubkey.to_string());
+    let filename = &format!("{}.bin", pyth_price_pubkey.to_string());
     let mut pyth_price_data = read_file(find_file(filename).unwrap_or_else(|| {
         panic!("Unable to locate {}", filename);
     }));
@@ -1135,7 +1142,7 @@ pub fn add_oracle(
         .unwrap();
 
     test.add_account(
-        price_pubkey,
+        pyth_price_pubkey,
         Account {
             lamports: u32::MAX as u64,
             data: pyth_price_data,
@@ -1145,9 +1152,28 @@ pub fn add_oracle(
         },
     );
 
+    // Add Switchboard price feed account after setting the price
+    let filename2 = &format!("{}.bin", switchboard_feed_pubkey.to_string());
+    // mut and set data here later
+    let switchboard_feed_data = read_file(find_file(filename2).unwrap_or_else(|| {
+        panic!("Unable to locate {}", filename2);
+    }));
+
+    test.add_account(
+        switchboard_feed_pubkey,
+        Account {
+            lamports: u32::MAX as u64,
+            data: switchboard_feed_data,
+            owner: oracle_program_id.pubkey(),
+            executable: false,
+            rent_epoch: 0,
+        },
+    );
+
     TestOracle {
-        product_pubkey,
-        price_pubkey,
+        pyth_product_pubkey,
+        pyth_price_pubkey,
+        switchboard_feed_pubkey,
         price,
     }
 }
