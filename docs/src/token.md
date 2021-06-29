@@ -52,9 +52,6 @@ The `spl-token` configuration is shared with the `solana` command-line tool.
 
 ```console
 $ solana config get
-```
-
-```
 Config File: ${HOME}/.config/solana/cli/config.yml
 RPC URL: https://api.mainnet-beta.solana.com
 WebSocket URL: wss://api.mainnet-beta.solana.com/ (computed)
@@ -278,7 +275,7 @@ Signature: 5QpykLzZsceoKcVRRFow9QCdae4Dp2zQAcjebyEWoezPFg2Np73gHKWQicHG1mqRdXu3y
 Now the `7KqpRwzkkeweW5jQoETyLzhvs9rcCj9dVQ1MnzudirsM` account holds the
 one and only `559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z` token:
 
-```
+```console
 $ spl-token account-info 559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z
 
 Address: 7KqpRwzkkeweW5jQoETyLzhvs9rcCj9dVQ1MnzudirsM
@@ -403,17 +400,30 @@ Minting 1 tokens
 Signature: 2ubqWqZb3ooDuc8FLaBkqZwzguhtMgQpgMAHhKsWcUzjy61qtJ7cZ1bfmYktKUfnbMYWTC1S8zdKgU6m4THsgspT
 ```
 
-### Example: Mint with multisig authority and offline signers
+### Example: Offline signing with multisig 
 
-This example builds off of the [online mint with multisig](#example-mint-with-multisig-authority)
-example. Be sure to familiarize yourself with that process, [offline signing](https://docs.solana.com/offline-signing),
-and the [durable nonce](https://docs.solana.com/offline-signing/durable-nonce)
-feature before continuing.
+Sometimes online signing is not possible or desireable. Such is the case for example when signers are not in the same geographic location  
+or when they use air-gapped devices not connected to the network.  In this case, we use offline signing which combines the   
+previous examples of ([multisig](#example-mint-with-multisig-authority) with [offline signing](https://docs.solana.com/offline-signing)
+and a [nonce account](https://docs.solana.com/offline-signing/durable-nonce).
 
 This example will use the same mint account, token account, multisig account,
-and multisig signer-set keypair filenames as the online example.
+and multisig signer-set keypair filenames as the online example, as well as a nonce
+account that we create here:
 
-A nonce account at `Fjyud2VXixk2vCs4DkBpfpsq48d81rbEzh6deKt7WvPj` will be used
+```console
+$ solana-keygen new -o nonce-keypair.json
+...
+======================================================================
+pubkey: Fjyud2VXixk2vCs4DkBpfpsq48d81rbEzh6deKt7WvPj
+======================================================================
+```
+
+```console
+$ solana create-nonce-account nonce-keypair.json 1
+Signature: 3DALwrAAmCDxqeb4qXZ44WjpFcwVtgmJKhV4MW5qLJVtWeZ288j6Pzz1F4BmyPpnGLfx2P8MEJXmqPchX5y2Lf3r
+```
+
 ```console
 $ solana nonce-account Fjyud2VXixk2vCs4DkBpfpsq48d81rbEzh6deKt7WvPj
 Balance: 0.01 SOL
@@ -520,7 +530,7 @@ and `--nonce-authority ...` in this example)
 1. Removes the `--sign-only` argument, and in the case of the `mint` subcommand,
 the `--mint-decimals ...` argument as it will be queried from the cluster
 1. Adds the offline signatures to the template command via the `--signer` argument
-```console
+```
 $ spl-token mint 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o 1 EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC \
 --owner 46ed77fd4WTN144q62BwjU2B3ogX3Xmmc8PT5Z3Xc2re \
 --multisig-signer BzWpkuRrwXHq4SSSFHa8FJf6DRQy4TaeoXnkA89vTgHZ \
