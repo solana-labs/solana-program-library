@@ -51,7 +51,7 @@ The `spl-token` configuration is shared with the `solana` command-line tool.
 #### Current Configuration
 
 ```console
-solana config get
+$ solana config get
 ```
 
 ```
@@ -65,7 +65,7 @@ Keypair Path: ${HOME}/.config/solana/id.json
 
 See [Solana clusters](https://docs.solana.com/clusters) for cluster-specific RPC URLs
 ```console
-solana config set --url https://api.devnet.solana.com
+$ solana config set --url https://api.devnet.solana.com
 ```
 
 #### Default Keypair
@@ -75,12 +75,12 @@ for information on how to setup a keypair if you don't already have one.
 
 Keypair File
 ```console
-solana config set --keypair ${HOME}/new-keypair.json
+$ solana config set --keypair ${HOME}/new-keypair.json
 ```
 
 Hardware Wallet URL (See [URL spec](https://docs.solana.com/wallet-guide/hardware-wallets#specify-a-keypair-url))
 ```console
-solana config set --keypair usb://ledger/
+$ solana config set --keypair usb://ledger/
 ```
 
 #### Airdrop SOL
@@ -89,7 +89,7 @@ Creating tokens and accounts requires SOL for account rent deposits and
 transaction fees. If the cluster you are targeting offers a faucet, you can get
 a little SOL for testing:
 ```console
-solana airdrop 1
+$ solana airdrop 1
 ```
 
 ### Example: Creating your own fungible token
@@ -104,7 +104,7 @@ The unique identifier of the token is `AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9w
 
 Tokens when initially created by `spl-token` have no supply:
 ```console
-spl-token supply AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM
+$ spl-token supply AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM
 0
 ```
 
@@ -422,8 +422,8 @@ corresponding signature.
 NOTE: The argument to the `--blockhash` parameter is the "Nonce blockhash:" field from
 the designated durable nonce account.
 
-```console
-$ spl-token mint 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o 1 EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC \
+```sh
+spl-token mint 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o 1 EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC \
 --owner 46ed77fd4WTN144q62BwjU2B3ogX3Xmmc8PT5Z3Xc2re \
 --multisig-signer BzWpkuRrwXHq4SSSFHa8FJf6DRQy4TaeoXnkA89vTgHZ \
 --multisig-signer DhkUfKgfZ8CF6PAGKwdABRL1VqkeNrTSRx8LZfpPFVNY \
@@ -433,6 +433,8 @@ $ spl-token mint 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o 1 EX8zyi2ZQUuoYtXd
 --nonce-authority 5hbZyJ3KRuFvdy5QBxvE9KwK17hzkAUkQHZTxPbiWffE \
 --sign-only \
 --mint-decimals 9
+```
+```console
 Minting 1 tokens
   Token: 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o
   Recipient: EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC
@@ -446,7 +448,7 @@ Absent Signers (Pubkey):
 
 Next each offline signer executes the template command, replacing each instance
 of their public key with the corresponding keypair.
-```console
+```sh
 spl-token mint 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o 1 EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC \
 --owner 46ed77fd4WTN144q62BwjU2B3ogX3Xmmc8PT5Z3Xc2re \
 --multisig-signer signer-1.json \
@@ -469,7 +471,7 @@ Absent Signers (Pubkey):
  DhkUfKgfZ8CF6PAGKwdABRL1VqkeNrTSRx8LZfpPFVNY
 ```
 
-```console
+```sh
 $ spl-token mint 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o 1 EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC \
 --owner 46ed77fd4WTN144q62BwjU2B3ogX3Xmmc8PT5Z3Xc2re \
 --multisig-signer BzWpkuRrwXHq4SSSFHa8FJf6DRQy4TaeoXnkA89vTgHZ \
