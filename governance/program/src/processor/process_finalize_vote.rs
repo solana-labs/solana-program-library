@@ -41,7 +41,11 @@ pub fn process_finalize_vote(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
 
     let governing_token_supply = get_spl_token_mint_supply(governing_token_mint_info)?;
 
-    proposal_data.finalize_vote(governing_token_supply, &governance_data.config, clock.slot)?;
+    proposal_data.finalize_vote(
+        governing_token_supply,
+        &governance_data.config,
+        clock.unix_timestamp,
+    )?;
 
     proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
 

@@ -4,12 +4,13 @@ use borsh::BorshDeserialize;
 use solana_program::{
     borsh::try_from_slice_unchecked,
     bpf_loader_upgradeable::{self, UpgradeableLoaderState},
+    clock::{Clock, UnixTimestamp},
     instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack},
     pubkey::Pubkey,
     rent::Rent,
-    system_instruction,
+    system_instruction, sysvar,
 };
 
 use bincode::deserialize;
@@ -1036,6 +1037,8 @@ impl GovernanceProgramTest {
         )
         .await?;
 
+        let clock = self.get_clock().await;
+
         let account = Proposal {
             account_type: GovernanceAccountType::Proposal,
             description_link,
@@ -1045,7 +1048,7 @@ impl GovernanceProgramTest {
             state: ProposalState::Draft,
             signatories_count: 0,
             // Clock always returns 1 when running under the test
-            draft_at: 1,
+            draft_at: clock.unix_timestamp,
             signing_off_at: None,
             voting_at: None,
             voting_completed_at: None,
@@ -1640,6 +1643,39 @@ impl GovernanceProgramTest {
             .unwrap()
             .map(|a| deserialize::<T>(&a.data.borrow()).unwrap())
             .expect(format!("GET-TEST-ACCOUNT-ERROR: Account {}", address).as_str())
+    }
+
+    #[allow(dead_code)]
+    pub async fn get_clock(&mut self) -> Clock {
+        self.get_bincode_account::<Clock>(&sysvar::clock::id())
+            .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn advance_clock_past_timestamp(&mut self, unix_timestamp: UnixTimestamp) {
+        let mut clock = self.get_clock().await;
+        let mut n = 1;
+
+        while clock.unix_timestamp <= unix_timestamp {
+            // Since the exact time is not deterministic keep wrapping by arbitrary 400 slots until we pass the requested timestamp
+            self.context.warp_to_slot(clock.slot + n * 400).unwrap();
+
+            n = n + 1;
+            clock = self.get_clock().await;
+        }
+    }
+
+    #[allow(dead_code)]
+    pub async fn advance_clock_by_min_timespan(&mut self, time_span: u64) {
+        let clock = self.get_clock().await;
+        self.advance_clock_past_timestamp(clock.unix_timestamp + (time_span as i64))
+            .await;
+    }
+
+    #[allow(dead_code)]
+    pub async fn advance_clock(&mut self) {
+        let clock = self.get_clock().await;
+        self.context.warp_to_slot(clock.slot + 2).unwrap();
     }
 
     #[allow(dead_code)]

@@ -34,6 +34,8 @@ async fn test_sign_off_proposal() {
         .await
         .unwrap();
 
+    let clock = governance_test.get_clock().await;
+
     // Act
     governance_test
         .sign_off_proposal(&proposal_cookie, &signatory_record_cookie)
@@ -48,8 +50,8 @@ async fn test_sign_off_proposal() {
     assert_eq!(1, proposal_account.signatories_count);
     assert_eq!(1, proposal_account.signatories_signed_off_count);
     assert_eq!(ProposalState::Voting, proposal_account.state);
-    assert_eq!(Some(1), proposal_account.signing_off_at);
-    assert_eq!(Some(1), proposal_account.voting_at);
+    assert_eq!(Some(clock.unix_timestamp), proposal_account.signing_off_at);
+    assert_eq!(Some(clock.unix_timestamp), proposal_account.voting_at);
 
     let signatory_record_account = governance_test
         .get_signatory_record_account(&signatory_record_cookie.address)

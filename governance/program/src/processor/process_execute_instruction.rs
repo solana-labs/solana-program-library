@@ -39,7 +39,8 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
         proposal_info.key,
     )?;
 
-    proposal_data.assert_can_execute_instruction(&proposal_instruction_data, clock.slot)?;
+    proposal_data
+        .assert_can_execute_instruction(&proposal_instruction_data, clock.unix_timestamp)?;
 
     // Execute instruction with Governance PDA as signer
     let instruction = Instruction::from(&proposal_instruction_data.instruction);
@@ -59,7 +60,7 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
 
     // Update proposal and instruction accounts
     if proposal_data.state == ProposalState::Succeeded {
-        proposal_data.executing_at = Some(clock.slot);
+        proposal_data.executing_at = Some(clock.unix_timestamp);
         proposal_data.state = ProposalState::Executing;
     }
 
@@ -71,13 +72,13 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
     if proposal_data.state == ProposalState::Executing
         && proposal_data.instructions_executed_count == proposal_data.instructions_count
     {
-        proposal_data.closed_at = Some(clock.slot);
+        proposal_data.closed_at = Some(clock.unix_timestamp);
         proposal_data.state = ProposalState::Completed;
     }
 
     proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
 
-    proposal_instruction_data.executed_at = Some(clock.slot);
+    proposal_instruction_data.executed_at = Some(clock.unix_timestamp);
     proposal_instruction_data.serialize(&mut *proposal_instruction_info.data.borrow_mut())?;
 
     Ok(())

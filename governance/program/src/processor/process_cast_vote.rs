@@ -61,7 +61,7 @@ pub fn process_cast_vote(
         governance_info.key,
         governing_token_mint_info.key,
     )?;
-    proposal_data.assert_can_cast_vote(&governance_data.config, clock.slot)?;
+    proposal_data.assert_can_cast_vote(&governance_data.config, clock.unix_timestamp)?;
 
     let mut token_owner_record_data = get_token_owner_record_data_for_realm_and_governing_mint(
         program_id,
@@ -105,7 +105,11 @@ pub fn process_cast_vote(
     };
 
     let governing_token_supply = get_spl_token_mint_supply(governing_token_mint_info)?;
-    proposal_data.try_tip_vote(governing_token_supply, &governance_data.config, clock.slot);
+    proposal_data.try_tip_vote(
+        governing_token_supply,
+        &governance_data.config,
+        clock.unix_timestamp,
+    );
 
     proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
 
