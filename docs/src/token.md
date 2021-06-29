@@ -322,7 +322,7 @@ Wrote new keypair to signer-3.json
 
 In order to create the multisig account, the public keys of the signer-set must
 be collected.
-```
+```console
 $ for i in $(seq 3); do SIGNER="signer-${i}.json"; echo "$SIGNER: $(solana-keygen pubkey "$SIGNER")"; done
 signer-1.json: BzWpkuRrwXHq4SSSFHa8FJf6DRQy4TaeoXnkA89vTgHZ
 signer-2.json: DhkUfKgfZ8CF6PAGKwdABRL1VqkeNrTSRx8LZfpPFVNY
