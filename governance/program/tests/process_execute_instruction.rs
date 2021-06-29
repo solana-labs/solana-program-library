@@ -146,13 +146,12 @@ async fn test_execute_transfer_instruction() {
         .await
         .unwrap();
 
-    // Advance slot past hold_up_time
-    let execute_at_slot = 1 + proposal_instruction_cookie.account.hold_up_time + 1;
-
+    // Advance timestamp past hold_up_time
     governance_test
-        .context
-        .warp_to_slot(execute_at_slot)
-        .unwrap();
+        .advance_clock_by_min_timespan(proposal_instruction_cookie.account.hold_up_time as u64)
+        .await;
+
+    let clock = governance_test.get_clock().await;
 
     // Act
     governance_test
@@ -168,15 +167,15 @@ async fn test_execute_transfer_instruction() {
 
     assert_eq!(1, proposal_account.instructions_executed_count);
     assert_eq!(ProposalState::Completed, proposal_account.state);
-    assert_eq!(Some(execute_at_slot), proposal_account.closed_at);
-    assert_eq!(Some(execute_at_slot), proposal_account.executing_at);
+    assert_eq!(Some(clock.unix_timestamp), proposal_account.closed_at);
+    assert_eq!(Some(clock.unix_timestamp), proposal_account.executing_at);
 
     let proposal_instruction_account = governance_test
         .get_proposal_instruction_account(&proposal_instruction_cookie.address)
         .await;
 
     assert_eq!(
-        Some(execute_at_slot),
+        Some(clock.unix_timestamp),
         proposal_instruction_account.executed_at
     );
 
