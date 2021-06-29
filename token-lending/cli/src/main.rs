@@ -44,6 +44,7 @@ type Error = Box<dyn std::error::Error>;
 type CommandResult = Result<(), Error>;
 
 const PYTH_PROGRAM_ID: &str = "gSbePebfvPy7tRqimPoVecS2UsBvYv46ynrzWocc92s";
+// const SWITCHBOARD_PROGRAM_ID: &str = "DtmE9D2CSB4L5D6A15mraeEjrGMm6auWVzgaD8hK2tZM";
 
 fn main() {
     solana_logger::setup_with_default("solana=info");
@@ -208,6 +209,15 @@ fn main() {
                         .help("Pyth price account: https://pyth.network/developers/consumers/accounts"),
                 )
                 .arg(
+                    Arg::with_name("switchboard_feed")
+                        .long("switchboard-feed")
+                        .validator(is_pubkey)
+                        .value_name("PUBKEY")
+                        .takes_value(true)
+                        .required(true)
+                        .help("Switchboard price feed account: https://switchboard.xyz/#/explorer"),
+                )
+                .arg(
                     Arg::with_name("optimal_utilization_rate")
                         .long("optimal-utilization-rate")
                         .validator(is_parsable::<u8>)
@@ -368,6 +378,7 @@ fn main() {
             let ui_amount = value_of(arg_matches, "liquidity_amount").unwrap();
             let pyth_product_pubkey = pubkey_of(arg_matches, "pyth_product").unwrap();
             let pyth_price_pubkey = pubkey_of(arg_matches, "pyth_price").unwrap();
+            let switchboard_feed_pubkey = pubkey_of(arg_matches, "switchboard_feed").unwrap();
             let optimal_utilization_rate =
                 value_of(arg_matches, "optimal_utilization_rate").unwrap();
             let loan_to_value_ratio = value_of(arg_matches, "loan_to_value_ratio").unwrap();
@@ -406,6 +417,7 @@ fn main() {
                 lending_market_owner_keypair,
                 pyth_product_pubkey,
                 pyth_price_pubkey,
+                switchboard_feed_pubkey,
             )
         }
         _ => unreachable!(),
@@ -480,6 +492,7 @@ fn command_add_reserve(
     lending_market_owner_keypair: Keypair,
     pyth_product_pubkey: Pubkey,
     pyth_price_pubkey: Pubkey,
+    switchboard_feed_pubkey: Pubkey,
 ) -> CommandResult {
     let source_liquidity_account = config.rpc_client.get_account(&source_liquidity_pubkey)?;
     let source_liquidity = Token::unpack_from_slice(source_liquidity_account.data.borrow())?;
@@ -625,6 +638,7 @@ fn command_add_reserve(
                 collateral_supply_keypair.pubkey(),
                 pyth_product_pubkey,
                 pyth_price_pubkey,
+                switchboard_feed_pubkey,
                 lending_market_pubkey,
                 lending_market_owner_keypair.pubkey(),
                 user_transfer_authority_keypair.pubkey(),

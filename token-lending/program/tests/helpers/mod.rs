@@ -892,8 +892,12 @@ impl TestReserve {
         assert_eq!(self.config, reserve.config);
 
         assert_eq!(
-            self.liquidity_oracle_pubkey,
-            reserve.liquidity.oracle_pubkey
+            self.liquidity_pyth_oracle_pubkey,
+            reserve.liquidity.pyth_oracle_pubkey
+        );
+        assert_eq!(
+            self.liquidity_switchboard_oracle_pubkey,
+            reserve.liquidity.switchboard_oracle_pubkey
         );
         assert_eq!(
             reserve.liquidity.cumulative_borrow_rate_wads,
