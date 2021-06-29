@@ -416,7 +416,20 @@ fn process_refresh_reserve(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pro
     let reserve_info = next_account_info(account_info_iter)?;
     let reserve_liquidity_oracle_info = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
+    _refresh_reserve(
+        program_id,
+        reserve_info,
+        reserve_liquidity_oracle_info,
+        clock,
+    )
+}
 
+fn _refresh_reserve<'a>(
+    program_id: &Pubkey,
+    reserve_info: &AccountInfo<'a>,
+    reserve_liquidity_oracle_info: &AccountInfo<'a>,
+    clock: &Clock,
+) -> ProgramResult {
     let mut reserve = Reserve::unpack(&reserve_info.data.borrow())?;
     if reserve_info.owner != program_id {
         msg!("Reserve provided is not owned by the lending program");
@@ -1000,6 +1013,7 @@ fn process_deposit_reserve_liquidity_and_obligation_collateral(
     let destination_collateral_info = next_account_info(account_info_iter)?;
     let obligation_info = next_account_info(account_info_iter)?;
     let obligation_owner_info = next_account_info(account_info_iter)?;
+    let reserve_liquidity_oracle_info = next_account_info(account_info_iter)?;
     let user_transfer_authority_info = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
@@ -1017,6 +1031,12 @@ fn process_deposit_reserve_liquidity_and_obligation_collateral(
         user_transfer_authority_info,
         clock,
         token_program_id,
+    )?;
+    _refresh_reserve(
+        program_id,
+        reserve_info,
+        reserve_liquidity_oracle_info,
+        clock,
     )?;
     _deposit_obligation_collateral(
         program_id,
