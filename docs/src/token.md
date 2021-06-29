@@ -404,7 +404,7 @@ Signature: 2ubqWqZb3ooDuc8FLaBkqZwzguhtMgQpgMAHhKsWcUzjy61qtJ7cZ1bfmYktKUfnbMYWT
 
 Sometimes online signing is not possible or desireable. Such is the case for example when signers are not in the same geographic location  
 or when they use air-gapped devices not connected to the network.  In this case, we use offline signing which combines the   
-previous examples of ([multisig](#example-mint-with-multisig-authority) with [offline signing](https://docs.solana.com/offline-signing)
+previous examples of [multisig](#example-mint-with-multisig-authority) with [offline signing](https://docs.solana.com/offline-signing)
 and a [nonce account](https://docs.solana.com/offline-signing/durable-nonce).
 
 This example will use the same mint account, token account, multisig account,
