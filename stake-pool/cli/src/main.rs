@@ -82,6 +82,22 @@ fn check_fee_payer_balance(config: &Config, required_balance: u64) -> Result<(),
     }
 }
 
+fn send_transaction_no_wait(
+    config: &Config,
+    transaction: Transaction,
+) -> solana_client::client_error::Result<()> {
+    if config.dry_run {
+        let result = config.rpc_client.simulate_transaction(&transaction)?;
+        println!("Simulate result: {:?}", result);
+    } else {
+        let signature = config
+            .rpc_client
+            .send_transaction(&transaction)?;
+        println!("Signature: {}", signature);
+    }
+    Ok(())
+}
+
 fn send_transaction(
     config: &Config,
     transaction: Transaction,
@@ -648,7 +664,7 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
         Sol(reserve_stake.lamports),
     );
 
-    for validator in validator_list.validators {
+    for validator in &validator_list.validators {
         println!(
             "Validator Vote Account: {}\tBalance: {}\tLast Update Epoch: {}{}",
             validator.vote_account_address,
@@ -675,6 +691,8 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
         "Total Pool Tokens: {}",
         spl_token::amount_to_ui_amount(stake_pool.pool_token_supply, pool_mint.decimals)
     );
+    println!("Total number of validators: {}", validator_list.validators.len());
+    println!("Max number of validators: {}", validator_list.max_validators);
 
     if config.verbose {
         println!();
@@ -731,7 +749,7 @@ fn command_update(
 
     let validator_list = get_validator_list(&config.rpc_client, &stake_pool.validator_list)?;
 
-    let instructions = spl_stake_pool::instruction::update_stake_pool(
+    let (mut update_list_instructions, update_balance_instruction) = spl_stake_pool::instruction::update_stake_pool(
         &spl_stake_pool::id(),
         &stake_pool,
         &validator_list,
@@ -739,16 +757,37 @@ fn command_update(
         no_merge,
     );
 
-    // TODO: A faster solution would be to send all the `update_validator_list_balance` instructions concurrently
-    for instruction in instructions {
+    let update_list_instructions_len = update_list_instructions.len();
+    if update_list_instructions_len > 0 {
+        let mut last_instruction = update_list_instructions.split_off(update_list_instructions_len - 1);
+        // send the first ones without waiting
+        for instruction in update_list_instructions {
+            let mut transaction =
+                Transaction::new_with_payer(&[instruction], Some(&config.fee_payer.pubkey()));
+
+            let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+            check_fee_payer_balance(config, fee_calculator.calculate_fee(transaction.message()))?;
+            transaction.sign(&[config.fee_payer.as_ref()], recent_blockhash);
+            send_transaction_no_wait(config, transaction)?;
+        }
+
+        // wait on the last one
         let mut transaction =
-            Transaction::new_with_payer(&[instruction], Some(&config.fee_payer.pubkey()));
+            Transaction::new_with_payer(&[last_instruction.pop().unwrap()], Some(&config.fee_payer.pubkey()));
 
         let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
         check_fee_payer_balance(config, fee_calculator.calculate_fee(transaction.message()))?;
         transaction.sign(&[config.fee_payer.as_ref()], recent_blockhash);
         send_transaction(config, transaction)?;
     }
+
+    let mut transaction =
+        Transaction::new_with_payer(&[update_balance_instruction], Some(&config.fee_payer.pubkey()));
+
+    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+    check_fee_payer_balance(config, fee_calculator.calculate_fee(transaction.message()))?;
+    transaction.sign(&[config.fee_payer.as_ref()], recent_blockhash);
+    send_transaction(config, transaction)?;
     Ok(())
 }
 
