@@ -35,6 +35,9 @@ pub enum GovernanceAccountType {
 
     /// Mint Governance account
     MintGovernance,
+
+    /// Token Governance account
+    TokenGovernance,
 }
 
 impl Default for GovernanceAccountType {
