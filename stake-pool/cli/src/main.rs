@@ -112,6 +112,22 @@ fn send_transaction(
     Ok(())
 }
 
+fn transaction_with_payer_as_only_signer(
+    config: &Config,
+    instructions: &[Instruction],
+) -> Result<Transaction, Error> {
+    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+    let transaction = Transaction::new_signed_with_payer(
+        instructions,
+        Some(&config.fee_payer.pubkey()),
+        &[config.fee_payer.as_ref()],
+        recent_blockhash,
+    );
+
+    check_fee_payer_balance(config, fee_calculator.calculate_fee(transaction.message()))?;
+    Ok(transaction)
+}
+
 fn command_create_pool(
     config: &Config,
     deposit_authority: Option<Pubkey>,
@@ -764,40 +780,20 @@ fn command_update(
 
     let update_list_instructions_len = update_list_instructions.len();
     if update_list_instructions_len > 0 {
-        let mut last_instruction =
-            update_list_instructions.split_off(update_list_instructions_len - 1);
+        let last_instruction = update_list_instructions.split_off(update_list_instructions_len - 1);
         // send the first ones without waiting
         for instruction in update_list_instructions {
-            let mut transaction =
-                Transaction::new_with_payer(&[instruction], Some(&config.fee_payer.pubkey()));
-
-            let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-            check_fee_payer_balance(config, fee_calculator.calculate_fee(transaction.message()))?;
-            transaction.sign(&[config.fee_payer.as_ref()], recent_blockhash);
+            let transaction = transaction_with_payer_as_only_signer(config, &[instruction])?;
             send_transaction_no_wait(config, transaction)?;
         }
 
         // wait on the last one
-        let mut transaction = Transaction::new_with_payer(
-            &[last_instruction.pop().unwrap()],
-            Some(&config.fee_payer.pubkey()),
-        );
-
-        let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-        check_fee_payer_balance(config, fee_calculator.calculate_fee(transaction.message()))?;
-        transaction.sign(&[config.fee_payer.as_ref()], recent_blockhash);
+        let transaction = transaction_with_payer_as_only_signer(config, &last_instruction)?;
         send_transaction(config, transaction)?;
     }
-
-    let mut transaction = Transaction::new_with_payer(
-        &[update_balance_instruction],
-        Some(&config.fee_payer.pubkey()),
-    );
-
-    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-    check_fee_payer_balance(config, fee_calculator.calculate_fee(transaction.message()))?;
-    transaction.sign(&[config.fee_payer.as_ref()], recent_blockhash);
+    let transaction = transaction_with_payer_as_only_signer(config, &[update_balance_instruction])?;
     send_transaction(config, transaction)?;
+
     Ok(())
 }
 
