@@ -33,17 +33,17 @@ of the governed program to the Governance PDA at the creation time of the Govern
 
 ### Mint Governance account
 
-Mint governance account allows to setup a governance over a Mint account.
-The Governance program validates at creation time the current mint authority sign the transaction to
+A mint governance account allows a mint authority to setup governance over an SPL Mint account.
+The Governance program validates at creation time that the current mint authority signed the transaction to
 create the governance and optionally can transfer the authority to the Governance account.
-Once setup the Mint Governance allows to create Proposals to execute mint instructions for the governed Mint.
+Once setup the Mint Governance allows governance participants to create Proposals which execute mint instructions for the governed Mint.
 
 ### Token Governance account
 
-Token governance account allows to setup a governance over a Token account.
+A token governance account allows a token account owner to setup governance over an SPL Token account.
 The Governance program validates at creation time the current owner sign the transaction to
 create the governance and optionally can transfer the owner to the Governance account.
-Once setup the Token Governance allows to create Proposals to execute transfer instructions from the governed token account.
+Once setup the Token Governance allows participants to create Proposals to execute transfer instructions from the governed token account.
 
 ### How does the authority work?
 
@@ -57,7 +57,7 @@ by the Solana program deploy cli command.
 However, in order for Governance to be useful, Governance now needs this authority.
 
 In similar fashion for Mint and Token governances the relevant authorities to mint and transfer tokens
-are transferer to the Governance account. It in turns allows to create and vote on Proposals which can then execute
+are transferred to the Governance account. It in turn allows participants to create and vote on Proposals which can then execute
 mint and transfer instructions for the governed accounts.
 
 ### Proposal accounts
