@@ -113,7 +113,7 @@ fn send_transaction(
     Ok(())
 }
 
-fn transaction_with_signers<T: Signers>(
+fn checked_transaction_with_signers<T: Signers>(
     config: &Config,
     instructions: &[Instruction],
     signers: &T,
@@ -317,7 +317,7 @@ fn command_vsa_create(
     vote_account: &Pubkey,
 ) -> CommandResult {
     println!("Creating stake account on {}", vote_account);
-    let transaction = transaction_with_signers(
+    let transaction = checked_transaction_with_signers(
         config,
         &[
             // Create new validator stake account address
@@ -372,7 +372,7 @@ fn command_vsa_add(
 
     let mut signers = vec![config.fee_payer.as_ref(), config.staker.as_ref()];
     unique_signers!(signers);
-    let transaction = transaction_with_signers(
+    let transaction = checked_transaction_with_signers(
         config,
         &[
             spl_stake_pool::instruction::add_validator_to_pool_with_vote(
@@ -406,7 +406,7 @@ fn command_vsa_remove(
 
     let mut signers = vec![config.fee_payer.as_ref(), config.staker.as_ref()];
     unique_signers!(signers);
-    let transaction = transaction_with_signers(
+    let transaction = checked_transaction_with_signers(
         config,
         &[
             // Create new validator stake account address
@@ -439,7 +439,7 @@ fn command_increase_validator_stake(
 
     let mut signers = vec![config.fee_payer.as_ref(), config.staker.as_ref()];
     unique_signers!(signers);
-    let transaction = transaction_with_signers(
+    let transaction = checked_transaction_with_signers(
         config,
         &[
             spl_stake_pool::instruction::increase_validator_stake_with_vote(
@@ -471,7 +471,7 @@ fn command_decrease_validator_stake(
 
     let mut signers = vec![config.fee_payer.as_ref(), config.staker.as_ref()];
     unique_signers!(signers);
-    let transaction = transaction_with_signers(
+    let transaction = checked_transaction_with_signers(
         config,
         &[
             spl_stake_pool::instruction::decrease_validator_stake_with_vote(
@@ -497,7 +497,7 @@ fn command_set_preferred_validator(
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
     let mut signers = vec![config.fee_payer.as_ref(), config.staker.as_ref()];
     unique_signers!(signers);
-    let transaction = transaction_with_signers(
+    let transaction = checked_transaction_with_signers(
         config,
         &[spl_stake_pool::instruction::set_preferred_validator(
             &spl_stake_pool::id(),
@@ -769,17 +769,23 @@ fn command_update(
         let last_instruction = update_list_instructions.split_off(update_list_instructions_len - 1);
         // send the first ones without waiting
         for instruction in update_list_instructions {
-            let transaction =
-                transaction_with_signers(config, &[instruction], &[config.fee_payer.as_ref()])?;
+            let transaction = checked_transaction_with_signers(
+                config,
+                &[instruction],
+                &[config.fee_payer.as_ref()],
+            )?;
             send_transaction_no_wait(config, transaction)?;
         }
 
         // wait on the last one
-        let transaction =
-            transaction_with_signers(config, &last_instruction, &[config.fee_payer.as_ref()])?;
+        let transaction = checked_transaction_with_signers(
+            config,
+            &last_instruction,
+            &[config.fee_payer.as_ref()],
+        )?;
         send_transaction(config, transaction)?;
     }
-    let transaction = transaction_with_signers(
+    let transaction = checked_transaction_with_signers(
         config,
         &[update_balance_instruction],
         &[config.fee_payer.as_ref()],
@@ -1056,7 +1062,7 @@ fn command_set_manager(
 
     let mut signers = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
     unique_signers!(signers);
-    let transaction = transaction_with_signers(
+    let transaction = checked_transaction_with_signers(
         config,
         &[spl_stake_pool::instruction::set_manager(
             &spl_stake_pool::id(),
@@ -1078,7 +1084,7 @@ fn command_set_staker(
 ) -> CommandResult {
     let mut signers = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
     unique_signers!(signers);
-    let transaction = transaction_with_signers(
+    let transaction = checked_transaction_with_signers(
         config,
         &[spl_stake_pool::instruction::set_staker(
             &spl_stake_pool::id(),
@@ -1095,7 +1101,7 @@ fn command_set_staker(
 fn command_set_fee(config: &Config, stake_pool_address: &Pubkey, new_fee: Fee) -> CommandResult {
     let mut signers = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
     unique_signers!(signers);
-    let transaction = transaction_with_signers(
+    let transaction = checked_transaction_with_signers(
         config,
         &[spl_stake_pool::instruction::set_fee(
             &spl_stake_pool::id(),
