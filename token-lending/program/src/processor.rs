@@ -312,7 +312,6 @@ fn process_init_reserve(
         return Err(LendingError::InvalidOracleConfig.into());
     }
 
-    // let market_price = get_pyth_price(pyth_price_info, clock)?;
     let market_price = get_price(switchboard_feed_info, pyth_price_info, clock)?;
 
     let authority_signer_seeds = &[
@@ -452,7 +451,6 @@ fn _refresh_reserve<'a>(
         return Err(LendingError::InvalidOracleConfig.into());
     }
 
-    // reserve.liquidity.market_price = get_pyth_price(pyth_price_info, clock)?;
     reserve.liquidity.market_price = get_price(switchboard_feed_info, pyth_price_info, clock)?;
 
     reserve.accrue_interest(clock.slot)?;
@@ -1937,12 +1935,10 @@ fn get_price(
     clock: &Clock,
 ) -> Result<Decimal, ProgramError> {
     let pyth_price = get_pyth_price(pyth_price_account_info, clock).unwrap_or_default();
-    if pyth_price != Decimal::from(0u64) {
+    if pyth_price != Decimal::zero() {
         return Ok(pyth_price);
     }
-    let switchboard_price = get_switchboard_price(switchboard_feed_info, clock)?;
-
-    Ok(switchboard_price)
+    get_switchboard_price(switchboard_feed_info, clock)
 }
 
 fn get_pyth_price(pyth_price_info: &AccountInfo, clock: &Clock) -> Result<Decimal, ProgramError> {
@@ -2027,13 +2023,12 @@ fn get_switchboard_price(
     let price_float = round_result.result.unwrap_or(0.0);
 
     // we just do this so we can parse coins with low usd value
+    // it might be better to just extract the mantissa and exponent from the float directly
     let price_quotient = 10u64.pow(9);
 
     let price = ((price_quotient as f64) * price_float).round() as u128;
 
-    let decimal_price = Decimal::from(price).try_div(price_quotient)?;
-
-    Ok(decimal_price)
+    Decimal::from(price).try_div(price_quotient)
 }
 
 /// Issue a spl_token `InitializeAccount` instruction.
