@@ -1044,6 +1044,8 @@ impl GovernanceProgramTest {
             signatories_signed_off_count: 0,
             yes_votes_count: 0,
             no_votes_count: 0,
+
+            execution_flags: None,
         };
 
         let proposal_address = get_proposal_address(
@@ -1457,7 +1459,7 @@ impl GovernanceProgramTest {
 
         let instruction_data: InstructionData = instruction.clone().into();
 
-        let index = index.unwrap_or(proposal_cookie.account.instructions_next_index);
+        let instruction_index = index.unwrap_or(proposal_cookie.account.instructions_next_index);
 
         proposal_cookie.account.instructions_next_index =
             proposal_cookie.account.instructions_next_index + 1;
@@ -1469,7 +1471,7 @@ impl GovernanceProgramTest {
             &token_owner_record_cookie.address,
             &token_owner_record_cookie.token_owner.pubkey(),
             &self.context.payer.pubkey(),
-            index,
+            instruction_index,
             hold_up_time,
             instruction_data.clone(),
         );
@@ -1483,11 +1485,12 @@ impl GovernanceProgramTest {
         let proposal_instruction_address = get_proposal_instruction_address(
             &self.program_id,
             &proposal_cookie.address,
-            &index.to_le_bytes(),
+            &instruction_index.to_le_bytes(),
         );
 
         let proposal_instruction_data = ProposalInstruction {
             account_type: GovernanceAccountType::ProposalInstruction,
+            instruction_index,
             hold_up_time,
             instruction: instruction_data,
             executed_at: None,

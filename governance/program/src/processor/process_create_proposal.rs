@@ -93,6 +93,8 @@ pub fn process_create_proposal(
         instructions_count: 0,
         instructions_next_index: 0,
 
+        execution_flags: None,
+
         yes_votes_count: 0,
         no_votes_count: 0,
     };

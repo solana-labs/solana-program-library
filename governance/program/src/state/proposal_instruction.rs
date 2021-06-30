@@ -88,6 +88,9 @@ pub struct ProposalInstruction {
     /// The Proposal the instruction belongs to
     pub proposal: Pubkey,
 
+    /// Unique instruction index within it's parent Proposal
+    pub instruction_index: u16,
+
     /// Minimum waiting time in seconds for the  instruction to be executed once proposal is voted on
     pub hold_up_time: u32,
 
@@ -106,7 +109,7 @@ pub struct ProposalInstruction {
 
 impl AccountMaxSize for ProposalInstruction {
     fn get_max_size(&self) -> Option<usize> {
-        Some(self.instruction.accounts.len() * 34 + self.instruction.data.len() + 88)
+        Some(self.instruction.accounts.len() * 34 + self.instruction.data.len() + 90)
     }
 }
 
@@ -207,6 +210,7 @@ mod test {
         ProposalInstruction {
             account_type: GovernanceAccountType::ProposalInstruction,
             proposal: Pubkey::new_unique(),
+            instruction_index: 1,
             hold_up_time: 10,
             instruction: create_test_instruction_data(),
             executed_at: Some(100),

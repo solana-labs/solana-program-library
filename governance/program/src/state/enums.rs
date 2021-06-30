@@ -134,3 +134,18 @@ pub enum InstructionExecutionStatus {
     /// We either have to make it possible to change that behavior or add an instruction to manually set the status
     Error,
 }
+
+/// Instruction execution flags defining how instructions are executed for a Proposal
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub enum InstructionExecutionFlags {
+    /// Instructions are executed in a specific order
+    /// Note: Ordered execution is not supported in V1
+    /// The implementation requires another account type to track deleted instructions
+    Ordered,
+
+    /// Multiple instructions can be executed as a single transaction
+    /// Note: Transactions are not supported in V1
+    /// The implementation requires another account type to group instructions within a transaction
+    UseTransaction,
+}

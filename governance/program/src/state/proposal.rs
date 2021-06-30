@@ -16,6 +16,8 @@ use crate::state::governance::GovernanceConfig;
 
 use crate::state::proposal_instruction::ProposalInstruction;
 
+use super::enums::InstructionExecutionFlags;
+
 /// Governance Proposal
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
@@ -79,6 +81,10 @@ pub struct Proposal {
     /// When the Proposal entered final state Completed or Cancelled and was closed
     pub closed_at: Option<UnixTimestamp>,
 
+    /// Instruction execution flag for ordered and transactional instructions
+    /// Note: This field is not used in V1
+    pub execution_flags: Option<InstructionExecutionFlags>,
+
     /// Proposal name
     pub name: String,
 
@@ -88,7 +94,7 @@ pub struct Proposal {
 
 impl AccountMaxSize for Proposal {
     fn get_max_size(&self) -> Option<usize> {
-        Some(self.name.len() + self.description_link.len() + 192)
+        Some(self.name.len() + self.description_link.len() + 194)
     }
 }
 
@@ -430,6 +436,8 @@ mod test {
 
             yes_votes_count: 0,
             no_votes_count: 0,
+
+            execution_flags: Some(InstructionExecutionFlags::Ordered),
 
             instructions_executed_count: 10,
             instructions_count: 10,
