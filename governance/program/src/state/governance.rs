@@ -1,7 +1,8 @@
 //! Governance Account
 
 use crate::{
-    error::GovernanceError, state::enums::GovernanceAccountType, tools::account::get_account_data,
+    error::GovernanceError, state::enums::GovernanceAccountType,
+    state::enums::VoteThresholdPercentageType, tools::account::get_account_data,
     tools::account::AccountMaxSize,
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
@@ -22,11 +23,11 @@ pub struct GovernanceConfig {
     /// Account governed by this Governance. It can be for example Program account, Mint account or Token Account
     pub governed_account: Pubkey,
 
-    /// Voting threshold of Yes votes in % required to tip the vote
-    /// It's the percentage of tokens out of the entire pool of governance tokens eligible to vote
-    // Note: If the threshold is below or equal to 50% then an even split of votes ex: 50:50 or 40:40 is always resolved as Defeated
-    // In other words +1 vote tie breaker is required to have successful vote
-    pub yes_vote_threshold_percentage: u8,
+    /// The type of the vote threshold used for voting
+    pub vote_threshold_percentage_type: VoteThresholdPercentageType,
+
+    /// The vote threshold value of the type defined by vote_threshold_percentage_type
+    pub vote_threshold_percentage: u8,
 
     /// Minimum number of tokens a governance token owner must possess to be able to create a proposal
     pub min_tokens_to_create_proposal: u16,
@@ -207,10 +208,14 @@ pub fn assert_is_valid_governance_config(
 
     assert_is_valid_realm(program_id, realm_info)?;
 
-    if governance_config.yes_vote_threshold_percentage < 1
-        || governance_config.yes_vote_threshold_percentage > 100
+    if governance_config.vote_threshold_percentage < 1
+        || governance_config.vote_threshold_percentage > 100
     {
         return Err(GovernanceError::InvalidGovernanceConfig.into());
+    }
+
+    if governance_config.vote_threshold_percentage_type != VoteThresholdPercentageType::YesVote {
+        return Err(GovernanceError::VoteThresholdPercentageTypeNotSupported.into());
     }
 
     Ok(())

@@ -259,6 +259,10 @@ pub enum GovernanceError {
     /// Current token owner must sign transaction
     #[error("Current token owner must sign transaction")]
     TokenOwnerMustSign,
+
+    /// Given VoteThresholdPercentageType is not supported
+    #[error("Given VoteThresholdPercentageType is not supported")]
+    VoteThresholdPercentageTypeNotSupported,
 }
 
 impl PrintProgramError for GovernanceError {

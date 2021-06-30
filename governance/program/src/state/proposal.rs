@@ -200,7 +200,7 @@ impl Proposal {
         config: &GovernanceConfig,
     ) -> ProposalState {
         let yes_vote_threshold_count =
-            get_vote_threshold_count(config.yes_vote_threshold_percentage, governing_token_supply);
+            get_vote_threshold_count(config.vote_threshold_percentage, governing_token_supply);
 
         // Yes vote must be equal or above the required yes_vote_threshold_percentage and higher than No vote
         // The same number of Yes and No votes is a tie and resolved as Defeated
@@ -244,7 +244,7 @@ impl Proposal {
         }
 
         let yes_vote_threshold_count =
-            get_vote_threshold_count(config.yes_vote_threshold_percentage, governing_token_supply);
+            get_vote_threshold_count(config.vote_threshold_percentage, governing_token_supply);
 
         if self.yes_votes_count >= yes_vote_threshold_count
             && self.yes_votes_count > (governing_token_supply - self.yes_votes_count)
@@ -399,6 +399,7 @@ pub fn get_proposal_address<'a>(
 
 #[cfg(test)]
 mod test {
+    use crate::state::enums::VoteThresholdPercentageType;
 
     use {super::*, proptest::prelude::*};
 
@@ -433,10 +434,11 @@ mod test {
         GovernanceConfig {
             realm: Pubkey::new_unique(),
             governed_account: Pubkey::new_unique(),
-            yes_vote_threshold_percentage: 60,
+            vote_threshold_percentage: 60,
             min_tokens_to_create_proposal: 5,
             min_instruction_hold_up_time: 10,
             max_voting_time: 5,
+            vote_threshold_percentage_type: VoteThresholdPercentageType::YesVote,
         }
     }
 
@@ -812,7 +814,7 @@ mod test {
             proposal.state = ProposalState::Voting;
 
             let mut governance_config = create_test_governance_config();
-            governance_config.yes_vote_threshold_percentage = test_case.vote_threshold_percentage;
+            governance_config.vote_threshold_percentage = test_case.vote_threshold_percentage;
 
             let current_timestamp = 15_i64;
 
@@ -836,7 +838,7 @@ mod test {
             proposal.state = ProposalState::Voting;
 
             let mut governance_config = create_test_governance_config();
-            governance_config.yes_vote_threshold_percentage = test_case.vote_threshold_percentage;
+            governance_config.vote_threshold_percentage = test_case.vote_threshold_percentage;
 
             let current_timestamp = 16_i64;
 
@@ -878,7 +880,7 @@ mod test {
 
 
             let mut governance_config = create_test_governance_config();
-            governance_config.yes_vote_threshold_percentage = yes_vote_threshold_percentage;
+            governance_config.vote_threshold_percentage = yes_vote_threshold_percentage;
 
             let current_timestamp = 15_i64;
 
@@ -914,7 +916,7 @@ mod test {
 
 
             let mut governance_config = create_test_governance_config();
-            governance_config.yes_vote_threshold_percentage = yes_vote_threshold_percentage;
+            governance_config.vote_threshold_percentage = yes_vote_threshold_percentage;
 
             let current_timestamp = 16_i64;
 

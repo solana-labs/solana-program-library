@@ -33,7 +33,7 @@ use spl_governance::{
     },
     processor::process_instruction,
     state::{
-        enums::{GovernanceAccountType, ProposalState, VoteWeight},
+        enums::{GovernanceAccountType, ProposalState, VoteThresholdPercentageType, VoteWeight},
         governance::{
             get_account_governance_address, get_mint_governance_address,
             get_program_governance_address, get_token_governance_address, Governance,
@@ -641,10 +641,11 @@ impl GovernanceProgramTest {
         GovernanceConfig {
             realm: realm_cookie.address,
             governed_account: governed_account_cookie.address,
-            yes_vote_threshold_percentage: 60,
+            vote_threshold_percentage: 60,
             min_tokens_to_create_proposal: 5,
             min_instruction_hold_up_time: 10,
             max_voting_time: 10,
+            vote_threshold_percentage_type: VoteThresholdPercentageType::YesVote,
         }
     }
 
@@ -794,7 +795,8 @@ impl GovernanceProgramTest {
             min_tokens_to_create_proposal: 5,
             min_instruction_hold_up_time: 10,
             max_voting_time: 100,
-            yes_vote_threshold_percentage: 60,
+            vote_threshold_percentage: 60,
+            vote_threshold_percentage_type: VoteThresholdPercentageType::YesVote,
         };
 
         let mut create_program_governance_instruction = create_program_governance(
@@ -861,7 +863,8 @@ impl GovernanceProgramTest {
             min_tokens_to_create_proposal: 5,
             min_instruction_hold_up_time: 10,
             max_voting_time: 100,
-            yes_vote_threshold_percentage: 60,
+            vote_threshold_percentage: 60,
+            vote_threshold_percentage_type: VoteThresholdPercentageType::YesVote,
         };
 
         let mut create_mint_governance_instruction = create_mint_governance(
@@ -928,7 +931,8 @@ impl GovernanceProgramTest {
             min_tokens_to_create_proposal: 5,
             min_instruction_hold_up_time: 10,
             max_voting_time: 100,
-            yes_vote_threshold_percentage: 60,
+            vote_threshold_percentage: 60,
+            vote_threshold_percentage_type: VoteThresholdPercentageType::YesVote,
         };
 
         let mut create_token_governance_instruction = create_token_governance(
