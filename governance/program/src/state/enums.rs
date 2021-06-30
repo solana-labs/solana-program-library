@@ -106,7 +106,7 @@ pub enum VoteThresholdPercentageType {
     /// The minimum number of votes in % out of the entire pool of governance tokens eligible to vote
     /// which must be cast for the vote to be valid
     /// Once the quorum is achieved a simple majority (50%+1) of Yes votes is required for the vote to succeed
-    /// Note: Quorum is not implemented in V1
+    /// Note: Quorum is not implemented in the current version
     Quorum,
 }
 
@@ -117,7 +117,7 @@ pub enum VoteWeightSource {
     /// Governing token deposits into the Realm are used as voter weights
     Deposit,
     /// Governing token account snapshots as of the time a proposal entered voting state are used as voter weights
-    /// Note: Snapshot source is not supported in V1
+    /// Note: Snapshot source is not supported in the current version
     /// Support for account snapshots are required in solana and/or arweave as a prerequisite
     Snapshot,
 }
@@ -140,12 +140,12 @@ pub enum InstructionExecutionStatus {
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum InstructionExecutionFlags {
     /// Instructions are executed in a specific order
-    /// Note: Ordered execution is not supported in V1
+    /// Note: Ordered execution is not supported in the current version
     /// The implementation requires another account type to track deleted instructions
     Ordered,
 
     /// Multiple instructions can be executed as a single transaction
-    /// Note: Transactions are not supported in V1
+    /// Note: Transactions are not supported in the current version
     /// The implementation requires another account type to group instructions within a transaction
     UseTransaction,
 }

@@ -82,7 +82,7 @@ pub struct Proposal {
     pub closed_at: Option<UnixTimestamp>,
 
     /// Instruction execution flag for ordered and transactional instructions
-    /// Note: This field is not used in V1
+    /// Note: This field is not used in the current version
     pub execution_flags: Option<InstructionExecutionFlags>,
 
     /// Proposal name

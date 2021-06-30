@@ -44,7 +44,7 @@ pub struct GovernanceConfig {
     /// Note: In the current version only token deposits are accepted as vote weight
     pub vote_weight_source: VoteWeightSource,
 
-    /// The time period within which a Proposal can be still cancelled after being voted on
+    /// The time period in seconds within which a Proposal can be still cancelled after being voted on
     /// Once cool off time expires Proposal can't be cancelled any longer and becomes a law
     /// Note: This field is not implemented in the current version
     pub proposal_cool_off_time: u32,
@@ -59,6 +59,9 @@ pub struct Governance {
 
     /// Governance config
     pub config: GovernanceConfig,
+
+    /// Reserved space for future versions
+    pub reserved: u64,
 
     /// Running count of proposals
     pub proposals_count: u32,
