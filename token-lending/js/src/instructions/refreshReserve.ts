@@ -1,17 +1,8 @@
 import { PublicKey, SYSVAR_CLOCK_PUBKEY, TransactionInstruction } from '@solana/web3.js';
 import { struct, u8 } from 'buffer-layout';
-import { LendingInstruction } from './instruction';
 import { LENDING_PROGRAM_ID } from '../constants';
+import { LendingInstruction } from './instruction';
 
-/// 3
-/// Accrue interest and update market price of liquidity on a reserve.
-///
-/// Accounts expected by this instruction:
-///
-///   0. `[writable]` Reserve account.
-///   1. `[]` Reserve liquidity oracle account.
-///             Must be the Pyth price account specified at InitReserve.
-///   2. `[]` Clock sysvar.
 export const refreshReserveInstruction = (reserve: PublicKey, oracle: PublicKey): TransactionInstruction => {
     const dataLayout = struct([u8('instruction')]);
 

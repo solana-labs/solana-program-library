@@ -1,27 +1,10 @@
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { PublicKey, SYSVAR_RENT_PUBKEY, TransactionInstruction } from '@solana/web3.js';
 import { blob, struct, u8 } from 'buffer-layout';
-import { LendingInstruction } from './instruction';
 import { LENDING_PROGRAM_ID, ORACLE_PROGRAM_ID } from '../constants';
 import { publicKey } from '../util';
+import { LendingInstruction } from './instruction';
 
-/// 0
-/// Initializes a new lending market.
-///
-/// Accounts expected by this instruction:
-///
-///   0. `[writable]` Lending market account - uninitialized.
-///   1. `[]` Rent sysvar.
-///   2. `[]` Token program id.
-///   3. `[]` Oracle program id.
-///
-/// InitLendingMarket {
-///     /// Owner authority which can add new reserves
-///     owner: Pubkey,
-///     /// Currency market prices are quoted in
-///     /// e.g. "USD" null padded (`*b"USD\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"`) or SPL token mint pubkey
-///     quote_currency: [u8; 32],
-/// },
 export const initLendingMarketInstruction = (
     owner: PublicKey,
     quoteCurrency: Buffer,

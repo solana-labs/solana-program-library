@@ -22,6 +22,8 @@
     ],
     "scripts": {
         "build": "rm -rf lib/* && tsc",
+        "deploy": "gh-pages -d docs",
+        "docs": "rm -rf docs/* && typedoc",
         "lint": "eslint . --ext .ts && prettier --check '**/*.{ts,js,json}'",
         "lint:fix": "eslint . --ext .ts --fix && prettier --write '**/*.{ts,js,json}'"
     },
@@ -41,8 +43,10 @@
         "eslint": "^7.29.0",
         "eslint-config-prettier": "^8.3.0",
         "eslint-plugin-prettier": "^3.4.0",
+        "gh-pages": "^3.2.3",
         "prettier": "^2.2.1",
         "ts-node": "^10.0.0",
+        "typedoc": "^0.21.2",
         "typescript": "^4.3.4"
     },
     "engines": {

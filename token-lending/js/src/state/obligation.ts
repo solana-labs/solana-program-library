@@ -1,7 +1,7 @@
 import { AccountInfo, PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import { blob, seq, struct, u8 } from 'buffer-layout';
-import { publicKey, u64, u128, Parser } from '../util';
+import { Parser, publicKey, u128, u64 } from '../util';
 import { LastUpdate, LastUpdateLayout } from './lastUpdate';
 
 export interface Obligation {
@@ -30,7 +30,8 @@ export interface ObligationLiquidity {
     marketValue: BN; // decimals
 }
 
-export interface ProtoObligation {
+/** @internal */
+export interface ObligationDataFlat {
     version: number;
     lastUpdate: LastUpdate;
     lendingMarket: PublicKey;
@@ -44,12 +45,14 @@ export interface ProtoObligation {
     dataFlat: Buffer;
 }
 
+/** @internal */
 export const ObligationCollateralLayout = struct<ObligationCollateral>([
     publicKey('depositReserve'),
     u64('depositedAmount'),
     u128('marketValue'),
 ]);
 
+/** @internal */
 export const ObligationLiquidityLayout = struct<ObligationLiquidity>([
     publicKey('borrowReserve'),
     u128('cumulativeBorrowRateWads'),
@@ -57,7 +60,8 @@ export const ObligationLiquidityLayout = struct<ObligationLiquidity>([
     u128('marketValue'),
 ]);
 
-export const ObligationLayout = struct<ProtoObligation>([
+/** @internal */
+export const ObligationLayout = struct<ObligationDataFlat>([
     u8('version'),
 
     LastUpdateLayout,
@@ -71,14 +75,14 @@ export const ObligationLayout = struct<ProtoObligation>([
 
     u8('depositsLen'),
     u8('borrowsLen'),
-    blob(776, 'dataFlat'),
+    blob(ObligationCollateralLayout.span + 9 * ObligationLiquidityLayout.span, 'dataFlat'),
 ]);
 
 export const isObligation = (info: AccountInfo<Buffer>): boolean => {
     return info.data.length === ObligationLayout.span;
 };
 
-export const ObligationParser: Parser<Obligation> = (pubkey: PublicKey, info: AccountInfo<Buffer>) => {
+export const parseObligation: Parser<Obligation> = (pubkey: PublicKey, info: AccountInfo<Buffer>) => {
     if (!isObligation(info)) return;
 
     const buffer = Buffer.from(info.data);
@@ -96,9 +100,7 @@ export const ObligationParser: Parser<Obligation> = (pubkey: PublicKey, info: Ac
         dataFlat,
     } = ObligationLayout.decode(buffer);
 
-    if (lastUpdate.slot.isZero()) {
-        return;
-    }
+    if (!version) return;
 
     const depositsSpan = depositsLen * ObligationCollateralLayout.span;
     const borrowsSpan = borrowsLen * ObligationLiquidityLayout.span;

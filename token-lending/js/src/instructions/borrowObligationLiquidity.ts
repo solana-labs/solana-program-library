@@ -2,34 +2,10 @@ import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { PublicKey, SYSVAR_CLOCK_PUBKEY, TransactionInstruction } from '@solana/web3.js';
 import BN from 'bn.js';
 import { struct, u8 } from 'buffer-layout';
-import { LendingInstruction } from './instruction';
 import { LENDING_PROGRAM_ID } from '../constants';
 import { u64 } from '../util';
+import { LendingInstruction } from './instruction';
 
-/// 10
-/// Borrow liquidity from a reserve by depositing collateral tokens. Requires a refreshed
-/// obligation and reserve.
-///
-/// Accounts expected by this instruction:
-///
-///   0. `[writable]` Source borrow reserve liquidity supply SPL Token account.
-///   1. `[writable]` Destination liquidity token account.
-///                     Minted by borrow reserve liquidity mint.
-///   2. `[writable]` Borrow reserve account - refreshed.
-///   3. `[writable]` Borrow reserve liquidity fee receiver account.
-///                     Must be the fee account specified at InitReserve.
-///   4. `[writable]` Obligation account - refreshed.
-///   5. `[]` Lending market account.
-///   6. `[]` Derived lending market authority.
-///   7. `[signer]` Obligation owner.
-///   8. `[]` Clock sysvar.
-///   9. `[]` Token program id.
-///   10 `[optional, writable]` Host fee receiver account.
-///
-/// BorrowObligationLiquidity {
-///     /// Amount of liquidity to borrow - u64::MAX for 100% of borrowing power
-///     liquidity_amount: u64,
-/// },
 export const borrowObligationLiquidityInstruction = (
     liquidityAmount: number | BN,
     sourceLiquidity: PublicKey,

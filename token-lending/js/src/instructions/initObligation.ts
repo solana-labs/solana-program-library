@@ -4,17 +4,6 @@ import { struct, u8 } from 'buffer-layout';
 import { LENDING_PROGRAM_ID } from '../constants';
 import { LendingInstruction } from './instruction';
 
-/// 6
-/// Initializes a new lending market obligation.
-///
-/// Accounts expected by this instruction:
-///
-///   0. `[writable]` Obligation account - uninitialized.
-///   1. `[]` Lending market account.
-///   2. `[signer]` Obligation owner.
-///   3. `[]` Clock sysvar.
-///   4. `[]` Rent sysvar.
-///   5. `[]` Token program id.
 export const initObligationInstruction = (
     obligation: PublicKey,
     lendingMarket: PublicKey,

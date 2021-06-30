@@ -5,10 +5,15 @@
         "resolveJsonModule": true,
         "declaration": true,
         "moduleResolution": "node",
+        "stripInternal": true,
         "baseUrl": "src",
         "outDir": "lib",
-        "typeRoots": ["types"]
+        "typeRoots": ["node_modules/@types", "types"]
     },
-    "include": ["src"],
-    "exclude": ["node_modules"]
+    "include": ["src", "types"],
+    "exclude": ["node_modules"],
+    "typedocOptions": {
+        "entryPoints": ["src/index.ts"],
+        "out": "docs"
+    }
 }

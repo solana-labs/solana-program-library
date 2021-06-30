@@ -11,7 +11,8 @@ export interface LendingMarket {
     oracleProgramId: PublicKey;
 }
 
-export const LendingMarketLayout = struct<LendingMarket>([
+/** @internal */
+const LendingMarketLayout = struct<LendingMarket>([
     u8('version'),
     u8('bumpSeed'),
     publicKey('owner'),
@@ -25,11 +26,13 @@ export const isLendingMarket = (info: AccountInfo<Buffer>): boolean => {
     return info.data.length === LendingMarketLayout.span;
 };
 
-export const LendingMarketParser: Parser<LendingMarket> = (pubkey: PublicKey, info: AccountInfo<Buffer>) => {
+export const parseLendingMarket: Parser<LendingMarket> = (pubkey: PublicKey, info: AccountInfo<Buffer>) => {
     if (!isLendingMarket(info)) return;
 
     const buffer = Buffer.from(info.data);
     const lendingMarket = LendingMarketLayout.decode(buffer);
+
+    if (!lendingMarket.version) return;
 
     return {
         pubkey,

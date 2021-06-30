@@ -7,4 +7,5 @@ export interface LastUpdate {
     stale: boolean;
 }
 
+/** @internal */
 export const LastUpdateLayout = struct<LastUpdate>([u64('slot'), u8('stale')], 'lastUpdate');

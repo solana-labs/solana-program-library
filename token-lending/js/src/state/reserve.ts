@@ -1,7 +1,7 @@
 import { AccountInfo, PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 import { blob, struct, u8 } from 'buffer-layout';
-import { publicKey, u64, u128, Parser } from '../util';
+import { Parser, publicKey, u128, u64 } from '../util';
 import { LastUpdate, LastUpdateLayout } from './lastUpdate';
 
 export interface Reserve {
@@ -39,12 +39,16 @@ export interface ReserveConfig {
     minBorrowRate: number;
     optimalBorrowRate: number;
     maxBorrowRate: number;
-    fees: {
-        borrowFeeWad: BN;
-        hostFeePercentage: number;
-    };
+    fees: ReserveFees;
 }
 
+export interface ReserveFees {
+    borrowFeeWad: BN;
+    flashLoanFeeWad: BN;
+    hostFeePercentage: number;
+}
+
+/** @internal */
 export const ReserveLayout = struct<Reserve>([
     u8('version'),
 
@@ -90,13 +94,13 @@ export const isReserve = (info: AccountInfo<Buffer>): boolean => {
     return info.data.length === ReserveLayout.span;
 };
 
-export const ReserveParser: Parser<Reserve> = (pubkey: PublicKey, info: AccountInfo<Buffer>) => {
+export const parseReserve: Parser<Reserve> = (pubkey: PublicKey, info: AccountInfo<Buffer>) => {
     if (!isReserve(info)) return;
 
     const buffer = Buffer.from(info.data);
     const reserve = ReserveLayout.decode(buffer);
 
-    if (reserve.lastUpdate.slot.isZero()) return;
+    if (!reserve.version) return;
 
     return {
         pubkey,

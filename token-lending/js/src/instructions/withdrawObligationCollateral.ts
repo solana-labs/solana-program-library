@@ -2,30 +2,10 @@ import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { PublicKey, SYSVAR_CLOCK_PUBKEY, TransactionInstruction } from '@solana/web3.js';
 import BN from 'bn.js';
 import { struct, u8 } from 'buffer-layout';
-import { LendingInstruction } from './instruction';
 import { LENDING_PROGRAM_ID } from '../constants';
 import { u64 } from '../util';
+import { LendingInstruction } from './instruction';
 
-/// 9
-/// Withdraw collateral from an obligation. Requires a refreshed obligation and reserve.
-///
-/// Accounts expected by this instruction:
-///
-///   0. `[writable]` Source withdraw reserve collateral supply SPL Token account.
-///   1. `[writable]` Destination collateral token account.
-///                     Minted by withdraw reserve collateral mint.
-///   2. `[]` Withdraw reserve account - refreshed.
-///   3. `[writable]` Obligation account - refreshed.
-///   4. `[]` Lending market account.
-///   5. `[]` Derived lending market authority.
-///   6. `[signer]` Obligation owner.
-///   7. `[]` Clock sysvar.
-///   8. `[]` Token program id.
-///
-/// WithdrawObligationCollateral {
-///     /// Amount of collateral tokens to withdraw - u64::MAX for up to 100% of deposited amount
-///     collateral_amount: u64,
-/// },
 export const withdrawObligationCollateralInstruction = (
     collateralAmount: number | BN,
     sourceCollateral: PublicKey,

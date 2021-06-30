@@ -1,6 +1,6 @@
 import { AccountInfo, PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
-import { blob, Layout, offset, struct, u32 } from 'buffer-layout';
+import { blob, Layout } from 'buffer-layout';
 
 export type Parser<T> = (
     pubkey: PublicKey,
@@ -13,13 +13,14 @@ export type Parser<T> = (
       }
     | undefined;
 
+/** @internal */
 export const publicKey = (property = 'publicKey'): Layout<PublicKey> => {
     const layout = blob(32, property);
 
     const _decode = layout.decode.bind(layout);
     const _encode = layout.encode.bind(layout);
 
-    const publicKeyLayout = layout as Layout<PublicKey>;
+    const publicKeyLayout = layout as Layout<unknown> as Layout<PublicKey>;
 
     publicKeyLayout.decode = (buffer: Buffer, offset: number) => {
         const data = _decode(buffer, offset);
@@ -33,6 +34,7 @@ export const publicKey = (property = 'publicKey'): Layout<PublicKey> => {
     return publicKeyLayout;
 };
 
+/** @internal */
 export const bn =
     (length: number) =>
     (property = 'bn'): Layout<BN> => {
@@ -41,7 +43,7 @@ export const bn =
         const _decode = layout.decode.bind(layout);
         const _encode = layout.encode.bind(layout);
 
-        const bnLayout = layout as Layout<BN>;
+        const bnLayout = layout as Layout<unknown> as Layout<BN>;
 
         bnLayout.decode = (buffer: Buffer, offset: number) => {
             const src = _decode(buffer, offset);
@@ -68,42 +70,8 @@ export const bn =
         return bnLayout;
     };
 
+/** @internal */
 export const u64 = bn(8);
 
+/** @internal */
 export const u128 = bn(16);
-
-interface RustString {
-    length: number;
-    lengthPadding: number;
-    chars: Buffer;
-}
-
-/**
- * Layout for a Rust String type
- */
-export const rustString = (property = 'string'): Layout<string> => {
-    const layout = struct<RustString>(
-        [u32('length'), u32('lengthPadding'), blob(offset(u32(), -8), 'chars')],
-        property
-    );
-
-    const _decode = layout.decode.bind(layout);
-    const _encode = layout.encode.bind(layout);
-
-    const stringLayout = layout as Layout<string>;
-
-    stringLayout.decode = (buffer: Buffer, offset: number) => {
-        const data = _decode(buffer, offset);
-        return data.chars.toString('utf8');
-    };
-
-    stringLayout.encode = (str: string, buffer: Buffer, offset: number) => {
-        // @TODO: does this need length/padding?
-        const data = {
-            chars: Buffer.from(str, 'utf8'),
-        } as RustString;
-        return _encode(data, buffer, offset);
-    };
-
-    return stringLayout;
-};

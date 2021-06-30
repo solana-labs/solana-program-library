@@ -1,19 +1,8 @@
 import { PublicKey, SYSVAR_CLOCK_PUBKEY, TransactionInstruction } from '@solana/web3.js';
 import { struct, u8 } from 'buffer-layout';
-import { LendingInstruction } from './instruction';
 import { LENDING_PROGRAM_ID } from '../constants';
+import { LendingInstruction } from './instruction';
 
-/// 7
-/// Refresh an obligation's accrued interest and collateral and liquidity prices. Requires
-/// refreshed reserves, as all obligation collateral deposit reserves in order, followed by all
-/// liquidity borrow reserves in order.
-///
-/// Accounts expected by this instruction:
-///
-///   0. `[writable]` Obligation account.
-///   1. `[]` Clock sysvar.
-///   .. `[]` Collateral deposit reserve accounts - refreshed, all, in order.
-///   .. `[]` Liquidity borrow reserve accounts - refreshed, all, in order.
 export const refreshObligationInstruction = (
     obligation: PublicKey,
     depositReserves: PublicKey[],

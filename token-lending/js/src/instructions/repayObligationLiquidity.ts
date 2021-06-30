@@ -2,30 +2,10 @@ import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { PublicKey, SYSVAR_CLOCK_PUBKEY, TransactionInstruction } from '@solana/web3.js';
 import BN from 'bn.js';
 import { struct, u8 } from 'buffer-layout';
-import { LendingInstruction } from './instruction';
 import { LENDING_PROGRAM_ID } from '../constants';
 import { u64 } from '../util';
+import { LendingInstruction } from './instruction';
 
-/// 11
-/// Repay borrowed liquidity to a reserve. Requires a refreshed obligation and reserve.
-///
-/// Accounts expected by this instruction:
-///
-///   0. `[writable]` Source liquidity token account.
-///                     Minted by repay reserve liquidity mint.
-///                     $authority can transfer $liquidity_amount.
-///   1. `[writable]` Destination repay reserve liquidity supply SPL Token account.
-///   2. `[writable]` Repay reserve account - refreshed.
-///   3. `[writable]` Obligation account - refreshed.
-///   4. `[]` Lending market account.
-///   5. `[signer]` User transfer authority ($authority).
-///   6. `[]` Clock sysvar.
-///   7. `[]` Token program id.
-///
-/// RepayObligationLiquidity {
-///   /// Amount of liquidity to repay - u64::MAX for 100% of borrowed amount
-///   liquidity_amount: u64,
-/// },
 export const repayObligationLiquidityInstruction = (
     liquidityAmount: number | BN,
     sourceLiquidity: PublicKey,

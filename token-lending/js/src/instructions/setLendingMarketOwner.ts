@@ -1,21 +1,9 @@
 import { PublicKey, TransactionInstruction } from '@solana/web3.js';
 import { struct, u8 } from 'buffer-layout';
-import { LendingInstruction } from './instruction';
 import { LENDING_PROGRAM_ID } from '../constants';
 import { publicKey } from '../util';
+import { LendingInstruction } from './instruction';
 
-/// 1
-/// Sets the new owner of a lending market.
-///
-/// Accounts expected by this instruction:
-///
-///   0. `[writable]` Lending market account.
-///   1. `[signer]` Current owner.
-///
-/// SetLendingMarketOwner {
-///   /// The new owner
-///   new_owner: Pubkey,
-/// },
 export const setLendingMarketOwnerInstruction = (
     newOwner: PublicKey,
     lendingMarket: PublicKey,

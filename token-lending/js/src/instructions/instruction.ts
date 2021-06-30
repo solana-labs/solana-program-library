@@ -1,3 +1,4 @@
+/** @internal */
 export enum LendingInstruction {
     InitLendingMarket = 0,
     SetLendingMarketOwner = 1,

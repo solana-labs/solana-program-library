@@ -2,32 +2,10 @@ import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { PublicKey, SYSVAR_CLOCK_PUBKEY, TransactionInstruction } from '@solana/web3.js';
 import BN from 'bn.js';
 import { struct, u8 } from 'buffer-layout';
-import { LendingInstruction } from './instruction';
 import { LENDING_PROGRAM_ID } from '../constants';
 import { u64 } from '../util';
+import { LendingInstruction } from './instruction';
 
-/// 4
-/// Deposit liquidity into a reserve in exchange for collateral. Collateral represents a share
-/// of the reserve liquidity pool.
-///
-/// Accounts expected by this instruction:
-///
-///   0. `[writable]` Source liquidity token account.
-///                     $authority can transfer $liquidity_amount.
-///   1. `[writable]` Destination collateral token account.
-///   2. `[writable]` Reserve account.
-///   3. `[writable]` Reserve liquidity supply SPL Token account.
-///   4. `[writable]` Reserve collateral SPL Token mint.
-///   5. `[]` Lending market account.
-///   6. `[]` Derived lending market authority.
-///   7. `[signer]` User transfer authority ($authority).
-///   8. `[]` Clock sysvar.
-///   9. `[]` Token program id.
-///
-/// DepositReserveLiquidity {
-///     /// Amount of liquidity to deposit in exchange for collateral tokens
-///     liquidity_amount: u64,
-/// },
 export const depositReserveLiquidityInstruction = (
     liquidityAmount: number | BN,
     sourceLiquidity: PublicKey,
