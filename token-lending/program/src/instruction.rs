@@ -60,15 +60,16 @@ pub enum LendingInstruction {
     ///   6. `[]` Pyth product account.
     ///   7. `[]` Pyth price account.
     ///             This will be used as the reserve liquidity oracle account.
-    ///   8. `[writable]` Reserve collateral SPL Token mint - uninitialized.
-    ///   9. `[writable]` Reserve collateral token supply - uninitialized.
-    ///   10 `[]` Lending market account.
-    ///   11 `[]` Derived lending market authority.
-    ///   12 `[signer]` Lending market owner.
-    ///   13 `[signer]` User transfer authority ($authority).
-    ///   14 `[]` Clock sysvar.
-    ///   15 `[]` Rent sysvar.
-    ///   16 `[]` Token program id.
+    ///   8. `[]` Switchboard price feed account. used as a backup oracle
+    ///   9. `[writable]` Reserve collateral SPL Token mint - uninitialized.
+    ///   10`[writable]` Reserve collateral token supply - uninitialized.
+    ///   11 `[]` Lending market account.
+    ///   12 `[]` Derived lending market authority.
+    ///   13 `[signer]` Lending market owner.
+    ///   14 `[signer]` User transfer authority ($authority).
+    ///   15 `[]` Clock sysvar.
+    ///   16 `[]` Rent sysvar.
+    ///   17 `[]` Token program id.
     InitReserve {
         /// Initial amount of liquidity to deposit into the new reserve
         liquidity_amount: u64,
@@ -82,8 +83,10 @@ pub enum LendingInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` Reserve account.
-    ///   1. `[]` Reserve liquidity oracle account.
+    ///   1. `[]` Pyth Reserve liquidity oracle account.
     ///             Must be the Pyth price account specified at InitReserve.
+    ///   1. `[]` Switchboard Reserve liquidity oracle account.
+    ///             Must be the Switchboard price feed account specified at InitReserve.
     ///   2. `[]` Clock sysvar.
     RefreshReserve,
 
@@ -101,10 +104,11 @@ pub enum LendingInstruction {
     ///   4. `[writable]` Reserve collateral SPL Token mint.
     ///   5. `[]` Lending market account.
     ///   6. `[]` Derived lending market authority.
-    ///   7. `[]` Reserve liquidity oracle account.
-    ///   8. `[signer]` User transfer authority ($authority).
-    ///   9. `[]` Clock sysvar.
-    ///   10. `[]` Token program id.
+    ///   7. `[]` Pyth price oracle account.
+    ///   8. `[]` Switchboard price feed oracle account.
+    ///   9. `[signer]` User transfer authority ($authority).
+    ///   10 `[]` Clock sysvar.
+    ///   11 `[]` Token program id.
     DepositReserveLiquidity {
         /// Amount of liquidity to deposit in exchange for collateral tokens
         liquidity_amount: u64,
@@ -638,6 +642,7 @@ pub fn init_reserve(
     reserve_collateral_supply_pubkey: Pubkey,
     pyth_product_pubkey: Pubkey,
     pyth_price_pubkey: Pubkey,
+    switchboard_feed_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
     lending_market_owner_pubkey: Pubkey,
     user_transfer_authority_pubkey: Pubkey,
@@ -657,6 +662,7 @@ pub fn init_reserve(
         AccountMeta::new(reserve_collateral_supply_pubkey, false),
         AccountMeta::new_readonly(pyth_product_pubkey, false),
         AccountMeta::new_readonly(pyth_price_pubkey, false),
+        AccountMeta::new_readonly(switchboard_feed_pubkey, false),
         AccountMeta::new_readonly(lending_market_pubkey, false),
         AccountMeta::new_readonly(lending_market_authority_pubkey, false),
         AccountMeta::new_readonly(lending_market_owner_pubkey, true),
@@ -680,11 +686,13 @@ pub fn init_reserve(
 pub fn refresh_reserve(
     program_id: Pubkey,
     reserve_pubkey: Pubkey,
-    reserve_liquidity_oracle_pubkey: Pubkey,
+    reserve_liquidity_pyth_oracle_pubkey: Pubkey,
+    reserve_liquidity_switchboard_oracle_pubkey: Pubkey,
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(reserve_pubkey, false),
-        AccountMeta::new_readonly(reserve_liquidity_oracle_pubkey, false),
+        AccountMeta::new_readonly(reserve_liquidity_pyth_oracle_pubkey, false),
+        AccountMeta::new_readonly(reserve_liquidity_switchboard_oracle_pubkey, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];
     Instruction {

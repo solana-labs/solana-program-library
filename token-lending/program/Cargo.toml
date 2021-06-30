@@ -18,8 +18,9 @@ num-derive = "0.3"
 num-traits = "0.2"
 solana-program = "1.7.3"
 spl-token = { path = "../../token/program", features = [ "no-entrypoint" ] }
+switchboard-program = "0.1.45"
 thiserror = "1.0"
-uint = "0.8"
+uint = "0.9.0"
 
 [dev-dependencies]
 assert_matches = "1.5.0"

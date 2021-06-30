@@ -175,7 +175,7 @@ async fn test_borrow_sol_max_amount() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(42_000);
+    test.set_bpf_compute_max_units(45_000);
 
     const FEE_AMOUNT: u64 = 5000;
     const HOST_FEE_AMOUNT: u64 = 1000;

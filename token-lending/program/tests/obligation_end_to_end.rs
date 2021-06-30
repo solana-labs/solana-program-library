@@ -126,7 +126,8 @@ async fn test_success() {
             refresh_reserve(
                 spl_token_lending::id(),
                 sol_test_reserve.pubkey,
-                sol_oracle.price_pubkey,
+                sol_oracle.pyth_price_pubkey,
+                sol_oracle.switchboard_feed_pubkey,
             ),
             // 3
             approve(
@@ -160,7 +161,8 @@ async fn test_success() {
             refresh_reserve(
                 spl_token_lending::id(),
                 usdc_test_reserve.pubkey,
-                usdc_oracle.price_pubkey,
+                usdc_oracle.pyth_price_pubkey,
+                usdc_oracle.switchboard_feed_pubkey,
             ),
             // 7
             borrow_obligation_liquidity(
@@ -179,7 +181,8 @@ async fn test_success() {
             refresh_reserve(
                 spl_token_lending::id(),
                 usdc_test_reserve.pubkey,
-                usdc_oracle.price_pubkey,
+                usdc_oracle.pyth_price_pubkey,
+                usdc_oracle.switchboard_feed_pubkey,
             ),
             // 9
             refresh_obligation(
