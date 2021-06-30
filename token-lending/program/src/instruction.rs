@@ -104,10 +104,11 @@ pub enum LendingInstruction {
     ///   4. `[writable]` Reserve collateral SPL Token mint.
     ///   5. `[]` Lending market account.
     ///   6. `[]` Derived lending market authority.
-    ///   7. `[]` Reserve liquidity oracle account.
-    ///   8. `[signer]` User transfer authority ($authority).
-    ///   9. `[]` Clock sysvar.
-    ///   10. `[]` Token program id.
+    ///   7. `[]` Pyth price oracle account.
+    ///   8. `[]` Switchboard price feed oracle account.
+    ///   9. `[signer]` User transfer authority ($authority).
+    ///   10 `[]` Clock sysvar.
+    ///   11 `[]` Token program id.
     DepositReserveLiquidity {
         /// Amount of liquidity to deposit in exchange for collateral tokens
         liquidity_amount: u64,

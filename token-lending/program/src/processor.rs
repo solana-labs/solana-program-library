@@ -425,7 +425,8 @@ fn process_refresh_reserve(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pro
     _refresh_reserve(
         program_id,
         reserve_info,
-        reserve_liquidity_oracle_info,
+        pyth_price_info,
+        switchboard_feed_info,
         clock,
     )
 }
@@ -433,7 +434,8 @@ fn process_refresh_reserve(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pro
 fn _refresh_reserve<'a>(
     program_id: &Pubkey,
     reserve_info: &AccountInfo<'a>,
-    reserve_liquidity_oracle_info: &AccountInfo<'a>,
+    pyth_price_info: &AccountInfo<'a>,
+    switchboard_feed_info: &AccountInfo<'a>,
     clock: &Clock,
 ) -> ProgramResult {
     let mut reserve = Reserve::unpack(&reserve_info.data.borrow())?;
@@ -1024,7 +1026,8 @@ fn process_deposit_reserve_liquidity_and_obligation_collateral(
     let destination_collateral_info = next_account_info(account_info_iter)?;
     let obligation_info = next_account_info(account_info_iter)?;
     let obligation_owner_info = next_account_info(account_info_iter)?;
-    let reserve_liquidity_oracle_info = next_account_info(account_info_iter)?;
+    let pyth_price_info = next_account_info(account_info_iter)?;
+    let switchboard_feed_info = next_account_info(account_info_iter)?;
     let user_transfer_authority_info = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
@@ -1046,7 +1049,8 @@ fn process_deposit_reserve_liquidity_and_obligation_collateral(
     _refresh_reserve(
         program_id,
         reserve_info,
-        reserve_liquidity_oracle_info,
+        pyth_price_info,
+        switchboard_feed_info,
         clock,
     )?;
     _deposit_obligation_collateral(
