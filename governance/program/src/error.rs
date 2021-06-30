@@ -263,6 +263,10 @@ pub enum GovernanceError {
     /// Given VoteThresholdPercentageType is not supported
     #[error("Given VoteThresholdPercentageType is not supported")]
     VoteThresholdPercentageTypeNotSupported,
+
+    /// Given VoteWeightSource is not supported
+    #[error("Given VoteWeightSource is not supported")]
+    VoteWeightSourceNotSupported,
 }
 
 impl PrintProgramError for GovernanceError {

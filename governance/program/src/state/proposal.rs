@@ -1,6 +1,6 @@
 //! Proposal  Account
 
-use solana_program::clock::UnixTimestamp;
+use solana_program::clock::{Slot, UnixTimestamp};
 use solana_program::{
     account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
     pubkey::Pubkey,
@@ -63,8 +63,12 @@ pub struct Proposal {
     /// When Signatories started signing off the Proposal
     pub signing_off_at: Option<UnixTimestamp>,
 
-    /// When the Proposal began voting
+    /// When the Proposal began voting as UnixTimestamp
     pub voting_at: Option<UnixTimestamp>,
+
+    /// When the Proposal began voting as Slot
+    /// Note: The slot is not currently used but the exact slot is going to be required to support snapshot based vote weights
+    pub voting_at_slot: Option<Slot>,
 
     /// When the Proposal ended voting and entered either Succeeded or Defeated
     pub voting_completed_at: Option<UnixTimestamp>,
@@ -84,7 +88,7 @@ pub struct Proposal {
 
 impl AccountMaxSize for Proposal {
     fn get_max_size(&self) -> Option<usize> {
-        Some(self.name.len() + self.description_link.len() + 183)
+        Some(self.name.len() + self.description_link.len() + 192)
     }
 }
 
@@ -399,7 +403,7 @@ pub fn get_proposal_address<'a>(
 
 #[cfg(test)]
 mod test {
-    use crate::state::enums::VoteThresholdPercentageType;
+    use crate::state::enums::{VoteThresholdPercentageType, VoteWeightSource};
 
     use {super::*, proptest::prelude::*};
 
@@ -416,7 +420,10 @@ mod test {
             name: "This is my name".to_string(),
             draft_at: 10,
             signing_off_at: Some(10),
+
             voting_at: Some(10),
+            voting_at_slot: Some(500),
+
             voting_completed_at: Some(10),
             executing_at: Some(10),
             closed_at: Some(10),
@@ -439,6 +446,7 @@ mod test {
             min_instruction_hold_up_time: 10,
             max_voting_time: 5,
             vote_threshold_percentage_type: VoteThresholdPercentageType::YesVote,
+            vote_weight_source: VoteWeightSource::Deposit,
         }
     }
 

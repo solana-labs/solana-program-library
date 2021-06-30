@@ -4,10 +4,7 @@ mod program_test;
 use solana_program_test::*;
 
 use program_test::*;
-use spl_governance::{
-    error::GovernanceError,
-    state::{enums::VoteThresholdPercentageType, governance::GovernanceConfig},
-};
+use spl_governance::error::GovernanceError;
 
 #[tokio::test]
 async fn test_create_account_governance() {
@@ -69,16 +66,10 @@ async fn test_create_account_governance_with_invalid_config_error() {
     let realm_cookie = governance_test.with_realm().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
-    // Arrange below 1% threshold
-    let config = GovernanceConfig {
-        realm: realm_cookie.address,
-        governed_account: governed_account_cookie.address,
-        vote_threshold_percentage: 0, // below 1% threshold
-        min_tokens_to_create_proposal: 1,
-        min_instruction_hold_up_time: 1,
-        max_voting_time: 1,
-        vote_threshold_percentage_type: VoteThresholdPercentageType::YesVote,
-    };
+    // Arrange
+    let mut config =
+        governance_test.get_default_governance_config(&realm_cookie, &governed_account_cookie);
+    config.vote_threshold_percentage = 0; // below 1% threshold
 
     // Act
     let err = governance_test
@@ -91,16 +82,10 @@ async fn test_create_account_governance_with_invalid_config_error() {
 
     assert_eq!(err, GovernanceError::InvalidGovernanceConfig.into());
 
-    // Arrange  above 100% threshold
-    let config = GovernanceConfig {
-        realm: realm_cookie.address,
-        governed_account: governed_account_cookie.address,
-        vote_threshold_percentage: 101, // Above 100% threshold
-        min_tokens_to_create_proposal: 1,
-        min_instruction_hold_up_time: 1,
-        max_voting_time: 1,
-        vote_threshold_percentage_type: VoteThresholdPercentageType::YesVote,
-    };
+    // Arrange
+    let mut config =
+        governance_test.get_default_governance_config(&realm_cookie, &governed_account_cookie);
+    config.vote_threshold_percentage = 101; // Above 100% threshold
 
     // Act
     let err = governance_test

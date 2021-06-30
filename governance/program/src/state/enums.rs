@@ -109,3 +109,15 @@ pub enum VoteThresholdPercentageType {
     /// Note: Quorum is not implemented in V1
     Quorum,
 }
+
+/// The source of voter weights used to vote on proposals
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub enum VoteWeightSource {
+    /// Governing token deposits into the Realm are used as voter weights
+    Deposit,
+    /// Governing token account snapshots as of the time a proposal entered voting state are used as voter weights
+    /// Note: Snapshot source is not supported in V1
+    /// Support for account snapshots are required in solana and/or arweave as a prerequisite
+    Snapshot,
+}

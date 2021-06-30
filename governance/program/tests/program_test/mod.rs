@@ -56,9 +56,9 @@ use crate::program_test::{cookies::SignatoryRecordCookie, tools::clone_keypair};
 
 use self::{
     cookies::{
-        GovernanceCookie, GovernedAccountCookie, GovernedMintCookie, GovernedProgramCookie,
-        GovernedTokenCookie, ProposalCookie, ProposalInstructionCookie, RealmCookie,
-        TokeOwnerRecordCookie, VoteRecordCookie,
+        AccountCookie, GovernanceCookie, GovernedAccountCookie, GovernedMintCookie,
+        GovernedProgramCookie, GovernedTokenCookie, ProposalCookie, ProposalInstructionCookie,
+        RealmCookie, TokeOwnerRecordCookie, VoteRecordCookie,
     },
     tools::NopOverride,
 };
@@ -636,16 +636,17 @@ impl GovernanceProgramTest {
     pub fn get_default_governance_config(
         &mut self,
         realm_cookie: &RealmCookie,
-        governed_account_cookie: &GovernedAccountCookie,
+        governed_account_cookie: &impl AccountCookie,
     ) -> GovernanceConfig {
         GovernanceConfig {
             realm: realm_cookie.address,
-            governed_account: governed_account_cookie.address,
+            governed_account: governed_account_cookie.get_address(),
             vote_threshold_percentage: 60,
             min_tokens_to_create_proposal: 5,
             min_instruction_hold_up_time: 10,
             max_voting_time: 10,
             vote_threshold_percentage_type: VoteThresholdPercentageType::YesVote,
+            vote_weight_source: spl_governance::state::enums::VoteWeightSource::Deposit,
         }
     }
 
@@ -789,15 +790,7 @@ impl GovernanceProgramTest {
         instruction_override: F,
         signers_override: Option<&[&Keypair]>,
     ) -> Result<GovernanceCookie, ProgramError> {
-        let config = GovernanceConfig {
-            realm: realm_cookie.address,
-            governed_account: governed_program_cookie.address,
-            min_tokens_to_create_proposal: 5,
-            min_instruction_hold_up_time: 10,
-            max_voting_time: 100,
-            vote_threshold_percentage: 60,
-            vote_threshold_percentage_type: VoteThresholdPercentageType::YesVote,
-        };
+        let config = self.get_default_governance_config(realm_cookie, governed_program_cookie);
 
         let mut create_program_governance_instruction = create_program_governance(
             &self.program_id,
@@ -857,15 +850,7 @@ impl GovernanceProgramTest {
         instruction_override: F,
         signers_override: Option<&[&Keypair]>,
     ) -> Result<GovernanceCookie, ProgramError> {
-        let config = GovernanceConfig {
-            realm: realm_cookie.address,
-            governed_account: governed_mint_cookie.address,
-            min_tokens_to_create_proposal: 5,
-            min_instruction_hold_up_time: 10,
-            max_voting_time: 100,
-            vote_threshold_percentage: 60,
-            vote_threshold_percentage_type: VoteThresholdPercentageType::YesVote,
-        };
+        let config = self.get_default_governance_config(realm_cookie, governed_mint_cookie);
 
         let mut create_mint_governance_instruction = create_mint_governance(
             &self.program_id,
@@ -925,15 +910,7 @@ impl GovernanceProgramTest {
         instruction_override: F,
         signers_override: Option<&[&Keypair]>,
     ) -> Result<GovernanceCookie, ProgramError> {
-        let config = GovernanceConfig {
-            realm: realm_cookie.address,
-            governed_account: governed_token_cookie.address,
-            min_tokens_to_create_proposal: 5,
-            min_instruction_hold_up_time: 10,
-            max_voting_time: 100,
-            vote_threshold_percentage: 60,
-            vote_threshold_percentage_type: VoteThresholdPercentageType::YesVote,
-        };
+        let config = self.get_default_governance_config(realm_cookie, governed_token_cookie);
 
         let mut create_token_governance_instruction = create_token_governance(
             &self.program_id,
@@ -1051,10 +1028,12 @@ impl GovernanceProgramTest {
             governing_token_mint: token_owner_record_cookie.account.governing_token_mint,
             state: ProposalState::Draft,
             signatories_count: 0,
-            // Clock always returns 1 when running under the test
+
             draft_at: clock.unix_timestamp,
             signing_off_at: None,
+
             voting_at: None,
+            voting_at_slot: None,
             voting_completed_at: None,
             executing_at: None,
             closed_at: None,

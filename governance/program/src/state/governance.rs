@@ -1,17 +1,18 @@
 //! Governance Account
 
 use crate::{
-    error::GovernanceError, state::enums::GovernanceAccountType,
-    state::enums::VoteThresholdPercentageType, tools::account::get_account_data,
-    tools::account::AccountMaxSize,
+    error::GovernanceError,
+    state::{
+        enums::{GovernanceAccountType, VoteThresholdPercentageType, VoteWeightSource},
+        realm::assert_is_valid_realm,
+    },
+    tools::account::{get_account_data, AccountMaxSize},
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
     account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
     pubkey::Pubkey,
 };
-
-use crate::state::realm::assert_is_valid_realm;
 
 /// Governance config
 #[repr(C)]
@@ -37,6 +38,10 @@ pub struct GovernanceConfig {
 
     /// Time limit in seconds for proposal to be open for voting
     pub max_voting_time: u32,
+
+    /// The source of vote weight for voters
+    /// Note: In the current version only token deposits are accepted as vote weight
+    pub vote_weight_source: VoteWeightSource,
 }
 
 /// Governance Account
@@ -216,6 +221,10 @@ pub fn assert_is_valid_governance_config(
 
     if governance_config.vote_threshold_percentage_type != VoteThresholdPercentageType::YesVote {
         return Err(GovernanceError::VoteThresholdPercentageTypeNotSupported.into());
+    }
+
+    if governance_config.vote_weight_source != VoteWeightSource::Deposit {
+        return Err(GovernanceError::VoteWeightSourceNotSupported.into());
     }
 
     Ok(())

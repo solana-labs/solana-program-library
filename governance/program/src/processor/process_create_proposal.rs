@@ -84,6 +84,7 @@ pub fn process_create_proposal(
         draft_at: clock.unix_timestamp,
         signing_off_at: None,
         voting_at: None,
+        voting_at_slot: None,
         voting_completed_at: None,
         executing_at: None,
         closed_at: None,
