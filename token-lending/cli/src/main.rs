@@ -321,7 +321,7 @@ fn main() {
         .get_matches();
 
     let mut wallet_manager = None;
-    let config = {
+    let mut config = {
         let cli_config = if let Some(config_file) = matches.value_of("config_file") {
             solana_cli_config::Config::load(config_file).unwrap_or_default()
         } else {
@@ -395,7 +395,7 @@ fn main() {
             let flash_loan_fee_wad = (flash_loan_fee * WAD as f64) as u64;
 
             command_add_reserve(
-                &config,
+                &mut config,
                 ui_amount,
                 ReserveConfig {
                     optimal_utilization_rate,
@@ -483,7 +483,7 @@ fn command_create_lending_market(
 
 #[allow(clippy::too_many_arguments)]
 fn command_add_reserve(
-    config: &Config,
+    config: &mut Config,
     ui_amount: f64,
     reserve_config: ReserveConfig,
     source_liquidity_pubkey: Pubkey,

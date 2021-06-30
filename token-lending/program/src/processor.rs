@@ -244,7 +244,11 @@ fn process_init_reserve(
     assert_rent_exempt(rent, reserve_info)?;
     let mut reserve = assert_uninitialized::<Reserve>(reserve_info)?;
     if reserve_info.owner != program_id {
-        msg!("Reserve provided is not owned by the lending program");
+        msg!(
+            "Reserve provided is not owned by the lending program {} != {}",
+            &reserve_info.owner.to_string(),
+            &program_id.to_string(),
+        );
         return Err(LendingError::InvalidAccountOwner.into());
     }
 
@@ -255,7 +259,11 @@ fn process_init_reserve(
 
     let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
     if lending_market_info.owner != program_id {
-        msg!("Lending market provided is not owned by the lending program");
+        msg!(
+            "Lending market provided is not owned by the lending program  {} != {}",
+            &lending_market_info.owner.to_string(),
+            &program_id.to_string(),
+        );
         return Err(LendingError::InvalidAccountOwner.into());
     }
     if &lending_market.token_program_id != token_program_id.key {
@@ -1868,7 +1876,11 @@ fn process_flash_loan(
 
 fn assert_rent_exempt(rent: &Rent, account_info: &AccountInfo) -> ProgramResult {
     if !rent.is_exempt(account_info.lamports(), account_info.data_len()) {
-        msg!(&rent.minimum_balance(account_info.data_len()).to_string());
+        msg!(
+            "Rent exempt balance insufficient got {} expected {}",
+            &account_info.lamports().to_string(),
+            &rent.minimum_balance(account_info.data_len()).to_string(),
+        );
         Err(LendingError::NotRentExempt.into())
     } else {
         Ok(())
@@ -2000,7 +2012,7 @@ fn get_switchboard_price(
     switchboard_feed_info: &AccountInfo,
     clock: &Clock,
 ) -> Result<Decimal, ProgramError> {
-    const STALE_AFTER_SLOTS_ELAPSED: u64 = 30;
+    const STALE_AFTER_SLOTS_ELAPSED: u64 = 100;
 
     let account_buf = switchboard_feed_info.try_borrow_data()?;
     if account_buf[0] != SwitchboardAccountType::TYPE_AGGREGATOR as u8 {
@@ -2029,8 +2041,7 @@ fn get_switchboard_price(
     // we just do this so we can parse coins with low usd value
     // it might be better to just extract the mantissa and exponent from the float directly
     let price_quotient = 10u64.pow(9);
-
-    let price = ((price_quotient as f64) * price_float).round() as u128;
+    let price = ((price_quotient as f64) * price_float) as u128;
 
     Decimal::from(price).try_div(price_quotient)
 }
