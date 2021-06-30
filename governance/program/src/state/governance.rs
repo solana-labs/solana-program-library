@@ -25,6 +25,7 @@ pub struct GovernanceConfig {
     pub governed_account: Pubkey,
 
     /// The type of the vote threshold used for voting
+    /// Note: In the current version only YesVote threshold is supported
     pub vote_threshold_percentage_type: VoteThresholdPercentageType,
 
     /// The vote threshold value of the type defined by vote_threshold_percentage_type
@@ -42,6 +43,11 @@ pub struct GovernanceConfig {
     /// The source of vote weight for voters
     /// Note: In the current version only token deposits are accepted as vote weight
     pub vote_weight_source: VoteWeightSource,
+
+    /// The time period within which a Proposal can be still cancelled after being voted on
+    /// Once cool off time expires Proposal can't be cancelled any longer and becomes a law
+    /// Note: This field is not implemented in the current version
+    pub proposal_cool_off_time: u32,
 }
 
 /// Governance Account

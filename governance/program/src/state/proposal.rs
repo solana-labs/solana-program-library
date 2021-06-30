@@ -455,6 +455,7 @@ mod test {
             max_voting_time: 5,
             vote_threshold_percentage_type: VoteThresholdPercentageType::YesVote,
             vote_weight_source: VoteWeightSource::Deposit,
+            proposal_cool_off_time: 0,
         }
     }
 

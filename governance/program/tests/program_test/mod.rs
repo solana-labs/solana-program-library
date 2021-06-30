@@ -647,6 +647,7 @@ impl GovernanceProgramTest {
             max_voting_time: 10,
             vote_threshold_percentage_type: VoteThresholdPercentageType::YesVote,
             vote_weight_source: spl_governance::state::enums::VoteWeightSource::Deposit,
+            proposal_cool_off_time: 0,
         }
     }
 
