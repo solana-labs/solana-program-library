@@ -20,10 +20,13 @@ use crate::state::enums::GovernanceAccountType;
 pub struct SignatoryRecord {
     /// Governance account type
     pub account_type: GovernanceAccountType,
+
     /// Proposal the signatory is assigned for
     pub proposal: Pubkey,
+
     /// The account of the signatory who can sign off the proposal
     pub signatory: Pubkey,
+
     /// Indicates whether the signatory signed off the proposal
     pub signed_off: bool,
 }

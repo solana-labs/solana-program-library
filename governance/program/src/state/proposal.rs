@@ -42,17 +42,20 @@ pub struct Proposal {
     /// The number of signatories who already signed
     pub signatories_signed_off_count: u8,
 
-    /// Link to proposal's description
-    pub description_link: String,
-
-    /// Proposal name
-    pub name: String,
-
     /// The number of Yes votes
     pub yes_votes_count: u64,
 
     /// The number of No votes
     pub no_votes_count: u64,
+
+    /// The number of the instructions already executed
+    pub instructions_executed_count: u16,
+
+    /// The number of instructions included in the proposal
+    pub instructions_count: u16,
+
+    /// The index of the the next instruction to be added
+    pub instructions_next_index: u16,
 
     /// When the Proposal was created and entered Draft state
     pub draft_at: UnixTimestamp,
@@ -72,14 +75,11 @@ pub struct Proposal {
     /// When the Proposal entered final state Completed or Cancelled and was closed
     pub closed_at: Option<UnixTimestamp>,
 
-    /// The number of the instructions already executed
-    pub instructions_executed_count: u16,
+    /// Proposal name
+    pub name: String,
 
-    /// The number of instructions included in the proposal
-    pub instructions_count: u16,
-
-    /// The index of the the next instruction to be added
-    pub instructions_next_index: u16,
+    /// Link to proposal's description
+    pub description_link: String,
 }
 
 impl AccountMaxSize for Proposal {
