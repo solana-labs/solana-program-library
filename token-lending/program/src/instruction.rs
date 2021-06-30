@@ -852,6 +852,54 @@ pub fn deposit_obligation_collateral(
     }
 }
 
+/// Creates a 'DepositReserveLiquidityAndObligationCollateral' instruction.
+#[allow(clippy::too_many_arguments)]
+pub fn deposit_reserve_liquidity_and_obligation_collateral(
+    program_id: Pubkey,
+    liquidity_amount: u64,
+    source_liquidity_pubkey: Pubkey,
+    user_collateral_pubkey: Pubkey,
+    reserve_pubkey: Pubkey,
+    reserve_liquidity_supply_pubkey: Pubkey,
+    reserve_collateral_mint_pubkey: Pubkey,
+    lending_market_pubkey: Pubkey,
+    destination_deposit_collateral_pubkey: Pubkey,
+    obligation_pubkey: Pubkey,
+    obligation_owner_pubkey: Pubkey,
+    reserve_liquidity_pyth_oracle_pubkey: Pubkey,
+    reserve_liquidity_switchboard_oracle_pubkey: Pubkey,
+    user_transfer_authority_pubkey: Pubkey,
+) -> Instruction {
+    let (lending_market_authority_pubkey, _bump_seed) = Pubkey::find_program_address(
+        &[&lending_market_pubkey.to_bytes()[..PUBKEY_BYTES]],
+        &program_id,
+    );
+    Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(source_liquidity_pubkey, false),
+            AccountMeta::new(user_collateral_pubkey, false),
+            AccountMeta::new(reserve_pubkey, false),
+            AccountMeta::new(reserve_liquidity_supply_pubkey, false),
+            AccountMeta::new(reserve_collateral_mint_pubkey, false),
+            AccountMeta::new_readonly(lending_market_pubkey, false),
+            AccountMeta::new_readonly(lending_market_authority_pubkey, false),
+            AccountMeta::new(destination_deposit_collateral_pubkey, false),
+            AccountMeta::new(obligation_pubkey, false),
+            AccountMeta::new(obligation_owner_pubkey, true),
+            AccountMeta::new_readonly(reserve_liquidity_pyth_oracle_pubkey, false),
+            AccountMeta::new_readonly(reserve_liquidity_switchboard_oracle_pubkey, false),
+            AccountMeta::new_readonly(user_transfer_authority_pubkey, true),
+            AccountMeta::new_readonly(sysvar::clock::id(), false),
+            AccountMeta::new_readonly(spl_token::id(), false),
+        ],
+        data: LendingInstruction::DepositReserveLiquidityAndObligationCollateral {
+            liquidity_amount,
+        }
+        .pack(),
+    }
+}
+
 /// Creates a 'WithdrawObligationCollateral' instruction.
 #[allow(clippy::too_many_arguments)]
 pub fn withdraw_obligation_collateral(
