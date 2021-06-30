@@ -236,5 +236,9 @@ pub fn assert_is_valid_governance_config(
         return Err(GovernanceError::VoteWeightSourceNotSupported.into());
     }
 
+    if governance_config.proposal_cool_off_time > 0 {
+        return Err(GovernanceError::ProposalCoolOffTimeNotSupported.into());
+    }
+
     Ok(())
 }

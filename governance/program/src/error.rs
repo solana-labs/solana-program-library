@@ -267,6 +267,10 @@ pub enum GovernanceError {
     /// Given VoteWeightSource is not supported
     #[error("Given VoteWeightSource is not supported")]
     VoteWeightSourceNotSupported,
+
+    /// Proposal cool off time is not supported
+    #[error("Proposal cool off time is not supported")]
+    ProposalCoolOffTimeNotSupported,
 }
 
 impl PrintProgramError for GovernanceError {

@@ -2,7 +2,7 @@
 
 use crate::{
     error::GovernanceError,
-    state::enums::GovernanceAccountType,
+    state::enums::{GovernanceAccountType, InstructionExecutionStatus},
     tools::account::{get_account_data, AccountMaxSize},
     PROGRAM_AUTHORITY_SEED,
 };
@@ -15,8 +15,6 @@ use solana_program::{
     program_pack::IsInitialized,
     pubkey::Pubkey,
 };
-
-use super::enums::InstructionExecutionStatus;
 
 /// InstructionData wrapper. It can be removed once Borsh serialization for Instruction is supported in the SDK
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]

@@ -6,17 +6,17 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-use crate::tools::account::get_account_data;
-use crate::{error::GovernanceError, tools::account::AccountMaxSize, PROGRAM_AUTHORITY_SEED};
-
-use crate::state::enums::{GovernanceAccountType, ProposalState};
+use crate::{
+    error::GovernanceError,
+    state::{
+        enums::{GovernanceAccountType, InstructionExecutionFlags, ProposalState},
+        governance::GovernanceConfig,
+        proposal_instruction::ProposalInstruction,
+    },
+    tools::account::{get_account_data, AccountMaxSize},
+    PROGRAM_AUTHORITY_SEED,
+};
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
-
-use crate::state::governance::GovernanceConfig;
-
-use crate::state::proposal_instruction::ProposalInstruction;
-
-use super::enums::InstructionExecutionFlags;
 
 /// Governance Proposal
 #[repr(C)]
