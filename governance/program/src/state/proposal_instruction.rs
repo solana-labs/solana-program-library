@@ -256,15 +256,18 @@ mod test {
 
         // Act
         let instruction_data: InstructionData = upgrade_instruction.clone().into();
-        let mut instruciton_bytes = vec![];
-        instruction_data.serialize(&mut instruciton_bytes).unwrap();
+        let mut instruction_bytes = vec![];
+        instruction_data.serialize(&mut instruction_bytes).unwrap();
 
-        println!("base64: {}", base64::encode(instruciton_bytes.clone()));
+        // base64 encoded message is accepted as the input in the UI
+        let base64 = base64::encode(instruction_bytes.clone());
 
         // Assert
         let instruction =
-            Instruction::from(&InstructionData::deserialize(&mut &instruciton_bytes[..]).unwrap());
+            Instruction::from(&InstructionData::deserialize(&mut &instruction_bytes[..]).unwrap());
 
         assert_eq!(upgrade_instruction, instruction);
+
+        assert_eq!(base64,"Aqj2kU6IobDiEBU+92OuKwDCuT0WwSTSwFN6EASAAAAHAAAAchkHXTU9jF+rKpILT6dzsVyNI9NsQy9cab+GGvdwNn0AAfh2HVruy2YibpgcQUmJf5att5YdPXSv1k2pRAKAfpSWAAFDVQuXWos2urmegSPblI813GlTm7CJ/8rv+9yzNE3yfwAB3Gw+apCyfrRNqJ6f1160Htkx+uYZT6FIILQ3WzNA4KwAAQan1RcZLFxRIYzJTD1K8X9Y2u4Im6H9ROPb2YoAAAAAAAAGp9UXGMd0yShWY5hpHV62i164o5tLbVxzVVshAAAAAAAA3Gw+apCyfrRNqJ6f1160Htkx+uYZT6FIILQ3WzNA4KwBAAQAAAADAAAA");
     }
 }
