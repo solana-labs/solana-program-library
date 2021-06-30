@@ -1,6 +1,6 @@
 {
-  "name": "@bonfida/spl-name-service",
-  "version": "0.1.12",
+  "name": "@solana/spl-name-service",
+  "version": "0.1.2",
   "description": "SPL Name Service JavaScript API",
   "license": "MIT",
   "author": "Solana Maintainers <maintainers@solana.foundation>",
