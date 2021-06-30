@@ -91,6 +91,7 @@ pub fn process_insert_instruction(
         hold_up_time,
         instruction,
         executed_at: None,
+        execution_status: None,
         proposal: *proposal_info.key,
     };
 

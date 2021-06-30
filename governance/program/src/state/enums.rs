@@ -121,3 +121,16 @@ pub enum VoteWeightSource {
     /// Support for account snapshots are required in solana and/or arweave as a prerequisite
     Snapshot,
 }
+
+/// The status of instruction execution
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub enum InstructionExecutionStatus {
+    /// Instruction was executed successfully
+    Success,
+
+    /// Instruction execution failed
+    /// Note: Error status is not supported yet because when CPI call fails it always terminates parent instruction
+    /// We either have to make it possible to change that behavior or add an instruction to manually set the status
+    Error,
+}

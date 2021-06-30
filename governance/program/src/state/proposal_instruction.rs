@@ -16,6 +16,8 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
+use super::enums::InstructionExecutionStatus;
+
 /// InstructionData wrapper. It can be removed once Borsh serialization for Instruction is supported in the SDK
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 #[repr(C)]
@@ -96,11 +98,15 @@ pub struct ProposalInstruction {
 
     /// Executed at flag
     pub executed_at: Option<UnixTimestamp>,
+
+    /// Instruction execution status
+    /// Note: The field is not used in V1
+    pub execution_status: Option<InstructionExecutionStatus>,
 }
 
 impl AccountMaxSize for ProposalInstruction {
     fn get_max_size(&self) -> Option<usize> {
-        Some(self.instruction.accounts.len() * 34 + self.instruction.data.len() + 86)
+        Some(self.instruction.accounts.len() * 34 + self.instruction.data.len() + 88)
     }
 }
 
@@ -204,6 +210,7 @@ mod test {
             hold_up_time: 10,
             instruction: create_test_instruction_data(),
             executed_at: Some(100),
+            execution_status: Some(InstructionExecutionStatus::Success),
         }
     }
 

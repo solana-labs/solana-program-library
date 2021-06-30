@@ -1491,6 +1491,7 @@ impl GovernanceProgramTest {
             hold_up_time,
             instruction: instruction_data,
             executed_at: None,
+            execution_status: None,
             proposal: proposal_cookie.address,
         };
 
