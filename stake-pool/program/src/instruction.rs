@@ -738,7 +738,7 @@ pub fn update_stake_pool(
     validator_list: &ValidatorList,
     stake_pool_address: &Pubkey,
     no_merge: bool,
-) -> Vec<Instruction> {
+) -> (Vec<Instruction>, Instruction) {
     let vote_accounts: Vec<Pubkey> = validator_list
         .validators
         .iter()
@@ -748,10 +748,10 @@ pub fn update_stake_pool(
     let (withdraw_authority, _) =
         find_withdraw_authority_program_address(program_id, stake_pool_address);
 
-    let mut instructions: Vec<Instruction> = vec![];
+    let mut update_list_instructions: Vec<Instruction> = vec![];
     let mut start_index = 0;
     for accounts_chunk in vote_accounts.chunks(MAX_VALIDATORS_TO_UPDATE) {
-        instructions.push(update_validator_list_balance(
+        update_list_instructions.push(update_validator_list_balance(
             program_id,
             stake_pool_address,
             &withdraw_authority,
@@ -764,7 +764,7 @@ pub fn update_stake_pool(
         start_index += MAX_VALIDATORS_TO_UPDATE as u32;
     }
 
-    instructions.push(update_stake_pool_balance(
+    let update_balance_instruction = update_stake_pool_balance(
         program_id,
         stake_pool_address,
         &withdraw_authority,
@@ -772,8 +772,8 @@ pub fn update_stake_pool(
         &stake_pool.reserve_stake,
         &stake_pool.manager_fee_account,
         &stake_pool.pool_mint,
-    ));
-    instructions
+    );
+    (update_list_instructions, update_balance_instruction)
 }
 
 /// Creates instructions required to deposit into a stake pool, given a stake
