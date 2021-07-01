@@ -16,7 +16,7 @@ num-traits = "0.2"
 solana-program = "1.7.3"
 spl-token = { version = "3.1", path = "../../token/program", features = [ "no-entrypoint" ] }
 thiserror = "1.0"
-uint = "0.8"
+uint = "0.9"
 arbitrary = { version = "0.4", features = ["derive"], optional = true }
 borsh = "0.8.2"
 
