@@ -93,7 +93,10 @@ impl Processor {
             )?;
 
             invoke_signed(
-                &system_instruction::allocate(&name_account_key, space as u64),
+                &system_instruction::allocate(
+                    &name_account_key,
+                    (NameRecordHeader::LEN + space as usize) as u64,
+                ),
                 &[name_account.clone(), system_program.clone()],
                 &[&seeds.chunks(32).collect::<Vec<&[u8]>>()],
             )?;
@@ -213,7 +216,7 @@ impl Processor {
         msg!("Beginning processing");
         let instruction = NameRegistryInstruction::try_from_slice(instruction_data)
             .map_err(|_| ProgramError::InvalidInstructionData)?;
-        msg!("Instruction unpack_from_sliceed");
+        msg!("Instruction unpacked");
 
         match instruction {
             NameRegistryInstruction::Create {
