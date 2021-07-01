@@ -42,8 +42,8 @@ pub fn set_program_upgrade_authority<'a>(
 ) -> Result<(), ProgramError> {
     let set_upgrade_authority_instruction = bpf_loader_upgradeable::set_upgrade_authority(
         program_address,
-        &program_upgrade_authority_info.key,
-        Some(&new_authority_info.key),
+        program_upgrade_authority_info.key,
+        Some(new_authority_info.key),
     );
 
     invoke(

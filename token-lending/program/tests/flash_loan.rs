@@ -32,6 +32,7 @@ async fn test_success() {
 
     let receiver_program_account = Keypair::new();
     let receiver_program_id = receiver_program_account.pubkey();
+    test.prefer_bpf(false);
     test.add_program(
         "flash_loan_receiver",
         receiver_program_id.clone(),
@@ -151,6 +152,7 @@ async fn test_failure() {
 
     let flash_loan_receiver_program_keypair = Keypair::new();
     let flash_loan_receiver_program_id = flash_loan_receiver_program_keypair.pubkey();
+    test.prefer_bpf(false);
     test.add_program(
         "flash_loan_receiver",
         flash_loan_receiver_program_id.clone(),

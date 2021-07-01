@@ -1,7 +1,7 @@
 //! State transition types
 
 use {
-    crate::error::StakePoolError,
+    crate::{error::StakePoolError, stake_program::Lockup},
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{account_info::AccountInfo, msg, program_error::ProgramError, pubkey::Pubkey},
     std::convert::TryFrom,
@@ -78,6 +78,9 @@ pub struct StakePool {
 
     /// Last epoch the `total_stake_lamports` field was updated
     pub last_update_epoch: u64,
+
+    /// Lockup that all stakes in the pool must have
+    pub lockup: Lockup,
 
     /// Fee taken as a proportion of rewards each epoch
     pub fee: Fee,

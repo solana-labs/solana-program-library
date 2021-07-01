@@ -359,7 +359,7 @@ impl NativeTokenSwap {
     ) -> ProgramResult {
         let mut user_transfer_account = NativeAccountData::new(0, system_program::id());
         user_transfer_account.is_signer = true;
-        let pool_token_amount = native_token::get_token_balance(&pool_account);
+        let pool_token_amount = native_token::get_token_balance(pool_account);
         // special logic to avoid withdrawing down to 1 pool token, which
         // eventually causes an error on withdrawing all
         if pool_token_amount.saturating_sub(instruction.pool_token_amount) == 1 {
@@ -489,7 +489,7 @@ impl NativeTokenSwap {
     ) -> ProgramResult {
         let mut user_transfer_account = NativeAccountData::new(0, system_program::id());
         user_transfer_account.is_signer = true;
-        let pool_token_amount = native_token::get_token_balance(&pool_account);
+        let pool_token_amount = native_token::get_token_balance(pool_account);
         // special logic to avoid withdrawing down to 1 pool token, which
         // eventually causes an error on withdrawing all
         if pool_token_amount.saturating_sub(instruction.maximum_pool_token_amount) == 1 {
@@ -552,7 +552,7 @@ impl NativeTokenSwap {
         mut token_a_account: &mut NativeAccountData,
         mut token_b_account: &mut NativeAccountData,
     ) -> ProgramResult {
-        let pool_token_amount = native_token::get_token_balance(&pool_account);
+        let pool_token_amount = native_token::get_token_balance(pool_account);
         if pool_token_amount > 0 {
             let instruction = WithdrawAllTokenTypes {
                 pool_token_amount,

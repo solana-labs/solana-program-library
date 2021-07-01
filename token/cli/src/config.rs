@@ -82,7 +82,7 @@ impl<'a> Config<'a> {
             if authority_name != "owner" {
                 if let Some(keypair_path) = arg_matches.value_of(authority_name) {
                     return signer_from_path(
-                        &arg_matches,
+                        arg_matches,
                         keypair_path,
                         authority_name,
                         wallet_manager,
@@ -123,7 +123,7 @@ impl<'a> Config<'a> {
     ) -> Result<Box<dyn Signer>, Box<dyn std::error::Error>> {
         // for backwards compatibility, check owner before cli config default
         if let Some(owner_path) = matches.value_of("owner") {
-            return signer_from_path(&matches, owner_path, "owner", wallet_manager);
+            return signer_from_path(matches, owner_path, "owner", wallet_manager);
         }
 
         let path = &self.default_keypair_path;

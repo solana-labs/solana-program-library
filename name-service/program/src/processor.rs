@@ -38,7 +38,7 @@ impl Processor {
         let parent_name_owner = next_account_info(accounts_iter).ok();
 
         let (name_account_key, seeds) = get_seeds_and_key(
-            &program_id,
+            program_id,
             hashed_name,
             Some(name_class.key),
             Some(parent_name_account.key),
@@ -84,7 +84,7 @@ impl Processor {
             // The creation is done in three steps: transfer, allocate and assign, because
             // one cannot `system_instruction::create` an account to which lamports have been transfered before.
             invoke(
-                &system_instruction::transfer(&payer_account.key, &name_account_key, lamports),
+                &system_instruction::transfer(payer_account.key, &name_account_key, lamports),
                 &[
                     payer_account.clone(),
                     name_account.clone(),
@@ -99,7 +99,7 @@ impl Processor {
             )?;
 
             invoke_signed(
-                &system_instruction::assign(name_account.key, &program_id),
+                &system_instruction::assign(name_account.key, program_id),
                 &[name_account.clone(), system_program.clone()],
                 &[&seeds.chunks(32).collect::<Vec<&[u8]>>()],
             )?;

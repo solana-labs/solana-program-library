@@ -48,12 +48,12 @@ pub struct StableCurve {
 /// d = (leverage * sum_x + d_product * n_coins) * initial_d / ((leverage - 1) * initial_d + (n_coins + 1) * d_product)
 fn calculate_step(initial_d: &U256, leverage: u64, sum_x: u128, d_product: &U256) -> Option<U256> {
     let leverage_mul = U256::from(leverage).checked_mul(sum_x.into())?;
-    let d_p_mul = checked_u8_mul(&d_product, N_COINS)?;
+    let d_p_mul = checked_u8_mul(d_product, N_COINS)?;
 
     let l_val = leverage_mul.checked_add(d_p_mul)?.checked_mul(*initial_d)?;
 
     let leverage_sub = initial_d.checked_mul((leverage.checked_sub(1)?).into())?;
-    let n_coins_sum = checked_u8_mul(&d_product, N_COINS.checked_add(1)?)?;
+    let n_coins_sum = checked_u8_mul(d_product, N_COINS.checked_add(1)?)?;
 
     let r_val = leverage_sub.checked_add(n_coins_sum)?;
 
@@ -422,8 +422,10 @@ mod tests {
             let diff =
                 (sim_result as i128 - result.destination_amount_swapped as i128).abs();
 
+            let tolerance = std::cmp::max(1, sim_result as i128 / 1_000_000_000);
+
             assert!(
-                diff <= 1,
+                diff <= tolerance,
                 "result={}, sim_result={}, amp={}, source_amount={}, swap_source_amount={}, swap_destination_amount={}, diff={}",
                 result.destination_amount_swapped,
                 sim_result,

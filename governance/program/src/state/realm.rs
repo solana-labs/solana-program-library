@@ -76,12 +76,12 @@ pub fn get_realm_data(
 
 /// Returns Realm PDA seeds
 pub fn get_realm_address_seeds(name: &str) -> [&[u8]; 2] {
-    [PROGRAM_AUTHORITY_SEED, &name.as_bytes()]
+    [PROGRAM_AUTHORITY_SEED, name.as_bytes()]
 }
 
 /// Returns Realm PDA address
 pub fn get_realm_address(program_id: &Pubkey, name: &str) -> Pubkey {
-    Pubkey::find_program_address(&get_realm_address_seeds(&name), program_id).0
+    Pubkey::find_program_address(&get_realm_address_seeds(name), program_id).0
 }
 
 /// Returns Realm Token Holding PDA seeds

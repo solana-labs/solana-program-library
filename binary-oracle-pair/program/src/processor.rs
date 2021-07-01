@@ -421,7 +421,7 @@ impl Processor {
                     authority_account_info.clone(),
                     user_transfer_authority_info.clone(),
                     amount,
-                    &pool_account_info.key,
+                    pool_account_info.key,
                     pool.bump_seed,
                 )?;
 
@@ -446,7 +446,7 @@ impl Processor {
                     authority_account_info.clone(),
                     user_transfer_authority_info.clone(),
                     amount,
-                    &pool_account_info.key,
+                    pool_account_info.key,
                     pool.bump_seed,
                 )?;
 
@@ -477,7 +477,7 @@ impl Processor {
                         authority_account_info.clone(),
                         user_transfer_authority_info.clone(),
                         possible_withdraw_amount,
-                        &pool_account_info.key,
+                        pool_account_info.key,
                         pool.bump_seed,
                     )?;
 
@@ -489,7 +489,7 @@ impl Processor {
                         authority_account_info.clone(),
                         user_transfer_authority_info.clone(),
                         amount,
-                        &pool_account_info.key,
+                        pool_account_info.key,
                         pool.bump_seed,
                     )?;
 

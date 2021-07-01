@@ -56,14 +56,15 @@ async fn test_finalize_vote_to_succeeded() {
 
     assert_eq!(ProposalState::Voting, proposal_account.state);
 
-    // Advance slot past max_voting_time
-    let vote_expired_at_slot = account_governance_cookie.account.config.max_voting_time
-        + proposal_account.voting_at.unwrap()
-        + 1;
+    // Advance timestamp past max_voting_time
     governance_test
-        .context
-        .warp_to_slot(vote_expired_at_slot)
-        .unwrap();
+        .advance_clock_past_timestamp(
+            account_governance_cookie.account.config.max_voting_time as i64
+                + proposal_account.voting_at.unwrap(),
+        )
+        .await;
+
+    let clock = governance_test.get_clock().await;
 
     // Act
 
@@ -80,7 +81,7 @@ async fn test_finalize_vote_to_succeeded() {
 
     assert_eq!(proposal_account.state, ProposalState::Succeeded);
     assert_eq!(
-        Some(vote_expired_at_slot),
+        Some(clock.unix_timestamp),
         proposal_account.voting_completed_at
     );
 }
@@ -124,14 +125,13 @@ async fn test_finalize_vote_to_defeated() {
 
     assert_eq!(ProposalState::Voting, proposal_account.state);
 
-    // Advance slot past max_voting_time
-    let vote_expired_at_slot = account_governance_cookie.account.config.max_voting_time
-        + proposal_account.voting_at.unwrap()
-        + 1;
+    // Advance clock past max_voting_time
     governance_test
-        .context
-        .warp_to_slot(vote_expired_at_slot)
-        .unwrap();
+        .advance_clock_past_timestamp(
+            account_governance_cookie.account.config.max_voting_time as i64
+                + proposal_account.voting_at.unwrap(),
+        )
+        .await;
 
     // Act
 

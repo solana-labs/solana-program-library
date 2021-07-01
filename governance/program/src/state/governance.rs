@@ -31,11 +31,11 @@ pub struct GovernanceConfig {
     /// Minimum number of tokens a governance token owner must possess to be able to create a proposal
     pub min_tokens_to_create_proposal: u16,
 
-    /// Minimum waiting time in slots for an instruction to be executed after proposal is voted on
-    pub min_instruction_hold_up_time: u64,
+    /// Minimum waiting time in seconds for an instruction to be executed after proposal is voted on
+    pub min_instruction_hold_up_time: u32,
 
-    /// Time limit in slots for proposal to be open for voting
-    pub max_voting_time: u64,
+    /// Time limit in seconds for proposal to be open for voting
+    pub max_voting_time: u32,
 }
 
 /// Governance Account
@@ -58,6 +58,8 @@ impl IsInitialized for Governance {
     fn is_initialized(&self) -> bool {
         self.account_type == GovernanceAccountType::AccountGovernance
             || self.account_type == GovernanceAccountType::ProgramGovernance
+            || self.account_type == GovernanceAccountType::MintGovernance
+            || self.account_type == GovernanceAccountType::TokenGovernance
     }
 }
 
@@ -70,6 +72,13 @@ impl Governance {
                 &self.config.governed_account,
             ),
             GovernanceAccountType::ProgramGovernance => get_program_governance_address_seeds(
+                &self.config.realm,
+                &self.config.governed_account,
+            ),
+            GovernanceAccountType::MintGovernance => {
+                get_mint_governance_address_seeds(&self.config.realm, &self.config.governed_account)
+            }
+            GovernanceAccountType::TokenGovernance => get_token_governance_address_seeds(
                 &self.config.realm,
                 &self.config.governed_account,
             ),
@@ -97,8 +106,8 @@ pub fn get_program_governance_address_seeds<'a>(
     // Note: Only the current program upgrade authority can create an account with this PDA using CreateProgramGovernance instruction
     [
         b"program-governance",
-        &realm.as_ref(),
-        &governed_program.as_ref(),
+        realm.as_ref(),
+        governed_program.as_ref(),
     ]
 }
 
@@ -115,6 +124,52 @@ pub fn get_program_governance_address<'a>(
     .0
 }
 
+/// Returns MintGovernance PDA seeds
+pub fn get_mint_governance_address_seeds<'a>(
+    realm: &'a Pubkey,
+    governed_mint: &'a Pubkey,
+) -> [&'a [u8]; 3] {
+    // 'mint-governance' prefix ensures uniqueness of the PDA
+    // Note: Only the current mint authority can create an account with this PDA using CreateMintGovernance instruction
+    [b"mint-governance", realm.as_ref(), governed_mint.as_ref()]
+}
+
+/// Returns MintGovernance PDA address
+pub fn get_mint_governance_address<'a>(
+    program_id: &Pubkey,
+    realm: &'a Pubkey,
+    governed_mint: &'a Pubkey,
+) -> Pubkey {
+    Pubkey::find_program_address(
+        &get_mint_governance_address_seeds(realm, governed_mint),
+        program_id,
+    )
+    .0
+}
+
+/// Returns TokenGovernance PDA seeds
+pub fn get_token_governance_address_seeds<'a>(
+    realm: &'a Pubkey,
+    governed_token: &'a Pubkey,
+) -> [&'a [u8]; 3] {
+    // 'token-governance' prefix ensures uniqueness of the PDA
+    // Note: Only the current token account owner can create an account with this PDA using CreateTokenGovernance instruction
+    [b"token-governance", realm.as_ref(), governed_token.as_ref()]
+}
+
+/// Returns TokenGovernance PDA address
+pub fn get_token_governance_address<'a>(
+    program_id: &Pubkey,
+    realm: &'a Pubkey,
+    governed_token: &'a Pubkey,
+) -> Pubkey {
+    Pubkey::find_program_address(
+        &get_token_governance_address_seeds(realm, governed_token),
+        program_id,
+    )
+    .0
+}
+
 /// Returns AccountGovernance PDA seeds
 pub fn get_account_governance_address_seeds<'a>(
     realm: &'a Pubkey,
@@ -122,8 +177,8 @@ pub fn get_account_governance_address_seeds<'a>(
 ) -> [&'a [u8]; 3] {
     [
         b"account-governance",
-        &realm.as_ref(),
-        &governed_account.as_ref(),
+        realm.as_ref(),
+        governed_account.as_ref(),
     ]
 }
 

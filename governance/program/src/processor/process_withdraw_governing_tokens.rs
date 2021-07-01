@@ -56,9 +56,9 @@ pub fn process_withdraw_governing_tokens(
     }
 
     transfer_spl_tokens_signed(
-        &governing_token_holding_info,
-        &governing_token_destination_info,
-        &realm_info,
+        governing_token_holding_info,
+        governing_token_destination_info,
+        realm_info,
         &get_realm_address_seeds(&realm_data.name),
         program_id,
         token_owner_record_data.governing_token_deposit_amount,

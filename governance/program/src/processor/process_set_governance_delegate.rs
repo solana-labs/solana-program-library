@@ -23,7 +23,7 @@ pub fn process_set_governance_delegate(
     let mut token_owner_record_data =
         get_token_owner_record_data(program_id, token_owner_record_info)?;
 
-    token_owner_record_data.assert_token_owner_or_delegate_is_signer(&governance_authority_info)?;
+    token_owner_record_data.assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
     token_owner_record_data.governance_delegate = *new_governance_delegate;
     token_owner_record_data.serialize(&mut *token_owner_record_info.data.borrow_mut())?;

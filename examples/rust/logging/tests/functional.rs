@@ -11,7 +11,7 @@ use {
 
 #[tokio::test]
 async fn test_logging() {
-    let program_id = Pubkey::from_str(&"Logging111111111111111111111111111111111111").unwrap();
+    let program_id = Pubkey::from_str("Logging111111111111111111111111111111111111").unwrap();
     let (mut banks_client, payer, recent_blockhash) = ProgramTest::new(
         "spl_example_logging",
         program_id,

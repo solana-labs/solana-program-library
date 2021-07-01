@@ -4,9 +4,11 @@ mod process_add_signatory;
 mod process_cancel_proposal;
 mod process_cast_vote;
 mod process_create_account_governance;
+mod process_create_mint_governance;
 mod process_create_program_governance;
 mod process_create_proposal;
 mod process_create_realm;
+mod process_create_token_governance;
 mod process_deposit_governing_tokens;
 mod process_execute_instruction;
 mod process_finalize_vote;
@@ -25,9 +27,11 @@ use process_add_signatory::*;
 use process_cancel_proposal::*;
 use process_cast_vote::*;
 use process_create_account_governance::*;
+use process_create_mint_governance::*;
 use process_create_program_governance::*;
 use process_create_proposal::*;
 use process_create_realm::*;
+use process_create_token_governance::*;
 use process_deposit_governing_tokens::*;
 use process_execute_instruction::*;
 use process_finalize_vote::*;
@@ -95,6 +99,16 @@ pub fn process_instruction(
             config,
             transfer_upgrade_authority,
         ),
+
+        GovernanceInstruction::CreateMintGovernance {
+            config,
+            transfer_mint_authority,
+        } => process_create_mint_governance(program_id, accounts, config, transfer_mint_authority),
+
+        GovernanceInstruction::CreateTokenGovernance {
+            config,
+            transfer_token_owner,
+        } => process_create_token_governance(program_id, accounts, config, transfer_token_owner),
 
         GovernanceInstruction::CreateAccountGovernance { config } => {
             process_create_account_governance(program_id, accounts, config)

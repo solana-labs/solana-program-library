@@ -89,7 +89,7 @@ pub fn get_account_data<T: BorshDeserialize + IsInitialized>(
     owner_program_id: &Pubkey,
 ) -> Result<T, ProgramError> {
     if account_info.data_is_empty() {
-        return Err(ProgramError::UninitializedAccount);
+        return Err(GovernanceError::AccountDoesNotExist.into());
     }
     if account_info.owner != owner_program_id {
         return Err(GovernanceError::InvalidAccountOwner.into());
@@ -103,7 +103,8 @@ pub fn get_account_data<T: BorshDeserialize + IsInitialized>(
     }
 }
 
-/// Asserts the given account is not empty, owned given program and of the expected type
+/// Asserts the given account is not empty, owned by the given program and of the expected type
+/// Note: The function assumes the account type T is stored as the first element in the account data
 pub fn assert_is_valid_account<T: BorshDeserialize + PartialEq>(
     account_info: &AccountInfo,
     expected_account_type: T,
@@ -114,7 +115,7 @@ pub fn assert_is_valid_account<T: BorshDeserialize + PartialEq>(
     }
 
     if account_info.data_is_empty() {
-        return Err(ProgramError::UninitializedAccount);
+        return Err(GovernanceError::AccountDoesNotExist.into());
     }
 
     let account_type: T = try_from_slice_unchecked(&account_info.data.borrow())?;

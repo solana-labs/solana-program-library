@@ -31,7 +31,7 @@ pub fn get_validator_list(
     validator_list_address: &Pubkey,
 ) -> Result<ValidatorList, Error> {
     let account_data = rpc_client.get_account_data(validator_list_address)?;
-    let validator_list = try_from_slice_unchecked::<ValidatorList>(&account_data.as_slice())
+    let validator_list = try_from_slice_unchecked::<ValidatorList>(account_data.as_slice())
         .map_err(|err| format!("Invalid validator list {}: {}", validator_list_address, err))?;
     Ok(validator_list)
 }

@@ -82,7 +82,7 @@ pub enum NameRegistryInstruction {
     Delete,
 }
 
-#[allow(clippy::clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)]
 pub fn create(
     name_service_program_id: Pubkey,
     instruction_data: NameRegistryInstruction,

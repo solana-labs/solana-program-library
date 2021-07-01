@@ -17,6 +17,8 @@ pull_request_rules:
     conditions:
       - check-success=Travis CI - Pull Request
       - check-success=all_github_action_checks
+      - "#status-failure=0"
+      - "#status-neutral=0"
       - label=automerge
       - author≠@dont-squash-my-commits
     actions:
@@ -27,6 +29,8 @@ pull_request_rules:
     conditions:
       - check-success=Travis CI - Pull Request
       - check-success=all_github_action_checks
+      - "#status-failure=0"
+      - "#status-neutral=0"
       - label=automerge
       - author=@dont-squash-my-commits
     actions:

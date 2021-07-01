@@ -44,7 +44,6 @@ async fn test_community_proposal_created() {
         .await;
 
     assert_eq!(1, account_governance_account.proposals_count);
-    assert_eq!(proposal_account.draft_at, 1);
 }
 
 #[tokio::test]

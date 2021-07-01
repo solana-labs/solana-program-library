@@ -33,7 +33,7 @@ pub const MINIMUM_ACTIVE_STAKE: u64 = LAMPORTS_PER_SOL;
 
 /// Maximum amount of validator stake accounts to update per
 /// `UpdateValidatorListBalance` instruction, based on compute limits
-pub const MAX_VALIDATORS_TO_UPDATE: usize = 10;
+pub const MAX_VALIDATORS_TO_UPDATE: usize = 5;
 
 /// Get the stake amount under consideration when calculating pool token
 /// conversions
@@ -101,4 +101,4 @@ pub fn find_transient_stake_program_address(
     )
 }
 
-solana_program::declare_id!("poo1B9L9nR3CrcaziKVYVpRX6A9Y1LAXYasjjfCbApj");
+solana_program::declare_id!("SPoo1XJbrC5pXDfg5NQAXo2RKyfimXKm6KpqicGvpbo");
