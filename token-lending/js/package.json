@@ -22,7 +22,7 @@
     ],
     "scripts": {
         "build": "rm -rf lib/* && tsc",
-        "deploy": "gh-pages -d docs",
+        "deploy": "gh-pages -d docs -e token-lending",
         "docs": "rm -rf docs/* && typedoc",
         "lint": "eslint . --ext .ts && prettier --check '**/*.{ts,js,json}'",
         "lint:fix": "eslint . --ext .ts --fix && prettier --write '**/*.{ts,js,json}'"
