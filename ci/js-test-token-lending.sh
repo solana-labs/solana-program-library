@@ -9,4 +9,3 @@ cd token-lending/js
 npm install
 npm run lint
 npm run build
-npm run start-with-test-validator
