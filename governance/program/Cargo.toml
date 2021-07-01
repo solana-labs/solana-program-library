@@ -25,7 +25,7 @@ thiserror = "1.0"
 
 [dev-dependencies]
 assert_matches = "1.5.0"
-proptest = "0.10"
+proptest = "1.0"
 solana-program-test = "1.7.3"
 solana-sdk = "1.7.3"
 
