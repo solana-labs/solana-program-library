@@ -29,6 +29,8 @@ async fn test_cancel_proposal() {
         .await
         .unwrap();
 
+    let clock = governance_test.get_clock().await;
+
     // Act
     governance_test
         .cancel_proposal(&proposal_cookie, &token_owner_record_cookie)
@@ -41,7 +43,7 @@ async fn test_cancel_proposal() {
         .await;
 
     assert_eq!(ProposalState::Cancelled, proposal_account.state);
-    assert_eq!(Some(1), proposal_account.closed_at);
+    assert_eq!(Some(clock.unix_timestamp), proposal_account.closed_at);
 }
 
 #[tokio::test]

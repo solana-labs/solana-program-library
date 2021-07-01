@@ -108,7 +108,7 @@ async fn test_deposit_subsequent_community_tokens() {
         .governing_token_deposit_amount
         + deposit_amount;
 
-    governance_test.context.warp_to_slot(5).unwrap();
+    governance_test.advance_clock().await;
 
     // Act
     governance_test
@@ -154,7 +154,7 @@ async fn test_deposit_subsequent_council_tokens() {
         .governing_token_deposit_amount
         + deposit_amount;
 
-    governance_test.context.warp_to_slot(5).unwrap();
+    governance_test.advance_clock().await;
 
     // Act
     governance_test

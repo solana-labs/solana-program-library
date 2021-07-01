@@ -4,7 +4,7 @@ use crate::{
     state::{
         governance::{
             get_account_governance_address, get_mint_governance_address,
-            get_program_governance_address, GovernanceConfig,
+            get_program_governance_address, get_token_governance_address, GovernanceConfig,
         },
         proposal::get_proposal_address,
         proposal_instruction::{get_proposal_instruction_address, InstructionData},
@@ -133,7 +133,7 @@ pub enum GovernanceInstruction {
         transfer_upgrade_authority: bool,
     },
 
-    /// Creates Proposal account for Instructions that will be executed at various slots in the future
+    /// Creates Proposal account for Instructions that will be executed at some point in the future
     ///
     ///   0. `[writable]` Proposal account. PDA seeds ['governance',governance, governing_token_mint, proposal_index]
     ///   1. `[writable]` Governance account
@@ -202,8 +202,8 @@ pub enum GovernanceInstruction {
         /// Instruction index to be inserted at.
         index: u16,
         #[allow(dead_code)]
-        /// Slot waiting time between vote period ending and this being eligible for execution
-        hold_up_time: u64,
+        /// Waiting time (in seconds) between vote period ending and this being eligible for execution
+        hold_up_time: u32,
 
         #[allow(dead_code)]
         /// Instruction Data
@@ -312,6 +312,28 @@ pub enum GovernanceInstruction {
         /// If it's set to false then it can be done at a later time
         /// However the instruction would validate the current mint authority signed the transaction nonetheless
         transfer_mint_authority: bool,
+    },
+
+    /// Creates Token Governance account which governs a token account
+    ///
+    ///   0. `[]` Realm account the created Governance belongs to    
+    ///   1. `[writable]` Token Governance account. PDA seeds: ['token-governance', realm, governed_token]
+    ///   2. `[writable]` Token account governed by this Governance account
+    ///   3. `[signer]` Current Token account owner
+    ///   4. `[signer]` Payer
+    ///   5. `[]` SPL Token program
+    ///   6. `[]` System program
+    ///   7. `[]` Sysvar Rent
+    CreateTokenGovernance {
+        #[allow(dead_code)]
+        /// Governance config
+        config: GovernanceConfig,
+
+        #[allow(dead_code)]
+        /// Indicates whether token owner should be transferred to the Governance PDA
+        /// If it's set to false then it can be done at a later time
+        /// However the instruction would validate the current token owner signed the transaction nonetheless
+        transfer_token_owner: bool,
     },
 }
 
@@ -564,6 +586,42 @@ pub fn create_mint_governance(
     let instruction = GovernanceInstruction::CreateMintGovernance {
         config,
         transfer_mint_authority,
+    };
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates CreateTokenGovernance instruction
+pub fn create_token_governance(
+    program_id: &Pubkey,
+    // Accounts
+    governed_token_owner: &Pubkey,
+    payer: &Pubkey,
+    // Args
+    config: GovernanceConfig,
+    transfer_token_owner: bool,
+) -> Instruction {
+    let token_governance_address =
+        get_token_governance_address(program_id, &config.realm, &config.governed_account);
+
+    let accounts = vec![
+        AccountMeta::new_readonly(config.realm, false),
+        AccountMeta::new(token_governance_address, false),
+        AccountMeta::new(config.governed_account, false),
+        AccountMeta::new_readonly(*governed_token_owner, true),
+        AccountMeta::new_readonly(*payer, true),
+        AccountMeta::new_readonly(spl_token::id(), false),
+        AccountMeta::new_readonly(system_program::id(), false),
+        AccountMeta::new_readonly(sysvar::rent::id(), false),
+    ];
+
+    let instruction = GovernanceInstruction::CreateTokenGovernance {
+        config,
+        transfer_token_owner,
     };
 
     Instruction {
@@ -849,7 +907,7 @@ pub fn insert_instruction(
     payer: &Pubkey,
     // Args
     index: u16,
-    hold_up_time: u64,
+    hold_up_time: u32,
     instruction: InstructionData,
 ) -> Instruction {
     let proposal_instruction_address =

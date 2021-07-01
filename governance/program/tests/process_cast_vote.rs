@@ -29,6 +29,8 @@ async fn test_cast_vote() {
         .await
         .unwrap();
 
+    let clock = governance_test.get_clock().await;
+
     // Act
     let vote_record_cookie = governance_test
         .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::Yes)
@@ -54,7 +56,10 @@ async fn test_cast_vote() {
     );
 
     assert_eq!(proposal_account.state, ProposalState::Succeeded);
-    assert_eq!(proposal_account.voting_completed_at, Some(1));
+    assert_eq!(
+        proposal_account.voting_completed_at,
+        Some(clock.unix_timestamp)
+    );
 
     let token_owner_record = governance_test
         .get_token_owner_record_account(&token_owner_record_cookie.address)
@@ -501,13 +506,12 @@ async fn test_cast_vote_with_voting_time_expired_error() {
         .get_proposal_account(&proposal_cookie.address)
         .await;
 
-    let vote_expired_at_slot = account_governance_cookie.account.config.max_voting_time
-        + proposal_account.voting_at.unwrap()
-        + 1;
+    let vote_expired_at = proposal_account.voting_at.unwrap()
+        + account_governance_cookie.account.config.max_voting_time as i64;
+
     governance_test
-        .context
-        .warp_to_slot(vote_expired_at_slot)
-        .unwrap();
+        .advance_clock_past_timestamp(vote_expired_at)
+        .await;
 
     // Act
 
@@ -553,7 +557,7 @@ async fn test_cast_vote_with_cast_twice_error() {
         .await
         .unwrap();
 
-    governance_test.context.warp_to_slot(5).unwrap();
+    governance_test.advance_clock().await;
 
     // Act
     let err = governance_test

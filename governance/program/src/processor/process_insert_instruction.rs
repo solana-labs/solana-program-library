@@ -30,7 +30,7 @@ pub fn process_insert_instruction(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     index: u16,
-    hold_up_time: u64,
+    hold_up_time: u32,
     instruction: InstructionData,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
@@ -73,7 +73,7 @@ pub fn process_insert_instruction(
     match index.cmp(&proposal_data.instructions_next_index) {
         Ordering::Greater => return Err(GovernanceError::InvalidInstructionIndex.into()),
         // If the index is the same as instructions_next_index then we are adding a new instruction
-        // If the index is below instructions_next_index then we are inserting into an existing empty slot
+        // If the index is below instructions_next_index then we are inserting into an existing empty space
         Ordering::Equal => {
             proposal_data.instructions_next_index = proposal_data
                 .instructions_next_index
