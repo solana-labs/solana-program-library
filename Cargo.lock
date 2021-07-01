@@ -2264,26 +2264,6 @@ dependencies = [
 
 [[package]]
 name = "proptest"
-version = "0.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12e6c80c1139113c28ee4670dc50cc42915228b51f56a9e407f0ec60f966646f"
-dependencies = [
- "bit-set",
- "bitflags",
- "byteorder",
- "lazy_static",
- "num-traits",
- "quick-error 1.2.3",
- "rand 0.7.3",
- "rand_chacha 0.2.2",
- "rand_xorshift 0.2.0",
- "regex-syntax",
- "rusty-fork",
- "tempfile",
-]
-
-[[package]]
-name = "proptest"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e0d9cc07f18492d879586c92b485def06bc850da3118075cd45d50e9c95b0e5"
@@ -2296,7 +2276,7 @@ dependencies = [
  "quick-error 2.0.1",
  "rand 0.8.3",
  "rand_chacha 0.3.0",
- "rand_xorshift 0.3.0",
+ "rand_xorshift",
  "regex-syntax",
  "rusty-fork",
  "tempfile",
@@ -2472,15 +2452,6 @@ dependencies = [
 
 [[package]]
 name = "rand_xorshift"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77d416b86801d23dde1aa643023b775c3a462efc0ed96443add11546cdf1dca8"
-dependencies = [
- "rand_core 0.5.1",
-]
-
-[[package]]
-name = "rand_xorshift"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d25bf25ec5ae4a3f1b92f929810509a2f53d7dca2f50b794ff57e3face536c8f"
@@ -2642,12 +2613,6 @@ name = "rustc-hash"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
-
-[[package]]
-name = "rustc-hex"
-version = "2.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e75f6a532d0fd9f7f13144f392b6ad56a32696bfcd9c78f797f16bbb6f072d6"
 
 [[package]]
 name = "rustc_version"
@@ -3763,7 +3728,7 @@ dependencies = [
  "borsh",
  "num-derive",
  "num-traits",
- "proptest 0.10.1",
+ "proptest",
  "serde",
  "serde_derive",
  "solana-program",
@@ -3781,7 +3746,7 @@ dependencies = [
  "borsh-derive",
  "num-derive",
  "num-traits",
- "proptest 1.0.0",
+ "proptest",
  "solana-program",
  "solana-program-test",
  "solana-sdk",
@@ -3854,7 +3819,7 @@ dependencies = [
  "num-derive",
  "num-traits",
  "num_enum",
- "proptest 0.10.1",
+ "proptest",
  "serde",
  "serde_derive",
  "solana-program",
@@ -3945,7 +3910,7 @@ dependencies = [
  "log",
  "num-derive",
  "num-traits",
- "proptest 1.0.0",
+ "proptest",
  "serde",
  "serde_yaml",
  "solana-program",
@@ -3980,7 +3945,7 @@ dependencies = [
  "enum_dispatch",
  "num-derive",
  "num-traits",
- "proptest 1.0.0",
+ "proptest",
  "roots",
  "sim",
  "solana-program",
@@ -4580,13 +4545,13 @@ checksum = "56dee185309b50d1f11bfedef0fe6d036842e3fb77413abef29f8f8d1c5d4c1c"
 
 [[package]]
 name = "uint"
-version = "0.8.5"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9db035e67dfaf7edd9aebfe8676afcd63eed53c8a4044fed514c8cccf1835177"
+checksum = "6470ab50f482bde894a037a57064480a246dbfdd5960bd65a44824693f08da5f"
 dependencies = [
  "byteorder",
  "crunchy",
- "rustc-hex",
+ "hex",
  "static_assertions",
 ]
 
