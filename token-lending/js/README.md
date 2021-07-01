@@ -4,16 +4,16 @@ This is a JavaScript + TypeScript library for interacting with the [SPL Token Le
 
 ## Install
 
-Install the library and its dependencies in your project, including [@solana/web3.js](https://github.com/solana-labs/solana-web3.js), by running:
+Install the library and its peer dependencies in your app:
 
 ### Yarn
 ```shell
-yarn add @solana/spl-token-lending
+yarn add @solana/spl-token-lending @solana/spl-token @solana/web3.js
 ```
 
 ### NPM
 ```shell
-npm install @solana/spl-token-lending
+npm install @solana/spl-token-lending @solana/spl-token @solana/web3.js
 ```
 
 ## Documentation
