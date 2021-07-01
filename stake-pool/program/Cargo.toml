@@ -13,7 +13,7 @@ test-bpf = []
 
 [dependencies]
 arrayref = "0.3.6"
-borsh = "0.8"
+borsh = "0.9"
 num-derive = "0.3"
 num-traits = "0.2"
 num_enum = "0.5.1"
