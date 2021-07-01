@@ -19,7 +19,7 @@ num-traits = "0.2"
 solana-program = "1.7.3"
 spl-token = { path = "../../token/program", features = [ "no-entrypoint" ] }
 thiserror = "1.0"
-uint = "0.8"
+uint = "0.9"
 
 [dev-dependencies]
 assert_matches = "1.5.0"
