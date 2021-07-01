@@ -1,13 +1,17 @@
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { PublicKey, SYSVAR_CLOCK_PUBKEY, TransactionInstruction } from '@solana/web3.js';
-import BN from 'bn.js';
 import { struct, u8 } from 'buffer-layout';
 import { LENDING_PROGRAM_ID } from '../constants';
 import { u64 } from '../util';
 import { LendingInstruction } from './instruction';
 
+interface Data {
+    instruction: number;
+    liquidityAmount: bigint;
+}
+
 export const liquidateObligationInstruction = (
-    liquidityAmount: number | BN,
+    liquidityAmount: number | bigint,
     sourceLiquidity: PublicKey,
     destinationCollateral: PublicKey,
     repayReserve: PublicKey,
@@ -19,13 +23,13 @@ export const liquidateObligationInstruction = (
     lendingMarketAuthority: PublicKey,
     transferAuthority: PublicKey
 ): TransactionInstruction => {
-    const dataLayout = struct([u8('instruction'), u64('liquidityAmount')]);
+    const dataLayout = struct<Data>([u8('instruction'), u64('liquidityAmount')]);
 
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
         {
             instruction: LendingInstruction.LiquidateObligation,
-            liquidityAmount: new BN(liquidityAmount),
+            liquidityAmount: BigInt(liquidityAmount),
         },
         data
     );

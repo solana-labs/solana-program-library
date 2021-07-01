@@ -1,11 +1,10 @@
-import BN from 'bn.js';
-import { struct, u8 } from 'buffer-layout';
-import { u64 } from '../util';
+import { struct } from 'buffer-layout';
+import { bool, u64 } from '../util';
 
 export interface LastUpdate {
-    slot: BN;
+    slot: bigint;
     stale: boolean;
 }
 
 /** @internal */
-export const LastUpdateLayout = struct<LastUpdate>([u64('slot'), u8('stale')], 'lastUpdate');
+export const LastUpdateLayout = struct<LastUpdate>([u64('slot'), bool('stale')], 'lastUpdate');

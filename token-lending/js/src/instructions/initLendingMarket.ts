@@ -5,12 +5,18 @@ import { LENDING_PROGRAM_ID, ORACLE_PROGRAM_ID } from '../constants';
 import { publicKey } from '../util';
 import { LendingInstruction } from './instruction';
 
+interface Data {
+    instruction: number;
+    owner: PublicKey;
+    quoteCurrency: Buffer;
+}
+
 export const initLendingMarketInstruction = (
     owner: PublicKey,
     quoteCurrency: Buffer,
     lendingMarket: PublicKey
 ): TransactionInstruction => {
-    const dataLayout = struct([u8('instruction'), publicKey('owner'), blob(32, 'quoteCurrency')]);
+    const dataLayout = struct<Data>([u8('instruction'), publicKey('owner'), blob(32, 'quoteCurrency')]);
 
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(

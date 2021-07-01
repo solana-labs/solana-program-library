@@ -4,12 +4,16 @@ import { struct, u8 } from 'buffer-layout';
 import { LENDING_PROGRAM_ID } from '../constants';
 import { LendingInstruction } from './instruction';
 
+interface Data {
+    instruction: number;
+}
+
 export const initObligationInstruction = (
     obligation: PublicKey,
     lendingMarket: PublicKey,
     obligationOwner: PublicKey
 ): TransactionInstruction => {
-    const dataLayout = struct([u8('instruction')]);
+    const dataLayout = struct<Data>([u8('instruction')]);
 
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode({ instruction: LendingInstruction.InitObligation }, data);

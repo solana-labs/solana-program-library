@@ -12,15 +12,18 @@ export interface LendingMarket {
 }
 
 /** @internal */
-const LendingMarketLayout = struct<LendingMarket>([
-    u8('version'),
-    u8('bumpSeed'),
-    publicKey('owner'),
-    blob(32, 'quoteCurrency'),
-    publicKey('tokenProgramId'),
-    publicKey('oracleProgramId'),
-    blob(128, 'padding'),
-]);
+export const LendingMarketLayout = struct<LendingMarket>(
+    [
+        u8('version'),
+        u8('bumpSeed'),
+        publicKey('owner'),
+        blob(32, 'quoteCurrency'),
+        publicKey('tokenProgramId'),
+        publicKey('oracleProgramId'),
+        blob(128, 'padding'),
+    ],
+    'lendingMarket'
+);
 
 export const isLendingMarket = (info: AccountInfo<Buffer>): boolean => {
     return info.data.length === LendingMarketLayout.span;
@@ -36,7 +39,7 @@ export const parseLendingMarket: Parser<LendingMarket> = (pubkey: PublicKey, inf
 
     return {
         pubkey,
-        account: info,
-        info: lendingMarket,
+        info,
+        data: lendingMarket,
     };
 };

@@ -4,12 +4,17 @@ import { LENDING_PROGRAM_ID } from '../constants';
 import { publicKey } from '../util';
 import { LendingInstruction } from './instruction';
 
+interface Data {
+    instruction: number;
+    newOwner: PublicKey;
+}
+
 export const setLendingMarketOwnerInstruction = (
     newOwner: PublicKey,
     lendingMarket: PublicKey,
     currentOwner: PublicKey
 ): TransactionInstruction => {
-    const dataLayout = struct([u8('instruction'), publicKey('newOwner')]);
+    const dataLayout = struct<Data>([u8('instruction'), publicKey('newOwner')]);
 
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(

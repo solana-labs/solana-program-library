@@ -1,7 +1,7 @@
 import { AccountInfo, PublicKey } from '@solana/web3.js';
-import BN from 'bn.js';
+import BigNumber from 'bignumber.js';
 import { blob, seq, struct, u8 } from 'buffer-layout';
-import { Parser, publicKey, u128, u64 } from '../util';
+import { decimal, Parser, publicKey, u64 } from '../util';
 import { LastUpdate, LastUpdateLayout } from './lastUpdate';
 
 export interface Obligation {
@@ -11,23 +11,23 @@ export interface Obligation {
     owner: PublicKey;
     deposits: ObligationCollateral[];
     borrows: ObligationLiquidity[];
-    depositedValue: BN; // decimals
-    borrowedValue: BN; // decimals
-    allowedBorrowValue: BN; // decimals
-    unhealthyBorrowValue: BN; // decimals
+    depositedValue: BigNumber;
+    borrowedValue: BigNumber;
+    allowedBorrowValue: BigNumber;
+    unhealthyBorrowValue: BigNumber;
 }
 
 export interface ObligationCollateral {
     depositReserve: PublicKey;
-    depositedAmount: BN;
-    marketValue: BN; // decimals
+    depositedAmount: bigint;
+    marketValue: BigNumber;
 }
 
 export interface ObligationLiquidity {
     borrowReserve: PublicKey;
-    cumulativeBorrowRateWads: BN; // decimals
-    borrowedAmountWads: BN; // decimals
-    marketValue: BN; // decimals
+    cumulativeBorrowRateWads: BigNumber;
+    borrowedAmountWads: BigNumber;
+    marketValue: BigNumber;
 }
 
 /** @internal */
@@ -36,47 +36,49 @@ export interface ObligationDataFlat {
     lastUpdate: LastUpdate;
     lendingMarket: PublicKey;
     owner: PublicKey;
-    depositedValue: BN; // decimals
-    borrowedValue: BN; // decimals
-    allowedBorrowValue: BN; // decimals
-    unhealthyBorrowValue: BN; // decimals
+    depositedValue: BigNumber;
+    borrowedValue: BigNumber;
+    allowedBorrowValue: BigNumber;
+    unhealthyBorrowValue: BigNumber;
     depositsLen: number;
     borrowsLen: number;
     dataFlat: Buffer;
 }
 
 /** @internal */
-export const ObligationCollateralLayout = struct<ObligationCollateral>([
-    publicKey('depositReserve'),
-    u64('depositedAmount'),
-    u128('marketValue'),
-]);
+export const ObligationCollateralLayout = struct<ObligationCollateral>(
+    [publicKey('depositReserve'), u64('depositedAmount'), decimal('marketValue')],
+    'collateral'
+);
 
 /** @internal */
-export const ObligationLiquidityLayout = struct<ObligationLiquidity>([
-    publicKey('borrowReserve'),
-    u128('cumulativeBorrowRateWads'),
-    u128('borrowedAmountWads'),
-    u128('marketValue'),
-]);
+export const ObligationLiquidityLayout = struct<ObligationLiquidity>(
+    [
+        publicKey('borrowReserve'),
+        decimal('cumulativeBorrowRateWads'),
+        decimal('borrowedAmountWads'),
+        decimal('marketValue'),
+    ],
+    'liquidity'
+);
 
 /** @internal */
-export const ObligationLayout = struct<ObligationDataFlat>([
-    u8('version'),
-
-    LastUpdateLayout,
-
-    publicKey('lendingMarket'),
-    publicKey('owner'),
-    u128('depositedValue'),
-    u128('borrowedValue'),
-    u128('allowedBorrowValue'),
-    u128('unhealthyBorrowValue'),
-
-    u8('depositsLen'),
-    u8('borrowsLen'),
-    blob(ObligationCollateralLayout.span + 9 * ObligationLiquidityLayout.span, 'dataFlat'),
-]);
+export const ObligationLayout = struct<ObligationDataFlat>(
+    [
+        u8('version'),
+        LastUpdateLayout,
+        publicKey('lendingMarket'),
+        publicKey('owner'),
+        decimal('depositedValue'),
+        decimal('borrowedValue'),
+        decimal('allowedBorrowValue'),
+        decimal('unhealthyBorrowValue'),
+        u8('depositsLen'),
+        u8('borrowsLen'),
+        blob(ObligationCollateralLayout.span + 9 * ObligationLiquidityLayout.span, 'dataFlat'),
+    ],
+    'obligation'
+);
 
 export const isObligation = (info: AccountInfo<Buffer>): boolean => {
     return info.data.length === ObligationLayout.span;
@@ -111,7 +113,7 @@ export const parseObligation: Parser<Obligation> = (pubkey: PublicKey, info: Acc
     const borrowsBuffer = dataFlat.slice(depositsSpan, depositsSpan + borrowsSpan);
     const borrows = seq(ObligationLiquidityLayout, borrowsLen).decode(borrowsBuffer);
 
-    const obligation = {
+    const obligation: Obligation = {
         version,
         lastUpdate,
         lendingMarket,
@@ -122,11 +124,11 @@ export const parseObligation: Parser<Obligation> = (pubkey: PublicKey, info: Acc
         unhealthyBorrowValue,
         deposits,
         borrows,
-    } as Obligation;
+    };
 
     return {
         pubkey,
-        account: info,
-        info: obligation,
+        info,
+        data: obligation,
     };
 };

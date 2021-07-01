@@ -1,14 +1,19 @@
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { PublicKey, SYSVAR_CLOCK_PUBKEY, SYSVAR_RENT_PUBKEY, TransactionInstruction } from '@solana/web3.js';
-import BN from 'bn.js';
 import { struct, u8 } from 'buffer-layout';
 import { LENDING_PROGRAM_ID } from '../constants';
-import { ReserveConfig } from '../state';
+import { ReserveConfig, ReserveConfigLayout } from '../state';
 import { u64 } from '../util';
 import { LendingInstruction } from './instruction';
 
+interface Data {
+    instruction: number;
+    liquidityAmount: bigint;
+    config: ReserveConfig;
+}
+
 export const initReserveInstruction = (
-    liquidityAmount: number | BN,
+    liquidityAmount: number | bigint,
     config: ReserveConfig,
     sourceLiquidity: PublicKey,
     destinationCollateral: PublicKey,
@@ -25,34 +30,14 @@ export const initReserveInstruction = (
     lendingMarketOwner: PublicKey,
     transferAuthority: PublicKey
 ): TransactionInstruction => {
-    const dataLayout = struct([
-        u8('instruction'),
-        u64('liquidityAmount'),
-        u8('optimalUtilizationRate'),
-        u8('loanToValueRatio'),
-        u8('liquidationBonus'),
-        u8('liquidationThreshold'),
-        u8('minBorrowRate'),
-        u8('optimalBorrowRate'),
-        u8('maxBorrowRate'),
-        u64('borrowFeeWad'),
-        u8('hostFeePercentage'),
-    ]);
+    const dataLayout = struct<Data>([u8('instruction'), u64('liquidityAmount'), ReserveConfigLayout]);
 
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
         {
             instruction: LendingInstruction.InitReserve,
-            liquidityAmount: new BN(liquidityAmount),
-            optimalUtilizationRate: config.optimalUtilizationRate,
-            loanToValueRatio: config.loanToValueRatio,
-            liquidationBonus: config.liquidationBonus,
-            liquidationThreshold: config.liquidationThreshold,
-            minBorrowRate: config.minBorrowRate,
-            optimalBorrowRate: config.optimalBorrowRate,
-            maxBorrowRate: config.maxBorrowRate,
-            borrowFeeWad: config.fees.borrowFeeWad,
-            hostFeePercentage: config.fees.hostFeePercentage,
+            liquidityAmount: BigInt(liquidityAmount),
+            config,
         },
         data
     );
