@@ -38,7 +38,7 @@ convention around wallet address to token account mapping and funding.
 
 The `spl-token` command-line utility can be used to experiment with SPL
 tokens.  Once you have [Rust installed](https://rustup.rs/), run:
-```sh
+```console
 $ cargo install spl-token-cli
 ```
 
@@ -50,11 +50,8 @@ The `spl-token` configuration is shared with the `solana` command-line tool.
 
 #### Current Configuration
 
-```
-solana config get
-```
-
-```
+```console
+$ solana config get
 Config File: ${HOME}/.config/solana/cli/config.yml
 RPC URL: https://api.mainnet-beta.solana.com
 WebSocket URL: wss://api.mainnet-beta.solana.com/ (computed)
@@ -64,8 +61,8 @@ Keypair Path: ${HOME}/.config/solana/id.json
 #### Cluster RPC URL
 
 See [Solana clusters](https://docs.solana.com/clusters) for cluster-specific RPC URLs
-```
-solana config set --url https://api.devnet.solana.com
+```console
+$ solana config set --url https://api.devnet.solana.com
 ```
 
 #### Default Keypair
@@ -74,13 +71,13 @@ See [Keypair conventions](https://docs.solana.com/cli/conventions#keypair-conven
 for information on how to setup a keypair if you don't already have one.
 
 Keypair File
-```
-solana config set --keypair ${HOME}/new-keypair.json
+```console
+$ solana config set --keypair ${HOME}/new-keypair.json
 ```
 
 Hardware Wallet URL (See [URL spec](https://docs.solana.com/wallet-guide/hardware-wallets#specify-a-keypair-url))
-```
-solana config set --keypair usb://ledger/
+```console
+$ solana config set --keypair usb://ledger/
 ```
 
 #### Airdrop SOL
@@ -88,13 +85,13 @@ solana config set --keypair usb://ledger/
 Creating tokens and accounts requires SOL for account rent deposits and
 transaction fees. If the cluster you are targeting offers a faucet, you can get
 a little SOL for testing:
-```
-solana airdrop 1
+```console
+$ solana airdrop 1
 ```
 
 ### Example: Creating your own fungible token
 
-```sh
+```console
 $ spl-token create-token
 Creating token AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM
 Signature: 47hsLFxWRCg8azaZZPSnQR8DNTRsGyPNfUK7jqyzgt7wf9eag3nSnewqoZrVZHKm8zt3B6gzxhr91gdQ5qYrsRG4
@@ -103,27 +100,27 @@ Signature: 47hsLFxWRCg8azaZZPSnQR8DNTRsGyPNfUK7jqyzgt7wf9eag3nSnewqoZrVZHKm8zt3B
 The unique identifier of the token is `AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM`.
 
 Tokens when initially created by `spl-token` have no supply:
-```sh
-spl-token supply AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM
+```console
+$ spl-token supply AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM
 0
 ```
 
 Let's mint some.  First create an account to hold a balance of the new
 `AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM` token:
-```sh
+```console
 $ spl-token create-account AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM
 Creating account 7UX2i7SucgLMQcfZ75s3VXmZZY4YRUyJN9X1RgfMoDUi
 Signature: 42Sa5eK9dMEQyvD9GMHuKxXf55WLZ7tfjabUKDhNoZRAxj9MsnN7omriWMEHXLea3aYpjZ862qocRLVikvkHkyfy
 ```
 
 `7UX2i7SucgLMQcfZ75s3VXmZZY4YRUyJN9X1RgfMoDUi` is now an empty account:
-```sh
+```console
 $ spl-token balance AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM
 0
 ```
 
 Mint 100 tokens into the account:
-```sh
+```console
 $ spl-token mint AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM 100
 Minting 100 tokens
   Token: AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM
@@ -132,16 +129,19 @@ Signature: 41mARH42fPkbYn1mvQ6hYLjmJtjW98NXwd6pHqEYg9p8RnuoUsMxVd16RkStDHEzcS2sf
 ```
 
 The token `supply` and account `balance` now reflect the result of minting:
-```sh
+```console
 $ spl-token supply AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM
 100
+```
+
+```console
 $ spl-token balance AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM
 100
 ```
 
 ### Example: View all Tokens that you own
 
-```sh
+```console
 $ spl-token accounts
 Token                                         Balance
 ------------------------------------------------------------
@@ -153,14 +153,14 @@ AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM  1    (Aux-2*)
 
 ### Example: Wrapping SOL in a Token
 
-```sh
+```console
 $ spl-token wrap 1
 Wrapping 1 SOL into GJTxcnA5Sydy8YRhqvHxbQ5QNsPyRKvzguodQEaShJje
 Signature: 4f4s5QVMKisLS6ihZcXXPbiBAzjnvkBcp2A7KKER7k9DwJ4qjbVsQBKv2rAyBumXC1gLn8EJQhwWkybE4yJGnw2Y
 ```
 
 To unwrap the Token back to SOL:
-```
+```console
 $ spl-token unwrap GJTxcnA5Sydy8YRhqvHxbQ5QNsPyRKvzguodQEaShJje
 Unwrapping GJTxcnA5Sydy8YRhqvHxbQ5QNsPyRKvzguodQEaShJje
   Amount: 1 SOL
@@ -174,7 +174,7 @@ token account for the Token type.  Then the receiver obtains their wallet
 address by running `solana address` and provides it to the sender.
 
 The sender then runs:
-```
+```console
 $ spl-token transfer AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM 50 vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg
 Transfer 50 tokens
   Sender: 7UX2i7SucgLMQcfZ75s3VXmZZY4YRUyJN9X1RgfMoDUi
@@ -192,7 +192,7 @@ The receiver obtains their wallet address by running `solana address` and provid
 
 The sender then runs to fund the receiver's associated token account, at the
 sender's expense, and then transfers 50 tokens into it:
-```
+```console
 $ spl-token transfer --fund-recipient AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM 50 vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg
 Transfer 50 tokens
   Sender: 7UX2i7SucgLMQcfZ75s3VXmZZY4YRUyJN9X1RgfMoDUi
@@ -207,19 +207,21 @@ Signature: 5a3qbvoJQnTAxGPHCugibZTbSu7xuTgkxvF4EJupRjRXGgZZrnWFmKzfEzcqKF2ogCaF4
 Tokens may be transferred to a specific recipient token account.  The recipient
 token account must already exist and be of the same Token type.
 
-```
+```console
 $ spl-token create-account AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM /path/to/auxiliary_keypair.json
 Creating account CqAxDdBRnawzx9q4PYM3wrybLHBhDZ4P6BTV13WsRJYJ
 Signature: 4yPWj22mbyLu5mhfZ5WATNfYzTt5EQ7LGzryxM7Ufu7QCVjTE7czZdEBqdKR7vjKsfAqsBdjU58NJvXrTqCXvfWW
 ```
-```
+
+```console
 $ spl-token accounts AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM -v
 Account                                       Token                                         Balance
 --------------------------------------------------------------------------------------------------------
 7UX2i7SucgLMQcfZ75s3VXmZZY4YRUyJN9X1RgfMoDUi  AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM  100
 CqAxDdBRnawzx9q4PYM3wrybLHBhDZ4P6BTV13WsRJYJ  AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM  0    (Aux-1*)
 ```
-```
+
+```console
 $ spl-token transfer 7UX2i7SucgLMQcfZ75s3VXmZZY4YRUyJN9X1RgfMoDUi 50 CqAxDdBRnawzx9q4PYM3wrybLHBhDZ4P6BTV13WsRJYJ
 Transfer 50 tokens
   Sender: 7UX2i7SucgLMQcfZ75s3VXmZZY4YRUyJN9X1RgfMoDUi
@@ -227,7 +229,8 @@ Transfer 50 tokens
 
 Signature: 5a3qbvoJQnTAxGPHCugibZTbSu7xuTgkxvF4EJupRjRXGgZZrnWFmKzfEzcqKF2ogCaF4QKVbAtuFx7xGwrDUcGd
 ```
-```
+
+```console
 $ spl-token accounts AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM -v
 Account                                       Token                                         Balance
 --------------------------------------------------------------------------------------------------------
@@ -238,21 +241,21 @@ CqAxDdBRnawzx9q4PYM3wrybLHBhDZ4P6BTV13WsRJYJ  AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe
 ### Example: Create a non-fungible token
 
 Create the token type with nine decimal places,
-```
+```console
 $ spl-token create-token --decimals 9
 Creating token 559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z
 Signature: 4kz82JUey1B9ki1McPW7NYv1NqPKCod6WNptSkYqtuiEsQb9exHaktSAHJJsm4YxuGNW4NugPJMFX9ee6WA2dXts
 ```
 
 then create an account to hold tokens of this new type:
-```
+```console
 $ spl-token create-account 559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z
 Creating account 7KqpRwzkkeweW5jQoETyLzhvs9rcCj9dVQ1MnzudirsM
 Signature: sjChze6ecaRtvuQVZuwURyg6teYeiH8ZwT6UTuFNKjrdayQQ3KNdPB7d2DtUZ6McafBfEefejHkJ6MWQEfVHLtC
 ```
 
 Now mint only one token into the account,
-```
+```console
 $ spl-token mint 559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z 1 7KqpRwzkkeweW5jQoETyLzhvs9rcCj9dVQ1MnzudirsM
 Minting 1 tokens
   Token: 559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z
@@ -261,7 +264,7 @@ Signature: 2Kzg6ZArQRCRvcoKSiievYy3sfPqGV91Whnz6SeimhJQXKBTYQf3E54tWg3zPpYLbcDex
 ```
 
 and disable future minting:
-```
+```console
 $ spl-token authorize 559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z mint --disable
 Updating 559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z
   Current mint authority: vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg
@@ -272,7 +275,7 @@ Signature: 5QpykLzZsceoKcVRRFow9QCdae4Dp2zQAcjebyEWoezPFg2Np73gHKWQicHG1mqRdXu3y
 Now the `7KqpRwzkkeweW5jQoETyLzhvs9rcCj9dVQ1MnzudirsM` account holds the
 one and only `559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z` token:
 
-```
+```console
 $ spl-token account-info 559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z
 
 Address: 7KqpRwzkkeweW5jQoETyLzhvs9rcCj9dVQ1MnzudirsM
@@ -284,7 +287,7 @@ Delegation: (not set)
 Close authority: (not set)
 ```
 
-```
+```console
 $ spl-token supply 559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z
 1
 ```
@@ -313,7 +316,7 @@ account.
 First create keypairs to act as the multisig signer-set. In reality, these can
 be any supported signer, like: a Ledger hardware wallet, a keypair file, or
 a paper wallet. For convenience, keypair files will be used in this example.
-```
+```console
 $ for i in $(seq 3); do solana-keygen new --no-passphrase -so "signer-${i}.json"; done
 Wrote new keypair to signer-1.json
 Wrote new keypair to signer-2.json
@@ -322,7 +325,7 @@ Wrote new keypair to signer-3.json
 
 In order to create the multisig account, the public keys of the signer-set must
 be collected.
-```
+```console
 $ for i in $(seq 3); do SIGNER="signer-${i}.json"; echo "$SIGNER: $(solana-keygen pubkey "$SIGNER")"; done
 signer-1.json: BzWpkuRrwXHq4SSSFHa8FJf6DRQy4TaeoXnkA89vTgHZ
 signer-2.json: DhkUfKgfZ8CF6PAGKwdABRL1VqkeNrTSRx8LZfpPFVNY
@@ -342,13 +345,15 @@ NOTE: SPL Token Multisig accounts are limited to a signer-set of eleven signers
 ```
 $ spl-token create-multisig 2 BzWpkuRrwXHq4SSSFHa8FJf6DRQy4TaeoXnkA89vTgHZ \
 DhkUfKgfZ8CF6PAGKwdABRL1VqkeNrTSRx8LZfpPFVNY D7ssXHrZJjfpZXsmDf8RwfPxe1BMMMmP1CtmX3WojPmG
+```
+```console
 Creating 2/3 multisig 46ed77fd4WTN144q62BwjU2B3ogX3Xmmc8PT5Z3Xc2re
 Signature: 2FN4KXnczAz33SAxwsuevqrD1BvikP6LUhLie5Lz4ETt594X8R7yvMZzZW2zjmFLPsLQNHsRuhQeumExHbnUGC9A
 ```
 
 Next create the token mint and receiving accounts
 [as previously described](#example-creating-your-own-fungible-token)
-```
+```console
 $ spl-token create-token
 Creating token 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o
 Signature: 3n6zmw3hS5Hyo5duuhnNvwjAbjzC42uzCA3TTsrgr9htUonzDUXdK1d8b8J77XoeSherqWQM8mD8E1TMYCpksS2r
@@ -359,7 +364,7 @@ Signature: 5mVes7wjE7avuFqzrmSCWneKBQyPAjasCLYZPNSkmqmk2YFosYWAP9hYSiZ7b7NKpV866
 ```
 
 Then set the mint account's minting authority to the multisig account
-```
+```console
 $ spl-token authorize 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o mint 46ed77fd4WTN144q62BwjU2B3ogX3Xmmc8PT5Z3Xc2re
 Updating 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o
   Current mint authority: 5hbZyJ3KRuFvdy5QBxvE9KwK17hzkAUkQHZTxPbiWffE
@@ -373,6 +378,8 @@ account, attempting to mint with one multisig signer fails
 $ spl-token mint 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o 1 EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC \
 --owner 46ed77fd4WTN144q62BwjU2B3ogX3Xmmc8PT5Z3Xc2re \
 --multisig-signer signer-1.json
+```
+```console
 Minting 1 tokens
   Token: 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o
   Recipient: EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC
@@ -381,28 +388,43 @@ RPC response error -32002: Transaction simulation failed: Error processing Instr
 
 But repeating with a second multisig signer, succeeds
 ```
-spl-token mint 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o 1 EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC \
+$ spl-token mint 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o 1 EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC \
 --owner 46ed77fd4WTN144q62BwjU2B3ogX3Xmmc8PT5Z3Xc2re \
 --multisig-signer signer-1.json \
 --multisig-signer signer-2.json
+```
+```console
 Minting 1 tokens
   Token: 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o
   Recipient: EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC
 Signature: 2ubqWqZb3ooDuc8FLaBkqZwzguhtMgQpgMAHhKsWcUzjy61qtJ7cZ1bfmYktKUfnbMYWTC1S8zdKgU6m4THsgspT
 ```
 
-### Example: Mint with multisig authority and offline signers
+### Example: Offline signing with multisig 
 
-This example builds off of the [online mint with multisig](#example-mint-with-multisig-authority)
-example. Be sure to familiarize yourself with that process, [offline signing](https://docs.solana.com/offline-signing),
-and the [durable nonce](https://docs.solana.com/offline-signing/durable-nonce)
-feature before continuing.
+Sometimes online signing is not possible or desireable. Such is the case for example when signers are not in the same geographic location  
+or when they use air-gapped devices not connected to the network.  In this case, we use offline signing which combines the   
+previous examples of [multisig](#example-mint-with-multisig-authority) with [offline signing](https://docs.solana.com/offline-signing)
+and a [nonce account](https://docs.solana.com/offline-signing/durable-nonce).
 
 This example will use the same mint account, token account, multisig account,
-and multisig signer-set keypair filenames as the online example.
+and multisig signer-set keypair filenames as the online example, as well as a nonce
+account that we create here:
 
-A nonce account at `Fjyud2VXixk2vCs4DkBpfpsq48d81rbEzh6deKt7WvPj` will be used
+```console
+$ solana-keygen new -o nonce-keypair.json
+...
+======================================================================
+pubkey: Fjyud2VXixk2vCs4DkBpfpsq48d81rbEzh6deKt7WvPj
+======================================================================
 ```
+
+```console
+$ solana create-nonce-account nonce-keypair.json 1
+Signature: 3DALwrAAmCDxqeb4qXZ44WjpFcwVtgmJKhV4MW5qLJVtWeZ288j6Pzz1F4BmyPpnGLfx2P8MEJXmqPchX5y2Lf3r
+```
+
+```console
 $ solana nonce-account Fjyud2VXixk2vCs4DkBpfpsq48d81rbEzh6deKt7WvPj
 Balance: 0.01 SOL
 Minimum Balance Required: 0.00144768 SOL
@@ -433,6 +455,9 @@ $ spl-token mint 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o 1 EX8zyi2ZQUuoYtXd
 --nonce-authority 5hbZyJ3KRuFvdy5QBxvE9KwK17hzkAUkQHZTxPbiWffE \
 --sign-only \
 --mint-decimals 9
+```
+
+```console
 Minting 1 tokens
   Token: 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o
   Recipient: EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC
@@ -447,7 +472,7 @@ Absent Signers (Pubkey):
 Next each offline signer executes the template command, replacing each instance
 of their public key with the corresponding keypair.
 ```
-spl-token mint 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o 1 EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC \
+$ spl-token mint 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o 1 EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC \
 --owner 46ed77fd4WTN144q62BwjU2B3ogX3Xmmc8PT5Z3Xc2re \
 --multisig-signer signer-1.json \
 --multisig-signer DhkUfKgfZ8CF6PAGKwdABRL1VqkeNrTSRx8LZfpPFVNY \
@@ -457,6 +482,8 @@ spl-token mint 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o 1 EX8zyi2ZQUuoYtXd4M
 --nonce-authority 5hbZyJ3KRuFvdy5QBxvE9KwK17hzkAUkQHZTxPbiWffE \
 --sign-only \
 --mint-decimals 9
+```
+```console
 Minting 1 tokens
   Token: 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o
   Recipient: EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC
@@ -480,6 +507,8 @@ $ spl-token mint 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o 1 EX8zyi2ZQUuoYtXd
 --nonce-authority 5hbZyJ3KRuFvdy5QBxvE9KwK17hzkAUkQHZTxPbiWffE \
 --sign-only \
 --mint-decimals 9
+```
+```console
 Minting 1 tokens
   Token: 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o
   Recipient: EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC
@@ -512,6 +541,8 @@ $ spl-token mint 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o 1 EX8zyi2ZQUuoYtXd
 --nonce-authority hot-wallet.json \
 --signer BzWpkuRrwXHq4SSSFHa8FJf6DRQy4TaeoXnkA89vTgHZ=2QVah9XtvPAuhDB2QwE7gNaY962DhrGP6uy9zeN4sTWvY2xDUUzce6zkQeuT3xg44wsgtUw2H5Rf8pEArPSzJvHX \
 --signer DhkUfKgfZ8CF6PAGKwdABRL1VqkeNrTSRx8LZfpPFVNY=2brZbTiCfyVYSCp6vZE3p7qCDeFf3z1JFmJHPBrz8SnWSDZPjbpjsW2kxFHkktTNkhES3y6UULqS4eaWztLW7FrU
+```
+```console
 Minting 1 tokens
   Token: 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o
   Recipient: EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC
