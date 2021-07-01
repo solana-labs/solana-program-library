@@ -1,4 +1,6 @@
-# SPL Token Lending JavaScript client library
+# SPL Token Lending client library
+
+This is a JavaScript + TypeScript library for interacting with the [SPL Token Lending](https://github.com/solana-labs/solana-program-library/tree/master/token-lending) program.
 
 ## Install
 
@@ -16,4 +18,6 @@ npm install @solana/spl-token-lending
 
 ## Documentation
 
-Generated TypeScript docs can be found at https://solana-labs.github.io/solana-program-library/token-lending/
+- [Client library docs](https://solana-labs.github.io/solana-program-library/token-lending/)
+- [Program docs](https://github.com/solana-labs/solana-program-library/tree/master/token-lending)
+- [CLI docs](https://github.com/solana-labs/solana-program-library/tree/master/token-lending/cli)
