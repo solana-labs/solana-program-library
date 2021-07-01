@@ -62,7 +62,7 @@ pub enum LendingInstruction {
     ///             This will be used as the reserve liquidity oracle account.
     ///   8. `[]` Switchboard price feed account. used as a backup oracle
     ///   9. `[writable]` Reserve collateral SPL Token mint - uninitialized.
-    ///   10`[writable]` Reserve collateral token supply - uninitialized.
+    ///   10 `[writable]` Reserve collateral token supply - uninitialized.
     ///   11 `[]` Lending market account.
     ///   12 `[]` Derived lending market authority.
     ///   13 `[signer]` Lending market owner.
@@ -85,9 +85,9 @@ pub enum LendingInstruction {
     ///   0. `[writable]` Reserve account.
     ///   1. `[]` Pyth Reserve liquidity oracle account.
     ///             Must be the Pyth price account specified at InitReserve.
-    ///   1. `[]` Switchboard Reserve liquidity oracle account.
+    ///   2. `[]` Switchboard Reserve liquidity oracle account.
     ///             Must be the Switchboard price feed account specified at InitReserve.
-    ///   2. `[]` Clock sysvar.
+    ///   3. `[]` Clock sysvar.
     RefreshReserve,
 
     // 4
@@ -105,8 +105,8 @@ pub enum LendingInstruction {
     ///   5. `[]` Lending market account.
     ///   6. `[]` Derived lending market authority.
     ///   7. `[signer]` User transfer authority ($authority).
-    ///   8 `[]` Clock sysvar.
-    ///   9 `[]` Token program id.
+    ///   8. `[]` Clock sysvar.
+    ///   9. `[]` Token program id.
     DepositReserveLiquidity {
         /// Amount of liquidity to deposit in exchange for collateral tokens
         liquidity_amount: u64,
@@ -329,11 +329,11 @@ pub enum LendingInstruction {
     ///   7. `[writable]` Destination deposit reserve collateral supply SPL Token account.
     ///   8. `[writable]` Obligation account.
     ///   9. `[signer]` Obligation owner.
-    ///   10. `[]` Pyth price oracle account.
-    ///   11. `[]` Switchboard price feed oracle account.
-    ///   12. `[signer]` User transfer authority ($authority).
-    ///   13. `[]` Clock sysvar.
-    ///   14. `[]` Token program id.
+    ///   10 `[]` Pyth price oracle account.
+    ///   11 `[]` Switchboard price feed oracle account.
+    ///   12 `[signer]` User transfer authority ($authority).
+    ///   13 `[]` Clock sysvar.
+    ///   14 `[]` Token program id.
     DepositReserveLiquidityAndObligationCollateral {
         /// Amount of liquidity to deposit in exchange
         liquidity_amount: u64,
