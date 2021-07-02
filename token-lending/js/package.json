@@ -22,7 +22,6 @@
         "lib"
     ],
     "scripts": {
-        "publish": "yarn build && npm publish",
         "build": "rm -rf lib/* && tsc && rollup -c && rm lib/rollup.config.d.ts",
         "deploy": "yarn docs && gh-pages -d docs -e token-lending",
         "docs": "rm -rf docs/* && typedoc",
