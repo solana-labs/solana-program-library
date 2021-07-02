@@ -1,8 +1,7 @@
 {
     "compilerOptions": {
         "target": "esnext",
-        "noEmit": true,
-        "noEmitOnError": true,
+        "emitDeclarationOnly": true,
         "outDir": "lib",
         "typeRoots": ["node_modules/@types", "types"],
         "module": "esnext",

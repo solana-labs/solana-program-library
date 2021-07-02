@@ -102,8 +102,10 @@ export const ReserveLayout = struct<Reserve>([
     blob(248, 'padding'),
 ]);
 
+export const RESERVE_SIZE = ReserveLayout.span;
+
 export const isReserve = (info: AccountInfo<Buffer>): boolean => {
-    return info.data.length === ReserveLayout.span;
+    return info.data.length === RESERVE_SIZE;
 };
 
 export const parseReserve: Parser<Reserve> = (pubkey: PublicKey, info: AccountInfo<Buffer>) => {

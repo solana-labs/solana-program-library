@@ -13,5 +13,5 @@ export default {
     watch: {
         include: 'src/**',
     },
-    plugins: [typescript({ exclude: ['rollup.config.ts'] }), commonjs(), nodeResolve()],
+    plugins: [typescript(), commonjs(), nodeResolve()],
 };

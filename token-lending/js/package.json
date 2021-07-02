@@ -1,6 +1,6 @@
 {
     "name": "@solana/spl-token-lending",
-    "version": "0.3.0",
+    "version": "0.3.3",
     "description": "SPL Token Lending JavaScript API",
     "license": "MIT",
     "author": "Solana Maintainers <maintainers@solana.foundation>",
@@ -17,12 +17,12 @@
     },
     "main": "lib/index.cjs.js",
     "module": "lib/index.esm.js",
-    "types": "lib/index.d.ts",
+    "types": "lib/src/index.d.ts",
     "files": [
         "lib"
     ],
     "scripts": {
-        "build": "rollup -c",
+        "build": "rm -rf lib/* && tsc && rollup -c && rm lib/rollup.config.d.ts",
         "deploy": "yarn docs && gh-pages -d docs -e token-lending",
         "docs": "rm -rf docs/* && typedoc",
         "lint": "eslint . --ext .ts && prettier --check '**/*.{ts,js,json}'",

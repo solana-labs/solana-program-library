@@ -80,8 +80,10 @@ export const ObligationLayout = struct<ObligationDataFlat>(
     'obligation'
 );
 
+export const OBLIGATION_SIZE = ObligationLayout.span;
+
 export const isObligation = (info: AccountInfo<Buffer>): boolean => {
-    return info.data.length === ObligationLayout.span;
+    return info.data.length === OBLIGATION_SIZE;
 };
 
 export const parseObligation: Parser<Obligation> = (pubkey: PublicKey, info: AccountInfo<Buffer>) => {

@@ -203,6 +203,10 @@ fn process_init_reserve(
         msg!("Borrow fee must be in range [0, 1_000_000_000_000_000_000)");
         return Err(LendingError::InvalidConfig.into());
     }
+    if config.fees.flash_loan_fee_wad >= WAD {
+        msg!("Flash loan fee must be in range [0, 1_000_000_000_000_000_000)");
+        return Err(LendingError::InvalidConfig.into());
+    }
     if config.fees.host_fee_percentage > 100 {
         msg!("Host fee percentage must be in range [0, 100]");
         return Err(LendingError::InvalidConfig.into());

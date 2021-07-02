@@ -11,15 +11,15 @@ interface Data {
     quoteCurrency: Buffer;
 }
 
+const DataLayout = struct<Data>([u8('instruction'), publicKey('owner'), blob(32, 'quoteCurrency')]);
+
 export const initLendingMarketInstruction = (
     owner: PublicKey,
     quoteCurrency: Buffer,
     lendingMarket: PublicKey
 ): TransactionInstruction => {
-    const dataLayout = struct<Data>([u8('instruction'), publicKey('owner'), blob(32, 'quoteCurrency')]);
-
-    const data = Buffer.alloc(dataLayout.span);
-    dataLayout.encode(
+    const data = Buffer.alloc(DataLayout.span);
+    DataLayout.encode(
         {
             instruction: LendingInstruction.InitLendingMarket,
             owner,
