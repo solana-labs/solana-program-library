@@ -4,8 +4,10 @@ set -e
 cd "$(dirname "$0")/.."
 source ./ci/solana-version.sh install
 
+npm install --global yarn
+
 set -x
 cd token-lending/js
-npm install
-npm run lint
-npm run build
+yarn install --pure-lockfile
+yarn run lint
+yarn run build
