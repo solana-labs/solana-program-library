@@ -22,7 +22,7 @@
         "lib"
     ],
     "scripts": {
-        "build": "rollup -c",
+        "build": "rm -rf lib/* && tsc && rollup -c && rm lib/rollup.config.d.ts",
         "deploy": "yarn docs && gh-pages -d docs -e token-lending",
         "docs": "rm -rf docs/* && typedoc",
         "lint": "eslint . --ext .ts && prettier --check '**/*.{ts,js,json}'",
