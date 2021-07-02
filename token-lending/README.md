@@ -16,6 +16,11 @@ Please note that only the lending program deployed to devnet is currently operat
 | Testnet | [`6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH`](https://explorer.solana.com/address/6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH?cluster=testnet) |
 | Devnet | [`6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH`](https://explorer.solana.com/address/6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH?cluster=devnet) |
 
+### Documentation
+
+- [CLI docs](https://github.com/solana-labs/solana-program-library/tree/master/token-lending/cli)
+- [Client library docs](https://solana-labs.github.io/solana-program-library/token-lending/)
+
 ### Deploy a lending program (optional)
 
 This is optional! You can skip these steps and use the [Token Lending CLI](./cli/README.md) with one of the on-chain programs listed above to create a lending market and add reserves to it.
