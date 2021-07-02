@@ -23,8 +23,8 @@ export interface EncodeDecode<T> {
 
 /** @internal */
 export const encodeDecode = <T>(layout: Layout<T>): EncodeDecode<T> => {
-    const decode = (buffer: Buffer, offset?: number) => layout.decode(buffer, offset);
-    const encode = (src: T, buffer: Buffer, offset?: number) => layout.encode(src, buffer, offset);
+    const decode = layout.decode.bind(layout);
+    const encode = layout.encode.bind(layout);
     return { decode, encode };
 };
 
