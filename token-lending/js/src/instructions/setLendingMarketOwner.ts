@@ -9,15 +9,15 @@ interface Data {
     newOwner: PublicKey;
 }
 
+const DataLayout = struct<Data>([u8('instruction'), publicKey('newOwner')]);
+
 export const setLendingMarketOwnerInstruction = (
     newOwner: PublicKey,
     lendingMarket: PublicKey,
     currentOwner: PublicKey
 ): TransactionInstruction => {
-    const dataLayout = struct<Data>([u8('instruction'), publicKey('newOwner')]);
-
-    const data = Buffer.alloc(dataLayout.span);
-    dataLayout.encode(
+    const data = Buffer.alloc(DataLayout.span);
+    DataLayout.encode(
         {
             instruction: LendingInstruction.SetLendingMarketOwner,
             newOwner,

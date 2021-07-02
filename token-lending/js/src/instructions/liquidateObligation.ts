@@ -10,6 +10,8 @@ interface Data {
     liquidityAmount: bigint;
 }
 
+const DataLayout = struct<Data>([u8('instruction'), u64('liquidityAmount')]);
+
 export const liquidateObligationInstruction = (
     liquidityAmount: number | bigint,
     sourceLiquidity: PublicKey,
@@ -23,10 +25,8 @@ export const liquidateObligationInstruction = (
     lendingMarketAuthority: PublicKey,
     transferAuthority: PublicKey
 ): TransactionInstruction => {
-    const dataLayout = struct<Data>([u8('instruction'), u64('liquidityAmount')]);
-
-    const data = Buffer.alloc(dataLayout.span);
-    dataLayout.encode(
+    const data = Buffer.alloc(DataLayout.span);
+    DataLayout.encode(
         {
             instruction: LendingInstruction.LiquidateObligation,
             liquidityAmount: BigInt(liquidityAmount),

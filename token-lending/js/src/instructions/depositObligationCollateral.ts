@@ -10,6 +10,8 @@ interface Data {
     collateralAmount: bigint;
 }
 
+const DataLayout = struct<Data>([u8('instruction'), u64('collateralAmount')]);
+
 export const depositObligationCollateralInstruction = (
     collateralAmount: number | bigint,
     sourceCollateral: PublicKey,
@@ -21,10 +23,8 @@ export const depositObligationCollateralInstruction = (
     obligationOwner: PublicKey,
     transferAuthority: PublicKey
 ): TransactionInstruction => {
-    const dataLayout = struct<Data>([u8('instruction'), u64('collateralAmount')]);
-
-    const data = Buffer.alloc(dataLayout.span);
-    dataLayout.encode(
+    const data = Buffer.alloc(DataLayout.span);
+    DataLayout.encode(
         {
             instruction: LendingInstruction.DepositObligationCollateral,
             collateralAmount: BigInt(collateralAmount),

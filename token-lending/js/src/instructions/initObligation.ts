@@ -8,15 +8,15 @@ interface Data {
     instruction: number;
 }
 
+const DataLayout = struct<Data>([u8('instruction')]);
+
 export const initObligationInstruction = (
     obligation: PublicKey,
     lendingMarket: PublicKey,
     obligationOwner: PublicKey
 ): TransactionInstruction => {
-    const dataLayout = struct<Data>([u8('instruction')]);
-
-    const data = Buffer.alloc(dataLayout.span);
-    dataLayout.encode({ instruction: LendingInstruction.InitObligation }, data);
+    const data = Buffer.alloc(DataLayout.span);
+    DataLayout.encode({ instruction: LendingInstruction.InitObligation }, data);
 
     const keys = [
         { pubkey: obligation, isSigner: false, isWritable: true },

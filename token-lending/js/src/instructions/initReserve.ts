@@ -12,6 +12,8 @@ interface Data {
     config: ReserveConfig;
 }
 
+const DataLayout = struct<Data>([u8('instruction'), u64('liquidityAmount'), ReserveConfigLayout]);
+
 export const initReserveInstruction = (
     liquidityAmount: number | bigint,
     config: ReserveConfig,
@@ -30,10 +32,8 @@ export const initReserveInstruction = (
     lendingMarketOwner: PublicKey,
     transferAuthority: PublicKey
 ): TransactionInstruction => {
-    const dataLayout = struct<Data>([u8('instruction'), u64('liquidityAmount'), ReserveConfigLayout]);
-
-    const data = Buffer.alloc(dataLayout.span);
-    dataLayout.encode(
+    const data = Buffer.alloc(DataLayout.span);
+    DataLayout.encode(
         {
             instruction: LendingInstruction.InitReserve,
             liquidityAmount: BigInt(liquidityAmount),
