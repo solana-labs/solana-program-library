@@ -8,6 +8,6 @@ npm install --global yarn
 
 set -x
 cd token-lending/js
-yarn install
+yarn install --pure-lockfile
 yarn run lint
 yarn run build
