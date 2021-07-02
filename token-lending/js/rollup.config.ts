@@ -13,9 +13,5 @@ export default {
     watch: {
         include: 'src/**',
     },
-    plugins: [
-        typescript(),
-        commonjs(),
-        nodeResolve(),
-    ],
+    plugins: [typescript(), commonjs(), nodeResolve()],
 };
