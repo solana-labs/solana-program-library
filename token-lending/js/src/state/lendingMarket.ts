@@ -25,8 +25,10 @@ export const LendingMarketLayout = struct<LendingMarket>(
     'lendingMarket'
 );
 
+export const LENDING_MARKET_SIZE = LendingMarketLayout.span;
+
 export const isLendingMarket = (info: AccountInfo<Buffer>): boolean => {
-    return info.data.length === LendingMarketLayout.span;
+    return info.data.length === LENDING_MARKET_SIZE;
 };
 
 export const parseLendingMarket: Parser<LendingMarket> = (pubkey: PublicKey, info: AccountInfo<Buffer>) => {
