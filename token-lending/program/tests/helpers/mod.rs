@@ -18,8 +18,9 @@ use spl_token::{
 };
 use spl_token_lending::{
     instruction::{
-        borrow_obligation_liquidity, deposit_reserve_liquidity, init_lending_market,
-        init_obligation, init_reserve, liquidate_obligation, refresh_reserve,
+        borrow_obligation_liquidity, deposit_reserve_liquidity,
+        deposit_reserve_liquidity_and_obligation_collateral, init_lending_market, init_obligation,
+        init_reserve, liquidate_obligation, refresh_reserve,
     },
     math::{Decimal, Rate, TryAdd, TryMul},
     pyth,
@@ -206,6 +207,7 @@ pub fn add_obligation(
 
     TestObligation {
         pubkey: obligation_pubkey,
+        keypair: obligation_keypair,
         lending_market: lending_market.pubkey,
         owner: user_accounts_owner.pubkey(),
         deposits: test_deposits,
@@ -588,6 +590,62 @@ impl TestLendingMarket {
         assert_matches!(banks_client.process_transaction(transaction).await, Ok(()));
     }
 
+    pub async fn deposit_obligation_and_collateral(
+        &self,
+        banks_client: &mut BanksClient,
+        user_accounts_owner: &Keypair,
+        payer: &Keypair,
+        reserve: &TestReserve,
+        obligation: &TestObligation,
+        obligation_keypair: &Keypair,
+        liquidity_amount: u64,
+    ) {
+        let user_transfer_authority = Keypair::new();
+        let mut transaction = Transaction::new_with_payer(
+            &[
+                approve(
+                    &spl_token::id(),
+                    &reserve.user_liquidity_pubkey,
+                    &user_transfer_authority.pubkey(),
+                    &user_accounts_owner.pubkey(),
+                    &[],
+                    liquidity_amount,
+                )
+                .unwrap(),
+                deposit_reserve_liquidity_and_obligation_collateral(
+                    spl_token_lending::id(),
+                    liquidity_amount,
+                    reserve.user_liquidity_pubkey,
+                    reserve.user_collateral_pubkey,
+                    reserve.pubkey,
+                    reserve.liquidity_supply_pubkey,
+                    reserve.collateral_mint_pubkey,
+                    reserve.pubkey,
+                    reserve.collateral_supply_pubkey,
+                    obligation.pubkey,
+                    obligation.owner,
+                    reserve.liquidity_pyth_oracle_pubkey,
+                    reserve.liquidity_switchboard_oracle_pubkey,
+                    user_transfer_authority.pubkey(),
+                ),
+            ],
+            Some(&payer.pubkey()),
+        );
+
+        let recent_blockhash = banks_client.get_recent_blockhash().await.unwrap();
+        transaction.sign(
+            &[
+                payer,
+                user_accounts_owner,
+                &user_transfer_authority,
+                &obligation_keypair,
+            ],
+            recent_blockhash,
+        );
+
+        assert_matches!(banks_client.process_transaction(transaction).await, Ok(()));
+    }
+
     pub async fn liquidate(
         &self,
         banks_client: &mut BanksClient,
@@ -915,6 +973,7 @@ impl TestReserve {
 #[derive(Debug)]
 pub struct TestObligation {
     pub pubkey: Pubkey,
+    pub keypair: Keypair,
     pub lending_market: Pubkey,
     pub owner: Pubkey,
     pub deposits: Vec<TestObligationCollateral>,
@@ -932,6 +991,7 @@ impl TestObligation {
         let obligation_keypair = Keypair::new();
         let obligation = TestObligation {
             pubkey: obligation_keypair.pubkey(),
+            keypair: obligation_keypair,
             lending_market: lending_market.pubkey,
             owner: user_accounts_owner.pubkey(),
             deposits: vec![],
@@ -943,7 +1003,7 @@ impl TestObligation {
             &[
                 create_account(
                     &payer.pubkey(),
-                    &obligation_keypair.pubkey(),
+                    &obligation.keypair.pubkey(),
                     rent.minimum_balance(Obligation::LEN),
                     Obligation::LEN as u64,
                     &spl_token_lending::id(),
@@ -960,7 +1020,7 @@ impl TestObligation {
 
         let recent_blockhash = banks_client.get_recent_blockhash().await.unwrap();
         transaction.sign(
-            &vec![payer, &obligation_keypair, user_accounts_owner],
+            &vec![payer, &obligation.keypair, user_accounts_owner],
             recent_blockhash,
         );
 
