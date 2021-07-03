@@ -172,6 +172,10 @@ pub fn assert_proposal_instruction_for_proposal(
 #[cfg(test)]
 mod test {
 
+    use std::str::FromStr;
+
+    use solana_program::bpf_loader_upgradeable;
+
     use super::*;
 
     fn create_test_account_meta_data() -> AccountMetaData {
@@ -232,5 +236,35 @@ mod test {
 
         // Act, Assert
         assert_eq!(proposal_instruction.get_max_size(), Some(size));
+    }
+
+    #[test]
+    fn test_upgrade_instruction_serialization() {
+        // Arrange
+        let program_address =
+            Pubkey::from_str("Hita5Lun87S4MADAF4vGoWEgFm5DyuVqxoWzzqYxS3AD").unwrap();
+        let buffer_address =
+            Pubkey::from_str("5XqXkgJGAUwrUHBkxbKpYMGqsRoQLfyqRbYUEkjNY6hL").unwrap();
+        let governance = Pubkey::from_str("FqSReK9R8QxvFZgdrAwGT3gsYp1ZGfiFjS8xrzyyadn3").unwrap();
+
+        let upgrade_instruction = bpf_loader_upgradeable::upgrade(
+            &program_address,
+            &buffer_address,
+            &governance,
+            &governance,
+        );
+
+        // Act
+        let instruction_data: InstructionData = upgrade_instruction.clone().into();
+        let mut instruciton_bytes = vec![];
+        instruction_data.serialize(&mut instruciton_bytes).unwrap();
+
+        println!("base64: {}", base64::encode(instruciton_bytes.clone()));
+
+        // Assert
+        let instruction =
+            Instruction::from(&InstructionData::deserialize(&mut &instruciton_bytes[..]).unwrap());
+
+        assert_eq!(upgrade_instruction, instruction);
     }
 }
