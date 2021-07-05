@@ -1309,7 +1309,7 @@ impl GovernanceProgramTest {
     ) -> Result<ProposalInstructionCookie, ProgramError> {
         let mut instruction = set_governance_config(&self.program_id, governance_config.clone());
 
-        self.with_instruction_impl(
+        self.with_instruction(
             proposal_cookie,
             token_owner_record_cookie,
             None,
@@ -1344,7 +1344,7 @@ impl GovernanceProgramTest {
         )
         .unwrap();
 
-        self.with_instruction_impl(
+        self.with_instruction(
             proposal_cookie,
             token_owner_record_cookie,
             index,
@@ -1379,7 +1379,7 @@ impl GovernanceProgramTest {
         )
         .unwrap();
 
-        self.with_instruction_impl(
+        self.with_instruction(
             proposal_cookie,
             token_owner_record_cookie,
             index,
@@ -1446,7 +1446,7 @@ impl GovernanceProgramTest {
             &governance_cookie.address,
         );
 
-        self.with_instruction_impl(
+        self.with_instruction(
             proposal_cookie,
             token_owner_record_cookie,
             None,
@@ -1456,7 +1456,7 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn with_instruction(
+    pub async fn with_nop_instruction(
         &mut self,
         proposal_cookie: &mut ProposalCookie,
         token_owner_record_cookie: &TokeOwnerRecordCookie,
@@ -1468,7 +1468,7 @@ impl GovernanceProgramTest {
             data: vec![],
         };
 
-        self.with_instruction_impl(
+        self.with_instruction(
             proposal_cookie,
             token_owner_record_cookie,
             index,
@@ -1478,7 +1478,7 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    async fn with_instruction_impl(
+    pub async fn with_instruction(
         &mut self,
         proposal_cookie: &mut ProposalCookie,
         token_owner_record_cookie: &TokeOwnerRecordCookie,
