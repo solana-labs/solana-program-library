@@ -1588,9 +1588,7 @@ impl GovernanceProgramTest {
         );
 
         self.process_transaction(&[execute_instruction_instruction], None)
-            .await?;
-
-        Ok(())
+            .await
     }
 
     #[allow(dead_code)]
