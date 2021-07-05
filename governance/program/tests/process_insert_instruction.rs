@@ -133,7 +133,7 @@ async fn test_insert_instruction_with_invalid_index_error() {
 }
 
 #[tokio::test]
-async fn test_insert_instruction_with_nop_instruction_already_exists_error() {
+async fn test_insert_instruction_with_instruction_already_exists_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 

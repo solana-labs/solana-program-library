@@ -288,7 +288,7 @@ async fn test_remove_instruction_with_proposal_not_editable_error() {
 }
 
 #[tokio::test]
-async fn test_remove_instruction_with_nop_instruction_from_other_proposal_error() {
+async fn test_remove_instruction_with_instruction_from_other_proposal_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 

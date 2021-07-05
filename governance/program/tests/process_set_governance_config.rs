@@ -1,3 +1,5 @@
+#![cfg(feature = "test-bpf")]
+
 mod program_test;
 
 use borsh::BorshSerialize;
@@ -38,6 +40,8 @@ async fn test_set_governance_config() {
 
     let mut governance_config =
         governance_test.get_default_governance_config(&realm_cookie, &governed_account_cookie);
+
+    // Change vote_threshold_percentage on the Governance config
     governance_config.vote_threshold_percentage = 40;
 
     let proposal_instruction_cookie = governance_test
@@ -92,6 +96,7 @@ async fn test_set_governance_config_with_governance_must_sign_error() {
     let mut set_governance_config_ix =
         set_governance_config(&governance_test.program_id, governance_config.clone());
 
+    // Remove governance signer from instruction
     set_governance_config_ix.accounts[1].is_signer = false;
 
     // Act
@@ -119,6 +124,7 @@ async fn test_set_governance_config_with_fake_governance_signer_error() {
     let mut set_governance_config_ix =
         set_governance_config(&governance_test.program_id, governance_config.clone());
 
+    // Set Governance signer to fake account we have authority over and can use to sign the transaction
     let governance_signer = Keypair::new();
     set_governance_config_ix.accounts[1].pubkey = governance_signer.pubkey();
 
@@ -160,7 +166,7 @@ async fn test_set_governance_config_with_invalid_governance_authority_error() {
         .await
         .unwrap();
 
-    // Try to maliciously change governed account in the governance config
+    // Try to maliciously use a different governed account to change the given governance config
     let governed_account_cookie2 = governance_test.with_governed_account().await;
 
     let account_governance_cookie2 = governance_test

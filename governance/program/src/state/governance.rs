@@ -125,7 +125,7 @@ pub fn get_governance_data_for_config(
         return Err(GovernanceError::InvalidConfigGovernedAccountForGovernance.into());
     }
 
-    return Ok(governance_data);
+    Ok(governance_data)
 }
 
 /// Returns ProgramGovernance PDA seeds
