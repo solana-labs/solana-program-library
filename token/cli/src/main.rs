@@ -98,13 +98,17 @@ pub fn owner_address_arg<'a, 'b>() -> Arg<'a, 'b> {
         .help(OWNER_ADDRESS_ARG.help)
 }
 
-pub fn owner_keypair_arg<'a, 'b>() -> Arg<'a, 'b> {
+pub fn owner_keypair_arg_with_value_name<'a, 'b>(value_name: &'static str) -> Arg<'a, 'b> {
     Arg::with_name(OWNER_KEYPAIR_ARG.name)
         .long(OWNER_KEYPAIR_ARG.long)
         .takes_value(true)
-        .value_name("OWNER_KEYPAIR")
+        .value_name(value_name)
         .validator(is_valid_signer)
         .help(OWNER_KEYPAIR_ARG.help)
+}
+
+pub fn owner_keypair_arg<'a, 'b>() -> Arg<'a, 'b> {
+    owner_keypair_arg_with_value_name("OWNER_KEYPAIR")
 }
 
 pub fn mint_address_arg<'a, 'b>() -> Arg<'a, 'b> {
@@ -1629,8 +1633,7 @@ fn main() {
                         .help("Specify the sending token account \
                             [default: owner's associated token account]")
                 )
-                .arg(owner_keypair_arg()
-                        .value_name("SENDER_TOKEN_OWNER_KEYPAIR")
+                .arg(owner_keypair_arg_with_value_name("SENDER_TOKEN_OWNER_KEYPAIR")
                         .help(
                             "Specify the owner of the sending token account. \
                             This may be a keypair file, the ASK keyword. \
@@ -1694,8 +1697,7 @@ fn main() {
                         .required(true)
                         .help("Amount to burn, in tokens"),
                 )
-                .arg(owner_keypair_arg()
-                        .value_name("SOURCE_TOKEN_OWNER_KEYPAIR")
+                .arg(owner_keypair_arg_with_value_name("SOURCE_TOKEN_OWNER_KEYPAIR")
                         .help(
                             "Specify the source token owner account. \
                             This may be a keypair file, the ASK keyword. \
