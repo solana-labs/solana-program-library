@@ -97,7 +97,7 @@ async fn test_execute_mint_instruction() {
     );
 
     assert_eq!(
-        Some(InstructionExecutionStatus::Success),
+        InstructionExecutionStatus::Success,
         proposal_instruction_account.execution_status
     );
 
@@ -189,7 +189,7 @@ async fn test_execute_transfer_instruction() {
     );
 
     assert_eq!(
-        Some(InstructionExecutionStatus::Success),
+        InstructionExecutionStatus::Success,
         proposal_instruction_account.execution_status
     );
 
@@ -300,7 +300,7 @@ async fn test_execute_upgrade_program_instruction() {
     );
 
     assert_eq!(
-        Some(InstructionExecutionStatus::Success),
+        InstructionExecutionStatus::Success,
         proposal_instruction_account.execution_status
     );
 

@@ -33,7 +33,10 @@ use spl_governance::{
     },
     processor::process_instruction,
     state::{
-        enums::{GovernanceAccountType, ProposalState, VoteThresholdPercentage, VoteWeight},
+        enums::{
+            GovernanceAccountType, InstructionExecutionStatus, ProposalState,
+            VoteThresholdPercentage, VoteWeight,
+        },
         governance::{
             get_account_governance_address, get_mint_governance_address,
             get_program_governance_address, get_token_governance_address, Governance,
@@ -1502,7 +1505,7 @@ impl GovernanceProgramTest {
             hold_up_time,
             instruction: instruction_data,
             executed_at: None,
-            execution_status: None,
+            execution_status: InstructionExecutionStatus::None,
             proposal: proposal_cookie.address,
         };
 

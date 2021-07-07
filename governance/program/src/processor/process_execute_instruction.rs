@@ -80,7 +80,7 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
     proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
 
     proposal_instruction_data.executed_at = Some(clock.unix_timestamp);
-    proposal_instruction_data.execution_status = Some(InstructionExecutionStatus::Success);
+    proposal_instruction_data.execution_status = InstructionExecutionStatus::Success;
     proposal_instruction_data.serialize(&mut *proposal_instruction_info.data.borrow_mut())?;
 
     Ok(())

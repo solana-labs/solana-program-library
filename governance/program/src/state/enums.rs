@@ -126,6 +126,9 @@ pub enum VoteWeightSource {
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum InstructionExecutionStatus {
+    /// Instruction was not executed yet
+    None,
+
     /// Instruction was executed successfully
     Success,
 

@@ -14,7 +14,7 @@ use solana_program::{
 use crate::{
     error::GovernanceError,
     state::{
-        enums::GovernanceAccountType,
+        enums::{GovernanceAccountType, InstructionExecutionStatus},
         governance::get_governance_data,
         proposal::get_proposal_data_for_governance,
         proposal_instruction::{
@@ -92,7 +92,7 @@ pub fn process_insert_instruction(
         hold_up_time,
         instruction,
         executed_at: None,
-        execution_status: None,
+        execution_status: InstructionExecutionStatus::None,
         proposal: *proposal_info.key,
     };
 

@@ -102,12 +102,12 @@ pub struct ProposalInstruction {
 
     /// Instruction execution status
     /// Note: The field is not used in the current version
-    pub execution_status: Option<InstructionExecutionStatus>,
+    pub execution_status: InstructionExecutionStatus,
 }
 
 impl AccountMaxSize for ProposalInstruction {
     fn get_max_size(&self) -> Option<usize> {
-        Some(self.instruction.accounts.len() * 34 + self.instruction.data.len() + 90)
+        Some(self.instruction.accounts.len() * 34 + self.instruction.data.len() + 89)
     }
 }
 
@@ -212,7 +212,7 @@ mod test {
             hold_up_time: 10,
             instruction: create_test_instruction_data(),
             executed_at: Some(100),
-            execution_status: Some(InstructionExecutionStatus::Success),
+            execution_status: InstructionExecutionStatus::Success,
         }
     }
 
