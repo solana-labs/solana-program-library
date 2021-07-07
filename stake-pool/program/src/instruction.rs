@@ -176,9 +176,9 @@ pub enum StakePoolInstruction {
     /// between SOL staked on different validators, the staker can force all
     /// deposits and/or withdraws to go to one chosen account, or unset that account.
     ///
-    /// 0. `[]` Stake pool
+    /// 0. `[w]` Stake pool
     /// 1. `[s]` Stake pool staker
-    /// 2. `[w]` Validator list
+    /// 2. `[]` Validator list
     ///
     /// Fails if the validator is not part of the stake pool.
     SetPreferredValidator {
@@ -515,9 +515,9 @@ pub fn set_preferred_validator(
     Instruction {
         program_id: *program_id,
         accounts: vec![
-            AccountMeta::new_readonly(*stake_pool_address, false),
+            AccountMeta::new(*stake_pool_address, false),
             AccountMeta::new_readonly(*staker, true),
-            AccountMeta::new(*validator_list_address, false),
+            AccountMeta::new_readonly(*validator_list_address, false),
         ],
         data: StakePoolInstruction::SetPreferredValidator {
             validator_type,

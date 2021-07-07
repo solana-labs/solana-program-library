@@ -2,6 +2,7 @@
 
 //! A program for creating and managing pools of stake
 
+pub mod big_vec;
 pub mod error;
 pub mod instruction;
 pub mod processor;

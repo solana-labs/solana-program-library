@@ -697,7 +697,7 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
     );
     println!(
         "Max number of validators: {}",
-        validator_list.max_validators
+        validator_list.header.max_validators
     );
 
     if config.verbose {
