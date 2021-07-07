@@ -9,6 +9,7 @@ use solana_sdk::{signature::Keypair, signer::Signer};
 use spl_governance::{
     error::GovernanceError,
     instruction::{set_governance_config, GovernanceInstruction, Vote},
+    state::enums::VoteThresholdPercentage,
 };
 
 #[tokio::test]
@@ -38,17 +39,17 @@ async fn test_set_governance_config() {
         .await
         .unwrap();
 
-    let mut governance_config =
+    let mut new_governance_config =
         governance_test.get_default_governance_config(&realm_cookie, &governed_account_cookie);
 
-    // Change vote_threshold_percentage on the Governance config
-    governance_config.vote_threshold_percentage = 40;
+    // Change vote_threshold_percentage on the new Governance config
+    new_governance_config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(40);
 
     let proposal_instruction_cookie = governance_test
         .with_set_governance_config_instruction(
             &mut proposal_cookie,
             &token_owner_record_cookie,
-            &governance_config,
+            &new_governance_config,
         )
         .await
         .unwrap();
@@ -79,7 +80,7 @@ async fn test_set_governance_config() {
         .get_governance_account(&account_governance_cookie.address)
         .await;
 
-    assert_eq!(governance_config, governance_account.config);
+    assert_eq!(new_governance_config, governance_account.config);
 }
 
 #[tokio::test]
@@ -90,11 +91,11 @@ async fn test_set_governance_config_with_governance_must_sign_error() {
     let realm_cookie = governance_test.with_realm().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
-    let governance_config =
+    let new_governance_config =
         governance_test.get_default_governance_config(&realm_cookie, &governed_account_cookie);
 
     let mut set_governance_config_ix =
-        set_governance_config(&governance_test.program_id, governance_config.clone());
+        set_governance_config(&governance_test.program_id, new_governance_config.clone());
 
     // Remove governance signer from instruction
     set_governance_config_ix.accounts[1].is_signer = false;
@@ -118,11 +119,11 @@ async fn test_set_governance_config_with_fake_governance_signer_error() {
     let realm_cookie = governance_test.with_realm().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
-    let governance_config =
+    let new_governance_config =
         governance_test.get_default_governance_config(&realm_cookie, &governed_account_cookie);
 
     let mut set_governance_config_ix =
-        set_governance_config(&governance_test.program_id, governance_config.clone());
+        set_governance_config(&governance_test.program_id, new_governance_config.clone());
 
     // Set Governance signer to fake account we have authority over and can use to sign the transaction
     let governance_signer = Keypair::new();
@@ -166,7 +167,7 @@ async fn test_set_governance_config_with_invalid_governance_authority_error() {
         .await
         .unwrap();
 
-    // Try to maliciously use a different governed account to change the given governance config
+    // Try to maliciously use a different governance account to change the given governance config
     let governed_account_cookie2 = governance_test.with_governed_account().await;
 
     let account_governance_cookie2 = governance_test
@@ -174,15 +175,16 @@ async fn test_set_governance_config_with_invalid_governance_authority_error() {
         .await
         .unwrap();
 
-    let mut governance_config =
+    let mut new_governance_config =
         governance_test.get_default_governance_config(&realm_cookie, &governed_account_cookie);
-    governance_config.governed_account = account_governance_cookie2.address;
+    new_governance_config.governed_account =
+        account_governance_cookie2.account.config.governed_account;
 
     let proposal_instruction_cookie = governance_test
         .with_set_governance_config_instruction(
             &mut proposal_cookie,
             &token_owner_record_cookie,
-            &governance_config,
+            &new_governance_config,
         )
         .await
         .unwrap();
@@ -240,17 +242,17 @@ async fn test_set_governance_config_with_invalid_config_realm_error() {
         .await
         .unwrap();
 
-    let mut governance_config =
+    let mut new_governance_config =
         governance_test.get_default_governance_config(&realm_cookie, &governed_account_cookie);
 
     let mut set_governance_config_ix =
-        set_governance_config(&governance_test.program_id, governance_config.clone());
+        set_governance_config(&governance_test.program_id, new_governance_config.clone());
 
     // Try to maliciously change realm  in the governance config
     let realm_cookie2 = governance_test.with_realm().await;
-    governance_config.realm = realm_cookie2.address;
+    new_governance_config.realm = realm_cookie2.address;
     set_governance_config_ix.data = (GovernanceInstruction::SetGovernanceConfig {
-        config: governance_config,
+        config: new_governance_config,
     })
     .try_to_vec()
     .unwrap();
@@ -318,17 +320,17 @@ async fn test_set_governance_config_with_invalid_config_governed_account_error()
         .await
         .unwrap();
 
-    let mut governance_config =
+    let mut new_governance_config =
         governance_test.get_default_governance_config(&realm_cookie, &governed_account_cookie);
 
     let mut set_governance_config_ix =
-        set_governance_config(&governance_test.program_id, governance_config.clone());
+        set_governance_config(&governance_test.program_id, new_governance_config.clone());
 
     // Try to maliciously change governed account  in the governance config
     let governed_account_cookie2 = governance_test.with_governed_account().await;
-    governance_config.governed_account = governed_account_cookie2.address;
+    new_governance_config.governed_account = governed_account_cookie2.address;
     set_governance_config_ix.data = (GovernanceInstruction::SetGovernanceConfig {
-        config: governance_config,
+        config: new_governance_config,
     })
     .try_to_vec()
     .unwrap();
