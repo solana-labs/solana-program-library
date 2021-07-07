@@ -13,7 +13,7 @@ use solana_program::{
 use crate::{
     error::GovernanceError,
     state::{
-        enums::{GovernanceAccountType, ProposalState},
+        enums::{GovernanceAccountType, InstructionExecutionFlags, ProposalState},
         governance::get_governance_data,
         proposal::{get_proposal_address_seeds, Proposal},
         token_owner_record::get_token_owner_record_data_for_realm_and_governing_mint,
@@ -93,7 +93,7 @@ pub fn process_create_proposal(
         instructions_count: 0,
         instructions_next_index: 0,
 
-        execution_flags: None,
+        execution_flags: InstructionExecutionFlags::None,
 
         yes_votes_count: 0,
         no_votes_count: 0,

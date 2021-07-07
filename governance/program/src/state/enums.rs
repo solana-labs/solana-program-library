@@ -142,6 +142,10 @@ pub enum InstructionExecutionStatus {
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum InstructionExecutionFlags {
+    /// No execution flags are specified
+    /// Instructions can be executed individually, in any order, as soon as they hold_up time expires
+    None,
+
     /// Instructions are executed in a specific order
     /// Note: Ordered execution is not supported in the current version
     /// The implementation requires another account type to track deleted instructions

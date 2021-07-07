@@ -34,8 +34,8 @@ use spl_governance::{
     processor::process_instruction,
     state::{
         enums::{
-            GovernanceAccountType, InstructionExecutionStatus, ProposalState,
-            VoteThresholdPercentage, VoteWeight,
+            GovernanceAccountType, InstructionExecutionFlags, InstructionExecutionStatus,
+            ProposalState, VoteThresholdPercentage, VoteWeight,
         },
         governance::{
             get_account_governance_address, get_mint_governance_address,
@@ -1056,7 +1056,7 @@ impl GovernanceProgramTest {
             yes_votes_count: 0,
             no_votes_count: 0,
 
-            execution_flags: None,
+            execution_flags: InstructionExecutionFlags::None,
         };
 
         let proposal_address = get_proposal_address(
