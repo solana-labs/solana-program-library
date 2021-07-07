@@ -26,7 +26,7 @@ pub struct Realm {
     pub community_mint: Pubkey,
 
     /// Reserved space for future versions
-    pub reserved: u64,
+    pub reserved: [u8; 8],
 
     /// Council mint
     pub council_mint: Option<Pubkey>,

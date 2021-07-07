@@ -45,7 +45,7 @@ pub struct TokenOwnerRecord {
     pub total_votes_count: u32,
 
     /// Reserved space for future versions
-    pub reserved: u64,
+    pub reserved: [u8; 8],
 
     /// A single account that is allowed to operate governance with the deposited governing tokens
     /// It can be delegated to by the governing_token_owner or current governance_delegate
@@ -188,7 +188,7 @@ mod test {
             governance_delegate: Some(Pubkey::new_unique()),
             unrelinquished_votes_count: 1,
             total_votes_count: 1,
-            reserved: 0,
+            reserved: [0; 8],
         };
 
         let size = get_packed_len::<TokenOwnerRecord>();

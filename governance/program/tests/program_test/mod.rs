@@ -180,7 +180,7 @@ impl GovernanceProgramTest {
             community_mint: community_token_mint_keypair.pubkey(),
             council_mint: Some(council_token_mint_keypair.pubkey()),
             name,
-            reserved: 0,
+            reserved: [0; 8],
         };
 
         RealmCookie {
@@ -220,7 +220,7 @@ impl GovernanceProgramTest {
             community_mint: realm_cookie.account.community_mint,
             council_mint: Some(council_mint),
             name,
-            reserved: 0,
+            reserved: [0; 8],
         };
 
         let community_token_holding_address = get_governing_token_holding_address(
@@ -379,7 +379,7 @@ impl GovernanceProgramTest {
             governance_delegate: None,
             unrelinquished_votes_count: 0,
             total_votes_count: 0,
-            reserved: 0,
+            reserved: [0; 8],
         };
 
         let governance_delegate = Keypair::from_base58_string(&token_owner.to_base58_string());
@@ -682,7 +682,7 @@ impl GovernanceProgramTest {
             account_type: GovernanceAccountType::AccountGovernance,
             config: governance_config.clone(),
             proposals_count: 0,
-            reserved: 0,
+            reserved: [0; 8],
         };
 
         self.process_transaction(&[create_account_governance_instruction], None)
@@ -817,7 +817,7 @@ impl GovernanceProgramTest {
             account_type: GovernanceAccountType::ProgramGovernance,
             config,
             proposals_count: 0,
-            reserved: 0,
+            reserved: [0; 8],
         };
 
         let program_governance_address = get_program_governance_address(
@@ -878,7 +878,7 @@ impl GovernanceProgramTest {
             account_type: GovernanceAccountType::MintGovernance,
             config,
             proposals_count: 0,
-            reserved: 0,
+            reserved: [0; 8],
         };
 
         let mint_governance_address = get_mint_governance_address(
@@ -939,7 +939,7 @@ impl GovernanceProgramTest {
             account_type: GovernanceAccountType::TokenGovernance,
             config,
             proposals_count: 0,
-            reserved: 0,
+            reserved: [0; 8],
         };
 
         let token_governance_address = get_token_governance_address(

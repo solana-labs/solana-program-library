@@ -61,7 +61,7 @@ pub struct Governance {
     pub config: GovernanceConfig,
 
     /// Reserved space for future versions
-    pub reserved: u64,
+    pub reserved: [u8; 8],
 
     /// Running count of proposals
     pub proposals_count: u32,
