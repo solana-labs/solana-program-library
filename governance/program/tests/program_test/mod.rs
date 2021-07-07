@@ -33,7 +33,7 @@ use spl_governance::{
     },
     processor::process_instruction,
     state::{
-        enums::{GovernanceAccountType, ProposalState, VoteThresholdPercentageType, VoteWeight},
+        enums::{GovernanceAccountType, ProposalState, VoteThresholdPercentage, VoteWeight},
         governance::{
             get_account_governance_address, get_mint_governance_address,
             get_program_governance_address, get_token_governance_address, Governance,
@@ -644,11 +644,11 @@ impl GovernanceProgramTest {
         GovernanceConfig {
             realm: realm_cookie.address,
             governed_account: governed_account_cookie.get_address(),
-            vote_threshold_percentage: 60,
+
             min_tokens_to_create_proposal: 5,
             min_instruction_hold_up_time: 10,
             max_voting_time: 10,
-            vote_threshold_percentage_type: VoteThresholdPercentageType::YesVote,
+            vote_threshold_percentage: VoteThresholdPercentage::YesVote(60),
             vote_weight_source: spl_governance::state::enums::VoteWeightSource::Deposit,
             proposal_cool_off_time: 0,
         }

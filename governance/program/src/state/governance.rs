@@ -3,7 +3,7 @@
 use crate::{
     error::GovernanceError,
     state::{
-        enums::{GovernanceAccountType, VoteThresholdPercentageType, VoteWeightSource},
+        enums::{GovernanceAccountType, VoteThresholdPercentage, VoteWeightSource},
         realm::assert_is_valid_realm,
     },
     tools::account::{get_account_data, AccountMaxSize},
@@ -26,10 +26,7 @@ pub struct GovernanceConfig {
 
     /// The type of the vote threshold used for voting
     /// Note: In the current version only YesVote threshold is supported
-    pub vote_threshold_percentage_type: VoteThresholdPercentageType,
-
-    /// The vote threshold value of the type defined by vote_threshold_percentage_type
-    pub vote_threshold_percentage: u8,
+    pub vote_threshold_percentage: VoteThresholdPercentage,
 
     /// Minimum number of tokens a governance token owner must possess to be able to create a proposal
     pub min_tokens_to_create_proposal: u64,
@@ -222,14 +219,15 @@ pub fn assert_is_valid_governance_config(
 
     assert_is_valid_realm(program_id, realm_info)?;
 
-    if governance_config.vote_threshold_percentage < 1
-        || governance_config.vote_threshold_percentage > 100
-    {
-        return Err(GovernanceError::InvalidGovernanceConfig.into());
-    }
-
-    if governance_config.vote_threshold_percentage_type != VoteThresholdPercentageType::YesVote {
-        return Err(GovernanceError::VoteThresholdPercentageTypeNotSupported.into());
+    match governance_config.vote_threshold_percentage {
+        VoteThresholdPercentage::YesVote(yes_vote_threshold_percentage) => {
+            if yes_vote_threshold_percentage < 1 || yes_vote_threshold_percentage > 100 {
+                return Err(GovernanceError::InvalidGovernanceConfig.into());
+            }
+        }
+        _ => {
+            return Err(GovernanceError::VoteThresholdPercentageTypeNotSupported.into());
+        }
     }
 
     if governance_config.vote_weight_source != VoteWeightSource::Deposit {

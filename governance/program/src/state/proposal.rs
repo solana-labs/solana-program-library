@@ -9,7 +9,10 @@ use solana_program::{
 use crate::{
     error::GovernanceError,
     state::{
-        enums::{GovernanceAccountType, InstructionExecutionFlags, ProposalState},
+        enums::{
+            GovernanceAccountType, InstructionExecutionFlags, ProposalState,
+            VoteThresholdPercentage,
+        },
         governance::GovernanceConfig,
         proposal_instruction::ProposalInstruction,
     },
@@ -210,7 +213,8 @@ impl Proposal {
         config: &GovernanceConfig,
     ) -> ProposalState {
         let yes_vote_threshold_count =
-            get_vote_threshold_count(config.vote_threshold_percentage, governing_token_supply);
+            get_yes_vote_threshold_count(&config.vote_threshold_percentage, governing_token_supply)
+                .unwrap();
 
         // Yes vote must be equal or above the required yes_vote_threshold_percentage and higher than No vote
         // The same number of Yes and No votes is a tie and resolved as Defeated
@@ -254,7 +258,8 @@ impl Proposal {
         }
 
         let yes_vote_threshold_count =
-            get_vote_threshold_count(config.vote_threshold_percentage, governing_token_supply);
+            get_yes_vote_threshold_count(&config.vote_threshold_percentage, governing_token_supply)
+                .unwrap();
 
         if self.yes_votes_count >= yes_vote_threshold_count
             && self.yes_votes_count > (governing_token_supply - self.yes_votes_count)
@@ -326,18 +331,30 @@ impl Proposal {
 }
 
 /// Converts threshold in percentages to actual vote count
-fn get_vote_threshold_count(threshold_percentage: u8, total_supply: u64) -> u64 {
-    let numerator = (threshold_percentage as u128)
+fn get_yes_vote_threshold_count(
+    vote_threshold_percentage: &VoteThresholdPercentage,
+    total_supply: u64,
+) -> Result<u64, ProgramError> {
+    let yes_vote_threshold_percentage = match vote_threshold_percentage {
+        VoteThresholdPercentage::YesVote(yes_vote_threshold_percentage) => {
+            *yes_vote_threshold_percentage
+        }
+        _ => {
+            return Err(GovernanceError::VoteThresholdPercentageTypeNotSupported.into());
+        }
+    };
+
+    let numerator = (yes_vote_threshold_percentage as u128)
         .checked_mul(total_supply as u128)
         .unwrap();
 
-    let mut threshold = numerator.checked_div(100).unwrap();
+    let mut yes_vote_threshold = numerator.checked_div(100).unwrap();
 
-    if threshold * 100 < numerator {
-        threshold += 1;
+    if yes_vote_threshold * 100 < numerator {
+        yes_vote_threshold += 1;
     }
 
-    threshold as u64
+    Ok(yes_vote_threshold as u64)
 }
 
 /// Deserializes Proposal account and checks owner program
@@ -409,7 +426,7 @@ pub fn get_proposal_address<'a>(
 
 #[cfg(test)]
 mod test {
-    use crate::state::enums::{VoteThresholdPercentageType, VoteWeightSource};
+    use crate::state::enums::{VoteThresholdPercentage, VoteWeightSource};
 
     use {super::*, proptest::prelude::*};
 
@@ -449,11 +466,10 @@ mod test {
         GovernanceConfig {
             realm: Pubkey::new_unique(),
             governed_account: Pubkey::new_unique(),
-            vote_threshold_percentage: 60,
             min_tokens_to_create_proposal: 5,
             min_instruction_hold_up_time: 10,
             max_voting_time: 5,
-            vote_threshold_percentage_type: VoteThresholdPercentageType::YesVote,
+            vote_threshold_percentage: VoteThresholdPercentage::YesVote(60),
             vote_weight_source: VoteWeightSource::Deposit,
             proposal_cool_off_time: 0,
         }
@@ -831,7 +847,7 @@ mod test {
             proposal.state = ProposalState::Voting;
 
             let mut governance_config = create_test_governance_config();
-            governance_config.vote_threshold_percentage = test_case.vote_threshold_percentage;
+            governance_config.vote_threshold_percentage =  VoteThresholdPercentage::YesVote(test_case.vote_threshold_percentage);
 
             let current_timestamp = 15_i64;
 
@@ -855,7 +871,7 @@ mod test {
             proposal.state = ProposalState::Voting;
 
             let mut governance_config = create_test_governance_config();
-            governance_config.vote_threshold_percentage = test_case.vote_threshold_percentage;
+            governance_config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(test_case.vote_threshold_percentage);
 
             let current_timestamp = 16_i64;
 
@@ -897,7 +913,8 @@ mod test {
 
 
             let mut governance_config = create_test_governance_config();
-            governance_config.vote_threshold_percentage = yes_vote_threshold_percentage;
+            let  yes_vote_threshold_percentage = VoteThresholdPercentage::YesVote(yes_vote_threshold_percentage);
+            governance_config.vote_threshold_percentage = yes_vote_threshold_percentage.clone();
 
             let current_timestamp = 15_i64;
 
@@ -905,7 +922,7 @@ mod test {
             proposal.try_tip_vote(governing_token_supply, &governance_config,current_timestamp);
 
             // Assert
-            let yes_vote_threshold_count = get_vote_threshold_count(yes_vote_threshold_percentage,governing_token_supply);
+            let yes_vote_threshold_count = get_yes_vote_threshold_count(&yes_vote_threshold_percentage,governing_token_supply).unwrap();
 
             if yes_votes_count >= yes_vote_threshold_count && yes_votes_count > (governing_token_supply - yes_votes_count)
             {
@@ -933,7 +950,9 @@ mod test {
 
 
             let mut governance_config = create_test_governance_config();
-            governance_config.vote_threshold_percentage = yes_vote_threshold_percentage;
+            let  yes_vote_threshold_percentage = VoteThresholdPercentage::YesVote(yes_vote_threshold_percentage);
+
+            governance_config.vote_threshold_percentage = yes_vote_threshold_percentage.clone();
 
             let current_timestamp = 16_i64;
 
@@ -941,7 +960,7 @@ mod test {
             proposal.finalize_vote(governing_token_supply, &governance_config,current_timestamp).unwrap();
 
             // Assert
-            let yes_vote_threshold_count = get_vote_threshold_count(yes_vote_threshold_percentage,governing_token_supply);
+            let yes_vote_threshold_count = get_yes_vote_threshold_count(&yes_vote_threshold_percentage,governing_token_supply).unwrap();
 
             if yes_votes_count >= yes_vote_threshold_count &&  yes_votes_count > proposal.no_votes_count
             {
