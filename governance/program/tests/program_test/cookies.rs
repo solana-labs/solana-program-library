@@ -8,6 +8,10 @@ use spl_governance::state::{
 
 use crate::tools::clone_keypair;
 
+pub trait AccountCookie {
+    fn get_address(&self) -> Pubkey;
+}
+
 #[derive(Debug)]
 pub struct RealmCookie {
     pub address: Pubkey,
@@ -61,11 +65,23 @@ pub struct GovernedProgramCookie {
     pub transfer_upgrade_authority: bool,
 }
 
+impl AccountCookie for GovernedProgramCookie {
+    fn get_address(&self) -> Pubkey {
+        self.address
+    }
+}
+
 #[derive(Debug)]
 pub struct GovernedMintCookie {
     pub address: Pubkey,
     pub mint_authority: Keypair,
     pub transfer_mint_authority: bool,
+}
+
+impl AccountCookie for GovernedMintCookie {
+    fn get_address(&self) -> Pubkey {
+        self.address
+    }
 }
 
 #[derive(Debug)]
@@ -76,9 +92,21 @@ pub struct GovernedTokenCookie {
     pub token_mint: Pubkey,
 }
 
+impl AccountCookie for GovernedTokenCookie {
+    fn get_address(&self) -> Pubkey {
+        self.address
+    }
+}
+
 #[derive(Debug)]
 pub struct GovernedAccountCookie {
     pub address: Pubkey,
+}
+
+impl AccountCookie for GovernedAccountCookie {
+    fn get_address(&self) -> Pubkey {
+        self.address
+    }
 }
 
 #[derive(Debug)]

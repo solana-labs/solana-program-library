@@ -1,20 +1,25 @@
 //! Proposal  Account
 
-use solana_program::clock::UnixTimestamp;
+use solana_program::clock::{Slot, UnixTimestamp};
 use solana_program::{
     account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
     pubkey::Pubkey,
 };
 
-use crate::tools::account::get_account_data;
-use crate::{error::GovernanceError, tools::account::AccountMaxSize, PROGRAM_AUTHORITY_SEED};
-
-use crate::state::enums::{GovernanceAccountType, ProposalState};
+use crate::{
+    error::GovernanceError,
+    state::{
+        enums::{
+            GovernanceAccountType, InstructionExecutionFlags, ProposalState,
+            VoteThresholdPercentage,
+        },
+        governance::GovernanceConfig,
+        proposal_instruction::ProposalInstruction,
+    },
+    tools::account::{get_account_data, AccountMaxSize},
+    PROGRAM_AUTHORITY_SEED,
+};
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
-
-use crate::state::governance::GovernanceConfig;
-
-use crate::state::proposal_instruction::ProposalInstruction;
 
 /// Governance Proposal
 #[repr(C)]
@@ -42,17 +47,20 @@ pub struct Proposal {
     /// The number of signatories who already signed
     pub signatories_signed_off_count: u8,
 
-    /// Link to proposal's description
-    pub description_link: String,
-
-    /// Proposal name
-    pub name: String,
-
     /// The number of Yes votes
     pub yes_votes_count: u64,
 
     /// The number of No votes
     pub no_votes_count: u64,
+
+    /// The number of the instructions already executed
+    pub instructions_executed_count: u16,
+
+    /// The number of instructions included in the proposal
+    pub instructions_count: u16,
+
+    /// The index of the the next instruction to be added
+    pub instructions_next_index: u16,
 
     /// When the Proposal was created and entered Draft state
     pub draft_at: UnixTimestamp,
@@ -60,8 +68,12 @@ pub struct Proposal {
     /// When Signatories started signing off the Proposal
     pub signing_off_at: Option<UnixTimestamp>,
 
-    /// When the Proposal began voting
+    /// When the Proposal began voting as UnixTimestamp
     pub voting_at: Option<UnixTimestamp>,
+
+    /// When the Proposal began voting as Slot
+    /// Note: The slot is not currently used but the exact slot is going to be required to support snapshot based vote weights
+    pub voting_at_slot: Option<Slot>,
 
     /// When the Proposal ended voting and entered either Succeeded or Defeated
     pub voting_completed_at: Option<UnixTimestamp>,
@@ -72,19 +84,20 @@ pub struct Proposal {
     /// When the Proposal entered final state Completed or Cancelled and was closed
     pub closed_at: Option<UnixTimestamp>,
 
-    /// The number of the instructions already executed
-    pub instructions_executed_count: u16,
+    /// Instruction execution flag for ordered and transactional instructions
+    /// Note: This field is not used in the current version
+    pub execution_flags: InstructionExecutionFlags,
 
-    /// The number of instructions included in the proposal
-    pub instructions_count: u16,
+    /// Proposal name
+    pub name: String,
 
-    /// The index of the the next instruction to be added
-    pub instructions_next_index: u16,
+    /// Link to proposal's description
+    pub description_link: String,
 }
 
 impl AccountMaxSize for Proposal {
     fn get_max_size(&self) -> Option<usize> {
-        Some(self.name.len() + self.description_link.len() + 183)
+        Some(self.name.len() + self.description_link.len() + 193)
     }
 }
 
@@ -200,7 +213,8 @@ impl Proposal {
         config: &GovernanceConfig,
     ) -> ProposalState {
         let yes_vote_threshold_count =
-            get_vote_threshold_count(config.yes_vote_threshold_percentage, governing_token_supply);
+            get_yes_vote_threshold_count(&config.vote_threshold_percentage, governing_token_supply)
+                .unwrap();
 
         // Yes vote must be equal or above the required yes_vote_threshold_percentage and higher than No vote
         // The same number of Yes and No votes is a tie and resolved as Defeated
@@ -244,7 +258,8 @@ impl Proposal {
         }
 
         let yes_vote_threshold_count =
-            get_vote_threshold_count(config.yes_vote_threshold_percentage, governing_token_supply);
+            get_yes_vote_threshold_count(&config.vote_threshold_percentage, governing_token_supply)
+                .unwrap();
 
         if self.yes_votes_count >= yes_vote_threshold_count
             && self.yes_votes_count > (governing_token_supply - self.yes_votes_count)
@@ -316,18 +331,30 @@ impl Proposal {
 }
 
 /// Converts threshold in percentages to actual vote count
-fn get_vote_threshold_count(threshold_percentage: u8, total_supply: u64) -> u64 {
-    let numerator = (threshold_percentage as u128)
+fn get_yes_vote_threshold_count(
+    vote_threshold_percentage: &VoteThresholdPercentage,
+    total_supply: u64,
+) -> Result<u64, ProgramError> {
+    let yes_vote_threshold_percentage = match vote_threshold_percentage {
+        VoteThresholdPercentage::YesVote(yes_vote_threshold_percentage) => {
+            *yes_vote_threshold_percentage
+        }
+        _ => {
+            return Err(GovernanceError::VoteThresholdPercentageTypeNotSupported.into());
+        }
+    };
+
+    let numerator = (yes_vote_threshold_percentage as u128)
         .checked_mul(total_supply as u128)
         .unwrap();
 
-    let mut threshold = numerator.checked_div(100).unwrap();
+    let mut yes_vote_threshold = numerator.checked_div(100).unwrap();
 
-    if threshold * 100 < numerator {
-        threshold += 1;
+    if yes_vote_threshold * 100 < numerator {
+        yes_vote_threshold += 1;
     }
 
-    threshold as u64
+    Ok(yes_vote_threshold as u64)
 }
 
 /// Deserializes Proposal account and checks owner program
@@ -399,6 +426,7 @@ pub fn get_proposal_address<'a>(
 
 #[cfg(test)]
 mod test {
+    use crate::state::enums::{VoteThresholdPercentage, VoteWeightSource};
 
     use {super::*, proptest::prelude::*};
 
@@ -415,13 +443,18 @@ mod test {
             name: "This is my name".to_string(),
             draft_at: 10,
             signing_off_at: Some(10),
+
             voting_at: Some(10),
+            voting_at_slot: Some(500),
+
             voting_completed_at: Some(10),
             executing_at: Some(10),
             closed_at: Some(10),
 
             yes_votes_count: 0,
             no_votes_count: 0,
+
+            execution_flags: InstructionExecutionFlags::Ordered,
 
             instructions_executed_count: 10,
             instructions_count: 10,
@@ -433,10 +466,12 @@ mod test {
         GovernanceConfig {
             realm: Pubkey::new_unique(),
             governed_account: Pubkey::new_unique(),
-            yes_vote_threshold_percentage: 60,
             min_tokens_to_create_proposal: 5,
             min_instruction_hold_up_time: 10,
             max_voting_time: 5,
+            vote_threshold_percentage: VoteThresholdPercentage::YesVote(60),
+            vote_weight_source: VoteWeightSource::Deposit,
+            proposal_cool_off_time: 0,
         }
     }
 
@@ -812,7 +847,7 @@ mod test {
             proposal.state = ProposalState::Voting;
 
             let mut governance_config = create_test_governance_config();
-            governance_config.yes_vote_threshold_percentage = test_case.vote_threshold_percentage;
+            governance_config.vote_threshold_percentage =  VoteThresholdPercentage::YesVote(test_case.vote_threshold_percentage);
 
             let current_timestamp = 15_i64;
 
@@ -836,7 +871,7 @@ mod test {
             proposal.state = ProposalState::Voting;
 
             let mut governance_config = create_test_governance_config();
-            governance_config.yes_vote_threshold_percentage = test_case.vote_threshold_percentage;
+            governance_config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(test_case.vote_threshold_percentage);
 
             let current_timestamp = 16_i64;
 
@@ -878,7 +913,8 @@ mod test {
 
 
             let mut governance_config = create_test_governance_config();
-            governance_config.yes_vote_threshold_percentage = yes_vote_threshold_percentage;
+            let  yes_vote_threshold_percentage = VoteThresholdPercentage::YesVote(yes_vote_threshold_percentage);
+            governance_config.vote_threshold_percentage = yes_vote_threshold_percentage.clone();
 
             let current_timestamp = 15_i64;
 
@@ -886,7 +922,7 @@ mod test {
             proposal.try_tip_vote(governing_token_supply, &governance_config,current_timestamp);
 
             // Assert
-            let yes_vote_threshold_count = get_vote_threshold_count(yes_vote_threshold_percentage,governing_token_supply);
+            let yes_vote_threshold_count = get_yes_vote_threshold_count(&yes_vote_threshold_percentage,governing_token_supply).unwrap();
 
             if yes_votes_count >= yes_vote_threshold_count && yes_votes_count > (governing_token_supply - yes_votes_count)
             {
@@ -914,7 +950,9 @@ mod test {
 
 
             let mut governance_config = create_test_governance_config();
-            governance_config.yes_vote_threshold_percentage = yes_vote_threshold_percentage;
+            let  yes_vote_threshold_percentage = VoteThresholdPercentage::YesVote(yes_vote_threshold_percentage);
+
+            governance_config.vote_threshold_percentage = yes_vote_threshold_percentage.clone();
 
             let current_timestamp = 16_i64;
 
@@ -922,7 +960,7 @@ mod test {
             proposal.finalize_vote(governing_token_supply, &governance_config,current_timestamp).unwrap();
 
             // Assert
-            let yes_vote_threshold_count = get_vote_threshold_count(yes_vote_threshold_percentage,governing_token_supply);
+            let yes_vote_threshold_count = get_yes_vote_threshold_count(&yes_vote_threshold_percentage,governing_token_supply).unwrap();
 
             if yes_votes_count >= yes_vote_threshold_count &&  yes_votes_count > proposal.no_votes_count
             {

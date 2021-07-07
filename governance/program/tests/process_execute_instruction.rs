@@ -10,7 +10,11 @@ use solana_program::{
 use solana_program_test::tokio;
 
 use program_test::*;
-use spl_governance::{error::GovernanceError, instruction::Vote, state::enums::ProposalState};
+use spl_governance::{
+    error::GovernanceError,
+    instruction::Vote,
+    state::enums::{InstructionExecutionStatus, ProposalState},
+};
 
 #[tokio::test]
 async fn test_execute_mint_instruction() {
@@ -90,6 +94,11 @@ async fn test_execute_mint_instruction() {
     assert_eq!(
         Some(clock.unix_timestamp),
         proposal_instruction_account.executed_at
+    );
+
+    assert_eq!(
+        InstructionExecutionStatus::Success,
+        proposal_instruction_account.execution_status
     );
 
     let instruction_token_account = governance_test
@@ -177,6 +186,11 @@ async fn test_execute_transfer_instruction() {
     assert_eq!(
         Some(clock.unix_timestamp),
         proposal_instruction_account.executed_at
+    );
+
+    assert_eq!(
+        InstructionExecutionStatus::Success,
+        proposal_instruction_account.execution_status
     );
 
     let instruction_token_account = governance_test
@@ -283,6 +297,11 @@ async fn test_execute_upgrade_program_instruction() {
     assert_eq!(
         Some(clock.unix_timestamp),
         proposal_instruction_account.executed_at
+    );
+
+    assert_eq!(
+        InstructionExecutionStatus::Success,
+        proposal_instruction_account.execution_status
     );
 
     // Assert we can invoke the governed program after upgrade

@@ -33,7 +33,10 @@ use spl_governance::{
     },
     processor::process_instruction,
     state::{
-        enums::{GovernanceAccountType, ProposalState, VoteWeight},
+        enums::{
+            GovernanceAccountType, InstructionExecutionFlags, InstructionExecutionStatus,
+            ProposalState, VoteThresholdPercentage, VoteWeight,
+        },
         governance::{
             get_account_governance_address, get_mint_governance_address,
             get_program_governance_address, get_token_governance_address, Governance,
@@ -56,9 +59,9 @@ use crate::program_test::{cookies::SignatoryRecordCookie, tools::clone_keypair};
 
 use self::{
     cookies::{
-        GovernanceCookie, GovernedAccountCookie, GovernedMintCookie, GovernedProgramCookie,
-        GovernedTokenCookie, ProposalCookie, ProposalInstructionCookie, RealmCookie,
-        TokeOwnerRecordCookie, VoteRecordCookie,
+        AccountCookie, GovernanceCookie, GovernedAccountCookie, GovernedMintCookie,
+        GovernedProgramCookie, GovernedTokenCookie, ProposalCookie, ProposalInstructionCookie,
+        RealmCookie, TokeOwnerRecordCookie, VoteRecordCookie,
     },
     tools::NopOverride,
 };
@@ -180,6 +183,7 @@ impl GovernanceProgramTest {
             community_mint: community_token_mint_keypair.pubkey(),
             council_mint: Some(council_token_mint_keypair.pubkey()),
             name,
+            reserved: [0; 8],
         };
 
         RealmCookie {
@@ -219,6 +223,7 @@ impl GovernanceProgramTest {
             community_mint: realm_cookie.account.community_mint,
             council_mint: Some(council_mint),
             name,
+            reserved: [0; 8],
         };
 
         let community_token_holding_address = get_governing_token_holding_address(
@@ -377,6 +382,7 @@ impl GovernanceProgramTest {
             governance_delegate: None,
             unrelinquished_votes_count: 0,
             total_votes_count: 0,
+            reserved: [0; 8],
         };
 
         let governance_delegate = Keypair::from_base58_string(&token_owner.to_base58_string());
@@ -636,15 +642,18 @@ impl GovernanceProgramTest {
     pub fn get_default_governance_config(
         &mut self,
         realm_cookie: &RealmCookie,
-        governed_account_cookie: &GovernedAccountCookie,
+        governed_account_cookie: &impl AccountCookie,
     ) -> GovernanceConfig {
         GovernanceConfig {
             realm: realm_cookie.address,
-            governed_account: governed_account_cookie.address,
-            yes_vote_threshold_percentage: 60,
+            governed_account: governed_account_cookie.get_address(),
+
             min_tokens_to_create_proposal: 5,
             min_instruction_hold_up_time: 10,
             max_voting_time: 10,
+            vote_threshold_percentage: VoteThresholdPercentage::YesVote(60),
+            vote_weight_source: spl_governance::state::enums::VoteWeightSource::Deposit,
+            proposal_cool_off_time: 0,
         }
     }
 
@@ -676,6 +685,7 @@ impl GovernanceProgramTest {
             account_type: GovernanceAccountType::AccountGovernance,
             config: governance_config.clone(),
             proposals_count: 0,
+            reserved: [0; 8],
         };
 
         self.process_transaction(&[create_account_governance_instruction], None)
@@ -788,14 +798,7 @@ impl GovernanceProgramTest {
         instruction_override: F,
         signers_override: Option<&[&Keypair]>,
     ) -> Result<GovernanceCookie, ProgramError> {
-        let config = GovernanceConfig {
-            realm: realm_cookie.address,
-            governed_account: governed_program_cookie.address,
-            min_tokens_to_create_proposal: 5,
-            min_instruction_hold_up_time: 10,
-            max_voting_time: 100,
-            yes_vote_threshold_percentage: 60,
-        };
+        let config = self.get_default_governance_config(realm_cookie, governed_program_cookie);
 
         let mut create_program_governance_instruction = create_program_governance(
             &self.program_id,
@@ -817,6 +820,7 @@ impl GovernanceProgramTest {
             account_type: GovernanceAccountType::ProgramGovernance,
             config,
             proposals_count: 0,
+            reserved: [0; 8],
         };
 
         let program_governance_address = get_program_governance_address(
@@ -855,14 +859,7 @@ impl GovernanceProgramTest {
         instruction_override: F,
         signers_override: Option<&[&Keypair]>,
     ) -> Result<GovernanceCookie, ProgramError> {
-        let config = GovernanceConfig {
-            realm: realm_cookie.address,
-            governed_account: governed_mint_cookie.address,
-            min_tokens_to_create_proposal: 5,
-            min_instruction_hold_up_time: 10,
-            max_voting_time: 100,
-            yes_vote_threshold_percentage: 60,
-        };
+        let config = self.get_default_governance_config(realm_cookie, governed_mint_cookie);
 
         let mut create_mint_governance_instruction = create_mint_governance(
             &self.program_id,
@@ -884,6 +881,7 @@ impl GovernanceProgramTest {
             account_type: GovernanceAccountType::MintGovernance,
             config,
             proposals_count: 0,
+            reserved: [0; 8],
         };
 
         let mint_governance_address = get_mint_governance_address(
@@ -922,14 +920,7 @@ impl GovernanceProgramTest {
         instruction_override: F,
         signers_override: Option<&[&Keypair]>,
     ) -> Result<GovernanceCookie, ProgramError> {
-        let config = GovernanceConfig {
-            realm: realm_cookie.address,
-            governed_account: governed_token_cookie.address,
-            min_tokens_to_create_proposal: 5,
-            min_instruction_hold_up_time: 10,
-            max_voting_time: 100,
-            yes_vote_threshold_percentage: 60,
-        };
+        let config = self.get_default_governance_config(realm_cookie, governed_token_cookie);
 
         let mut create_token_governance_instruction = create_token_governance(
             &self.program_id,
@@ -951,6 +942,7 @@ impl GovernanceProgramTest {
             account_type: GovernanceAccountType::TokenGovernance,
             config,
             proposals_count: 0,
+            reserved: [0; 8],
         };
 
         let token_governance_address = get_token_governance_address(
@@ -1047,10 +1039,12 @@ impl GovernanceProgramTest {
             governing_token_mint: token_owner_record_cookie.account.governing_token_mint,
             state: ProposalState::Draft,
             signatories_count: 0,
-            // Clock always returns 1 when running under the test
+
             draft_at: clock.unix_timestamp,
             signing_off_at: None,
+
             voting_at: None,
+            voting_at_slot: None,
             voting_completed_at: None,
             executing_at: None,
             closed_at: None,
@@ -1061,6 +1055,8 @@ impl GovernanceProgramTest {
             signatories_signed_off_count: 0,
             yes_votes_count: 0,
             no_votes_count: 0,
+
+            execution_flags: InstructionExecutionFlags::None,
         };
 
         let proposal_address = get_proposal_address(
@@ -1474,7 +1470,7 @@ impl GovernanceProgramTest {
 
         let instruction_data: InstructionData = instruction.clone().into();
 
-        let index = index.unwrap_or(proposal_cookie.account.instructions_next_index);
+        let instruction_index = index.unwrap_or(proposal_cookie.account.instructions_next_index);
 
         proposal_cookie.account.instructions_next_index =
             proposal_cookie.account.instructions_next_index + 1;
@@ -1486,7 +1482,7 @@ impl GovernanceProgramTest {
             &token_owner_record_cookie.address,
             &token_owner_record_cookie.token_owner.pubkey(),
             &self.context.payer.pubkey(),
-            index,
+            instruction_index,
             hold_up_time,
             instruction_data.clone(),
         );
@@ -1500,14 +1496,16 @@ impl GovernanceProgramTest {
         let proposal_instruction_address = get_proposal_instruction_address(
             &self.program_id,
             &proposal_cookie.address,
-            &index.to_le_bytes(),
+            &instruction_index.to_le_bytes(),
         );
 
         let proposal_instruction_data = ProposalInstruction {
             account_type: GovernanceAccountType::ProposalInstruction,
+            instruction_index,
             hold_up_time,
             instruction: instruction_data,
             executed_at: None,
+            execution_status: InstructionExecutionStatus::None,
             proposal: proposal_cookie.address,
         };
 

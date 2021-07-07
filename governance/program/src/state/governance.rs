@@ -1,16 +1,18 @@
 //! Governance Account
 
 use crate::{
-    error::GovernanceError, state::enums::GovernanceAccountType, tools::account::get_account_data,
-    tools::account::AccountMaxSize,
+    error::GovernanceError,
+    state::{
+        enums::{GovernanceAccountType, VoteThresholdPercentage, VoteWeightSource},
+        realm::assert_is_valid_realm,
+    },
+    tools::account::{get_account_data, AccountMaxSize},
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
     account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
     pubkey::Pubkey,
 };
-
-use crate::state::realm::assert_is_valid_realm;
 
 /// Governance config
 #[repr(C)]
@@ -22,20 +24,27 @@ pub struct GovernanceConfig {
     /// Account governed by this Governance. It can be for example Program account, Mint account or Token Account
     pub governed_account: Pubkey,
 
-    /// Voting threshold of Yes votes in % required to tip the vote
-    /// It's the percentage of tokens out of the entire pool of governance tokens eligible to vote
-    // Note: If the threshold is below or equal to 50% then an even split of votes ex: 50:50 or 40:40 is always resolved as Defeated
-    // In other words +1 vote tie breaker is required to have successful vote
-    pub yes_vote_threshold_percentage: u8,
+    /// The type of the vote threshold used for voting
+    /// Note: In the current version only YesVote threshold is supported
+    pub vote_threshold_percentage: VoteThresholdPercentage,
 
     /// Minimum number of tokens a governance token owner must possess to be able to create a proposal
-    pub min_tokens_to_create_proposal: u16,
+    pub min_tokens_to_create_proposal: u64,
 
     /// Minimum waiting time in seconds for an instruction to be executed after proposal is voted on
     pub min_instruction_hold_up_time: u32,
 
     /// Time limit in seconds for proposal to be open for voting
     pub max_voting_time: u32,
+
+    /// The source of vote weight for voters
+    /// Note: In the current version only token deposits are accepted as vote weight
+    pub vote_weight_source: VoteWeightSource,
+
+    /// The time period in seconds within which a Proposal can be still cancelled after being voted on
+    /// Once cool off time expires Proposal can't be cancelled any longer and becomes a law
+    /// Note: This field is not implemented in the current version
+    pub proposal_cool_off_time: u32,
 }
 
 /// Governance Account
@@ -47,6 +56,9 @@ pub struct Governance {
 
     /// Governance config
     pub config: GovernanceConfig,
+
+    /// Reserved space for future versions
+    pub reserved: [u8; 8],
 
     /// Running count of proposals
     pub proposals_count: u32,
@@ -207,10 +219,23 @@ pub fn assert_is_valid_governance_config(
 
     assert_is_valid_realm(program_id, realm_info)?;
 
-    if governance_config.yes_vote_threshold_percentage < 1
-        || governance_config.yes_vote_threshold_percentage > 100
-    {
-        return Err(GovernanceError::InvalidGovernanceConfig.into());
+    match governance_config.vote_threshold_percentage {
+        VoteThresholdPercentage::YesVote(yes_vote_threshold_percentage) => {
+            if !(1..=100).contains(&yes_vote_threshold_percentage) {
+                return Err(GovernanceError::InvalidGovernanceConfig.into());
+            }
+        }
+        _ => {
+            return Err(GovernanceError::VoteThresholdPercentageTypeNotSupported.into());
+        }
+    }
+
+    if governance_config.vote_weight_source != VoteWeightSource::Deposit {
+        return Err(GovernanceError::VoteWeightSourceNotSupported.into());
+    }
+
+    if governance_config.proposal_cool_off_time > 0 {
+        return Err(GovernanceError::ProposalCoolOffTimeNotSupported.into());
     }
 
     Ok(())

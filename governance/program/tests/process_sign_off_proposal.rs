@@ -52,6 +52,7 @@ async fn test_sign_off_proposal() {
     assert_eq!(ProposalState::Voting, proposal_account.state);
     assert_eq!(Some(clock.unix_timestamp), proposal_account.signing_off_at);
     assert_eq!(Some(clock.unix_timestamp), proposal_account.voting_at);
+    assert_eq!(Some(clock.slot), proposal_account.voting_at_slot);
 
     let signatory_record_account = governance_test
         .get_signatory_record_account(&signatory_record_cookie.address)

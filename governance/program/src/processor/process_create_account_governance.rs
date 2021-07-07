@@ -40,6 +40,7 @@ pub fn process_create_account_governance(
         account_type: GovernanceAccountType::AccountGovernance,
         config: config.clone(),
         proposals_count: 0,
+        reserved: [0; 8],
     };
 
     create_and_serialize_account_signed::<Governance>(

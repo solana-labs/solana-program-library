@@ -36,10 +36,6 @@ pub struct TokenOwnerRecord {
     /// This amount is the voter weight used when voting on proposals
     pub governing_token_deposit_amount: u64,
 
-    /// A single account that is allowed to operate governance with the deposited governing tokens
-    /// It can be delegated to by the governing_token_owner or current governance_delegate
-    pub governance_delegate: Option<Pubkey>,
-
     /// The number of votes cast by TokenOwner but not relinquished yet
     /// Every time a vote is cast this number is increased and it's always decreased when relinquishing a vote regardless of the vote state
     pub unrelinquished_votes_count: u32,
@@ -47,11 +43,18 @@ pub struct TokenOwnerRecord {
     /// The total number of votes cast by the TokenOwner
     /// If TokenOwner withdraws vote while voting is still in progress total_votes_count is decreased  and the vote doesn't count towards the total
     pub total_votes_count: u32,
+
+    /// Reserved space for future versions
+    pub reserved: [u8; 8],
+
+    /// A single account that is allowed to operate governance with the deposited governing tokens
+    /// It can be delegated to by the governing_token_owner or current governance_delegate
+    pub governance_delegate: Option<Pubkey>,
 }
 
 impl AccountMaxSize for TokenOwnerRecord {
     fn get_max_size(&self) -> Option<usize> {
-        Some(146)
+        Some(154)
     }
 }
 
@@ -185,6 +188,7 @@ mod test {
             governance_delegate: Some(Pubkey::new_unique()),
             unrelinquished_votes_count: 1,
             total_votes_count: 1,
+            reserved: [0; 8],
         };
 
         let size = get_packed_len::<TokenOwnerRecord>();

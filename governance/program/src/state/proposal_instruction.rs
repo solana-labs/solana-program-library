@@ -2,7 +2,7 @@
 
 use crate::{
     error::GovernanceError,
-    state::enums::GovernanceAccountType,
+    state::enums::{GovernanceAccountType, InstructionExecutionStatus},
     tools::account::{get_account_data, AccountMaxSize},
     PROGRAM_AUTHORITY_SEED,
 };
@@ -86,6 +86,9 @@ pub struct ProposalInstruction {
     /// The Proposal the instruction belongs to
     pub proposal: Pubkey,
 
+    /// Unique instruction index within it's parent Proposal
+    pub instruction_index: u16,
+
     /// Minimum waiting time in seconds for the  instruction to be executed once proposal is voted on
     pub hold_up_time: u32,
 
@@ -96,11 +99,15 @@ pub struct ProposalInstruction {
 
     /// Executed at flag
     pub executed_at: Option<UnixTimestamp>,
+
+    /// Instruction execution status
+    /// Note: The field is not used in the current version
+    pub execution_status: InstructionExecutionStatus,
 }
 
 impl AccountMaxSize for ProposalInstruction {
     fn get_max_size(&self) -> Option<usize> {
-        Some(self.instruction.accounts.len() * 34 + self.instruction.data.len() + 86)
+        Some(self.instruction.accounts.len() * 34 + self.instruction.data.len() + 89)
     }
 }
 
@@ -172,6 +179,10 @@ pub fn assert_proposal_instruction_for_proposal(
 #[cfg(test)]
 mod test {
 
+    use std::str::FromStr;
+
+    use solana_program::bpf_loader_upgradeable;
+
     use super::*;
 
     fn create_test_account_meta_data() -> AccountMetaData {
@@ -197,9 +208,11 @@ mod test {
         ProposalInstruction {
             account_type: GovernanceAccountType::ProposalInstruction,
             proposal: Pubkey::new_unique(),
+            instruction_index: 1,
             hold_up_time: 10,
             instruction: create_test_instruction_data(),
             executed_at: Some(100),
+            execution_status: InstructionExecutionStatus::Success,
         }
     }
 
@@ -232,5 +245,38 @@ mod test {
 
         // Act, Assert
         assert_eq!(proposal_instruction.get_max_size(), Some(size));
+    }
+
+    #[test]
+    fn test_upgrade_instruction_serialization() {
+        // Arrange
+        let program_address =
+            Pubkey::from_str("Hita5Lun87S4MADAF4vGoWEgFm5DyuVqxoWzzqYxS3AD").unwrap();
+        let buffer_address =
+            Pubkey::from_str("5XqXkgJGAUwrUHBkxbKpYMGqsRoQLfyqRbYUEkjNY6hL").unwrap();
+        let governance = Pubkey::from_str("FqSReK9R8QxvFZgdrAwGT3gsYp1ZGfiFjS8xrzyyadn3").unwrap();
+
+        let upgrade_instruction = bpf_loader_upgradeable::upgrade(
+            &program_address,
+            &buffer_address,
+            &governance,
+            &governance,
+        );
+
+        // Act
+        let instruction_data: InstructionData = upgrade_instruction.clone().into();
+        let mut instruction_bytes = vec![];
+        instruction_data.serialize(&mut instruction_bytes).unwrap();
+
+        // base64 encoded message is accepted as the input in the UI
+        let base64 = base64::encode(instruction_bytes.clone());
+
+        // Assert
+        let instruction =
+            Instruction::from(&InstructionData::deserialize(&mut &instruction_bytes[..]).unwrap());
+
+        assert_eq!(upgrade_instruction, instruction);
+
+        assert_eq!(base64,"Aqj2kU6IobDiEBU+92OuKwDCuT0WwSTSwFN6EASAAAAHAAAAchkHXTU9jF+rKpILT6dzsVyNI9NsQy9cab+GGvdwNn0AAfh2HVruy2YibpgcQUmJf5att5YdPXSv1k2pRAKAfpSWAAFDVQuXWos2urmegSPblI813GlTm7CJ/8rv+9yzNE3yfwAB3Gw+apCyfrRNqJ6f1160Htkx+uYZT6FIILQ3WzNA4KwAAQan1RcZLFxRIYzJTD1K8X9Y2u4Im6H9ROPb2YoAAAAAAAAGp9UXGMd0yShWY5hpHV62i164o5tLbVxzVVshAAAAAAAA3Gw+apCyfrRNqJ6f1160Htkx+uYZT6FIILQ3WzNA4KwBAAQAAAADAAAA");
     }
 }

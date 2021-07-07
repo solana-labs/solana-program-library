@@ -13,7 +13,7 @@ use thiserror::Error;
 pub enum GovernanceError {
     /// Invalid instruction passed to program
     #[error("Invalid instruction passed to program")]
-    InvalidInstruction,
+    InvalidInstruction = 500, // Start Governance custom errors from 500 to avoid conflicts with programs invoked via CPI
 
     /// Realm with the given name and governing mints already exists
     #[error("Realm with the given name and governing mints already exists")]
@@ -259,6 +259,18 @@ pub enum GovernanceError {
     /// Current token owner must sign transaction
     #[error("Current token owner must sign transaction")]
     TokenOwnerMustSign,
+
+    /// Given VoteThresholdPercentageType is not supported
+    #[error("Given VoteThresholdPercentageType is not supported")]
+    VoteThresholdPercentageTypeNotSupported,
+
+    /// Given VoteWeightSource is not supported
+    #[error("Given VoteWeightSource is not supported")]
+    VoteWeightSourceNotSupported,
+
+    /// Proposal cool off time is not supported
+    #[error("Proposal cool off time is not supported")]
+    ProposalCoolOffTimeNotSupported,
 }
 
 impl PrintProgramError for GovernanceError {

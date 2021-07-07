@@ -6,7 +6,11 @@ use solana_program::pubkey::Pubkey;
 use solana_program_test::tokio;
 
 use program_test::*;
-use spl_governance::{error::GovernanceError, instruction::Vote, state::enums::ProposalState};
+use spl_governance::{
+    error::GovernanceError,
+    instruction::Vote,
+    state::enums::{ProposalState, VoteThresholdPercentage},
+};
 
 #[tokio::test]
 async fn test_finalize_vote_to_succeeded() {
@@ -19,7 +23,7 @@ async fn test_finalize_vote_to_succeeded() {
     let mut governance_config =
         governance_test.get_default_governance_config(&realm_cookie, &governed_account_cookie);
 
-    governance_config.yes_vote_threshold_percentage = 40;
+    governance_config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(40);
 
     let mut account_governance_cookie = governance_test
         .with_account_governance_using_config(

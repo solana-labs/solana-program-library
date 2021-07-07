@@ -83,6 +83,7 @@ pub fn process_create_realm(
         community_mint: *governance_token_mint_info.key,
         council_mint: council_token_mint_address,
         name: name.clone(),
+        reserved: [0; 8],
     };
 
     create_and_serialize_account_signed::<Realm>(

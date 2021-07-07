@@ -50,6 +50,7 @@ pub fn process_create_mint_governance(
         account_type: GovernanceAccountType::MintGovernance,
         config: config.clone(),
         proposals_count: 0,
+        reserved: [0; 8],
     };
 
     create_and_serialize_account_signed::<Governance>(

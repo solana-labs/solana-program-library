@@ -12,7 +12,8 @@ use solana_program::{
 };
 
 use crate::state::{
-    enums::ProposalState, governance::get_governance_data,
+    enums::{InstructionExecutionStatus, ProposalState},
+    governance::get_governance_data,
     proposal::get_proposal_data_for_governance,
     proposal_instruction::get_proposal_instruction_data_for_proposal,
 };
@@ -79,6 +80,7 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
     proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
 
     proposal_instruction_data.executed_at = Some(clock.unix_timestamp);
+    proposal_instruction_data.execution_status = InstructionExecutionStatus::Success;
     proposal_instruction_data.serialize(&mut *proposal_instruction_info.data.borrow_mut())?;
 
     Ok(())
