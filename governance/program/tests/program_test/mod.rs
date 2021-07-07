@@ -29,7 +29,8 @@ use spl_governance::{
         create_mint_governance, create_program_governance, create_proposal, create_realm,
         create_token_governance, deposit_governing_tokens, execute_instruction, finalize_vote,
         insert_instruction, relinquish_vote, remove_instruction, remove_signatory,
-        set_governance_delegate, sign_off_proposal, withdraw_governing_tokens, Vote,
+        set_governance_config, set_governance_delegate, sign_off_proposal,
+        withdraw_governing_tokens, Vote,
     },
     processor::process_instruction,
     state::{
@@ -1297,6 +1298,24 @@ impl GovernanceProgramTest {
         };
 
         Ok(vote_record_cookie)
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_set_governance_config_instruction(
+        &mut self,
+        proposal_cookie: &mut ProposalCookie,
+        token_owner_record_cookie: &TokeOwnerRecordCookie,
+        governance_config: &GovernanceConfig,
+    ) -> Result<ProposalInstructionCookie, ProgramError> {
+        let mut instruction = set_governance_config(&self.program_id, governance_config.clone());
+
+        self.with_instruction_impl(
+            proposal_cookie,
+            token_owner_record_cookie,
+            None,
+            &mut instruction,
+        )
+        .await
     }
 
     #[allow(dead_code)]

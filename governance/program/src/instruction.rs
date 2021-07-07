@@ -335,6 +335,16 @@ pub enum GovernanceInstruction {
         /// However the instruction would validate the current token owner signed the transaction nonetheless
         transfer_token_owner: bool,
     },
+
+    /// Sets GovernanceConfig for a Governance
+    ///
+    ///   0. `[]` Realm account the Governance account belongs to    
+    ///   1. `[writable, signer]` The Governance account the config is for
+    SetGovernanceConfig {
+        #[allow(dead_code)]
+        /// New governance config
+        config: GovernanceConfig,
+    },
 }
 
 /// Creates CreateRealm instruction
@@ -985,6 +995,29 @@ pub fn execute_instruction(
     accounts.extend_from_slice(instruction_accounts);
 
     let instruction = GovernanceInstruction::ExecuteInstruction {};
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates SetGovernanceConfig instruction
+pub fn set_governance_config(
+    program_id: &Pubkey,
+    // Args
+    config: GovernanceConfig,
+) -> Instruction {
+    let account_governance_address =
+        get_account_governance_address(program_id, &config.realm, &config.governed_account);
+
+    let accounts = vec![
+        AccountMeta::new_readonly(config.realm, false),
+        AccountMeta::new(account_governance_address, true),
+    ];
+
+    let instruction = GovernanceInstruction::SetGovernanceConfig { config };
 
     Instruction {
         program_id: *program_id,

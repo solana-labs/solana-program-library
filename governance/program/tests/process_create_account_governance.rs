@@ -80,7 +80,7 @@ async fn test_create_account_governance_with_invalid_config_error() {
 
     // Assert
 
-    assert_eq!(err, GovernanceError::InvalidGovernanceConfig.into());
+    assert_eq!(err, GovernanceError::InvalidVoteThresholdPercentage.into());
 
     // Arrange
     let mut config =
@@ -96,5 +96,5 @@ async fn test_create_account_governance_with_invalid_config_error() {
 
     // Assert
 
-    assert_eq!(err, GovernanceError::InvalidGovernanceConfig.into());
+    assert_eq!(err, GovernanceError::InvalidVoteThresholdPercentage.into());
 }

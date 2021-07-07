@@ -79,9 +79,9 @@ pub enum GovernanceError {
     #[error("Invalid GoverningTokenOwner for VoteRecord")]
     InvalidGoverningTokenOwnerForVoteRecord,
 
-    /// Invalid Governance config
-    #[error("Invalid Governance config")]
-    InvalidGovernanceConfig,
+    /// Invalid Governance config: Vote threshold percentage out of range"
+    #[error("Invalid Governance config: Vote threshold percentage out of range")]
+    InvalidVoteThresholdPercentage,
 
     /// Proposal for the given Governance, Governing Token Mint and index already exists
     #[error("Proposal for the given Governance, Governing Token Mint and index already exists")]
@@ -271,6 +271,18 @@ pub enum GovernanceError {
     /// Proposal cool off time is not supported
     #[error("Proposal cool off time is not supported")]
     ProposalCoolOffTimeNotSupported,
+
+    /// Governance PDA must sign
+    #[error("Governance PDA must sign")]
+    GovernancePdaMustSign,
+
+    /// Invalid config realm for Governance
+    #[error("Invalid config realm for Governance")]
+    InvalidConfigRealmForGovernance,
+
+    /// Invalid config governed account for Governance
+    #[error("Invalid config governed account for Governance")]
+    InvalidConfigGovernedAccountForGovernance,
 }
 
 impl PrintProgramError for GovernanceError {
