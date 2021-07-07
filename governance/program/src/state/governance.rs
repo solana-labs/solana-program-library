@@ -221,7 +221,7 @@ pub fn assert_is_valid_governance_config(
 
     match governance_config.vote_threshold_percentage {
         VoteThresholdPercentage::YesVote(yes_vote_threshold_percentage) => {
-            if yes_vote_threshold_percentage < 1 || yes_vote_threshold_percentage > 100 {
+            if !(1..=100).contains(&yes_vote_threshold_percentage) {
                 return Err(GovernanceError::InvalidGovernanceConfig.into());
             }
         }
