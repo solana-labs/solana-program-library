@@ -3,6 +3,8 @@
 use {
     crate::{big_vec::BigVec, error::StakePoolError, stake_program::Lockup},
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
+    num_derive::FromPrimitive,
+    num_traits::FromPrimitive,
     solana_program::{
         account_info::AccountInfo,
         borsh::get_instance_packed_len,
@@ -314,7 +316,9 @@ pub struct ValidatorListHeader {
 }
 
 /// Status of the stake account in the validator list, for accounting
-#[derive(Copy, Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(
+    FromPrimitive, Copy, Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema,
+)]
 pub enum StakeStatus {
     /// Stake account is active, there may be a transient stake as well
     Active,
@@ -361,8 +365,9 @@ pub struct ValidatorStakeInfoPacked {
 /// NOTE: ORDER IS VERY IMPORTANT HERE, PLEASE DO NOT RE-ORDER THE FIELDS UNLESS
 /// THERE'S AN EXTREMELY GOOD REASON.
 ///
-/// To save on instructions, the serialized bytes are reinterpreted with a pointer
-/// cast, which relies on C representation of bytes in this struct
+/// To save on BPF instructions, the serialized bytes are reinterpreted with an
+/// unsafe pointer cast, which means that this structure cannot have any
+/// undeclared alignment-padding in its representation.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ValidatorStakeInfo {
@@ -414,6 +419,11 @@ impl ValidatorStakeInfo {
     /// info has lamports equal to the given bytes
     pub fn memcmp_transient_lamports(data: &[u8], lamports_le_bytes: &[u8]) -> bool {
         sol_memcmp(&data[8..16], lamports_le_bytes, 8) != 0
+    }
+
+    /// Check that the validator stake info is valid
+    pub fn is_not_removed(data: &[u8]) -> bool {
+        FromPrimitive::from_u8(data[24]) != Some(StakeStatus::ReadyForRemoval)
     }
 }
 

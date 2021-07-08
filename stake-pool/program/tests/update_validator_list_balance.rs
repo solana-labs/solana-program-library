@@ -447,7 +447,6 @@ async fn merge_into_validator_stake() {
 }
 
 #[tokio::test]
-#[ignore] // TODO reenable after GC
 async fn merge_transient_stake_after_remove() {
     let (mut context, stake_pool_accounts, stake_accounts, lamports, reserve_lamports, mut slot) =
         setup(1).await;
@@ -562,9 +561,18 @@ async fn merge_transient_stake_after_remove() {
         reserve_lamports + deactivated_lamports + 2 * stake_rent + 1
     );
 
-    // Update stake pool balance, should be gone
+    // Update stake pool balance and cleanup, should be gone
     let error = stake_pool_accounts
         .update_stake_pool_balance(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+        )
+        .await;
+    assert!(error.is_none());
+
+    let error = stake_pool_accounts
+        .cleanup_removed_validator_entries(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,

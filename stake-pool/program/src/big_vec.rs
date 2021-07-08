@@ -1,9 +1,11 @@
-//! Big vector type, used with Borsh vectors that can't be serde'd
+//! Big vector type, used with vectors that can't be serde'd
 
 use {
     arrayref::array_ref,
     borsh::{BorshDeserialize, BorshSerialize},
-    solana_program::{program_error::ProgramError, program_pack::Pack},
+    solana_program::{
+        program_error::ProgramError, program_memory::sol_memmove, program_pack::Pack,
+    },
     std::marker::PhantomData,
 };
 
@@ -28,6 +30,59 @@ impl<'a> BigVec<'a> {
         self.len() == 0
     }
 
+    /// Retain all elements that match the provided function, discard all others
+    pub fn retain<T: Pack>(&mut self, predicate: fn(&[u8]) -> bool) -> Result<(), ProgramError> {
+        let mut vec_len = self.len();
+        let mut removals_found = 0;
+        let mut dst_start_index = 0;
+
+        let data_start_index = VEC_SIZE_BYTES;
+        let data_end_index =
+            data_start_index.saturating_add((vec_len as usize).saturating_mul(T::LEN));
+        for start_index in (data_start_index..data_end_index).step_by(T::LEN) {
+            let end_index = start_index + T::LEN;
+            let slice = &self.data[start_index..end_index];
+            if !predicate(slice) {
+                let gap = removals_found * T::LEN;
+                if removals_found > 0 {
+                    // In case the compute budget is ever bumped up, allowing us
+                    // to use this safe code instead:
+                    // self.data.copy_within(dst_start_index + gap..start_index, dst_start_index);
+                    unsafe {
+                        sol_memmove(
+                            self.data[dst_start_index..start_index - gap].as_mut_ptr(),
+                            self.data[dst_start_index + gap..start_index].as_mut_ptr(),
+                            start_index - gap - dst_start_index,
+                        );
+                    }
+                }
+                dst_start_index = start_index - gap;
+                removals_found += 1;
+                vec_len -= 1;
+            }
+        }
+
+        // final memmove
+        if removals_found > 0 {
+            let gap = removals_found * T::LEN;
+            // In case the compute budget is ever bumped up, allowing us
+            // to use this safe code instead:
+            //self.data.copy_within(dst_start_index + gap..data_end_index, dst_start_index);
+            unsafe {
+                sol_memmove(
+                    self.data[dst_start_index..data_end_index - gap].as_mut_ptr(),
+                    self.data[dst_start_index + gap..data_end_index].as_mut_ptr(),
+                    data_end_index - gap - dst_start_index,
+                );
+            }
+        }
+
+        let mut vec_len_ref = &mut self.data[0..VEC_SIZE_BYTES];
+        vec_len.serialize(&mut vec_len_ref)?;
+
+        Ok(())
+    }
+
     /// Extracts a slice of the data types
     pub fn deserialize_mut_slice<T: Pack>(
         self,
@@ -39,7 +94,7 @@ impl<'a> BigVec<'a> {
             return Err(ProgramError::AccountDataTooSmall);
         }
 
-        let start_index = 4usize.saturating_add(skip.saturating_mul(T::LEN));
+        let start_index = VEC_SIZE_BYTES.saturating_add(skip.saturating_mul(T::LEN));
         let end_index = start_index.saturating_add(len.saturating_mul(T::LEN));
         let mut deserialized = vec![];
         for slice in self.data[start_index..end_index].chunks_exact_mut(T::LEN) {
@@ -48,27 +103,8 @@ impl<'a> BigVec<'a> {
         Ok(deserialized)
     }
 
-    /// Writes slice data to some part of the buffer
-    pub fn serialize_slice<T: BorshSerialize + Pack>(
-        &mut self,
-        skip: usize,
-        slice: &[T],
-    ) -> Result<(), ProgramError> {
-        let vec_len = self.len();
-        if skip + slice.len() > vec_len as usize {
-            return Err(ProgramError::AccountDataTooSmall);
-        }
-
-        let instance_index = 4usize.saturating_add(skip.saturating_mul(T::LEN));
-        let mut data_mut = &mut self.data[instance_index..];
-        for instance in slice {
-            instance.serialize(&mut data_mut)?;
-        }
-        Ok(())
-    }
-
     /// Add new element to the end
-    pub fn push<T: BorshSerialize + Pack>(&'a mut self, element: T) -> Result<(), ProgramError> {
+    pub fn push<T: Pack>(&'a mut self, element: T) -> Result<(), ProgramError> {
         let mut vec_len_ref = &mut self.data[0..VEC_SIZE_BYTES];
         let mut vec_len = u32::try_from_slice(vec_len_ref)?;
 
@@ -82,7 +118,7 @@ impl<'a> BigVec<'a> {
             return Err(ProgramError::AccountDataTooSmall);
         }
         let mut element_ref = &mut self.data[start_index..start_index + T::LEN];
-        element.serialize(&mut element_ref)?;
+        element.pack_into_slice(&mut element_ref);
         Ok(())
     }
 
@@ -90,7 +126,7 @@ impl<'a> BigVec<'a> {
     pub fn remove<T: Pack>(&'a mut self, _index: usize) {}
 
     /// Get an iterator for the type provided
-    pub fn iter<T: BorshDeserialize + Pack>(&'a self) -> Iter<'a, T> {
+    pub fn iter<T: Pack>(&'a self) -> Iter<'a, T> {
         Iter {
             len: self.len() as usize,
             current: 0,
@@ -101,7 +137,7 @@ impl<'a> BigVec<'a> {
     }
 
     /// Get a mutable iterator for the type provided
-    pub fn iter_mut<T: BorshDeserialize + Pack>(&'a mut self) -> IterMut<'a, T> {
+    pub fn iter_mut<T: Pack>(&'a mut self) -> IterMut<'a, T> {
         IterMut {
             len: self.len() as usize,
             current: 0,

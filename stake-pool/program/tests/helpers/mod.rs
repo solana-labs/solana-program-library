@@ -735,6 +735,25 @@ impl StakePoolAccounts {
         banks_client.process_transaction(transaction).await.err()
     }
 
+    pub async fn cleanup_removed_validator_entries(
+        &self,
+        banks_client: &mut BanksClient,
+        payer: &Keypair,
+        recent_blockhash: &Hash,
+    ) -> Option<TransportError> {
+        let transaction = Transaction::new_signed_with_payer(
+            &[instruction::cleanup_removed_validator_entries(
+                &id(),
+                &self.stake_pool.pubkey(),
+                &self.validator_list.pubkey(),
+            )],
+            Some(&payer.pubkey()),
+            &[payer],
+            *recent_blockhash,
+        );
+        banks_client.process_transaction(transaction).await.err()
+    }
+
     pub async fn update_all(
         &self,
         banks_client: &mut BanksClient,
@@ -763,6 +782,11 @@ impl StakePoolAccounts {
                     &self.reserve_stake.pubkey(),
                     &self.pool_fee_account.pubkey(),
                     &self.pool_mint.pubkey(),
+                ),
+                instruction::cleanup_removed_validator_entries(
+                    &id(),
+                    &self.stake_pool.pubkey(),
+                    &self.validator_list.pubkey(),
                 ),
             ],
             Some(&payer.pubkey()),

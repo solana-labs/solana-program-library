@@ -66,7 +66,6 @@ async fn setup() -> (
 }
 
 #[tokio::test]
-#[ignore] // TODO reenable after GC
 async fn success() {
     let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
         setup().await;
@@ -81,6 +80,11 @@ async fn success() {
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
         )
+        .await;
+    assert!(error.is_none());
+
+    let error = stake_pool_accounts
+        .cleanup_removed_validator_entries(&mut banks_client, &payer, &recent_blockhash)
         .await;
     assert!(error.is_none());
 
@@ -238,7 +242,6 @@ async fn fail_not_at_minimum() {
 }
 
 #[tokio::test]
-#[ignore] // TODO reenable after GC
 async fn fail_double_remove() {
     let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
         setup().await;
@@ -253,6 +256,11 @@ async fn fail_double_remove() {
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
         )
+        .await;
+    assert!(error.is_none());
+
+    let error = stake_pool_accounts
+        .cleanup_removed_validator_entries(&mut banks_client, &payer, &recent_blockhash)
         .await;
     assert!(error.is_none());
 
@@ -558,7 +566,6 @@ async fn success_with_deactivating_transient_stake() {
 }
 
 #[tokio::test]
-#[ignore] // TODO reenable after GC
 async fn success_resets_preferred_validator() {
     let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake) =
         setup().await;
@@ -592,6 +599,11 @@ async fn success_resets_preferred_validator() {
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
         )
+        .await;
+    assert!(error.is_none());
+
+    let error = stake_pool_accounts
+        .cleanup_removed_validator_entries(&mut banks_client, &payer, &recent_blockhash)
         .await;
     assert!(error.is_none());
 

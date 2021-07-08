@@ -932,19 +932,6 @@ impl Processor {
         let mut validator_stake_info = maybe_validator_stake_info.unwrap();
         validator_stake_info.status = new_status;
 
-        /* TODO better?
-        match new_status {
-            StakeStatus::DeactivatingTransient => {
-                validator_list_entry.status = new_status
-            },
-            StakeStatus::ReadyForRemoval => {
-                let (index, _) = maybe_validator_list_entry.unwrap();
-                validator_list.remove::<ValidatorStakeInfo>(index);
-            },
-            _ => unreachable!(),
-        }
-        */
-
         if stake_pool.preferred_deposit_validator_vote_address == Some(vote_account_address) {
             stake_pool.preferred_deposit_validator_vote_address = None;
         }
@@ -1615,13 +1602,38 @@ impl Processor {
             stake_pool.fee = next_epoch_fee;
             stake_pool.next_epoch_fee = None;
         }
-        //validator_list
-        //    .validators
-        //    .retain(|item| item.status != StakeStatus::ReadyForRemoval);
-        //validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
         stake_pool.total_stake_lamports = total_stake_lamports;
         stake_pool.last_update_epoch = clock.epoch;
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
+
+        Ok(())
+    }
+
+    /// Processes the `CleanupRemovedValidatorEntries` instruction
+    fn process_cleanup_removed_validator_entries(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let stake_pool_info = next_account_info(account_info_iter)?;
+        let validator_list_info = next_account_info(account_info_iter)?;
+
+        check_account_owner(stake_pool_info, program_id)?;
+        let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
+        if !stake_pool.is_valid() {
+            return Err(StakePoolError::InvalidState.into());
+        }
+        stake_pool.check_validator_list(validator_list_info)?;
+
+        check_account_owner(validator_list_info, program_id)?;
+        let mut validator_list_data = validator_list_info.data.borrow_mut();
+        let (header, mut validator_list) =
+            ValidatorListHeader::deserialize_vec(&mut validator_list_data)?;
+        if !header.is_valid() {
+            return Err(StakePoolError::InvalidState.into());
+        }
+
+        validator_list.retain::<ValidatorStakeInfo>(ValidatorStakeInfo::is_not_removed)?;
 
         Ok(())
     }
@@ -2191,6 +2203,10 @@ impl Processor {
             StakePoolInstruction::UpdateStakePoolBalance => {
                 msg!("Instruction: UpdateStakePoolBalance");
                 Self::process_update_stake_pool_balance(program_id, accounts)
+            }
+            StakePoolInstruction::CleanupRemovedValidatorEntries => {
+                msg!("Instruction: CleanupRemovedValidatorEntries");
+                Self::process_cleanup_removed_validator_entries(program_id, accounts)
             }
             StakePoolInstruction::Deposit => {
                 msg!("Instruction: Deposit");
