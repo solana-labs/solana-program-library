@@ -697,7 +697,7 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
     );
     println!(
         "Max number of validators: {}",
-        validator_list.max_validators
+        validator_list.header.max_validators
     );
 
     if config.verbose {
@@ -755,7 +755,7 @@ fn command_update(
 
     let validator_list = get_validator_list(&config.rpc_client, &stake_pool.validator_list)?;
 
-    let (mut update_list_instructions, update_balance_instruction) =
+    let (mut update_list_instructions, final_instructions) =
         spl_stake_pool::instruction::update_stake_pool(
             &spl_stake_pool::id(),
             &stake_pool,
@@ -787,7 +787,7 @@ fn command_update(
     }
     let transaction = checked_transaction_with_signers(
         config,
-        &[update_balance_instruction],
+        &final_instructions,
         &[config.fee_payer.as_ref()],
     )?;
     send_transaction(config, transaction)?;

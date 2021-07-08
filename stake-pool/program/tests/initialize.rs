@@ -85,7 +85,7 @@ async fn success() {
     .await;
     let validator_list =
         try_from_slice_unchecked::<state::ValidatorList>(validator_list.data.as_slice()).unwrap();
-    assert!(validator_list.is_valid());
+    assert!(validator_list.header.is_valid());
 }
 
 #[tokio::test]

@@ -176,9 +176,9 @@ pub enum StakePoolInstruction {
     /// between SOL staked on different validators, the staker can force all
     /// deposits and/or withdraws to go to one chosen account, or unset that account.
     ///
-    /// 0. `[]` Stake pool
+    /// 0. `[w]` Stake pool
     /// 1. `[s]` Stake pool staker
-    /// 2. `[w]` Validator list
+    /// 2. `[]` Validator list
     ///
     /// Fails if the validator is not part of the stake pool.
     SetPreferredValidator {
@@ -230,6 +230,12 @@ pub enum StakePoolInstruction {
     ///   6. `[]` Sysvar clock account
     ///   7. `[]` Pool token program
     UpdateStakePoolBalance,
+
+    ///   Cleans up validator stake account entries marked as `ReadyForRemoval`
+    ///
+    ///   0. `[]` Stake pool
+    ///   1. `[w]` Validator stake list storage account
+    CleanupRemovedValidatorEntries,
 
     ///   Deposit some stake into the pool.  The output is a "pool" token representing ownership
     ///   into the pool. Inputs are converted to the current ratio.
@@ -515,9 +521,9 @@ pub fn set_preferred_validator(
     Instruction {
         program_id: *program_id,
         accounts: vec![
-            AccountMeta::new_readonly(*stake_pool_address, false),
+            AccountMeta::new(*stake_pool_address, false),
             AccountMeta::new_readonly(*staker, true),
-            AccountMeta::new(*validator_list_address, false),
+            AccountMeta::new_readonly(*validator_list_address, false),
         ],
         data: StakePoolInstruction::SetPreferredValidator {
             validator_type,
@@ -730,6 +736,25 @@ pub fn update_stake_pool_balance(
     }
 }
 
+/// Creates `CleanupRemovedValidatorEntries` instruction (removes entries from the validator list)
+pub fn cleanup_removed_validator_entries(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    validator_list_storage: &Pubkey,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new_readonly(*stake_pool, false),
+        AccountMeta::new(*validator_list_storage, false),
+    ];
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: StakePoolInstruction::CleanupRemovedValidatorEntries
+            .try_to_vec()
+            .unwrap(),
+    }
+}
+
 /// Creates all `UpdateValidatorListBalance` and `UpdateStakePoolBalance`
 /// instructions for fully updating a stake pool each epoch
 pub fn update_stake_pool(
@@ -738,7 +763,7 @@ pub fn update_stake_pool(
     validator_list: &ValidatorList,
     stake_pool_address: &Pubkey,
     no_merge: bool,
-) -> (Vec<Instruction>, Instruction) {
+) -> (Vec<Instruction>, Vec<Instruction>) {
     let vote_accounts: Vec<Pubkey> = validator_list
         .validators
         .iter()
@@ -764,16 +789,23 @@ pub fn update_stake_pool(
         start_index += MAX_VALIDATORS_TO_UPDATE as u32;
     }
 
-    let update_balance_instruction = update_stake_pool_balance(
-        program_id,
-        stake_pool_address,
-        &withdraw_authority,
-        &stake_pool.validator_list,
-        &stake_pool.reserve_stake,
-        &stake_pool.manager_fee_account,
-        &stake_pool.pool_mint,
-    );
-    (update_list_instructions, update_balance_instruction)
+    let final_instructions = vec![
+        update_stake_pool_balance(
+            program_id,
+            stake_pool_address,
+            &withdraw_authority,
+            &stake_pool.validator_list,
+            &stake_pool.reserve_stake,
+            &stake_pool.manager_fee_account,
+            &stake_pool.pool_mint,
+        ),
+        cleanup_removed_validator_entries(
+            program_id,
+            stake_pool_address,
+            &stake_pool.validator_list,
+        ),
+    ];
+    (update_list_instructions, final_instructions)
 }
 
 /// Creates instructions required to deposit into a stake pool, given a stake

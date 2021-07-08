@@ -82,11 +82,7 @@ async fn setup(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            stake_accounts
-                .iter()
-                .map(|v| v.vote.pubkey())
-                .collect::<Vec<Pubkey>>()
-                .as_slice(),
+            &[],
             false,
         )
         .await;
@@ -229,7 +225,7 @@ async fn merge_into_reserve() {
         .unwrap();
     let pre_reserve_lamports = reserve_stake.lamports;
 
-    // Decrease from all validators
+    println!("Decrease from all validators");
     for stake_account in &stake_accounts {
         let error = stake_pool_accounts
             .decrease_validator_stake(
@@ -244,7 +240,7 @@ async fn merge_into_reserve() {
         assert!(error.is_none());
     }
 
-    // Update, should not change, no merges yet
+    println!("Update, should not change, no merges yet");
     stake_pool_accounts
         .update_all(
             &mut context.banks_client,
@@ -275,7 +271,7 @@ async fn merge_into_reserve() {
     let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data).unwrap();
     assert_eq!(expected_lamports, stake_pool.total_stake_lamports);
 
-    // Warp one more epoch so the stakes deactivate
+    println!("Warp one more epoch so the stakes deactivate");
     let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
     slot += slots_per_epoch;
     context.warp_to_slot(slot).unwrap();
@@ -565,9 +561,18 @@ async fn merge_transient_stake_after_remove() {
         reserve_lamports + deactivated_lamports + 2 * stake_rent + 1
     );
 
-    // Update stake pool balance, should be gone
+    // Update stake pool balance and cleanup, should be gone
     let error = stake_pool_accounts
         .update_stake_pool_balance(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+        )
+        .await;
+    assert!(error.is_none());
+
+    let error = stake_pool_accounts
+        .cleanup_removed_validator_entries(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,

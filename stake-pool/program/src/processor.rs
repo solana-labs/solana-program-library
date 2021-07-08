@@ -6,7 +6,10 @@ use {
         find_deposit_authority_program_address,
         instruction::{PreferredValidatorType, StakePoolInstruction},
         minimum_reserve_lamports, minimum_stake_lamports, stake_program,
-        state::{AccountType, Fee, StakePool, StakeStatus, ValidatorList, ValidatorStakeInfo},
+        state::{
+            AccountType, Fee, StakePool, StakeStatus, ValidatorList, ValidatorListHeader,
+            ValidatorStakeInfo,
+        },
         AUTHORITY_DEPOSIT, AUTHORITY_WITHDRAW, MINIMUM_ACTIVE_STAKE, TRANSIENT_STAKE_SEED,
     },
     borsh::{BorshDeserialize, BorshSerialize},
@@ -480,7 +483,7 @@ impl Processor {
         check_account_owner(validator_list_info, program_id)?;
         let mut validator_list =
             try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
-        if !validator_list.is_uninitialized() {
+        if !validator_list.header.is_uninitialized() {
             msg!("Provided validator list already in use");
             return Err(StakePoolError::AlreadyInUse.into());
         }
@@ -495,11 +498,9 @@ impl Processor {
             );
             return Err(StakePoolError::UnexpectedValidatorListAccountSize.into());
         }
-        validator_list.account_type = AccountType::ValidatorList;
-        validator_list.preferred_deposit_validator_vote_address = None;
-        validator_list.preferred_withdraw_validator_vote_address = None;
+        validator_list.header.account_type = AccountType::ValidatorList;
+        validator_list.header.max_validators = max_validators;
         validator_list.validators.clear();
-        validator_list.max_validators = max_validators;
 
         if !rent.is_exempt(stake_pool_info.lamports(), stake_pool_info.data_len()) {
             msg!("Stake pool not rent-exempt");
@@ -610,6 +611,8 @@ impl Processor {
         stake_pool.total_stake_lamports = total_stake_lamports;
         stake_pool.fee = fee;
         stake_pool.next_epoch_fee = None;
+        stake_pool.preferred_deposit_validator_vote_address = None;
+        stake_pool.preferred_withdraw_validator_vote_address = None;
 
         stake_pool
             .serialize(&mut *stake_pool_info.data.borrow_mut())
@@ -746,12 +749,13 @@ impl Processor {
         }
 
         check_account_owner(validator_list_info, program_id)?;
-        let mut validator_list =
-            try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
-        if !validator_list.is_valid() {
+        let mut validator_list_data = validator_list_info.data.borrow_mut();
+        let (header, mut validator_list) =
+            ValidatorListHeader::deserialize_vec(&mut validator_list_data)?;
+        if !header.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
-        if validator_list.max_validators as usize == validator_list.validators.len() {
+        if header.max_validators == validator_list.len() {
             return Err(ProgramError::AccountDataTooSmall);
         }
 
@@ -769,7 +773,11 @@ impl Processor {
             return Err(StakePoolError::WrongStakeState.into());
         }
 
-        if validator_list.contains(&vote_account_address) {
+        let maybe_validator_stake_info = validator_list.find::<ValidatorStakeInfo>(
+            vote_account_address.as_ref(),
+            ValidatorStakeInfo::memcmp_pubkey,
+        );
+        if maybe_validator_stake_info.is_some() {
             return Err(StakePoolError::ValidatorAlreadyAdded.into());
         }
 
@@ -797,14 +805,13 @@ impl Processor {
             stake_program_info.clone(),
         )?;
 
-        validator_list.validators.push(ValidatorStakeInfo {
+        validator_list.push(ValidatorStakeInfo {
             status: StakeStatus::Active,
             vote_account_address,
             active_stake_lamports: stake_lamports.saturating_sub(minimum_lamport_amount),
             transient_stake_lamports: 0,
             last_update_epoch: clock.epoch,
-        });
-        validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
+        })?;
 
         Ok(())
     }
@@ -829,7 +836,7 @@ impl Processor {
         check_stake_program(stake_program_info.key)?;
         check_account_owner(stake_pool_info, program_id)?;
 
-        let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
+        let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
@@ -848,9 +855,10 @@ impl Processor {
         stake_pool.check_validator_list(validator_list_info)?;
 
         check_account_owner(validator_list_info, program_id)?;
-        let mut validator_list =
-            try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
-        if !validator_list.is_valid() {
+        let mut validator_list_data = validator_list_info.data.borrow_mut();
+        let (header, mut validator_list) =
+            ValidatorListHeader::deserialize_vec(&mut validator_list_data)?;
+        if !header.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
 
@@ -869,15 +877,17 @@ impl Processor {
             &vote_account_address,
         )?;
 
-        let maybe_validator_list_entry = validator_list.find_mut(&vote_account_address);
-        if maybe_validator_list_entry.is_none() {
+        let maybe_validator_stake_info = validator_list.find_mut::<ValidatorStakeInfo>(
+            vote_account_address.as_ref(),
+            ValidatorStakeInfo::memcmp_pubkey,
+        );
+        if maybe_validator_stake_info.is_none() {
             msg!(
                 "Vote account {} not found in stake pool",
                 vote_account_address
             );
             return Err(StakePoolError::ValidatorNotFound.into());
         }
-        let mut validator_list_entry = maybe_validator_list_entry.unwrap();
 
         let stake_lamports = **stake_account_info.lamports.borrow();
         let required_lamports = minimum_stake_lamports(&meta);
@@ -919,21 +929,16 @@ impl Processor {
             stake_program_info.clone(),
         )?;
 
-        match new_status {
-            StakeStatus::DeactivatingTransient => validator_list_entry.status = new_status,
-            StakeStatus::ReadyForRemoval => validator_list
-                .validators
-                .retain(|item| item.vote_account_address != vote_account_address),
-            _ => unreachable!(),
-        }
+        let mut validator_stake_info = maybe_validator_stake_info.unwrap();
+        validator_stake_info.status = new_status;
 
-        if validator_list.preferred_deposit_validator_vote_address == Some(vote_account_address) {
-            validator_list.preferred_deposit_validator_vote_address = None;
+        if stake_pool.preferred_deposit_validator_vote_address == Some(vote_account_address) {
+            stake_pool.preferred_deposit_validator_vote_address = None;
         }
-        if validator_list.preferred_withdraw_validator_vote_address == Some(vote_account_address) {
-            validator_list.preferred_withdraw_validator_vote_address = None;
+        if stake_pool.preferred_withdraw_validator_vote_address == Some(vote_account_address) {
+            stake_pool.preferred_withdraw_validator_vote_address = None;
         }
-        validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
+        stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
 
         Ok(())
     }
@@ -981,9 +986,10 @@ impl Processor {
 
         stake_pool.check_validator_list(validator_list_info)?;
         check_account_owner(validator_list_info, program_id)?;
-        let mut validator_list =
-            try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
-        if !validator_list.is_valid() {
+        let validator_list_data = &mut *validator_list_info.data.borrow_mut();
+        let (validator_list_header, mut validator_list) =
+            ValidatorListHeader::deserialize_vec(validator_list_data)?;
+        if !validator_list_header.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
 
@@ -1009,15 +1015,18 @@ impl Processor {
             &[transient_stake_bump_seed],
         ];
 
-        let maybe_validator_list_entry = validator_list.find_mut(&vote_account_address);
-        if maybe_validator_list_entry.is_none() {
+        let maybe_validator_stake_info = validator_list.find_mut::<ValidatorStakeInfo>(
+            vote_account_address.as_ref(),
+            ValidatorStakeInfo::memcmp_pubkey,
+        );
+        if maybe_validator_stake_info.is_none() {
             msg!(
                 "Vote account {} not found in stake pool",
                 vote_account_address
             );
             return Err(StakePoolError::ValidatorNotFound.into());
         }
-        let mut validator_list_entry = maybe_validator_list_entry.unwrap();
+        let mut validator_stake_info = maybe_validator_stake_info.unwrap();
 
         let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
         if lamports <= stake_rent {
@@ -1056,12 +1065,11 @@ impl Processor {
             stake_pool.withdraw_bump_seed,
         )?;
 
-        validator_list_entry.active_stake_lamports = validator_list_entry
+        validator_stake_info.active_stake_lamports = validator_stake_info
             .active_stake_lamports
             .checked_sub(lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
-        validator_list_entry.transient_stake_lamports = lamports;
-        validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
+        validator_stake_info.transient_stake_lamports = lamports;
 
         Ok(())
     }
@@ -1114,9 +1122,10 @@ impl Processor {
         stake_pool.check_reserve_stake(reserve_stake_account_info)?;
         check_account_owner(validator_list_info, program_id)?;
 
-        let mut validator_list =
-            try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
-        if !validator_list.is_valid() {
+        let mut validator_list_data = validator_list_info.data.borrow_mut();
+        let (header, mut validator_list) =
+            ValidatorListHeader::deserialize_vec(&mut validator_list_data)?;
+        if !header.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
 
@@ -1134,17 +1143,20 @@ impl Processor {
             &[transient_stake_bump_seed],
         ];
 
-        let maybe_validator_list_entry = validator_list.find_mut(vote_account_address);
-        if maybe_validator_list_entry.is_none() {
+        let maybe_validator_stake_info = validator_list.find_mut::<ValidatorStakeInfo>(
+            vote_account_address.as_ref(),
+            ValidatorStakeInfo::memcmp_pubkey,
+        );
+        if maybe_validator_stake_info.is_none() {
             msg!(
                 "Vote account {} not found in stake pool",
                 vote_account_address
             );
             return Err(StakePoolError::ValidatorNotFound.into());
         }
-        let mut validator_list_entry = maybe_validator_list_entry.unwrap();
+        let mut validator_stake_info = maybe_validator_stake_info.unwrap();
 
-        if validator_list_entry.status != StakeStatus::Active {
+        if validator_stake_info.status != StakeStatus::Active {
             msg!("Validator is marked for removal and no longer allows increases");
             return Err(StakePoolError::ValidatorNotFound.into());
         }
@@ -1208,8 +1220,7 @@ impl Processor {
             stake_pool.withdraw_bump_seed,
         )?;
 
-        validator_list_entry.transient_stake_lamports = total_lamports;
-        validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
+        validator_stake_info.transient_stake_lamports = total_lamports;
 
         Ok(())
     }
@@ -1229,7 +1240,7 @@ impl Processor {
         check_account_owner(stake_pool_info, program_id)?;
         check_account_owner(validator_list_info, program_id)?;
 
-        let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
+        let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_valid() {
             msg!("Expected valid stake pool");
             return Err(StakePoolError::InvalidState.into());
@@ -1238,14 +1249,19 @@ impl Processor {
         stake_pool.check_staker(staker_info)?;
         stake_pool.check_validator_list(validator_list_info)?;
 
-        let mut validator_list =
-            try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
-        if !validator_list.is_valid() {
+        let mut validator_list_data = validator_list_info.data.borrow_mut();
+        let (header, validator_list) =
+            ValidatorListHeader::deserialize_vec(&mut validator_list_data)?;
+        if !header.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
 
         if let Some(vote_account_address) = vote_account_address {
-            if !validator_list.contains(&vote_account_address) {
+            let maybe_validator_stake_info = validator_list.find::<ValidatorStakeInfo>(
+                vote_account_address.as_ref(),
+                ValidatorStakeInfo::memcmp_pubkey,
+            );
+            if maybe_validator_stake_info.is_none() {
                 msg!("Validator for {} not present in the stake pool, cannot set as preferred deposit account");
                 return Err(StakePoolError::ValidatorNotFound.into());
             }
@@ -1253,13 +1269,13 @@ impl Processor {
 
         match validator_type {
             PreferredValidatorType::Deposit => {
-                validator_list.preferred_deposit_validator_vote_address = vote_account_address
+                stake_pool.preferred_deposit_validator_vote_address = vote_account_address
             }
             PreferredValidatorType::Withdraw => {
-                validator_list.preferred_withdraw_validator_vote_address = vote_account_address
+                stake_pool.preferred_withdraw_validator_vote_address = vote_account_address
             }
         };
-        validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
+        stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
         Ok(())
     }
 
@@ -1296,17 +1312,20 @@ impl Processor {
         check_stake_program(stake_program_info.key)?;
 
         check_account_owner(validator_list_info, program_id)?;
-        let mut validator_list =
-            try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
-        if !validator_list.is_valid() {
+        let mut validator_list_data = validator_list_info.data.borrow_mut();
+        let (validator_list_header, mut validator_slice) =
+            ValidatorListHeader::deserialize_mut_slice(
+                &mut validator_list_data,
+                start_index as usize,
+                validator_stake_accounts.len() / 2,
+            )?;
+
+        if !validator_list_header.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
 
-        let mut changes = false;
-        let validator_iter = &mut validator_list
-            .validators
+        let validator_iter = &mut validator_slice
             .iter_mut()
-            .skip(start_index as usize)
             .zip(validator_stake_accounts.chunks_exact(2));
         for (validator_stake_record, validator_stakes) in validator_iter {
             // chunks_exact means that we always get 2 elements, making this safe
@@ -1485,11 +1504,6 @@ impl Processor {
             validator_stake_record.last_update_epoch = clock.epoch;
             validator_stake_record.active_stake_lamports = active_stake_lamports;
             validator_stake_record.transient_stake_lamports = transient_stake_lamports;
-            changes = true;
-        }
-
-        if changes {
-            validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
         }
 
         Ok(())
@@ -1531,9 +1545,10 @@ impl Processor {
         }
 
         check_account_owner(validator_list_info, program_id)?;
-        let mut validator_list =
-            try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
-        if !validator_list.is_valid() {
+        let mut validator_list_data = validator_list_info.data.borrow_mut();
+        let (header, validator_list) =
+            ValidatorListHeader::deserialize_vec(&mut validator_list_data)?;
+        if !header.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
 
@@ -1551,7 +1566,7 @@ impl Processor {
                 msg!("Reserve stake account in unknown state, aborting");
                 return Err(StakePoolError::WrongStakeState.into());
             };
-        for validator_stake_record in &validator_list.validators {
+        for validator_stake_record in validator_list.iter::<ValidatorStakeInfo>() {
             if validator_stake_record.last_update_epoch < clock.epoch {
                 return Err(StakePoolError::StakeListOutOfDate.into());
             }
@@ -1587,13 +1602,38 @@ impl Processor {
             stake_pool.fee = next_epoch_fee;
             stake_pool.next_epoch_fee = None;
         }
-        validator_list
-            .validators
-            .retain(|item| item.status != StakeStatus::ReadyForRemoval);
-        validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
         stake_pool.total_stake_lamports = total_stake_lamports;
         stake_pool.last_update_epoch = clock.epoch;
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
+
+        Ok(())
+    }
+
+    /// Processes the `CleanupRemovedValidatorEntries` instruction
+    fn process_cleanup_removed_validator_entries(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let stake_pool_info = next_account_info(account_info_iter)?;
+        let validator_list_info = next_account_info(account_info_iter)?;
+
+        check_account_owner(stake_pool_info, program_id)?;
+        let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
+        if !stake_pool.is_valid() {
+            return Err(StakePoolError::InvalidState.into());
+        }
+        stake_pool.check_validator_list(validator_list_info)?;
+
+        check_account_owner(validator_list_info, program_id)?;
+        let mut validator_list_data = validator_list_info.data.borrow_mut();
+        let (header, mut validator_list) =
+            ValidatorListHeader::deserialize_vec(&mut validator_list_data)?;
+        if !header.is_valid() {
+            return Err(StakePoolError::InvalidState.into());
+        }
+
+        validator_list.retain::<ValidatorStakeInfo>(ValidatorStakeInfo::is_not_removed)?;
 
         Ok(())
     }
@@ -1673,9 +1713,10 @@ impl Processor {
         }
 
         check_account_owner(validator_list_info, program_id)?;
-        let mut validator_list =
-            try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
-        if !validator_list.is_valid() {
+        let mut validator_list_data = validator_list_info.data.borrow_mut();
+        let (header, mut validator_list) =
+            ValidatorListHeader::deserialize_vec(&mut validator_list_data)?;
+        if !header.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
 
@@ -1688,17 +1729,25 @@ impl Processor {
             validator_stake_account_info.key,
             &vote_account_address,
         )?;
-        if let Some(preferred_deposit) = validator_list.preferred_deposit_validator_vote_address {
+        if let Some(preferred_deposit) = stake_pool.preferred_deposit_validator_vote_address {
             if preferred_deposit != vote_account_address {
+                msg!(
+                    "Incorrect deposit address, expected {}, received {}",
+                    preferred_deposit,
+                    vote_account_address
+                );
                 return Err(StakePoolError::IncorrectDepositVoteAddress.into());
             }
         }
 
-        let validator_list_item = validator_list
-            .find_mut(&vote_account_address)
+        let mut validator_stake_info = validator_list
+            .find_mut::<ValidatorStakeInfo>(
+                vote_account_address.as_ref(),
+                ValidatorStakeInfo::memcmp_pubkey,
+            )
             .ok_or(StakePoolError::ValidatorNotFound)?;
 
-        if validator_list_item.status != StakeStatus::Active {
+        if validator_stake_info.status != StakeStatus::Active {
             msg!("Validator is marked for removal and no longer accepting deposits");
             return Err(StakePoolError::ValidatorNotFound.into());
         }
@@ -1795,12 +1844,11 @@ impl Processor {
             .ok_or(StakePoolError::CalculationFailure)?;
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
 
-        validator_list_item.active_stake_lamports = post_validator_stake
+        validator_stake_info.active_stake_lamports = post_validator_stake
             .delegation
             .stake
             .checked_sub(MINIMUM_ACTIVE_STAKE)
             .ok_or(StakePoolError::CalculationFailure)?;
-        validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
 
         Ok(())
     }
@@ -1850,9 +1898,10 @@ impl Processor {
         }
 
         check_account_owner(validator_list_info, program_id)?;
-        let mut validator_list =
-            try_from_slice_unchecked::<ValidatorList>(&validator_list_info.data.borrow())?;
-        if !validator_list.is_valid() {
+        let mut validator_list_data = validator_list_info.data.borrow_mut();
+        let (header, mut validator_list) =
+            ValidatorListHeader::deserialize_vec(&mut validator_list_data)?;
+        if !header.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
 
@@ -1860,19 +1909,23 @@ impl Processor {
             .calc_lamports_withdraw_amount(pool_tokens)
             .ok_or(StakePoolError::CalculationFailure)?;
 
+        let has_active_stake = validator_list
+            .find::<ValidatorStakeInfo>(
+                &0u64.to_le_bytes(),
+                ValidatorStakeInfo::memcmp_active_lamports,
+            )
+            .is_some();
+
         let validator_list_item_info = if *stake_split_from.key == stake_pool.reserve_stake {
             // check that the validator stake accounts have no withdrawable stake
-            if let Some(withdrawable_entry) = validator_list
-                .validators
-                .iter()
-                .find(|&&x| x.stake_lamports() != 0)
-            {
-                let (validator_stake_address, _) = crate::find_stake_program_address(
-                    program_id,
-                    &withdrawable_entry.vote_account_address,
-                    stake_pool_info.key,
-                );
-                msg!("Error withdrawing from reserve: validator stake account {} has {} lamports available, please use that first.", validator_stake_address, withdrawable_entry.stake_lamports());
+            let has_transient_stake = validator_list
+                .find::<ValidatorStakeInfo>(
+                    &0u64.to_le_bytes(),
+                    ValidatorStakeInfo::memcmp_transient_lamports,
+                )
+                .is_some();
+            if has_transient_stake || has_active_stake {
+                msg!("Error withdrawing from reserve: validator stake accounts have lamports available, please use those first.");
                 return Err(StakePoolError::StakeLamportsNotEqualToMinimum.into());
             }
 
@@ -1891,10 +1944,13 @@ impl Processor {
             let vote_account_address = stake.delegation.voter_pubkey;
 
             if let Some(preferred_withdraw_validator) =
-                validator_list.preferred_withdraw_validator_vote_address
+                stake_pool.preferred_withdraw_validator_vote_address
             {
                 let preferred_validator_info = validator_list
-                    .find(&preferred_withdraw_validator)
+                    .find::<ValidatorStakeInfo>(
+                        preferred_withdraw_validator.as_ref(),
+                        ValidatorStakeInfo::memcmp_pubkey,
+                    )
                     .ok_or(StakePoolError::ValidatorNotFound)?;
                 if preferred_withdraw_validator != vote_account_address
                     && preferred_validator_info.active_stake_lamports > 0
@@ -1906,7 +1962,7 @@ impl Processor {
 
             // if there's any active stake, we must withdraw from an active
             // stake account
-            let withdrawing_from_transient_stake = if validator_list.has_active_stake() {
+            let withdrawing_from_transient_stake = if has_active_stake {
                 check_validator_stake_address(
                     program_id,
                     stake_pool_info.key,
@@ -1924,11 +1980,14 @@ impl Processor {
                 true
             };
 
-            let validator_list_item = validator_list
-                .find_mut(&vote_account_address)
+            let validator_stake_info = validator_list
+                .find_mut::<ValidatorStakeInfo>(
+                    vote_account_address.as_ref(),
+                    ValidatorStakeInfo::memcmp_pubkey,
+                )
                 .ok_or(StakePoolError::ValidatorNotFound)?;
 
-            if validator_list_item.status != StakeStatus::Active {
+            if validator_stake_info.status != StakeStatus::Active {
                 msg!("Validator is marked for removal and no longer allowing withdrawals");
                 return Err(StakePoolError::ValidatorNotFound.into());
             }
@@ -1938,7 +1997,7 @@ impl Processor {
                 msg!("Attempting to withdraw {} lamports from validator account with {} stake lamports, {} must remain", withdraw_lamports, stake.delegation.stake, MINIMUM_ACTIVE_STAKE);
                 return Err(StakePoolError::StakeLamportsNotEqualToMinimum.into());
             }
-            Some((validator_list_item, withdrawing_from_transient_stake))
+            Some((validator_stake_info, withdrawing_from_transient_stake))
         };
 
         Self::token_burn(
@@ -1994,7 +2053,6 @@ impl Processor {
                     .checked_sub(withdraw_lamports)
                     .ok_or(StakePoolError::CalculationFailure)?;
             }
-            validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
         }
 
         Ok(())
@@ -2145,6 +2203,10 @@ impl Processor {
             StakePoolInstruction::UpdateStakePoolBalance => {
                 msg!("Instruction: UpdateStakePoolBalance");
                 Self::process_update_stake_pool_balance(program_id, accounts)
+            }
+            StakePoolInstruction::CleanupRemovedValidatorEntries => {
+                msg!("Instruction: CleanupRemovedValidatorEntries");
+                Self::process_cleanup_removed_validator_entries(program_id, accounts)
             }
             StakePoolInstruction::Deposit => {
                 msg!("Instruction: Deposit");
