@@ -11,14 +11,14 @@ use {
 
 /// Contains easy to use utilities for a big vector of Borsh-compatible types,
 /// to avoid managing the entire struct on-chain and blow through stack limits.
-pub struct BigVec<'a> {
+pub struct BigVec<'data> {
     /// Underlying data buffer, pieces of which are serialized
-    pub data: &'a mut [u8],
+    pub data: &'data mut [u8],
 }
 
 const VEC_SIZE_BYTES: usize = 4;
 
-impl<'a> BigVec<'a> {
+impl<'data> BigVec<'data> {
     /// Get the length of the vector
     pub fn len(&self) -> u32 {
         let vec_len = array_ref![self.data, 0, VEC_SIZE_BYTES];
@@ -85,10 +85,10 @@ impl<'a> BigVec<'a> {
 
     /// Extracts a slice of the data types
     pub fn deserialize_mut_slice<T: Pack>(
-        self,
+        &mut self,
         skip: usize,
         len: usize,
-    ) -> Result<Vec<&'a mut T>, ProgramError> {
+    ) -> Result<Vec<&'data mut T>, ProgramError> {
         let vec_len = self.len();
         if skip + len > vec_len as usize {
             return Err(ProgramError::AccountDataTooSmall);
@@ -104,7 +104,7 @@ impl<'a> BigVec<'a> {
     }
 
     /// Add new element to the end
-    pub fn push<T: Pack>(&'a mut self, element: T) -> Result<(), ProgramError> {
+    pub fn push<T: Pack>(&mut self, element: T) -> Result<(), ProgramError> {
         let mut vec_len_ref = &mut self.data[0..VEC_SIZE_BYTES];
         let mut vec_len = u32::try_from_slice(vec_len_ref)?;
 
@@ -122,11 +122,8 @@ impl<'a> BigVec<'a> {
         Ok(())
     }
 
-    /// Rewrite the vec to remove an instance
-    pub fn remove<T: Pack>(&'a mut self, _index: usize) {}
-
     /// Get an iterator for the type provided
-    pub fn iter<T: Pack>(&'a self) -> Iter<'a, T> {
+    pub fn iter<'vec, T: Pack>(&'vec self) -> Iter<'data, 'vec, T> {
         Iter {
             len: self.len() as usize,
             current: 0,
@@ -137,7 +134,7 @@ impl<'a> BigVec<'a> {
     }
 
     /// Get a mutable iterator for the type provided
-    pub fn iter_mut<T: Pack>(&'a mut self) -> IterMut<'a, T> {
+    pub fn iter_mut<'vec, T: Pack>(&'vec mut self) -> IterMut<'data, 'vec, T> {
         IterMut {
             len: self.len() as usize,
             current: 0,
@@ -148,11 +145,7 @@ impl<'a> BigVec<'a> {
     }
 
     /// Find matching data in the array
-    pub fn find<'b, T: Pack>(
-        &'a self,
-        data: &'b [u8],
-        predicate: fn(&[u8], &[u8]) -> bool,
-    ) -> Option<&T> {
+    pub fn find<T: Pack>(&self, data: &[u8], predicate: fn(&[u8], &[u8]) -> bool) -> Option<&T> {
         let len = self.len() as usize;
         let mut current = 0;
         let mut current_index = VEC_SIZE_BYTES;
@@ -169,9 +162,9 @@ impl<'a> BigVec<'a> {
     }
 
     /// Find matching data in the array
-    pub fn find_mut<'b, T: Pack>(
-        &'a mut self,
-        data: &'b [u8],
+    pub fn find_mut<T: Pack>(
+        &mut self,
+        data: &[u8],
         predicate: fn(&[u8], &[u8]) -> bool,
     ) -> Option<&mut T> {
         let len = self.len() as usize;
@@ -191,16 +184,16 @@ impl<'a> BigVec<'a> {
 }
 
 /// Iterator wrapper over a BigVec
-pub struct Iter<'a, T> {
+pub struct Iter<'data, 'vec, T> {
     len: usize,
     current: usize,
     current_index: usize,
-    inner: &'a BigVec<'a>,
+    inner: &'vec BigVec<'data>,
     phantom: PhantomData<T>,
 }
 
-impl<'a, T: Pack + 'a> Iterator for Iter<'a, T> {
-    type Item = &'a T;
+impl<'data, 'vec, T: Pack + 'data> Iterator for Iter<'data, 'vec, T> {
+    type Item = &'data T;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.current == self.len {
@@ -218,16 +211,16 @@ impl<'a, T: Pack + 'a> Iterator for Iter<'a, T> {
 }
 
 /// Iterator wrapper over a BigVec
-pub struct IterMut<'a, T> {
+pub struct IterMut<'data, 'vec, T> {
     len: usize,
     current: usize,
     current_index: usize,
-    inner: &'a mut BigVec<'a>,
+    inner: &'vec mut BigVec<'data>,
     phantom: PhantomData<T>,
 }
 
-impl<'a, T: Pack + 'a> Iterator for IterMut<'a, T> {
-    type Item = &'a mut T;
+impl<'data, 'vec, T: Pack + 'data> Iterator for IterMut<'data, 'vec, T> {
+    type Item = &'data mut T;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.current == self.len {
@@ -241,5 +234,142 @@ impl<'a, T: Pack + 'a> Iterator for IterMut<'a, T> {
             self.current_index = end_index;
             value
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        super::*,
+        solana_program::{program_memory::sol_memcmp, program_pack::Sealed},
+    };
+
+    #[derive(Debug, PartialEq)]
+    struct TestStruct {
+        value: u64,
+    }
+
+    impl Sealed for TestStruct {}
+
+    impl Pack for TestStruct {
+        const LEN: usize = 8;
+        fn pack_into_slice(&self, data: &mut [u8]) {
+            let mut data = data;
+            self.value.serialize(&mut data).unwrap();
+        }
+        fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
+            Ok(TestStruct {
+                value: u64::try_from_slice(src).unwrap(),
+            })
+        }
+    }
+
+    impl TestStruct {
+        fn new(value: u64) -> Self {
+            Self { value }
+        }
+    }
+
+    fn from_slice<'data, 'other>(data: &'data mut [u8], vec: &'other [u64]) -> BigVec<'data> {
+        let mut big_vec = BigVec { data };
+        for element in vec {
+            big_vec.push(TestStruct::new(*element)).unwrap();
+        }
+        big_vec
+    }
+
+    fn check_big_vec_eq(big_vec: &BigVec, slice: &[u64]) {
+        assert!(big_vec
+            .iter::<TestStruct>()
+            .map(|x| &x.value)
+            .zip(slice.iter())
+            .all(|(a, b)| a == b));
+    }
+
+    #[test]
+    fn push() {
+        let mut data = [0u8; 4 + 8 * 3];
+        let mut v = BigVec { data: &mut data };
+        v.push(TestStruct::new(1)).unwrap();
+        check_big_vec_eq(&v, &[1]);
+        v.push(TestStruct::new(2)).unwrap();
+        check_big_vec_eq(&v, &[1, 2]);
+        v.push(TestStruct::new(3)).unwrap();
+        check_big_vec_eq(&v, &[1, 2, 3]);
+        assert_eq!(
+            v.push(TestStruct::new(4)).unwrap_err(),
+            ProgramError::AccountDataTooSmall
+        );
+    }
+
+    #[test]
+    fn retain() {
+        fn mod_2_predicate(data: &[u8]) -> bool {
+            u64::try_from_slice(data).unwrap() % 2 == 0
+        }
+
+        let mut data = [0u8; 4 + 8 * 4];
+        let mut v = from_slice(&mut data, &[1, 2, 3, 4]);
+        v.retain::<TestStruct>(mod_2_predicate).unwrap();
+        check_big_vec_eq(&v, &[2, 4]);
+    }
+
+    fn find_predicate(a: &[u8], b: &[u8]) -> bool {
+        if a.len() != b.len() {
+            false
+        } else {
+            sol_memcmp(a, b, a.len()) == 0
+        }
+    }
+
+    #[test]
+    fn find() {
+        let mut data = [0u8; 4 + 8 * 4];
+        let v = from_slice(&mut data, &[1, 2, 3, 4]);
+        assert_eq!(
+            v.find::<TestStruct>(&1u64.to_le_bytes(), find_predicate),
+            Some(&TestStruct::new(1))
+        );
+        assert_eq!(
+            v.find::<TestStruct>(&4u64.to_le_bytes(), find_predicate),
+            Some(&TestStruct::new(4))
+        );
+        assert_eq!(
+            v.find::<TestStruct>(&5u64.to_le_bytes(), find_predicate),
+            None
+        );
+    }
+
+    #[test]
+    fn find_mut() {
+        let mut data = [0u8; 4 + 8 * 4];
+        let mut v = from_slice(&mut data, &[1, 2, 3, 4]);
+        let mut test_struct = v
+            .find_mut::<TestStruct>(&1u64.to_le_bytes(), find_predicate)
+            .unwrap();
+        test_struct.value = 0;
+        check_big_vec_eq(&v, &[0, 2, 3, 4]);
+        assert_eq!(
+            v.find_mut::<TestStruct>(&5u64.to_le_bytes(), find_predicate),
+            None
+        );
+    }
+
+    #[test]
+    fn deserialize_mut_slice() {
+        let mut data = [0u8; 4 + 8 * 4];
+        let mut v = from_slice(&mut data, &[1, 2, 3, 4]);
+        let mut slice = v.deserialize_mut_slice::<TestStruct>(1, 2).unwrap();
+        slice[0].value = 10;
+        slice[1].value = 11;
+        check_big_vec_eq(&v, &[1, 10, 11, 4]);
+        assert_eq!(
+            v.deserialize_mut_slice::<TestStruct>(1, 4).unwrap_err(),
+            ProgramError::AccountDataTooSmall
+        );
+        assert_eq!(
+            v.deserialize_mut_slice::<TestStruct>(4, 1).unwrap_err(),
+            ProgramError::AccountDataTooSmall
+        );
     }
 }

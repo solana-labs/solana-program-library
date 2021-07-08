@@ -505,7 +505,7 @@ impl ValidatorListHeader {
         skip: usize,
         len: usize,
     ) -> Result<(Self, Vec<&mut ValidatorStakeInfo>), ProgramError> {
-        let (header, big_vec) = Self::deserialize_vec(data)?;
+        let (header, mut big_vec) = Self::deserialize_vec(data)?;
         let validator_list = big_vec.deserialize_mut_slice::<ValidatorStakeInfo>(skip, len)?;
         Ok((header, validator_list))
     }
