@@ -25,7 +25,7 @@ build_program () {
 }
 
 setup_validator() {
-  solana-test-validator --bpf-program SPoo1XJbrC5pXDfg5NQAXo2RKyfimXKm6KpqicGvpbo ../../../target/deploy/spl_stake_pool.so --quiet --reset --slots-per-epoch 32 &
+  solana-test-validator --bpf-program SPoo1xuN9wGpxNjGnPNbRPtpQ7mHgKM8d9BeFC549Jy ../../../target/deploy/spl_stake_pool.so --quiet --reset --slots-per-epoch 32 &
   pid=$!
   solana config set --url http://127.0.0.1:8899
   solana config set --commitment confirmed
