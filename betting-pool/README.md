@@ -18,6 +18,10 @@ First, clone down the repository (TODO publish to PyPI)
 
 Create a virtual environment and and install the dependencies in `client/requirements.txt`
 
+Install virtualenv: https://virtualenv.pypa.io/en/latest/installation.html if you don't have it downloaded.
+
+I would recommend using a version of Python that is >= Python3.6 (I'm using Python 3.8.2)
+
 ```
 python3 -m virtualenv venv
 source venv/bin/activate
