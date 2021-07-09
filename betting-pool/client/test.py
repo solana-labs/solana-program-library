@@ -111,6 +111,12 @@ print(bp.mint_to(api_endpoint, pool, str(a3.public_key()), 1e6, skip_confirmatio
 
 pool_data = bp.load_betting_pool(api_endpoint, pool)
 
+print(bp.trade(api_endpoint, pool, ek1, ek2, 10, 30, 70, skip_confirmation=False))
+update_and_print_state()
+print(bp.trade(api_endpoint, pool, ek2, ek3, 1, 30, 70, skip_confirmation=False))
+update_and_print_state()
+print(bp.trade(api_endpoint, pool, ek3, ek1, 10, 40, 60, skip_confirmation=False))
+update_and_print_state()
 print(bp.trade(api_endpoint, pool, ek1, ek2, 2, 1, 99, skip_confirmation=False))
 update_and_print_state()
 print(bp.trade(api_endpoint, pool, ek2, ek1, 1, 50, 50, skip_confirmation=False))
