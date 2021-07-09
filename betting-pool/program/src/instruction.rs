@@ -67,7 +67,7 @@ pub fn initailize_betting_pool(
 
 /// Creates a Trade instruction
 #[allow(clippy::too_many_arguments)]
-pub fn initailize_trade(
+pub fn trade(
     program_id: Pubkey,
     pool_account: Pubkey,
     escrow_account: Pubkey,
@@ -105,6 +105,64 @@ pub fn initailize_trade(
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
         data: BettingPoolInstruction::Trade(TradeArgs { size, buy_price, sell_price })
+            .try_to_vec()
+            .unwrap(),
+    }
+}
+
+
+/// Creates a Settle instruction
+pub fn settle(
+    program_id: Pubkey,
+    pool_account: Pubkey,
+    winning_mint: Pubkey,
+    pool_authority: Pubkey,
+) -> Instruction {
+    Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(pool_account, false),
+            AccountMeta::new_readonly(winning_mint, false),
+            AccountMeta::new_readonly(pool_authority, true),
+        ],
+        data: BettingPoolInstruction::Settle
+            .try_to_vec()
+            .unwrap(),
+    }
+}
+
+/// Create a Collect instruction
+pub fn collect(
+    program_id: Pubkey,
+    pool_account: Pubkey,
+    collector_account: Pubkey,
+    collector_long_token_account: Pubkey,
+    collector_short_token_account: Pubkey,
+    collector_collateral_account: Pubkey,
+    long_token_mint_account: Pubkey,
+    short_token_mint_account: Pubkey,
+    escrow_account: Pubkey,
+    escrow_authority_account: Pubkey,
+    fee_payer_account: Pubkey,
+) -> Instruction {
+    Instruction {
+        program_id,
+        accounts: vec![
+            AccountMeta::new(pool_account, false),
+            AccountMeta::new_readonly(collector_account, false),
+            AccountMeta::new(collector_long_token_account, false),
+            AccountMeta::new(collector_short_token_account, false),
+            AccountMeta::new(collector_collateral_account, false),
+            AccountMeta::new(long_token_mint_account, false),
+            AccountMeta::new(short_token_mint_account, false),
+            AccountMeta::new(escrow_account, false),
+            AccountMeta::new(escrow_authority_account, false),
+            AccountMeta::new_readonly(fee_payer_account, true),
+            AccountMeta::new_readonly(spl_token::id(), false),
+            AccountMeta::new_readonly(solana_program::system_program::id(), false),
+            AccountMeta::new_readonly(sysvar::rent::id(), false),
+        ],
+        data: BettingPoolInstruction::Collect
             .try_to_vec()
             .unwrap(),
     }
