@@ -57,7 +57,7 @@ This is a lot of cases to consider, but we can group them into combined categori
 ```
 n_b >= n && n_s >= n
 ```
-This clause essentially groups 1) and 2) together. In this case, both buyer and seller are simply reducing their existing inventory. Therefore, we can just remove `n` long tokens and `n` short tokens from circulation. Both parties are also entitled to the locked up funds for their positions that were closed, so the buyer receives `n * sell_price` and the seller received `n * buy_price`. This might be confusing at first, but a good way to think about this is that there are no "sellers". Everyone with inventory is a "buyer". If an event as a probability `p` of occuring, the buyer is paying `p` and the seller is paying `1-p`. When a market participant receives funds, they are "selling out" (either locking in profits or losses) of their existing position.
+This clause groups 1) and 2) together. In this case, both buyer and seller are simply reducing their existing inventory. Therefore, we can just remove `n` long tokens and `n` short tokens from circulation. Both parties are also entitled to the locked up funds for their positions that were closed, so the buyer receives `n * sell_price` and the seller received `n * buy_price`. This might be confusing at first, but a good way to think about this is that there are no "sellers". Everyone with inventory is a "buyer". If an event as a probability `p` of occuring, the buyer is paying `p` and the seller is paying `1-p`. When a market participant receives funds, they are "selling out" (either locking in profits or losses) of their existing position.
 
 ```
 n_b < n && n_s < n
