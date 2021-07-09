@@ -3847,6 +3847,7 @@ dependencies = [
  "solana-client",
  "solana-logger",
  "solana-program",
+ "solana-remote-wallet",
  "solana-sdk",
  "spl-associated-token-account 1.0.2",
  "spl-stake-pool",
