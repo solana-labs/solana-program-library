@@ -9,9 +9,7 @@ use solana_program::{
 
 use crate::{
     error::GovernanceError,
-    state::governance::{
-        assert_is_valid_governance_config, get_governance_data_for_config, GovernanceConfig,
-    },
+    state::governance::{assert_is_valid_governance_config, get_governance_data, GovernanceConfig},
 };
 
 /// Processes SetGovernanceConfig instruction
@@ -31,7 +29,7 @@ pub fn process_set_governance_config(
 
     assert_is_valid_governance_config(&config)?;
 
-    let mut governance_data = get_governance_data_for_config(program_id, governance_info, &config)?;
+    let mut governance_data = get_governance_data(program_id, governance_info)?;
     governance_data.config = config;
 
     governance_data.serialize(&mut *governance_info.data.borrow_mut())?;

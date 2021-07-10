@@ -49,6 +49,7 @@ pub fn process_create_token_governance(
     let token_governance_data = Governance {
         account_type: GovernanceAccountType::TokenGovernance,
         realm: *realm_info.key,
+        governed_account: *governed_token_info.key,
         config: config.clone(),
         proposals_count: 0,
         reserved: [0; 8],
@@ -58,7 +59,7 @@ pub fn process_create_token_governance(
         payer_info,
         token_governance_info,
         &token_governance_data,
-        &get_token_governance_address_seeds(realm_info.key, &config.governed_account),
+        &get_token_governance_address_seeds(realm_info.key, governed_token_info.key),
         program_id,
         system_info,
         rent,

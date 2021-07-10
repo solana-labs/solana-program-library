@@ -49,6 +49,7 @@ pub fn process_create_mint_governance(
     let mint_governance_data = Governance {
         account_type: GovernanceAccountType::MintGovernance,
         realm: *realm_info.key,
+        governed_account: *governed_mint_info.key,
         config: config.clone(),
         proposals_count: 0,
         reserved: [0; 8],
@@ -58,7 +59,7 @@ pub fn process_create_mint_governance(
         payer_info,
         mint_governance_info,
         &mint_governance_data,
-        &get_mint_governance_address_seeds(realm_info.key, &config.governed_account),
+        &get_mint_governance_address_seeds(realm_info.key, governed_mint_info.key),
         program_id,
         system_info,
         rent,

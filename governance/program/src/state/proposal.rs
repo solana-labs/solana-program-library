@@ -464,7 +464,6 @@ mod test {
 
     fn create_test_governance_config() -> GovernanceConfig {
         GovernanceConfig {
-            governed_account: Pubkey::new_unique(),
             min_tokens_to_create_proposal: 5,
             min_instruction_hold_up_time: 10,
             max_voting_time: 5,
