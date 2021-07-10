@@ -50,7 +50,7 @@ pub fn process_create_mint_governance(
         account_type: GovernanceAccountType::MintGovernance,
         realm: *realm_info.key,
         governed_account: *governed_mint_info.key,
-        config: config.clone(),
+        config,
         proposals_count: 0,
         reserved: [0; 8],
     };

@@ -50,7 +50,7 @@ pub fn process_create_token_governance(
         account_type: GovernanceAccountType::TokenGovernance,
         realm: *realm_info.key,
         governed_account: *governed_token_info.key,
-        config: config.clone(),
+        config,
         proposals_count: 0,
         reserved: [0; 8],
     };

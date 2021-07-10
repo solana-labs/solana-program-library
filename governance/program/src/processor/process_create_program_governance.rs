@@ -54,7 +54,7 @@ pub fn process_create_program_governance(
         account_type: GovernanceAccountType::ProgramGovernance,
         realm: *realm_info.key,
         governed_account: *governed_program_info.key,
-        config: config.clone(),
+        config,
         proposals_count: 0,
         reserved: [0; 8],
     };

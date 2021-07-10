@@ -41,7 +41,7 @@ pub fn process_create_account_governance(
         account_type: GovernanceAccountType::AccountGovernance,
         realm: *realm_info.key,
         governed_account: *governed_account_info.key,
-        config: config.clone(),
+        config,
         proposals_count: 0,
         reserved: [0; 8],
     };
