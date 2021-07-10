@@ -5,7 +5,7 @@ use crate::{
     state::{
         enums::GovernanceAccountType,
         governance::{
-            assert_is_valid_governance_config, get_program_governance_address_seeds,
+            assert_valid_create_governance_args, get_program_governance_address_seeds,
             GovernanceConfig,
         },
     },
@@ -47,10 +47,11 @@ pub fn process_create_program_governance(
     let rent_sysvar_info = next_account_info(account_info_iter)?; // 6
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
 
-    assert_is_valid_governance_config(program_id, &config, realm_info)?;
+    assert_valid_create_governance_args(program_id, &config, realm_info)?;
 
     let program_governance_data = Governance {
         account_type: GovernanceAccountType::ProgramGovernance,
+        realm: *realm_info.key,
         config: config.clone(),
         proposals_count: 0,
         reserved: [0; 8],
@@ -60,7 +61,7 @@ pub fn process_create_program_governance(
         payer_info,
         program_governance_info,
         &program_governance_data,
-        &get_program_governance_address_seeds(&config.realm, &config.governed_account),
+        &get_program_governance_address_seeds(realm_info.key, &config.governed_account),
         program_id,
         system_info,
         rent,

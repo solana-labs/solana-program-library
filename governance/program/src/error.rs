@@ -276,10 +276,6 @@ pub enum GovernanceError {
     #[error("Governance PDA must sign")]
     GovernancePdaMustSign,
 
-    /// Invalid config realm for Governance
-    #[error("Invalid config realm for Governance")]
-    InvalidConfigRealmForGovernance,
-
     /// Invalid config governed account for Governance
     #[error("Invalid config governed account for Governance")]
     InvalidConfigGovernedAccountForGovernance,

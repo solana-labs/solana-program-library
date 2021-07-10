@@ -442,7 +442,7 @@ async fn test_cast_vote_with_threshold_below_50_and_vote_not_tipped() {
     let governed_account_cookie = governance_test.with_governed_account().await;
 
     let mut governance_config =
-        governance_test.get_default_governance_config(&realm_cookie, &governed_account_cookie);
+        governance_test.get_default_governance_config(&governed_account_cookie);
 
     governance_config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(40);
 

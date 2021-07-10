@@ -178,8 +178,7 @@ async fn test_insert_instruction_with_invalid_hold_up_time_error() {
     let realm_cookie = governance_test.with_realm().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
-    let mut config =
-        governance_test.get_default_governance_config(&realm_cookie, &governed_account_cookie);
+    let mut config = governance_test.get_default_governance_config(&governed_account_cookie);
 
     config.min_instruction_hold_up_time = 100;
 

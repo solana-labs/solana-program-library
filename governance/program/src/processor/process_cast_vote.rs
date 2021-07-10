@@ -66,7 +66,7 @@ pub fn process_cast_vote(
     let mut token_owner_record_data = get_token_owner_record_data_for_realm_and_governing_mint(
         program_id,
         token_owner_record_info,
-        &governance_data.config.realm,
+        &governance_data.realm,
         governing_token_mint_info.key,
     )?;
     token_owner_record_data.assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
