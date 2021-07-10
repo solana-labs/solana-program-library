@@ -109,6 +109,25 @@ pub fn get_governance_data(
     get_account_data::<Governance>(governance_info, program_id)
 }
 
+/// Deserializes governance account data and validates it's consistent with the given config
+pub fn get_governance_data_for_config(
+    program_id: &Pubkey,
+    governance_info: &AccountInfo,
+    config: &GovernanceConfig,
+) -> Result<Governance, ProgramError> {
+    let governance_data = get_governance_data(program_id, governance_info)?;
+
+    if governance_data.config.realm != config.realm {
+        return Err(GovernanceError::InvalidConfigRealmForGovernance.into());
+    }
+
+    if governance_data.config.governed_account != config.governed_account {
+        return Err(GovernanceError::InvalidConfigGovernedAccountForGovernance.into());
+    }
+
+    Ok(governance_data)
+}
+
 /// Returns ProgramGovernance PDA seeds
 pub fn get_program_governance_address_seeds<'a>(
     realm: &'a Pubkey,
@@ -214,7 +233,7 @@ pub fn assert_is_valid_governance_config(
     realm_info: &AccountInfo,
 ) -> Result<(), ProgramError> {
     if realm_info.key != &governance_config.realm {
-        return Err(GovernanceError::InvalidGovernanceConfig.into());
+        return Err(GovernanceError::InvalidConfigRealmForGovernance.into());
     }
 
     assert_is_valid_realm(program_id, realm_info)?;
@@ -222,7 +241,7 @@ pub fn assert_is_valid_governance_config(
     match governance_config.vote_threshold_percentage {
         VoteThresholdPercentage::YesVote(yes_vote_threshold_percentage) => {
             if !(1..=100).contains(&yes_vote_threshold_percentage) {
-                return Err(GovernanceError::InvalidGovernanceConfig.into());
+                return Err(GovernanceError::InvalidVoteThresholdPercentage.into());
             }
         }
         _ => {

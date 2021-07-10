@@ -16,6 +16,7 @@ mod process_insert_instruction;
 mod process_relinquish_vote;
 mod process_remove_instruction;
 mod process_remove_signatory;
+mod process_set_governance_config;
 mod process_set_governance_delegate;
 mod process_sign_off_proposal;
 mod process_withdraw_governing_tokens;
@@ -39,6 +40,7 @@ use process_insert_instruction::*;
 use process_relinquish_vote::*;
 use process_remove_instruction::*;
 use process_remove_signatory::*;
+use process_set_governance_config::*;
 use process_set_governance_delegate::*;
 use process_sign_off_proposal::*;
 use process_withdraw_governing_tokens::*;
@@ -153,6 +155,10 @@ pub fn process_instruction(
         }
         GovernanceInstruction::ExecuteInstruction {} => {
             process_execute_instruction(program_id, accounts)
+        }
+
+        GovernanceInstruction::SetGovernanceConfig { config } => {
+            process_set_governance_config(program_id, accounts, config)
         }
     }
 }
