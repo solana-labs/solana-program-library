@@ -1,5 +1,5 @@
 import pandas as pd
-from .betting_pool import *
+from .binary_option import *
 import time
 from spl.token.client import Token
 
@@ -35,7 +35,7 @@ def get_account(pk):
     return ACCOUNT_LAYOUT.parse(data)
 
 def update_and_print_state():
-    pool_data = bp.load_betting_pool(api_endpoint, pool)
+    pool_data = bp.load_binary_option(api_endpoint, pool)
     state = {}
     try:
         state["N"] = 1
@@ -58,7 +58,7 @@ def update_and_print_state():
 
 account = Account()
 
-bp = BettingPool(
+bp = BinaryOption(
     {
         'PRIVATE_KEY': base58.b58encode(account.secret_key()).decode('ascii'),
         'PUBLIC_KEY': str(account.public_key()),
@@ -104,12 +104,12 @@ mint = str(token.pubkey)
 res = json.loads(bp.initialize(api_endpoint, mint, skip_confirmation=False))
 print(res)
 
-pool = res.get("betting_pool")
+pool = res.get("binary_option")
 print(bp.mint_to(api_endpoint, pool, str(a1.public_key()), 1e6, skip_confirmation=False))
 print(bp.mint_to(api_endpoint, pool, str(a2.public_key()), 1e6, skip_confirmation=False))
 print(bp.mint_to(api_endpoint, pool, str(a3.public_key()), 1e6, skip_confirmation=False))
 
-pool_data = bp.load_betting_pool(api_endpoint, pool)
+pool_data = bp.load_binary_option(api_endpoint, pool)
 
 print(bp.trade(api_endpoint, pool, ek1, ek2, 10, 30, 70, skip_confirmation=False))
 update_and_print_state()

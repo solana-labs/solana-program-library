@@ -4,9 +4,9 @@ This protocol is a primitive version of a binary options. Participants can enter
 
 The module contains the Rust implementation of protocol as well as a Python client and test suite.
 
-Suppose we had a betting pool on the winner of the 2021 NBA Finals (Phoenix Suns vs. Milwaulkee Bucks). At the time of writing this (July 9th, 2021), the moneyline spread is -190 Suns +170 Bucks. This backs out an implied probability of approximately 36% that the Bucks win the championship. Suppose our betting pool was on the Bucks winning this series, and that it is denominated by some wrapped stablecoin WUSD (dollar pegged) where every contract settled to 10000 WUSD (`N = 4` corresponding to 1 cent granualrity). You observe that someone is willing to go short Bucks for 10 contracts at 3000 WUSD (less than the estimated probability of 36%). You can take on the opposite trade by buying 10 long contracts on the Bucks for 3000.
+Suppose we had a binary option on the winner of the 2021 NBA Finals (Phoenix Suns vs. Milwaulkee Bucks). At the time of writing this (July 9th, 2021), the moneyline spread is -190 Suns +170 Bucks. This backs out an implied probability of approximately 36% that the Bucks win the championship. Suppose our binary option was on the Bucks winning this series, and that it is denominated by some wrapped stablecoin WUSD (dollar pegged) where every contract settled to 10000 WUSD (`N = 4` corresponding to 1 cent granualrity). You observe that someone is willing to go short Bucks for 10 contracts at 3000 WUSD (less than the estimated probability of 36%). You can take on the opposite trade by buying 10 long contracts on the Bucks for 3000.
 
-This invokes a `Trade` instruction with size 10, buy_price 3000, and sell_price 7000. Note that these prices must sum to 10000. As part of the protocol, you transfer 30000 WUSD into the betting pool and the counterparty deposits 70000 (assuming that both parties start with 0 position). In return, 10 long tokens (minted by the contract) are added to your account, and 10 short tokens are minted to your counterparty's account.
+This invokes a `Trade` instruction with size 10, buy_price 3000, and sell_price 7000. Note that these prices must sum to 10000. As part of the protocol, you transfer 30000 WUSD into the binary option and the counterparty deposits 70000 (assuming that both parties start with 0 position). In return, 10 long tokens (minted by the contract) are added to your account, and 10 short tokens are minted to your counterparty's account.
 
 Now suppose the Bucks win Game 3, and the estimated probablity of the Bucks winning the series jumps to 40%. You offer to sell all of your contracts for 4000 WUSD, and you get a buyer. Because you already hold long tokens, the contract will burn those existing tokens, and you are transfered 40000 WUSD from the pool. If your counterparty is currently short 1 contract, they pull out 6000 WUSD from the pool (exiting out of their short position) and deposit 9 * 4000 = 36000 WUSD (buying into their long position). In total, the pool collateral changes by -40000 + 36000 - 6000 = -10000 WUSD or exactly 1 contract! After the dust settles, you walk away with no position and a net profit of 10000 WUSD ($100).
 
@@ -30,8 +30,8 @@ python -m client.test
 
 # Instructions
 
-### InitializeBettingPool
-`InitializeBettingPool` creates a new betting pool where the denominated decimals are specified as arguments. (The "escrow" mint is included in the list of accounts). New mints are created for long and short tokens, and the ownership of these mints is transferred to a program derived address.
+### InitializeBinaryOption
+`InitializeBinaryOption` creates a new binary option where the denominated decimals are specified as arguments. (The "escrow" mint is included in the list of accounts). New mints are created for long and short tokens, and the ownership of these mints is transferred to a program derived address.
 
 ### Trade
 `Trade` handles all of the complicated wiring of a wager being added to the pool. This is tricky because the existing positions of the participants needs to be accounted for. There are 3 variables we care about: 
@@ -61,7 +61,7 @@ This clause essentially groups 1) and 2) together. In this case, both buyer and 
 ```
 n_b < n && n_s < n
 ```
-This clause groups 2) and 3) together (most complex). In this case, both buyer and seller swap positions -- the buyer goes from short to long and the seller goes from long to short. We will first burn the tokens all exiting tokens for parties and then mint new tokens to ensure the buyer's change is `+n` and the seller's change is `-n`. Both parties are also entitled to the locked up funds for their positions that were closed (`n_b * sell_price` for the buyer and `n_s * buy_price` for the seller). The net change in tokens can be calculated as follows: `(-n_b - n_s + 2n - n_b - n_s) / 2 = n - n_b - n_s`. If this quantity is positive, this means that the trade causes a net increase in the total supply of contracts in the betting pool. Otherwise, it results in a net decrease in total circulation.
+This clause groups 2) and 3) together (most complex). In this case, both buyer and seller swap positions -- the buyer goes from short to long and the seller goes from long to short. We will first burn the tokens all exiting tokens for parties and then mint new tokens to ensure the buyer's change is `+n` and the seller's change is `-n`. Both parties are also entitled to the locked up funds for their positions that were closed (`n_b * sell_price` for the buyer and `n_s * buy_price` for the seller). The net change in tokens can be calculated as follows: `(-n_b - n_s + 2n - n_b - n_s) / 2 = n - n_b - n_s`. If this quantity is positive, this means that the trade causes a net increase in the total supply of contracts in the binary option. Otherwise, it results in a net decrease in total circulation.
 
 ```
 n_b >= n && n_s <  n

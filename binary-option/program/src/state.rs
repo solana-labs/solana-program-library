@@ -3,12 +3,12 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-use crate::error::BettingPoolError;
+use crate::error::BinaryOptionError;
 use borsh::{BorshDeserialize, BorshSerialize};
 
 #[repr(C)]
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone)]
-pub struct BettingPool {
+pub struct BinaryOption {
     pub decimals: u8,
     pub circulation: u64,
     pub settled: bool,
@@ -20,12 +20,12 @@ pub struct BettingPool {
     pub winning_side_pubkey: Pubkey,
 }
 
-impl BettingPool {
+impl BinaryOption {
     pub const LEN: usize = 202;
 
-    pub fn from_account_info(a: &AccountInfo) -> Result<BettingPool, ProgramError> {
-        let betting_pool = BettingPool::try_from_slice(&a.data.borrow_mut())?;
-        Ok(betting_pool)
+    pub fn from_account_info(a: &AccountInfo) -> Result<BinaryOption, ProgramError> {
+        let binary_option = BinaryOption::try_from_slice(&a.data.borrow_mut())?;
+        Ok(binary_option)
     }
 
     pub fn increment_supply(&mut self, n: u64) {
@@ -34,7 +34,7 @@ impl BettingPool {
 
     pub fn decrement_supply(&mut self, n: u64) -> ProgramResult {
         if self.circulation < n {
-            return Err(BettingPoolError::InvalidSupply.into());
+            return Err(BinaryOptionError::InvalidSupply.into());
         }
         self.circulation -= n;
         Ok(())

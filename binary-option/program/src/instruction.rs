@@ -8,7 +8,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 
 #[repr(C)]
 #[derive(BorshSerialize, BorshDeserialize, PartialEq, Debug, Clone)]
-pub struct InitializeBettingPoolArgs {
+pub struct InitializeBinaryOptionArgs {
     pub decimals: u8,
 }
 
@@ -21,9 +21,9 @@ pub struct TradeArgs {
 }
 
 #[derive(BorshSerialize, BorshDeserialize, Clone)]
-pub enum BettingPoolInstruction {
+pub enum BinaryOptionInstruction {
     // TODO: Add comments here
-    InitializeBettingPool(InitializeBettingPoolArgs),
+    InitializeBinaryOption(InitializeBinaryOptionArgs),
 
     Trade(TradeArgs),
 
@@ -32,7 +32,7 @@ pub enum BettingPoolInstruction {
     Collect,
 }
 
-/// Creates an InitializeBettingPool instruction
+/// Creates an InitializeBinaryOption instruction
 #[allow(clippy::too_many_arguments)]
 pub fn initailize_betting_pool(
     program_id: Pubkey,
@@ -59,7 +59,7 @@ pub fn initailize_betting_pool(
             AccountMeta::new_readonly(solana_program::system_program::id(), false),
             AccountMeta::new_readonly(sysvar::rent::id(), false),
         ],
-        data: BettingPoolInstruction::InitializeBettingPool(InitializeBettingPoolArgs { decimals })
+        data: BinaryOptionInstruction::InitializeBinaryOption(InitializeBinaryOptionArgs { decimals })
             .try_to_vec()
             .unwrap(),
     }
@@ -104,7 +104,7 @@ pub fn trade(
             AccountMeta::new_readonly(escrow_authority, false),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
-        data: BettingPoolInstruction::Trade(TradeArgs { size, buy_price, sell_price })
+        data: BinaryOptionInstruction::Trade(TradeArgs { size, buy_price, sell_price })
             .try_to_vec()
             .unwrap(),
     }
@@ -125,7 +125,7 @@ pub fn settle(
             AccountMeta::new_readonly(winning_mint, false),
             AccountMeta::new_readonly(pool_authority, true),
         ],
-        data: BettingPoolInstruction::Settle
+        data: BinaryOptionInstruction::Settle
             .try_to_vec()
             .unwrap(),
     }
@@ -162,7 +162,7 @@ pub fn collect(
             AccountMeta::new_readonly(solana_program::system_program::id(), false),
             AccountMeta::new_readonly(sysvar::rent::id(), false),
         ],
-        data: BettingPoolInstruction::Collect
+        data: BinaryOptionInstruction::Collect
             .try_to_vec()
             .unwrap(),
     }

@@ -3,7 +3,7 @@ use thiserror::Error;
 use solana_program::program_error::ProgramError;
 
 #[derive(Error, Debug, Copy, Clone)]
-pub enum BettingPoolError {
+pub enum BinaryOptionError {
     #[error("PublicKeyMismatch")]
     PublicKeyMismatch,
     #[error("InvalidMintAuthority")]
@@ -30,8 +30,8 @@ pub enum BettingPoolError {
     TradePricesIncorrect,
 }
 
-impl From<BettingPoolError> for ProgramError {
-    fn from(e: BettingPoolError) -> Self {
+impl From<BinaryOptionError> for ProgramError {
+    fn from(e: BinaryOptionError) -> Self {
         ProgramError::Custom(e as u32)
     }
 }

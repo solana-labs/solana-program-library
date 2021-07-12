@@ -1,11 +1,11 @@
 use crate::{
-    error::BettingPoolError,
-    instruction::BettingPoolInstruction,
+    error::BinaryOptionError,
+    instruction::BinaryOptionInstruction,
     spl_utils::{
         spl_burn, spl_initialize, spl_mint_initialize, spl_mint_to, spl_set_authority,
         spl_token_transfer, spl_token_transfer_signed, spl_approve, spl_burn_signed,
     },
-    state::BettingPool,
+    state::BinaryOption,
     system_utils::{create_new_account, create_or_allocate_account_raw, topup},
     validation_utils::{
         assert_initialized, assert_keys_equal, assert_keys_unequal,
@@ -33,13 +33,13 @@ impl Processor {
         accounts: &[AccountInfo],
         instruction_data: &[u8],
     ) -> ProgramResult {
-        let instruction = BettingPoolInstruction::try_from_slice(instruction_data)?;
+        let instruction = BinaryOptionInstruction::try_from_slice(instruction_data)?;
         match instruction {
-            BettingPoolInstruction::InitializeBettingPool(args) => {
-                msg!("Instruction: InitializeBettingPool");
-                process_initialize_betting_pool(program_id, accounts, args.decimals)
+            BinaryOptionInstruction::InitializeBinaryOption(args) => {
+                msg!("Instruction: InitializeBinaryOption");
+                process_initialize_binary_option(program_id, accounts, args.decimals)
             }
-            BettingPoolInstruction::Trade(args) => {
+            BinaryOptionInstruction::Trade(args) => {
                 msg!("Instruction: Trade");
                 process_trade(
                     program_id,
@@ -49,11 +49,11 @@ impl Processor {
                     args.sell_price,
                 )
             }
-            BettingPoolInstruction::Settle => {
+            BinaryOptionInstruction::Settle => {
                 msg!("Instruction: Settle");
                 process_settle(program_id, accounts)
             }
-            BettingPoolInstruction::Collect => {
+            BinaryOptionInstruction::Collect => {
                 msg!("Instruction: Collect");
                 process_collect(program_id, accounts)
             }
@@ -61,12 +61,12 @@ impl Processor {
     }
 }
 
-pub fn process_initialize_betting_pool(
+pub fn process_initialize_binary_option(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     decimals: u8,
 ) -> ProgramResult {
-    msg!("InitializeBettingPool");
+    msg!("InitializeBinaryOption");
     let account_info_iter = &mut accounts.iter();
     let pool_account_info = next_account_info(account_info_iter)?;
     let escrow_mint_info = next_account_info(account_info_iter)?;
@@ -174,20 +174,19 @@ pub fn process_initialize_betting_pool(
         rent_info,
         system_account_info,
         update_authority_info,
-        BettingPool::LEN,
-        &[],
+        BinaryOption::LEN,
     )?;
 
-    let mut betting_pool = BettingPool::try_from_slice(&pool_account_info.data.borrow_mut())?;
-    betting_pool.decimals = decimals;
-    betting_pool.circulation = 0;
-    betting_pool.settled = false;
-    betting_pool.long_mint_account_pubkey = *long_token_mint_info.key;
-    betting_pool.short_mint_account_pubkey = *short_token_mint_info.key;
-    betting_pool.escrow_mint_account_pubkey = *escrow_mint_info.key;
-    betting_pool.escrow_account_pubkey = *escrow_account_info.key;
-    betting_pool.owner = *update_authority_info.key;
-    betting_pool.serialize(&mut *pool_account_info.data.borrow_mut())?;
+    let mut binary_option = BinaryOption::try_from_slice(&pool_account_info.data.borrow_mut())?;
+    binary_option.decimals = decimals;
+    binary_option.circulation = 0;
+    binary_option.settled = false;
+    binary_option.long_mint_account_pubkey = *long_token_mint_info.key;
+    binary_option.short_mint_account_pubkey = *short_token_mint_info.key;
+    binary_option.escrow_mint_account_pubkey = *escrow_mint_info.key;
+    binary_option.escrow_account_pubkey = *escrow_account_info.key;
+    binary_option.owner = *update_authority_info.key;
+    binary_option.serialize(&mut *pool_account_info.data.borrow_mut())?;
 
     Ok(())
 }
@@ -225,7 +224,7 @@ pub fn process_trade(
     let seller_short_token_account: Account = assert_initialized(seller_short_token_account_info)?;
     let buyer_account: Account = assert_initialized(buyer_account_info)?;
     let seller_account: Account = assert_initialized(seller_account_info)?;
-    let mut betting_pool = BettingPool::try_from_slice(&pool_account_info.data.borrow_mut())?;
+    let mut binary_option = BinaryOption::try_from_slice(&pool_account_info.data.borrow_mut())?;
 
     // Get program derived address for escrow
     let (authority_key, bump_seed) = Pubkey::find_program_address(
@@ -246,11 +245,11 @@ pub fn process_trade(
     ];
 
     // Validate data
-    if buy_price + sell_price != u64::pow(10, betting_pool.decimals as u32) {
-        return Err(BettingPoolError::TradePricesIncorrect.into());
+    if buy_price + sell_price != u64::pow(10, binary_option.decimals as u32) {
+        return Err(BinaryOptionError::TradePricesIncorrect.into());
     }
-    if betting_pool.settled {
-        return Err(BettingPoolError::AlreadySettled.into());
+    if binary_option.settled {
+        return Err(BinaryOptionError::AlreadySettled.into());
     }
     assert_keys_unequal(*buyer_info.key, *seller_info.key)?;
     assert_keys_equal(*long_token_mint_info.owner, spl_token::id())?;
@@ -264,31 +263,31 @@ pub fn process_trade(
     assert_keys_equal(authority_key, *authority_info.key)?;
     assert_keys_equal(
         *long_token_mint_info.key,
-        betting_pool.long_mint_account_pubkey,
+        binary_option.long_mint_account_pubkey,
     )?;
     assert_keys_equal(
         *short_token_mint_info.key,
-        betting_pool.short_mint_account_pubkey,
+        binary_option.short_mint_account_pubkey,
     )?;
-    assert_keys_equal(*escrow_account_info.key, betting_pool.escrow_account_pubkey)?;
+    assert_keys_equal(*escrow_account_info.key, binary_option.escrow_account_pubkey)?;
     assert_keys_equal(
         buyer_long_token_account.mint,
-        betting_pool.long_mint_account_pubkey,
+        binary_option.long_mint_account_pubkey,
     )?;
     assert_keys_equal(
         buyer_short_token_account.mint,
-        betting_pool.short_mint_account_pubkey,
+        binary_option.short_mint_account_pubkey,
     )?;
     assert_keys_equal(
         seller_long_token_account.mint,
-        betting_pool.long_mint_account_pubkey,
+        binary_option.long_mint_account_pubkey,
     )?;
     assert_keys_equal(
         seller_short_token_account.mint,
-        betting_pool.short_mint_account_pubkey,
+        binary_option.short_mint_account_pubkey,
     )?;
-    assert_keys_equal(buyer_account.mint, betting_pool.escrow_mint_account_pubkey)?;
-    assert_keys_equal(seller_account.mint, betting_pool.escrow_mint_account_pubkey)?;
+    assert_keys_equal(buyer_account.mint, binary_option.escrow_mint_account_pubkey)?;
+    assert_keys_equal(seller_account.mint, binary_option.escrow_mint_account_pubkey)?;
 
     let n = size;
     let n_b = buyer_short_token_account.amount;
@@ -341,7 +340,7 @@ pub fn process_trade(
             )?;
             b_s -= n;
             s_l -= n;
-            betting_pool.decrement_supply(n)?;
+            binary_option.decrement_supply(n)?;
         }
         /*
         When n is greater than both n_b and n_s, this means that both buyer and seller have put on a position that is different from their
@@ -420,9 +419,9 @@ pub fn process_trade(
                 seeds,
             )?;
             if n > n_b + n_s {
-                betting_pool.increment_supply(n - n_b - n_s);
+                binary_option.increment_supply(n - n_b - n_s);
             } else {
-                betting_pool.decrement_supply(n - n_b - n_s)?;
+                binary_option.decrement_supply(n - n_b - n_s)?;
             }
         }
         /*
@@ -484,7 +483,7 @@ pub fn process_trade(
                 1,
                 seeds,
             )?;
-            betting_pool.decrement_supply(n_s)?;
+            binary_option.decrement_supply(n_s)?;
         }
         /*
         When n is greater than n_s bust less than n_b, this means that the seller has put on a position that is different from their
@@ -545,7 +544,7 @@ pub fn process_trade(
                 1,
                 seeds,
             )?;
-            betting_pool.decrement_supply(n_b)?;
+            binary_option.decrement_supply(n_b)?;
         }
     }
     // Delegate the burn authority to the PDA, so a private key is unnecessary on collection
@@ -586,7 +585,7 @@ pub fn process_trade(
         s_l,
         long_token_mint.decimals,
     )?;
-    betting_pool.serialize(&mut *pool_account_info.data.borrow_mut())?;
+    binary_option.serialize(&mut *pool_account_info.data.borrow_mut())?;
     Ok(())
 }
 
@@ -600,24 +599,24 @@ pub fn process_settle(_program_id: &Pubkey, accounts: &[AccountInfo]) -> Program
     let winning_mint_account_info = next_account_info(account_info_iter)?;
     let pool_owner_info = next_account_info(account_info_iter)?;
 
-    let mut betting_pool = BettingPool::try_from_slice(&pool_account_info.data.borrow_mut())?;
+    let mut binary_option = BinaryOption::try_from_slice(&pool_account_info.data.borrow_mut())?;
     if !pool_owner_info.is_signer {
         return Err(ProgramError::MissingRequiredSignature);
     }
-    if betting_pool.settled {
-        return Err(BettingPoolError::AlreadySettled.into());
+    if binary_option.settled {
+        return Err(BinaryOptionError::AlreadySettled.into());
     }
 
-    assert_keys_equal(*pool_owner_info.key, betting_pool.owner)?;
-    if *winning_mint_account_info.key == betting_pool.long_mint_account_pubkey
-        || *winning_mint_account_info.key == betting_pool.short_mint_account_pubkey
+    assert_keys_equal(*pool_owner_info.key, binary_option.owner)?;
+    if *winning_mint_account_info.key == binary_option.long_mint_account_pubkey
+        || *winning_mint_account_info.key == binary_option.short_mint_account_pubkey
     {
-        betting_pool.winning_side_pubkey = *winning_mint_account_info.key;
+        binary_option.winning_side_pubkey = *winning_mint_account_info.key;
     } else {
-        return Err(BettingPoolError::InvalidWinner.into());
+        return Err(BinaryOptionError::InvalidWinner.into());
     }
-    betting_pool.settled = true;
-    betting_pool.serialize(&mut *pool_account_info.data.borrow_mut())?;
+    binary_option.settled = true;
+    binary_option.serialize(&mut *pool_account_info.data.borrow_mut())?;
     Ok(())
 }
 
@@ -644,7 +643,7 @@ pub fn process_collect(program_id: &Pubkey, accounts: &[AccountInfo]) -> Program
         assert_initialized(collector_short_token_account_info)?;
     let collector_account: Account = assert_initialized(collector_account_info)?;
     let escrow_account: Account = assert_initialized(escrow_account_info)?;
-    let mut betting_pool = BettingPool::try_from_slice(&pool_account_info.data.borrow_mut())?;
+    let mut binary_option = BinaryOption::try_from_slice(&pool_account_info.data.borrow_mut())?;
 
     // Get program derived address for escrow
     let (escrow_owner_key, bump_seed) = Pubkey::find_program_address(
@@ -664,8 +663,8 @@ pub fn process_collect(program_id: &Pubkey, accounts: &[AccountInfo]) -> Program
         &[bump_seed],
     ];
 
-    if !betting_pool.settled {
-        return Err(BettingPoolError::BetNotSettled.into());
+    if !binary_option.settled {
+        return Err(BinaryOptionError::BetNotSettled.into());
     }
     assert_owned_by(long_token_mint_info, &spl_token::id())?;
     assert_owned_by(short_token_mint_info, &spl_token::id())?;
@@ -675,33 +674,33 @@ pub fn process_collect(program_id: &Pubkey, accounts: &[AccountInfo]) -> Program
     assert_keys_equal(escrow_owner_key, *escrow_authority_info.key)?;
     assert_keys_equal(
         *long_token_mint_info.key,
-        betting_pool.long_mint_account_pubkey,
+        binary_option.long_mint_account_pubkey,
     )?;
     assert_keys_equal(
         *short_token_mint_info.key,
-        betting_pool.short_mint_account_pubkey,
+        binary_option.short_mint_account_pubkey,
     )?;
-    assert_keys_equal(*escrow_account_info.key, betting_pool.escrow_account_pubkey)?;
-    assert_keys_equal(*escrow_account_info.key, betting_pool.escrow_account_pubkey)?;
+    assert_keys_equal(*escrow_account_info.key, binary_option.escrow_account_pubkey)?;
+    assert_keys_equal(*escrow_account_info.key, binary_option.escrow_account_pubkey)?;
     assert_keys_equal(
         collector_long_token_account.mint,
-        betting_pool.long_mint_account_pubkey,
+        binary_option.long_mint_account_pubkey,
     )?;
     assert_keys_equal(
         collector_short_token_account.mint,
-        betting_pool.short_mint_account_pubkey,
+        binary_option.short_mint_account_pubkey,
     )?;
     assert_keys_equal(
         collector_account.mint,
-        betting_pool.escrow_mint_account_pubkey,
+        binary_option.escrow_mint_account_pubkey,
     )?;
 
-    let winner_long = collector_long_token_account.mint == betting_pool.winning_side_pubkey;
-    let winner_short = collector_short_token_account.mint == betting_pool.winning_side_pubkey;
+    let winner_long = collector_long_token_account.mint == binary_option.winning_side_pubkey;
+    let winner_short = collector_short_token_account.mint == binary_option.winning_side_pubkey;
     let reward = match [winner_long, winner_short] {
         [true, false] => collector_long_token_account.amount,
         [false, true] => collector_short_token_account.amount,
-        _ => return Err(BettingPoolError::TokenNotFoundInPool.into()),
+        _ => return Err(BinaryOptionError::TokenNotFoundInPool.into()),
     };
 
     topup(
@@ -734,11 +733,11 @@ pub fn process_collect(program_id: &Pubkey, accounts: &[AccountInfo]) -> Program
             &collector_account_info,
             &escrow_authority_info,
             reward * escrow_account.amount,
-            betting_pool.circulation,
+            binary_option.circulation,
             seeds,
         )?;
-        betting_pool.decrement_supply(reward)?;
+        binary_option.decrement_supply(reward)?;
     }
-    betting_pool.serialize(&mut *pool_account_info.data.borrow_mut())?;
+    binary_option.serialize(&mut *pool_account_info.data.borrow_mut())?;
     Ok(())
 }

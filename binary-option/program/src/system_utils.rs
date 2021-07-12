@@ -75,22 +75,19 @@ pub fn create_or_allocate_account_raw<'a>(
     system_program_info: &AccountInfo<'a>,
     payer_info: &AccountInfo<'a>,
     size: usize,
-    signer_seeds: &[&[u8]],
 ) -> ProgramResult {
 
     topup(&new_account_info, rent_sysvar_info, system_program_info, payer_info, size)?;
     msg!("Allocate space for the account");
-    invoke_signed(
+    invoke(
         &system_instruction::allocate(new_account_info.key, size.try_into().unwrap()),
         &[new_account_info.clone(), system_program_info.clone()],
-        &[&signer_seeds],
     )?;
 
     msg!("Assign the account to the owning program");
-    invoke_signed(
+    invoke(
         &system_instruction::assign(new_account_info.key, &program_id),
         &[new_account_info.clone(), system_program_info.clone()],
-        &[&signer_seeds],
     )?;
 
     Ok(())

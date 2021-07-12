@@ -21,10 +21,10 @@ SYSTEM_PROGRAM_ID = '11111111111111111111111111111111'
 SYSVAR_RENT_ID = 'SysvarRent111111111111111111111111111111111'
 ASSOCIATED_TOKEN_ACCOUNT_PROGRAM_ID = 'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL'
 TOKEN_PROGRAM_ID = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
-BETTING_POOL_PROGRAM_ID = 'DnVoDXeLS9wmWWRk2LZZhWP4y7TxcVrwYhDaY7a6PS53'
+BINARY_OPTION_PROGRAM_ID = 'betw959P4WToez4DkuXwNsJszqbpe3HuY56AcG5yevx'
 
 
-def initialize_betting_pool_instruction(
+def initialize_binary_option_instruction(
     pool_account,
     escrow_mint_account,
     escrow_account,
@@ -50,7 +50,7 @@ def initialize_betting_pool_instruction(
         AccountMeta(pubkey=rent_account, is_signer=False, is_writable=False),
     ]
     data = struct.pack("<BB", 0, decimals)
-    return TransactionInstruction(keys=keys, program_id=PublicKey(BETTING_POOL_PROGRAM_ID), data=data)
+    return TransactionInstruction(keys=keys, program_id=PublicKey(BINARY_OPTION_PROGRAM_ID), data=data)
 
 def trade_instruction(
     pool_account,
@@ -88,7 +88,7 @@ def trade_instruction(
         AccountMeta(pubkey=token_account, is_signer=False, is_writable=False),
     ]
     data = struct.pack("<BQQQ", 1, size, buyer_price, seller_price)
-    return TransactionInstruction(keys=keys, program_id=PublicKey(BETTING_POOL_PROGRAM_ID), data=data)
+    return TransactionInstruction(keys=keys, program_id=PublicKey(BINARY_OPTION_PROGRAM_ID), data=data)
 
 def settle_instruction(
     pool_account,
@@ -101,7 +101,7 @@ def settle_instruction(
         AccountMeta(pubkey=pool_owner_account, is_signer=True, is_writable=False),
     ]
     data = struct.pack("<B", 2)
-    return TransactionInstruction(keys=keys, program_id=PublicKey(BETTING_POOL_PROGRAM_ID), data=data)
+    return TransactionInstruction(keys=keys, program_id=PublicKey(BINARY_OPTION_PROGRAM_ID), data=data)
 
 def collect_instruction(
     pool_account,
@@ -134,9 +134,9 @@ def collect_instruction(
         AccountMeta(pubkey=rent_account, is_signer=False, is_writable=False),
     ]
     data = struct.pack("<B", 3)
-    return TransactionInstruction(keys=keys, program_id=PublicKey(BETTING_POOL_PROGRAM_ID), data=data)
+    return TransactionInstruction(keys=keys, program_id=PublicKey(BINARY_OPTION_PROGRAM_ID), data=data)
 
-class BettingPool():
+class BinaryOption():
 
     def __init__(self, cfg):
         self.private_key = list(base58.b58decode(cfg["PRIVATE_KEY"]))[:32]
@@ -173,7 +173,7 @@ class BettingPool():
         # Start transaction
         tx = Transaction()
         # Create Token Metadata
-        init_betting_pool_ix =  initialize_betting_pool_instruction(
+        init_binary_option_ix =  initialize_binary_option_instruction(
             pool_account,
             escrow_mint_account,
             escrow_account,
@@ -186,16 +186,16 @@ class BettingPool():
             rent_account,
             decimals,
         )
-        tx = tx.add(init_betting_pool_ix)
-        msg += f" | Creating betting pool"
+        tx = tx.add(init_binary_option_ix)
+        msg += f" | Creating binary option"
         # Send request
         try:
             response = client.send_transaction(tx, *signers, opts=types.TxOpts(skip_confirmation=skip_confirmation))
             return json.dumps(
                 {
                     'status': HTTPStatus.OK,
-                    'betting_pool': str(pool_account),
-                    'msg': msg + f" | Successfully created betting pool {str(pool_account)}",
+                    'binary_option': str(pool_account),
+                    'msg': msg + f" | Successfully created binary option {str(pool_account)}",
                     'tx': response.get('result') if skip_confirmation else response['result']['transaction']['signatures'],
                 }
             )
@@ -218,7 +218,7 @@ class BettingPool():
         seller = Account(seller_private_key)
         # Signers
         signers = [buyer, seller, source_account]
-        pool = self.load_betting_pool(api_endpoint, pool_account)
+        pool = self.load_binary_option(api_endpoint, pool_account)
         # List non-derived accounts
         pool_account = PublicKey(pool_account) 
         escrow_account = PublicKey(pool["escrow"]) 
@@ -229,8 +229,8 @@ class BettingPool():
         seller_account = seller.public_key()
         token_account = PublicKey(TOKEN_PROGRAM_ID)
         escrow_owner_account = PublicKey.find_program_address(
-            [bytes(long_token_mint_account), bytes(short_token_mint_account), bytes(token_account), bytes(PublicKey(BETTING_POOL_PROGRAM_ID))],
-            PublicKey(BETTING_POOL_PROGRAM_ID),
+            [bytes(long_token_mint_account), bytes(short_token_mint_account), bytes(token_account), bytes(PublicKey(BINARY_OPTION_PROGRAM_ID))],
+            PublicKey(BINARY_OPTION_PROGRAM_ID),
         )[0]
         # Transaction
         tx = Transaction()
@@ -329,7 +329,7 @@ class BettingPool():
         msg += "Initialized client"
         source_account = Account(self.private_key)
         signers = [source_account]
-        pool = self.load_betting_pool(api_endpoint, pool_account)
+        pool = self.load_binary_option(api_endpoint, pool_account)
         pool_account = PublicKey(pool_account) 
         collector_account = PublicKey(collector)
         escrow_account = PublicKey(pool["escrow"]) 
@@ -340,8 +340,8 @@ class BettingPool():
         system_account = PublicKey(SYSTEM_PROGRAM_ID)
         rent_account = PublicKey(SYSVAR_RENT_ID)
         escrow_authority_account = PublicKey.find_program_address(
-            [bytes(long_token_mint_account), bytes(short_token_mint_account), bytes(token_account), bytes(PublicKey(BETTING_POOL_PROGRAM_ID))],
-            PublicKey(BETTING_POOL_PROGRAM_ID),
+            [bytes(long_token_mint_account), bytes(short_token_mint_account), bytes(token_account), bytes(PublicKey(BINARY_OPTION_PROGRAM_ID))],
+            PublicKey(BINARY_OPTION_PROGRAM_ID),
         )[0]
         # Transaction
         tx = Transaction()
@@ -391,7 +391,7 @@ class BettingPool():
             raise(e)        
 
 
-    def load_betting_pool(self, api_endpoint, pool_account):
+    def load_binary_option(self, api_endpoint, pool_account):
         client = Client(api_endpoint)
         try:
             pool_data = base64.b64decode(client.get_account_info(pool_account)['result']['value']['data'][0])
@@ -486,7 +486,7 @@ class BettingPool():
         # Create account objects
         source_account = Account(self.private_key)
         signers = [source_account]
-        pool = self.load_betting_pool(api_endpoint, pool_account)
+        pool = self.load_binary_option(api_endpoint, pool_account)
         # List non-derived accounts
         pool_account = PublicKey(pool_account) 
         dest_account = PublicKey(dest)
