@@ -1396,8 +1396,7 @@ impl Processor {
                 Some(stake_program::StakeState::Stake(meta, stake)) => {
                     let account_stake = meta
                         .rent_exempt_reserve
-                        .checked_add(stake.delegation.stake)
-                        .ok_or(StakePoolError::CalculationFailure)?;
+                        .saturating_add(stake.delegation.stake);
                     if no_merge {
                         transient_stake_lamports = account_stake;
                     } else if stake.delegation.deactivation_epoch < clock.epoch {
