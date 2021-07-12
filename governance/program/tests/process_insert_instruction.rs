@@ -178,8 +178,7 @@ async fn test_insert_instruction_with_invalid_hold_up_time_error() {
     let realm_cookie = governance_test.with_realm().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
-    let mut config =
-        governance_test.get_default_governance_config(&realm_cookie, &governed_account_cookie);
+    let mut config = governance_test.get_default_governance_config();
 
     config.min_instruction_hold_up_time = 100;
 
@@ -286,4 +285,53 @@ async fn test_insert_instruction_with_owner_or_delegate_must_sign_error() {
         err,
         GovernanceError::GoverningTokenOwnerOrDelegateMustSign.into()
     );
+}
+
+#[tokio::test]
+async fn test_insert_instruction_with_invalid_governance_for_proposal_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let mut account_governance_cookie = governance_test
+        .with_account_governance(&realm_cookie, &governed_account_cookie)
+        .await
+        .unwrap();
+
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await;
+
+    let mut proposal_cookie = governance_test
+        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .await
+        .unwrap();
+
+    // Try to maliciously use a different governance account to use with the proposal
+    let governed_account_cookie2 = governance_test.with_governed_account().await;
+
+    let account_governance_cookie2 = governance_test
+        .with_account_governance(&realm_cookie, &governed_account_cookie2)
+        .await
+        .unwrap();
+
+    proposal_cookie.account.governance = account_governance_cookie2.address;
+
+    let new_governance_config = governance_test.get_default_governance_config();
+
+    // Act
+    let err = governance_test
+        .with_set_governance_config_instruction(
+            &mut proposal_cookie,
+            &token_owner_record_cookie,
+            &new_governance_config,
+        )
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+    assert_eq!(err, GovernanceError::InvalidGovernanceForProposal.into());
 }

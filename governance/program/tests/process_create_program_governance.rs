@@ -120,7 +120,7 @@ async fn test_create_program_governance_without_transferring_upgrade_authority_w
             &realm_cookie,
             &governed_program_cookie,
             |i| {
-                i.accounts[3].is_signer = false; // governed_program_upgrade_authority
+                i.accounts[4].is_signer = false; // governed_program_upgrade_authority
             },
             Some(&[]),
         )

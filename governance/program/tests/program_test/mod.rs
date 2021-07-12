@@ -60,9 +60,9 @@ use crate::program_test::{cookies::SignatoryRecordCookie, tools::clone_keypair};
 
 use self::{
     cookies::{
-        AccountCookie, GovernanceCookie, GovernedAccountCookie, GovernedMintCookie,
-        GovernedProgramCookie, GovernedTokenCookie, ProposalCookie, ProposalInstructionCookie,
-        RealmCookie, TokeOwnerRecordCookie, VoteRecordCookie,
+        GovernanceCookie, GovernedAccountCookie, GovernedMintCookie, GovernedProgramCookie,
+        GovernedTokenCookie, ProposalCookie, ProposalInstructionCookie, RealmCookie,
+        TokeOwnerRecordCookie, VoteRecordCookie,
     },
     tools::NopOverride,
 };
@@ -640,15 +640,8 @@ impl GovernanceProgramTest {
         }
     }
 
-    pub fn get_default_governance_config(
-        &mut self,
-        realm_cookie: &RealmCookie,
-        governed_account_cookie: &impl AccountCookie,
-    ) -> GovernanceConfig {
+    pub fn get_default_governance_config(&mut self) -> GovernanceConfig {
         GovernanceConfig {
-            realm: realm_cookie.address,
-            governed_account: governed_account_cookie.get_address(),
-
             min_tokens_to_create_proposal: 5,
             min_instruction_hold_up_time: 10,
             max_voting_time: 10,
@@ -664,7 +657,7 @@ impl GovernanceProgramTest {
         realm_cookie: &RealmCookie,
         governed_account_cookie: &GovernedAccountCookie,
     ) -> Result<GovernanceCookie, ProgramError> {
-        let config = self.get_default_governance_config(realm_cookie, governed_account_cookie);
+        let config = self.get_default_governance_config();
         self.with_account_governance_using_config(realm_cookie, governed_account_cookie, &config)
             .await
     }
@@ -678,12 +671,16 @@ impl GovernanceProgramTest {
     ) -> Result<GovernanceCookie, ProgramError> {
         let create_account_governance_instruction = create_account_governance(
             &self.program_id,
+            &realm_cookie.address,
+            &governed_account_cookie.address,
             &self.context.payer.pubkey(),
             governance_config.clone(),
         );
 
         let account = Governance {
             account_type: GovernanceAccountType::AccountGovernance,
+            realm: realm_cookie.address,
+            governed_account: governed_account_cookie.address,
             config: governance_config.clone(),
             proposals_count: 0,
             reserved: [0; 8],
@@ -799,10 +796,12 @@ impl GovernanceProgramTest {
         instruction_override: F,
         signers_override: Option<&[&Keypair]>,
     ) -> Result<GovernanceCookie, ProgramError> {
-        let config = self.get_default_governance_config(realm_cookie, governed_program_cookie);
+        let config = self.get_default_governance_config();
 
         let mut create_program_governance_instruction = create_program_governance(
             &self.program_id,
+            &realm_cookie.address,
+            &governed_program_cookie.address,
             &governed_program_cookie.upgrade_authority.pubkey(),
             &self.context.payer.pubkey(),
             config.clone(),
@@ -819,6 +818,8 @@ impl GovernanceProgramTest {
 
         let account = Governance {
             account_type: GovernanceAccountType::ProgramGovernance,
+            realm: realm_cookie.address,
+            governed_account: governed_program_cookie.address,
             config,
             proposals_count: 0,
             reserved: [0; 8],
@@ -860,10 +861,12 @@ impl GovernanceProgramTest {
         instruction_override: F,
         signers_override: Option<&[&Keypair]>,
     ) -> Result<GovernanceCookie, ProgramError> {
-        let config = self.get_default_governance_config(realm_cookie, governed_mint_cookie);
+        let config = self.get_default_governance_config();
 
         let mut create_mint_governance_instruction = create_mint_governance(
             &self.program_id,
+            &realm_cookie.address,
+            &governed_mint_cookie.address,
             &governed_mint_cookie.mint_authority.pubkey(),
             &self.context.payer.pubkey(),
             config.clone(),
@@ -880,6 +883,8 @@ impl GovernanceProgramTest {
 
         let account = Governance {
             account_type: GovernanceAccountType::MintGovernance,
+            realm: realm_cookie.address,
+            governed_account: governed_mint_cookie.address,
             config,
             proposals_count: 0,
             reserved: [0; 8],
@@ -921,10 +926,12 @@ impl GovernanceProgramTest {
         instruction_override: F,
         signers_override: Option<&[&Keypair]>,
     ) -> Result<GovernanceCookie, ProgramError> {
-        let config = self.get_default_governance_config(realm_cookie, governed_token_cookie);
+        let config = self.get_default_governance_config();
 
         let mut create_token_governance_instruction = create_token_governance(
             &self.program_id,
+            &realm_cookie.address,
+            &governed_token_cookie.address,
             &governed_token_cookie.token_owner.pubkey(),
             &self.context.payer.pubkey(),
             config.clone(),
@@ -941,6 +948,8 @@ impl GovernanceProgramTest {
 
         let account = Governance {
             account_type: GovernanceAccountType::TokenGovernance,
+            realm: realm_cookie.address,
+            governed_account: governed_token_cookie.address,
             config,
             proposals_count: 0,
             reserved: [0; 8],
@@ -1015,7 +1024,7 @@ impl GovernanceProgramTest {
             &token_owner_record_cookie.token_owner.pubkey(),
             &governance_authority.pubkey(),
             &self.context.payer.pubkey(),
-            &governance_cookie.account.config.realm,
+            &governance_cookie.account.realm,
             name.clone(),
             description_link.clone(),
             &token_owner_record_cookie.account.governing_token_mint,
@@ -1307,8 +1316,11 @@ impl GovernanceProgramTest {
         token_owner_record_cookie: &TokeOwnerRecordCookie,
         governance_config: &GovernanceConfig,
     ) -> Result<ProposalInstructionCookie, ProgramError> {
-        let mut set_governance_config_ix =
-            set_governance_config(&self.program_id, governance_config.clone());
+        let mut set_governance_config_ix = set_governance_config(
+            &self.program_id,
+            &proposal_cookie.account.governance,
+            governance_config.clone(),
+        );
 
         self.with_instruction(
             proposal_cookie,
@@ -1441,7 +1453,7 @@ impl GovernanceProgramTest {
         .unwrap();
 
         let mut upgrade_instruction = bpf_loader_upgradeable::upgrade(
-            &governance_cookie.account.config.governed_account,
+            &governance_cookie.account.governed_account,
             &program_buffer_keypair.pubkey(),
             &governance_cookie.address,
             &governance_cookie.address,

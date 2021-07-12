@@ -102,9 +102,10 @@ pub enum GovernanceInstruction {
     ///
     ///   0. `[]` Realm account the created Governance belongs to
     ///   1. `[writable]` Account Governance account. PDA seeds: ['account-governance', realm, governed_account]
-    ///   2. `[signer]` Payer
-    ///   3. `[]` System program
-    ///   4. `[]` Sysvar Rent
+    ///   2. `[]` Account governed by this Governance account
+    ///   3. `[signer]` Payer
+    ///   4. `[]` System program
+    ///   5. `[]` Sysvar Rent
     CreateAccountGovernance {
         /// Governance config
         #[allow(dead_code)]
@@ -115,12 +116,13 @@ pub enum GovernanceInstruction {
     ///
     ///   0. `[]` Realm account the created Governance belongs to
     ///   1. `[writable]` Program Governance account. PDA seeds: ['program-governance', realm, governed_program]
-    ///   2. `[writable]` Program Data account of the Program governed by this Governance account
-    ///   3. `[signer]` Current Upgrade Authority account of the Program governed by this Governance account
-    ///   4. `[signer]` Payer
-    ///   5. `[]` bpf_upgradeable_loader program
-    ///   6. `[]` System program
-    ///   7. `[]` Sysvar Rent
+    ///   2. `[]` Program governed by this Governance account
+    ///   3. `[writable]` Program Data account of the Program governed by this Governance account
+    ///   4. `[signer]` Current Upgrade Authority account of the Program governed by this Governance account
+    ///   5. `[signer]` Payer
+    ///   6. `[]` bpf_upgradeable_loader program
+    ///   7. `[]` System program
+    ///   8. `[]` Sysvar Rent
     CreateProgramGovernance {
         /// Governance config
         #[allow(dead_code)]
@@ -508,16 +510,19 @@ pub fn set_governance_delegate(
 pub fn create_account_governance(
     program_id: &Pubkey,
     // Accounts
+    realm: &Pubkey,
+    governed_account: &Pubkey,
     payer: &Pubkey,
     // Args
     config: GovernanceConfig,
 ) -> Instruction {
     let account_governance_address =
-        get_account_governance_address(program_id, &config.realm, &config.governed_account);
+        get_account_governance_address(program_id, realm, governed_account);
 
     let accounts = vec![
-        AccountMeta::new_readonly(config.realm, false),
+        AccountMeta::new_readonly(*realm, false),
         AccountMeta::new(account_governance_address, false),
+        AccountMeta::new_readonly(*governed_account, false),
         AccountMeta::new_readonly(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
@@ -536,6 +541,8 @@ pub fn create_account_governance(
 pub fn create_program_governance(
     program_id: &Pubkey,
     // Accounts
+    realm: &Pubkey,
+    governed_program: &Pubkey,
     governed_program_upgrade_authority: &Pubkey,
     payer: &Pubkey,
     // Args
@@ -543,12 +550,13 @@ pub fn create_program_governance(
     transfer_upgrade_authority: bool,
 ) -> Instruction {
     let program_governance_address =
-        get_program_governance_address(program_id, &config.realm, &config.governed_account);
-    let governed_program_data_address = get_program_data_address(&config.governed_account);
+        get_program_governance_address(program_id, realm, governed_program);
+    let governed_program_data_address = get_program_data_address(governed_program);
 
     let accounts = vec![
-        AccountMeta::new_readonly(config.realm, false),
+        AccountMeta::new_readonly(*realm, false),
         AccountMeta::new(program_governance_address, false),
+        AccountMeta::new_readonly(*governed_program, false),
         AccountMeta::new(governed_program_data_address, false),
         AccountMeta::new_readonly(*governed_program_upgrade_authority, true),
         AccountMeta::new_readonly(*payer, true),
@@ -573,19 +581,20 @@ pub fn create_program_governance(
 pub fn create_mint_governance(
     program_id: &Pubkey,
     // Accounts
+    realm: &Pubkey,
+    governed_mint: &Pubkey,
     governed_mint_authority: &Pubkey,
     payer: &Pubkey,
     // Args
     config: GovernanceConfig,
     transfer_mint_authority: bool,
 ) -> Instruction {
-    let mint_governance_address =
-        get_mint_governance_address(program_id, &config.realm, &config.governed_account);
+    let mint_governance_address = get_mint_governance_address(program_id, realm, governed_mint);
 
     let accounts = vec![
-        AccountMeta::new_readonly(config.realm, false),
+        AccountMeta::new_readonly(*realm, false),
         AccountMeta::new(mint_governance_address, false),
-        AccountMeta::new(config.governed_account, false),
+        AccountMeta::new(*governed_mint, false),
         AccountMeta::new_readonly(*governed_mint_authority, true),
         AccountMeta::new_readonly(*payer, true),
         AccountMeta::new_readonly(spl_token::id(), false),
@@ -609,19 +618,20 @@ pub fn create_mint_governance(
 pub fn create_token_governance(
     program_id: &Pubkey,
     // Accounts
+    realm: &Pubkey,
+    governed_token: &Pubkey,
     governed_token_owner: &Pubkey,
     payer: &Pubkey,
     // Args
     config: GovernanceConfig,
     transfer_token_owner: bool,
 ) -> Instruction {
-    let token_governance_address =
-        get_token_governance_address(program_id, &config.realm, &config.governed_account);
+    let token_governance_address = get_token_governance_address(program_id, realm, governed_token);
 
     let accounts = vec![
-        AccountMeta::new_readonly(config.realm, false),
+        AccountMeta::new_readonly(*realm, false),
         AccountMeta::new(token_governance_address, false),
-        AccountMeta::new(config.governed_account, false),
+        AccountMeta::new(*governed_token, false),
         AccountMeta::new_readonly(*governed_token_owner, true),
         AccountMeta::new_readonly(*payer, true),
         AccountMeta::new_readonly(spl_token::id(), false),
@@ -1006,16 +1016,12 @@ pub fn execute_instruction(
 /// Creates SetGovernanceConfig instruction
 pub fn set_governance_config(
     program_id: &Pubkey,
+    // Accounts
+    governance: &Pubkey,
     // Args
     config: GovernanceConfig,
 ) -> Instruction {
-    let account_governance_address =
-        get_account_governance_address(program_id, &config.realm, &config.governed_account);
-
-    let accounts = vec![
-        AccountMeta::new_readonly(config.realm, false),
-        AccountMeta::new(account_governance_address, true),
-    ];
+    let accounts = vec![AccountMeta::new(*governance, true)];
 
     let instruction = GovernanceInstruction::SetGovernanceConfig { config };
 
