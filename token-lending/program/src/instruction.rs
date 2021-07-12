@@ -120,7 +120,7 @@ pub enum LendingInstruction {
     ///   0. `[writable]` Source collateral token account.
     ///                     $authority can transfer $collateral_amount.
     ///   1. `[writable]` Destination liquidity token account.
-    ///   2. `[writable]` Reserve account.
+    ///   2. `[writable]` Reserve account. - refreshed
     ///   3. `[writable]` Reserve collateral SPL Token mint.
     ///   4. `[writable]` Reserve liquidity supply SPL Token account.
     ///   5. `[]` Lending market account.
@@ -338,6 +338,30 @@ pub enum LendingInstruction {
         /// Amount of liquidity to deposit in exchange
         liquidity_amount: u64,
     },
+
+    // 15
+    /// Combines WithdrawObligationCollateral and RedeemReserveCollateral
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]` Source withdraw reserve collateral supply SPL Token account.
+    ///   1. `[writable]` Destination collateral token account.
+    ///                     Minted by withdraw reserve collateral mint.
+    ///   2. `[]` Withdraw reserve account - refreshed.
+    ///   3. `[writable]` Obligation account - refreshed.
+    ///   4. `[]` Lending market account.
+    ///   5. `[]` Derived lending market authority.
+    ///   6. `[writable]` User liquidity token account.
+    ///   7. `[writable]` Reserve collateral SPL Token mint.
+    ///   8. `[writable]` Reserve liquidity supply SPL Token account.
+    ///   9. `[signer]` Obligation owner
+    ///   10 `[signer]` User transfer authority ($authority).
+    ///   11. `[]` Clock sysvar.
+    ///   12. `[]` Token program id.
+    WithdrawObligationCollateralAndRedeemReserveCollateral {
+        /// liquidity_amount is the amount of collateral tokens to withdraw
+        collateral_amount: u64,
+    },
 }
 
 impl LendingInstruction {
@@ -427,6 +451,10 @@ impl LendingInstruction {
             14 => {
                 let (liquidity_amount, _rest) = Self::unpack_u64(rest)?;
                 Self::DepositReserveLiquidityAndObligationCollateral { liquidity_amount }
+            }
+            15 => {
+                let (collateral_amount, _rest) = Self::unpack_u64(rest)?;
+                Self::WithdrawObligationCollateralAndRedeemReserveCollateral { collateral_amount }
             }
             _ => {
                 msg!("Instruction cannot be unpacked");
@@ -579,6 +607,10 @@ impl LendingInstruction {
             Self::DepositReserveLiquidityAndObligationCollateral { liquidity_amount } => {
                 buf.push(14);
                 buf.extend_from_slice(&liquidity_amount.to_le_bytes());
+            }
+            Self::WithdrawObligationCollateralAndRedeemReserveCollateral { collateral_amount } => {
+                buf.push(15);
+                buf.extend_from_slice(&collateral_amount.to_le_bytes());
             }
         }
         buf

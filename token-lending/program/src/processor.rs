@@ -104,10 +104,20 @@ pub fn process_instruction(
             process_flash_loan(program_id, amount, accounts)
         }
         LendingInstruction::DepositReserveLiquidityAndObligationCollateral { liquidity_amount } => {
-            msg!("Instruction Deposit Reserve Liquidity and Obligation Collateral");
+            msg!("Instruction: Deposit Reserve Liquidity and Obligation Collateral");
             process_deposit_reserve_liquidity_and_obligation_collateral(
                 program_id,
                 liquidity_amount,
+                accounts,
+            )
+        }
+        LendingInstruction::WithdrawObligationCollateralAndRedeemReserveCollateral {
+            collateral_amount,
+        } => {
+            msg!("Instruction: Withdraw Obligation Collateral and Redeem Reserve Collateral ");
+            process_withdraw_obligation_collateral_and_redeem_reserve_liquidity(
+                program_id,
+                collateral_amount,
                 accounts,
             )
         }
@@ -626,7 +636,37 @@ fn process_redeem_reserve_collateral(
     let user_transfer_authority_info = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
+    _redeem_reserve_collateral(
+        program_id,
+        collateral_amount,
+        source_collateral_info,
+        destination_liquidity_info,
+        reserve_info,
+        reserve_collateral_mint_info,
+        reserve_liquidity_supply_info,
+        lending_market_info,
+        lending_market_authority_info,
+        user_transfer_authority_info,
+        clock,
+        token_program_id,
+    )
+}
 
+#[allow(clippy::too_many_arguments)]
+fn _redeem_reserve_collateral<'a>(
+    program_id: &Pubkey,
+    collateral_amount: u64,
+    source_collateral_info: &AccountInfo<'a>,
+    destination_liquidity_info: &AccountInfo<'a>,
+    reserve_info: &AccountInfo<'a>,
+    reserve_collateral_mint_info: &AccountInfo<'a>,
+    reserve_liquidity_supply_info: &AccountInfo<'a>,
+    lending_market_info: &AccountInfo<'a>,
+    lending_market_authority_info: &AccountInfo<'a>,
+    user_transfer_authority_info: &AccountInfo<'a>,
+    clock: &Clock,
+    token_program_id: &AccountInfo<'a>,
+) -> ProgramResult {
     let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
     if lending_market_info.owner != program_id {
         msg!("Lending market provided is not owned by the lending program");
@@ -1099,7 +1139,36 @@ fn process_withdraw_obligation_collateral(
     let obligation_owner_info = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
+    _withdraw_obligation_collateral(
+        program_id,
+        collateral_amount,
+        source_collateral_info,
+        destination_collateral_info,
+        withdraw_reserve_info,
+        obligation_info,
+        lending_market_info,
+        lending_market_authority_info,
+        obligation_owner_info,
+        clock,
+        token_program_id,
+    )?;
+    Ok(())
+}
 
+#[allow(clippy::too_many_arguments)]
+fn _withdraw_obligation_collateral<'a>(
+    program_id: &Pubkey,
+    collateral_amount: u64,
+    source_collateral_info: &AccountInfo<'a>,
+    destination_collateral_info: &AccountInfo<'a>,
+    withdraw_reserve_info: &AccountInfo<'a>,
+    obligation_info: &AccountInfo<'a>,
+    lending_market_info: &AccountInfo<'a>,
+    lending_market_authority_info: &AccountInfo<'a>,
+    obligation_owner_info: &AccountInfo<'a>,
+    clock: &Clock,
+    token_program_id: &AccountInfo<'a>,
+) -> Result<u64, ProgramError> {
     let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
     if lending_market_info.owner != program_id {
         msg!("Lending market provided is not owned by the lending program");
@@ -1228,7 +1297,7 @@ fn process_withdraw_obligation_collateral(
         token_program: token_program_id.clone(),
     })?;
 
-    Ok(())
+    Ok(withdraw_amount)
 }
 
 #[inline(never)] // avoid stack frame limit
@@ -1872,6 +1941,57 @@ fn process_flash_loan(
     }
 
     Ok(())
+}
+
+#[inline(never)] // avoid stack frame limit
+fn process_withdraw_obligation_collateral_and_redeem_reserve_liquidity(
+    program_id: &Pubkey,
+    collateral_amount: u64,
+    accounts: &[AccountInfo],
+) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+    let reserve_collateral_info = next_account_info(account_info_iter)?;
+    let user_collateral_info = next_account_info(account_info_iter)?;
+    let reserve_info = next_account_info(account_info_iter)?;
+    let obligation_info = next_account_info(account_info_iter)?;
+    let lending_market_info = next_account_info(account_info_iter)?;
+    let lending_market_authority_info = next_account_info(account_info_iter)?;
+    let user_liquidity_info = next_account_info(account_info_iter)?;
+    let reserve_collateral_mint_info = next_account_info(account_info_iter)?;
+    let reserve_liquidity_supply_info = next_account_info(account_info_iter)?;
+    let obligation_owner_info = next_account_info(account_info_iter)?;
+    let user_transfer_authority_info = next_account_info(account_info_iter)?;
+    let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
+    let token_program_id = next_account_info(account_info_iter)?;
+
+    let liquidity_amount = _withdraw_obligation_collateral(
+        program_id,
+        collateral_amount,
+        reserve_collateral_info,
+        user_collateral_info,
+        reserve_info,
+        obligation_info,
+        lending_market_info,
+        lending_market_authority_info,
+        obligation_owner_info,
+        clock,
+        token_program_id,
+    )?;
+
+    _redeem_reserve_collateral(
+        program_id,
+        liquidity_amount,
+        user_collateral_info,
+        user_liquidity_info,
+        reserve_info,
+        reserve_collateral_mint_info,
+        reserve_liquidity_supply_info,
+        lending_market_info,
+        lending_market_authority_info,
+        user_transfer_authority_info,
+        clock,
+        token_program_id,
+    )
 }
 
 fn assert_rent_exempt(rent: &Rent, account_info: &AccountInfo) -> ProgramResult {
