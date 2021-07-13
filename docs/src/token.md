@@ -765,7 +765,7 @@ Account, all remaining SOL will be transferred to another Solana account
 have a balance of zero to be closed.
 
 ### Non-Fungible tokens
-An NTF is simply a token type where only a single token has been minted.
+An NFT is simply a token type where only a single token has been minted.
 
 ## Wallet Integration Guide
 This section describes how to integrate SPL Token support into an existing
