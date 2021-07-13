@@ -793,6 +793,15 @@ impl Processor {
             return Err(StakePoolError::StakeLamportsNotEqualToMinimum.into());
         }
 
+        if stake.delegation.stake != MINIMUM_ACTIVE_STAKE {
+            msg!(
+                "Error: attempting to add stake with delegation of {} lamports, must have {} lamports",
+                stake.delegation.stake,
+                MINIMUM_ACTIVE_STAKE
+            );
+            return Err(StakePoolError::StakeLamportsNotEqualToMinimum.into());
+        }
+
         // Check if stake is warmed up
         //Self::check_stake_activation(stake_account_info, clock, stake_history)?;
 
@@ -808,7 +817,7 @@ impl Processor {
         validator_list.push(ValidatorStakeInfo {
             status: StakeStatus::Active,
             vote_account_address,
-            active_stake_lamports: stake_lamports.saturating_sub(minimum_lamport_amount),
+            active_stake_lamports: 0,
             transient_stake_lamports: 0,
             last_update_epoch: clock.epoch,
         })?;
@@ -896,6 +905,15 @@ impl Processor {
                 "Attempting to remove validator account with {} lamports, must have {} lamports",
                 stake_lamports,
                 required_lamports
+            );
+            return Err(StakePoolError::StakeLamportsNotEqualToMinimum.into());
+        }
+
+        if stake.delegation.stake != MINIMUM_ACTIVE_STAKE {
+            msg!(
+                "Error: attempting to remove stake with delegation of {} lamports, must have {} lamports",
+                stake.delegation.stake,
+                MINIMUM_ACTIVE_STAKE
             );
             return Err(StakePoolError::StakeLamportsNotEqualToMinimum.into());
         }
@@ -1181,7 +1199,7 @@ impl Processor {
         {
             let max_split_amount = reserve_stake_account_info
                 .lamports()
-                .saturating_sub(stake_rent);
+                .saturating_sub(2 * stake_rent);
             msg!(
                 "Reserve stake does not have enough lamports for increase, must be less than {}, {} requested",
                 max_split_amount,
