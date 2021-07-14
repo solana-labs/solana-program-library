@@ -313,32 +313,54 @@ async fn update() {
         setup(HUGE_POOL_SIZE, HUGE_POOL_SIZE, STAKE_AMOUNT).await;
 
     let transaction = Transaction::new_signed_with_payer(
-        &[
-            instruction::update_validator_list_balance(
-                &id(),
-                &stake_pool_accounts.stake_pool.pubkey(),
-                &stake_pool_accounts.withdraw_authority,
-                &stake_pool_accounts.validator_list.pubkey(),
-                &stake_pool_accounts.reserve_stake.pubkey(),
-                &vote_account_pubkeys[0..MAX_VALIDATORS_TO_UPDATE],
-                0,
-                /* no_merge = */ false,
-            ),
-            instruction::update_stake_pool_balance(
-                &id(),
-                &stake_pool_accounts.stake_pool.pubkey(),
-                &stake_pool_accounts.withdraw_authority,
-                &stake_pool_accounts.validator_list.pubkey(),
-                &stake_pool_accounts.reserve_stake.pubkey(),
-                &stake_pool_accounts.pool_fee_account.pubkey(),
-                &stake_pool_accounts.pool_mint.pubkey(),
-            ),
-            instruction::cleanup_removed_validator_entries(
-                &id(),
-                &stake_pool_accounts.stake_pool.pubkey(),
-                &stake_pool_accounts.validator_list.pubkey(),
-            ),
-        ],
+        &[instruction::update_validator_list_balance(
+            &id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.withdraw_authority,
+            &stake_pool_accounts.validator_list.pubkey(),
+            &stake_pool_accounts.reserve_stake.pubkey(),
+            &vote_account_pubkeys[0..MAX_VALIDATORS_TO_UPDATE],
+            0,
+            /* no_merge = */ false,
+        )],
+        Some(&context.payer.pubkey()),
+        &[&context.payer],
+        context.last_blockhash,
+    );
+    let error = context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .err();
+    assert!(error.is_none());
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction::update_stake_pool_balance(
+            &id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.withdraw_authority,
+            &stake_pool_accounts.validator_list.pubkey(),
+            &stake_pool_accounts.reserve_stake.pubkey(),
+            &stake_pool_accounts.pool_fee_account.pubkey(),
+            &stake_pool_accounts.pool_mint.pubkey(),
+        )],
+        Some(&context.payer.pubkey()),
+        &[&context.payer],
+        context.last_blockhash,
+    );
+    let error = context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .err();
+    assert!(error.is_none());
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction::cleanup_removed_validator_entries(
+            &id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.validator_list.pubkey(),
+        )],
         Some(&context.payer.pubkey()),
         &[&context.payer],
         context.last_blockhash,
