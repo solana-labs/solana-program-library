@@ -362,6 +362,20 @@ pub enum LendingInstruction {
         /// liquidity_amount is the amount of collateral tokens to withdraw
         collateral_amount: u64,
     },
+
+    // 16
+    /// Updates a reserve config parameter
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   1. `[writable]` Reserve account - refreshed
+    ///   2 `[]` Lending market account.
+    ///   3 `[]` Derived lending market authority.
+    ///   4 `[signer]` Lending market owner.
+    UpdateReserveConfig {
+        /// Reserve config to update to
+        config: ReserveConfig,
+    },
 }
 
 impl LendingInstruction {
@@ -455,6 +469,35 @@ impl LendingInstruction {
             15 => {
                 let (collateral_amount, _rest) = Self::unpack_u64(rest)?;
                 Self::WithdrawObligationCollateralAndRedeemReserveCollateral { collateral_amount }
+            }
+            16 => {
+                let (optimal_utilization_rate, _rest) = Self::unpack_u8(rest)?;
+                let (loan_to_value_ratio, _rest) = Self::unpack_u8(_rest)?;
+                let (liquidation_bonus, _rest) = Self::unpack_u8(_rest)?;
+                let (liquidation_threshold, _rest) = Self::unpack_u8(_rest)?;
+                let (min_borrow_rate, _rest) = Self::unpack_u8(_rest)?;
+                let (optimal_borrow_rate, _rest) = Self::unpack_u8(_rest)?;
+                let (max_borrow_rate, _rest) = Self::unpack_u8(_rest)?;
+                let (borrow_fee_wad, _rest) = Self::unpack_u64(_rest)?;
+                let (flash_loan_fee_wad, _rest) = Self::unpack_u64(_rest)?;
+                let (host_fee_percentage, _rest) = Self::unpack_u8(_rest)?;
+
+                Self::UpdateReserveConfig {
+                    config: ReserveConfig {
+                        optimal_utilization_rate,
+                        loan_to_value_ratio,
+                        liquidation_bonus,
+                        liquidation_threshold,
+                        min_borrow_rate,
+                        optimal_borrow_rate,
+                        max_borrow_rate,
+                        fees: ReserveFees {
+                            borrow_fee_wad,
+                            flash_loan_fee_wad,
+                            host_fee_percentage,
+                        },
+                    },
+                }
             }
             _ => {
                 msg!("Instruction cannot be unpacked");
@@ -611,6 +654,19 @@ impl LendingInstruction {
             Self::WithdrawObligationCollateralAndRedeemReserveCollateral { collateral_amount } => {
                 buf.push(15);
                 buf.extend_from_slice(&collateral_amount.to_le_bytes());
+            }
+            Self::UpdateReserveConfig { config } => {
+                buf.push(16);
+                buf.extend_from_slice(&config.optimal_utilization_rate.to_le_bytes());
+                buf.extend_from_slice(&config.loan_to_value_ratio.to_le_bytes());
+                buf.extend_from_slice(&config.liquidation_bonus.to_le_bytes());
+                buf.extend_from_slice(&config.liquidation_threshold.to_le_bytes());
+                buf.extend_from_slice(&config.min_borrow_rate.to_le_bytes());
+                buf.extend_from_slice(&config.optimal_borrow_rate.to_le_bytes());
+                buf.extend_from_slice(&config.max_borrow_rate.to_le_bytes());
+                buf.extend_from_slice(&config.fees.borrow_fee_wad.to_le_bytes());
+                buf.extend_from_slice(&config.fees.flash_loan_fee_wad.to_le_bytes());
+                buf.extend_from_slice(&config.fees.host_fee_percentage.to_le_bytes());
             }
         }
         buf
@@ -1106,5 +1162,31 @@ pub fn flash_loan(
         program_id,
         accounts,
         data: LendingInstruction::FlashLoan { amount }.pack(),
+    }
+}
+
+/// Creates an 'UpdateReserveConfig' instruction.
+#[allow(clippy::too_many_arguments)]
+pub fn update_reserve_config(
+    program_id: Pubkey,
+    config: ReserveConfig,
+    reserve_pubkey: Pubkey,
+    lending_market_pubkey: Pubkey,
+    lending_market_owner_pubkey: Pubkey,
+) -> Instruction {
+    let (lending_market_authority_pubkey, _bump_seed) = Pubkey::find_program_address(
+        &[&lending_market_pubkey.to_bytes()[..PUBKEY_BYTES]],
+        &program_id,
+    );
+    let accounts = vec![
+        AccountMeta::new(reserve_pubkey, false),
+        AccountMeta::new_readonly(lending_market_pubkey, false),
+        AccountMeta::new_readonly(lending_market_authority_pubkey, false),
+        AccountMeta::new_readonly(lending_market_owner_pubkey, true),
+    ];
+    Instruction {
+        program_id,
+        accounts,
+        data: LendingInstruction::UpdateReserveConfig { config }.pack(),
     }
 }
