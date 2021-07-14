@@ -324,6 +324,20 @@ async fn update() {
                 0,
                 /* no_merge = */ false,
             ),
+        ],
+        Some(&context.payer.pubkey()),
+        &[&context.payer],
+        context.last_blockhash,
+    );
+    let error = context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .err();
+    assert!(error.is_none());
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[
             instruction::update_stake_pool_balance(
                 &id(),
                 &stake_pool_accounts.stake_pool.pubkey(),
@@ -333,6 +347,20 @@ async fn update() {
                 &stake_pool_accounts.pool_fee_account.pubkey(),
                 &stake_pool_accounts.pool_mint.pubkey(),
             ),
+        ],
+        Some(&context.payer.pubkey()),
+        &[&context.payer],
+        context.last_blockhash,
+    );
+    let error = context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .err();
+    assert!(error.is_none());
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[
             instruction::cleanup_removed_validator_entries(
                 &id(),
                 &stake_pool_accounts.stake_pool.pubkey(),
