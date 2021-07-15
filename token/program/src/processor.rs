@@ -367,6 +367,9 @@ impl Processor {
                     } else {
                         return Err(TokenError::InvalidInstruction.into());
                     }
+
+                    account.delegate = COption::None;
+                    account.delegated_amount = 0;
                 }
                 AuthorityType::CloseAccount => {
                     let authority = account.close_authority.unwrap_or(account.owner);
@@ -3003,6 +3006,7 @@ mod tests {
         let owner2_key = Pubkey::new_unique();
         let mut owner2_account = SolanaAccount::default();
         let owner3_key = Pubkey::new_unique();
+        let mut owner3_account = SolanaAccount::default();
         let mint_key = Pubkey::new_unique();
         let mut mint_account =
             SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
@@ -3133,18 +3137,60 @@ mod tests {
             )
         );
 
+        // set delegate
+        do_process_instruction(
+            approve(
+                &program_id,
+                &account_key,
+                &owner2_key,
+                &owner_key,
+                &[],
+                u64::MAX,
+            )
+            .unwrap(),
+            vec![
+                &mut account_account,
+                &mut owner2_account,
+                &mut owner_account,
+            ],
+        )
+        .unwrap();
+        let account = Account::unpack_unchecked(&account_account.data).unwrap();
+        assert_eq!(account.delegate, COption::Some(owner2_key));
+        assert_eq!(account.delegated_amount, u64::MAX);
+
         // set owner
         do_process_instruction(
             set_authority(
                 &program_id,
                 &account_key,
-                Some(&owner2_key),
+                Some(&owner3_key),
                 AuthorityType::AccountOwner,
                 &owner_key,
                 &[],
             )
             .unwrap(),
             vec![&mut account_account, &mut owner_account],
+        )
+        .unwrap();
+
+        // check delegate cleared
+        let account = Account::unpack_unchecked(&account_account.data).unwrap();
+        assert_eq!(account.delegate, COption::None);
+        assert_eq!(account.delegated_amount, 0);
+
+        // set owner without existing delegate
+        do_process_instruction(
+            set_authority(
+                &program_id,
+                &account_key,
+                Some(&owner2_key),
+                AuthorityType::AccountOwner,
+                &owner3_key,
+                &[],
+            )
+            .unwrap(),
+            vec![&mut account_account, &mut owner3_account],
         )
         .unwrap();
 
