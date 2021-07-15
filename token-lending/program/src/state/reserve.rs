@@ -982,6 +982,15 @@ mod test {
         }
     }
 
+    prop_compose! {
+        fn generate_deposit_withdraw_sequence()(initial_deposit in 0u64..=100u64)
+        (deposit in initial_deposit..=(initial_deposit + 1u64),
+            collateral_remainings in prop::collection::vec(0u64..=initial_deposit, 1..10)
+        ) -> (u64, Vec<u64>){
+            (deposit, collateral_remainings)
+        }
+    }
+
     proptest! {
         #[test]
         fn current_borrow_rate(
@@ -1214,6 +1223,59 @@ mod test {
             } else {
                 assert_eq!(host_fee, 0);
             }
+        }
+
+        #[test]
+        fn random_deposit_withdraw(
+            total_liquidity in 0..=MAX_LIQUIDITY,
+            borrowed_percent in 0..=WAD,
+            borrow_rate in 0..=u8::MAX,
+            (initial_liquidity_amount, collateral_remainings) in generate_deposit_withdraw_sequence(),
+        ) {
+            let borrowed_liquidity_wads = Decimal::from(total_liquidity).try_mul(Rate::from_scaled_val(borrowed_percent))?;
+            let available_liquidity = total_liquidity - borrowed_liquidity_wads.try_round_u64()?;
+            let mint_total_supply = Decimal::from(total_liquidity).try_mul(Rate::from_scaled_val(5*WAD))?.try_round_u64()?;
+
+            let mut reserve = Reserve {
+                collateral: ReserveCollateral {
+                    mint_total_supply,
+                    ..ReserveCollateral::default()
+                },
+                liquidity: ReserveLiquidity {
+                    borrowed_amount_wads: borrowed_liquidity_wads,
+                    available_amount: available_liquidity,
+                    ..ReserveLiquidity::default()
+                },
+                config: ReserveConfig {
+                    min_borrow_rate: borrow_rate,
+                    optimal_borrow_rate: borrow_rate,
+                    optimal_utilization_rate: 100,
+                    ..ReserveConfig::default()
+                },
+                ..Reserve::default()
+            };
+
+            let mut current_liquidity_amount = initial_liquidity_amount;
+            let mut current_collateral_amount = reserve.deposit_liquidity(current_liquidity_amount).unwrap();
+
+            // Repeatedly withdraw a portion of the liquidity using collateral token to see if we can reach a state where
+            // we end up with more than what we have originally put into.
+            for collateral_remain in collateral_remainings.into_iter() {
+                // After repeated deposit and withdrawal, the collateral token that we obtain in the end can keep
+                // decreases since we *round down* on the amount of liquidity that the user can withdraw.
+                if collateral_remain <= current_collateral_amount {
+                    reserve.accrue_interest(1)?;
+                    current_liquidity_amount = reserve.redeem_collateral(current_collateral_amount - collateral_remain).unwrap();
+                    current_collateral_amount = collateral_remain;
+
+                    reserve.accrue_interest(1)?;
+                    current_collateral_amount += reserve.deposit_liquidity(current_liquidity_amount).unwrap();
+                }
+            }
+
+            let final_liquidity_deposited_amount = reserve.redeem_collateral(current_collateral_amount).unwrap();
+
+            assert!(final_liquidity_deposited_amount <= initial_liquidity_amount);
         }
     }
 
