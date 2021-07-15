@@ -10,7 +10,7 @@ publish = false
 
 [dependencies]
 honggfuzz = { version = "0.5.52" }
-arbitrary = { version = "0.4", features = ["derive"] }
+arbitrary = { version = "1.0", features = ["derive"] }
 solana-program = "1.7.3"
 spl-math = { version = "0.1", path = "../../../libraries/math", features = [ "no-entrypoint" ] }
 spl-token = { version = "3.1", path = "../../../token/program", features = [ "no-entrypoint" ] }

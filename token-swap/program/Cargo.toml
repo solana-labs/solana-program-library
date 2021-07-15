@@ -21,7 +21,7 @@ solana-program = "1.7.4"
 spl-math = { version = "0.1", path = "../../libraries/math", features = [ "no-entrypoint" ] }
 spl-token = { version = "3.1", path = "../../token/program", features = [ "no-entrypoint" ] }
 thiserror = "1.0"
-arbitrary = { version = "0.4", features = ["derive"], optional = true }
+arbitrary = { version = "1.0", features = ["derive"], optional = true }
 roots = { version = "0.0.7", optional = true }
 
 [dev-dependencies]
