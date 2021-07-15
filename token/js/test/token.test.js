@@ -76,4 +76,13 @@ describe('Token', () => {
     expect(ix.programId).to.eql(ASSOCIATED_TOKEN_PROGRAM_ID);
     expect(ix.keys).to.have.length(7);
   });
+
+  it('syncNative', () => {
+    const ix = Token.createSyncNativeInstruction(
+      TOKEN_PROGRAM_ID,
+      Keypair.generate().publicKey,
+    );
+    expect(ix.programId).to.eql(TOKEN_PROGRAM_ID);
+    expect(ix.keys).to.have.length(1);
+  });
 });
