@@ -13,6 +13,7 @@ members = [
   "libraries/math",
   "memo/program",
   "name-service/program",
+  "program-metadata/program",
   "record/program",
   "shared-memory/program",
   "stake-pool/cli",
