@@ -613,6 +613,9 @@ impl Processor {
         stake_pool.next_epoch_fee = None;
         stake_pool.preferred_deposit_validator_vote_address = None;
         stake_pool.preferred_withdraw_validator_vote_address = None;
+        stake_pool.deposit_fee = Fee::default();
+        stake_pool.withdrawal_fee = Fee::default();
+        stake_pool.next_withdrawal_fee = None;
 
         stake_pool
             .serialize(&mut *stake_pool_info.data.borrow_mut())
