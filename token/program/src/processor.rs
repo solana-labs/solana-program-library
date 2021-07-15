@@ -368,10 +368,8 @@ impl Processor {
                         return Err(TokenError::InvalidInstruction.into());
                     }
 
-                    if account.delegate.is_some() {
-                        account.delegate = COption::None;
-                        account.delegated_amount = 0;
-                    }
+                    account.delegate = COption::None;
+                    account.delegated_amount = 0;
                 }
                 AuthorityType::CloseAccount => {
                     let authority = account.close_authority.unwrap_or(account.owner);
