@@ -30,14 +30,30 @@ impl<'a> Config<'a> {
         override_name: &str,
         wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
     ) -> Pubkey {
+        let token = pubkey_of_signer(arg_matches, "token", wallet_manager).unwrap();
+        self.associated_token_address_for_token_or_override(
+            arg_matches,
+            override_name,
+            wallet_manager,
+            token,
+        )
+    }
+
+    // Check if an explicit token account address was provided, otherwise
+    // return the associated token address for the default address.
+    pub(crate) fn associated_token_address_for_token_or_override(
+        &self,
+        arg_matches: &ArgMatches,
+        override_name: &str,
+        wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
+        token: Option<Pubkey>,
+    ) -> Pubkey {
         if let Some(address) = pubkey_of_signer(arg_matches, override_name, wallet_manager).unwrap()
         {
             return address;
         }
 
-        let token = pubkey_of_signer(arg_matches, "token", wallet_manager)
-            .unwrap()
-            .unwrap();
+        let token = token.unwrap();
         let owner = self
             .default_signer(arg_matches, wallet_manager)
             .unwrap_or_else(|e| {

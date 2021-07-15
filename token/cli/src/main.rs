@@ -1336,6 +1336,11 @@ fn command_gc(config: &Config, owner: Pubkey) -> CommandResult {
     Ok(Some((lamports_needed, instructions)))
 }
 
+fn command_sync_native(native_account_address: Pubkey) -> CommandResult {
+    let instructions = vec![sync_native(&spl_token::id(), &native_account_address)?];
+    Ok(Some((0, vec![instructions])))
+}
+
 struct SignOnlyNeedsFullMintSpec {}
 impl offline::ArgsConfig for SignOnlyNeedsFullMintSpec {
     fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
@@ -2105,6 +2110,27 @@ fn main() {
                 .about("Cleanup unnecessary token accounts")
                 .arg(owner_keypair_arg())
         )
+        .subcommand(
+            SubCommand::with_name("sync-native")
+                .about("Sync a native SOL token account to its underlying lamports")
+                .arg(
+                    owner_address_arg()
+                        .index(1)
+                        .conflicts_with("address")
+                        .help("Owner of the associated account for the native token. \
+                               To query a specific account, use the `--address` parameter instead. \
+                               Defaults to the client keypair."),
+                )
+                .arg(
+                    Arg::with_name("address")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .long("address")
+                        .conflicts_with("owner")
+                        .help("Specify the specific token account address to sync"),
+                ),
+        )
         .get_matches();
 
     let mut wallet_manager = None;
@@ -2515,6 +2541,16 @@ fn main() {
             bulk_signers.push(owner_signer);
 
             command_gc(&config, owner_address)
+        }
+        ("sync-native", Some(arg_matches)) => {
+            let address = config.associated_token_address_for_token_or_override(
+                arg_matches,
+                "address",
+                &mut wallet_manager,
+                Some(native_mint::id()),
+            );
+
+            command_sync_native(address)
         }
         _ => unreachable!(),
     }
