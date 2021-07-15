@@ -9,7 +9,7 @@ edition = "2018"
 publish = false
 
 [dependencies]
-honggfuzz = { version = "0.5.52" }
+honggfuzz = { version = "0.5.54" }
 arbitrary = { version = "0.4", features = ["derive"] }
 solana-program = "1.7.3"
 spl-math = { version = "0.1", path = "../../../libraries/math", features = [ "no-entrypoint" ] }
