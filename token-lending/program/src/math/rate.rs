@@ -51,11 +51,6 @@ impl Rate {
         U128::from(WAD)
     }
 
-    // OPTIMIZE: use const slice when fixed in BPF toolchain
-    fn half_wad() -> U128 {
-        U128::from(HALF_WAD)
-    }
-
     /// Create scaled decimal from percent value
     pub fn from_percent(percent: u8) -> Self {
         Self(U128::from(percent as u64 * PERCENT_SCALER))
@@ -70,16 +65,6 @@ impl Rate {
     /// Create decimal from scaled value
     pub fn from_scaled_val(scaled_val: u64) -> Self {
         Self(U128::from(scaled_val))
-    }
-
-    /// Round scaled decimal to u64
-    pub fn try_round_u64(&self) -> Result<u64, ProgramError> {
-        let rounded_val = Self::half_wad()
-            .checked_add(self.0)
-            .ok_or(LendingError::MathOverflow)?
-            .checked_div(Self::wad())
-            .ok_or(LendingError::MathOverflow)?;
-        Ok(u64::try_from(rounded_val).map_err(|_| LendingError::MathOverflow)?)
     }
 
     /// Calculates base^exp
