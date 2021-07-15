@@ -633,29 +633,35 @@ export async function nativeToken(): Promise<void> {
     throw new Error('Account not found');
   }
 
-  // transfer lamports into the native account
-  const additionalLamports = 100;
-  await sendAndConfirmTransaction(
-    'TransferLamports',
-    connection,
-    new Transaction().add(
-      SystemProgram.transfer({
-        fromPubkey: payer.publicKey,
-        toPubkey: native,
-        lamports: additionalLamports,
-      }),
-    ),
-    payer,
-  );
+  const programVersion = process.env.PROGRAM_VERSION;
+  if (!programVersion) {
+    // transfer lamports into the native account
+    const additionalLamports = 100;
+    await sendAndConfirmTransaction(
+      'TransferLamports',
+      connection,
+      new Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: payer.publicKey,
+          toPubkey: native,
+          lamports: additionalLamports,
+        }),
+      ),
+      payer,
+    );
 
-  // no change in the amount
-  accountInfo = await token.getAccountInfo(native);
-  assert(accountInfo.amount.toNumber() === lamportsToWrap);
+    // no change in the amount
+    accountInfo = await token.getAccountInfo(native);
+    assert(accountInfo.amount.toNumber() === lamportsToWrap);
 
-  // sync, amount changes
-  await token.syncNative(native);
-  accountInfo = await token.getAccountInfo(native);
-  assert(accountInfo.amount.toNumber() === lamportsToWrap + additionalLamports);
+    // sync, amount changes
+    await token.syncNative(native);
+    accountInfo = await token.getAccountInfo(native);
+    assert(
+      accountInfo.amount.toNumber() === lamportsToWrap + additionalLamports,
+    );
+    balance += additionalLamports;
+  }
 
   const balanceNeeded = await connection.getMinimumBalanceForRentExemption(0);
   const dest = await newAccountWithLamports(connection, balanceNeeded);
@@ -666,7 +672,7 @@ export async function nativeToken(): Promise<void> {
   }
   info = await connection.getAccountInfo(dest.publicKey);
   if (info != null) {
-    assert(info.lamports == balanceNeeded + balance + additionalLamports);
+    assert(info.lamports == balanceNeeded + balance);
   } else {
     throw new Error('Account not found');
   }
