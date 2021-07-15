@@ -7,6 +7,8 @@ import {
   BpfLoader,
   PublicKey,
   Signer,
+  SystemProgram,
+  Transaction,
   BPF_LOADER_PROGRAM_ID,
 } from '@solana/web3.js';
 
@@ -18,6 +20,7 @@ import {
 } from '../client/token';
 import {url} from '../url';
 import {newAccountWithLamports} from '../client/util/new-account-with-lamports';
+import {sendAndConfirmTransaction} from '../client/util/send-and-confirm-transaction';
 import {sleep} from '../client/util/sleep';
 import {Store} from './store';
 
@@ -630,6 +633,30 @@ export async function nativeToken(): Promise<void> {
     throw new Error('Account not found');
   }
 
+  // transfer lamports into the native account
+  const additionalLamports = 100;
+  await sendAndConfirmTransaction(
+    'TransferLamports',
+    connection,
+    new Transaction().add(
+      SystemProgram.transfer({
+        fromPubkey: payer.publicKey,
+        toPubkey: native,
+        lamports: additionalLamports,
+      }),
+    ),
+    payer,
+  );
+
+  // no change in the amount
+  accountInfo = await token.getAccountInfo(native);
+  assert(accountInfo.amount.toNumber() === lamportsToWrap);
+
+  // sync, amount changes
+  await token.syncNative(native);
+  accountInfo = await token.getAccountInfo(native);
+  assert(accountInfo.amount.toNumber() === lamportsToWrap + additionalLamports);
+
   const balanceNeeded = await connection.getMinimumBalanceForRentExemption(0);
   const dest = await newAccountWithLamports(connection, balanceNeeded);
   await token.closeAccount(native, dest.publicKey, owner, []);
@@ -639,7 +666,7 @@ export async function nativeToken(): Promise<void> {
   }
   info = await connection.getAccountInfo(dest.publicKey);
   if (info != null) {
-    assert(info.lamports == balanceNeeded + balance);
+    assert(info.lamports == balanceNeeded + balance + additionalLamports);
   } else {
     throw new Error('Account not found');
   }
