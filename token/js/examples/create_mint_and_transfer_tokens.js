@@ -10,21 +10,21 @@ import * as splToken from '@solana/spl-token';
 
   // Generate a new wallet keypair and airdrop SOL
   var fromWallet = web3.Keypair.generate();
-  var airdropSignature = await connection.requestAirdrop(
+  var fromWalletAirdropSignature = await connection.requestAirdrop(
     fromWallet.publicKey,
     web3.LAMPORTS_PER_SOL,
   );
   //wait for airdrop confirmation
-  await connection.confirmTransaction(airdropSignature);
+  await connection.confirmTransaction(fromWalletAirdropSignature);
 
   // Generate a new random public key and airdrop 1 SOL
   var toWallet = web3.Keypair.generate();
-  var airdropSignature = await connection.requestAirdrop(
+  var toWalletAirdropSignature = await connection.requestAirdrop(
     toWallet.publicKey,
     web3.LAMPORTS_PER_SOL,
   );
   //wait for airdrop confirmation
-  await connection.confirmTransaction(airdropSignature);
+  await connection.confirmTransaction(toWalletAirdropSignature);
 
   //create new token mint
   let mint = await splToken.Token.createMint(
