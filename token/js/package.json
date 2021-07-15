@@ -39,7 +39,7 @@
     "start-with-test-validator": "start-server-and-test 'solana-test-validator --reset --quiet' http://localhost:8899/health start",
     "lint": "npm run pretty && eslint .",
     "lint:fix": "npm run pretty:fix && eslint . --fix",
-    "flow": "flow",
+    "flow": "flow check-contents < module.flow.js",
     "flow:watch": "watch 'flow' . --wait=1 --ignoreDirectoryPattern=/doc/",
     "lint:watch": "watch 'npm run lint:fix' . --wait=1",
     "build:program": "rm -f client/util/store/config.json; cargo build-bpf --manifest-path ../program/Cargo.toml",
@@ -56,7 +56,7 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.10.5",
-    "@solana/web3.js": "^1.12.0",
+    "@solana/web3.js": "^1.21.0",
     "bn.js": "^5.1.0",
     "buffer": "6.0.3",
     "buffer-layout": "^1.2.0",
