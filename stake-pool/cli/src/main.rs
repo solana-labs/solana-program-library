@@ -34,7 +34,8 @@ use {
     },
     spl_associated_token_account::{create_associated_token_account, get_associated_token_address},
     spl_stake_pool::{
-        self, find_stake_program_address, find_withdraw_authority_program_address,
+        self, find_stake_program_address, find_transient_stake_program_address,
+        find_withdraw_authority_program_address,
         instruction::PreferredValidatorType,
         stake_program::{self, StakeState},
         state::{Fee, StakePool, ValidatorList},
@@ -685,15 +686,49 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
     let pool_withdraw_authority =
         find_withdraw_authority_program_address(&spl_stake_pool::id(), stake_pool_address).0;
 
-    println!("Stake Pool: {}", stake_pool_address);
-    println!("Validator List: {}", stake_pool.validator_list);
-    println!("Manager: {}", stake_pool.manager);
-    println!("Staker: {}", stake_pool.staker);
-    println!("Depositor: {}", stake_pool.deposit_authority);
-    println!("Withdraw Authority: {}", pool_withdraw_authority);
-    println!("Pool Token Mint: {}", stake_pool.pool_mint);
-    println!("Fee Account: {}", stake_pool.manager_fee_account);
+    if config.verbose {
+        println!("Stake Pool Info");
+        println!("===============");
+        println!("Stake Pool: {}", stake_pool_address);
+        println!("Validator List: {}", stake_pool.validator_list);
+        println!("Manager: {}", stake_pool.manager);
+        println!("Staker: {}", stake_pool.staker);
+        println!("Depositor: {}", stake_pool.deposit_authority);
+        println!("Withdraw Authority: {}", pool_withdraw_authority);
+        println!("Pool Token Mint: {}", stake_pool.pool_mint);
+        println!("Fee Account: {}", stake_pool.manager_fee_account);
+    } else {
+        println!("Stake Pool: {}", stake_pool_address);
+        println!("Pool Token Mint: {}", stake_pool.pool_mint);
+    }
 
+    if let Some(preferred_deposit_validator) = stake_pool.preferred_deposit_validator_vote_address {
+        println!(
+            "Preferred Deposit Validator: {}",
+            preferred_deposit_validator
+        );
+    }
+    if let Some(preferred_withdraw_validator) = stake_pool.preferred_withdraw_validator_vote_address
+    {
+        println!(
+            "Preferred Withraw Validator: {}",
+            preferred_withdraw_validator
+        );
+    }
+    if stake_pool.fee.numerator > 0 {
+        println!(
+            "Fee: {}/{} of epoch rewards",
+            stake_pool.fee.numerator, stake_pool.fee.denominator
+        );
+    } else {
+        println!("Fee: none");
+    }
+
+    if config.verbose {
+        println!();
+        println!("Stake Accounts");
+        println!("--------------");
+    }
     let reserve_stake = config.rpc_client.get_account(&stake_pool.reserve_stake)?;
     let minimum_reserve_stake_balance = config
         .rpc_client
@@ -706,19 +741,44 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
     );
 
     for validator in &validator_list.validators {
-        println!(
-            "Validator Vote Account: {}\tBalance: {}\tLast Update Epoch: {}{}",
-            validator.vote_account_address,
-            Sol(validator.stake_lamports()),
-            validator.last_update_epoch,
-            if validator.last_update_epoch != epoch_info.epoch {
-                " [UPDATE REQUIRED]"
-            } else {
-                ""
-            }
-        );
+        if config.verbose {
+            let (stake_account_address, _) = find_stake_program_address(
+                &spl_stake_pool::id(),
+                &validator.vote_account_address,
+                stake_pool_address,
+            );
+            let (transient_stake_account_address, _) = find_transient_stake_program_address(
+                &spl_stake_pool::id(),
+                &validator.vote_account_address,
+                stake_pool_address,
+            );
+            println!(
+                "Vote Account: {}\tStake Account: {}\tActive Balance: {}\tTransient Stake Account: {}\tTransient Balance: {}\tLast Update Epoch: {}{}",
+                validator.vote_account_address,
+                stake_account_address,
+                Sol(validator.active_stake_lamports),
+                transient_stake_account_address,
+                Sol(validator.transient_stake_lamports),
+                validator.last_update_epoch,
+                if validator.last_update_epoch != epoch_info.epoch {
+                    " [UPDATE REQUIRED]"
+                } else {
+                    ""
+                }
+            );
+        } else {
+            println!(
+                "Vote Account: {}\tBalance: {}\tLast Update Epoch: {}",
+                validator.vote_account_address,
+                Sol(validator.stake_lamports()),
+                validator.last_update_epoch,
+            );
+        }
     }
 
+    if config.verbose {
+        println!();
+    }
     println!(
         "Total Pool Stake: {}{}",
         Sol(stake_pool.total_stake_lamports),
@@ -733,42 +793,13 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
         spl_token::amount_to_ui_amount(stake_pool.pool_token_supply, pool_mint.decimals)
     );
     println!(
-        "Total number of validators: {}",
+        "Current Number of Validators: {}",
         validator_list.validators.len()
     );
     println!(
-        "Max number of validators: {}",
+        "Max Number of Validators: {}",
         validator_list.header.max_validators
     );
-
-    if config.verbose {
-        println!();
-
-        let accounts =
-            get_stake_accounts_by_withdraw_authority(&config.rpc_client, &pool_withdraw_authority)?;
-        if accounts.is_empty() {
-            return Err(format!("No stake accounts found for {}", pool_withdraw_authority).into());
-        }
-
-        let mut total_stake_lamports: u64 = 0;
-        for (pubkey, stake_lamports, stake_state) in accounts {
-            total_stake_lamports += stake_lamports;
-            println!(
-                "Stake Account: {}\tVote Account: {}\t{}",
-                pubkey,
-                stake_state.delegation().map(|x| x.voter_pubkey.to_string()).unwrap_or("undelegated".to_owned()),
-                Sol(stake_lamports)
-            );
-        }
-        println!("Total Stake Account Balance: {}", Sol(total_stake_lamports));
-
-        if pool_mint.supply != stake_pool.pool_token_supply {
-            println!(
-                "BUG! Pool Tokens supply mismatch.  Pool mint reports {}",
-                spl_token::amount_to_ui_amount(pool_mint.supply, pool_mint.decimals)
-            );
-        }
-    }
 
     Ok(())
 }
@@ -1407,7 +1438,7 @@ fn main() {
                     .value_name("ADDRESS")
                     .takes_value(true)
                     .help("New authority to set as Staker and Withdrawer in the stake account removed from the pool.
-                          Defaults to the wallet owner pubkey."),
+                          Defaults to the client keypair."),
             )
         )
         .subcommand(SubCommand::with_name("increase-validator-stake")
@@ -1534,8 +1565,9 @@ fn main() {
                     .validator(is_pubkey)
                     .value_name("ADDRESS")
                     .takes_value(true)
-                    .help("Account to receive pool token. Must be initialized account of the stake pool token. \
-                          Defaults to the fee payer's associated pool token account."),
+                    .help("Account to receive the minted pool tokens. \
+                          Defaults to the token-owner's associated pool token account. \
+                          Creates the account if it does not exist."),
             )
         )
         .subcommand(SubCommand::with_name("list")
@@ -1600,7 +1632,7 @@ fn main() {
                     .validator(is_pubkey)
                     .value_name("ADDRESS")
                     .takes_value(true)
-                    .help("Pool token account to withdraw tokens from. Must be owned by the fee payer. Defaults to their associated token account."),
+                    .help("Pool token account to withdraw tokens from. Defaults to the token-owner's associated token account."),
             )
             .arg(
                 Arg::with_name("stake_receiver")
