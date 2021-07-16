@@ -8,10 +8,12 @@ use {
 /// Calculate square root of the given number
 ///
 /// Code lovingly adapted from the excellent work at:
-/// https://github.com/derekdreery/integer-sqrt-rs
+///
+/// <https://github.com/derekdreery/integer-sqrt-rs>
 ///
 /// The algorithm is based on the implementation in:
-/// https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Binary_numeral_system_(base_2)
+///
+/// <https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Binary_numeral_system_(base_2)>
 pub fn sqrt<T: PrimInt + CheckedShl + CheckedShr>(radicand: T) -> Option<T> {
     match radicand.cmp(&T::zero()) {
         Ordering::Less => return None,             // fail for less than 0
