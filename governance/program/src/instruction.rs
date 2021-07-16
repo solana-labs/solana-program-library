@@ -350,6 +350,8 @@ pub enum GovernanceInstruction {
 
     /// Flags an instruction and its parent Proposal with error status
     /// It can be used by Proposal owner in case the instruction is permanently broken and can't be executed
+    /// Note: This instruction is a workaround because currently it's not possible to catch errors from CPI calls
+    ///       and the Governance program has no way to know when instruction failed and flag it automatically
     ///
     ///   0. `[writable]` Proposal account
     ///   1. `[]` TokenOwnerRecord account for Proposal owner

@@ -179,7 +179,7 @@ async fn test_execute_instruction_after_flagged_with_error() {
 }
 
 #[tokio::test]
-async fn test_execute_instruction_after_first_instruction_flagged_with_error() {
+async fn test_execute_second_instruction_after_first_instruction_flagged_with_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -340,7 +340,7 @@ async fn test_flag_instruction_error_with_instruction_already_executed_error() {
 }
 
 #[tokio::test]
-async fn test_flag_instruction_error_with_with_owner_or_delegate_must_sign_error() {
+async fn test_flag_instruction_error_with_owner_or_delegate_must_sign_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
