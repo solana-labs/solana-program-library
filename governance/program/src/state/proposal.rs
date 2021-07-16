@@ -10,8 +10,8 @@ use crate::{
     error::GovernanceError,
     state::{
         enums::{
-            GovernanceAccountType, InstructionExecutionFlags, ProposalState,
-            VoteThresholdPercentage,
+            GovernanceAccountType, InstructionExecutionFlags, InstructionExecutionStatus,
+            ProposalState, VoteThresholdPercentage,
         },
         governance::GovernanceConfig,
         proposal_instruction::ProposalInstruction,
@@ -119,6 +119,7 @@ impl Proposal {
         match self.state {
             ProposalState::Draft | ProposalState::SigningOff => Ok(()),
             ProposalState::Executing
+            | ProposalState::ExecutingWithErrors
             | ProposalState::Completed
             | ProposalState::Cancelled
             | ProposalState::Voting
@@ -279,6 +280,7 @@ impl Proposal {
         match self.state {
             ProposalState::Draft | ProposalState::SigningOff | ProposalState::Voting => Ok(()),
             ProposalState::Executing
+            | ProposalState::ExecutingWithErrors
             | ProposalState::Completed
             | ProposalState::Cancelled
             | ProposalState::Succeeded
@@ -301,7 +303,9 @@ impl Proposal {
         current_unix_timestamp: UnixTimestamp,
     ) -> Result<(), ProgramError> {
         match self.state {
-            ProposalState::Succeeded | ProposalState::Executing => {}
+            ProposalState::Succeeded
+            | ProposalState::Executing
+            | ProposalState::ExecutingWithErrors => {}
             ProposalState::Draft
             | ProposalState::SigningOff
             | ProposalState::Completed
@@ -324,6 +328,22 @@ impl Proposal {
 
         if proposal_instruction_data.executed_at.is_some() {
             return Err(GovernanceError::InstructionAlreadyExecuted.into());
+        }
+
+        Ok(())
+    }
+
+    /// Checks if the instruction can be flagged with error for the Proposal in the given state
+    pub fn assert_can_flag_instruction_error(
+        &self,
+        proposal_instruction_data: &ProposalInstruction,
+        current_unix_timestamp: UnixTimestamp,
+    ) -> Result<(), ProgramError> {
+        // Instruction can be flagged for error only when it's eligible for execution
+        self.assert_can_execute_instruction(proposal_instruction_data, current_unix_timestamp)?;
+
+        if proposal_instruction_data.execution_status == InstructionExecutionStatus::Error {
+            return Err(GovernanceError::InstructionAlreadyFlaggedWithError.into());
         }
 
         Ok(())

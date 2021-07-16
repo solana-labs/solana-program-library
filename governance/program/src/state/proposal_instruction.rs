@@ -101,7 +101,6 @@ pub struct ProposalInstruction {
     pub executed_at: Option<UnixTimestamp>,
 
     /// Instruction execution status
-    /// Note: The field is not used in the current version
     pub execution_status: InstructionExecutionStatus,
 }
 

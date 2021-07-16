@@ -28,8 +28,8 @@ use spl_governance::{
         add_signatory, cancel_proposal, cast_vote, create_account_governance,
         create_mint_governance, create_program_governance, create_proposal, create_realm,
         create_token_governance, deposit_governing_tokens, execute_instruction, finalize_vote,
-        insert_instruction, relinquish_vote, remove_instruction, remove_signatory,
-        set_governance_config, set_governance_delegate, sign_off_proposal,
+        flag_instruction_error, insert_instruction, relinquish_vote, remove_instruction,
+        remove_signatory, set_governance_config, set_governance_delegate, sign_off_proposal,
         withdraw_governing_tokens, Vote,
     },
     processor::process_instruction,
@@ -1602,6 +1602,27 @@ impl GovernanceProgramTest {
         );
 
         self.process_transaction(&[execute_instruction_instruction], None)
+            .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn flag_instruction_error(
+        &mut self,
+        proposal_cookie: &ProposalCookie,
+        token_owner_record_cookie: &TokeOwnerRecordCookie,
+        proposal_instruction_cookie: &ProposalInstructionCookie,
+    ) -> Result<(), ProgramError> {
+        let governance_authority = token_owner_record_cookie.get_governance_authority();
+
+        let flag_instruction_error_ix = flag_instruction_error(
+            &self.program_id,
+            &proposal_cookie.address,
+            &proposal_cookie.account.token_owner_record,
+            &governance_authority.pubkey(),
+            &proposal_instruction_cookie.address,
+        );
+
+        self.process_transaction(&[flag_instruction_error_ix], Some(&[&governance_authority]))
             .await
     }
 

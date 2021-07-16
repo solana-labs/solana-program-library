@@ -85,6 +85,9 @@ pub enum ProposalState {
 
     /// Defeated
     Defeated,
+
+    /// Same as Executing but indicates some instructions faield to execute
+    ExecutingWithErrors,
 }
 
 impl Default for ProposalState {
@@ -133,8 +136,6 @@ pub enum InstructionExecutionStatus {
     Success,
 
     /// Instruction execution failed
-    /// Note: Error status is not supported yet because when CPI call fails it always terminates parent instruction
-    /// We either have to make it possible to change that behavior or add an instruction to manually set the status
     Error,
 }
 
