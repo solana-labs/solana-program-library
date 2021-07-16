@@ -531,6 +531,7 @@ mod test {
             Just(ProposalState::Voting),
             Just(ProposalState::Succeeded),
             Just(ProposalState::Executing),
+            Just(ProposalState::ExecutingWithErrors),
             Just(ProposalState::Completed),
             Just(ProposalState::Cancelled),
             Just(ProposalState::Defeated),
@@ -571,6 +572,7 @@ mod test {
             Just(ProposalState::Voting),
             Just(ProposalState::Succeeded),
             Just(ProposalState::Executing),
+            Just(ProposalState::ExecutingWithErrors),
             Just(ProposalState::Completed),
             Just(ProposalState::Cancelled),
             Just(ProposalState::Defeated),
@@ -616,6 +618,7 @@ mod test {
         prop_oneof![
             Just(ProposalState::Succeeded),
             Just(ProposalState::Executing),
+            Just(ProposalState::ExecutingWithErrors),
             Just(ProposalState::Completed),
             Just(ProposalState::Cancelled),
             Just(ProposalState::Defeated),

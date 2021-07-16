@@ -74,7 +74,8 @@ pub enum ProposalState {
     /// Voting ended with success
     Succeeded,
 
-    /// Voting completed and now instructions are being execute. Proposal enter this state when first instruction is executed and leaves when the last instruction is executed
+    /// Voting on Proposal succeeded and now instructions are being executed
+    /// Proposal enter this state when first instruction is executed and leaves when the last instruction is executed
     Executing,
 
     /// Completed
@@ -86,7 +87,8 @@ pub enum ProposalState {
     /// Defeated
     Defeated,
 
-    /// Same as Executing but indicates some instructions faield to execute
+    /// Same as Executing but indicates some instructions failed to execute
+    /// Proposal can't be transitioned from ExecutingWithErrors to Completed state
     ExecutingWithErrors,
 }
 
