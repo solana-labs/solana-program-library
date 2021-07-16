@@ -103,9 +103,9 @@
     resolve "^1.17.0"
 
 "@rollup/plugin-node-resolve@^13.0.0":
-  version "13.0.0"
-  resolved "https://registry.yarnpkg.com/@rollup/plugin-node-resolve/-/plugin-node-resolve-13.0.0.tgz#352f07e430ff377809ec8ec8a6fd636547162dc4"
-  integrity sha512-41X411HJ3oikIDivT5OKe9EZ6ud6DXudtfNrGbC4nniaxx2esiWjkLOzgnZsWq1IM8YIeL2rzRGLZLBjlhnZtQ==
+  version "13.0.2"
+  resolved "https://registry.yarnpkg.com/@rollup/plugin-node-resolve/-/plugin-node-resolve-13.0.2.tgz#bfe58e9bfc7284ee0fabc6da7fabcb268f04e0a4"
+  integrity sha512-hv+eAMcA2hQ7qvPVcXbtIyc0dtue4jMyA2sCW4IMkrmh+SeDDEHg1MXTv65VPpKdtjvWzN3+4mHAEl4rT+zgzQ==
   dependencies:
     "@rollup/pluginutils" "^3.1.0"
     "@types/resolve" "1.17.1"
@@ -115,9 +115,9 @@
     resolve "^1.19.0"
 
 "@rollup/plugin-typescript@^8.2.1":
-  version "8.2.1"
-  resolved "https://registry.yarnpkg.com/@rollup/plugin-typescript/-/plugin-typescript-8.2.1.tgz#f1a32d4030cc83432ce36a80a922280f0f0b5d44"
-  integrity sha512-Qd2E1pleDR4bwyFxqbjt4eJf+wB0UKVMLc7/BAFDGVdAXQMCsD4DUv5/7/ww47BZCYxWtJqe1Lo0KVNswBJlRw==
+  version "8.2.3"
+  resolved "https://registry.yarnpkg.com/@rollup/plugin-typescript/-/plugin-typescript-8.2.3.tgz#d1aed5dc424623bad8ff026f13f732e7cbeee175"
+  integrity sha512-bSkd+DD3wP9OLU6lPet59B6jJF29/RlxHkbwvOVOcf1nk8eQYWw24HpldEdrPo/WG0QAPD7TqI7+2y5jtdqjww==
   dependencies:
     "@rollup/pluginutils" "^3.1.0"
     resolve "^1.17.0"
