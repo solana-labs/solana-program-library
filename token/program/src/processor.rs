@@ -653,9 +653,6 @@ impl Processor {
             return Err(ProgramError::IncorrectProgramId);
         }
         let mut native_account = Account::unpack(&native_account_info.data.borrow())?;
-        if native_account.mint != crate::native_mint::id() {
-            return Err(TokenError::NonNativeNotSupported.into());
-        }
 
         if let COption::Some(rent_exempt_reserve) = native_account.is_native {
             let new_amount = native_account_info
@@ -667,7 +664,7 @@ impl Processor {
             }
             native_account.amount = new_amount;
         } else {
-            return Err(TokenError::InvalidState.into());
+            return Err(TokenError::NonNativeNotSupported.into());
         }
 
         Account::pack(native_account, &mut native_account_info.data.borrow_mut())?;
