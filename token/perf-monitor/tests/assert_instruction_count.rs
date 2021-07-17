@@ -1,24 +1,31 @@
 use solana_bpf_loader_program::{
     create_vm,
     serialization::{deserialize_parameters, serialize_parameters},
+    syscalls, BpfError, ThisInstructionMeter,
 };
-use solana_rbpf::vm::EbpfVm;
+use solana_rbpf::{
+    elf::EBpfElf,
+    vm::{Config, Executable},
+};
 use solana_sdk::{
-    account::{create_account, Account as SolanaAccount},
+    account::AccountSharedData,
     bpf_loader,
     entrypoint::SUCCESS,
     keyed_account::KeyedAccount,
-    process_instruction::MockInvokeContext,
+    process_instruction::{MockComputeMeter, MockInvokeContext},
     program_option::COption,
     program_pack::Pack,
     pubkey::Pubkey,
-    sysvar::rent::{self, Rent},
+    sysvar::{
+        self,
+        rent::{self, Rent},
+    },
 };
 use spl_token::{
     instruction::TokenInstruction,
     state::{Account, Mint},
 };
-use std::{cell::RefCell, fs::File, io::Read};
+use std::{cell::RefCell, fs::File, io::Read, rc::Rc};
 
 fn load_program(name: &str) -> Vec<u8> {
     let mut file = File::open(name).unwrap();
@@ -33,37 +40,44 @@ fn run_program(
     parameter_accounts: &[KeyedAccount],
     instruction_data: &[u8],
 ) -> u64 {
-    let program_account = SolanaAccount {
-        data: load_program("../../target/deploy/spl_token.so"),
-        ..SolanaAccount::default()
-    };
     let loader_id = bpf_loader::id();
-    let mut invoke_context = MockInvokeContext::default();
+    let mut invoke_context = MockInvokeContext::new(parameter_accounts.into());
 
-    let executable = EbpfVm::<solana_bpf_loader_program::BPFError>::create_executable_from_elf(
-        &&program_account.data,
-        None,
+    let mut executable = EBpfElf::<BpfError, ThisInstructionMeter>::load(
+        Config::default(),
+        &load_program("../../target/deploy/spl_token.so"),
     )
-    .unwrap();
-    let (mut vm, heap_region) = create_vm(
+    .expect("failed to load spl_token.so");
+    executable.set_syscall_registry(
+        syscalls::register_syscalls(&mut invoke_context)
+            .expect("failed to create syscalls register"),
+    );
+
+    let mut parameter_bytes =
+        serialize_parameters(&loader_id, program_id, parameter_accounts, instruction_data)
+            .expect("failed to serialize");
+
+    let mut vm = create_vm(
         &loader_id,
-        executable.as_ref(),
-        parameter_accounts,
+        &executable,
+        parameter_bytes.as_slice_mut(),
         &mut invoke_context,
     )
-    .unwrap();
-    let mut parameter_bytes = serialize_parameters(
-        &loader_id,
-        program_id,
-        parameter_accounts,
-        &instruction_data,
-    )
-    .unwrap();
+    .expect("failed to create vm");
+
+    let compute_meter = Rc::new(RefCell::new(MockComputeMeter {
+        remaining: u64::MAX,
+    }));
+    let mut instruction_meter = ThisInstructionMeter { compute_meter };
     assert_eq!(
-        Ok(SUCCESS),
-        vm.execute_program(parameter_bytes.as_mut_slice(), &[], &[heap_region])
+        vm.execute_program_interpreted(&mut instruction_meter)
+            .expect("failed to execute"),
+        SUCCESS
     );
-    deserialize_parameters(&loader_id, parameter_accounts, &parameter_bytes).unwrap();
+
+    deserialize_parameters(&loader_id, parameter_accounts, parameter_bytes.as_slice())
+        .expect("failed to deserialize");
+
     vm.get_total_instruction_count()
 }
 
@@ -71,16 +85,18 @@ fn run_program(
 fn assert_instruction_count() {
     let program_id = Pubkey::new_unique();
     let source_key = Pubkey::new_unique();
-    let source_account = SolanaAccount::new_ref(u64::MAX, Account::get_packed_len(), &program_id);
+    let source_account =
+        AccountSharedData::new_ref(u64::MAX, Account::get_packed_len(), &program_id);
     let destination_key = Pubkey::new_unique();
     let destination_account =
-        SolanaAccount::new_ref(u64::MAX, Account::get_packed_len(), &program_id);
+        AccountSharedData::new_ref(u64::MAX, Account::get_packed_len(), &program_id);
     let owner_key = Pubkey::new_unique();
-    let owner_account = RefCell::new(SolanaAccount::default());
+    let owner_account = RefCell::new(AccountSharedData::default());
     let mint_key = Pubkey::new_unique();
-    let mint_account = SolanaAccount::new_ref(0, Mint::get_packed_len(), &program_id);
+    let mint_account = AccountSharedData::new_ref(0, Mint::get_packed_len(), &program_id);
     let rent_key = rent::id();
-    let rent_account = RefCell::new(create_account(&Rent::free(), 42));
+    let rent_account =
+        AccountSharedData::new_ref_data(42, &Rent::free(), &sysvar::id()).expect("invalid rent");
 
     // Create new mint
     let instruction_data = TokenInstruction::InitializeMint {
@@ -136,10 +152,10 @@ fn assert_instruction_count() {
     ];
     let transfer_count = run_program(&program_id, &parameter_accounts[..], &instruction_data);
 
-    const BASELINE_NEW_MINT_COUNT: u64 = 4000; // last known 3802
-    const BASELINE_INITIALIZE_ACCOUNT_COUNT: u64 = 6500; // last known 6445
-    const BASELINE_MINTTO_COUNT: u64 = 6500; // last known 6194
-    const BASELINE_TRANSFER_COUNT: u64 = 8000; // last known 7609
+    const BASELINE_NEW_MINT_COUNT: u64 = 4000; // last known 2112
+    const BASELINE_INITIALIZE_ACCOUNT_COUNT: u64 = 6500; // last known 2758
+    const BASELINE_MINTTO_COUNT: u64 = 6500; // last known 3239
+    const BASELINE_TRANSFER_COUNT: u64 = 8000; // last known 3098
 
     println!("BPF instructions executed");
     println!(
