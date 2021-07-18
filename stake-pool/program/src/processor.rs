@@ -33,6 +33,7 @@ use {
         sysvar::Sysvar,
     },
     spl_token::state::Mint,
+    std::convert::TryFrom,
 };
 
 /// Deserialize the stake state from AccountInfo
@@ -445,6 +446,26 @@ impl Processor {
         )?;
 
         invoke_signed(&ix, &[mint, destination, authority, token_program], signers)
+    }
+
+    /// Issue a spl_token `Transfer` instruction.
+    #[allow(clippy::too_many_arguments)]
+    fn token_transfer<'a>(
+        token_program: AccountInfo<'a>,
+        source: AccountInfo<'a>,
+        destination: AccountInfo<'a>,
+        authority: AccountInfo<'a>,
+        amount: u64,
+    ) -> Result<(), ProgramError> {
+        let ix = spl_token::instruction::transfer(
+            token_program.key,
+            source.key,
+            destination.key,
+            authority.key,
+            &[],
+            amount,
+        )?;
+        invoke(&ix, &[source, destination, authority, token_program])
     }
 
     /// Processes `Initialize` instruction.
@@ -1897,6 +1918,7 @@ impl Processor {
         let clock = &Clock::from_account_info(clock_info)?;
         let token_program_info = next_account_info(account_info_iter)?;
         let stake_program_info = next_account_info(account_info_iter)?;
+        let manager_fee_info = next_account_info(account_info_iter)?;
 
         check_stake_program(stake_program_info.key)?;
         check_account_owner(stake_pool_info, program_id)?;
@@ -1929,8 +1951,19 @@ impl Processor {
             return Err(StakePoolError::InvalidState.into());
         }
 
+        let pool_tokens_fee = u64::try_from(
+            stake_pool
+                .withdrawal_fee
+                .apply(pool_tokens as u128)
+                .ok_or(StakePoolError::CalculationFailure)?,
+        )
+        .map_err(|_try_from_err| StakePoolError::CalculationFailure)?;
+        let pool_tokens_burnt = pool_tokens
+            .checked_sub(pool_tokens_fee)
+            .ok_or(StakePoolError::CalculationFailure)?;
+
         let withdraw_lamports = stake_pool
-            .calc_lamports_withdraw_amount(pool_tokens)
+            .calc_lamports_withdraw_amount(pool_tokens_burnt)
             .ok_or(StakePoolError::CalculationFailure)?;
 
         let has_active_stake = validator_list
@@ -2029,7 +2062,7 @@ impl Processor {
             burn_from_info.clone(),
             pool_mint_info.clone(),
             user_transfer_authority_info.clone(),
-            pool_tokens,
+            pool_tokens_burnt,
         )?;
 
         Self::stake_split(
@@ -2053,9 +2086,19 @@ impl Processor {
             stake_program_info.clone(),
         )?;
 
+        if pool_tokens_fee > 0 {
+            Self::token_transfer(
+                token_program_info.clone(),
+                burn_from_info.clone(),
+                manager_fee_info.clone(),
+                user_transfer_authority_info.clone(),
+                pool_tokens_fee,
+            )?;
+        }
+
         stake_pool.pool_token_supply = stake_pool
             .pool_token_supply
-            .checked_sub(pool_tokens)
+            .checked_sub(pool_tokens_burnt)
             .ok_or(StakePoolError::CalculationFailure)?;
         stake_pool.total_stake_lamports = stake_pool
             .total_stake_lamports

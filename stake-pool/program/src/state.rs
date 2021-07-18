@@ -143,14 +143,11 @@ impl StakePool {
     /// This function assumes that `reward_lamports` has not already been added
     /// to the stake pool's `total_stake_lamports`
     pub fn calc_fee_amount(&self, reward_lamports: u64) -> Option<u64> {
-        if self.fee.denominator == 0 || reward_lamports == 0 {
-            return Some(0);
-        }
         let total_stake_lamports =
             (self.total_stake_lamports as u128).checked_add(reward_lamports as u128)?;
-        let fee_lamports = (reward_lamports as u128)
-            .checked_mul(self.fee.numerator as u128)?
-            .checked_div(self.fee.denominator as u128)?;
+        let fee_lamports = self.fee.apply(reward_lamports as u128)?;
+        // TODO: possible failure case: divide by 0 if fee_lamports == total_stake_lamports
+        // this might happen on first epoch of rewards with 100% fees.
         u64::try_from(
             (self.pool_token_supply as u128)
                 .checked_mul(fee_lamports)?
@@ -542,6 +539,20 @@ pub struct Fee {
     pub denominator: u64,
     /// numerator of the fee ratio
     pub numerator: u64,
+}
+
+impl Fee {
+    /// Applies the Fee's rates to a given amount, `amt`
+    /// returning the amount to be subtracted from it as fees
+    /// (0 if denominator is 0 or amt is 0),
+    /// or None if overflow occurs
+    pub fn apply(&self, amt: u128) -> Option<u128> {
+        if self.denominator == 0 {
+            return Some(0);
+        }
+        amt.checked_mul(self.numerator as u128)?
+            .checked_div(self.denominator as u128)
+    }
 }
 
 #[cfg(test)]
