@@ -3882,6 +3882,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-token-api"
+version = "0.0.1"
+dependencies = [
+ "async-trait",
+ "solana-client",
+ "solana-program-test",
+ "solana-sdk",
+ "spl-associated-token-account 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-token 3.1.1",
+ "thiserror",
+]
+
+[[package]]
 name = "spl-token-cli"
 version = "2.0.13"
 dependencies = [

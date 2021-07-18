@@ -23,6 +23,7 @@ members = [
   "token-swap/program/fuzz",
   "token/cli",
   "token/program",
+  "token/rust",
   "utils/cgen",
   "utils/test-client",
 ]
