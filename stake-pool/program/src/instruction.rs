@@ -277,6 +277,7 @@ pub enum StakePoolInstruction {
     ///   9. `[]` Sysvar clock account (required)
     ///  10. `[]` Pool token program id
     ///  11. `[]` Stake program id,
+    ///  12. `[w]` Account to receive pool fee tokens
     ///  userdata: amount of pool tokens to withdraw
     Withdraw(u64),
 
