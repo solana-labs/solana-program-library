@@ -136,6 +136,11 @@ impl StakePool {
         if self.fee.denominator == 0 || reward_lamports == 0 {
             return Some(0);
         }
+        // If by chance the reserve account has lamports > 0 even though
+        // total_stake_lamports == 0, we credit it entirely to the manager.
+        if self.total_stake_lamports == 0 || self.pool_token_supply == 0 {
+            return Some(reward_lamports);
+        }
         let total_stake_lamports =
             (self.total_stake_lamports as u128).checked_add(reward_lamports as u128)?;
         let fee_lamports = (reward_lamports as u128)
