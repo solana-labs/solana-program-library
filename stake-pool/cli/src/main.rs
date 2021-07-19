@@ -154,6 +154,7 @@ fn command_create_pool(
     config: &Config,
     deposit_authority: Option<Pubkey>,
     fee: Fee,
+    withdrawal_fee: Fee,
     max_validators: u32,
     stake_pool_keypair: Option<Keypair>,
     mint_keypair: Option<Keypair>,
@@ -283,6 +284,7 @@ fn command_create_pool(
                 &spl_token::id(),
                 deposit_authority,
                 fee,
+                withdrawal_fee,
                 max_validators,
             ),
         ],
@@ -1315,6 +1317,7 @@ fn main() {
                     .required(true)
                     .help("Fee numerator, fee amount is numerator divided by denominator."),
             )
+
             .arg(
                 Arg::with_name("fee_denominator")
                     .long("fee-denominator")
@@ -1324,6 +1327,25 @@ fn main() {
                     .takes_value(true)
                     .required(true)
                     .help("Fee denominator, fee amount is numerator divided by denominator."),
+            )
+            .arg(
+                Arg::with_name("withdrawal_fee_numerator")
+                    .long("withdrawal-fee-numerator")
+                    .short("wn")
+                    .validator(is_parsable::<u64>)
+                    .value_name("WITHDRAWAL_NUMERATOR")
+                    .takes_value(true)
+                    .requires("withdrawal_fee_denominator")
+                    .help("Withdrawal fee numerator, fee amount is numerator divided by denominator."),
+            ).arg(
+                Arg::with_name("withdrawal_fee_denominator")
+                    .long("withdrawal-fee-denominator")
+                    .short("wd")
+                    .validator(is_parsable::<u64>)
+                    .value_name("WITHDRAWAL_DENOMINATOR")
+                    .takes_value(true)
+                    .requires("withdrawal_fee_numerator")
+                    .help("Withdrawal fee denominator, fee amount is numerator divided by denominator."),
             )
             .arg(
                 Arg::with_name("max_validators")
@@ -1816,6 +1838,8 @@ fn main() {
             let deposit_authority = pubkey_of(arg_matches, "deposit_authority");
             let numerator = value_t_or_exit!(arg_matches, "fee_numerator", u64);
             let denominator = value_t_or_exit!(arg_matches, "fee_denominator", u64);
+            let w_numerator = value_t!(arg_matches, "withdrawal_fee_numerator", u64);
+            let w_denominator = value_t!(arg_matches, "withdrawal_fee_denominator", u64);
             let max_validators = value_t_or_exit!(arg_matches, "max_validators", u32);
             let pool_keypair = keypair_of(arg_matches, "pool_keypair");
             let mint_keypair = keypair_of(arg_matches, "mint_keypair");
@@ -1826,6 +1850,10 @@ fn main() {
                 Fee {
                     denominator,
                     numerator,
+                },
+                Fee {
+                    numerator: w_numerator.unwrap_or(0),
+                    denominator: w_denominator.unwrap_or(0),
                 },
                 max_validators,
                 pool_keypair,
