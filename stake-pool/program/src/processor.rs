@@ -1621,6 +1621,10 @@ impl Processor {
         }
         stake_pool.total_stake_lamports = total_stake_lamports;
         stake_pool.last_update_epoch = clock.epoch;
+
+        let pool_mint = Mint::unpack_from_slice(&pool_mint_info.data.borrow())?;
+        stake_pool.pool_token_supply = pool_mint.supply;
+
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
 
         Ok(())
