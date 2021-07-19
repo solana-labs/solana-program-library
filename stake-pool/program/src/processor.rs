@@ -1656,7 +1656,7 @@ impl Processor {
         }
         if let Some(next_withdrawal_fee) = stake_pool.next_withdrawal_fee {
             stake_pool.withdrawal_fee = next_withdrawal_fee;
-            stake_pool.next_epoch_fee = None;
+            stake_pool.next_withdrawal_fee = None;
         }
         stake_pool.total_stake_lamports = total_stake_lamports;
         stake_pool.last_update_epoch = clock.epoch;
@@ -2264,7 +2264,7 @@ impl Processor {
         }
 
         // If the previous withdrawal fee was 0, we allow the fee
-        // to be set to a maximum of 0.15%
+        // to be set to a maximum of (0.1 * MAX_WITHDRAWAL_FEE_INCREASE)%
         let (old_num, old_denom) = if stake_pool.withdrawal_fee.denominator == 0
             || stake_pool.withdrawal_fee.numerator == 0
         {
@@ -2272,21 +2272,21 @@ impl Processor {
         } else {
             (
                 stake_pool.withdrawal_fee.numerator,
-                stake_pool.withdrawal_fee.numerator,
+                stake_pool.withdrawal_fee.denominator,
             )
         };
 
         // This is always safe since numerator <= denominator <= 1_000_000
         // and |MAX_WITHDRAWAL_FEE_INCREASE| <= 10
         if old_num * fee.denominator * MAX_WITHDRAWAL_FEE_INCREASE.numerator
-            > fee.numerator * old_denom * MAX_WITHDRAWAL_FEE_INCREASE.denominator
+            < fee.numerator * old_denom * MAX_WITHDRAWAL_FEE_INCREASE.denominator
         {
             msg!(
-                "Fee increase exceeds maximum allowed, max factor increase numerator: {}, denominator: {} ",
-                MAX_WITHDRAWAL_FEE_INCREASE.numerator,
-                MAX_WITHDRAWAL_FEE_INCREASE.denominator
+                "Fee increase exceeds maximum allowed, proposed increase factor ({} / {})",
+                fee.numerator * old_denom,
+                old_num * fee.denominator,
             );
-            return Err(StakePoolError::FeeTooHigh.into());
+            return Err(StakePoolError::FeeIncreaseTooHigh.into());
         }
 
         stake_pool.next_withdrawal_fee = Some(fee);
@@ -2421,7 +2421,8 @@ impl PrintProgramError for StakePoolError {
             StakePoolError::IncorrectDepositVoteAddress => msg!("Error: The provided deposit stake account is not delegated to the preferred deposit vote account"),
             StakePoolError::IncorrectWithdrawVoteAddress => msg!("Error: The provided withdraw stake account is not the preferred deposit vote account"),
             StakePoolError::InvalidMintFreezeAuthority => msg!("Error: The mint has an invalid freeze authority"),
-            StakePoolError::InvalidFeeDenominator => msg!("Error: The provided fee does not meet the necessary requirements"),
+            StakePoolError::InvalidFeeDenominator => msg!("Error: The provided fee's denominator is too high"),
+            StakePoolError::FeeIncreaseTooHigh => msg!("Error: The fee cannot increase by a factor exceeding the stipulated ratio"),
         }
     }
 }
