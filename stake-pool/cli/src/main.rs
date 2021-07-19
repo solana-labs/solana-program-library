@@ -150,6 +150,7 @@ fn checked_transaction_with_signers<T: Signers>(
     Ok(transaction)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn command_create_pool(
     config: &Config,
     deposit_authority: Option<Pubkey>,
