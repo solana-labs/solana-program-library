@@ -1398,6 +1398,22 @@ export class Token {
   }
 
   /**
+   * Sync amount in native SPL token account to underlying lamports
+   *
+   * @param nativeAccount Account to sync
+   */
+  async syncNative(nativeAccount: PublicKey): Promise<void> {
+    await sendAndConfirmTransaction(
+      'SyncNative',
+      this.connection,
+      new Transaction().add(
+        Token.createSyncNativeInstruction(this.programId, nativeAccount),
+      ),
+      this.payer,
+    );
+  }
+
+  /**
    * Construct an InitializeMint instruction
    *
    * @param programId SPL Token program account
@@ -2223,6 +2239,30 @@ export class Token {
       programId: programId,
       data,
     });
+  }
+
+  /**
+   * Construct a SyncNative instruction
+   *
+   * @param programId SPL Token program account
+   * @param nativeAccount Account to sync lamports from
+   */
+  static createSyncNativeInstruction(
+    programId: PublicKey,
+    nativeAccount: PublicKey,
+  ): TransactionInstruction {
+    const dataLayout = BufferLayout.struct([BufferLayout.u8('instruction')]);
+
+    const data = Buffer.alloc(dataLayout.span);
+    dataLayout.encode(
+      {
+        instruction: 17, // SyncNative instruction
+      },
+      data,
+    );
+
+    let keys = [{pubkey: nativeAccount, isSigner: false, isWritable: true}];
+    return new TransactionInstruction({keys, programId: programId, data});
   }
 
   /**
