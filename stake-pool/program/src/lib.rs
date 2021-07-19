@@ -14,6 +14,7 @@ pub mod entrypoint;
 
 // Export current sdk types for downstream users building with a different sdk version
 pub use solana_program;
+use state::Fee;
 use {
     crate::stake_program::Meta,
     solana_program::{native_token::LAMPORTS_PER_SOL, pubkey::Pubkey},
@@ -35,6 +36,13 @@ pub const MINIMUM_ACTIVE_STAKE: u64 = LAMPORTS_PER_SOL;
 /// Maximum amount of validator stake accounts to update per
 /// `UpdateValidatorListBalance` instruction, based on compute limits
 pub const MAX_VALIDATORS_TO_UPDATE: usize = 5;
+
+/// Maximum factor by which a withdrawal fee can be increased per epoch
+/// protecting stakers from malicious users
+pub const MAX_WITHDRAWAL_FEE_INCREASE: Fee = Fee {
+    numerator: 3,
+    denominator: 2,
+};
 
 /// Get the stake amount under consideration when calculating pool token
 /// conversions

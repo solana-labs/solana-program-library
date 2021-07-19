@@ -1,7 +1,6 @@
 //! Instruction types
 
 #![allow(clippy::too_many_arguments)]
-
 use {
     crate::{
         find_deposit_authority_program_address, find_stake_program_address,
@@ -309,6 +308,17 @@ pub enum StakePoolInstruction {
     ///  1. `[s]` Manager or current staker
     ///  2. '[]` New staker pubkey
     SetStaker,
+
+    ///  (Manager only) Update Withdrawal fee for next epoch
+    ///
+    ///  0. `[w]` StakePool
+    ///  1. `[s]` Manager
+    ///  2. `[]` Sysvar clock
+    SetWithdrawalFee {
+        /// Fee assessed as percentage of perceived rewards
+        #[allow(dead_code)] // but it's not
+        fee: Fee,
+    },
 }
 
 /// Creates an 'initialize' instruction.
@@ -995,6 +1005,27 @@ pub fn set_fee(
         program_id: *program_id,
         accounts,
         data: StakePoolInstruction::SetFee { fee }.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates a 'set fee' instruction.
+pub fn set_withdrawal_fee(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    manager: &Pubkey,
+    fee: Fee,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new(*stake_pool, false),
+        AccountMeta::new_readonly(*manager, true),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+    ];
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: StakePoolInstruction::SetWithdrawalFee { fee }
+            .try_to_vec()
+            .unwrap(),
     }
 }
 

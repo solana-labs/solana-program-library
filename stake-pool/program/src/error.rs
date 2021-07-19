@@ -99,6 +99,9 @@ pub enum StakePoolError {
     /// The mint has an invalid freeze authority
     #[error("InvalidMintFreezeAuthority")]
     InvalidMintFreezeAuthority,
+    /// Proposed fee does not meet requirements on size of denominator
+    #[error("InvalidFeeDenominator")]
+    InvalidFeeDenominator,
 }
 impl From<StakePoolError> for ProgramError {
     fn from(e: StakePoolError) -> Self {

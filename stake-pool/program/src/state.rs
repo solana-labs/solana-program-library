@@ -8,7 +8,6 @@ use {
     solana_program::{
         account_info::AccountInfo,
         borsh::get_instance_packed_len,
-        clock::Epoch,
         msg,
         program_error::ProgramError,
         program_memory::sol_memcmp,
@@ -111,8 +110,8 @@ pub struct StakePool {
     /// Fee assessed on withdrawals
     pub withdrawal_fee: Fee,
 
-    /// Future withdrawal fee, to be set at the given epoch
-    pub next_withdrawal_fee: Option<(Epoch, Fee)>,
+    /// Future withdrawal fee, to be set for the following epoch
+    pub next_withdrawal_fee: Option<Fee>,
 }
 impl StakePool {
     /// calculate the pool tokens that should be minted for a deposit of `stake_lamports`
