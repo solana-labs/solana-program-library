@@ -143,11 +143,12 @@ impl StakePool {
     /// This function assumes that `reward_lamports` has not already been added
     /// to the stake pool's `total_stake_lamports`
     pub fn calc_fee_amount(&self, reward_lamports: u64) -> Option<u64> {
+        if reward_lamports == 0 {
+            return Some(0);
+        }
         let total_stake_lamports =
             (self.total_stake_lamports as u128).checked_add(reward_lamports as u128)?;
         let fee_lamports = self.fee.apply(reward_lamports as u128)?;
-        // TODO: possible failure case: divide by 0 if fee_lamports == total_stake_lamports
-        // this might happen on first epoch of rewards with 100% fees.
         u64::try_from(
             (self.pool_token_supply as u128)
                 .checked_mul(fee_lamports)?
