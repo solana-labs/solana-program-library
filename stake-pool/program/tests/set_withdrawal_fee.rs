@@ -60,10 +60,7 @@ async fn success() {
         &[&context.payer, &stake_pool_accounts.manager],
         context.last_blockhash,
     );
-    let err = context
-        .banks_client
-        .process_transaction(transaction)
-        .await;
+    let err = context.banks_client.process_transaction(transaction).await;
     println!("{:?}", err.err());
 
     let stake_pool = get_account(
@@ -171,7 +168,6 @@ async fn fail_high_withdrawal_fee() {
     }
 }
 
-
 #[tokio::test]
 async fn fail_high_withdrawal_fee_denominator() {
     let (mut context, stake_pool_accounts, _new_withdrawal_fee) = setup().await;
@@ -207,7 +203,6 @@ async fn fail_high_withdrawal_fee_denominator() {
         _ => panic!("Wrong error occurs when setting fee denominator too high"),
     }
 }
-
 
 #[tokio::test]
 async fn fail_high_withdrawal_fee_increase() {
