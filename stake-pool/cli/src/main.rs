@@ -1331,7 +1331,6 @@ fn main() {
             .arg(
                 Arg::with_name("withdrawal_fee_numerator")
                     .long("withdrawal-fee-numerator")
-                    .short("wn")
                     .validator(is_parsable::<u64>)
                     .value_name("WITHDRAWAL_NUMERATOR")
                     .takes_value(true)
@@ -1340,7 +1339,6 @@ fn main() {
             ).arg(
                 Arg::with_name("withdrawal_fee_denominator")
                     .long("withdrawal-fee-denominator")
-                    .short("wd")
                     .validator(is_parsable::<u64>)
                     .value_name("WITHDRAWAL_DENOMINATOR")
                     .takes_value(true)
