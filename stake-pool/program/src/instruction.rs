@@ -928,6 +928,7 @@ pub fn withdraw(
     user_pool_token_account: &Pubkey,
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
+    manager_fee_account: &Pubkey,
     amount: u64,
 ) -> Instruction {
     let accounts = vec![
@@ -943,6 +944,7 @@ pub fn withdraw(
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
         AccountMeta::new_readonly(stake_program::id(), false),
+        AccountMeta::new(*manager_fee_account, false),
     ];
     Instruction {
         program_id: *program_id,

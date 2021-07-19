@@ -1088,6 +1088,7 @@ fn command_withdraw(
             &pool_token_account,
             &stake_pool.pool_mint,
             &spl_token::id(),
+            &stake_pool.manager_fee_account,
             withdraw_account.pool_amount,
         ));
     }

@@ -704,6 +704,7 @@ impl StakePoolAccounts {
                 pool_account,
                 &self.pool_mint.pubkey(),
                 &spl_token::id(),
+                &self.pool_fee_account.pubkey(),
                 amount,
             )],
             Some(&payer.pubkey()),
