@@ -10,7 +10,8 @@ use {
             AccountType, Fee, StakePool, StakeStatus, ValidatorList, ValidatorListHeader,
             ValidatorStakeInfo,
         },
-        AUTHORITY_DEPOSIT, AUTHORITY_WITHDRAW, MINIMUM_ACTIVE_STAKE, TRANSIENT_STAKE_SEED,
+        AUTHORITY_DEPOSIT, AUTHORITY_WITHDRAW, MAX_WITHDRAWAL_FEE_INCREASE, MINIMUM_ACTIVE_STAKE,
+        TRANSIENT_STAKE_SEED,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     num_traits::FromPrimitive,
@@ -615,6 +616,16 @@ impl Processor {
             msg!("Reserve stake account not in intialized state");
             return Err(StakePoolError::WrongStakeState.into());
         };
+        // Numerator should be smaller than or equal to denominator (fee <= 1)
+        if withdrawal_fee.numerator > withdrawal_fee.denominator {
+            return Err(StakePoolError::FeeTooHigh.into());
+        }
+        // To keep u64 arithmetic sane, we don't allow denominators (and consequently numerators)
+        // that are too large
+        if withdrawal_fee.denominator > 1_000_000 {
+            msg!("Withdrawal fee denominator too large");
+            return Err(StakePoolError::InvalidFeeDenominator.into());
+        }
 
         validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
 
@@ -1643,6 +1654,10 @@ impl Processor {
             stake_pool.fee = next_epoch_fee;
             stake_pool.next_epoch_fee = None;
         }
+        if let Some(next_withdrawal_fee) = stake_pool.next_withdrawal_fee {
+            stake_pool.withdrawal_fee = next_withdrawal_fee;
+            stake_pool.next_epoch_fee = None;
+        }
         stake_pool.total_stake_lamports = total_stake_lamports;
         stake_pool.last_update_epoch = clock.epoch;
 
@@ -2208,6 +2223,68 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes [SetWithdrawalFee](enum.Instruction.html).
+    fn process_set_withdrawal_fee(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        fee: Fee,
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let stake_pool_info = next_account_info(account_info_iter)?;
+        let manager_info = next_account_info(account_info_iter)?;
+        let clock_info = next_account_info(account_info_iter)?;
+        let clock = &Clock::from_account_info(clock_info)?;
+
+        check_account_owner(stake_pool_info, program_id)?;
+        let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
+        if !stake_pool.is_valid() {
+            return Err(StakePoolError::InvalidState.into());
+        }
+
+        stake_pool.check_manager(manager_info)?;
+
+        if stake_pool.last_update_epoch < clock.epoch {
+            return Err(StakePoolError::StakeListAndPoolOutOfDate.into());
+        }
+
+        // Numerator should be smaller than or equal to denominator (fee <= 1)
+        if fee.numerator > fee.denominator {
+            msg!(
+                "Fee greater than 100%, numerator {}, denominator {}",
+                fee.numerator,
+                fee.denominator
+            );
+            return Err(StakePoolError::FeeTooHigh.into());
+        }
+        // To keep u64 arithmetic sane, we don't allow denominators (and consequently numerators)
+        // that are too large
+        if fee.denominator > 1_000_000 {
+            msg!("Withdrawal fee denominator too large");
+            return Err(StakePoolError::InvalidFeeDenominator.into());
+        }
+
+        // This is always safe since numerator <= denominator <= 1_000_000
+        // and |MAX_WITHDRAWAL_FEE_INCREASE| <= 10
+        if stake_pool.withdrawal_fee.numerator
+            * fee.denominator
+            * MAX_WITHDRAWAL_FEE_INCREASE.numerator
+            > fee.numerator
+                * stake_pool.withdrawal_fee.denominator
+                * MAX_WITHDRAWAL_FEE_INCREASE.denominator
+        {
+            msg!(
+                "Fee increase exceeds maximum allowed, max factor increase numerator: {}, denominator: {} ",
+                MAX_WITHDRAWAL_FEE_INCREASE.numerator,
+                MAX_WITHDRAWAL_FEE_INCREASE.denominator
+            );
+            return Err(StakePoolError::FeeTooHigh.into());
+        }
+
+        stake_pool.next_withdrawal_fee = Some(fee);
+        stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
+        Ok(())
+    }
+
     /// Processes [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         let instruction = StakePoolInstruction::try_from_slice(input)?;
@@ -2292,6 +2369,10 @@ impl Processor {
                 msg!("Instruction: SetStaker");
                 Self::process_set_staker(program_id, accounts)
             }
+            StakePoolInstruction::SetWithdrawalFee { fee } => {
+                msg!("Instruction: SetFee");
+                Self::process_set_withdrawal_fee(program_id, accounts, fee)
+            }
         }
     }
 }
@@ -2331,6 +2412,7 @@ impl PrintProgramError for StakePoolError {
             StakePoolError::IncorrectDepositVoteAddress => msg!("Error: The provided deposit stake account is not delegated to the preferred deposit vote account"),
             StakePoolError::IncorrectWithdrawVoteAddress => msg!("Error: The provided withdraw stake account is not the preferred deposit vote account"),
             StakePoolError::InvalidMintFreezeAuthority => msg!("Error: The mint has an invalid freeze authority"),
+            StakePoolError::InvalidFeeDenominator => msg!("Error: The provided fee does not meet the necessary requirements"),
         }
     }
 }
