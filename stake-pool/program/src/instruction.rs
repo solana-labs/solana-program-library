@@ -53,6 +53,9 @@ pub enum StakePoolInstruction {
         /// Fee assessed as percentage of perceived rewards
         #[allow(dead_code)] // but it's not
         fee: Fee,
+        /// Fee charged per withdrawal as percentage of withdrawal
+        #[allow(dead_code)] // but it's not
+        withdrawal_fee: Fee,
         /// Maximum expected number of validators
         #[allow(dead_code)] // but it's not
         max_validators: u32,
@@ -321,10 +324,12 @@ pub fn initialize(
     token_program_id: &Pubkey,
     deposit_authority: Option<Pubkey>,
     fee: Fee,
+    withdrawal_fee: Fee,
     max_validators: u32,
 ) -> Instruction {
     let init_data = StakePoolInstruction::Initialize {
         fee,
+        withdrawal_fee,
         max_validators,
     };
     let data = init_data.try_to_vec().unwrap();

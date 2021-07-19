@@ -33,7 +33,6 @@ use {
         sysvar::Sysvar,
     },
     spl_token::state::Mint,
-    std::convert::TryFrom,
 };
 
 /// Deserialize the stake state from AccountInfo
@@ -473,6 +472,7 @@ impl Processor {
         program_id: &Pubkey,
         accounts: &[AccountInfo],
         fee: Fee,
+        withdrawal_fee: Fee,
         max_validators: u32,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -635,7 +635,7 @@ impl Processor {
         stake_pool.preferred_deposit_validator_vote_address = None;
         stake_pool.preferred_withdraw_validator_vote_address = None;
         stake_pool.deposit_fee = Fee::default();
-        stake_pool.withdrawal_fee = Fee::default();
+        stake_pool.withdrawal_fee = withdrawal_fee;
         stake_pool.next_withdrawal_fee = None;
 
         stake_pool
@@ -1951,13 +1951,9 @@ impl Processor {
             return Err(StakePoolError::InvalidState.into());
         }
 
-        let pool_tokens_fee = u64::try_from(
-            stake_pool
-                .withdrawal_fee
-                .apply(pool_tokens as u128)
-                .ok_or(StakePoolError::CalculationFailure)?,
-        )
-        .map_err(|_try_from_err| StakePoolError::CalculationFailure)?;
+        let pool_tokens_fee = stake_pool
+            .calc_pool_tokens_withdrawal_fee(pool_tokens)
+            .ok_or(StakePoolError::CalculationFailure)?;
         let pool_tokens_burnt = pool_tokens
             .checked_sub(pool_tokens_fee)
             .ok_or(StakePoolError::CalculationFailure)?;
@@ -2218,10 +2214,11 @@ impl Processor {
         match instruction {
             StakePoolInstruction::Initialize {
                 fee,
+                withdrawal_fee,
                 max_validators,
             } => {
                 msg!("Instruction: Initialize stake pool");
-                Self::process_initialize(program_id, accounts, fee, max_validators)
+                Self::process_initialize(program_id, accounts, fee, withdrawal_fee, max_validators)
             }
             StakePoolInstruction::CreateValidatorStakeAccount => {
                 msg!("Instruction: CreateValidatorStakeAccount");

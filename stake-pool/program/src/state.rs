@@ -138,6 +138,11 @@ impl StakePool {
         .ok()
     }
 
+    /// calculate pool tokens to be deducted as withdrawal fees
+    pub fn calc_pool_tokens_withdrawal_fee(&self, pool_tokens: u64) -> Option<u64> {
+        u64::try_from(self.withdrawal_fee.apply(pool_tokens as u128)?).ok()
+    }
+
     /// Calculate the fee in pool tokens that goes to the manager
     ///
     /// This function assumes that `reward_lamports` has not already been added
