@@ -1,5 +1,6 @@
 //! Program state processor
 
+use crate::WITHDRAWAL_BASELINE_FEE;
 use {
     crate::{
         error::StakePoolError,
@@ -2263,12 +2264,12 @@ impl Processor {
             return Err(StakePoolError::InvalidFeeDenominator.into());
         }
 
-        // If the previous withdrawal fee was 0, we allow the fee
-        // to be set to a maximum of (0.1 * MAX_WITHDRAWAL_FEE_INCREASE)%
+        // If the previous withdrawal fee was 0, we allow the fee to be set to a
+        // maximum of (WITHDRAWAL_BASELINE_FEE * MAX_WITHDRAWAL_FEE_INCREASE)
         let (old_num, old_denom) = if stake_pool.withdrawal_fee.denominator == 0
             || stake_pool.withdrawal_fee.numerator == 0
         {
-            (1, 10)
+            WITHDRAWAL_BASELINE_FEE
         } else {
             (
                 stake_pool.withdrawal_fee.numerator,
