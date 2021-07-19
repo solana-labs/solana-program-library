@@ -1333,18 +1333,18 @@ fn main() {
                 Arg::with_name("withdrawal_fee_numerator")
                     .long("withdrawal-fee-numerator")
                     .validator(is_parsable::<u64>)
-                    .value_name("WITHDRAWAL_NUMERATOR")
+                    .value_name("NUMERATOR")
                     .takes_value(true)
                     .requires("withdrawal_fee_denominator")
-                    .help("Withdrawal fee numerator, fee amount is numerator divided by denominator."),
+                    .help("Withdrawal fee numerator, fee amount is numerator divided by denominator [default: 0]"),
             ).arg(
                 Arg::with_name("withdrawal_fee_denominator")
                     .long("withdrawal-fee-denominator")
                     .validator(is_parsable::<u64>)
-                    .value_name("WITHDRAWAL_DENOMINATOR")
+                    .value_name("DENOMINATOR")
                     .takes_value(true)
                     .requires("withdrawal_fee_numerator")
-                    .help("Withdrawal fee denominator, fee amount is numerator divided by denominator."),
+                    .help("Withdrawal fee denominator, fee amount is numerator divided by denominator [default: 0]"),
             )
             .arg(
                 Arg::with_name("max_validators")
