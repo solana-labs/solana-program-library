@@ -195,13 +195,10 @@ fn process_init_reserve(
     config: ReserveConfig,
     accounts: &[AccountInfo],
 ) -> ProgramResult {
-<<<<<<< HEAD
     if liquidity_amount == 0 {
         msg!("Reserve must be initialized with liquidity");
         return Err(LendingError::InvalidAmount.into());
     }
-=======
->>>>>>> Add instruction to update the LTV of a reserve
     validate_reserve_config(config)?;
     let account_info_iter = &mut accounts.iter().peekable();
     let source_liquidity_info = next_account_info(account_info_iter)?;
