@@ -29,17 +29,17 @@ async fn setup() -> (ProgramTestContext, StakePoolAccounts, Fee) {
         )
         .await
         .unwrap();
-    let new_fee = Fee {
-        numerator: 10,
-        denominator: 10,
+    let new_withdrawal_fee = Fee {
+        numerator: 4,
+        denominator: 1000,
     };
 
-    (context, stake_pool_accounts, new_fee)
+    (context, stake_pool_accounts, new_withdrawal_fee)
 }
 
 #[tokio::test]
 async fn success() {
-    let (mut context, stake_pool_accounts, new_fee) = setup().await;
+    let (mut context, stake_pool_accounts, new_withdrawal_fee) = setup().await;
 
     let stake_pool = get_account(
         &mut context.banks_client,
@@ -47,24 +47,24 @@ async fn success() {
     )
     .await;
     let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
-    let old_fee = stake_pool.fee;
+    let old_withdrawal_fee = stake_pool.withdrawal_fee;
 
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::set_fee(
+        &[instruction::set_withdrawal_fee(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
-            new_fee,
+            new_withdrawal_fee,
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &stake_pool_accounts.manager],
         context.last_blockhash,
     );
-    context
+    let err = context
         .banks_client
         .process_transaction(transaction)
-        .await
-        .unwrap();
+        .await;
+    println!("{:?}", err.err());
 
     let stake_pool = get_account(
         &mut context.banks_client,
@@ -73,8 +73,8 @@ async fn success() {
     .await;
     let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
 
-    assert_eq!(stake_pool.fee, old_fee);
-    assert_eq!(stake_pool.next_epoch_fee, Some(new_fee));
+    assert_eq!(stake_pool.withdrawal_fee, old_withdrawal_fee);
+    assert_eq!(stake_pool.next_withdrawal_fee, Some(new_withdrawal_fee));
 
     let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
     let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
@@ -98,21 +98,21 @@ async fn success() {
     )
     .await;
     let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
-    assert_eq!(stake_pool.fee, new_fee);
-    assert_eq!(stake_pool.next_epoch_fee, None);
+    assert_eq!(stake_pool.withdrawal_fee, new_withdrawal_fee);
+    assert_eq!(stake_pool.next_withdrawal_fee, None);
 }
 
 #[tokio::test]
 async fn fail_wrong_manager() {
-    let (mut context, stake_pool_accounts, new_fee) = setup().await;
+    let (mut context, stake_pool_accounts, new_withdrawal_fee) = setup().await;
 
     let wrong_manager = Keypair::new();
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::set_fee(
+        &[instruction::set_withdrawal_fee(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &wrong_manager.pubkey(),
-            new_fee,
+            new_withdrawal_fee,
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &wrong_manager],
@@ -136,19 +136,128 @@ async fn fail_wrong_manager() {
 }
 
 #[tokio::test]
-async fn fail_high_fee() {
-    let (mut context, stake_pool_accounts, _new_fee) = setup().await;
+async fn fail_high_withdrawal_fee() {
+    let (mut context, stake_pool_accounts, _new_withdrawal_fee) = setup().await;
 
-    let new_fee = Fee {
+    let new_withdrawal_fee = Fee {
         numerator: 11,
         denominator: 10,
     };
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::set_fee(
+        &[instruction::set_withdrawal_fee(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
-            new_fee,
+            new_withdrawal_fee,
+        )],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &stake_pool_accounts.manager],
+        context.last_blockhash,
+    );
+    let error = context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .err()
+        .unwrap()
+        .unwrap();
+
+    match error {
+        TransactionError::InstructionError(_, InstructionError::Custom(error_index)) => {
+            let program_error = error::StakePoolError::FeeTooHigh as u32;
+            assert_eq!(error_index, program_error);
+        }
+        _ => panic!("Wrong error occurs when setting fee too high"),
+    }
+}
+
+
+#[tokio::test]
+async fn fail_high_withdrawal_fee_denominator() {
+    let (mut context, stake_pool_accounts, _new_withdrawal_fee) = setup().await;
+
+    let new_withdrawal_fee = Fee {
+        numerator: 11,
+        denominator: 1_000_001,
+    };
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction::set_withdrawal_fee(
+            &id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.manager.pubkey(),
+            new_withdrawal_fee,
+        )],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &stake_pool_accounts.manager],
+        context.last_blockhash,
+    );
+    let error = context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .err()
+        .unwrap()
+        .unwrap();
+
+    match error {
+        TransactionError::InstructionError(_, InstructionError::Custom(error_index)) => {
+            let program_error = error::StakePoolError::InvalidFeeDenominator as u32;
+            assert_eq!(error_index, program_error);
+        }
+        _ => panic!("Wrong error occurs when setting fee denominator too high"),
+    }
+}
+
+
+#[tokio::test]
+async fn fail_high_withdrawal_fee_increase() {
+    let (mut context, stake_pool_accounts, _new_withdrawal_fee) = setup().await;
+    let new_withdrawal_fee = Fee {
+        numerator: 46,
+        denominator: 10_000,
+    };
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction::set_withdrawal_fee(
+            &id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.manager.pubkey(),
+            new_withdrawal_fee,
+        )],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &stake_pool_accounts.manager],
+        context.last_blockhash,
+    );
+    let error = context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .err()
+        .unwrap()
+        .unwrap();
+
+    match error {
+        TransactionError::InstructionError(_, InstructionError::Custom(error_index)) => {
+            let program_error = error::StakePoolError::FeeIncreaseTooHigh as u32;
+            assert_eq!(error_index, program_error);
+        }
+        _ => panic!("Wrong error occurs when increasing fee by too large a factor"),
+    }
+}
+
+#[tokio::test]
+async fn fail_bad_fee() {
+    let (mut context, stake_pool_accounts, _new_fee) = setup().await;
+
+    let new_withdrawal_fee = Fee {
+        numerator: 11,
+        denominator: 10,
+    };
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction::set_withdrawal_fee(
+            &id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.manager.pubkey(),
+            new_withdrawal_fee,
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &stake_pool_accounts.manager],
@@ -184,8 +293,8 @@ async fn fail_not_updated() {
         )
         .await
         .unwrap();
-    let new_fee = Fee {
-        numerator: 10,
+    let new_withdrawal_fee = Fee {
+        numerator: 11,
         denominator: 100,
     };
 
@@ -193,11 +302,11 @@ async fn fail_not_updated() {
     context.warp_to_slot(50_000).unwrap();
 
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::set_fee(
+        &[instruction::set_withdrawal_fee(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
-            new_fee,
+            new_withdrawal_fee,
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &stake_pool_accounts.manager],

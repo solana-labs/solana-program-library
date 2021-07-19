@@ -102,6 +102,9 @@ pub enum StakePoolError {
     /// Proposed fee does not meet requirements on size of denominator
     #[error("InvalidFeeDenominator")]
     InvalidFeeDenominator,
+    /// Proposed fee increase exceeds stipulated ratio
+    #[error("FeeIncreaseTooHigh")]
+    FeeIncreaseTooHigh,
 }
 impl From<StakePoolError> for ProgramError {
     fn from(e: StakePoolError) -> Self {
