@@ -38,7 +38,7 @@ pub const MINIMUM_ACTIVE_STAKE: u64 = LAMPORTS_PER_SOL;
 pub const MAX_VALIDATORS_TO_UPDATE: usize = 5;
 
 /// Maximum factor by which a withdrawal fee can be increased per epoch
-/// protecting stakers from malicious users
+/// protecting stakers from malicious users. If current fee is 0
 pub const MAX_WITHDRAWAL_FEE_INCREASE: Fee = Fee {
     numerator: 3,
     denominator: 2,

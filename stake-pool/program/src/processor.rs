@@ -2263,14 +2263,23 @@ impl Processor {
             return Err(StakePoolError::InvalidFeeDenominator.into());
         }
 
+        // If the previous withdrawal fee was 0, we allow the fee
+        // to be set to a maximum of 0.15%
+        let (old_num, old_denom) = if stake_pool.withdrawal_fee.denominator == 0
+            || stake_pool.withdrawal_fee.numerator == 0
+        {
+            (1, 10)
+        } else {
+            (
+                stake_pool.withdrawal_fee.numerator,
+                stake_pool.withdrawal_fee.numerator,
+            )
+        };
+
         // This is always safe since numerator <= denominator <= 1_000_000
         // and |MAX_WITHDRAWAL_FEE_INCREASE| <= 10
-        if stake_pool.withdrawal_fee.numerator
-            * fee.denominator
-            * MAX_WITHDRAWAL_FEE_INCREASE.numerator
-            > fee.numerator
-                * stake_pool.withdrawal_fee.denominator
-                * MAX_WITHDRAWAL_FEE_INCREASE.denominator
+        if old_num * fee.denominator * MAX_WITHDRAWAL_FEE_INCREASE.numerator
+            > fee.numerator * old_denom * MAX_WITHDRAWAL_FEE_INCREASE.denominator
         {
             msg!(
                 "Fee increase exceeds maximum allowed, max factor increase numerator: {}, denominator: {} ",
