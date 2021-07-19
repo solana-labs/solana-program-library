@@ -38,11 +38,14 @@ pub const MINIMUM_ACTIVE_STAKE: u64 = LAMPORTS_PER_SOL;
 pub const MAX_VALIDATORS_TO_UPDATE: usize = 5;
 
 /// Maximum factor by which a withdrawal fee can be increased per epoch
-/// protecting stakers from malicious users. If current fee is 0
+/// protecting stakers from malicious users.
+/// If current fee is 0, WITHDRAWAL_BASELINE_FEE is used as the baseline
 pub const MAX_WITHDRAWAL_FEE_INCREASE: Fee = Fee {
     numerator: 3,
     denominator: 2,
 };
+/// Drop-in baseline fee when evaluating withdrawal fee increases when fee is 0
+pub const WITHDRAWAL_BASELINE_FEE: (u64, u64) = (1, 1000);
 
 /// Get the stake amount under consideration when calculating pool token
 /// conversions
