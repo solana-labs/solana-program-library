@@ -161,6 +161,33 @@ pub async fn mint_tokens(
     Ok(())
 }
 
+pub async fn burn_tokens(
+    banks_client: &mut BanksClient,
+    payer: &Keypair,
+    recent_blockhash: &Hash,
+    mint: &Pubkey,
+    account: &Pubkey,
+    authority: &Keypair,
+    amount: u64,
+) -> Result<(), TransportError> {
+    let transaction = Transaction::new_signed_with_payer(
+        &[spl_token::instruction::burn(
+            &spl_token::id(),
+            account,
+            mint,
+            &authority.pubkey(),
+            &[],
+            amount,
+        )
+        .unwrap()],
+        Some(&payer.pubkey()),
+        &[payer, authority],
+        *recent_blockhash,
+    );
+    banks_client.process_transaction(transaction).await?;
+    Ok(())
+}
+
 pub async fn get_token_balance(banks_client: &mut BanksClient, token: &Pubkey) -> u64 {
     let token_account = banks_client.get_account(*token).await.unwrap().unwrap();
     let account_info: spl_token::state::Account =
@@ -1019,7 +1046,7 @@ impl DepositStakeAccount {
     }
 
     pub async fn deposit(
-        &self,
+        &mut self,
         banks_client: &mut BanksClient,
         payer: &Keypair,
         recent_blockhash: &Hash,
@@ -1048,6 +1075,7 @@ impl DepositStakeAccount {
                 &self.authority,
             )
             .await;
+        self.pool_tokens = get_token_balance(banks_client, &self.pool_account.pubkey()).await;
         assert!(error.is_none());
     }
 }
