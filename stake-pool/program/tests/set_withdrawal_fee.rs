@@ -207,7 +207,7 @@ async fn fail_wrong_manager() {
             let program_error = error::StakePoolError::WrongManager as u32;
             assert_eq!(error_index, program_error);
         }
-        _ => panic!("Wrong error occurs while malicious try to set manager"),
+        _ => panic!("Wrong error occurs while signing with the wrong manager"),
     }
 }
 
