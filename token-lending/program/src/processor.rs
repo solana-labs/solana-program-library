@@ -114,12 +114,16 @@ pub fn process_instruction(
         LendingInstruction::WithdrawObligationCollateralAndRedeemReserveCollateral {
             collateral_amount,
         } => {
-            msg!("Instruction: Withdraw Obligation Collateral and Redeem Reserve Collateral ");
+            msg!("Instruction: Withdraw Obligation Collateral and Redeem Reserve Collateral");
             process_withdraw_obligation_collateral_and_redeem_reserve_liquidity(
                 program_id,
                 collateral_amount,
                 accounts,
             )
+        }
+        LendingInstruction::UpdateReserveConfig { config } => {
+            msg!("Instruction: UpdateReserveConfig");
+            process_update_reserve_config(program_id, config, accounts)
         }
     }
 }
@@ -195,41 +199,7 @@ fn process_init_reserve(
         msg!("Reserve must be initialized with liquidity");
         return Err(LendingError::InvalidAmount.into());
     }
-    if config.optimal_utilization_rate > 100 {
-        msg!("Optimal utilization rate must be in range [0, 100]");
-        return Err(LendingError::InvalidConfig.into());
-    }
-    if config.loan_to_value_ratio >= 100 {
-        msg!("Loan to value ratio must be in range [0, 100)");
-        return Err(LendingError::InvalidConfig.into());
-    }
-    if config.liquidation_bonus > 100 {
-        msg!("Liquidation bonus must be in range [0, 100]");
-        return Err(LendingError::InvalidConfig.into());
-    }
-    if config.liquidation_threshold <= config.loan_to_value_ratio
-        || config.liquidation_threshold > 100
-    {
-        msg!("Liquidation threshold must be in range (LTV, 100]");
-        return Err(LendingError::InvalidConfig.into());
-    }
-    if config.optimal_borrow_rate < config.min_borrow_rate {
-        msg!("Optimal borrow rate must be >= min borrow rate");
-        return Err(LendingError::InvalidConfig.into());
-    }
-    if config.optimal_borrow_rate > config.max_borrow_rate {
-        msg!("Optimal borrow rate must be <= max borrow rate");
-        return Err(LendingError::InvalidConfig.into());
-    }
-    if config.fees.borrow_fee_wad >= WAD {
-        msg!("Borrow fee must be in range [0, 1_000_000_000_000_000_000)");
-        return Err(LendingError::InvalidConfig.into());
-    }
-    if config.fees.host_fee_percentage > 100 {
-        msg!("Host fee percentage must be in range [0, 100]");
-        return Err(LendingError::InvalidConfig.into());
-    }
-
+    validate_reserve_config(config)?;
     let account_info_iter = &mut accounts.iter().peekable();
     let source_liquidity_info = next_account_info(account_info_iter)?;
     let destination_collateral_info = next_account_info(account_info_iter)?;
@@ -1994,6 +1964,65 @@ fn process_withdraw_obligation_collateral_and_redeem_reserve_liquidity(
     )
 }
 
+#[allow(clippy::too_many_arguments)]
+#[inline(never)] // avoid stack frame limit
+fn process_update_reserve_config(
+    program_id: &Pubkey,
+    config: ReserveConfig,
+    accounts: &[AccountInfo],
+) -> ProgramResult {
+    validate_reserve_config(config)?;
+    let account_info_iter = &mut accounts.iter().peekable();
+    let reserve_info = next_account_info(account_info_iter)?;
+    let lending_market_info = next_account_info(account_info_iter)?;
+    let lending_market_authority_info = next_account_info(account_info_iter)?;
+    let lending_market_owner_info = next_account_info(account_info_iter)?;
+
+    let mut reserve = Reserve::unpack(&reserve_info.data.borrow())?;
+    if reserve_info.owner != program_id {
+        msg!(
+            "Reserve provided is not owned by the lending program {} != {}",
+            &reserve_info.owner.to_string(),
+            &program_id.to_string(),
+        );
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+
+    let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
+    if lending_market_info.owner != program_id {
+        msg!(
+            "Lending market provided is not owned by the lending program  {} != {}",
+            &lending_market_info.owner.to_string(),
+            &program_id.to_string(),
+        );
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+    if &lending_market.owner != lending_market_owner_info.key {
+        msg!("Lending market owner does not match the lending market owner provided");
+        return Err(LendingError::InvalidMarketOwner.into());
+    }
+    if !lending_market_owner_info.is_signer {
+        msg!("Lending market owner provided must be a signer");
+        return Err(LendingError::InvalidSigner.into());
+    }
+
+    let authority_signer_seeds = &[
+        lending_market_info.key.as_ref(),
+        &[lending_market.bump_seed],
+    ];
+    let lending_market_authority_pubkey =
+        Pubkey::create_program_address(authority_signer_seeds, program_id)?;
+    if &lending_market_authority_pubkey != lending_market_authority_info.key {
+        msg!(
+            "Derived lending market authority does not match the lending market authority provided"
+        );
+        return Err(LendingError::InvalidMarketAuthority.into());
+    }
+    reserve.config = config;
+    Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
+    Ok(())
+}
+
 fn assert_rent_exempt(rent: &Rent, account_info: &AccountInfo) -> ProgramResult {
     if !rent.is_exempt(account_info.lamports(), account_info.data_len()) {
         msg!(
@@ -2296,6 +2325,46 @@ fn spl_token_burn(params: TokenBurnParams<'_, '_>) -> ProgramResult {
         authority_signer_seeds,
     );
     result.map_err(|_| LendingError::TokenBurnFailed.into())
+}
+
+/// validates reserve configs
+#[inline(always)]
+fn validate_reserve_config(config: ReserveConfig) -> ProgramResult {
+    if config.optimal_utilization_rate > 100 {
+        msg!("Optimal utilization rate must be in range [0, 100]");
+        return Err(LendingError::InvalidConfig.into());
+    }
+    if config.loan_to_value_ratio >= 100 {
+        msg!("Loan to value ratio must be in range [0, 100)");
+        return Err(LendingError::InvalidConfig.into());
+    }
+    if config.liquidation_bonus > 100 {
+        msg!("Liquidation bonus must be in range [0, 100]");
+        return Err(LendingError::InvalidConfig.into());
+    }
+    if config.liquidation_threshold <= config.loan_to_value_ratio
+        || config.liquidation_threshold > 100
+    {
+        msg!("Liquidation threshold must be in range (LTV, 100]");
+        return Err(LendingError::InvalidConfig.into());
+    }
+    if config.optimal_borrow_rate < config.min_borrow_rate {
+        msg!("Optimal borrow rate must be >= min borrow rate");
+        return Err(LendingError::InvalidConfig.into());
+    }
+    if config.optimal_borrow_rate > config.max_borrow_rate {
+        msg!("Optimal borrow rate must be <= max borrow rate");
+        return Err(LendingError::InvalidConfig.into());
+    }
+    if config.fees.borrow_fee_wad >= WAD {
+        msg!("Borrow fee must be in range [0, 1_000_000_000_000_000_000)");
+        return Err(LendingError::InvalidConfig.into());
+    }
+    if config.fees.host_fee_percentage > 100 {
+        msg!("Host fee percentage must be in range [0, 100]");
+        return Err(LendingError::InvalidConfig.into());
+    }
+    Ok(())
 }
 
 struct TokenInitializeMintParams<'a: 'b, 'b> {
