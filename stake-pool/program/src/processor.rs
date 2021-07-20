@@ -2272,11 +2272,15 @@ impl Processor {
         };
 
         // Check that new_fee / old_fee <= MAX_WITHDRAWAL_FEE_INCREASE
-
-        // This is always safe since numerator <= denominator <= 1_000_000
-        // and |MAX_WITHDRAWAL_FEE_INCREASE| <= 10
-        if old_num * fee.denominator * MAX_WITHDRAWAL_FEE_INCREASE.numerator
-            < fee.numerator * old_denom * MAX_WITHDRAWAL_FEE_INCREASE.denominator
+        // No checks are required as all the variables are u32
+        if (old_num as u128)
+            .checked_mul(fee.denominator as u128)
+            .map(|x| x.checked_mul(MAX_WITHDRAWAL_FEE_INCREASE.numerator as u128))
+            .ok_or(StakePoolError::CalculationFailure)?
+            < (fee.numerator as u128)
+                .checked_mul(old_denom as u128)
+                .map(|x| x.checked_mul(MAX_WITHDRAWAL_FEE_INCREASE.denominator as u128))
+                .ok_or(StakePoolError::CalculationFailure)?
         {
             msg!(
                 "Fee increase exceeds maximum allowed, proposed increase factor ({} / {})",

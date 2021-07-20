@@ -248,42 +248,6 @@ async fn fail_high_withdrawal_fee() {
 }
 
 #[tokio::test]
-async fn fail_high_withdrawal_fee_denominator() {
-    let (mut context, stake_pool_accounts, _new_withdrawal_fee) = setup(None).await;
-
-    let new_withdrawal_fee = Fee {
-        numerator: 11,
-        denominator: 1_000_001,
-    };
-    let transaction = Transaction::new_signed_with_payer(
-        &[instruction::set_withdrawal_fee(
-            &id(),
-            &stake_pool_accounts.stake_pool.pubkey(),
-            &stake_pool_accounts.manager.pubkey(),
-            new_withdrawal_fee,
-        )],
-        Some(&context.payer.pubkey()),
-        &[&context.payer, &stake_pool_accounts.manager],
-        context.last_blockhash,
-    );
-    let error = context
-        .banks_client
-        .process_transaction(transaction)
-        .await
-        .err()
-        .unwrap()
-        .unwrap();
-
-    match error {
-        TransactionError::InstructionError(_, InstructionError::Custom(error_index)) => {
-            let program_error = error::StakePoolError::InvalidFeeDenominator as u32;
-            assert_eq!(error_index, program_error);
-        }
-        _ => panic!("Wrong error occurs when setting fee denominator too high"),
-    }
-}
-
-#[tokio::test]
 async fn fail_high_withdrawal_fee_increase() {
     let (mut context, stake_pool_accounts, _new_withdrawal_fee) = setup(None).await;
     let new_withdrawal_fee = Fee {
