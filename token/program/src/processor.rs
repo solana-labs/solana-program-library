@@ -370,6 +370,10 @@ impl Processor {
 
                     account.delegate = COption::None;
                     account.delegated_amount = 0;
+
+                    if account.is_native() {
+                        account.close_authority = COption::None;
+                    }
                 }
                 AuthorityType::CloseAccount => {
                     let authority = account.close_authority.unwrap_or(account.owner);
@@ -5066,6 +5070,9 @@ mod tests {
         let mut account3_account = SolanaAccount::new(account_minimum_balance(), 0, &program_id);
         let owner_key = Pubkey::new_unique();
         let mut owner_account = SolanaAccount::default();
+        let owner2_key = Pubkey::new_unique();
+        let mut owner2_account = SolanaAccount::default();
+        let owner3_key = Pubkey::new_unique();
         let mut rent_sysvar = rent_sysvar();
 
         // initialize native account
@@ -5205,13 +5212,49 @@ mod tests {
         assert!(account.is_native());
         assert_eq!(account.amount, 40);
 
+        // set close authority
+        do_process_instruction(
+            set_authority(
+                &program_id,
+                &account_key,
+                Some(&owner3_key),
+                AuthorityType::CloseAccount,
+                &owner_key,
+                &[],
+            )
+            .unwrap(),
+            vec![&mut account_account, &mut owner_account],
+        )
+        .unwrap();
+        let account = Account::unpack_unchecked(&account_account.data).unwrap();
+        assert_eq!(account.close_authority, COption::Some(owner3_key));
+
+        // set new account owner
+        do_process_instruction(
+            set_authority(
+                &program_id,
+                &account_key,
+                Some(&owner2_key),
+                AuthorityType::AccountOwner,
+                &owner_key,
+                &[],
+            )
+            .unwrap(),
+            vec![&mut account_account, &mut owner_account],
+        )
+        .unwrap();
+
+        // close authority cleared
+        let account = Account::unpack_unchecked(&account_account.data).unwrap();
+        assert_eq!(account.close_authority, COption::None);
+
         // close native account
         do_process_instruction(
-            close_account(&program_id, &account_key, &account3_key, &owner_key, &[]).unwrap(),
+            close_account(&program_id, &account_key, &account3_key, &owner2_key, &[]).unwrap(),
             vec![
                 &mut account_account,
                 &mut account3_account,
-                &mut owner_account,
+                &mut owner2_account,
             ],
         )
         .unwrap();
