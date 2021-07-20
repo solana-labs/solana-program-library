@@ -146,8 +146,8 @@ async fn success() {
     .await;
     assert_eq!(pool_token_supply - pre_token_supply, actual_fee);
 
-    let expected_fee_lamports =
-        (post_balance - pre_balance) * stake_pool.fee.numerator as u64 / stake_pool.fee.denominator as u64;
+    let expected_fee_lamports = (post_balance - pre_balance) * stake_pool.fee.numerator as u64
+        / stake_pool.fee.denominator as u64;
     let actual_fee_lamports = stake_pool.calc_pool_tokens_for_deposit(actual_fee).unwrap();
     assert_eq!(actual_fee_lamports, expected_fee_lamports);
 
