@@ -99,9 +99,6 @@ pub enum StakePoolError {
     /// The mint has an invalid freeze authority
     #[error("InvalidMintFreezeAuthority")]
     InvalidMintFreezeAuthority,
-    /// Proposed fee does not meet requirements on size of denominator
-    #[error("InvalidFeeDenominator")]
-    InvalidFeeDenominator,
     /// Proposed fee increase exceeds stipulated ratio
     #[error("FeeIncreaseTooHigh")]
     FeeIncreaseTooHigh,

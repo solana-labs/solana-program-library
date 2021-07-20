@@ -621,12 +621,6 @@ impl Processor {
         if withdrawal_fee.numerator > withdrawal_fee.denominator {
             return Err(StakePoolError::FeeTooHigh.into());
         }
-        // To keep u64 arithmetic sane, we don't allow denominators (and consequently numerators)
-        // that are too large
-        if withdrawal_fee.denominator > 1_000_000 {
-            msg!("Withdrawal fee denominator too large");
-            return Err(StakePoolError::InvalidFeeDenominator.into());
-        }
 
         validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
 
@@ -2260,12 +2254,6 @@ impl Processor {
             );
             return Err(StakePoolError::FeeTooHigh.into());
         }
-        // To keep u64 arithmetic sane, we don't allow denominators (and consequently numerators)
-        // that are too large
-        if fee.denominator > 1_000_000 {
-            msg!("Withdrawal fee denominator too large");
-            return Err(StakePoolError::InvalidFeeDenominator.into());
-        }
 
         // If the previous withdrawal fee was 0, we allow the fee to be set to a
         // maximum of (WITHDRAWAL_BASELINE_FEE * MAX_WITHDRAWAL_FEE_INCREASE)
@@ -2430,7 +2418,6 @@ impl PrintProgramError for StakePoolError {
             StakePoolError::IncorrectDepositVoteAddress => msg!("Error: The provided deposit stake account is not delegated to the preferred deposit vote account"),
             StakePoolError::IncorrectWithdrawVoteAddress => msg!("Error: The provided withdraw stake account is not the preferred deposit vote account"),
             StakePoolError::InvalidMintFreezeAuthority => msg!("Error: The mint has an invalid freeze authority"),
-            StakePoolError::InvalidFeeDenominator => msg!("Error: The provided fee's denominator is too high"),
             StakePoolError::FeeIncreaseTooHigh => msg!("Error: The fee cannot increase by a factor exceeding the stipulated ratio"),
         }
     }
