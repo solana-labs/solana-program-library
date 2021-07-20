@@ -355,7 +355,7 @@ pub enum GovernanceInstruction {
     ///
     ///   0. `[writable]` Proposal account
     ///   1. `[]` TokenOwnerRecord account for Proposal owner
-    ///   2 `[signer]` Governance Authority (Token Owner or Governance Delegate)    
+    ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)    
     ///   3. `[writable]` ProposalInstruction account to flag
     ///   4. `[]` Clock sysvar
     FlagInstructionError,
