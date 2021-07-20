@@ -139,7 +139,7 @@ impl StakePool {
 
     /// calculate pool tokens to be deducted as withdrawal fees
     pub fn calc_pool_tokens_withdrawal_fee(&self, pool_tokens: u64) -> Option<u64> {
-        u64::try_from(self.withdrawal_fee.apply(pool_tokens as u128)?).ok()
+        u64::try_from(self.withdrawal_fee.apply(pool_tokens)?).ok()
     }
 
     /// Calculate the fee in pool tokens that goes to the manager
@@ -150,15 +150,9 @@ impl StakePool {
         if reward_lamports == 0 {
             return Some(0);
         }
-        // If by chance the reserve account has lamports > 0 even though
-        // total_stake_lamports == 0, we credit it entirely to the manager,
-        // regardless of the fee.
-        if self.total_stake_lamports == 0 || self.pool_token_supply == 0 {
-            return Some(reward_lamports);
-        }
         let total_stake_lamports =
             (self.total_stake_lamports as u128).checked_add(reward_lamports as u128)?;
-        let fee_lamports = self.fee.apply(reward_lamports as u128)?;
+        let fee_lamports = self.fee.apply(reward_lamports)?;
         u64::try_from(
             (self.pool_token_supply as u128)
                 .checked_mul(fee_lamports)?
@@ -557,11 +551,12 @@ impl Fee {
     /// returning the amount to be subtracted from it as fees
     /// (0 if denominator is 0 or amt is 0),
     /// or None if overflow occurs
-    pub fn apply(&self, amt: u128) -> Option<u128> {
+    pub fn apply(&self, amt: u64) -> Option<u128> {
         if self.denominator == 0 {
             return Some(0);
         }
-        amt.checked_mul(self.numerator as u128)?
+        (amt as u128)
+            .checked_mul(self.numerator as u128)?
             .checked_div(self.denominator as u128)
     }
 }

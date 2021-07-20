@@ -1339,7 +1339,6 @@ fn main() {
                     .required(true)
                     .help("Fee numerator, fee amount is numerator divided by denominator."),
             )
-
             .arg(
                 Arg::with_name("fee_denominator")
                     .long("fee-denominator")

@@ -14,9 +14,8 @@ pub mod entrypoint;
 
 // Export current sdk types for downstream users building with a different sdk version
 pub use solana_program;
-use state::Fee;
 use {
-    crate::stake_program::Meta,
+    crate::{stake_program::Meta, state::Fee},
     solana_program::{native_token::LAMPORTS_PER_SOL, pubkey::Pubkey},
 };
 
@@ -45,7 +44,10 @@ pub const MAX_WITHDRAWAL_FEE_INCREASE: Fee = Fee {
     denominator: 2,
 };
 /// Drop-in baseline fee when evaluating withdrawal fee increases when fee is 0
-pub const WITHDRAWAL_BASELINE_FEE: (u64, u64) = (1, 1000);
+pub const WITHDRAWAL_BASELINE_FEE: Fee = Fee {
+    numerator: 1,
+    denominator: 1000,
+};
 
 /// Get the stake amount under consideration when calculating pool token
 /// conversions

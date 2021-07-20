@@ -275,11 +275,11 @@ pub enum StakePoolInstruction {
     ///   5. `[]` User account to set as a new withdraw authority
     ///   6. `[s]` User transfer authority, for pool token account
     ///   7. `[w]` User account with pool tokens to burn from
-    ///   8. `[w]` Pool token mint account
-    ///   9. `[]` Sysvar clock account (required)
-    ///  10. `[]` Pool token program id
-    ///  11. `[]` Stake program id,
-    ///  12. `[w]` Account to receive pool fee tokens
+    ///   8. `[w]` Account to receive pool fee tokens
+    ///   9. `[w]` Pool token mint account
+    ///  10. `[]` Sysvar clock account (required)
+    ///  11. `[]` Pool token program id
+    ///  12. `[]` Stake program id,
     ///  userdata: amount of pool tokens to withdraw
     Withdraw(u64),
 
@@ -955,11 +955,11 @@ pub fn withdraw(
         AccountMeta::new_readonly(*user_stake_authority, false),
         AccountMeta::new_readonly(*user_transfer_authority, true),
         AccountMeta::new(*user_pool_token_account, false),
+        AccountMeta::new(*manager_fee_account, false),
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
         AccountMeta::new_readonly(stake_program::id(), false),
-        AccountMeta::new(*manager_fee_account, false),
     ];
     Instruction {
         program_id: *program_id,

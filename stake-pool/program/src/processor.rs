@@ -1929,12 +1929,12 @@ impl Processor {
         let user_stake_authority_info = next_account_info(account_info_iter)?;
         let user_transfer_authority_info = next_account_info(account_info_iter)?;
         let burn_from_info = next_account_info(account_info_iter)?;
+        let manager_fee_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let clock_info = next_account_info(account_info_iter)?;
         let clock = &Clock::from_account_info(clock_info)?;
         let token_program_info = next_account_info(account_info_iter)?;
         let stake_program_info = next_account_info(account_info_iter)?;
-        let manager_fee_info = next_account_info(account_info_iter)?;
 
         check_stake_program(stake_program_info.key)?;
         check_account_owner(stake_pool_info, program_id)?;
@@ -1951,6 +1951,9 @@ impl Processor {
             stake_pool_info.key,
         )?;
 
+        if stake_pool.manager_fee_account != *manager_fee_info.key {
+            return Err(StakePoolError::InvalidFeeAccount.into());
+        }
         if stake_pool.token_program_id != *token_program_info.key {
             return Err(ProgramError::IncorrectProgramId);
         }
@@ -2269,13 +2272,18 @@ impl Processor {
         let (old_num, old_denom) = if stake_pool.withdrawal_fee.denominator == 0
             || stake_pool.withdrawal_fee.numerator == 0
         {
-            WITHDRAWAL_BASELINE_FEE
+            (
+                WITHDRAWAL_BASELINE_FEE.numerator,
+                WITHDRAWAL_BASELINE_FEE.denominator,
+            )
         } else {
             (
                 stake_pool.withdrawal_fee.numerator,
                 stake_pool.withdrawal_fee.denominator,
             )
         };
+
+        // Check that new_fee / old_fee <= MAX_WITHDRAWAL_FEE_INCREASE
 
         // This is always safe since numerator <= denominator <= 1_000_000
         // and |MAX_WITHDRAWAL_FEE_INCREASE| <= 10
@@ -2380,7 +2388,7 @@ impl Processor {
                 Self::process_set_staker(program_id, accounts)
             }
             StakePoolInstruction::SetWithdrawalFee { fee } => {
-                msg!("Instruction: SetFee");
+                msg!("Instruction: SetWithdrawalFee");
                 Self::process_set_withdrawal_fee(program_id, accounts, fee)
             }
         }

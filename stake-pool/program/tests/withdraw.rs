@@ -267,11 +267,11 @@ async fn fail_with_wrong_stake_program() {
         AccountMeta::new_readonly(new_authority, false),
         AccountMeta::new_readonly(user_transfer_authority.pubkey(), true),
         AccountMeta::new(deposit_info.pool_account.pubkey(), false),
+        AccountMeta::new(stake_pool_accounts.pool_fee_account.pubkey(), false),
         AccountMeta::new(stake_pool_accounts.pool_mint.pubkey(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(spl_token::id(), false),
         AccountMeta::new_readonly(wrong_stake_program, false),
-        AccountMeta::new(stake_pool_accounts.pool_fee_account.pubkey(), false),
     ];
     let instruction = Instruction {
         program_id: id(),
