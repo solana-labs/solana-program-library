@@ -438,6 +438,6 @@ async fn fail_not_updated() {
             let program_error = error::StakePoolError::StakeListAndPoolOutOfDate as u32;
             assert_eq!(error_index, program_error);
         }
-        _ => panic!("Wrong error occurs while malicious try to set manager"),
+        _ => panic!("Wrong error occurs when stake pool out of date"),
     }
 }
