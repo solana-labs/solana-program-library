@@ -537,6 +537,7 @@ impl ValidatorListHeader {
 
 /// Fee rate as a ratio, minted on `UpdateStakePoolBalance` as a proportion of
 /// the rewards
+/// If either the numerator or the denominator is 0, the fee is considered to be 0
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, BorshSerialize, BorshDeserialize, BorshSchema)]
 pub struct Fee {
@@ -551,6 +552,7 @@ impl Fee {
     /// returning the amount to be subtracted from it as fees
     /// (0 if denominator is 0 or amt is 0),
     /// or None if overflow occurs
+    #[inline]
     pub fn apply(&self, amt: u64) -> Option<u128> {
         if self.denominator == 0 {
             return Some(0);

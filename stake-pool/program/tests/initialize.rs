@@ -205,34 +205,6 @@ async fn fail_with_high_withdrawal_fee() {
 }
 
 #[tokio::test]
-async fn fail_with_high_withdrawal_fee_denominator() {
-    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let mut stake_pool_accounts = StakePoolAccounts::new();
-    stake_pool_accounts.withdrawal_fee = state::Fee {
-        numerator: 100_001,
-        denominator: 1_000_001,
-    };
-
-    let transaction_error = stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
-        .await
-        .err()
-        .unwrap();
-    match transaction_error {
-        TransportError::TransactionError(TransactionError::InstructionError(
-            _,
-            InstructionError::Custom(error_index),
-        )) => {
-            let program_error = error::StakePoolError::InvalidFeeDenominator as u32;
-            assert_eq!(error_index, program_error);
-        }
-        _ => panic!(
-            "Wrong error occurs while try to initialize stake pool with high fee denominator"
-        ),
-    }
-}
-
-#[tokio::test]
 async fn fail_with_wrong_max_validators() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
