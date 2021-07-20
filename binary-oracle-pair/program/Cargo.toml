@@ -18,7 +18,7 @@ spl-token = { version = "3.2", path = "../../token/program", features = [ "no-en
 thiserror = "1.0"
 uint = "0.9"
 arbitrary = { version = "0.4", features = ["derive"], optional = true }
-borsh = "0.9.0"
+borsh = "0.9.1"
 
 [dev-dependencies]
 solana-program-test = "1.7.4"
