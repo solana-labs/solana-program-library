@@ -12,6 +12,7 @@ mod process_create_token_governance;
 mod process_deposit_governing_tokens;
 mod process_execute_instruction;
 mod process_finalize_vote;
+mod process_flag_instruction_error;
 mod process_insert_instruction;
 mod process_relinquish_vote;
 mod process_remove_instruction;
@@ -36,6 +37,7 @@ use process_create_token_governance::*;
 use process_deposit_governing_tokens::*;
 use process_execute_instruction::*;
 use process_finalize_vote::*;
+use process_flag_instruction_error::*;
 use process_insert_instruction::*;
 use process_relinquish_vote::*;
 use process_remove_instruction::*;
@@ -159,6 +161,10 @@ pub fn process_instruction(
 
         GovernanceInstruction::SetGovernanceConfig { config } => {
             process_set_governance_config(program_id, accounts, config)
+        }
+
+        GovernanceInstruction::FlagInstructionError {} => {
+            process_flag_instruction_error(program_id, accounts)
         }
     }
 }

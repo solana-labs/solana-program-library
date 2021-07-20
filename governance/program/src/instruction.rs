@@ -347,6 +347,18 @@ pub enum GovernanceInstruction {
         /// New governance config
         config: GovernanceConfig,
     },
+
+    /// Flags an instruction and its parent Proposal with error status
+    /// It can be used by Proposal owner in case the instruction is permanently broken and can't be executed
+    /// Note: This instruction is a workaround because currently it's not possible to catch errors from CPI calls
+    ///       and the Governance program has no way to know when instruction failed and flag it automatically
+    ///
+    ///   0. `[writable]` Proposal account
+    ///   1. `[]` TokenOwnerRecord account for Proposal owner
+    ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)    
+    ///   3. `[writable]` ProposalInstruction account to flag
+    ///   4. `[]` Clock sysvar
+    FlagInstructionError,
 }
 
 /// Creates CreateRealm instruction
@@ -1024,6 +1036,32 @@ pub fn set_governance_config(
     let accounts = vec![AccountMeta::new(*governance, true)];
 
     let instruction = GovernanceInstruction::SetGovernanceConfig { config };
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates FlagInstructionError instruction
+pub fn flag_instruction_error(
+    program_id: &Pubkey,
+    // Accounts
+    proposal: &Pubkey,
+    token_owner_record: &Pubkey,
+    governance_authority: &Pubkey,
+    proposal_instruction: &Pubkey,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new(*proposal, false),
+        AccountMeta::new_readonly(*token_owner_record, false),
+        AccountMeta::new_readonly(*governance_authority, true),
+        AccountMeta::new(*proposal_instruction, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+    ];
+
+    let instruction = GovernanceInstruction::FlagInstructionError {};
 
     Instruction {
         program_id: *program_id,

@@ -275,6 +275,10 @@ pub enum GovernanceError {
     /// Governance PDA must sign
     #[error("Governance PDA must sign")]
     GovernancePdaMustSign,
+
+    /// Instruction already flagged with error
+    #[error("Instruction already flagged with error")]
+    InstructionAlreadyFlaggedWithError,
 }
 
 impl PrintProgramError for GovernanceError {

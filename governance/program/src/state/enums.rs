@@ -74,7 +74,8 @@ pub enum ProposalState {
     /// Voting ended with success
     Succeeded,
 
-    /// Voting completed and now instructions are being execute. Proposal enter this state when first instruction is executed and leaves when the last instruction is executed
+    /// Voting on Proposal succeeded and now instructions are being executed
+    /// Proposal enter this state when first instruction is executed and leaves when the last instruction is executed
     Executing,
 
     /// Completed
@@ -85,6 +86,10 @@ pub enum ProposalState {
 
     /// Defeated
     Defeated,
+
+    /// Same as Executing but indicates some instructions failed to execute
+    /// Proposal can't be transitioned from ExecutingWithErrors to Completed state
+    ExecutingWithErrors,
 }
 
 impl Default for ProposalState {
@@ -133,8 +138,6 @@ pub enum InstructionExecutionStatus {
     Success,
 
     /// Instruction execution failed
-    /// Note: Error status is not supported yet because when CPI call fails it always terminates parent instruction
-    /// We either have to make it possible to change that behavior or add an instruction to manually set the status
     Error,
 }
 
