@@ -112,6 +112,12 @@ pub struct StakePool {
 
     /// Future withdrawal fee, to be set for the following epoch
     pub next_withdrawal_fee: Option<Fee>,
+
+    /// Fees paid out to referrers on referred deposits.
+    /// Expressed as a percentage (0 - 100) of deposit fees.
+    /// i.e. `deposit_fee`% is collected as deposit fees for every deposit
+    /// and `referral_fee`% of the collected deposit fees is paid out to the referrer
+    pub referral_fee: u8,
 }
 impl StakePool {
     /// calculate the pool tokens that should be minted for a deposit of `stake_lamports`

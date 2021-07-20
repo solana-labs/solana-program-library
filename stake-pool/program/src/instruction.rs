@@ -941,9 +941,9 @@ pub fn withdraw(
     user_stake_authority: &Pubkey,
     user_transfer_authority: &Pubkey,
     user_pool_token_account: &Pubkey,
+    manager_fee_account: &Pubkey,
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
-    manager_fee_account: &Pubkey,
     amount: u64,
 ) -> Instruction {
     let accounts = vec![

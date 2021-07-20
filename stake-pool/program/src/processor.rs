@@ -1,6 +1,5 @@
 //! Program state processor
 
-use crate::WITHDRAWAL_BASELINE_FEE;
 use {
     crate::{
         error::StakePoolError,
@@ -12,7 +11,7 @@ use {
             ValidatorStakeInfo,
         },
         AUTHORITY_DEPOSIT, AUTHORITY_WITHDRAW, MAX_WITHDRAWAL_FEE_INCREASE, MINIMUM_ACTIVE_STAKE,
-        TRANSIENT_STAKE_SEED,
+        TRANSIENT_STAKE_SEED, WITHDRAWAL_BASELINE_FEE,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     num_traits::FromPrimitive,
@@ -2272,7 +2271,7 @@ impl Processor {
         };
 
         // Check that new_fee / old_fee <= MAX_WITHDRAWAL_FEE_INCREASE
-        // No checks are required as all the variables are u32
+        // Program fails if provided numerator or denominator is too large, resulting in overflow
         if (old_num as u128)
             .checked_mul(fee.denominator as u128)
             .map(|x| x.checked_mul(MAX_WITHDRAWAL_FEE_INCREASE.numerator as u128))
