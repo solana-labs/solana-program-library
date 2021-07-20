@@ -566,7 +566,7 @@ impl StakePoolAccounts {
     }
 
     pub fn calculate_fee(&self, amount: u64) -> u64 {
-        amount * self.fee.numerator / self.fee.denominator
+        amount * self.fee.numerator as u64 / self.fee.denominator as u64
     }
 
     pub async fn initialize_stake_pool(

@@ -529,9 +529,9 @@ impl ValidatorListHeader {
 #[derive(Clone, Copy, Debug, Default, PartialEq, BorshSerialize, BorshDeserialize, BorshSchema)]
 pub struct Fee {
     /// denominator of the fee ratio
-    pub denominator: u64,
+    pub denominator: u32,
     /// numerator of the fee ratio
-    pub numerator: u64,
+    pub numerator: u32,
 }
 
 #[cfg(test)]
@@ -706,8 +706,8 @@ mod test {
         fn fee()(denominator in 1..=u16::MAX)(
             denominator in Just(denominator),
             numerator in 0..=denominator,
-        ) -> (u64, u64) {
-            (numerator as u64, denominator as u64)
+        ) -> (u32, u32) {
+            (numerator as u32, denominator as u32)
         }
     }
 

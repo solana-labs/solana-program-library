@@ -1813,8 +1813,8 @@ fn main() {
     let _ = match matches.subcommand() {
         ("create-pool", Some(arg_matches)) => {
             let deposit_authority = pubkey_of(arg_matches, "deposit_authority");
-            let numerator = value_t_or_exit!(arg_matches, "fee_numerator", u64);
-            let denominator = value_t_or_exit!(arg_matches, "fee_denominator", u64);
+            let numerator = value_t_or_exit!(arg_matches, "fee_numerator", u32);
+            let denominator = value_t_or_exit!(arg_matches, "fee_denominator", u32);
             let max_validators = value_t_or_exit!(arg_matches, "max_validators", u32);
             let pool_keypair = keypair_of(arg_matches, "pool_keypair");
             let mint_keypair = keypair_of(arg_matches, "mint_keypair");
@@ -1934,8 +1934,8 @@ fn main() {
         }
         ("set-fee", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
-            let numerator = value_t_or_exit!(arg_matches, "fee_numerator", u64);
-            let denominator = value_t_or_exit!(arg_matches, "fee_denominator", u64);
+            let numerator = value_t_or_exit!(arg_matches, "fee_numerator", u32);
+            let denominator = value_t_or_exit!(arg_matches, "fee_denominator", u32);
             let new_fee = Fee {
                 denominator,
                 numerator,
