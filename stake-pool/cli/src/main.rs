@@ -1421,6 +1421,23 @@ fn command_set_fee(
     Ok(())
 }
 
+fn command_list_all_pools(config: &Config) -> CommandResult {
+    let all_pools = get_stake_pools(&config.rpc_client)?;
+    let count = all_pools.len();
+    for (address, stake_pool, validator_list) in all_pools {
+        println!(
+            "Address: {}\tManager: {}\tLamports: {}\tPool tokens: {}\tValidators: {}",
+            address,
+            stake_pool.manager,
+            stake_pool.total_stake_lamports,
+            stake_pool.pool_token_supply,
+            validator_list.validators.len()
+        );
+    }
+    println!("Total number of pools: {}", count);
+    Ok(())
+}
+
 fn main() {
     solana_logger::setup_with_default("solana=info");
 
@@ -2149,6 +2166,9 @@ fn main() {
                     .help("Fee percentage, maximum 100"),
             )
         )
+        .subcommand(SubCommand::with_name("list-all")
+            .about("List information about all stake pools")
+        )
         .get_matches();
 
     let mut wallet_manager = None;
@@ -2428,6 +2448,7 @@ fn main() {
             };
             command_set_fee(&config, &stake_pool_address, fee_type)
         }
+        ("list-all", _) => command_list_all_pools(&config),
         _ => unreachable!(),
     }
     .map_err(|err| {
