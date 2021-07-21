@@ -2499,6 +2499,34 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes [SetFee](enum.Instruction.html).
+    fn process_set_referral_fee(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        fee: u8,
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let stake_pool_info = next_account_info(account_info_iter)?;
+        let manager_info = next_account_info(account_info_iter)?;
+
+        check_account_owner(stake_pool_info, program_id)?;
+        let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
+        if !stake_pool.is_valid() {
+            return Err(StakePoolError::InvalidState.into());
+        }
+
+        stake_pool.check_manager(manager_info)?;
+
+        // Numerator should be smaller than or equal to denominator (fee <= 1)
+        if fee > 100u8 {
+            msg!("Fee greater than 100% {}", fee);
+            return Err(StakePoolError::FeeTooHigh.into());
+        }
+
+        stake_pool.referral_fee = fee;
+        Ok(())
+    }
+
     /// Processes [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         let instruction = StakePoolInstruction::try_from_slice(input)?;
@@ -2600,6 +2628,10 @@ impl Processor {
             StakePoolInstruction::SetDepositFee { fee } => {
                 msg!("Instruction: SetDepositFee");
                 Self::process_set_deposit_fee(program_id, accounts, fee)
+            }
+            StakePoolInstruction::SetReferralFee { fee } => {
+                msg!("Instruction: SetDepositFee");
+                Self::process_set_referral_fee(program_id, accounts, fee)
             }
             StakePoolInstruction::DepositSol(lamports) => {
                 msg!("Instruction: DepositSol");

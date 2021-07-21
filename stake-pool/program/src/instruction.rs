@@ -328,7 +328,7 @@ pub enum StakePoolInstruction {
         fee: Fee,
     },
 
-    ///  (Manager only) Update Withdrawal fee for next epoch
+    ///  (Manager only) Update Deposit and DepositSol fee
     ///
     ///  0. `[w]` StakePool
     ///  1. `[s]` Manager
@@ -336,6 +336,16 @@ pub enum StakePoolInstruction {
         /// Fee assessed as percentage of perceived rewards
         #[allow(dead_code)] // but it's not
         fee: Fee,
+    },
+
+    ///  (Manager only) Update Deposit and DepositSol referral fee
+    ///
+    ///  0. `[w]` StakePool
+    ///  1. `[s]` Manager
+    SetReferralFee {
+        /// Fee assessed as percentage of perceived rewards
+        #[allow(dead_code)] // but it's not
+        fee: u8,
     },
 
     ///   Deposit SOL directly into the pool's reserve account. The output is a "pool" token
@@ -1113,7 +1123,7 @@ pub fn set_fee(
     }
 }
 
-/// Creates a 'set fee' instruction.
+/// Creates a 'set withdrawal fee' instruction.
 pub fn set_withdrawal_fee(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
@@ -1134,8 +1144,7 @@ pub fn set_withdrawal_fee(
     }
 }
 
-
-/// Creates a 'set fee' instruction.
+/// Creates a 'set deposit fee' instruction.
 pub fn set_deposit_fee(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
@@ -1150,6 +1159,26 @@ pub fn set_deposit_fee(
         program_id: *program_id,
         accounts,
         data: StakePoolInstruction::SetDepositFee { fee }
+            .try_to_vec()
+            .unwrap(),
+    }
+}
+
+/// Creates a 'set referral fee' instruction.
+pub fn set_referral_fee(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    manager: &Pubkey,
+    fee: u8,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new(*stake_pool, false),
+        AccountMeta::new_readonly(*manager, true),
+    ];
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: StakePoolInstruction::SetReferralFee { fee }
             .try_to_vec()
             .unwrap(),
     }

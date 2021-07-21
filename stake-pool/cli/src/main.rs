@@ -1246,6 +1246,27 @@ fn command_set_deposit_fee(
     Ok(())
 }
 
+fn command_set_referral_fee(
+    config: &Config,
+    stake_pool_address: &Pubkey,
+    new_fee: u8,
+) -> CommandResult {
+    let mut signers = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
+    unique_signers!(signers);
+    let transaction = checked_transaction_with_signers(
+        config,
+        &[spl_stake_pool::instruction::set_referral_fee(
+            &spl_stake_pool::id(),
+            stake_pool_address,
+            &config.manager.pubkey(),
+            new_fee,
+        )],
+        &signers,
+    )?;
+    send_transaction(config, transaction)?;
+    Ok(())
+}
+
 fn main() {
     solana_logger::setup_with_default("solana=info");
 
@@ -1825,6 +1846,27 @@ fn main() {
                     .help("Fee denominator, fee amount is numerator divided by denominator."),
             )
         )
+        .subcommand(SubCommand::with_name("set-referral-fee")
+            .about("Change the referral fee assessed by the stake pool for deposits. Must be signed by the manager.")
+            .arg(
+                Arg::with_name("pool")
+                    .index(1)
+                    .validator(is_pubkey)
+                    .value_name("POOL_ADDRESS")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Stake pool address."),
+            )
+            .arg(
+                Arg::with_name("fee")
+                    .index(2)
+                    .validator(is_parsable::<u8>)
+                    .value_name("FEE_PERCENTAGE")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Fee percentage, maximum 100"),
+            )
+        )
         .get_matches();
 
     let mut wallet_manager = None;
@@ -2037,25 +2079,13 @@ fn main() {
                 _ => unreachable!(),
             }
         }
-        ("set-withdrawal-fee", Some(arg_matches)) => {
+        ("set-referral-fee", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
-            let numerator = value_t_or_exit!(arg_matches, "fee_numerator", u64);
-            let denominator = value_t_or_exit!(arg_matches, "fee_denominator", u64);
-            let new_fee = Fee {
-                denominator,
-                numerator,
-            };
-            command_set_withdrawal_fee(&config, &stake_pool_address, new_fee)
-        }
-        ("set-deposit-fee", Some(arg_matches)) => {
-            let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
-            let numerator = value_t_or_exit!(arg_matches, "fee_numerator", u64);
-            let denominator = value_t_or_exit!(arg_matches, "fee_denominator", u64);
-            let new_fee = Fee {
-                denominator,
-                numerator,
-            };
-            command_set_deposit_fee(&config, &stake_pool_address, new_fee)
+            let fee = value_t_or_exit!(arg_matches, "fee", u8);
+            if fee > 100u8 {
+                panic!("Invalid fee {}%. Fee needs to be in range [0-100]", fee);
+            }
+            command_set_referral_fee(&config, &stake_pool_address, fee)
         }
         _ => unreachable!(),
     }
