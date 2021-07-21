@@ -652,7 +652,7 @@ impl Processor {
         stake_pool.withdrawal_fee = withdrawal_fee;
         stake_pool.next_withdrawal_fee = None;
         stake_pool.referral_fee = referral_fee;
-        stake_pool.require_sol_deposit_authority = false;
+        stake_pool.require_sol_deposit_authority = 0;
 
         stake_pool
             .serialize(&mut *stake_pool_info.data.borrow_mut())
@@ -1996,7 +1996,7 @@ impl Processor {
             program_id,
             stake_pool_info.key,
         )?;
-        if stake_pool.require_sol_deposit_authority {
+        if stake_pool.require_sol_deposit_authority == 0 {
             stake_pool.check_deposit_authority(deposit_authority_info.key)?;
         }
         stake_pool.check_mint(pool_mint_info)?;

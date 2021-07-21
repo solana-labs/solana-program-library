@@ -121,7 +121,7 @@ pub struct StakePool {
 
     /// Toggles whether the `DepositSol` instruction requires a signature from
     /// the `deposit_authority`
-    pub require_sol_deposit_authority: bool,
+    pub require_sol_deposit_authority: u8,
 }
 impl StakePool {
     /// calculate the pool tokens that should be minted for a deposit of `stake_lamports`
