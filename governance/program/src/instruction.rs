@@ -670,7 +670,7 @@ pub fn create_proposal(
     program_id: &Pubkey,
     // Accounts
     governance: &Pubkey,
-    governing_token_owner: &Pubkey,
+    governing_token_owner_record: &Pubkey,
     governance_authority: &Pubkey,
     payer: &Pubkey,
     // Args
@@ -686,18 +686,12 @@ pub fn create_proposal(
         governing_token_mint,
         &proposal_index.to_le_bytes(),
     );
-    let token_owner_record_address = get_token_owner_record_address(
-        program_id,
-        realm,
-        governing_token_mint,
-        governing_token_owner,
-    );
 
     let accounts = vec![
         AccountMeta::new_readonly(*realm, false),
         AccountMeta::new(proposal_address, false),
         AccountMeta::new(*governance, false),
-        AccountMeta::new_readonly(token_owner_record_address, false),
+        AccountMeta::new_readonly(*governing_token_owner_record, false),
         AccountMeta::new_readonly(*governance_authority, true),
         AccountMeta::new_readonly(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
