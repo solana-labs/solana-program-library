@@ -1719,7 +1719,7 @@ impl Processor {
     }
 
     /// Processes [Deposit](enum.Instruction.html).
-    fn process_deposit(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+    fn process_deposit_stake(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
         let validator_list_info = next_account_info(account_info_iter)?;
@@ -1912,7 +1912,7 @@ impl Processor {
     }
 
     /// Processes [Withdraw](enum.Instruction.html).
-    fn process_withdraw(
+    fn process_withdraw_stake(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
         pool_tokens: u64,
@@ -2370,13 +2370,13 @@ impl Processor {
                 msg!("Instruction: CleanupRemovedValidatorEntries");
                 Self::process_cleanup_removed_validator_entries(program_id, accounts)
             }
-            StakePoolInstruction::Deposit => {
-                msg!("Instruction: Deposit");
-                Self::process_deposit(program_id, accounts)
+            StakePoolInstruction::DepositStake => {
+                msg!("Instruction: DepositStake");
+                Self::process_deposit_stake(program_id, accounts)
             }
-            StakePoolInstruction::Withdraw(amount) => {
-                msg!("Instruction: Withdraw");
-                Self::process_withdraw(program_id, accounts, amount)
+            StakePoolInstruction::WithdrawStake(amount) => {
+                msg!("Instruction: WithdrawStake");
+                Self::process_withdraw_stake(program_id, accounts, amount)
             }
             StakePoolInstruction::SetManager => {
                 msg!("Instruction: SetManager");
@@ -2393,6 +2393,10 @@ impl Processor {
             StakePoolInstruction::SetWithdrawalFee { fee } => {
                 msg!("Instruction: SetWithdrawalFee");
                 Self::process_set_withdrawal_fee(program_id, accounts, fee)
+            }
+            StakePoolInstruction::DepositSol => {
+                msg!("Instruction: DepositSol");
+                Self::process_deposit_stake(program_id, accounts)
             }
         }
     }
