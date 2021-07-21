@@ -317,6 +317,16 @@ fn main() {
                         .default_value("20")
                         .help("Amount of fee going to host account: [0, 100]"),
                 )
+                .arg(
+                    Arg::with_name("deposit_limit")
+                        .long("Deposit Limit")
+                        .validator(is_parsable::<u64>)
+                        .value_name("INTEGER")
+                        .takes_value(true)
+                        .required(true)
+                        .default_value("1000000000000")
+                        .help("Deposit limit"),
+                )
         )
         .get_matches();
 
@@ -390,6 +400,7 @@ fn main() {
             let borrow_fee = value_of::<f64>(arg_matches, "borrow_fee").unwrap();
             let flash_loan_fee = value_of::<f64>(arg_matches, "flash_loan_fee").unwrap();
             let host_fee_percentage = value_of(arg_matches, "host_fee_percentage").unwrap();
+            let deposit_limit = value_of(arg_matches, "deposit_limit").unwrap();
 
             let borrow_fee_wad = (borrow_fee * WAD as f64) as u64;
             let flash_loan_fee_wad = (flash_loan_fee * WAD as f64) as u64;
@@ -410,6 +421,7 @@ fn main() {
                         flash_loan_fee_wad,
                         host_fee_percentage,
                     },
+                    deposit_limit,
                 },
                 source_liquidity_pubkey,
                 source_liquidity_owner_keypair,

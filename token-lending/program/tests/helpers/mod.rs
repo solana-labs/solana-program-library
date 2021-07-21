@@ -54,6 +54,7 @@ pub const TEST_RESERVE_CONFIG: ReserveConfig = ReserveConfig {
         flash_loan_fee_wad: 3_000_000_000_000_000,
         host_fee_percentage: 20,
     },
+    deposit_limit: 100_000_000_000,
 };
 
 pub const SOL_PYTH_PRODUCT: &str = "3Mnn2fX6rQyUsyELYms1sBJyChWofzSNRoqYzvgMVz5E";
@@ -883,7 +884,6 @@ impl TestReserve {
             ],
             Some(&payer.pubkey()),
         );
-
         let recent_blockhash = banks_client.get_recent_blockhash().await.unwrap();
         transaction.sign(
             &vec![
@@ -901,16 +901,15 @@ impl TestReserve {
             ],
             recent_blockhash,
         );
-
         banks_client
             .process_transaction(transaction)
             .await
             .map(|_| Self {
-                name,
+                name: name,
                 pubkey: reserve_pubkey,
                 lending_market_pubkey: lending_market.pubkey,
-                config,
-                liquidity_mint_pubkey,
+                config: config,
+                liquidity_mint_pubkey: liquidity_mint_pubkey,
                 liquidity_mint_decimals: liquidity_mint.decimals,
                 liquidity_supply_pubkey: liquidity_supply_keypair.pubkey(),
                 liquidity_fee_receiver_pubkey: liquidity_fee_receiver_keypair.pubkey(),
@@ -919,7 +918,7 @@ impl TestReserve {
                 liquidity_switchboard_oracle_pubkey: oracle.switchboard_feed_pubkey,
                 collateral_mint_pubkey: collateral_mint_keypair.pubkey(),
                 collateral_supply_pubkey: collateral_supply_keypair.pubkey(),
-                user_liquidity_pubkey,
+                user_liquidity_pubkey: user_liquidity_pubkey,
                 user_collateral_pubkey: user_collateral_token_keypair.pubkey(),
                 market_price: oracle.price,
             })

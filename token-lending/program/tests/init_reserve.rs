@@ -313,6 +313,7 @@ async fn test_update_reserve_config() {
         min_borrow_rate: 1,
         optimal_borrow_rate: 5,
         max_borrow_rate: 45,
+        deposit_limit: 1_000_000,
         fees: ReserveFees {
             borrow_fee_wad: 200_000_000_000,
             flash_loan_fee_wad: 5_000_000_000_000_000,
