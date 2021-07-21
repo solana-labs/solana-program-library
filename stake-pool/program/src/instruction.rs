@@ -250,11 +250,13 @@ pub enum StakePoolInstruction {
     ///   5. `[w]` Validator stake account for the stake account to be merged with
     ///   6. `[w]` Reserve stake account, to withdraw rent exempt reserve
     ///   7. `[w]` User account to receive pool tokens
-    ///   8. `[w]` Pool token mint account
-    ///   9. '[]' Sysvar clock account
-    ///   10. '[]' Sysvar stake history account
-    ///   11. `[]` Pool token program id,
-    ///   12. `[]` Stake program id,
+    ///   8. `[w]` Account to receive pool fee tokens
+    ///   9. `[w]` Account to receive a portion of pool fee tokens as referral fees
+    ///   10. `[w]` Pool token mint account
+    ///   11. '[]' Sysvar clock account
+    ///   12. '[]' Sysvar stake history account
+    ///   13. `[]` Pool token program id,
+    ///   14. `[]` Stake program id,
     DepositStake,
 
     ///   Withdraw the token from the pool at the current ratio.
@@ -844,7 +846,7 @@ pub fn update_stake_pool(
 
 /// Creates instructions required to deposit into a stake pool, given a stake
 /// account owned by the user.
-pub fn deposit(
+pub fn deposit_stake(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
     validator_list_storage: &Pubkey,
@@ -854,6 +856,8 @@ pub fn deposit(
     validator_stake_account: &Pubkey,
     reserve_stake_account: &Pubkey,
     pool_tokens_to: &Pubkey,
+    manager_fee_account: &Pubkey,
+    referrer_pool_tokens_account: &Pubkey,
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
 ) -> Vec<Instruction> {
@@ -868,6 +872,8 @@ pub fn deposit(
         AccountMeta::new(*validator_stake_account, false),
         AccountMeta::new(*reserve_stake_account, false),
         AccountMeta::new(*pool_tokens_to, false),
+        AccountMeta::new(*manager_fee_account, false),
+        AccountMeta::new(*referrer_pool_tokens_account, false),
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
@@ -898,7 +904,7 @@ pub fn deposit(
 /// Creates instructions required to deposit into a stake pool, given a stake
 /// account owned by the user. The difference with `deposit()` is that a deposit
 /// authority must sign this instruction, which is required for private pools.
-pub fn deposit_with_authority(
+pub fn deposit_stake_with_authority(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
     validator_list_storage: &Pubkey,
@@ -909,6 +915,8 @@ pub fn deposit_with_authority(
     validator_stake_account: &Pubkey,
     reserve_stake_account: &Pubkey,
     pool_tokens_to: &Pubkey,
+    manager_fee_account: &Pubkey,
+    referrer_pool_tokens_account: &Pubkey,
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
 ) -> Vec<Instruction> {
@@ -921,6 +929,8 @@ pub fn deposit_with_authority(
         AccountMeta::new(*validator_stake_account, false),
         AccountMeta::new(*reserve_stake_account, false),
         AccountMeta::new(*pool_tokens_to, false),
+        AccountMeta::new(*manager_fee_account, false),
+        AccountMeta::new(*referrer_pool_tokens_account, false),
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),

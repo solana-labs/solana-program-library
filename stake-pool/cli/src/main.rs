@@ -567,7 +567,7 @@ fn add_associated_token_account(
     account
 }
 
-fn command_deposit(
+fn command_deposit_stake(
     config: &Config,
     stake_pool_address: &Pubkey,
     stake: &Pubkey,
@@ -635,7 +635,7 @@ fn command_deposit(
             return Err(error.into());
         }
 
-        spl_stake_pool::instruction::deposit_with_authority(
+        spl_stake_pool::instruction::deposit_stake_with_authority(
             &spl_stake_pool::id(),
             stake_pool_address,
             &stake_pool.validator_list,
@@ -646,11 +646,13 @@ fn command_deposit(
             &validator_stake_account,
             &stake_pool.reserve_stake,
             &token_receiver,
+            &stake_pool.manager_fee_account,
+            &token_receiver, // referrer is set to user for now
             &stake_pool.pool_mint,
             &spl_token::id(),
         )
     } else {
-        spl_stake_pool::instruction::deposit(
+        spl_stake_pool::instruction::deposit_stake(
             &spl_stake_pool::id(),
             stake_pool_address,
             &stake_pool.validator_list,
@@ -660,6 +662,8 @@ fn command_deposit(
             &validator_stake_account,
             &stake_pool.reserve_stake,
             &token_receiver,
+            &stake_pool.manager_fee_account,
+            &token_receiver, // referrer is set to user for now
             &stake_pool.pool_mint,
             &spl_token::id(),
         )
@@ -1956,11 +1960,11 @@ fn main() {
                 vote_account,
             )
         }
-        ("deposit", Some(arg_matches)) => {
+        ("deposit-stake", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
             let stake_account = pubkey_of(arg_matches, "stake_account").unwrap();
             let token_receiver: Option<Pubkey> = pubkey_of(arg_matches, "token_receiver");
-            command_deposit(
+            command_deposit_stake(
                 &config,
                 &stake_pool_address,
                 &stake_account,

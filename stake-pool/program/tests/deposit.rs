@@ -278,6 +278,8 @@ async fn fail_with_wrong_stake_program_id() {
         AccountMeta::new(validator_stake_account.stake_account, false),
         AccountMeta::new(stake_pool_accounts.reserve_stake.pubkey(), false),
         AccountMeta::new(pool_token_account, false),
+        AccountMeta::new(stake_pool_accounts.pool_fee_account.pubkey(), false),
+        AccountMeta::new(pool_token_account, false), // set referrer to user for now
         AccountMeta::new(stake_pool_accounts.pool_mint.pubkey(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
@@ -287,7 +289,7 @@ async fn fail_with_wrong_stake_program_id() {
     let instruction = Instruction {
         program_id: id(),
         accounts,
-        data: instruction::StakePoolInstruction::Deposit
+        data: instruction::StakePoolInstruction::DepositStake
             .try_to_vec()
             .unwrap(),
     };
@@ -325,7 +327,7 @@ async fn fail_with_wrong_token_program_id() {
     let wrong_token_program = Keypair::new();
 
     let mut transaction = Transaction::new_with_payer(
-        &instruction::deposit(
+        &instruction::deposit_stake(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.validator_list.pubkey(),
@@ -335,6 +337,8 @@ async fn fail_with_wrong_token_program_id() {
             &validator_stake_account.stake_account,
             &stake_pool_accounts.reserve_stake.pubkey(),
             &pool_token_account,
+            &stake_pool_accounts.pool_fee_account.pubkey(),
+            &pool_token_account, // referrer set to user for now
             &stake_pool_accounts.pool_mint.pubkey(),
             &wrong_token_program.pubkey(),
         ),

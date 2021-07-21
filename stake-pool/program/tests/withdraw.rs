@@ -51,7 +51,7 @@ async fn setup() -> (
     )
     .await;
 
-    let deposit_info = simple_deposit(
+    let deposit_info = simple_deposit_stake(
         &mut banks_client,
         &payer,
         &recent_blockhash,
@@ -274,7 +274,7 @@ async fn fail_with_wrong_stake_program() {
     let instruction = Instruction {
         program_id: id(),
         accounts,
-        data: instruction::StakePoolInstruction::Withdraw(tokens_to_burn)
+        data: instruction::StakePoolInstruction::WithdrawStake(tokens_to_burn)
             .try_to_vec()
             .unwrap(),
     };
@@ -585,7 +585,7 @@ async fn fail_without_token_approval() {
     )
     .await;
 
-    let deposit_info = simple_deposit(
+    let deposit_info = simple_deposit_stake(
         &mut banks_client,
         &payer,
         &recent_blockhash,
@@ -656,7 +656,7 @@ async fn fail_with_low_delegation() {
     )
     .await;
 
-    let deposit_info = simple_deposit(
+    let deposit_info = simple_deposit_stake(
         &mut banks_client,
         &payer,
         &recent_blockhash,
@@ -796,7 +796,7 @@ async fn success_with_reserve() {
     let rent = context.banks_client.get_rent().await.unwrap();
     let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
 
-    let deposit_info = simple_deposit(
+    let deposit_info = simple_deposit_stake(
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
@@ -1059,7 +1059,7 @@ async fn fail_with_wrong_preferred_withdraw() {
     assert!(error.is_none());
 
     // deposit into preferred, then fail
-    let _preferred_deposit = simple_deposit(
+    let _preferred_deposit = simple_deposit_stake(
         &mut banks_client,
         &payer,
         &recent_blockhash,
@@ -1152,7 +1152,7 @@ async fn success_withdraw_from_transient() {
     let rent = context.banks_client.get_rent().await.unwrap();
     let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
 
-    let deposit_info = simple_deposit(
+    let deposit_info = simple_deposit_stake(
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,

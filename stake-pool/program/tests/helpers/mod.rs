@@ -678,7 +678,7 @@ impl StakePoolAccounts {
         let instructions = if let Some(deposit_authority) = self.deposit_authority_keypair.as_ref()
         {
             signers.push(deposit_authority);
-            instruction::deposit_with_authority(
+            instruction::deposit_stake_with_authority(
                 &id(),
                 &self.stake_pool.pubkey(),
                 &self.validator_list.pubkey(),
@@ -689,11 +689,13 @@ impl StakePoolAccounts {
                 validator_stake_account,
                 &self.reserve_stake.pubkey(),
                 pool_account,
+                &self.pool_fee_account.pubkey(),
+                pool_account, // referrer set to user for now
                 &self.pool_mint.pubkey(),
                 &spl_token::id(),
             )
         } else {
-            instruction::deposit(
+            instruction::deposit_stake(
                 &id(),
                 &self.stake_pool.pubkey(),
                 &self.validator_list.pubkey(),
@@ -703,6 +705,8 @@ impl StakePoolAccounts {
                 validator_stake_account,
                 &self.reserve_stake.pubkey(),
                 pool_account,
+                &self.pool_fee_account.pubkey(),
+                pool_account, // referrer set to user for now
                 &self.pool_mint.pubkey(),
                 &spl_token::id(),
             )
@@ -1084,7 +1088,7 @@ impl DepositStakeAccount {
         .await;
     }
 
-    pub async fn deposit(
+    pub async fn deposit_stake(
         &mut self,
         banks_client: &mut BanksClient,
         payer: &Keypair,
@@ -1119,7 +1123,7 @@ impl DepositStakeAccount {
     }
 }
 
-pub async fn simple_deposit(
+pub async fn simple_deposit_stake(
     banks_client: &mut BanksClient,
     payer: &Keypair,
     recent_blockhash: &Hash,

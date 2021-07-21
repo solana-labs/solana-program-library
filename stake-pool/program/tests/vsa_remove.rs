@@ -434,7 +434,7 @@ async fn success_with_deactivating_transient_stake() {
 
     let rent = banks_client.get_rent().await.unwrap();
     let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
-    let deposit_info = simple_deposit(
+    let deposit_info = simple_deposit_stake(
         &mut banks_client,
         &payer,
         &recent_blockhash,
@@ -472,7 +472,7 @@ async fn success_with_deactivating_transient_stake() {
     assert!(error.is_none());
 
     // fail deposit
-    let maybe_deposit = simple_deposit(
+    let maybe_deposit = simple_deposit_stake(
         &mut banks_client,
         &payer,
         &recent_blockhash,
