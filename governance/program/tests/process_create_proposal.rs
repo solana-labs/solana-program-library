@@ -248,7 +248,7 @@ async fn test_create_proposal_with_not_enough_council_tokens_error() {
 }
 
 #[tokio::test]
-async fn test_create_proposal_with_invalid_token_owner_record_error() {
+async fn test_create_proposal_with_owner_or_delegate_must_sign_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
