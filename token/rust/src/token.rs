@@ -8,8 +8,8 @@ use solana_sdk::{
     system_instruction,
     transaction::Transaction,
 };
-use spl_token::{instruction::initialize_mint, state::Mint};
 use spl_associated_token_account::{create_associated_token_account, get_associated_token_address};
+use spl_token::{instruction, state};
 use std::{fmt, sync::Arc};
 use thiserror::Error;
 
@@ -84,13 +84,13 @@ impl<'a> Token<'a> {
                     &payer.pubkey(),
                     &mint_account.pubkey(),
                     client
-                        .get_minimum_balance_for_rent_exemption(Mint::LEN)
+                        .get_minimum_balance_for_rent_exemption(state::Mint::LEN)
                         .await
                         .map_err(TokenError::Client)?,
-                    Mint::LEN as u64,
+                    state::Mint::LEN as u64,
                     &spl_token::id(),
                 ),
-                initialize_mint(
+                instruction::initialize_mint(
                     &spl_token::id(),
                     &mint_account.pubkey(),
                     mint_authority,
@@ -128,5 +128,55 @@ impl<'a> Token<'a> {
         )
         .await
         .map_err(Into::into)
+    }
+
+    /// Mint new tokens
+    pub async fn mint_to(
+        &self,
+        mint: &Pubkey,
+        account: &Pubkey,
+        owner: &Pubkey,
+        signer_pubkeys: &[&Pubkey],
+        amount: u64
+    ) -> TokenResult<()> {
+        Self::process_ixs(
+            &self.client,
+            self.payer,
+            &[instruction::mint_to(
+                &spl_token::id(),
+                mint,
+                account,
+                owner,
+                signer_pubkeys,
+                amount,
+            )?],
+            &([] as [&Keypair; 0])
+        )
+        .await
+    }
+
+    /// Transfer tokens to another account
+    pub async fn transfer(
+        &self,
+        source: &Pubkey,
+        destination: &Pubkey,
+        authority: &Pubkey,
+        signer_pubkeys: &[&Pubkey],
+        amount: u64,
+    ) -> TokenResult<()> {
+        Self::process_ixs(
+            &self.client,
+            self.payer,
+            &[instruction::transfer(
+                &spl_token::id(),
+                source,
+                destination,
+                authority,
+                signer_pubkeys,
+                amount,
+            )?],
+            &([] as [&Keypair; 0])
+        )
+        .await
     }
 }
