@@ -328,6 +328,16 @@ pub enum StakePoolInstruction {
         fee: Fee,
     },
 
+    ///  (Manager only) Update Withdrawal fee for next epoch
+    ///
+    ///  0. `[w]` StakePool
+    ///  1. `[s]` Manager
+    SetDepositFee {
+        /// Fee assessed as percentage of perceived rewards
+        #[allow(dead_code)] // but it's not
+        fee: Fee,
+    },
+
     ///   Deposit SOL directly into the pool's reserve account. The output is a "pool" token
     ///   representing ownership into the pool. Inputs are converted to the current ratio.
     ///
@@ -1119,6 +1129,27 @@ pub fn set_withdrawal_fee(
         program_id: *program_id,
         accounts,
         data: StakePoolInstruction::SetWithdrawalFee { fee }
+            .try_to_vec()
+            .unwrap(),
+    }
+}
+
+
+/// Creates a 'set fee' instruction.
+pub fn set_deposit_fee(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    manager: &Pubkey,
+    fee: Fee,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new(*stake_pool, false),
+        AccountMeta::new_readonly(*manager, true),
+    ];
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: StakePoolInstruction::SetDepositFee { fee }
             .try_to_vec()
             .unwrap(),
     }
