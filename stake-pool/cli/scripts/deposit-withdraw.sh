@@ -47,7 +47,7 @@ deposit_stakes () {
   for validator in $(cat $validator_list)
   do
     stake=$(solana-keygen pubkey $keys_dir/stake_$validator.json)
-    $spl_stake_pool deposit $stake_pool_pubkey $stake
+    $spl_stake_pool deposit-stake $stake_pool_pubkey $stake
   done
 }
 
@@ -57,7 +57,7 @@ withdraw_stakes () {
   pool_amount=$3
   for validator in $(cat $validator_list)
   do
-    $spl_stake_pool withdraw $stake_pool_pubkey $pool_amount --vote-account $validator
+    $spl_stake_pool withdraw-stake $stake_pool_pubkey $pool_amount --vote-account $validator
   done
 }
 
