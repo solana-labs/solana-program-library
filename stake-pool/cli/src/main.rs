@@ -1234,14 +1234,22 @@ fn command_withdraw(
             .calc_lamports_withdraw_amount(withdraw_account.pool_amount)
             .unwrap();
 
-        println!(
-            "Withdrawing {}, or {} pool tokens, from stake account {}, delegated to {:?}, stake / withdraw authority {}",
-            Sol(sol_withdraw_amount),
-            spl_token::amount_to_ui_amount(withdraw_account.pool_amount, pool_mint.decimals),
-            withdraw_account.stake_address,
-            withdraw_account.vote_address,
-            config.staker.pubkey(),
-        );
+        if let Some(vote_address) = withdraw_account.vote_address {
+            println!(
+                "Withdrawing {}, or {} pool tokens, from stake account {}, delegated to {}",
+                Sol(sol_withdraw_amount),
+                spl_token::amount_to_ui_amount(withdraw_account.pool_amount, pool_mint.decimals),
+                withdraw_account.stake_address,
+                vote_address,
+            );
+        } else {
+            println!(
+                "Withdrawing {}, or {} pool tokens, from stake account {}",
+                Sol(sol_withdraw_amount),
+                spl_token::amount_to_ui_amount(withdraw_account.pool_amount, pool_mint.decimals),
+                withdraw_account.stake_address,
+            );
+        }
 
         // Use separate mutable variable because withdraw might create a new account
         let stake_receiver = stake_receiver_param.unwrap_or_else(|| {
