@@ -90,27 +90,20 @@ impl TokenOwnerRecord {
         realm_data: &Realm,
         config: &GovernanceConfig,
     ) -> Result<(), ProgramError> {
-        if realm_data.community_mint == self.governing_token_mint {
-            if self.governing_token_deposit_amount
-                < config.min_community_tokens_to_create_proposal as u64
-            {
-                return Err(GovernanceError::NotEnoughTokensToCreateProposal.into());
-            }
+        let min_tokens_to_create_proposal =
+            if self.governing_token_mint == realm_data.community_mint {
+                config.min_community_tokens_to_create_proposal
+            } else if Some(self.governing_token_mint) == realm_data.council_mint {
+                config.min_council_tokens_to_create_proposal
+            } else {
+                return Err(GovernanceError::InvalidGoverningTokenMint.into());
+            };
 
-            return Ok(());
+        if self.governing_token_deposit_amount < min_tokens_to_create_proposal {
+            return Err(GovernanceError::NotEnoughTokensToCreateProposal.into());
         }
 
-        if realm_data.council_mint == Some(self.governing_token_mint) {
-            if self.governing_token_deposit_amount
-                < config.min_council_tokens_to_create_proposal as u64
-            {
-                return Err(GovernanceError::NotEnoughTokensToCreateProposal.into());
-            }
-
-            return Ok(());
-        }
-
-        return Err(GovernanceError::NotEnoughTokensToCreateProposal.into());
+        Ok(())
     }
 }
 
