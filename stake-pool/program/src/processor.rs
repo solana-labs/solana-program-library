@@ -474,6 +474,8 @@ impl Processor {
         accounts: &[AccountInfo],
         fee: Fee,
         withdrawal_fee: Fee,
+        deposit_fee: Fee,
+        referral_fee: u8,
         max_validators: u32,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -620,6 +622,13 @@ impl Processor {
         if withdrawal_fee.numerator > withdrawal_fee.denominator {
             return Err(StakePoolError::FeeTooHigh.into());
         }
+        // Numerator should be smaller than or equal to denominator (fee <= 1)
+        if deposit_fee.numerator > deposit_fee.denominator {
+            return Err(StakePoolError::FeeTooHigh.into());
+        }
+        if referral_fee > 100u8 {
+            return Err(StakePoolError::FeeTooHigh.into());
+        }
 
         validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
 
@@ -639,9 +648,11 @@ impl Processor {
         stake_pool.next_epoch_fee = None;
         stake_pool.preferred_deposit_validator_vote_address = None;
         stake_pool.preferred_withdraw_validator_vote_address = None;
-        stake_pool.deposit_fee = Fee::default();
+        stake_pool.deposit_fee = deposit_fee;
         stake_pool.withdrawal_fee = withdrawal_fee;
         stake_pool.next_withdrawal_fee = None;
+        stake_pool.referral_fee = referral_fee;
+        stake_pool.require_sol_deposit_authority = false;
 
         stake_pool
             .serialize(&mut *stake_pool_info.data.borrow_mut())
@@ -1623,7 +1634,7 @@ impl Processor {
 
         let reward_lamports = total_stake_lamports.saturating_sub(previous_lamports);
         let fee = stake_pool
-            .calc_fee_amount(reward_lamports)
+            .calc_epoch_fee_amount(reward_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
 
         if fee > 0 {
@@ -1718,7 +1729,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes [Deposit](enum.Instruction.html).
+    /// Processes [DepositStake](enum.Instruction.html).
     fn process_deposit_stake(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
@@ -1730,7 +1741,7 @@ impl Processor {
         let reserve_stake_account_info = next_account_info(account_info_iter)?;
         let dest_user_info = next_account_info(account_info_iter)?;
         let manager_fee_info = next_account_info(account_info_iter)?;
-        let _referrer_info = next_account_info(account_info_iter)?;
+        let referrer_fee_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let clock_info = next_account_info(account_info_iter)?;
         let clock = &Clock::from_account_info(clock_info)?;
@@ -1762,6 +1773,14 @@ impl Processor {
 
         if stake_pool.token_program_id != *token_program_info.key {
             return Err(ProgramError::IncorrectProgramId);
+        }
+
+        if stake_pool.manager_fee_account != *manager_fee_info.key {
+            return Err(StakePoolError::InvalidFeeAccount.into());
+        }
+
+        if stake_pool.token_program_id != *referrer_fee_info.owner {
+            return Err(StakePoolError::InvalidFeeAccount.into());
         }
 
         if stake_pool.last_update_epoch < clock.epoch {
@@ -1859,11 +1878,17 @@ impl Processor {
         let new_pool_tokens = stake_pool
             .calc_pool_tokens_for_deposit(all_deposit_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
-        let pool_tokens_fee = stake_pool
+        let pool_tokens_deposit_fee = stake_pool
             .calc_pool_tokens_deposit_fee(new_pool_tokens)
             .ok_or(StakePoolError::CalculationFailure)?;
         let pool_tokens_user = new_pool_tokens
-            .checked_sub(pool_tokens_fee)
+            .checked_sub(pool_tokens_deposit_fee)
+            .ok_or(StakePoolError::CalculationFailure)?;
+        let pool_tokens_referral_fee = stake_pool
+            .calc_pool_tokens_referral_fee(pool_tokens_deposit_fee)
+            .ok_or(StakePoolError::CalculationFailure)?;
+        let pool_tokens_manager_deposit_fee = pool_tokens_deposit_fee
+            .checked_sub(pool_tokens_deposit_fee)
             .ok_or(StakePoolError::CalculationFailure)?;
 
         Self::token_mint_to(
@@ -1877,7 +1902,7 @@ impl Processor {
             pool_tokens_user,
         )?;
 
-        if pool_tokens_fee > 0 {
+        if pool_tokens_manager_deposit_fee > 0 {
             Self::token_mint_to(
                 stake_pool_info.key,
                 token_program_info.clone(),
@@ -1886,10 +1911,21 @@ impl Processor {
                 withdraw_authority_info.clone(),
                 AUTHORITY_WITHDRAW,
                 stake_pool.withdraw_bump_seed,
-                pool_tokens_fee,
+                pool_tokens_manager_deposit_fee,
             )?;
+        }
 
-            // TODO: CHECK referrer_info IS A VALID POOL TOKEN ACCOUNT AND AWARD REFERRER FEES IF SO
+        if pool_tokens_referral_fee > 0 {
+            Self::token_mint_to(
+                stake_pool_info.key,
+                token_program_info.clone(),
+                pool_mint_info.clone(),
+                referrer_fee_info.clone(),
+                withdraw_authority_info.clone(),
+                AUTHORITY_WITHDRAW,
+                stake_pool.withdraw_bump_seed,
+                pool_tokens_referral_fee,
+            )?;
         }
 
         // withdraw additional lamports to the reserve
@@ -1930,7 +1966,81 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes [Withdraw](enum.Instruction.html).
+    /// Processes [DepositStake](enum.Instruction.html).
+    fn process_deposit_sol(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        deposit_lamports: u64,
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let stake_pool_info = next_account_info(account_info_iter)?;
+        let deposit_authority_info = next_account_info(account_info_iter)?;
+        let withdraw_authority_info = next_account_info(account_info_iter)?;
+        let reserve_stake_account_info = next_account_info(account_info_iter)?;
+        let dest_user_info = next_account_info(account_info_iter)?;
+        let pool_mint_info = next_account_info(account_info_iter)?;
+        let clock_info = next_account_info(account_info_iter)?;
+        let clock = &Clock::from_account_info(clock_info)?;
+        let token_program_info = next_account_info(account_info_iter)?;
+
+        check_account_owner(stake_pool_info, program_id)?;
+        let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
+        if !stake_pool.is_valid() {
+            return Err(StakePoolError::InvalidState.into());
+        }
+
+        //Self::check_stake_activation(stake_info, clock, stake_history)?;
+
+        stake_pool.check_authority_withdraw(
+            withdraw_authority_info.key,
+            program_id,
+            stake_pool_info.key,
+        )?;
+        if stake_pool.require_sol_deposit_authority {
+            stake_pool.check_deposit_authority(deposit_authority_info.key)?;
+        }
+        stake_pool.check_mint(pool_mint_info)?;
+        stake_pool.check_reserve_stake(reserve_stake_account_info)?;
+
+        if stake_pool.token_program_id != *token_program_info.key {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+
+        // We want this to hold to ensure that deposit_sol mints pool tokens
+        // at the right price
+        if stake_pool.last_update_epoch < clock.epoch {
+            return Err(StakePoolError::StakeListAndPoolOutOfDate.into());
+        }
+
+        let new_pool_tokens = stake_pool
+            .calc_pool_tokens_for_deposit(deposit_lamports)
+            .ok_or(StakePoolError::CalculationFailure)?;
+
+        Self::token_mint_to(
+            stake_pool_info.key,
+            token_program_info.clone(),
+            pool_mint_info.clone(),
+            dest_user_info.clone(),
+            withdraw_authority_info.clone(),
+            AUTHORITY_WITHDRAW,
+            stake_pool.withdraw_bump_seed,
+            new_pool_tokens,
+        )?;
+
+        stake_pool.pool_token_supply = stake_pool
+            .pool_token_supply
+            .checked_add(new_pool_tokens)
+            .ok_or(StakePoolError::CalculationFailure)?;
+        stake_pool.total_stake_lamports = stake_pool
+            .total_stake_lamports
+            .checked_add(deposit_lamports)
+            .ok_or(StakePoolError::CalculationFailure)?;
+        stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
+
+        Ok(())
+    }
+
+    /// Processes [WithdrawStake](enum.Instruction.html).
     fn process_withdraw_stake(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -2324,10 +2434,20 @@ impl Processor {
             StakePoolInstruction::Initialize {
                 fee,
                 withdrawal_fee,
+                deposit_fee,
+                referral_fee,
                 max_validators,
             } => {
                 msg!("Instruction: Initialize stake pool");
-                Self::process_initialize(program_id, accounts, fee, withdrawal_fee, max_validators)
+                Self::process_initialize(
+                    program_id,
+                    accounts,
+                    fee,
+                    withdrawal_fee,
+                    deposit_fee,
+                    referral_fee,
+                    max_validators,
+                )
             }
             StakePoolInstruction::CreateValidatorStakeAccount => {
                 msg!("Instruction: CreateValidatorStakeAccount");
@@ -2405,9 +2525,9 @@ impl Processor {
                 msg!("Instruction: SetWithdrawalFee");
                 Self::process_set_withdrawal_fee(program_id, accounts, fee)
             }
-            StakePoolInstruction::DepositSol => {
+            StakePoolInstruction::DepositSol(lamports) => {
                 msg!("Instruction: DepositSol");
-                Self::process_deposit_stake(program_id, accounts)
+                Self::process_deposit_sol(program_id, accounts, lamports)
             }
         }
     }

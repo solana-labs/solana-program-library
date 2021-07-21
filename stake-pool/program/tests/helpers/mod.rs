@@ -243,6 +243,8 @@ pub async fn create_stake_pool(
     deposit_authority: &Option<Keypair>,
     fee: &state::Fee,
     withdrawal_fee: &state::Fee,
+    deposit_fee: &state::Fee,
+    referral_fee: u8,
     max_validators: u32,
 ) -> Result<(), TransportError> {
     let rent = banks_client.get_rent().await.unwrap();
@@ -280,6 +282,8 @@ pub async fn create_stake_pool(
                 deposit_authority.as_ref().map(|k| k.pubkey()),
                 *fee,
                 *withdrawal_fee,
+                *deposit_fee,
+                referral_fee,
                 max_validators,
             ),
         ],
@@ -520,6 +524,8 @@ pub struct StakePoolAccounts {
     pub deposit_authority_keypair: Option<Keypair>,
     pub fee: state::Fee,
     pub withdrawal_fee: state::Fee,
+    pub deposit_fee: state::Fee,
+    pub referral_fee: u8,
     pub max_validators: u32,
 }
 
@@ -561,6 +567,11 @@ impl StakePoolAccounts {
                 numerator: 3,
                 denominator: 1000,
             },
+            deposit_fee: state::Fee {
+                numerator: 2,
+                denominator: 1000,
+            },
+            referral_fee: 25,
             max_validators: MAX_TEST_VALIDATORS,
         }
     }
@@ -631,6 +642,8 @@ impl StakePoolAccounts {
             &self.deposit_authority_keypair,
             &self.fee,
             &self.withdrawal_fee,
+            &self.deposit_fee,
+            self.referral_fee,
             self.max_validators,
         )
         .await?;
