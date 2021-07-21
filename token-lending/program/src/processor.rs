@@ -560,6 +560,15 @@ fn _deposit_reserve_liquidity<'a>(
         return Err(LendingError::InvalidMarketAuthority.into());
     }
 
+    if Decimal::from(liquidity_amount)
+        .try_add(reserve.liquidity.total_supply()?)?
+        .try_floor_u64()?
+        > reserve.config.deposit_limit
+    {
+        msg!("Cannot deposit liquidity above the reserve deposit limit");
+        return Err(LendingError::InvalidAmount.into());
+    }
+
     let collateral_amount = reserve.deposit_liquidity(liquidity_amount)?;
     reserve.last_update.mark_stale();
     Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
