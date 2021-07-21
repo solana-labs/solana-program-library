@@ -81,6 +81,7 @@ async fn setup(
         deposit_fee: Fee::default(),
         withdrawal_fee: Fee::default(),
         next_withdrawal_fee: None,
+        referral_fee: 0,
     };
 
     let mut validator_list = ValidatorList::new(max_validators);
