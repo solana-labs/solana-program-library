@@ -125,6 +125,7 @@ pub struct StakePool {
 }
 impl StakePool {
     /// calculate the pool tokens that should be minted for a deposit of `stake_lamports`
+    #[inline]
     pub fn calc_pool_tokens_for_deposit(&self, stake_lamports: u64) -> Option<u64> {
         if self.total_stake_lamports == 0 || self.pool_token_supply == 0 {
             return Some(stake_lamports);
@@ -138,6 +139,7 @@ impl StakePool {
     }
 
     /// calculate lamports amount on withdrawal
+    #[inline]
     pub fn calc_lamports_withdraw_amount(&self, pool_tokens: u64) -> Option<u64> {
         u64::try_from(
             (pool_tokens as u128)
@@ -148,20 +150,34 @@ impl StakePool {
     }
 
     /// calculate pool tokens to be deducted as withdrawal fees
+    #[inline]
     pub fn calc_pool_tokens_withdrawal_fee(&self, pool_tokens: u64) -> Option<u64> {
         u64::try_from(self.withdrawal_fee.apply(pool_tokens)?).ok()
     }
 
     /// calculate pool tokens to be deducted as deposit fees
+    #[inline]
     pub fn calc_pool_tokens_deposit_fee(&self, pool_tokens_minted: u64) -> Option<u64> {
         u64::try_from(self.deposit_fee.apply(pool_tokens_minted)?).ok()
+    }
+
+    /// calculate pool tokens to be deducted from deposit fees as referral fees
+    #[inline]
+    pub fn calc_pool_tokens_referral_fee(&self, deposit_fee: u64) -> Option<u64> {
+        u64::try_from(
+            (deposit_fee as u128)
+                .checked_mul(self.referral_fee as u128)?
+                .checked_div(100u128)?,
+        )
+        .ok()
     }
 
     /// Calculate the fee in pool tokens that goes to the manager
     ///
     /// This function assumes that `reward_lamports` has not already been added
     /// to the stake pool's `total_stake_lamports`
-    pub fn calc_fee_amount(&self, reward_lamports: u64) -> Option<u64> {
+    #[inline]
+    pub fn calc_epoch_fee_amount(&self, reward_lamports: u64) -> Option<u64> {
         if reward_lamports == 0 {
             return Some(0);
         }
@@ -206,6 +222,7 @@ impl StakePool {
     }
 
     /// Checks that the withdraw authority is valid
+    #[inline]
     pub(crate) fn check_authority_withdraw(
         &self,
         withdraw_authority: &Pubkey,
@@ -221,6 +238,7 @@ impl StakePool {
         )
     }
     /// Checks that the deposit authority is valid
+    #[inline]
     pub(crate) fn check_deposit_authority(
         &self,
         deposit_authority: &Pubkey,
@@ -233,6 +251,7 @@ impl StakePool {
     }
 
     /// Check staker validity and signature
+    #[inline]
     pub(crate) fn check_mint(&self, mint_info: &AccountInfo) -> Result<(), ProgramError> {
         if *mint_info.key != self.pool_mint {
             Err(StakePoolError::WrongPoolMint.into())
@@ -310,11 +329,13 @@ impl StakePool {
     }
 
     /// Check if StakePool is actually initialized as a stake pool
+    #[inline]
     pub fn is_valid(&self) -> bool {
         self.account_type == AccountType::StakePool
     }
 
     /// Check if StakePool is currently uninitialized
+    #[inline]
     pub fn is_uninitialized(&self) -> bool {
         self.account_type == AccountType::Uninitialized
     }
@@ -778,7 +799,7 @@ mod test {
             ..StakePool::default()
         };
         let reward_lamports = 10 * LAMPORTS_PER_SOL;
-        let pool_token_fee = stake_pool.calc_fee_amount(reward_lamports).unwrap();
+        let pool_token_fee = stake_pool.calc_epoch_fee_amount(reward_lamports).unwrap();
 
         stake_pool.total_stake_lamports += reward_lamports;
         stake_pool.pool_token_supply += pool_token_fee;
@@ -802,7 +823,7 @@ mod test {
                 fee,
                 ..StakePool::default()
             };
-            let pool_token_fee = stake_pool.calc_fee_amount(reward_lamports).unwrap();
+            let pool_token_fee = stake_pool.calc_epoch_fee_amount(reward_lamports).unwrap();
 
             stake_pool.total_stake_lamports += reward_lamports;
             stake_pool.pool_token_supply += pool_token_fee;
