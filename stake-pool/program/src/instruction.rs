@@ -255,7 +255,7 @@ pub enum StakePoolInstruction {
     ///   10. '[]' Sysvar stake history account
     ///   11. `[]` Pool token program id,
     ///   12. `[]` Stake program id,
-    Deposit,
+    DepositStake,
 
     ///   Withdraw the token from the pool at the current ratio.
     ///
@@ -281,7 +281,7 @@ pub enum StakePoolInstruction {
     ///  11. `[]` Pool token program id
     ///  12. `[]` Stake program id,
     ///  userdata: amount of pool tokens to withdraw
-    Withdraw(u64),
+    WithdrawStake(u64),
 
     ///  (Manager only) Update manager
     ///
@@ -319,6 +319,24 @@ pub enum StakePoolInstruction {
         #[allow(dead_code)] // but it's not
         fee: Fee,
     },
+
+    ///   Deposit SOL into the pool's reserve account.  The output is a "pool" token
+    ///   representing ownership into the pool. Inputs are converted to the current ratio.
+    ///
+    ///   0. `[w]` Stake pool
+    ///   1. `[w]` Validator stake list storage account
+    ///   2. `[]` Stake pool deposit authority
+    ///   3. `[]` Stake pool withdraw authority
+    ///   4. `[w]` Stake account to join the pool (withdraw authority for the stake account should be first set to the stake pool deposit authority)
+    ///   5. `[w]` Validator stake account for the stake account to be merged with
+    ///   6. `[w]` Reserve stake account, to withdraw rent exempt reserve
+    ///   7. `[w]` User account to receive pool tokens
+    ///   8. `[w]` Pool token mint account
+    ///   9. '[]' Sysvar clock account
+    ///   10. '[]' Sysvar stake history account
+    ///   11. `[]` Pool token program id,
+    ///   12. `[]` Stake program id,
+    DepositSol,
 }
 
 /// Creates an 'initialize' instruction.
@@ -872,7 +890,7 @@ pub fn deposit(
         Instruction {
             program_id: *program_id,
             accounts,
-            data: StakePoolInstruction::Deposit.try_to_vec().unwrap(),
+            data: StakePoolInstruction::DepositStake.try_to_vec().unwrap(),
         },
     ]
 }
@@ -925,7 +943,7 @@ pub fn deposit_with_authority(
         Instruction {
             program_id: *program_id,
             accounts,
-            data: StakePoolInstruction::Deposit.try_to_vec().unwrap(),
+            data: StakePoolInstruction::DepositStake.try_to_vec().unwrap(),
         },
     ]
 }
@@ -964,7 +982,9 @@ pub fn withdraw(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::Withdraw(amount).try_to_vec().unwrap(),
+        data: StakePoolInstruction::WithdrawStake(amount)
+            .try_to_vec()
+            .unwrap(),
     }
 }
 
