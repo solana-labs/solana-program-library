@@ -568,7 +568,7 @@ impl StakePoolAccounts {
                 denominator: 1000,
             },
             deposit_fee: state::Fee {
-                numerator: 2,
+                numerator: 0,
                 denominator: 1000,
             },
             referral_fee: 25,
