@@ -24,7 +24,7 @@ use {
     },
     spl_token_lending::{
         self,
-        instruction::{init_lending_market, init_reserve},
+        instruction::{init_lending_market, init_reserve, update_reserve_config},
         math::WAD,
         state::{LendingMarket, Reserve, ReserveConfig, ReserveFees},
     },
@@ -38,6 +38,39 @@ struct Config {
     lending_program_id: Pubkey,
     verbose: bool,
     dry_run: bool,
+}
+
+/// Reserve config with optional fields
+struct PartialReserveConfig {
+    /// Optimal utilization rate, as a percentage
+    pub optimal_utilization_rate: Option<u8>,
+    /// Target ratio of the value of borrows to deposits, as a percentage
+    /// 0 if use as collateral is disabled
+    pub loan_to_value_ratio: Option<u8>,
+    /// Bonus a liquidator gets when repaying part of an unhealthy obligation, as a percentage
+    pub liquidation_bonus: Option<u8>,
+    /// Loan to value ratio at which an obligation can be liquidated, as a percentage
+    pub liquidation_threshold: Option<u8>,
+    /// Min borrow APY
+    pub min_borrow_rate: Option<u8>,
+    /// Optimal (utilization) borrow APY
+    pub optimal_borrow_rate: Option<u8>,
+    /// Max borrow APY
+    pub max_borrow_rate: Option<u8>,
+    /// Program owner fees assessed, separate from gains due to interest accrual
+    pub fees: PartialReserveFees,
+    /// Deposit limit
+    pub deposit_limit: Option<u64>,
+}
+
+/// Reserve Fees with optional fields
+struct PartialReserveFees {
+    pub borrow_fee_wad: Option<u64>,
+    /// Fee for flash loan, expressed as a Wad.
+    /// 0.3% (Aave flash loan fee) = 3_000_000_000_000_000
+    pub flash_loan_fee_wad: Option<u64>,
+    /// Amount of fee going to host account, if provided in liquidate and repay
+    pub host_fee_percentage: Option<u8>,
 }
 
 type Error = Box<dyn std::error::Error>;
@@ -328,6 +361,137 @@ fn main() {
                         .help("Deposit limit"),
                 )
         )
+        .subcommand(
+            SubCommand::with_name("update-reserve")
+                .about("Update a reserve config")
+                .arg(
+                    Arg::with_name("reserve")
+                        .long("reserve")
+                        .validator(is_pubkey)
+                        .value_name("PUBKEY")
+                        .takes_value(true)
+                        .required(true)
+                        .help("Reserve address"),
+                )
+                .arg(
+                    Arg::with_name("lending_market_owner")
+                        .long("market-owner")
+                        .validator(is_keypair)
+                        .value_name("KEYPAIR")
+                        .takes_value(true)
+                        .required(true)
+                        .help("Owner of the lending market"),
+                )
+                // @TODO: use is_valid_signer
+                .arg(
+                    Arg::with_name("lending_market")
+                        .long("market")
+                        .validator(is_pubkey)
+                        .value_name("PUBKEY")
+                        .takes_value(true)
+                        .required(true)
+                        .help("Lending market address"),
+                )
+                .arg(
+                    Arg::with_name("optimal_utilization_rate")
+                        .long("optimal-utilization-rate")
+                        .validator(is_parsable::<u8>)
+                        .value_name("INTEGER_PERCENT")
+                        .takes_value(true)
+                        .required(false)
+                        .help("Optimal utilization rate: [0, 100]"),
+                )
+                .arg(
+                    Arg::with_name("loan_to_value_ratio")
+                        .long("loan-to-value-ratio")
+                        .validator(is_parsable::<u8>)
+                        .value_name("INTEGER_PERCENT")
+                        .takes_value(true)
+                        .required(false)
+                        .help("Target ratio of the value of borrows to deposits: [0, 100)"),
+                )
+                .arg(
+                    Arg::with_name("liquidation_bonus")
+                        .long("liquidation-bonus")
+                        .validator(is_parsable::<u8>)
+                        .value_name("INTEGER_PERCENT")
+                        .takes_value(true)
+                        .required(false)
+                        .help("Bonus a liquidator gets when repaying part of an unhealthy obligation: [0, 100]"),
+                )
+                .arg(
+                    Arg::with_name("liquidation_threshold")
+                        .long("liquidation-threshold")
+                        .validator(is_parsable::<u8>)
+                        .value_name("INTEGER_PERCENT")
+                        .takes_value(true)
+                        .required(false)
+                        .help("Loan to value ratio at which an obligation can be liquidated: (LTV, 100]"),
+                )
+                .arg(
+                    Arg::with_name("min_borrow_rate")
+                        .long("min-borrow-rate")
+                        .validator(is_parsable::<u8>)
+                        .value_name("INTEGER_PERCENT")
+                        .takes_value(true)
+                        .required(false)
+                        .help("Min borrow APY: min <= optimal <= max"),
+                )
+                .arg(
+                    Arg::with_name("optimal_borrow_rate")
+                        .long("optimal-borrow-rate")
+                        .validator(is_parsable::<u8>)
+                        .value_name("INTEGER_PERCENT")
+                        .takes_value(true)
+                        .required(false)
+                        .help("Optimal (utilization) borrow APY: min <= optimal <= max"),
+                )
+                .arg(
+                    Arg::with_name("max_borrow_rate")
+                        .long("max-borrow-rate")
+                        .validator(is_parsable::<u8>)
+                        .value_name("INTEGER_PERCENT")
+                        .takes_value(true)
+                        .required(false)
+                        .help("Max borrow APY: min <= optimal <= max"),
+                )
+                .arg(
+                    Arg::with_name("borrow_fee")
+                        .long("borrow-fee")
+                        .validator(is_parsable::<f64>)
+                        .value_name("DECIMAL_PERCENT")
+                        .takes_value(true)
+                        .required(false)
+                        .help("Fee assessed on borrow, expressed as a percentage: [0, 1)"),
+                )
+                .arg(
+                    Arg::with_name("flash_loan_fee")
+                        .long("flash-loan-fee")
+                        .validator(is_parsable::<f64>)
+                        .value_name("DECIMAL_PERCENT")
+                        .takes_value(true)
+                        .required(false)
+                        .help("Fee assessed for flash loans, expressed as a percentage: [0, 1)"),
+                )
+                .arg(
+                    Arg::with_name("host_fee_percentage")
+                        .long("host-fee-percentage")
+                        .validator(is_parsable::<u8>)
+                        .value_name("INTEGER_PERCENT")
+                        .takes_value(true)
+                        .required(false)
+                        .help("Amount of fee going to host account: [0, 100]"),
+                )
+                .arg(
+                    Arg::with_name("deposit_limit")
+                        .long("deposit-limit")
+                        .validator(is_parsable::<u64>)
+                        .value_name("INTEGER")
+                        .takes_value(true)
+                        .required(false)
+                        .help("Deposit Limit"),
+                )
+        )
         .get_matches();
 
     let mut wallet_manager = None;
@@ -430,6 +594,48 @@ fn main() {
                 pyth_product_pubkey,
                 pyth_price_pubkey,
                 switchboard_feed_pubkey,
+            )
+        }
+        ("update-reserve", Some(arg_matches)) => {
+            let reserve_pubkey = pubkey_of(arg_matches, "reserve").unwrap();
+            let lending_market_owner_keypair =
+                keypair_of(arg_matches, "lending_market_owner").unwrap();
+            let lending_market_pubkey = pubkey_of(arg_matches, "lending_market").unwrap();
+            let optimal_utilization_rate = value_of(arg_matches, "optimal_utilization_rate");
+            let loan_to_value_ratio = value_of(arg_matches, "loan_to_value_ratio");
+            let liquidation_bonus = value_of(arg_matches, "liquidation_bonus");
+            let liquidation_threshold = value_of(arg_matches, "liquidation_threshold");
+            let min_borrow_rate = value_of(arg_matches, "min_borrow_rate");
+            let optimal_borrow_rate = value_of(arg_matches, "optimal_borrow_rate");
+            let max_borrow_rate = value_of(arg_matches, "max_borrow_rate");
+            let borrow_fee = value_of::<f64>(arg_matches, "borrow_fee");
+            let flash_loan_fee = value_of::<f64>(arg_matches, "flash_loan_fee");
+            let host_fee_percentage = value_of(arg_matches, "host_fee_percentage");
+            let deposit_limit = value_of(arg_matches, "deposit_limit");
+
+            let borrow_fee_wad = borrow_fee.map(|fee| (fee * WAD as f64) as u64);
+            let flash_loan_fee_wad = flash_loan_fee.map(|fee| (fee * WAD as f64) as u64);
+
+            command_update_reserve(
+                &mut config,
+                PartialReserveConfig {
+                    optimal_utilization_rate,
+                    loan_to_value_ratio,
+                    liquidation_bonus,
+                    liquidation_threshold,
+                    min_borrow_rate,
+                    optimal_borrow_rate,
+                    max_borrow_rate,
+                    fees: PartialReserveFees {
+                        borrow_fee_wad,
+                        flash_loan_fee_wad,
+                        host_fee_percentage,
+                    },
+                    deposit_limit,
+                },
+                reserve_pubkey,
+                lending_market_pubkey,
+                lending_market_owner_keypair,
             )
         }
         _ => unreachable!(),
@@ -704,6 +910,137 @@ fn command_add_reserve(
     send_transaction(config, transaction_1)?;
     send_transaction(config, transaction_2)?;
     send_transaction(config, transaction_3)?;
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn command_update_reserve(
+    config: &mut Config,
+    reserve_config: PartialReserveConfig,
+    reserve_pubkey: Pubkey,
+    lending_market_pubkey: Pubkey,
+    lending_market_owner_keypair: Keypair,
+) -> CommandResult {
+    let reserve_info = config.rpc_client.get_account(&reserve_pubkey)?;
+    let mut reserve = Reserve::unpack_from_slice(reserve_info.data.borrow())?;
+    if reserve_config.optimal_utilization_rate.is_some() {
+        println!(
+            "Updating optimal_utilization_rate from {} to {}",
+            reserve_config.optimal_utilization_rate.unwrap(),
+            reserve.config.optimal_utilization_rate,
+        );
+        reserve.config.optimal_utilization_rate = reserve_config.optimal_utilization_rate.unwrap();
+    }
+
+    if reserve_config.loan_to_value_ratio.is_some() {
+        println!(
+            "Updating loan_to_value_ratio from {} to {}",
+            reserve_config.loan_to_value_ratio.unwrap(),
+            reserve.config.loan_to_value_ratio,
+        );
+        reserve.config.loan_to_value_ratio = reserve_config.loan_to_value_ratio.unwrap();
+    }
+
+    if reserve_config.liquidation_bonus.is_some() {
+        println!(
+            "Updating liquidation_bonus from {} to {}",
+            reserve_config.liquidation_bonus.unwrap(),
+            reserve.config.liquidation_bonus,
+        );
+        reserve.config.liquidation_bonus = reserve_config.liquidation_bonus.unwrap();
+    }
+
+    if reserve_config.liquidation_threshold.is_some() {
+        println!(
+            "Updating liquidation_threshold from {} to {}",
+            reserve_config.liquidation_threshold.unwrap(),
+            reserve.config.liquidation_threshold,
+        );
+        reserve.config.liquidation_threshold = reserve_config.liquidation_threshold.unwrap();
+    }
+
+    if reserve_config.min_borrow_rate.is_some() {
+        println!(
+            "Updating min_borrow_rate from {} to {}",
+            reserve_config.min_borrow_rate.unwrap(),
+            reserve.config.min_borrow_rate,
+        );
+        reserve.config.min_borrow_rate = reserve_config.min_borrow_rate.unwrap();
+    }
+
+    if reserve_config.optimal_borrow_rate.is_some() {
+        println!(
+            "Updating optimal_borrow_rate from {} to {}",
+            reserve_config.optimal_borrow_rate.unwrap(),
+            reserve.config.optimal_borrow_rate,
+        );
+        reserve.config.optimal_borrow_rate = reserve_config.optimal_borrow_rate.unwrap();
+    }
+
+    if reserve_config.max_borrow_rate.is_some() {
+        println!(
+            "Updating max_borrow_rate from {} to {}",
+            reserve_config.max_borrow_rate.unwrap(),
+            reserve.config.max_borrow_rate,
+        );
+        reserve.config.max_borrow_rate = reserve_config.max_borrow_rate.unwrap();
+    }
+
+    if reserve_config.fees.borrow_fee_wad.is_some() {
+        println!(
+            "Updating borrow_fee_wad from {} to {}",
+            reserve_config.fees.borrow_fee_wad.unwrap(),
+            reserve.config.fees.borrow_fee_wad,
+        );
+        reserve.config.fees.borrow_fee_wad = reserve_config.fees.borrow_fee_wad.unwrap();
+    }
+
+    if reserve_config.fees.flash_loan_fee_wad.is_some() {
+        println!(
+            "Updating flash_loan_fee_wad from {} to {}",
+            reserve_config.fees.flash_loan_fee_wad.unwrap(),
+            reserve.config.fees.flash_loan_fee_wad,
+        );
+        reserve.config.fees.flash_loan_fee_wad = reserve_config.fees.flash_loan_fee_wad.unwrap();
+    }
+
+    if reserve_config.fees.host_fee_percentage.is_some() {
+        println!(
+            "Updating host_fee_percentage from {} to {}",
+            reserve_config.fees.host_fee_percentage.unwrap(),
+            reserve.config.fees.host_fee_percentage,
+        );
+        reserve.config.fees.host_fee_percentage = reserve_config.fees.host_fee_percentage.unwrap();
+    }
+
+    if reserve_config.deposit_limit.is_some() {
+        println!(
+            "Updating deposit_limit from {} to {}",
+            reserve_config.deposit_limit.unwrap(),
+            reserve.config.deposit_limit,
+        );
+        reserve.config.deposit_limit = reserve_config.deposit_limit.unwrap();
+    }
+
+    let mut transaction = Transaction::new_with_payer(
+        &[update_reserve_config(
+            config.lending_program_id,
+            reserve.config,
+            reserve_pubkey,
+            lending_market_pubkey,
+            lending_market_owner_keypair.pubkey(),
+        )],
+        Some(&config.fee_payer.pubkey()),
+    );
+
+    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+    check_fee_payer_balance(config, fee_calculator.calculate_fee(transaction.message()))?;
+
+    transaction.sign(
+        &vec![config.fee_payer.as_ref(), &lending_market_owner_keypair],
+        recent_blockhash,
+    );
+    send_transaction(config, transaction)?;
     Ok(())
 }
 
