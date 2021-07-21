@@ -137,14 +137,15 @@ pub enum GovernanceInstruction {
 
     /// Creates Proposal account for Instructions that will be executed at some point in the future
     ///
-    ///   0. `[writable]` Proposal account. PDA seeds ['governance',governance, governing_token_mint, proposal_index]
-    ///   1. `[writable]` Governance account
-    ///   2. `[]` TokenOwnerRecord account for Proposal owner
-    ///   3. `[signer]` Governance Authority (Token Owner or Governance Delegate)
-    ///   4. `[signer]` Payer
-    ///   5. `[]` System program
-    ///   6. `[]` Rent sysvar
-    ///   7. `[]` Clock sysvar
+    ///   0. `[]` Realm account the created Proposal belongs to
+    ///   1. `[writable]` Proposal account. PDA seeds ['governance',governance, governing_token_mint, proposal_index]
+    ///   2. `[writable]` Governance account
+    ///   3. `[]` TokenOwnerRecord account for Proposal owner
+    ///   4. `[signer]` Governance Authority (Token Owner or Governance Delegate)
+    ///   5. `[signer]` Payer
+    ///   6. `[]` System program
+    ///   7. `[]` Rent sysvar
+    ///   8. `[]` Clock sysvar
     CreateProposal {
         #[allow(dead_code)]
         /// UTF-8 encoded name of the proposal
@@ -693,6 +694,7 @@ pub fn create_proposal(
     );
 
     let accounts = vec![
+        AccountMeta::new_readonly(*realm, false),
         AccountMeta::new(proposal_address, false),
         AccountMeta::new(*governance, false),
         AccountMeta::new_readonly(token_owner_record_address, false),

@@ -193,7 +193,7 @@ async fn test_create_proposal_with_not_enough_tokens_error() {
     let token_amount = account_governance_cookie
         .account
         .config
-        .min_tokens_to_create_proposal as u64
+        .min_community_tokens_to_create_proposal as u64
         - 1;
 
     let token_owner_record_cookie = governance_test
@@ -239,7 +239,7 @@ async fn test_create_proposal_with_invalid_token_owner_record_error() {
             &mut account_governance_cookie,
             |i| {
                 // Set token_owner_record_address for different (Council) mint
-                i.accounts[2] =
+                i.accounts[3] =
                     AccountMeta::new_readonly(council_token_owner_record_cookie.address, false);
             },
         )
@@ -250,6 +250,6 @@ async fn test_create_proposal_with_invalid_token_owner_record_error() {
     // Assert
     assert_eq!(
         err,
-        GovernanceError::InvalidGoverningMintForTokenOwnerRecord.into()
+        GovernanceError::GoverningTokenOwnerOrDelegateMustSign.into()
     );
 }

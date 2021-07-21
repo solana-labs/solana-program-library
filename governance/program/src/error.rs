@@ -279,6 +279,10 @@ pub enum GovernanceError {
     /// Instruction already flagged with error
     #[error("Instruction already flagged with error")]
     InstructionAlreadyFlaggedWithError,
+
+    /// Invalid Realm for Governance
+    #[error("Invalid Realm for Governance")]
+    InvalidRealmForGovernance,
 }
 
 impl PrintProgramError for GovernanceError {

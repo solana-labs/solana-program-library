@@ -484,7 +484,8 @@ mod test {
 
     fn create_test_governance_config() -> GovernanceConfig {
         GovernanceConfig {
-            min_tokens_to_create_proposal: 5,
+            min_community_tokens_to_create_proposal: 5,
+            min_council_tokens_to_create_proposal: 1,
             min_instruction_hold_up_time: 10,
             max_voting_time: 5,
             vote_threshold_percentage: VoteThresholdPercentage::YesVote(60),
