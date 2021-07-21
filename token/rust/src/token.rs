@@ -93,7 +93,7 @@ impl<'a> Token<'a> {
                 initialize_mint(
                     &spl_token::id(),
                     &mint_account.pubkey(),
-                    &mint_authority,
+                    mint_authority,
                     freeze_authority,
                     decimals,
                 )?,
@@ -118,7 +118,7 @@ impl<'a> Token<'a> {
     pub async fn create_associated_token_account(&self, owner: &Pubkey) -> TokenResult<()> {
         Self::process_ixs(
             &self.client,
-            &self.payer,
+            self.payer,
             &[create_associated_token_account(
                 &self.payer.pubkey(),
                 owner,

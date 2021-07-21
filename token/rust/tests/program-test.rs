@@ -3,7 +3,7 @@ use solana_program_test::{
     ProgramTest,
 };
 use solana_sdk::signer::{keypair::Keypair, Signer};
-use spl_token_api::{Token, TokenBanksClient, TokenClient};
+use spl_token_client::{Token, TokenBanksClient, TokenClient};
 use std::sync::Arc;
 
 #[tokio::test]
