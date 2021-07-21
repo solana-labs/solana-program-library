@@ -1729,6 +1729,8 @@ impl Processor {
         let validator_stake_account_info = next_account_info(account_info_iter)?;
         let reserve_stake_account_info = next_account_info(account_info_iter)?;
         let dest_user_info = next_account_info(account_info_iter)?;
+        let manager_fee_info = next_account_info(account_info_iter)?;
+        let _referrer_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let clock_info = next_account_info(account_info_iter)?;
         let clock = &Clock::from_account_info(clock_info)?;
@@ -1857,6 +1859,12 @@ impl Processor {
         let new_pool_tokens = stake_pool
             .calc_pool_tokens_for_deposit(all_deposit_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
+        let pool_tokens_fee = stake_pool
+            .calc_pool_tokens_deposit_fee(new_pool_tokens)
+            .ok_or(StakePoolError::CalculationFailure)?;
+        let pool_tokens_user = new_pool_tokens
+            .checked_sub(pool_tokens_fee)
+            .ok_or(StakePoolError::CalculationFailure)?;
 
         Self::token_mint_to(
             stake_pool_info.key,
@@ -1866,8 +1874,23 @@ impl Processor {
             withdraw_authority_info.clone(),
             AUTHORITY_WITHDRAW,
             stake_pool.withdraw_bump_seed,
-            new_pool_tokens,
+            pool_tokens_user,
         )?;
+
+        if pool_tokens_fee > 0 {
+            Self::token_mint_to(
+                stake_pool_info.key,
+                token_program_info.clone(),
+                pool_mint_info.clone(),
+                manager_fee_info.clone(),
+                withdraw_authority_info.clone(),
+                AUTHORITY_WITHDRAW,
+                stake_pool.withdraw_bump_seed,
+                pool_tokens_fee,
+            )?;
+
+            // TODO: CHECK referrer_info IS A VALID POOL TOKEN ACCOUNT AND AWARD REFERRER FEES IF SO
+        }
 
         // withdraw additional lamports to the reserve
         let additional_lamports = all_deposit_lamports

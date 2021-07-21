@@ -41,7 +41,7 @@ async fn setup() -> (
     )
     .await;
 
-    let deposit_info = simple_deposit(
+    let deposit_info = simple_deposit_stake(
         &mut banks_client,
         &payer,
         &recent_blockhash,

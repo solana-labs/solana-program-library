@@ -148,6 +148,11 @@ impl StakePool {
         u64::try_from(self.withdrawal_fee.apply(pool_tokens)?).ok()
     }
 
+    /// calculate pool tokens to be deducted as deposit fees
+    pub fn calc_pool_tokens_deposit_fee(&self, pool_tokens_minted: u64) -> Option<u64> {
+        u64::try_from(self.deposit_fee.apply(pool_tokens_minted)?).ok()
+    }
+
     /// Calculate the fee in pool tokens that goes to the manager
     ///
     /// This function assumes that `reward_lamports` has not already been added
