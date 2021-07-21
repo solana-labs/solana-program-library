@@ -352,7 +352,8 @@ pub enum StakePoolInstruction {
     ///   representing ownership into the pool. Inputs are converted to the current ratio.
     ///
     ///   0. `[w]` Stake pool
-    ///   1. `[]` Stake pool deposit authority
+    ///   1. `[]/[s]` Stake pool deposit authority.
+    ///               Requirement of signature depends on `require_sol_deposit_authority`
     ///   2. `[]` Stake pool withdraw authority
     ///   3. `[w]` Reserve stake account, to withdraw rent exempt reserve
     ///   4. `[w]` User account to receive pool tokens
@@ -990,26 +991,34 @@ pub fn deposit_sol(
     stake_pool: &Pubkey,
     stake_pool_withdraw_authority: &Pubkey,
     reserve_stake_account: &Pubkey,
+    lamports_from: &Pubkey,
     pool_tokens_to: &Pubkey,
+    manager_fee_account: &Pubkey,
+    referrer_pool_tokens_account: &Pubkey,
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
+    amount: u64,
 ) -> Vec<Instruction> {
     let stake_pool_deposit_authority =
         find_deposit_authority_program_address(program_id, stake_pool).0;
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
-        AccountMeta::new_readonly(stake_pool_deposit_authority, false),
+        AccountMeta::new_readonly(stake_pool_deposit_authority, true),
         AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
         AccountMeta::new(*reserve_stake_account, false),
+        AccountMeta::new(*lamports_from, true),
         AccountMeta::new(*pool_tokens_to, false),
+        AccountMeta::new(*manager_fee_account, false),
+        AccountMeta::new(*referrer_pool_tokens_account, false),
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new(system_program::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
     ];
     vec![Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::DepositStake.try_to_vec().unwrap(),
+        data: StakePoolInstruction::DepositSol(amount).try_to_vec().unwrap(),
     }]
 }
 
@@ -1022,24 +1031,33 @@ pub fn deposit_sol_with_authority(
     stake_pool_deposit_authority: &Pubkey,
     stake_pool_withdraw_authority: &Pubkey,
     reserve_stake_account: &Pubkey,
+    lamports_from: &Pubkey,
     pool_tokens_to: &Pubkey,
+    manager_fee_account: &Pubkey,
+    referrer_pool_tokens_account: &Pubkey,
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
+    amount: u64,
+    require_deposit_authority: bool,
 ) -> Vec<Instruction> {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
-        AccountMeta::new_readonly(*stake_pool_deposit_authority, true),
+        AccountMeta::new_readonly(*stake_pool_deposit_authority, require_deposit_authority),
         AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
         AccountMeta::new(*reserve_stake_account, false),
+        AccountMeta::new(*lamports_from, true),
         AccountMeta::new(*pool_tokens_to, false),
+        AccountMeta::new(*manager_fee_account, false),
+        AccountMeta::new(*referrer_pool_tokens_account, false),
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new(system_program::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
     ];
     vec![Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::DepositStake.try_to_vec().unwrap(),
+        data: StakePoolInstruction::DepositSol(amount).try_to_vec().unwrap(),
     }]
 }
 
@@ -1073,6 +1091,7 @@ pub fn withdraw(
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
         AccountMeta::new_readonly(stake_program::id(), false),
+        AccountMeta::new(system_program::id(), false),
     ];
     Instruction {
         program_id: *program_id,

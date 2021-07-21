@@ -450,6 +450,7 @@ impl Processor {
 
     /// Issue a spl_token `Transfer` instruction.
     #[allow(clippy::too_many_arguments)]
+    #[inline]
     fn token_transfer<'a>(
         token_program: AccountInfo<'a>,
         source: AccountInfo<'a>,
@@ -466,6 +467,17 @@ impl Processor {
             amount,
         )?;
         invoke(&ix, &[source, destination, authority, token_program])
+    }
+
+    #[inline]
+    fn sol_transfer<'a>(
+        source: AccountInfo<'a>,
+        destination: AccountInfo<'a>,
+        system_program: AccountInfo<'a>,
+        amount: u64,
+    ) -> Result<(), ProgramError> {
+        let ix = solana_program::system_instruction::transfer(source.key, destination.key, amount);
+        invoke(&ix, &[source, destination, system_program])
     }
 
     /// Processes `Initialize` instruction.
@@ -1977,12 +1989,14 @@ impl Processor {
         let deposit_authority_info = next_account_info(account_info_iter)?;
         let withdraw_authority_info = next_account_info(account_info_iter)?;
         let reserve_stake_account_info = next_account_info(account_info_iter)?;
+        let from_user_info = next_account_info(account_info_iter)?;
         let dest_user_info = next_account_info(account_info_iter)?;
         let manager_fee_info = next_account_info(account_info_iter)?;
         let referrer_fee_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let clock_info = next_account_info(account_info_iter)?;
         let clock = &Clock::from_account_info(clock_info)?;
+        let system_program_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
         check_account_owner(stake_pool_info, program_id)?;
@@ -1998,8 +2012,12 @@ impl Processor {
             program_id,
             stake_pool_info.key,
         )?;
-        if stake_pool.require_sol_deposit_authority == 0 {
+        if stake_pool.require_sol_deposit_authority != 0 {
             stake_pool.check_deposit_authority(deposit_authority_info.key)?;
+            if !deposit_authority_info.is_signer {
+                msg!("Deposit authority signature missing");
+                return Err(StakePoolError::SignatureMissing.into());
+            }
         }
         stake_pool.check_mint(pool_mint_info)?;
         stake_pool.check_reserve_stake(reserve_stake_account_info)?;
@@ -2007,6 +2025,7 @@ impl Processor {
         if stake_pool.token_program_id != *token_program_info.key {
             return Err(ProgramError::IncorrectProgramId);
         }
+        check_system_program(system_program_info.key)?;
 
         // We want this to hold to ensure that deposit_sol mints pool tokens
         // at the right price
@@ -2029,6 +2048,13 @@ impl Processor {
         let pool_tokens_manager_deposit_fee = pool_tokens_deposit_fee
             .checked_sub(pool_tokens_deposit_fee)
             .ok_or(StakePoolError::CalculationFailure)?;
+
+        Self::sol_transfer(
+            from_user_info.clone(),
+            reserve_stake_account_info.clone(),
+            system_program_info.clone(),
+            deposit_lamports,
+        )?;
 
         Self::token_mint_to(
             stake_pool_info.key,
