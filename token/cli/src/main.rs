@@ -19,7 +19,7 @@ use solana_clap_utils::{
     offline::{self, *},
     ArgConstant,
 };
-use solana_cli_output::{display::println_name_value, return_signers, OutputFormat};
+use solana_cli_output::{display::println_name_value, return_signers, CliSignature, OutputFormat};
 use solana_client::{
     blockhash_query::BlockhashQuery, rpc_client::RpcClient, rpc_request::TokenAccountsFilter,
 };
@@ -575,12 +575,14 @@ fn command_transfer(
         })?;
 
         let transfer_balance = maybe_transfer_balance.unwrap_or(sender_balance);
-        println!(
-            "Transfer {} tokens\n  Sender: {}\n  Recipient: {}",
-            spl_token::amount_to_ui_amount(transfer_balance, decimals),
-            sender,
-            recipient
-        );
+        if !config.silent {
+            println!(
+                "Transfer {} tokens\n  Sender: {}\n  Recipient: {}",
+                spl_token::amount_to_ui_amount(transfer_balance, decimals),
+                sender,
+                recipient
+            );
+        }
 
         if transfer_balance > sender_balance {
             return Err(format!(
@@ -620,10 +622,12 @@ fn command_transfer(
 
     if !recipient_is_token_account {
         recipient_token_account = get_associated_token_address(&recipient, &mint_pubkey);
-        println!(
-            "  Recipient associated token account: {}",
-            recipient_token_account
-        );
+        if !config.silent {
+            println!(
+                "  Recipient associated token account: {}",
+                recipient_token_account
+            );
+        }
 
         let needs_funding = if !config.sign_only {
             if let Some(recipient_token_account_data) = config
@@ -1669,6 +1673,22 @@ fn main() {
                         .takes_value(false)
                         .help("Return signature immediately after submitting the transaction, instead of waiting for confirmations"),
                 )
+                // in the future, promote --output and --silent to global(true)?
+                .arg(
+                    Arg::with_name("output_format")
+                        .long("output")
+                        .value_name("FORMAT")
+                        .takes_value(true)
+                        .possible_values(&["json", "json-compact"])
+                        .help("Return information in specified output format"),
+                )
+                .arg(
+                    Arg::with_name("silent")
+                        .long("silent")
+                        .takes_value(false)
+                        .conflicts_with("verbose")
+                        .help("Suppress additional information"),
+                )
                 .arg(
                     Arg::with_name("recipient_is_ata_owner")
                         .long("recipient-is-ata-owner")
@@ -2170,7 +2190,22 @@ fn main() {
         });
         bulk_signers.push(signer);
 
+        // these flags are exclusive to each other; checked by clap
         let verbose = matches.is_present("verbose");
+        let silent = matches.is_present("silent");
+
+        let output_format = matches
+            .value_of("output_format")
+            .map(|value| match value {
+                "json" => OutputFormat::Json,
+                "json-compact" => OutputFormat::JsonCompact,
+                _ => unreachable!(),
+            })
+            .unwrap_or(if verbose {
+                OutputFormat::DisplayVerbose
+            } else {
+                OutputFormat::Display
+            });
 
         let nonce_account = pubkey_of_signer(matches, NONCE_ARG.name, &mut wallet_manager)
             .unwrap_or_else(|e| {
@@ -2220,6 +2255,7 @@ fn main() {
         Config {
             rpc_client: RpcClient::new_with_commitment(json_rpc_url, CommitmentConfig::confirmed()),
             verbose,
+            silent,
             fee_payer,
             default_keypair_path: cli_config.keypair_path,
             nonce_account,
@@ -2227,6 +2263,7 @@ fn main() {
             blockhash_query,
             sign_only,
             multisigner_pubkeys,
+            output_format,
         }
     };
 
@@ -2605,7 +2642,10 @@ fn main() {
                             .rpc_client
                             .send_and_confirm_transaction_with_spinner(&transaction)?
                     };
-                    println!("Signature: {}", signature);
+                    let signature = CliSignature {
+                        signature: signature.to_string(),
+                    };
+                    println!("{}", config.output_format.formatted_string(&signature));
                 }
             }
         }
