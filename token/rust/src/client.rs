@@ -32,18 +32,19 @@ impl fmt::Debug for TokenBanksClient {
 }
 
 impl TokenBanksClient {
-    pub fn new(client: Arc<Mutex<BanksClient>>) -> Self {
-        Self {
-            client: Some(client),
-            context: None,
-        }
+    fn new(
+        client: Option<Arc<Mutex<BanksClient>>>,
+        context: Option<Arc<Mutex<ProgramTestContext>>>,
+    ) -> Self {
+        Self { client, context }
+    }
+
+    pub fn new_from_client(client: Arc<Mutex<BanksClient>>) -> Self {
+        Self::new(Some(client), None)
     }
 
     pub fn new_from_context(context: Arc<Mutex<ProgramTestContext>>) -> Self {
-        Self {
-            client: None,
-            context: Some(context),
-        }
+        Self::new(None, Some(context))
     }
 
     async fn run_in_lock<F, O>(&self, f: F) -> O
