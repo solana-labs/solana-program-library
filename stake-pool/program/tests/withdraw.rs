@@ -992,11 +992,12 @@ async fn success_with_reserve() {
     assert!(error.is_none());
 
     // first and only deposit, lamports:pool 1:1
-    let tokens_deposit_fee = stake_pool_accounts.calculate_deposit_fee(deposit_info.lamports);
+    let tokens_deposit_fee =
+        stake_pool_accounts.calculate_deposit_fee(deposit_info.stake_lamports + stake_rent);
     let tokens_withdrawal_fee =
         stake_pool_accounts.calculate_withdrawal_fee(deposit_info.pool_tokens);
     assert_eq!(
-        deposit_info.lamports - tokens_deposit_fee,
+        deposit_info.stake_lamports + stake_rent - tokens_deposit_fee,
         deposit_info.pool_tokens,
     );
 
@@ -1019,7 +1020,10 @@ async fn success_with_reserve() {
     let meta = stake_state.meta().unwrap();
     // TODO: these numbers dont add up even with +tokens_deposit_fee
     assert_eq!(
-        initial_reserve_lamports + meta.rent_exempt_reserve + tokens_withdrawal_fee,
+        initial_reserve_lamports
+            + meta.rent_exempt_reserve
+            + tokens_withdrawal_fee
+            + tokens_deposit_fee,
         reserve_stake_account.lamports
     );
 
@@ -1028,7 +1032,9 @@ async fn success_with_reserve() {
         get_account(&mut context.banks_client, &withdraw_destination.pubkey()).await;
     assert_eq!(
         user_stake_recipient_account.lamports,
-        initial_stake_lamports + deposit_info.stake_lamports + stake_rent - tokens_withdrawal_fee
+        initial_stake_lamports + deposit_info.stake_lamports + stake_rent
+            - tokens_withdrawal_fee
+            - tokens_deposit_fee
     );
 }
 

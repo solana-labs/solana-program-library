@@ -432,6 +432,9 @@ impl Processor {
         bump_seed: u8,
         amount: u64,
     ) -> Result<(), ProgramError> {
+        if amount == 0 {
+            return Ok(());
+        }
         let me_bytes = stake_pool.to_bytes();
         let authority_signature_seeds = [&me_bytes[..32], authority_type, &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
@@ -1887,20 +1890,23 @@ impl Processor {
             .stake
             .checked_sub(validator_stake.delegation.stake)
             .ok_or(StakePoolError::CalculationFailure)?;
+
         let new_pool_tokens = stake_pool
             .calc_pool_tokens_for_deposit(all_deposit_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
+
         let pool_tokens_deposit_fee = stake_pool
             .calc_pool_tokens_deposit_fee(new_pool_tokens)
             .ok_or(StakePoolError::CalculationFailure)?;
         let pool_tokens_user = new_pool_tokens
             .checked_sub(pool_tokens_deposit_fee)
             .ok_or(StakePoolError::CalculationFailure)?;
+
         let pool_tokens_referral_fee = stake_pool
             .calc_pool_tokens_referral_fee(pool_tokens_deposit_fee)
             .ok_or(StakePoolError::CalculationFailure)?;
         let pool_tokens_manager_deposit_fee = pool_tokens_deposit_fee
-            .checked_sub(pool_tokens_deposit_fee)
+            .checked_sub(pool_tokens_referral_fee)
             .ok_or(StakePoolError::CalculationFailure)?;
 
         Self::token_mint_to(
@@ -1913,32 +1919,26 @@ impl Processor {
             stake_pool.withdraw_bump_seed,
             pool_tokens_user,
         )?;
-
-        if pool_tokens_manager_deposit_fee > 0 {
-            Self::token_mint_to(
-                stake_pool_info.key,
-                token_program_info.clone(),
-                pool_mint_info.clone(),
-                manager_fee_info.clone(),
-                withdraw_authority_info.clone(),
-                AUTHORITY_WITHDRAW,
-                stake_pool.withdraw_bump_seed,
-                pool_tokens_manager_deposit_fee,
-            )?;
-        }
-
-        if pool_tokens_referral_fee > 0 {
-            Self::token_mint_to(
-                stake_pool_info.key,
-                token_program_info.clone(),
-                pool_mint_info.clone(),
-                referrer_fee_info.clone(),
-                withdraw_authority_info.clone(),
-                AUTHORITY_WITHDRAW,
-                stake_pool.withdraw_bump_seed,
-                pool_tokens_referral_fee,
-            )?;
-        }
+        Self::token_mint_to(
+            stake_pool_info.key,
+            token_program_info.clone(),
+            pool_mint_info.clone(),
+            manager_fee_info.clone(),
+            withdraw_authority_info.clone(),
+            AUTHORITY_WITHDRAW,
+            stake_pool.withdraw_bump_seed,
+            pool_tokens_manager_deposit_fee,
+        )?;
+        Self::token_mint_to(
+            stake_pool_info.key,
+            token_program_info.clone(),
+            pool_mint_info.clone(),
+            referrer_fee_info.clone(),
+            withdraw_authority_info.clone(),
+            AUTHORITY_WITHDRAW,
+            stake_pool.withdraw_bump_seed,
+            pool_tokens_referral_fee,
+        )?;
 
         // withdraw additional lamports to the reserve
         let additional_lamports = all_deposit_lamports
