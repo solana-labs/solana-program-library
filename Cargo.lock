@@ -3897,6 +3897,8 @@ version = "2.0.13"
 dependencies = [
  "clap",
  "console 0.14.1",
+ "serde",
+ "serde_derive",
  "serde_json",
  "solana-account-decoder",
  "solana-clap-utils",

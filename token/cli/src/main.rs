@@ -19,7 +19,7 @@ use solana_clap_utils::{
     offline::{self, *},
     ArgConstant,
 };
-use solana_cli_output::{display::println_name_value, return_signers, CliSignature, OutputFormat};
+use solana_cli_output::{return_signers, CliSignature, OutputFormat};
 use solana_client::{
     blockhash_query::BlockhashQuery, rpc_client::RpcClient, rpc_request::TokenAccountsFilter,
 };
@@ -1028,21 +1028,23 @@ fn command_balance(config: &Config, address: Pubkey) -> CommandResult {
         .rpc_client
         .get_token_account_balance(&address)
         .map_err(|_| format!("Could not find token account {}", address))?;
+    let cli_token_amount = CliTokenAmount { amount: balance };
+    println!(
+        "{}",
+        config.output_format.formatted_string(&cli_token_amount)
+    );
 
-    if config.verbose && config.output_format == OutputFormat::DisplayVerbose {
-        println!("ui amount: {}", balance.real_number_string_trimmed());
-        println!("decimals: {}", balance.decimals);
-        println!("amount: {}", balance.amount);
-    } else {
-        println!("{}", balance.real_number_string_trimmed());
-    }
     Ok(None)
 }
 
 fn command_supply(config: &Config, address: Pubkey) -> CommandResult {
     let supply = config.rpc_client.get_token_supply(&address)?;
+    let cli_token_amount = CliTokenAmount { amount: supply };
+    println!(
+        "{}",
+        config.output_format.formatted_string(&cli_token_amount)
+    );
 
-    println!("{}", supply.real_number_string_trimmed());
     Ok(None)
 }
 
@@ -1172,14 +1174,16 @@ fn command_accounts(config: &Config, token: Option<Pubkey>, owner: Pubkey) -> Co
 }
 
 fn command_address(config: &Config, token: Option<Pubkey>, owner: Pubkey) -> CommandResult {
+    let mut cli_address = CliWalletAddress {
+        wallet_address: owner.to_string(),
+        ..CliWalletAddress::default()
+    };
     if let Some(token) = token {
         validate_mint(config, token)?;
         let associated_token_address = get_associated_token_address(&owner, &token);
-        println!("Wallet address: {:?}", owner);
-        println!("Associated token address: {:?}", associated_token_address);
-    } else {
-        println!("Wallet address: {:?}", owner);
+        cli_address.associated_token_address = Some(associated_token_address.to_string());
     }
+    println!("{}", config.output_format.formatted_string(&cli_address));
     Ok(None)
 }
 
@@ -1192,41 +1196,15 @@ fn command_account_info(config: &Config, address: Pubkey) -> CommandResult {
     let mint = Pubkey::from_str(&account.mint).unwrap();
     let owner = Pubkey::from_str(&account.owner).unwrap();
     let is_associated = get_associated_token_address(&owner, &mint) == address;
-    let address_message = if is_associated {
-        address.to_string()
-    } else {
-        format!("{}  (Aux*)", address)
+    let cli_token_account = CliTokenAccount {
+        address: address.to_string(),
+        is_associated,
+        account,
     };
-    println!();
-    println_name_value("Address:", &address_message);
-    println_name_value(
-        "Balance:",
-        &account.token_amount.real_number_string_trimmed(),
+    println!(
+        "{}",
+        config.output_format.formatted_string(&cli_token_account)
     );
-    let mint = format!(
-        "{}{}",
-        account.mint,
-        if account.is_native { " (native)" } else { "" }
-    );
-    println_name_value("Mint:", &mint);
-    println_name_value("Owner:", &account.owner);
-    println_name_value("State:", &format!("{:?}", account.state));
-    if let Some(delegate) = &account.delegate {
-        println!("Delegation:");
-        println_name_value("  Delegate:", delegate);
-        let allowance = account.delegated_amount.as_ref().unwrap();
-        println_name_value("  Allowance:", &allowance.real_number_string_trimmed());
-    } else {
-        println_name_value("Delegation:", "");
-    }
-    println_name_value(
-        "Close authority:",
-        account.close_authority.as_ref().unwrap_or(&String::new()),
-    );
-    if !is_associated {
-        println!();
-        println!("* Please run `spl-token gc` to clean up Aux accounts");
-    }
     Ok(None)
 }
 
@@ -1239,16 +1217,24 @@ fn command_multisig(config: &Config, address: Pubkey) -> CommandResult {
     let multisig = get_multisig(config, &address)?;
     let n = multisig.n as usize;
     assert!(n <= multisig.signers.len());
-    println!();
-    println_name_value("Address:", &address.to_string());
-    println_name_value("M/N:", &format!("{}/{}", multisig.m, n));
-    println_name_value("Signers:", " ");
-    let width = if n >= 9 { 4 } else { 3 };
-    for i in 0..n {
-        let title = format!("{1:>0$}:", width, i + 1);
-        let pubkey = &multisig.signers[i];
-        println_name_value(&title, &pubkey.to_string())
-    }
+    let cli_multisig = CliMultisig {
+        address: address.to_string(),
+        m: multisig.m,
+        n: multisig.n,
+        signers: multisig
+            .signers
+            .iter()
+            .enumerate()
+            .filter_map(|(i, signer)| {
+                if i < n {
+                    Some(signer.to_string())
+                } else {
+                    None
+                }
+            })
+            .collect(),
+    };
+    println!("{}", config.output_format.formatted_string(&cli_multisig));
     Ok(None)
 }
 
