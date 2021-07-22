@@ -77,6 +77,19 @@ pub fn get_realm_data(
     get_account_data::<Realm>(realm_info, program_id)
 }
 
+/// Deserializes Ream account and asserts the given governing_token_mint is either Community or Council mint of the Realm
+pub fn get_realm_data_for_governing_token_mint(
+    program_id: &Pubkey,
+    realm_info: &AccountInfo,
+    governing_token_mint: &Pubkey,
+) -> Result<Realm, ProgramError> {
+    let realm_data = get_realm_data(program_id, realm_info)?;
+
+    realm_data.assert_is_valid_governing_token_mint(governing_token_mint)?;
+
+    Ok(realm_data)
+}
+
 /// Returns Realm PDA seeds
 pub fn get_realm_address_seeds(name: &str) -> [&[u8]; 2] {
     [PROGRAM_AUTHORITY_SEED, name.as_bytes()]

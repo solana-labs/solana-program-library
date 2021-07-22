@@ -14,9 +14,10 @@ use crate::{
     error::GovernanceError,
     state::{
         enums::{GovernanceAccountType, InstructionExecutionFlags, ProposalState},
-        governance::get_governance_data,
+        governance::get_governance_data_for_realm,
         proposal::{get_proposal_address_seeds, Proposal},
-        token_owner_record::get_token_owner_record_data_for_realm_and_governing_mint,
+        realm::get_realm_data_for_governing_token_mint,
+        token_owner_record::get_token_owner_record_data_for_realm,
     },
     tools::account::create_and_serialize_account_signed,
 };
@@ -31,42 +32,40 @@ pub fn process_create_proposal(
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
-    let proposal_info = next_account_info(account_info_iter)?; // 0
-    let governance_info = next_account_info(account_info_iter)?; // 1
+    let realm_info = next_account_info(account_info_iter)?; // 0
+    let proposal_info = next_account_info(account_info_iter)?; // 1
+    let governance_info = next_account_info(account_info_iter)?; // 2
 
-    let token_owner_record_info = next_account_info(account_info_iter)?; // 2
-    let governance_authority_info = next_account_info(account_info_iter)?; // 3
+    let token_owner_record_info = next_account_info(account_info_iter)?; // 3
+    let governance_authority_info = next_account_info(account_info_iter)?; // 4
 
-    let payer_info = next_account_info(account_info_iter)?; // 4
-    let system_info = next_account_info(account_info_iter)?; // 5
+    let payer_info = next_account_info(account_info_iter)?; // 5
+    let system_info = next_account_info(account_info_iter)?; // 6
 
-    let rent_sysvar_info = next_account_info(account_info_iter)?; // 6
+    let rent_sysvar_info = next_account_info(account_info_iter)?; // 7
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
 
-    let clock_info = next_account_info(account_info_iter)?; // 7
+    let clock_info = next_account_info(account_info_iter)?; // 8
     let clock = Clock::from_account_info(clock_info)?;
 
     if !proposal_info.data_is_empty() {
         return Err(GovernanceError::ProposalAlreadyExists.into());
     }
 
-    let mut governance_data = get_governance_data(program_id, governance_info)?;
+    let realm_data =
+        get_realm_data_for_governing_token_mint(program_id, realm_info, &governing_token_mint)?;
 
-    let token_owner_record_data = get_token_owner_record_data_for_realm_and_governing_mint(
-        program_id,
-        token_owner_record_info,
-        &governance_data.realm,
-        &governing_token_mint,
-    )?;
+    let mut governance_data =
+        get_governance_data_for_realm(program_id, governance_info, realm_info.key)?;
 
-    // proposal_owner must be either governing token owner or governance_delegate and must sign this transaction
+    let token_owner_record_data =
+        get_token_owner_record_data_for_realm(program_id, token_owner_record_info, realm_info.key)?;
+
+    // Proposal owner (TokenOwner) or its governance_delegate must sign this transaction
     token_owner_record_data.assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
-    if token_owner_record_data.governing_token_deposit_amount
-        < governance_data.config.min_tokens_to_create_proposal as u64
-    {
-        return Err(GovernanceError::NotEnoughTokensToCreateProposal.into());
-    }
+    // Ensure proposal owner (TokenOwner) has enough tokens to create proposal
+    token_owner_record_data.assert_can_create_proposal(&realm_data, &governance_data.config)?;
 
     let proposal_data = Proposal {
         account_type: GovernanceAccountType::Proposal,

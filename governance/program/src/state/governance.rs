@@ -22,8 +22,8 @@ pub struct GovernanceConfig {
     /// Note: In the current version only YesVote threshold is supported
     pub vote_threshold_percentage: VoteThresholdPercentage,
 
-    /// Minimum number of tokens a governance token owner must possess to be able to create a proposal
-    pub min_tokens_to_create_proposal: u64,
+    /// Minimum number of community tokens a governance token owner must possess to be able to create a proposal
+    pub min_community_tokens_to_create_proposal: u64,
 
     /// Minimum waiting time in seconds for an instruction to be executed after proposal is voted on
     pub min_instruction_hold_up_time: u32,
@@ -39,6 +39,9 @@ pub struct GovernanceConfig {
     /// Once cool off time expires Proposal can't be cancelled any longer and becomes a law
     /// Note: This field is not implemented in the current version
     pub proposal_cool_off_time: u32,
+
+    /// Minimum number of council tokens a governance token owner must possess to be able to create a proposal
+    pub min_council_tokens_to_create_proposal: u64,
 }
 
 /// Governance Account
@@ -57,11 +60,11 @@ pub struct Governance {
     /// Governance config
     pub config: GovernanceConfig,
 
-    /// Reserved space for future versions
-    pub reserved: [u8; 8],
-
     /// Running count of proposals
     pub proposals_count: u32,
+
+    /// Reserved space for future versions
+    pub reserved: [u8; 8],
 }
 
 impl AccountMaxSize for Governance {}
@@ -98,12 +101,27 @@ impl Governance {
     }
 }
 
-/// Deserializes account and checks owner program
+/// Deserializes Governance account and checks owner program
 pub fn get_governance_data(
     program_id: &Pubkey,
     governance_info: &AccountInfo,
 ) -> Result<Governance, ProgramError> {
     get_account_data::<Governance>(governance_info, program_id)
+}
+
+/// Deserializes Governance account, checks owner program and asserts governance belongs to the given ream
+pub fn get_governance_data_for_realm(
+    program_id: &Pubkey,
+    governance_info: &AccountInfo,
+    realm: &Pubkey,
+) -> Result<Governance, ProgramError> {
+    let governance_data = get_governance_data(program_id, governance_info)?;
+
+    if governance_data.realm != *realm {
+        return Err(GovernanceError::InvalidRealmForGovernance.into());
+    }
+
+    Ok(governance_data)
 }
 
 /// Returns ProgramGovernance PDA seeds

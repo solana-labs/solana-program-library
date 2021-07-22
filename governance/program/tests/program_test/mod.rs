@@ -314,6 +314,21 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
+    pub async fn with_council_token_deposit_amount(
+        &mut self,
+        realm_cookie: &RealmCookie,
+        amount: u64,
+    ) -> TokeOwnerRecordCookie {
+        self.with_initial_governing_token_deposit(
+            &realm_cookie.address,
+            &realm_cookie.account.council_mint.unwrap(),
+            &realm_cookie.council_mint_authority.as_ref().unwrap(),
+            amount,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
     pub async fn with_council_token_deposit(
         &mut self,
         realm_cookie: &RealmCookie,
@@ -642,7 +657,8 @@ impl GovernanceProgramTest {
 
     pub fn get_default_governance_config(&mut self) -> GovernanceConfig {
         GovernanceConfig {
-            min_tokens_to_create_proposal: 5,
+            min_community_tokens_to_create_proposal: 5,
+            min_council_tokens_to_create_proposal: 2,
             min_instruction_hold_up_time: 10,
             max_voting_time: 10,
             vote_threshold_percentage: VoteThresholdPercentage::YesVote(60),
@@ -1021,7 +1037,7 @@ impl GovernanceProgramTest {
         let mut create_proposal_instruction = create_proposal(
             &self.program_id,
             &governance_cookie.address,
-            &token_owner_record_cookie.token_owner.pubkey(),
+            &token_owner_record_cookie.address,
             &governance_authority.pubkey(),
             &self.context.payer.pubkey(),
             &governance_cookie.account.realm,

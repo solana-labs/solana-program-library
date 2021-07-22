@@ -2,11 +2,10 @@
 
 use crate::{
     error::GovernanceError,
+    state::{enums::GovernanceAccountType, governance::GovernanceConfig, realm::Realm},
     tools::account::{get_account_data, AccountMaxSize},
     PROGRAM_AUTHORITY_SEED,
 };
-
-use crate::state::enums::GovernanceAccountType;
 
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
@@ -84,6 +83,28 @@ impl TokenOwnerRecord {
 
         Err(GovernanceError::GoverningTokenOwnerOrDelegateMustSign.into())
     }
+
+    /// Asserts TokenOwner has enough tokens to be allowed to create proposal
+    pub fn assert_can_create_proposal(
+        &self,
+        realm_data: &Realm,
+        config: &GovernanceConfig,
+    ) -> Result<(), ProgramError> {
+        let min_tokens_to_create_proposal =
+            if self.governing_token_mint == realm_data.community_mint {
+                config.min_community_tokens_to_create_proposal
+            } else if Some(self.governing_token_mint) == realm_data.council_mint {
+                config.min_council_tokens_to_create_proposal
+            } else {
+                return Err(GovernanceError::InvalidGoverningTokenMint.into());
+            };
+
+        if self.governing_token_deposit_amount < min_tokens_to_create_proposal {
+            return Err(GovernanceError::NotEnoughTokensToCreateProposal.into());
+        }
+
+        Ok(())
+    }
 }
 
 /// Returns TokenOwnerRecord PDA address
@@ -138,21 +159,33 @@ pub fn get_token_owner_record_data_for_seeds(
     get_token_owner_record_data(program_id, token_owner_record_info)
 }
 
-/// Deserializes TokenOwnerRecord account and checks that its PDA matches the given realm and governing mint
+/// Deserializes TokenOwnerRecord account and asserts it belongs to the given realm
+pub fn get_token_owner_record_data_for_realm(
+    program_id: &Pubkey,
+    token_owner_record_info: &AccountInfo,
+    realm: &Pubkey,
+) -> Result<TokenOwnerRecord, ProgramError> {
+    let token_owner_record_data = get_token_owner_record_data(program_id, token_owner_record_info)?;
+
+    if token_owner_record_data.realm != *realm {
+        return Err(GovernanceError::InvalidRealmForTokenOwnerRecord.into());
+    }
+
+    Ok(token_owner_record_data)
+}
+
+/// Deserializes TokenOwnerRecord account and  asserts it belongs to the given realm and is for the given governing mint
 pub fn get_token_owner_record_data_for_realm_and_governing_mint(
     program_id: &Pubkey,
     token_owner_record_info: &AccountInfo,
     realm: &Pubkey,
     governing_token_mint: &Pubkey,
 ) -> Result<TokenOwnerRecord, ProgramError> {
-    let token_owner_record_data = get_token_owner_record_data(program_id, token_owner_record_info)?;
+    let token_owner_record_data =
+        get_token_owner_record_data_for_realm(program_id, token_owner_record_info, realm)?;
 
     if token_owner_record_data.governing_token_mint != *governing_token_mint {
         return Err(GovernanceError::InvalidGoverningMintForTokenOwnerRecord.into());
-    }
-
-    if token_owner_record_data.realm != *realm {
-        return Err(GovernanceError::InvalidRealmForTokenOwnerRecord.into());
     }
 
     Ok(token_owner_record_data)
