@@ -2025,6 +2025,9 @@ impl Processor {
         if stake_pool.token_program_id != *token_program_info.key {
             return Err(ProgramError::IncorrectProgramId);
         }
+        if stake_pool.token_program_id != *referrer_fee_info.owner {
+            return Err(StakePoolError::InvalidFeeAccount.into());
+        }
         check_system_program(system_program_info.key)?;
 
         // We want this to hold to ensure that deposit_sol mints pool tokens
@@ -2036,17 +2039,19 @@ impl Processor {
         let new_pool_tokens = stake_pool
             .calc_pool_tokens_for_deposit(deposit_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
+
         let pool_tokens_deposit_fee = stake_pool
             .calc_pool_tokens_deposit_fee(new_pool_tokens)
             .ok_or(StakePoolError::CalculationFailure)?;
         let pool_tokens_user = new_pool_tokens
             .checked_sub(pool_tokens_deposit_fee)
             .ok_or(StakePoolError::CalculationFailure)?;
+
         let pool_tokens_referral_fee = stake_pool
             .calc_pool_tokens_referral_fee(pool_tokens_deposit_fee)
             .ok_or(StakePoolError::CalculationFailure)?;
         let pool_tokens_manager_deposit_fee = pool_tokens_deposit_fee
-            .checked_sub(pool_tokens_deposit_fee)
+            .checked_sub(pool_tokens_referral_fee)
             .ok_or(StakePoolError::CalculationFailure)?;
 
         Self::sol_transfer(

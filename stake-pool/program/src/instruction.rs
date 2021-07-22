@@ -1003,7 +1003,7 @@ pub fn deposit_sol(
         find_deposit_authority_program_address(program_id, stake_pool).0;
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
-        AccountMeta::new_readonly(stake_pool_deposit_authority, true),
+        AccountMeta::new_readonly(stake_pool_deposit_authority, false),
         AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
         AccountMeta::new(*reserve_stake_account, false),
         AccountMeta::new(*lamports_from, true),
