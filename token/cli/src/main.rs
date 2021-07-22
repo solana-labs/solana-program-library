@@ -987,7 +987,7 @@ fn command_balance(config: &Config, address: Pubkey) -> CommandResult {
         .get_token_account_balance(&address)
         .map_err(|_| format!("Could not find token account {}", address))?;
 
-    if config.verbose {
+    if config.verbose && config.output_format == OutputFormat::DisplayVerbose {
         println!("ui amount: {}", balance.real_number_string_trimmed());
         println!("decimals: {}", balance.decimals);
         println!("amount: {}", balance.amount);
@@ -1025,7 +1025,7 @@ fn command_accounts(config: &Config, token: Option<Pubkey>, owner: Pubkey) -> Co
     let aux_len = if includes_aux { 10 } else { 0 };
     let mut gc_alert = false;
 
-    if config.verbose {
+    if config.verbose && config.output_format == OutputFormat::DisplayVerbose {
         if token.is_some() {
             println!("{:<44}  {:<2$}", "Account", "Balance", max_len_balance);
             println!("-------------------------------------------------------------");
@@ -1059,7 +1059,7 @@ fn command_accounts(config: &Config, token: Option<Pubkey>, owner: Pubkey) -> Co
             } else {
                 "".to_string()
             };
-            if config.verbose {
+            if config.verbose && config.output_format == OutputFormat::DisplayVerbose {
                 if token.is_some() {
                     println!(
                         "{:<44}  {:<4$}{:<5$}{}",
@@ -2171,6 +2171,11 @@ fn main() {
         bulk_signers.push(signer);
 
         let verbose = matches.is_present("verbose");
+        let output_format = if verbose {
+            OutputFormat::DisplayVerbose
+        } else {
+            OutputFormat::Display
+        };
 
         let nonce_account = pubkey_of_signer(matches, NONCE_ARG.name, &mut wallet_manager)
             .unwrap_or_else(|e| {
@@ -2220,6 +2225,7 @@ fn main() {
         Config {
             rpc_client: RpcClient::new_with_commitment(json_rpc_url, CommitmentConfig::confirmed()),
             verbose,
+            output_format,
             fee_payer,
             default_keypair_path: cli_config.keypair_path,
             nonce_account,
