@@ -1,4 +1,5 @@
 use crate::{get_associated_token_address, output::CliTokenAccount};
+use serde::{Deserialize, Serialize};
 use solana_account_decoder::{parse_token::TokenAccountType, UiAccountData};
 use solana_client::rpc_response::RpcKeyedAccount;
 use solana_sdk::pubkey::Pubkey;
@@ -9,6 +10,7 @@ use std::{
 
 pub(crate) type MintAccounts = BTreeMap<String, Vec<CliTokenAccount>>;
 
+#[derive(Serialize, Deserialize)]
 pub(crate) struct UnsupportedAccount {
     pub address: String,
     pub err: String,

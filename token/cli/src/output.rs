@@ -1,8 +1,11 @@
-use crate::config::Config;
-use serde::{Deserialize, Serialize};
-use solana_account_decoder::parse_token::{UiTokenAccount, UiTokenAmount};
+use crate::{config::Config, sort::UnsupportedAccount};
+use console::Emoji;
+use serde::{Deserialize, Serialize, Serializer};
+use solana_account_decoder::parse_token::{UiAccountState, UiTokenAccount, UiTokenAmount};
 use solana_cli_output::{display::writeln_name_value, OutputFormat, QuietDisplay, VerboseDisplay};
 use std::fmt;
+
+static WARNING: Emoji = Emoji("⚠️", "!");
 
 pub(crate) fn println_display(config: &Config, message: String) {
     match config.output_format {
@@ -143,4 +146,178 @@ impl fmt::Display for CliTokenAccount {
         }
         Ok(())
     }
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CliTokenAccounts {
+    #[serde(serialize_with = "flattened")]
+    pub(crate) accounts: Vec<Vec<CliTokenAccount>>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub(crate) unsupported_accounts: Vec<UnsupportedAccount>,
+    #[serde(skip_serializing)]
+    pub(crate) max_len_balance: usize,
+    #[serde(skip_serializing)]
+    pub(crate) aux_len: usize,
+    #[serde(skip_serializing)]
+    pub(crate) token_is_some: bool,
+}
+
+impl QuietDisplay for CliTokenAccounts {}
+impl VerboseDisplay for CliTokenAccounts {
+    fn write_str(&self, w: &mut dyn fmt::Write) -> fmt::Result {
+        let mut gc_alert = false;
+        if self.token_is_some {
+            writeln!(
+                w,
+                "{:<44}  {:<2$}",
+                "Account", "Balance", self.max_len_balance
+            )?;
+            writeln!(
+                w,
+                "-------------------------------------------------------------"
+            )?;
+        } else {
+            writeln!(
+                w,
+                "{:<44}  {:<44}  {:<3$}",
+                "Token", "Account", "Balance", self.max_len_balance
+            )?;
+            writeln!(w, "----------------------------------------------------------------------------------------------------------")?;
+        }
+        for accounts_list in self.accounts.iter() {
+            let mut aux_counter = 1;
+            for account in accounts_list {
+                let maybe_aux = if !account.is_associated {
+                    gc_alert = true;
+                    let message = format!("  (Aux-{}*)", aux_counter);
+                    aux_counter += 1;
+                    message
+                } else {
+                    "".to_string()
+                };
+                let maybe_frozen = if let UiAccountState::Frozen = account.account.state {
+                    format!(" {}  Frozen", WARNING)
+                } else {
+                    "".to_string()
+                };
+                if self.token_is_some {
+                    writeln!(
+                        w,
+                        "{:<44}  {:<4$}{:<5$}{}",
+                        account.address,
+                        account.account.token_amount.real_number_string_trimmed(),
+                        maybe_aux,
+                        maybe_frozen,
+                        self.max_len_balance,
+                        self.aux_len,
+                    )?;
+                } else {
+                    writeln!(
+                        w,
+                        "{:<44}  {:<44}  {:<5$}{:<6$}{}",
+                        account.account.mint,
+                        account.address,
+                        account.account.token_amount.real_number_string_trimmed(),
+                        maybe_aux,
+                        maybe_frozen,
+                        self.max_len_balance,
+                        self.aux_len,
+                    )?;
+                }
+            }
+        }
+        for unsupported_account in &self.unsupported_accounts {
+            writeln!(
+                w,
+                "{:<44}  {}",
+                unsupported_account.address, unsupported_account.err
+            )?;
+        }
+        if gc_alert {
+            writeln!(w)?;
+            writeln!(w, "* Please run `spl-token gc` to clean up Aux accounts")?;
+        }
+        Ok(())
+    }
+}
+
+impl fmt::Display for CliTokenAccounts {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut gc_alert = false;
+        if self.token_is_some {
+            writeln!(f, "{:<1$}", "Balance", self.max_len_balance)?;
+            writeln!(f, "-------------")?;
+        } else {
+            writeln!(
+                f,
+                "{:<44}  {:<2$}",
+                "Token", "Balance", self.max_len_balance
+            )?;
+            writeln!(
+                f,
+                "---------------------------------------------------------------"
+            )?;
+        }
+        for accounts_list in self.accounts.iter() {
+            let mut aux_counter = 1;
+            for account in accounts_list {
+                let maybe_aux = if !account.is_associated {
+                    gc_alert = true;
+                    let message = format!("  (Aux-{}*)", aux_counter);
+                    aux_counter += 1;
+                    message
+                } else {
+                    "".to_string()
+                };
+                let maybe_frozen = if let UiAccountState::Frozen = account.account.state {
+                    format!(" {}  Frozen", WARNING)
+                } else {
+                    "".to_string()
+                };
+                if self.token_is_some {
+                    writeln!(
+                        f,
+                        "{:<3$}{:<4$}{}",
+                        account.account.token_amount.real_number_string_trimmed(),
+                        maybe_aux,
+                        maybe_frozen,
+                        self.max_len_balance,
+                        self.aux_len,
+                    )?;
+                } else {
+                    writeln!(
+                        f,
+                        "{:<44}  {:<4$}{:<5$}{}",
+                        account.account.mint,
+                        account.account.token_amount.real_number_string_trimmed(),
+                        maybe_aux,
+                        maybe_frozen,
+                        self.max_len_balance,
+                        self.aux_len,
+                    )?;
+                }
+            }
+        }
+        for unsupported_account in &self.unsupported_accounts {
+            writeln!(
+                f,
+                "{:<44}  {}",
+                unsupported_account.address, unsupported_account.err
+            )?;
+        }
+        if gc_alert {
+            writeln!(f)?;
+            writeln!(f, "* Please run `spl-token gc` to clean up Aux accounts")?;
+        }
+        Ok(())
+    }
+}
+
+fn flattened<S: Serializer>(
+    vec: &[Vec<CliTokenAccount>],
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    let flattened: Vec<_> = vec.iter().flatten().collect();
+    flattened.serialize(serializer)
 }

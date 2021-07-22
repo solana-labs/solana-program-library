@@ -2,7 +2,6 @@ use clap::{
     crate_description, crate_name, crate_version, value_t, value_t_or_exit, App, AppSettings, Arg,
     ArgMatches, SubCommand,
 };
-use console::Emoji;
 use solana_account_decoder::{
     parse_token::{TokenAccountType, UiAccountState},
     UiAccountData,
@@ -53,8 +52,6 @@ use output::*;
 
 mod sort;
 use sort::sort_and_parse_token_accounts;
-
-static WARNING: Emoji = Emoji("⚠️", "!");
 
 pub const OWNER_ADDRESS_ARG: ArgConstant<'static> = ArgConstant {
     name: "owner",
@@ -1067,97 +1064,21 @@ fn command_accounts(config: &Config, token: Option<Pubkey>, owner: Pubkey) -> Co
     let (mint_accounts, unsupported_accounts, max_len_balance, includes_aux) =
         sort_and_parse_token_accounts(&owner, accounts);
     let aux_len = if includes_aux { 10 } else { 0 };
-    let mut gc_alert = false;
 
-    if config.verbose && config.output_format == OutputFormat::DisplayVerbose {
-        if token.is_some() {
-            println!("{:<44}  {:<2$}", "Account", "Balance", max_len_balance);
-            println!("-------------------------------------------------------------");
-        } else {
-            println!(
-                "{:<44}  {:<44}  {:<3$}",
-                "Token", "Account", "Balance", max_len_balance
-            );
-            println!("----------------------------------------------------------------------------------------------------------");
-        }
-    } else if token.is_some() {
-        println!("{:<1$}", "Balance", max_len_balance);
-        println!("-------------");
-    } else {
-        println!("{:<44}  {:<2$}", "Token", "Balance", max_len_balance);
-        println!("---------------------------------------------------------------");
-    }
-    for (_mint, accounts_list) in mint_accounts.iter() {
-        let mut aux_counter = 1;
-        for account in accounts_list {
-            let maybe_aux = if !account.is_associated {
-                gc_alert = true;
-                let message = format!("  (Aux-{}*)", aux_counter);
-                aux_counter += 1;
-                message
-            } else {
-                "".to_string()
-            };
-            let maybe_frozen = if let UiAccountState::Frozen = account.account.state {
-                format!(" {}  Frozen", WARNING)
-            } else {
-                "".to_string()
-            };
-            if config.verbose && config.output_format == OutputFormat::DisplayVerbose {
-                if token.is_some() {
-                    println!(
-                        "{:<44}  {:<4$}{:<5$}{}",
-                        account.address,
-                        account.account.token_amount.real_number_string_trimmed(),
-                        maybe_aux,
-                        maybe_frozen,
-                        max_len_balance,
-                        aux_len,
-                    )
-                } else {
-                    println!(
-                        "{:<44}  {:<44}  {:<5$}{:<6$}{}",
-                        account.account.mint,
-                        account.address,
-                        account.account.token_amount.real_number_string_trimmed(),
-                        maybe_aux,
-                        maybe_frozen,
-                        max_len_balance,
-                        aux_len,
-                    )
-                }
-            } else if token.is_some() {
-                println!(
-                    "{:<3$}{:<4$}{}",
-                    account.account.token_amount.real_number_string_trimmed(),
-                    maybe_aux,
-                    maybe_frozen,
-                    max_len_balance,
-                    aux_len,
-                )
-            } else {
-                println!(
-                    "{:<44}  {:<4$}{:<5$}{}",
-                    account.account.mint,
-                    account.account.token_amount.real_number_string_trimmed(),
-                    maybe_aux,
-                    maybe_frozen,
-                    max_len_balance,
-                    aux_len,
-                )
-            }
-        }
-    }
-    for unsupported_account in unsupported_accounts {
-        println!(
-            "{:<44}  {}",
-            unsupported_account.address, unsupported_account.err
-        );
-    }
-    if gc_alert {
-        println!();
-        println!("* Please run `spl-token gc` to clean up Aux accounts");
-    }
+    let cli_token_accounts = CliTokenAccounts {
+        accounts: mint_accounts
+            .into_iter()
+            .map(|(_mint, accounts_list)| accounts_list)
+            .collect(),
+        unsupported_accounts,
+        max_len_balance,
+        aux_len,
+        token_is_some: token.is_some(),
+    };
+    println!(
+        "{}",
+        config.output_format.formatted_string(&cli_token_accounts)
+    );
     Ok(None)
 }
 
