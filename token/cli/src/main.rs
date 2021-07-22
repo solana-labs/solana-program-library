@@ -19,7 +19,7 @@ use solana_clap_utils::{
     offline::{self, *},
     ArgConstant,
 };
-use solana_cli_output::{display::println_name_value, return_signers, OutputFormat};
+use solana_cli_output::{display::println_name_value, return_signers, CliSignature, OutputFormat};
 use solana_client::{
     blockhash_query::BlockhashQuery, rpc_client::RpcClient, rpc_request::TokenAccountsFilter,
 };
@@ -47,6 +47,9 @@ use std::{collections::HashMap, process::exit, str::FromStr, sync::Arc};
 
 mod config;
 use config::Config;
+
+mod output;
+use output::*;
 
 mod sort;
 use sort::sort_and_parse_token_accounts;
@@ -269,7 +272,7 @@ fn command_create_token(
     enable_freeze: bool,
     memo: Option<String>,
 ) -> CommandResult {
-    println!("Creating token {}", token);
+    println_display(config, format!("Creating token {}", token));
 
     let minimum_balance_for_rent_exemption = if !config.sign_only {
         config
@@ -320,7 +323,7 @@ fn command_create_account(
     };
 
     let (account, system_account_ok, instructions) = if let Some(account) = maybe_account {
-        println!("Creating account {}", account);
+        println_display(config, format!("Creating account {}", account));
         (
             account,
             false,
@@ -337,7 +340,7 @@ fn command_create_account(
         )
     } else {
         let account = get_associated_token_address(&owner, &token);
-        println!("Creating account {}", account);
+        println_display(config, format!("Creating account {}", account));
         (
             account,
             true,
@@ -373,11 +376,14 @@ fn command_create_multisig(
     minimum_signers: u8,
     multisig_members: Vec<Pubkey>,
 ) -> CommandResult {
-    println!(
-        "Creating {}/{} multisig {}",
-        minimum_signers,
-        multisig_members.len(),
-        multisig
+    println_display(
+        config,
+        format!(
+            "Creating {}/{} multisig {}",
+            minimum_signers,
+            multisig_members.len(),
+            multisig
+        ),
     );
 
     let minimum_balance_for_rent_exemption = if !config.sign_only {
@@ -474,17 +480,20 @@ fn command_authorize(
     } else {
         COption::None
     };
-    println!(
-        "Updating {}\n  Current {}: {}\n  New {}: {}",
-        account,
-        auth_str,
-        previous_authority
-            .map(|pubkey| pubkey.to_string())
-            .unwrap_or_else(|| "disabled".to_string()),
-        auth_str,
-        new_authority
-            .map(|pubkey| pubkey.to_string())
-            .unwrap_or_else(|| "disabled".to_string())
+    println_display(
+        config,
+        format!(
+            "Updating {}\n  Current {}: {}\n  New {}: {}",
+            account,
+            auth_str,
+            previous_authority
+                .map(|pubkey| pubkey.to_string())
+                .unwrap_or_else(|| "disabled".to_string()),
+            auth_str,
+            new_authority
+                .map(|pubkey| pubkey.to_string())
+                .unwrap_or_else(|| "disabled".to_string())
+        ),
     );
 
     let instructions = vec![set_authority(
@@ -575,11 +584,14 @@ fn command_transfer(
         })?;
 
         let transfer_balance = maybe_transfer_balance.unwrap_or(sender_balance);
-        println!(
-            "Transfer {} tokens\n  Sender: {}\n  Recipient: {}",
-            spl_token::amount_to_ui_amount(transfer_balance, decimals),
-            sender,
-            recipient
+        println_display(
+            config,
+            format!(
+                "Transfer {} tokens\n  Sender: {}\n  Recipient: {}",
+                spl_token::amount_to_ui_amount(transfer_balance, decimals),
+                sender,
+                recipient
+            ),
         );
 
         if transfer_balance > sender_balance {
@@ -620,9 +632,12 @@ fn command_transfer(
 
     if !recipient_is_token_account {
         recipient_token_account = get_associated_token_address(&recipient, &mint_pubkey);
-        println!(
-            "  Recipient associated token account: {}",
-            recipient_token_account
+        println_display(
+            config,
+            format!(
+                "  Recipient associated token account: {}",
+                recipient_token_account
+            ),
         );
 
         let needs_funding = if !config.sign_only {
@@ -656,10 +671,13 @@ fn command_transfer(
                     minimum_balance_for_rent_exemption += config
                         .rpc_client
                         .get_minimum_balance_for_rent_exemption(Account::LEN)?;
-                    println!(
-                        "  Funding recipient: {} ({} SOL)",
-                        recipient_token_account,
-                        lamports_to_sol(minimum_balance_for_rent_exemption)
+                    println_display(
+                        config,
+                        format!(
+                            "  Funding recipient: {} ({} SOL)",
+                            recipient_token_account,
+                            lamports_to_sol(minimum_balance_for_rent_exemption)
+                        ),
                     );
                 }
                 instructions.push(create_associated_token_account(
@@ -701,7 +719,10 @@ fn command_burn(
     mint_address: Option<Pubkey>,
     mint_decimals: Option<u8>,
 ) -> CommandResult {
-    println!("Burn {} tokens\n  Source: {}", ui_amount, source);
+    println_display(
+        config,
+        format!("Burn {} tokens\n  Source: {}", ui_amount, source),
+    );
 
     let (mint_pubkey, decimals) = resolve_mint_info(config, &source, mint_address, mint_decimals)?;
     let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
@@ -726,9 +747,12 @@ fn command_mint(
     mint_decimals: Option<u8>,
     mint_authority: Pubkey,
 ) -> CommandResult {
-    println!(
-        "Minting {} tokens\n  Token: {}\n  Recipient: {}",
-        ui_amount, token, recipient
+    println_display(
+        config,
+        format!(
+            "Minting {} tokens\n  Token: {}\n  Recipient: {}",
+            ui_amount, token, recipient
+        ),
     );
 
     let (_, decimals) = resolve_mint_info(config, &recipient, None, mint_decimals)?;
@@ -754,7 +778,10 @@ fn command_freeze(
 ) -> CommandResult {
     let (token, _) = resolve_mint_info(config, &account, mint_address, None)?;
 
-    println!("Freezing account: {}\n  Token: {}", account, token);
+    println_display(
+        config,
+        format!("Freezing account: {}\n  Token: {}", account, token),
+    );
 
     let instructions = vec![freeze_account(
         &spl_token::id(),
@@ -774,7 +801,10 @@ fn command_thaw(
 ) -> CommandResult {
     let (token, _) = resolve_mint_info(config, &account, mint_address, None)?;
 
-    println!("Freezing account: {}\n  Token: {}", account, token);
+    println_display(
+        config,
+        format!("Freezing account: {}\n  Token: {}", account, token),
+    );
 
     let instructions = vec![thaw_account(
         &spl_token::id(),
@@ -795,7 +825,10 @@ fn command_wrap(
     let lamports = sol_to_lamports(sol);
 
     let instructions = if let Some(wrapped_sol_account) = wrapped_sol_account {
-        println!("Wrapping {} SOL into {}", sol, wrapped_sol_account);
+        println_display(
+            config,
+            format!("Wrapping {} SOL into {}", sol, wrapped_sol_account),
+        );
         vec![
             system_instruction::create_account(
                 &wallet_address,
@@ -826,7 +859,7 @@ fn command_wrap(
             }
         }
 
-        println!("Wrapping {} SOL into {}", sol, account);
+        println_display(config, format!("Wrapping {} SOL into {}", sol, account));
         vec![
             system_instruction::transfer(&wallet_address, &account, lamports),
             create_associated_token_account(&config.fee_payer, &wallet_address, &native_mint::id()),
@@ -846,7 +879,7 @@ fn command_unwrap(
     let use_associated_account = address.is_none();
     let address = address
         .unwrap_or_else(|| get_associated_token_address(&wallet_address, &native_mint::id()));
-    println!("Unwrapping {}", address);
+    println_display(config, format!("Unwrapping {}", address));
     if !config.sign_only {
         let lamports = config.rpc_client.get_balance(&address)?;
         if lamports == 0 {
@@ -856,9 +889,12 @@ fn command_unwrap(
                 return Err(format!("No wrapped SOL in {}", address).into());
             }
         }
-        println!("  Amount: {} SOL", lamports_to_sol(lamports),);
+        println_display(
+            config,
+            format!("  Amount: {} SOL", lamports_to_sol(lamports)),
+        );
     }
-    println!("  Recipient: {}", &wallet_address);
+    println_display(config, format!("  Recipient: {}", &wallet_address));
 
     let instructions = vec![close_account(
         &spl_token::id(),
@@ -879,9 +915,12 @@ fn command_approve(
     mint_address: Option<Pubkey>,
     mint_decimals: Option<u8>,
 ) -> CommandResult {
-    println!(
-        "Approve {} tokens\n  Account: {}\n  Delegate: {}",
-        ui_amount, account, delegate
+    println_display(
+        config,
+        format!(
+            "Approve {} tokens\n  Account: {}\n  Delegate: {}",
+            ui_amount, account, delegate
+        ),
     );
 
     let (mint_pubkey, decimals) = resolve_mint_info(config, &account, mint_address, mint_decimals)?;
@@ -922,9 +961,12 @@ fn command_revoke(
     };
 
     if let Some(delegate) = delegate {
-        println!(
-            "Revoking approval\n  Account: {}\n  Delegate: {}",
-            account, delegate
+        println_display(
+            config,
+            format!(
+                "Revoking approval\n  Account: {}\n  Delegate: {}",
+                account, delegate
+            ),
         );
     } else {
         return Err(format!("No delegate on account {}", account).into());
@@ -1211,12 +1253,12 @@ fn command_multisig(config: &Config, address: Pubkey) -> CommandResult {
 }
 
 fn command_gc(config: &Config, owner: Pubkey) -> CommandResult {
-    println!("Fetching token accounts");
+    println_display(config, "Fetching token accounts".to_string());
     let accounts = config
         .rpc_client
         .get_token_accounts_by_owner(&owner, TokenAccountsFilter::ProgramId(spl_token::id()))?;
     if accounts.is_empty() {
-        println!("Nothing to do");
+        println_display(config, "Nothing to do".to_string());
         return Ok(None);
     }
 
@@ -1276,7 +1318,7 @@ fn command_gc(config: &Config, owner: Pubkey) -> CommandResult {
     let mut lamports_needed = 0;
 
     for (token, accounts) in accounts_by_token.into_iter() {
-        println!("Processing token: {}", token);
+        println_display(config, format!("Processing token: {}", token));
         let associated_token_account = get_associated_token_address(&owner, &token);
         let total_balance: u64 = accounts.values().map(|account| account.0).sum();
 
@@ -2617,7 +2659,7 @@ fn main() {
 
                 if config.sign_only {
                     transaction.try_partial_sign(&signers, recent_blockhash)?;
-                    println!("{}", return_signers(&transaction, &OutputFormat::Display)?);
+                    println!("{}", return_signers(&transaction, &config.output_format)?);
                 } else {
                     transaction.try_sign(&signers, recent_blockhash)?;
                     let signature = if no_wait {
@@ -2627,7 +2669,10 @@ fn main() {
                             .rpc_client
                             .send_and_confirm_transaction_with_spinner(&transaction)?
                     };
-                    println!("Signature: {}", signature);
+                    let signature = CliSignature {
+                        signature: signature.to_string(),
+                    };
+                    println!("{}", config.output_format.formatted_string(&signature));
                 }
             }
         }
