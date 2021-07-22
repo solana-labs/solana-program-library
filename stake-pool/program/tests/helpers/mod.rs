@@ -738,6 +738,58 @@ impl StakePoolAccounts {
     }
 
     #[allow(clippy::too_many_arguments)]
+    pub async fn deposit_sol(
+        &self,
+        banks_client: &mut BanksClient,
+        payer: &Keypair,
+        recent_blockhash: &Hash,
+        pool_account: &Pubkey,
+        amount: u64,
+    ) -> Option<TransportError> {
+        let mut signers = vec![payer];
+        let instructions = if let Some(deposit_authority) = self.deposit_authority_keypair.as_ref()
+        {
+            signers.push(deposit_authority);
+            instruction::deposit_sol_with_authority(
+                &id(),
+                &self.stake_pool.pubkey(),
+                &self.deposit_authority,
+                &self.withdraw_authority,
+                &self.reserve_stake.pubkey(),
+                &payer.pubkey(),
+                pool_account,
+                &self.pool_fee_account.pubkey(),
+                &self.pool_fee_account.pubkey(),
+                &self.pool_mint.pubkey(),
+                &spl_token::id(),
+                amount,
+                true,
+            )
+        } else {
+            instruction::deposit_sol(
+                &id(),
+                &self.stake_pool.pubkey(),
+                &self.withdraw_authority,
+                &self.reserve_stake.pubkey(),
+                &payer.pubkey(),
+                pool_account,
+                &self.pool_fee_account.pubkey(),
+                &self.pool_fee_account.pubkey(),
+                &self.pool_mint.pubkey(),
+                &spl_token::id(),
+                amount,
+            )
+        };
+        let transaction = Transaction::new_signed_with_payer(
+            &instructions,
+            Some(&payer.pubkey()),
+            &signers,
+            *recent_blockhash,
+        );
+        banks_client.process_transaction(transaction).await.err()
+    }
+
+    #[allow(clippy::too_many_arguments)]
     pub async fn withdraw_stake(
         &self,
         banks_client: &mut BanksClient,
