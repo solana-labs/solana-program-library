@@ -169,9 +169,7 @@ async fn success() {
     let stake_pool =
         try_from_slice_unchecked::<state::StakePool>(&stake_pool.data.as_slice()).unwrap();
     // first and only deposit, lamports:pool 1:1
-    let tokens_withdrawal_fee = stake_pool
-        .calc_pool_tokens_withdrawal_fee(tokens_to_withdraw)
-        .unwrap();
+    let tokens_withdrawal_fee = stake_pool_accounts.calculate_withdrawal_fee(tokens_to_withdraw);
     let tokens_burnt = tokens_to_withdraw - tokens_withdrawal_fee;
     assert_eq!(
         stake_pool.total_stake_lamports,
@@ -993,18 +991,9 @@ async fn success_with_reserve() {
         .await;
     assert!(error.is_none());
 
-    // calculate amount after fees
-    let stake_pool = get_account(
-        &mut context.banks_client,
-        &stake_pool_accounts.stake_pool.pubkey(),
-    )
-    .await;
-    let stake_pool =
-        try_from_slice_unchecked::<state::StakePool>(&stake_pool.data.as_slice()).unwrap();
     // first and only deposit, lamports:pool 1:1
-    let tokens_withdrawal_fee = stake_pool
-        .calc_pool_tokens_withdrawal_fee(deposit_info.pool_tokens)
-        .unwrap();
+    let tokens_withdrawal_fee =
+        stake_pool_accounts.calculate_withdrawal_fee(deposit_info.pool_tokens);
     assert_eq!(
         deposit_info.stake_lamports + stake_rent,
         deposit_info.pool_tokens,
