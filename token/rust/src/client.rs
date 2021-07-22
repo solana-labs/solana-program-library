@@ -6,6 +6,8 @@ use solana_program_test::{
 use solana_sdk::{hash::Hash, transaction::Transaction};
 use std::{fmt, future::Future, pin::Pin, sync::Arc};
 
+type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
+
 pub type TokenClientError = Box<dyn std::error::Error>;
 pub type TokenClientResult<T> = Result<T, TokenClientError>;
 
@@ -45,7 +47,7 @@ impl TokenBanksClient {
 
     async fn run_in_lock<F, O>(&self, f: F) -> O
     where
-        for<'a> F: Fn(&'a mut BanksClient) -> Pin<Box<dyn Future<Output = O> + Send + 'a>>,
+        for<'a> F: Fn(&'a mut BanksClient) -> BoxFuture<'a, O>,
     {
         match (self.client.as_ref(), self.context.as_ref()) {
             (None, None) => unreachable!(),
