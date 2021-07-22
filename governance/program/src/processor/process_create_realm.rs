@@ -84,6 +84,7 @@ pub fn process_create_realm(
         council_mint: council_token_mint_address,
         name: name.clone(),
         reserved: [0; 8],
+        authority: None,
     };
 
     create_and_serialize_account_signed::<Realm>(

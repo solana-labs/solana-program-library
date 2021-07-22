@@ -185,6 +185,7 @@ impl GovernanceProgramTest {
             council_mint: Some(council_token_mint_keypair.pubkey()),
             name,
             reserved: [0; 8],
+            authority: None,
         };
 
         RealmCookie {
@@ -225,6 +226,7 @@ impl GovernanceProgramTest {
             council_mint: Some(council_mint),
             name,
             reserved: [0; 8],
+            authority: None,
         };
 
         let community_token_holding_address = get_governing_token_holding_address(
