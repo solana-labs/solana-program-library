@@ -1098,7 +1098,7 @@ fn command_accounts(config: &Config, token: Option<Pubkey>, owner: Pubkey) -> Co
             } else {
                 "".to_string()
             };
-            let maybe_frozen = if let UiAccountState::Frozen = account.ui_token_account.state {
+            let maybe_frozen = if let UiAccountState::Frozen = account.account.state {
                 format!(" {}  Frozen", WARNING)
             } else {
                 "".to_string()
@@ -1108,10 +1108,7 @@ fn command_accounts(config: &Config, token: Option<Pubkey>, owner: Pubkey) -> Co
                     println!(
                         "{:<44}  {:<4$}{:<5$}{}",
                         account.address,
-                        account
-                            .ui_token_account
-                            .token_amount
-                            .real_number_string_trimmed(),
+                        account.account.token_amount.real_number_string_trimmed(),
                         maybe_aux,
                         maybe_frozen,
                         max_len_balance,
@@ -1120,12 +1117,9 @@ fn command_accounts(config: &Config, token: Option<Pubkey>, owner: Pubkey) -> Co
                 } else {
                     println!(
                         "{:<44}  {:<44}  {:<5$}{:<6$}{}",
-                        account.ui_token_account.mint,
+                        account.account.mint,
                         account.address,
-                        account
-                            .ui_token_account
-                            .token_amount
-                            .real_number_string_trimmed(),
+                        account.account.token_amount.real_number_string_trimmed(),
                         maybe_aux,
                         maybe_frozen,
                         max_len_balance,
@@ -1135,10 +1129,7 @@ fn command_accounts(config: &Config, token: Option<Pubkey>, owner: Pubkey) -> Co
             } else if token.is_some() {
                 println!(
                     "{:<3$}{:<4$}{}",
-                    account
-                        .ui_token_account
-                        .token_amount
-                        .real_number_string_trimmed(),
+                    account.account.token_amount.real_number_string_trimmed(),
                     maybe_aux,
                     maybe_frozen,
                     max_len_balance,
@@ -1147,11 +1138,8 @@ fn command_accounts(config: &Config, token: Option<Pubkey>, owner: Pubkey) -> Co
             } else {
                 println!(
                     "{:<44}  {:<4$}{:<5$}{}",
-                    account.ui_token_account.mint,
-                    account
-                        .ui_token_account
-                        .token_amount
-                        .real_number_string_trimmed(),
+                    account.account.mint,
+                    account.account.token_amount.real_number_string_trimmed(),
                     maybe_aux,
                     maybe_frozen,
                     max_len_balance,
