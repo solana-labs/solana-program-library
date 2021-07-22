@@ -137,7 +137,7 @@ impl<'a> Token<'a> {
         account: &Pubkey,
         owner: &Pubkey,
         signer_pubkeys: &[&Pubkey],
-        amount: u64
+        amount: u64,
     ) -> TokenResult<()> {
         Self::process_ixs(
             &self.client,
@@ -150,7 +150,7 @@ impl<'a> Token<'a> {
                 signer_pubkeys,
                 amount,
             )?],
-            &([] as [&Keypair; 0])
+            &([] as [&Keypair; 0]),
         )
         .await
     }
@@ -175,7 +175,7 @@ impl<'a> Token<'a> {
                 signer_pubkeys,
                 amount,
             )?],
-            &([] as [&Keypair; 0])
+            &([] as [&Keypair; 0]),
         )
         .await
     }

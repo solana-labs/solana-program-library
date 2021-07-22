@@ -1,19 +1,20 @@
 use async_trait::async_trait;
 use solana_client::rpc_client::RpcClient;
-use solana_program_test::{
-    tokio::sync::Mutex, BanksClient, ProgramTestContext,
-};
+use solana_program_test::{tokio::sync::Mutex, BanksClient, ProgramTestContext};
 use solana_sdk::{hash::Hash, transaction::Transaction};
 use std::{fmt, future::Future, pin::Pin, sync::Arc};
 
 type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
-pub type TokenClientError = Box<dyn std::error::Error>;
+pub type TokenClientError = Box<dyn std::error::Error + Send + Sync>;
 pub type TokenClientResult<T> = Result<T, TokenClientError>;
 
 #[async_trait]
 pub trait TokenClient {
-    async fn get_minimum_balance_for_rent_exemption(&self, data_len: usize) -> TokenClientResult<u64>;
+    async fn get_minimum_balance_for_rent_exemption(
+        &self,
+        data_len: usize,
+    ) -> TokenClientResult<u64>;
     async fn get_recent_blockhash(&self) -> TokenClientResult<Hash>;
 
     async fn send_transaction(&self, transaction: &Transaction) -> TokenClientResult<()>;
@@ -66,7 +67,10 @@ impl TokenBanksClient {
 
 #[async_trait]
 impl TokenClient for TokenBanksClient {
-    async fn get_minimum_balance_for_rent_exemption(&self, data_len: usize) -> TokenClientResult<u64> {
+    async fn get_minimum_balance_for_rent_exemption(
+        &self,
+        data_len: usize,
+    ) -> TokenClientResult<u64> {
         self.run_in_lock(|client| {
             Box::pin(async move {
                 let rent = client.get_rent().await?;
@@ -115,7 +119,10 @@ impl<'a> TokenRpcClient<'a> {
 
 #[async_trait]
 impl TokenClient for TokenRpcClient<'_> {
-    async fn get_minimum_balance_for_rent_exemption(&self, data_len: usize) -> TokenClientResult<u64> {
+    async fn get_minimum_balance_for_rent_exemption(
+        &self,
+        data_len: usize,
+    ) -> TokenClientResult<u64> {
         self.client
             .get_minimum_balance_for_rent_exemption(data_len)
             .map_err(Into::into)
