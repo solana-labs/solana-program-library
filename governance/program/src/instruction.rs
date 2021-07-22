@@ -235,9 +235,10 @@ pub enum GovernanceInstruction {
     /// When the last Signatory signs the Proposal state moves to Voting state
     ///
     ///   0. `[writable]` Proposal account
-    ///   1. `[writable]` Signatory Record account
-    ///   2. `[signer]` Signatory account
-    ///   3. `[]` Clock sysvar
+    ///   1. `[]` Governing Token Mint
+    ///   2. `[writable]` Signatory Record account
+    ///   3. `[signer]` Signatory account
+    ///   4. `[]` Clock sysvar
     SignOffProposal,
 
     ///  Uses your voter weight (deposited Community or Council tokens) to cast a vote on a Proposal
@@ -785,12 +786,14 @@ pub fn sign_off_proposal(
     program_id: &Pubkey,
     // Accounts
     proposal: &Pubkey,
+    governing_token_mint: &Pubkey,
     signatory: &Pubkey,
 ) -> Instruction {
     let signatory_record_address = get_signatory_record_address(program_id, proposal, signatory);
 
     let accounts = vec![
         AccountMeta::new(*proposal, false),
+        AccountMeta::new_readonly(*governing_token_mint, false),
         AccountMeta::new(signatory_record_address, false),
         AccountMeta::new_readonly(*signatory, true),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
