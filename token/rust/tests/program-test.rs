@@ -3,7 +3,10 @@ use solana_program_test::{
     ProgramTest,
 };
 use solana_sdk::signer::{keypair::Keypair, Signer};
-use spl_token_client::{Token, TokenBanksClient, TokenClient};
+use spl_token_client::{
+    client::{TokenBanksClient, TokenBanksClientProcessTransaction, TokenClient},
+    token::Token,
+};
 use std::sync::Arc;
 
 #[tokio::test]
@@ -15,8 +18,10 @@ async fn create_associated_token_account() {
     let payer =
         Keypair::from_bytes(&ctx.lock().await.payer.to_bytes()).expect("failed to copy keypair");
 
-    let client = TokenBanksClient::new_from_context(Arc::clone(&ctx));
-    let client: Arc<Box<dyn TokenClient>> = Arc::new(Box::new(client));
+    let client =
+        TokenBanksClient::new_from_context(Arc::clone(&ctx), TokenBanksClientProcessTransaction);
+    let client: Arc<Box<dyn TokenClient<TokenBanksClientProcessTransaction>>> =
+        Arc::new(Box::new(client));
 
     let mint_account = Keypair::new();
     let mint_authority = Keypair::new().pubkey();

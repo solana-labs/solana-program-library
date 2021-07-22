@@ -1,4 +1,4 @@
-use super::client::{TokenClient, TokenClientError};
+use super::client::{SendTransaction, TokenClient, TokenClientError};
 use solana_sdk::{
     instruction::Instruction,
     program_error::ProgramError,
@@ -23,13 +23,13 @@ pub enum TokenError {
 
 pub type TokenResult<T> = Result<T, TokenError>;
 
-pub struct Token<'a> {
-    client: Arc<Box<dyn TokenClient>>,
+pub struct Token<'a, ST> {
+    client: Arc<Box<dyn TokenClient<ST>>>,
     pubkey: Pubkey,
     payer: &'a Keypair,
 }
 
-impl fmt::Debug for Token<'_> {
+impl<ST> fmt::Debug for Token<'_, ST> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Token")
             .field("pubkey", &self.pubkey)
@@ -38,13 +38,16 @@ impl fmt::Debug for Token<'_> {
     }
 }
 
-impl<'a> Token<'a> {
+impl<'a, ST> Token<'a, ST>
+where
+    ST: SendTransaction,
+{
     async fn process_ixs<T: Signers>(
-        client: &Arc<Box<dyn TokenClient>>,
+        client: &Arc<Box<dyn TokenClient<ST>>>,
         payer: &Keypair,
         instructions: &[Instruction],
         signing_keypairs: &T,
-    ) -> TokenResult<()> {
+    ) -> TokenResult<ST::Output> {
         let recent_blockhash = client
             .get_recent_blockhash()
             .await
@@ -57,7 +60,7 @@ impl<'a> Token<'a> {
             .map_err(|error| TokenError::Client(error.into()))?;
 
         client
-            .send_transaction(&tx)
+            .send_transaction(tx)
             .await
             .map_err(TokenError::Client)
     }
@@ -69,13 +72,13 @@ impl<'a> Token<'a> {
 
     /// Create and initialize a token.
     pub async fn create_mint(
-        client: Arc<Box<dyn TokenClient>>,
+        client: Arc<Box<dyn TokenClient<ST>>>,
         payer: &'a Keypair,
         mint_account: &'a Keypair,
         mint_authority: &'a Pubkey,
         freeze_authority: Option<&'a Pubkey>,
         decimals: u8,
-    ) -> TokenResult<Token<'a>> {
+    ) -> TokenResult<Token<'a, ST>> {
         Self::process_ixs(
             &client,
             payer,
@@ -115,7 +118,7 @@ impl<'a> Token<'a> {
     }
 
     /// Create and initialize the associated account.
-    pub async fn create_associated_token_account(&self, owner: &Pubkey) -> TokenResult<()> {
+    pub async fn create_associated_token_account(&self, owner: &Pubkey) -> TokenResult<Pubkey> {
         Self::process_ixs(
             &self.client,
             self.payer,
@@ -127,6 +130,7 @@ impl<'a> Token<'a> {
             &[self.payer],
         )
         .await
+        .map(|_| self.get_associated_token_address(owner))
         .map_err(Into::into)
     }
 
@@ -153,6 +157,7 @@ impl<'a> Token<'a> {
             &([] as [&Keypair; 0]),
         )
         .await
+        .map(|_| ())
     }
 
     /// Transfer tokens to another account
@@ -163,7 +168,7 @@ impl<'a> Token<'a> {
         authority: &Pubkey,
         signer_pubkeys: &[&Pubkey],
         amount: u64,
-    ) -> TokenResult<()> {
+    ) -> TokenResult<ST::Output> {
         Self::process_ixs(
             &self.client,
             self.payer,

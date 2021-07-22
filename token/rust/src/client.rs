@@ -1,50 +1,127 @@
 use async_trait::async_trait;
 use solana_client::rpc_client::RpcClient;
 use solana_program_test::{tokio::sync::Mutex, BanksClient, ProgramTestContext};
-use solana_sdk::{hash::Hash, transaction::Transaction};
+use solana_sdk::{hash::Hash, signature::Signature, transaction::Transaction};
 use std::{fmt, future::Future, pin::Pin, sync::Arc};
 
 type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 
+/// Basic trait for sending transactions to validator.
+pub trait SendTransaction {
+    type Output;
+}
+
+/// Extends basic `SendTransaction` trait with function `send` where client is `&mut BanksClient`.
+/// Required for `TokenBanksClient`.
+pub trait SendTransactionBanksClient: SendTransaction {
+    fn send<'a>(
+        &self,
+        client: &'a mut BanksClient,
+        transaction: Transaction,
+    ) -> BoxFuture<'a, TokenClientResult<Self::Output>>;
+}
+
+/// Send transaction to validator using `BanksClient::process_transaction`.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct TokenBanksClientProcessTransaction;
+
+impl SendTransaction for TokenBanksClientProcessTransaction {
+    type Output = ();
+}
+
+impl SendTransactionBanksClient for TokenBanksClientProcessTransaction {
+    fn send<'a>(
+        &self,
+        client: &'a mut BanksClient,
+        transaction: Transaction,
+    ) -> BoxFuture<'a, TokenClientResult<Self::Output>> {
+        Box::pin(async move {
+            client
+                .process_transaction(transaction)
+                .await
+                .map_err(Into::into)
+        })
+    }
+}
+
+/// Extends basic `SendTransaction` trait with function `send` where client is `&RpcClient`.
+/// Required for `TokenRpcClient`.
+pub trait SendTransactionRpc: SendTransaction {
+    fn send<'a>(
+        &self,
+        client: &'a RpcClient,
+        transaction: Transaction,
+    ) -> BoxFuture<'a, TokenClientResult<Self::Output>>;
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct TokenRpcClientSendTransaction;
+
+impl SendTransaction for TokenRpcClientSendTransaction {
+    type Output = Signature;
+}
+
+impl SendTransactionRpc for TokenRpcClientSendTransaction {
+    fn send<'a>(
+        &self,
+        client: &'a RpcClient,
+        transaction: Transaction,
+    ) -> BoxFuture<'a, TokenClientResult<Self::Output>> {
+        Box::pin(async move { client.send_transaction(&transaction).map_err(Into::into) })
+    }
+}
+
+//
 pub type TokenClientError = Box<dyn std::error::Error + Send + Sync>;
 pub type TokenClientResult<T> = Result<T, TokenClientError>;
 
+/// Token client interface.
 #[async_trait]
-pub trait TokenClient {
+pub trait TokenClient<ST>
+where
+    ST: SendTransaction,
+{
     async fn get_minimum_balance_for_rent_exemption(
         &self,
         data_len: usize,
     ) -> TokenClientResult<u64>;
     async fn get_recent_blockhash(&self) -> TokenClientResult<Hash>;
 
-    async fn send_transaction(&self, transaction: &Transaction) -> TokenClientResult<()>;
+    async fn send_transaction(&self, transaction: Transaction) -> TokenClientResult<ST::Output>;
 }
 
-pub struct TokenBanksClient {
+/// Token client for `BanksClient` from crate `solana-program-test`.
+pub struct TokenBanksClient<ST> {
     client: Option<Arc<Mutex<BanksClient>>>,
     context: Option<Arc<Mutex<ProgramTestContext>>>,
+    send: ST,
 }
 
-impl fmt::Debug for TokenBanksClient {
+impl<ST> fmt::Debug for TokenBanksClient<ST> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("TokenBanksClient").finish()
     }
 }
 
-impl TokenBanksClient {
-    fn new(
+impl<ST> TokenBanksClient<ST> {
+    pub fn new(
         client: Option<Arc<Mutex<BanksClient>>>,
         context: Option<Arc<Mutex<ProgramTestContext>>>,
+        send: ST,
     ) -> Self {
-        Self { client, context }
+        Self {
+            client,
+            context,
+            send,
+        }
     }
 
-    pub fn new_from_client(client: Arc<Mutex<BanksClient>>) -> Self {
-        Self::new(Some(client), None)
+    pub fn new_from_client(client: Arc<Mutex<BanksClient>>, send: ST) -> Self {
+        Self::new(Some(client), None, send)
     }
 
-    pub fn new_from_context(context: Arc<Mutex<ProgramTestContext>>) -> Self {
-        Self::new(None, Some(context))
+    pub fn new_from_context(context: Arc<Mutex<ProgramTestContext>>, send: ST) -> Self {
+        Self::new(None, Some(context), send)
     }
 
     async fn run_in_lock<F, O>(&self, f: F) -> O
@@ -67,7 +144,10 @@ impl TokenBanksClient {
 }
 
 #[async_trait]
-impl TokenClient for TokenBanksClient {
+impl<ST> TokenClient<ST> for TokenBanksClient<ST>
+where
+    ST: SendTransactionBanksClient + Send + Sync,
+{
     async fn get_minimum_balance_for_rent_exemption(
         &self,
         data_len: usize,
@@ -88,38 +168,38 @@ impl TokenClient for TokenBanksClient {
         .await
     }
 
-    async fn send_transaction(&self, transaction: &Transaction) -> TokenClientResult<()> {
+    async fn send_transaction(&self, transaction: Transaction) -> TokenClientResult<ST::Output> {
         self.run_in_lock(|client| {
-            let transaction = transaction.clone();
-            Box::pin(async move {
-                client
-                    .process_transaction(transaction)
-                    .await
-                    .map_err(Into::into)
-            })
+            let transaction = transaction.clone(); // How to remove extra clone?
+            self.send.send(client, transaction)
         })
         .await
     }
 }
 
-pub struct TokenRpcClient<'a> {
+/// Token client for `RpcClient` from crate `solana-client`.
+pub struct TokenRpcClient<'a, ST> {
     client: &'a RpcClient,
+    send: ST,
 }
 
-impl fmt::Debug for TokenRpcClient<'_> {
+impl<ST> fmt::Debug for TokenRpcClient<'_, ST> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("TokenRpcClient").finish()
     }
 }
 
-impl<'a> TokenRpcClient<'a> {
-    pub fn new(client: &'a RpcClient) -> Self {
-        Self { client }
+impl<'a, ST> TokenRpcClient<'a, ST> {
+    pub fn new(client: &'a RpcClient, send: ST) -> Self {
+        Self { client, send }
     }
 }
 
 #[async_trait]
-impl TokenClient for TokenRpcClient<'_> {
+impl<ST> TokenClient<ST> for TokenRpcClient<'_, ST>
+where
+    ST: SendTransactionRpc + Send + Sync,
+{
     async fn get_minimum_balance_for_rent_exemption(
         &self,
         data_len: usize,
@@ -136,10 +216,7 @@ impl TokenClient for TokenRpcClient<'_> {
             .map_err(Into::into)
     }
 
-    async fn send_transaction(&self, transaction: &Transaction) -> TokenClientResult<()> {
-        self.client
-            .send_transaction(transaction)
-            .map(|_signature| ())
-            .map_err(Into::into)
+    async fn send_transaction(&self, transaction: Transaction) -> TokenClientResult<ST::Output> {
+        self.send.send(self.client, transaction).await
     }
 }
