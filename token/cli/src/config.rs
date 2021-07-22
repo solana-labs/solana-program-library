@@ -12,7 +12,6 @@ use std::{process::exit, sync::Arc};
 
 pub(crate) struct Config<'a> {
     pub(crate) rpc_client: RpcClient,
-    pub(crate) verbose: bool,
     pub(crate) output_format: OutputFormat,
     pub(crate) fee_payer: Pubkey,
     pub(crate) default_keypair_path: String,

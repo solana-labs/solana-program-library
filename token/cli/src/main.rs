@@ -2177,7 +2177,6 @@ fn main() {
 
         Config {
             rpc_client: RpcClient::new_with_commitment(json_rpc_url, CommitmentConfig::confirmed()),
-            verbose,
             output_format,
             fee_payer,
             default_keypair_path: cli_config.keypair_path,
