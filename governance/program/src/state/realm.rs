@@ -32,6 +32,7 @@ pub struct Realm {
     pub council_mint: Option<Pubkey>,
 
     /// Realm authority. The authority must sign transactions which update the realm (ex. adding governance, setting council)
+    /// The authority can be transferer to Realm Governance and hence make the Realm self governed through proposals
     /// Note: This field is not used yet. It's reserved for future versions
     pub authority: Option<Pubkey>,
 
