@@ -41,15 +41,16 @@ pub enum GovernanceInstruction {
     /// Creates Governance Realm account which aggregates governances for given Community Mint and optional Council Mint
     ///
     /// 0. `[writable]` Governance Realm account. PDA seeds:['governance',name]
-    /// 1. `[]` Community Token Mint
-    /// 2. `[writable]` Community Token Holding account. PDA seeds: ['governance',realm,community_mint]
+    /// 1. `[]` Realm authority    
+    /// 2. `[]` Community Token Mint
+    /// 3. `[writable]` Community Token Holding account. PDA seeds: ['governance',realm,community_mint]
     ///     The account will be created with the Realm PDA as its owner
-    /// 3. `[signer]` Payer
-    /// 4. `[]` System
-    /// 5. `[]` SPL Token
-    /// 6. `[]` Sysvar Rent
-    /// 7. `[]` Council Token Mint - optional
-    /// 8. `[writable]` Council Token Holding account - optional. . PDA seeds: ['governance',realm,council_mint]
+    /// 4. `[signer]` Payer
+    /// 5. `[]` System
+    /// 6. `[]` SPL Token
+    /// 7. `[]` Sysvar Rent
+    /// 8. `[]` Council Token Mint - optional
+    /// 9. `[writable]` Council Token Holding account - optional. . PDA seeds: ['governance',realm,council_mint]
     ///     The account will be created with the Realm PDA as its owner
     CreateRealm {
         #[allow(dead_code)]
@@ -366,6 +367,7 @@ pub enum GovernanceInstruction {
 pub fn create_realm(
     program_id: &Pubkey,
     // Accounts
+    realm_authority: &Pubkey,
     community_token_mint: &Pubkey,
     payer: &Pubkey,
     council_token_mint: Option<Pubkey>,
@@ -378,6 +380,7 @@ pub fn create_realm(
 
     let mut accounts = vec![
         AccountMeta::new(realm_address, false),
+        AccountMeta::new_readonly(*realm_authority, false),
         AccountMeta::new_readonly(*community_token_mint, false),
         AccountMeta::new(community_token_holding_address, false),
         AccountMeta::new_readonly(*payer, true),
