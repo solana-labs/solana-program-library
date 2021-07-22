@@ -1399,6 +1399,15 @@ fn main() {
                 .help("Show additional information"),
         )
         .arg(
+            Arg::with_name("output_format")
+                .long("output")
+                .value_name("FORMAT")
+                .global(true)
+                .takes_value(true)
+                .possible_values(&["json", "json-compact"])
+                .help("Return information in specified output format"),
+        )
+        .arg(
             Arg::with_name("json_rpc_url")
                 .short("u")
                 .long("url")
@@ -2171,11 +2180,18 @@ fn main() {
         bulk_signers.push(signer);
 
         let verbose = matches.is_present("verbose");
-        let output_format = if verbose {
-            OutputFormat::DisplayVerbose
-        } else {
-            OutputFormat::Display
-        };
+        let output_format = matches
+            .value_of("output_format")
+            .map(|value| match value {
+                "json" => OutputFormat::Json,
+                "json-compact" => OutputFormat::JsonCompact,
+                _ => unreachable!(),
+            })
+            .unwrap_or(if verbose {
+                OutputFormat::DisplayVerbose
+            } else {
+                OutputFormat::Display
+            });
 
         let nonce_account = pubkey_of_signer(matches, NONCE_ARG.name, &mut wallet_manager)
             .unwrap_or_else(|e| {
