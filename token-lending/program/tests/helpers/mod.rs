@@ -48,13 +48,12 @@ pub const TEST_RESERVE_CONFIG: ReserveConfig = ReserveConfig {
     optimal_borrow_rate: 4,
     max_borrow_rate: 30,
     fees: ReserveFees {
-        /// 0.00001% (Aave borrow fee)
         borrow_fee_wad: 100_000_000_000,
-        /// 0.3% (Aave flash loan fee)
         flash_loan_fee_wad: 3_000_000_000_000_000,
         host_fee_percentage: 20,
     },
     deposit_limit: 100_000_000_000,
+    borrow_limit: u64::MAX,
 };
 
 pub const SOL_PYTH_PRODUCT: &str = "3Mnn2fX6rQyUsyELYms1sBJyChWofzSNRoqYzvgMVz5E";

@@ -613,6 +613,8 @@ pub struct ReserveConfig {
     pub fees: ReserveFees,
     /// Maximum deposit limit of liquidity in native units, u64::MAX for inf
     pub deposit_limit: u64,
+    /// Borrows disabled
+    pub borrow_limit: u64,
 }
 
 /// Additional fee information on a reserve
@@ -719,7 +721,7 @@ impl IsInitialized for Reserve {
     }
 }
 
-const RESERVE_LEN: usize = 611; // 1 + 8 + 1 + 32 + 32 + 1 + 32 + 32 + 32 + 32 + 8 + 16 + 16 + 16 + 32 + 8 + 32 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 8 + 8 + 1 + 8 + 248
+const RESERVE_LEN: usize = 619; // 1 + 8 + 1 + 32 + 32 + 1 + 32 + 32 + 32 + 32 + 8 + 16 + 16 + 16 + 32 + 8 + 32 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 8 + 8 + 1 + 8 + 8 + 248
 impl Pack for Reserve {
     const LEN: usize = RESERVE_LEN;
 
@@ -756,6 +758,7 @@ impl Pack for Reserve {
             config_fees_flash_loan_fee_wad,
             config_fees_host_fee_percentage,
             config_deposit_limit,
+            config_borrow_limit,
             _padding,
         ) = mut_array_refs![
             output,
@@ -786,6 +789,7 @@ impl Pack for Reserve {
             8,
             8,
             1,
+            8,
             8,
             248
         ];
@@ -832,6 +836,7 @@ impl Pack for Reserve {
         *config_fees_flash_loan_fee_wad = self.config.fees.flash_loan_fee_wad.to_le_bytes();
         *config_fees_host_fee_percentage = self.config.fees.host_fee_percentage.to_le_bytes();
         *config_deposit_limit = self.config.deposit_limit.to_le_bytes();
+        *config_borrow_limit = self.config.borrow_limit.to_le_bytes();
     }
 
     /// Unpacks a byte buffer into a [ReserveInfo](struct.ReserveInfo.html).
@@ -867,6 +872,7 @@ impl Pack for Reserve {
             config_fees_flash_loan_fee_wad,
             config_fees_host_fee_percentage,
             config_deposit_limit,
+            config_borrow_limit,
             _padding,
         ) = array_refs![
             input,
@@ -897,6 +903,7 @@ impl Pack for Reserve {
             8,
             8,
             1,
+            8,
             8,
             248
         ];
@@ -947,6 +954,7 @@ impl Pack for Reserve {
                     host_fee_percentage: u8::from_le_bytes(*config_fees_host_fee_percentage),
                 },
                 deposit_limit: u64::from_le_bytes(*config_deposit_limit),
+                borrow_limit: u64::from_le_bytes(*config_borrow_limit),
             },
         })
     }
