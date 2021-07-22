@@ -576,6 +576,10 @@ impl StakePoolAccounts {
         amount * self.fee.numerator / self.fee.denominator
     }
 
+    pub fn calculate_withdrawal_fee(&self, pool_tokens: u64) -> u64 {
+        pool_tokens * self.withdrawal_fee.numerator / self.withdrawal_fee.denominator
+    }
+
     pub async fn initialize_stake_pool(
         &self,
         mut banks_client: &mut BanksClient,
