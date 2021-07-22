@@ -1085,6 +1085,7 @@ impl GovernanceProgramTest {
             no_votes_count: 0,
 
             execution_flags: InstructionExecutionFlags::None,
+            governing_token_mint_supply: None,
         };
 
         let proposal_address = get_proposal_address(

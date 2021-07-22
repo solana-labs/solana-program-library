@@ -88,6 +88,12 @@ pub struct Proposal {
     /// Note: This field is not used in the current version
     pub execution_flags: InstructionExecutionFlags,
 
+    /// The supply of the Governing Token mint at the time Proposal entered voting stage
+    /// It's used as the reference total supply to calculate voting results
+    /// It's captured on the Proposal to prevent moving goal posts when the Proposal is being voted on
+    /// and to show correct vote results for historical proposals once the mint supply changes
+    pub governing_token_mint_supply: Option<u64>,
+
     /// Proposal name
     pub name: String,
 
@@ -97,7 +103,7 @@ pub struct Proposal {
 
 impl AccountMaxSize for Proposal {
     fn get_max_size(&self) -> Option<usize> {
-        Some(self.name.len() + self.description_link.len() + 193)
+        Some(self.name.len() + self.description_link.len() + 202)
     }
 }
 
@@ -455,6 +461,7 @@ mod test {
             account_type: GovernanceAccountType::TokenOwnerRecord,
             governance: Pubkey::new_unique(),
             governing_token_mint: Pubkey::new_unique(),
+            governing_token_mint_supply: Some(10),
             state: ProposalState::Draft,
             token_owner_record: Pubkey::new_unique(),
             signatories_count: 10,
