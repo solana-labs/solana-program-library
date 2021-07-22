@@ -992,10 +992,11 @@ async fn success_with_reserve() {
     assert!(error.is_none());
 
     // first and only deposit, lamports:pool 1:1
+    let tokens_deposit_fee = stake_pool_accounts.calculate_deposit_fee(deposit_info.lamports);
     let tokens_withdrawal_fee =
         stake_pool_accounts.calculate_withdrawal_fee(deposit_info.pool_tokens);
     assert_eq!(
-        deposit_info.stake_lamports + stake_rent,
+        deposit_info.lamports - tokens_deposit_fee,
         deposit_info.pool_tokens,
     );
 
@@ -1016,6 +1017,7 @@ async fn success_with_reserve() {
     let stake_state =
         deserialize::<stake_program::StakeState>(&reserve_stake_account.data).unwrap();
     let meta = stake_state.meta().unwrap();
+    // TODO: these numbers dont add up even with +tokens_deposit_fee
     assert_eq!(
         initial_reserve_lamports + meta.rent_exempt_reserve + tokens_withdrawal_fee,
         reserve_stake_account.lamports
