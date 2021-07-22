@@ -11,10 +11,7 @@ use {
         signature::{Keypair, Signer},
         transaction::{Transaction, TransactionError},
     },
-    spl_stake_pool::{
-        error, id, instruction,
-        state::StakePool,
-    },
+    spl_stake_pool::{error, id, instruction, state::StakePool},
 };
 
 async fn setup(fee: Option<u8>) -> (ProgramTestContext, StakePoolAccounts, u8) {

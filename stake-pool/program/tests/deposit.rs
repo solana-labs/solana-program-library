@@ -212,7 +212,9 @@ async fn success() {
     // Check minted tokens
     let user_token_balance =
         get_token_balance(&mut context.banks_client, &pool_token_account).await;
-    assert_eq!(user_token_balance, tokens_issued);
+    let tokens_issued_user =
+        tokens_issued - stake_pool_accounts.calculate_deposit_fee(tokens_issued);
+    assert_eq!(user_token_balance, tokens_issued_user);
 
     // Check balances in validator stake account list storage
     let validator_list = get_account(
@@ -279,7 +281,7 @@ async fn fail_with_wrong_stake_program_id() {
         AccountMeta::new(stake_pool_accounts.reserve_stake.pubkey(), false),
         AccountMeta::new(pool_token_account, false),
         AccountMeta::new(stake_pool_accounts.pool_fee_account.pubkey(), false),
-        AccountMeta::new(pool_token_account, false), // set referrer to user for now
+        AccountMeta::new(stake_pool_accounts.pool_fee_account.pubkey(), false),
         AccountMeta::new(stake_pool_accounts.pool_mint.pubkey(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
@@ -338,7 +340,7 @@ async fn fail_with_wrong_token_program_id() {
             &stake_pool_accounts.reserve_stake.pubkey(),
             &pool_token_account,
             &stake_pool_accounts.pool_fee_account.pubkey(),
-            &pool_token_account, // referrer set to user for now
+            &stake_pool_accounts.pool_fee_account.pubkey(),
             &stake_pool_accounts.pool_mint.pubkey(),
             &wrong_token_program.pubkey(),
         ),
@@ -845,5 +847,56 @@ async fn fail_with_wrong_preferred_deposit() {
             );
         }
         _ => panic!("Wrong error occurs while try to make a deposit with wrong stake program ID"),
+    }
+}
+
+#[tokio::test]
+async fn fail_with_invalid_referrer() {
+    let (
+        mut context,
+        stake_pool_accounts,
+        validator_stake_account,
+        user,
+        deposit_stake,
+        pool_token_account,
+        _stake_lamports,
+    ) = setup().await;
+
+    let invalid_token_account = Keypair::new();
+
+    let mut transaction = Transaction::new_with_payer(
+        &instruction::deposit_stake(
+            &id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.validator_list.pubkey(),
+            &stake_pool_accounts.withdraw_authority,
+            &deposit_stake,
+            &user.pubkey(),
+            &validator_stake_account.stake_account,
+            &stake_pool_accounts.reserve_stake.pubkey(),
+            &pool_token_account,
+            &stake_pool_accounts.pool_fee_account.pubkey(),
+            &invalid_token_account.pubkey(),
+            &stake_pool_accounts.pool_mint.pubkey(),
+            &spl_token::id(),
+        ),
+        Some(&context.payer.pubkey()),
+    );
+    transaction.sign(&[&context.payer, &user], context.last_blockhash);
+    let transaction_error = context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .err()
+        .unwrap()
+        .unwrap();
+
+    match transaction_error {
+        TransactionError::InstructionError(_, InstructionError::Custom(error_index)) => {
+            assert_eq!(error_index, error::StakePoolError::InvalidFeeAccount as u32);
+        }
+        _ => panic!(
+            "Wrong error occurs while try to make a deposit with an invalid referrer account"
+        ),
     }
 }

@@ -594,7 +594,7 @@ impl StakePoolAccounts {
                 denominator: 1000,
             },
             deposit_fee: state::Fee {
-                numerator: 0,
+                numerator: 1,
                 denominator: 1000,
             },
             referral_fee: 25,
@@ -615,6 +615,10 @@ impl StakePoolAccounts {
 
     pub fn calculate_withdrawal_fee(&self, pool_tokens: u64) -> u64 {
         pool_tokens * self.withdrawal_fee.numerator / self.withdrawal_fee.denominator
+    }
+
+    pub fn calculate_deposit_fee(&self, pool_tokens: u64) -> u64 {
+        pool_tokens * self.deposit_fee.numerator / self.deposit_fee.denominator
     }
 
     pub async fn initialize_stake_pool(
@@ -703,7 +707,7 @@ impl StakePoolAccounts {
                 &self.reserve_stake.pubkey(),
                 pool_account,
                 &self.pool_fee_account.pubkey(),
-                pool_account, // referrer set to user for now
+                &self.pool_fee_account.pubkey(),
                 &self.pool_mint.pubkey(),
                 &spl_token::id(),
             )
@@ -719,7 +723,7 @@ impl StakePoolAccounts {
                 &self.reserve_stake.pubkey(),
                 pool_account,
                 &self.pool_fee_account.pubkey(),
-                pool_account, // referrer set to user for now
+                &self.pool_fee_account.pubkey(),
                 &self.pool_mint.pubkey(),
                 &spl_token::id(),
             )

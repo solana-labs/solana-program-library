@@ -1018,7 +1018,9 @@ pub fn deposit_sol(
     vec![Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::DepositSol(amount).try_to_vec().unwrap(),
+        data: StakePoolInstruction::DepositSol(amount)
+            .try_to_vec()
+            .unwrap(),
     }]
 }
 
@@ -1057,7 +1059,9 @@ pub fn deposit_sol_with_authority(
     vec![Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::DepositSol(amount).try_to_vec().unwrap(),
+        data: StakePoolInstruction::DepositSol(amount)
+            .try_to_vec()
+            .unwrap(),
     }]
 }
 
