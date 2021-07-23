@@ -354,13 +354,23 @@ fn main() {
                 )
                 .arg(
                     Arg::with_name("deposit_limit")
-                        .long("Deposit Limit")
+                        .long("deposit-limit")
                         .validator(is_parsable::<u64>)
                         .value_name("INTEGER")
                         .takes_value(true)
                         .required(true)
-                        .default_value("1000000000000")
+                        .default_value("18446744073709551615")
                         .help("Deposit limit"),
+                )
+                .arg(
+                    Arg::with_name("borrow_limit")
+                        .long("borrow-limit")
+                        .validator(is_parsable::<u64>)
+                        .value_name("INTEGER")
+                        .takes_value(true)
+                        .required(true)
+                        .default_value("18446744073709551615")
+                        .help("Borrow limit"),
                 )
         )
         .subcommand(
@@ -941,8 +951,8 @@ fn command_update_reserve(
     if reserve_config.optimal_utilization_rate.is_some() {
         println!(
             "Updating optimal_utilization_rate from {} to {}",
-            reserve_config.optimal_utilization_rate.unwrap(),
             reserve.config.optimal_utilization_rate,
+            reserve_config.optimal_utilization_rate.unwrap(),
         );
         reserve.config.optimal_utilization_rate = reserve_config.optimal_utilization_rate.unwrap();
     }
@@ -950,8 +960,8 @@ fn command_update_reserve(
     if reserve_config.loan_to_value_ratio.is_some() {
         println!(
             "Updating loan_to_value_ratio from {} to {}",
-            reserve_config.loan_to_value_ratio.unwrap(),
             reserve.config.loan_to_value_ratio,
+            reserve_config.loan_to_value_ratio.unwrap(),
         );
         reserve.config.loan_to_value_ratio = reserve_config.loan_to_value_ratio.unwrap();
     }
@@ -959,8 +969,8 @@ fn command_update_reserve(
     if reserve_config.liquidation_bonus.is_some() {
         println!(
             "Updating liquidation_bonus from {} to {}",
-            reserve_config.liquidation_bonus.unwrap(),
             reserve.config.liquidation_bonus,
+            reserve_config.liquidation_bonus.unwrap(),
         );
         reserve.config.liquidation_bonus = reserve_config.liquidation_bonus.unwrap();
     }
@@ -968,8 +978,8 @@ fn command_update_reserve(
     if reserve_config.liquidation_threshold.is_some() {
         println!(
             "Updating liquidation_threshold from {} to {}",
-            reserve_config.liquidation_threshold.unwrap(),
             reserve.config.liquidation_threshold,
+            reserve_config.liquidation_threshold.unwrap(),
         );
         reserve.config.liquidation_threshold = reserve_config.liquidation_threshold.unwrap();
     }
@@ -977,8 +987,8 @@ fn command_update_reserve(
     if reserve_config.min_borrow_rate.is_some() {
         println!(
             "Updating min_borrow_rate from {} to {}",
-            reserve_config.min_borrow_rate.unwrap(),
             reserve.config.min_borrow_rate,
+            reserve_config.min_borrow_rate.unwrap(),
         );
         reserve.config.min_borrow_rate = reserve_config.min_borrow_rate.unwrap();
     }
@@ -986,8 +996,8 @@ fn command_update_reserve(
     if reserve_config.optimal_borrow_rate.is_some() {
         println!(
             "Updating optimal_borrow_rate from {} to {}",
-            reserve_config.optimal_borrow_rate.unwrap(),
             reserve.config.optimal_borrow_rate,
+            reserve_config.optimal_borrow_rate.unwrap(),
         );
         reserve.config.optimal_borrow_rate = reserve_config.optimal_borrow_rate.unwrap();
     }
@@ -995,8 +1005,8 @@ fn command_update_reserve(
     if reserve_config.max_borrow_rate.is_some() {
         println!(
             "Updating max_borrow_rate from {} to {}",
-            reserve_config.max_borrow_rate.unwrap(),
             reserve.config.max_borrow_rate,
+            reserve_config.max_borrow_rate.unwrap(),
         );
         reserve.config.max_borrow_rate = reserve_config.max_borrow_rate.unwrap();
     }
@@ -1004,8 +1014,8 @@ fn command_update_reserve(
     if reserve_config.fees.borrow_fee_wad.is_some() {
         println!(
             "Updating borrow_fee_wad from {} to {}",
-            reserve_config.fees.borrow_fee_wad.unwrap(),
             reserve.config.fees.borrow_fee_wad,
+            reserve_config.fees.borrow_fee_wad.unwrap(),
         );
         reserve.config.fees.borrow_fee_wad = reserve_config.fees.borrow_fee_wad.unwrap();
     }
@@ -1013,8 +1023,8 @@ fn command_update_reserve(
     if reserve_config.fees.flash_loan_fee_wad.is_some() {
         println!(
             "Updating flash_loan_fee_wad from {} to {}",
-            reserve_config.fees.flash_loan_fee_wad.unwrap(),
             reserve.config.fees.flash_loan_fee_wad,
+            reserve_config.fees.flash_loan_fee_wad.unwrap(),
         );
         reserve.config.fees.flash_loan_fee_wad = reserve_config.fees.flash_loan_fee_wad.unwrap();
     }
@@ -1022,8 +1032,8 @@ fn command_update_reserve(
     if reserve_config.fees.host_fee_percentage.is_some() {
         println!(
             "Updating host_fee_percentage from {} to {}",
-            reserve_config.fees.host_fee_percentage.unwrap(),
             reserve.config.fees.host_fee_percentage,
+            reserve_config.fees.host_fee_percentage.unwrap(),
         );
         reserve.config.fees.host_fee_percentage = reserve_config.fees.host_fee_percentage.unwrap();
     }
@@ -1031,8 +1041,8 @@ fn command_update_reserve(
     if reserve_config.deposit_limit.is_some() {
         println!(
             "Updating deposit_limit from {} to {}",
-            reserve_config.deposit_limit.unwrap(),
             reserve.config.deposit_limit,
+            reserve_config.deposit_limit.unwrap(),
         );
         reserve.config.deposit_limit = reserve_config.deposit_limit.unwrap();
     }
@@ -1040,8 +1050,8 @@ fn command_update_reserve(
     if reserve_config.borrow_limit.is_some() {
         println!(
             "Updating borrow_limit from {} to {}",
-            reserve_config.borrow_limit.unwrap(),
             reserve.config.borrow_limit,
+            reserve_config.borrow_limit.unwrap(),
         );
         reserve.config.borrow_limit = reserve_config.borrow_limit.unwrap();
     }
