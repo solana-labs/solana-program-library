@@ -1339,6 +1339,14 @@ fn process_borrow_obligation_liquidity(
         msg!("Borrow reserve is stale and must be refreshed in the current slot");
         return Err(LendingError::ReserveStale.into());
     }
+    if Decimal::from(liquidity_amount)
+        .try_add(borrow_reserve.liquidity.borrowed_amount_wads)?
+        .try_floor_u64()?
+        > borrow_reserve.config.borrow_limit
+    {
+        msg!("Cannot borrow above the borrow limit");
+        return Err(LendingError::InvalidAmount.into());
+    }
 
     let mut obligation = Obligation::unpack(&obligation_info.data.borrow())?;
     if obligation_info.owner != program_id {

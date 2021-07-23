@@ -61,6 +61,8 @@ struct PartialReserveConfig {
     pub fees: PartialReserveFees,
     /// Deposit limit
     pub deposit_limit: Option<u64>,
+    /// Borrow limit
+    pub borrow_limit: Option<u64>,
 }
 
 /// Reserve Fees with optional fields
@@ -491,6 +493,15 @@ fn main() {
                         .required(false)
                         .help("Deposit Limit"),
                 )
+                .arg(
+                    Arg::with_name("borrow_limit")
+                        .long("borrow-limit")
+                        .validator(is_parsable::<u64>)
+                        .value_name("INTEGER")
+                        .takes_value(true)
+                        .required(false)
+                        .help("Borrow Limit"),
+                )
         )
         .get_matches();
 
@@ -565,6 +576,7 @@ fn main() {
             let flash_loan_fee = value_of::<f64>(arg_matches, "flash_loan_fee").unwrap();
             let host_fee_percentage = value_of(arg_matches, "host_fee_percentage").unwrap();
             let deposit_limit = value_of(arg_matches, "deposit_limit").unwrap();
+            let borrow_limit = value_of(arg_matches, "borrow_limit").unwrap();
 
             let borrow_fee_wad = (borrow_fee * WAD as f64) as u64;
             let flash_loan_fee_wad = (flash_loan_fee * WAD as f64) as u64;
@@ -586,6 +598,7 @@ fn main() {
                         host_fee_percentage,
                     },
                     deposit_limit,
+                    borrow_limit,
                 },
                 source_liquidity_pubkey,
                 source_liquidity_owner_keypair,
@@ -612,6 +625,7 @@ fn main() {
             let flash_loan_fee = value_of::<f64>(arg_matches, "flash_loan_fee");
             let host_fee_percentage = value_of(arg_matches, "host_fee_percentage");
             let deposit_limit = value_of(arg_matches, "deposit_limit");
+            let borrow_limit = value_of(arg_matches, "borrow_limit");
 
             let borrow_fee_wad = borrow_fee.map(|fee| (fee * WAD as f64) as u64);
             let flash_loan_fee_wad = flash_loan_fee.map(|fee| (fee * WAD as f64) as u64);
@@ -632,6 +646,7 @@ fn main() {
                         host_fee_percentage,
                     },
                     deposit_limit,
+                    borrow_limit,
                 },
                 reserve_pubkey,
                 lending_market_pubkey,
@@ -1020,6 +1035,15 @@ fn command_update_reserve(
             reserve.config.deposit_limit,
         );
         reserve.config.deposit_limit = reserve_config.deposit_limit.unwrap();
+    }
+
+    if reserve_config.borrow_limit.is_some() {
+        println!(
+            "Updating borrow_limit from {} to {}",
+            reserve_config.borrow_limit.unwrap(),
+            reserve.config.borrow_limit,
+        );
+        reserve.config.borrow_limit = reserve_config.borrow_limit.unwrap();
     }
 
     let mut transaction = Transaction::new_with_payer(

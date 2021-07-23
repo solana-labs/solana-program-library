@@ -409,7 +409,8 @@ impl LendingInstruction {
                 let (borrow_fee_wad, rest) = Self::unpack_u64(rest)?;
                 let (flash_loan_fee_wad, rest) = Self::unpack_u64(rest)?;
                 let (host_fee_percentage, rest) = Self::unpack_u8(rest)?;
-                let (deposit_limit, _) = Self::unpack_u64(rest)?;
+                let (deposit_limit, rest) = Self::unpack_u64(rest)?;
+                let (borrow_limit, _) = Self::unpack_u64(rest)?;
                 Self::InitReserve {
                     liquidity_amount,
                     config: ReserveConfig {
@@ -426,6 +427,7 @@ impl LendingInstruction {
                             host_fee_percentage,
                         },
                         deposit_limit,
+                        borrow_limit,
                     },
                 }
             }
@@ -484,6 +486,7 @@ impl LendingInstruction {
                 let (flash_loan_fee_wad, _rest) = Self::unpack_u64(_rest)?;
                 let (host_fee_percentage, _rest) = Self::unpack_u8(_rest)?;
                 let (deposit_limit, _rest) = Self::unpack_u64(_rest)?;
+                let (borrow_limit, _) = Self::unpack_u64(_rest)?;
 
                 Self::UpdateReserveConfig {
                     config: ReserveConfig {
@@ -500,6 +503,7 @@ impl LendingInstruction {
                             host_fee_percentage,
                         },
                         deposit_limit,
+                        borrow_limit,
                     },
                 }
             }
@@ -596,6 +600,7 @@ impl LendingInstruction {
                                 host_fee_percentage,
                             },
                         deposit_limit,
+                        borrow_limit,
                     },
             } => {
                 buf.push(2);
@@ -611,6 +616,7 @@ impl LendingInstruction {
                 buf.extend_from_slice(&flash_loan_fee_wad.to_le_bytes());
                 buf.extend_from_slice(&host_fee_percentage.to_le_bytes());
                 buf.extend_from_slice(&deposit_limit.to_le_bytes());
+                buf.extend_from_slice(&borrow_limit.to_le_bytes());
             }
             Self::RefreshReserve => {
                 buf.push(3);
@@ -674,6 +680,7 @@ impl LendingInstruction {
                 buf.extend_from_slice(&config.fees.flash_loan_fee_wad.to_le_bytes());
                 buf.extend_from_slice(&config.fees.host_fee_percentage.to_le_bytes());
                 buf.extend_from_slice(&config.deposit_limit.to_le_bytes());
+                buf.extend_from_slice(&config.borrow_limit.to_le_bytes());
             }
         }
         buf
