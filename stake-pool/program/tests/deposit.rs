@@ -851,6 +851,67 @@ async fn fail_with_wrong_preferred_deposit() {
 }
 
 #[tokio::test]
+async fn success_with_referral_fee() {
+    let (
+        mut context,
+        stake_pool_accounts,
+        validator_stake_account,
+        user,
+        deposit_stake,
+        pool_token_account,
+        stake_lamports,
+    ) = setup().await;
+
+    let referrer = Keypair::new();
+    let referrer_token_account = Keypair::new();
+    create_token_account(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &referrer_token_account,
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &referrer.pubkey(),
+    )
+    .await
+    .unwrap();
+
+    let referrer_balance_pre =
+        get_token_balance(&mut context.banks_client, &referrer_token_account.pubkey()).await;
+
+    let mut transaction = Transaction::new_with_payer(
+        &instruction::deposit_stake(
+            &id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.validator_list.pubkey(),
+            &stake_pool_accounts.withdraw_authority,
+            &deposit_stake,
+            &user.pubkey(),
+            &validator_stake_account.stake_account,
+            &stake_pool_accounts.reserve_stake.pubkey(),
+            &pool_token_account,
+            &stake_pool_accounts.pool_fee_account.pubkey(),
+            &referrer_token_account.pubkey(),
+            &stake_pool_accounts.pool_mint.pubkey(),
+            &spl_token::id(),
+        ),
+        Some(&context.payer.pubkey()),
+    );
+    transaction.sign(&[&context.payer, &user], context.last_blockhash);
+    context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap();
+
+    let referrer_balance_post =
+        get_token_balance(&mut context.banks_client, &referrer_token_account.pubkey()).await;
+    let referral_fee = stake_pool_accounts
+        .calculate_referral_fee(stake_pool_accounts.calculate_deposit_fee(stake_lamports));
+    assert!(referral_fee > 0);
+    assert_eq!(referrer_balance_pre + referral_fee, referrer_balance_post);
+}
+
+#[tokio::test]
 async fn fail_with_invalid_referrer() {
     let (
         mut context,
