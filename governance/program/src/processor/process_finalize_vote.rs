@@ -39,10 +39,10 @@ pub fn process_finalize_vote(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
         governing_token_mint_info.key,
     )?;
 
-    let governing_token_supply = get_spl_token_mint_supply(governing_token_mint_info)?;
+    let governing_token_mint_supply = get_spl_token_mint_supply(governing_token_mint_info)?;
 
     proposal_data.finalize_vote(
-        governing_token_supply,
+        governing_token_mint_supply,
         &governance_data.config,
         clock.unix_timestamp,
     )?;

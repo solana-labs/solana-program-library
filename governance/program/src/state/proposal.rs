@@ -202,14 +202,15 @@ impl Proposal {
     /// If Proposal is still within max_voting_time period then error is returned
     pub fn finalize_vote(
         &mut self,
-        governing_token_supply: u64,
+        governing_token_mint_supply: u64,
         config: &GovernanceConfig,
         current_unix_timestamp: UnixTimestamp,
     ) -> Result<(), ProgramError> {
         self.assert_can_finalize_vote(config, current_unix_timestamp)?;
 
-        self.state = self.get_final_vote_state(governing_token_supply, config);
+        self.state = self.get_final_vote_state(governing_token_mint_supply, config);
         self.voting_completed_at = Some(current_unix_timestamp);
+        self.governing_token_mint_supply = Some(governing_token_mint_supply);
 
         Ok(())
     }
@@ -239,13 +240,16 @@ impl Proposal {
     /// If the conditions are met the state is updated accordingly
     pub fn try_tip_vote(
         &mut self,
-        governing_token_supply: u64,
+        governing_token_mint_supply: u64,
         config: &GovernanceConfig,
         current_unix_timestamp: UnixTimestamp,
     ) {
-        if let Some(tipped_state) = self.try_get_tipped_vote_state(governing_token_supply, config) {
+        if let Some(tipped_state) =
+            self.try_get_tipped_vote_state(governing_token_mint_supply, config)
+        {
             self.state = tipped_state;
             self.voting_completed_at = Some(current_unix_timestamp);
+            self.governing_token_mint_supply = Some(governing_token_mint_supply);
         }
     }
 
