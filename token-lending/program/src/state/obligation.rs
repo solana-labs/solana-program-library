@@ -324,10 +324,10 @@ impl ObligationLiquidity {
     }
 }
 
-const OBLIGATION_COLLATERAL_LEN: usize = 56; // 32 + 8 + 16
-const OBLIGATION_LIQUIDITY_LEN: usize = 80; // 32 + 16 + 16 + 16
-const OBLIGATION_LEN: usize = 916; // 1 + 8 + 1 + 32 + 32 + 16 + 16 + 16 + 16 + 1 + 1 + (56 * 1) + (80 * 9)
-                                   // @TODO: break this up by obligation / collateral / liquidity https://git.io/JOCca
+const OBLIGATION_COLLATERAL_LEN: usize = 88; // 32 + 8 + 16 + 32
+const OBLIGATION_LIQUIDITY_LEN: usize = 112; // 32 + 16 + 16 + 16 + 32
+const OBLIGATION_LEN: usize = 1300; // 1 + 8 + 1 + 32 + 32 + 16 + 16 + 16 + 16 + 64 + 1 + 1 + (88 * 1) + (112 * 9)
+                                    // @TODO: break this up by obligation / collateral / liquidity https://git.io/JOCca
 impl Pack for Obligation {
     const LEN: usize = OBLIGATION_LEN;
 
@@ -344,6 +344,7 @@ impl Pack for Obligation {
             borrowed_value,
             allowed_borrow_value,
             unhealthy_borrow_value,
+            _padding,
             deposits_len,
             borrows_len,
             data_flat,
@@ -358,6 +359,7 @@ impl Pack for Obligation {
             16,
             16,
             16,
+            64,
             1,
             1,
             OBLIGATION_COLLATERAL_LEN + (OBLIGATION_LIQUIDITY_LEN * (MAX_OBLIGATION_RESERVES - 1))
@@ -382,8 +384,8 @@ impl Pack for Obligation {
         for collateral in &self.deposits {
             let deposits_flat = array_mut_ref![data_flat, offset, OBLIGATION_COLLATERAL_LEN];
             #[allow(clippy::ptr_offset_with_cast)]
-            let (deposit_reserve, deposited_amount, market_value) =
-                mut_array_refs![deposits_flat, PUBKEY_BYTES, 8, 16];
+            let (deposit_reserve, deposited_amount, market_value, _padding_deposit) =
+                mut_array_refs![deposits_flat, PUBKEY_BYTES, 8, 16, 32];
             deposit_reserve.copy_from_slice(collateral.deposit_reserve.as_ref());
             *deposited_amount = collateral.deposited_amount.to_le_bytes();
             pack_decimal(collateral.market_value, market_value);
@@ -394,8 +396,13 @@ impl Pack for Obligation {
         for liquidity in &self.borrows {
             let borrows_flat = array_mut_ref![data_flat, offset, OBLIGATION_LIQUIDITY_LEN];
             #[allow(clippy::ptr_offset_with_cast)]
-            let (borrow_reserve, cumulative_borrow_rate_wads, borrowed_amount_wads, market_value) =
-                mut_array_refs![borrows_flat, PUBKEY_BYTES, 16, 16, 16];
+            let (
+                borrow_reserve,
+                cumulative_borrow_rate_wads,
+                borrowed_amount_wads,
+                market_value,
+                _padding_borrow,
+            ) = mut_array_refs![borrows_flat, PUBKEY_BYTES, 16, 16, 16, 32];
             borrow_reserve.copy_from_slice(liquidity.borrow_reserve.as_ref());
             pack_decimal(
                 liquidity.cumulative_borrow_rate_wads,
@@ -421,6 +428,7 @@ impl Pack for Obligation {
             borrowed_value,
             allowed_borrow_value,
             unhealthy_borrow_value,
+            _padding,
             deposits_len,
             borrows_len,
             data_flat,
@@ -435,6 +443,7 @@ impl Pack for Obligation {
             16,
             16,
             16,
+            64,
             1,
             1,
             OBLIGATION_COLLATERAL_LEN + (OBLIGATION_LIQUIDITY_LEN * (MAX_OBLIGATION_RESERVES - 1))
@@ -455,8 +464,8 @@ impl Pack for Obligation {
         for _ in 0..deposits_len {
             let deposits_flat = array_ref![data_flat, offset, OBLIGATION_COLLATERAL_LEN];
             #[allow(clippy::ptr_offset_with_cast)]
-            let (deposit_reserve, deposited_amount, market_value) =
-                array_refs![deposits_flat, PUBKEY_BYTES, 8, 16];
+            let (deposit_reserve, deposited_amount, market_value, _padding_deposit) =
+                array_refs![deposits_flat, PUBKEY_BYTES, 8, 16, 32];
             deposits.push(ObligationCollateral {
                 deposit_reserve: Pubkey::new(deposit_reserve),
                 deposited_amount: u64::from_le_bytes(*deposited_amount),
@@ -467,8 +476,13 @@ impl Pack for Obligation {
         for _ in 0..borrows_len {
             let borrows_flat = array_ref![data_flat, offset, OBLIGATION_LIQUIDITY_LEN];
             #[allow(clippy::ptr_offset_with_cast)]
-            let (borrow_reserve, cumulative_borrow_rate_wads, borrowed_amount_wads, market_value) =
-                array_refs![borrows_flat, PUBKEY_BYTES, 16, 16, 16];
+            let (
+                borrow_reserve,
+                cumulative_borrow_rate_wads,
+                borrowed_amount_wads,
+                market_value,
+                _padding_borrow,
+            ) = array_refs![borrows_flat, PUBKEY_BYTES, 16, 16, 16, 32];
             borrows.push(ObligationLiquidity {
                 borrow_reserve: Pubkey::new(borrow_reserve),
                 cumulative_borrow_rate_wads: unpack_decimal(cumulative_borrow_rate_wads),
