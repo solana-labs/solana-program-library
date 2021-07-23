@@ -1,7 +1,7 @@
 use clap::ArgMatches;
 use solana_clap_utils::{
     input_parsers::pubkey_of_signer,
-    keypair::{pubkey_from_path, signer_from_path},
+    keypair::{pubkey_from_path, signer_from_path_with_config, SignerFromPathConfig},
 };
 use solana_cli_output::OutputFormat;
 use solana_client::{blockhash_query::BlockhashQuery, rpc_client::RpcClient};
@@ -56,12 +56,11 @@ impl<'a> Config<'a> {
 
         let token = token.unwrap();
         let owner = self
-            .default_signer(arg_matches, wallet_manager)
+            .default_address(arg_matches, wallet_manager)
             .unwrap_or_else(|e| {
                 eprintln!("error: {}", e);
                 exit(1);
-            })
-            .pubkey();
+            });
         get_associated_token_address(&owner, &token)
     }
 
@@ -95,19 +94,26 @@ impl<'a> Config<'a> {
         authority_name: &str,
         wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
     ) -> (Box<dyn Signer>, Pubkey) {
+        // If there are `--multisig-signers` on the command line, allow `NullSigner`s to
+        // be returned for multisig account addresses
+        let config = SignerFromPathConfig {
+            allow_null_signer: !self.multisigner_pubkeys.is_empty(),
+        };
         let mut load_authority = move || {
+            // fallback handled in default_signer() for backward compatibility
             if authority_name != "owner" {
                 if let Some(keypair_path) = arg_matches.value_of(authority_name) {
-                    return signer_from_path(
+                    return signer_from_path_with_config(
                         arg_matches,
                         keypair_path,
                         authority_name,
                         wallet_manager,
+                        &config,
                     );
                 }
             }
 
-            self.default_signer(arg_matches, wallet_manager)
+            self.default_signer(arg_matches, wallet_manager, &config)
         };
 
         let authority = load_authority().unwrap_or_else(|e| {
@@ -137,13 +143,20 @@ impl<'a> Config<'a> {
         &self,
         matches: &ArgMatches,
         wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
+        config: &SignerFromPathConfig,
     ) -> Result<Box<dyn Signer>, Box<dyn std::error::Error>> {
         // for backwards compatibility, check owner before cli config default
         if let Some(owner_path) = matches.value_of("owner") {
-            return signer_from_path(matches, owner_path, "owner", wallet_manager);
+            return signer_from_path_with_config(
+                matches,
+                owner_path,
+                "owner",
+                wallet_manager,
+                config,
+            );
         }
 
         let path = &self.default_keypair_path;
-        signer_from_path(matches, path, "default", wallet_manager)
+        signer_from_path_with_config(matches, path, "default", wallet_manager, config)
     }
 }
