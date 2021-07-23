@@ -283,6 +283,18 @@ pub enum GovernanceError {
     /// Invalid Realm for Governance
     #[error("Invalid Realm for Governance")]
     InvalidRealmForGovernance,
+
+    /// Invalid Authority for Realm
+    #[error("Invalid Authority for Realm")]
+    InvalidAuthorityForRealm,
+
+    /// Realm has no authority
+    #[error("Realm has no authority")]
+    RealmHasNoAuthority,
+
+    /// Realm authority must sign
+    #[error("Realm authority must sign")]
+    RealmAuthorityMustSign,
 }
 
 impl PrintProgramError for GovernanceError {

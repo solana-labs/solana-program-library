@@ -29,8 +29,8 @@ use spl_governance::{
         create_mint_governance, create_program_governance, create_proposal, create_realm,
         create_token_governance, deposit_governing_tokens, execute_instruction, finalize_vote,
         flag_instruction_error, insert_instruction, relinquish_vote, remove_instruction,
-        remove_signatory, set_governance_config, set_governance_delegate, sign_off_proposal,
-        withdraw_governing_tokens, Vote,
+        remove_signatory, set_governance_config, set_governance_delegate, set_realm_authority,
+        sign_off_proposal, withdraw_governing_tokens, Vote,
     },
     processor::process_instruction,
     state::{
@@ -553,6 +553,45 @@ impl GovernanceProgramTest {
         )
         .await
         .unwrap();
+    }
+
+    #[allow(dead_code)]
+    pub async fn set_realm_authority(
+        &mut self,
+        realm_cookie: &RealmCookie,
+        new_realm_authority: &Option<Pubkey>,
+    ) -> Result<(), ProgramError> {
+        self.set_realm_authority_using_instruction(
+            realm_cookie,
+            new_realm_authority,
+            NopOverride,
+            None,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn set_realm_authority_using_instruction<F: Fn(&mut Instruction)>(
+        &mut self,
+        realm_cookie: &RealmCookie,
+        new_realm_authority: &Option<Pubkey>,
+        instruction_override: F,
+        signers_override: Option<&[&Keypair]>,
+    ) -> Result<(), ProgramError> {
+        let mut set_realm_authority_ix = set_realm_authority(
+            &self.program_id,
+            &realm_cookie.address,
+            &realm_cookie.realm_authority.pubkey(),
+            new_realm_authority,
+        );
+
+        instruction_override(&mut set_realm_authority_ix);
+
+        let default_signers = &[&realm_cookie.realm_authority];
+        let singers = signers_override.unwrap_or(default_signers);
+
+        self.process_transaction(&[set_realm_authority_ix], Some(singers))
+            .await
     }
 
     #[allow(dead_code)]

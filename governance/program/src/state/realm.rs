@@ -86,6 +86,25 @@ pub fn get_realm_data(
     get_account_data::<Realm>(realm_info, program_id)
 }
 
+/// Deserializes account and checks the given authority is Realm's authority
+pub fn get_realm_data_for_authority(
+    program_id: &Pubkey,
+    realm_info: &AccountInfo,
+    realm_authority: &Pubkey,
+) -> Result<Realm, ProgramError> {
+    let realm_data = get_account_data::<Realm>(realm_info, program_id)?;
+
+    if realm_data.authority.is_none() {
+        return Err(GovernanceError::RealmHasNoAuthority.into());
+    }
+
+    if realm_data.authority.unwrap() != *realm_authority {
+        return Err(GovernanceError::InvalidAuthorityForRealm.into());
+    }
+
+    Ok(realm_data)
+}
+
 /// Deserializes Ream account and asserts the given governing_token_mint is either Community or Council mint of the Realm
 pub fn get_realm_data_for_governing_token_mint(
     program_id: &Pubkey,

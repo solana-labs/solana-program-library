@@ -361,6 +361,16 @@ pub enum GovernanceInstruction {
     ///   3. `[writable]` ProposalInstruction account to flag
     ///   4. `[]` Clock sysvar
     FlagInstructionError,
+
+    /// Sets new Realm authority
+    ///
+    ///   0. `[writable]` Realm account
+    ///   1. `[signer]` Current Realm authority    
+    SetRealmAuthority {
+        #[allow(dead_code)]
+        /// New realm authority or None to remove authority
+        new_realm_authority: Option<Pubkey>,
+    },
 }
 
 /// Creates CreateRealm instruction
@@ -1061,6 +1071,31 @@ pub fn flag_instruction_error(
     ];
 
     let instruction = GovernanceInstruction::FlagInstructionError {};
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates SetRealmAuthority instruction
+pub fn set_realm_authority(
+    program_id: &Pubkey,
+    // Accounts
+    realm: &Pubkey,
+    realm_authority: &Pubkey,
+    new_realm_authority: &Option<Pubkey>,
+    // Args
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new(*realm, false),
+        AccountMeta::new_readonly(*realm_authority, true),
+    ];
+
+    let instruction = GovernanceInstruction::SetRealmAuthority {
+        new_realm_authority: *new_realm_authority,
+    };
 
     Instruction {
         program_id: *program_id,
