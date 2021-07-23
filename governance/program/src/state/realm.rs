@@ -31,11 +31,20 @@ pub struct Realm {
     /// Council mint
     pub council_mint: Option<Pubkey>,
 
+    /// Realm authority. The authority must sign transactions which update the realm (ex. adding governance, setting council)
+    /// The authority can be transferer to Realm Governance and hence make the Realm self governed through proposals
+    /// Note: This field is not used yet. It's reserved for future versions
+    pub authority: Option<Pubkey>,
+
     /// Governance Realm name
     pub name: String,
 }
 
-impl AccountMaxSize for Realm {}
+impl AccountMaxSize for Realm {
+    fn get_max_size(&self) -> Option<usize> {
+        Some(self.name.len() + 111)
+    }
+}
 
 impl IsInitialized for Realm {
     fn is_initialized(&self) -> bool {
@@ -123,4 +132,26 @@ pub fn get_governing_token_holding_address(
         program_id,
     )
     .0
+}
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+
+    #[test]
+    fn test_max_size() {
+        let realm = Realm {
+            account_type: GovernanceAccountType::Realm,
+            community_mint: Pubkey::new_unique(),
+            reserved: [0; 8],
+            council_mint: Some(Pubkey::new_unique()),
+            authority: Some(Pubkey::new_unique()),
+            name: "test-realm".to_string(),
+        };
+
+        let size = realm.try_to_vec().unwrap().len();
+
+        assert_eq!(realm.get_max_size(), Some(size));
+    }
 }

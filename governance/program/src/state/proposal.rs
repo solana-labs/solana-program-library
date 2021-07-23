@@ -88,6 +88,11 @@ pub struct Proposal {
     /// Note: This field is not used in the current version
     pub execution_flags: InstructionExecutionFlags,
 
+    /// The supply of the Governing Token mint at the time Proposal was decided
+    /// It's used to show correct vote results for historical proposals in cases when the mint supply changed
+    /// after vote was completed.
+    pub governing_token_mint_vote_supply: Option<u64>,
+
     /// Proposal name
     pub name: String,
 
@@ -97,7 +102,7 @@ pub struct Proposal {
 
 impl AccountMaxSize for Proposal {
     fn get_max_size(&self) -> Option<usize> {
-        Some(self.name.len() + self.description_link.len() + 193)
+        Some(self.name.len() + self.description_link.len() + 202)
     }
 }
 
@@ -196,14 +201,15 @@ impl Proposal {
     /// If Proposal is still within max_voting_time period then error is returned
     pub fn finalize_vote(
         &mut self,
-        governing_token_supply: u64,
+        governing_token_mint_supply: u64,
         config: &GovernanceConfig,
         current_unix_timestamp: UnixTimestamp,
     ) -> Result<(), ProgramError> {
         self.assert_can_finalize_vote(config, current_unix_timestamp)?;
 
-        self.state = self.get_final_vote_state(governing_token_supply, config);
+        self.state = self.get_final_vote_state(governing_token_mint_supply, config);
         self.voting_completed_at = Some(current_unix_timestamp);
+        self.governing_token_mint_vote_supply = Some(governing_token_mint_supply);
 
         Ok(())
     }
@@ -233,13 +239,16 @@ impl Proposal {
     /// If the conditions are met the state is updated accordingly
     pub fn try_tip_vote(
         &mut self,
-        governing_token_supply: u64,
+        governing_token_mint_supply: u64,
         config: &GovernanceConfig,
         current_unix_timestamp: UnixTimestamp,
     ) {
-        if let Some(tipped_state) = self.try_get_tipped_vote_state(governing_token_supply, config) {
+        if let Some(tipped_state) =
+            self.try_get_tipped_vote_state(governing_token_mint_supply, config)
+        {
             self.state = tipped_state;
             self.voting_completed_at = Some(current_unix_timestamp);
+            self.governing_token_mint_vote_supply = Some(governing_token_mint_supply);
         }
     }
 
@@ -455,6 +464,7 @@ mod test {
             account_type: GovernanceAccountType::TokenOwnerRecord,
             governance: Pubkey::new_unique(),
             governing_token_mint: Pubkey::new_unique(),
+            governing_token_mint_vote_supply: Some(10),
             state: ProposalState::Draft,
             token_owner_record: Pubkey::new_unique(),
             signatories_count: 10,

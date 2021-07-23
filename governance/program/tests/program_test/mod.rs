@@ -167,8 +167,11 @@ impl GovernanceProgramTest {
         )
         .await;
 
+        let realm_authority = Keypair::new();
+
         let create_realm_instruction = create_realm(
             &self.program_id,
+            &realm_authority.pubkey(),
             &community_token_mint_keypair.pubkey(),
             &self.context.payer.pubkey(),
             Some(council_token_mint_keypair.pubkey()),
@@ -185,6 +188,7 @@ impl GovernanceProgramTest {
             council_mint: Some(council_token_mint_keypair.pubkey()),
             name,
             reserved: [0; 8],
+            authority: Some(realm_authority.pubkey()),
         };
 
         RealmCookie {
@@ -196,6 +200,7 @@ impl GovernanceProgramTest {
 
             council_token_holding_account: Some(council_token_holding_address),
             council_mint_authority: Some(council_token_mint_authority),
+            realm_authority,
         }
     }
 
@@ -207,8 +212,11 @@ impl GovernanceProgramTest {
         let realm_address = get_realm_address(&self.program_id, &name);
         let council_mint = realm_cookie.account.council_mint.unwrap();
 
+        let realm_authority = Keypair::new();
+
         let create_realm_instruction = create_realm(
             &self.program_id,
+            &realm_authority.pubkey(),
             &realm_cookie.account.community_mint,
             &self.context.payer.pubkey(),
             Some(council_mint),
@@ -225,6 +233,7 @@ impl GovernanceProgramTest {
             council_mint: Some(council_mint),
             name,
             reserved: [0; 8],
+            authority: Some(realm_authority.pubkey()),
         };
 
         let community_token_holding_address = get_governing_token_holding_address(
@@ -247,6 +256,7 @@ impl GovernanceProgramTest {
             council_mint_authority: Some(clone_keypair(
                 realm_cookie.council_mint_authority.as_ref().unwrap(),
             )),
+            realm_authority,
         }
     }
 
@@ -1083,6 +1093,7 @@ impl GovernanceProgramTest {
             no_votes_count: 0,
 
             execution_flags: InstructionExecutionFlags::None,
+            governing_token_mint_vote_supply: None,
         };
 
         let proposal_address = get_proposal_address(

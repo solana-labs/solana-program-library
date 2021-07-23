@@ -57,11 +57,11 @@ pub struct Governance {
     /// Account governed by this Governance. It can be for example Program account, Mint account or Token Account
     pub governed_account: Pubkey,
 
-    /// Governance config
-    pub config: GovernanceConfig,
-
     /// Running count of proposals
     pub proposals_count: u32,
+
+    /// Governance config
+    pub config: GovernanceConfig,
 
     /// Reserved space for future versions
     pub reserved: [u8; 8],

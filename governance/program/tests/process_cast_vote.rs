@@ -65,6 +65,8 @@ async fn test_cast_vote() {
         Some(clock.unix_timestamp)
     );
 
+    assert_eq!(Some(100), proposal_account.governing_token_mint_vote_supply);
+
     let token_owner_record = governance_test
         .get_token_owner_record_account(&token_owner_record_cookie.address)
         .await;

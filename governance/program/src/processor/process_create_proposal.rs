@@ -96,6 +96,7 @@ pub fn process_create_proposal(
 
         yes_votes_count: 0,
         no_votes_count: 0,
+        governing_token_mint_vote_supply: None,
     };
 
     create_and_serialize_account_signed::<Proposal>(
