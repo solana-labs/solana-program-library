@@ -88,7 +88,7 @@ async fn test_finalize_vote_to_succeeded() {
         proposal_account.voting_completed_at
     );
 
-    assert_eq!(Some(210), proposal_account.governing_token_mint_supply);
+    assert_eq!(Some(210), proposal_account.governing_token_mint_vote_supply);
 }
 
 #[tokio::test]

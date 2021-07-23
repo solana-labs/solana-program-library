@@ -88,11 +88,10 @@ pub struct Proposal {
     /// Note: This field is not used in the current version
     pub execution_flags: InstructionExecutionFlags,
 
-    /// The supply of the Governing Token mint at the time Proposal entered voting stage
-    /// It's used as the reference total supply to calculate voting results
-    /// It's captured on the Proposal to prevent moving goal posts when the Proposal is being voted on
-    /// and to show correct vote results for historical proposals once the mint supply changes
-    pub governing_token_mint_supply: Option<u64>,
+    /// The supply of the Governing Token mint at the time Proposal was decided
+    /// It's used to show correct vote results for historical proposals in cases when the mint supply changed
+    /// after vote was completed.
+    pub governing_token_mint_vote_supply: Option<u64>,
 
     /// Proposal name
     pub name: String,
@@ -210,7 +209,7 @@ impl Proposal {
 
         self.state = self.get_final_vote_state(governing_token_mint_supply, config);
         self.voting_completed_at = Some(current_unix_timestamp);
-        self.governing_token_mint_supply = Some(governing_token_mint_supply);
+        self.governing_token_mint_vote_supply = Some(governing_token_mint_supply);
 
         Ok(())
     }
@@ -249,7 +248,7 @@ impl Proposal {
         {
             self.state = tipped_state;
             self.voting_completed_at = Some(current_unix_timestamp);
-            self.governing_token_mint_supply = Some(governing_token_mint_supply);
+            self.governing_token_mint_vote_supply = Some(governing_token_mint_supply);
         }
     }
 
@@ -465,7 +464,7 @@ mod test {
             account_type: GovernanceAccountType::TokenOwnerRecord,
             governance: Pubkey::new_unique(),
             governing_token_mint: Pubkey::new_unique(),
-            governing_token_mint_supply: Some(10),
+            governing_token_mint_vote_supply: Some(10),
             state: ProposalState::Draft,
             token_owner_record: Pubkey::new_unique(),
             signatories_count: 10,
