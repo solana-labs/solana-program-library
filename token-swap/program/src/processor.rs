@@ -29,7 +29,7 @@ use solana_program::{
 use std::convert::TryInto;
 
 /// Program state handler.
-pub struct Processor {}
+pub struct Processor;
 impl Processor {
     /// Unpacks a spl_token `Account`.
     pub fn unpack_token_account(

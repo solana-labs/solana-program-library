@@ -43,7 +43,7 @@ pub trait SwapState {
 #[enum_dispatch(SwapState)]
 pub enum SwapVersion {
     /// Latest version, used for all new swaps
-    SwapV1,
+    SwapV1(SwapV1),
 }
 
 /// SwapVersion does not implement program_pack::Pack because there are size
@@ -54,8 +54,8 @@ impl SwapVersion {
     pub const LATEST_LEN: usize = 1 + SwapV1::LEN; // add one for the version enum
 
     /// Pack a swap into a byte array, based on its version
-    pub fn pack(src: Self, dst: &mut [u8]) -> Result<(), ProgramError> {
-        match src {
+    pub fn pack(self, dst: &mut [u8]) -> Result<(), ProgramError> {
+        match self {
             Self::SwapV1(swap_info) => {
                 dst[0] = 1;
                 SwapV1::pack(swap_info, &mut dst[1..])

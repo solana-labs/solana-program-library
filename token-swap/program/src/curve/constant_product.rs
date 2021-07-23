@@ -289,7 +289,7 @@ mod tests {
 
     #[test]
     fn initial_pool_amount() {
-        let calculator = ConstantProductCurve {};
+        let calculator = ConstantProductCurve;
         assert_eq!(calculator.new_pool_supply(), INITIAL_SWAP_POOL_AMOUNT);
     }
 
@@ -301,7 +301,7 @@ mod tests {
         expected_a: u128,
         expected_b: u128,
     ) {
-        let calculator = ConstantProductCurve {};
+        let calculator = ConstantProductCurve;
         let results = calculator
             .pool_tokens_to_trading_tokens(
                 deposit,
