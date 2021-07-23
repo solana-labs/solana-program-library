@@ -3,6 +3,7 @@ use solana_clap_utils::{
     input_parsers::pubkey_of_signer,
     keypair::{pubkey_from_path, signer_from_path},
 };
+use solana_cli_output::OutputFormat;
 use solana_client::{blockhash_query::BlockhashQuery, rpc_client::RpcClient};
 use solana_remote_wallet::remote_wallet::RemoteWalletManager;
 use solana_sdk::{pubkey::Pubkey, signature::Signer};
@@ -11,7 +12,7 @@ use std::{process::exit, sync::Arc};
 
 pub(crate) struct Config<'a> {
     pub(crate) rpc_client: RpcClient,
-    pub(crate) verbose: bool,
+    pub(crate) output_format: OutputFormat,
     pub(crate) fee_payer: Pubkey,
     pub(crate) default_keypair_path: String,
     pub(crate) nonce_account: Option<Pubkey>,
