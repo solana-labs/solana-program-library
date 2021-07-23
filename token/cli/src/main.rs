@@ -2494,6 +2494,15 @@ fn main() {
             command_multisig(&config, address)
         }
         ("gc", Some(arg_matches)) => {
+            match config.output_format {
+                OutputFormat::Json | OutputFormat::JsonCompact => {
+                    eprintln!(
+                        "`spl-token gc` does not support the `--ouput` parameter at this time"
+                    );
+                    exit(1);
+                }
+                _ => {}
+            }
             let (owner_signer, owner_address) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
             bulk_signers.push(owner_signer);
