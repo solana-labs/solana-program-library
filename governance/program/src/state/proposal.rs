@@ -411,21 +411,6 @@ pub fn get_proposal_data_for_governance_and_governing_mint(
     Ok(proposal_data)
 }
 
-/// Deserializes Proposal and validates it belongs to the given Governing Mint
-pub fn get_proposal_data_for_governing_mint(
-    program_id: &Pubkey,
-    proposal_info: &AccountInfo,
-    governing_token_mint: &Pubkey,
-) -> Result<Proposal, ProgramError> {
-    let proposal_data = get_proposal_data(program_id, proposal_info)?;
-
-    if proposal_data.governing_token_mint != *governing_token_mint {
-        return Err(GovernanceError::InvalidGoverningMintForProposal.into());
-    }
-
-    Ok(proposal_data)
-}
-
 /// Deserializes Proposal and validates it belongs to the given Governance
 pub fn get_proposal_data_for_governance(
     program_id: &Pubkey,

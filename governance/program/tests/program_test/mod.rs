@@ -1189,7 +1189,6 @@ impl GovernanceProgramTest {
         let sign_off_proposal_instruction = sign_off_proposal(
             &self.program_id,
             &proposal_cookie.address,
-            &proposal_cookie.account.governing_token_mint,
             &signatory_record_cookie.signatory.pubkey(),
         );
 
