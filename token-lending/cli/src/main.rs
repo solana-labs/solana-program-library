@@ -18,6 +18,7 @@ use {
         transaction::Transaction,
     },
     spl_token::{
+        amount_to_ui_amount,
         instruction::{approve, revoke},
         state::{Account as Token, Mint},
         ui_amount_to_amount,
@@ -1041,19 +1042,28 @@ fn command_update_reserve(
     if reserve_config.deposit_limit.is_some() {
         println!(
             "Updating deposit_limit from {} to {}",
-            reserve.config.deposit_limit,
+            amount_to_ui_amount(
+                reserve.config.deposit_limit,
+                reserve.liquidity.mint_decimals
+            ),
             reserve_config.deposit_limit.unwrap(),
         );
-        reserve.config.deposit_limit = reserve_config.deposit_limit.unwrap();
+        reserve.config.deposit_limit = ui_amount_to_amount(
+            reserve_config.deposit_limit.unwrap() as f64,
+            reserve.liquidity.mint_decimals,
+        )
     }
 
     if reserve_config.borrow_limit.is_some() {
         println!(
             "Updating borrow_limit from {} to {}",
-            reserve.config.borrow_limit,
+            amount_to_ui_amount(reserve.config.borrow_limit, reserve.liquidity.mint_decimals),
             reserve_config.borrow_limit.unwrap(),
         );
-        reserve.config.borrow_limit = reserve_config.borrow_limit.unwrap();
+        reserve.config.borrow_limit = ui_amount_to_amount(
+            reserve_config.borrow_limit.unwrap() as f64,
+            reserve.liquidity.mint_decimals,
+        )
     }
 
     let mut transaction = Transaction::new_with_payer(
