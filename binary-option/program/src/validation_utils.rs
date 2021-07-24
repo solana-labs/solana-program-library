@@ -10,28 +10,6 @@ use {
     spl_token::state::Mint,
 };
 
-pub fn assert_mint_authority_matches_mint(
-    mint: &Mint,
-    mint_authority_info: &AccountInfo,
-) -> ProgramResult {
-    match mint.mint_authority {
-        solana_program::program_option::COption::None => {
-            return Err(BinaryOptionError::InvalidMintAuthority.into());
-        }
-        solana_program::program_option::COption::Some(key) => {
-            if *mint_authority_info.key != key {
-                return Err(BinaryOptionError::InvalidMintAuthority.into());
-            }
-        }
-    }
-
-    if !mint_authority_info.is_signer {
-        return Err(BinaryOptionError::NotMintAuthority.into());
-    }
-
-    Ok(())
-}
-
 pub fn assert_keys_equal(key1: Pubkey, key2: Pubkey) -> ProgramResult {
     if key1 != key2 {
         Err(BinaryOptionError::PublicKeyMismatch.into())

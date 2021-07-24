@@ -210,18 +210,17 @@ pub fn spl_token_transfer_signed<'a>(
     source: &AccountInfo<'a>,
     destination: &AccountInfo<'a>,
     pda_account: &AccountInfo<'a>,
-    num: u64,
-    denom: u64,
+    amount: u64,
     signers: &[&[u8]],
 ) -> ProgramResult {
-    if num > 0 && denom > 0 {
+    if amount > 0 {
         let ix = transfer(
             token_program.key,
             source.key,
             destination.key,
             pda_account.key,
             &[&pda_account.key],
-            num / denom,
+            amount,
         )?;
         invoke_signed(
             &ix,
