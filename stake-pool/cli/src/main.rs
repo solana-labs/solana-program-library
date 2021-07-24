@@ -353,6 +353,15 @@ fn command_vsa_create(
     Ok(())
 }
 
+fn command_show(
+    config: &Config,
+    stake_pool_address: &Pubkey,
+) -> CommandResult {
+    let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
+    println!("Stake pool at address {}:\n{:?}", stake_pool_address, stake_pool);
+    Ok(())
+}
+
 fn command_vsa_add(
     config: &Config,
     stake_pool_address: &Pubkey,
@@ -1308,6 +1317,27 @@ fn command_set_staker(
     Ok(())
 }
 
+fn command_set_sol_deposit_authority(
+    config: &Config,
+    stake_pool_address: &Pubkey,
+    new_sol_deposit_authority: Option<Pubkey>,
+) -> CommandResult {
+    let mut signers = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
+    unique_signers!(signers);
+    let transaction = checked_transaction_with_signers(
+        config,
+        &[spl_stake_pool::instruction::set_sol_deposit_authority(
+            &spl_stake_pool::id(),
+            stake_pool_address,
+            &config.manager.pubkey(),
+            new_sol_deposit_authority.as_ref(),
+        )],
+        &signers,
+    )?;
+    send_transaction(config, transaction)?;
+    Ok(())
+}
+
 fn command_set_fee(config: &Config, stake_pool_address: &Pubkey, new_fee: Fee) -> CommandResult {
     let mut signers = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
     unique_signers!(signers);
@@ -1601,6 +1631,18 @@ fn main() {
                     .takes_value(true)
                     .required(true)
                     .help("The validator vote account that this stake will be delegated to"),
+            )
+        )
+        .subcommand(SubCommand::with_name("show")
+            .about("Show the state pool state")
+            .arg(
+                Arg::with_name("pool")
+                    .index(1)
+                    .validator(is_pubkey)
+                    .value_name("POOL_ADDRESS")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Stake pool address"),
             )
         )
         .subcommand(SubCommand::with_name("add-validator")
@@ -1984,6 +2026,33 @@ fn main() {
                     .help("Public key for the new stake pool staker."),
             )
         )
+        .subcommand(SubCommand::with_name("set-sol-deposit-authority")
+            .about("Change sol deposit authority account for the stake pool. Must be signed by the manager.")
+            .arg(
+                Arg::with_name("pool")
+                    .index(1)
+                    .validator(is_pubkey)
+                    .value_name("POOL_ADDRESS")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Stake pool address."),
+            )
+            .arg(
+                Arg::with_name("new_sol_deposit_authority")
+                    .index(2)
+                    .validator(|x| {
+                        let default = if x == String::from("none") {
+                            Ok(())
+                        } else {
+                            Err(String::from("Not a pubkey or 'none'"))
+                        };
+                        is_pubkey(x).or(default)
+                    })
+                    .value_name("ADDRESS_OR_NONE")
+                    .takes_value(true)
+                    .help("'none', or a public key for the new stake pool sol deposit authority."),
+            )
+        )
         .subcommand(SubCommand::with_name("set-fee")
             .about("Change the [management/withdrawal/deposit] fee assessed by the stake pool. Must be signed by the manager.")
             .arg(
@@ -2151,6 +2220,10 @@ fn main() {
                 reserve_keypair,
             )
         }
+        ("show", Some(arg_matches)) => {
+            let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
+            command_show(&config, &stake_pool_address)
+        }
         ("create-validator-stake", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
             let vote_account_address = pubkey_of(arg_matches, "vote_account").unwrap();
@@ -2267,6 +2340,15 @@ fn main() {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
             let new_staker = pubkey_of(arg_matches, "new_staker").unwrap();
             command_set_staker(&config, &stake_pool_address, &new_staker)
+        }
+        ("set-sol-deposit-authority", Some(arg_matches)) => {
+            let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
+            let new_sol_deposit_authority = pubkey_of(arg_matches, "new_sol_deposit_authority");
+            command_set_sol_deposit_authority(
+                &config,
+                &stake_pool_address,
+                new_sol_deposit_authority,
+            )
         }
         ("set-fee", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
