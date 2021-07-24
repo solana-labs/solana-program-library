@@ -698,7 +698,7 @@ fn command_deposit_stake(
 fn command_deposit_sol(
     config: &Config,
     stake_pool_address: &Pubkey,
-    from: &Pubkey,
+    from: &Option<Keypair>,
     token_receiver: &Option<Pubkey>,
     referrer: &Option<Pubkey>,
     amount: f64,
@@ -710,7 +710,11 @@ fn command_deposit_sol(
     let amount = spl_token::ui_amount_to_amount(amount, 9);
 
     // Check withdraw_from balance
-    let from_balance = config.rpc_client.get_balance(from)?;
+    let from_pubkey = from.as_ref().map_or_else(
+        || config.fee_payer.try_pubkey().unwrap(),
+        |keypair| keypair.try_pubkey().unwrap(),
+    );
+    let from_balance = config.rpc_client.get_balance(&from_pubkey)?;
     if from_balance < amount {
         return Err(format!(
             "Not enough SOL to deposit into pool: {}.\nMaximum deposit amount is {} SOL.",
@@ -724,6 +728,9 @@ fn command_deposit_sol(
 
     let mut instructions: Vec<Instruction> = vec![];
     let mut signers = vec![config.fee_payer.as_ref(), config.staker.as_ref()];
+    if let Some(keypair) = from.as_ref() {
+        signers.push(keypair)
+    }
 
     let mut total_rent_free_balances: u64 = 0;
 
@@ -763,7 +770,7 @@ fn command_deposit_sol(
             &sol_deposit_authority.pubkey(),
             &pool_withdraw_authority,
             &stake_pool.reserve_stake,
-            from,
+            &from_pubkey,
             &token_receiver,
             &stake_pool.manager_fee_account,
             &referrer,
@@ -777,7 +784,7 @@ fn command_deposit_sol(
             stake_pool_address,
             &pool_withdraw_authority,
             &stake_pool.reserve_stake,
-            from,
+            &from_pubkey,
             &token_receiver,
             &stake_pool.manager_fee_account,
             &referrer,
@@ -1805,8 +1812,8 @@ fn main() {
             .arg(
                 Arg::with_name("from")
                     .long("from")
-                    .validator(is_pubkey)
-                    .value_name("ADDRESS")
+                    .validator(is_keypair)
+                    .value_name("KEYPAIR")
                     .takes_value(true)
                     .help("Account to deposit SOL from. \
                           Defaults to the fee payer."),
@@ -2207,8 +2214,7 @@ fn main() {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
             let token_receiver: Option<Pubkey> = pubkey_of(arg_matches, "token_receiver");
             let referrer: Option<Pubkey> = pubkey_of(arg_matches, "referrer");
-            let from = pubkey_of(arg_matches, "from")
-                .unwrap_or_else(|| config.fee_payer.try_pubkey().unwrap());
+            let from = keypair_of(arg_matches, "from");
             let amount = value_t_or_exit!(arg_matches, "amount", f64);
             command_deposit_sol(
                 &config,
