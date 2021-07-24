@@ -352,14 +352,17 @@ pub enum StakePoolInstruction {
     ///   representing ownership into the pool. Inputs are converted to the current ratio.
     ///
     ///   0. `[w]` Stake pool
-    ///   1. `[]/[s]` Stake pool deposit authority.
-    ///               Requirement of signature depends on `require_sol_deposit_authority`
+    ///   1. `[]/[s]` Stake pool sol deposit authority.
     ///   2. `[]` Stake pool withdraw authority
     ///   3. `[w]` Reserve stake account, to withdraw rent exempt reserve
-    ///   4. `[w]` User account to receive pool tokens
-    ///   5. `[w]` Pool token mint account
-    ///   6. '[]' Sysvar clock account
-    ///   7. `[]` Pool token program id,
+    ///   4. `[s]` Account providing the lamports to be deposited into the pool
+    ///   5. `[w]` User account to receive pool tokens
+    ///   6. `[w]` Account to receive pool fee tokens
+    ///   7. `[w]` Account to receive a portion of pool fee tokens as referral fees
+    ///   8. `[w]` Pool token mint account
+    ///   9. '[]' Sysvar clock account
+    ///   10 `[]` System program account
+    ///   11. `[]` Pool token program id,
     DepositSol(u64),
 
     ///  (Manager only) Update staker

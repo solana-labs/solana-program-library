@@ -1582,7 +1582,7 @@ fn main() {
                     .long("deposit-authority")
                     .short("a")
                     .validator(is_pubkey)
-                    .value_name("stake_deposit_authority_ADDRESS")
+                    .value_name("STAKE_DEPOSIT_AUTHORITY_ADDRESS")
                     .takes_value(true)
                     .help("Deposit authority required to sign all deposits into the stake pool"),
             )
@@ -1864,7 +1864,7 @@ fn main() {
                 Arg::with_name("token_receiver")
                     .long("token-receiver")
                     .validator(is_pubkey)
-                    .value_name("ADDRESS")
+                    .value_name("POOL_TOKEN_RECEIVER_ADDRESS")
                     .takes_value(true)
                     .help("Account to receive the minted pool tokens. \
                           Defaults to the token-owner's associated pool token account. \
@@ -1874,7 +1874,7 @@ fn main() {
                 Arg::with_name("referrer")
                     .long("referrer")
                     .validator(is_pubkey)
-                    .value_name("ADDRESS")
+                    .value_name("REFERRER_TOKEN_ADDRESS")
                     .takes_value(true)
                     .help("Account to receive the referral fees for deposits. \
                           Defaults to the pool manager."),
