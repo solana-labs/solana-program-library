@@ -274,7 +274,7 @@ async fn fail_with_wrong_stake_program_id() {
     let accounts = vec![
         AccountMeta::new(stake_pool_accounts.stake_pool.pubkey(), false),
         AccountMeta::new(stake_pool_accounts.validator_list.pubkey(), false),
-        AccountMeta::new_readonly(stake_pool_accounts.deposit_authority, false),
+        AccountMeta::new_readonly(stake_pool_accounts.stake_deposit_authority, false),
         AccountMeta::new_readonly(stake_pool_accounts.withdraw_authority, false),
         AccountMeta::new(deposit_stake, false),
         AccountMeta::new(validator_stake_account.stake_account, false),
@@ -584,10 +584,11 @@ async fn fail_with_uninitialized_validator_list() {} // TODO
 async fn fail_with_out_of_dated_pool_balances() {} // TODO
 
 #[tokio::test]
-async fn success_with_deposit_authority() {
+async fn success_with_stake_deposit_authority() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let deposit_authority = Keypair::new();
-    let stake_pool_accounts = StakePoolAccounts::new_with_deposit_authority(deposit_authority);
+    let stake_deposit_authority = Keypair::new();
+    let stake_pool_accounts =
+        StakePoolAccounts::new_with_stake_deposit_authority(stake_deposit_authority);
     stake_pool_accounts
         .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
         .await
@@ -665,10 +666,11 @@ async fn success_with_deposit_authority() {
 }
 
 #[tokio::test]
-async fn fail_without_deposit_authority_signature() {
+async fn fail_without_stake_deposit_authority_signature() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let deposit_authority = Keypair::new();
-    let mut stake_pool_accounts = StakePoolAccounts::new_with_deposit_authority(deposit_authority);
+    let stake_deposit_authority = Keypair::new();
+    let mut stake_pool_accounts =
+        StakePoolAccounts::new_with_stake_deposit_authority(stake_deposit_authority);
     stake_pool_accounts
         .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
         .await
@@ -732,8 +734,8 @@ async fn fail_without_deposit_authority_signature() {
     .unwrap();
 
     let wrong_depositor = Keypair::new();
-    stake_pool_accounts.deposit_authority = wrong_depositor.pubkey();
-    stake_pool_accounts.deposit_authority_keypair = Some(wrong_depositor);
+    stake_pool_accounts.stake_deposit_authority = wrong_depositor.pubkey();
+    stake_pool_accounts.stake_deposit_authority_keypair = Some(wrong_depositor);
 
     let error = stake_pool_accounts
         .deposit_stake(
@@ -753,7 +755,7 @@ async fn fail_without_deposit_authority_signature() {
         TransactionError::InstructionError(_, InstructionError::Custom(error_index)) => {
             assert_eq!(
                 error_index,
-                error::StakePoolError::InvalidProgramAddress as u32
+                error::StakePoolError::InvalidStakeDepositAuthority as u32
             );
         }
         _ => panic!("Wrong error occurs while try to make a deposit with wrong stake program ID"),

@@ -51,6 +51,7 @@ pub const WITHDRAWAL_BASELINE_FEE: Fee = Fee {
 
 /// Get the stake amount under consideration when calculating pool token
 /// conversions
+#[inline]
 pub fn minimum_stake_lamports(meta: &Meta) -> u64 {
     meta.rent_exempt_reserve
         .saturating_add(MINIMUM_ACTIVE_STAKE)
@@ -58,6 +59,7 @@ pub fn minimum_stake_lamports(meta: &Meta) -> u64 {
 
 /// Get the stake amount under consideration when calculating pool token
 /// conversions
+#[inline]
 pub fn minimum_reserve_lamports(meta: &Meta) -> u64 {
     meta.rent_exempt_reserve.saturating_add(1)
 }

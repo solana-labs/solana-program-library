@@ -108,6 +108,14 @@ pub enum StakePoolError {
     /// Not enough lamports provided for deposit to result in one pool token
     #[error("DepositTooSmall")]
     DepositTooSmall,
+
+    // 30.
+    /// Provided stake deposit authority does not match the program's
+    #[error("FeeIncreaseTooHigh")]
+    InvalidStakeDepositAuthority,
+    /// Provided sol deposit authority does not match the program's
+    #[error("InvalidSolDepositAuthority")]
+    InvalidSolDepositAuthority,
 }
 impl From<StakePoolError> for ProgramError {
     fn from(e: StakePoolError) -> Self {
