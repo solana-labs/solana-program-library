@@ -493,8 +493,8 @@ async fn fail_with_unknown_validator() {
     let user_stake = Keypair::new();
     let lockup = stake_program::Lockup::default();
     let authorized = stake_program::Authorized {
-        staker: stake_pool_accounts.deposit_authority,
-        withdrawer: stake_pool_accounts.deposit_authority,
+        staker: stake_pool_accounts.stake_deposit_authority,
+        withdrawer: stake_pool_accounts.stake_deposit_authority,
     };
     create_independent_stake_account(
         &mut banks_client,

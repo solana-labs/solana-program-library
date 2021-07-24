@@ -48,7 +48,7 @@ pub struct StakePool {
     /// distribution
     pub staker: Pubkey,
 
-    /// Deposit authority
+    /// Stake deposit authority
     ///
     /// If a depositor pubkey is specified on initialization, then deposits must be
     /// signed by this authority. If no deposit authority is specified,
@@ -57,11 +57,11 @@ pub struct StakePool {
     ///     &[&stake_pool_address.to_bytes()[..32], b"deposit"],
     ///     program_id,
     /// )`
-    pub deposit_authority: Pubkey,
+    pub stake_deposit_authority: Pubkey,
 
-    /// Withdrawal authority bump seed
+    /// Stake withdrawal authority bump seed
     /// for `create_program_address(&[state::StakePool account, "withdrawal"])`
-    pub withdraw_bump_seed: u8,
+    pub stake_withdraw_bump_seed: u8,
 
     /// Validator stake list storage account
     pub validator_list: Pubkey,
@@ -118,10 +118,9 @@ pub struct StakePool {
     /// i.e. `deposit_fee`% of SOL deposited is collected as deposit fees for every deposit
     /// and `referral_fee`% of the collected deposit fees is paid out to the referrer
     pub referral_fee: u8,
-
     /// Toggles whether the `DepositSol` instruction requires a signature from
     /// the `deposit_authority`
-    pub require_sol_deposit_authority: u8,
+    pub sol_deposit_authority: Option<Pubkey>,
 }
 impl StakePool {
     /// calculate the pool tokens that should be minted for a deposit of `stake_lamports`
@@ -193,7 +192,7 @@ impl StakePool {
     }
 
     /// Checks that the withdraw or deposit authority is valid
-    fn check_authority(
+    fn check_program_derived_authority(
         authority_address: &Pubkey,
         program_id: &Pubkey,
         stake_pool_address: &Pubkey,
@@ -229,25 +228,44 @@ impl StakePool {
         program_id: &Pubkey,
         stake_pool_address: &Pubkey,
     ) -> Result<(), ProgramError> {
-        Self::check_authority(
+        Self::check_program_derived_authority(
             withdraw_authority,
             program_id,
             stake_pool_address,
             crate::AUTHORITY_WITHDRAW,
-            self.withdraw_bump_seed,
+            self.stake_withdraw_bump_seed,
         )
     }
     /// Checks that the deposit authority is valid
     #[inline]
-    pub(crate) fn check_deposit_authority(
+    pub(crate) fn check_stake_deposit_authority(
         &self,
-        deposit_authority: &Pubkey,
+        stake_deposit_authority: &Pubkey,
     ) -> Result<(), ProgramError> {
-        if self.deposit_authority == *deposit_authority {
+        if self.stake_deposit_authority == *stake_deposit_authority {
             Ok(())
         } else {
-            Err(StakePoolError::InvalidProgramAddress.into())
+            Err(StakePoolError::InvalidStakeDepositAuthority.into())
         }
+    }
+
+    /// Checks that the deposit authority is valid
+    #[inline]
+    pub(crate) fn check_sol_deposit_authority(
+        &self,
+        sol_deposit_authority: &Pubkey,
+        is_signer: bool,
+    ) -> Result<(), ProgramError> {
+        if let Some(auth) = self.sol_deposit_authority {
+            if !(auth == *sol_deposit_authority) {
+                return Err(StakePoolError::InvalidSolDepositAuthority.into());
+            }
+            if !is_signer {
+                msg!("SOL Deposit authority signature missing");
+                return Err(StakePoolError::SignatureMissing.into());
+            }
+        }
+        Ok(())
     }
 
     /// Check staker validity and signature
@@ -329,13 +347,11 @@ impl StakePool {
     }
 
     /// Check if StakePool is actually initialized as a stake pool
-    #[inline]
     pub fn is_valid(&self) -> bool {
         self.account_type == AccountType::StakePool
     }
 
     /// Check if StakePool is currently uninitialized
-    #[inline]
     pub fn is_uninitialized(&self) -> bool {
         self.account_type == AccountType::Uninitialized
     }

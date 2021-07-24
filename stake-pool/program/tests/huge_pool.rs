@@ -32,7 +32,7 @@ use {
     spl_token::state::{Account as SplAccount, AccountState as SplAccountState, Mint},
 };
 
-const HUGE_POOL_SIZE: u32 = 4_000;
+const HUGE_POOL_SIZE: u32 = 3900;
 const ACCOUNT_RENT_EXEMPTION: u64 = 1_000_000_000; // go with something big to be safe
 const STAKE_AMOUNT: u64 = 200_000_000_000;
 const STAKE_ACCOUNT_RENT_EXEMPTION: u64 = 2_282_880;
@@ -56,15 +56,15 @@ async fn setup(
     stake_pool_accounts.max_validators = max_validators;
 
     let stake_pool_pubkey = stake_pool_accounts.stake_pool.pubkey();
-    let (_, withdraw_bump_seed) =
+    let (_, stake_withdraw_bump_seed) =
         find_withdraw_authority_program_address(&id(), &stake_pool_pubkey);
 
     let mut stake_pool = StakePool {
         account_type: AccountType::StakePool,
         manager: stake_pool_accounts.manager.pubkey(),
         staker: stake_pool_accounts.staker.pubkey(),
-        deposit_authority: stake_pool_accounts.deposit_authority,
-        withdraw_bump_seed,
+        stake_deposit_authority: stake_pool_accounts.stake_deposit_authority,
+        stake_withdraw_bump_seed,
         validator_list: stake_pool_accounts.validator_list.pubkey(),
         reserve_stake: stake_pool_accounts.reserve_stake.pubkey(),
         pool_mint: stake_pool_accounts.pool_mint.pubkey(),
@@ -82,7 +82,7 @@ async fn setup(
         withdrawal_fee: Fee::default(),
         next_withdrawal_fee: None,
         referral_fee: 0,
-        require_sol_deposit_authority: 0,
+        sol_deposit_authority: None,
     };
 
     let mut validator_list = ValidatorList::new(max_validators);
@@ -593,7 +593,7 @@ async fn add_validator_to_pool() {
             increase_amount,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let validator_list = get_account(
         &mut context.banks_client,

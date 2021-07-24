@@ -1164,10 +1164,11 @@ async fn fail_with_bad_reserve() {
 }
 
 #[tokio::test]
-async fn success_with_required_deposit_authority() {
+async fn success_with_required_stake_deposit_authority() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let deposit_authority = Keypair::new();
-    let stake_pool_accounts = StakePoolAccounts::new_with_deposit_authority(deposit_authority);
+    let stake_deposit_authority = Keypair::new();
+    let stake_pool_accounts =
+        StakePoolAccounts::new_with_stake_deposit_authority(stake_deposit_authority);
     stake_pool_accounts
         .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
         .await
@@ -1179,7 +1180,7 @@ async fn success_with_required_deposit_authority() {
     let stake_pool =
         try_from_slice_unchecked::<state::StakePool>(stake_pool_account.data.as_slice()).unwrap();
     assert_eq!(
-        stake_pool.deposit_authority,
-        stake_pool_accounts.deposit_authority
+        stake_pool.stake_deposit_authority,
+        stake_pool_accounts.stake_deposit_authority
     );
 }

@@ -102,6 +102,12 @@ pub enum StakePoolError {
     /// Proposed fee increase exceeds stipulated ratio
     #[error("FeeIncreaseTooHigh")]
     FeeIncreaseTooHigh,
+    /// Provided stake deposit authority does not match the program's
+    #[error("FeeIncreaseTooHigh")]
+    InvalidStakeDepositAuthority,
+    /// Provided sol deposit authority does not match the program's
+    #[error("InvalidSolDepositAuthority")]
+    InvalidSolDepositAuthority,
 }
 impl From<StakePoolError> for ProgramError {
     fn from(e: StakePoolError) -> Self {
