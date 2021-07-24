@@ -1568,6 +1568,31 @@ fn main() {
                     .help("Withdrawal fee denominator, fee amount is numerator divided by denominator [default: 0]"),
             )
             .arg(
+                Arg::with_name("deposit_fee_numerator")
+                    .long("deposit-fee-numerator")
+                    .validator(is_parsable::<u64>)
+                    .value_name("NUMERATOR")
+                    .takes_value(true)
+                    .requires("deposit_fee_denominator")
+                    .help("Deposit fee numerator, fee amount is numerator divided by denominator [default: 0]"),
+            ).arg(
+                Arg::with_name("deposit_fee_denominator")
+                    .long("deposit-fee-denominator")
+                    .validator(is_parsable::<u64>)
+                    .value_name("DENOMINATOR")
+                    .takes_value(true)
+                    .requires("deposit_fee_numerator")
+                    .help("Deposit fee denominator, fee amount is numerator divided by denominator [default: 0]"),
+            )
+            .arg(
+                Arg::with_name("referral_fee")
+                    .long("referral-fee")
+                    .validator(is_valid_percentage)
+                    .value_name("FEE_PERCENTAGE")
+                    .takes_value(true)
+                    .help("Referral fee percentage, maximum 100"),
+            )
+            .arg(
                 Arg::with_name("max_validators")
                     .long("max-validators")
                     .short("m")
@@ -2195,6 +2220,9 @@ fn main() {
             let denominator = value_t_or_exit!(arg_matches, "fee_denominator", u64);
             let w_numerator = value_t!(arg_matches, "withdrawal_fee_numerator", u64);
             let w_denominator = value_t!(arg_matches, "withdrawal_fee_denominator", u64);
+            let d_numerator = value_t!(arg_matches, "withdrawal_fee_numerator", u64);
+            let d_denominator = value_t!(arg_matches, "withdrawal_fee_denominator", u64);
+            let referral_fee = value_t!(arg_matches, "referral_fee", u8);
             let max_validators = value_t_or_exit!(arg_matches, "max_validators", u32);
             let pool_keypair = keypair_of(arg_matches, "pool_keypair");
             let mint_keypair = keypair_of(arg_matches, "mint_keypair");
@@ -2211,10 +2239,10 @@ fn main() {
                     denominator: w_denominator.unwrap_or(0),
                 },
                 Fee {
-                    numerator: 0,
-                    denominator: 0,
+                    numerator: d_numerator.unwrap_or(0),
+                    denominator: d_denominator.unwrap_or(0),
                 },
-                0,
+                referral_fee.unwrap_or(0),
                 max_validators,
                 pool_keypair,
                 mint_keypair,
