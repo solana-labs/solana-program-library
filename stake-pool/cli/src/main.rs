@@ -358,7 +358,7 @@ fn command_show(
     stake_pool_address: &Pubkey,
 ) -> CommandResult {
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
-    println!("Stake pool at address {}:\n{:?}", stake_pool_address, stake_pool);
+    println!("Stake pool at address {}:\n{:#?}", stake_pool_address, stake_pool);
     Ok(())
 }
 
