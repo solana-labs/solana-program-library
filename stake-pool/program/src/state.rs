@@ -118,6 +118,7 @@ pub struct StakePool {
     /// i.e. `deposit_fee`% of SOL deposited is collected as deposit fees for every deposit
     /// and `referral_fee`% of the collected deposit fees is paid out to the referrer
     pub referral_fee: u8,
+
     /// Toggles whether the `DepositSol` instruction requires a signature from
     /// the `deposit_authority`
     pub sol_deposit_authority: Option<Pubkey>,
@@ -257,7 +258,7 @@ impl StakePool {
         is_signer: bool,
     ) -> Result<(), ProgramError> {
         if let Some(auth) = self.sol_deposit_authority {
-            if !(auth == *sol_deposit_authority) {
+            if auth != *sol_deposit_authority {
                 return Err(StakePoolError::InvalidSolDepositAuthority.into());
             }
             if !is_signer {

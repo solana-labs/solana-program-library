@@ -58,9 +58,11 @@ async fn success_set_sol_deposit_authority() {
     let stake_pool =
         try_from_slice_unchecked::<state::StakePool>(&stake_pool.data.as_slice()).unwrap();
 
-    assert_eq!(stake_pool.sol_deposit_authority, Some(new_sol_deposit_authority.pubkey()));
+    assert_eq!(
+        stake_pool.sol_deposit_authority,
+        Some(new_sol_deposit_authority.pubkey())
+    );
 }
-
 
 #[tokio::test]
 async fn success_set_sol_deposit_authority_to_none() {
@@ -83,7 +85,10 @@ async fn success_set_sol_deposit_authority_to_none() {
     let stake_pool =
         try_from_slice_unchecked::<state::StakePool>(&stake_pool.data.as_slice()).unwrap();
 
-    assert_eq!(stake_pool.sol_deposit_authority, Some(new_sol_deposit_authority.pubkey()));
+    assert_eq!(
+        stake_pool.sol_deposit_authority,
+        Some(new_sol_deposit_authority.pubkey())
+    );
 
     let mut transaction = Transaction::new_with_payer(
         &[instruction::set_sol_deposit_authority(

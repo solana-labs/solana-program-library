@@ -741,12 +741,10 @@ impl StakePoolAccounts {
                 &self.pool_mint.pubkey(),
                 &spl_token::id(),
                 amount,
-                true,
             )
         } else {
-            instruction::deposit_sol_with_authority(
+            instruction::deposit_sol(
                 &id(),
-                &self.stake_pool.pubkey(),
                 &self.stake_pool.pubkey(),
                 &self.withdraw_authority,
                 &self.reserve_stake.pubkey(),
@@ -757,7 +755,6 @@ impl StakePoolAccounts {
                 &self.pool_mint.pubkey(),
                 &spl_token::id(),
                 amount,
-                false,
             )
         };
         let transaction = Transaction::new_signed_with_payer(
