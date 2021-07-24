@@ -134,9 +134,8 @@ async fn fail_with_wrong_token_program_id() {
     let wrong_token_program = Keypair::new();
 
     let mut transaction = Transaction::new_with_payer(
-        &instruction::deposit_sol_with_authority(
+        &instruction::deposit_sol(
             &id(),
-            &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.withdraw_authority,
             &stake_pool_accounts.reserve_stake.pubkey(),
@@ -147,7 +146,6 @@ async fn fail_with_wrong_token_program_id() {
             &stake_pool_accounts.pool_mint.pubkey(),
             &wrong_token_program.pubkey(),
             TEST_STAKE_AMOUNT,
-            false,
         ),
         Some(&context.payer.pubkey()),
     );
@@ -243,7 +241,7 @@ async fn fail_with_wrong_mint_for_receiver_acc() {
             let program_error = token_error::TokenError::MintMismatch as u32;
             assert_eq!(error_index, program_error);
         }
-        _ => panic!("Wrong error occurs while try to deposit with wrong mint fro receiver account"),
+        _ => panic!("Wrong error occurs while try to deposit with wrong mint from receiver account"),
     }
 }
 
@@ -314,7 +312,8 @@ async fn success_with_sol_deposit_authority() {
 async fn fail_without_sol_deposit_authority_signature() {
     // TODO: this test should work after DepositSol has been refactored with deposit_sol_authority
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let mut stake_pool_accounts = StakePoolAccounts::new();
+    let sol_deposit_authority = Keypair::new();
+    let stake_pool_accounts = StakePoolAccounts::new();
     stake_pool_accounts
         .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
         .await
@@ -334,8 +333,6 @@ async fn fail_without_sol_deposit_authority_signature() {
     )
     .await
     .unwrap();
-
-    let sol_deposit_authority = Keypair::new();
 
     let mut transaction = Transaction::new_with_payer(
         &[instruction::set_sol_deposit_authority(
@@ -396,9 +393,8 @@ async fn success_with_referral_fee() {
         get_token_balance(&mut context.banks_client, &referrer_token_account.pubkey()).await;
 
     let mut transaction = Transaction::new_with_payer(
-        &instruction::deposit_sol_with_authority(
+        &instruction::deposit_sol(
             &id(),
-            &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.withdraw_authority,
             &stake_pool_accounts.reserve_stake.pubkey(),
@@ -409,7 +405,6 @@ async fn success_with_referral_fee() {
             &stake_pool_accounts.pool_mint.pubkey(),
             &spl_token::id(),
             TEST_STAKE_AMOUNT,
-            false,
         ),
         Some(&context.payer.pubkey()),
     );
@@ -435,9 +430,8 @@ async fn fail_with_invalid_referrer() {
     let invalid_token_account = Keypair::new();
 
     let mut transaction = Transaction::new_with_payer(
-        &instruction::deposit_sol_with_authority(
+        &instruction::deposit_sol(
             &id(),
-            &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.withdraw_authority,
             &stake_pool_accounts.reserve_stake.pubkey(),
@@ -448,7 +442,6 @@ async fn fail_with_invalid_referrer() {
             &stake_pool_accounts.pool_mint.pubkey(),
             &spl_token::id(),
             TEST_STAKE_AMOUNT,
-            false,
         ),
         Some(&context.payer.pubkey()),
     );

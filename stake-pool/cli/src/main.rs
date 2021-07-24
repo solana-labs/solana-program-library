@@ -50,6 +50,7 @@ struct Config {
     manager: Box<dyn Signer>,
     staker: Box<dyn Signer>,
     depositor: Option<Box<dyn Signer>>,
+    sol_depositor: Option<Box<dyn Signer>>,
     token_owner: Box<dyn Signer>,
     fee_payer: Box<dyn Signer>,
     dry_run: bool,
@@ -697,6 +698,7 @@ fn command_deposit_stake(
 fn command_deposit_sol(
     config: &Config,
     stake_pool_address: &Pubkey,
+    from: &Pubkey,
     token_receiver: &Option<Pubkey>,
     referrer: &Option<Pubkey>,
     amount: f64,
@@ -708,9 +710,7 @@ fn command_deposit_sol(
     let amount = spl_token::ui_amount_to_amount(amount, 9);
 
     // Check withdraw_from balance
-    let from_balance = config
-        .rpc_client
-        .get_balance(&config.fee_payer.try_pubkey()?)?;
+    let from_balance = config.rpc_client.get_balance(from)?;
     if from_balance < amount {
         return Err(format!(
             "Not enough SOL to deposit into pool: {}.\nMaximum deposit amount is {} SOL.",
@@ -741,14 +741,18 @@ fn command_deposit_sol(
     let pool_withdraw_authority =
         find_withdraw_authority_program_address(&spl_stake_pool::id(), stake_pool_address).0;
 
-    let mut deposit_instructions = if let Some(stake_deposit_authority) = config.depositor.as_ref()
+    let mut deposit_instructions = if let Some(sol_deposit_authority) =
+        config.sol_depositor.as_ref()
     {
-        signers.push(stake_deposit_authority.as_ref());
-        if stake_deposit_authority.pubkey() != stake_pool.stake_deposit_authority {
+        let expected_sol_deposit_authority = stake_pool.sol_deposit_authority.ok_or_else(|| {
+            "SOL deposit authority specified in config but stake Pool has none".to_string()
+        })?;
+        signers.push(sol_deposit_authority.as_ref());
+        if sol_deposit_authority.pubkey() != expected_sol_deposit_authority {
             let error = format!(
                 "Invalid deposit authority specified, expected {}, received {}",
-                stake_pool.stake_deposit_authority,
-                stake_deposit_authority.pubkey()
+                expected_sol_deposit_authority,
+                sol_deposit_authority.pubkey()
             );
             return Err(error.into());
         }
@@ -756,17 +760,16 @@ fn command_deposit_sol(
         spl_stake_pool::instruction::deposit_sol_with_authority(
             &spl_stake_pool::id(),
             stake_pool_address,
-            &stake_deposit_authority.pubkey(),
+            &sol_deposit_authority.pubkey(),
             &pool_withdraw_authority,
             &stake_pool.reserve_stake,
-            &config.fee_payer.pubkey(),
+            from,
             &token_receiver,
             &stake_pool.manager_fee_account,
             &referrer,
             &stake_pool.pool_mint,
             &spl_token::id(),
             amount,
-            stake_pool.sol_deposit_authority,
         )
     } else {
         spl_stake_pool::instruction::deposit_sol(
@@ -774,7 +777,7 @@ fn command_deposit_sol(
             stake_pool_address,
             &pool_withdraw_authority,
             &stake_pool.reserve_stake,
-            &config.fee_payer.pubkey(),
+            from,
             &token_receiver,
             &stake_pool.manager_fee_account,
             &referrer,
@@ -1800,6 +1803,15 @@ fn main() {
                     .help("Amount in SOL to deposit into the stake pool reserve account."),
             )
             .arg(
+                Arg::with_name("from")
+                    .long("from")
+                    .validator(is_pubkey)
+                    .value_name("ADDRESS")
+                    .takes_value(true)
+                    .help("Account to deposit SOL from. \
+                          Defaults to the fee payer."),
+            )
+            .arg(
                 Arg::with_name("token_receiver")
                     .long("token-receiver")
                     .validator(is_pubkey)
@@ -2053,6 +2065,16 @@ fn main() {
         } else {
             None
         };
+        let sol_depositor = if matches.is_present("sol_depositor") {
+            Some(get_signer(
+                &matches,
+                "sol_depositor",
+                &cli_config.keypair_path,
+                &mut wallet_manager,
+            ))
+        } else {
+            None
+        };
         let manager = get_signer(
             &matches,
             "manager",
@@ -2081,6 +2103,7 @@ fn main() {
             manager,
             staker,
             depositor,
+            sol_depositor,
             token_owner,
             fee_payer,
             dry_run,
@@ -2184,10 +2207,13 @@ fn main() {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
             let token_receiver: Option<Pubkey> = pubkey_of(arg_matches, "token_receiver");
             let referrer: Option<Pubkey> = pubkey_of(arg_matches, "referrer");
+            let from = pubkey_of(arg_matches, "from")
+                .unwrap_or_else(|| config.fee_payer.try_pubkey().unwrap());
             let amount = value_t_or_exit!(arg_matches, "amount", f64);
             command_deposit_sol(
                 &config,
                 &stake_pool_address,
+                &from,
                 &token_receiver,
                 &referrer,
                 amount,

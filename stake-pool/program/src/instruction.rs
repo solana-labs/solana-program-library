@@ -991,10 +991,47 @@ pub fn deposit_stake_with_authority(
     ]
 }
 
-/// Creates instructions required to deposit into a stake pool, given a stake
-/// account owned by the user. The difference with `deposit()` is that a deposit
-/// authority must sign this instruction, which is required for private pools.
+/// Creates instructions required to deposit SOL directly into a stake pool.
+pub fn deposit_sol(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    stake_pool_withdraw_authority: &Pubkey,
+    reserve_stake_account: &Pubkey,
+    lamports_from: &Pubkey,
+    pool_tokens_to: &Pubkey,
+    manager_fee_account: &Pubkey,
+    referrer_pool_tokens_account: &Pubkey,
+    pool_mint: &Pubkey,
+    token_program_id: &Pubkey,
+    amount: u64,
+) -> Vec<Instruction> {
+    let dummy_sol_deposit_authority = Pubkey::default();
+    let accounts = vec![
+        AccountMeta::new(*stake_pool, false),
+        AccountMeta::new_readonly(dummy_sol_deposit_authority, false),
+        AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
+        AccountMeta::new(*reserve_stake_account, false),
+        AccountMeta::new(*lamports_from, true),
+        AccountMeta::new(*pool_tokens_to, false),
+        AccountMeta::new(*manager_fee_account, false),
+        AccountMeta::new(*referrer_pool_tokens_account, false),
+        AccountMeta::new(*pool_mint, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new(system_program::id(), false),
+        AccountMeta::new_readonly(*token_program_id, false),
+    ];
+    vec![Instruction {
+        program_id: *program_id,
+        accounts,
+        data: StakePoolInstruction::DepositSol(amount)
+            .try_to_vec()
+            .unwrap(),
+    }]
+}
 
+/// Creates instructions required to deposit SOL directly into a stake pool.
+/// The difference with `deposit_sol()` is that a deposit
+/// authority must sign this instruction, which is required for private pools.
 /// `require_deposit_authority` should be false only if
 /// `sol_deposit_authority == None`
 pub fn deposit_sol_with_authority(
@@ -1010,11 +1047,10 @@ pub fn deposit_sol_with_authority(
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
     amount: u64,
-    require_sol_deposit_authority: bool,
 ) -> Vec<Instruction> {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
-        AccountMeta::new_readonly(*sol_deposit_authority, require_sol_deposit_authority),
+        AccountMeta::new_readonly(*sol_deposit_authority, true),
         AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
         AccountMeta::new(*reserve_stake_account, false),
         AccountMeta::new(*lamports_from, true),
