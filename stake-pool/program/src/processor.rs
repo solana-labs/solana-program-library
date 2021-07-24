@@ -453,7 +453,6 @@ impl Processor {
 
     /// Issue a spl_token `Transfer` instruction.
     #[allow(clippy::too_many_arguments)]
-    #[inline]
     fn token_transfer<'a>(
         token_program: AccountInfo<'a>,
         source: AccountInfo<'a>,
@@ -472,7 +471,6 @@ impl Processor {
         invoke(&ix, &[source, destination, authority, token_program])
     }
 
-    #[inline]
     fn sol_transfer<'a>(
         source: AccountInfo<'a>,
         destination: AccountInfo<'a>,
@@ -840,7 +838,6 @@ impl Processor {
                 stake_lamports,
                 stake.delegation.stake,
             );
-            // );
             return Err(StakePoolError::StakeLamportsNotEqualToMinimum.into());
         }
 
