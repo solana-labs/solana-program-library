@@ -353,12 +353,12 @@ fn command_vsa_create(
     Ok(())
 }
 
-fn command_show(
-    config: &Config,
-    stake_pool_address: &Pubkey,
-) -> CommandResult {
+fn command_show(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
-    println!("Stake pool at address {}:\n{:#?}", stake_pool_address, stake_pool);
+    println!(
+        "Stake pool at address {}:\n{:#?}",
+        stake_pool_address, stake_pool
+    );
     Ok(())
 }
 
@@ -2041,6 +2041,7 @@ fn main() {
                 Arg::with_name("new_sol_deposit_authority")
                     .index(2)
                     .validator(|x| {
+                        #[allow(clippy::cmp_owned)]
                         let default = if x == String::from("none") {
                             Ok(())
                         } else {

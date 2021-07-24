@@ -241,7 +241,9 @@ async fn fail_with_wrong_mint_for_receiver_acc() {
             let program_error = token_error::TokenError::MintMismatch as u32;
             assert_eq!(error_index, program_error);
         }
-        _ => panic!("Wrong error occurs while try to deposit with wrong mint from receiver account"),
+        _ => {
+            panic!("Wrong error occurs while try to deposit with wrong mint from receiver account")
+        }
     }
 }
 
