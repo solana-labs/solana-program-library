@@ -425,7 +425,7 @@ pub fn process_trade(
             }
         }
         /*
-        When n is greater than n_b bust less than n_s, this means that the buyer has put on a position that is different from their
+        When n is greater than n_b but less than n_s, this means that the buyer has put on a position that is different from their
         existing position, and the seller has reduced their inventory. We will burn and mint tokens such the buyer's net change in
         position is +n and the seller's net change is -n. Both parties are also entitled to the locked up funds for their positions that were closed.
         The net change in tokens can be calculated as follows: (-n - n_s + n - n_s) / 2 = -n_s. This always results in a decrease in total
