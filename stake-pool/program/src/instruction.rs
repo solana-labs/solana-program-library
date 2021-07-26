@@ -1020,7 +1020,7 @@ pub fn deposit_sol(
         AccountMeta::new(*referrer_pool_tokens_account, false),
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
-        AccountMeta::new(system_program::id(), false),
+        AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
     ];
     vec![Instruction {
@@ -1062,7 +1062,7 @@ pub fn deposit_sol_with_authority(
         AccountMeta::new(*referrer_pool_tokens_account, false),
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
-        AccountMeta::new(system_program::id(), false),
+        AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
     ];
     vec![Instruction {
@@ -1104,7 +1104,7 @@ pub fn withdraw(
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
         AccountMeta::new_readonly(stake_program::id(), false),
-        AccountMeta::new(system_program::id(), false),
+        AccountMeta::new_readonly(system_program::id(), false),
     ];
     Instruction {
         program_id: *program_id,
