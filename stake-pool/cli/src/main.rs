@@ -1603,8 +1603,8 @@ fn main() {
                     .help("Max number of validators included in the stake pool"),
             )
             .arg(
-                Arg::with_name("deposit_authority")
-                    .long("deposit-authority")
+                Arg::with_name("stake_deposit_authority")
+                    .long("stake-deposit-authority")
                     .short("a")
                     .validator(is_pubkey)
                     .value_name("STAKE_DEPOSIT_AUTHORITY_ADDRESS")
