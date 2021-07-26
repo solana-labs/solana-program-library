@@ -1,6 +1,6 @@
 {
   "name": "@solana/spl-token-swap",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "SPL Token Swap JavaScript API",
   "license": "MIT",
   "author": "Solana Maintainers <maintainers@solana.foundation>",
@@ -15,12 +15,8 @@
   "publishConfig": {
     "access": "public"
   },
-  "browser": {
-    "./dist/index.cjs.js": "./dist/index.browser.esm.js",
-    "./dist/index.esm.js": "./dist/index.browser.esm.js"
-  },
-  "main": "dist/index.cjs.js",
-  "module": "dist/index.esm.js",
+  "browser": "dist.browser/index.js",
+  "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "browserslist": [
     "defaults",
