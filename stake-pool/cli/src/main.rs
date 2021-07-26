@@ -155,7 +155,7 @@ fn checked_transaction_with_signers<T: Signers>(
 #[allow(clippy::too_many_arguments)]
 fn command_create_pool(
     config: &Config,
-    stake_deposit_authority: Option<Pubkey>,
+    stake_deposit_authority: Option<Keypair>,
     fee: Fee,
     withdrawal_fee: Fee,
     deposit_fee: Fee,
@@ -287,7 +287,7 @@ fn command_create_pool(
                 &mint_keypair.pubkey(),
                 &pool_fee_account,
                 &spl_token::id(),
-                stake_deposit_authority,
+                stake_deposit_authority.as_ref().map(|x| x.pubkey()),
                 fee,
                 withdrawal_fee,
                 deposit_fee,
@@ -317,8 +317,15 @@ fn command_create_pool(
         &validator_list,
         config.manager.as_ref(),
     ];
-    unique_signers!(initialize_signers);
-    initialize_transaction.sign(&initialize_signers, recent_blockhash);
+    if let Some(stake_deposit_authority) = stake_deposit_authority {
+        let mut initialize_signers = initialize_signers.clone();
+        initialize_signers.push(&stake_deposit_authority);
+        unique_signers!(initialize_signers);
+        initialize_transaction.sign(&initialize_signers, recent_blockhash);
+    } else {
+        unique_signers!(initialize_signers);
+        initialize_transaction.sign(&initialize_signers, recent_blockhash);
+    }
     send_transaction(config, initialize_transaction)?;
     Ok(())
 }
@@ -1606,8 +1613,8 @@ fn main() {
                 Arg::with_name("stake_deposit_authority")
                     .long("stake-deposit-authority")
                     .short("a")
-                    .validator(is_pubkey)
-                    .value_name("STAKE_DEPOSIT_AUTHORITY_ADDRESS")
+                    .validator(is_keypair_or_ask_keyword)
+                    .value_name("STAKE_DEPOSIT_AUTHORITY_KEYPAIR")
                     .takes_value(true)
                     .help("Deposit authority required to sign all deposits into the stake pool"),
             )
@@ -2215,7 +2222,7 @@ fn main() {
 
     let _ = match matches.subcommand() {
         ("create-pool", Some(arg_matches)) => {
-            let stake_deposit_authority = pubkey_of(arg_matches, "stake_deposit_authority");
+            let stake_deposit_authority = keypair_of(arg_matches, "stake_deposit_authority");
             let numerator = value_t_or_exit!(arg_matches, "fee_numerator", u64);
             let denominator = value_t_or_exit!(arg_matches, "fee_denominator", u64);
             let w_numerator = value_t!(arg_matches, "withdrawal_fee_numerator", u64);
