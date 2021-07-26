@@ -61,7 +61,7 @@ earned by the pool goes to the pool manager as a fee.
 
 Over time, as the stakes in the stake pool accrue staking rewards, the user's fractional
 ownership will be worth more than their initial deposit. Whenever the user chooses,
-they can withdraw their SPL tokens in exchange for an activated stake.
+they can withdraw activated stake in exchange for their SPL pool tokens.
 
 The stake pool staker can add and remove validators, or rebalance the pool by
 decreasing the stake on a validator, waiting an epoch to move it into the stake
@@ -692,7 +692,7 @@ Signature: 1215wJUY7vj82TQoGCacQ2VJZ157HnCTvfsUXkYph3nZzJNmeDaGmy1nCD7hkhFfxnQYY
 Whenever the user wants to recover their SOL plus accrued rewards, they can provide their
 pool tokens in exchange for an activated stake account.
 
-Let's withdraw 5 pool tokens from the stake pool.
+Let's withdraw active staked SOL in exchange for 5 pool tokens.
 
 ```console
 $ spl-stake-pool withdraw Zg5YBPAk8RqBR9kaLLSoN5C8Uv7nErBz1WC63HTsCPR 5
