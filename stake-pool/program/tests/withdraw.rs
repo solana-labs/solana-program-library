@@ -62,9 +62,9 @@ async fn setup() -> (
     .await
     .unwrap();
 
-    let tokens_to_burn = deposit_info.pool_tokens / 4;
+    let tokens_to_withdraw = deposit_info.pool_tokens / 4;
 
-    // Delegate tokens for burning
+    // Delegate tokens for withdrawing
     let user_transfer_authority = Keypair::new();
     delegate_tokens(
         &mut banks_client,
@@ -73,7 +73,7 @@ async fn setup() -> (
         &deposit_info.pool_account.pubkey(),
         &deposit_info.authority,
         &user_transfer_authority.pubkey(),
-        tokens_to_burn,
+        tokens_to_withdraw,
     )
     .await;
 
@@ -96,7 +96,7 @@ async fn setup() -> (
         deposit_info,
         user_transfer_authority,
         user_stake_recipient,
-        tokens_to_burn,
+        tokens_to_withdraw,
     )
 }
 
@@ -111,7 +111,7 @@ async fn success() {
         deposit_info,
         user_transfer_authority,
         user_stake_recipient,
-        tokens_to_burn,
+        tokens_to_withdraw,
     ) = setup().await;
 
     // Save stake pool state before withdrawal
@@ -141,6 +141,13 @@ async fn success() {
     let user_token_balance_before =
         get_token_balance(&mut banks_client, &deposit_info.pool_account.pubkey()).await;
 
+    // Save pool fee token balance
+    let pool_fee_balance_before = get_token_balance(
+        &mut banks_client,
+        &stake_pool_accounts.pool_fee_account.pubkey(),
+    )
+    .await;
+
     let new_authority = Pubkey::new_unique();
     let error = stake_pool_accounts
         .withdraw_stake(
@@ -152,7 +159,7 @@ async fn success() {
             &deposit_info.pool_account.pubkey(),
             &validator_stake_account.stake_account,
             &new_authority,
-            tokens_to_burn,
+            tokens_to_withdraw,
         )
         .await;
     assert!(error.is_none());
@@ -161,13 +168,27 @@ async fn success() {
     let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
     let stake_pool =
         try_from_slice_unchecked::<state::StakePool>(&stake_pool.data.as_slice()).unwrap();
+    // first and only deposit, lamports:pool 1:1
+    let tokens_withdrawal_fee = stake_pool_accounts.calculate_withdrawal_fee(tokens_to_withdraw);
+    let tokens_burnt = tokens_to_withdraw - tokens_withdrawal_fee;
     assert_eq!(
         stake_pool.total_stake_lamports,
-        stake_pool_before.total_stake_lamports - tokens_to_burn
+        stake_pool_before.total_stake_lamports - tokens_burnt
     );
     assert_eq!(
         stake_pool.pool_token_supply,
-        stake_pool_before.pool_token_supply - tokens_to_burn
+        stake_pool_before.pool_token_supply - tokens_burnt
+    );
+
+    // Check manager received withdrawal fee
+    let pool_fee_balance = get_token_balance(
+        &mut banks_client,
+        &stake_pool_accounts.pool_fee_account.pubkey(),
+    )
+    .await;
+    assert_eq!(
+        pool_fee_balance,
+        pool_fee_balance_before + tokens_withdrawal_fee,
     );
 
     // Check validator stake list storage
@@ -183,19 +204,19 @@ async fn success() {
         .unwrap();
     assert_eq!(
         validator_stake_item.stake_lamports(),
-        validator_stake_item_before.stake_lamports() - tokens_to_burn
+        validator_stake_item_before.stake_lamports() - tokens_burnt
     );
     assert_eq!(
         validator_stake_item.active_stake_lamports,
         validator_stake_item.stake_lamports(),
     );
 
-    // Check tokens burned
+    // Check tokens used
     let user_token_balance =
         get_token_balance(&mut banks_client, &deposit_info.pool_account.pubkey()).await;
     assert_eq!(
         user_token_balance,
-        user_token_balance_before - tokens_to_burn
+        user_token_balance_before - tokens_to_withdraw
     );
 
     // Check validator stake account balance
@@ -214,7 +235,7 @@ async fn success() {
         get_account(&mut banks_client, &user_stake_recipient.pubkey()).await;
     assert_eq!(
         user_stake_recipient_account.lamports,
-        initial_stake_lamports + tokens_to_burn
+        initial_stake_lamports + tokens_burnt
     );
 }
 
@@ -244,6 +265,7 @@ async fn fail_with_wrong_stake_program() {
         AccountMeta::new_readonly(new_authority, false),
         AccountMeta::new_readonly(user_transfer_authority.pubkey(), true),
         AccountMeta::new(deposit_info.pool_account.pubkey(), false),
+        AccountMeta::new(stake_pool_accounts.pool_fee_account.pubkey(), false),
         AccountMeta::new(stake_pool_accounts.pool_mint.pubkey(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(spl_token::id(), false),
@@ -349,6 +371,7 @@ async fn fail_with_wrong_token_program_id() {
             &new_authority,
             &user_transfer_authority.pubkey(),
             &deposit_info.pool_account.pubkey(),
+            &stake_pool_accounts.pool_fee_account.pubkey(),
             &stake_pool_accounts.pool_mint.pubkey(),
             &wrong_token_program.pubkey(),
             tokens_to_burn,
@@ -877,7 +900,7 @@ async fn success_with_reserve() {
         )
         .await;
 
-    // Delegate tokens for burning during withdraw
+    // Delegate tokens for using for withdrawal
     let user_transfer_authority = Keypair::new();
     delegate_tokens(
         &mut context.banks_client,
@@ -968,7 +991,15 @@ async fn success_with_reserve() {
         .await;
     assert!(error.is_none());
 
-    // Check tokens burned
+    // first and only deposit, lamports:pool 1:1
+    let tokens_withdrawal_fee =
+        stake_pool_accounts.calculate_withdrawal_fee(deposit_info.pool_tokens);
+    assert_eq!(
+        deposit_info.stake_lamports + stake_rent,
+        deposit_info.pool_tokens,
+    );
+
+    // Check tokens used
     let user_token_balance = get_token_balance(
         &mut context.banks_client,
         &deposit_info.pool_account.pubkey(),
@@ -986,7 +1017,7 @@ async fn success_with_reserve() {
         deserialize::<stake_program::StakeState>(&reserve_stake_account.data).unwrap();
     let meta = stake_state.meta().unwrap();
     assert_eq!(
-        initial_reserve_lamports + meta.rent_exempt_reserve,
+        initial_reserve_lamports + meta.rent_exempt_reserve + tokens_withdrawal_fee,
         reserve_stake_account.lamports
     );
 
@@ -995,7 +1026,7 @@ async fn success_with_reserve() {
         get_account(&mut context.banks_client, &withdraw_destination.pubkey()).await;
     assert_eq!(
         user_stake_recipient_account.lamports,
-        initial_stake_lamports + deposit_info.stake_lamports + stake_rent
+        initial_stake_lamports + deposit_info.stake_lamports + stake_rent - tokens_withdrawal_fee
     );
 }
 

@@ -10,7 +10,8 @@ use {
             AccountType, Fee, StakePool, StakeStatus, ValidatorList, ValidatorListHeader,
             ValidatorStakeInfo,
         },
-        AUTHORITY_DEPOSIT, AUTHORITY_WITHDRAW, MINIMUM_ACTIVE_STAKE, TRANSIENT_STAKE_SEED,
+        AUTHORITY_DEPOSIT, AUTHORITY_WITHDRAW, MAX_WITHDRAWAL_FEE_INCREASE, MINIMUM_ACTIVE_STAKE,
+        TRANSIENT_STAKE_SEED, WITHDRAWAL_BASELINE_FEE,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     num_traits::FromPrimitive,
@@ -447,11 +448,32 @@ impl Processor {
         invoke_signed(&ix, &[mint, destination, authority, token_program], signers)
     }
 
+    /// Issue a spl_token `Transfer` instruction.
+    #[allow(clippy::too_many_arguments)]
+    fn token_transfer<'a>(
+        token_program: AccountInfo<'a>,
+        source: AccountInfo<'a>,
+        destination: AccountInfo<'a>,
+        authority: AccountInfo<'a>,
+        amount: u64,
+    ) -> Result<(), ProgramError> {
+        let ix = spl_token::instruction::transfer(
+            token_program.key,
+            source.key,
+            destination.key,
+            authority.key,
+            &[],
+            amount,
+        )?;
+        invoke(&ix, &[source, destination, authority, token_program])
+    }
+
     /// Processes `Initialize` instruction.
     fn process_initialize(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
         fee: Fee,
+        withdrawal_fee: Fee,
         max_validators: u32,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -594,6 +616,10 @@ impl Processor {
             msg!("Reserve stake account not in intialized state");
             return Err(StakePoolError::WrongStakeState.into());
         };
+        // Numerator should be smaller than or equal to denominator (fee <= 1)
+        if withdrawal_fee.numerator > withdrawal_fee.denominator {
+            return Err(StakePoolError::FeeTooHigh.into());
+        }
 
         validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
 
@@ -613,6 +639,9 @@ impl Processor {
         stake_pool.next_epoch_fee = None;
         stake_pool.preferred_deposit_validator_vote_address = None;
         stake_pool.preferred_withdraw_validator_vote_address = None;
+        stake_pool.deposit_fee = Fee::default();
+        stake_pool.withdrawal_fee = withdrawal_fee;
+        stake_pool.next_withdrawal_fee = None;
 
         stake_pool
             .serialize(&mut *stake_pool_info.data.borrow_mut())
@@ -1619,6 +1648,10 @@ impl Processor {
             stake_pool.fee = next_epoch_fee;
             stake_pool.next_epoch_fee = None;
         }
+        if let Some(next_withdrawal_fee) = stake_pool.next_withdrawal_fee {
+            stake_pool.withdrawal_fee = next_withdrawal_fee;
+            stake_pool.next_withdrawal_fee = None;
+        }
         stake_pool.total_stake_lamports = total_stake_lamports;
         stake_pool.last_update_epoch = clock.epoch;
 
@@ -1889,6 +1922,7 @@ impl Processor {
         let user_stake_authority_info = next_account_info(account_info_iter)?;
         let user_transfer_authority_info = next_account_info(account_info_iter)?;
         let burn_from_info = next_account_info(account_info_iter)?;
+        let manager_fee_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let clock_info = next_account_info(account_info_iter)?;
         let clock = &Clock::from_account_info(clock_info)?;
@@ -1910,6 +1944,9 @@ impl Processor {
             stake_pool_info.key,
         )?;
 
+        if stake_pool.manager_fee_account != *manager_fee_info.key {
+            return Err(StakePoolError::InvalidFeeAccount.into());
+        }
         if stake_pool.token_program_id != *token_program_info.key {
             return Err(ProgramError::IncorrectProgramId);
         }
@@ -1926,8 +1963,15 @@ impl Processor {
             return Err(StakePoolError::InvalidState.into());
         }
 
+        let pool_tokens_fee = stake_pool
+            .calc_pool_tokens_withdrawal_fee(pool_tokens)
+            .ok_or(StakePoolError::CalculationFailure)?;
+        let pool_tokens_burnt = pool_tokens
+            .checked_sub(pool_tokens_fee)
+            .ok_or(StakePoolError::CalculationFailure)?;
+
         let withdraw_lamports = stake_pool
-            .calc_lamports_withdraw_amount(pool_tokens)
+            .calc_lamports_withdraw_amount(pool_tokens_burnt)
             .ok_or(StakePoolError::CalculationFailure)?;
 
         let has_active_stake = validator_list
@@ -2026,7 +2070,7 @@ impl Processor {
             burn_from_info.clone(),
             pool_mint_info.clone(),
             user_transfer_authority_info.clone(),
-            pool_tokens,
+            pool_tokens_burnt,
         )?;
 
         Self::stake_split(
@@ -2050,9 +2094,19 @@ impl Processor {
             stake_program_info.clone(),
         )?;
 
+        if pool_tokens_fee > 0 {
+            Self::token_transfer(
+                token_program_info.clone(),
+                burn_from_info.clone(),
+                manager_fee_info.clone(),
+                user_transfer_authority_info.clone(),
+                pool_tokens_fee,
+            )?;
+        }
+
         stake_pool.pool_token_supply = stake_pool
             .pool_token_supply
-            .checked_sub(pool_tokens)
+            .checked_sub(pool_tokens_burnt)
             .ok_or(StakePoolError::CalculationFailure)?;
         stake_pool.total_stake_lamports = stake_pool
             .total_stake_lamports
@@ -2166,16 +2220,91 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes [SetWithdrawalFee](enum.Instruction.html).
+    fn process_set_withdrawal_fee(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        fee: Fee,
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let stake_pool_info = next_account_info(account_info_iter)?;
+        let manager_info = next_account_info(account_info_iter)?;
+        let clock_info = next_account_info(account_info_iter)?;
+        let clock = &Clock::from_account_info(clock_info)?;
+
+        check_account_owner(stake_pool_info, program_id)?;
+        let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
+        if !stake_pool.is_valid() {
+            return Err(StakePoolError::InvalidState.into());
+        }
+
+        stake_pool.check_manager(manager_info)?;
+
+        if stake_pool.last_update_epoch < clock.epoch {
+            return Err(StakePoolError::StakeListAndPoolOutOfDate.into());
+        }
+
+        // Numerator should be smaller than or equal to denominator (fee <= 1)
+        if fee.numerator > fee.denominator {
+            msg!(
+                "Fee greater than 100%, numerator {}, denominator {}",
+                fee.numerator,
+                fee.denominator
+            );
+            return Err(StakePoolError::FeeTooHigh.into());
+        }
+
+        // If the previous withdrawal fee was 0, we allow the fee to be set to a
+        // maximum of (WITHDRAWAL_BASELINE_FEE * MAX_WITHDRAWAL_FEE_INCREASE)
+        let (old_num, old_denom) = if stake_pool.withdrawal_fee.denominator == 0
+            || stake_pool.withdrawal_fee.numerator == 0
+        {
+            (
+                WITHDRAWAL_BASELINE_FEE.numerator,
+                WITHDRAWAL_BASELINE_FEE.denominator,
+            )
+        } else {
+            (
+                stake_pool.withdrawal_fee.numerator,
+                stake_pool.withdrawal_fee.denominator,
+            )
+        };
+
+        // Check that new_fee / old_fee <= MAX_WITHDRAWAL_FEE_INCREASE
+        // Program fails if provided numerator or denominator is too large, resulting in overflow
+        if (old_num as u128)
+            .checked_mul(fee.denominator as u128)
+            .map(|x| x.checked_mul(MAX_WITHDRAWAL_FEE_INCREASE.numerator as u128))
+            .ok_or(StakePoolError::CalculationFailure)?
+            < (fee.numerator as u128)
+                .checked_mul(old_denom as u128)
+                .map(|x| x.checked_mul(MAX_WITHDRAWAL_FEE_INCREASE.denominator as u128))
+                .ok_or(StakePoolError::CalculationFailure)?
+        {
+            msg!(
+                "Fee increase exceeds maximum allowed, proposed increase factor ({} / {})",
+                fee.numerator * old_denom,
+                old_num * fee.denominator,
+            );
+            return Err(StakePoolError::FeeIncreaseTooHigh.into());
+        }
+
+        stake_pool.next_withdrawal_fee = Some(fee);
+        stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
+        Ok(())
+    }
+
     /// Processes [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         let instruction = StakePoolInstruction::try_from_slice(input)?;
         match instruction {
             StakePoolInstruction::Initialize {
                 fee,
+                withdrawal_fee,
                 max_validators,
             } => {
                 msg!("Instruction: Initialize stake pool");
-                Self::process_initialize(program_id, accounts, fee, max_validators)
+                Self::process_initialize(program_id, accounts, fee, withdrawal_fee, max_validators)
             }
             StakePoolInstruction::CreateValidatorStakeAccount => {
                 msg!("Instruction: CreateValidatorStakeAccount");
@@ -2249,6 +2378,10 @@ impl Processor {
                 msg!("Instruction: SetStaker");
                 Self::process_set_staker(program_id, accounts)
             }
+            StakePoolInstruction::SetWithdrawalFee { fee } => {
+                msg!("Instruction: SetWithdrawalFee");
+                Self::process_set_withdrawal_fee(program_id, accounts, fee)
+            }
         }
     }
 }
@@ -2288,6 +2421,7 @@ impl PrintProgramError for StakePoolError {
             StakePoolError::IncorrectDepositVoteAddress => msg!("Error: The provided deposit stake account is not delegated to the preferred deposit vote account"),
             StakePoolError::IncorrectWithdrawVoteAddress => msg!("Error: The provided withdraw stake account is not the preferred deposit vote account"),
             StakePoolError::InvalidMintFreezeAuthority => msg!("Error: The mint has an invalid freeze authority"),
+            StakePoolError::FeeIncreaseTooHigh => msg!("Error: The fee cannot increase by a factor exceeding the stipulated ratio"),
         }
     }
 }

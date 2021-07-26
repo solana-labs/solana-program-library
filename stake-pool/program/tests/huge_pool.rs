@@ -26,7 +26,7 @@ use {
         find_withdraw_authority_program_address, id,
         instruction::{self, PreferredValidatorType},
         stake_program,
-        state::{AccountType, StakePool, StakeStatus, ValidatorList, ValidatorStakeInfo},
+        state::{AccountType, Fee, StakePool, StakeStatus, ValidatorList, ValidatorStakeInfo},
         MAX_VALIDATORS_TO_UPDATE, MINIMUM_ACTIVE_STAKE,
     },
     spl_token::state::{Account as SplAccount, AccountState as SplAccountState, Mint},
@@ -78,6 +78,10 @@ async fn setup(
         next_epoch_fee: None,
         preferred_deposit_validator_vote_address: None,
         preferred_withdraw_validator_vote_address: None,
+        deposit_fee: Fee::default(),
+        withdrawal_fee: Fee::default(),
+        next_withdrawal_fee: None,
+        referral_fee: 0,
     };
 
     let mut validator_list = ValidatorList::new(max_validators);
@@ -722,5 +726,5 @@ async fn withdraw() {
             STAKE_AMOUNT,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 }

@@ -1,7 +1,6 @@
 //! Instruction types
 
 #![allow(clippy::too_many_arguments)]
-
 use {
     crate::{
         find_deposit_authority_program_address, find_stake_program_address,
@@ -53,6 +52,9 @@ pub enum StakePoolInstruction {
         /// Fee assessed as percentage of perceived rewards
         #[allow(dead_code)] // but it's not
         fee: Fee,
+        /// Fee charged per withdrawal as percentage of withdrawal
+        #[allow(dead_code)] // but it's not
+        withdrawal_fee: Fee,
         /// Maximum expected number of validators
         #[allow(dead_code)] // but it's not
         max_validators: u32,
@@ -273,10 +275,11 @@ pub enum StakePoolInstruction {
     ///   5. `[]` User account to set as a new withdraw authority
     ///   6. `[s]` User transfer authority, for pool token account
     ///   7. `[w]` User account with pool tokens to burn from
-    ///   8. `[w]` Pool token mint account
-    ///   9. `[]` Sysvar clock account (required)
-    ///  10. `[]` Pool token program id
-    ///  11. `[]` Stake program id,
+    ///   8. `[w]` Account to receive pool fee tokens
+    ///   9. `[w]` Pool token mint account
+    ///  10. `[]` Sysvar clock account (required)
+    ///  11. `[]` Pool token program id
+    ///  12. `[]` Stake program id,
     ///  userdata: amount of pool tokens to withdraw
     Withdraw(u64),
 
@@ -305,6 +308,17 @@ pub enum StakePoolInstruction {
     ///  1. `[s]` Manager or current staker
     ///  2. '[]` New staker pubkey
     SetStaker,
+
+    ///  (Manager only) Update Withdrawal fee for next epoch
+    ///
+    ///  0. `[w]` StakePool
+    ///  1. `[s]` Manager
+    ///  2. `[]` Sysvar clock
+    SetWithdrawalFee {
+        /// Fee assessed as percentage of perceived rewards
+        #[allow(dead_code)] // but it's not
+        fee: Fee,
+    },
 }
 
 /// Creates an 'initialize' instruction.
@@ -320,10 +334,12 @@ pub fn initialize(
     token_program_id: &Pubkey,
     deposit_authority: Option<Pubkey>,
     fee: Fee,
+    withdrawal_fee: Fee,
     max_validators: u32,
 ) -> Instruction {
     let init_data = StakePoolInstruction::Initialize {
         fee,
+        withdrawal_fee,
         max_validators,
     };
     let data = init_data.try_to_vec().unwrap();
@@ -925,6 +941,7 @@ pub fn withdraw(
     user_stake_authority: &Pubkey,
     user_transfer_authority: &Pubkey,
     user_pool_token_account: &Pubkey,
+    manager_fee_account: &Pubkey,
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
     amount: u64,
@@ -938,6 +955,7 @@ pub fn withdraw(
         AccountMeta::new_readonly(*user_stake_authority, false),
         AccountMeta::new_readonly(*user_transfer_authority, true),
         AccountMeta::new(*user_pool_token_account, false),
+        AccountMeta::new(*manager_fee_account, false),
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
@@ -987,6 +1005,27 @@ pub fn set_fee(
         program_id: *program_id,
         accounts,
         data: StakePoolInstruction::SetFee { fee }.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates a 'set fee' instruction.
+pub fn set_withdrawal_fee(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    manager: &Pubkey,
+    fee: Fee,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new(*stake_pool, false),
+        AccountMeta::new_readonly(*manager, true),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+    ];
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: StakePoolInstruction::SetWithdrawalFee { fee }
+            .try_to_vec()
+            .unwrap(),
     }
 }
 

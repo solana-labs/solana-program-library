@@ -150,10 +150,12 @@ fn checked_transaction_with_signers<T: Signers>(
     Ok(transaction)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn command_create_pool(
     config: &Config,
     deposit_authority: Option<Pubkey>,
     fee: Fee,
+    withdrawal_fee: Fee,
     max_validators: u32,
     stake_pool_keypair: Option<Keypair>,
     mint_keypair: Option<Keypair>,
@@ -283,6 +285,7 @@ fn command_create_pool(
                 &spl_token::id(),
                 deposit_authority,
                 fee,
+                withdrawal_fee,
                 max_validators,
             ),
         ],
@@ -1086,6 +1089,7 @@ fn command_withdraw(
             &config.staker.pubkey(),
             &user_transfer_authority.pubkey(),
             &pool_token_account,
+            &stake_pool.manager_fee_account,
             &stake_pool.pool_mint,
             &spl_token::id(),
             withdraw_account.pool_amount,
@@ -1181,6 +1185,27 @@ fn command_set_fee(config: &Config, stake_pool_address: &Pubkey, new_fee: Fee) -
     let transaction = checked_transaction_with_signers(
         config,
         &[spl_stake_pool::instruction::set_fee(
+            &spl_stake_pool::id(),
+            stake_pool_address,
+            &config.manager.pubkey(),
+            new_fee,
+        )],
+        &signers,
+    )?;
+    send_transaction(config, transaction)?;
+    Ok(())
+}
+
+fn command_set_withdrawal_fee(
+    config: &Config,
+    stake_pool_address: &Pubkey,
+    new_fee: Fee,
+) -> CommandResult {
+    let mut signers = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
+    unique_signers!(signers);
+    let transaction = checked_transaction_with_signers(
+        config,
+        &[spl_stake_pool::instruction::set_withdrawal_fee(
             &spl_stake_pool::id(),
             stake_pool_address,
             &config.manager.pubkey(),
@@ -1323,6 +1348,23 @@ fn main() {
                     .takes_value(true)
                     .required(true)
                     .help("Fee denominator, fee amount is numerator divided by denominator."),
+            )
+            .arg(
+                Arg::with_name("withdrawal_fee_numerator")
+                    .long("withdrawal-fee-numerator")
+                    .validator(is_parsable::<u64>)
+                    .value_name("NUMERATOR")
+                    .takes_value(true)
+                    .requires("withdrawal_fee_denominator")
+                    .help("Withdrawal fee numerator, fee amount is numerator divided by denominator [default: 0]"),
+            ).arg(
+                Arg::with_name("withdrawal_fee_denominator")
+                    .long("withdrawal-fee-denominator")
+                    .validator(is_parsable::<u64>)
+                    .value_name("DENOMINATOR")
+                    .takes_value(true)
+                    .requires("withdrawal_fee_numerator")
+                    .help("Withdrawal fee denominator, fee amount is numerator divided by denominator [default: 0]"),
             )
             .arg(
                 Arg::with_name("max_validators")
@@ -1746,6 +1788,36 @@ fn main() {
                     .help("Fee denominator, fee amount is numerator divided by denominator."),
             )
         )
+        .subcommand(SubCommand::with_name("set-withdrawal-fee")
+            .about("Change the withdrawal fee assessed by the stake pool. Must be signed by the manager.")
+            .arg(
+                Arg::with_name("pool")
+                    .index(1)
+                    .validator(is_pubkey)
+                    .value_name("POOL_ADDRESS")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Stake pool address."),
+            )
+            .arg(
+                Arg::with_name("fee_numerator")
+                    .index(2)
+                    .validator(is_parsable::<u64>)
+                    .value_name("NUMERATOR")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Fee numerator, fee amount is numerator divided by denominator."),
+            )
+            .arg(
+                Arg::with_name("fee_denominator")
+                    .index(3)
+                    .validator(is_parsable::<u64>)
+                    .value_name("DENOMINATOR")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Fee denominator, fee amount is numerator divided by denominator."),
+            )
+        )
         .get_matches();
 
     let mut wallet_manager = None;
@@ -1815,6 +1887,8 @@ fn main() {
             let deposit_authority = pubkey_of(arg_matches, "deposit_authority");
             let numerator = value_t_or_exit!(arg_matches, "fee_numerator", u64);
             let denominator = value_t_or_exit!(arg_matches, "fee_denominator", u64);
+            let w_numerator = value_t!(arg_matches, "withdrawal_fee_numerator", u64);
+            let w_denominator = value_t!(arg_matches, "withdrawal_fee_denominator", u64);
             let max_validators = value_t_or_exit!(arg_matches, "max_validators", u32);
             let pool_keypair = keypair_of(arg_matches, "pool_keypair");
             let mint_keypair = keypair_of(arg_matches, "mint_keypair");
@@ -1825,6 +1899,10 @@ fn main() {
                 Fee {
                     denominator,
                     numerator,
+                },
+                Fee {
+                    numerator: w_numerator.unwrap_or(0),
+                    denominator: w_denominator.unwrap_or(0),
                 },
                 max_validators,
                 pool_keypair,
@@ -1941,6 +2019,16 @@ fn main() {
                 numerator,
             };
             command_set_fee(&config, &stake_pool_address, new_fee)
+        }
+        ("set-withdrawal-fee", Some(arg_matches)) => {
+            let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
+            let numerator = value_t_or_exit!(arg_matches, "fee_numerator", u64);
+            let denominator = value_t_or_exit!(arg_matches, "fee_denominator", u64);
+            let new_fee = Fee {
+                denominator,
+                numerator,
+            };
+            command_set_withdrawal_fee(&config, &stake_pool_address, new_fee)
         }
         _ => unreachable!(),
     }
