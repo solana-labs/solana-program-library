@@ -13,7 +13,10 @@ use solana_program::{
 use crate::{
     error::GovernanceError,
     state::{
-        enums::{GovernanceAccountType, InstructionExecutionFlags, ProposalState},
+        enums::{
+            GovernanceAccountType, InstructionExecutionFlags, ProposalState,
+            VoteThresholdPercentage,
+        },
         governance::get_governance_data_for_realm,
         proposal::{get_proposal_address_seeds, Proposal},
         realm::get_realm_data_for_governing_token_mint,
@@ -97,6 +100,7 @@ pub fn process_create_proposal(
         yes_votes_count: 0,
         no_votes_count: 0,
         governing_token_mint_vote_supply: None,
+        vote_threshold_percentage: VoteThresholdPercentage::None,
     };
 
     create_and_serialize_account_signed::<Proposal>(

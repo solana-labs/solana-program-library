@@ -102,6 +102,9 @@ impl Default for ProposalState {
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum VoteThresholdPercentage {
+    /// Vote threshold not set
+    None,
+
     /// Voting threshold of Yes votes in % required to tip the vote
     /// It's the percentage of tokens out of the entire pool of governance tokens eligible to vote
     /// Note: If the threshold is below or equal to 50% then an even split of votes ex: 50:50 or 40:40 is always resolved as Defeated
