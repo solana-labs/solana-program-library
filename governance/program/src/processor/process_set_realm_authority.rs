@@ -13,7 +13,7 @@ use crate::{error::GovernanceError, state::realm::get_realm_data_for_authority};
 pub fn process_set_realm_authority(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    new_realm_authority: &Option<Pubkey>,
+    new_realm_authority: Option<Pubkey>,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -27,7 +27,7 @@ pub fn process_set_realm_authority(
         return Err(GovernanceError::RealmAuthorityMustSign.into());
     }
 
-    realm_data.authority = *new_realm_authority;
+    realm_data.authority = new_realm_authority;
 
     realm_data.serialize(&mut *realm_info.data.borrow_mut())?;
 

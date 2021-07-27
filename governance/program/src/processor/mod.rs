@@ -170,6 +170,6 @@ pub fn process_instruction(
         }
         GovernanceInstruction::SetRealmAuthority {
             new_realm_authority,
-        } => process_set_realm_authority(program_id, accounts, &new_realm_authority),
+        } => process_set_realm_authority(program_id, accounts, new_realm_authority),
     }
 }
