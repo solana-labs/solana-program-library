@@ -50,6 +50,7 @@ async fn test_already_initialized() {
             existing_market.quote_currency,
             existing_market.pubkey,
             existing_market.oracle_program_id,
+            existing_market.switchboard_oracle_program_id,
         )],
         Some(&payer.pubkey()),
     );

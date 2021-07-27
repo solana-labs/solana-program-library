@@ -110,6 +110,7 @@ pub fn add_lending_market(test: &mut ProgramTest) -> TestLendingMarket {
             quote_currency: QUOTE_CURRENCY,
             token_program_id: spl_token::id(),
             oracle_program_id,
+            switchboard_oracle_program_id: oracle_program_id,
         }),
         &spl_token_lending::id(),
     );
@@ -120,6 +121,7 @@ pub fn add_lending_market(test: &mut ProgramTest) -> TestLendingMarket {
         authority: lending_market_authority,
         quote_currency: QUOTE_CURRENCY,
         oracle_program_id,
+        switchboard_oracle_program_id: oracle_program_id,
     }
 }
 
@@ -458,6 +460,7 @@ pub struct TestLendingMarket {
     pub authority: Pubkey,
     pub quote_currency: [u8; 32],
     pub oracle_program_id: Pubkey,
+    pub switchboard_oracle_program_id: Pubkey,
 }
 
 pub struct BorrowArgs<'a> {
@@ -506,6 +509,7 @@ impl TestLendingMarket {
                     QUOTE_CURRENCY,
                     lending_market_pubkey,
                     oracle_program_id,
+                    oracle_program_id,
                 ),
             ],
             Some(&payer.pubkey()),
@@ -521,6 +525,7 @@ impl TestLendingMarket {
             authority: lending_market_authority,
             quote_currency: QUOTE_CURRENCY,
             oracle_program_id,
+            switchboard_oracle_program_id: oracle_program_id,
         }
     }
 
@@ -783,6 +788,7 @@ impl TestReserve {
         payer: &Keypair,
         user_accounts_owner: &Keypair,
     ) -> Result<Self, TransactionError> {
+        print!("asdfasd1");
         let reserve_keypair = Keypair::new();
         let reserve_pubkey = reserve_keypair.pubkey();
         let collateral_mint_keypair = Keypair::new();

@@ -23,6 +23,8 @@ pub struct LendingMarket {
     pub token_program_id: Pubkey,
     /// Oracle (Pyth) program id
     pub oracle_program_id: Pubkey,
+    /// Oracle (Switchboard) program id
+    pub switchboard_oracle_program_id: Pubkey,
 }
 
 impl LendingMarket {
@@ -41,6 +43,7 @@ impl LendingMarket {
         self.quote_currency = params.quote_currency;
         self.token_program_id = params.token_program_id;
         self.oracle_program_id = params.oracle_program_id;
+        self.switchboard_oracle_program_id = params.switchboard_oracle_program_id;
     }
 }
 
@@ -57,6 +60,8 @@ pub struct InitLendingMarketParams {
     pub token_program_id: Pubkey,
     /// Oracle (Pyth) program id
     pub oracle_program_id: Pubkey,
+    /// Oracle (Switchboard) program id
+    pub switchboard_oracle_program_id: Pubkey,
 }
 
 impl Sealed for LendingMarket {}
@@ -66,7 +71,7 @@ impl IsInitialized for LendingMarket {
     }
 }
 
-const LENDING_MARKET_LEN: usize = 258; // 1 + 1 + 32 + 32 + 32 + 32 + 128
+const LENDING_MARKET_LEN: usize = 290; // 1 + 1 + 32 + 32 + 32 + 32 + 32 + 128
 impl Pack for LendingMarket {
     const LEN: usize = LENDING_MARKET_LEN;
 
@@ -80,6 +85,7 @@ impl Pack for LendingMarket {
             quote_currency,
             token_program_id,
             oracle_program_id,
+            switchboard_oracle_program_id,
             _padding,
         ) = mut_array_refs![
             output,
@@ -87,6 +93,7 @@ impl Pack for LendingMarket {
             1,
             PUBKEY_BYTES,
             32,
+            PUBKEY_BYTES,
             PUBKEY_BYTES,
             PUBKEY_BYTES,
             128
@@ -98,6 +105,7 @@ impl Pack for LendingMarket {
         quote_currency.copy_from_slice(self.quote_currency.as_ref());
         token_program_id.copy_from_slice(self.token_program_id.as_ref());
         oracle_program_id.copy_from_slice(self.oracle_program_id.as_ref());
+        switchboard_oracle_program_id.copy_from_slice(self.switchboard_oracle_program_id.as_ref());
     }
 
     /// Unpacks a byte buffer into a [LendingMarketInfo](struct.LendingMarketInfo.html)
@@ -111,6 +119,7 @@ impl Pack for LendingMarket {
             quote_currency,
             token_program_id,
             oracle_program_id,
+            switchboard_oracle_program_id,
             _padding,
         ) = array_refs![
             input,
@@ -118,6 +127,7 @@ impl Pack for LendingMarket {
             1,
             PUBKEY_BYTES,
             32,
+            PUBKEY_BYTES,
             PUBKEY_BYTES,
             PUBKEY_BYTES,
             128
@@ -136,6 +146,7 @@ impl Pack for LendingMarket {
             quote_currency: *quote_currency,
             token_program_id: Pubkey::new_from_array(*token_program_id),
             oracle_program_id: Pubkey::new_from_array(*oracle_program_id),
+            switchboard_oracle_program_id: Pubkey::new_from_array(*switchboard_oracle_program_id),
         })
     }
 }
