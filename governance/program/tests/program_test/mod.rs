@@ -29,8 +29,8 @@ use spl_governance::{
         create_mint_governance, create_program_governance, create_proposal, create_realm,
         create_token_governance, deposit_governing_tokens, execute_instruction, finalize_vote,
         flag_instruction_error, insert_instruction, relinquish_vote, remove_instruction,
-        remove_signatory, set_governance_config, set_governance_delegate, sign_off_proposal,
-        withdraw_governing_tokens, Vote,
+        remove_signatory, set_governance_config, set_governance_delegate, set_realm_authority,
+        sign_off_proposal, withdraw_governing_tokens, Vote,
     },
     processor::process_instruction,
     state::{
@@ -556,6 +556,45 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
+    pub async fn set_realm_authority(
+        &mut self,
+        realm_cookie: &RealmCookie,
+        new_realm_authority: &Option<Pubkey>,
+    ) -> Result<(), ProgramError> {
+        self.set_realm_authority_using_instruction(
+            realm_cookie,
+            new_realm_authority,
+            NopOverride,
+            None,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn set_realm_authority_using_instruction<F: Fn(&mut Instruction)>(
+        &mut self,
+        realm_cookie: &RealmCookie,
+        new_realm_authority: &Option<Pubkey>,
+        instruction_override: F,
+        signers_override: Option<&[&Keypair]>,
+    ) -> Result<(), ProgramError> {
+        let mut set_realm_authority_ix = set_realm_authority(
+            &self.program_id,
+            &realm_cookie.address,
+            &realm_cookie.realm_authority.pubkey(),
+            new_realm_authority,
+        );
+
+        instruction_override(&mut set_realm_authority_ix);
+
+        let default_signers = &[&realm_cookie.realm_authority];
+        let signers = signers_override.unwrap_or(default_signers);
+
+        self.process_transaction(&[set_realm_authority_ix], Some(signers))
+            .await
+    }
+
+    #[allow(dead_code)]
     pub async fn withdraw_community_tokens(
         &mut self,
         realm_cookie: &RealmCookie,
@@ -837,9 +876,9 @@ impl GovernanceProgramTest {
         instruction_override(&mut create_program_governance_instruction);
 
         let default_signers = &[&governed_program_cookie.upgrade_authority];
-        let singers = signers_override.unwrap_or(default_signers);
+        let signers = signers_override.unwrap_or(default_signers);
 
-        self.process_transaction(&[create_program_governance_instruction], Some(singers))
+        self.process_transaction(&[create_program_governance_instruction], Some(signers))
             .await?;
 
         let account = Governance {
@@ -902,9 +941,9 @@ impl GovernanceProgramTest {
         instruction_override(&mut create_mint_governance_instruction);
 
         let default_signers = &[&governed_mint_cookie.mint_authority];
-        let singers = signers_override.unwrap_or(default_signers);
+        let signers = signers_override.unwrap_or(default_signers);
 
-        self.process_transaction(&[create_mint_governance_instruction], Some(singers))
+        self.process_transaction(&[create_mint_governance_instruction], Some(signers))
             .await?;
 
         let account = Governance {
@@ -967,9 +1006,9 @@ impl GovernanceProgramTest {
         instruction_override(&mut create_token_governance_instruction);
 
         let default_signers = &[&governed_token_cookie.token_owner];
-        let singers = signers_override.unwrap_or(default_signers);
+        let signers = signers_override.unwrap_or(default_signers);
 
-        self.process_transaction(&[create_token_governance_instruction], Some(singers))
+        self.process_transaction(&[create_token_governance_instruction], Some(signers))
             .await?;
 
         let account = Governance {
@@ -1186,17 +1225,36 @@ impl GovernanceProgramTest {
         proposal_cookie: &ProposalCookie,
         signatory_record_cookie: &SignatoryRecordCookie,
     ) -> Result<(), ProgramError> {
-        let sign_off_proposal_instruction = sign_off_proposal(
+        self.sign_off_proposal_using_instruction(
+            proposal_cookie,
+            signatory_record_cookie,
+            NopOverride,
+            None,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn sign_off_proposal_using_instruction<F: Fn(&mut Instruction)>(
+        &mut self,
+        proposal_cookie: &ProposalCookie,
+        signatory_record_cookie: &SignatoryRecordCookie,
+        instruction_override: F,
+        signers_override: Option<&[&Keypair]>,
+    ) -> Result<(), ProgramError> {
+        let mut sign_off_proposal_ix = sign_off_proposal(
             &self.program_id,
             &proposal_cookie.address,
             &signatory_record_cookie.signatory.pubkey(),
         );
 
-        self.process_transaction(
-            &[sign_off_proposal_instruction],
-            Some(&[&signatory_record_cookie.signatory]),
-        )
-        .await?;
+        instruction_override(&mut sign_off_proposal_ix);
+
+        let default_signers = &[&signatory_record_cookie.signatory];
+        let signers = signers_override.unwrap_or(default_signers);
+
+        self.process_transaction(&[sign_off_proposal_ix], Some(signers))
+            .await?;
 
         Ok(())
     }

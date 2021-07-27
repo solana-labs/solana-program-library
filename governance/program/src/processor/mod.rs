@@ -19,6 +19,7 @@ mod process_remove_instruction;
 mod process_remove_signatory;
 mod process_set_governance_config;
 mod process_set_governance_delegate;
+mod process_set_realm_authority;
 mod process_sign_off_proposal;
 mod process_withdraw_governing_tokens;
 
@@ -44,6 +45,7 @@ use process_remove_instruction::*;
 use process_remove_signatory::*;
 use process_set_governance_config::*;
 use process_set_governance_delegate::*;
+use process_set_realm_authority::*;
 use process_sign_off_proposal::*;
 use process_withdraw_governing_tokens::*;
 
@@ -166,5 +168,8 @@ pub fn process_instruction(
         GovernanceInstruction::FlagInstructionError {} => {
             process_flag_instruction_error(program_id, accounts)
         }
+        GovernanceInstruction::SetRealmAuthority {
+            new_realm_authority,
+        } => process_set_realm_authority(program_id, accounts, new_realm_authority),
     }
 }
