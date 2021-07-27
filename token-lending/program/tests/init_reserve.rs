@@ -46,15 +46,20 @@ async fn test_success() {
     )
     .await;
 
+    let mut config = test_reserve_config();
+    let fee_receiver_keypair = Keypair::new();
+    config.fee_receiver = fee_receiver_keypair.pubkey();
+
     let sol_reserve = TestReserve::init(
         "sol".to_owned(),
         &mut banks_client,
         &lending_market,
         &sol_oracle,
         RESERVE_AMOUNT,
-        TEST_RESERVE_CONFIG,
+        config,
         spl_token::native_mint::id(),
         sol_user_liquidity_account,
+        &fee_receiver_keypair,
         &payer,
         &user_accounts_owner,
     )
@@ -100,7 +105,7 @@ async fn test_already_initialized() {
             liquidity_amount: 42,
             liquidity_mint_decimals: usdc_mint.decimals,
             liquidity_mint_pubkey: usdc_mint.pubkey,
-            config: TEST_RESERVE_CONFIG,
+            config: test_reserve_config(),
             ..AddReserveArgs::default()
         },
     );
@@ -117,7 +122,6 @@ async fn test_already_initialized() {
             usdc_test_reserve.pubkey,
             usdc_test_reserve.liquidity_mint_pubkey,
             usdc_test_reserve.liquidity_supply_pubkey,
-            usdc_test_reserve.liquidity_fee_receiver_pubkey,
             usdc_test_reserve.collateral_mint_pubkey,
             usdc_test_reserve.collateral_supply_pubkey,
             usdc_oracle.pyth_product_pubkey,
@@ -174,12 +178,15 @@ async fn test_invalid_fees() {
 
     // fee above 100%
     {
-        let mut config = TEST_RESERVE_CONFIG;
+        let mut config = test_reserve_config();
         config.fees = ReserveFees {
             borrow_fee_wad: 1_000_000_000_000_000_001,
             flash_loan_fee_wad: 1_000_000_000_000_000_001,
             host_fee_percentage: 0,
         };
+
+        let fee_receiver_keypair = Keypair::new();
+        config.fee_receiver = fee_receiver_keypair.pubkey();
 
         assert_eq!(
             TestReserve::init(
@@ -191,6 +198,7 @@ async fn test_invalid_fees() {
                 config,
                 spl_token::native_mint::id(),
                 sol_user_liquidity_account,
+                &fee_receiver_keypair,
                 &payer,
                 &user_accounts_owner,
             )
@@ -205,12 +213,14 @@ async fn test_invalid_fees() {
 
     // host fee above 100%
     {
-        let mut config = TEST_RESERVE_CONFIG;
+        let mut config = test_reserve_config();
         config.fees = ReserveFees {
             borrow_fee_wad: 10_000_000_000_000_000,
             flash_loan_fee_wad: 10_000_000_000_000_000,
             host_fee_percentage: 101,
         };
+        let fee_receiver_keypair = Keypair::new();
+        config.fee_receiver = fee_receiver_keypair.pubkey();
 
         assert_eq!(
             TestReserve::init(
@@ -222,6 +232,7 @@ async fn test_invalid_fees() {
                 config,
                 spl_token::native_mint::id(),
                 sol_user_liquidity_account,
+                &fee_receiver_keypair,
                 &payer,
                 &user_accounts_owner,
             )
@@ -258,7 +269,7 @@ async fn test_update_reserve_config() {
             liquidity_amount: 42,
             liquidity_mint_decimals: mint.decimals,
             liquidity_mint_pubkey: mint.pubkey,
-            config: TEST_RESERVE_CONFIG,
+            config: test_reserve_config(),
             ..AddReserveArgs::default()
         },
     );
@@ -276,7 +287,6 @@ async fn test_update_reserve_config() {
             test_reserve.pubkey,
             test_reserve.liquidity_mint_pubkey,
             test_reserve.liquidity_supply_pubkey,
-            test_reserve.liquidity_fee_receiver_pubkey,
             test_reserve.collateral_mint_pubkey,
             test_reserve.collateral_supply_pubkey,
             oracle.pyth_product_pubkey,
@@ -320,6 +330,7 @@ async fn test_update_reserve_config() {
         },
         deposit_limit: 1_000_000,
         borrow_limit: 300_000,
+        fee_receiver: Keypair::new().pubkey(),
     };
 
     let mut transaction = Transaction::new_with_payer(

@@ -44,7 +44,7 @@ async fn test_success() {
             liquidity_amount: USDC_RESERVE_LIQUIDITY_FRACTIONAL,
             liquidity_mint_decimals: usdc_mint.decimals,
             liquidity_mint_pubkey: usdc_mint.pubkey,
-            config: TEST_RESERVE_CONFIG,
+            config: test_reserve_config(),
             mark_fresh: true,
             ..AddReserveArgs::default()
         },

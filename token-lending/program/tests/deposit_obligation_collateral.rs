@@ -45,7 +45,7 @@ async fn test_success() {
             liquidity_amount: SOL_RESERVE_COLLATERAL_LAMPORTS,
             liquidity_mint_decimals: 9,
             liquidity_mint_pubkey: spl_token::native_mint::id(),
-            config: TEST_RESERVE_CONFIG,
+            config: test_reserve_config(),
             mark_fresh: true,
             ..AddReserveArgs::default()
         },

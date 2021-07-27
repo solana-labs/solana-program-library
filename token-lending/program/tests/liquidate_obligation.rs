@@ -43,7 +43,7 @@ async fn test_success() {
     let user_transfer_authority = Keypair::new();
     let lending_market = add_lending_market(&mut test);
 
-    let mut reserve_config = TEST_RESERVE_CONFIG;
+    let mut reserve_config = test_reserve_config();
     reserve_config.loan_to_value_ratio = 50;
     reserve_config.liquidation_threshold = 80;
     reserve_config.liquidation_bonus = 10;

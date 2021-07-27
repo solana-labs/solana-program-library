@@ -34,7 +34,7 @@ async fn test_success() {
     let user_accounts_owner = Keypair::new();
     let lending_market = add_lending_market(&mut test);
 
-    let mut reserve_config = TEST_RESERVE_CONFIG;
+    let mut reserve_config = test_reserve_config();
     reserve_config.loan_to_value_ratio = 80;
 
     // Configure reserve to a fixed borrow rate of 1%

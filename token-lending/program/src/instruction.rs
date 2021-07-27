@@ -410,7 +410,8 @@ impl LendingInstruction {
                 let (flash_loan_fee_wad, rest) = Self::unpack_u64(rest)?;
                 let (host_fee_percentage, rest) = Self::unpack_u8(rest)?;
                 let (deposit_limit, rest) = Self::unpack_u64(rest)?;
-                let (borrow_limit, _) = Self::unpack_u64(rest)?;
+                let (borrow_limit, rest) = Self::unpack_u64(rest)?;
+                let (fee_receiver, _) = Self::unpack_pubkey(rest)?;
                 Self::InitReserve {
                     liquidity_amount,
                     config: ReserveConfig {
@@ -428,6 +429,7 @@ impl LendingInstruction {
                         },
                         deposit_limit,
                         borrow_limit,
+                        fee_receiver,
                     },
                 }
             }
@@ -486,7 +488,8 @@ impl LendingInstruction {
                 let (flash_loan_fee_wad, _rest) = Self::unpack_u64(_rest)?;
                 let (host_fee_percentage, _rest) = Self::unpack_u8(_rest)?;
                 let (deposit_limit, _rest) = Self::unpack_u64(_rest)?;
-                let (borrow_limit, _) = Self::unpack_u64(_rest)?;
+                let (borrow_limit, _rest) = Self::unpack_u64(_rest)?;
+                let (fee_receiver, _) = Self::unpack_pubkey(_rest)?;
 
                 Self::UpdateReserveConfig {
                     config: ReserveConfig {
@@ -504,6 +507,7 @@ impl LendingInstruction {
                         },
                         deposit_limit,
                         borrow_limit,
+                        fee_receiver,
                     },
                 }
             }
@@ -601,6 +605,7 @@ impl LendingInstruction {
                             },
                         deposit_limit,
                         borrow_limit,
+                        fee_receiver,
                     },
             } => {
                 buf.push(2);
@@ -617,6 +622,7 @@ impl LendingInstruction {
                 buf.extend_from_slice(&host_fee_percentage.to_le_bytes());
                 buf.extend_from_slice(&deposit_limit.to_le_bytes());
                 buf.extend_from_slice(&borrow_limit.to_le_bytes());
+                buf.extend_from_slice(&fee_receiver.to_bytes());
             }
             Self::RefreshReserve => {
                 buf.push(3);
@@ -681,6 +687,7 @@ impl LendingInstruction {
                 buf.extend_from_slice(&config.fees.host_fee_percentage.to_le_bytes());
                 buf.extend_from_slice(&config.deposit_limit.to_le_bytes());
                 buf.extend_from_slice(&config.borrow_limit.to_le_bytes());
+                buf.extend_from_slice(&config.fee_receiver.to_bytes());
             }
         }
         buf
@@ -739,7 +746,6 @@ pub fn init_reserve(
     reserve_pubkey: Pubkey,
     reserve_liquidity_mint_pubkey: Pubkey,
     reserve_liquidity_supply_pubkey: Pubkey,
-    reserve_liquidity_fee_receiver_pubkey: Pubkey,
     reserve_collateral_mint_pubkey: Pubkey,
     reserve_collateral_supply_pubkey: Pubkey,
     pyth_product_pubkey: Pubkey,
@@ -759,7 +765,7 @@ pub fn init_reserve(
         AccountMeta::new(reserve_pubkey, false),
         AccountMeta::new_readonly(reserve_liquidity_mint_pubkey, false),
         AccountMeta::new(reserve_liquidity_supply_pubkey, false),
-        AccountMeta::new(reserve_liquidity_fee_receiver_pubkey, false),
+        AccountMeta::new(config.fee_receiver, false),
         AccountMeta::new(reserve_collateral_mint_pubkey, false),
         AccountMeta::new(reserve_collateral_supply_pubkey, false),
         AccountMeta::new_readonly(pyth_product_pubkey, false),

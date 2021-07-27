@@ -64,6 +64,8 @@ struct PartialReserveConfig {
     pub deposit_limit: Option<u64>,
     /// Borrow limit
     pub borrow_limit: Option<u64>,
+    /// Liquidity fee receiver
+    pub fee_receiver: Option<Pubkey>,
 }
 
 /// Reserve Fees with optional fields
@@ -513,6 +515,15 @@ fn main() {
                         .required(false)
                         .help("Borrow Limit"),
                 )
+                .arg(
+                    Arg::with_name("fee_receiver")
+                        .long("fee-receiver")
+                        .validator(is_pubkey)
+                        .value_name("PUBKEY")
+                        .takes_value(true)
+                        .required(false)
+                        .help("Fee receiver address"),
+                )
         )
         .get_matches();
 
@@ -592,6 +603,8 @@ fn main() {
             let borrow_fee_wad = (borrow_fee * WAD as f64) as u64;
             let flash_loan_fee_wad = (flash_loan_fee * WAD as f64) as u64;
 
+            let liquidity_fee_receiver_keypair = Keypair::new();
+
             command_add_reserve(
                 &mut config,
                 ui_amount,
@@ -610,6 +623,7 @@ fn main() {
                     },
                     deposit_limit,
                     borrow_limit,
+                    fee_receiver: liquidity_fee_receiver_keypair.pubkey(),
                 },
                 source_liquidity_pubkey,
                 source_liquidity_owner_keypair,
@@ -618,6 +632,7 @@ fn main() {
                 pyth_product_pubkey,
                 pyth_price_pubkey,
                 switchboard_feed_pubkey,
+                liquidity_fee_receiver_keypair,
             )
         }
         ("update-reserve", Some(arg_matches)) => {
@@ -637,6 +652,7 @@ fn main() {
             let host_fee_percentage = value_of(arg_matches, "host_fee_percentage");
             let deposit_limit = value_of(arg_matches, "deposit_limit");
             let borrow_limit = value_of(arg_matches, "borrow_limit");
+            let fee_receiver = pubkey_of(arg_matches, "fee_receiver");
 
             let borrow_fee_wad = borrow_fee.map(|fee| (fee * WAD as f64) as u64);
             let flash_loan_fee_wad = flash_loan_fee.map(|fee| (fee * WAD as f64) as u64);
@@ -658,6 +674,7 @@ fn main() {
                     },
                     deposit_limit,
                     borrow_limit,
+                    fee_receiver,
                 },
                 reserve_pubkey,
                 lending_market_pubkey,
@@ -737,6 +754,7 @@ fn command_add_reserve(
     pyth_product_pubkey: Pubkey,
     pyth_price_pubkey: Pubkey,
     switchboard_feed_pubkey: Pubkey,
+    liquidity_fee_receiver_keypair: Keypair,
 ) -> CommandResult {
     let source_liquidity_account = config.rpc_client.get_account(&source_liquidity_pubkey)?;
     let source_liquidity = Token::unpack_from_slice(source_liquidity_account.data.borrow())?;
@@ -750,7 +768,6 @@ fn command_add_reserve(
     let collateral_mint_keypair = Keypair::new();
     let collateral_supply_keypair = Keypair::new();
     let liquidity_supply_keypair = Keypair::new();
-    let liquidity_fee_receiver_keypair = Keypair::new();
     let user_collateral_keypair = Keypair::new();
     let user_transfer_authority_keypair = Keypair::new();
 
@@ -877,7 +894,6 @@ fn command_add_reserve(
                 reserve_keypair.pubkey(),
                 source_liquidity.mint,
                 liquidity_supply_keypair.pubkey(),
-                liquidity_fee_receiver_keypair.pubkey(),
                 collateral_mint_keypair.pubkey(),
                 collateral_supply_keypair.pubkey(),
                 pyth_product_pubkey,
@@ -1064,6 +1080,15 @@ fn command_update_reserve(
             reserve_config.borrow_limit.unwrap() as f64,
             reserve.liquidity.mint_decimals,
         )
+    }
+
+    if reserve_config.fee_receiver.is_some() {
+        println!(
+            "Updating fee_receiver from {} to {}",
+            reserve.config.fee_receiver,
+            reserve_config.fee_receiver.unwrap(),
+        );
+        reserve.config.fee_receiver = reserve_config.fee_receiver.unwrap();
     }
 
     let mut transaction = Transaction::new_with_payer(

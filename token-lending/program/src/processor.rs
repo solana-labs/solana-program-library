@@ -328,7 +328,6 @@ fn process_init_reserve(
             mint_pubkey: *reserve_liquidity_mint_info.key,
             mint_decimals: reserve_liquidity_mint.decimals,
             supply_pubkey: *reserve_liquidity_supply_info.key,
-            fee_receiver: *reserve_liquidity_fee_receiver_info.key,
             pyth_oracle_pubkey: *pyth_price_info.key,
             switchboard_oracle_pubkey: *switchboard_feed_info.key,
             market_price,
@@ -1331,7 +1330,7 @@ fn process_borrow_obligation_liquidity(
         );
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if &borrow_reserve.liquidity.fee_receiver != borrow_reserve_liquidity_fee_receiver_info.key {
+    if &borrow_reserve.config.fee_receiver != borrow_reserve_liquidity_fee_receiver_info.key {
         msg!("Borrow reserve liquidity fee receiver does not match the borrow reserve liquidity fee receiver provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
@@ -1813,7 +1812,7 @@ fn process_flash_loan(
         msg!("Reserve liquidity supply must be used as the source liquidity provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if &reserve.liquidity.fee_receiver != reserve_liquidity_fee_receiver_info.key {
+    if &reserve.config.fee_receiver != reserve_liquidity_fee_receiver_info.key {
         msg!("Reserve liquidity fee receiver does not match the reserve liquidity fee receiver provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
