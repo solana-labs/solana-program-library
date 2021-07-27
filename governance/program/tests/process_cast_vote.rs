@@ -67,10 +67,12 @@ async fn test_cast_vote() {
 
     assert_eq!(Some(100), proposal_account.governing_token_mint_vote_supply);
     assert_eq!(
-        account_governance_cookie
-            .account
-            .config
-            .vote_threshold_percentage,
+        Some(
+            account_governance_cookie
+                .account
+                .config
+                .vote_threshold_percentage
+        ),
         proposal_account.vote_threshold_percentage
     );
 

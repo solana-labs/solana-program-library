@@ -1133,7 +1133,7 @@ impl GovernanceProgramTest {
 
             execution_flags: InstructionExecutionFlags::None,
             governing_token_mint_vote_supply: None,
-            vote_threshold_percentage: VoteThresholdPercentage::None,
+            vote_threshold_percentage: None,
         };
 
         let proposal_address = get_proposal_address(
