@@ -91,10 +91,12 @@ async fn test_finalize_vote_to_succeeded() {
     assert_eq!(Some(210), proposal_account.governing_token_mint_vote_supply);
 
     assert_eq!(
-        account_governance_cookie
-            .account
-            .config
-            .vote_threshold_percentage,
+        Some(
+            account_governance_cookie
+                .account
+                .config
+                .vote_threshold_percentage
+        ),
         proposal_account.vote_threshold_percentage
     );
 }

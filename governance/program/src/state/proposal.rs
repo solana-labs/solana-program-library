@@ -96,7 +96,7 @@ pub struct Proposal {
     /// The vote threshold percentage at the time Proposal was decided
     /// It's used to show correct vote results for historical proposals in cases when the threshold
     /// was changed for governance config after vote was completed.
-    pub vote_threshold_percentage: VoteThresholdPercentage,
+    pub vote_threshold_percentage: Option<VoteThresholdPercentage>,
 
     /// Proposal name
     pub name: String,
@@ -107,7 +107,7 @@ pub struct Proposal {
 
 impl AccountMaxSize for Proposal {
     fn get_max_size(&self) -> Option<usize> {
-        Some(self.name.len() + self.description_link.len() + 204)
+        Some(self.name.len() + self.description_link.len() + 205)
     }
 }
 
@@ -217,7 +217,7 @@ impl Proposal {
 
         // Capture vote params to correctly display historical results
         self.governing_token_mint_vote_supply = Some(governing_token_mint_supply);
-        self.vote_threshold_percentage = config.vote_threshold_percentage.clone();
+        self.vote_threshold_percentage = Some(config.vote_threshold_percentage.clone());
 
         Ok(())
     }
@@ -259,7 +259,7 @@ impl Proposal {
 
             // Capture vote params to correctly display historical results
             self.governing_token_mint_vote_supply = Some(governing_token_mint_supply);
-            self.vote_threshold_percentage = config.vote_threshold_percentage.clone();
+            self.vote_threshold_percentage = Some(config.vote_threshold_percentage.clone());
         }
     }
 
@@ -500,7 +500,7 @@ mod test {
             instructions_executed_count: 10,
             instructions_count: 10,
             instructions_next_index: 10,
-            vote_threshold_percentage: VoteThresholdPercentage::YesVote(100),
+            vote_threshold_percentage: Some(VoteThresholdPercentage::YesVote(100)),
         }
     }
 
