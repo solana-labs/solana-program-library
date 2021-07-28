@@ -80,7 +80,7 @@ type Error = Box<dyn std::error::Error>;
 type CommandResult = Result<(), Error>;
 
 const PYTH_PROGRAM_ID: &str = "gSbePebfvPy7tRqimPoVecS2UsBvYv46ynrzWocc92s";
-const SWITCHBOARD_PROGRAM_ID: &str = "DtmE9D2CSB4L5D6A15mraeEjrGMm6auWVzgaD8hK2tZM";
+// const SWITCHBOARD_PROGRAM_ID: &str = "DtmE9D2CSB4L5D6A15mraeEjrGMm6auWVzgaD8hK2tZM";
 const SWITCHBOARD_PROGRAM_ID_DEV: &str = "7azgmy1pFXHikv36q1zZASvFq5vFa39TT9NweVugKKTU";
 
 fn main() {
@@ -568,14 +568,15 @@ fn main() {
             let lending_market_owner = pubkey_of(arg_matches, "lending_market_owner").unwrap();
             let quote_currency = quote_currency_of(arg_matches, "quote_currency").unwrap();
             let oracle_program_id = pubkey_of(arg_matches, "oracle_program_id").unwrap();
-            let switchboard_oracle_program_id = pubkey_of(arg_matches, "switchboard_oracle_program_id").unwrap();
-            
+            let switchboard_oracle_program_id =
+                pubkey_of(arg_matches, "switchboard_oracle_program_id").unwrap();
+
             command_create_lending_market(
                 &config,
                 lending_market_owner,
                 quote_currency,
                 oracle_program_id,
-                switchboard_oracle_program_id
+                switchboard_oracle_program_id,
             )
         }
         ("add-reserve", Some(arg_matches)) => {

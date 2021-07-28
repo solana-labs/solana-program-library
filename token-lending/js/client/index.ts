@@ -31,6 +31,7 @@ export const LendingMarketLayout: typeof BufferLayout.Structure = BufferLayout.s
     Layout.publicKey("quoteTokenMint"),
     Layout.publicKey("tokenProgramId"),
     Layout.publicKey("oracleProgramId"),
+    Layout.publicKey("SwitchboardOracleProgramId"),
     BufferLayout.blob(128, "padding"),
   ]
 );
