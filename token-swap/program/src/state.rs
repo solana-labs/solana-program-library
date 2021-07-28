@@ -4,10 +4,65 @@ use crate::curve::{base::SwapCurve, fees::Fees};
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use enum_dispatch::enum_dispatch;
 use solana_program::{
+    account_info::AccountInfo,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
 };
+use std::{
+    cell::RefMut,
+};
+use bytemuck::{
+    from_bytes_mut,
+    Pod, Zeroable,
+};
+
+/// Max number of accounts in registry
+const MAX_REGISTRY_SIZE: usize = ((10 * 1024 * 1024) / 32) - 1;
+
+/// Pool Registry
+#[derive(Debug, Copy, Clone)]
+#[repr(packed)]
+pub struct PoolRegistry {
+    /// Track if registry has been created
+    pub is_initialized: bool,
+    /// Current size of the registry array
+    pub registry_size: u32,
+    /// Array of pubkeys
+    pub accounts: [Pubkey; MAX_REGISTRY_SIZE]
+}
+unsafe impl Zeroable for PoolRegistry {}
+unsafe impl Pod for PoolRegistry {}
+
+impl PoolRegistry {
+    #[inline]
+    /// Loads the registry byte blob into a struct
+    pub fn load<'a>(
+        registry_account: &'a AccountInfo,
+        program_id: &Pubkey,
+    ) -> Result<RefMut<'a, Self>, ProgramError> {
+        if registry_account.owner != program_id {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+        let account_data: RefMut<'a, [u8]>;
+        let state: RefMut<'a, Self>;
+
+        account_data = RefMut::map(registry_account.try_borrow_mut_data()?, |data| *data);
+        state = RefMut::map(account_data, |data| from_bytes_mut(data));
+
+        Ok(state)
+    }
+
+    /// Adds a pubkey to the registry
+    pub fn append(&mut self, key: &Pubkey) {
+        self.accounts[PoolRegistry::index_of(self.registry_size)] = *key;
+        self.registry_size += 1;
+    }
+    /// Gets a key by index
+    pub fn index_of(counter: u32) -> usize {
+        std::convert::TryInto::try_into(counter).unwrap()
+    }
+}
 
 /// Trait representing access to program state across all versions
 #[enum_dispatch]
@@ -254,6 +309,10 @@ mod tests {
 
     use std::convert::TryInto;
 
+    use bytemuck::{
+        try_zeroed_box
+    };
+
     const TEST_FEES: Fees = Fees {
         trade_fee_numerator: 1,
         trade_fee_denominator: 4,
@@ -277,6 +336,15 @@ mod tests {
     const TEST_CURVE_TYPE: u8 = 2;
     const TEST_AMP: u64 = 1;
     const TEST_CURVE: StableCurve = StableCurve { amp: TEST_AMP };
+
+    #[test]
+    fn pool_registry_pack() {
+        let mut pool_registry: Box<PoolRegistry> = try_zeroed_box().unwrap();
+        pool_registry.append(&TEST_TOKEN_A);
+        assert_eq!(pool_registry.is_initialized, false);
+        assert_eq!(pool_registry.registry_size, 1);
+        assert_eq!(pool_registry.accounts[0], TEST_TOKEN_A);
+    }
 
     #[test]
     fn swap_version_pack() {

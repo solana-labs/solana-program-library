@@ -13,6 +13,8 @@ import {newAccountWithLamports} from '../src/util/new-account-with-lamports';
 import {url} from '../src/util/url';
 import {sleep} from '../src/util/sleep';
 
+let poolRegistryKey: PublicKey;
+let poolRegistryNonce: number;
 // The following globals are created by `createTokenSwap` and used by subsequent tests
 // Token swap
 let tokenSwap: TokenSwap;
@@ -31,6 +33,8 @@ let mintA: Token;
 let mintB: Token;
 let tokenAccountA: PublicKey;
 let tokenAccountB: PublicKey;
+
+let payer: Account;
 
 // Hard-coded fee address, for testing production mode
 const SWAP_PROGRAM_OWNER_FEE_ADDRESS =
@@ -88,14 +92,52 @@ async function getConnection(): Promise<Connection> {
   return connection;
 }
 
+export async function initializePoolRegistry(): Promise<void> {
+  const connection = await getConnection();
+  payer = await newAccountWithLamports(connection, 172981613440);
+  await TokenSwap.initializePoolRegistry(connection, payer, TOKEN_SWAP_PROGRAM_ID)
+}
+
 export async function createTokenSwap(): Promise<void> {
   const connection = await getConnection();
-  const payer = await newAccountWithLamports(connection, 1000000000);
   owner = await newAccountWithLamports(connection, 1000000000);
-  const tokenSwapAccount = new Account();
+
+  console.log('creating token A');
+  mintA = await Token.createMint(
+    connection,
+    payer,
+    owner.publicKey,
+    null,
+    2,
+    TOKEN_PROGRAM_ID,
+  );
+
+  console.log('creating token B');
+  mintB = await Token.createMint(
+    connection,
+    payer,
+    owner.publicKey,
+    null,
+    2,
+    TOKEN_PROGRAM_ID,
+  );
+
+  const seedKeyVec = [mintA.publicKey.toBuffer(), mintB.publicKey.toBuffer()];
+  seedKeyVec.sort();
+
+  const curveBuffer = Buffer.alloc(1);
+  curveBuffer.writeUInt8(CURVE_TYPE, 0);
+  let [tokenSwapKey, nonce] = await PublicKey.findProgramAddress(
+    [
+      seedKeyVec[0],
+      seedKeyVec[1],
+      curveBuffer
+    ],
+    TOKEN_SWAP_PROGRAM_ID,
+  );
 
   [authority, nonce] = await PublicKey.findProgramAddress(
-    [tokenSwapAccount.publicKey.toBuffer()],
+    [tokenSwapKey.toBuffer()],
     TOKEN_SWAP_PROGRAM_ID,
   );
 
@@ -114,42 +156,23 @@ export async function createTokenSwap(): Promise<void> {
   const ownerKey = SWAP_PROGRAM_OWNER_FEE_ADDRESS || owner.publicKey.toString();
   feeAccount = await tokenPool.createAccount(new PublicKey(ownerKey));
 
-  console.log('creating token A');
-  mintA = await Token.createMint(
-    connection,
-    payer,
-    owner.publicKey,
-    null,
-    2,
-    TOKEN_PROGRAM_ID,
-  );
-
   console.log('creating token A account');
   tokenAccountA = await mintA.createAccount(authority);
   console.log('minting token A to swap');
   await mintA.mintTo(tokenAccountA, owner, [], currentSwapTokenA);
-
-  console.log('creating token B');
-  mintB = await Token.createMint(
-    connection,
-    payer,
-    owner.publicKey,
-    null,
-    2,
-    TOKEN_PROGRAM_ID,
-  );
 
   console.log('creating token B account');
   tokenAccountB = await mintB.createAccount(authority);
   console.log('minting token B to swap');
   await mintB.mintTo(tokenAccountB, owner, [], currentSwapTokenB);
 
+  const poolRegistryKey = await PublicKey.createWithSeed(payer.publicKey, "poolregistry", TOKEN_SWAP_PROGRAM_ID);
+
   console.log('creating token swap');
-  const swapPayer = await newAccountWithLamports(connection, 10000000000);
   tokenSwap = await TokenSwap.createTokenSwap(
     connection,
-    swapPayer,
-    tokenSwapAccount,
+    payer,
+    tokenSwapKey,
     authority,
     tokenAccountA,
     tokenAccountB,
@@ -170,15 +193,23 @@ export async function createTokenSwap(): Promise<void> {
     HOST_FEE_NUMERATOR,
     HOST_FEE_DENOMINATOR,
     CURVE_TYPE,
+    poolRegistryKey
   );
 
   console.log('loading token swap');
   const fetchedTokenSwap = await TokenSwap.loadTokenSwap(
     connection,
-    tokenSwapAccount.publicKey,
+    tokenSwapKey,
     TOKEN_SWAP_PROGRAM_ID,
-    swapPayer,
+    payer,
   );
+
+  const poolRegistry = await TokenSwap.loadPoolRegistry(connection, payer, TOKEN_SWAP_PROGRAM_ID);
+  console.log("poolRegistry", poolRegistry)
+
+  assert(poolRegistry.isInitialized);
+  assert(poolRegistry.registrySize == 1);
+  assert(poolRegistry.accounts.length == 1);
 
   assert(fetchedTokenSwap.tokenProgramId.equals(TOKEN_PROGRAM_ID));
   assert(fetchedTokenSwap.tokenAccountA.equals(tokenAccountA));
@@ -214,6 +245,92 @@ export async function createTokenSwap(): Promise<void> {
     HOST_FEE_DENOMINATOR == fetchedTokenSwap.hostFeeDenominator.toNumber(),
   );
   assert(CURVE_TYPE == fetchedTokenSwap.curveType);
+
+  await tryCreateDuplicateTokenSwap();
+}
+
+export async function tryCreateDuplicateTokenSwap(): Promise<void> {
+  console.log("attempting to create duplicate pool")
+  const connection = await getConnection();
+
+  const seedKeyVec = [mintA.publicKey.toBuffer(), mintB.publicKey.toBuffer()];
+  seedKeyVec.sort();
+
+  const curveBuffer = Buffer.alloc(1);
+  curveBuffer.writeUInt8(CURVE_TYPE, 0);
+  let [tokenSwapKey, _nonce] = await PublicKey.findProgramAddress(
+    [
+      seedKeyVec[0],
+      seedKeyVec[1],
+      curveBuffer
+    ],
+    TOKEN_SWAP_PROGRAM_ID,
+  );
+
+  let [authority, nonce] = await PublicKey.findProgramAddress(
+    [tokenSwapKey.toBuffer()],
+    TOKEN_SWAP_PROGRAM_ID,
+  );
+
+  console.log('creating pool mint');
+  const tokenPool = await Token.createMint(
+    connection,
+    payer,
+    authority,
+    null,
+    2,
+    TOKEN_PROGRAM_ID,
+  );
+
+  console.log('creating pool account');
+  const tokenAccountPool = await tokenPool.createAccount(owner.publicKey);
+  const ownerKey = SWAP_PROGRAM_OWNER_FEE_ADDRESS || owner.publicKey.toString();
+  const feeAccount = await tokenPool.createAccount(new PublicKey(ownerKey));
+
+  console.log('creating token A account');
+  const tokenAccountA = await mintA.createAccount(authority);
+  console.log('minting token A to swap');
+  await mintA.mintTo(tokenAccountA, owner, [], currentSwapTokenA);
+
+  console.log('creating token B account');
+  const tokenAccountB = await mintB.createAccount(authority);
+  console.log('minting token B to swap');
+  await mintB.mintTo(tokenAccountB, owner, [], currentSwapTokenB);
+
+  const poolRegistryKey = await PublicKey.createWithSeed(payer.publicKey, "poolregistry", TOKEN_SWAP_PROGRAM_ID);
+
+  console.log('creating token swap');
+  try {
+    await TokenSwap.createTokenSwap(
+      connection,
+      payer,
+      tokenSwapKey,
+      authority,
+      tokenAccountA,
+      tokenAccountB,
+      tokenPool.publicKey,
+      mintA.publicKey,
+      mintB.publicKey,
+      feeAccount,
+      tokenAccountPool,
+      TOKEN_SWAP_PROGRAM_ID,
+      TOKEN_PROGRAM_ID,
+      nonce,
+      TRADING_FEE_NUMERATOR,
+      TRADING_FEE_DENOMINATOR,
+      OWNER_TRADING_FEE_NUMERATOR,
+      OWNER_TRADING_FEE_DENOMINATOR,
+      OWNER_WITHDRAW_FEE_NUMERATOR,
+      OWNER_WITHDRAW_FEE_DENOMINATOR,
+      HOST_FEE_NUMERATOR,
+      HOST_FEE_DENOMINATOR,
+      CURVE_TYPE,
+      poolRegistryKey
+    );
+    assert(false);
+  } catch {
+
+  }
 }
 
 export async function depositAllTokenTypes(): Promise<void> {

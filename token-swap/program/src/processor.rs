@@ -12,7 +12,7 @@ use crate::{
         DepositAllTokenTypes, DepositSingleTokenTypeExactAmountIn, Initialize, Swap,
         SwapInstruction, WithdrawAllTokenTypes, WithdrawSingleTokenTypeExactAmountOut,
     },
-    state::{SwapState, SwapV1, SwapVersion},
+    state::{SwapState, SwapV1, SwapVersion, PoolRegistry},
 };
 use num_traits::FromPrimitive;
 use solana_program::{
@@ -25,6 +25,9 @@ use solana_program::{
     program_option::COption,
     program_pack::Pack,
     pubkey::Pubkey,
+    rent::Rent,
+    system_instruction,
+    sysvar::Sysvar,
 };
 use std::convert::TryInto;
 
@@ -212,6 +215,7 @@ impl Processor {
         swap_constraints: &Option<SwapConstraints>,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
+        let payer_info = next_account_info(account_info_iter)?;
         let swap_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
         let token_a_info = next_account_info(account_info_iter)?;
@@ -220,6 +224,15 @@ impl Processor {
         let fee_account_info = next_account_info(account_info_iter)?;
         let destination_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
+        let pool_registry_info = next_account_info(account_info_iter)?;
+        let system_program_info = next_account_info(account_info_iter)?;
+        let rent_sysvar_info = next_account_info(account_info_iter)?;
+        let rent = &Rent::from_account_info(rent_sysvar_info)?;
+
+        let mut pool_registry = PoolRegistry::load(pool_registry_info, program_id)?;
+        if !pool_registry.is_initialized {
+            return Err(ProgramError::AccountAlreadyInitialized.into());
+        }
 
         let token_program_id = *token_program_info.key;
         if SwapVersion::is_initialized(&swap_info.data.borrow()) {
@@ -229,11 +242,13 @@ impl Processor {
         if *authority_info.key != Self::authority_id(program_id, swap_info.key, nonce)? {
             return Err(SwapError::InvalidProgramAddress.into());
         }
+
         let token_a = Self::unpack_token_account(token_a_info, &token_program_id)?;
         let token_b = Self::unpack_token_account(token_b_info, &token_program_id)?;
         let fee_account = Self::unpack_token_account(fee_account_info, &token_program_id)?;
         let destination = Self::unpack_token_account(destination_info, &token_program_id)?;
         let pool_mint = Self::unpack_mint(pool_mint_info, &token_program_id)?;
+
         if *authority_info.key != token_a.owner {
             return Err(SwapError::InvalidOwner.into());
         }
@@ -278,6 +293,49 @@ impl Processor {
         if *pool_mint_info.key != fee_account.mint {
             return Err(SwapError::IncorrectPoolMint.into());
         }
+
+        let mut seed_key_vec = Vec::new();
+        seed_key_vec.push(token_a.mint.to_bytes());
+        seed_key_vec.push(token_b.mint.to_bytes());
+        seed_key_vec.sort();
+
+        let (pool_pda, pool_pda_seed_nonce) = Pubkey::find_program_address(
+            &[
+                &seed_key_vec[0][..32],
+                &seed_key_vec[1][..32],
+                &[swap_curve.curve_type as u8]
+            ], program_id);
+
+        if *swap_info.key != pool_pda {
+            return Err(SwapError::InvalidProgramAddress.into());
+        }
+
+        let pool_signer_seeds: &[&[_]] = &[
+            &[
+                &seed_key_vec[0][..32],
+                &seed_key_vec[1][..32],
+                &[swap_curve.curve_type as u8],
+                &[pool_pda_seed_nonce]
+            ]
+        ];
+
+        invoke_signed(
+            &system_instruction::create_account(
+                payer_info.key,
+                &pool_pda,
+                1.max(rent.minimum_balance(SwapVersion::LATEST_LEN)),
+                SwapVersion::LATEST_LEN as u64,
+                program_id
+            ),
+            &[
+                payer_info.clone(),
+                swap_info.clone(),
+                system_program_info.clone()
+            ],
+            &pool_signer_seeds
+        )?;
+
+        pool_registry.append(swap_info.key);
 
         if let Some(swap_constraints) = swap_constraints {
             let owner_key = swap_constraints
@@ -978,6 +1036,38 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes InitializeRegistry
+    pub fn process_initialize_registry(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let payer_info = next_account_info(account_info_iter)?;
+        let pool_registry_account = next_account_info(account_info_iter)?;
+
+        let pool_registry_seed = "poolregistry";
+        let pool_registry_key = Pubkey::create_with_seed(
+            &payer_info.key,
+            &pool_registry_seed,
+            &program_id,
+        )
+        .unwrap();
+
+        if pool_registry_key != *pool_registry_account.key {
+            msg!("Error: pool registry pubkey incorrect");
+            return Err(ProgramError::InvalidArgument);
+        }
+
+        let mut pool_registry = PoolRegistry::load(pool_registry_account, program_id)?;
+        if pool_registry.is_initialized {
+            return Err(ProgramError::AccountAlreadyInitialized.into());
+        }
+
+        pool_registry.is_initialized = true;
+
+        Ok(())
+    }
+
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         Self::process_with_constraints(program_id, accounts, input, &SWAP_CONSTRAINTS)
@@ -1067,6 +1157,13 @@ impl Processor {
                     program_id,
                     destination_token_amount,
                     maximum_pool_token_amount,
+                    accounts,
+                )
+            }
+            SwapInstruction::InitializeRegistry() => {
+                msg!("Instruction: InitializeRegistry");
+                Self::process_initialize_registry(
+                    program_id,
                     accounts,
                 )
             }
@@ -1161,10 +1258,16 @@ mod tests {
         },
         instruction::{
             deposit_all_token_types, deposit_single_token_type_exact_amount_in, initialize, swap,
-            withdraw_all_token_types, withdraw_single_token_type_exact_amount_out,
+            withdraw_all_token_types, withdraw_single_token_type_exact_amount_out, initialize_registry
         },
+        state::{PoolRegistry},
     };
-    use solana_program::{instruction::Instruction, program_stubs, rent::Rent};
+    use solana_program::{
+        instruction::Instruction,
+        program_stubs,
+        rent::Rent,
+        account_info::IntoAccountInfo
+    };
     use solana_sdk::account::{create_account_for_test, create_is_signer_account_infos, Account};
     use spl_token::{
         error::TokenError,
@@ -1227,7 +1330,42 @@ mod tests {
         });
     }
 
+    fn create_pool_registry() -> (Pubkey, Account) {
+        let payer_key = Pubkey::new_unique();
+        let mut payer_account = Account::new(10, 0, &SWAP_PROGRAM_ID);
+        let _payer_account_info = (&payer_key, false, &mut payer_account).into_account_info();
+
+        let pool_registry_seed = "poolregistry";
+        let pool_registry_key = Pubkey::create_with_seed(
+            &payer_key,
+            &pool_registry_seed,
+            &SWAP_PROGRAM_ID,
+        )
+        .unwrap();
+
+        let mut pool_registry_account = Account::new(0, std::mem::size_of::<PoolRegistry>(), &SWAP_PROGRAM_ID);
+        let _pool_registry_account_info = (&pool_registry_key, false, &mut pool_registry_account).into_account_info();
+
+        do_process_instruction(
+            initialize_registry(
+                &SWAP_PROGRAM_ID,
+                &payer_key,
+                &pool_registry_key
+            )
+            .unwrap(),
+            vec![
+                &mut payer_account,
+                &mut pool_registry_account
+            ],
+        )
+        .unwrap();
+
+        (pool_registry_key, pool_registry_account)
+    }
+
     struct SwapAccountInfo {
+        payer_key: Pubkey,
+        payer_account: Account,
         nonce: u8,
         authority_key: Pubkey,
         fees: Fees,
@@ -1248,6 +1386,9 @@ mod tests {
         token_b_account: Account,
         token_b_mint_key: Pubkey,
         token_b_mint_account: Account,
+        pool_registry_key: Pubkey,
+        pool_registry_account: Account,
+        rent_sysvar_account: Account
     }
 
     impl SwapAccountInfo {
@@ -1258,13 +1399,32 @@ mod tests {
             token_a_amount: u64,
             token_b_amount: u64,
         ) -> Self {
-            let swap_key = Pubkey::new_unique();
-            let swap_account = Account::new(0, SwapVersion::LATEST_LEN, &SWAP_PROGRAM_ID);
+
+            let payer_key = Pubkey::new_unique();
+            let mut payer_account = Account::new(100000000000, 0, &SWAP_PROGRAM_ID);
+            let _payer_account_info = (&payer_key, false, &mut payer_account).into_account_info();
+
+            let mut rent_sysvar_account = create_account_for_test(&Rent::free());
+
+            let (token_a_mint_key, mut token_a_mint_account) =
+                create_mint(&spl_token::id(), user_key, None);
+            let (token_b_mint_key, mut token_b_mint_account) =
+                create_mint(&spl_token::id(), user_key, None);
+
+            let (swap_key, _pool_pda_seed_nonce) = Pubkey::find_program_address(
+                &[
+                    &token_a_mint_key.to_bytes()[..32],
+                    &token_b_mint_key.to_bytes()[..32],
+                    &[swap_curve.curve_type as u8]
+                ], &SWAP_PROGRAM_ID);
+
+            let mut swap_account = Account::new(0, SwapVersion::LATEST_LEN, &SWAP_PROGRAM_ID);
+            let _swap_account_info = (&swap_key, false, &mut swap_account).into_account_info();
             let (authority_key, nonce) =
                 Pubkey::find_program_address(&[&swap_key.to_bytes()[..]], &SWAP_PROGRAM_ID);
 
             let (pool_mint_key, mut pool_mint_account) =
-                create_mint(&spl_token::id(), &authority_key, None);
+            create_mint(&spl_token::id(), &authority_key, None);
             let (pool_token_key, pool_token_account) = mint_token(
                 &spl_token::id(),
                 &pool_mint_key,
@@ -1281,8 +1441,7 @@ mod tests {
                 user_key,
                 0,
             );
-            let (token_a_mint_key, mut token_a_mint_account) =
-                create_mint(&spl_token::id(), user_key, None);
+
             let (token_a_key, token_a_account) = mint_token(
                 &spl_token::id(),
                 &token_a_mint_key,
@@ -1291,8 +1450,7 @@ mod tests {
                 &authority_key,
                 token_a_amount,
             );
-            let (token_b_mint_key, mut token_b_mint_account) =
-                create_mint(&spl_token::id(), user_key, None);
+
             let (token_b_key, token_b_account) = mint_token(
                 &spl_token::id(),
                 &token_b_mint_key,
@@ -1302,7 +1460,11 @@ mod tests {
                 token_b_amount,
             );
 
+            let (pool_registry_key, pool_registry_account) = create_pool_registry();
+
             SwapAccountInfo {
+                payer_key,
+                payer_account,
                 nonce,
                 authority_key,
                 fees,
@@ -1323,6 +1485,9 @@ mod tests {
                 token_b_account,
                 token_b_mint_key,
                 token_b_mint_account,
+                pool_registry_key,
+                pool_registry_account,
+                rent_sysvar_account
             }
         }
 
@@ -1331,6 +1496,7 @@ mod tests {
                 initialize(
                     &SWAP_PROGRAM_ID,
                     &spl_token::id(),
+                    &self.payer_key,
                     &self.swap_key,
                     &self.authority_key,
                     &self.token_a_key,
@@ -1341,9 +1507,11 @@ mod tests {
                     self.nonce,
                     self.fees.clone(),
                     self.swap_curve.clone(),
+                    &self.pool_registry_key,
                 )
                 .unwrap(),
                 vec![
+                    &mut self.payer_account,
                     &mut self.swap_account,
                     &mut Account::default(),
                     &mut self.token_a_account,
@@ -1352,6 +1520,9 @@ mod tests {
                     &mut self.pool_fee_account,
                     &mut self.pool_token_account,
                     &mut Account::default(),
+                    &mut self.pool_registry_account,
+                    &mut Account::default(),
+                    &mut self.rent_sysvar_account,
                 ],
             )
         }
@@ -1986,6 +2157,17 @@ mod tests {
         let mut accounts =
             SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
 
+        // wrong pda for swap account
+        {
+            let old_key = accounts.swap_key;
+            accounts.swap_key = Pubkey::new_unique();
+            assert_eq!(
+                Err(SwapError::InvalidProgramAddress.into()),
+                accounts.initialize_swap()
+            );
+            accounts.swap_key = old_key;
+        }
+
         // wrong nonce for authority_key
         {
             let old_nonce = accounts.nonce;
@@ -2427,6 +2609,7 @@ mod tests {
                     initialize(
                         &SWAP_PROGRAM_ID,
                         &wrong_program_id,
+                        &accounts.payer_key,
                         &accounts.swap_key,
                         &accounts.authority_key,
                         &accounts.token_a_key,
@@ -2437,9 +2620,11 @@ mod tests {
                         accounts.nonce,
                         accounts.fees.clone(),
                         accounts.swap_curve.clone(),
+                        &accounts.pool_registry_key,
                     )
                     .unwrap(),
                     vec![
+                        &mut accounts.payer_account,
                         &mut accounts.swap_account,
                         &mut Account::default(),
                         &mut accounts.token_a_account,
@@ -2448,6 +2633,9 @@ mod tests {
                         &mut accounts.pool_fee_account,
                         &mut accounts.pool_token_account,
                         &mut Account::default(),
+                        &mut accounts.pool_registry_account,
+                        &mut Account::default(),
+                        &mut accounts.rent_sysvar_account,
                     ],
                 )
             );
@@ -2613,6 +2801,7 @@ mod tests {
                     initialize(
                         &SWAP_PROGRAM_ID,
                         &spl_token::id(),
+                        &accounts.payer_key,
                         &accounts.swap_key,
                         &accounts.authority_key,
                         &accounts.token_a_key,
@@ -2623,9 +2812,11 @@ mod tests {
                         accounts.nonce,
                         accounts.fees.clone(),
                         accounts.swap_curve.clone(),
+                        &accounts.pool_registry_key,
                     )
                     .unwrap(),
                     vec![
+                        &mut accounts.payer_account,
                         &mut accounts.swap_account,
                         &mut Account::default(),
                         &mut accounts.token_a_account,
@@ -2634,6 +2825,9 @@ mod tests {
                         &mut accounts.pool_fee_account,
                         &mut accounts.pool_token_account,
                         &mut Account::default(),
+                        &mut accounts.pool_registry_account,
+                        &mut Account::default(),
+                        &mut accounts.rent_sysvar_account,
                     ],
                     &constraints,
                 )
@@ -2685,6 +2879,7 @@ mod tests {
                     initialize(
                         &SWAP_PROGRAM_ID,
                         &spl_token::id(),
+                        &accounts.payer_key,
                         &accounts.swap_key,
                         &accounts.authority_key,
                         &accounts.token_a_key,
@@ -2695,9 +2890,11 @@ mod tests {
                         accounts.nonce,
                         accounts.fees.clone(),
                         accounts.swap_curve.clone(),
+                        &accounts.pool_registry_key,
                     )
                     .unwrap(),
                     vec![
+                        &mut accounts.payer_account,
                         &mut accounts.swap_account,
                         &mut Account::default(),
                         &mut accounts.token_a_account,
@@ -2706,6 +2903,9 @@ mod tests {
                         &mut accounts.pool_fee_account,
                         &mut accounts.pool_token_account,
                         &mut Account::default(),
+                        &mut accounts.pool_registry_account,
+                        &mut Account::default(),
+                        &mut accounts.rent_sysvar_account,
                     ],
                     &constraints,
                 )
@@ -2753,6 +2953,7 @@ mod tests {
                 initialize(
                     &SWAP_PROGRAM_ID,
                     &spl_token::id(),
+                    &accounts.payer_key,
                     &accounts.swap_key,
                     &accounts.authority_key,
                     &accounts.token_a_key,
@@ -2763,9 +2964,11 @@ mod tests {
                     accounts.nonce,
                     accounts.fees,
                     accounts.swap_curve.clone(),
+                    &accounts.pool_registry_key,
                 )
                 .unwrap(),
                 vec![
+                    &mut accounts.payer_account,
                     &mut accounts.swap_account,
                     &mut Account::default(),
                     &mut accounts.token_a_account,
@@ -2774,6 +2977,9 @@ mod tests {
                     &mut accounts.pool_fee_account,
                     &mut accounts.pool_token_account,
                     &mut Account::default(),
+                    &mut accounts.pool_registry_account,
+                    &mut Account::default(),
+                    &mut accounts.rent_sysvar_account,
                 ],
                 &constraints,
             )
@@ -2808,6 +3014,43 @@ mod tests {
             spl_token::state::Account::unpack(&accounts.pool_token_account.data).unwrap();
         let pool_mint = spl_token::state::Mint::unpack(&accounts.pool_mint_account.data).unwrap();
         assert_eq!(pool_mint.supply, pool_account.amount);
+    }
+
+    #[test]
+    fn test_initialize_registry() {
+        let user_key = Pubkey::new_unique();
+        let trade_fee_numerator = 1;
+        let trade_fee_denominator = 2;
+        let owner_trade_fee_numerator = 1;
+        let owner_trade_fee_denominator = 10;
+        let owner_withdraw_fee_numerator = 1;
+        let owner_withdraw_fee_denominator = 5;
+        let host_fee_numerator = 20;
+        let host_fee_denominator = 100;
+        let fees = Fees {
+            trade_fee_numerator,
+            trade_fee_denominator,
+            owner_trade_fee_numerator,
+            owner_trade_fee_denominator,
+            owner_withdraw_fee_numerator,
+            owner_withdraw_fee_denominator,
+            host_fee_numerator,
+            host_fee_denominator,
+        };
+
+        let token_a_amount = 1000;
+        let token_b_amount = 2000;
+        let pool_token_amount = 10;
+        let curve_type = CurveType::ConstantProduct;
+        let swap_curve = SwapCurve {
+            curve_type,
+            calculator: Box::new(ConstantProductCurve {}),
+        };
+
+        let mut accounts =
+            SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
+
+        let (pool_registry_key, pool_registry_account) = create_pool_registry();
     }
 
     #[test]
@@ -5723,6 +5966,7 @@ mod tests {
             initialize(
                 &SWAP_PROGRAM_ID,
                 &spl_token::id(),
+                &accounts.payer_key,
                 &accounts.swap_key,
                 &accounts.authority_key,
                 &accounts.token_a_key,
@@ -5733,9 +5977,11 @@ mod tests {
                 accounts.nonce,
                 accounts.fees.clone(),
                 accounts.swap_curve.clone(),
+                &accounts.pool_registry_key,
             )
             .unwrap(),
             vec![
+                &mut accounts.payer_account,
                 &mut accounts.swap_account,
                 &mut Account::default(),
                 &mut accounts.token_a_account,
@@ -5744,6 +5990,9 @@ mod tests {
                 &mut accounts.pool_fee_account,
                 &mut accounts.pool_token_account,
                 &mut Account::default(),
+                &mut accounts.pool_registry_account,
+                &mut Account::default(),
+                &mut accounts.rent_sysvar_account,
             ],
             &constraints,
         )

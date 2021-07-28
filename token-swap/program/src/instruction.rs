@@ -9,6 +9,7 @@ use solana_program::{
     program_error::ProgramError,
     program_pack::Pack,
     pubkey::Pubkey,
+    sysvar,
 };
 use std::convert::TryInto;
 use std::mem::size_of;
@@ -108,6 +109,7 @@ pub enum SwapInstruction {
     ///   6. `[writable]` Pool Token Account to deposit the initial pool token
     ///   supply.  Must be empty, not owned by swap authority.
     ///   7. '[]` Token program id
+    ///   8. '[writable]` Pool registry
     Initialize(Initialize),
 
     ///   Swap the tokens in the pool.
@@ -187,6 +189,13 @@ pub enum SwapInstruction {
     ///   8. `[writable]` Fee account, to receive withdrawal fees
     ///   9. '[]` Token program id
     WithdrawSingleTokenTypeExactAmountOut(WithdrawSingleTokenTypeExactAmountOut),
+    ///   Initializes the pool registry
+    ///
+    /// Accounts expected:
+    ///
+    /// 0. `[signer]` The account of deployer.
+    /// 1. `[writable]` The pool registry account.
+    InitializeRegistry(),
 }
 
 impl SwapInstruction {
@@ -252,7 +261,9 @@ impl SwapInstruction {
                     destination_token_amount,
                     maximum_pool_token_amount,
                 })
-            }
+            },
+            6 => Self::InitializeRegistry {
+            },
             _ => return Err(SwapError::InvalidInstruction.into()),
         })
     }
@@ -335,6 +346,9 @@ impl SwapInstruction {
                 buf.extend_from_slice(&destination_token_amount.to_le_bytes());
                 buf.extend_from_slice(&maximum_pool_token_amount.to_le_bytes());
             }
+            Self::InitializeRegistry() => {
+                buf.push(6);
+            }
         }
         buf
     }
@@ -344,6 +358,7 @@ impl SwapInstruction {
 pub fn initialize(
     program_id: &Pubkey,
     token_program_id: &Pubkey,
+    payer_pubkey: &Pubkey,
     swap_pubkey: &Pubkey,
     authority_pubkey: &Pubkey,
     token_a_pubkey: &Pubkey,
@@ -354,6 +369,7 @@ pub fn initialize(
     nonce: u8,
     fees: Fees,
     swap_curve: SwapCurve,
+    pool_registry_pubkey: &Pubkey
 ) -> Result<Instruction, ProgramError> {
     let init_data = SwapInstruction::Initialize(Initialize {
         nonce,
@@ -363,7 +379,8 @@ pub fn initialize(
     let data = init_data.pack();
 
     let accounts = vec![
-        AccountMeta::new(*swap_pubkey, true),
+        AccountMeta::new(*payer_pubkey, true),
+        AccountMeta::new(*swap_pubkey, false),
         AccountMeta::new_readonly(*authority_pubkey, false),
         AccountMeta::new_readonly(*token_a_pubkey, false),
         AccountMeta::new_readonly(*token_b_pubkey, false),
@@ -371,6 +388,9 @@ pub fn initialize(
         AccountMeta::new_readonly(*fee_pubkey, false),
         AccountMeta::new(*destination_pubkey, false),
         AccountMeta::new_readonly(*token_program_id, false),
+        AccountMeta::new(*pool_registry_pubkey, false),
+        AccountMeta::new_readonly(solana_program::system_program::id(), false),
+        AccountMeta::new_readonly(sysvar::rent::id(), false),
     ];
 
     Ok(Instruction {
@@ -561,6 +581,28 @@ pub fn swap(
     if let Some(host_fee_pubkey) = host_fee_pubkey {
         accounts.push(AccountMeta::new(*host_fee_pubkey, false));
     }
+
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    })
+}
+
+
+/// Creates an 'initialize_registry' instruction.
+pub fn initialize_registry(
+    program_id: &Pubkey,
+    payer: &Pubkey,
+    pool_registry_pubkey: &Pubkey
+) -> Result<Instruction, ProgramError> {
+    let init_data = SwapInstruction::InitializeRegistry();
+    let data = init_data.pack();
+
+    let accounts = vec![
+        AccountMeta::new(*payer, true),
+        AccountMeta::new(*pool_registry_pubkey, false),
+    ];
 
     Ok(Instruction {
         program_id: *program_id,
