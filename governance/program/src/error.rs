@@ -295,6 +295,10 @@ pub enum GovernanceError {
     /// Realm authority must sign
     #[error("Realm authority must sign")]
     RealmAuthorityMustSign,
+
+    /// Invalid governing token holding account
+    #[error("Invalid governing token holding account")]
+    InvalidGoverningTokenHoldingAccount,
 }
 
 impl PrintProgramError for GovernanceError {
