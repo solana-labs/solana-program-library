@@ -62,7 +62,7 @@ use self::{
     cookies::{
         GovernanceCookie, GovernedAccountCookie, GovernedMintCookie, GovernedProgramCookie,
         GovernedTokenCookie, ProposalCookie, ProposalInstructionCookie, RealmCookie,
-        TokeOwnerRecordCookie, VoteRecordCookie,
+        TokeOwnerRecordCookie, TokenAccountCookie, VoteRecordCookie,
     },
     tools::NopOverride,
 };
@@ -1905,6 +1905,32 @@ impl GovernanceProgramTest {
         )
         .await
         .unwrap();
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_token_account(
+        &mut self,
+        token_mint: &Pubkey,
+        owner: &Pubkey,
+        token_mint_authority: &Keypair,
+        amount: u64,
+    ) -> TokenAccountCookie {
+        let token_account_keypair = Keypair::new();
+
+        self.create_empty_token_account(&token_account_keypair, token_mint, owner)
+            .await;
+
+        self.mint_tokens(
+            token_mint,
+            token_mint_authority,
+            &token_account_keypair.pubkey(),
+            amount,
+        )
+        .await;
+
+        return TokenAccountCookie {
+            address: token_account_keypair.pubkey(),
+        };
     }
 
     #[allow(dead_code)]
