@@ -130,7 +130,7 @@ pub fn spl_burn_signed<'a>(
             burn_account.key,
             mint.key,
             authority.key,
-            &[&authority.key],
+            &[],
             amount,
         )?;
         invoke_signed(
@@ -160,7 +160,7 @@ pub fn spl_mint_to<'a>(
         mint.key,
         dest_account.key,
         authority.key,
-        &[&authority.key],
+        &[],
         amount,
     )?;
     invoke_signed(
@@ -189,7 +189,7 @@ pub fn spl_token_transfer<'a>(
             source.key,
             destination.key,
             owner.key,
-            &[&owner.key],
+            &[],
             amount,
         )?;
         invoke(
@@ -219,7 +219,7 @@ pub fn spl_token_transfer_signed<'a>(
             source.key,
             destination.key,
             pda_account.key,
-            &[&pda_account.key],
+            &[],
             amount,
         )?;
         invoke_signed(
@@ -249,7 +249,7 @@ pub fn spl_set_authority<'a>(
         new_authority.as_ref(),
         authority_type,
         owner.key,
-        &[&owner.key],
+        &[],
     )?;
     invoke(
         &ix,

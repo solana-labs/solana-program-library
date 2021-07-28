@@ -7,7 +7,6 @@ use {
         program_pack::{IsInitialized, Pack},
         pubkey::Pubkey,
     },
-    spl_token::state::Mint,
 };
 
 pub fn assert_keys_equal(key1: Pubkey, key2: Pubkey) -> ProgramResult {

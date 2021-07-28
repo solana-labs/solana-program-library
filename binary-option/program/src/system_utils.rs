@@ -3,7 +3,7 @@ use {
         account_info::AccountInfo,
         entrypoint::ProgramResult,
         msg,
-        program::{invoke, invoke_signed},
+        program::{invoke},
         pubkey::Pubkey,
         system_instruction,
         sysvar::{rent::Rent, Sysvar},

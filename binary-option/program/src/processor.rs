@@ -66,7 +66,6 @@ pub fn process_initialize_binary_option(
     accounts: &[AccountInfo],
     decimals: u8,
 ) -> ProgramResult {
-    msg!("InitializeBinaryOption");
     let account_info_iter = &mut accounts.iter();
     let binary_option_account_info = next_account_info(account_info_iter)?;
     let escrow_mint_info = next_account_info(account_info_iter)?;
@@ -188,7 +187,6 @@ pub fn process_trade(
     buy_price: u64,
     sell_price: u64,
 ) -> ProgramResult {
-    msg!("Trade");
     let account_info_iter = &mut accounts.iter();
     let binary_option_account_info = next_account_info(account_info_iter)?;
     let escrow_account_info = next_account_info(account_info_iter)?;
@@ -241,6 +239,7 @@ pub fn process_trade(
     if binary_option.settled {
         return Err(BinaryOptionError::AlreadySettled.into());
     }
+    assert_keys_equal(*token_program_info.key, spl_token::id())?;
     assert_keys_unequal(*buyer_info.key, *seller_info.key)?;
     assert_keys_equal(*long_token_mint_info.owner, spl_token::id())?;
     assert_keys_equal(*short_token_mint_info.owner, spl_token::id())?;
@@ -575,7 +574,6 @@ pub fn process_settle(_program_id: &Pubkey, accounts: &[AccountInfo]) -> Program
     // This should NEVER be called directly (otherwise this is literally a rug)
     // The `pool_owner_info` needs to approve this action, so the recommended use case is to have a higher
     // level program own the pool and use an oracle to resolve settlements 
-    msg!("Settle");
     let account_info_iter = &mut accounts.iter();
     let binary_option_account_info = next_account_info(account_info_iter)?;
     let winning_mint_account_info = next_account_info(account_info_iter)?;
@@ -603,7 +601,6 @@ pub fn process_settle(_program_id: &Pubkey, accounts: &[AccountInfo]) -> Program
 }
 
 pub fn process_collect(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
-    msg!("Collect");
     let account_info_iter = &mut accounts.iter();
     let binary_option_account_info = next_account_info(account_info_iter)?;
     let collector_info = next_account_info(account_info_iter)?;
@@ -663,7 +660,6 @@ pub fn process_collect(program_id: &Pubkey, accounts: &[AccountInfo]) -> Program
         binary_option.short_mint_account_pubkey,
     )?;
     assert_keys_equal(*escrow_account_info.key, binary_option.escrow_account_pubkey)?;
-    assert_keys_equal(*escrow_account_info.key, binary_option.escrow_account_pubkey)?;
     assert_keys_equal(
         collector_long_token_account.mint,
         binary_option.long_mint_account_pubkey,
@@ -677,12 +673,12 @@ pub fn process_collect(program_id: &Pubkey, accounts: &[AccountInfo]) -> Program
         binary_option.escrow_mint_account_pubkey,
     )?;
 
-    let winner_long = collector_long_token_account.mint == binary_option.winning_side_pubkey;
-    let winner_short = collector_short_token_account.mint == binary_option.winning_side_pubkey;
-    let reward = match [winner_long, winner_short] {
-        [true, false] => collector_long_token_account.amount,
-        [false, true] => collector_short_token_account.amount,
-        _ => return Err(BinaryOptionError::TokenNotFoundInPool.into()),
+    let reward = if collector_long_token_account.mint == binary_option.winning_side_pubkey {
+        collector_long_token_account.amount
+    } else if collector_short_token_account.mint == binary_option.winning_side_pubkey {
+        collector_short_token_account.amount
+    } else {
+        return Err(BinaryOptionError::TokenNotFoundInPool.into());
     };
 
     topup(
