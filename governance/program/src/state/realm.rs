@@ -68,6 +68,26 @@ impl Realm {
 
         Err(GovernanceError::InvalidGoverningTokenMint.into())
     }
+
+    /// Asserts the given governing token mint and holding accounts are valid for the realm
+    pub fn assert_is_valid_governing_token_mint_and_holding(
+        &self,
+        program_id: &Pubkey,
+        realm: &Pubkey,
+        governing_token_mint: &Pubkey,
+        governing_token_holding: &Pubkey,
+    ) -> Result<(), ProgramError> {
+        self.assert_is_valid_governing_token_mint(governing_token_mint)?;
+
+        let governing_token_holding_address =
+            get_governing_token_holding_address(program_id, realm, governing_token_mint);
+
+        if governing_token_holding_address != *governing_token_holding {
+            return Err(GovernanceError::InvalidGoverningTokenHoldingAccount.into());
+        }
+
+        Ok(())
+    }
 }
 
 /// Checks whether realm account exists, is initialized and  owned by Governance program
