@@ -212,7 +212,7 @@ mod test {
                 council_mint: Some(Pubkey::new_unique()),
                 reserved: [0; 8],
                 custodian: Some(Pubkey::new_unique()),
-                community_mint_max_vote_weight_source: MintMaxVoteWeightSource::Percentage(100),
+                community_mint_max_vote_weight_source: MintMaxVoteWeightSource::Absolute(100),
             },
         };
 
