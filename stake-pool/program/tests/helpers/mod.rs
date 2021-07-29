@@ -99,6 +99,32 @@ pub async fn transfer(
     banks_client.process_transaction(transaction).await.unwrap();
 }
 
+pub async fn transfer_spl_tokens(
+    banks_client: &mut BanksClient,
+    payer: &Keypair,
+    recent_blockhash: &Hash,
+    source: &Pubkey,
+    destination: &Pubkey,
+    authority: &Keypair,
+    amount: u64,
+) {
+    let transaction = Transaction::new_signed_with_payer(
+        &[spl_token::instruction::transfer(
+            &spl_token::id(),
+            source,
+            destination,
+            &authority.pubkey(),
+            &[],
+            amount,
+        )
+        .unwrap()],
+        Some(&payer.pubkey()),
+        &[payer, authority],
+        *recent_blockhash,
+    );
+    banks_client.process_transaction(transaction).await.unwrap();
+}
+
 pub async fn create_token_account(
     banks_client: &mut BanksClient,
     payer: &Keypair,

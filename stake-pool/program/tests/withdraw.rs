@@ -1336,3 +1336,72 @@ async fn success_withdraw_from_transient() {
         .await;
     assert!(error.is_none());
 }
+
+#[tokio::test]
+async fn success_withdraw_all_fee_tokens() {
+    let (
+        mut banks_client,
+        payer,
+        recent_blockhash,
+        stake_pool_accounts,
+        validator_stake_account,
+        deposit_info,
+        user_transfer_authority,
+        user_stake_recipient,
+        tokens_to_withdraw,
+    ) = setup().await;
+
+    // move tokens to fee account
+    transfer_spl_tokens(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &deposit_info.pool_account.pubkey(),
+        &stake_pool_accounts.pool_fee_account.pubkey(),
+        &user_transfer_authority,
+        tokens_to_withdraw,
+    )
+    .await;
+
+    let fee_tokens = get_token_balance(
+        &mut banks_client,
+        &stake_pool_accounts.pool_fee_account.pubkey(),
+    )
+    .await;
+
+    let user_transfer_authority = Keypair::new();
+    delegate_tokens(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts.pool_fee_account.pubkey(),
+        &stake_pool_accounts.manager,
+        &user_transfer_authority.pubkey(),
+        fee_tokens,
+    )
+    .await;
+
+    let new_authority = Pubkey::new_unique();
+    let error = stake_pool_accounts
+        .withdraw_stake(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            &user_stake_recipient.pubkey(),
+            &user_transfer_authority,
+            &stake_pool_accounts.pool_fee_account.pubkey(),
+            &validator_stake_account.stake_account,
+            &new_authority,
+            fee_tokens,
+        )
+        .await;
+    assert!(error.is_none());
+
+    // Check balance is 0
+    let fee_tokens = get_token_balance(
+        &mut banks_client,
+        &stake_pool_accounts.pool_fee_account.pubkey(),
+    )
+    .await;
+    assert_eq!(fee_tokens, 0);
+}
