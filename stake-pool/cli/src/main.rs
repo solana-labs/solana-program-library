@@ -1538,7 +1538,7 @@ fn main() {
                     .validator(is_amount)
                     .value_name("AMOUNT")
                     .takes_value(true)
-                    .help("Amount in lamports to remove from the validator stake account. Must be at least the rent-exempt amount for a stake."),
+                    .help("Amount in SOL to remove from the validator stake account. Must be at least the rent-exempt amount for a stake."),
             )
         )
         .subcommand(SubCommand::with_name("set-preferred-validator")
