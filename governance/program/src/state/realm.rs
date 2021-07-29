@@ -14,12 +14,19 @@ use crate::{
 
 use crate::state::enums::GovernanceAccountType;
 
-/// Realm Config
+/// Realm Config defining Realm parameters.
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct RealmConfig {
     /// Optional council mint
     pub council_mint: Option<Pubkey>,
+
+    /// An authority tasked with none critical and maintenance Realm operations
+    /// For example custodian authority is required to add governances to the Realm
+    /// There is no security risk with adding governances to the Realm but it should not be open for everybody
+    /// to prevent unrelated entries and noise
+    /// Note: This field is not used yet. It's reserved for future versions
+    pub custodian: Option<Pubkey>,
 
     /// Reserved space for future versions
     pub reserved: [u8; 8],
@@ -42,7 +49,7 @@ pub struct Realm {
     /// Reserved space for future versions
     pub reserved: [u8; 8],
 
-    /// Realm authority. The authority must sign transactions which update the realm (ex. adding governance, setting council)
+    /// Realm authority. The authority must sign transactions which update the realm config
     /// The authority can be transferer to Realm Governance and hence make the Realm self governed through proposals
     /// Note: This field is not used yet. It's reserved for future versions
     pub authority: Option<Pubkey>,
@@ -53,7 +60,7 @@ pub struct Realm {
 
 impl AccountMaxSize for Realm {
     fn get_max_size(&self) -> Option<usize> {
-        Some(self.name.len() + 119)
+        Some(self.name.len() + 152)
     }
 }
 
@@ -201,6 +208,7 @@ mod test {
             config: RealmConfig {
                 council_mint: Some(Pubkey::new_unique()),
                 reserved: [0; 8],
+                custodian: Some(Pubkey::new_unique()),
             },
         };
 

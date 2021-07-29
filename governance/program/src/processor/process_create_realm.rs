@@ -91,6 +91,7 @@ pub fn process_create_realm(
         config: RealmConfig {
             council_mint: council_token_mint_address,
             reserved: [0; 8],
+            custodian: Some(*realm_authority_info.key),
         },
     };
 

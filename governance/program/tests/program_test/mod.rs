@@ -192,6 +192,7 @@ impl GovernanceProgramTest {
             config: RealmConfig {
                 council_mint: Some(council_token_mint_keypair.pubkey()),
                 reserved: [0; 8],
+                custodian: Some(realm_authority.pubkey()),
             },
         };
 
@@ -241,6 +242,7 @@ impl GovernanceProgramTest {
             config: RealmConfig {
                 council_mint: Some(council_mint),
                 reserved: [0; 8],
+                custodian: Some(realm_authority.pubkey()),
             },
         };
 
