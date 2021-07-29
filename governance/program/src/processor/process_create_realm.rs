@@ -11,7 +11,7 @@ use solana_program::{
 use crate::{
     error::GovernanceError,
     state::{
-        enums::GovernanceAccountType,
+        enums::{GovernanceAccountType, MintMaxVoteWeightSource},
         realm::{
             get_governing_token_holding_address_seeds, get_realm_address_seeds, Realm, RealmConfig,
         },
@@ -92,6 +92,7 @@ pub fn process_create_realm(
             council_mint: council_token_mint_address,
             reserved: [0; 8],
             custodian: Some(*realm_authority_info.key),
+            community_mint_max_vote_weight_source: MintMaxVoteWeightSource::Percentage(100),
         },
     };
 

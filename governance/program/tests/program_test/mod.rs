@@ -36,7 +36,7 @@ use spl_governance::{
     state::{
         enums::{
             GovernanceAccountType, InstructionExecutionFlags, InstructionExecutionStatus,
-            ProposalState, VoteThresholdPercentage, VoteWeight,
+            MintMaxVoteWeightSource, ProposalState, VoteThresholdPercentage, VoteWeight,
         },
         governance::{
             get_account_governance_address, get_mint_governance_address,
@@ -193,6 +193,7 @@ impl GovernanceProgramTest {
                 council_mint: Some(council_token_mint_keypair.pubkey()),
                 reserved: [0; 8],
                 custodian: Some(realm_authority.pubkey()),
+                community_mint_max_vote_weight_source: MintMaxVoteWeightSource::Percentage(100),
             },
         };
 
@@ -243,6 +244,7 @@ impl GovernanceProgramTest {
                 council_mint: Some(council_mint),
                 reserved: [0; 8],
                 custodian: Some(realm_authority.pubkey()),
+                community_mint_max_vote_weight_source: MintMaxVoteWeightSource::Percentage(100),
             },
         };
 
@@ -1273,10 +1275,12 @@ impl GovernanceProgramTest {
     #[allow(dead_code)]
     pub async fn finalize_vote(
         &mut self,
+        realm_cookie: &RealmCookie,
         proposal_cookie: &ProposalCookie,
     ) -> Result<(), ProgramError> {
         let finalize_vote_instruction = finalize_vote(
             &self.program_id,
+            &realm_cookie.address,
             &proposal_cookie.account.governance,
             &proposal_cookie.address,
             &proposal_cookie.account.governing_token_mint,
@@ -1361,6 +1365,7 @@ impl GovernanceProgramTest {
     ) -> Result<VoteRecordCookie, ProgramError> {
         let vote_instruction = cast_vote(
             &self.program_id,
+            &token_owner_record_cookie.account.realm,
             &proposal_cookie.account.governance,
             &proposal_cookie.address,
             &token_owner_record_cookie.address,

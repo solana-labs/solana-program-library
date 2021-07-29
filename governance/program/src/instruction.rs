@@ -244,16 +244,17 @@ pub enum GovernanceInstruction {
     ///  By doing so you indicate you approve or disapprove of running the Proposal set of instructions
     ///  If you tip the consensus then the instructions can begin to be run after their hold up time
     ///
-    ///   0. `[]` Governance account
-    ///   1. `[writable]` Proposal account
-    ///   2. `[writable]` Token Owner Record account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
-    ///   3. `[signer]` Governance Authority (Token Owner or Governance Delegate)
-    ///   4. `[writable]` Proposal VoteRecord account. PDA seeds: ['governance',proposal,governing_token_owner_record]
-    ///   5. `[]` Governing Token Mint
-    ///   6. `[signer]` Payer
-    ///   7. `[]` System program
-    ///   8. `[]` Rent sysvar
-    ///   9. `[]` Clock sysvar
+    ///   0. `[]` Realm account
+    ///   1. `[]` Governance account
+    ///   2. `[writable]` Proposal account
+    ///   3. `[writable]` Token Owner Record account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
+    ///   4. `[signer]` Governance Authority (Token Owner or Governance Delegate)
+    ///   5. `[writable]` Proposal VoteRecord account. PDA seeds: ['governance',proposal,governing_token_owner_record]
+    ///   6. `[]` Governing Token Mint
+    ///   7. `[signer]` Payer
+    ///   8. `[]` System program
+    ///   9. `[]` Rent sysvar
+    ///   10. `[]` Clock sysvar
     CastVote {
         #[allow(dead_code)]
         /// Yes/No vote
@@ -262,10 +263,11 @@ pub enum GovernanceInstruction {
 
     /// Finalizes vote in case the Vote was not automatically tipped within max_voting_time period
     ///
-    ///   0. `[]` Governance account
-    ///   1. `[writable]` Proposal account
-    ///   2. `[]` Governing Token Mint
-    ///   3. `[]` Clock sysvar
+    ///   0. `[]` Realm account    
+    ///   1. `[]` Governance account
+    ///   2. `[writable]` Proposal account
+    ///   3. `[]` Governing Token Mint
+    ///   4. `[]` Clock sysvar
     FinalizeVote {},
 
     ///  Relinquish Vote removes voter weight from a Proposal and removes it from voter's active votes
@@ -820,6 +822,7 @@ pub fn sign_off_proposal(
 pub fn cast_vote(
     program_id: &Pubkey,
     // Accounts
+    realm: &Pubkey,
     governance: &Pubkey,
     proposal: &Pubkey,
     token_owner_record: &Pubkey,
@@ -832,6 +835,7 @@ pub fn cast_vote(
     let vote_record_address = get_vote_record_address(program_id, proposal, token_owner_record);
 
     let accounts = vec![
+        AccountMeta::new_readonly(*realm, false),
         AccountMeta::new_readonly(*governance, false),
         AccountMeta::new(*proposal, false),
         AccountMeta::new(*token_owner_record, false),
@@ -857,11 +861,13 @@ pub fn cast_vote(
 pub fn finalize_vote(
     program_id: &Pubkey,
     // Accounts
+    realm: &Pubkey,
     governance: &Pubkey,
     proposal: &Pubkey,
     governing_token_mint: &Pubkey,
 ) -> Instruction {
     let accounts = vec![
+        AccountMeta::new_readonly(*realm, false),
         AccountMeta::new_readonly(*governance, false),
         AccountMeta::new(*proposal, false),
         AccountMeta::new_readonly(*governing_token_mint, false),

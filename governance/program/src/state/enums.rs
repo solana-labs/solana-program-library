@@ -159,3 +159,18 @@ pub enum InstructionExecutionFlags {
     /// The implementation requires another account type to group instructions within a transaction
     UseTransaction,
 }
+
+/// The source of max vote weight used for voting
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub enum MintMaxVoteWeightSource {
+    /// Percentage of the governing mint supply is used as max vote weight
+    /// The default is 100% to use all available mint supply for voting
+    Percentage(u64),
+
+    /// Absolute value, irrelevant of the actual mint supply, is used as max vote weight
+    Absolute(u64),
+
+    /// Max vote weight is provided by external program via CPI call
+    Program(u64),
+}

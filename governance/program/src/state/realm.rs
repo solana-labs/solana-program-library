@@ -8,11 +8,10 @@ use solana_program::{
 
 use crate::{
     error::GovernanceError,
+    state::enums::{GovernanceAccountType, MintMaxVoteWeightSource},
     tools::account::{assert_is_valid_account, get_account_data, AccountMaxSize},
     PROGRAM_AUTHORITY_SEED,
 };
-
-use crate::state::enums::GovernanceAccountType;
 
 /// Realm Config defining Realm parameters.
 #[repr(C)]
@@ -20,6 +19,10 @@ use crate::state::enums::GovernanceAccountType;
 pub struct RealmConfig {
     /// Optional council mint
     pub council_mint: Option<Pubkey>,
+
+    /// The source used for community mint max vote weight source
+    /// Note: This field is not used yet. It's reserved for future versions
+    pub community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
 
     /// An authority tasked with none critical and maintenance Realm operations
     /// For example custodian authority is required to add governances to the Realm
@@ -60,7 +63,7 @@ pub struct Realm {
 
 impl AccountMaxSize for Realm {
     fn get_max_size(&self) -> Option<usize> {
-        Some(self.name.len() + 152)
+        Some(self.name.len() + 161)
     }
 }
 
@@ -209,6 +212,7 @@ mod test {
                 council_mint: Some(Pubkey::new_unique()),
                 reserved: [0; 8],
                 custodian: Some(Pubkey::new_unique()),
+                community_mint_max_vote_weight_source: MintMaxVoteWeightSource::Percentage(100),
             },
         };
 
