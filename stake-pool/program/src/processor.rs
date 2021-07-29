@@ -1963,9 +1963,13 @@ impl Processor {
             return Err(StakePoolError::InvalidState.into());
         }
 
-        let pool_tokens_fee = stake_pool
-            .calc_pool_tokens_withdrawal_fee(pool_tokens)
-            .ok_or(StakePoolError::CalculationFailure)?;
+        let pool_tokens_fee = if stake_pool.manager_fee_account == *burn_from_info.key {
+            0
+        } else {
+            stake_pool
+                .calc_pool_tokens_withdrawal_fee(pool_tokens)
+                .ok_or(StakePoolError::CalculationFailure)?
+        };
         let pool_tokens_burnt = pool_tokens
             .checked_sub(pool_tokens_fee)
             .ok_or(StakePoolError::CalculationFailure)?;
