@@ -32,21 +32,22 @@ pub fn process_cast_vote(
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
-    let governance_info = next_account_info(account_info_iter)?; // 0
-    let proposal_info = next_account_info(account_info_iter)?; // 1
-    let token_owner_record_info = next_account_info(account_info_iter)?; // 2
-    let governance_authority_info = next_account_info(account_info_iter)?; // 3
+    let _realm_info = next_account_info(account_info_iter)?; // 0
+    let governance_info = next_account_info(account_info_iter)?; // 1
+    let proposal_info = next_account_info(account_info_iter)?; // 2
+    let token_owner_record_info = next_account_info(account_info_iter)?; // 3
+    let governance_authority_info = next_account_info(account_info_iter)?; // 4
 
-    let vote_record_info = next_account_info(account_info_iter)?; // 4
-    let governing_token_mint_info = next_account_info(account_info_iter)?; // 5
+    let vote_record_info = next_account_info(account_info_iter)?; // 5
+    let governing_token_mint_info = next_account_info(account_info_iter)?; // 6
 
-    let payer_info = next_account_info(account_info_iter)?; // 6
-    let system_info = next_account_info(account_info_iter)?; // 7
+    let payer_info = next_account_info(account_info_iter)?; // 7
+    let system_info = next_account_info(account_info_iter)?; // 8
 
-    let rent_sysvar_info = next_account_info(account_info_iter)?; // 8
+    let rent_sysvar_info = next_account_info(account_info_iter)?; // 9
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
 
-    let clock_info = next_account_info(account_info_iter)?; // 9
+    let clock_info = next_account_info(account_info_iter)?; // 10
     let clock = Clock::from_account_info(clock_info)?;
 
     if !vote_record_info.data_is_empty() {

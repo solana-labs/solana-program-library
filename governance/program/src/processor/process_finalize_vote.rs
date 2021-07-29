@@ -22,12 +22,13 @@ use borsh::BorshSerialize;
 pub fn process_finalize_vote(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
-    let governance_info = next_account_info(account_info_iter)?; // 0
-    let proposal_info = next_account_info(account_info_iter)?; // 1
+    let _realm_info = next_account_info(account_info_iter)?; // 0
+    let governance_info = next_account_info(account_info_iter)?; // 1
+    let proposal_info = next_account_info(account_info_iter)?; // 2
 
-    let governing_token_mint_info = next_account_info(account_info_iter)?; // 2
+    let governing_token_mint_info = next_account_info(account_info_iter)?; // 3
 
-    let clock_info = next_account_info(account_info_iter)?; // 3
+    let clock_info = next_account_info(account_info_iter)?; // 4
     let clock = Clock::from_account_info(clock_info)?;
 
     let governance_data = get_governance_data(program_id, governance_info)?;

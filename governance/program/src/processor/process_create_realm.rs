@@ -11,8 +11,10 @@ use solana_program::{
 use crate::{
     error::GovernanceError,
     state::{
-        enums::GovernanceAccountType,
-        realm::{get_governing_token_holding_address_seeds, get_realm_address_seeds, Realm},
+        enums::{GovernanceAccountType, MintMaxVoteWeightSource},
+        realm::{
+            get_governing_token_holding_address_seeds, get_realm_address_seeds, Realm, RealmConfig,
+        },
     },
     tools::{
         account::create_and_serialize_account_signed, spl_token::create_spl_token_account_signed,
@@ -82,10 +84,16 @@ pub fn process_create_realm(
     let realm_data = Realm {
         account_type: GovernanceAccountType::Realm,
         community_mint: *governance_token_mint_info.key,
-        council_mint: council_token_mint_address,
+
         name: name.clone(),
         reserved: [0; 8],
         authority: Some(*realm_authority_info.key),
+        config: RealmConfig {
+            council_mint: council_token_mint_address,
+            reserved: [0; 8],
+            custodian: Some(*realm_authority_info.key),
+            community_mint_max_vote_weight_source: MintMaxVoteWeightSource::Percentage(100),
+        },
     };
 
     create_and_serialize_account_signed::<Realm>(

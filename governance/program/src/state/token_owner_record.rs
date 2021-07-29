@@ -93,7 +93,7 @@ impl TokenOwnerRecord {
         let min_tokens_to_create_proposal =
             if self.governing_token_mint == realm_data.community_mint {
                 config.min_community_tokens_to_create_proposal
-            } else if Some(self.governing_token_mint) == realm_data.council_mint {
+            } else if Some(self.governing_token_mint) == realm_data.config.council_mint {
                 config.min_council_tokens_to_create_proposal
             } else {
                 return Err(GovernanceError::InvalidGoverningTokenMint.into());

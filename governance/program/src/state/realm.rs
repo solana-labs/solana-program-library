@@ -8,11 +8,32 @@ use solana_program::{
 
 use crate::{
     error::GovernanceError,
+    state::enums::{GovernanceAccountType, MintMaxVoteWeightSource},
     tools::account::{assert_is_valid_account, get_account_data, AccountMaxSize},
     PROGRAM_AUTHORITY_SEED,
 };
 
-use crate::state::enums::GovernanceAccountType;
+/// Realm Config defining Realm parameters.
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub struct RealmConfig {
+    /// Optional council mint
+    pub council_mint: Option<Pubkey>,
+
+    /// The source used for community mint max vote weight source
+    /// Note: This field is not used yet. It's reserved for future versions
+    pub community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
+
+    /// An authority tasked with none critical and maintenance Realm operations
+    /// For example custodian authority is required to add governances to the Realm
+    /// There is no security risk with adding governances to the Realm but it should not be open for everybody
+    /// to prevent unrelated entries and noise
+    /// Note: This field is not used yet. It's reserved for future versions
+    pub custodian: Option<Pubkey>,
+
+    /// Reserved space for future versions
+    pub reserved: [u8; 8],
+}
 
 /// Governance Realm Account
 /// Account PDA seeds" ['governance', name]
@@ -25,13 +46,13 @@ pub struct Realm {
     /// Community mint
     pub community_mint: Pubkey,
 
+    /// Configuration of the Realm
+    pub config: RealmConfig,
+
     /// Reserved space for future versions
     pub reserved: [u8; 8],
 
-    /// Council mint
-    pub council_mint: Option<Pubkey>,
-
-    /// Realm authority. The authority must sign transactions which update the realm (ex. adding governance, setting council)
+    /// Realm authority. The authority must sign transactions which update the realm config
     /// The authority can be transferer to Realm Governance and hence make the Realm self governed through proposals
     /// Note: This field is not used yet. It's reserved for future versions
     pub authority: Option<Pubkey>,
@@ -42,7 +63,7 @@ pub struct Realm {
 
 impl AccountMaxSize for Realm {
     fn get_max_size(&self) -> Option<usize> {
-        Some(self.name.len() + 111)
+        Some(self.name.len() + 161)
     }
 }
 
@@ -62,7 +83,7 @@ impl Realm {
             return Ok(());
         }
 
-        if self.council_mint == Some(*governing_token_mint) {
+        if self.config.council_mint == Some(*governing_token_mint) {
             return Ok(());
         }
 
@@ -184,9 +205,15 @@ mod test {
             account_type: GovernanceAccountType::Realm,
             community_mint: Pubkey::new_unique(),
             reserved: [0; 8],
-            council_mint: Some(Pubkey::new_unique()),
+
             authority: Some(Pubkey::new_unique()),
             name: "test-realm".to_string(),
+            config: RealmConfig {
+                council_mint: Some(Pubkey::new_unique()),
+                reserved: [0; 8],
+                custodian: Some(Pubkey::new_unique()),
+                community_mint_max_vote_weight_source: MintMaxVoteWeightSource::Absolute(100),
+            },
         };
 
         let size = realm.try_to_vec().unwrap().len();

@@ -159,3 +159,17 @@ pub enum InstructionExecutionFlags {
     /// The implementation requires another account type to group instructions within a transaction
     UseTransaction,
 }
+
+/// The source of max vote weight used for voting
+/// Values below 100% mint supply can be used when the governing token is fully minted but not distributed yet
+/// Note: This field is not used yet. It's reserved for future versions
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub enum MintMaxVoteWeightSource {
+    /// Percentage of the governing mint supply is used as max vote weight
+    /// The default is 100% to use all available mint supply for voting
+    Percentage(u8),
+
+    /// Absolute value, irrelevant of the actual mint supply, is used as max vote weight
+    Absolute(u64),
+}
