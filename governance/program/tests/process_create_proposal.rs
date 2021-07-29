@@ -411,7 +411,7 @@ async fn test_create_council_proposal_using_community_tokens() {
         .await;
 
     assert_eq!(
-        realm_cookie.account.council_mint.unwrap(),
+        realm_cookie.account.config.council_mint.unwrap(),
         proposal_account.governing_token_mint
     );
 

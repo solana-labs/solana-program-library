@@ -149,7 +149,8 @@ async fn test_cast_vote_with_invalid_mint_error() {
         .unwrap();
 
     // Try to use Council Mint with Community Proposal
-    proposal_cookie.account.governing_token_mint = realm_cookie.account.council_mint.unwrap();
+    proposal_cookie.account.governing_token_mint =
+        realm_cookie.account.config.council_mint.unwrap();
 
     // Act
     let err = governance_test

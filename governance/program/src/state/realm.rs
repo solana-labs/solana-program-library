@@ -14,6 +14,17 @@ use crate::{
 
 use crate::state::enums::GovernanceAccountType;
 
+/// Realm Config
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub struct RealmConfig {
+    /// Optional council mint
+    pub council_mint: Option<Pubkey>,
+
+    /// Reserved space for future versions
+    pub reserved: [u8; 8],
+}
+
 /// Governance Realm Account
 /// Account PDA seeds" ['governance', name]
 #[repr(C)]
@@ -25,11 +36,11 @@ pub struct Realm {
     /// Community mint
     pub community_mint: Pubkey,
 
+    /// Configuration of the Realm
+    pub config: RealmConfig,
+
     /// Reserved space for future versions
     pub reserved: [u8; 8],
-
-    /// Council mint
-    pub council_mint: Option<Pubkey>,
 
     /// Realm authority. The authority must sign transactions which update the realm (ex. adding governance, setting council)
     /// The authority can be transferer to Realm Governance and hence make the Realm self governed through proposals
@@ -42,7 +53,7 @@ pub struct Realm {
 
 impl AccountMaxSize for Realm {
     fn get_max_size(&self) -> Option<usize> {
-        Some(self.name.len() + 111)
+        Some(self.name.len() + 119)
     }
 }
 
@@ -62,7 +73,7 @@ impl Realm {
             return Ok(());
         }
 
-        if self.council_mint == Some(*governing_token_mint) {
+        if self.config.council_mint == Some(*governing_token_mint) {
             return Ok(());
         }
 
@@ -184,9 +195,13 @@ mod test {
             account_type: GovernanceAccountType::Realm,
             community_mint: Pubkey::new_unique(),
             reserved: [0; 8],
-            council_mint: Some(Pubkey::new_unique()),
+
             authority: Some(Pubkey::new_unique()),
             name: "test-realm".to_string(),
+            config: RealmConfig {
+                council_mint: Some(Pubkey::new_unique()),
+                reserved: [0; 8],
+            },
         };
 
         let size = realm.try_to_vec().unwrap().len();
