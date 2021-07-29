@@ -6,7 +6,7 @@ use crate::{
         spl_token_transfer, spl_token_transfer_signed, spl_approve, spl_burn_signed,
     },
     state::BinaryOption,
-    system_utils::{create_new_account, create_or_allocate_account_raw, topup},
+    system_utils::{create_new_account, create_or_allocate_account_raw},
     validation_utils::{
         assert_initialized, assert_keys_equal, assert_keys_unequal,
         assert_owned_by,
@@ -611,10 +611,7 @@ pub fn process_collect(program_id: &Pubkey, accounts: &[AccountInfo]) -> Program
     let short_token_mint_info = next_account_info(account_info_iter)?;
     let escrow_account_info = next_account_info(account_info_iter)?;
     let escrow_authority_info = next_account_info(account_info_iter)?;
-    let fee_payer_info = next_account_info(account_info_iter)?;
     let token_program_info = next_account_info(account_info_iter)?;
-    let system_account_info = next_account_info(account_info_iter)?;
-    let rent_info = next_account_info(account_info_iter)?;
 
     let collector_long_token_account: Account =
         assert_initialized(collector_long_token_account_info)?;
@@ -681,13 +678,6 @@ pub fn process_collect(program_id: &Pubkey, accounts: &[AccountInfo]) -> Program
         return Err(BinaryOptionError::TokenNotFoundInPool.into());
     };
 
-    topup(
-        escrow_authority_info,
-        rent_info,
-        system_account_info,
-        fee_payer_info,
-        1,
-    )?;
     spl_burn_signed(
         &token_program_info,
         &collector_long_token_account_info,
