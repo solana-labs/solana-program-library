@@ -18,15 +18,15 @@ use crate::{
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct RealmConfigArgs {
     /// Indicates whether council_mint should be used
-    /// If yes then council_mint account must be passed to the instruction
+    /// If yes then council_mint account must also be passed to the instruction
     pub use_council_mint: bool,
 
     /// Indicates whether custodian should be used
-    /// If yes then custodian account must be passed to the instruction  
+    /// If yes then custodian account must also be passed to the instruction  
     pub use_custodian: bool,
 
     /// Indicates whether authority should be used
-    /// If yes then authority account must be passed to the instruction
+    /// If yes then authority account must also be passed to the instruction
     pub use_authority: bool,
 
     /// The source used for community mint max vote weight source

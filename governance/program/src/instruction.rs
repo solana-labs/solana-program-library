@@ -60,7 +60,7 @@ pub enum GovernanceInstruction {
         name: String,
 
         #[allow(dead_code)]
-        /// Realm     
+        /// Realm config args     
         config_args: RealmConfigArgs,
     },
 
