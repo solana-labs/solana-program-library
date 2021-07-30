@@ -34,7 +34,7 @@ pub enum BinaryOptionInstruction {
 
 /// Creates an InitializeBinaryOption instruction
 #[allow(clippy::too_many_arguments)]
-pub fn initailize_betting_pool(
+pub fn initialize_binary_option(
     program_id: Pubkey,
     pool_account: Pubkey,
     escrow_mint: Pubkey,

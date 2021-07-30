@@ -6,10 +6,10 @@ use crate::{
         spl_token_transfer, spl_token_transfer_signed, spl_approve, spl_burn_signed,
     },
     state::BinaryOption,
-    system_utils::{create_new_account, create_or_allocate_account_raw, topup},
+    system_utils::{create_new_account, create_or_allocate_account_raw},
     validation_utils::{
         assert_initialized, assert_keys_equal, assert_keys_unequal,
-        assert_mint_authority_matches_mint, assert_owned_by,
+        assert_owned_by,
     },
 };
 use borsh::{BorshDeserialize, BorshSerialize};
@@ -66,9 +66,8 @@ pub fn process_initialize_binary_option(
     accounts: &[AccountInfo],
     decimals: u8,
 ) -> ProgramResult {
-    msg!("InitializeBinaryOption");
     let account_info_iter = &mut accounts.iter();
-    let pool_account_info = next_account_info(account_info_iter)?;
+    let binary_option_account_info = next_account_info(account_info_iter)?;
     let escrow_mint_info = next_account_info(account_info_iter)?;
     let escrow_account_info = next_account_info(account_info_iter)?;
     let long_token_mint_info = next_account_info(account_info_iter)?;
@@ -124,17 +123,7 @@ pub fn process_initialize_binary_option(
         &rent_info,
     )?;
 
-    let long_token_mint: Mint = assert_initialized(long_token_mint_info)?;
-    let short_token_mint: Mint = assert_initialized(short_token_mint_info)?;
-    let escrow_account: Account = assert_initialized(escrow_account_info)?;
-
-    assert_mint_authority_matches_mint(&long_token_mint, mint_authority_info)?;
-    assert_mint_authority_matches_mint(&short_token_mint, mint_authority_info)?;
-    assert_owned_by(long_token_mint_info, &spl_token::id())?;
-    assert_owned_by(short_token_mint_info, &spl_token::id())?;
     assert_keys_equal(*token_program_info.key, spl_token::id())?;
-
-    assert_keys_equal(escrow_account.mint, *escrow_mint_info.key)?;
 
     // Transfer ownership of the escrow accounts to a PDA
     let (authority_key, _) = Pubkey::find_program_address(
@@ -170,14 +159,14 @@ pub fn process_initialize_binary_option(
 
     create_or_allocate_account_raw(
         *program_id,
-        pool_account_info,
+        binary_option_account_info,
         rent_info,
         system_account_info,
         update_authority_info,
         BinaryOption::LEN,
     )?;
 
-    let mut binary_option = BinaryOption::try_from_slice(&pool_account_info.data.borrow_mut())?;
+    let mut binary_option = BinaryOption::try_from_slice(&binary_option_account_info.data.borrow_mut())?;
     binary_option.decimals = decimals;
     binary_option.circulation = 0;
     binary_option.settled = false;
@@ -186,7 +175,7 @@ pub fn process_initialize_binary_option(
     binary_option.escrow_mint_account_pubkey = *escrow_mint_info.key;
     binary_option.escrow_account_pubkey = *escrow_account_info.key;
     binary_option.owner = *update_authority_info.key;
-    binary_option.serialize(&mut *pool_account_info.data.borrow_mut())?;
+    binary_option.serialize(&mut *binary_option_account_info.data.borrow_mut())?;
 
     Ok(())
 }
@@ -198,9 +187,8 @@ pub fn process_trade(
     buy_price: u64,
     sell_price: u64,
 ) -> ProgramResult {
-    msg!("Trade");
     let account_info_iter = &mut accounts.iter();
-    let pool_account_info = next_account_info(account_info_iter)?;
+    let binary_option_account_info = next_account_info(account_info_iter)?;
     let escrow_account_info = next_account_info(account_info_iter)?;
     let long_token_mint_info = next_account_info(account_info_iter)?;
     let short_token_mint_info = next_account_info(account_info_iter)?;
@@ -224,7 +212,7 @@ pub fn process_trade(
     let seller_short_token_account: Account = assert_initialized(seller_short_token_account_info)?;
     let buyer_account: Account = assert_initialized(buyer_account_info)?;
     let seller_account: Account = assert_initialized(seller_account_info)?;
-    let mut binary_option = BinaryOption::try_from_slice(&pool_account_info.data.borrow_mut())?;
+    let mut binary_option = BinaryOption::try_from_slice(&binary_option_account_info.data.borrow_mut())?;
 
     // Get program derived address for escrow
     let (authority_key, bump_seed) = Pubkey::find_program_address(
@@ -251,6 +239,7 @@ pub fn process_trade(
     if binary_option.settled {
         return Err(BinaryOptionError::AlreadySettled.into());
     }
+    assert_keys_equal(*token_program_info.key, spl_token::id())?;
     assert_keys_unequal(*buyer_info.key, *seller_info.key)?;
     assert_keys_equal(*long_token_mint_info.owner, spl_token::id())?;
     assert_keys_equal(*short_token_mint_info.owner, spl_token::id())?;
@@ -326,7 +315,6 @@ pub fn process_trade(
                 &buyer_account_info,
                 &authority_info,
                 n * sell_price,
-                1,
                 seeds,
             )?;
             spl_token_transfer_signed(
@@ -335,7 +323,6 @@ pub fn process_trade(
                 &seller_account_info,
                 &authority_info,
                 n * buy_price,
-                1,
                 seeds,
             )?;
             b_s -= n;
@@ -406,7 +393,6 @@ pub fn process_trade(
                 &buyer_account_info,
                 &authority_info,
                 n_b * sell_price,
-                1,
                 seeds,
             )?;
             spl_token_transfer_signed(
@@ -415,7 +401,6 @@ pub fn process_trade(
                 &seller_account_info,
                 &authority_info,
                 n_s * buy_price,
-                1,
                 seeds,
             )?;
             if n > n_b + n_s {
@@ -425,7 +410,7 @@ pub fn process_trade(
             }
         }
         /*
-        When n is greater than n_b bust less than n_s, this means that the buyer has put on a position that is different from their
+        When n is greater than n_b but less than n_s, this means that the buyer has put on a position that is different from their
         existing position, and the seller has reduced their inventory. We will burn and mint tokens such the buyer's net change in
         position is +n and the seller's net change is -n. Both parties are also entitled to the locked up funds for their positions that were closed.
         The net change in tokens can be calculated as follows: (-n - n_s + n - n_s) / 2 = -n_s. This always results in a decrease in total
@@ -471,7 +456,6 @@ pub fn process_trade(
                 &seller_account_info,
                 &authority_info,
                 n_s * buy_price,
-                1,
                 seeds,
             )?;
             spl_token_transfer_signed(
@@ -480,7 +464,6 @@ pub fn process_trade(
                 &buyer_account_info,
                 &authority_info,
                 n * sell_price,
-                1,
                 seeds,
             )?;
             binary_option.decrement_supply(n_s)?;
@@ -532,7 +515,6 @@ pub fn process_trade(
                 &buyer_account_info,
                 &authority_info,
                 n_b * sell_price,
-                1,
                 seeds,
             )?;
             spl_token_transfer_signed(
@@ -541,7 +523,6 @@ pub fn process_trade(
                 &seller_account_info,
                 &authority_info,
                 n * buy_price,
-                1,
                 seeds,
             )?;
             binary_option.decrement_supply(n_b)?;
@@ -585,7 +566,7 @@ pub fn process_trade(
         s_l,
         long_token_mint.decimals,
     )?;
-    binary_option.serialize(&mut *pool_account_info.data.borrow_mut())?;
+    binary_option.serialize(&mut *binary_option_account_info.data.borrow_mut())?;
     Ok(())
 }
 
@@ -593,13 +574,12 @@ pub fn process_settle(_program_id: &Pubkey, accounts: &[AccountInfo]) -> Program
     // This should NEVER be called directly (otherwise this is literally a rug)
     // The `pool_owner_info` needs to approve this action, so the recommended use case is to have a higher
     // level program own the pool and use an oracle to resolve settlements 
-    msg!("Settle");
     let account_info_iter = &mut accounts.iter();
-    let pool_account_info = next_account_info(account_info_iter)?;
+    let binary_option_account_info = next_account_info(account_info_iter)?;
     let winning_mint_account_info = next_account_info(account_info_iter)?;
     let pool_owner_info = next_account_info(account_info_iter)?;
 
-    let mut binary_option = BinaryOption::try_from_slice(&pool_account_info.data.borrow_mut())?;
+    let mut binary_option = BinaryOption::try_from_slice(&binary_option_account_info.data.borrow_mut())?;
     if !pool_owner_info.is_signer {
         return Err(ProgramError::MissingRequiredSignature);
     }
@@ -616,14 +596,13 @@ pub fn process_settle(_program_id: &Pubkey, accounts: &[AccountInfo]) -> Program
         return Err(BinaryOptionError::InvalidWinner.into());
     }
     binary_option.settled = true;
-    binary_option.serialize(&mut *pool_account_info.data.borrow_mut())?;
+    binary_option.serialize(&mut *binary_option_account_info.data.borrow_mut())?;
     Ok(())
 }
 
 pub fn process_collect(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
-    msg!("Collect");
     let account_info_iter = &mut accounts.iter();
-    let pool_account_info = next_account_info(account_info_iter)?;
+    let binary_option_account_info = next_account_info(account_info_iter)?;
     let collector_info = next_account_info(account_info_iter)?;
     let collector_long_token_account_info = next_account_info(account_info_iter)?;
     let collector_short_token_account_info = next_account_info(account_info_iter)?;
@@ -632,10 +611,7 @@ pub fn process_collect(program_id: &Pubkey, accounts: &[AccountInfo]) -> Program
     let short_token_mint_info = next_account_info(account_info_iter)?;
     let escrow_account_info = next_account_info(account_info_iter)?;
     let escrow_authority_info = next_account_info(account_info_iter)?;
-    let fee_payer_info = next_account_info(account_info_iter)?;
     let token_program_info = next_account_info(account_info_iter)?;
-    let system_account_info = next_account_info(account_info_iter)?;
-    let rent_info = next_account_info(account_info_iter)?;
 
     let collector_long_token_account: Account =
         assert_initialized(collector_long_token_account_info)?;
@@ -643,7 +619,7 @@ pub fn process_collect(program_id: &Pubkey, accounts: &[AccountInfo]) -> Program
         assert_initialized(collector_short_token_account_info)?;
     let collector_account: Account = assert_initialized(collector_account_info)?;
     let escrow_account: Account = assert_initialized(escrow_account_info)?;
-    let mut binary_option = BinaryOption::try_from_slice(&pool_account_info.data.borrow_mut())?;
+    let mut binary_option = BinaryOption::try_from_slice(&binary_option_account_info.data.borrow_mut())?;
 
     // Get program derived address for escrow
     let (escrow_owner_key, bump_seed) = Pubkey::find_program_address(
@@ -681,7 +657,6 @@ pub fn process_collect(program_id: &Pubkey, accounts: &[AccountInfo]) -> Program
         binary_option.short_mint_account_pubkey,
     )?;
     assert_keys_equal(*escrow_account_info.key, binary_option.escrow_account_pubkey)?;
-    assert_keys_equal(*escrow_account_info.key, binary_option.escrow_account_pubkey)?;
     assert_keys_equal(
         collector_long_token_account.mint,
         binary_option.long_mint_account_pubkey,
@@ -695,21 +670,14 @@ pub fn process_collect(program_id: &Pubkey, accounts: &[AccountInfo]) -> Program
         binary_option.escrow_mint_account_pubkey,
     )?;
 
-    let winner_long = collector_long_token_account.mint == binary_option.winning_side_pubkey;
-    let winner_short = collector_short_token_account.mint == binary_option.winning_side_pubkey;
-    let reward = match [winner_long, winner_short] {
-        [true, false] => collector_long_token_account.amount,
-        [false, true] => collector_short_token_account.amount,
-        _ => return Err(BinaryOptionError::TokenNotFoundInPool.into()),
+    let reward = if collector_long_token_account.mint == binary_option.winning_side_pubkey {
+        collector_long_token_account.amount
+    } else if collector_short_token_account.mint == binary_option.winning_side_pubkey {
+        collector_short_token_account.amount
+    } else {
+        return Err(BinaryOptionError::TokenNotFoundInPool.into());
     };
 
-    topup(
-        escrow_authority_info,
-        rent_info,
-        system_account_info,
-        fee_payer_info,
-        1,
-    )?;
     spl_burn_signed(
         &token_program_info,
         &collector_long_token_account_info,
@@ -727,17 +695,17 @@ pub fn process_collect(program_id: &Pubkey, accounts: &[AccountInfo]) -> Program
         seeds,
     )?;
     if reward > 0 {
+        let amount = (reward * escrow_account.amount) / binary_option.circulation;
         spl_token_transfer_signed(
             &token_program_info,
             &escrow_account_info,
             &collector_account_info,
             &escrow_authority_info,
-            reward * escrow_account.amount,
-            binary_option.circulation,
+            amount,
             seeds,
         )?;
         binary_option.decrement_supply(reward)?;
     }
-    binary_option.serialize(&mut *pool_account_info.data.borrow_mut())?;
+    binary_option.serialize(&mut *binary_option_account_info.data.borrow_mut())?;
     Ok(())
 }

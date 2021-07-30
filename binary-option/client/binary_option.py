@@ -113,10 +113,7 @@ def collect_instruction(
     short_token_mint_account,
     escrow_account,
     escrow_authority_account,
-    fee_payer_account,
     token_account,
-    system_account,
-    rent_account,
 ):
     keys = [
         AccountMeta(pubkey=pool_account, is_signer=False, is_writable=True),
@@ -128,10 +125,7 @@ def collect_instruction(
         AccountMeta(pubkey=short_token_mint_account, is_signer=False, is_writable=True),
         AccountMeta(pubkey=escrow_account, is_signer=False, is_writable=True),
         AccountMeta(pubkey=escrow_authority_account, is_signer=False, is_writable=True),
-        AccountMeta(pubkey=fee_payer_account, is_signer=True, is_writable=False),
         AccountMeta(pubkey=token_account, is_signer=False, is_writable=False),
-        AccountMeta(pubkey=system_account, is_signer=False, is_writable=False),
-        AccountMeta(pubkey=rent_account, is_signer=False, is_writable=False),
     ]
     data = struct.pack("<B", 3)
     return TransactionInstruction(keys=keys, program_id=PublicKey(BINARY_OPTION_PROGRAM_ID), data=data)
@@ -327,8 +321,7 @@ class BinaryOption():
         msg = ""
         client = Client(api_endpoint)
         msg += "Initialized client"
-        source_account = Account(self.private_key)
-        signers = [source_account]
+        signers = [Account(self.private_key)]
         pool = self.load_binary_option(api_endpoint, pool_account)
         pool_account = PublicKey(pool_account) 
         collector_account = PublicKey(collector)
@@ -337,8 +330,6 @@ class BinaryOption():
         long_token_mint_account = PublicKey(pool["long_mint"]) 
         short_token_mint_account = PublicKey(pool["short_mint"]) 
         token_account = PublicKey(TOKEN_PROGRAM_ID)
-        system_account = PublicKey(SYSTEM_PROGRAM_ID)
-        rent_account = PublicKey(SYSVAR_RENT_ID)
         escrow_authority_account = PublicKey.find_program_address(
             [bytes(long_token_mint_account), bytes(short_token_mint_account), bytes(token_account), bytes(PublicKey(BINARY_OPTION_PROGRAM_ID))],
             PublicKey(BINARY_OPTION_PROGRAM_ID),
@@ -370,10 +361,7 @@ class BinaryOption():
             short_token_mint_account,
             escrow_account,
             escrow_authority_account,
-            source_account.public_key(),
             token_account,
-            system_account,
-            rent_account,
         )
         tx = tx.add(collect_ix) 
         try:
