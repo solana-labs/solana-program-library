@@ -27,7 +27,7 @@ pub struct RealmConfig {
     /// Optional council mint
     pub council_mint: Option<Pubkey>,
 
-    /// An authority tasked with none critical and maintenance Realm operations
+    /// An authority tasked with non-critical and maintenance Realm operations
     /// For example custodian authority is required to add governances to the Realm
     /// There is no security risk with adding governances to the Realm but it should not be open for everybody
     /// to prevent unrelated entries and noise
