@@ -788,7 +788,6 @@ impl TestReserve {
         payer: &Keypair,
         user_accounts_owner: &Keypair,
     ) -> Result<Self, TransactionError> {
-        print!("asdfasd1");
         let reserve_keypair = Keypair::new();
         let reserve_pubkey = reserve_keypair.pubkey();
         let collateral_mint_keypair = Keypair::new();

@@ -303,7 +303,7 @@ fn process_init_reserve(
     }
 
     if &lending_market.switchboard_oracle_program_id != switchboard_feed_info.owner {
-        msg!("Pyth price account provided is not owned by the lending market oracle program");
+        msg!("Switchboard account provided is not owned by the switchboard oracle program");
         return Err(LendingError::InvalidOracleConfig.into());
     }
     let market_price = get_price(switchboard_feed_info, pyth_price_info, clock)?;
@@ -2187,6 +2187,7 @@ fn get_switchboard_price(
     const STALE_AFTER_SLOTS_ELAPSED: u64 = 100;
 
     let account_buf = switchboard_feed_info.try_borrow_data()?;
+    // first byte type discriminator
     if account_buf[0] != SwitchboardAccountType::TYPE_AGGREGATOR as u8 {
         msg!("switchboard address not of type aggregator");
         return Err(LendingError::InvalidAccountInput.into());
