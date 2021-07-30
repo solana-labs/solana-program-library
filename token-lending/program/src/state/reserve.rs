@@ -353,8 +353,6 @@ pub struct ReserveLiquidity {
     pub mint_decimals: u8,
     /// Reserve liquidity supply address
     pub supply_pubkey: Pubkey,
-    /// Reserve liquidity fee receiver address
-    pub fee_receiver: Pubkey,
     /// Reserve liquidity pyth oracle account
     pub pyth_oracle_pubkey: Pubkey,
     /// Reserve liquidity switchboard oracle account
@@ -376,7 +374,6 @@ impl ReserveLiquidity {
             mint_pubkey: params.mint_pubkey,
             mint_decimals: params.mint_decimals,
             supply_pubkey: params.supply_pubkey,
-            fee_receiver: params.fee_receiver,
             pyth_oracle_pubkey: params.pyth_oracle_pubkey,
             switchboard_oracle_pubkey: params.switchboard_oracle_pubkey,
             available_amount: 0,
@@ -478,8 +475,6 @@ pub struct NewReserveLiquidityParams {
     pub mint_decimals: u8,
     /// Reserve liquidity supply address
     pub supply_pubkey: Pubkey,
-    /// Reserve liquidity fee receiver address
-    pub fee_receiver: Pubkey,
     /// Reserve liquidity pyth oracle account
     pub pyth_oracle_pubkey: Pubkey,
     /// Reserve liquidity switchboard oracle account
@@ -615,6 +610,8 @@ pub struct ReserveConfig {
     pub deposit_limit: u64,
     /// Borrows disabled
     pub borrow_limit: u64,
+    /// Reserve liquidity fee receiver address
+    pub fee_receiver: Pubkey,
 }
 
 /// Additional fee information on a reserve
@@ -721,7 +718,7 @@ impl IsInitialized for Reserve {
     }
 }
 
-const RESERVE_LEN: usize = 619; // 1 + 8 + 1 + 32 + 32 + 1 + 32 + 32 + 32 + 32 + 8 + 16 + 16 + 16 + 32 + 8 + 32 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 8 + 8 + 1 + 8 + 8 + 248
+const RESERVE_LEN: usize = 619; // 1 + 8 + 1 + 32 + 32 + 1 + 32 + 32 + 32 + 8 + 16 + 16 + 16 + 32 + 8 + 32 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 8 + 8 + 1 + 8 + 8 + 32 + 248
 impl Pack for Reserve {
     const LEN: usize = RESERVE_LEN;
 
@@ -737,7 +734,6 @@ impl Pack for Reserve {
             liquidity_mint_pubkey,
             liquidity_mint_decimals,
             liquidity_supply_pubkey,
-            liquidity_fee_receiver,
             liquidity_pyth_oracle_pubkey,
             liquidity_switchboard_oracle_pubkey,
             liquidity_available_amount,
@@ -759,6 +755,7 @@ impl Pack for Reserve {
             config_fees_host_fee_percentage,
             config_deposit_limit,
             config_borrow_limit,
+            config_fee_receiver,
             _padding,
         ) = mut_array_refs![
             output,
@@ -771,7 +768,6 @@ impl Pack for Reserve {
             PUBKEY_BYTES,
             PUBKEY_BYTES,
             PUBKEY_BYTES,
-            PUBKEY_BYTES,
             8,
             16,
             16,
@@ -791,6 +787,7 @@ impl Pack for Reserve {
             1,
             8,
             8,
+            PUBKEY_BYTES,
             248
         ];
 
@@ -804,7 +801,6 @@ impl Pack for Reserve {
         liquidity_mint_pubkey.copy_from_slice(self.liquidity.mint_pubkey.as_ref());
         *liquidity_mint_decimals = self.liquidity.mint_decimals.to_le_bytes();
         liquidity_supply_pubkey.copy_from_slice(self.liquidity.supply_pubkey.as_ref());
-        liquidity_fee_receiver.copy_from_slice(self.liquidity.fee_receiver.as_ref());
         liquidity_pyth_oracle_pubkey.copy_from_slice(self.liquidity.pyth_oracle_pubkey.as_ref());
         liquidity_switchboard_oracle_pubkey
             .copy_from_slice(self.liquidity.switchboard_oracle_pubkey.as_ref());
@@ -837,6 +833,7 @@ impl Pack for Reserve {
         *config_fees_host_fee_percentage = self.config.fees.host_fee_percentage.to_le_bytes();
         *config_deposit_limit = self.config.deposit_limit.to_le_bytes();
         *config_borrow_limit = self.config.borrow_limit.to_le_bytes();
+        config_fee_receiver.copy_from_slice(self.config.fee_receiver.as_ref());
     }
 
     /// Unpacks a byte buffer into a [ReserveInfo](struct.ReserveInfo.html).
@@ -851,7 +848,6 @@ impl Pack for Reserve {
             liquidity_mint_pubkey,
             liquidity_mint_decimals,
             liquidity_supply_pubkey,
-            liquidity_fee_receiver,
             liquidity_pyth_oracle_pubkey,
             liquidity_switchboard_oracle_pubkey,
             liquidity_available_amount,
@@ -873,6 +869,7 @@ impl Pack for Reserve {
             config_fees_host_fee_percentage,
             config_deposit_limit,
             config_borrow_limit,
+            config_fee_receiver,
             _padding,
         ) = array_refs![
             input,
@@ -885,7 +882,6 @@ impl Pack for Reserve {
             PUBKEY_BYTES,
             PUBKEY_BYTES,
             PUBKEY_BYTES,
-            PUBKEY_BYTES,
             8,
             16,
             16,
@@ -905,6 +901,7 @@ impl Pack for Reserve {
             1,
             8,
             8,
+            PUBKEY_BYTES,
             248
         ];
 
@@ -925,7 +922,6 @@ impl Pack for Reserve {
                 mint_pubkey: Pubkey::new_from_array(*liquidity_mint_pubkey),
                 mint_decimals: u8::from_le_bytes(*liquidity_mint_decimals),
                 supply_pubkey: Pubkey::new_from_array(*liquidity_supply_pubkey),
-                fee_receiver: Pubkey::new_from_array(*liquidity_fee_receiver),
                 pyth_oracle_pubkey: Pubkey::new_from_array(*liquidity_pyth_oracle_pubkey),
                 switchboard_oracle_pubkey: Pubkey::new_from_array(
                     *liquidity_switchboard_oracle_pubkey,
@@ -955,6 +951,7 @@ impl Pack for Reserve {
                 },
                 deposit_limit: u64::from_le_bytes(*config_deposit_limit),
                 borrow_limit: u64::from_le_bytes(*config_borrow_limit),
+                fee_receiver: Pubkey::new_from_array(*config_fee_receiver),
             },
         })
     }

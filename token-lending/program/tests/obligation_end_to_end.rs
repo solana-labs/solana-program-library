@@ -55,7 +55,7 @@ async fn test_success() {
 
     let lending_market = add_lending_market(&mut test);
 
-    let mut reserve_config = TEST_RESERVE_CONFIG;
+    let mut reserve_config = test_reserve_config();
     reserve_config.loan_to_value_ratio = 50;
 
     let sol_oracle = add_sol_oracle(&mut test);
@@ -171,7 +171,7 @@ async fn test_success() {
                 usdc_test_reserve.liquidity_supply_pubkey,
                 usdc_test_reserve.user_liquidity_pubkey,
                 usdc_test_reserve.pubkey,
-                usdc_test_reserve.liquidity_fee_receiver_pubkey,
+                usdc_test_reserve.config.fee_receiver,
                 obligation_pubkey,
                 lending_market.pubkey,
                 user_accounts_owner_pubkey,
@@ -279,11 +279,8 @@ async fn test_success() {
     assert_eq!(obligation.deposits.len(), 0);
     assert_eq!(obligation.borrows.len(), 0);
 
-    let fee_balance = get_token_balance(
-        &mut banks_client,
-        usdc_test_reserve.liquidity_fee_receiver_pubkey,
-    )
-    .await;
+    let fee_balance =
+        get_token_balance(&mut banks_client, usdc_test_reserve.config.fee_receiver).await;
     assert_eq!(fee_balance, FEE_AMOUNT - HOST_FEE_AMOUNT);
 
     let host_fee_balance =

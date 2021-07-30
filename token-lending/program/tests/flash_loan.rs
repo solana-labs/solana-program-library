@@ -42,7 +42,7 @@ async fn test_success() {
     let user_accounts_owner = Keypair::new();
     let lending_market = add_lending_market(&mut test);
 
-    let mut reserve_config = TEST_RESERVE_CONFIG;
+    let mut reserve_config = test_reserve_config();
     reserve_config.fees.flash_loan_fee_wad = 3_000_000_000_000_000;
 
     let usdc_mint = add_usdc_mint(&mut test);
@@ -91,7 +91,7 @@ async fn test_success() {
             usdc_test_reserve.liquidity_supply_pubkey,
             program_owned_token_account,
             usdc_test_reserve.pubkey,
-            usdc_test_reserve.liquidity_fee_receiver_pubkey,
+            usdc_test_reserve.config.fee_receiver,
             usdc_test_reserve.liquidity_host_pubkey,
             lending_market.pubkey,
             receiver_program_id.clone(),
@@ -127,11 +127,8 @@ async fn test_success() {
     let token_balance = get_token_balance(&mut banks_client, program_owned_token_account).await;
     assert_eq!(token_balance, initial_token_balance - FEE_AMOUNT);
 
-    let fee_balance = get_token_balance(
-        &mut banks_client,
-        usdc_test_reserve.liquidity_fee_receiver_pubkey,
-    )
-    .await;
+    let fee_balance =
+        get_token_balance(&mut banks_client, usdc_test_reserve.config.fee_receiver).await;
     assert_eq!(fee_balance, FEE_AMOUNT - HOST_FEE_AMOUNT);
 
     let host_fee_balance =
@@ -162,7 +159,7 @@ async fn test_failure() {
     let user_accounts_owner = Keypair::new();
     let lending_market = add_lending_market(&mut test);
 
-    let mut reserve_config = TEST_RESERVE_CONFIG;
+    let mut reserve_config = test_reserve_config();
     reserve_config.fees.flash_loan_fee_wad = 3_000_000_000_000_000;
 
     let usdc_mint = add_usdc_mint(&mut test);
@@ -203,7 +200,7 @@ async fn test_failure() {
             usdc_test_reserve.liquidity_supply_pubkey,
             program_owned_token_account,
             usdc_test_reserve.pubkey,
-            usdc_test_reserve.liquidity_fee_receiver_pubkey,
+            usdc_test_reserve.config.fee_receiver,
             usdc_test_reserve.liquidity_host_pubkey,
             lending_market.pubkey,
             flash_loan_receiver_program_id.clone(),

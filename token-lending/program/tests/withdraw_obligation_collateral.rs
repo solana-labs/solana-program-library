@@ -37,7 +37,7 @@ async fn test_withdraw_fixed_amount() {
     let user_accounts_owner = Keypair::new();
     let lending_market = add_lending_market(&mut test);
 
-    let mut reserve_config = TEST_RESERVE_CONFIG;
+    let mut reserve_config = test_reserve_config();
     reserve_config.loan_to_value_ratio = 50;
 
     let sol_oracle = add_sol_oracle(&mut test);
@@ -164,7 +164,7 @@ async fn test_withdraw_max_amount() {
     let user_accounts_owner = Keypair::new();
     let lending_market = add_lending_market(&mut test);
 
-    let mut reserve_config = TEST_RESERVE_CONFIG;
+    let mut reserve_config = test_reserve_config();
     reserve_config.loan_to_value_ratio = 50;
 
     let usdc_mint = add_usdc_mint(&mut test);
@@ -270,7 +270,7 @@ async fn test_withdraw_too_large() {
     let user_accounts_owner = Keypair::new();
     let lending_market = add_lending_market(&mut test);
 
-    let mut reserve_config = TEST_RESERVE_CONFIG;
+    let mut reserve_config = test_reserve_config();
     reserve_config.loan_to_value_ratio = 50;
 
     let sol_oracle = add_sol_oracle(&mut test);

@@ -39,22 +39,25 @@ pub const QUOTE_CURRENCY: [u8; 32] =
 pub const LAMPORTS_TO_SOL: u64 = 1_000_000_000;
 pub const FRACTIONAL_TO_USDC: u64 = 1_000_000;
 
-pub const TEST_RESERVE_CONFIG: ReserveConfig = ReserveConfig {
-    optimal_utilization_rate: 80,
-    loan_to_value_ratio: 50,
-    liquidation_bonus: 5,
-    liquidation_threshold: 55,
-    min_borrow_rate: 0,
-    optimal_borrow_rate: 4,
-    max_borrow_rate: 30,
-    fees: ReserveFees {
-        borrow_fee_wad: 100_000_000_000,
-        flash_loan_fee_wad: 3_000_000_000_000_000,
-        host_fee_percentage: 20,
-    },
-    deposit_limit: 100_000_000_000,
-    borrow_limit: u64::MAX,
-};
+pub fn test_reserve_config() -> ReserveConfig {
+    ReserveConfig {
+        optimal_utilization_rate: 80,
+        loan_to_value_ratio: 50,
+        liquidation_bonus: 5,
+        liquidation_threshold: 55,
+        min_borrow_rate: 0,
+        optimal_borrow_rate: 4,
+        max_borrow_rate: 30,
+        fees: ReserveFees {
+            borrow_fee_wad: 100_000_000_000,
+            flash_loan_fee_wad: 3_000_000_000_000_000,
+            host_fee_percentage: 20,
+        },
+        deposit_limit: 100_000_000_000,
+        borrow_limit: u64::MAX,
+        fee_receiver: Keypair::new().pubkey(),
+    }
+}
 
 pub const SOL_PYTH_PRODUCT: &str = "3Mnn2fX6rQyUsyELYms1sBJyChWofzSNRoqYzvgMVz5E";
 pub const SOL_PYTH_PRICE: &str = "J83w4HKfqxwcq3BEMMkPFSppX3gqekLyLJBexebFVkix";
@@ -308,9 +311,8 @@ pub fn add_reserve(
         &spl_token::id(),
     );
 
-    let liquidity_fee_receiver_pubkey = Pubkey::new_unique();
     test.add_packable_account(
-        liquidity_fee_receiver_pubkey,
+        config.fee_receiver,
         u32::MAX as u64,
         &Token {
             mint: liquidity_mint_pubkey,
@@ -345,7 +347,6 @@ pub fn add_reserve(
             mint_pubkey: liquidity_mint_pubkey,
             mint_decimals: liquidity_mint_decimals,
             supply_pubkey: liquidity_supply_pubkey,
-            fee_receiver: liquidity_fee_receiver_pubkey,
             pyth_oracle_pubkey: oracle.pyth_price_pubkey,
             switchboard_oracle_pubkey: oracle.switchboard_feed_pubkey,
             market_price: oracle.price,
@@ -417,7 +418,6 @@ pub fn add_reserve(
         liquidity_mint_pubkey,
         liquidity_mint_decimals,
         liquidity_supply_pubkey,
-        liquidity_fee_receiver_pubkey,
         liquidity_host_pubkey,
         liquidity_pyth_oracle_pubkey: oracle.pyth_price_pubkey,
         liquidity_switchboard_oracle_pubkey: oracle.switchboard_feed_pubkey,
@@ -717,7 +717,7 @@ impl TestLendingMarket {
                 borrow_reserve.liquidity_supply_pubkey,
                 borrow_reserve.user_liquidity_pubkey,
                 borrow_reserve.pubkey,
-                borrow_reserve.liquidity_fee_receiver_pubkey,
+                borrow_reserve.config.fee_receiver,
                 obligation.pubkey,
                 self.pubkey,
                 obligation.owner,
@@ -758,7 +758,6 @@ pub struct TestReserve {
     pub liquidity_mint_pubkey: Pubkey,
     pub liquidity_mint_decimals: u8,
     pub liquidity_supply_pubkey: Pubkey,
-    pub liquidity_fee_receiver_pubkey: Pubkey,
     pub liquidity_host_pubkey: Pubkey,
     pub liquidity_pyth_oracle_pubkey: Pubkey,
     pub liquidity_switchboard_oracle_pubkey: Pubkey,
@@ -780,6 +779,7 @@ impl TestReserve {
         config: ReserveConfig,
         liquidity_mint_pubkey: Pubkey,
         user_liquidity_pubkey: Pubkey,
+        liquidity_fee_receiver_keypair: &Keypair,
         payer: &Keypair,
         user_accounts_owner: &Keypair,
     ) -> Result<Self, TransactionError> {
@@ -788,7 +788,6 @@ impl TestReserve {
         let collateral_mint_keypair = Keypair::new();
         let collateral_supply_keypair = Keypair::new();
         let liquidity_supply_keypair = Keypair::new();
-        let liquidity_fee_receiver_keypair = Keypair::new();
         let liquidity_host_keypair = Keypair::new();
         let user_collateral_token_keypair = Keypair::new();
         let user_transfer_authority_keypair = Keypair::new();
@@ -870,7 +869,6 @@ impl TestReserve {
                     reserve_pubkey,
                     liquidity_mint_pubkey,
                     liquidity_supply_keypair.pubkey(),
-                    liquidity_fee_receiver_keypair.pubkey(),
                     collateral_mint_keypair.pubkey(),
                     collateral_supply_keypair.pubkey(),
                     oracle.pyth_product_pubkey,
@@ -911,7 +909,6 @@ impl TestReserve {
                 liquidity_mint_pubkey: liquidity_mint_pubkey,
                 liquidity_mint_decimals: liquidity_mint.decimals,
                 liquidity_supply_pubkey: liquidity_supply_keypair.pubkey(),
-                liquidity_fee_receiver_pubkey: liquidity_fee_receiver_keypair.pubkey(),
                 liquidity_host_pubkey: liquidity_host_keypair.pubkey(),
                 liquidity_pyth_oracle_pubkey: oracle.pyth_price_pubkey,
                 liquidity_switchboard_oracle_pubkey: oracle.switchboard_feed_pubkey,
