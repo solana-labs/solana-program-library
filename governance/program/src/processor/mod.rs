@@ -80,8 +80,8 @@ pub fn process_instruction(
     }
 
     match instruction {
-        GovernanceInstruction::CreateRealm { name } => {
-            process_create_realm(program_id, accounts, name)
+        GovernanceInstruction::CreateRealm { name, config_args } => {
+            process_create_realm(program_id, accounts, name, config_args)
         }
 
         GovernanceInstruction::DepositGoverningTokens {} => {

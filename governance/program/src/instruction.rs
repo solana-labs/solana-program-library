@@ -2,13 +2,14 @@
 
 use crate::{
     state::{
+        enums::MintMaxVoteWeightSource,
         governance::{
             get_account_governance_address, get_mint_governance_address,
             get_program_governance_address, get_token_governance_address, GovernanceConfig,
         },
         proposal::get_proposal_address,
         proposal_instruction::{get_proposal_instruction_address, InstructionData},
-        realm::{get_governing_token_holding_address, get_realm_address},
+        realm::{get_governing_token_holding_address, get_realm_address, RealmConfigArgs},
         signatory_record::get_signatory_record_address,
         token_owner_record::get_token_owner_record_address,
         vote_record::get_vote_record_address,
@@ -41,21 +42,26 @@ pub enum GovernanceInstruction {
     /// Creates Governance Realm account which aggregates governances for given Community Mint and optional Council Mint
     ///
     /// 0. `[writable]` Governance Realm account. PDA seeds:['governance',name]
-    /// 1. `[]` Realm authority    
-    /// 2. `[]` Community Token Mint
-    /// 3. `[writable]` Community Token Holding account. PDA seeds: ['governance',realm,community_mint]
+    /// 1. `[]` Community Token Mint
+    /// 2. `[writable]` Community Token Holding account. PDA seeds: ['governance',realm,community_mint]
     ///     The account will be created with the Realm PDA as its owner
-    /// 4. `[signer]` Payer
-    /// 5. `[]` System
-    /// 6. `[]` SPL Token
-    /// 7. `[]` Sysvar Rent
-    /// 8. `[]` Council Token Mint - optional
-    /// 9. `[writable]` Council Token Holding account - optional. . PDA seeds: ['governance',realm,council_mint]
+    /// 3. `[signer]` Payer
+    /// 4. `[]` System
+    /// 5. `[]` SPL Token
+    /// 6. `[]` Sysvar Rent
+    /// 7. `[]` Council Token Mint - optional
+    /// 8. `[writable]` Council Token Holding account - optional unless council is used. PDA seeds: ['governance',realm,council_mint]
     ///     The account will be created with the Realm PDA as its owner
+    /// 9. `[]` Realm authority - optional
+    /// 10.`[]` Realm custodian - optional
     CreateRealm {
         #[allow(dead_code)]
         /// UTF-8 encoded Governance Realm name
         name: String,
+
+        #[allow(dead_code)]
+        /// Realm     
+        config_args: RealmConfigArgs,
     },
 
     /// Deposits governing tokens (Community or Council) to Governance Realm and establishes your voter weight to be used for voting within the Realm
@@ -379,12 +385,14 @@ pub enum GovernanceInstruction {
 pub fn create_realm(
     program_id: &Pubkey,
     // Accounts
-    realm_authority: &Pubkey,
     community_token_mint: &Pubkey,
     payer: &Pubkey,
     council_token_mint: Option<Pubkey>,
+    realm_authority: Option<Pubkey>,
+    realm_custodian: Option<Pubkey>,
     // Args
     name: String,
+    community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
 ) -> Instruction {
     let realm_address = get_realm_address(program_id, &name);
     let community_token_holding_address =
@@ -392,7 +400,6 @@ pub fn create_realm(
 
     let mut accounts = vec![
         AccountMeta::new(realm_address, false),
-        AccountMeta::new_readonly(*realm_authority, false),
         AccountMeta::new_readonly(*community_token_mint, false),
         AccountMeta::new(community_token_holding_address, false),
         AccountMeta::new_readonly(*payer, true),
@@ -401,15 +408,40 @@ pub fn create_realm(
         AccountMeta::new_readonly(sysvar::rent::id(), false),
     ];
 
-    if let Some(council_token_mint) = council_token_mint {
+    let use_council_mint = if let Some(council_token_mint) = council_token_mint {
         let council_token_holding_address =
             get_governing_token_holding_address(program_id, &realm_address, &council_token_mint);
 
         accounts.push(AccountMeta::new_readonly(council_token_mint, false));
         accounts.push(AccountMeta::new(council_token_holding_address, false));
-    }
+        true
+    } else {
+        false
+    };
 
-    let instruction = GovernanceInstruction::CreateRealm { name };
+    let use_authority = if let Some(realm_authority) = realm_authority {
+        accounts.push(AccountMeta::new_readonly(realm_authority, false));
+        true
+    } else {
+        false
+    };
+
+    let use_custodian = if let Some(realm_custodian) = realm_custodian {
+        accounts.push(AccountMeta::new_readonly(realm_custodian, false));
+        true
+    } else {
+        false
+    };
+
+    let instruction = GovernanceInstruction::CreateRealm {
+        config_args: RealmConfigArgs {
+            use_council_mint,
+            use_custodian,
+            use_authority,
+            community_mint_max_vote_weight_source,
+        },
+        name,
+    };
 
     Instruction {
         program_id: *program_id,

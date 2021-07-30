@@ -168,7 +168,7 @@ pub enum InstructionExecutionFlags {
 pub enum MintMaxVoteWeightSource {
     /// Fraction (10^10 precision) of the governing mint supply is used as max vote weight
     /// The default is 100% (10^10) to use all available mint supply for voting
-    Fraction(u64),
+    SupplyFraction(u64),
 
     /// Absolute value, irrelevant of the actual mint supply, is used as max vote weight
     Absolute(u64),
@@ -176,9 +176,9 @@ pub enum MintMaxVoteWeightSource {
 
 impl MintMaxVoteWeightSource {
     /// Base for mint supply fraction calculation
-    pub const FRACTION_BASE: u64 = 10_000_000_000;
+    pub const SUPPLY_FRACTION_BASE: u64 = 10_000_000_000;
 
-    /// Max fraction (100%)
-    pub const MAX_FRACTION: MintMaxVoteWeightSource =
-        MintMaxVoteWeightSource::Fraction(MintMaxVoteWeightSource::FRACTION_BASE);
+    /// 100% of mint supply
+    pub const FULL_SUPPLY_FRACTION: MintMaxVoteWeightSource =
+        MintMaxVoteWeightSource::SupplyFraction(MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE);
 }
