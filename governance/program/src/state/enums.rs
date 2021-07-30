@@ -166,10 +166,19 @@ pub enum InstructionExecutionFlags {
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum MintMaxVoteWeightSource {
-    /// Percentage of the governing mint supply is used as max vote weight
-    /// The default is 100% to use all available mint supply for voting
-    Percentage(u8),
+    /// Fraction (10^10 precision) of the governing mint supply is used as max vote weight
+    /// The default is 100% (10^10) to use all available mint supply for voting
+    Fraction(u64),
 
     /// Absolute value, irrelevant of the actual mint supply, is used as max vote weight
     Absolute(u64),
+}
+
+impl MintMaxVoteWeightSource {
+    /// Base for mint supply fraction calculation
+    pub const FRACTION_BASE: u64 = 10_000_000_000;
+
+    /// Max fraction (100%)
+    pub const MAX_FRACTION: MintMaxVoteWeightSource =
+        MintMaxVoteWeightSource::Fraction(MintMaxVoteWeightSource::FRACTION_BASE);
 }

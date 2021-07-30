@@ -193,7 +193,7 @@ impl GovernanceProgramTest {
                 council_mint: Some(council_token_mint_keypair.pubkey()),
                 reserved: [0; 8],
                 custodian: Some(realm_authority.pubkey()),
-                community_mint_max_vote_weight_source: MintMaxVoteWeightSource::Percentage(100),
+                community_mint_max_vote_weight_source: MintMaxVoteWeightSource::MAX_FRACTION,
             },
         };
 
@@ -244,7 +244,7 @@ impl GovernanceProgramTest {
                 council_mint: Some(council_mint),
                 reserved: [0; 8],
                 custodian: Some(realm_authority.pubkey()),
-                community_mint_max_vote_weight_source: MintMaxVoteWeightSource::Percentage(100),
+                community_mint_max_vote_weight_source: MintMaxVoteWeightSource::MAX_FRACTION,
             },
         };
 

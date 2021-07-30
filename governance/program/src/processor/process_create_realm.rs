@@ -92,7 +92,7 @@ pub fn process_create_realm(
             council_mint: council_token_mint_address,
             reserved: [0; 8],
             custodian: Some(*realm_authority_info.key),
-            community_mint_max_vote_weight_source: MintMaxVoteWeightSource::Percentage(100),
+            community_mint_max_vote_weight_source: MintMaxVoteWeightSource::MAX_FRACTION,
         },
     };
 
