@@ -382,6 +382,7 @@ pub enum GovernanceInstruction {
 }
 
 /// Creates CreateRealm instruction
+#[allow(clippy::too_many_arguments)]
 pub fn create_realm(
     program_id: &Pubkey,
     // Accounts
