@@ -24,7 +24,7 @@ async fn test_create_realm() {
 }
 
 #[tokio::test]
-async fn test_create_realm_with_none_default_config() {
+async fn test_create_realm_with_non_default_config() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
