@@ -25,6 +25,7 @@ pub enum LendingInstruction {
     ///   1. `[]` Rent sysvar.
     ///   2. `[]` Token program id.
     ///   3. `[]` Oracle program id.
+    ///   4. `[]` Switchboard Oracle program id.
     InitLendingMarket {
         /// Owner authority which can add new reserves
         owner: Pubkey,
@@ -701,6 +702,7 @@ pub fn init_lending_market(
     quote_currency: [u8; 32],
     lending_market_pubkey: Pubkey,
     oracle_program_id: Pubkey,
+    switchboard_oracle_program_id: Pubkey,
 ) -> Instruction {
     Instruction {
         program_id,
@@ -709,6 +711,7 @@ pub fn init_lending_market(
             AccountMeta::new_readonly(sysvar::rent::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
             AccountMeta::new_readonly(oracle_program_id, false),
+            AccountMeta::new_readonly(switchboard_oracle_program_id, false),
         ],
         data: LendingInstruction::InitLendingMarket {
             owner,

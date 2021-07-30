@@ -139,6 +139,7 @@ fn process_init_lending_market(
     let rent = &Rent::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
     let oracle_program_id = next_account_info(account_info_iter)?;
+    let switchboard_oracle_program_id = next_account_info(account_info_iter)?;
 
     assert_rent_exempt(rent, lending_market_info)?;
     let mut lending_market = assert_uninitialized::<LendingMarket>(lending_market_info)?;
@@ -153,6 +154,7 @@ fn process_init_lending_market(
         quote_currency,
         token_program_id: *token_program_id.key,
         oracle_program_id: *oracle_program_id.key,
+        switchboard_oracle_program_id: *switchboard_oracle_program_id.key,
     });
     LendingMarket::pack(lending_market, &mut lending_market_info.data.borrow_mut())?;
 
@@ -300,6 +302,10 @@ fn process_init_reserve(
         return Err(LendingError::InvalidOracleConfig.into());
     }
 
+    if &lending_market.switchboard_oracle_program_id != switchboard_feed_info.owner {
+        msg!("Switchboard account provided is not owned by the switchboard oracle program");
+        return Err(LendingError::InvalidOracleConfig.into());
+    }
     let market_price = get_price(switchboard_feed_info, pyth_price_info, clock)?;
 
     let authority_signer_seeds = &[
@@ -2180,6 +2186,7 @@ fn get_switchboard_price(
     const STALE_AFTER_SLOTS_ELAPSED: u64 = 100;
 
     let account_buf = switchboard_feed_info.try_borrow_data()?;
+    // first byte type discriminator
     if account_buf[0] != SwitchboardAccountType::TYPE_AGGREGATOR as u8 {
         msg!("switchboard address not of type aggregator");
         return Err(LendingError::InvalidAccountInput.into());

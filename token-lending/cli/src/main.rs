@@ -83,6 +83,7 @@ type CommandResult = Result<(), Error>;
 
 const PYTH_PROGRAM_ID: &str = "gSbePebfvPy7tRqimPoVecS2UsBvYv46ynrzWocc92s";
 // const SWITCHBOARD_PROGRAM_ID: &str = "DtmE9D2CSB4L5D6A15mraeEjrGMm6auWVzgaD8hK2tZM";
+const SWITCHBOARD_PROGRAM_ID_DEV: &str = "7azgmy1pFXHikv36q1zZASvFq5vFa39TT9NweVugKKTU";
 
 fn main() {
     solana_logger::setup_with_default("solana=info");
@@ -166,6 +167,16 @@ fn main() {
                         .required(true)
                         .default_value(PYTH_PROGRAM_ID)
                         .help("Oracle (Pyth) program ID for quoting market prices"),
+                )
+                .arg(
+                    Arg::with_name("switchboard_oracle_program_id")
+                        .long("switchboard-oracle")
+                        .validator(is_pubkey)
+                        .value_name("PUBKEY")
+                        .takes_value(true)
+                        .required(true)
+                        .default_value(SWITCHBOARD_PROGRAM_ID_DEV)
+                        .help("Oracle (switchboard) program ID for quoting market prices"),
                 )
                 .arg(
                     Arg::with_name("quote_currency")
@@ -568,11 +579,15 @@ fn main() {
             let lending_market_owner = pubkey_of(arg_matches, "lending_market_owner").unwrap();
             let quote_currency = quote_currency_of(arg_matches, "quote_currency").unwrap();
             let oracle_program_id = pubkey_of(arg_matches, "oracle_program_id").unwrap();
+            let switchboard_oracle_program_id =
+                pubkey_of(arg_matches, "switchboard_oracle_program_id").unwrap();
+
             command_create_lending_market(
                 &config,
                 lending_market_owner,
                 quote_currency,
                 oracle_program_id,
+                switchboard_oracle_program_id,
             )
         }
         ("add-reserve", Some(arg_matches)) => {
@@ -696,6 +711,7 @@ fn command_create_lending_market(
     lending_market_owner: Pubkey,
     quote_currency: [u8; 32],
     oracle_program_id: Pubkey,
+    switchboard_oracle_program_id: Pubkey,
 ) -> CommandResult {
     let lending_market_keypair = Keypair::new();
     println!(
@@ -724,6 +740,7 @@ fn command_create_lending_market(
                 quote_currency,
                 lending_market_keypair.pubkey(),
                 oracle_program_id,
+                switchboard_oracle_program_id,
             ),
         ],
         Some(&config.fee_payer.pubkey()),

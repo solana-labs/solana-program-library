@@ -31,6 +31,7 @@ export const LendingMarketLayout: typeof BufferLayout.Structure = BufferLayout.s
     Layout.publicKey("quoteTokenMint"),
     Layout.publicKey("tokenProgramId"),
     Layout.publicKey("oracleProgramId"),
+    Layout.publicKey("switchboardOracleProgramId"),
     BufferLayout.blob(128, "padding"),
   ]
 );
@@ -126,7 +127,12 @@ export class LendingMarket {
         isWritable: false,
       },
       {
-        pubkey: new Account().publicKey, // TODO use the oracle program id
+        pubkey: new Account().publicKey, // TODO use the pyth oracle program id
+        isSigner: false,
+        isWritable: false,
+      },
+      {
+        pubkey: new Account().publicKey, // TODO use the switchboard oracle program id
         isSigner: false,
         isWritable: false,
       },
