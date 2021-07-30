@@ -17,12 +17,15 @@ use crate::{
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct RealmConfig {
-    /// Optional council mint
-    pub council_mint: Option<Pubkey>,
+    /// Reserved space for future versions
+    pub reserved: [u8; 8],
 
     /// The source used for community mint max vote weight source
     /// Note: This field is not used yet. It's reserved for future versions
     pub community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
+
+    /// Optional council mint
+    pub council_mint: Option<Pubkey>,
 
     /// An authority tasked with none critical and maintenance Realm operations
     /// For example custodian authority is required to add governances to the Realm
@@ -30,9 +33,6 @@ pub struct RealmConfig {
     /// to prevent unrelated entries and noise
     /// Note: This field is not used yet. It's reserved for future versions
     pub custodian: Option<Pubkey>,
-
-    /// Reserved space for future versions
-    pub reserved: [u8; 8],
 }
 
 /// Governance Realm Account
