@@ -12,11 +12,14 @@ mod process_create_token_governance;
 mod process_deposit_governing_tokens;
 mod process_execute_instruction;
 mod process_finalize_vote;
+mod process_flag_instruction_error;
 mod process_insert_instruction;
 mod process_relinquish_vote;
 mod process_remove_instruction;
 mod process_remove_signatory;
+mod process_set_governance_config;
 mod process_set_governance_delegate;
+mod process_set_realm_authority;
 mod process_sign_off_proposal;
 mod process_withdraw_governing_tokens;
 
@@ -35,11 +38,14 @@ use process_create_token_governance::*;
 use process_deposit_governing_tokens::*;
 use process_execute_instruction::*;
 use process_finalize_vote::*;
+use process_flag_instruction_error::*;
 use process_insert_instruction::*;
 use process_relinquish_vote::*;
 use process_remove_instruction::*;
 use process_remove_signatory::*;
+use process_set_governance_config::*;
 use process_set_governance_delegate::*;
+use process_set_realm_authority::*;
 use process_sign_off_proposal::*;
 use process_withdraw_governing_tokens::*;
 
@@ -154,5 +160,16 @@ pub fn process_instruction(
         GovernanceInstruction::ExecuteInstruction {} => {
             process_execute_instruction(program_id, accounts)
         }
+
+        GovernanceInstruction::SetGovernanceConfig { config } => {
+            process_set_governance_config(program_id, accounts, config)
+        }
+
+        GovernanceInstruction::FlagInstructionError {} => {
+            process_flag_instruction_error(program_id, accounts)
+        }
+        GovernanceInstruction::SetRealmAuthority {
+            new_realm_authority,
+        } => process_set_realm_authority(program_id, accounts, new_realm_authority),
     }
 }

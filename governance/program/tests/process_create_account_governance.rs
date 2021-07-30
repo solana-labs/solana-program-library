@@ -67,8 +67,7 @@ async fn test_create_account_governance_with_invalid_config_error() {
     let governed_account_cookie = governance_test.with_governed_account().await;
 
     // Arrange
-    let mut config =
-        governance_test.get_default_governance_config(&realm_cookie, &governed_account_cookie);
+    let mut config = governance_test.get_default_governance_config();
     config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(0); // below 1% threshold
 
     // Act
@@ -80,11 +79,10 @@ async fn test_create_account_governance_with_invalid_config_error() {
 
     // Assert
 
-    assert_eq!(err, GovernanceError::InvalidGovernanceConfig.into());
+    assert_eq!(err, GovernanceError::InvalidVoteThresholdPercentage.into());
 
     // Arrange
-    let mut config =
-        governance_test.get_default_governance_config(&realm_cookie, &governed_account_cookie);
+    let mut config = governance_test.get_default_governance_config();
     config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(101); // Above 100% threshold
 
     // Act
@@ -96,5 +94,5 @@ async fn test_create_account_governance_with_invalid_config_error() {
 
     // Assert
 
-    assert_eq!(err, GovernanceError::InvalidGovernanceConfig.into());
+    assert_eq!(err, GovernanceError::InvalidVoteThresholdPercentage.into());
 }

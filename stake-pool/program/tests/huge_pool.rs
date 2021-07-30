@@ -26,7 +26,7 @@ use {
         find_withdraw_authority_program_address, id,
         instruction::{self, PreferredValidatorType},
         stake_program,
-        state::{AccountType, StakePool, StakeStatus, ValidatorList, ValidatorStakeInfo},
+        state::{AccountType, Fee, StakePool, StakeStatus, ValidatorList, ValidatorStakeInfo},
         MAX_VALIDATORS_TO_UPDATE, MINIMUM_ACTIVE_STAKE,
     },
     spl_token::state::{Account as SplAccount, AccountState as SplAccountState, Mint},
@@ -78,6 +78,10 @@ async fn setup(
         next_epoch_fee: None,
         preferred_deposit_validator_vote_address: None,
         preferred_withdraw_validator_vote_address: None,
+        deposit_fee: Fee::default(),
+        withdrawal_fee: Fee::default(),
+        next_withdrawal_fee: None,
+        referral_fee: 0,
     };
 
     let mut validator_list = ValidatorList::new(max_validators);
@@ -313,32 +317,54 @@ async fn update() {
         setup(HUGE_POOL_SIZE, HUGE_POOL_SIZE, STAKE_AMOUNT).await;
 
     let transaction = Transaction::new_signed_with_payer(
-        &[
-            instruction::update_validator_list_balance(
-                &id(),
-                &stake_pool_accounts.stake_pool.pubkey(),
-                &stake_pool_accounts.withdraw_authority,
-                &stake_pool_accounts.validator_list.pubkey(),
-                &stake_pool_accounts.reserve_stake.pubkey(),
-                &vote_account_pubkeys[0..MAX_VALIDATORS_TO_UPDATE],
-                0,
-                /* no_merge = */ false,
-            ),
-            instruction::update_stake_pool_balance(
-                &id(),
-                &stake_pool_accounts.stake_pool.pubkey(),
-                &stake_pool_accounts.withdraw_authority,
-                &stake_pool_accounts.validator_list.pubkey(),
-                &stake_pool_accounts.reserve_stake.pubkey(),
-                &stake_pool_accounts.pool_fee_account.pubkey(),
-                &stake_pool_accounts.pool_mint.pubkey(),
-            ),
-            instruction::cleanup_removed_validator_entries(
-                &id(),
-                &stake_pool_accounts.stake_pool.pubkey(),
-                &stake_pool_accounts.validator_list.pubkey(),
-            ),
-        ],
+        &[instruction::update_validator_list_balance(
+            &id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.withdraw_authority,
+            &stake_pool_accounts.validator_list.pubkey(),
+            &stake_pool_accounts.reserve_stake.pubkey(),
+            &vote_account_pubkeys[0..MAX_VALIDATORS_TO_UPDATE],
+            0,
+            /* no_merge = */ false,
+        )],
+        Some(&context.payer.pubkey()),
+        &[&context.payer],
+        context.last_blockhash,
+    );
+    let error = context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .err();
+    assert!(error.is_none());
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction::update_stake_pool_balance(
+            &id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.withdraw_authority,
+            &stake_pool_accounts.validator_list.pubkey(),
+            &stake_pool_accounts.reserve_stake.pubkey(),
+            &stake_pool_accounts.pool_fee_account.pubkey(),
+            &stake_pool_accounts.pool_mint.pubkey(),
+        )],
+        Some(&context.payer.pubkey()),
+        &[&context.payer],
+        context.last_blockhash,
+    );
+    let error = context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .err();
+    assert!(error.is_none());
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction::cleanup_removed_validator_entries(
+            &id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.validator_list.pubkey(),
+        )],
         Some(&context.payer.pubkey()),
         &[&context.payer],
         context.last_blockhash,
@@ -700,5 +726,5 @@ async fn withdraw() {
             STAKE_AMOUNT,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 }

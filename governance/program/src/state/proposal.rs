@@ -10,8 +10,8 @@ use crate::{
     error::GovernanceError,
     state::{
         enums::{
-            GovernanceAccountType, InstructionExecutionFlags, ProposalState,
-            VoteThresholdPercentage,
+            GovernanceAccountType, InstructionExecutionFlags, InstructionExecutionStatus,
+            ProposalState, VoteThresholdPercentage,
         },
         governance::GovernanceConfig,
         proposal_instruction::ProposalInstruction,
@@ -88,6 +88,16 @@ pub struct Proposal {
     /// Note: This field is not used in the current version
     pub execution_flags: InstructionExecutionFlags,
 
+    /// The supply of the Governing Token mint at the time Proposal was decided
+    /// It's used to show correct vote results for historical proposals in cases when the mint supply changed
+    /// after vote was completed.
+    pub governing_token_mint_vote_supply: Option<u64>,
+
+    /// The vote threshold percentage at the time Proposal was decided
+    /// It's used to show correct vote results for historical proposals in cases when the threshold
+    /// was changed for governance config after vote was completed.
+    pub vote_threshold_percentage: Option<VoteThresholdPercentage>,
+
     /// Proposal name
     pub name: String,
 
@@ -97,7 +107,7 @@ pub struct Proposal {
 
 impl AccountMaxSize for Proposal {
     fn get_max_size(&self) -> Option<usize> {
-        Some(self.name.len() + self.description_link.len() + 193)
+        Some(self.name.len() + self.description_link.len() + 205)
     }
 }
 
@@ -119,6 +129,7 @@ impl Proposal {
         match self.state {
             ProposalState::Draft | ProposalState::SigningOff => Ok(()),
             ProposalState::Executing
+            | ProposalState::ExecutingWithErrors
             | ProposalState::Completed
             | ProposalState::Cancelled
             | ProposalState::Voting
@@ -195,14 +206,18 @@ impl Proposal {
     /// If Proposal is still within max_voting_time period then error is returned
     pub fn finalize_vote(
         &mut self,
-        governing_token_supply: u64,
+        governing_token_mint_supply: u64,
         config: &GovernanceConfig,
         current_unix_timestamp: UnixTimestamp,
     ) -> Result<(), ProgramError> {
         self.assert_can_finalize_vote(config, current_unix_timestamp)?;
 
-        self.state = self.get_final_vote_state(governing_token_supply, config);
+        self.state = self.get_final_vote_state(governing_token_mint_supply, config);
         self.voting_completed_at = Some(current_unix_timestamp);
+
+        // Capture vote params to correctly display historical results
+        self.governing_token_mint_vote_supply = Some(governing_token_mint_supply);
+        self.vote_threshold_percentage = Some(config.vote_threshold_percentage.clone());
 
         Ok(())
     }
@@ -232,13 +247,19 @@ impl Proposal {
     /// If the conditions are met the state is updated accordingly
     pub fn try_tip_vote(
         &mut self,
-        governing_token_supply: u64,
+        governing_token_mint_supply: u64,
         config: &GovernanceConfig,
         current_unix_timestamp: UnixTimestamp,
     ) {
-        if let Some(tipped_state) = self.try_get_tipped_vote_state(governing_token_supply, config) {
+        if let Some(tipped_state) =
+            self.try_get_tipped_vote_state(governing_token_mint_supply, config)
+        {
             self.state = tipped_state;
             self.voting_completed_at = Some(current_unix_timestamp);
+
+            // Capture vote params to correctly display historical results
+            self.governing_token_mint_vote_supply = Some(governing_token_mint_supply);
+            self.vote_threshold_percentage = Some(config.vote_threshold_percentage.clone());
         }
     }
 
@@ -279,6 +300,7 @@ impl Proposal {
         match self.state {
             ProposalState::Draft | ProposalState::SigningOff | ProposalState::Voting => Ok(()),
             ProposalState::Executing
+            | ProposalState::ExecutingWithErrors
             | ProposalState::Completed
             | ProposalState::Cancelled
             | ProposalState::Succeeded
@@ -301,7 +323,9 @@ impl Proposal {
         current_unix_timestamp: UnixTimestamp,
     ) -> Result<(), ProgramError> {
         match self.state {
-            ProposalState::Succeeded | ProposalState::Executing => {}
+            ProposalState::Succeeded
+            | ProposalState::Executing
+            | ProposalState::ExecutingWithErrors => {}
             ProposalState::Draft
             | ProposalState::SigningOff
             | ProposalState::Completed
@@ -324,6 +348,22 @@ impl Proposal {
 
         if proposal_instruction_data.executed_at.is_some() {
             return Err(GovernanceError::InstructionAlreadyExecuted.into());
+        }
+
+        Ok(())
+    }
+
+    /// Checks if the instruction can be flagged with error for the Proposal in the given state
+    pub fn assert_can_flag_instruction_error(
+        &self,
+        proposal_instruction_data: &ProposalInstruction,
+        current_unix_timestamp: UnixTimestamp,
+    ) -> Result<(), ProgramError> {
+        // Instruction can be flagged for error only when it's eligible for execution
+        self.assert_can_execute_instruction(proposal_instruction_data, current_unix_timestamp)?;
+
+        if proposal_instruction_data.execution_status == InstructionExecutionStatus::Error {
+            return Err(GovernanceError::InstructionAlreadyFlaggedWithError.into());
         }
 
         Ok(())
@@ -435,6 +475,7 @@ mod test {
             account_type: GovernanceAccountType::TokenOwnerRecord,
             governance: Pubkey::new_unique(),
             governing_token_mint: Pubkey::new_unique(),
+            governing_token_mint_vote_supply: Some(10),
             state: ProposalState::Draft,
             token_owner_record: Pubkey::new_unique(),
             signatories_count: 10,
@@ -459,14 +500,14 @@ mod test {
             instructions_executed_count: 10,
             instructions_count: 10,
             instructions_next_index: 10,
+            vote_threshold_percentage: Some(VoteThresholdPercentage::YesVote(100)),
         }
     }
 
     fn create_test_governance_config() -> GovernanceConfig {
         GovernanceConfig {
-            realm: Pubkey::new_unique(),
-            governed_account: Pubkey::new_unique(),
-            min_tokens_to_create_proposal: 5,
+            min_community_tokens_to_create_proposal: 5,
+            min_council_tokens_to_create_proposal: 1,
             min_instruction_hold_up_time: 10,
             max_voting_time: 5,
             vote_threshold_percentage: VoteThresholdPercentage::YesVote(60),
@@ -513,6 +554,7 @@ mod test {
             Just(ProposalState::Voting),
             Just(ProposalState::Succeeded),
             Just(ProposalState::Executing),
+            Just(ProposalState::ExecutingWithErrors),
             Just(ProposalState::Completed),
             Just(ProposalState::Cancelled),
             Just(ProposalState::Defeated),
@@ -553,6 +595,7 @@ mod test {
             Just(ProposalState::Voting),
             Just(ProposalState::Succeeded),
             Just(ProposalState::Executing),
+            Just(ProposalState::ExecutingWithErrors),
             Just(ProposalState::Completed),
             Just(ProposalState::Cancelled),
             Just(ProposalState::Defeated),
@@ -598,6 +641,7 @@ mod test {
         prop_oneof![
             Just(ProposalState::Succeeded),
             Just(ProposalState::Executing),
+            Just(ProposalState::ExecutingWithErrors),
             Just(ProposalState::Completed),
             Just(ProposalState::Cancelled),
             Just(ProposalState::Defeated),

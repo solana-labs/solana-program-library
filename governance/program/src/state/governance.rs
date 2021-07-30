@@ -18,18 +18,12 @@ use solana_program::{
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct GovernanceConfig {
-    /// Governance Realm
-    pub realm: Pubkey,
-
-    /// Account governed by this Governance. It can be for example Program account, Mint account or Token Account
-    pub governed_account: Pubkey,
-
     /// The type of the vote threshold used for voting
     /// Note: In the current version only YesVote threshold is supported
     pub vote_threshold_percentage: VoteThresholdPercentage,
 
-    /// Minimum number of tokens a governance token owner must possess to be able to create a proposal
-    pub min_tokens_to_create_proposal: u64,
+    /// Minimum number of community tokens a governance token owner must possess to be able to create a proposal
+    pub min_community_tokens_to_create_proposal: u64,
 
     /// Minimum waiting time in seconds for an instruction to be executed after proposal is voted on
     pub min_instruction_hold_up_time: u32,
@@ -45,6 +39,9 @@ pub struct GovernanceConfig {
     /// Once cool off time expires Proposal can't be cancelled any longer and becomes a law
     /// Note: This field is not implemented in the current version
     pub proposal_cool_off_time: u32,
+
+    /// Minimum number of council tokens a governance token owner must possess to be able to create a proposal
+    pub min_council_tokens_to_create_proposal: u64,
 }
 
 /// Governance Account
@@ -54,14 +51,20 @@ pub struct Governance {
     /// Account type. It can be Uninitialized, AccountGovernance or ProgramGovernance
     pub account_type: GovernanceAccountType,
 
+    /// Governance Realm
+    pub realm: Pubkey,
+
+    /// Account governed by this Governance. It can be for example Program account, Mint account or Token Account
+    pub governed_account: Pubkey,
+
+    /// Running count of proposals
+    pub proposals_count: u32,
+
     /// Governance config
     pub config: GovernanceConfig,
 
     /// Reserved space for future versions
     pub reserved: [u8; 8],
-
-    /// Running count of proposals
-    pub proposals_count: u32,
 }
 
 impl AccountMaxSize for Governance {}
@@ -79,21 +82,18 @@ impl Governance {
     /// Returns Governance PDA seeds
     pub fn get_governance_address_seeds(&self) -> Result<[&[u8]; 3], ProgramError> {
         let seeds = match self.account_type {
-            GovernanceAccountType::AccountGovernance => get_account_governance_address_seeds(
-                &self.config.realm,
-                &self.config.governed_account,
-            ),
-            GovernanceAccountType::ProgramGovernance => get_program_governance_address_seeds(
-                &self.config.realm,
-                &self.config.governed_account,
-            ),
-            GovernanceAccountType::MintGovernance => {
-                get_mint_governance_address_seeds(&self.config.realm, &self.config.governed_account)
+            GovernanceAccountType::AccountGovernance => {
+                get_account_governance_address_seeds(&self.realm, &self.governed_account)
             }
-            GovernanceAccountType::TokenGovernance => get_token_governance_address_seeds(
-                &self.config.realm,
-                &self.config.governed_account,
-            ),
+            GovernanceAccountType::ProgramGovernance => {
+                get_program_governance_address_seeds(&self.realm, &self.governed_account)
+            }
+            GovernanceAccountType::MintGovernance => {
+                get_mint_governance_address_seeds(&self.realm, &self.governed_account)
+            }
+            GovernanceAccountType::TokenGovernance => {
+                get_token_governance_address_seeds(&self.realm, &self.governed_account)
+            }
             _ => return Err(GovernanceError::InvalidAccountType.into()),
         };
 
@@ -101,12 +101,27 @@ impl Governance {
     }
 }
 
-/// Deserializes account and checks owner program
+/// Deserializes Governance account and checks owner program
 pub fn get_governance_data(
     program_id: &Pubkey,
     governance_info: &AccountInfo,
 ) -> Result<Governance, ProgramError> {
     get_account_data::<Governance>(governance_info, program_id)
+}
+
+/// Deserializes Governance account, checks owner program and asserts governance belongs to the given ream
+pub fn get_governance_data_for_realm(
+    program_id: &Pubkey,
+    governance_info: &AccountInfo,
+    realm: &Pubkey,
+) -> Result<Governance, ProgramError> {
+    let governance_data = get_governance_data(program_id, governance_info)?;
+
+    if governance_data.realm != *realm {
+        return Err(GovernanceError::InvalidRealmForGovernance.into());
+    }
+
+    Ok(governance_data)
 }
 
 /// Returns ProgramGovernance PDA seeds
@@ -207,22 +222,27 @@ pub fn get_account_governance_address<'a>(
     .0
 }
 
-/// Validates governance config
-pub fn assert_is_valid_governance_config(
+/// Validates args supplied to create governance account
+pub fn assert_valid_create_governance_args(
     program_id: &Pubkey,
     governance_config: &GovernanceConfig,
     realm_info: &AccountInfo,
 ) -> Result<(), ProgramError> {
-    if realm_info.key != &governance_config.realm {
-        return Err(GovernanceError::InvalidGovernanceConfig.into());
-    }
-
     assert_is_valid_realm(program_id, realm_info)?;
 
+    assert_is_valid_governance_config(governance_config)?;
+
+    Ok(())
+}
+
+/// Validates governance config parameters
+pub fn assert_is_valid_governance_config(
+    governance_config: &GovernanceConfig,
+) -> Result<(), ProgramError> {
     match governance_config.vote_threshold_percentage {
         VoteThresholdPercentage::YesVote(yes_vote_threshold_percentage) => {
             if !(1..=100).contains(&yes_vote_threshold_percentage) {
-                return Err(GovernanceError::InvalidGovernanceConfig.into());
+                return Err(GovernanceError::InvalidVoteThresholdPercentage.into());
             }
         }
         _ => {

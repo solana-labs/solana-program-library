@@ -7,4 +7,4 @@ utilize to create and use their tokens.
 
 Full documentation is available at https://spl.solana.com/token
 
-JavaScript binding are available in the `./js` directory.
+JavaScript bindings are available in the `./js` directory.

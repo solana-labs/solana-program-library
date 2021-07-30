@@ -65,6 +65,17 @@ async fn test_cast_vote() {
         Some(clock.unix_timestamp)
     );
 
+    assert_eq!(Some(100), proposal_account.governing_token_mint_vote_supply);
+    assert_eq!(
+        Some(
+            account_governance_cookie
+                .account
+                .config
+                .vote_threshold_percentage
+        ),
+        proposal_account.vote_threshold_percentage
+    );
+
     let token_owner_record = governance_test
         .get_token_owner_record_account(&token_owner_record_cookie.address)
         .await;
@@ -138,7 +149,8 @@ async fn test_cast_vote_with_invalid_mint_error() {
         .unwrap();
 
     // Try to use Council Mint with Community Proposal
-    proposal_cookie.account.governing_token_mint = realm_cookie.account.council_mint.unwrap();
+    proposal_cookie.account.governing_token_mint =
+        realm_cookie.account.config.council_mint.unwrap();
 
     // Act
     let err = governance_test
@@ -441,8 +453,7 @@ async fn test_cast_vote_with_threshold_below_50_and_vote_not_tipped() {
     let realm_cookie = governance_test.with_realm().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
-    let mut governance_config =
-        governance_test.get_default_governance_config(&realm_cookie, &governed_account_cookie);
+    let mut governance_config = governance_test.get_default_governance_config();
 
     governance_config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(40);
 

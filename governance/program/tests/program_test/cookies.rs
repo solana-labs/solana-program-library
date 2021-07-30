@@ -25,6 +25,8 @@ pub struct RealmCookie {
     pub council_mint_authority: Option<Keypair>,
 
     pub council_token_holding_account: Option<Pubkey>,
+
+    pub realm_authority: Keypair,
 }
 
 #[derive(Debug)]
@@ -142,4 +144,9 @@ pub struct ProposalInstructionCookie {
     pub address: Pubkey,
     pub account: ProposalInstruction,
     pub instruction: Instruction,
+}
+
+#[derive(Debug)]
+pub struct TokenAccountCookie {
+    pub address: Pubkey,
 }
