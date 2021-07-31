@@ -1174,7 +1174,7 @@ pub fn set_realm_config(
 
     let use_council_mint = if let Some(council_token_mint) = council_token_mint {
         let council_token_holding_address =
-            get_governing_token_holding_address(program_id, &realm, &council_token_mint);
+            get_governing_token_holding_address(program_id, realm, &council_token_mint);
 
         accounts.push(AccountMeta::new_readonly(council_token_mint, false));
         accounts.push(AccountMeta::new(council_token_holding_address, false));
