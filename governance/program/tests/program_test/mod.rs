@@ -206,8 +206,8 @@ impl GovernanceProgramTest {
             &realm_authority.pubkey(),
             &community_token_mint_keypair.pubkey(),
             &self.context.payer.pubkey(),
-            council_token_mint_pubkey,
             Some(realm_custodian.pubkey()),
+            council_token_mint_pubkey,
             name.clone(),
             config_args.community_mint_max_vote_weight_source.clone(),
         );
@@ -263,8 +263,8 @@ impl GovernanceProgramTest {
             &realm_authority.pubkey(),
             &realm_cookie.account.community_mint,
             &self.context.payer.pubkey(),
-            Some(council_mint),
             Some(realm_custodian.pubkey()),
+            Some(council_mint),
             name.clone(),
             community_mint_max_vote_weight_source,
         );

@@ -50,10 +50,10 @@ pub enum GovernanceInstruction {
     /// 5. `[]` System
     /// 6. `[]` SPL Token
     /// 7. `[]` Sysvar Rent
-    /// 8. `[]` Council Token Mint - optional
-    /// 9. `[writable]` Council Token Holding account - optional unless council is used. PDA seeds: ['governance',realm,council_mint]
+    /// 8. `[]` Realm custodian - optional    
+    /// 9. `[]` Council Token Mint - optional
+    /// 10. `[writable]` Council Token Holding account - optional unless council is used. PDA seeds: ['governance',realm,council_mint]
     ///     The account will be created with the Realm PDA as its owner
-    /// 10.`[]` Realm custodian - optional
     CreateRealm {
         #[allow(dead_code)]
         /// UTF-8 encoded Governance Realm name
@@ -402,8 +402,8 @@ pub fn create_realm(
     realm_authority: &Pubkey,
     community_token_mint: &Pubkey,
     payer: &Pubkey,
-    council_token_mint: Option<Pubkey>,
     realm_custodian: Option<Pubkey>,
+    council_token_mint: Option<Pubkey>,
     // Args
     name: String,
     community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
@@ -423,19 +423,19 @@ pub fn create_realm(
         AccountMeta::new_readonly(sysvar::rent::id(), false),
     ];
 
+    let use_custodian = if let Some(realm_custodian) = realm_custodian {
+        accounts.push(AccountMeta::new_readonly(realm_custodian, false));
+        true
+    } else {
+        false
+    };
+
     let use_council_mint = if let Some(council_token_mint) = council_token_mint {
         let council_token_holding_address =
             get_governing_token_holding_address(program_id, &realm_address, &council_token_mint);
 
         accounts.push(AccountMeta::new_readonly(council_token_mint, false));
         accounts.push(AccountMeta::new(council_token_holding_address, false));
-        true
-    } else {
-        false
-    };
-
-    let use_custodian = if let Some(realm_custodian) = realm_custodian {
-        accounts.push(AccountMeta::new_readonly(realm_custodian, false));
         true
     } else {
         false
