@@ -30,7 +30,7 @@ use spl_governance::{
         create_token_governance, deposit_governing_tokens, execute_instruction, finalize_vote,
         flag_instruction_error, insert_instruction, relinquish_vote, remove_instruction,
         remove_signatory, set_governance_config, set_governance_delegate, set_realm_authority,
-        sign_off_proposal, withdraw_governing_tokens, Vote,
+        set_realm_config, sign_off_proposal, withdraw_governing_tokens, Vote,
     },
     processor::process_instruction,
     state::{
@@ -644,6 +644,63 @@ impl GovernanceProgramTest {
         let signers = signers_override.unwrap_or(default_signers);
 
         self.process_transaction(&[set_realm_authority_ix], Some(signers))
+            .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn set_realm_config(
+        &mut self,
+        realm_cookie: &mut RealmCookie,
+        config_args: &RealmConfigArgs,
+    ) -> Result<(), ProgramError> {
+        self.set_realm_config_using_instruction(realm_cookie, config_args, NopOverride, None)
+            .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn set_realm_config_using_instruction<F: Fn(&mut Instruction)>(
+        &mut self,
+        realm_cookie: &mut RealmCookie,
+        config_args: &RealmConfigArgs,
+        instruction_override: F,
+        signers_override: Option<&[&Keypair]>,
+    ) -> Result<(), ProgramError> {
+        let council_token_mint = if config_args.use_council_mint {
+            realm_cookie.account.config.council_mint
+        } else {
+            None
+        };
+
+        let realm_custodian = if config_args.use_custodian {
+            let realm_custodian = Keypair::new();
+            Some(realm_custodian.pubkey())
+        } else {
+            None
+        };
+
+        let mut set_realm_config_ix = set_realm_config(
+            &self.program_id,
+            &realm_cookie.address,
+            &realm_cookie.realm_authority.as_ref().unwrap().pubkey(),
+            council_token_mint,
+            realm_custodian,
+            config_args.community_mint_max_vote_weight_source.clone(),
+        );
+
+        instruction_override(&mut set_realm_config_ix);
+
+        let default_signers = &[realm_cookie.realm_authority.as_ref().unwrap()];
+        let signers = signers_override.unwrap_or(default_signers);
+
+        realm_cookie.account.config.custodian = realm_custodian;
+        realm_cookie.account.config.council_mint = council_token_mint;
+        realm_cookie
+            .account
+            .config
+            .community_mint_max_vote_weight_source =
+            config_args.community_mint_max_vote_weight_source.clone();
+
+        self.process_transaction(&[set_realm_config_ix], Some(signers))
             .await
     }
 
