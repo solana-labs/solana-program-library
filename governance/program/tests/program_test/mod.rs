@@ -136,7 +136,6 @@ impl GovernanceProgramTest {
     #[allow(dead_code)]
     pub async fn with_realm(&mut self) -> RealmCookie {
         let config_args = RealmConfigArgs {
-            use_authority: true,
             use_council_mint: true,
             use_custodian: true,
             community_mint_max_vote_weight_source: MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,
@@ -199,21 +198,15 @@ impl GovernanceProgramTest {
             (None, None, None)
         };
 
-        let (realm_authority_pubkey, realm_authority) = if config_args.use_authority {
-            let realm_authority = Keypair::new();
-            (Some(realm_authority.pubkey()), Some(realm_authority))
-        } else {
-            (None, None)
-        };
-
+        let realm_authority = Keypair::new();
         let realm_custodian = Keypair::new();
 
         let create_realm_instruction = create_realm(
             &self.program_id,
+            &realm_authority.pubkey(),
             &community_token_mint_keypair.pubkey(),
             &self.context.payer.pubkey(),
             council_token_mint_pubkey,
-            realm_authority_pubkey,
             Some(realm_custodian.pubkey()),
             name.clone(),
             config_args.community_mint_max_vote_weight_source.clone(),
@@ -229,7 +222,7 @@ impl GovernanceProgramTest {
 
             name,
             reserved: [0; 8],
-            authority: realm_authority_pubkey,
+            authority: Some(realm_authority.pubkey()),
             config: RealmConfig {
                 council_mint: council_token_mint_pubkey,
                 reserved: [0; 8],
@@ -249,7 +242,7 @@ impl GovernanceProgramTest {
 
             council_token_holding_account: council_token_holding_address,
             council_mint_authority: council_token_mint_authority,
-            realm_authority,
+            realm_authority: Some(realm_authority),
         }
     }
 
@@ -267,10 +260,10 @@ impl GovernanceProgramTest {
 
         let create_realm_instruction = create_realm(
             &self.program_id,
+            &realm_authority.pubkey(),
             &realm_cookie.account.community_mint,
             &self.context.payer.pubkey(),
             Some(council_mint),
-            Some(realm_authority.pubkey()),
             Some(realm_custodian.pubkey()),
             name.clone(),
             community_mint_max_vote_weight_source,

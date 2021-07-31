@@ -25,10 +25,6 @@ pub struct RealmConfigArgs {
     /// If yes then custodian account must also be passed to the instruction  
     pub use_custodian: bool,
 
-    /// Indicates whether authority should be used
-    /// If yes then authority account must also be passed to the instruction
-    pub use_authority: bool,
-
     /// The source used for community mint max vote weight source
     pub community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
 }

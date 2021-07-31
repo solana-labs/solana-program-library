@@ -32,13 +32,14 @@ pub fn process_create_realm(
     let account_info_iter = &mut accounts.iter();
 
     let realm_info = next_account_info(account_info_iter)?; // 0
-    let governance_token_mint_info = next_account_info(account_info_iter)?; // 1
-    let governance_token_holding_info = next_account_info(account_info_iter)?; // 2
-    let payer_info = next_account_info(account_info_iter)?; // 3
-    let system_info = next_account_info(account_info_iter)?; // 4
-    let spl_token_info = next_account_info(account_info_iter)?; // 5
+    let realm_authority_info = next_account_info(account_info_iter)?; // 1
+    let governance_token_mint_info = next_account_info(account_info_iter)?; // 2
+    let governance_token_holding_info = next_account_info(account_info_iter)?; // 3
+    let payer_info = next_account_info(account_info_iter)?; // 4
+    let system_info = next_account_info(account_info_iter)?; // 5
+    let spl_token_info = next_account_info(account_info_iter)?; // 6
 
-    let rent_sysvar_info = next_account_info(account_info_iter)?; // 6
+    let rent_sysvar_info = next_account_info(account_info_iter)?; // 7
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
 
     if !realm_info.data_is_empty() {
@@ -80,13 +81,6 @@ pub fn process_create_realm(
         None
     };
 
-    let realm_authority = if config_args.use_authority {
-        let realm_authority_info = next_account_info(account_info_iter)?;
-        Some(*realm_authority_info.key)
-    } else {
-        None
-    };
-
     let realm_custodian = if config_args.use_custodian {
         let realm_custodian_info = next_account_info(account_info_iter)?;
         Some(*realm_custodian_info.key)
@@ -100,7 +94,7 @@ pub fn process_create_realm(
 
         name: name.clone(),
         reserved: [0; 8],
-        authority: realm_authority,
+        authority: Some(*realm_authority_info.key),
         config: RealmConfig {
             council_mint: council_token_mint_address,
             reserved: [0; 8],
