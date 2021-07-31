@@ -72,7 +72,7 @@ async fn test_finalize_vote_to_succeeded() {
     // Act
 
     governance_test
-        .finalize_vote(&proposal_cookie)
+        .finalize_vote(&realm_cookie, &proposal_cookie)
         .await
         .unwrap();
 
@@ -86,6 +86,18 @@ async fn test_finalize_vote_to_succeeded() {
     assert_eq!(
         Some(clock.unix_timestamp),
         proposal_account.voting_completed_at
+    );
+
+    assert_eq!(Some(210), proposal_account.governing_token_mint_vote_supply);
+
+    assert_eq!(
+        Some(
+            account_governance_cookie
+                .account
+                .config
+                .vote_threshold_percentage
+        ),
+        proposal_account.vote_threshold_percentage
     );
 }
 
@@ -139,7 +151,7 @@ async fn test_finalize_vote_to_defeated() {
     // Act
 
     governance_test
-        .finalize_vote(&proposal_cookie)
+        .finalize_vote(&realm_cookie, &proposal_cookie)
         .await
         .unwrap();
 
@@ -196,7 +208,7 @@ async fn test_finalize_vote_with_invalid_mint_error() {
     // Act
 
     let err = governance_test
-        .finalize_vote(&proposal_cookie)
+        .finalize_vote(&realm_cookie, &proposal_cookie)
         .await
         .err()
         .unwrap();
@@ -258,7 +270,7 @@ async fn test_finalize_vote_with_invalid_governance_error() {
     // Act
 
     let err = governance_test
-        .finalize_vote(&proposal_cookie)
+        .finalize_vote(&realm_cookie, &proposal_cookie)
         .await
         .err()
         .unwrap();

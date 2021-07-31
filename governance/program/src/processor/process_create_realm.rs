@@ -11,8 +11,10 @@ use solana_program::{
 use crate::{
     error::GovernanceError,
     state::{
-        enums::GovernanceAccountType,
-        realm::{get_governing_token_holding_address_seeds, get_realm_address_seeds, Realm},
+        enums::{GovernanceAccountType, MintMaxVoteWeightSource},
+        realm::{
+            get_governing_token_holding_address_seeds, get_realm_address_seeds, Realm, RealmConfig,
+        },
     },
     tools::{
         account::create_and_serialize_account_signed, spl_token::create_spl_token_account_signed,
@@ -28,13 +30,14 @@ pub fn process_create_realm(
     let account_info_iter = &mut accounts.iter();
 
     let realm_info = next_account_info(account_info_iter)?; // 0
-    let governance_token_mint_info = next_account_info(account_info_iter)?; // 1
-    let governance_token_holding_info = next_account_info(account_info_iter)?; // 2
-    let payer_info = next_account_info(account_info_iter)?; // 3
-    let system_info = next_account_info(account_info_iter)?; // 4
-    let spl_token_info = next_account_info(account_info_iter)?; // 5
+    let realm_authority_info = next_account_info(account_info_iter)?; // 1
+    let governance_token_mint_info = next_account_info(account_info_iter)?; // 2
+    let governance_token_holding_info = next_account_info(account_info_iter)?; // 3
+    let payer_info = next_account_info(account_info_iter)?; // 4
+    let system_info = next_account_info(account_info_iter)?; // 5
+    let spl_token_info = next_account_info(account_info_iter)?; // 6
 
-    let rent_sysvar_info = next_account_info(account_info_iter)?; // 6
+    let rent_sysvar_info = next_account_info(account_info_iter)?; // 7
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
 
     if !realm_info.data_is_empty() {
@@ -81,9 +84,16 @@ pub fn process_create_realm(
     let realm_data = Realm {
         account_type: GovernanceAccountType::Realm,
         community_mint: *governance_token_mint_info.key,
-        council_mint: council_token_mint_address,
+
         name: name.clone(),
         reserved: [0; 8],
+        authority: Some(*realm_authority_info.key),
+        config: RealmConfig {
+            council_mint: council_token_mint_address,
+            reserved: [0; 8],
+            custodian: Some(*realm_authority_info.key),
+            community_mint_max_vote_weight_source: MintMaxVoteWeightSource::Percentage(100),
+        },
     };
 
     create_and_serialize_account_signed::<Realm>(

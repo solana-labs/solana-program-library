@@ -275,6 +275,30 @@ pub enum GovernanceError {
     /// Governance PDA must sign
     #[error("Governance PDA must sign")]
     GovernancePdaMustSign,
+
+    /// Instruction already flagged with error
+    #[error("Instruction already flagged with error")]
+    InstructionAlreadyFlaggedWithError,
+
+    /// Invalid Realm for Governance
+    #[error("Invalid Realm for Governance")]
+    InvalidRealmForGovernance,
+
+    /// Invalid Authority for Realm
+    #[error("Invalid Authority for Realm")]
+    InvalidAuthorityForRealm,
+
+    /// Realm has no authority
+    #[error("Realm has no authority")]
+    RealmHasNoAuthority,
+
+    /// Realm authority must sign
+    #[error("Realm authority must sign")]
+    RealmAuthorityMustSign,
+
+    /// Invalid governing token holding account
+    #[error("Invalid governing token holding account")]
+    InvalidGoverningTokenHoldingAccount,
 }
 
 impl PrintProgramError for GovernanceError {

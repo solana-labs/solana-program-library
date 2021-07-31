@@ -41,15 +41,16 @@ pub enum GovernanceInstruction {
     /// Creates Governance Realm account which aggregates governances for given Community Mint and optional Council Mint
     ///
     /// 0. `[writable]` Governance Realm account. PDA seeds:['governance',name]
-    /// 1. `[]` Community Token Mint
-    /// 2. `[writable]` Community Token Holding account. PDA seeds: ['governance',realm,community_mint]
+    /// 1. `[]` Realm authority    
+    /// 2. `[]` Community Token Mint
+    /// 3. `[writable]` Community Token Holding account. PDA seeds: ['governance',realm,community_mint]
     ///     The account will be created with the Realm PDA as its owner
-    /// 3. `[signer]` Payer
-    /// 4. `[]` System
-    /// 5. `[]` SPL Token
-    /// 6. `[]` Sysvar Rent
-    /// 7. `[]` Council Token Mint - optional
-    /// 8. `[writable]` Council Token Holding account - optional. . PDA seeds: ['governance',realm,council_mint]
+    /// 4. `[signer]` Payer
+    /// 5. `[]` System
+    /// 6. `[]` SPL Token
+    /// 7. `[]` Sysvar Rent
+    /// 8. `[]` Council Token Mint - optional
+    /// 9. `[writable]` Council Token Holding account - optional. . PDA seeds: ['governance',realm,council_mint]
     ///     The account will be created with the Realm PDA as its owner
     CreateRealm {
         #[allow(dead_code)]
@@ -137,14 +138,15 @@ pub enum GovernanceInstruction {
 
     /// Creates Proposal account for Instructions that will be executed at some point in the future
     ///
-    ///   0. `[writable]` Proposal account. PDA seeds ['governance',governance, governing_token_mint, proposal_index]
-    ///   1. `[writable]` Governance account
-    ///   2. `[]` TokenOwnerRecord account for Proposal owner
-    ///   3. `[signer]` Governance Authority (Token Owner or Governance Delegate)
-    ///   4. `[signer]` Payer
-    ///   5. `[]` System program
-    ///   6. `[]` Rent sysvar
-    ///   7. `[]` Clock sysvar
+    ///   0. `[]` Realm account the created Proposal belongs to
+    ///   1. `[writable]` Proposal account. PDA seeds ['governance',governance, governing_token_mint, proposal_index]
+    ///   2. `[writable]` Governance account
+    ///   3. `[]` TokenOwnerRecord account for Proposal owner
+    ///   4. `[signer]` Governance Authority (Token Owner or Governance Delegate)
+    ///   5. `[signer]` Payer
+    ///   6. `[]` System program
+    ///   7. `[]` Rent sysvar
+    ///   8. `[]` Clock sysvar
     CreateProposal {
         #[allow(dead_code)]
         /// UTF-8 encoded name of the proposal
@@ -242,16 +244,17 @@ pub enum GovernanceInstruction {
     ///  By doing so you indicate you approve or disapprove of running the Proposal set of instructions
     ///  If you tip the consensus then the instructions can begin to be run after their hold up time
     ///
-    ///   0. `[]` Governance account
-    ///   1. `[writable]` Proposal account
-    ///   2. `[writable]` Token Owner Record account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
-    ///   3. `[signer]` Governance Authority (Token Owner or Governance Delegate)
-    ///   4. `[writable]` Proposal VoteRecord account. PDA seeds: ['governance',proposal,governing_token_owner_record]
-    ///   5. `[]` Governing Token Mint
-    ///   6. `[signer]` Payer
-    ///   7. `[]` System program
-    ///   8. `[]` Rent sysvar
-    ///   9. `[]` Clock sysvar
+    ///   0. `[]` Realm account
+    ///   1. `[]` Governance account
+    ///   2. `[writable]` Proposal account
+    ///   3. `[writable]` Token Owner Record account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
+    ///   4. `[signer]` Governance Authority (Token Owner or Governance Delegate)
+    ///   5. `[writable]` Proposal VoteRecord account. PDA seeds: ['governance',proposal,governing_token_owner_record]
+    ///   6. `[]` Governing Token Mint
+    ///   7. `[signer]` Payer
+    ///   8. `[]` System program
+    ///   9. `[]` Rent sysvar
+    ///   10. `[]` Clock sysvar
     CastVote {
         #[allow(dead_code)]
         /// Yes/No vote
@@ -260,10 +263,11 @@ pub enum GovernanceInstruction {
 
     /// Finalizes vote in case the Vote was not automatically tipped within max_voting_time period
     ///
-    ///   0. `[]` Governance account
-    ///   1. `[writable]` Proposal account
-    ///   2. `[]` Governing Token Mint
-    ///   3. `[]` Clock sysvar
+    ///   0. `[]` Realm account    
+    ///   1. `[]` Governance account
+    ///   2. `[writable]` Proposal account
+    ///   3. `[]` Governing Token Mint
+    ///   4. `[]` Clock sysvar
     FinalizeVote {},
 
     ///  Relinquish Vote removes voter weight from a Proposal and removes it from voter's active votes
@@ -347,12 +351,35 @@ pub enum GovernanceInstruction {
         /// New governance config
         config: GovernanceConfig,
     },
+
+    /// Flags an instruction and its parent Proposal with error status
+    /// It can be used by Proposal owner in case the instruction is permanently broken and can't be executed
+    /// Note: This instruction is a workaround because currently it's not possible to catch errors from CPI calls
+    ///       and the Governance program has no way to know when instruction failed and flag it automatically
+    ///
+    ///   0. `[writable]` Proposal account
+    ///   1. `[]` TokenOwnerRecord account for Proposal owner
+    ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)    
+    ///   3. `[writable]` ProposalInstruction account to flag
+    ///   4. `[]` Clock sysvar
+    FlagInstructionError,
+
+    /// Sets new Realm authority
+    ///
+    ///   0. `[writable]` Realm account
+    ///   1. `[signer]` Current Realm authority    
+    SetRealmAuthority {
+        #[allow(dead_code)]
+        /// New realm authority or None to remove authority
+        new_realm_authority: Option<Pubkey>,
+    },
 }
 
 /// Creates CreateRealm instruction
 pub fn create_realm(
     program_id: &Pubkey,
     // Accounts
+    realm_authority: &Pubkey,
     community_token_mint: &Pubkey,
     payer: &Pubkey,
     council_token_mint: Option<Pubkey>,
@@ -365,6 +392,7 @@ pub fn create_realm(
 
     let mut accounts = vec![
         AccountMeta::new(realm_address, false),
+        AccountMeta::new_readonly(*realm_authority, false),
         AccountMeta::new_readonly(*community_token_mint, false),
         AccountMeta::new(community_token_holding_address, false),
         AccountMeta::new_readonly(*payer, true),
@@ -657,7 +685,7 @@ pub fn create_proposal(
     program_id: &Pubkey,
     // Accounts
     governance: &Pubkey,
-    governing_token_owner: &Pubkey,
+    governing_token_owner_record: &Pubkey,
     governance_authority: &Pubkey,
     payer: &Pubkey,
     // Args
@@ -673,17 +701,12 @@ pub fn create_proposal(
         governing_token_mint,
         &proposal_index.to_le_bytes(),
     );
-    let token_owner_record_address = get_token_owner_record_address(
-        program_id,
-        realm,
-        governing_token_mint,
-        governing_token_owner,
-    );
 
     let accounts = vec![
+        AccountMeta::new_readonly(*realm, false),
         AccountMeta::new(proposal_address, false),
         AccountMeta::new(*governance, false),
-        AccountMeta::new_readonly(token_owner_record_address, false),
+        AccountMeta::new_readonly(*governing_token_owner_record, false),
         AccountMeta::new_readonly(*governance_authority, true),
         AccountMeta::new_readonly(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
@@ -799,6 +822,7 @@ pub fn sign_off_proposal(
 pub fn cast_vote(
     program_id: &Pubkey,
     // Accounts
+    realm: &Pubkey,
     governance: &Pubkey,
     proposal: &Pubkey,
     token_owner_record: &Pubkey,
@@ -811,6 +835,7 @@ pub fn cast_vote(
     let vote_record_address = get_vote_record_address(program_id, proposal, token_owner_record);
 
     let accounts = vec![
+        AccountMeta::new_readonly(*realm, false),
         AccountMeta::new_readonly(*governance, false),
         AccountMeta::new(*proposal, false),
         AccountMeta::new(*token_owner_record, false),
@@ -836,11 +861,13 @@ pub fn cast_vote(
 pub fn finalize_vote(
     program_id: &Pubkey,
     // Accounts
+    realm: &Pubkey,
     governance: &Pubkey,
     proposal: &Pubkey,
     governing_token_mint: &Pubkey,
 ) -> Instruction {
     let accounts = vec![
+        AccountMeta::new_readonly(*realm, false),
         AccountMeta::new_readonly(*governance, false),
         AccountMeta::new(*proposal, false),
         AccountMeta::new_readonly(*governing_token_mint, false),
@@ -1024,6 +1051,57 @@ pub fn set_governance_config(
     let accounts = vec![AccountMeta::new(*governance, true)];
 
     let instruction = GovernanceInstruction::SetGovernanceConfig { config };
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates FlagInstructionError instruction
+pub fn flag_instruction_error(
+    program_id: &Pubkey,
+    // Accounts
+    proposal: &Pubkey,
+    token_owner_record: &Pubkey,
+    governance_authority: &Pubkey,
+    proposal_instruction: &Pubkey,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new(*proposal, false),
+        AccountMeta::new_readonly(*token_owner_record, false),
+        AccountMeta::new_readonly(*governance_authority, true),
+        AccountMeta::new(*proposal_instruction, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+    ];
+
+    let instruction = GovernanceInstruction::FlagInstructionError {};
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates SetRealmAuthority instruction
+pub fn set_realm_authority(
+    program_id: &Pubkey,
+    // Accounts
+    realm: &Pubkey,
+    realm_authority: &Pubkey,
+    new_realm_authority: &Option<Pubkey>,
+    // Args
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new(*realm, false),
+        AccountMeta::new_readonly(*realm_authority, true),
+    ];
+
+    let instruction = GovernanceInstruction::SetRealmAuthority {
+        new_realm_authority: *new_realm_authority,
+    };
 
     Instruction {
         program_id: *program_id,

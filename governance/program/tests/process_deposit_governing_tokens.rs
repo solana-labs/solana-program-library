@@ -270,3 +270,53 @@ async fn test_deposit_initial_community_tokens_with_invalid_owner_error() {
     // Assert
     assert_eq!(error, GovernanceError::GoverningTokenOwnerMustSign.into());
 }
+
+#[tokio::test]
+async fn test_deposit_community_tokens_with_malicious_holding_account_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+    let realm_cookie = governance_test.with_realm().await;
+
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await;
+
+    governance_test
+        .mint_tokens(
+            &realm_cookie.account.community_mint,
+            &realm_cookie.community_mint_authority,
+            &token_owner_record_cookie.token_source,
+            50,
+        )
+        .await;
+
+    let mut deposit_ix = deposit_governing_tokens(
+        &governance_test.program_id,
+        &realm_cookie.address,
+        &token_owner_record_cookie.token_source,
+        &token_owner_record_cookie.token_owner.pubkey(),
+        &token_owner_record_cookie.token_owner.pubkey(),
+        &governance_test.context.payer.pubkey(),
+        &realm_cookie.account.community_mint,
+    );
+
+    // Try to maliciously deposit to the source
+    deposit_ix.accounts[1].pubkey = token_owner_record_cookie.token_source;
+
+    // Act
+
+    let err = governance_test
+        .process_transaction(
+            &[deposit_ix],
+            Some(&[&token_owner_record_cookie.token_owner]),
+        )
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+    assert_eq!(
+        err,
+        GovernanceError::InvalidGoverningTokenHoldingAccount.into()
+    );
+}

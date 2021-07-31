@@ -103,6 +103,21 @@ pub struct StakePool {
 
     /// Preferred withdraw validator vote account pubkey
     pub preferred_withdraw_validator_vote_address: Option<Pubkey>,
+
+    /// Fee assessed on deposits
+    pub deposit_fee: Fee,
+
+    /// Fee assessed on withdrawals
+    pub withdrawal_fee: Fee,
+
+    /// Future withdrawal fee, to be set for the following epoch
+    pub next_withdrawal_fee: Option<Fee>,
+
+    /// Fees paid out to referrers on referred deposits.
+    /// Expressed as a percentage (0 - 100) of deposit fees.
+    /// i.e. `deposit_fee`% is collected as deposit fees for every deposit
+    /// and `referral_fee`% of the collected deposit fees is paid out to the referrer
+    pub referral_fee: u8,
 }
 impl StakePool {
     /// calculate the pool tokens that should be minted for a deposit of `stake_lamports`
@@ -128,19 +143,22 @@ impl StakePool {
         .ok()
     }
 
+    /// calculate pool tokens to be deducted as withdrawal fees
+    pub fn calc_pool_tokens_withdrawal_fee(&self, pool_tokens: u64) -> Option<u64> {
+        u64::try_from(self.withdrawal_fee.apply(pool_tokens)?).ok()
+    }
+
     /// Calculate the fee in pool tokens that goes to the manager
     ///
     /// This function assumes that `reward_lamports` has not already been added
     /// to the stake pool's `total_stake_lamports`
     pub fn calc_fee_amount(&self, reward_lamports: u64) -> Option<u64> {
-        if self.fee.denominator == 0 || reward_lamports == 0 {
+        if reward_lamports == 0 {
             return Some(0);
         }
         let total_stake_lamports =
             (self.total_stake_lamports as u128).checked_add(reward_lamports as u128)?;
-        let fee_lamports = (reward_lamports as u128)
-            .checked_mul(self.fee.numerator as u128)?
-            .checked_div(self.fee.denominator as u128)?;
+        let fee_lamports = self.fee.apply(reward_lamports)?;
         u64::try_from(
             (self.pool_token_supply as u128)
                 .checked_mul(fee_lamports)?
@@ -525,6 +543,7 @@ impl ValidatorListHeader {
 
 /// Fee rate as a ratio, minted on `UpdateStakePoolBalance` as a proportion of
 /// the rewards
+/// If either the numerator or the denominator is 0, the fee is considered to be 0
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, BorshSerialize, BorshDeserialize, BorshSchema)]
 pub struct Fee {
@@ -532,6 +551,22 @@ pub struct Fee {
     pub denominator: u64,
     /// numerator of the fee ratio
     pub numerator: u64,
+}
+
+impl Fee {
+    /// Applies the Fee's rates to a given amount, `amt`
+    /// returning the amount to be subtracted from it as fees
+    /// (0 if denominator is 0 or amt is 0),
+    /// or None if overflow occurs
+    #[inline]
+    pub fn apply(&self, amt: u64) -> Option<u128> {
+        if self.denominator == 0 {
+            return Some(0);
+        }
+        (amt as u128)
+            .checked_mul(self.numerator as u128)?
+            .checked_div(self.denominator as u128)
+    }
 }
 
 #[cfg(test)]

@@ -262,3 +262,52 @@ async fn test_withdraw_governing_tokens_after_relinquishing_vote() {
         source_account.amount
     );
 }
+
+#[tokio::test]
+async fn test_withdraw_tokens_with_malicious_holding_account_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+    let realm_cookie = governance_test.with_realm().await;
+
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await;
+
+    // Try to maliciously withdraw from other token account owned by realm
+
+    let realm_token_account_cookie = governance_test
+        .with_token_account(
+            &realm_cookie.account.community_mint,
+            &realm_cookie.address,
+            &realm_cookie.community_mint_authority,
+            200,
+        )
+        .await;
+
+    let mut instruction = withdraw_governing_tokens(
+        &governance_test.program_id,
+        &realm_cookie.address,
+        &token_owner_record_cookie.token_source,
+        &token_owner_record_cookie.token_owner.pubkey(),
+        &realm_cookie.account.community_mint,
+    );
+
+    instruction.accounts[1].pubkey = realm_token_account_cookie.address;
+
+    // Act
+    let err = governance_test
+        .process_transaction(
+            &[instruction],
+            Some(&[&token_owner_record_cookie.token_owner]),
+        )
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+
+    assert_eq!(
+        err,
+        GovernanceError::InvalidGoverningTokenHoldingAccount.into()
+    );
+}

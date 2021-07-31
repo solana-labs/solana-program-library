@@ -70,7 +70,10 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
         .checked_add(1)
         .unwrap();
 
-    if proposal_data.state == ProposalState::Executing
+    // Checking for Executing and ExecutingWithErrors states because instruction can still be executed after being flagged with error
+    // The check for instructions_executed_count ensures Proposal can't be transitioned to Completed state from ExecutingWithErrors
+    if (proposal_data.state == ProposalState::Executing
+        || proposal_data.state == ProposalState::ExecutingWithErrors)
         && proposal_data.instructions_executed_count == proposal_data.instructions_count
     {
         proposal_data.closed_at = Some(clock.unix_timestamp);

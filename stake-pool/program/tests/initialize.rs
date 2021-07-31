@@ -177,6 +177,34 @@ async fn fail_with_high_fee() {
 }
 
 #[tokio::test]
+async fn fail_with_high_withdrawal_fee() {
+    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
+    let mut stake_pool_accounts = StakePoolAccounts::new();
+    stake_pool_accounts.withdrawal_fee = state::Fee {
+        numerator: 100_001,
+        denominator: 100_000,
+    };
+
+    let transaction_error = stake_pool_accounts
+        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
+        .await
+        .err()
+        .unwrap();
+    match transaction_error {
+        TransportError::TransactionError(TransactionError::InstructionError(
+            _,
+            InstructionError::Custom(error_index),
+        )) => {
+            let program_error = error::StakePoolError::FeeTooHigh as u32;
+            assert_eq!(error_index, program_error);
+        }
+        _ => {
+            panic!("Wrong error occurs while try to initialize stake pool with high withdrawal fee")
+        }
+    }
+}
+
+#[tokio::test]
 async fn fail_with_wrong_max_validators() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_pool_accounts = StakePoolAccounts::new();
@@ -225,6 +253,7 @@ async fn fail_with_wrong_max_validators() {
                 &spl_token::id(),
                 None,
                 stake_pool_accounts.fee,
+                stake_pool_accounts.withdrawal_fee,
                 stake_pool_accounts.max_validators,
             ),
         ],
@@ -295,6 +324,7 @@ async fn fail_with_wrong_mint_authority() {
         &stake_pool_accounts.staker.pubkey(),
         &None,
         &stake_pool_accounts.fee,
+        &stake_pool_accounts.withdrawal_fee,
         stake_pool_accounts.max_validators,
     )
     .await
@@ -380,6 +410,7 @@ async fn fail_with_freeze_authority() {
         &stake_pool_accounts.staker.pubkey(),
         &None,
         &stake_pool_accounts.fee,
+        &stake_pool_accounts.withdrawal_fee,
         stake_pool_accounts.max_validators,
     )
     .await
@@ -467,6 +498,7 @@ async fn fail_with_wrong_token_program_id() {
                 &wrong_token_program.pubkey(),
                 None,
                 stake_pool_accounts.fee,
+                stake_pool_accounts.withdrawal_fee,
                 stake_pool_accounts.max_validators,
             ),
         ],
@@ -543,6 +575,7 @@ async fn fail_with_wrong_fee_account() {
         &stake_pool_accounts.staker.pubkey(),
         &None,
         &stake_pool_accounts.fee,
+        &stake_pool_accounts.withdrawal_fee,
         stake_pool_accounts.max_validators,
     )
     .await
@@ -631,6 +664,7 @@ async fn fail_with_not_rent_exempt_pool() {
                 &spl_token::id(),
                 None,
                 stake_pool_accounts.fee,
+                stake_pool_accounts.withdrawal_fee,
                 stake_pool_accounts.max_validators,
             ),
         ],
@@ -705,6 +739,7 @@ async fn fail_with_not_rent_exempt_validator_list() {
                 &spl_token::id(),
                 None,
                 stake_pool_accounts.fee,
+                stake_pool_accounts.withdrawal_fee,
                 stake_pool_accounts.max_validators,
             ),
         ],
@@ -756,6 +791,7 @@ async fn fail_without_manager_signature() {
 
     let init_data = instruction::StakePoolInstruction::Initialize {
         fee: stake_pool_accounts.fee,
+        withdrawal_fee: stake_pool_accounts.withdrawal_fee,
         max_validators: stake_pool_accounts.max_validators,
     };
     let data = init_data.try_to_vec().unwrap();
@@ -877,6 +913,7 @@ async fn fail_with_pre_minted_pool_tokens() {
         &stake_pool_accounts.staker.pubkey(),
         &None,
         &stake_pool_accounts.fee,
+        &stake_pool_accounts.withdrawal_fee,
         stake_pool_accounts.max_validators,
     )
     .await
@@ -938,6 +975,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.staker.pubkey(),
             &None,
             &stake_pool_accounts.fee,
+            &stake_pool_accounts.withdrawal_fee,
             stake_pool_accounts.max_validators,
         )
         .await
@@ -983,6 +1021,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.staker.pubkey(),
             &None,
             &stake_pool_accounts.fee,
+            &stake_pool_accounts.withdrawal_fee,
             stake_pool_accounts.max_validators,
         )
         .await
@@ -1031,6 +1070,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.staker.pubkey(),
             &None,
             &stake_pool_accounts.fee,
+            &stake_pool_accounts.withdrawal_fee,
             stake_pool_accounts.max_validators,
         )
         .await
@@ -1079,6 +1119,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.staker.pubkey(),
             &None,
             &stake_pool_accounts.fee,
+            &stake_pool_accounts.withdrawal_fee,
             stake_pool_accounts.max_validators,
         )
         .await
