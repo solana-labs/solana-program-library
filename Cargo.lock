@@ -3949,8 +3949,8 @@ dependencies = [
  "solana-client",
  "solana-program-test",
  "solana-sdk",
- "spl-associated-token-account 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "spl-token 3.1.1",
+ "spl-associated-token-account 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "spl-token 3.2.0",
  "thiserror",
 ]
 

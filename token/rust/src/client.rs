@@ -90,10 +90,14 @@ where
     async fn send_transaction(&self, transaction: Transaction) -> TokenClientResult<ST::Output>;
 }
 
+enum TokenBanksClientContext {
+    Client(Arc<Mutex<BanksClient>>),
+    Context(Arc<Mutex<ProgramTestContext>>),
+}
+
 /// Token client for `BanksClient` from crate `solana-program-test`.
 pub struct TokenBanksClient<ST> {
-    client: Option<Arc<Mutex<BanksClient>>>,
-    context: Option<Arc<Mutex<ProgramTestContext>>>,
+    context: TokenBanksClientContext,
     send: ST,
 }
 
@@ -104,41 +108,31 @@ impl<ST> fmt::Debug for TokenBanksClient<ST> {
 }
 
 impl<ST> TokenBanksClient<ST> {
-    pub fn new(
-        client: Option<Arc<Mutex<BanksClient>>>,
-        context: Option<Arc<Mutex<ProgramTestContext>>>,
-        send: ST,
-    ) -> Self {
-        Self {
-            client,
-            context,
-            send,
-        }
+    fn new(context: TokenBanksClientContext, send: ST) -> Self {
+        Self { context, send }
     }
 
     pub fn new_from_client(client: Arc<Mutex<BanksClient>>, send: ST) -> Self {
-        Self::new(Some(client), None, send)
+        Self::new(TokenBanksClientContext::Client(client), send)
     }
 
     pub fn new_from_context(context: Arc<Mutex<ProgramTestContext>>, send: ST) -> Self {
-        Self::new(None, Some(context), send)
+        Self::new(TokenBanksClientContext::Context(context), send)
     }
 
     async fn run_in_lock<F, O>(&self, f: F) -> O
     where
         for<'a> F: Fn(&'a mut BanksClient) -> BoxFuture<'a, O>,
     {
-        match (self.client.as_ref(), self.context.as_ref()) {
-            (None, None) => unreachable!(),
-            (None, Some(context)) => {
-                let mut lock = context.lock().await;
-                f(&mut lock.banks_client).await
-            }
-            (Some(client), None) => {
+        match &self.context {
+            TokenBanksClientContext::Client(client) => {
                 let mut lock = client.lock().await;
                 f(&mut lock).await
             }
-            (Some(_), Some(_)) => unreachable!(),
+            TokenBanksClientContext::Context(context) => {
+                let mut lock = context.lock().await;
+                f(&mut lock.banks_client).await
+            }
         }
     }
 }
