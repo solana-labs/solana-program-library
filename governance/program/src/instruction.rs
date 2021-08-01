@@ -383,12 +383,12 @@ pub enum GovernanceInstruction {
     /// Sets realm config
     ///   0. `[writable]` Realm account
     ///   1. `[signer]`  Realm authority    
-    ///   3. `[]` Realm custodian - optional    
-    ///   4. `[]` Council Token Mint - optional
+    ///   2. `[]` Realm custodian - optional    
+    ///   3. `[]` Council Token Mint - optional
     ///       Note: In the current version it's only possible to remove council mint (set it to None)
     ///       After setting council to None it won't be possible to withdraw the tokens from the Realm any longer
     ///       If that's required then it must be done before executing this instruction
-    ///   5. `[writable]` Council Token Holding account - optional unless council is used. PDA seeds: ['governance',realm,council_mint]
+    ///   4. `[writable]` Council Token Holding account - optional unless council is used. PDA seeds: ['governance',realm,council_mint]
     ///       The account will be created with the Realm PDA as its owner
     SetRealmConfig {
         #[allow(dead_code)]

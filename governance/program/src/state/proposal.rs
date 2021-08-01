@@ -12,18 +12,16 @@ use crate::{
     state::{
         enums::{
             GovernanceAccountType, InstructionExecutionFlags, InstructionExecutionStatus,
-            ProposalState, VoteThresholdPercentage,
+            MintMaxVoteWeightSource, ProposalState, VoteThresholdPercentage,
         },
         governance::GovernanceConfig,
         proposal_instruction::ProposalInstruction,
+        realm::Realm,
     },
     tools::account::{get_account_data, AccountMaxSize},
     PROGRAM_AUTHORITY_SEED,
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
-
-use super::enums::MintMaxVoteWeightSource;
-use super::realm::Realm;
 
 /// Governance Proposal
 #[repr(C)]
