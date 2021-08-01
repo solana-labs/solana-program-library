@@ -86,7 +86,7 @@ declare module '@solana/spl-token' {
       programId: PublicKey,
       mint: PublicKey,
       owner: PublicKey,
-      allowOwnerOffCurve: boolean,
+      allowOwnerOffCurve?: boolean,
     ): Promise<PublicKey>;
     static createMint(
       connection: Connection,
