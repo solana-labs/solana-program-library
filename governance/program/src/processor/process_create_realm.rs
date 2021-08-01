@@ -13,8 +13,8 @@ use crate::{
     state::{
         enums::GovernanceAccountType,
         realm::{
-            get_governing_token_holding_address_seeds, get_realm_address_seeds, Realm, RealmConfig,
-            RealmConfigArgs,
+            assert_valid_realm_config_args, get_governing_token_holding_address_seeds,
+            get_realm_address_seeds, Realm, RealmConfig, RealmConfigArgs,
         },
     },
     tools::{
@@ -45,6 +45,8 @@ pub fn process_create_realm(
     if !realm_info.data_is_empty() {
         return Err(GovernanceError::RealmAlreadyExists.into());
     }
+
+    assert_valid_realm_config_args(&config_args)?;
 
     create_spl_token_account_signed(
         payer_info,

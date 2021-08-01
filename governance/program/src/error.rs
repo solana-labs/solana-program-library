@@ -303,6 +303,14 @@ pub enum GovernanceError {
     /// Realm council mint change is not supported
     #[error("Realm council mint change is not supported")]
     RealmCouncilMintChangeIsNotSupported,
+
+    /// Not supported mint max vote weight source
+    #[error("Not supported mint max vote weight source")]
+    MintMaxVoteWeightSourceNotSupported,
+
+    /// Invalid supply fraction
+    #[error("Invalid supply fraction")]
+    InvalidSupplyFraction,
 }
 
 impl PrintProgramError for GovernanceError {

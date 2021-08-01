@@ -9,7 +9,7 @@ use solana_program::{
 
 use crate::{
     error::GovernanceError,
-    state::realm::{get_realm_data_for_authority, RealmConfigArgs},
+    state::realm::{assert_valid_realm_config_args, get_realm_data_for_authority, RealmConfigArgs},
 };
 
 /// Processes SetRealmConfig instruction
@@ -29,6 +29,8 @@ pub fn process_set_realm_config(
     if !realm_authority_info.is_signer {
         return Err(GovernanceError::RealmAuthorityMustSign.into());
     }
+
+    assert_valid_realm_config_args(&config_args)?;
 
     let realm_custodian = if config_args.use_custodian {
         let realm_custodian_info = next_account_info(account_info_iter)?;
