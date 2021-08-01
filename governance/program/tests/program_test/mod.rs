@@ -1242,7 +1242,7 @@ impl GovernanceProgramTest {
             no_votes_count: 0,
 
             execution_flags: InstructionExecutionFlags::None,
-            governing_token_mint_vote_supply: None,
+            max_vote_weight: None,
             vote_threshold_percentage: None,
         };
 

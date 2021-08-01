@@ -65,7 +65,7 @@ async fn test_cast_vote() {
         Some(clock.unix_timestamp)
     );
 
-    assert_eq!(Some(100), proposal_account.governing_token_mint_vote_supply);
+    assert_eq!(Some(100), proposal_account.max_vote_weight);
     assert_eq!(
         Some(
             account_governance_cookie

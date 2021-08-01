@@ -118,7 +118,7 @@ pub fn process_cast_vote(
         &governance_data.config,
         &realm_data,
         clock.unix_timestamp,
-    );
+    )?;
 
     proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
 
