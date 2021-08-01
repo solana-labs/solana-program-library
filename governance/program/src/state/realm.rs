@@ -215,7 +215,7 @@ pub fn assert_valid_realm_config_args(config_args: &RealmConfigArgs) -> Result<(
     match config_args.community_mint_max_vote_weight_source {
         MintMaxVoteWeightSource::SupplyFraction(fraction) => {
             if !(1..=MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE).contains(&fraction) {
-                return Err(GovernanceError::InvalidSupplyFraction.into());
+                return Err(GovernanceError::InvalidMaxVoteWeightSupplyFraction.into());
             }
         }
         _ => return Err(GovernanceError::MintMaxVoteWeightSourceNotSupported.into()),

@@ -56,6 +56,7 @@ pub fn process_set_realm_config(
         }
     } else {
         // Remove council mint from realm
+        // Note: In the current implementation this also makes it impossible to withdraw council tokens
         realm_data.config.council_mint = None;
     }
 

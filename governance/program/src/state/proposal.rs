@@ -216,7 +216,7 @@ impl Proposal {
     ) -> Result<(), ProgramError> {
         self.assert_can_finalize_vote(config, current_unix_timestamp)?;
 
-        let max_vote_weight = self.get_max_vote_weight(&realm_data, governing_token_mint_supply)?;
+        let max_vote_weight = self.get_max_vote_weight(realm_data, governing_token_mint_supply)?;
 
         self.state = self.get_final_vote_state(max_vote_weight, config);
         self.voting_completed_at = Some(current_unix_timestamp);
@@ -272,9 +272,9 @@ impl Proposal {
                     .checked_div(MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE as u128)
                     .unwrap() as u64;
 
-                return Ok(max_vote_weight);
+                Ok(max_vote_weight)
             }
-            _ => return Err(GovernanceError::VoteWeightSourceNotSupported.into()),
+            _ => Err(GovernanceError::VoteWeightSourceNotSupported.into()),
         }
     }
 
@@ -287,7 +287,7 @@ impl Proposal {
         realm_data: &Realm,
         current_unix_timestamp: UnixTimestamp,
     ) -> Result<(), ProgramError> {
-        let max_vote_weight = self.get_max_vote_weight(&realm_data, governing_token_mint_supply)?;
+        let max_vote_weight = self.get_max_vote_weight(realm_data, governing_token_mint_supply)?;
 
         if let Some(tipped_state) = self.try_get_tipped_vote_state(max_vote_weight, config) {
             self.state = tipped_state;

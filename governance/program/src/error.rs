@@ -308,9 +308,9 @@ pub enum GovernanceError {
     #[error("Not supported mint max vote weight source")]
     MintMaxVoteWeightSourceNotSupported,
 
-    /// Invalid supply fraction
-    #[error("Invalid supply fraction")]
-    InvalidSupplyFraction,
+    /// Invalid max vote weight supply fraction
+    #[error("Invalid max vote weight supply fraction")]
+    InvalidMaxVoteWeightSupplyFraction,
 }
 
 impl PrintProgramError for GovernanceError {
