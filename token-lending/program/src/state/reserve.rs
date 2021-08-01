@@ -433,7 +433,8 @@ impl ReserveLiquidity {
             .available_amount
             .checked_add(repay_amount)
             .ok_or(LendingError::MathOverflow)?;
-        self.borrowed_amount_wads = self.borrowed_amount_wads.try_sub(settle_amount)?;
+        let safe_settle_amount = settle_amount.min(self.borrowed_amount_wads);
+        self.borrowed_amount_wads = self.borrowed_amount_wads.try_sub(safe_settle_amount)?;
 
         Ok(())
     }

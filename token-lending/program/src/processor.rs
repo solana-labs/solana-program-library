@@ -1344,7 +1344,7 @@ fn process_borrow_obligation_liquidity(
         msg!("Borrow reserve is stale and must be refreshed in the current slot");
         return Err(LendingError::ReserveStale.into());
     }
-    if Decimal::from(liquidity_amount)
+    if liquidity_amount != u64::MAX && Decimal::from(liquidity_amount)
         .try_add(borrow_reserve.liquidity.borrowed_amount_wads)?
         .try_floor_u64()?
         > borrow_reserve.config.borrow_limit
@@ -1474,7 +1474,6 @@ fn process_repay_obligation_liquidity(
         msg!("Liquidity amount provided cannot be zero");
         return Err(LendingError::InvalidAmount.into());
     }
-
     let account_info_iter = &mut accounts.iter();
     let source_liquidity_info = next_account_info(account_info_iter)?;
     let destination_liquidity_info = next_account_info(account_info_iter)?;
