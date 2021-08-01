@@ -1,6 +1,7 @@
 //! Proposal  Account
 
 use solana_program::clock::{Slot, UnixTimestamp};
+
 use solana_program::{
     account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
     pubkey::Pubkey,
@@ -272,7 +273,14 @@ impl Proposal {
                     .checked_div(MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE as u128)
                     .unwrap() as u64;
 
-                Ok(max_vote_weight)
+                // When the fraction is used it's possible we can go over the calculated max_vote_weight
+                // and we have to adjust it in case more votes have been cast
+                let total_vote_count = self
+                    .yes_votes_count
+                    .checked_add(self.no_votes_count)
+                    .unwrap();
+
+                Ok(max_vote_weight.max(total_vote_count))
             }
             _ => Err(GovernanceError::VoteWeightSourceNotSupported.into()),
         }
@@ -1083,7 +1091,7 @@ mod test {
     }
 
     #[test]
-    fn test_try_tip_vote_with_reduced_community_mint_max_max_supply() {
+    fn test_try_tip_vote_with_reduced_community_mint_max_vote_weight() {
         // Arrange
         let mut proposal = create_test_proposal();
         proposal.yes_votes_count = 60;
@@ -1098,6 +1106,8 @@ mod test {
         let community_token_supply = 200;
 
         let mut realm = create_test_realm();
+
+        // reduce max vote weight to 100
         realm.config.community_mint_max_vote_weight_source =
             MintMaxVoteWeightSource::SupplyFraction(
                 MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE / 2,
@@ -1115,10 +1125,52 @@ mod test {
 
         // Assert
         assert_eq!(proposal.state, ProposalState::Succeeded);
+        assert_eq!(proposal.max_vote_weight, Some(100));
     }
 
     #[test]
-    fn test_try_tip_vote_for_council_vote_with_reduced_community_mint_max_supply() {
+    fn test_try_tip_vote_with_reduced_community_mint_max_vote_weight_and_vote_overflow() {
+        // Arrange
+        let mut proposal = create_test_proposal();
+
+        proposal.no_votes_count = 10;
+        proposal.state = ProposalState::Voting;
+
+        let mut governance_config = create_test_governance_config();
+        governance_config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(60);
+
+        let current_timestamp = 15_i64;
+
+        let community_token_supply = 200;
+
+        let mut realm = create_test_realm();
+
+        // reduce max vote weight to 100
+        realm.config.community_mint_max_vote_weight_source =
+            MintMaxVoteWeightSource::SupplyFraction(
+                MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE / 2,
+            );
+
+        // vote above reduced supply
+        proposal.yes_votes_count = 120;
+
+        // Act
+        proposal
+            .try_tip_vote(
+                community_token_supply,
+                &governance_config,
+                &realm,
+                current_timestamp,
+            )
+            .unwrap();
+
+        // Assert
+        assert_eq!(proposal.state, ProposalState::Succeeded);
+        assert_eq!(proposal.max_vote_weight, Some(130));
+    }
+
+    #[test]
+    fn test_try_tip_vote_for_council_vote_with_reduced_community_mint_max_vote_weight() {
         // Arrange
         let mut proposal = create_test_proposal();
         proposal.yes_votes_count = 60;
@@ -1154,7 +1206,7 @@ mod test {
     }
 
     #[test]
-    fn test_finalize_vote_with_reduced_community_mint_max_max_supply() {
+    fn test_finalize_vote_with_reduced_community_mint_max_vote_weight() {
         // Arrange
         let mut proposal = create_test_proposal();
         proposal.yes_votes_count = 60;
@@ -1168,6 +1220,8 @@ mod test {
         let community_token_supply = 200;
 
         let mut realm = create_test_realm();
+
+        // reduce max vote weight to 100
         realm.config.community_mint_max_vote_weight_source =
             MintMaxVoteWeightSource::SupplyFraction(
                 MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE / 2,
@@ -1185,6 +1239,47 @@ mod test {
 
         // Assert
         assert_eq!(proposal.state, ProposalState::Succeeded);
+        assert_eq!(proposal.max_vote_weight, Some(100));
+    }
+
+    #[test]
+    fn test_finalize_vote_with_reduced_community_mint_max_vote_weight_and_vote_overflow() {
+        // Arrange
+        let mut proposal = create_test_proposal();
+        proposal.yes_votes_count = 60;
+        proposal.no_votes_count = 10;
+        proposal.state = ProposalState::Voting;
+
+        let mut governance_config = create_test_governance_config();
+        governance_config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(60);
+
+        let current_timestamp = 16_i64;
+        let community_token_supply = 200;
+
+        let mut realm = create_test_realm();
+
+        // reduce max vote weight to 100
+        realm.config.community_mint_max_vote_weight_source =
+            MintMaxVoteWeightSource::SupplyFraction(
+                MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE / 2,
+            );
+
+        // vote above reduced supply
+        proposal.yes_votes_count = 120;
+
+        // Act
+        proposal
+            .finalize_vote(
+                community_token_supply,
+                &governance_config,
+                &realm,
+                current_timestamp,
+            )
+            .unwrap();
+
+        // Assert
+        assert_eq!(proposal.state, ProposalState::Succeeded);
+        assert_eq!(proposal.max_vote_weight, Some(130));
     }
 
     #[test]

@@ -162,7 +162,6 @@ pub enum InstructionExecutionFlags {
 
 /// The source of max vote weight used for voting
 /// Values below 100% mint supply can be used when the governing token is fully minted but not distributed yet
-/// Note: This field is not used yet. It's reserved for future versions
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum MintMaxVoteWeightSource {
@@ -171,6 +170,7 @@ pub enum MintMaxVoteWeightSource {
     SupplyFraction(u64),
 
     /// Absolute value, irrelevant of the actual mint supply, is used as max vote weight
+    /// Note: this option is not implemented in the current version
     Absolute(u64),
 }
 

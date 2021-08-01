@@ -37,7 +37,6 @@ pub struct RealmConfig {
     pub reserved: [u8; 8],
 
     /// The source used for community mint max vote weight source
-    /// Note: This field is not used yet. It's reserved for future versions
     pub community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
 
     /// Optional council mint
@@ -70,7 +69,6 @@ pub struct Realm {
 
     /// Realm authority. The authority must sign transactions which update the realm config
     /// The authority can be transferer to Realm Governance and hence make the Realm self governed through proposals
-    /// Note: This field is not used yet. It's reserved for future versions
     pub authority: Option<Pubkey>,
 
     /// Governance Realm name
