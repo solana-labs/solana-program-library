@@ -2,7 +2,6 @@
 
 mod program_test;
 
-use solana_program::pubkey::Pubkey;
 use solana_program_test::tokio;
 
 use program_test::*;
@@ -88,7 +87,7 @@ async fn test_finalize_vote_to_succeeded() {
         proposal_account.voting_completed_at
     );
 
-    assert_eq!(Some(210), proposal_account.governing_token_mint_vote_supply);
+    assert_eq!(Some(210), proposal_account.max_vote_weight);
 
     assert_eq!(
         Some(
@@ -203,7 +202,8 @@ async fn test_finalize_vote_with_invalid_mint_error() {
 
     assert_eq!(ProposalState::Voting, proposal_account.state);
 
-    proposal_cookie.account.governing_token_mint = Pubkey::new_unique();
+    proposal_cookie.account.governing_token_mint =
+        realm_cookie.account.config.council_mint.unwrap();
 
     // Act
 

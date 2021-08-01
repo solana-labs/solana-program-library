@@ -26,7 +26,7 @@ pub struct RealmCookie {
 
     pub council_token_holding_account: Option<Pubkey>,
 
-    pub realm_authority: Keypair,
+    pub realm_authority: Option<Keypair>,
 }
 
 #[derive(Debug)]

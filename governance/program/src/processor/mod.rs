@@ -20,6 +20,7 @@ mod process_remove_signatory;
 mod process_set_governance_config;
 mod process_set_governance_delegate;
 mod process_set_realm_authority;
+mod process_set_realm_config;
 mod process_sign_off_proposal;
 mod process_withdraw_governing_tokens;
 
@@ -46,6 +47,7 @@ use process_remove_signatory::*;
 use process_set_governance_config::*;
 use process_set_governance_delegate::*;
 use process_set_realm_authority::*;
+use process_set_realm_config::*;
 use process_sign_off_proposal::*;
 use process_withdraw_governing_tokens::*;
 
@@ -80,8 +82,8 @@ pub fn process_instruction(
     }
 
     match instruction {
-        GovernanceInstruction::CreateRealm { name } => {
-            process_create_realm(program_id, accounts, name)
+        GovernanceInstruction::CreateRealm { name, config_args } => {
+            process_create_realm(program_id, accounts, name, config_args)
         }
 
         GovernanceInstruction::DepositGoverningTokens {} => {
@@ -171,5 +173,8 @@ pub fn process_instruction(
         GovernanceInstruction::SetRealmAuthority {
             new_realm_authority,
         } => process_set_realm_authority(program_id, accounts, new_realm_authority),
+        GovernanceInstruction::SetRealmConfig { config_args } => {
+            process_set_realm_config(program_id, accounts, config_args)
+        }
     }
 }

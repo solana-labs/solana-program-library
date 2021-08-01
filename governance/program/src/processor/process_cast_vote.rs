@@ -14,8 +14,9 @@ use crate::{
     instruction::Vote,
     state::{
         enums::{GovernanceAccountType, VoteWeight},
-        governance::get_governance_data,
+        governance::get_governance_data_for_realm,
         proposal::get_proposal_data_for_governance_and_governing_mint,
+        realm::get_realm_data_for_governing_token_mint,
         token_owner_record::get_token_owner_record_data_for_realm_and_governing_mint,
         vote_record::{get_vote_record_address_seeds, VoteRecord},
     },
@@ -32,7 +33,7 @@ pub fn process_cast_vote(
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
-    let _realm_info = next_account_info(account_info_iter)?; // 0
+    let realm_info = next_account_info(account_info_iter)?; // 0
     let governance_info = next_account_info(account_info_iter)?; // 1
     let proposal_info = next_account_info(account_info_iter)?; // 2
     let token_owner_record_info = next_account_info(account_info_iter)?; // 3
@@ -54,7 +55,13 @@ pub fn process_cast_vote(
         return Err(GovernanceError::VoteAlreadyExists.into());
     }
 
-    let governance_data = get_governance_data(program_id, governance_info)?;
+    let realm_data = get_realm_data_for_governing_token_mint(
+        program_id,
+        realm_info,
+        governing_token_mint_info.key,
+    )?;
+    let governance_data =
+        get_governance_data_for_realm(program_id, governance_info, realm_info.key)?;
 
     let mut proposal_data = get_proposal_data_for_governance_and_governing_mint(
         program_id,
@@ -109,8 +116,9 @@ pub fn process_cast_vote(
     proposal_data.try_tip_vote(
         governing_token_mint_supply,
         &governance_data.config,
+        &realm_data,
         clock.unix_timestamp,
-    );
+    )?;
 
     proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
 
