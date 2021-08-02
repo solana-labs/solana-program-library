@@ -2,14 +2,13 @@ use crate::{
     error::BinaryOptionError,
     instruction::BinaryOptionInstruction,
     spl_utils::{
-        spl_burn, spl_initialize, spl_mint_initialize, spl_mint_to, spl_set_authority,
-        spl_token_transfer, spl_token_transfer_signed, spl_approve, spl_burn_signed,
+        spl_approve, spl_burn, spl_burn_signed, spl_initialize, spl_mint_initialize, spl_mint_to,
+        spl_set_authority, spl_token_transfer, spl_token_transfer_signed,
     },
     state::BinaryOption,
     system_utils::{create_new_account, create_or_allocate_account_raw},
     validation_utils::{
-        assert_initialized, assert_keys_equal, assert_keys_unequal,
-        assert_owned_by,
+        assert_initialized, assert_keys_equal, assert_keys_unequal, assert_owned_by,
     },
 };
 use borsh::{BorshDeserialize, BorshSerialize};
@@ -166,7 +165,8 @@ pub fn process_initialize_binary_option(
         BinaryOption::LEN,
     )?;
 
-    let mut binary_option = BinaryOption::try_from_slice(&binary_option_account_info.data.borrow_mut())?;
+    let mut binary_option =
+        BinaryOption::try_from_slice(&binary_option_account_info.data.borrow_mut())?;
     binary_option.decimals = decimals;
     binary_option.circulation = 0;
     binary_option.settled = false;
@@ -212,7 +212,8 @@ pub fn process_trade(
     let seller_short_token_account: Account = assert_initialized(seller_short_token_account_info)?;
     let buyer_account: Account = assert_initialized(buyer_account_info)?;
     let seller_account: Account = assert_initialized(seller_account_info)?;
-    let mut binary_option = BinaryOption::try_from_slice(&binary_option_account_info.data.borrow_mut())?;
+    let mut binary_option =
+        BinaryOption::try_from_slice(&binary_option_account_info.data.borrow_mut())?;
 
     // Get program derived address for escrow
     let (authority_key, bump_seed) = Pubkey::find_program_address(
@@ -258,7 +259,10 @@ pub fn process_trade(
         *short_token_mint_info.key,
         binary_option.short_mint_account_pubkey,
     )?;
-    assert_keys_equal(*escrow_account_info.key, binary_option.escrow_account_pubkey)?;
+    assert_keys_equal(
+        *escrow_account_info.key,
+        binary_option.escrow_account_pubkey,
+    )?;
     assert_keys_equal(
         buyer_long_token_account.mint,
         binary_option.long_mint_account_pubkey,
@@ -276,7 +280,10 @@ pub fn process_trade(
         binary_option.short_mint_account_pubkey,
     )?;
     assert_keys_equal(buyer_account.mint, binary_option.escrow_mint_account_pubkey)?;
-    assert_keys_equal(seller_account.mint, binary_option.escrow_mint_account_pubkey)?;
+    assert_keys_equal(
+        seller_account.mint,
+        binary_option.escrow_mint_account_pubkey,
+    )?;
 
     let n = size;
     let n_b = buyer_short_token_account.amount;
@@ -573,13 +580,14 @@ pub fn process_trade(
 pub fn process_settle(_program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     // This should NEVER be called directly (otherwise this is literally a rug)
     // The `pool_owner_info` needs to approve this action, so the recommended use case is to have a higher
-    // level program own the pool and use an oracle to resolve settlements 
+    // level program own the pool and use an oracle to resolve settlements
     let account_info_iter = &mut accounts.iter();
     let binary_option_account_info = next_account_info(account_info_iter)?;
     let winning_mint_account_info = next_account_info(account_info_iter)?;
     let pool_owner_info = next_account_info(account_info_iter)?;
 
-    let mut binary_option = BinaryOption::try_from_slice(&binary_option_account_info.data.borrow_mut())?;
+    let mut binary_option =
+        BinaryOption::try_from_slice(&binary_option_account_info.data.borrow_mut())?;
     if !pool_owner_info.is_signer {
         return Err(ProgramError::MissingRequiredSignature);
     }
@@ -619,7 +627,8 @@ pub fn process_collect(program_id: &Pubkey, accounts: &[AccountInfo]) -> Program
         assert_initialized(collector_short_token_account_info)?;
     let collector_account: Account = assert_initialized(collector_account_info)?;
     let escrow_account: Account = assert_initialized(escrow_account_info)?;
-    let mut binary_option = BinaryOption::try_from_slice(&binary_option_account_info.data.borrow_mut())?;
+    let mut binary_option =
+        BinaryOption::try_from_slice(&binary_option_account_info.data.borrow_mut())?;
 
     // Get program derived address for escrow
     let (escrow_owner_key, bump_seed) = Pubkey::find_program_address(
@@ -656,7 +665,10 @@ pub fn process_collect(program_id: &Pubkey, accounts: &[AccountInfo]) -> Program
         *short_token_mint_info.key,
         binary_option.short_mint_account_pubkey,
     )?;
-    assert_keys_equal(*escrow_account_info.key, binary_option.escrow_account_pubkey)?;
+    assert_keys_equal(
+        *escrow_account_info.key,
+        binary_option.escrow_account_pubkey,
+    )?;
     assert_keys_equal(
         collector_long_token_account.mint,
         binary_option.long_mint_account_pubkey,

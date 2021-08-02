@@ -3,7 +3,7 @@ use {
         account_info::AccountInfo,
         entrypoint::ProgramResult,
         msg,
-        program::{invoke},
+        program::invoke,
         pubkey::Pubkey,
         system_instruction,
         sysvar::{rent::Rent, Sysvar},
@@ -76,8 +76,13 @@ pub fn create_or_allocate_account_raw<'a>(
     payer_info: &AccountInfo<'a>,
     size: usize,
 ) -> ProgramResult {
-
-    topup(&new_account_info, rent_sysvar_info, system_program_info, payer_info, size)?;
+    topup(
+        &new_account_info,
+        rent_sysvar_info,
+        system_program_info,
+        payer_info,
+        size,
+    )?;
     msg!("Allocate space for the account");
     invoke(
         &system_instruction::allocate(new_account_info.key, size.try_into().unwrap()),
