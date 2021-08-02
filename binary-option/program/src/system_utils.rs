@@ -56,7 +56,7 @@ pub fn topup<'a>(
     if required_lamports > 0 {
         msg!("Transfer {} lamports to the new account", required_lamports);
         invoke(
-            &system_instruction::transfer(&payer_info.key, account_info.key, required_lamports),
+            &system_instruction::transfer(payer_info.key, account_info.key, required_lamports),
             &[
                 payer_info.clone(),
                 account_info.clone(),
@@ -77,7 +77,7 @@ pub fn create_or_allocate_account_raw<'a>(
     size: usize,
 ) -> ProgramResult {
     topup(
-        &new_account_info,
+        new_account_info,
         rent_sysvar_info,
         system_program_info,
         payer_info,

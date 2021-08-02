@@ -142,7 +142,7 @@ pub fn spl_burn_signed<'a>(
                 authority.clone(),
                 token_program.clone(),
             ],
-            &[&signers],
+            &[signers],
         )?;
     }
     Ok(())
@@ -172,7 +172,7 @@ pub fn spl_mint_to<'a>(
             authority.clone(),
             token_program.clone(),
         ],
-        &[&signers],
+        &[signers],
     )?;
     Ok(())
 }
@@ -231,7 +231,7 @@ pub fn spl_token_transfer_signed<'a>(
                 pda_account.clone(),
                 token_program.clone(),
             ],
-            &[&signers],
+            &[signers],
         )?;
     }
     Ok(())
