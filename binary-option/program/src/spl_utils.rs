@@ -7,7 +7,8 @@ use {
         pubkey::Pubkey,
     },
     spl_token::instruction::{
-        approve_checked, burn, initialize_account, initialize_mint, mint_to, set_authority, transfer, AuthorityType,
+        approve_checked, burn, initialize_account, initialize_mint, mint_to, set_authority,
+        transfer, AuthorityType,
     },
 };
 
@@ -141,7 +142,7 @@ pub fn spl_burn_signed<'a>(
                 authority.clone(),
                 token_program.clone(),
             ],
-            &[&signers],
+            &[signers],
         )?;
     }
     Ok(())
@@ -171,7 +172,7 @@ pub fn spl_mint_to<'a>(
             authority.clone(),
             token_program.clone(),
         ],
-        &[&signers],
+        &[signers],
     )?;
     Ok(())
 }
@@ -230,7 +231,7 @@ pub fn spl_token_transfer_signed<'a>(
                 pda_account.clone(),
                 token_program.clone(),
             ],
-            &[&signers],
+            &[signers],
         )?;
     }
     Ok(())

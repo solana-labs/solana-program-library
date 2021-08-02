@@ -30,7 +30,7 @@ use spl_governance::{
         create_token_governance, deposit_governing_tokens, execute_instruction, finalize_vote,
         flag_instruction_error, insert_instruction, relinquish_vote, remove_instruction,
         remove_signatory, set_governance_config, set_governance_delegate, set_realm_authority,
-        sign_off_proposal, withdraw_governing_tokens, Vote,
+        set_realm_config, sign_off_proposal, withdraw_governing_tokens, Vote,
     },
     processor::process_instruction,
     state::{
@@ -47,7 +47,10 @@ use spl_governance::{
         proposal_instruction::{
             get_proposal_instruction_address, InstructionData, ProposalInstruction,
         },
-        realm::{get_governing_token_holding_address, get_realm_address, Realm, RealmConfig},
+        realm::{
+            get_governing_token_holding_address, get_realm_address, Realm, RealmConfig,
+            RealmConfigArgs,
+        },
         signatory_record::{get_signatory_record_address, SignatoryRecord},
         token_owner_record::{get_token_owner_record_address, TokenOwnerRecord},
         vote_record::{get_vote_record_address, VoteRecord},
@@ -132,6 +135,20 @@ impl GovernanceProgramTest {
 
     #[allow(dead_code)]
     pub async fn with_realm(&mut self) -> RealmCookie {
+        let config_args = RealmConfigArgs {
+            use_council_mint: true,
+            use_custodian: true,
+            community_mint_max_vote_weight_source: MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,
+        };
+
+        self.with_realm_using_config_args(&config_args).await
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_realm_using_config_args(
+        &mut self,
+        config_args: &RealmConfigArgs,
+    ) -> RealmCookie {
         let name = format!("Realm #{}", self.next_realm_id).to_string();
         self.next_realm_id += 1;
 
@@ -152,30 +169,47 @@ impl GovernanceProgramTest {
         )
         .await;
 
-        let council_token_mint_keypair = Keypair::new();
-        let council_token_mint_authority = Keypair::new();
+        let (
+            council_token_mint_pubkey,
+            council_token_holding_address,
+            council_token_mint_authority,
+        ) = if config_args.use_council_mint {
+            let council_token_mint_keypair = Keypair::new();
+            let council_token_mint_authority = Keypair::new();
 
-        let council_token_holding_address = get_governing_token_holding_address(
-            &self.program_id,
-            &realm_address,
-            &council_token_mint_keypair.pubkey(),
-        );
+            let council_token_holding_address = get_governing_token_holding_address(
+                &self.program_id,
+                &realm_address,
+                &council_token_mint_keypair.pubkey(),
+            );
 
-        self.create_mint(
-            &council_token_mint_keypair,
-            &council_token_mint_authority.pubkey(),
-        )
-        .await;
+            self.create_mint(
+                &council_token_mint_keypair,
+                &council_token_mint_authority.pubkey(),
+            )
+            .await;
+
+            (
+                Some(council_token_mint_keypair.pubkey()),
+                Some(council_token_holding_address),
+                Some(council_token_mint_authority),
+            )
+        } else {
+            (None, None, None)
+        };
 
         let realm_authority = Keypair::new();
+        let realm_custodian = Keypair::new();
 
         let create_realm_instruction = create_realm(
             &self.program_id,
             &realm_authority.pubkey(),
             &community_token_mint_keypair.pubkey(),
             &self.context.payer.pubkey(),
-            Some(council_token_mint_keypair.pubkey()),
+            Some(realm_custodian.pubkey()),
+            council_token_mint_pubkey,
             name.clone(),
+            config_args.community_mint_max_vote_weight_source.clone(),
         );
 
         self.process_transaction(&[create_realm_instruction], None)
@@ -190,10 +224,12 @@ impl GovernanceProgramTest {
             reserved: [0; 8],
             authority: Some(realm_authority.pubkey()),
             config: RealmConfig {
-                council_mint: Some(council_token_mint_keypair.pubkey()),
+                council_mint: council_token_mint_pubkey,
                 reserved: [0; 8],
-                custodian: Some(realm_authority.pubkey()),
-                community_mint_max_vote_weight_source: MintMaxVoteWeightSource::Percentage(100),
+                custodian: Some(realm_custodian.pubkey()),
+                community_mint_max_vote_weight_source: config_args
+                    .community_mint_max_vote_weight_source
+                    .clone(),
             },
         };
 
@@ -204,9 +240,9 @@ impl GovernanceProgramTest {
             community_mint_authority: community_token_mint_authority,
             community_token_holding_account: community_token_holding_address,
 
-            council_token_holding_account: Some(council_token_holding_address),
-            council_mint_authority: Some(council_token_mint_authority),
-            realm_authority,
+            council_token_holding_account: council_token_holding_address,
+            council_mint_authority: council_token_mint_authority,
+            realm_authority: Some(realm_authority),
         }
     }
 
@@ -219,14 +255,18 @@ impl GovernanceProgramTest {
         let council_mint = realm_cookie.account.config.council_mint.unwrap();
 
         let realm_authority = Keypair::new();
+        let realm_custodian = Keypair::new();
+        let community_mint_max_vote_weight_source = MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION;
 
         let create_realm_instruction = create_realm(
             &self.program_id,
             &realm_authority.pubkey(),
             &realm_cookie.account.community_mint,
             &self.context.payer.pubkey(),
+            Some(realm_custodian.pubkey()),
             Some(council_mint),
             name.clone(),
+            community_mint_max_vote_weight_source,
         );
 
         self.process_transaction(&[create_realm_instruction], None)
@@ -244,7 +284,8 @@ impl GovernanceProgramTest {
                 council_mint: Some(council_mint),
                 reserved: [0; 8],
                 custodian: Some(realm_authority.pubkey()),
-                community_mint_max_vote_weight_source: MintMaxVoteWeightSource::Percentage(100),
+                community_mint_max_vote_weight_source:
+                    MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,
             },
         };
 
@@ -268,7 +309,7 @@ impl GovernanceProgramTest {
             council_mint_authority: Some(clone_keypair(
                 realm_cookie.council_mint_authority.as_ref().unwrap(),
             )),
-            realm_authority,
+            realm_authority: Some(realm_authority),
         }
     }
 
@@ -593,16 +634,73 @@ impl GovernanceProgramTest {
         let mut set_realm_authority_ix = set_realm_authority(
             &self.program_id,
             &realm_cookie.address,
-            &realm_cookie.realm_authority.pubkey(),
+            &realm_cookie.realm_authority.as_ref().unwrap().pubkey(),
             new_realm_authority,
         );
 
         instruction_override(&mut set_realm_authority_ix);
 
-        let default_signers = &[&realm_cookie.realm_authority];
+        let default_signers = &[realm_cookie.realm_authority.as_ref().unwrap()];
         let signers = signers_override.unwrap_or(default_signers);
 
         self.process_transaction(&[set_realm_authority_ix], Some(signers))
+            .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn set_realm_config(
+        &mut self,
+        realm_cookie: &mut RealmCookie,
+        config_args: &RealmConfigArgs,
+    ) -> Result<(), ProgramError> {
+        self.set_realm_config_using_instruction(realm_cookie, config_args, NopOverride, None)
+            .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn set_realm_config_using_instruction<F: Fn(&mut Instruction)>(
+        &mut self,
+        realm_cookie: &mut RealmCookie,
+        config_args: &RealmConfigArgs,
+        instruction_override: F,
+        signers_override: Option<&[&Keypair]>,
+    ) -> Result<(), ProgramError> {
+        let council_token_mint = if config_args.use_council_mint {
+            realm_cookie.account.config.council_mint
+        } else {
+            None
+        };
+
+        let realm_custodian = if config_args.use_custodian {
+            let realm_custodian = Keypair::new();
+            Some(realm_custodian.pubkey())
+        } else {
+            None
+        };
+
+        let mut set_realm_config_ix = set_realm_config(
+            &self.program_id,
+            &realm_cookie.address,
+            &realm_cookie.realm_authority.as_ref().unwrap().pubkey(),
+            council_token_mint,
+            realm_custodian,
+            config_args.community_mint_max_vote_weight_source.clone(),
+        );
+
+        instruction_override(&mut set_realm_config_ix);
+
+        let default_signers = &[realm_cookie.realm_authority.as_ref().unwrap()];
+        let signers = signers_override.unwrap_or(default_signers);
+
+        realm_cookie.account.config.custodian = realm_custodian;
+        realm_cookie.account.config.council_mint = council_token_mint;
+        realm_cookie
+            .account
+            .config
+            .community_mint_max_vote_weight_source =
+            config_args.community_mint_max_vote_weight_source.clone();
+
+        self.process_transaction(&[set_realm_config_ix], Some(signers))
             .await
     }
 
@@ -1144,7 +1242,7 @@ impl GovernanceProgramTest {
             no_votes_count: 0,
 
             execution_flags: InstructionExecutionFlags::None,
-            governing_token_mint_vote_supply: None,
+            max_vote_weight: None,
             vote_threshold_percentage: None,
         };
 

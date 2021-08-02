@@ -59,9 +59,11 @@ pub fn initialize_binary_option(
             AccountMeta::new_readonly(solana_program::system_program::id(), false),
             AccountMeta::new_readonly(sysvar::rent::id(), false),
         ],
-        data: BinaryOptionInstruction::InitializeBinaryOption(InitializeBinaryOptionArgs { decimals })
-            .try_to_vec()
-            .unwrap(),
+        data: BinaryOptionInstruction::InitializeBinaryOption(InitializeBinaryOptionArgs {
+            decimals,
+        })
+        .try_to_vec()
+        .unwrap(),
     }
 }
 
@@ -104,12 +106,15 @@ pub fn trade(
             AccountMeta::new_readonly(escrow_authority, false),
             AccountMeta::new_readonly(spl_token::id(), false),
         ],
-        data: BinaryOptionInstruction::Trade(TradeArgs { size, buy_price, sell_price })
-            .try_to_vec()
-            .unwrap(),
+        data: BinaryOptionInstruction::Trade(TradeArgs {
+            size,
+            buy_price,
+            sell_price,
+        })
+        .try_to_vec()
+        .unwrap(),
     }
 }
-
 
 /// Creates a Settle instruction
 pub fn settle(
@@ -125,13 +130,12 @@ pub fn settle(
             AccountMeta::new_readonly(winning_mint, false),
             AccountMeta::new_readonly(pool_authority, true),
         ],
-        data: BinaryOptionInstruction::Settle
-            .try_to_vec()
-            .unwrap(),
+        data: BinaryOptionInstruction::Settle.try_to_vec().unwrap(),
     }
 }
 
 /// Create a Collect instruction
+#[allow(clippy::too_many_arguments)]
 pub fn collect(
     program_id: Pubkey,
     pool_account: Pubkey,
@@ -162,8 +166,6 @@ pub fn collect(
             AccountMeta::new_readonly(solana_program::system_program::id(), false),
             AccountMeta::new_readonly(sysvar::rent::id(), false),
         ],
-        data: BinaryOptionInstruction::Collect
-            .try_to_vec()
-            .unwrap(),
+        data: BinaryOptionInstruction::Collect.try_to_vec().unwrap(),
     }
 }

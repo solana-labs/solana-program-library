@@ -13,26 +13,41 @@ use crate::{
     PROGRAM_AUTHORITY_SEED,
 };
 
+/// Realm Config instruction args
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub struct RealmConfigArgs {
+    /// Indicates whether council_mint should be used
+    /// If yes then council_mint account must also be passed to the instruction
+    pub use_council_mint: bool,
+
+    /// Indicates whether custodian should be used
+    /// If yes then custodian account must also be passed to the instruction  
+    pub use_custodian: bool,
+
+    /// The source used for community mint max vote weight source
+    pub community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
+}
+
 /// Realm Config defining Realm parameters.
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct RealmConfig {
+    /// Reserved space for future versions
+    pub reserved: [u8; 8],
+
+    /// The source used for community mint max vote weight source
+    pub community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
+
     /// Optional council mint
     pub council_mint: Option<Pubkey>,
 
-    /// The source used for community mint max vote weight source
-    /// Note: This field is not used yet. It's reserved for future versions
-    pub community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
-
-    /// An authority tasked with none critical and maintenance Realm operations
+    /// An authority tasked with non-critical and maintenance Realm operations
     /// For example custodian authority is required to add governances to the Realm
     /// There is no security risk with adding governances to the Realm but it should not be open for everybody
     /// to prevent unrelated entries and noise
     /// Note: This field is not used yet. It's reserved for future versions
     pub custodian: Option<Pubkey>,
-
-    /// Reserved space for future versions
-    pub reserved: [u8; 8],
 }
 
 /// Governance Realm Account
@@ -54,7 +69,6 @@ pub struct Realm {
 
     /// Realm authority. The authority must sign transactions which update the realm config
     /// The authority can be transferer to Realm Governance and hence make the Realm self governed through proposals
-    /// Note: This field is not used yet. It's reserved for future versions
     pub authority: Option<Pubkey>,
 
     /// Governance Realm name
@@ -192,6 +206,20 @@ pub fn get_governing_token_holding_address(
         program_id,
     )
     .0
+}
+
+/// Asserts given realm config args are correct
+pub fn assert_valid_realm_config_args(config_args: &RealmConfigArgs) -> Result<(), ProgramError> {
+    match config_args.community_mint_max_vote_weight_source {
+        MintMaxVoteWeightSource::SupplyFraction(fraction) => {
+            if !(1..=MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE).contains(&fraction) {
+                return Err(GovernanceError::InvalidMaxVoteWeightSupplyFraction.into());
+            }
+        }
+        _ => return Err(GovernanceError::MintMaxVoteWeightSourceNotSupported.into()),
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
