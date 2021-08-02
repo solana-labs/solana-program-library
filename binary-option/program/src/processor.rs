@@ -78,48 +78,48 @@ pub fn process_initialize_binary_option(
     let rent_info = next_account_info(account_info_iter)?;
 
     create_new_account(
-        &mint_authority_info,
-        &long_token_mint_info,
+        mint_authority_info,
+        long_token_mint_info,
         Mint::LEN,
-        &token_program_info,
-        &rent_info,
+        token_program_info,
+        rent_info,
     )?;
     create_new_account(
-        &mint_authority_info,
-        &short_token_mint_info,
+        mint_authority_info,
+        short_token_mint_info,
         Mint::LEN,
-        &token_program_info,
-        &rent_info,
+        token_program_info,
+        rent_info,
     )?;
     create_new_account(
-        &update_authority_info,
-        &escrow_account_info,
+        update_authority_info,
+        escrow_account_info,
         Account::LEN,
-        &token_program_info,
-        &rent_info,
+        token_program_info,
+        rent_info,
     )?;
     spl_mint_initialize(
-        &token_program_info,
-        &long_token_mint_info,
-        &mint_authority_info,
-        &mint_authority_info,
-        &rent_info,
+        token_program_info,
+        long_token_mint_info,
+        mint_authority_info,
+        mint_authority_info,
+        rent_info,
         0,
     )?;
     spl_mint_initialize(
-        &token_program_info,
-        &short_token_mint_info,
-        &mint_authority_info,
-        &mint_authority_info,
-        &rent_info,
+        token_program_info,
+        short_token_mint_info,
+        mint_authority_info,
+        mint_authority_info,
+        rent_info,
         0,
     )?;
     spl_initialize(
-        &token_program_info,
-        &escrow_account_info,
-        &escrow_mint_info,
-        &update_authority_info,
-        &rent_info,
+        token_program_info,
+        escrow_account_info,
+        escrow_mint_info,
+        update_authority_info,
+        rent_info,
     )?;
 
     assert_keys_equal(*token_program_info.key, spl_token::id())?;
@@ -303,32 +303,32 @@ pub fn process_trade(
         [true, true] => {
             msg!("Case 1");
             spl_burn(
-                &token_program_info,
-                &buyer_short_token_account_info,
-                &short_token_mint_info,
-                &buyer_info,
+                token_program_info,
+                buyer_short_token_account_info,
+                short_token_mint_info,
+                buyer_info,
                 n,
             )?;
             spl_burn(
-                &token_program_info,
-                &seller_long_token_account_info,
-                &long_token_mint_info,
-                &seller_info,
+                token_program_info,
+                seller_long_token_account_info,
+                long_token_mint_info,
+                seller_info,
                 n,
             )?;
             spl_token_transfer_signed(
-                &token_program_info,
-                &escrow_account_info,
-                &buyer_account_info,
-                &authority_info,
+                token_program_info,
+                escrow_account_info,
+                buyer_account_info,
+                authority_info,
                 n * sell_price,
                 seeds,
             )?;
             spl_token_transfer_signed(
-                &token_program_info,
-                &escrow_account_info,
-                &seller_account_info,
-                &authority_info,
+                token_program_info,
+                escrow_account_info,
+                seller_account_info,
+                authority_info,
                 n * buy_price,
                 seeds,
             )?;
@@ -347,66 +347,66 @@ pub fn process_trade(
         [false, false] => {
             msg!("Case 2");
             spl_burn(
-                &token_program_info,
-                &buyer_short_token_account_info,
-                &short_token_mint_info,
-                &buyer_info,
+                token_program_info,
+                buyer_short_token_account_info,
+                short_token_mint_info,
+                buyer_info,
                 n_b,
             )?;
             spl_burn(
-                &token_program_info,
-                &seller_long_token_account_info,
-                &long_token_mint_info,
-                &seller_info,
+                token_program_info,
+                seller_long_token_account_info,
+                long_token_mint_info,
+                seller_info,
                 n_s,
             )?;
             b_s -= n_b;
             s_l -= n_s;
             spl_mint_to(
-                &token_program_info,
-                &buyer_long_token_account_info,
-                &long_token_mint_info,
-                &authority_info,
+                token_program_info,
+                buyer_long_token_account_info,
+                long_token_mint_info,
+                authority_info,
                 n - n_b,
                 seeds,
             )?;
             spl_mint_to(
-                &token_program_info,
-                &seller_short_token_account_info,
-                &short_token_mint_info,
-                &authority_info,
+                token_program_info,
+                seller_short_token_account_info,
+                short_token_mint_info,
+                authority_info,
                 n - n_s,
                 seeds,
             )?;
             b_l += n - n_b;
             s_s += n - n_s;
             spl_token_transfer(
-                &token_program_info,
-                &buyer_account_info,
-                &escrow_account_info,
-                &buyer_info,
+                token_program_info,
+                buyer_account_info,
+                escrow_account_info,
+                buyer_info,
                 (n - n_b) * buy_price,
             )?;
             spl_token_transfer(
-                &token_program_info,
-                &seller_account_info,
-                &escrow_account_info,
-                &seller_info,
+                token_program_info,
+                seller_account_info,
+                escrow_account_info,
+                seller_info,
                 (n - n_s) * sell_price,
             )?;
             spl_token_transfer_signed(
-                &token_program_info,
-                &escrow_account_info,
-                &buyer_account_info,
-                &authority_info,
+                token_program_info,
+                escrow_account_info,
+                buyer_account_info,
+                authority_info,
                 n_b * sell_price,
                 seeds,
             )?;
             spl_token_transfer_signed(
-                &token_program_info,
-                &escrow_account_info,
-                &seller_account_info,
-                &authority_info,
+                token_program_info,
+                escrow_account_info,
+                seller_account_info,
+                authority_info,
                 n_s * buy_price,
                 seeds,
             )?;
@@ -426,50 +426,50 @@ pub fn process_trade(
         [true, false] => {
             msg!("Case 3");
             spl_burn(
-                &token_program_info,
-                &buyer_short_token_account_info,
-                &short_token_mint_info,
-                &buyer_info,
+                token_program_info,
+                buyer_short_token_account_info,
+                short_token_mint_info,
+                buyer_info,
                 n,
             )?;
             spl_burn(
-                &token_program_info,
-                &seller_long_token_account_info,
-                &long_token_mint_info,
-                &seller_info,
+                token_program_info,
+                seller_long_token_account_info,
+                long_token_mint_info,
+                seller_info,
                 n_s,
             )?;
             b_s -= n;
             s_l -= n_s;
             spl_mint_to(
-                &token_program_info,
-                &seller_short_token_account_info,
-                &short_token_mint_info,
-                &authority_info,
+                token_program_info,
+                seller_short_token_account_info,
+                short_token_mint_info,
+                authority_info,
                 n - n_s,
                 seeds,
             )?;
             s_s += n - n_s;
             spl_token_transfer(
-                &token_program_info,
-                &seller_account_info,
-                &escrow_account_info,
-                &seller_info,
+                token_program_info,
+                seller_account_info,
+                escrow_account_info,
+                seller_info,
                 (n - n_s) * sell_price,
             )?;
             spl_token_transfer_signed(
-                &token_program_info,
-                &escrow_account_info,
-                &seller_account_info,
-                &authority_info,
+                token_program_info,
+                escrow_account_info,
+                seller_account_info,
+                authority_info,
                 n_s * buy_price,
                 seeds,
             )?;
             spl_token_transfer_signed(
-                &token_program_info,
-                &escrow_account_info,
-                &buyer_account_info,
-                &authority_info,
+                token_program_info,
+                escrow_account_info,
+                buyer_account_info,
+                authority_info,
                 n * sell_price,
                 seeds,
             )?;
@@ -485,50 +485,50 @@ pub fn process_trade(
         [false, true] => {
             msg!("Case 4");
             spl_burn(
-                &token_program_info,
-                &seller_long_token_account_info,
-                &long_token_mint_info,
-                &seller_info,
+                token_program_info,
+                seller_long_token_account_info,
+                long_token_mint_info,
+                seller_info,
                 n,
             )?;
             spl_burn(
-                &token_program_info,
-                &buyer_short_token_account_info,
-                &short_token_mint_info,
-                &buyer_info,
+                token_program_info,
+                buyer_short_token_account_info,
+                short_token_mint_info,
+                buyer_info,
                 n_b,
             )?;
             b_s -= n_b;
             s_l -= n;
             spl_mint_to(
-                &token_program_info,
-                &buyer_long_token_account_info,
-                &long_token_mint_info,
-                &authority_info,
+                token_program_info,
+                buyer_long_token_account_info,
+                long_token_mint_info,
+                authority_info,
                 n - n_b,
                 seeds,
             )?;
             b_l += n - n_b;
             spl_token_transfer(
-                &token_program_info,
-                &buyer_account_info,
-                &escrow_account_info,
-                &buyer_info,
+                token_program_info,
+                buyer_account_info,
+                escrow_account_info,
+                buyer_info,
                 (n - n_b) * buy_price,
             )?;
             spl_token_transfer_signed(
-                &token_program_info,
-                &escrow_account_info,
-                &buyer_account_info,
-                &authority_info,
+                token_program_info,
+                escrow_account_info,
+                buyer_account_info,
+                authority_info,
                 n_b * sell_price,
                 seeds,
             )?;
             spl_token_transfer_signed(
-                &token_program_info,
-                &escrow_account_info,
-                &seller_account_info,
-                &authority_info,
+                token_program_info,
+                escrow_account_info,
+                seller_account_info,
+                authority_info,
                 n * buy_price,
                 seeds,
             )?;
@@ -538,38 +538,38 @@ pub fn process_trade(
     // Delegate the burn authority to the PDA, so a private key is unnecessary on collection
     // This can probably be optimized to reduce the number of instructions needed at some point
     spl_approve(
-        &token_program_info,
-        &buyer_long_token_account_info,
-        &long_token_mint_info,
-        &authority_info,
-        &buyer_info,
+        token_program_info,
+        buyer_long_token_account_info,
+        long_token_mint_info,
+        authority_info,
+        buyer_info,
         b_l,
         long_token_mint.decimals,
     )?;
     spl_approve(
-        &token_program_info,
-        &seller_short_token_account_info,
-        &short_token_mint_info,
-        &authority_info,
-        &seller_info,
+        token_program_info,
+        seller_short_token_account_info,
+        short_token_mint_info,
+        authority_info,
+        seller_info,
         s_s,
         short_token_mint.decimals,
     )?;
     spl_approve(
-        &token_program_info,
-        &buyer_short_token_account_info,
-        &short_token_mint_info,
-        &authority_info,
-        &buyer_info,
+        token_program_info,
+        buyer_short_token_account_info,
+        short_token_mint_info,
+        authority_info,
+        buyer_info,
         b_s,
         short_token_mint.decimals,
     )?;
     spl_approve(
-        &token_program_info,
-        &seller_long_token_account_info,
-        &long_token_mint_info,
-        &authority_info,
-        &seller_info,
+        token_program_info,
+        seller_long_token_account_info,
+        long_token_mint_info,
+        authority_info,
+        seller_info,
         s_l,
         long_token_mint.decimals,
     )?;
@@ -691,28 +691,28 @@ pub fn process_collect(program_id: &Pubkey, accounts: &[AccountInfo]) -> Program
     };
 
     spl_burn_signed(
-        &token_program_info,
-        &collector_long_token_account_info,
-        &long_token_mint_info,
-        &escrow_authority_info,
+        token_program_info,
+        collector_long_token_account_info,
+        long_token_mint_info,
+        escrow_authority_info,
         collector_long_token_account.amount,
         seeds,
     )?;
     spl_burn_signed(
-        &token_program_info,
-        &collector_short_token_account_info,
-        &short_token_mint_info,
-        &escrow_authority_info,
+        token_program_info,
+        collector_short_token_account_info,
+        short_token_mint_info,
+        escrow_authority_info,
         collector_short_token_account.amount,
         seeds,
     )?;
     if reward > 0 {
         let amount = (reward * escrow_account.amount) / binary_option.circulation;
         spl_token_transfer_signed(
-            &token_program_info,
-            &escrow_account_info,
-            &collector_account_info,
-            &escrow_authority_info,
+            token_program_info,
+            escrow_account_info,
+            collector_account_info,
+            escrow_authority_info,
             amount,
             seeds,
         )?;
