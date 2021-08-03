@@ -1735,7 +1735,7 @@ impl Processor {
         let stake_info = next_account_info(account_info_iter)?;
         let validator_stake_account_info = next_account_info(account_info_iter)?;
         let reserve_stake_account_info = next_account_info(account_info_iter)?;
-        let dest_user_info = next_account_info(account_info_iter)?;
+        let dest_user_pool_info = next_account_info(account_info_iter)?;
         let manager_fee_info = next_account_info(account_info_iter)?;
         let referrer_fee_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
@@ -1895,7 +1895,7 @@ impl Processor {
                 stake_pool_info.key,
                 token_program_info.clone(),
                 pool_mint_info.clone(),
-                dest_user_info.clone(),
+                dest_user_pool_info.clone(),
                 withdraw_authority_info.clone(),
                 AUTHORITY_WITHDRAW,
                 stake_pool.stake_withdraw_bump_seed,
@@ -2107,7 +2107,7 @@ impl Processor {
         let stake_split_to = next_account_info(account_info_iter)?;
         let user_stake_authority_info = next_account_info(account_info_iter)?;
         let user_transfer_authority_info = next_account_info(account_info_iter)?;
-        let burn_from_info = next_account_info(account_info_iter)?;
+        let burn_from_pool_info = next_account_info(account_info_iter)?;
         let manager_fee_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let clock_info = next_account_info(account_info_iter)?;
@@ -2261,7 +2261,7 @@ impl Processor {
 
         Self::token_burn(
             token_program_info.clone(),
-            burn_from_info.clone(),
+            burn_from_pool_info.clone(),
             pool_mint_info.clone(),
             user_transfer_authority_info.clone(),
             pool_tokens_burnt,
@@ -2291,7 +2291,7 @@ impl Processor {
         if pool_tokens_fee > 0 {
             Self::token_transfer(
                 token_program_info.clone(),
-                burn_from_info.clone(),
+                burn_from_pool_info.clone(),
                 manager_fee_info.clone(),
                 user_transfer_authority_info.clone(),
                 pool_tokens_fee,
