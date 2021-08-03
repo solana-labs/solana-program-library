@@ -1185,13 +1185,19 @@ fn process_borrow_obligation_liquidity(
         return Err(LendingError::BorrowTooSmall.into());
     }
 
+    let cumulative_borrow_rate_wads = borrow_reserve.liquidity.cumulative_borrow_rate_wads;
+
     borrow_reserve.liquidity.borrow(borrow_amount)?;
     borrow_reserve.last_update.mark_stale();
     Reserve::pack(borrow_reserve, &mut borrow_reserve_info.data.borrow_mut())?;
 
-    obligation
-        .find_or_add_liquidity_to_borrows(*borrow_reserve_info.key)?
-        .borrow(borrow_amount)?;
+    let obligation_liquidity =
+        obligation.find_or_add_liquidity_to_borrows(*borrow_reserve_info.key)?;
+    if obligation_liquidity.cumulative_borrow_rate_wads == Decimal::zero() {
+        obligation_liquidity.cumulative_borrow_rate_wads = cumulative_borrow_rate_wads;
+    }
+
+    obligation_liquidity.borrow(borrow_amount)?;
     obligation.last_update.mark_stale();
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 

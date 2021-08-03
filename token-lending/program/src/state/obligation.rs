@@ -282,7 +282,7 @@ impl ObligationLiquidity {
     pub fn new(borrow_reserve: Pubkey) -> Self {
         Self {
             borrow_reserve,
-            cumulative_borrow_rate_wads: Decimal::one(),
+            cumulative_borrow_rate_wads: Decimal::zero(),
             borrowed_amount_wads: Decimal::zero(),
             market_value: Decimal::zero(),
         }
