@@ -620,6 +620,8 @@ pub fn create_program_governance(
     realm: &Pubkey,
     governed_program: &Pubkey,
     governed_program_upgrade_authority: &Pubkey,
+    token_owner_record: &Pubkey,
+    governing_token_mint: &Pubkey,
     payer: &Pubkey,
     // Args
     config: GovernanceConfig,
@@ -635,6 +637,8 @@ pub fn create_program_governance(
         AccountMeta::new_readonly(*governed_program, false),
         AccountMeta::new(governed_program_data_address, false),
         AccountMeta::new_readonly(*governed_program_upgrade_authority, true),
+        AccountMeta::new_readonly(*token_owner_record, false),
+        AccountMeta::new_readonly(*governing_token_mint, false),
         AccountMeta::new_readonly(*payer, true),
         AccountMeta::new_readonly(bpf_loader_upgradeable::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),

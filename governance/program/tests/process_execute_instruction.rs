@@ -212,14 +212,18 @@ async fn test_execute_upgrade_program_instruction() {
     let realm_cookie = governance_test.with_realm().await;
     let governed_program_cookie = governance_test.with_governed_program().await;
 
-    let mut program_governance_cookie = governance_test
-        .with_program_governance(&realm_cookie, &governed_program_cookie)
-        .await
-        .unwrap();
-
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
         .await;
+
+    let mut program_governance_cookie = governance_test
+        .with_program_governance(
+            &realm_cookie,
+            &governed_program_cookie,
+            &token_owner_record_cookie,
+        )
+        .await
+        .unwrap();
 
     let mut proposal_cookie = governance_test
         .with_proposal(&token_owner_record_cookie, &mut program_governance_cookie)
