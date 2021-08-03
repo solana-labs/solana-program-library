@@ -2153,7 +2153,7 @@ impl Processor {
             return Err(StakePoolError::InvalidState.into());
         }
 
-        let pool_tokens_fee = if stake_pool.manager_fee_account == *burn_from_info.key {
+        let pool_tokens_fee = if stake_pool.manager_fee_account == *burn_from_pool_info.key {
             0
         } else {
             stake_pool
