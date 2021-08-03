@@ -2360,6 +2360,35 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes [SetStakeDepositAuthority](enum.Instruction.html).
+    fn process_set_stake_deposit_authority(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let stake_pool_info = next_account_info(account_info_iter)?;
+        let manager_info = next_account_info(account_info_iter)?;
+
+        let new_stake_deposit_authority = next_account_info(account_info_iter)
+            .ok()
+            .map(|account_info| *account_info.key);
+
+        check_account_owner(stake_pool_info, program_id)?;
+        let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
+        if !stake_pool.is_valid() {
+            return Err(StakePoolError::InvalidState.into());
+        }
+        stake_pool.check_manager(manager_info)?;
+        if let Some(new_auth_key) = new_stake_deposit_authority {
+            stake_pool.stake_deposit_authority = new_auth_key;
+        } else {
+            stake_pool.stake_deposit_authority =
+                find_deposit_authority_program_address(&crate::id(), &stake_pool_info.key).0;
+        }
+        stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
+        Ok(())
+    }
+
     /// Processes [SetFee](enum.Instruction.html).
     fn process_set_fee(program_id: &Pubkey, accounts: &[AccountInfo], fee: Fee) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -2688,6 +2717,10 @@ impl Processor {
             StakePoolInstruction::SetSolDepositAuthority => {
                 msg!("Instruction: SetSolDepositAuthority");
                 Self::process_set_sol_deposit_authority(program_id, accounts)
+            }
+            StakePoolInstruction::SetStakeDepositAuthority => {
+                msg!("Instruction: SetStakeDepositAuthority");
+                Self::process_set_stake_deposit_authority(program_id, accounts)
             }
         }
     }
