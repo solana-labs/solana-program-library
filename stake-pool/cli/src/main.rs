@@ -645,7 +645,7 @@ fn command_deposit_stake(
             &mut total_rent_free_balances,
         ));
 
-    let referrer_token_account = referrer_token_account.unwrap_or(stake_pool.manager_fee_account);
+    let referrer_token_account = referrer_token_account.unwrap_or(pool_token_receiver_account);
 
     let pool_withdraw_authority =
         find_withdraw_authority_program_address(&spl_stake_pool::id(), stake_pool_address).0;
@@ -761,7 +761,7 @@ fn command_deposit_sol(
             &mut total_rent_free_balances,
         ));
 
-    let referrer_token_account = referrer_token_account.unwrap_or(stake_pool.manager_fee_account);
+    let referrer_token_account = referrer_token_account.unwrap_or(pool_token_receiver_account);
 
     let pool_withdraw_authority =
         find_withdraw_authority_program_address(&spl_stake_pool::id(), stake_pool_address).0;
@@ -1864,7 +1864,7 @@ fn main() {
                     .value_name("ADDRESS")
                     .takes_value(true)
                     .help("Pool token account to receive the referral fees for deposits. \
-                          Defaults to the pool manager."),
+                          Defaults to the token receiver."),
             )
         )
         .subcommand(SubCommand::with_name("deposit-sol")
@@ -1911,7 +1911,7 @@ fn main() {
                     .value_name("REFERRER_TOKEN_ADDRESS")
                     .takes_value(true)
                     .help("Account to receive the referral fees for deposits. \
-                          Defaults to the pool manager."),
+                          Defaults to the token receiver."),
             )
         )
         .subcommand(SubCommand::with_name("list")
