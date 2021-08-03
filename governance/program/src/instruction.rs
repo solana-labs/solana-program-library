@@ -660,6 +660,8 @@ pub fn create_mint_governance(
     realm: &Pubkey,
     governed_mint: &Pubkey,
     governed_mint_authority: &Pubkey,
+    token_owner_record: &Pubkey,
+    governing_token_mint: &Pubkey,
     payer: &Pubkey,
     // Args
     config: GovernanceConfig,
@@ -672,6 +674,8 @@ pub fn create_mint_governance(
         AccountMeta::new(mint_governance_address, false),
         AccountMeta::new(*governed_mint, false),
         AccountMeta::new_readonly(*governed_mint_authority, true),
+        AccountMeta::new_readonly(*token_owner_record, false),
+        AccountMeta::new_readonly(*governing_token_mint, false),
         AccountMeta::new_readonly(*payer, true),
         AccountMeta::new_readonly(spl_token::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),

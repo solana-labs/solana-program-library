@@ -1035,10 +1035,12 @@ impl GovernanceProgramTest {
         &mut self,
         realm_cookie: &RealmCookie,
         governed_mint_cookie: &GovernedMintCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
     ) -> Result<GovernanceCookie, ProgramError> {
         self.with_mint_governance_using_instruction(
             realm_cookie,
             governed_mint_cookie,
+            token_owner_record_cookie,
             NopOverride,
             None,
         )
@@ -1050,6 +1052,7 @@ impl GovernanceProgramTest {
         &mut self,
         realm_cookie: &RealmCookie,
         governed_mint_cookie: &GovernedMintCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
         instruction_override: F,
         signers_override: Option<&[&Keypair]>,
     ) -> Result<GovernanceCookie, ProgramError> {
@@ -1060,6 +1063,8 @@ impl GovernanceProgramTest {
             &realm_cookie.address,
             &governed_mint_cookie.address,
             &governed_mint_cookie.mint_authority.pubkey(),
+            &token_owner_record_cookie.address,
+            &token_owner_record_cookie.account.governing_token_mint,
             &self.context.payer.pubkey(),
             config.clone(),
             governed_mint_cookie.transfer_mint_authority,

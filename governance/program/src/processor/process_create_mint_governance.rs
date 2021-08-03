@@ -36,10 +36,13 @@ pub fn process_create_mint_governance(
     let governed_mint_info = next_account_info(account_info_iter)?; // 2
     let governed_mint_authority_info = next_account_info(account_info_iter)?; // 3
 
-    let payer_info = next_account_info(account_info_iter)?; // 4
-    let spl_token_info = next_account_info(account_info_iter)?; // 5
+    let _token_owner_record_info = next_account_info(account_info_iter)?; // 4
+    let _governing_token_mint_info = next_account_info(account_info_iter)?; // 5
 
-    let system_info = next_account_info(account_info_iter)?; // 6
+    let payer_info = next_account_info(account_info_iter)?; // 6
+    let spl_token_info = next_account_info(account_info_iter)?; // 7
+
+    let system_info = next_account_info(account_info_iter)?; // 8
 
     let rent_sysvar_info = next_account_info(account_info_iter)?; // 7
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
