@@ -2440,7 +2440,7 @@ impl Processor {
         stake_pool.check_manager(manager_info)?;
         if for_stake_deposit {
             stake_pool.stake_deposit_authority = new_sol_deposit_authority.unwrap_or(
-                find_deposit_authority_program_address(&crate::id(), &stake_pool_info.key).0,
+                find_deposit_authority_program_address(&crate::id(), stake_pool_info.key).0,
             );
         } else {
             stake_pool.sol_deposit_authority = new_sol_deposit_authority;
