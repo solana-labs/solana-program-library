@@ -311,6 +311,10 @@ pub enum GovernanceError {
     /// Invalid max vote weight supply fraction
     #[error("Invalid max vote weight supply fraction")]
     InvalidMaxVoteWeightSupplyFraction,
+
+    /// Owner doesn't have enough governing tokens to create Governance
+    #[error("Owner doesn't have enough governing tokens to create Governance")]
+    NotEnoughTokensToCreateGovernance,
 }
 
 impl PrintProgramError for GovernanceError {
