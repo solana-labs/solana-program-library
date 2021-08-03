@@ -1692,18 +1692,6 @@ fn main() {
                     .help("The validator vote account that this stake will be delegated to"),
             )
         )
-        .subcommand(SubCommand::with_name("show")
-            .about("Show the state pool state")
-            .arg(
-                Arg::with_name("pool")
-                    .index(1)
-                    .validator(is_pubkey)
-                    .value_name("POOL_ADDRESS")
-                    .takes_value(true)
-                    .required(true)
-                    .help("Stake pool address"),
-            )
-        )
         .subcommand(SubCommand::with_name("add-validator")
             .about("Add validator account to the stake pool. Must be signed by the pool staker.")
             .arg(

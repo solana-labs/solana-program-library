@@ -15,7 +15,7 @@ use {
         instruction::InstructionError, signature::Keypair, signature::Signer,
         transaction::Transaction, transaction::TransactionError, transport::TransportError,
     },
-    spl_stake_pool::{error, id, instruction, state, find_deposit_authority_program_address},
+    spl_stake_pool::{error, find_deposit_authority_program_address, id, instruction, state},
 };
 
 async fn setup() -> (BanksClient, Keypair, Hash, StakePoolAccounts, Keypair) {
@@ -39,8 +39,13 @@ async fn setup() -> (BanksClient, Keypair, Hash, StakePoolAccounts, Keypair) {
 
 #[tokio::test]
 async fn success_set_stake_deposit_authority() {
-    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, new_stake_deposit_authority) =
-        setup().await;
+    let (
+        mut banks_client,
+        payer,
+        recent_blockhash,
+        stake_pool_accounts,
+        new_stake_deposit_authority,
+    ) = setup().await;
 
     let mut transaction = Transaction::new_with_payer(
         &[instruction::set_deposit_authority(
@@ -67,8 +72,13 @@ async fn success_set_stake_deposit_authority() {
 
 #[tokio::test]
 async fn success_set_stake_deposit_authority_to_none() {
-    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, new_stake_deposit_authority) =
-        setup().await;
+    let (
+        mut banks_client,
+        payer,
+        recent_blockhash,
+        stake_pool_accounts,
+        new_stake_deposit_authority,
+    ) = setup().await;
 
     let mut transaction = Transaction::new_with_payer(
         &[instruction::set_deposit_authority(
@@ -115,11 +125,15 @@ async fn success_set_stake_deposit_authority_to_none() {
     );
 }
 
-
 #[tokio::test]
 async fn fail_stake_wrong_manager() {
-    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, new_stake_deposit_authority) =
-        setup().await;
+    let (
+        mut banks_client,
+        payer,
+        recent_blockhash,
+        stake_pool_accounts,
+        new_stake_deposit_authority,
+    ) = setup().await;
 
     let mut transaction = Transaction::new_with_payer(
         &[instruction::set_deposit_authority(
@@ -152,8 +166,13 @@ async fn fail_stake_wrong_manager() {
 
 #[tokio::test]
 async fn fail_set_stake_deposit_authority_without_signature() {
-    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, new_stake_deposit_authority) =
-        setup().await;
+    let (
+        mut banks_client,
+        payer,
+        recent_blockhash,
+        stake_pool_accounts,
+        new_stake_deposit_authority,
+    ) = setup().await;
 
     let data = instruction::StakePoolInstruction::SetSolDepositAuthority
         .try_to_vec()
@@ -188,7 +207,6 @@ async fn fail_set_stake_deposit_authority_without_signature() {
         _ => panic!("Wrong error occurs while try to set new manager without signature"),
     }
 }
-
 
 #[tokio::test]
 async fn success_set_sol_deposit_authority() {

@@ -11,7 +11,7 @@ use {
         signature::{Keypair, Signer},
         transaction::{Transaction, TransactionError},
     },
-    spl_stake_pool::{error, id, instruction, state::StakePool, state::Fee},
+    spl_stake_pool::{error, id, instruction, state::Fee, state::StakePool},
 };
 
 async fn setup(fee: Option<Fee>) -> (ProgramTestContext, StakePoolAccounts, Fee) {
@@ -70,8 +70,15 @@ async fn success_stake() {
 
 #[tokio::test]
 async fn success_stake_increase_fee_from_0() {
-    let (mut context, stake_pool_accounts, _) = setup(Some(Fee { numerator: 0, denominator: 0})).await;
-    let new_deposit_fee = Fee { numerator: 324, denominator: 1234};
+    let (mut context, stake_pool_accounts, _) = setup(Some(Fee {
+        numerator: 0,
+        denominator: 0,
+    }))
+    .await;
+    let new_deposit_fee = Fee {
+        numerator: 324,
+        denominator: 1234,
+    };
 
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::set_deposit_fee(
@@ -138,7 +145,10 @@ async fn fail_stake_wrong_manager() {
 async fn fail_stake_high_deposit_fee() {
     let (mut context, stake_pool_accounts, _new_deposit_fee) = setup(None).await;
 
-    let new_deposit_fee = Fee { numerator: 100001, denominator: 100000};
+    let new_deposit_fee = Fee {
+        numerator: 100001,
+        denominator: 100000,
+    };
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::set_deposit_fee(
             &id(),
@@ -237,7 +247,10 @@ async fn fail_sol_wrong_manager() {
 async fn fail_sol_high_deposit_fee() {
     let (mut context, stake_pool_accounts, _new_deposit_fee) = setup(None).await;
 
-    let new_deposit_fee = Fee { numerator: 100001, denominator: 100000};
+    let new_deposit_fee = Fee {
+        numerator: 100001,
+        denominator: 100000,
+    };
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::set_deposit_fee(
             &id(),
