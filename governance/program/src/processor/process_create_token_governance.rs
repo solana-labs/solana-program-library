@@ -36,12 +36,14 @@ pub fn process_create_token_governance(
     let governed_token_info = next_account_info(account_info_iter)?; // 2
     let governed_token_owner_info = next_account_info(account_info_iter)?; // 3
 
-    let payer_info = next_account_info(account_info_iter)?; // 4
-    let spl_token_info = next_account_info(account_info_iter)?; // 5
+    let _token_owner_record_info = next_account_info(account_info_iter)?; // 4
 
-    let system_info = next_account_info(account_info_iter)?; // 6
+    let payer_info = next_account_info(account_info_iter)?; // 5
+    let spl_token_info = next_account_info(account_info_iter)?; // 6
 
-    let rent_sysvar_info = next_account_info(account_info_iter)?; // 7
+    let system_info = next_account_info(account_info_iter)?; // 7
+
+    let rent_sysvar_info = next_account_info(account_info_iter)?; // 8
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
 
     assert_valid_create_governance_args(program_id, &config, realm_info)?;

@@ -14,9 +14,17 @@ async fn test_create_account_governance() {
     let realm_cookie = governance_test.with_realm().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await;
+
     // Act
     let account_governance_cookie = governance_test
-        .with_account_governance(&realm_cookie, &governed_account_cookie)
+        .with_account_governance(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+        )
         .await
         .unwrap();
 
@@ -39,8 +47,16 @@ async fn test_create_account_governance_with_invalid_realm_error() {
     let mut realm_cookie = governance_test.with_realm().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await;
+
     let account_governance_cookie = governance_test
-        .with_account_governance(&realm_cookie, &governed_account_cookie)
+        .with_account_governance(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+        )
         .await
         .unwrap();
 
@@ -48,7 +64,11 @@ async fn test_create_account_governance_with_invalid_realm_error() {
 
     // Act
     let err = governance_test
-        .with_account_governance(&realm_cookie, &governed_account_cookie)
+        .with_account_governance(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+        )
         .await
         .err()
         .unwrap();
@@ -66,13 +86,22 @@ async fn test_create_account_governance_with_invalid_config_error() {
     let realm_cookie = governance_test.with_realm().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await;
+
     // Arrange
     let mut config = governance_test.get_default_governance_config();
     config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(0); // below 1% threshold
 
     // Act
     let err = governance_test
-        .with_account_governance_using_config(&realm_cookie, &governed_account_cookie, &config)
+        .with_account_governance_using_config(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+            &config,
+        )
         .await
         .err()
         .unwrap();
@@ -87,7 +116,12 @@ async fn test_create_account_governance_with_invalid_config_error() {
 
     // Act
     let err = governance_test
-        .with_account_governance_using_config(&realm_cookie, &governed_account_cookie, &config)
+        .with_account_governance_using_config(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+            &config,
+        )
         .await
         .err()
         .unwrap();

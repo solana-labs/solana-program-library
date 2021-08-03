@@ -50,7 +50,7 @@ pub enum GovernanceInstruction {
     /// 5. `[]` System
     /// 6. `[]` SPL Token
     /// 7. `[]` Sysvar Rent
-    /// 8. `[]` Realm custodian - optional    
+
     /// 9. `[]` Council Token Mint - optional
     /// 10. `[writable]` Council Token Holding account - optional unless council is used. PDA seeds: ['governance',realm,council_mint]
     ///     The account will be created with the Realm PDA as its owner
@@ -109,10 +109,11 @@ pub enum GovernanceInstruction {
     ///
     ///   0. `[]` Realm account the created Governance belongs to
     ///   1. `[writable]` Account Governance account. PDA seeds: ['account-governance', realm, governed_account]
-    ///   2. `[]` Account governed by this Governance account
-    ///   3. `[signer]` Payer
-    ///   4. `[]` System program
-    ///   5. `[]` Sysvar Rent
+    ///   2. `[]` Account governed by this Governance
+    ///   3. `[]` Governing TokenOwnerRecord account
+    ///   4. `[signer]` Payer
+    ///   5. `[]` System program
+    ///   6. `[]` Sysvar Rent
     CreateAccountGovernance {
         /// Governance config
         #[allow(dead_code)]
@@ -126,10 +127,11 @@ pub enum GovernanceInstruction {
     ///   2. `[]` Program governed by this Governance account
     ///   3. `[writable]` Program Data account of the Program governed by this Governance account
     ///   4. `[signer]` Current Upgrade Authority account of the Program governed by this Governance account
-    ///   5. `[signer]` Payer
-    ///   6. `[]` bpf_upgradeable_loader program
-    ///   7. `[]` System program
-    ///   8. `[]` Sysvar Rent
+    ///   5. `[]` Governing TokenOwnerRecord account     
+    ///   6. `[signer]` Payer
+    ///   7. `[]` bpf_upgradeable_loader program
+    ///   8. `[]` System program
+    ///   9. `[]` Sysvar Rent
     CreateProgramGovernance {
         /// Governance config
         #[allow(dead_code)]
@@ -310,10 +312,11 @@ pub enum GovernanceInstruction {
     ///   1. `[writable]` Mint Governance account. PDA seeds: ['mint-governance', realm, governed_mint]
     ///   2. `[writable]` Mint governed by this Governance account
     ///   3. `[signer]` Current Mint Authority
-    ///   4. `[signer]` Payer
-    ///   5. `[]` SPL Token program
-    ///   6. `[]` System program
-    ///   7. `[]` Sysvar Rent
+    ///   4. `[]` Governing TokenOwnerRecord account    
+    ///   5. `[signer]` Payer
+    ///   6. `[]` SPL Token program
+    ///   7. `[]` System program
+    ///   8. `[]` Sysvar Rent
     CreateMintGovernance {
         #[allow(dead_code)]
         /// Governance config
@@ -331,11 +334,12 @@ pub enum GovernanceInstruction {
     ///   0. `[]` Realm account the created Governance belongs to    
     ///   1. `[writable]` Token Governance account. PDA seeds: ['token-governance', realm, governed_token]
     ///   2. `[writable]` Token account governed by this Governance account
-    ///   3. `[signer]` Current Token account owner
-    ///   4. `[signer]` Payer
-    ///   5. `[]` SPL Token program
-    ///   6. `[]` System program
-    ///   7. `[]` Sysvar Rent
+    ///   3. `[signer]` Current Token account
+    ///   4. `[]` Governing TokenOwnerRecord account        
+    ///   5. `[signer]` Payer
+    ///   6. `[]` SPL Token program
+    ///   7. `[]` System program
+    ///   8. `[]` Sysvar Rent
     CreateTokenGovernance {
         #[allow(dead_code)]
         /// Governance config
@@ -383,7 +387,7 @@ pub enum GovernanceInstruction {
     /// Sets realm config
     ///   0. `[writable]` Realm account
     ///   1. `[signer]`  Realm authority    
-    ///   2. `[]` Realm custodian - optional    
+
     ///   3. `[]` Council Token Mint - optional
     ///       Note: In the current version it's only possible to remove council mint (set it to None)
     ///       After setting council to None it won't be possible to withdraw the tokens from the Realm any longer
@@ -405,10 +409,10 @@ pub fn create_realm(
     realm_authority: &Pubkey,
     community_token_mint: &Pubkey,
     payer: &Pubkey,
-    realm_custodian: Option<Pubkey>,
     council_token_mint: Option<Pubkey>,
     // Args
     name: String,
+    min_community_tokens_to_create_governance: u64,
     community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
 ) -> Instruction {
     let realm_address = get_realm_address(program_id, &name);
@@ -426,13 +430,6 @@ pub fn create_realm(
         AccountMeta::new_readonly(sysvar::rent::id(), false),
     ];
 
-    let use_custodian = if let Some(realm_custodian) = realm_custodian {
-        accounts.push(AccountMeta::new_readonly(realm_custodian, false));
-        true
-    } else {
-        false
-    };
-
     let use_council_mint = if let Some(council_token_mint) = council_token_mint {
         let council_token_holding_address =
             get_governing_token_holding_address(program_id, &realm_address, &council_token_mint);
@@ -447,7 +444,7 @@ pub fn create_realm(
     let instruction = GovernanceInstruction::CreateRealm {
         config_args: RealmConfigArgs {
             use_council_mint,
-            use_custodian,
+            min_community_tokens_to_create_governance,
             community_mint_max_vote_weight_source,
         },
         name,
@@ -582,6 +579,7 @@ pub fn create_account_governance(
     // Accounts
     realm: &Pubkey,
     governed_account: &Pubkey,
+    token_owner_record: &Pubkey,
     payer: &Pubkey,
     // Args
     config: GovernanceConfig,
@@ -593,6 +591,7 @@ pub fn create_account_governance(
         AccountMeta::new_readonly(*realm, false),
         AccountMeta::new(account_governance_address, false),
         AccountMeta::new_readonly(*governed_account, false),
+        AccountMeta::new_readonly(*token_owner_record, false),
         AccountMeta::new_readonly(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
@@ -608,12 +607,14 @@ pub fn create_account_governance(
 }
 
 /// Creates CreateProgramGovernance instruction
+#[allow(clippy::too_many_arguments)]
 pub fn create_program_governance(
     program_id: &Pubkey,
     // Accounts
     realm: &Pubkey,
     governed_program: &Pubkey,
     governed_program_upgrade_authority: &Pubkey,
+    token_owner_record: &Pubkey,
     payer: &Pubkey,
     // Args
     config: GovernanceConfig,
@@ -629,6 +630,7 @@ pub fn create_program_governance(
         AccountMeta::new_readonly(*governed_program, false),
         AccountMeta::new(governed_program_data_address, false),
         AccountMeta::new_readonly(*governed_program_upgrade_authority, true),
+        AccountMeta::new_readonly(*token_owner_record, false),
         AccountMeta::new_readonly(*payer, true),
         AccountMeta::new_readonly(bpf_loader_upgradeable::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
@@ -647,13 +649,15 @@ pub fn create_program_governance(
     }
 }
 
-/// Creates CreateMintGovernance instruction
+/// Creates CreateMintGovernance
+#[allow(clippy::too_many_arguments)]
 pub fn create_mint_governance(
     program_id: &Pubkey,
     // Accounts
     realm: &Pubkey,
     governed_mint: &Pubkey,
     governed_mint_authority: &Pubkey,
+    token_owner_record: &Pubkey,
     payer: &Pubkey,
     // Args
     config: GovernanceConfig,
@@ -666,6 +670,7 @@ pub fn create_mint_governance(
         AccountMeta::new(mint_governance_address, false),
         AccountMeta::new(*governed_mint, false),
         AccountMeta::new_readonly(*governed_mint_authority, true),
+        AccountMeta::new_readonly(*token_owner_record, false),
         AccountMeta::new_readonly(*payer, true),
         AccountMeta::new_readonly(spl_token::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
@@ -685,12 +690,14 @@ pub fn create_mint_governance(
 }
 
 /// Creates CreateTokenGovernance instruction
+#[allow(clippy::too_many_arguments)]
 pub fn create_token_governance(
     program_id: &Pubkey,
     // Accounts
     realm: &Pubkey,
     governed_token: &Pubkey,
     governed_token_owner: &Pubkey,
+    token_owner_record: &Pubkey,
     payer: &Pubkey,
     // Args
     config: GovernanceConfig,
@@ -703,6 +710,7 @@ pub fn create_token_governance(
         AccountMeta::new(token_governance_address, false),
         AccountMeta::new(*governed_token, false),
         AccountMeta::new_readonly(*governed_token_owner, true),
+        AccountMeta::new_readonly(*token_owner_record, false),
         AccountMeta::new_readonly(*payer, true),
         AccountMeta::new_readonly(spl_token::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
@@ -1159,21 +1167,15 @@ pub fn set_realm_config(
     realm: &Pubkey,
     realm_authority: &Pubkey,
     council_token_mint: Option<Pubkey>,
-    realm_custodian: Option<Pubkey>,
+
     // Args
+    min_community_tokens_to_create_governance: u64,
     community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
 ) -> Instruction {
     let mut accounts = vec![
         AccountMeta::new(*realm, false),
         AccountMeta::new_readonly(*realm_authority, true),
     ];
-
-    let use_custodian = if let Some(realm_custodian) = realm_custodian {
-        accounts.push(AccountMeta::new_readonly(realm_custodian, false));
-        true
-    } else {
-        false
-    };
 
     let use_council_mint = if let Some(council_token_mint) = council_token_mint {
         let council_token_holding_address =
@@ -1189,7 +1191,7 @@ pub fn set_realm_config(
     let instruction = GovernanceInstruction::SetRealmConfig {
         config_args: RealmConfigArgs {
             use_council_mint,
-            use_custodian,
+            min_community_tokens_to_create_governance,
             community_mint_max_vote_weight_source,
         },
     };

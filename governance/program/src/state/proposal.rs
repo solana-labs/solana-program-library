@@ -562,9 +562,10 @@ mod test {
             config: RealmConfig {
                 council_mint: Some(Pubkey::new_unique()),
                 reserved: [0; 8],
-                custodian: Some(Pubkey::new_unique()),
+
                 community_mint_max_vote_weight_source:
                     MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,
+                min_community_tokens_to_create_governance: 10,
             },
         }
     }

@@ -30,8 +30,9 @@ async fn test_create_realm_with_non_default_config() {
 
     let config_args = RealmConfigArgs {
         use_council_mint: false,
-        use_custodian: false,
+
         community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(1),
+        min_community_tokens_to_create_governance: 10,
     };
 
     // Act

@@ -32,13 +32,6 @@ pub fn process_set_realm_config(
 
     assert_valid_realm_config_args(&config_args)?;
 
-    let realm_custodian = if config_args.use_custodian {
-        let realm_custodian_info = next_account_info(account_info_iter)?;
-        Some(*realm_custodian_info.key)
-    } else {
-        None
-    };
-
     if config_args.use_council_mint {
         let council_token_mint_info = next_account_info(account_info_iter)?;
 
@@ -60,9 +53,10 @@ pub fn process_set_realm_config(
         realm_data.config.council_mint = None;
     }
 
-    realm_data.config.custodian = realm_custodian;
     realm_data.config.community_mint_max_vote_weight_source =
         config_args.community_mint_max_vote_weight_source;
+    realm_data.config.min_community_tokens_to_create_governance =
+        config_args.min_community_tokens_to_create_governance;
 
     realm_data.serialize(&mut *realm_info.data.borrow_mut())?;
 

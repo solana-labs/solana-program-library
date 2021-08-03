@@ -61,13 +61,6 @@ pub fn process_create_realm(
         rent,
     )?;
 
-    let realm_custodian = if config_args.use_custodian {
-        let realm_custodian_info = next_account_info(account_info_iter)?;
-        Some(*realm_custodian_info.key)
-    } else {
-        None
-    };
-
     let council_token_mint_address = if config_args.use_council_mint {
         let council_token_mint_info = next_account_info(account_info_iter)?;
         let council_token_holding_info = next_account_info(account_info_iter)?;
@@ -100,9 +93,10 @@ pub fn process_create_realm(
         config: RealmConfig {
             council_mint: council_token_mint_address,
             reserved: [0; 8],
-            custodian: realm_custodian,
             community_mint_max_vote_weight_source: config_args
                 .community_mint_max_vote_weight_source,
+            min_community_tokens_to_create_governance: config_args
+                .min_community_tokens_to_create_governance,
         },
     };
 
