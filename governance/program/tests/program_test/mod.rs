@@ -65,7 +65,7 @@ use self::{
     cookies::{
         GovernanceCookie, GovernedAccountCookie, GovernedMintCookie, GovernedProgramCookie,
         GovernedTokenCookie, ProposalCookie, ProposalInstructionCookie, RealmCookie,
-        TokeOwnerRecordCookie, TokenAccountCookie, VoteRecordCookie,
+        TokenAccountCookie, TokenOwnerRecordCookie, VoteRecordCookie,
     },
     tools::NopOverride,
 };
@@ -324,7 +324,7 @@ impl GovernanceProgramTest {
     pub async fn with_community_token_deposit(
         &mut self,
         realm_cookie: &RealmCookie,
-    ) -> TokeOwnerRecordCookie {
+    ) -> TokenOwnerRecordCookie {
         self.with_initial_governing_token_deposit(
             &realm_cookie.address,
             &realm_cookie.account.community_mint,
@@ -339,7 +339,7 @@ impl GovernanceProgramTest {
         &mut self,
         realm_cookie: &RealmCookie,
         amount: u64,
-    ) -> TokeOwnerRecordCookie {
+    ) -> TokenOwnerRecordCookie {
         self.with_initial_governing_token_deposit(
             &realm_cookie.address,
             &realm_cookie.account.community_mint,
@@ -353,7 +353,7 @@ impl GovernanceProgramTest {
     pub async fn with_subsequent_community_token_deposit(
         &mut self,
         realm_cookie: &RealmCookie,
-        token_owner_record_cookie: &TokeOwnerRecordCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
         amount: u64,
     ) {
         self.with_subsequent_governing_token_deposit(
@@ -370,7 +370,7 @@ impl GovernanceProgramTest {
     pub async fn with_subsequent_council_token_deposit(
         &mut self,
         realm_cookie: &RealmCookie,
-        token_owner_record_cookie: &TokeOwnerRecordCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
         amount: u64,
     ) {
         self.with_subsequent_governing_token_deposit(
@@ -388,7 +388,7 @@ impl GovernanceProgramTest {
         &mut self,
         realm_cookie: &RealmCookie,
         amount: u64,
-    ) -> TokeOwnerRecordCookie {
+    ) -> TokenOwnerRecordCookie {
         self.with_initial_governing_token_deposit(
             &realm_cookie.address,
             &realm_cookie.account.config.council_mint.unwrap(),
@@ -402,7 +402,7 @@ impl GovernanceProgramTest {
     pub async fn with_council_token_deposit(
         &mut self,
         realm_cookie: &RealmCookie,
-    ) -> TokeOwnerRecordCookie {
+    ) -> TokenOwnerRecordCookie {
         self.with_initial_governing_token_deposit(
             &realm_cookie.address,
             &realm_cookie.account.config.council_mint.unwrap(),
@@ -419,7 +419,7 @@ impl GovernanceProgramTest {
         governing_mint: &Pubkey,
         governing_mint_authority: &Keypair,
         amount: u64,
-    ) -> TokeOwnerRecordCookie {
+    ) -> TokenOwnerRecordCookie {
         let token_owner = Keypair::new();
         let token_source = Keypair::new();
 
@@ -473,7 +473,7 @@ impl GovernanceProgramTest {
 
         let governance_delegate = Keypair::from_base58_string(&token_owner.to_base58_string());
 
-        TokeOwnerRecordCookie {
+        TokenOwnerRecordCookie {
             address: token_owner_record_address,
             account,
 
@@ -511,7 +511,7 @@ impl GovernanceProgramTest {
         realm: &Pubkey,
         governing_token_mint: &Pubkey,
         governing_token_mint_authority: &Keypair,
-        token_owner_record_cookie: &TokeOwnerRecordCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
         amount: u64,
     ) {
         self.mint_tokens(
@@ -544,7 +544,7 @@ impl GovernanceProgramTest {
     pub async fn with_community_governance_delegate(
         &mut self,
         realm_cookie: &RealmCookie,
-        token_owner_record_cookie: &mut TokeOwnerRecordCookie,
+        token_owner_record_cookie: &mut TokenOwnerRecordCookie,
     ) {
         self.with_governing_token_governance_delegate(
             realm_cookie,
@@ -558,7 +558,7 @@ impl GovernanceProgramTest {
     pub async fn with_council_governance_delegate(
         &mut self,
         realm_cookie: &RealmCookie,
-        token_owner_record_cookie: &mut TokeOwnerRecordCookie,
+        token_owner_record_cookie: &mut TokenOwnerRecordCookie,
     ) {
         self.with_governing_token_governance_delegate(
             realm_cookie,
@@ -573,7 +573,7 @@ impl GovernanceProgramTest {
         &mut self,
         realm_cookie: &RealmCookie,
         governing_token_mint: &Pubkey,
-        token_owner_record_cookie: &mut TokeOwnerRecordCookie,
+        token_owner_record_cookie: &mut TokenOwnerRecordCookie,
     ) {
         let new_governance_delegate = Keypair::new();
 
@@ -593,7 +593,7 @@ impl GovernanceProgramTest {
     pub async fn set_governance_delegate(
         &mut self,
         realm_cookie: &RealmCookie,
-        token_owner_record_cookie: &TokeOwnerRecordCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
         signing_governance_authority: &Keypair,
         governing_token_mint: &Pubkey,
         new_governance_delegate: &Option<Pubkey>,
@@ -716,7 +716,7 @@ impl GovernanceProgramTest {
     pub async fn withdraw_community_tokens(
         &mut self,
         realm_cookie: &RealmCookie,
-        token_owner_record_cookie: &TokeOwnerRecordCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
     ) -> Result<(), ProgramError> {
         self.withdraw_governing_tokens(
             realm_cookie,
@@ -731,7 +731,7 @@ impl GovernanceProgramTest {
     pub async fn withdraw_council_tokens(
         &mut self,
         realm_cookie: &RealmCookie,
-        token_owner_record_cookie: &TokeOwnerRecordCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
     ) -> Result<(), ProgramError> {
         self.withdraw_governing_tokens(
             realm_cookie,
@@ -746,7 +746,7 @@ impl GovernanceProgramTest {
     async fn withdraw_governing_tokens(
         &mut self,
         realm_cookie: &RealmCookie,
-        token_owner_record_cookie: &TokeOwnerRecordCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
         governing_token_mint: &Pubkey,
 
         governing_token_owner: &Keypair,
@@ -839,10 +839,16 @@ impl GovernanceProgramTest {
         &mut self,
         realm_cookie: &RealmCookie,
         governed_account_cookie: &GovernedAccountCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
     ) -> Result<GovernanceCookie, ProgramError> {
         let config = self.get_default_governance_config();
-        self.with_account_governance_using_config(realm_cookie, governed_account_cookie, &config)
-            .await
+        self.with_account_governance_using_config(
+            realm_cookie,
+            governed_account_cookie,
+            token_owner_record_cookie,
+            &config,
+        )
+        .await
     }
 
     #[allow(dead_code)]
@@ -850,12 +856,15 @@ impl GovernanceProgramTest {
         &mut self,
         realm_cookie: &RealmCookie,
         governed_account_cookie: &GovernedAccountCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
         governance_config: &GovernanceConfig,
     ) -> Result<GovernanceCookie, ProgramError> {
         let create_account_governance_instruction = create_account_governance(
             &self.program_id,
             &realm_cookie.address,
             &governed_account_cookie.address,
+            &token_owner_record_cookie.address,
+            &token_owner_record_cookie.account.governing_token_mint,
             &self.context.payer.pubkey(),
             governance_config.clone(),
         );
@@ -1154,7 +1163,7 @@ impl GovernanceProgramTest {
     #[allow(dead_code)]
     pub async fn with_proposal(
         &mut self,
-        token_owner_record_cookie: &TokeOwnerRecordCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
         governance_cookie: &mut GovernanceCookie,
     ) -> Result<ProposalCookie, ProgramError> {
         self.with_proposal_using_instruction(
@@ -1168,7 +1177,7 @@ impl GovernanceProgramTest {
     #[allow(dead_code)]
     pub async fn with_signed_off_proposal(
         &mut self,
-        token_owner_record_cookie: &TokeOwnerRecordCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
         governance_cookie: &mut GovernanceCookie,
     ) -> Result<ProposalCookie, ProgramError> {
         let proposal_cookie = self
@@ -1188,7 +1197,7 @@ impl GovernanceProgramTest {
     #[allow(dead_code)]
     pub async fn with_proposal_using_instruction<F: Fn(&mut Instruction)>(
         &mut self,
-        token_owner_record_cookie: &TokeOwnerRecordCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
         governance_cookie: &mut GovernanceCookie,
         instruction_override: F,
     ) -> Result<ProposalCookie, ProgramError> {
@@ -1272,7 +1281,7 @@ impl GovernanceProgramTest {
     pub async fn with_signatory(
         &mut self,
         proposal_cookie: &ProposalCookie,
-        token_owner_record_cookie: &TokeOwnerRecordCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
     ) -> Result<SignatoryRecordCookie, ProgramError> {
         let signatory = Keypair::new();
 
@@ -1317,7 +1326,7 @@ impl GovernanceProgramTest {
     pub async fn remove_signatory(
         &mut self,
         proposal_cookie: &ProposalCookie,
-        token_owner_record_cookie: &TokeOwnerRecordCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
         signatory_record_cookie: &SignatoryRecordCookie,
     ) -> Result<(), ProgramError> {
         let remove_signatory_instruction = remove_signatory(
@@ -1402,7 +1411,7 @@ impl GovernanceProgramTest {
     pub async fn relinquish_vote(
         &mut self,
         proposal_cookie: &ProposalCookie,
-        token_owner_record_cookie: &TokeOwnerRecordCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
     ) -> Result<(), ProgramError> {
         self.relinquish_vote_using_instruction(
             proposal_cookie,
@@ -1416,7 +1425,7 @@ impl GovernanceProgramTest {
     pub async fn relinquish_vote_using_instruction<F: Fn(&mut Instruction)>(
         &mut self,
         proposal_cookie: &ProposalCookie,
-        token_owner_record_cookie: &TokeOwnerRecordCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
         instruction_override: F,
     ) -> Result<(), ProgramError> {
         let mut relinquish_vote_instruction = relinquish_vote(
@@ -1444,7 +1453,7 @@ impl GovernanceProgramTest {
     pub async fn cancel_proposal(
         &mut self,
         proposal_cookie: &ProposalCookie,
-        token_owner_record_cookie: &TokeOwnerRecordCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
     ) -> Result<(), ProgramError> {
         let cancel_proposal_instruction = cancel_proposal(
             &self.program_id,
@@ -1466,7 +1475,7 @@ impl GovernanceProgramTest {
     pub async fn with_cast_vote(
         &mut self,
         proposal_cookie: &ProposalCookie,
-        token_owner_record_cookie: &TokeOwnerRecordCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
         vote: Vote,
     ) -> Result<VoteRecordCookie, ProgramError> {
         let vote_instruction = cast_vote(
@@ -1520,7 +1529,7 @@ impl GovernanceProgramTest {
     pub async fn with_set_governance_config_instruction(
         &mut self,
         proposal_cookie: &mut ProposalCookie,
-        token_owner_record_cookie: &TokeOwnerRecordCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
         governance_config: &GovernanceConfig,
     ) -> Result<ProposalInstructionCookie, ProgramError> {
         let mut set_governance_config_ix = set_governance_config(
@@ -1543,7 +1552,7 @@ impl GovernanceProgramTest {
         &mut self,
         governed_mint_cookie: &GovernedMintCookie,
         proposal_cookie: &mut ProposalCookie,
-        token_owner_record_cookie: &TokeOwnerRecordCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
         index: Option<u16>,
     ) -> Result<ProposalInstructionCookie, ProgramError> {
         let token_account_keypair = Keypair::new();
@@ -1578,7 +1587,7 @@ impl GovernanceProgramTest {
         &mut self,
         governed_token_cookie: &GovernedTokenCookie,
         proposal_cookie: &mut ProposalCookie,
-        token_owner_record_cookie: &TokeOwnerRecordCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
         index: Option<u16>,
     ) -> Result<ProposalInstructionCookie, ProgramError> {
         let token_account_keypair = Keypair::new();
@@ -1613,7 +1622,7 @@ impl GovernanceProgramTest {
         &mut self,
         governance_cookie: &GovernanceCookie,
         proposal_cookie: &mut ProposalCookie,
-        token_owner_record_cookie: &TokeOwnerRecordCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
     ) -> Result<ProposalInstructionCookie, ProgramError> {
         let program_buffer_keypair = Keypair::new();
         let buffer_authority_keypair = Keypair::new();
@@ -1679,7 +1688,7 @@ impl GovernanceProgramTest {
     pub async fn with_nop_instruction(
         &mut self,
         proposal_cookie: &mut ProposalCookie,
-        token_owner_record_cookie: &TokeOwnerRecordCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
         index: Option<u16>,
     ) -> Result<ProposalInstructionCookie, ProgramError> {
         // Create NOP instruction as a placeholder
@@ -1703,7 +1712,7 @@ impl GovernanceProgramTest {
     pub async fn with_instruction(
         &mut self,
         proposal_cookie: &mut ProposalCookie,
-        token_owner_record_cookie: &TokeOwnerRecordCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
         index: Option<u16>,
         instruction: &mut Instruction,
     ) -> Result<ProposalInstructionCookie, ProgramError> {
@@ -1772,7 +1781,7 @@ impl GovernanceProgramTest {
     pub async fn remove_instruction(
         &mut self,
         proposal_cookie: &mut ProposalCookie,
-        token_owner_record_cookie: &TokeOwnerRecordCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
         proposal_instruction_cookie: &ProposalInstructionCookie,
     ) -> Result<(), ProgramError> {
         let remove_instruction_instruction = remove_instruction(
@@ -1816,7 +1825,7 @@ impl GovernanceProgramTest {
     pub async fn flag_instruction_error(
         &mut self,
         proposal_cookie: &ProposalCookie,
-        token_owner_record_cookie: &TokeOwnerRecordCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
         proposal_instruction_cookie: &ProposalInstructionCookie,
     ) -> Result<(), ProgramError> {
         let governance_authority = token_owner_record_cookie.get_governance_authority();

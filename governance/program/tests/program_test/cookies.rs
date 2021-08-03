@@ -30,7 +30,7 @@ pub struct RealmCookie {
 }
 
 #[derive(Debug)]
-pub struct TokeOwnerRecordCookie {
+pub struct TokenOwnerRecordCookie {
     pub address: Pubkey,
 
     pub account: TokenOwnerRecord,
@@ -46,7 +46,7 @@ pub struct TokeOwnerRecordCookie {
     pub governance_delegate: Keypair,
 }
 
-impl TokeOwnerRecordCookie {
+impl TokenOwnerRecordCookie {
     pub fn get_governance_authority(&self) -> &Keypair {
         self.governance_authority
             .as_ref()
