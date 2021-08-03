@@ -30,7 +30,7 @@ use {
         native_token::{self, Sol},
         signature::{Keypair, Signer},
         signers::Signers,
-        system_instruction,
+        system_instruction, system_program,
         transaction::Transaction,
     },
     spl_associated_token_account::{create_associated_token_account, get_associated_token_address},
@@ -735,12 +735,27 @@ fn command_deposit_sol(
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
 
     let mut instructions: Vec<Instruction> = vec![];
-    let mut signers = vec![config.fee_payer.as_ref(), config.staker.as_ref()];
+
+    let user_sol_transfer = Keypair::new(); // ephemeral SOL account just to do the transfer
+    let mut signers = vec![
+        config.fee_payer.as_ref(),
+        config.staker.as_ref(),
+        &user_sol_transfer,
+    ];
     if let Some(keypair) = from.as_ref() {
         signers.push(keypair)
     }
 
     let mut total_rent_free_balances: u64 = 0;
+
+    // Create the ephemeral SOL account
+    instructions.push(system_instruction::create_account(
+        &from_pubkey,
+        &user_sol_transfer.pubkey(),
+        amount,
+        0,
+        &system_program::id(),
+    ));
 
     // Create token account if not specified
     let pool_token_receiver_account =
@@ -779,7 +794,7 @@ fn command_deposit_sol(
             &sol_deposit_authority.pubkey(),
             &pool_withdraw_authority,
             &stake_pool.reserve_stake,
-            &from_pubkey,
+            &user_sol_transfer.pubkey(),
             &pool_token_receiver_account,
             &stake_pool.manager_fee_account,
             &referrer_token_account,
@@ -793,7 +808,7 @@ fn command_deposit_sol(
             stake_pool_address,
             &pool_withdraw_authority,
             &stake_pool.reserve_stake,
-            &from_pubkey,
+            &user_sol_transfer.pubkey(),
             &pool_token_receiver_account,
             &stake_pool.manager_fee_account,
             &referrer_token_account,
