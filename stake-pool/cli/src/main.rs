@@ -1901,7 +1901,7 @@ fn main() {
             .arg(
                 Arg::with_name("from")
                     .long("from")
-                    .validator(is_keypair)
+                    .validator(is_keypair_or_ask_keyword)
                     .value_name("KEYPAIR")
                     .takes_value(true)
                     .help("Source account of funds. \
