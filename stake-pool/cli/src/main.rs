@@ -2087,18 +2087,21 @@ fn main() {
             .arg(
                 Arg::with_name("new_sol_deposit_authority")
                     .index(2)
-                    .validator(|x| {
-                        #[allow(clippy::cmp_owned)]
-                        let default = if x == String::from("none") {
-                            Ok(())
-                        } else {
-                            Err(String::from("Not a pubkey or 'none'"))
-                        };
-                        is_pubkey(x).or(default)
-                    })
-                    .value_name("ADDRESS_OR_NONE")
+                    .validator(is_pubkey)
+                    .value_name("ADDRESS")
                     .takes_value(true)
-                    .help("'none', or a public key for the new stake pool sol deposit authority."),
+                    .help("The public key for the new stake pool sol deposit authority."),
+            )
+            .arg(
+                Arg::with_name("unset")
+                    .long("unset")
+                    .takes_value(false)
+                    .help("Unset the sol deposit authority.")
+            )
+            .group(ArgGroup::with_name("validator")
+                .arg("new_sol_deposit_authority")
+                .arg("unset")
+                .required(true)
             )
         )
         .subcommand(SubCommand::with_name("set-stake-deposit-authority")
@@ -2113,20 +2116,23 @@ fn main() {
                     .help("Stake pool address."),
             )
             .arg(
-                Arg::with_name("new_sol_deposit_authority")
+                Arg::with_name("new_stake_deposit_authority")
                     .index(2)
-                    .validator(|x| {
-                        #[allow(clippy::cmp_owned)]
-                        let default = if x == String::from("none") {
-                            Ok(())
-                        } else {
-                            Err(String::from("Not a pubkey or 'none'"))
-                        };
-                        is_pubkey(x).or(default)
-                    })
+                    .validator(is_pubkey)
                     .value_name("ADDRESS_OR_NONE")
                     .takes_value(true)
                     .help("'none', or a public key for the new stake pool sol deposit authority."),
+            )
+            .arg(
+                Arg::with_name("unset")
+                    .long("unset")
+                    .takes_value(false)
+                    .help("Unset the stake deposit authority. The program will use a program derived address.")
+            )
+            .group(ArgGroup::with_name("validator")
+                .arg("new_stake_deposit_authority")
+                .arg("unset")
+                .required(true)
             )
         )
         .subcommand(SubCommand::with_name("set-fee")
@@ -2438,17 +2444,19 @@ fn main() {
         }
         ("set-stake-deposit-authority", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
-            let new_sol_deposit_authority = pubkey_of(arg_matches, "new_sol_deposit_authority");
+            let new_stake_deposit_authority = pubkey_of(arg_matches, "new_stake_deposit_authority");
+            let _unset = arg_matches.is_present("unset");
             command_set_deposit_authority(
                 &config,
                 &stake_pool_address,
-                new_sol_deposit_authority,
+                new_stake_deposit_authority,
                 true,
             )
         }
         ("set-sol-deposit-authority", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
             let new_sol_deposit_authority = pubkey_of(arg_matches, "new_sol_deposit_authority");
+            let _unset = arg_matches.is_present("unset");
             command_set_deposit_authority(
                 &config,
                 &stake_pool_address,
