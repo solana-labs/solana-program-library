@@ -649,7 +649,8 @@ pub fn create_program_governance(
     }
 }
 
-/// Creates CreateMintGovernance instruction
+/// Creates CreateMintGovernance
+#[allow(clippy::too_many_arguments)]
 pub fn create_mint_governance(
     program_id: &Pubkey,
     // Accounts
