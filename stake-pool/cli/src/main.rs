@@ -360,15 +360,6 @@ fn command_vsa_create(
     Ok(())
 }
 
-fn command_show(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
-    let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
-    println!(
-        "Stake pool at address {}:\n{:#?}",
-        stake_pool_address, stake_pool
-    );
-    Ok(())
-}
-
 fn command_vsa_add(
     config: &Config,
     stake_pool_address: &Pubkey,
@@ -835,6 +826,9 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
     let epoch_info = config.rpc_client.get_epoch_info()?;
     let pool_withdraw_authority =
         find_withdraw_authority_program_address(&spl_stake_pool::id(), stake_pool_address).0;
+    let sol_deposit_authority = stake_pool
+        .sol_deposit_authority
+        .map_or("None".into(), |pubkey| pubkey.to_string());
 
     if config.verbose {
         println!("Stake Pool Info");
@@ -844,9 +838,14 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
         println!("Manager: {}", stake_pool.manager);
         println!("Staker: {}", stake_pool.staker);
         println!("Depositor: {}", stake_pool.stake_deposit_authority);
+        println!("SOL Deposit Authority: {}", sol_deposit_authority);
         println!("Withdraw Authority: {}", pool_withdraw_authority);
         println!("Pool Token Mint: {}", stake_pool.pool_mint);
         println!("Fee Account: {}", stake_pool.manager_fee_account);
+        println!("Epoch Fee: {}", stake_pool.fee);
+        println!("Deposit Fee: {}", stake_pool.deposit_fee);
+        println!("Withdrawal Fee: {}", stake_pool.withdrawal_fee);
+        println!("Referral Fee: {}%", stake_pool.referral_fee);
     } else {
         println!("Stake Pool: {}", stake_pool_address);
         println!("Pool Token Mint: {}", stake_pool.pool_mint);
@@ -2102,7 +2101,7 @@ fn main() {
             .arg(Arg::with_name("fee_type")
                 .index(2)
                 .value_name("FEE_TYPE")
-                .possible_values(&["pool","deposit", "withdrawal"]) // PreferredValidatorType enum
+                .possible_values(&["epoch","deposit", "withdrawal"]) // PreferredValidatorType enum
                 .takes_value(true)
                 .required(true)
                 .help("Fee type to be updated."),
@@ -2258,10 +2257,6 @@ fn main() {
                 reserve_keypair,
             )
         }
-        ("show", Some(arg_matches)) => {
-            let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
-            command_show(&config, &stake_pool_address)
-        }
         ("create-validator-stake", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
             let vote_account_address = pubkey_of(arg_matches, "vote_account").unwrap();
@@ -2397,7 +2392,7 @@ fn main() {
                 numerator,
             };
             match arg_matches.value_of("fee_type").unwrap() {
-                "pool" => command_set_fee(&config, &stake_pool_address, new_fee),
+                "epoch" => command_set_fee(&config, &stake_pool_address, new_fee),
                 "deposit" => command_set_deposit_fee(&config, &stake_pool_address, new_fee),
                 "withdrawal" => command_set_withdrawal_fee(&config, &stake_pool_address, new_fee),
                 _ => unreachable!(),

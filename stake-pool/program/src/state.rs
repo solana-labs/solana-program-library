@@ -16,6 +16,7 @@ use {
     },
     spl_math::checked_ceil_div::CheckedCeilDiv,
     std::convert::TryFrom,
+    std::fmt,
 };
 
 /// Enum representing the account type managed by the program
@@ -616,6 +617,12 @@ impl Fee {
         (amt as u128)
             .checked_mul(self.numerator as u128)?
             .checked_div(self.denominator as u128)
+    }
+}
+
+impl fmt::Display for Fee {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}/{}", self.numerator, self.denominator)
     }
 }
 
