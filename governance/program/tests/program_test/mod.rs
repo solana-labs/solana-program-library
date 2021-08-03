@@ -139,6 +139,7 @@ impl GovernanceProgramTest {
             use_council_mint: true,
             use_custodian: true,
             community_mint_max_vote_weight_source: MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,
+            min_community_tokens_to_create_governance: 10,
         };
 
         self.with_realm_using_config_args(&config_args).await
@@ -209,6 +210,7 @@ impl GovernanceProgramTest {
             Some(realm_custodian.pubkey()),
             council_token_mint_pubkey,
             name.clone(),
+            config_args.min_community_tokens_to_create_governance,
             config_args.community_mint_max_vote_weight_source.clone(),
         );
 
@@ -227,6 +229,8 @@ impl GovernanceProgramTest {
                 council_mint: council_token_mint_pubkey,
                 reserved: [0; 8],
                 custodian: Some(realm_custodian.pubkey()),
+                min_community_tokens_to_create_governance: config_args
+                    .min_community_tokens_to_create_governance,
                 community_mint_max_vote_weight_source: config_args
                     .community_mint_max_vote_weight_source
                     .clone(),
@@ -257,6 +261,7 @@ impl GovernanceProgramTest {
         let realm_authority = Keypair::new();
         let realm_custodian = Keypair::new();
         let community_mint_max_vote_weight_source = MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION;
+        let min_community_tokens_to_create_governance = 10;
 
         let create_realm_instruction = create_realm(
             &self.program_id,
@@ -266,6 +271,7 @@ impl GovernanceProgramTest {
             Some(realm_custodian.pubkey()),
             Some(council_mint),
             name.clone(),
+            min_community_tokens_to_create_governance,
             community_mint_max_vote_weight_source,
         );
 
@@ -286,6 +292,7 @@ impl GovernanceProgramTest {
                 custodian: Some(realm_authority.pubkey()),
                 community_mint_max_vote_weight_source:
                     MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,
+                min_community_tokens_to_create_governance,
             },
         };
 
@@ -684,6 +691,7 @@ impl GovernanceProgramTest {
             &realm_cookie.realm_authority.as_ref().unwrap().pubkey(),
             council_token_mint,
             realm_custodian,
+            config_args.min_community_tokens_to_create_governance,
             config_args.community_mint_max_vote_weight_source.clone(),
         );
 

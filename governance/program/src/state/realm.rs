@@ -25,6 +25,9 @@ pub struct RealmConfigArgs {
     /// If yes then custodian account must also be passed to the instruction  
     pub use_custodian: bool,
 
+    /// Min number of community tokens required to create a governance
+    pub min_community_tokens_to_create_governance: u64,
+
     /// The source used for community mint max vote weight source
     pub community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
 }
@@ -35,6 +38,9 @@ pub struct RealmConfigArgs {
 pub struct RealmConfig {
     /// Reserved space for future versions
     pub reserved: [u8; 8],
+
+    /// Min number of community tokens required to create a governance
+    pub min_community_tokens_to_create_governance: u64,
 
     /// The source used for community mint max vote weight source
     pub community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
@@ -77,7 +83,7 @@ pub struct Realm {
 
 impl AccountMaxSize for Realm {
     fn get_max_size(&self) -> Option<usize> {
-        Some(self.name.len() + 161)
+        Some(self.name.len() + 169)
     }
 }
 
@@ -241,6 +247,7 @@ mod test {
                 reserved: [0; 8],
                 custodian: Some(Pubkey::new_unique()),
                 community_mint_max_vote_weight_source: MintMaxVoteWeightSource::Absolute(100),
+                min_community_tokens_to_create_governance: 10,
             },
         };
 

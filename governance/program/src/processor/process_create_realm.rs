@@ -103,6 +103,8 @@ pub fn process_create_realm(
             custodian: realm_custodian,
             community_mint_max_vote_weight_source: config_args
                 .community_mint_max_vote_weight_source,
+            min_community_tokens_to_create_governance: config_args
+                .min_community_tokens_to_create_governance,
         },
     };
 

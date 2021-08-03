@@ -22,6 +22,7 @@ async fn test_set_realm_config() {
         use_council_mint: true,
         use_custodian: true,
         community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(100),
+        min_community_tokens_to_create_governance: 10,
     };
 
     // Act
@@ -50,6 +51,7 @@ async fn test_set_realm_config_with_authority_must_sign_error() {
         use_council_mint: true,
         use_custodian: true,
         community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(100),
+        min_community_tokens_to_create_governance: 10,
     };
 
     // Act
@@ -80,6 +82,7 @@ async fn test_set_realm_config_with_no_authority_error() {
         use_council_mint: true,
         use_custodian: true,
         community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(100),
+        min_community_tokens_to_create_governance: 10,
     };
 
     governance_test
@@ -115,6 +118,7 @@ async fn test_set_realm_config_with_invalid_authority_error() {
         use_council_mint: true,
         use_custodian: true,
         community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(100),
+        min_community_tokens_to_create_governance: 10,
     };
 
     let realm_cookie2 = governance_test.with_realm().await;
@@ -145,6 +149,7 @@ async fn test_set_realm_config_with_remove_custodian() {
         use_council_mint: true,
         use_custodian: false,
         community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(100),
+        min_community_tokens_to_create_governance: 10,
     };
 
     // Act
@@ -173,6 +178,7 @@ async fn test_set_realm_config_with_remove_council() {
         use_council_mint: false,
         use_custodian: true,
         community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(100),
+        min_community_tokens_to_create_governance: 10,
     };
 
     // Act
@@ -201,6 +207,7 @@ async fn test_set_realm_config_with_council_change_error() {
         use_council_mint: true,
         use_custodian: true,
         community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(100),
+        min_community_tokens_to_create_governance: 10,
     };
 
     // Try to replace council mint
@@ -231,6 +238,7 @@ async fn test_set_realm_config_with_council_restore_error() {
         use_council_mint: false,
         use_custodian: true,
         community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(100),
+        min_community_tokens_to_create_governance: 10,
     };
 
     governance_test

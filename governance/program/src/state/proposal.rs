@@ -565,6 +565,7 @@ mod test {
                 custodian: Some(Pubkey::new_unique()),
                 community_mint_max_vote_weight_source:
                     MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,
+                min_community_tokens_to_create_governance: 10,
             },
         }
     }

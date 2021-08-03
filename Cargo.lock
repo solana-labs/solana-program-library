@@ -170,7 +170,7 @@ dependencies = [
  "arrayref",
  "borsh",
  "solana-program",
- "spl-token 3.1.1",
+ "spl-token 3.2.0",
  "thiserror",
  "uint 0.8.5",
 ]
