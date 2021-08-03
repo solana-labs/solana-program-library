@@ -705,6 +705,8 @@ pub fn create_token_governance(
     realm: &Pubkey,
     governed_token: &Pubkey,
     governed_token_owner: &Pubkey,
+    token_owner_record: &Pubkey,
+    governing_token_mint: &Pubkey,
     payer: &Pubkey,
     // Args
     config: GovernanceConfig,
@@ -717,6 +719,8 @@ pub fn create_token_governance(
         AccountMeta::new(token_governance_address, false),
         AccountMeta::new(*governed_token, false),
         AccountMeta::new_readonly(*governed_token_owner, true),
+        AccountMeta::new_readonly(*token_owner_record, false),
+        AccountMeta::new_readonly(*governing_token_mint, false),
         AccountMeta::new_readonly(*payer, true),
         AccountMeta::new_readonly(spl_token::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
