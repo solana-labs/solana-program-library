@@ -55,6 +55,8 @@ pub fn process_set_realm_config(
 
     realm_data.config.community_mint_max_vote_weight_source =
         config_args.community_mint_max_vote_weight_source;
+    realm_data.config.min_community_tokens_to_create_governance =
+        config_args.min_community_tokens_to_create_governance;
 
     realm_data.serialize(&mut *realm_info.data.borrow_mut())?;
 

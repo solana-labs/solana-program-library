@@ -109,10 +109,11 @@ pub enum GovernanceInstruction {
     ///
     ///   0. `[]` Realm account the created Governance belongs to
     ///   1. `[writable]` Account Governance account. PDA seeds: ['account-governance', realm, governed_account]
-    ///   2. `[]` Account governed by this Governance account
-    ///   3. `[signer]` Payer
-    ///   4. `[]` System program
-    ///   5. `[]` Sysvar Rent
+    ///   2. `[]` Account governed by this Governance
+    ///   3. `[]` Governing TokenOwnerRecord account
+    ///   4. `[signer]` Payer
+    ///   5. `[]` System program
+    ///   6. `[]` Sysvar Rent
     CreateAccountGovernance {
         /// Governance config
         #[allow(dead_code)]
@@ -126,10 +127,11 @@ pub enum GovernanceInstruction {
     ///   2. `[]` Program governed by this Governance account
     ///   3. `[writable]` Program Data account of the Program governed by this Governance account
     ///   4. `[signer]` Current Upgrade Authority account of the Program governed by this Governance account
-    ///   5. `[signer]` Payer
-    ///   6. `[]` bpf_upgradeable_loader program
-    ///   7. `[]` System program
-    ///   8. `[]` Sysvar Rent
+    ///   5. `[]` Governing TokenOwnerRecord account     
+    ///   6. `[signer]` Payer
+    ///   7. `[]` bpf_upgradeable_loader program
+    ///   8. `[]` System program
+    ///   9. `[]` Sysvar Rent
     CreateProgramGovernance {
         /// Governance config
         #[allow(dead_code)]
@@ -310,10 +312,11 @@ pub enum GovernanceInstruction {
     ///   1. `[writable]` Mint Governance account. PDA seeds: ['mint-governance', realm, governed_mint]
     ///   2. `[writable]` Mint governed by this Governance account
     ///   3. `[signer]` Current Mint Authority
-    ///   4. `[signer]` Payer
-    ///   5. `[]` SPL Token program
-    ///   6. `[]` System program
-    ///   7. `[]` Sysvar Rent
+    ///   4. `[]` Governing TokenOwnerRecord account    
+    ///   5. `[signer]` Payer
+    ///   6. `[]` SPL Token program
+    ///   7. `[]` System program
+    ///   8. `[]` Sysvar Rent
     CreateMintGovernance {
         #[allow(dead_code)]
         /// Governance config
@@ -331,11 +334,12 @@ pub enum GovernanceInstruction {
     ///   0. `[]` Realm account the created Governance belongs to    
     ///   1. `[writable]` Token Governance account. PDA seeds: ['token-governance', realm, governed_token]
     ///   2. `[writable]` Token account governed by this Governance account
-    ///   3. `[signer]` Current Token account owner
-    ///   4. `[signer]` Payer
-    ///   5. `[]` SPL Token program
-    ///   6. `[]` System program
-    ///   7. `[]` Sysvar Rent
+    ///   3. `[signer]` Current Token account
+    ///   4. `[]` Governing TokenOwnerRecord account        
+    ///   5. `[signer]` Payer
+    ///   6. `[]` SPL Token program
+    ///   7. `[]` System program
+    ///   8. `[]` Sysvar Rent
     CreateTokenGovernance {
         #[allow(dead_code)]
         /// Governance config
@@ -577,7 +581,6 @@ pub fn create_account_governance(
     realm: &Pubkey,
     governed_account: &Pubkey,
     token_owner_record: &Pubkey,
-    governing_token_mint: &Pubkey,
     payer: &Pubkey,
     // Args
     config: GovernanceConfig,
@@ -590,7 +593,6 @@ pub fn create_account_governance(
         AccountMeta::new(account_governance_address, false),
         AccountMeta::new_readonly(*governed_account, false),
         AccountMeta::new_readonly(*token_owner_record, false),
-        AccountMeta::new_readonly(*governing_token_mint, false),
         AccountMeta::new_readonly(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
@@ -613,7 +615,6 @@ pub fn create_program_governance(
     governed_program: &Pubkey,
     governed_program_upgrade_authority: &Pubkey,
     token_owner_record: &Pubkey,
-    governing_token_mint: &Pubkey,
     payer: &Pubkey,
     // Args
     config: GovernanceConfig,
@@ -630,7 +631,6 @@ pub fn create_program_governance(
         AccountMeta::new(governed_program_data_address, false),
         AccountMeta::new_readonly(*governed_program_upgrade_authority, true),
         AccountMeta::new_readonly(*token_owner_record, false),
-        AccountMeta::new_readonly(*governing_token_mint, false),
         AccountMeta::new_readonly(*payer, true),
         AccountMeta::new_readonly(bpf_loader_upgradeable::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
@@ -657,7 +657,6 @@ pub fn create_mint_governance(
     governed_mint: &Pubkey,
     governed_mint_authority: &Pubkey,
     token_owner_record: &Pubkey,
-    governing_token_mint: &Pubkey,
     payer: &Pubkey,
     // Args
     config: GovernanceConfig,
@@ -671,7 +670,6 @@ pub fn create_mint_governance(
         AccountMeta::new(*governed_mint, false),
         AccountMeta::new_readonly(*governed_mint_authority, true),
         AccountMeta::new_readonly(*token_owner_record, false),
-        AccountMeta::new_readonly(*governing_token_mint, false),
         AccountMeta::new_readonly(*payer, true),
         AccountMeta::new_readonly(spl_token::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
@@ -691,6 +689,7 @@ pub fn create_mint_governance(
 }
 
 /// Creates CreateTokenGovernance instruction
+#[allow(clippy::too_many_arguments)]
 pub fn create_token_governance(
     program_id: &Pubkey,
     // Accounts
@@ -698,7 +697,6 @@ pub fn create_token_governance(
     governed_token: &Pubkey,
     governed_token_owner: &Pubkey,
     token_owner_record: &Pubkey,
-    governing_token_mint: &Pubkey,
     payer: &Pubkey,
     // Args
     config: GovernanceConfig,
@@ -712,7 +710,6 @@ pub fn create_token_governance(
         AccountMeta::new(*governed_token, false),
         AccountMeta::new_readonly(*governed_token_owner, true),
         AccountMeta::new_readonly(*token_owner_record, false),
-        AccountMeta::new_readonly(*governing_token_mint, false),
         AccountMeta::new_readonly(*payer, true),
         AccountMeta::new_readonly(spl_token::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
