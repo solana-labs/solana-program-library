@@ -444,9 +444,8 @@ pub fn create_realm(
     let instruction = GovernanceInstruction::CreateRealm {
         config_args: RealmConfigArgs {
             use_council_mint,
-
-            community_mint_max_vote_weight_source,
             min_community_tokens_to_create_governance,
+            community_mint_max_vote_weight_source,
         },
         name,
     };
@@ -608,6 +607,7 @@ pub fn create_account_governance(
 }
 
 /// Creates CreateProgramGovernance instruction
+#[allow(clippy::too_many_arguments)]
 pub fn create_program_governance(
     program_id: &Pubkey,
     // Accounts
@@ -1191,9 +1191,8 @@ pub fn set_realm_config(
     let instruction = GovernanceInstruction::SetRealmConfig {
         config_args: RealmConfigArgs {
             use_council_mint,
-
-            community_mint_max_vote_weight_source,
             min_community_tokens_to_create_governance,
+            community_mint_max_vote_weight_source,
         },
     };
 
