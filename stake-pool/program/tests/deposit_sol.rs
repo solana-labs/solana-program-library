@@ -312,7 +312,6 @@ async fn success_with_sol_deposit_authority() {
 
 #[tokio::test]
 async fn fail_without_sol_deposit_authority_signature() {
-    // TODO: this test should work after DepositSol has been refactored with deposit_sol_authority
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let sol_deposit_authority = Keypair::new();
     let stake_pool_accounts = StakePoolAccounts::new();
@@ -370,7 +369,7 @@ async fn fail_without_sol_deposit_authority_signature() {
                 error::StakePoolError::InvalidSolDepositAuthority as u32
             );
         }
-        _ => panic!("Wrong error occurs while try to make a deposit with wrong stake program ID"),
+        _ => panic!("Wrong error occurs while trying to make a deposit without SOL deposit authority signature"),
     }
 }
 

@@ -593,8 +593,8 @@ fn command_deposit_stake(
     config: &Config,
     stake_pool_address: &Pubkey,
     stake: &Pubkey,
-    token_receiver: &Option<Pubkey>,
-    referrer: &Option<Pubkey>,
+    pool_token_receiver_account: &Option<Pubkey>,
+    referrer_token_account: &Option<Pubkey>,
 ) -> CommandResult {
     if !config.no_update {
         command_update(config, stake_pool_address, false, false)?;
@@ -636,15 +636,16 @@ fn command_deposit_stake(
     let mut total_rent_free_balances: u64 = 0;
 
     // Create token account if not specified
-    let token_receiver = token_receiver.unwrap_or(add_associated_token_account(
-        config,
-        &stake_pool.pool_mint,
-        &config.token_owner.pubkey(),
-        &mut instructions,
-        &mut total_rent_free_balances,
-    ));
+    let pool_token_receiver_account =
+        pool_token_receiver_account.unwrap_or(add_associated_token_account(
+            config,
+            &stake_pool.pool_mint,
+            &config.token_owner.pubkey(),
+            &mut instructions,
+            &mut total_rent_free_balances,
+        ));
 
-    let referrer = referrer.unwrap_or(stake_pool.manager_fee_account);
+    let referrer_token_account = referrer_token_account.unwrap_or(stake_pool.manager_fee_account);
 
     let pool_withdraw_authority =
         find_withdraw_authority_program_address(&spl_stake_pool::id(), stake_pool_address).0;
@@ -671,9 +672,9 @@ fn command_deposit_stake(
             &config.staker.pubkey(),
             &validator_stake_account,
             &stake_pool.reserve_stake,
-            &token_receiver,
+            &pool_token_receiver_account,
             &stake_pool.manager_fee_account,
-            &referrer,
+            &referrer_token_account,
             &stake_pool.pool_mint,
             &spl_token::id(),
         )
@@ -687,9 +688,9 @@ fn command_deposit_stake(
             &config.staker.pubkey(),
             &validator_stake_account,
             &stake_pool.reserve_stake,
-            &token_receiver,
+            &pool_token_receiver_account,
             &stake_pool.manager_fee_account,
-            &referrer,
+            &referrer_token_account,
             &stake_pool.pool_mint,
             &spl_token::id(),
         )
@@ -715,15 +716,15 @@ fn command_deposit_sol(
     config: &Config,
     stake_pool_address: &Pubkey,
     from: &Option<Keypair>,
-    token_receiver: &Option<Pubkey>,
-    referrer: &Option<Pubkey>,
+    pool_token_receiver_account: &Option<Pubkey>,
+    referrer_token_account: &Option<Pubkey>,
     amount: f64,
 ) -> CommandResult {
     if !config.no_update {
         command_update(config, stake_pool_address, false, false)?;
     }
 
-    let amount = spl_token::ui_amount_to_amount(amount, 9);
+    let amount = native_token::sol_to_lamports(amount);
 
     // Check withdraw_from balance
     let from_pubkey = from.as_ref().map_or_else(
@@ -734,8 +735,8 @@ fn command_deposit_sol(
     if from_balance < amount {
         return Err(format!(
             "Not enough SOL to deposit into pool: {}.\nMaximum deposit amount is {} SOL.",
-            spl_token::amount_to_ui_amount(amount, 9),
-            spl_token::amount_to_ui_amount(from_balance, 9)
+            Sol(amount),
+            Sol(from_balance)
         )
         .into());
     }
@@ -751,15 +752,16 @@ fn command_deposit_sol(
     let mut total_rent_free_balances: u64 = 0;
 
     // Create token account if not specified
-    let token_receiver = token_receiver.unwrap_or(add_associated_token_account(
-        config,
-        &stake_pool.pool_mint,
-        &config.token_owner.pubkey(),
-        &mut instructions,
-        &mut total_rent_free_balances,
-    ));
+    let pool_token_receiver_account =
+        pool_token_receiver_account.unwrap_or(add_associated_token_account(
+            config,
+            &stake_pool.pool_mint,
+            &config.token_owner.pubkey(),
+            &mut instructions,
+            &mut total_rent_free_balances,
+        ));
 
-    let referrer = referrer.unwrap_or(stake_pool.manager_fee_account);
+    let referrer_token_account = referrer_token_account.unwrap_or(stake_pool.manager_fee_account);
 
     let pool_withdraw_authority =
         find_withdraw_authority_program_address(&spl_stake_pool::id(), stake_pool_address).0;
@@ -768,7 +770,7 @@ fn command_deposit_sol(
         config.sol_depositor.as_ref()
     {
         let expected_sol_deposit_authority = stake_pool.sol_deposit_authority.ok_or_else(|| {
-            "SOL deposit authority specified in config but stake Pool has none".to_string()
+            "SOL deposit authority specified in arguments but stake pool has none".to_string()
         })?;
         signers.push(sol_deposit_authority.as_ref());
         if sol_deposit_authority.pubkey() != expected_sol_deposit_authority {
@@ -787,9 +789,9 @@ fn command_deposit_sol(
             &pool_withdraw_authority,
             &stake_pool.reserve_stake,
             &from_pubkey,
-            &token_receiver,
+            &pool_token_receiver_account,
             &stake_pool.manager_fee_account,
-            &referrer,
+            &referrer_token_account,
             &stake_pool.pool_mint,
             &spl_token::id(),
             amount,
@@ -801,9 +803,9 @@ fn command_deposit_sol(
             &pool_withdraw_authority,
             &stake_pool.reserve_stake,
             &from_pubkey,
-            &token_receiver,
+            &pool_token_receiver_account,
             &stake_pool.manager_fee_account,
-            &referrer,
+            &referrer_token_account,
             &stake_pool.pool_mint,
             &spl_token::id(),
             amount,
@@ -1827,7 +1829,7 @@ fn main() {
             )
         )
         .subcommand(SubCommand::with_name("deposit-stake")
-            .about("Deposit fully-activated stake account into the stake pool in exchange for pool tokens")
+            .about("Deposit active stake account into the stake pool in exchange for pool tokens")
             .arg(
                 Arg::with_name("pool")
                     .index(1)
@@ -1861,7 +1863,7 @@ fn main() {
                     .validator(is_pubkey)
                     .value_name("ADDRESS")
                     .takes_value(true)
-                    .help("Account to receive the referral fees for deposits. \
+                    .help("Pool token account to receive the referral fees for deposits. \
                           Defaults to the pool manager."),
             )
         )
@@ -1889,7 +1891,7 @@ fn main() {
                     .validator(is_keypair)
                     .value_name("KEYPAIR")
                     .takes_value(true)
-                    .help("Account to deposit SOL from. \
+                    .help("Source account of funds. \
                           Defaults to the fee payer."),
             )
             .arg(

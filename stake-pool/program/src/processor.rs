@@ -432,9 +432,6 @@ impl Processor {
         bump_seed: u8,
         amount: u64,
     ) -> Result<(), ProgramError> {
-        if amount == 0 {
-            return Ok(());
-        }
         let me_bytes = stake_pool.to_bytes();
         let authority_signature_seeds = [&me_bytes[..32], authority_type, &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
@@ -1778,10 +1775,6 @@ impl Processor {
             return Err(StakePoolError::InvalidFeeAccount.into());
         }
 
-        if stake_pool.token_program_id != *referrer_fee_info.owner {
-            return Err(StakePoolError::InvalidFeeAccount.into());
-        }
-
         if stake_pool.last_update_epoch < clock.epoch {
             return Err(StakePoolError::StakeListAndPoolOutOfDate.into());
         }
@@ -1897,36 +1890,42 @@ impl Processor {
             return Err(StakePoolError::DepositTooSmall.into());
         }
 
-        Self::token_mint_to(
-            stake_pool_info.key,
-            token_program_info.clone(),
-            pool_mint_info.clone(),
-            dest_user_info.clone(),
-            withdraw_authority_info.clone(),
-            AUTHORITY_WITHDRAW,
-            stake_pool.stake_withdraw_bump_seed,
-            pool_tokens_user,
-        )?;
-        Self::token_mint_to(
-            stake_pool_info.key,
-            token_program_info.clone(),
-            pool_mint_info.clone(),
-            manager_fee_info.clone(),
-            withdraw_authority_info.clone(),
-            AUTHORITY_WITHDRAW,
-            stake_pool.stake_withdraw_bump_seed,
-            pool_tokens_manager_deposit_fee,
-        )?;
-        Self::token_mint_to(
-            stake_pool_info.key,
-            token_program_info.clone(),
-            pool_mint_info.clone(),
-            referrer_fee_info.clone(),
-            withdraw_authority_info.clone(),
-            AUTHORITY_WITHDRAW,
-            stake_pool.stake_withdraw_bump_seed,
-            pool_tokens_referral_fee,
-        )?;
+        if pool_tokens_user > 0 {
+            Self::token_mint_to(
+                stake_pool_info.key,
+                token_program_info.clone(),
+                pool_mint_info.clone(),
+                dest_user_info.clone(),
+                withdraw_authority_info.clone(),
+                AUTHORITY_WITHDRAW,
+                stake_pool.stake_withdraw_bump_seed,
+                pool_tokens_user,
+            )?;
+        }
+        if pool_tokens_manager_deposit_fee > 0 {
+            Self::token_mint_to(
+                stake_pool_info.key,
+                token_program_info.clone(),
+                pool_mint_info.clone(),
+                manager_fee_info.clone(),
+                withdraw_authority_info.clone(),
+                AUTHORITY_WITHDRAW,
+                stake_pool.stake_withdraw_bump_seed,
+                pool_tokens_manager_deposit_fee,
+            )?;
+        }
+        if pool_tokens_referral_fee > 0 {
+            Self::token_mint_to(
+                stake_pool_info.key,
+                token_program_info.clone(),
+                pool_mint_info.clone(),
+                referrer_fee_info.clone(),
+                withdraw_authority_info.clone(),
+                AUTHORITY_WITHDRAW,
+                stake_pool.stake_withdraw_bump_seed,
+                pool_tokens_referral_fee,
+            )?;
+        }
 
         // withdraw additional lamports to the reserve
         let additional_lamports = all_deposit_lamports
@@ -1976,8 +1975,8 @@ impl Processor {
         let stake_pool_info = next_account_info(account_info_iter)?;
         let withdraw_authority_info = next_account_info(account_info_iter)?;
         let reserve_stake_account_info = next_account_info(account_info_iter)?;
-        let from_user_info = next_account_info(account_info_iter)?;
-        let dest_user_info = next_account_info(account_info_iter)?;
+        let from_user_lamports_info = next_account_info(account_info_iter)?;
+        let dest_user_pool_info = next_account_info(account_info_iter)?;
         let manager_fee_info = next_account_info(account_info_iter)?;
         let referrer_fee_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
@@ -2001,10 +2000,7 @@ impl Processor {
             stake_pool_info.key,
         )?;
         if let Some(sol_deposit_authority) = sol_deposit_authority_info {
-            stake_pool.check_sol_deposit_authority(
-                sol_deposit_authority.key,
-                sol_deposit_authority.is_signer,
-            )?;
+            stake_pool.check_sol_deposit_authority(sol_deposit_authority)?;
         }
         stake_pool.check_mint(pool_mint_info)?;
         stake_pool.check_reserve_stake(reserve_stake_account_info)?;
@@ -2042,22 +2038,24 @@ impl Processor {
             .ok_or(StakePoolError::CalculationFailure)?;
 
         Self::sol_transfer(
-            from_user_info.clone(),
+            from_user_lamports_info.clone(),
             reserve_stake_account_info.clone(),
             system_program_info.clone(),
             deposit_lamports,
         )?;
 
-        Self::token_mint_to(
-            stake_pool_info.key,
-            token_program_info.clone(),
-            pool_mint_info.clone(),
-            dest_user_info.clone(),
-            withdraw_authority_info.clone(),
-            AUTHORITY_WITHDRAW,
-            stake_pool.stake_withdraw_bump_seed,
-            pool_tokens_user,
-        )?;
+        if pool_tokens_user > 0 {
+            Self::token_mint_to(
+                stake_pool_info.key,
+                token_program_info.clone(),
+                pool_mint_info.clone(),
+                dest_user_pool_info.clone(),
+                withdraw_authority_info.clone(),
+                AUTHORITY_WITHDRAW,
+                stake_pool.stake_withdraw_bump_seed,
+                pool_tokens_user,
+            )?;
+        }
 
         if pool_tokens_manager_deposit_fee > 0 {
             Self::token_mint_to(
@@ -2419,7 +2417,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes [SetManager](enum.Instruction.html).
+    /// Processes [SetSolDepositAuthority](enum.Instruction.html).
     fn process_set_sol_deposit_authority(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -2427,10 +2425,10 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
         let manager_info = next_account_info(account_info_iter)?;
-        let new_sol_deposit_authority_info = match next_account_info(account_info_iter) {
-            Ok(auth_info) => Some(auth_info),
-            Err(_) => None,
-        };
+
+        let new_sol_deposit_authority = next_account_info(account_info_iter).ok().map(
+            |new_sol_deposit_authority_account_info| *new_sol_deposit_authority_account_info.key,
+        );
 
         check_account_owner(stake_pool_info, program_id)?;
         let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
@@ -2438,11 +2436,7 @@ impl Processor {
             return Err(StakePoolError::InvalidState.into());
         }
         stake_pool.check_manager(manager_info)?;
-        if let Some(new_auth_info) = new_sol_deposit_authority_info {
-            stake_pool.sol_deposit_authority = Some(*new_auth_info.key);
-        } else {
-            stake_pool.sol_deposit_authority = None
-        }
+        stake_pool.sol_deposit_authority = new_sol_deposit_authority;
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
         Ok(())
     }
@@ -2520,7 +2514,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes [SetFee](enum.Instruction.html).
+    /// Processes [SetDepositFee](enum.Instruction.html).
     fn process_set_deposit_fee(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -2552,7 +2546,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes [SetFee](enum.Instruction.html).
+    /// Processes [SetReferralFee](enum.Instruction.html).
     fn process_set_referral_fee(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -2570,7 +2564,6 @@ impl Processor {
 
         stake_pool.check_manager(manager_info)?;
 
-        // Numerator should be smaller than or equal to denominator (fee <= 1)
         if fee > 100u8 {
             msg!("Fee greater than 100% {}", fee);
             return Err(StakePoolError::FeeTooHigh.into());
@@ -2684,7 +2677,7 @@ impl Processor {
                 Self::process_set_deposit_fee(program_id, accounts, fee)
             }
             StakePoolInstruction::SetReferralFee { fee } => {
-                msg!("Instruction: SetDepositFee");
+                msg!("Instruction: SetReferralFee");
                 Self::process_set_referral_fee(program_id, accounts, fee)
             }
             StakePoolInstruction::DepositSol(lamports) => {

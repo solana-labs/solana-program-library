@@ -55,7 +55,7 @@ pub enum StakePoolInstruction {
         /// Fee charged per withdrawal as percentage of withdrawal
         #[allow(dead_code)] // but it's not
         withdrawal_fee: Fee,
-        /// Fee charged per deposit as percentage of withdrawal
+        /// Fee charged per deposit as percentage of deposit
         #[allow(dead_code)] // but it's not
         deposit_fee: Fee,
         /// Percentage [0-100] of deposit_fee that goes to referrer
@@ -323,7 +323,7 @@ pub enum StakePoolInstruction {
     ///  1. `[s]` Manager
     ///  2. `[]` Sysvar clock
     SetWithdrawalFee {
-        /// Fee assessed as percentage of perceived rewards
+        /// Fee assessed as percentage of pool tokens to be withdrawn
         #[allow(dead_code)] // but it's not
         fee: Fee,
     },
@@ -333,7 +333,7 @@ pub enum StakePoolInstruction {
     ///  0. `[w]` StakePool
     ///  1. `[s]` Manager
     SetDepositFee {
-        /// Fee assessed as percentage of perceived rewards
+        /// Fee assessed as percentage of deposited SOL
         #[allow(dead_code)] // but it's not
         fee: Fee,
     },
@@ -343,7 +343,7 @@ pub enum StakePoolInstruction {
     ///  0. `[w]` StakePool
     ///  1. `[s]` Manager
     SetReferralFee {
-        /// Fee assessed as percentage of perceived rewards
+        /// Fee assessed as percentage of deposit fee
         #[allow(dead_code)] // but it's not
         fee: u8,
     },
@@ -352,7 +352,7 @@ pub enum StakePoolInstruction {
     ///   representing ownership into the pool. Inputs are converted to the current ratio.
     ///
     ///   0. `[w]` Stake pool
-    ///   1. `[]/[s]` Stake pool sol deposit authority.
+    ///   1. `[s]/[]` Stake pool sol deposit authority.
     ///   2. `[]` Stake pool withdraw authority
     ///   3. `[w]` Reserve stake account, to withdraw rent exempt reserve
     ///   4. `[s]` Account providing the lamports to be deposited into the pool
@@ -365,10 +365,10 @@ pub enum StakePoolInstruction {
     ///   11. `[]` Pool token program id,
     DepositSol(u64),
 
-    ///  (Manager only) Update staker
+    ///  (Manager only) Update SOL deposit authority
     ///
     ///  0. `[w]` StakePool
-    ///  1. `[s]` Manager staker
+    ///  1. `[s]` Manager
     ///  2. '[]` New sol_deposit_authority pubkey
     SetSolDepositAuthority,
 }

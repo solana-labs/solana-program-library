@@ -258,14 +258,13 @@ impl StakePool {
     #[inline]
     pub(crate) fn check_sol_deposit_authority(
         &self,
-        sol_deposit_authority: &Pubkey,
-        is_signer: bool,
+        sol_deposit_authority: &AccountInfo,
     ) -> Result<(), ProgramError> {
         if let Some(auth) = self.sol_deposit_authority {
-            if auth != *sol_deposit_authority {
+            if auth != *sol_deposit_authority.key {
                 return Err(StakePoolError::InvalidSolDepositAuthority.into());
             }
-            if !is_signer {
+            if !sol_deposit_authority.is_signer {
                 msg!("SOL Deposit authority signature missing");
                 return Err(StakePoolError::SignatureMissing.into());
             }
