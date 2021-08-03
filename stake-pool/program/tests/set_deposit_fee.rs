@@ -11,14 +11,14 @@ use {
         signature::{Keypair, Signer},
         transaction::{Transaction, TransactionError},
     },
-    spl_stake_pool::{error, id, instruction, state::StakePool},
+    spl_stake_pool::{error, id, instruction, state::StakePool, state::Fee},
 };
 
-async fn setup(fee: Option<u8>) -> (ProgramTestContext, StakePoolAccounts, u8) {
+async fn setup(fee: Option<Fee>) -> (ProgramTestContext, StakePoolAccounts, Fee) {
     let mut context = program_test().start_with_context().await;
     let mut stake_pool_accounts = StakePoolAccounts::new();
     if let Some(fee) = fee {
-        stake_pool_accounts.referral_fee = fee;
+        stake_pool_accounts.deposit_fee = fee;
     }
     stake_pool_accounts
         .initialize_stake_pool(
@@ -29,21 +29,24 @@ async fn setup(fee: Option<u8>) -> (ProgramTestContext, StakePoolAccounts, u8) {
         )
         .await
         .unwrap();
-    let new_referral_fee = 15u8;
+    let new_deposit_fee = Fee {
+        numerator: 823,
+        denominator: 1000,
+    };
 
-    (context, stake_pool_accounts, new_referral_fee)
+    (context, stake_pool_accounts, new_deposit_fee)
 }
 
 #[tokio::test]
 async fn success_stake() {
-    let (mut context, stake_pool_accounts, new_referral_fee) = setup(None).await;
+    let (mut context, stake_pool_accounts, new_deposit_fee) = setup(None).await;
 
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::set_referral_fee(
+        &[instruction::set_deposit_fee(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
-            new_referral_fee,
+            new_deposit_fee,
             true,
         )],
         Some(&context.payer.pubkey()),
@@ -62,20 +65,20 @@ async fn success_stake() {
     )
     .await;
     let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
-    assert_eq!(stake_pool.stake_referral_fee, new_referral_fee);
+    assert_eq!(stake_pool.stake_deposit_fee, new_deposit_fee);
 }
 
 #[tokio::test]
 async fn success_stake_increase_fee_from_0() {
-    let (mut context, stake_pool_accounts, _) = setup(Some(0u8)).await;
-    let new_referral_fee = 30u8;
+    let (mut context, stake_pool_accounts, _) = setup(Some(Fee { numerator: 0, denominator: 0})).await;
+    let new_deposit_fee = Fee { numerator: 324, denominator: 1234};
 
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::set_referral_fee(
+        &[instruction::set_deposit_fee(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
-            new_referral_fee,
+            new_deposit_fee,
             true,
         )],
         Some(&context.payer.pubkey()),
@@ -94,20 +97,20 @@ async fn success_stake_increase_fee_from_0() {
     )
     .await;
     let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
-    assert_eq!(stake_pool.stake_referral_fee, new_referral_fee);
+    assert_eq!(stake_pool.stake_deposit_fee, new_deposit_fee);
 }
 
 #[tokio::test]
 async fn fail_stake_wrong_manager() {
-    let (mut context, stake_pool_accounts, new_referral_fee) = setup(None).await;
+    let (mut context, stake_pool_accounts, new_deposit_fee) = setup(None).await;
 
     let wrong_manager = Keypair::new();
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::set_referral_fee(
+        &[instruction::set_deposit_fee(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &wrong_manager.pubkey(),
-            new_referral_fee,
+            new_deposit_fee,
             true,
         )],
         Some(&context.payer.pubkey()),
@@ -132,16 +135,16 @@ async fn fail_stake_wrong_manager() {
 }
 
 #[tokio::test]
-async fn fail_stake_high_referral_fee() {
-    let (mut context, stake_pool_accounts, _new_referral_fee) = setup(None).await;
+async fn fail_stake_high_deposit_fee() {
+    let (mut context, stake_pool_accounts, _new_deposit_fee) = setup(None).await;
 
-    let new_referral_fee = 110u8;
+    let new_deposit_fee = Fee { numerator: 100001, denominator: 100000};
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::set_referral_fee(
+        &[instruction::set_deposit_fee(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
-            new_referral_fee,
+            new_deposit_fee,
             true,
         )],
         Some(&context.payer.pubkey()),
@@ -167,14 +170,14 @@ async fn fail_stake_high_referral_fee() {
 
 #[tokio::test]
 async fn success_sol() {
-    let (mut context, stake_pool_accounts, new_referral_fee) = setup(None).await;
+    let (mut context, stake_pool_accounts, new_deposit_fee) = setup(None).await;
 
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::set_referral_fee(
+        &[instruction::set_deposit_fee(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
-            new_referral_fee,
+            new_deposit_fee,
             false,
         )],
         Some(&context.payer.pubkey()),
@@ -193,20 +196,20 @@ async fn success_sol() {
     )
     .await;
     let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
-    assert_eq!(stake_pool.sol_referral_fee, new_referral_fee);
+    assert_eq!(stake_pool.sol_deposit_fee, new_deposit_fee);
 }
 
 #[tokio::test]
 async fn fail_sol_wrong_manager() {
-    let (mut context, stake_pool_accounts, new_referral_fee) = setup(None).await;
+    let (mut context, stake_pool_accounts, new_deposit_fee) = setup(None).await;
 
     let wrong_manager = Keypair::new();
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::set_referral_fee(
+        &[instruction::set_deposit_fee(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &wrong_manager.pubkey(),
-            new_referral_fee,
+            new_deposit_fee,
             false,
         )],
         Some(&context.payer.pubkey()),
@@ -231,16 +234,16 @@ async fn fail_sol_wrong_manager() {
 }
 
 #[tokio::test]
-async fn fail_sol_high_referral_fee() {
-    let (mut context, stake_pool_accounts, _new_referral_fee) = setup(None).await;
+async fn fail_sol_high_deposit_fee() {
+    let (mut context, stake_pool_accounts, _new_deposit_fee) = setup(None).await;
 
-    let new_referral_fee = 110u8;
+    let new_deposit_fee = Fee { numerator: 100001, denominator: 100000};
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::set_referral_fee(
+        &[instruction::set_deposit_fee(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
-            new_referral_fee,
+            new_deposit_fee,
             false,
         )],
         Some(&context.payer.pubkey()),

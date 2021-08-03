@@ -158,8 +158,8 @@ fn command_create_pool(
     stake_deposit_authority: Option<Keypair>,
     fee: Fee,
     withdrawal_fee: Fee,
-    deposit_fee: Fee,
-    referral_fee: u8,
+    stake_deposit_fee: Fee,
+    stake_referral_fee: u8,
     max_validators: u32,
     stake_pool_keypair: Option<Keypair>,
     mint_keypair: Option<Keypair>,
@@ -290,8 +290,8 @@ fn command_create_pool(
                 stake_deposit_authority.as_ref().map(|x| x.pubkey()),
                 fee,
                 withdrawal_fee,
-                deposit_fee,
-                referral_fee,
+                stake_deposit_fee,
+                stake_referral_fee,
                 max_validators,
             ),
         ],
@@ -858,9 +858,14 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
         println!("Pool Token Mint: {}", stake_pool.pool_mint);
         println!("Fee Account: {}", stake_pool.manager_fee_account);
         println!("Epoch Fee: {}", stake_pool.fee);
-        println!("Deposit Fee: {}", stake_pool.deposit_fee);
         println!("Withdrawal Fee: {}", stake_pool.withdrawal_fee);
-        println!("Referral Fee: {}%", stake_pool.referral_fee);
+        println!("Stake Deposit Fee: {}", stake_pool.stake_deposit_fee);
+        println!(
+            "Stake Deposit Referral Fee: {}%",
+            stake_pool.stake_referral_fee
+        );
+        println!("SOL Deposit Fee: {}", stake_pool.sol_deposit_fee);
+        println!("SOL Deposit Referral Fee: {}%", stake_pool.sol_referral_fee);
     } else {
         println!("Stake Pool: {}", stake_pool_address);
         println!("Pool Token Mint: {}", stake_pool.pool_mint);
@@ -1340,20 +1345,22 @@ fn command_set_staker(
     Ok(())
 }
 
-fn command_set_sol_deposit_authority(
+fn command_set_deposit_authority(
     config: &Config,
     stake_pool_address: &Pubkey,
     new_sol_deposit_authority: Option<Pubkey>,
+    for_stake_deposit: bool,
 ) -> CommandResult {
     let mut signers = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
     unique_signers!(signers);
     let transaction = checked_transaction_with_signers(
         config,
-        &[spl_stake_pool::instruction::set_sol_deposit_authority(
+        &[spl_stake_pool::instruction::set_deposit_authority(
             &spl_stake_pool::id(),
             stake_pool_address,
             &config.manager.pubkey(),
             new_sol_deposit_authority.as_ref(),
+            for_stake_deposit,
         )],
         &signers,
     )?;
@@ -1403,6 +1410,7 @@ fn command_set_deposit_fee(
     config: &Config,
     stake_pool_address: &Pubkey,
     new_fee: Fee,
+    for_stake_deposit: bool,
 ) -> CommandResult {
     let mut signers = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
     unique_signers!(signers);
@@ -1413,6 +1421,7 @@ fn command_set_deposit_fee(
             stake_pool_address,
             &config.manager.pubkey(),
             new_fee,
+            for_stake_deposit,
         )],
         &signers,
     )?;
@@ -1424,6 +1433,7 @@ fn command_set_referral_fee(
     config: &Config,
     stake_pool_address: &Pubkey,
     new_fee: u8,
+    for_stake_deposit: bool,
 ) -> CommandResult {
     let mut signers = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
     unique_signers!(signers);
@@ -1434,6 +1444,7 @@ fn command_set_referral_fee(
             stake_pool_address,
             &config.manager.pubkey(),
             new_fee,
+            for_stake_deposit,
         )],
         &signers,
     )?;
@@ -2102,8 +2113,36 @@ fn main() {
                     .help("'none', or a public key for the new stake pool sol deposit authority."),
             )
         )
+        .subcommand(SubCommand::with_name("set-stake-deposit-authority")
+            .about("Change stake deposit authority account for the stake pool. Must be signed by the manager.")
+            .arg(
+                Arg::with_name("pool")
+                    .index(1)
+                    .validator(is_pubkey)
+                    .value_name("POOL_ADDRESS")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Stake pool address."),
+            )
+            .arg(
+                Arg::with_name("new_sol_deposit_authority")
+                    .index(2)
+                    .validator(|x| {
+                        #[allow(clippy::cmp_owned)]
+                        let default = if x == String::from("none") {
+                            Ok(())
+                        } else {
+                            Err(String::from("Not a pubkey or 'none'"))
+                        };
+                        is_pubkey(x).or(default)
+                    })
+                    .value_name("ADDRESS_OR_NONE")
+                    .takes_value(true)
+                    .help("'none', or a public key for the new stake pool sol deposit authority."),
+            )
+        )
         .subcommand(SubCommand::with_name("set-fee")
-            .about("Change the [management/withdrawal/deposit] fee assessed by the stake pool. Must be signed by the manager.")
+            .about("Change the [management/withdrawal/stake deposit/sol deposit] fee assessed by the stake pool. Must be signed by the manager.")
             .arg(
                 Arg::with_name("pool")
                     .index(1)
@@ -2116,7 +2155,7 @@ fn main() {
             .arg(Arg::with_name("fee_type")
                 .index(2)
                 .value_name("FEE_TYPE")
-                .possible_values(&["epoch","deposit", "withdrawal"]) // PreferredValidatorType enum
+                .possible_values(&["epoch", "stake-deposit", "sol-deposit", "withdrawal"]) // PreferredValidatorType enum
                 .takes_value(true)
                 .required(true)
                 .help("Fee type to be updated."),
@@ -2140,8 +2179,28 @@ fn main() {
                     .help("Fee denominator, fee amount is numerator divided by denominator."),
             )
         )
-        .subcommand(SubCommand::with_name("set-referral-fee")
-            .about("Change the referral fee assessed by the stake pool for deposits. Must be signed by the manager.")
+        .subcommand(SubCommand::with_name("set-stake-referral-fee")
+            .about("Change the referral fee assessed by the stake pool for stake deposits. Must be signed by the manager.")
+            .arg(
+                Arg::with_name("pool")
+                    .index(1)
+                    .validator(is_pubkey)
+                    .value_name("POOL_ADDRESS")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Stake pool address."),
+            )
+            .arg(
+                Arg::with_name("fee")
+                    .index(2)
+                    .validator(is_valid_percentage)
+                    .value_name("FEE_PERCENTAGE")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Fee percentage, maximum 100"),
+            )
+        ).subcommand(SubCommand::with_name("set-sol-referral-fee")
+            .about("Change the referral fee assessed by the stake pool for SOL deposits. Must be signed by the manager.")
             .arg(
                 Arg::with_name("pool")
                     .index(1)
@@ -2389,13 +2448,24 @@ fn main() {
             let new_staker = pubkey_of(arg_matches, "new_staker").unwrap();
             command_set_staker(&config, &stake_pool_address, &new_staker)
         }
-        ("set-sol-deposit-authority", Some(arg_matches)) => {
+        ("set-stake-deposit-authority", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
             let new_sol_deposit_authority = pubkey_of(arg_matches, "new_sol_deposit_authority");
-            command_set_sol_deposit_authority(
+            command_set_deposit_authority(
                 &config,
                 &stake_pool_address,
                 new_sol_deposit_authority,
+                true,
+            )
+        }
+        ("set-sol-deposit-authority", Some(arg_matches)) => {
+            let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
+            let new_sol_deposit_authority = pubkey_of(arg_matches, "new_sol_deposit_authority");
+            command_set_deposit_authority(
+                &config,
+                &stake_pool_address,
+                new_sol_deposit_authority,
+                false,
             )
         }
         ("set-fee", Some(arg_matches)) => {
@@ -2408,18 +2478,31 @@ fn main() {
             };
             match arg_matches.value_of("fee_type").unwrap() {
                 "epoch" => command_set_fee(&config, &stake_pool_address, new_fee),
-                "deposit" => command_set_deposit_fee(&config, &stake_pool_address, new_fee),
+                "stake-deposit" => {
+                    command_set_deposit_fee(&config, &stake_pool_address, new_fee, true)
+                }
+                "sol-deposit" => {
+                    command_set_deposit_fee(&config, &stake_pool_address, new_fee, false)
+                }
                 "withdrawal" => command_set_withdrawal_fee(&config, &stake_pool_address, new_fee),
                 _ => unreachable!(),
             }
         }
-        ("set-referral-fee", Some(arg_matches)) => {
+        ("set-stake-referral-fee", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
             let fee = value_t_or_exit!(arg_matches, "fee", u8);
             if fee > 100u8 {
                 panic!("Invalid fee {}%. Fee needs to be in range [0-100]", fee);
             }
-            command_set_referral_fee(&config, &stake_pool_address, fee)
+            command_set_referral_fee(&config, &stake_pool_address, fee, true)
+        }
+        ("set-sol-referral-fee", Some(arg_matches)) => {
+            let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
+            let fee = value_t_or_exit!(arg_matches, "fee", u8);
+            if fee > 100u8 {
+                panic!("Invalid fee {}%. Fee needs to be in range [0-100]", fee);
+            }
+            command_set_referral_fee(&config, &stake_pool_address, fee, false)
         }
         _ => unreachable!(),
     }

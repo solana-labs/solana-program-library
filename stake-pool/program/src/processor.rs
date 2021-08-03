@@ -484,8 +484,8 @@ impl Processor {
         accounts: &[AccountInfo],
         fee: Fee,
         withdrawal_fee: Fee,
-        deposit_fee: Fee,
-        referral_fee: u8,
+        stake_deposit_fee: Fee,
+        stake_referral_fee: u8,
         max_validators: u32,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -552,8 +552,8 @@ impl Processor {
         // Numerator should be smaller than or equal to denominator (fee <= 1)
         if fee.numerator > fee.denominator
             || withdrawal_fee.numerator > withdrawal_fee.denominator
-            || deposit_fee.numerator > deposit_fee.denominator
-            || referral_fee > 100u8
+            || stake_deposit_fee.numerator > stake_deposit_fee.denominator
+            || stake_referral_fee > 100u8
         {
             return Err(StakePoolError::FeeTooHigh.into());
         }
@@ -651,10 +651,10 @@ impl Processor {
         stake_pool.next_epoch_fee = None;
         stake_pool.preferred_deposit_validator_vote_address = None;
         stake_pool.preferred_withdraw_validator_vote_address = None;
-        stake_pool.deposit_fee = deposit_fee;
+        stake_pool.stake_deposit_fee = stake_deposit_fee;
         stake_pool.withdrawal_fee = withdrawal_fee;
         stake_pool.next_withdrawal_fee = None;
-        stake_pool.referral_fee = referral_fee;
+        stake_pool.stake_referral_fee = stake_referral_fee;
         stake_pool.sol_deposit_authority = None;
 
         stake_pool
@@ -1872,17 +1872,17 @@ impl Processor {
             .calc_pool_tokens_for_deposit(all_deposit_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
 
-        let pool_tokens_deposit_fee = stake_pool
-            .calc_pool_tokens_deposit_fee(new_pool_tokens)
+        let pool_tokens_stake_deposit_fee = stake_pool
+            .calc_pool_tokens_stake_deposit_fee(new_pool_tokens)
             .ok_or(StakePoolError::CalculationFailure)?;
         let pool_tokens_user = new_pool_tokens
-            .checked_sub(pool_tokens_deposit_fee)
+            .checked_sub(pool_tokens_stake_deposit_fee)
             .ok_or(StakePoolError::CalculationFailure)?;
 
         let pool_tokens_referral_fee = stake_pool
-            .calc_pool_tokens_referral_fee(pool_tokens_deposit_fee)
+            .calc_pool_tokens_stake_referral_fee(pool_tokens_stake_deposit_fee)
             .ok_or(StakePoolError::CalculationFailure)?;
-        let pool_tokens_manager_deposit_fee = pool_tokens_deposit_fee
+        let pool_tokens_manager_deposit_fee = pool_tokens_stake_deposit_fee
             .checked_sub(pool_tokens_referral_fee)
             .ok_or(StakePoolError::CalculationFailure)?;
 
@@ -2024,17 +2024,17 @@ impl Processor {
             .calc_pool_tokens_for_deposit(deposit_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
 
-        let pool_tokens_deposit_fee = stake_pool
-            .calc_pool_tokens_deposit_fee(new_pool_tokens)
+        let pool_tokens_sol_deposit_fee = stake_pool
+            .calc_pool_tokens_sol_deposit_fee(new_pool_tokens)
             .ok_or(StakePoolError::CalculationFailure)?;
         let pool_tokens_user = new_pool_tokens
-            .checked_sub(pool_tokens_deposit_fee)
+            .checked_sub(pool_tokens_sol_deposit_fee)
             .ok_or(StakePoolError::CalculationFailure)?;
 
         let pool_tokens_referral_fee = stake_pool
-            .calc_pool_tokens_referral_fee(pool_tokens_deposit_fee)
+            .calc_pool_tokens_sol_referral_fee(pool_tokens_sol_deposit_fee)
             .ok_or(StakePoolError::CalculationFailure)?;
-        let pool_tokens_manager_deposit_fee = pool_tokens_deposit_fee
+        let pool_tokens_manager_deposit_fee = pool_tokens_sol_deposit_fee
             .checked_sub(pool_tokens_referral_fee)
             .ok_or(StakePoolError::CalculationFailure)?;
 
@@ -2360,35 +2360,6 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes [SetStakeDepositAuthority](enum.Instruction.html).
-    fn process_set_stake_deposit_authority(
-        program_id: &Pubkey,
-        accounts: &[AccountInfo],
-    ) -> ProgramResult {
-        let account_info_iter = &mut accounts.iter();
-        let stake_pool_info = next_account_info(account_info_iter)?;
-        let manager_info = next_account_info(account_info_iter)?;
-
-        let new_stake_deposit_authority = next_account_info(account_info_iter)
-            .ok()
-            .map(|account_info| *account_info.key);
-
-        check_account_owner(stake_pool_info, program_id)?;
-        let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
-        if !stake_pool.is_valid() {
-            return Err(StakePoolError::InvalidState.into());
-        }
-        stake_pool.check_manager(manager_info)?;
-        if let Some(new_auth_key) = new_stake_deposit_authority {
-            stake_pool.stake_deposit_authority = new_auth_key;
-        } else {
-            stake_pool.stake_deposit_authority =
-                find_deposit_authority_program_address(&crate::id(), &stake_pool_info.key).0;
-        }
-        stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
-        Ok(())
-    }
-
     /// Processes [SetFee](enum.Instruction.html).
     fn process_set_fee(program_id: &Pubkey, accounts: &[AccountInfo], fee: Fee) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -2447,10 +2418,11 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes [SetSolDepositAuthority](enum.Instruction.html).
-    fn process_set_sol_deposit_authority(
+    /// Processes [SetStakeDepositAuthority/SetSolDepositAuthority](enum.Instruction.html).
+    fn process_set_deposit_authority(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
+        for_stake_deposit: bool,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
@@ -2466,7 +2438,13 @@ impl Processor {
             return Err(StakePoolError::InvalidState.into());
         }
         stake_pool.check_manager(manager_info)?;
-        stake_pool.sol_deposit_authority = new_sol_deposit_authority;
+        if for_stake_deposit {
+            stake_pool.stake_deposit_authority = new_sol_deposit_authority.unwrap_or(
+                find_deposit_authority_program_address(&crate::id(), &stake_pool_info.key).0,
+            );
+        } else {
+            stake_pool.sol_deposit_authority = new_sol_deposit_authority;
+        }
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
         Ok(())
     }
@@ -2544,11 +2522,12 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes [SetDepositFee](enum.Instruction.html).
+    /// Processes [SetSolDepositFee/SetStakeDepositFee](enum.Instruction.html).
     fn process_set_deposit_fee(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
         fee: Fee,
+        for_stake_deposit: bool,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
@@ -2572,15 +2551,21 @@ impl Processor {
             return Err(StakePoolError::FeeTooHigh.into());
         }
 
-        stake_pool.deposit_fee = fee;
+        if for_stake_deposit {
+            stake_pool.stake_deposit_fee = fee;
+        } else {
+            stake_pool.sol_deposit_fee = fee;
+        }
+        stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
         Ok(())
     }
 
-    /// Processes [SetReferralFee](enum.Instruction.html).
+    /// Processes [SetSolReferralFee/SetStakeReferralFee](enum.Instruction.html).
     fn process_set_referral_fee(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
         fee: u8,
+        for_stake_deposit: bool,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
@@ -2599,7 +2584,11 @@ impl Processor {
             return Err(StakePoolError::FeeTooHigh.into());
         }
 
-        stake_pool.referral_fee = fee;
+        if for_stake_deposit {
+            stake_pool.stake_referral_fee = fee;
+        } else {
+            stake_pool.sol_referral_fee = fee;
+        }
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
         Ok(())
     }
@@ -2702,13 +2691,21 @@ impl Processor {
                 msg!("Instruction: SetWithdrawalFee");
                 Self::process_set_withdrawal_fee(program_id, accounts, fee)
             }
-            StakePoolInstruction::SetDepositFee { fee } => {
-                msg!("Instruction: SetDepositFee");
-                Self::process_set_deposit_fee(program_id, accounts, fee)
+            StakePoolInstruction::SetStakeDepositFee { fee } => {
+                msg!("Instruction: SetStakeDepositFee");
+                Self::process_set_deposit_fee(program_id, accounts, fee, true)
             }
-            StakePoolInstruction::SetReferralFee { fee } => {
+            StakePoolInstruction::SetSolDepositFee { fee } => {
+                msg!("Instruction: SetSolDepositFee");
+                Self::process_set_deposit_fee(program_id, accounts, fee, false)
+            }
+            StakePoolInstruction::SetStakeReferralFee { fee } => {
                 msg!("Instruction: SetReferralFee");
-                Self::process_set_referral_fee(program_id, accounts, fee)
+                Self::process_set_referral_fee(program_id, accounts, fee, true)
+            }
+            StakePoolInstruction::SetSolReferralFee { fee } => {
+                msg!("Instruction: SetReferralFee");
+                Self::process_set_referral_fee(program_id, accounts, fee, false)
             }
             StakePoolInstruction::DepositSol(lamports) => {
                 msg!("Instruction: DepositSol");
@@ -2716,11 +2713,11 @@ impl Processor {
             }
             StakePoolInstruction::SetSolDepositAuthority => {
                 msg!("Instruction: SetSolDepositAuthority");
-                Self::process_set_sol_deposit_authority(program_id, accounts)
+                Self::process_set_deposit_authority(program_id, accounts, false)
             }
             StakePoolInstruction::SetStakeDepositAuthority => {
                 msg!("Instruction: SetStakeDepositAuthority");
-                Self::process_set_stake_deposit_authority(program_id, accounts)
+                Self::process_set_deposit_authority(program_id, accounts, true)
             }
         }
     }

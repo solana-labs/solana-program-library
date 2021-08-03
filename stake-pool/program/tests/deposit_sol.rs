@@ -46,6 +46,35 @@ async fn setup() -> (ProgramTestContext, StakePoolAccounts, Keypair, Pubkey) {
     )
     .await
     .unwrap();
+    let mut transaction = Transaction::new_with_payer(
+        &[
+            instruction::set_deposit_fee(
+                &id(),
+                &stake_pool_accounts.stake_pool.pubkey(),
+                &stake_pool_accounts.manager.pubkey(),
+                stake_pool_accounts.deposit_fee,
+                false,
+            ),
+            instruction::set_referral_fee(
+                &id(),
+                &stake_pool_accounts.stake_pool.pubkey(),
+                &stake_pool_accounts.manager.pubkey(),
+                stake_pool_accounts.referral_fee,
+                false,
+            ),
+        ],
+        Some(&context.payer.pubkey()),
+    );
+
+    transaction.sign(
+        &[&context.payer, &stake_pool_accounts.manager],
+        context.last_blockhash,
+    );
+    context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap();
 
     (
         context,
@@ -286,11 +315,12 @@ async fn success_with_sol_deposit_authority() {
     let sol_deposit_authority = Keypair::new();
 
     let mut transaction = Transaction::new_with_payer(
-        &[instruction::set_sol_deposit_authority(
+        &[instruction::set_deposit_authority(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
             Some(&sol_deposit_authority.pubkey()),
+            false,
         )],
         Some(&payer.pubkey()),
     );
@@ -336,11 +366,12 @@ async fn fail_without_sol_deposit_authority_signature() {
     .unwrap();
 
     let mut transaction = Transaction::new_with_payer(
-        &[instruction::set_sol_deposit_authority(
+        &[instruction::set_deposit_authority(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
             Some(&sol_deposit_authority.pubkey()),
+            false,
         )],
         Some(&payer.pubkey()),
     );

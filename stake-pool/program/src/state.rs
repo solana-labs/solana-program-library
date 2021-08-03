@@ -106,8 +106,8 @@ pub struct StakePool {
     /// Preferred withdraw validator vote account pubkey
     pub preferred_withdraw_validator_vote_address: Option<Pubkey>,
 
-    /// Fee assessed on deposits
-    pub deposit_fee: Fee,
+    /// Fee assessed on stake deposits
+    pub stake_deposit_fee: Fee,
 
     /// Fee assessed on withdrawals
     pub withdrawal_fee: Fee,
@@ -115,15 +115,24 @@ pub struct StakePool {
     /// Future withdrawal fee, to be set for the following epoch
     pub next_withdrawal_fee: Option<Fee>,
 
-    /// Fees paid out to referrers on referred deposits.
+    /// Fees paid out to referrers on referred stake deposits.
     /// Expressed as a percentage (0 - 100) of deposit fees.
-    /// i.e. `deposit_fee`% of SOL deposited is collected as deposit fees for every deposit
-    /// and `referral_fee`% of the collected deposit fees is paid out to the referrer
-    pub referral_fee: u8,
+    /// i.e. `stake_deposit_fee`% of stake deposited is collected as deposit fees for every deposit
+    /// and `stake_referral_fee`% of the collected stake deposit fees is paid out to the referrer
+    pub stake_referral_fee: u8,
 
     /// Toggles whether the `DepositSol` instruction requires a signature from
     /// the `deposit_authority`
     pub sol_deposit_authority: Option<Pubkey>,
+
+    /// Fee assessed on SOL deposits
+    pub sol_deposit_fee: Fee,
+
+    /// Fees paid out to referrers on referred SOL deposits.
+    /// Expressed as a percentage (0 - 100) of SOL deposit fees.
+    /// i.e. `sol_deposit_fee`% of SOL deposited is collected as deposit fees for every deposit
+    /// and `sol_referral_fee`% of the collected SOL deposit fees is paid out to the referrer
+    pub sol_referral_fee: u8,
 }
 impl StakePool {
     /// calculate the pool tokens that should be minted for a deposit of `stake_lamports`
@@ -155,18 +164,35 @@ impl StakePool {
         u64::try_from(self.withdrawal_fee.apply(pool_tokens)?).ok()
     }
 
-    /// calculate pool tokens to be deducted as deposit fees
+    /// calculate pool tokens to be deducted as stake deposit fees
     #[inline]
-    pub fn calc_pool_tokens_deposit_fee(&self, pool_tokens_minted: u64) -> Option<u64> {
-        u64::try_from(self.deposit_fee.apply(pool_tokens_minted)?).ok()
+    pub fn calc_pool_tokens_stake_deposit_fee(&self, pool_tokens_minted: u64) -> Option<u64> {
+        u64::try_from(self.stake_deposit_fee.apply(pool_tokens_minted)?).ok()
     }
 
     /// calculate pool tokens to be deducted from deposit fees as referral fees
     #[inline]
-    pub fn calc_pool_tokens_referral_fee(&self, deposit_fee: u64) -> Option<u64> {
+    pub fn calc_pool_tokens_stake_referral_fee(&self, stake_deposit_fee: u64) -> Option<u64> {
         u64::try_from(
-            (deposit_fee as u128)
-                .checked_mul(self.referral_fee as u128)?
+            (stake_deposit_fee as u128)
+                .checked_mul(self.stake_referral_fee as u128)?
+                .checked_div(100u128)?,
+        )
+        .ok()
+    }
+
+    /// calculate pool tokens to be deducted as SOL deposit fees
+    #[inline]
+    pub fn calc_pool_tokens_sol_deposit_fee(&self, pool_tokens_minted: u64) -> Option<u64> {
+        u64::try_from(self.sol_deposit_fee.apply(pool_tokens_minted)?).ok()
+    }
+
+    /// calculate pool tokens to be deducted from SOL deposit fees as referral fees
+    #[inline]
+    pub fn calc_pool_tokens_sol_referral_fee(&self, sol_deposit_fee: u64) -> Option<u64> {
+        u64::try_from(
+            (sol_deposit_fee as u128)
+                .checked_mul(self.sol_referral_fee as u128)?
                 .checked_div(100u128)?,
         )
         .ok()

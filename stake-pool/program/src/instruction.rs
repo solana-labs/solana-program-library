@@ -328,21 +328,21 @@ pub enum StakePoolInstruction {
         fee: Fee,
     },
 
-    ///  (Manager only) Update Deposit and DepositSol fee
+    ///  (Manager only) Update DepositStake fee
     ///
     ///  0. `[w]` StakePool
     ///  1. `[s]` Manager
-    SetDepositFee {
+    SetStakeDepositFee {
         /// Fee assessed as percentage of deposited SOL
         #[allow(dead_code)] // but it's not
         fee: Fee,
     },
 
-    ///  (Manager only) Update Deposit and DepositSol referral fee
+    ///  (Manager only) Update DepositStake referral fee
     ///
     ///  0. `[w]` StakePool
     ///  1. `[s]` Manager
-    SetReferralFee {
+    SetStakeReferralFee {
         /// Fee assessed as percentage of deposit fee
         #[allow(dead_code)] // but it's not
         fee: u8,
@@ -378,6 +378,26 @@ pub enum StakePoolInstruction {
     ///  1. `[s]` Manager
     ///  2. '[]` New stake_deposit_authority pubkey, or none (=> PDA authority)
     SetStakeDepositAuthority,
+
+    ///  (Manager only) Update DepositSol fee
+    ///
+    ///  0. `[w]` StakePool
+    ///  1. `[s]` Manager
+    SetSolDepositFee {
+        /// Fee assessed as percentage of deposited SOL
+        #[allow(dead_code)] // but it's not
+        fee: Fee,
+    },
+
+    ///  (Manager only) Update DepositStake referral fee
+    ///
+    ///  0. `[w]` StakePool
+    ///  1. `[s]` Manager
+    SetSolReferralFee {
+        /// Fee assessed as percentage of deposit fee
+        #[allow(dead_code)] // but it's not
+        fee: u8,
+    },
 }
 
 /// Creates an 'initialize' instruction.
@@ -1186,6 +1206,7 @@ pub fn set_deposit_fee(
     stake_pool: &Pubkey,
     manager: &Pubkey,
     fee: Fee,
+    for_stake_deposit: bool,
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
@@ -1194,18 +1215,25 @@ pub fn set_deposit_fee(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::SetDepositFee { fee }
-            .try_to_vec()
-            .unwrap(),
+        data: if for_stake_deposit {
+            StakePoolInstruction::SetStakeDepositFee { fee }
+                .try_to_vec()
+                .unwrap()
+        } else {
+            StakePoolInstruction::SetSolDepositFee { fee }
+                .try_to_vec()
+                .unwrap()
+        },
     }
 }
 
-/// Creates a 'set referral fee' instruction.
+/// Creates a 'set stake referral fee' instruction.
 pub fn set_referral_fee(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
     manager: &Pubkey,
     fee: u8,
+    for_stake_deposit: bool,
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
@@ -1214,9 +1242,15 @@ pub fn set_referral_fee(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::SetReferralFee { fee }
-            .try_to_vec()
-            .unwrap(),
+        data: if for_stake_deposit {
+            StakePoolInstruction::SetStakeReferralFee { fee }
+                .try_to_vec()
+                .unwrap()
+        } else {
+            StakePoolInstruction::SetSolReferralFee { fee }
+                .try_to_vec()
+                .unwrap()
+        },
     }
 }
 
@@ -1240,11 +1274,12 @@ pub fn set_staker(
 }
 
 /// Creates a 'set sol deposit authority' instruction.
-pub fn set_sol_deposit_authority(
+pub fn set_deposit_authority(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
     manager: &Pubkey,
     new_sol_deposit_authority: Option<&Pubkey>,
+    for_stake_deposit: bool,
 ) -> Instruction {
     let mut accounts = vec![
         AccountMeta::new(*stake_pool, false),
@@ -1256,9 +1291,15 @@ pub fn set_sol_deposit_authority(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::SetSolDepositAuthority
-            .try_to_vec()
-            .unwrap(),
+        data: if for_stake_deposit {
+            StakePoolInstruction::SetStakeDepositAuthority
+                .try_to_vec()
+                .unwrap()
+        } else {
+            StakePoolInstruction::SetSolDepositAuthority
+                .try_to_vec()
+                .unwrap()
+        },
     }
 }
 

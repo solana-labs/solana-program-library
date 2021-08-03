@@ -78,10 +78,12 @@ async fn setup(
         next_epoch_fee: None,
         preferred_deposit_validator_vote_address: None,
         preferred_withdraw_validator_vote_address: None,
-        deposit_fee: Fee::default(),
+        stake_deposit_fee: Fee::default(),
+        sol_deposit_fee: Fee::default(),
         withdrawal_fee: Fee::default(),
         next_withdrawal_fee: None,
-        referral_fee: 0,
+        stake_referral_fee: 0,
+        sol_referral_fee: 0,
         sol_deposit_authority: None,
     };
 
