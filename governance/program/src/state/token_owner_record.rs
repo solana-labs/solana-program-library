@@ -105,6 +105,25 @@ impl TokenOwnerRecord {
 
         Ok(())
     }
+
+    /// Asserts TokenOwner has enough tokens to be allowed to create governance
+    pub fn assert_can_create_governance(&self, realm_data: &Realm) -> Result<(), ProgramError> {
+        let min_tokens_to_create_governance =
+            if self.governing_token_mint == realm_data.community_mint {
+                realm_data.config.min_community_tokens_to_create_governance
+            } else if Some(self.governing_token_mint) == realm_data.config.council_mint {
+                // For council tokens it's enough to be in possession of any number of tokens
+                1
+            } else {
+                return Err(GovernanceError::InvalidGoverningTokenMint.into());
+            };
+
+        if self.governing_token_deposit_amount < min_tokens_to_create_governance {
+            return Err(GovernanceError::NotEnoughTokensToCreateGovernance.into());
+        }
+
+        Ok(())
+    }
 }
 
 /// Returns TokenOwnerRecord PDA address

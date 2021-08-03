@@ -8,6 +8,8 @@ use crate::{
             assert_valid_create_governance_args, get_program_governance_address_seeds,
             GovernanceConfig,
         },
+        realm::get_realm_data,
+        token_owner_record::get_token_owner_record_data_for_realm,
     },
     tools::{
         account::create_and_serialize_account_signed,
@@ -40,7 +42,7 @@ pub fn process_create_program_governance(
     let governed_program_data_info = next_account_info(account_info_iter)?; // 2
     let governed_program_upgrade_authority_info = next_account_info(account_info_iter)?; // 3
 
-    let _token_owner_record_info = next_account_info(account_info_iter)?; // 4
+    let token_owner_record_info = next_account_info(account_info_iter)?; // 4
 
     let payer_info = next_account_info(account_info_iter)?; // 5
     let bpf_upgrade_loader_info = next_account_info(account_info_iter)?; // 6
@@ -51,6 +53,12 @@ pub fn process_create_program_governance(
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
 
     assert_valid_create_governance_args(program_id, &config, realm_info)?;
+
+    let realm_data = get_realm_data(program_id, realm_info)?;
+    let token_owner_record_data =
+        get_token_owner_record_data_for_realm(program_id, token_owner_record_info, realm_info.key)?;
+
+    token_owner_record_data.assert_can_create_governance(&realm_data)?;
 
     let program_governance_data = Governance {
         account_type: GovernanceAccountType::ProgramGovernance,
