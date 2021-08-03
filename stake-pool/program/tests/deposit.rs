@@ -957,9 +957,7 @@ async fn fail_with_invalid_referrer() {
         .unwrap();
 
     match transaction_error {
-        TransactionError::InstructionError(_, InstructionError::Custom(error_index)) => {
-            assert_eq!(error_index, error::StakePoolError::InvalidFeeAccount as u32);
-        }
+        TransactionError::InstructionError(_, InstructionError::InvalidAccountData) => (),
         _ => panic!(
             "Wrong error occurs while try to make a deposit with an invalid referrer account"
         ),

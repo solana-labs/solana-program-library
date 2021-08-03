@@ -2008,9 +2008,6 @@ impl Processor {
         if stake_pool.token_program_id != *token_program_info.key {
             return Err(ProgramError::IncorrectProgramId);
         }
-        if stake_pool.token_program_id != *referrer_fee_info.owner {
-            return Err(StakePoolError::InvalidFeeAccount.into());
-        }
         check_system_program(system_program_info.key)?;
 
         // We want this to hold to ensure that deposit_sol mints pool tokens
