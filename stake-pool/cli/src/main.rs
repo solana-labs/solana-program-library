@@ -1964,7 +1964,7 @@ fn main() {
             )
         )
         .subcommand(SubCommand::with_name("withdraw-stake")
-            .about("Withdraw amount from the stake pool into designated stake account")
+            .about("Withdraw amount from the stake pool")
             .arg(
                 Arg::with_name("pool")
                     .index(1)
