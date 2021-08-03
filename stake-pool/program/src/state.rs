@@ -254,6 +254,7 @@ impl StakePool {
     }
 
     /// Checks that the deposit authority is valid
+    /// Does nothing if `sol_deposit_authority` is currently not set
     #[inline]
     pub(crate) fn check_sol_deposit_authority(
         &self,

@@ -361,7 +361,7 @@ async fn fail_with_wrong_token_program_id() {
     let wrong_token_program = Keypair::new();
 
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::withdraw(
+        &[instruction::withdraw_stake(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.validator_list.pubkey(),

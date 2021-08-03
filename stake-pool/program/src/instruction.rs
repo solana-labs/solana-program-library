@@ -1008,10 +1008,8 @@ pub fn deposit_sol(
     token_program_id: &Pubkey,
     amount: u64,
 ) -> Vec<Instruction> {
-    let dummy_sol_deposit_authority = Pubkey::default();
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
-        AccountMeta::new_readonly(dummy_sol_deposit_authority, false),
         AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
         AccountMeta::new(*reserve_stake_account, false),
         AccountMeta::new(*lamports_from, true),
@@ -1053,7 +1051,6 @@ pub fn deposit_sol_with_authority(
 ) -> Vec<Instruction> {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
-        AccountMeta::new_readonly(*sol_deposit_authority, true),
         AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
         AccountMeta::new(*reserve_stake_account, false),
         AccountMeta::new(*lamports_from, true),
@@ -1064,6 +1061,7 @@ pub fn deposit_sol_with_authority(
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
+        AccountMeta::new_readonly(*sol_deposit_authority, true),
     ];
     vec![Instruction {
         program_id: *program_id,
@@ -1074,8 +1072,8 @@ pub fn deposit_sol_with_authority(
     }]
 }
 
-/// Creates a 'withdraw' instruction.
-pub fn withdraw(
+/// Creates a 'WithdrawStake' instruction.
+pub fn withdraw_stake(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
     validator_list_storage: &Pubkey,
@@ -1104,7 +1102,6 @@ pub fn withdraw(
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
         AccountMeta::new_readonly(stake_program::id(), false),
-        AccountMeta::new_readonly(system_program::id(), false),
     ];
     Instruction {
         program_id: *program_id,

@@ -1974,7 +1974,6 @@ impl Processor {
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
-        let sol_deposit_authority_info = next_account_info(account_info_iter)?;
         let withdraw_authority_info = next_account_info(account_info_iter)?;
         let reserve_stake_account_info = next_account_info(account_info_iter)?;
         let from_user_info = next_account_info(account_info_iter)?;
@@ -1986,6 +1985,7 @@ impl Processor {
         let clock = &Clock::from_account_info(clock_info)?;
         let system_program_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
+        let sol_deposit_authority_info = next_account_info(account_info_iter).ok();
 
         check_account_owner(stake_pool_info, program_id)?;
         let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
@@ -2000,10 +2000,12 @@ impl Processor {
             program_id,
             stake_pool_info.key,
         )?;
-        stake_pool.check_sol_deposit_authority(
-            sol_deposit_authority_info.key,
-            sol_deposit_authority_info.is_signer,
-        )?;
+        if let Some(sol_deposit_authority) = sol_deposit_authority_info {
+            stake_pool.check_sol_deposit_authority(
+                sol_deposit_authority.key,
+                sol_deposit_authority.is_signer,
+            )?;
+        }
         stake_pool.check_mint(pool_mint_info)?;
         stake_pool.check_reserve_stake(reserve_stake_account_info)?;
 

@@ -806,7 +806,7 @@ impl StakePoolAccounts {
         amount: u64,
     ) -> Option<TransportError> {
         let transaction = Transaction::new_signed_with_payer(
-            &[instruction::withdraw(
+            &[instruction::withdraw_stake(
                 &id(),
                 &self.stake_pool.pubkey(),
                 &self.validator_list.pubkey(),

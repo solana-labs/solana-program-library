@@ -1224,7 +1224,7 @@ fn command_withdraw(
             stake_receiver_pubkey
         });
 
-        instructions.push(spl_stake_pool::instruction::withdraw(
+        instructions.push(spl_stake_pool::instruction::withdraw_stake(
             &spl_stake_pool::id(),
             stake_pool_address,
             &stake_pool.validator_list,
