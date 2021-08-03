@@ -119,7 +119,7 @@ impl TokenOwnerRecord {
             };
 
         if self.governing_token_deposit_amount < min_tokens_to_create_governance {
-            return Err(GovernanceError::NotEnoughTokensToCreateProposal.into());
+            return Err(GovernanceError::NotEnoughTokensToCreateGovernance.into());
         }
 
         Ok(())
