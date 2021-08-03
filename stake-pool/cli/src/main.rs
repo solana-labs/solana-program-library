@@ -2243,8 +2243,8 @@ fn main() {
             let denominator = value_t_or_exit!(arg_matches, "fee_denominator", u64);
             let w_numerator = value_t!(arg_matches, "withdrawal_fee_numerator", u64);
             let w_denominator = value_t!(arg_matches, "withdrawal_fee_denominator", u64);
-            let d_numerator = value_t!(arg_matches, "withdrawal_fee_numerator", u64);
-            let d_denominator = value_t!(arg_matches, "withdrawal_fee_denominator", u64);
+            let d_numerator = value_t!(arg_matches, "deposit_fee_numerator", u64);
+            let d_denominator = value_t!(arg_matches, "deposit_fee_denominator", u64);
             let referral_fee = value_t!(arg_matches, "referral_fee", u8);
             let max_validators = value_t_or_exit!(arg_matches, "max_validators", u32);
             let pool_keypair = keypair_of(arg_matches, "pool_keypair");
