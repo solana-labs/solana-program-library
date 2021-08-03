@@ -50,7 +50,7 @@ pub enum GovernanceInstruction {
     /// 5. `[]` System
     /// 6. `[]` SPL Token
     /// 7. `[]` Sysvar Rent
-    /// 8. `[]` Realm custodian - optional    
+
     /// 9. `[]` Council Token Mint - optional
     /// 10. `[writable]` Council Token Holding account - optional unless council is used. PDA seeds: ['governance',realm,council_mint]
     ///     The account will be created with the Realm PDA as its owner
@@ -383,7 +383,7 @@ pub enum GovernanceInstruction {
     /// Sets realm config
     ///   0. `[writable]` Realm account
     ///   1. `[signer]`  Realm authority    
-    ///   2. `[]` Realm custodian - optional    
+
     ///   3. `[]` Council Token Mint - optional
     ///       Note: In the current version it's only possible to remove council mint (set it to None)
     ///       After setting council to None it won't be possible to withdraw the tokens from the Realm any longer
@@ -405,7 +405,6 @@ pub fn create_realm(
     realm_authority: &Pubkey,
     community_token_mint: &Pubkey,
     payer: &Pubkey,
-    realm_custodian: Option<Pubkey>,
     council_token_mint: Option<Pubkey>,
     // Args
     name: String,
@@ -427,13 +426,6 @@ pub fn create_realm(
         AccountMeta::new_readonly(sysvar::rent::id(), false),
     ];
 
-    let use_custodian = if let Some(realm_custodian) = realm_custodian {
-        accounts.push(AccountMeta::new_readonly(realm_custodian, false));
-        true
-    } else {
-        false
-    };
-
     let use_council_mint = if let Some(council_token_mint) = council_token_mint {
         let council_token_holding_address =
             get_governing_token_holding_address(program_id, &realm_address, &council_token_mint);
@@ -448,7 +440,7 @@ pub fn create_realm(
     let instruction = GovernanceInstruction::CreateRealm {
         config_args: RealmConfigArgs {
             use_council_mint,
-            use_custodian,
+
             community_mint_max_vote_weight_source,
             min_community_tokens_to_create_governance,
         },
@@ -1177,7 +1169,7 @@ pub fn set_realm_config(
     realm: &Pubkey,
     realm_authority: &Pubkey,
     council_token_mint: Option<Pubkey>,
-    realm_custodian: Option<Pubkey>,
+
     // Args
     min_community_tokens_to_create_governance: u64,
     community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
@@ -1186,13 +1178,6 @@ pub fn set_realm_config(
         AccountMeta::new(*realm, false),
         AccountMeta::new_readonly(*realm_authority, true),
     ];
-
-    let use_custodian = if let Some(realm_custodian) = realm_custodian {
-        accounts.push(AccountMeta::new_readonly(realm_custodian, false));
-        true
-    } else {
-        false
-    };
 
     let use_council_mint = if let Some(council_token_mint) = council_token_mint {
         let council_token_holding_address =
@@ -1208,7 +1193,7 @@ pub fn set_realm_config(
     let instruction = GovernanceInstruction::SetRealmConfig {
         config_args: RealmConfigArgs {
             use_council_mint,
-            use_custodian,
+
             community_mint_max_vote_weight_source,
             min_community_tokens_to_create_governance,
         },

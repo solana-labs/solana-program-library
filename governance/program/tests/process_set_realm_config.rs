@@ -20,7 +20,7 @@ async fn test_set_realm_config() {
 
     let config_args = RealmConfigArgs {
         use_council_mint: true,
-        use_custodian: true,
+
         community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(100),
         min_community_tokens_to_create_governance: 10,
     };
@@ -49,7 +49,7 @@ async fn test_set_realm_config_with_authority_must_sign_error() {
 
     let config_args = RealmConfigArgs {
         use_council_mint: true,
-        use_custodian: true,
+
         community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(100),
         min_community_tokens_to_create_governance: 10,
     };
@@ -80,7 +80,7 @@ async fn test_set_realm_config_with_no_authority_error() {
 
     let config_args = RealmConfigArgs {
         use_council_mint: true,
-        use_custodian: true,
+
         community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(100),
         min_community_tokens_to_create_governance: 10,
     };
@@ -116,7 +116,7 @@ async fn test_set_realm_config_with_invalid_authority_error() {
 
     let config_args = RealmConfigArgs {
         use_council_mint: true,
-        use_custodian: true,
+
         community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(100),
         min_community_tokens_to_create_governance: 10,
     };
@@ -139,35 +139,6 @@ async fn test_set_realm_config_with_invalid_authority_error() {
 }
 
 #[tokio::test]
-async fn test_set_realm_config_with_remove_custodian() {
-    // Arrange
-    let mut governance_test = GovernanceProgramTest::start_new().await;
-
-    let mut realm_cookie = governance_test.with_realm().await;
-
-    let config_args = RealmConfigArgs {
-        use_council_mint: true,
-        use_custodian: false,
-        community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(100),
-        min_community_tokens_to_create_governance: 10,
-    };
-
-    // Act
-    governance_test
-        .set_realm_config(&mut realm_cookie, &config_args)
-        .await
-        .unwrap();
-
-    // Assert
-    let realm_account = governance_test
-        .get_realm_account(&realm_cookie.address)
-        .await;
-
-    assert_eq!(realm_cookie.account, realm_account);
-    assert_eq!(None, realm_account.config.custodian);
-}
-
-#[tokio::test]
 async fn test_set_realm_config_with_remove_council() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
@@ -176,7 +147,7 @@ async fn test_set_realm_config_with_remove_council() {
 
     let config_args = RealmConfigArgs {
         use_council_mint: false,
-        use_custodian: true,
+
         community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(100),
         min_community_tokens_to_create_governance: 10,
     };
@@ -205,7 +176,7 @@ async fn test_set_realm_config_with_council_change_error() {
 
     let config_args = RealmConfigArgs {
         use_council_mint: true,
-        use_custodian: true,
+
         community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(100),
         min_community_tokens_to_create_governance: 10,
     };
@@ -236,7 +207,7 @@ async fn test_set_realm_config_with_council_restore_error() {
 
     let mut config_args = RealmConfigArgs {
         use_council_mint: false,
-        use_custodian: true,
+
         community_mint_max_vote_weight_source: MintMaxVoteWeightSource::SupplyFraction(100),
         min_community_tokens_to_create_governance: 10,
     };

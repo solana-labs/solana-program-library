@@ -21,10 +21,6 @@ pub struct RealmConfigArgs {
     /// If yes then council_mint account must also be passed to the instruction
     pub use_council_mint: bool,
 
-    /// Indicates whether custodian should be used
-    /// If yes then custodian account must also be passed to the instruction  
-    pub use_custodian: bool,
-
     /// Min number of community tokens required to create a governance
     pub min_community_tokens_to_create_governance: u64,
 
@@ -47,13 +43,6 @@ pub struct RealmConfig {
 
     /// Optional council mint
     pub council_mint: Option<Pubkey>,
-
-    /// An authority tasked with non-critical and maintenance Realm operations
-    /// For example custodian authority is required to add governances to the Realm
-    /// There is no security risk with adding governances to the Realm but it should not be open for everybody
-    /// to prevent unrelated entries and noise
-    /// Note: This field is not used yet. It's reserved for future versions
-    pub custodian: Option<Pubkey>,
 }
 
 /// Governance Realm Account
@@ -83,7 +72,7 @@ pub struct Realm {
 
 impl AccountMaxSize for Realm {
     fn get_max_size(&self) -> Option<usize> {
-        Some(self.name.len() + 169)
+        Some(self.name.len() + 136)
     }
 }
 
@@ -245,7 +234,7 @@ mod test {
             config: RealmConfig {
                 council_mint: Some(Pubkey::new_unique()),
                 reserved: [0; 8],
-                custodian: Some(Pubkey::new_unique()),
+
                 community_mint_max_vote_weight_source: MintMaxVoteWeightSource::Absolute(100),
                 min_community_tokens_to_create_governance: 10,
             },

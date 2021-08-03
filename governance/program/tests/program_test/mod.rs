@@ -137,7 +137,7 @@ impl GovernanceProgramTest {
     pub async fn with_realm(&mut self) -> RealmCookie {
         let config_args = RealmConfigArgs {
             use_council_mint: true,
-            use_custodian: true,
+
             community_mint_max_vote_weight_source: MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,
             min_community_tokens_to_create_governance: 10,
         };
@@ -200,14 +200,12 @@ impl GovernanceProgramTest {
         };
 
         let realm_authority = Keypair::new();
-        let realm_custodian = Keypair::new();
 
         let create_realm_instruction = create_realm(
             &self.program_id,
             &realm_authority.pubkey(),
             &community_token_mint_keypair.pubkey(),
             &self.context.payer.pubkey(),
-            Some(realm_custodian.pubkey()),
             council_token_mint_pubkey,
             name.clone(),
             config_args.min_community_tokens_to_create_governance,
@@ -228,7 +226,7 @@ impl GovernanceProgramTest {
             config: RealmConfig {
                 council_mint: council_token_mint_pubkey,
                 reserved: [0; 8],
-                custodian: Some(realm_custodian.pubkey()),
+
                 min_community_tokens_to_create_governance: config_args
                     .min_community_tokens_to_create_governance,
                 community_mint_max_vote_weight_source: config_args
@@ -259,7 +257,7 @@ impl GovernanceProgramTest {
         let council_mint = realm_cookie.account.config.council_mint.unwrap();
 
         let realm_authority = Keypair::new();
-        let realm_custodian = Keypair::new();
+
         let community_mint_max_vote_weight_source = MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION;
         let min_community_tokens_to_create_governance = 10;
 
@@ -268,7 +266,6 @@ impl GovernanceProgramTest {
             &realm_authority.pubkey(),
             &realm_cookie.account.community_mint,
             &self.context.payer.pubkey(),
-            Some(realm_custodian.pubkey()),
             Some(council_mint),
             name.clone(),
             min_community_tokens_to_create_governance,
@@ -289,7 +286,7 @@ impl GovernanceProgramTest {
             config: RealmConfig {
                 council_mint: Some(council_mint),
                 reserved: [0; 8],
-                custodian: Some(realm_authority.pubkey()),
+
                 community_mint_max_vote_weight_source:
                     MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,
                 min_community_tokens_to_create_governance,
@@ -678,19 +675,11 @@ impl GovernanceProgramTest {
             None
         };
 
-        let realm_custodian = if config_args.use_custodian {
-            let realm_custodian = Keypair::new();
-            Some(realm_custodian.pubkey())
-        } else {
-            None
-        };
-
         let mut set_realm_config_ix = set_realm_config(
             &self.program_id,
             &realm_cookie.address,
             &realm_cookie.realm_authority.as_ref().unwrap().pubkey(),
             council_token_mint,
-            realm_custodian,
             config_args.min_community_tokens_to_create_governance,
             config_args.community_mint_max_vote_weight_source.clone(),
         );
@@ -700,7 +689,6 @@ impl GovernanceProgramTest {
         let default_signers = &[realm_cookie.realm_authority.as_ref().unwrap()];
         let signers = signers_override.unwrap_or(default_signers);
 
-        realm_cookie.account.config.custodian = realm_custodian;
         realm_cookie.account.config.council_mint = council_token_mint;
         realm_cookie
             .account
