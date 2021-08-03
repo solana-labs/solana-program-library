@@ -343,7 +343,7 @@ fn main() {
                         .value_name("DECIMAL_PERCENT")
                         .takes_value(true)
                         .required(true)
-                        .default_value("0.00001")
+                        .default_value("0.0001")
                         .help("Fee assessed on borrow, expressed as a percentage: [0, 1)"),
                 )
                 .arg(
@@ -353,7 +353,7 @@ fn main() {
                         .value_name("DECIMAL_PERCENT")
                         .takes_value(true)
                         .required(true)
-                        .default_value(".3")
+                        .default_value(".003")
                         .help("Fee assessed for flash loans, expressed as a percentage: [0, 1)"),
                 )
                 .arg(
