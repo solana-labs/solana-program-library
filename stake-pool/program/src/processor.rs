@@ -2379,7 +2379,7 @@ impl Processor {
 
         stake_pool.check_manager(manager_info)?;
 
-        if stake_pool.last_update_epoch < clock.epoch {
+        if fee.can_only_change_next_epoch() && stake_pool.last_update_epoch < clock.epoch {
             return Err(StakePoolError::StakeListAndPoolOutOfDate.into());
         }
 
