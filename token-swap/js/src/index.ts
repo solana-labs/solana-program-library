@@ -17,7 +17,7 @@ import {sendAndConfirmTransaction} from './util/send-and-confirm-transaction';
 import {loadAccount} from './util/account';
 
 export const TOKEN_SWAP_PROGRAM_ID: PublicKey = new PublicKey(
-  'SwaPpA9LAaLfeLi3a68M4DjnLqgtticKg6CnyNwgAC8',
+  'SSwpMgqNDsyV7mAgN9ady4bDVu5ySjmmXejXvy2vLt1',
 );
 
 /**
@@ -78,8 +78,6 @@ export const TokenSwapLayout = BufferLayout.struct([
   Layout.uint64('ownerTradeFeeDenominator'),
   Layout.uint64('ownerWithdrawFeeNumerator'),
   Layout.uint64('ownerWithdrawFeeDenominator'),
-  Layout.uint64('hostFeeNumerator'),
-  Layout.uint64('hostFeeDenominator'),
   BufferLayout.u8('curveType'),
   BufferLayout.blob(32, 'curveParameters'),
 ]);
@@ -113,8 +111,6 @@ export class TokenSwap {
    * @param ownerTradeFeeDenominator The owner trade fee denominator
    * @param ownerWithdrawFeeNumerator The owner withdraw fee numerator
    * @param ownerWithdrawFeeDenominator The owner withdraw fee denominator
-   * @param hostFeeNumerator The host fee numerator
-   * @param hostFeeDenominator The host fee denominator
    * @param curveType The curve type
    * @param payer Pays for the transaction
    */
@@ -136,8 +132,6 @@ export class TokenSwap {
     public ownerTradeFeeDenominator: Numberu64,
     public ownerWithdrawFeeNumerator: Numberu64,
     public ownerWithdrawFeeDenominator: Numberu64,
-    public hostFeeNumerator: Numberu64,
-    public hostFeeDenominator: Numberu64,
     public curveType: number,
     public payer: Account,
     public poolRegistry: PublicKey,
@@ -159,8 +153,6 @@ export class TokenSwap {
     this.ownerTradeFeeDenominator = ownerTradeFeeDenominator;
     this.ownerWithdrawFeeNumerator = ownerWithdrawFeeNumerator;
     this.ownerWithdrawFeeDenominator = ownerWithdrawFeeDenominator;
-    this.hostFeeNumerator = hostFeeNumerator;
-    this.hostFeeDenominator = hostFeeDenominator;
     this.curveType = curveType;
     this.payer = payer;
     this.poolRegistry = poolRegistry;
@@ -301,8 +293,6 @@ export class TokenSwap {
     ownerTradeFeeDenominator: number,
     ownerWithdrawFeeNumerator: number,
     ownerWithdrawFeeDenominator: number,
-    hostFeeNumerator: number,
-    hostFeeDenominator: number,
     curveType: number,
     poolRegistry: PublicKey,
   ): TransactionInstruction {
@@ -329,8 +319,6 @@ export class TokenSwap {
       BufferLayout.nu64('ownerTradeFeeDenominator'),
       BufferLayout.nu64('ownerWithdrawFeeNumerator'),
       BufferLayout.nu64('ownerWithdrawFeeDenominator'),
-      BufferLayout.nu64('hostFeeNumerator'),
-      BufferLayout.nu64('hostFeeDenominator'),
       BufferLayout.u8('curveType'),
       BufferLayout.blob(32, 'curveParameters'),
     ]);
@@ -346,8 +334,6 @@ export class TokenSwap {
           ownerTradeFeeDenominator,
           ownerWithdrawFeeNumerator,
           ownerWithdrawFeeDenominator,
-          hostFeeNumerator,
-          hostFeeDenominator,
           curveType,
         },
         data,
@@ -406,12 +392,6 @@ export class TokenSwap {
     const ownerWithdrawFeeDenominator = Numberu64.fromBuffer(
       tokenSwapData.ownerWithdrawFeeDenominator,
     );
-    const hostFeeNumerator = Numberu64.fromBuffer(
-      tokenSwapData.hostFeeNumerator,
-    );
-    const hostFeeDenominator = Numberu64.fromBuffer(
-      tokenSwapData.hostFeeDenominator,
-    );
     const curveType = tokenSwapData.curveType;
 
     return new TokenSwap(
@@ -432,8 +412,6 @@ export class TokenSwap {
       ownerTradeFeeDenominator,
       ownerWithdrawFeeNumerator,
       ownerWithdrawFeeDenominator,
-      hostFeeNumerator,
-      hostFeeDenominator,
       curveType,
       payer,
       poolRegistry
@@ -479,8 +457,6 @@ export class TokenSwap {
     ownerTradeFeeDenominator: number,
     ownerWithdrawFeeNumerator: number,
     ownerWithdrawFeeDenominator: number,
-    hostFeeNumerator: number,
-    hostFeeDenominator: number,
     curveType: number,
     poolRegistry: PublicKey,
   ): Promise<TokenSwap> {
@@ -503,8 +479,6 @@ export class TokenSwap {
       new Numberu64(ownerTradeFeeDenominator),
       new Numberu64(ownerWithdrawFeeNumerator),
       new Numberu64(ownerWithdrawFeeDenominator),
-      new Numberu64(hostFeeNumerator),
-      new Numberu64(hostFeeDenominator),
       curveType,
       payer,
       poolRegistry
@@ -543,8 +517,6 @@ export class TokenSwap {
       ownerTradeFeeDenominator,
       ownerWithdrawFeeNumerator,
       ownerWithdrawFeeDenominator,
-      hostFeeNumerator,
-      hostFeeDenominator,
       curveType,
       poolRegistry
     );
@@ -567,7 +539,6 @@ export class TokenSwap {
    * @param poolSource Pool's source token account
    * @param poolDestination Pool's destination token account
    * @param userDestination User's destination token account
-   * @param hostFeeAccount Host account to gather fees
    * @param userTransferAuthority Account delegated to transfer user's tokens
    * @param amountIn Amount to transfer from source account
    * @param minimumAmountOut Minimum amount of tokens the user will receive
@@ -577,7 +548,6 @@ export class TokenSwap {
     poolSource: PublicKey,
     poolDestination: PublicKey,
     userDestination: PublicKey,
-    hostFeeAccount: PublicKey | null,
     userTransferAuthority: Account,
     amountIn: number | Numberu64,
     minimumAmountOut: number | Numberu64,
@@ -596,7 +566,6 @@ export class TokenSwap {
           userDestination,
           this.poolToken,
           this.feeAccount,
-          hostFeeAccount,
           this.swapProgramId,
           this.tokenProgramId,
           amountIn,
@@ -618,7 +587,6 @@ export class TokenSwap {
     userDestination: PublicKey,
     poolMint: PublicKey,
     feeAccount: PublicKey,
-    hostFeeAccount: PublicKey | null,
     swapProgramId: PublicKey,
     tokenProgramId: PublicKey,
     amountIn: number | Numberu64,
@@ -652,9 +620,6 @@ export class TokenSwap {
       {pubkey: feeAccount, isSigner: false, isWritable: true},
       {pubkey: tokenProgramId, isSigner: false, isWritable: false},
     ];
-    if (hostFeeAccount !== null) {
-      keys.push({pubkey: hostFeeAccount, isSigner: false, isWritable: true});
-    }
     return new TransactionInstruction({
       keys,
       programId: swapProgramId,
