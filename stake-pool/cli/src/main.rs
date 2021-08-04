@@ -30,7 +30,7 @@ use {
         native_token::{self, Sol},
         signature::{Keypair, Signer},
         signers::Signers,
-        system_instruction, system_program,
+        system_instruction,
         transaction::Transaction,
     },
     spl_associated_token_account::{create_associated_token_account, get_associated_token_address},
@@ -736,7 +736,8 @@ fn command_deposit_sol(
 
     let mut instructions: Vec<Instruction> = vec![];
 
-    let user_sol_transfer = Keypair::new(); // ephemeral SOL account just to do the transfer
+    // ephemeral SOL account just to do the transfer
+    let user_sol_transfer = Keypair::new();
     let mut signers = vec![
         config.fee_payer.as_ref(),
         config.staker.as_ref(),
@@ -749,12 +750,10 @@ fn command_deposit_sol(
     let mut total_rent_free_balances: u64 = 0;
 
     // Create the ephemeral SOL account
-    instructions.push(system_instruction::create_account(
+    instructions.push(system_instruction::transfer(
         &from_pubkey,
         &user_sol_transfer.pubkey(),
         amount,
-        0,
-        &system_program::id(),
     ));
 
     // Create token account if not specified
@@ -857,15 +856,6 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
         println!("Withdraw Authority: {}", pool_withdraw_authority);
         println!("Pool Token Mint: {}", stake_pool.pool_mint);
         println!("Fee Account: {}", stake_pool.manager_fee_account);
-        println!("Epoch Fee: {}", stake_pool.fee);
-        println!("Withdrawal Fee: {}", stake_pool.withdrawal_fee);
-        println!("Stake Deposit Fee: {}", stake_pool.stake_deposit_fee);
-        println!(
-            "Stake Deposit Referral Fee: {}%",
-            stake_pool.stake_referral_fee
-        );
-        println!("SOL Deposit Fee: {}", stake_pool.sol_deposit_fee);
-        println!("SOL Deposit Referral Fee: {}%", stake_pool.sol_referral_fee);
     } else {
         println!("Stake Pool: {}", stake_pool_address);
         println!("Pool Token Mint: {}", stake_pool.pool_mint);
@@ -884,13 +874,52 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
             preferred_withdraw_validator
         );
     }
-    if stake_pool.fee.numerator > 0 {
+
+    // Display fees information
+    if stake_pool.fee.numerator > 0 && stake_pool.fee.denominator > 0 {
+        println!("Epoch Fee: {} of epoch rewards", stake_pool.fee);
+    } else {
+        println!("Epoch Fee: none");
+    }
+    if stake_pool.withdrawal_fee.numerator > 0 && stake_pool.withdrawal_fee.denominator > 0 {
         println!(
-            "Fee: {}/{} of epoch rewards",
-            stake_pool.fee.numerator, stake_pool.fee.denominator
+            "Withdrawal Fee: {} of withdrawal amount",
+            stake_pool.withdrawal_fee
         );
     } else {
-        println!("Fee: none");
+        println!("Withdrawal Fee: none");
+    }
+    if stake_pool.stake_deposit_fee.numerator > 0 && stake_pool.stake_deposit_fee.denominator > 0 {
+        println!(
+            "Stake Deposit Fee: {} of staked amount",
+            stake_pool.stake_deposit_fee
+        );
+    } else {
+        println!("Stake Deposit Fee: none");
+    }
+    if stake_pool.sol_deposit_fee.numerator > 0 && stake_pool.sol_deposit_fee.denominator > 0 {
+        println!(
+            "SOL Deposit Fee: {} of deposit amount",
+            stake_pool.sol_deposit_fee
+        );
+    } else {
+        println!("SOL Deposit Fee: none");
+    }
+    if stake_pool.sol_referral_fee > 0 {
+        println!(
+            "SOL Deposit Referral Fee: {}% of SOL Deposit Fee",
+            stake_pool.sol_referral_fee
+        );
+    } else {
+        println!("SOL Deposit Referral Fee: none");
+    }
+    if stake_pool.stake_referral_fee > 0 {
+        println!(
+            "Stake Deposit Referral Fee: {}% of Stake Deposit Fee",
+            stake_pool.stake_referral_fee
+        );
+    } else {
+        println!("Stake Deposit Referral Fee: none");
     }
 
     if config.verbose {
