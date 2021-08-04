@@ -739,7 +739,7 @@ impl FeeType {
                 fee.numerator * old_denom,
                 old_num * fee.denominator,
             );
-            return Err(StakePoolError::FeeIncreaseTooHigh.into());
+            return Err(StakePoolError::FeeIncreaseTooHigh);
         }
         Ok(())
     }
