@@ -7,11 +7,10 @@ use {
         instruction::{PreferredValidatorType, StakePoolInstruction},
         minimum_reserve_lamports, minimum_stake_lamports, stake_program,
         state::{
-            AccountType, Fee, StakePool, StakeStatus, ValidatorList, ValidatorListHeader,
+            AccountType, Fee, FeeType, StakePool, StakeStatus, ValidatorList, ValidatorListHeader,
             ValidatorStakeInfo,
         },
-        AUTHORITY_DEPOSIT, AUTHORITY_WITHDRAW, MAX_WITHDRAWAL_FEE_INCREASE, MINIMUM_ACTIVE_STAKE,
-        TRANSIENT_STAKE_SEED, WITHDRAWAL_BASELINE_FEE,
+        AUTHORITY_DEPOSIT, AUTHORITY_WITHDRAW, MINIMUM_ACTIVE_STAKE, TRANSIENT_STAKE_SEED,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     num_traits::FromPrimitive,
@@ -2361,7 +2360,11 @@ impl Processor {
     }
 
     /// Processes [SetFee](enum.Instruction.html).
-    fn process_set_fee(program_id: &Pubkey, accounts: &[AccountInfo], fee: Fee) -> ProgramResult {
+    fn process_set_fee(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        fee: FeeType,
+    ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
         let manager_info = next_account_info(account_info_iter)?;
@@ -2380,17 +2383,10 @@ impl Processor {
             return Err(StakePoolError::StakeListAndPoolOutOfDate.into());
         }
 
-        // Numerator should be smaller than or equal to denominator (fee <= 1)
-        if fee.numerator > fee.denominator {
-            msg!(
-                "Fee greater than 100%, numerator {}, denominator {}",
-                fee.numerator,
-                fee.denominator
-            );
-            return Err(StakePoolError::FeeTooHigh.into());
-        }
+        fee.check_too_high()?;
+        fee.check_withdrawal(&stake_pool.withdrawal_fee)?;
 
-        stake_pool.next_epoch_fee = Some(fee);
+        stake_pool.update_fee(&fee);
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
         Ok(())
     }
@@ -2444,150 +2440,6 @@ impl Processor {
             );
         } else {
             stake_pool.sol_deposit_authority = new_sol_deposit_authority;
-        }
-        stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
-        Ok(())
-    }
-    /// Processes [SetWithdrawalFee](enum.Instruction.html).
-    fn process_set_withdrawal_fee(
-        program_id: &Pubkey,
-        accounts: &[AccountInfo],
-        fee: Fee,
-    ) -> ProgramResult {
-        let account_info_iter = &mut accounts.iter();
-        let stake_pool_info = next_account_info(account_info_iter)?;
-        let manager_info = next_account_info(account_info_iter)?;
-        let clock_info = next_account_info(account_info_iter)?;
-        let clock = &Clock::from_account_info(clock_info)?;
-
-        check_account_owner(stake_pool_info, program_id)?;
-        let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
-        if !stake_pool.is_valid() {
-            return Err(StakePoolError::InvalidState.into());
-        }
-
-        stake_pool.check_manager(manager_info)?;
-
-        if stake_pool.last_update_epoch < clock.epoch {
-            return Err(StakePoolError::StakeListAndPoolOutOfDate.into());
-        }
-
-        // Numerator should be smaller than or equal to denominator (fee <= 1)
-        if fee.numerator > fee.denominator {
-            msg!(
-                "Fee greater than 100%, numerator {}, denominator {}",
-                fee.numerator,
-                fee.denominator
-            );
-            return Err(StakePoolError::FeeTooHigh.into());
-        }
-
-        // If the previous withdrawal fee was 0, we allow the fee to be set to a
-        // maximum of (WITHDRAWAL_BASELINE_FEE * MAX_WITHDRAWAL_FEE_INCREASE)
-        let (old_num, old_denom) = if stake_pool.withdrawal_fee.denominator == 0
-            || stake_pool.withdrawal_fee.numerator == 0
-        {
-            (
-                WITHDRAWAL_BASELINE_FEE.numerator,
-                WITHDRAWAL_BASELINE_FEE.denominator,
-            )
-        } else {
-            (
-                stake_pool.withdrawal_fee.numerator,
-                stake_pool.withdrawal_fee.denominator,
-            )
-        };
-
-        // Check that new_fee / old_fee <= MAX_WITHDRAWAL_FEE_INCREASE
-        // Program fails if provided numerator or denominator is too large, resulting in overflow
-        if (old_num as u128)
-            .checked_mul(fee.denominator as u128)
-            .map(|x| x.checked_mul(MAX_WITHDRAWAL_FEE_INCREASE.numerator as u128))
-            .ok_or(StakePoolError::CalculationFailure)?
-            < (fee.numerator as u128)
-                .checked_mul(old_denom as u128)
-                .map(|x| x.checked_mul(MAX_WITHDRAWAL_FEE_INCREASE.denominator as u128))
-                .ok_or(StakePoolError::CalculationFailure)?
-        {
-            msg!(
-                "Fee increase exceeds maximum allowed, proposed increase factor ({} / {})",
-                fee.numerator * old_denom,
-                old_num * fee.denominator,
-            );
-            return Err(StakePoolError::FeeIncreaseTooHigh.into());
-        }
-
-        stake_pool.next_withdrawal_fee = Some(fee);
-        stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
-        Ok(())
-    }
-
-    /// Processes [SetSolDepositFee/SetStakeDepositFee](enum.Instruction.html).
-    fn process_set_deposit_fee(
-        program_id: &Pubkey,
-        accounts: &[AccountInfo],
-        fee: Fee,
-        for_stake_deposit: bool,
-    ) -> ProgramResult {
-        let account_info_iter = &mut accounts.iter();
-        let stake_pool_info = next_account_info(account_info_iter)?;
-        let manager_info = next_account_info(account_info_iter)?;
-
-        check_account_owner(stake_pool_info, program_id)?;
-        let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
-        if !stake_pool.is_valid() {
-            return Err(StakePoolError::InvalidState.into());
-        }
-
-        stake_pool.check_manager(manager_info)?;
-
-        // Numerator should be smaller than or equal to denominator (fee <= 1)
-        if fee.numerator > fee.denominator {
-            msg!(
-                "Fee greater than 100%, numerator {}, denominator {}",
-                fee.numerator,
-                fee.denominator
-            );
-            return Err(StakePoolError::FeeTooHigh.into());
-        }
-
-        if for_stake_deposit {
-            stake_pool.stake_deposit_fee = fee;
-        } else {
-            stake_pool.sol_deposit_fee = fee;
-        }
-        stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
-        Ok(())
-    }
-
-    /// Processes [SetSolReferralFee/SetStakeReferralFee](enum.Instruction.html).
-    fn process_set_referral_fee(
-        program_id: &Pubkey,
-        accounts: &[AccountInfo],
-        fee: u8,
-        for_stake_deposit: bool,
-    ) -> ProgramResult {
-        let account_info_iter = &mut accounts.iter();
-        let stake_pool_info = next_account_info(account_info_iter)?;
-        let manager_info = next_account_info(account_info_iter)?;
-
-        check_account_owner(stake_pool_info, program_id)?;
-        let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
-        if !stake_pool.is_valid() {
-            return Err(StakePoolError::InvalidState.into());
-        }
-
-        stake_pool.check_manager(manager_info)?;
-
-        if fee > 100u8 {
-            msg!("Fee greater than 100% {}", fee);
-            return Err(StakePoolError::FeeTooHigh.into());
-        }
-
-        if for_stake_deposit {
-            stake_pool.stake_referral_fee = fee;
-        } else {
-            stake_pool.sol_referral_fee = fee;
         }
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
         Ok(())
@@ -2686,26 +2538,6 @@ impl Processor {
             StakePoolInstruction::SetStaker => {
                 msg!("Instruction: SetStaker");
                 Self::process_set_staker(program_id, accounts)
-            }
-            StakePoolInstruction::SetWithdrawalFee { fee } => {
-                msg!("Instruction: SetWithdrawalFee");
-                Self::process_set_withdrawal_fee(program_id, accounts, fee)
-            }
-            StakePoolInstruction::SetStakeDepositFee { fee } => {
-                msg!("Instruction: SetStakeDepositFee");
-                Self::process_set_deposit_fee(program_id, accounts, fee, true)
-            }
-            StakePoolInstruction::SetSolDepositFee { fee } => {
-                msg!("Instruction: SetSolDepositFee");
-                Self::process_set_deposit_fee(program_id, accounts, fee, false)
-            }
-            StakePoolInstruction::SetStakeReferralFee { fee } => {
-                msg!("Instruction: SetReferralFee");
-                Self::process_set_referral_fee(program_id, accounts, fee, true)
-            }
-            StakePoolInstruction::SetSolReferralFee { fee } => {
-                msg!("Instruction: SetReferralFee");
-                Self::process_set_referral_fee(program_id, accounts, fee, false)
             }
             StakePoolInstruction::DepositSol(lamports) => {
                 msg!("Instruction: DepositSol");

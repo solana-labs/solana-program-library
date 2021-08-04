@@ -39,7 +39,7 @@ use {
         find_withdraw_authority_program_address,
         instruction::PreferredValidatorType,
         stake_program::{self, StakeState},
-        state::{Fee, StakePool, ValidatorList},
+        state::{Fee, FeeType, StakePool, ValidatorList},
     },
     std::{process::exit, sync::Arc},
 };
@@ -1368,7 +1368,11 @@ fn command_set_deposit_authority(
     Ok(())
 }
 
-fn command_set_fee(config: &Config, stake_pool_address: &Pubkey, new_fee: Fee) -> CommandResult {
+fn command_set_fee(
+    config: &Config,
+    stake_pool_address: &Pubkey,
+    new_fee: FeeType,
+) -> CommandResult {
     let mut signers = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
     unique_signers!(signers);
     let transaction = checked_transaction_with_signers(
@@ -1378,73 +1382,6 @@ fn command_set_fee(config: &Config, stake_pool_address: &Pubkey, new_fee: Fee) -
             stake_pool_address,
             &config.manager.pubkey(),
             new_fee,
-        )],
-        &signers,
-    )?;
-    send_transaction(config, transaction)?;
-    Ok(())
-}
-
-fn command_set_withdrawal_fee(
-    config: &Config,
-    stake_pool_address: &Pubkey,
-    new_fee: Fee,
-) -> CommandResult {
-    let mut signers = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
-    unique_signers!(signers);
-    let transaction = checked_transaction_with_signers(
-        config,
-        &[spl_stake_pool::instruction::set_withdrawal_fee(
-            &spl_stake_pool::id(),
-            stake_pool_address,
-            &config.manager.pubkey(),
-            new_fee,
-        )],
-        &signers,
-    )?;
-    send_transaction(config, transaction)?;
-    Ok(())
-}
-
-fn command_set_deposit_fee(
-    config: &Config,
-    stake_pool_address: &Pubkey,
-    new_fee: Fee,
-    for_stake_deposit: bool,
-) -> CommandResult {
-    let mut signers = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
-    unique_signers!(signers);
-    let transaction = checked_transaction_with_signers(
-        config,
-        &[spl_stake_pool::instruction::set_deposit_fee(
-            &spl_stake_pool::id(),
-            stake_pool_address,
-            &config.manager.pubkey(),
-            new_fee,
-            for_stake_deposit,
-        )],
-        &signers,
-    )?;
-    send_transaction(config, transaction)?;
-    Ok(())
-}
-
-fn command_set_referral_fee(
-    config: &Config,
-    stake_pool_address: &Pubkey,
-    new_fee: u8,
-    for_stake_deposit: bool,
-) -> CommandResult {
-    let mut signers = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
-    unique_signers!(signers);
-    let transaction = checked_transaction_with_signers(
-        config,
-        &[spl_stake_pool::instruction::set_referral_fee(
-            &spl_stake_pool::id(),
-            stake_pool_address,
-            &config.manager.pubkey(),
-            new_fee,
-            for_stake_deposit,
         )],
         &signers,
     )?;
@@ -2473,14 +2410,16 @@ fn main() {
                 numerator,
             };
             match arg_matches.value_of("fee_type").unwrap() {
-                "epoch" => command_set_fee(&config, &stake_pool_address, new_fee),
+                "epoch" => command_set_fee(&config, &stake_pool_address, FeeType::Epoch(new_fee)),
                 "stake-deposit" => {
-                    command_set_deposit_fee(&config, &stake_pool_address, new_fee, true)
+                    command_set_fee(&config, &stake_pool_address, FeeType::StakeDeposit(new_fee))
                 }
                 "sol-deposit" => {
-                    command_set_deposit_fee(&config, &stake_pool_address, new_fee, false)
+                    command_set_fee(&config, &stake_pool_address, FeeType::SolDeposit(new_fee))
                 }
-                "withdrawal" => command_set_withdrawal_fee(&config, &stake_pool_address, new_fee),
+                "withdrawal" => {
+                    command_set_fee(&config, &stake_pool_address, FeeType::Withdrawal(new_fee))
+                }
                 _ => unreachable!(),
             }
         }
@@ -2490,7 +2429,7 @@ fn main() {
             if fee > 100u8 {
                 panic!("Invalid fee {}%. Fee needs to be in range [0-100]", fee);
             }
-            command_set_referral_fee(&config, &stake_pool_address, fee, true)
+            command_set_fee(&config, &stake_pool_address, FeeType::StakeReferral(fee))
         }
         ("set-sol-referral-fee", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
@@ -2498,7 +2437,7 @@ fn main() {
             if fee > 100u8 {
                 panic!("Invalid fee {}%. Fee needs to be in range [0-100]", fee);
             }
-            command_set_referral_fee(&config, &stake_pool_address, fee, false)
+            command_set_fee(&config, &stake_pool_address, FeeType::SolReferral(fee))
         }
         _ => unreachable!(),
     }

@@ -48,19 +48,17 @@ async fn setup() -> (ProgramTestContext, StakePoolAccounts, Keypair, Pubkey) {
     .unwrap();
     let mut transaction = Transaction::new_with_payer(
         &[
-            instruction::set_deposit_fee(
+            instruction::set_sol_deposit_fee(
                 &id(),
                 &stake_pool_accounts.stake_pool.pubkey(),
                 &stake_pool_accounts.manager.pubkey(),
                 stake_pool_accounts.deposit_fee,
-                false,
             ),
-            instruction::set_referral_fee(
+            instruction::set_sol_referral_fee(
                 &id(),
                 &stake_pool_accounts.stake_pool.pubkey(),
                 &stake_pool_accounts.manager.pubkey(),
                 stake_pool_accounts.referral_fee,
-                false,
             ),
         ],
         Some(&context.payer.pubkey()),

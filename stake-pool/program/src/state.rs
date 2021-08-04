@@ -1,7 +1,10 @@
 //! State transition types
 
 use {
-    crate::{big_vec::BigVec, error::StakePoolError, stake_program::Lockup},
+    crate::{
+        big_vec::BigVec, error::StakePoolError, stake_program::Lockup, MAX_WITHDRAWAL_FEE_INCREASE,
+        WITHDRAWAL_BASELINE_FEE,
+    },
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
     num_derive::FromPrimitive,
     num_traits::FromPrimitive,
@@ -386,6 +389,18 @@ impl StakePool {
     pub fn is_uninitialized(&self) -> bool {
         self.account_type == AccountType::Uninitialized
     }
+
+    /// Updates one of the StakePool's fees.
+    pub fn update_fee(&mut self, fee: &FeeType) {
+        match fee {
+            FeeType::SolReferral(new_fee) => self.sol_referral_fee = *new_fee,
+            FeeType::StakeReferral(new_fee) => self.stake_referral_fee = *new_fee,
+            FeeType::Epoch(new_fee) => self.next_epoch_fee = Some(*new_fee),
+            FeeType::Withdrawal(new_fee) => self.next_withdrawal_fee = Some(*new_fee),
+            FeeType::SolDeposit(new_fee) => self.sol_deposit_fee = *new_fee,
+            FeeType::StakeDeposit(new_fee) => self.stake_deposit_fee = *new_fee,
+        }
+    }
 }
 
 /// Storage list for all validator stake accounts in the pool.
@@ -649,6 +664,84 @@ impl Fee {
 impl fmt::Display for Fee {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}/{}", self.numerator, self.denominator)
+    }
+}
+
+/// The type of fees that can be set on the stake pool
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub enum FeeType {
+    /// Referral fees for SOL deposits
+    SolReferral(u8),
+    /// Referral fees for stake deposits
+    StakeReferral(u8),
+    /// Management fee paid per epoch
+    Epoch(Fee),
+    /// Withdrawal fee
+    Withdrawal(Fee),
+    /// Deposit fee for SOL deposits
+    SolDeposit(Fee),
+    /// Deposit fee for stake deposits
+    StakeDeposit(Fee),
+}
+
+impl FeeType {
+    /// Checks if the provided fee is too high, returning an error if so
+    pub fn check_too_high(&self) -> Result<(), StakePoolError> {
+        let too_high = match self {
+            Self::SolReferral(pct) => *pct > 100u8,
+            Self::StakeReferral(pct) => *pct > 100u8,
+            Self::Epoch(fee) => fee.numerator > fee.denominator,
+            Self::Withdrawal(fee) => fee.numerator > fee.denominator,
+            Self::SolDeposit(fee) => fee.numerator > fee.denominator,
+            Self::StakeDeposit(fee) => fee.numerator > fee.denominator,
+        };
+        if too_high {
+            msg!("Fee greater than 100%: {:?}", self);
+            return Err(StakePoolError::FeeTooHigh);
+        }
+        Ok(())
+    }
+
+    /// Withdrawal fees have some additional restrictions,
+    /// this fn checks if those are met, returning an error if not.
+    /// Does nothing and returns Ok if fee type is not withdrawal
+    pub fn check_withdrawal(&self, old_withdrawal_fee: &Fee) -> Result<(), StakePoolError> {
+        let fee = match self {
+            Self::Withdrawal(fee) => fee,
+            _ => return Ok(()),
+        };
+
+        // If the previous withdrawal fee was 0, we allow the fee to be set to a
+        // maximum of (WITHDRAWAL_BASELINE_FEE * MAX_WITHDRAWAL_FEE_INCREASE)
+        let (old_num, old_denom) =
+            if old_withdrawal_fee.denominator == 0 || old_withdrawal_fee.numerator == 0 {
+                (
+                    WITHDRAWAL_BASELINE_FEE.numerator,
+                    WITHDRAWAL_BASELINE_FEE.denominator,
+                )
+            } else {
+                (old_withdrawal_fee.numerator, old_withdrawal_fee.denominator)
+            };
+
+        // Check that new_fee / old_fee <= MAX_WITHDRAWAL_FEE_INCREASE
+        // Program fails if provided numerator or denominator is too large, resulting in overflow
+        if (old_num as u128)
+            .checked_mul(fee.denominator as u128)
+            .map(|x| x.checked_mul(MAX_WITHDRAWAL_FEE_INCREASE.numerator as u128))
+            .ok_or(StakePoolError::CalculationFailure)?
+            < (fee.numerator as u128)
+                .checked_mul(old_denom as u128)
+                .map(|x| x.checked_mul(MAX_WITHDRAWAL_FEE_INCREASE.denominator as u128))
+                .ok_or(StakePoolError::CalculationFailure)?
+        {
+            msg!(
+                "Fee increase exceeds maximum allowed, proposed increase factor ({} / {})",
+                fee.numerator * old_denom,
+                old_num * fee.denominator,
+            );
+            return Err(StakePoolError::FeeIncreaseTooHigh.into());
+        }
+        Ok(())
     }
 }
 

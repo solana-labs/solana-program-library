@@ -39,12 +39,11 @@ async fn success_stake() {
     let (mut context, stake_pool_accounts, new_referral_fee) = setup(None).await;
 
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::set_referral_fee(
+        &[instruction::set_stake_referral_fee(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
             new_referral_fee,
-            true,
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &stake_pool_accounts.manager],
@@ -71,12 +70,11 @@ async fn success_stake_increase_fee_from_0() {
     let new_referral_fee = 30u8;
 
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::set_referral_fee(
+        &[instruction::set_stake_referral_fee(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
             new_referral_fee,
-            true,
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &stake_pool_accounts.manager],
@@ -103,12 +101,11 @@ async fn fail_stake_wrong_manager() {
 
     let wrong_manager = Keypair::new();
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::set_referral_fee(
+        &[instruction::set_stake_referral_fee(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &wrong_manager.pubkey(),
             new_referral_fee,
-            true,
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &wrong_manager],
@@ -137,12 +134,11 @@ async fn fail_stake_high_referral_fee() {
 
     let new_referral_fee = 110u8;
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::set_referral_fee(
+        &[instruction::set_stake_referral_fee(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
             new_referral_fee,
-            true,
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &stake_pool_accounts.manager],
@@ -170,12 +166,11 @@ async fn success_sol() {
     let (mut context, stake_pool_accounts, new_referral_fee) = setup(None).await;
 
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::set_referral_fee(
+        &[instruction::set_sol_referral_fee(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
             new_referral_fee,
-            false,
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &stake_pool_accounts.manager],
@@ -202,12 +197,11 @@ async fn fail_sol_wrong_manager() {
 
     let wrong_manager = Keypair::new();
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::set_referral_fee(
+        &[instruction::set_sol_referral_fee(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &wrong_manager.pubkey(),
             new_referral_fee,
-            false,
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &wrong_manager],
@@ -236,12 +230,11 @@ async fn fail_sol_high_referral_fee() {
 
     let new_referral_fee = 110u8;
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::set_referral_fee(
+        &[instruction::set_sol_referral_fee(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
             new_referral_fee,
-            false,
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &stake_pool_accounts.manager],

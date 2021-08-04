@@ -6,7 +6,7 @@ use {
         find_deposit_authority_program_address, find_stake_program_address,
         find_transient_stake_program_address, find_withdraw_authority_program_address,
         stake_program,
-        state::{Fee, StakePool, ValidatorList},
+        state::{Fee, FeeType, StakePool, ValidatorList},
         MAX_VALIDATORS_TO_UPDATE,
     },
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
@@ -305,9 +305,9 @@ pub enum StakePoolInstruction {
     ///  1. `[s]` Manager
     ///  2. `[]` Sysvar clock
     SetFee {
-        /// Fee assessed as percentage of perceived rewards
+        /// Type of fee to update and value to update it to
         #[allow(dead_code)] // but it's not
-        fee: Fee,
+        fee: FeeType,
     },
 
     ///  (Manager or staker only) Update staker
@@ -316,37 +316,6 @@ pub enum StakePoolInstruction {
     ///  1. `[s]` Manager or current staker
     ///  2. '[]` New staker pubkey
     SetStaker,
-
-    ///  (Manager only) Update Withdrawal fee for next epoch
-    ///
-    ///  0. `[w]` StakePool
-    ///  1. `[s]` Manager
-    ///  2. `[]` Sysvar clock
-    SetWithdrawalFee {
-        /// Fee assessed as percentage of pool tokens to be withdrawn
-        #[allow(dead_code)] // but it's not
-        fee: Fee,
-    },
-
-    ///  (Manager only) Update DepositStake fee
-    ///
-    ///  0. `[w]` StakePool
-    ///  1. `[s]` Manager
-    SetStakeDepositFee {
-        /// Fee assessed as percentage of deposited SOL
-        #[allow(dead_code)] // but it's not
-        fee: Fee,
-    },
-
-    ///  (Manager only) Update DepositStake referral fee
-    ///
-    ///  0. `[w]` StakePool
-    ///  1. `[s]` Manager
-    SetStakeReferralFee {
-        /// Fee assessed as percentage of deposit fee
-        #[allow(dead_code)] // but it's not
-        fee: u8,
-    },
 
     ///   Deposit SOL directly into the pool's reserve account. The output is a "pool" token
     ///   representing ownership into the pool. Inputs are converted to the current ratio.
@@ -378,26 +347,6 @@ pub enum StakePoolInstruction {
     ///  1. `[s]` Manager
     ///  2. '[]` New stake_deposit_authority pubkey, or none (=> PDA authority)
     SetStakeDepositAuthority,
-
-    ///  (Manager only) Update DepositSol fee
-    ///
-    ///  0. `[w]` StakePool
-    ///  1. `[s]` Manager
-    SetSolDepositFee {
-        /// Fee assessed as percentage of deposited SOL
-        #[allow(dead_code)] // but it's not
-        fee: Fee,
-    },
-
-    ///  (Manager only) Update DepositStake referral fee
-    ///
-    ///  0. `[w]` StakePool
-    ///  1. `[s]` Manager
-    SetSolReferralFee {
-        /// Fee assessed as percentage of deposit fee
-        #[allow(dead_code)] // but it's not
-        fee: u8,
-    },
 }
 
 /// Creates an 'initialize' instruction.
@@ -1165,7 +1114,7 @@ pub fn set_fee(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
     manager: &Pubkey,
-    fee: Fee,
+    fee: FeeType,
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
@@ -1179,79 +1128,64 @@ pub fn set_fee(
     }
 }
 
-/// Creates a 'set withdrawal fee' instruction.
+/// Creates a 'set fee' instruction for setting the epoch fee
+pub fn set_epoch_fee(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    manager: &Pubkey,
+    fee: Fee,
+) -> Instruction {
+    set_fee(program_id, stake_pool, manager, FeeType::Epoch(fee))
+}
+
+/// Creates a 'set fee' instruction for setting withdrawal fee
 pub fn set_withdrawal_fee(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
     manager: &Pubkey,
     fee: Fee,
 ) -> Instruction {
-    let accounts = vec![
-        AccountMeta::new(*stake_pool, false),
-        AccountMeta::new_readonly(*manager, true),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
-    ];
-    Instruction {
-        program_id: *program_id,
-        accounts,
-        data: StakePoolInstruction::SetWithdrawalFee { fee }
-            .try_to_vec()
-            .unwrap(),
-    }
+    set_fee(program_id, stake_pool, manager, FeeType::Withdrawal(fee))
 }
 
-/// Creates a 'set deposit fee' instruction.
-pub fn set_deposit_fee(
+/// Creates a 'set fee' instruction for setting SOL deposit fee
+pub fn set_sol_deposit_fee(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
     manager: &Pubkey,
     fee: Fee,
-    for_stake_deposit: bool,
 ) -> Instruction {
-    let accounts = vec![
-        AccountMeta::new(*stake_pool, false),
-        AccountMeta::new_readonly(*manager, true),
-    ];
-    Instruction {
-        program_id: *program_id,
-        accounts,
-        data: if for_stake_deposit {
-            StakePoolInstruction::SetStakeDepositFee { fee }
-                .try_to_vec()
-                .unwrap()
-        } else {
-            StakePoolInstruction::SetSolDepositFee { fee }
-                .try_to_vec()
-                .unwrap()
-        },
-    }
+    set_fee(program_id, stake_pool, manager, FeeType::SolDeposit(fee))
 }
 
-/// Creates a 'set stake referral fee' instruction.
-pub fn set_referral_fee(
+/// Creates a 'set fee' instruction for setting stake deposit fee
+pub fn set_stake_deposit_fee(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    manager: &Pubkey,
+    fee: Fee,
+) -> Instruction {
+    set_fee(program_id, stake_pool, manager, FeeType::StakeDeposit(fee))
+}
+
+/// Creates a 'set fee' instruction for setting SOL referral fee
+pub fn set_sol_referral_fee(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
     manager: &Pubkey,
     fee: u8,
-    for_stake_deposit: bool,
 ) -> Instruction {
-    let accounts = vec![
-        AccountMeta::new(*stake_pool, false),
-        AccountMeta::new_readonly(*manager, true),
-    ];
-    Instruction {
-        program_id: *program_id,
-        accounts,
-        data: if for_stake_deposit {
-            StakePoolInstruction::SetStakeReferralFee { fee }
-                .try_to_vec()
-                .unwrap()
-        } else {
-            StakePoolInstruction::SetSolReferralFee { fee }
-                .try_to_vec()
-                .unwrap()
-        },
-    }
+    set_fee(program_id, stake_pool, manager, FeeType::SolReferral(fee))
+}
+
+/// Creates a 'set fee' instruction for setting stake referral fee
+pub fn set_stake_referral_fee(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    manager: &Pubkey,
+    fee: u8,
+) -> Instruction {
+    set_fee(program_id, stake_pool, manager, FeeType::StakeReferral(fee))
 }
 
 /// Creates a 'set staker' instruction.
