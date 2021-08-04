@@ -756,6 +756,15 @@ fn command_create_lending_market(
         recent_blockhash,
     );
     send_transaction(config, transaction)?;
+
+    let lending_market_pubkey = lending_market_keypair.pubkey();
+    let lending_market_account = config.rpc_client.get_account(&lending_market_pubkey)?;
+    let lending_market = LendingMarket::unpack_from_slice(lending_market_account.data.borrow())?;
+    let authority_signer_seeds = &[lending_market_pubkey.as_ref(), &[lending_market.bump_seed]];
+    println!(
+        "Authority Address {}",
+        Pubkey::create_program_address(authority_signer_seeds, &config.lending_program_id)?,
+    );
     Ok(())
 }
 
