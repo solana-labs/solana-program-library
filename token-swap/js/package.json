@@ -35,7 +35,7 @@
     "build": "tsc && tsc -p tsconfig.browser.json && npm run generate:flow",
     "prepare": "npm run build",
     "start": "ts-node cli/main.ts",
-    "start-with-test-validator": "start-server-and-test 'solana-test-validator --bpf-program SwaPpA9LAaLfeLi3a68M4DjnLqgtticKg6CnyNwgAC8 ../../target/deploy/spl_token_swap.so --reset --quiet' http://localhost:8899/health start",
+    "start-with-test-validator": "start-server-and-test 'solana-test-validator --bpf-program SSwpMgqNDsyV7mAgN9ady4bDVu5ySjmmXejXvy2vLt1 ../../target/deploy/spl_token_swap.so --reset --quiet' http://localhost:8899/health start",
     "lint": "npm run pretty && eslint .",
     "lint:fix": "npm run pretty:fix && eslint . --fix",
     "generate:flow": "flowgen dist/index.d.ts -o dist/module.flow.js",
@@ -50,7 +50,7 @@
   },
   "keywords": [],
   "dependencies": {
-    "@solana/web3.js": "^1.10.0",
+    "@solana/web3.js": "^1.22.0",
     "bn.js": "^5.1.3",
     "buffer-layout": "^1.2.0",
     "dotenv": "10.0.0",
@@ -67,9 +67,9 @@
     "flowgen": "^1.14.1",
     "mz": "^2.7.0",
     "prettier": "^2.1.2",
-    "start-server-and-test": "^1.11.6",
+    "start-server-and-test": "^1.13.1",
     "ts-node": "^10.0.0",
-    "typescript": "^4.2.4",
+    "typescript": "^4.3.5",
     "watch": "^1.0.2"
   },
   "engines": {
