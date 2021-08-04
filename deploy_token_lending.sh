@@ -31,9 +31,9 @@ CREATE_MARKET_OUTPUT=`target/debug/spl-token-lending create-market \
 
 echo "$CREATE_MARKET_OUTPUT";
 MARKET_ADDR=`echo $CREATE_MARKET_OUTPUT | head -n1 | awk '{print $4}'`;
+AUTHORITY_ADDR=`echo $CREATE_MARKET_OUTPUT | grep "Authority Address" | awk '{print $NF}'`;
 
 echo "Creating SOL reserve";
-echo " -----$SOURCE -----"
 SOL_RESERVE_OUTPUT=`target/debug/spl-token-lending add-reserve \
   --fee-payer         $OWNER \
   --market-owner      $OWNER \
@@ -154,8 +154,7 @@ export BTC_MINT_ADDRESS="$BTC_TOKEN_MINT";
 
 # Main Market
 export MAIN_MARKET_ADDRESS="$MARKET_ADDR";
-export MAIN_MARKET_AUTHORITY_ADDRESS="TODO";
-export MAIN_MARKET_TRANSFER_AUTHORITY_ADDRESS="TODO";
+export MAIN_MARKET_AUTHORITY_ADDRESS="$AUTHORITY_ADDR";
 
 # Reserves
 export SOL_RESERVE_ADDRESS=`echo "$SOL_RESERVE_OUTPUT" | grep "Adding reserve" | awk '{print $NF}'`;
