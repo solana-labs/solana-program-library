@@ -620,9 +620,26 @@ fn main() {
 
             let liquidity_fee_receiver_keypair = Keypair::new();
 
+            let source_liquidity_account = config
+                .rpc_client
+                .get_account(&source_liquidity_pubkey)
+                .unwrap();
+            let source_liquidity =
+                Token::unpack_from_slice(source_liquidity_account.data.borrow()).unwrap();
+            let source_liquidity_mint_account = config
+                .rpc_client
+                .get_account(&source_liquidity.mint)
+                .unwrap();
+            let source_liquidity_mint =
+                Mint::unpack_from_slice(source_liquidity_mint_account.data.borrow()).unwrap();
+
+            let liquidity_amount = ui_amount_to_amount(ui_amount, source_liquidity_mint.decimals);
+            let deposit_limit = ui_amount_to_amount(deposit_limit, source_liquidity_mint.decimals);
+            let borrow_limit = ui_amount_to_amount(borrow_limit, source_liquidity_mint.decimals);
+
             command_add_reserve(
                 &mut config,
-                ui_amount,
+                liquidity_amount,
                 ReserveConfig {
                     optimal_utilization_rate,
                     loan_to_value_ratio,
@@ -648,6 +665,7 @@ fn main() {
                 pyth_price_pubkey,
                 switchboard_feed_pubkey,
                 liquidity_fee_receiver_keypair,
+                source_liquidity,
             )
         }
         ("update-reserve", Some(arg_matches)) => {
@@ -762,7 +780,7 @@ fn command_create_lending_market(
 #[allow(clippy::too_many_arguments)]
 fn command_add_reserve(
     config: &mut Config,
-    ui_amount: f64,
+    liquidity_amount: u64,
     reserve_config: ReserveConfig,
     source_liquidity_pubkey: Pubkey,
     source_liquidity_owner_keypair: Keypair,
@@ -772,15 +790,8 @@ fn command_add_reserve(
     pyth_price_pubkey: Pubkey,
     switchboard_feed_pubkey: Pubkey,
     liquidity_fee_receiver_keypair: Keypair,
+    source_liquidity: Token,
 ) -> CommandResult {
-    let source_liquidity_account = config.rpc_client.get_account(&source_liquidity_pubkey)?;
-    let source_liquidity = Token::unpack_from_slice(source_liquidity_account.data.borrow())?;
-
-    let source_liquidity_mint_account = config.rpc_client.get_account(&source_liquidity.mint)?;
-    let source_liquidity_mint =
-        Mint::unpack_from_slice(source_liquidity_mint_account.data.borrow())?;
-    let liquidity_amount = ui_amount_to_amount(ui_amount, source_liquidity_mint.decimals);
-
     let reserve_keypair = Keypair::new();
     let collateral_mint_keypair = Keypair::new();
     let collateral_supply_keypair = Keypair::new();
