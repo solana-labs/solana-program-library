@@ -14,6 +14,7 @@ use {
         program_pack::{Pack, Sealed},
         pubkey::{Pubkey, PUBKEY_BYTES},
     },
+    spl_math::checked_ceil_div::CheckedCeilDiv,
     std::convert::TryFrom,
 };
 
@@ -135,12 +136,10 @@ impl StakePool {
 
     /// calculate lamports amount on withdrawal
     pub fn calc_lamports_withdraw_amount(&self, pool_tokens: u64) -> Option<u64> {
-        u64::try_from(
-            (pool_tokens as u128)
-                .checked_mul(self.total_stake_lamports as u128)?
-                .checked_div(self.pool_token_supply as u128)?,
-        )
-        .ok()
+        let (quotient, _) = (pool_tokens as u128)
+            .checked_mul(self.total_stake_lamports as u128)?
+            .checked_ceil_div(self.pool_token_supply as u128)?;
+        u64::try_from(quotient).ok()
     }
 
     /// calculate pool tokens to be deducted as withdrawal fees
@@ -159,12 +158,16 @@ impl StakePool {
         let total_stake_lamports =
             (self.total_stake_lamports as u128).checked_add(reward_lamports as u128)?;
         let fee_lamports = self.fee.apply(reward_lamports)?;
-        u64::try_from(
-            (self.pool_token_supply as u128)
-                .checked_mul(fee_lamports)?
-                .checked_div(total_stake_lamports.checked_sub(fee_lamports)?)?,
-        )
-        .ok()
+        if total_stake_lamports == fee_lamports || self.pool_token_supply == 0 {
+            Some(reward_lamports)
+        } else {
+            u64::try_from(
+                (self.pool_token_supply as u128)
+                    .checked_mul(fee_lamports)?
+                    .checked_div(total_stake_lamports.checked_sub(fee_lamports)?)?,
+            )
+            .ok()
+        }
     }
 
     /// Checks that the withdraw or deposit authority is valid
@@ -777,7 +780,22 @@ mod test {
         let fee_lamports = stake_pool
             .calc_lamports_withdraw_amount(pool_token_fee)
             .unwrap();
-        assert_eq!(fee_lamports, LAMPORTS_PER_SOL - 1); // lose 1 lamport of precision
+        assert_eq!(fee_lamports, LAMPORTS_PER_SOL);
+    }
+
+    #[test]
+    fn divide_by_zero_fee() {
+        let stake_pool = StakePool {
+            total_stake_lamports: 0,
+            fee: Fee {
+                numerator: 1,
+                denominator: 10,
+            },
+            ..StakePool::default()
+        };
+        let rewards = 10;
+        let fee = stake_pool.calc_fee_amount(rewards).unwrap();
+        assert_eq!(fee, rewards);
     }
 
     proptest! {
@@ -812,6 +830,35 @@ mod test {
             assert!(max_fee_lamports - fee_lamports <= epsilon,
                 "Max expected fee in lamports {}, actually receive {}, epsilon {}",
                 max_fee_lamports, fee_lamports, epsilon);
+        }
+    }
+
+    prop_compose! {
+        fn total_tokens_and_deposit()(total_lamports in 1..u64::MAX)(
+            total_lamports in Just(total_lamports),
+            pool_token_supply in 1..=total_lamports,
+            deposit_lamports in 1..total_lamports,
+        ) -> (u64, u64, u64) {
+            (total_lamports - deposit_lamports, pool_token_supply.saturating_sub(deposit_lamports).max(1), deposit_lamports)
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn deposit_and_withdraw(
+            (total_stake_lamports, pool_token_supply, deposit_stake) in total_tokens_and_deposit()
+        ) {
+            let mut stake_pool = StakePool {
+                total_stake_lamports,
+                pool_token_supply,
+                ..StakePool::default()
+            };
+            let deposit_result = stake_pool.calc_pool_tokens_for_deposit(deposit_stake).unwrap();
+            prop_assume!(deposit_result > 0);
+            stake_pool.total_stake_lamports += deposit_stake;
+            stake_pool.pool_token_supply += deposit_result;
+            let withdraw_result = stake_pool.calc_lamports_withdraw_amount(deposit_result).unwrap();
+            assert!(withdraw_result <= deposit_stake);
         }
     }
 }
