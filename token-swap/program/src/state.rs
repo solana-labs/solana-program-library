@@ -319,9 +319,7 @@ mod tests {
         owner_trade_fee_numerator: 3,
         owner_trade_fee_denominator: 10,
         owner_withdraw_fee_numerator: 2,
-        owner_withdraw_fee_denominator: 7,
-        host_fee_numerator: 5,
-        host_fee_denominator: 20,
+        owner_withdraw_fee_denominator: 7
     };
 
     const TEST_NONCE: u8 = 255;
@@ -341,8 +339,10 @@ mod tests {
     fn pool_registry_pack() {
         let mut pool_registry: Box<PoolRegistry> = try_zeroed_box().unwrap();
         pool_registry.append(&TEST_TOKEN_A);
+        let regsize_ref = std::ptr::addr_of!(pool_registry.registry_size);
+        let registry_size = unsafe { regsize_ref.read_unaligned() };
         assert_eq!(pool_registry.is_initialized, false);
-        assert_eq!(pool_registry.registry_size, 1);
+        assert_eq!(registry_size, 1);
         assert_eq!(pool_registry.accounts[0], TEST_TOKEN_A);
     }
 
@@ -426,8 +426,6 @@ mod tests {
         packed.extend_from_slice(&TEST_FEES.owner_trade_fee_denominator.to_le_bytes());
         packed.extend_from_slice(&TEST_FEES.owner_withdraw_fee_numerator.to_le_bytes());
         packed.extend_from_slice(&TEST_FEES.owner_withdraw_fee_denominator.to_le_bytes());
-        packed.extend_from_slice(&TEST_FEES.host_fee_numerator.to_le_bytes());
-        packed.extend_from_slice(&TEST_FEES.host_fee_denominator.to_le_bytes());
         packed.push(TEST_CURVE_TYPE);
         packed.extend_from_slice(&TEST_AMP.to_le_bytes());
         packed.extend_from_slice(&[0u8; 24]);

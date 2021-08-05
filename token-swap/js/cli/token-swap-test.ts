@@ -47,8 +47,6 @@ const OWNER_TRADING_FEE_NUMERATOR = 5;
 const OWNER_TRADING_FEE_DENOMINATOR = 10000;
 const OWNER_WITHDRAW_FEE_NUMERATOR = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? 0 : 1;
 const OWNER_WITHDRAW_FEE_DENOMINATOR = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? 0 : 6;
-const HOST_FEE_NUMERATOR = 20;
-const HOST_FEE_DENOMINATOR = 100;
 
 // curve type used to calculate swaps and deposits
 const CURVE_TYPE = CurveType.ConstantProduct;
@@ -64,10 +62,7 @@ let currentFeeAmount = 0;
 const SWAP_AMOUNT_IN = 100000;
 const SWAP_AMOUNT_OUT = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? 90661 : 90674;
 const SWAP_FEE = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? 22273 : 22277;
-const HOST_SWAP_FEE = SWAP_PROGRAM_OWNER_FEE_ADDRESS
-  ? Math.floor((SWAP_FEE * HOST_FEE_NUMERATOR) / HOST_FEE_DENOMINATOR)
-  : 0;
-const OWNER_SWAP_FEE = SWAP_FEE - HOST_SWAP_FEE;
+const OWNER_SWAP_FEE = SWAP_FEE;
 
 // Pool token amount minted on init
 const DEFAULT_POOL_TOKEN_AMOUNT = 1000000000;
@@ -190,8 +185,6 @@ export async function createTokenSwap(): Promise<void> {
     OWNER_TRADING_FEE_DENOMINATOR,
     OWNER_WITHDRAW_FEE_NUMERATOR,
     OWNER_WITHDRAW_FEE_DENOMINATOR,
-    HOST_FEE_NUMERATOR,
-    HOST_FEE_DENOMINATOR,
     CURVE_TYPE,
     poolRegistryKey
   );
@@ -205,7 +198,6 @@ export async function createTokenSwap(): Promise<void> {
   );
 
   const poolRegistry = await TokenSwap.loadPoolRegistry(connection, payer, TOKEN_SWAP_PROGRAM_ID);
-  console.log("poolRegistry", poolRegistry)
 
   assert(poolRegistry.isInitialized);
   assert(poolRegistry.registrySize == 1);
@@ -239,10 +231,6 @@ export async function createTokenSwap(): Promise<void> {
   assert(
     OWNER_WITHDRAW_FEE_DENOMINATOR ==
       fetchedTokenSwap.ownerWithdrawFeeDenominator.toNumber(),
-  );
-  assert(HOST_FEE_NUMERATOR == fetchedTokenSwap.hostFeeNumerator.toNumber());
-  assert(
-    HOST_FEE_DENOMINATOR == fetchedTokenSwap.hostFeeDenominator.toNumber(),
   );
   assert(CURVE_TYPE == fetchedTokenSwap.curveType);
 
@@ -322,8 +310,6 @@ export async function tryCreateDuplicateTokenSwap(): Promise<void> {
       OWNER_TRADING_FEE_DENOMINATOR,
       OWNER_WITHDRAW_FEE_NUMERATOR,
       OWNER_WITHDRAW_FEE_DENOMINATOR,
-      HOST_FEE_NUMERATOR,
-      HOST_FEE_DENOMINATOR,
       CURVE_TYPE,
       poolRegistryKey
     );
@@ -515,7 +501,6 @@ export async function createAccountAndSwapAtomic(): Promise<void> {
       newAccount.publicKey,
       tokenSwap.poolToken,
       tokenSwap.feeAccount,
-      null,
       tokenSwap.swapProgramId,
       tokenSwap.tokenProgramId,
       SWAP_AMOUNT_IN,
@@ -555,9 +540,6 @@ export async function swap(): Promise<void> {
   );
   console.log('Creating swap token b account');
   let userAccountB = await mintB.createAccount(owner.publicKey);
-  let poolAccount = SWAP_PROGRAM_OWNER_FEE_ADDRESS
-    ? await tokenPool.createAccount(owner.publicKey)
-    : null;
 
   console.log('Swapping');
   await tokenSwap.swap(
@@ -565,7 +547,6 @@ export async function swap(): Promise<void> {
     tokenAccountA,
     tokenAccountB,
     userAccountB,
-    poolAccount,
     userTransferAuthority,
     SWAP_AMOUNT_IN,
     SWAP_AMOUNT_OUT,
@@ -595,11 +576,6 @@ export async function swap(): Promise<void> {
 
   info = await tokenPool.getAccountInfo(feeAccount);
   assert(info.amount.toNumber() == currentFeeAmount + OWNER_SWAP_FEE);
-
-  if (poolAccount != null) {
-    info = await tokenPool.getAccountInfo(poolAccount);
-    assert(info.amount.toNumber() == HOST_SWAP_FEE);
-  }
 }
 
 function tradingTokensToPoolTokens(

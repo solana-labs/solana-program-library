@@ -122,9 +122,8 @@ pub enum SwapInstruction {
     ///   5. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the DESTINATION token.
     ///   6. `[writable]` token_(A|B) DESTINATION Account assigned to USER as the owner.
     ///   7. `[writable]` Pool token mint, to generate trading fees
-    ///   8. `[writable]` Fee account, to receive trading fees
-    ///   9. '[]` Token program id
-    ///   10 `[optional, writable]` Host fee account to receive additional trading fees
+    ///   8. '[]` Token program id
+    ///   9 `[optional, writable]` Host fee account to receive additional trading fees
     Swap(Swap),
 
     ///   Deposit both types of tokens into the pool.  The output is a "pool"
@@ -636,17 +635,13 @@ mod tests {
         let owner_trade_fee_denominator: u64 = 5;
         let owner_withdraw_fee_numerator: u64 = 1;
         let owner_withdraw_fee_denominator: u64 = 3;
-        let host_fee_numerator: u64 = 5;
-        let host_fee_denominator: u64 = 20;
         let fees = Fees {
             trade_fee_numerator,
             trade_fee_denominator,
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator,
-            host_fee_numerator,
-            host_fee_denominator,
+            owner_withdraw_fee_denominator
         };
         let nonce: u8 = 255;
         let amp: u64 = 1;
@@ -669,8 +664,6 @@ mod tests {
         expect.extend_from_slice(&owner_trade_fee_denominator.to_le_bytes());
         expect.extend_from_slice(&owner_withdraw_fee_numerator.to_le_bytes());
         expect.extend_from_slice(&owner_withdraw_fee_denominator.to_le_bytes());
-        expect.extend_from_slice(&host_fee_numerator.to_le_bytes());
-        expect.extend_from_slice(&host_fee_denominator.to_le_bytes());
         expect.push(curve_type as u8);
         expect.extend_from_slice(&amp.to_le_bytes());
         expect.extend_from_slice(&[0u8; 24]);

@@ -50,8 +50,6 @@ impl<'a> SwapConstraints<'a> {
             && fees.owner_trade_fee_denominator == self.fees.owner_trade_fee_denominator
             && fees.owner_withdraw_fee_numerator >= self.fees.owner_withdraw_fee_numerator
             && fees.owner_withdraw_fee_denominator == self.fees.owner_withdraw_fee_denominator
-            && fees.host_fee_numerator == self.fees.host_fee_numerator
-            && fees.host_fee_denominator == self.fees.host_fee_denominator
         {
             Ok(())
         } else {
@@ -66,12 +64,10 @@ const OWNER_KEY: &str = env!("SWAP_PROGRAM_OWNER_FEE_ADDRESS");
 const FEES: &Fees = &Fees {
     trade_fee_numerator: 0,
     trade_fee_denominator: 10000,
-    owner_trade_fee_numerator: 5,
+    owner_trade_fee_numerator: 10,
     owner_trade_fee_denominator: 10000,
     owner_withdraw_fee_numerator: 0,
     owner_withdraw_fee_denominator: 0,
-    host_fee_numerator: 20,
-    host_fee_denominator: 100,
 };
 #[cfg(feature = "production")]
 const VALID_CURVE_TYPES: &[CurveType] = &[CurveType::ConstantPrice, CurveType::ConstantProduct];
@@ -111,8 +107,6 @@ mod tests {
         let owner_trade_fee_denominator = 5;
         let owner_withdraw_fee_numerator = 4;
         let owner_withdraw_fee_denominator = 10;
-        let host_fee_numerator = 10;
-        let host_fee_denominator = 100;
         let owner_key = "";
         let curve_type = CurveType::ConstantProduct;
         let valid_fees = Fees {
@@ -121,9 +115,7 @@ mod tests {
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator,
-            host_fee_numerator,
-            host_fee_denominator,
+            owner_withdraw_fee_denominator
         };
         let calculator = ConstantProductCurve {};
         let swap_curve = SwapCurve {

@@ -483,7 +483,7 @@ impl Processor {
             to_u64(result.source_amount_swapped)?,
         )?;
 
-        let mut pool_token_amount = token_swap
+        let pool_token_amount = token_swap
             .swap_curve()
             .withdraw_single_token_type_exact_out(
                 result.owner_fee,
@@ -496,34 +496,6 @@ impl Processor {
             .ok_or(SwapError::FeeCalculationFailure)?;
 
         if pool_token_amount > 0 {
-            // Allow error to fall through
-            if let Ok(host_fee_account_info) = next_account_info(account_info_iter) {
-                let host_fee_account = Self::unpack_token_account(
-                    host_fee_account_info,
-                    token_swap.token_program_id(),
-                )?;
-                if *pool_mint_info.key != host_fee_account.mint {
-                    return Err(SwapError::IncorrectPoolMint.into());
-                }
-                let host_fee = token_swap
-                    .fees()
-                    .host_fee(pool_token_amount)
-                    .ok_or(SwapError::FeeCalculationFailure)?;
-                if host_fee > 0 {
-                    pool_token_amount = pool_token_amount
-                        .checked_sub(host_fee)
-                        .ok_or(SwapError::FeeCalculationFailure)?;
-                    Self::token_mint_to(
-                        swap_info.key,
-                        token_program_info.clone(),
-                        pool_mint_info.clone(),
-                        host_fee_account_info.clone(),
-                        authority_info.clone(),
-                        token_swap.nonce(),
-                        to_u64(host_fee)?,
-                    )?;
-                }
-            }
             Self::token_mint_to(
                 swap_info.key,
                 token_program_info.clone(),
@@ -1404,7 +1376,7 @@ mod tests {
             let mut payer_account = Account::new(100000000000, 0, &SWAP_PROGRAM_ID);
             let _payer_account_info = (&payer_key, false, &mut payer_account).into_account_info();
 
-            let mut rent_sysvar_account = create_account_for_test(&Rent::free());
+            let rent_sysvar_account = create_account_for_test(&Rent::free());
 
             let (token_a_mint_key, mut token_a_mint_account) =
                 create_mint(&spl_token::id(), user_key, None);
@@ -2132,17 +2104,13 @@ mod tests {
         let owner_trade_fee_denominator = 10;
         let owner_withdraw_fee_numerator = 1;
         let owner_withdraw_fee_denominator = 5;
-        let host_fee_numerator = 20;
-        let host_fee_denominator = 100;
         let fees = Fees {
             trade_fee_numerator,
             trade_fee_denominator,
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator,
-            host_fee_numerator,
-            host_fee_denominator,
+            owner_withdraw_fee_denominator
         };
 
         let token_a_amount = 1000;
@@ -2672,9 +2640,7 @@ mod tests {
                 owner_trade_fee_numerator,
                 owner_trade_fee_denominator,
                 owner_withdraw_fee_numerator,
-                owner_withdraw_fee_denominator,
-                host_fee_numerator,
-                host_fee_denominator,
+                owner_withdraw_fee_denominator
             };
             let swap_curve = SwapCurve {
                 curve_type: CurveType::ConstantPrice,
@@ -2696,9 +2662,7 @@ mod tests {
                 owner_trade_fee_numerator,
                 owner_trade_fee_denominator,
                 owner_withdraw_fee_numerator,
-                owner_withdraw_fee_denominator,
-                host_fee_numerator,
-                host_fee_denominator,
+                owner_withdraw_fee_denominator
             };
             let token_b_price = 10_000;
             let swap_curve = SwapCurve {
@@ -2719,9 +2683,7 @@ mod tests {
                 owner_trade_fee_numerator,
                 owner_trade_fee_denominator,
                 owner_withdraw_fee_numerator,
-                owner_withdraw_fee_denominator,
-                host_fee_numerator,
-                host_fee_denominator,
+                owner_withdraw_fee_denominator
             };
             let swap_curve = SwapCurve {
                 curve_type: CurveType::Offset,
@@ -2744,9 +2706,7 @@ mod tests {
                 owner_trade_fee_numerator,
                 owner_trade_fee_denominator,
                 owner_withdraw_fee_numerator,
-                owner_withdraw_fee_denominator,
-                host_fee_numerator,
-                host_fee_denominator,
+                owner_withdraw_fee_denominator
             };
             let swap_curve = SwapCurve {
                 curve_type: CurveType::Offset,
@@ -2764,17 +2724,13 @@ mod tests {
             let trade_fee_denominator = 10000;
             let owner_trade_fee_numerator = 5;
             let owner_trade_fee_denominator = 10000;
-            let host_fee_numerator = 20;
-            let host_fee_denominator = 100;
             let fees = Fees {
                 trade_fee_numerator,
                 trade_fee_denominator,
                 owner_trade_fee_numerator,
                 owner_trade_fee_denominator,
                 owner_withdraw_fee_numerator,
-                owner_withdraw_fee_denominator,
-                host_fee_numerator,
-                host_fee_denominator,
+                owner_withdraw_fee_denominator
             };
             let curve = ConstantProductCurve {};
             let swap_curve = SwapCurve {
@@ -2840,17 +2796,13 @@ mod tests {
             let trade_fee_denominator = 10000;
             let owner_trade_fee_numerator = 5;
             let owner_trade_fee_denominator = 10000;
-            let host_fee_numerator = 20;
-            let host_fee_denominator = 100;
             let fees = Fees {
                 trade_fee_numerator,
                 trade_fee_denominator,
                 owner_trade_fee_numerator,
                 owner_trade_fee_denominator,
                 owner_withdraw_fee_numerator,
-                owner_withdraw_fee_denominator,
-                host_fee_numerator,
-                host_fee_denominator,
+                owner_withdraw_fee_denominator
             };
             let curve = ConstantProductCurve {};
             let swap_curve = SwapCurve {
@@ -2918,17 +2870,13 @@ mod tests {
             let trade_fee_denominator = 10000;
             let owner_trade_fee_numerator = 5;
             let owner_trade_fee_denominator = 10000;
-            let host_fee_numerator = 20;
-            let host_fee_denominator = 100;
             let fees = Fees {
                 trade_fee_numerator,
                 trade_fee_denominator,
                 owner_trade_fee_numerator,
                 owner_trade_fee_denominator,
                 owner_withdraw_fee_numerator,
-                owner_withdraw_fee_denominator,
-                host_fee_numerator,
-                host_fee_denominator,
+                owner_withdraw_fee_denominator
             };
             let curve = ConstantProductCurve {};
             let swap_curve = SwapCurve {
@@ -3025,32 +2973,27 @@ mod tests {
         let owner_trade_fee_denominator = 10;
         let owner_withdraw_fee_numerator = 1;
         let owner_withdraw_fee_denominator = 5;
-        let host_fee_numerator = 20;
-        let host_fee_denominator = 100;
         let fees = Fees {
             trade_fee_numerator,
             trade_fee_denominator,
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator,
-            host_fee_numerator,
-            host_fee_denominator,
+            owner_withdraw_fee_denominator
         };
 
         let token_a_amount = 1000;
         let token_b_amount = 2000;
-        let pool_token_amount = 10;
         let curve_type = CurveType::ConstantProduct;
         let swap_curve = SwapCurve {
             curve_type,
             calculator: Box::new(ConstantProductCurve {}),
         };
 
-        let mut accounts =
+        let mut _accounts =
             SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
 
-        let (pool_registry_key, pool_registry_account) = create_pool_registry();
+        let (_pool_registry_key, _pool_registry_account) = create_pool_registry();
     }
 
     #[test]
@@ -3063,8 +3006,6 @@ mod tests {
         let owner_trade_fee_denominator = 10;
         let owner_withdraw_fee_numerator = 1;
         let owner_withdraw_fee_denominator = 5;
-        let host_fee_numerator = 20;
-        let host_fee_denominator = 100;
 
         let fees = Fees {
             trade_fee_numerator,
@@ -3072,9 +3013,7 @@ mod tests {
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator,
-            host_fee_numerator,
-            host_fee_denominator,
+            owner_withdraw_fee_denominator
         };
 
         let token_a_amount = 1000;
@@ -3675,8 +3614,6 @@ mod tests {
         let owner_trade_fee_denominator = 10;
         let owner_withdraw_fee_numerator = 1;
         let owner_withdraw_fee_denominator = 5;
-        let host_fee_numerator = 7;
-        let host_fee_denominator = 100;
 
         let fees = Fees {
             trade_fee_numerator,
@@ -3684,9 +3621,7 @@ mod tests {
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator,
-            host_fee_numerator,
-            host_fee_denominator,
+            owner_withdraw_fee_denominator
         };
 
         let token_a_amount = 1000;
@@ -4483,8 +4418,6 @@ mod tests {
         let owner_trade_fee_denominator = 10;
         let owner_withdraw_fee_numerator = 1;
         let owner_withdraw_fee_denominator = 5;
-        let host_fee_numerator = 20;
-        let host_fee_denominator = 100;
 
         let fees = Fees {
             trade_fee_numerator,
@@ -4492,9 +4425,7 @@ mod tests {
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator,
-            host_fee_numerator,
-            host_fee_denominator,
+            owner_withdraw_fee_denominator
         };
 
         let token_a_amount = 1000;
@@ -4995,8 +4926,6 @@ mod tests {
         let owner_trade_fee_denominator = 10;
         let owner_withdraw_fee_numerator = 1;
         let owner_withdraw_fee_denominator = 5;
-        let host_fee_numerator = 7;
-        let host_fee_denominator = 100;
 
         let fees = Fees {
             trade_fee_numerator,
@@ -5004,9 +4933,7 @@ mod tests {
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator,
-            host_fee_numerator,
-            host_fee_denominator,
+            owner_withdraw_fee_denominator
         };
 
         let token_a_amount = 100_000;
@@ -5823,17 +5750,13 @@ mod tests {
         let owner_trade_fee_denominator = 30;
         let owner_withdraw_fee_numerator = 1;
         let owner_withdraw_fee_denominator = 30;
-        let host_fee_numerator = 20;
-        let host_fee_denominator = 100;
         let fees = Fees {
             trade_fee_numerator,
             trade_fee_denominator,
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator,
-            host_fee_numerator,
-            host_fee_denominator,
+            owner_withdraw_fee_denominator
         };
 
         let token_a_amount = 10_000_000_000;
@@ -5872,17 +5795,13 @@ mod tests {
         let owner_trade_fee_denominator = 0;
         let owner_withdraw_fee_numerator = 0;
         let owner_withdraw_fee_denominator = 0;
-        let host_fee_numerator = 0;
-        let host_fee_denominator = 0;
         let fees = Fees {
             trade_fee_numerator,
             trade_fee_denominator,
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator,
-            host_fee_numerator,
-            host_fee_denominator,
+            owner_withdraw_fee_denominator
         };
 
         let token_a_amount = 10_000_000_000;
@@ -5923,8 +5842,6 @@ mod tests {
         let owner_trade_fee_denominator = 30;
         let owner_withdraw_fee_numerator = 1;
         let owner_withdraw_fee_denominator = 30;
-        let host_fee_numerator = 10;
-        let host_fee_denominator = 100;
 
         let token_a_amount = 1_000_000;
         let token_b_amount = 5_000_000;
@@ -5935,9 +5852,7 @@ mod tests {
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator,
-            host_fee_numerator,
-            host_fee_denominator,
+            owner_withdraw_fee_denominator
         };
 
         let curve = ConstantProductCurve {};
@@ -6055,17 +5970,6 @@ mod tests {
             &constraints,
         )
         .unwrap();
-
-        // check that fees were taken in the host fee account
-        let host_fee_account = spl_token::state::Account::unpack(&pool_account.data).unwrap();
-        let owner_fee_account =
-            spl_token::state::Account::unpack(&accounts.pool_fee_account.data).unwrap();
-        let total_fee = owner_fee_account.amount * host_fee_denominator
-            / (host_fee_denominator - host_fee_numerator);
-        assert_eq!(
-            total_fee,
-            host_fee_account.amount + owner_fee_account.amount
-        );
     }
 
     #[test]
@@ -6078,17 +5982,13 @@ mod tests {
         let owner_trade_fee_denominator = 10;
         let owner_withdraw_fee_numerator = 1;
         let owner_withdraw_fee_denominator = 5;
-        let host_fee_numerator = 9;
-        let host_fee_denominator = 100;
         let fees = Fees {
             trade_fee_numerator,
             trade_fee_denominator,
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator,
-            host_fee_numerator,
-            host_fee_denominator,
+            owner_withdraw_fee_denominator
         };
 
         let token_a_amount = 1000;
@@ -6606,9 +6506,7 @@ mod tests {
                 owner_trade_fee_numerator,
                 owner_trade_fee_denominator,
                 owner_withdraw_fee_numerator,
-                owner_withdraw_fee_denominator,
-                host_fee_numerator,
-                host_fee_denominator,
+                owner_withdraw_fee_denominator
             };
             let constraints = Some(SwapConstraints {
                 owner_key,
@@ -6678,9 +6576,7 @@ mod tests {
                 owner_trade_fee_numerator,
                 owner_trade_fee_denominator,
                 owner_withdraw_fee_numerator,
-                owner_withdraw_fee_denominator,
-                host_fee_numerator,
-                host_fee_denominator,
+                owner_withdraw_fee_denominator
             };
             let constraints = Some(SwapConstraints {
                 owner_key,
@@ -6736,8 +6632,6 @@ mod tests {
         let owner_trade_fee_denominator = 30;
         let owner_withdraw_fee_numerator = 1;
         let owner_withdraw_fee_denominator = 30;
-        let host_fee_numerator = 10;
-        let host_fee_denominator = 100;
 
         let token_a_amount = 1_000_000_000;
         let token_b_amount = 0;
@@ -6747,9 +6641,7 @@ mod tests {
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator,
-            host_fee_numerator,
-            host_fee_denominator,
+            owner_withdraw_fee_denominator
         };
 
         let token_b_offset = 2_000_000;
@@ -6886,8 +6778,6 @@ mod tests {
         let owner_trade_fee_denominator = 30;
         let owner_withdraw_fee_numerator = 0;
         let owner_withdraw_fee_denominator = 30;
-        let host_fee_numerator = 10;
-        let host_fee_denominator = 100;
 
         let token_a_amount = 1_000_000_000;
         let token_b_amount = 10;
@@ -6897,9 +6787,7 @@ mod tests {
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator,
-            host_fee_numerator,
-            host_fee_denominator,
+            owner_withdraw_fee_denominator
         };
 
         let token_b_offset = 2_000_000;
@@ -6967,8 +6855,6 @@ mod tests {
         let owner_trade_fee_denominator = 30;
         let owner_withdraw_fee_numerator = 0;
         let owner_withdraw_fee_denominator = 30;
-        let host_fee_numerator = 10;
-        let host_fee_denominator = 100;
 
         // initialize "unbalanced", so that withdrawing all will have some issues
         // A: 1_000_000_000
@@ -6982,9 +6868,7 @@ mod tests {
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator,
-            host_fee_numerator,
-            host_fee_denominator,
+            owner_withdraw_fee_denominator
         };
 
         let swap_curve = SwapCurve {

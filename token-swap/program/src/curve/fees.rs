@@ -32,13 +32,6 @@ pub struct Fees {
     pub owner_withdraw_fee_numerator: u64,
     /// Owner withdraw fee denominator
     pub owner_withdraw_fee_denominator: u64,
-
-    /// Host fees are a proportion of the owner trading fees, sent to an
-    /// extra account provided during the trade.
-    /// Host trading fee numerator
-    pub host_fee_numerator: u64,
-    /// Host trading fee denominator
-    pub host_fee_denominator: u64,
 }
 
 /// Helper function for calculating swap fee
@@ -99,16 +92,6 @@ impl Fees {
         )
     }
 
-    /// Calculate the host fee based on the owner fee, only used in production
-    /// situations where a program is hosted by multiple frontends
-    pub fn host_fee(&self, owner_fee: u128) -> Option<u128> {
-        calculate_fee(
-            owner_fee,
-            u128::try_from(self.host_fee_numerator).ok()?,
-            u128::try_from(self.host_fee_denominator).ok()?,
-        )
-    }
-
     /// Validate that the fees are reasonable
     pub fn validate(&self) -> Result<(), SwapError> {
         validate_fraction(self.trade_fee_numerator, self.trade_fee_denominator)?;
@@ -120,7 +103,6 @@ impl Fees {
             self.owner_withdraw_fee_numerator,
             self.owner_withdraw_fee_denominator,
         )?;
-        validate_fraction(self.host_fee_numerator, self.host_fee_denominator)?;
         Ok(())
     }
 }
@@ -134,31 +116,27 @@ impl IsInitialized for Fees {
 
 impl Sealed for Fees {}
 impl Pack for Fees {
-    const LEN: usize = 64;
+    const LEN: usize = 48;
     fn pack_into_slice(&self, output: &mut [u8]) {
-        let output = array_mut_ref![output, 0, 64];
+        let output = array_mut_ref![output, 0, 48];
         let (
             trade_fee_numerator,
             trade_fee_denominator,
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator,
-            host_fee_numerator,
-            host_fee_denominator,
-        ) = mut_array_refs![output, 8, 8, 8, 8, 8, 8, 8, 8];
+            owner_withdraw_fee_denominator
+        ) = mut_array_refs![output, 8, 8, 8, 8, 8, 8];
         *trade_fee_numerator = self.trade_fee_numerator.to_le_bytes();
         *trade_fee_denominator = self.trade_fee_denominator.to_le_bytes();
         *owner_trade_fee_numerator = self.owner_trade_fee_numerator.to_le_bytes();
         *owner_trade_fee_denominator = self.owner_trade_fee_denominator.to_le_bytes();
         *owner_withdraw_fee_numerator = self.owner_withdraw_fee_numerator.to_le_bytes();
         *owner_withdraw_fee_denominator = self.owner_withdraw_fee_denominator.to_le_bytes();
-        *host_fee_numerator = self.host_fee_numerator.to_le_bytes();
-        *host_fee_denominator = self.host_fee_denominator.to_le_bytes();
     }
 
     fn unpack_from_slice(input: &[u8]) -> Result<Fees, ProgramError> {
-        let input = array_ref![input, 0, 64];
+        let input = array_ref![input, 0, 48];
         #[allow(clippy::ptr_offset_with_cast)]
         let (
             trade_fee_numerator,
@@ -166,10 +144,8 @@ impl Pack for Fees {
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator,
-            host_fee_numerator,
-            host_fee_denominator,
-        ) = array_refs![input, 8, 8, 8, 8, 8, 8, 8, 8];
+            owner_withdraw_fee_denominator
+        ) = array_refs![input, 8, 8, 8, 8, 8, 8];
         Ok(Self {
             trade_fee_numerator: u64::from_le_bytes(*trade_fee_numerator),
             trade_fee_denominator: u64::from_le_bytes(*trade_fee_denominator),
@@ -177,8 +153,6 @@ impl Pack for Fees {
             owner_trade_fee_denominator: u64::from_le_bytes(*owner_trade_fee_denominator),
             owner_withdraw_fee_numerator: u64::from_le_bytes(*owner_withdraw_fee_numerator),
             owner_withdraw_fee_denominator: u64::from_le_bytes(*owner_withdraw_fee_denominator),
-            host_fee_numerator: u64::from_le_bytes(*host_fee_numerator),
-            host_fee_denominator: u64::from_le_bytes(*host_fee_denominator),
         })
     }
 }
@@ -195,17 +169,13 @@ mod tests {
         let owner_trade_fee_denominator = 5;
         let owner_withdraw_fee_numerator = 4;
         let owner_withdraw_fee_denominator = 10;
-        let host_fee_numerator = 7;
-        let host_fee_denominator = 100;
         let fees = Fees {
             trade_fee_numerator,
             trade_fee_denominator,
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator,
-            host_fee_numerator,
-            host_fee_denominator,
+            owner_withdraw_fee_denominator
         };
 
         let mut packed = [0u8; Fees::LEN];
@@ -220,8 +190,6 @@ mod tests {
         packed.extend_from_slice(&owner_trade_fee_denominator.to_le_bytes());
         packed.extend_from_slice(&owner_withdraw_fee_numerator.to_le_bytes());
         packed.extend_from_slice(&owner_withdraw_fee_denominator.to_le_bytes());
-        packed.extend_from_slice(&host_fee_numerator.to_le_bytes());
-        packed.extend_from_slice(&host_fee_denominator.to_le_bytes());
         let unpacked = Fees::unpack_from_slice(&packed).unwrap();
         assert_eq!(fees, unpacked);
     }
