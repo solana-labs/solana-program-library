@@ -10,8 +10,9 @@ use solana_program::{
 
 use crate::{
     state::{
-        governance::get_governance_data,
+        governance::get_governance_data_for_realm,
         proposal::get_proposal_data_for_governance_and_governing_mint,
+        realm::get_realm_data_for_governing_token_mint,
     },
     tools::spl_token::get_spl_token_mint_supply,
 };
@@ -22,15 +23,22 @@ use borsh::BorshSerialize;
 pub fn process_finalize_vote(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
-    let governance_info = next_account_info(account_info_iter)?; // 0
-    let proposal_info = next_account_info(account_info_iter)?; // 1
+    let realm_info = next_account_info(account_info_iter)?; // 0
+    let governance_info = next_account_info(account_info_iter)?; // 1
+    let proposal_info = next_account_info(account_info_iter)?; // 2
 
-    let governing_token_mint_info = next_account_info(account_info_iter)?; // 2
+    let governing_token_mint_info = next_account_info(account_info_iter)?; // 3
 
-    let clock_info = next_account_info(account_info_iter)?; // 3
+    let clock_info = next_account_info(account_info_iter)?; // 4
     let clock = Clock::from_account_info(clock_info)?;
 
-    let governance_data = get_governance_data(program_id, governance_info)?;
+    let realm_data = get_realm_data_for_governing_token_mint(
+        program_id,
+        realm_info,
+        governing_token_mint_info.key,
+    )?;
+    let governance_data =
+        get_governance_data_for_realm(program_id, governance_info, realm_info.key)?;
 
     let mut proposal_data = get_proposal_data_for_governance_and_governing_mint(
         program_id,
@@ -39,11 +47,12 @@ pub fn process_finalize_vote(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
         governing_token_mint_info.key,
     )?;
 
-    let governing_token_supply = get_spl_token_mint_supply(governing_token_mint_info)?;
+    let governing_token_mint_supply = get_spl_token_mint_supply(governing_token_mint_info)?;
 
     proposal_data.finalize_vote(
-        governing_token_supply,
+        governing_token_mint_supply,
         &governance_data.config,
+        &realm_data,
         clock.unix_timestamp,
     )?;
 

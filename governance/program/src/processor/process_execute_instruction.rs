@@ -12,7 +12,8 @@ use solana_program::{
 };
 
 use crate::state::{
-    enums::ProposalState, governance::get_governance_data,
+    enums::{InstructionExecutionStatus, ProposalState},
+    governance::get_governance_data,
     proposal::get_proposal_data_for_governance,
     proposal_instruction::get_proposal_instruction_data_for_proposal,
 };
@@ -69,7 +70,10 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
         .checked_add(1)
         .unwrap();
 
-    if proposal_data.state == ProposalState::Executing
+    // Checking for Executing and ExecutingWithErrors states because instruction can still be executed after being flagged with error
+    // The check for instructions_executed_count ensures Proposal can't be transitioned to Completed state from ExecutingWithErrors
+    if (proposal_data.state == ProposalState::Executing
+        || proposal_data.state == ProposalState::ExecutingWithErrors)
         && proposal_data.instructions_executed_count == proposal_data.instructions_count
     {
         proposal_data.closed_at = Some(clock.unix_timestamp);
@@ -79,6 +83,7 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
     proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
 
     proposal_instruction_data.executed_at = Some(clock.unix_timestamp);
+    proposal_instruction_data.execution_status = InstructionExecutionStatus::Success;
     proposal_instruction_data.serialize(&mut *proposal_instruction_info.data.borrow_mut())?;
 
     Ok(())

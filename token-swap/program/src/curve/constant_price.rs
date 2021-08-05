@@ -18,7 +18,7 @@ use {
 /// Get the amount of pool tokens for the given amount of token A or B.
 ///
 /// The constant product implementation uses the Balancer formulas found at
-/// https://balancer.finance/whitepaper/#single-asset-deposit, specifically
+/// <https://balancer.finance/whitepaper/#single-asset-deposit>, specifically
 /// in the case for 2 tokens, each weighted at 1/2.
 pub fn trading_tokens_to_pool_tokens(
     token_b_price: u64,

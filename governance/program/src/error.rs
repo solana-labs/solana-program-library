@@ -13,7 +13,7 @@ use thiserror::Error;
 pub enum GovernanceError {
     /// Invalid instruction passed to program
     #[error("Invalid instruction passed to program")]
-    InvalidInstruction,
+    InvalidInstruction = 500, // Start Governance custom errors from 500 to avoid conflicts with programs invoked via CPI
 
     /// Realm with the given name and governing mints already exists
     #[error("Realm with the given name and governing mints already exists")]
@@ -79,9 +79,9 @@ pub enum GovernanceError {
     #[error("Invalid GoverningTokenOwner for VoteRecord")]
     InvalidGoverningTokenOwnerForVoteRecord,
 
-    /// Invalid Governance config
-    #[error("Invalid Governance config")]
-    InvalidGovernanceConfig,
+    /// Invalid Governance config: Vote threshold percentage out of range"
+    #[error("Invalid Governance config: Vote threshold percentage out of range")]
+    InvalidVoteThresholdPercentage,
 
     /// Proposal for the given Governance, Governing Token Mint and index already exists
     #[error("Proposal for the given Governance, Governing Token Mint and index already exists")]
@@ -259,6 +259,62 @@ pub enum GovernanceError {
     /// Current token owner must sign transaction
     #[error("Current token owner must sign transaction")]
     TokenOwnerMustSign,
+
+    /// Given VoteThresholdPercentageType is not supported
+    #[error("Given VoteThresholdPercentageType is not supported")]
+    VoteThresholdPercentageTypeNotSupported,
+
+    /// Given VoteWeightSource is not supported
+    #[error("Given VoteWeightSource is not supported")]
+    VoteWeightSourceNotSupported,
+
+    /// Proposal cool off time is not supported
+    #[error("Proposal cool off time is not supported")]
+    ProposalCoolOffTimeNotSupported,
+
+    /// Governance PDA must sign
+    #[error("Governance PDA must sign")]
+    GovernancePdaMustSign,
+
+    /// Instruction already flagged with error
+    #[error("Instruction already flagged with error")]
+    InstructionAlreadyFlaggedWithError,
+
+    /// Invalid Realm for Governance
+    #[error("Invalid Realm for Governance")]
+    InvalidRealmForGovernance,
+
+    /// Invalid Authority for Realm
+    #[error("Invalid Authority for Realm")]
+    InvalidAuthorityForRealm,
+
+    /// Realm has no authority
+    #[error("Realm has no authority")]
+    RealmHasNoAuthority,
+
+    /// Realm authority must sign
+    #[error("Realm authority must sign")]
+    RealmAuthorityMustSign,
+
+    /// Invalid governing token holding account
+    #[error("Invalid governing token holding account")]
+    InvalidGoverningTokenHoldingAccount,
+
+    /// Realm council mint change is not supported
+    #[error("Realm council mint change is not supported")]
+    RealmCouncilMintChangeIsNotSupported,
+
+    /// Not supported mint max vote weight source
+    #[error("Not supported mint max vote weight source")]
+    MintMaxVoteWeightSourceNotSupported,
+
+    /// Invalid max vote weight supply fraction
+    #[error("Invalid max vote weight supply fraction")]
+    InvalidMaxVoteWeightSupplyFraction,
+
+    /// Owner doesn't have enough governing tokens to create Governance
+    #[error("Owner doesn't have enough governing tokens to create Governance")]
+    NotEnoughTokensToCreateGovernance,
 }
 
 impl PrintProgramError for GovernanceError {

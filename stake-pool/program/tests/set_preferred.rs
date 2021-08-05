@@ -16,7 +16,7 @@ use {
     spl_stake_pool::{
         error, id,
         instruction::{self, PreferredValidatorType},
-        state::ValidatorList,
+        state::StakePool,
     },
 };
 
@@ -68,22 +68,14 @@ async fn success_deposit() {
         .await;
     assert!(error.is_none());
 
-    let validator_list = get_account(
-        &mut banks_client,
-        &stake_pool_accounts.validator_list.pubkey(),
-    )
-    .await;
-    let validator_list =
-        try_from_slice_unchecked::<ValidatorList>(&validator_list.data.as_slice()).unwrap();
+    let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
+    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
 
     assert_eq!(
-        validator_list.preferred_deposit_validator_vote_address,
+        stake_pool.preferred_deposit_validator_vote_address,
         Some(vote_account_address)
     );
-    assert_eq!(
-        validator_list.preferred_withdraw_validator_vote_address,
-        None
-    );
+    assert_eq!(stake_pool.preferred_withdraw_validator_vote_address, None);
 }
 
 #[tokio::test]
@@ -104,20 +96,12 @@ async fn success_withdraw() {
         .await;
     assert!(error.is_none());
 
-    let validator_list = get_account(
-        &mut banks_client,
-        &stake_pool_accounts.validator_list.pubkey(),
-    )
-    .await;
-    let validator_list =
-        try_from_slice_unchecked::<ValidatorList>(&validator_list.data.as_slice()).unwrap();
+    let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
+    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
 
+    assert_eq!(stake_pool.preferred_deposit_validator_vote_address, None);
     assert_eq!(
-        validator_list.preferred_deposit_validator_vote_address,
-        None
-    );
-    assert_eq!(
-        validator_list.preferred_withdraw_validator_vote_address,
+        stake_pool.preferred_withdraw_validator_vote_address,
         Some(vote_account_address)
     );
 }
@@ -139,16 +123,11 @@ async fn success_unset() {
         .await;
     assert!(error.is_none());
 
-    let validator_list = get_account(
-        &mut banks_client,
-        &stake_pool_accounts.validator_list.pubkey(),
-    )
-    .await;
-    let validator_list =
-        try_from_slice_unchecked::<ValidatorList>(&validator_list.data.as_slice()).unwrap();
+    let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
+    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
 
     assert_eq!(
-        validator_list.preferred_withdraw_validator_vote_address,
+        stake_pool.preferred_withdraw_validator_vote_address,
         Some(vote_account_address)
     );
 
@@ -163,18 +142,10 @@ async fn success_unset() {
         .await;
     assert!(error.is_none());
 
-    let validator_list = get_account(
-        &mut banks_client,
-        &stake_pool_accounts.validator_list.pubkey(),
-    )
-    .await;
-    let validator_list =
-        try_from_slice_unchecked::<ValidatorList>(&validator_list.data.as_slice()).unwrap();
+    let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
+    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
 
-    assert_eq!(
-        validator_list.preferred_withdraw_validator_vote_address,
-        None
-    );
+    assert_eq!(stake_pool.preferred_withdraw_validator_vote_address, None);
 }
 
 #[tokio::test]

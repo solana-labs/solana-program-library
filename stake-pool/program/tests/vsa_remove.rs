@@ -83,6 +83,11 @@ async fn success() {
         .await;
     assert!(error.is_none());
 
+    let error = stake_pool_accounts
+        .cleanup_removed_validator_entries(&mut banks_client, &payer, &recent_blockhash)
+        .await;
+    assert!(error.is_none());
+
     // Check if account was removed from the list of stake accounts
     let validator_list = get_account(
         &mut banks_client,
@@ -94,10 +99,10 @@ async fn success() {
     assert_eq!(
         validator_list,
         state::ValidatorList {
-            account_type: state::AccountType::ValidatorList,
-            preferred_deposit_validator_vote_address: None,
-            preferred_withdraw_validator_vote_address: None,
-            max_validators: stake_pool_accounts.max_validators,
+            header: state::ValidatorListHeader {
+                account_type: state::AccountType::ValidatorList,
+                max_validators: stake_pool_accounts.max_validators,
+            },
             validators: vec![]
         }
     );
@@ -251,6 +256,11 @@ async fn fail_double_remove() {
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
         )
+        .await;
+    assert!(error.is_none());
+
+    let error = stake_pool_accounts
+        .cleanup_removed_validator_entries(&mut banks_client, &payer, &recent_blockhash)
         .await;
     assert!(error.is_none());
 
@@ -519,10 +529,10 @@ async fn success_with_deactivating_transient_stake() {
     let validator_list =
         try_from_slice_unchecked::<state::ValidatorList>(validator_list.data.as_slice()).unwrap();
     let expected_list = state::ValidatorList {
-        account_type: state::AccountType::ValidatorList,
-        preferred_deposit_validator_vote_address: None,
-        preferred_withdraw_validator_vote_address: None,
-        max_validators: stake_pool_accounts.max_validators,
+        header: state::ValidatorListHeader {
+            account_type: state::AccountType::ValidatorList,
+            max_validators: stake_pool_accounts.max_validators,
+        },
         validators: vec![state::ValidatorStakeInfo {
             status: state::StakeStatus::DeactivatingTransient,
             vote_account_address: validator_stake.vote.pubkey(),
@@ -592,6 +602,11 @@ async fn success_resets_preferred_validator() {
         .await;
     assert!(error.is_none());
 
+    let error = stake_pool_accounts
+        .cleanup_removed_validator_entries(&mut banks_client, &payer, &recent_blockhash)
+        .await;
+    assert!(error.is_none());
+
     // Check if account was removed from the list of stake accounts
     let validator_list = get_account(
         &mut banks_client,
@@ -603,10 +618,10 @@ async fn success_resets_preferred_validator() {
     assert_eq!(
         validator_list,
         state::ValidatorList {
-            account_type: state::AccountType::ValidatorList,
-            preferred_deposit_validator_vote_address: None,
-            preferred_withdraw_validator_vote_address: None,
-            max_validators: stake_pool_accounts.max_validators,
+            header: state::ValidatorListHeader {
+                account_type: state::AccountType::ValidatorList,
+                max_validators: stake_pool_accounts.max_validators,
+            },
             validators: vec![]
         }
     );

@@ -14,7 +14,7 @@ use solana_program::{
 use crate::{
     error::GovernanceError,
     state::{
-        enums::GovernanceAccountType,
+        enums::{GovernanceAccountType, InstructionExecutionStatus},
         governance::get_governance_data,
         proposal::get_proposal_data_for_governance,
         proposal_instruction::{
@@ -29,7 +29,7 @@ use crate::{
 pub fn process_insert_instruction(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    index: u16,
+    instruction_index: u16,
     hold_up_time: u32,
     instruction: InstructionData,
 ) -> ProgramResult {
@@ -70,7 +70,7 @@ pub fn process_insert_instruction(
 
     token_owner_record_data.assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
-    match index.cmp(&proposal_data.instructions_next_index) {
+    match instruction_index.cmp(&proposal_data.instructions_next_index) {
         Ordering::Greater => return Err(GovernanceError::InvalidInstructionIndex.into()),
         // If the index is the same as instructions_next_index then we are adding a new instruction
         // If the index is below instructions_next_index then we are inserting into an existing empty space
@@ -88,9 +88,11 @@ pub fn process_insert_instruction(
 
     let proposal_instruction_data = ProposalInstruction {
         account_type: GovernanceAccountType::ProposalInstruction,
+        instruction_index,
         hold_up_time,
         instruction,
         executed_at: None,
+        execution_status: InstructionExecutionStatus::None,
         proposal: *proposal_info.key,
     };
 
@@ -98,7 +100,10 @@ pub fn process_insert_instruction(
         payer_info,
         proposal_instruction_info,
         &proposal_instruction_data,
-        &get_proposal_instruction_address_seeds(proposal_info.key, &index.to_le_bytes()),
+        &get_proposal_instruction_address_seeds(
+            proposal_info.key,
+            &instruction_index.to_le_bytes(),
+        ),
         program_id,
         system_info,
         rent,

@@ -16,9 +16,17 @@ async fn test_create_mint_governance() {
     let realm_cookie = governance_test.with_realm().await;
     let governed_mint_cookie = governance_test.with_governed_mint().await;
 
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await;
+
     // Act
     let mint_governance_cookie = governance_test
-        .with_mint_governance(&realm_cookie, &governed_mint_cookie)
+        .with_mint_governance(
+            &realm_cookie,
+            &governed_mint_cookie,
+            &token_owner_record_cookie,
+        )
         .await
         .unwrap();
 
@@ -47,10 +55,18 @@ async fn test_create_mint_governance_without_transferring_mint_authority() {
     let realm_cookie = governance_test.with_realm().await;
     let mut governed_mint_cookie = governance_test.with_governed_mint().await;
 
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await;
+
     governed_mint_cookie.transfer_mint_authority = false;
     // Act
     let mint_governance_cookie = governance_test
-        .with_mint_governance(&realm_cookie, &governed_mint_cookie)
+        .with_mint_governance(
+            &realm_cookie,
+            &governed_mint_cookie,
+            &token_owner_record_cookie,
+        )
         .await
         .unwrap();
 
@@ -80,12 +96,20 @@ async fn test_create_mint_governance_without_transferring_mint_authority_with_in
     let realm_cookie = governance_test.with_realm().await;
     let mut governed_mint_cookie = governance_test.with_governed_mint().await;
 
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await;
+
     governed_mint_cookie.transfer_mint_authority = false;
     governed_mint_cookie.mint_authority = Keypair::new();
 
     // Act
     let err = governance_test
-        .with_mint_governance(&realm_cookie, &governed_mint_cookie)
+        .with_mint_governance(
+            &realm_cookie,
+            &governed_mint_cookie,
+            &token_owner_record_cookie,
+        )
         .await
         .err()
         .unwrap();
@@ -103,6 +127,10 @@ async fn test_create_mint_governance_without_transferring_mint_authority_with_au
     let realm_cookie = governance_test.with_realm().await;
     let mut governed_mint_cookie = governance_test.with_governed_mint().await;
 
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await;
+
     governed_mint_cookie.transfer_mint_authority = false;
 
     // Act
@@ -110,6 +138,7 @@ async fn test_create_mint_governance_without_transferring_mint_authority_with_au
         .with_mint_governance_using_instruction(
             &realm_cookie,
             &governed_mint_cookie,
+            &token_owner_record_cookie,
             |i| {
                 i.accounts[3].is_signer = false; // governed_mint_authority
             },
@@ -131,11 +160,19 @@ async fn test_create_mint_governance_with_invalid_mint_authority_error() {
     let realm_cookie = governance_test.with_realm().await;
     let mut governed_mint_cookie = governance_test.with_governed_mint().await;
 
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await;
+
     governed_mint_cookie.mint_authority = Keypair::new();
 
     // Act
     let err = governance_test
-        .with_mint_governance(&realm_cookie, &governed_mint_cookie)
+        .with_mint_governance(
+            &realm_cookie,
+            &governed_mint_cookie,
+            &token_owner_record_cookie,
+        )
         .await
         .err()
         .unwrap();
@@ -152,8 +189,16 @@ async fn test_create_mint_governance_with_invalid_realm_error() {
     let mut realm_cookie = governance_test.with_realm().await;
     let governed_mint_cookie = governance_test.with_governed_mint().await;
 
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await;
+
     let mint_governance_cookie = governance_test
-        .with_mint_governance(&realm_cookie, &governed_mint_cookie)
+        .with_mint_governance(
+            &realm_cookie,
+            &governed_mint_cookie,
+            &token_owner_record_cookie,
+        )
         .await
         .unwrap();
 
@@ -162,7 +207,11 @@ async fn test_create_mint_governance_with_invalid_realm_error() {
 
     // Act
     let err = governance_test
-        .with_mint_governance(&realm_cookie, &governed_mint_cookie)
+        .with_mint_governance(
+            &realm_cookie,
+            &governed_mint_cookie,
+            &token_owner_record_cookie,
+        )
         .await
         .err()
         .unwrap();

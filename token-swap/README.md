@@ -31,7 +31,7 @@ You can build the production version of Token Swap running on devnet, testnet, a
 mainnet-beta using the following command:
 
 ```sh
-SWAP_PROGRAM_OWNER_FEE_ADDRESS=HfoTxFR1Tm6kGmWgYWD6J7YHVy1UwqSULUGVLXkJqaKN cargo build-bpf --features=production
+SWAP_PROGRAM_OWNER_FEE_ADDRESS=AJXYfsScixUzRUNS8KcxDTF4Hg4miMV4zmrDZVZfrF9j cargo build-bpf --features=production
 ```
 
 ## Testing
@@ -90,5 +90,5 @@ npm run start-with-test-validator
 If you are testing a production build, use:
 
 ```sh
-SWAP_PROGRAM_OWNER_FEE_ADDRESS="HfoTxFR1Tm6kGmWgYWD6J7YHVy1UwqSULUGVLXkJqaKN" npm run start-with-test-validator
+SWAP_PROGRAM_OWNER_FEE_ADDRESS="AJXYfsScixUzRUNS8KcxDTF4Hg4miMV4zmrDZVZfrF9j" npm run start-with-test-validator
 ```

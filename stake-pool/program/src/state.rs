@@ -1,9 +1,20 @@
 //! State transition types
 
 use {
-    crate::{error::StakePoolError, stake_program::Lockup},
+    crate::{big_vec::BigVec, error::StakePoolError, stake_program::Lockup},
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
-    solana_program::{account_info::AccountInfo, msg, program_error::ProgramError, pubkey::Pubkey},
+    num_derive::FromPrimitive,
+    num_traits::FromPrimitive,
+    solana_program::{
+        account_info::AccountInfo,
+        borsh::get_instance_packed_len,
+        msg,
+        program_error::ProgramError,
+        program_memory::sol_memcmp,
+        program_pack::{Pack, Sealed},
+        pubkey::{Pubkey, PUBKEY_BYTES},
+    },
+    spl_math::checked_ceil_div::CheckedCeilDiv,
     std::convert::TryFrom,
 };
 
@@ -87,6 +98,27 @@ pub struct StakePool {
 
     /// Fee for next epoch
     pub next_epoch_fee: Option<Fee>,
+
+    /// Preferred deposit validator vote account pubkey
+    pub preferred_deposit_validator_vote_address: Option<Pubkey>,
+
+    /// Preferred withdraw validator vote account pubkey
+    pub preferred_withdraw_validator_vote_address: Option<Pubkey>,
+
+    /// Fee assessed on deposits
+    pub deposit_fee: Fee,
+
+    /// Fee assessed on withdrawals
+    pub withdrawal_fee: Fee,
+
+    /// Future withdrawal fee, to be set for the following epoch
+    pub next_withdrawal_fee: Option<Fee>,
+
+    /// Fees paid out to referrers on referred deposits.
+    /// Expressed as a percentage (0 - 100) of deposit fees.
+    /// i.e. `deposit_fee`% is collected as deposit fees for every deposit
+    /// and `referral_fee`% of the collected deposit fees is paid out to the referrer
+    pub referral_fee: u8,
 }
 impl StakePool {
     /// calculate the pool tokens that should be minted for a deposit of `stake_lamports`
@@ -104,12 +136,15 @@ impl StakePool {
 
     /// calculate lamports amount on withdrawal
     pub fn calc_lamports_withdraw_amount(&self, pool_tokens: u64) -> Option<u64> {
-        u64::try_from(
-            (pool_tokens as u128)
-                .checked_mul(self.total_stake_lamports as u128)?
-                .checked_div(self.pool_token_supply as u128)?,
-        )
-        .ok()
+        let (quotient, _) = (pool_tokens as u128)
+            .checked_mul(self.total_stake_lamports as u128)?
+            .checked_ceil_div(self.pool_token_supply as u128)?;
+        u64::try_from(quotient).ok()
+    }
+
+    /// calculate pool tokens to be deducted as withdrawal fees
+    pub fn calc_pool_tokens_withdrawal_fee(&self, pool_tokens: u64) -> Option<u64> {
+        u64::try_from(self.withdrawal_fee.apply(pool_tokens)?).ok()
     }
 
     /// Calculate the fee in pool tokens that goes to the manager
@@ -117,20 +152,22 @@ impl StakePool {
     /// This function assumes that `reward_lamports` has not already been added
     /// to the stake pool's `total_stake_lamports`
     pub fn calc_fee_amount(&self, reward_lamports: u64) -> Option<u64> {
-        if self.fee.denominator == 0 || reward_lamports == 0 {
+        if reward_lamports == 0 {
             return Some(0);
         }
         let total_stake_lamports =
             (self.total_stake_lamports as u128).checked_add(reward_lamports as u128)?;
-        let fee_lamports = (reward_lamports as u128)
-            .checked_mul(self.fee.numerator as u128)?
-            .checked_div(self.fee.denominator as u128)?;
-        u64::try_from(
-            (self.pool_token_supply as u128)
-                .checked_mul(fee_lamports)?
-                .checked_div(total_stake_lamports.checked_sub(fee_lamports)?)?,
-        )
-        .ok()
+        let fee_lamports = self.fee.apply(reward_lamports)?;
+        if total_stake_lamports == fee_lamports || self.pool_token_supply == 0 {
+            Some(reward_lamports)
+        } else {
+            u64::try_from(
+                (self.pool_token_supply as u128)
+                    .checked_mul(fee_lamports)?
+                    .checked_div(total_stake_lamports.checked_sub(fee_lamports)?)?,
+            )
+            .ok()
+        }
     }
 
     /// Checks that the withdraw or deposit authority is valid
@@ -281,24 +318,28 @@ impl StakePool {
 #[repr(C)]
 #[derive(Clone, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ValidatorList {
-    /// Account type, must be ValidatorList currently
-    pub account_type: AccountType,
-
-    /// Preferred deposit validator vote account pubkey
-    pub preferred_deposit_validator_vote_address: Option<Pubkey>,
-
-    /// Preferred withdraw validator vote account pubkey
-    pub preferred_withdraw_validator_vote_address: Option<Pubkey>,
-
-    /// Maximum allowable number of validators
-    pub max_validators: u32,
+    /// Data outside of the validator list, separated out for cheaper deserializations
+    pub header: ValidatorListHeader,
 
     /// List of stake info for each validator in the pool
     pub validators: Vec<ValidatorStakeInfo>,
 }
 
+/// Helper type to deserialize just the start of a ValidatorList
+#[repr(C)]
+#[derive(Clone, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub struct ValidatorListHeader {
+    /// Account type, must be ValidatorList currently
+    pub account_type: AccountType,
+
+    /// Maximum allowable number of validators
+    pub max_validators: u32,
+}
+
 /// Status of the stake account in the validator list, for accounting
-#[derive(Copy, Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+#[derive(
+    FromPrimitive, Copy, Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema,
+)]
 pub enum StakeStatus {
     /// Stake account is active, there may be a transient stake as well
     Active,
@@ -316,10 +357,10 @@ impl Default for StakeStatus {
     }
 }
 
-/// Information about the singe validator stake account
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub struct ValidatorStakeInfo {
+/// Packed version of the validator stake info, for use with pointer casts
+#[repr(packed)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct ValidatorStakeInfoPacked {
     /// Status of the validator stake account
     pub status: StakeStatus,
 
@@ -340,6 +381,37 @@ pub struct ValidatorStakeInfo {
     pub last_update_epoch: u64,
 }
 
+/// Information about a validator in the pool
+///
+/// NOTE: ORDER IS VERY IMPORTANT HERE, PLEASE DO NOT RE-ORDER THE FIELDS UNLESS
+/// THERE'S AN EXTREMELY GOOD REASON.
+///
+/// To save on BPF instructions, the serialized bytes are reinterpreted with an
+/// unsafe pointer cast, which means that this structure cannot have any
+/// undeclared alignment-padding in its representation.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub struct ValidatorStakeInfo {
+    /// Amount of active stake delegated to this validator
+    /// Note that if `last_update_epoch` does not match the current epoch then
+    /// this field may not be accurate
+    pub active_stake_lamports: u64,
+
+    /// Amount of transient stake delegated to this validator
+    /// Note that if `last_update_epoch` does not match the current epoch then
+    /// this field may not be accurate
+    pub transient_stake_lamports: u64,
+
+    /// Last epoch the active and transient stake lamports fields were updated
+    pub last_update_epoch: u64,
+
+    /// Status of the validator stake account
+    pub status: StakeStatus,
+
+    /// Validator vote account address
+    pub vote_account_address: Pubkey,
+}
+
 impl ValidatorStakeInfo {
     /// Get the total lamports delegated to this validator (active and transient)
     pub fn stake_lamports(&self) -> u64 {
@@ -347,24 +419,65 @@ impl ValidatorStakeInfo {
             .checked_add(self.transient_stake_lamports)
             .unwrap()
     }
+
+    /// Performs a very cheap comparison, for checking if this validator stake
+    /// info matches the vote account address
+    pub fn memcmp_pubkey(data: &[u8], vote_address_bytes: &[u8]) -> bool {
+        sol_memcmp(
+            &data[25..25 + PUBKEY_BYTES],
+            vote_address_bytes,
+            PUBKEY_BYTES,
+        ) == 0
+    }
+
+    /// Performs a very cheap comparison, for checking if this validator stake
+    /// info has active lamports equal to the given bytes
+    pub fn memcmp_active_lamports(data: &[u8], lamports_le_bytes: &[u8]) -> bool {
+        sol_memcmp(&data[0..8], lamports_le_bytes, 8) != 0
+    }
+
+    /// Performs a very cheap comparison, for checking if this validator stake
+    /// info has lamports equal to the given bytes
+    pub fn memcmp_transient_lamports(data: &[u8], lamports_le_bytes: &[u8]) -> bool {
+        sol_memcmp(&data[8..16], lamports_le_bytes, 8) != 0
+    }
+
+    /// Check that the validator stake info is valid
+    pub fn is_not_removed(data: &[u8]) -> bool {
+        FromPrimitive::from_u8(data[24]) != Some(StakeStatus::ReadyForRemoval)
+    }
+}
+
+impl Sealed for ValidatorStakeInfo {}
+
+impl Pack for ValidatorStakeInfo {
+    const LEN: usize = 57;
+    fn pack_into_slice(&self, data: &mut [u8]) {
+        let mut data = data;
+        self.serialize(&mut data).unwrap();
+    }
+    fn unpack_from_slice(src: &[u8]) -> Result<Self, ProgramError> {
+        let unpacked = Self::try_from_slice(src)?;
+        Ok(unpacked)
+    }
 }
 
 impl ValidatorList {
     /// Create an empty instance containing space for `max_validators` and preferred validator keys
     pub fn new(max_validators: u32) -> Self {
         Self {
-            account_type: AccountType::ValidatorList,
-            preferred_deposit_validator_vote_address: Some(Pubkey::default()),
-            preferred_withdraw_validator_vote_address: Some(Pubkey::default()),
-            max_validators,
+            header: ValidatorListHeader {
+                account_type: AccountType::ValidatorList,
+                max_validators,
+            },
             validators: vec![ValidatorStakeInfo::default(); max_validators as usize],
         }
     }
 
     /// Calculate the number of validator entries that fit in the provided length
     pub fn calculate_max_validators(buffer_length: usize) -> usize {
-        let header_size = 1 + 4 + 4 + 33 + 33;
-        buffer_length.saturating_sub(header_size) / 57
+        let header_size = ValidatorListHeader::LEN + 4;
+        buffer_length.saturating_sub(header_size) / ValidatorStakeInfo::LEN
     }
 
     /// Check if contains validator with particular pubkey
@@ -387,6 +500,15 @@ impl ValidatorList {
             .find(|x| x.vote_account_address == *vote_account_address)
     }
 
+    /// Check if the list has any active stake
+    pub fn has_active_stake(&self) -> bool {
+        self.validators.iter().any(|x| x.active_stake_lamports > 0)
+    }
+}
+
+impl ValidatorListHeader {
+    const LEN: usize = 1 + 4;
+
     /// Check if validator stake list is actually initialized as a validator stake list
     pub fn is_valid(&self) -> bool {
         self.account_type == AccountType::ValidatorList
@@ -397,14 +519,34 @@ impl ValidatorList {
         self.account_type == AccountType::Uninitialized
     }
 
-    /// Check if the list has any active stake
-    pub fn has_active_stake(&self) -> bool {
-        self.validators.iter().any(|x| x.active_stake_lamports > 0)
+    /// Extracts a slice of ValidatorStakeInfo types from the vec part
+    /// of the ValidatorList
+    pub fn deserialize_mut_slice(
+        data: &mut [u8],
+        skip: usize,
+        len: usize,
+    ) -> Result<(Self, Vec<&mut ValidatorStakeInfo>), ProgramError> {
+        let (header, mut big_vec) = Self::deserialize_vec(data)?;
+        let validator_list = big_vec.deserialize_mut_slice::<ValidatorStakeInfo>(skip, len)?;
+        Ok((header, validator_list))
+    }
+
+    /// Extracts the validator list into its header and internal BigVec
+    pub fn deserialize_vec(data: &mut [u8]) -> Result<(Self, BigVec), ProgramError> {
+        let mut data_mut = &data[..];
+        let header = ValidatorListHeader::deserialize(&mut data_mut)?;
+        let length = get_instance_packed_len(&header)?;
+
+        let big_vec = BigVec {
+            data: &mut data[length..],
+        };
+        Ok((header, big_vec))
     }
 }
 
 /// Fee rate as a ratio, minted on `UpdateStakePoolBalance` as a proportion of
 /// the rewards
+/// If either the numerator or the denominator is 0, the fee is considered to be 0
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, BorshSerialize, BorshDeserialize, BorshSchema)]
 pub struct Fee {
@@ -412,6 +554,22 @@ pub struct Fee {
     pub denominator: u64,
     /// numerator of the fee ratio
     pub numerator: u64,
+}
+
+impl Fee {
+    /// Applies the Fee's rates to a given amount, `amt`
+    /// returning the amount to be subtracted from it as fees
+    /// (0 if denominator is 0 or amt is 0),
+    /// or None if overflow occurs
+    #[inline]
+    pub fn apply(&self, amt: u64) -> Option<u128> {
+        if self.denominator == 0 {
+            return Some(0);
+        }
+        (amt as u128)
+            .checked_mul(self.numerator as u128)?
+            .checked_div(self.denominator as u128)
+    }
 }
 
 #[cfg(test)]
@@ -427,20 +585,20 @@ mod test {
 
     fn uninitialized_validator_list() -> ValidatorList {
         ValidatorList {
-            account_type: AccountType::Uninitialized,
-            preferred_deposit_validator_vote_address: None,
-            preferred_withdraw_validator_vote_address: None,
-            max_validators: 0,
+            header: ValidatorListHeader {
+                account_type: AccountType::Uninitialized,
+                max_validators: 0,
+            },
             validators: vec![],
         }
     }
 
     fn test_validator_list(max_validators: u32) -> ValidatorList {
         ValidatorList {
-            account_type: AccountType::ValidatorList,
-            preferred_deposit_validator_vote_address: Some(Pubkey::new_unique()),
-            preferred_withdraw_validator_vote_address: Some(Pubkey::new_unique()),
-            max_validators,
+            header: ValidatorListHeader {
+                account_type: AccountType::ValidatorList,
+                max_validators,
+            },
             validators: vec![
                 ValidatorStakeInfo {
                     status: StakeStatus::Active,
@@ -480,10 +638,10 @@ mod test {
 
         // Empty, one preferred key
         let stake_list = ValidatorList {
-            account_type: AccountType::ValidatorList,
-            preferred_deposit_validator_vote_address: Some(Pubkey::new_unique()),
-            preferred_withdraw_validator_vote_address: None,
-            max_validators: 0,
+            header: ValidatorListHeader {
+                account_type: AccountType::ValidatorList,
+                max_validators: 0,
+            },
             validators: vec![],
         };
         let mut byte_vec = vec![0u8; size];
@@ -510,6 +668,64 @@ mod test {
             validator.active_stake_lamports = 0;
         }
         assert!(!validator_list.has_active_stake());
+    }
+
+    #[test]
+    fn validator_list_deserialize_mut_slice() {
+        let max_validators = 10;
+        let stake_list = test_validator_list(max_validators);
+        let mut serialized = stake_list.try_to_vec().unwrap();
+        let (header, list) = ValidatorListHeader::deserialize_mut_slice(
+            &mut serialized,
+            0,
+            stake_list.validators.len(),
+        )
+        .unwrap();
+        assert_eq!(header.account_type, AccountType::ValidatorList);
+        assert_eq!(header.max_validators, max_validators);
+        assert!(list
+            .iter()
+            .zip(stake_list.validators.iter())
+            .all(|(a, b)| *a == b));
+
+        let (_, list) = ValidatorListHeader::deserialize_mut_slice(&mut serialized, 1, 2).unwrap();
+        assert!(list
+            .iter()
+            .zip(stake_list.validators[1..].iter())
+            .all(|(a, b)| *a == b));
+        let (_, list) = ValidatorListHeader::deserialize_mut_slice(&mut serialized, 2, 1).unwrap();
+        assert!(list
+            .iter()
+            .zip(stake_list.validators[2..].iter())
+            .all(|(a, b)| *a == b));
+        let (_, list) = ValidatorListHeader::deserialize_mut_slice(&mut serialized, 0, 2).unwrap();
+        assert!(list
+            .iter()
+            .zip(stake_list.validators[..2].iter())
+            .all(|(a, b)| *a == b));
+
+        assert_eq!(
+            ValidatorListHeader::deserialize_mut_slice(&mut serialized, 0, 4).unwrap_err(),
+            ProgramError::AccountDataTooSmall
+        );
+        assert_eq!(
+            ValidatorListHeader::deserialize_mut_slice(&mut serialized, 1, 3).unwrap_err(),
+            ProgramError::AccountDataTooSmall
+        );
+    }
+
+    #[test]
+    fn validator_list_iter() {
+        let max_validators = 10;
+        let stake_list = test_validator_list(max_validators);
+        let mut serialized = stake_list.try_to_vec().unwrap();
+        let (_, big_vec) = ValidatorListHeader::deserialize_vec(&mut serialized).unwrap();
+        for (a, b) in big_vec
+            .iter::<ValidatorStakeInfo>()
+            .zip(stake_list.validators.iter())
+        {
+            assert_eq!(a, b);
+        }
     }
 
     proptest! {
@@ -564,7 +780,22 @@ mod test {
         let fee_lamports = stake_pool
             .calc_lamports_withdraw_amount(pool_token_fee)
             .unwrap();
-        assert_eq!(fee_lamports, LAMPORTS_PER_SOL - 1); // lose 1 lamport of precision
+        assert_eq!(fee_lamports, LAMPORTS_PER_SOL);
+    }
+
+    #[test]
+    fn divide_by_zero_fee() {
+        let stake_pool = StakePool {
+            total_stake_lamports: 0,
+            fee: Fee {
+                numerator: 1,
+                denominator: 10,
+            },
+            ..StakePool::default()
+        };
+        let rewards = 10;
+        let fee = stake_pool.calc_fee_amount(rewards).unwrap();
+        assert_eq!(fee, rewards);
     }
 
     proptest! {
@@ -599,6 +830,35 @@ mod test {
             assert!(max_fee_lamports - fee_lamports <= epsilon,
                 "Max expected fee in lamports {}, actually receive {}, epsilon {}",
                 max_fee_lamports, fee_lamports, epsilon);
+        }
+    }
+
+    prop_compose! {
+        fn total_tokens_and_deposit()(total_lamports in 1..u64::MAX)(
+            total_lamports in Just(total_lamports),
+            pool_token_supply in 1..=total_lamports,
+            deposit_lamports in 1..total_lamports,
+        ) -> (u64, u64, u64) {
+            (total_lamports - deposit_lamports, pool_token_supply.saturating_sub(deposit_lamports).max(1), deposit_lamports)
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn deposit_and_withdraw(
+            (total_stake_lamports, pool_token_supply, deposit_stake) in total_tokens_and_deposit()
+        ) {
+            let mut stake_pool = StakePool {
+                total_stake_lamports,
+                pool_token_supply,
+                ..StakePool::default()
+            };
+            let deposit_result = stake_pool.calc_pool_tokens_for_deposit(deposit_stake).unwrap();
+            prop_assume!(deposit_result > 0);
+            stake_pool.total_stake_lamports += deposit_stake;
+            stake_pool.pool_token_supply += deposit_result;
+            let withdraw_result = stake_pool.calc_lamports_withdraw_amount(deposit_result).unwrap();
+            assert!(withdraw_result <= deposit_stake);
         }
     }
 }

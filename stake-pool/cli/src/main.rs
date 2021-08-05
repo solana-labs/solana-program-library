@@ -7,7 +7,7 @@ use {
     crate::client::*,
     clap::{
         crate_description, crate_name, crate_version, value_t, value_t_or_exit, App, AppSettings,
-        Arg, ArgGroup, SubCommand,
+        Arg, ArgGroup, ArgMatches, SubCommand,
     },
     solana_clap_utils::{
         input_parsers::{keypair_of, pubkey_of},
@@ -23,6 +23,7 @@ use {
         program_pack::Pack,
         pubkey::Pubkey,
     },
+    solana_remote_wallet::remote_wallet::RemoteWalletManager,
     solana_sdk::{
         commitment_config::CommitmentConfig,
         native_token::{self, Sol},
@@ -33,12 +34,13 @@ use {
     },
     spl_associated_token_account::{create_associated_token_account, get_associated_token_address},
     spl_stake_pool::{
-        self, find_stake_program_address, find_withdraw_authority_program_address,
+        self, find_stake_program_address, find_transient_stake_program_address,
+        find_withdraw_authority_program_address,
         instruction::PreferredValidatorType,
         stake_program::{self, StakeState},
         state::{Fee, StakePool, ValidatorList},
     },
-    std::process::exit,
+    std::{process::exit, sync::Arc},
 };
 
 struct Config {
@@ -81,6 +83,24 @@ fn check_fee_payer_balance(config: &Config, required_balance: u64) -> Result<(),
     } else {
         Ok(())
     }
+}
+
+fn get_signer(
+    matches: &ArgMatches<'_>,
+    keypair_name: &str,
+    keypair_path: &str,
+    wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
+) -> Box<dyn Signer> {
+    signer_from_path(
+        matches,
+        matches.value_of(keypair_name).unwrap_or(keypair_path),
+        keypair_name,
+        wallet_manager,
+    )
+    .unwrap_or_else(|e| {
+        eprintln!("error: {}", e);
+        exit(1);
+    })
 }
 
 fn send_transaction_no_wait(
@@ -130,10 +150,12 @@ fn checked_transaction_with_signers<T: Signers>(
     Ok(transaction)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn command_create_pool(
     config: &Config,
     deposit_authority: Option<Pubkey>,
     fee: Fee,
+    withdrawal_fee: Fee,
     max_validators: u32,
     stake_pool_keypair: Option<Keypair>,
     mint_keypair: Option<Keypair>,
@@ -144,12 +166,6 @@ fn command_create_pool(
 
     let mint_keypair = mint_keypair.unwrap_or_else(Keypair::new);
     println!("Creating mint {}", mint_keypair.pubkey());
-
-    let pool_fee_account = Keypair::new();
-    println!(
-        "Creating pool fee collection account {}",
-        pool_fee_account.pubkey()
-    );
 
     let stake_pool_keypair = stake_pool_keypair.unwrap_or_else(Keypair::new);
 
@@ -173,7 +189,7 @@ fn command_create_pool(
     let validator_list_balance = config
         .rpc_client
         .get_minimum_balance_for_rent_exemption(validator_list_size)?;
-    let total_rent_free_balances = reserve_stake_balance
+    let mut total_rent_free_balances = reserve_stake_balance
         + mint_account_balance
         + pool_fee_account_balance
         + stake_pool_account_lamports
@@ -191,58 +207,52 @@ fn command_create_pool(
         println!("Stake pool withdraw authority {}", withdraw_authority);
     }
 
-    let mut setup_transaction = Transaction::new_with_payer(
-        &[
-            // Account for the stake pool reserve
-            system_instruction::create_account(
-                &config.fee_payer.pubkey(),
-                &reserve_keypair.pubkey(),
-                reserve_stake_balance,
-                STAKE_STATE_LEN as u64,
-                &stake_program::id(),
-            ),
-            stake_program::initialize(
-                &reserve_keypair.pubkey(),
-                &stake_program::Authorized {
-                    staker: withdraw_authority,
-                    withdrawer: withdraw_authority,
-                },
-                &stake_program::Lockup::default(),
-            ),
-            // Account for the stake pool mint
-            system_instruction::create_account(
-                &config.fee_payer.pubkey(),
-                &mint_keypair.pubkey(),
-                mint_account_balance,
-                spl_token::state::Mint::LEN as u64,
-                &spl_token::id(),
-            ),
-            // Account for the pool fee accumulation
-            system_instruction::create_account(
-                &config.fee_payer.pubkey(),
-                &pool_fee_account.pubkey(),
-                pool_fee_account_balance,
-                spl_token::state::Account::LEN as u64,
-                &spl_token::id(),
-            ),
-            // Initialize pool token mint account
-            spl_token::instruction::initialize_mint(
-                &spl_token::id(),
-                &mint_keypair.pubkey(),
-                &withdraw_authority,
-                None,
-                default_decimals,
-            )?,
-            // Initialize fee receiver account
-            spl_token::instruction::initialize_account(
-                &spl_token::id(),
-                &pool_fee_account.pubkey(),
-                &mint_keypair.pubkey(),
-                &config.manager.pubkey(),
-            )?,
-        ],
-        Some(&config.fee_payer.pubkey()),
+    let mut instructions = vec![
+        // Account for the stake pool reserve
+        system_instruction::create_account(
+            &config.fee_payer.pubkey(),
+            &reserve_keypair.pubkey(),
+            reserve_stake_balance,
+            STAKE_STATE_LEN as u64,
+            &stake_program::id(),
+        ),
+        stake_program::initialize(
+            &reserve_keypair.pubkey(),
+            &stake_program::Authorized {
+                staker: withdraw_authority,
+                withdrawer: withdraw_authority,
+            },
+            &stake_program::Lockup::default(),
+        ),
+        // Account for the stake pool mint
+        system_instruction::create_account(
+            &config.fee_payer.pubkey(),
+            &mint_keypair.pubkey(),
+            mint_account_balance,
+            spl_token::state::Mint::LEN as u64,
+            &spl_token::id(),
+        ),
+        // Initialize pool token mint account
+        spl_token::instruction::initialize_mint(
+            &spl_token::id(),
+            &mint_keypair.pubkey(),
+            &withdraw_authority,
+            None,
+            default_decimals,
+        )?,
+    ];
+
+    let pool_fee_account = add_associated_token_account(
+        config,
+        &mint_keypair.pubkey(),
+        &config.manager.pubkey(),
+        &mut instructions,
+        &mut total_rent_free_balances,
     );
+    println!("Creating pool fee collection account {}", pool_fee_account);
+
+    let mut setup_transaction =
+        Transaction::new_with_payer(&instructions, Some(&config.fee_payer.pubkey()));
 
     let mut initialize_transaction = Transaction::new_with_payer(
         &[
@@ -271,10 +281,11 @@ fn command_create_pool(
                 &validator_list.pubkey(),
                 &reserve_keypair.pubkey(),
                 &mint_keypair.pubkey(),
-                &pool_fee_account.pubkey(),
+                &pool_fee_account,
                 &spl_token::id(),
                 deposit_authority,
                 fee,
+                withdrawal_fee,
                 max_validators,
             ),
         ],
@@ -288,12 +299,7 @@ fn command_create_pool(
             + fee_calculator.calculate_fee(setup_transaction.message())
             + fee_calculator.calculate_fee(initialize_transaction.message()),
     )?;
-    let mut setup_signers = vec![
-        config.fee_payer.as_ref(),
-        &mint_keypair,
-        &pool_fee_account,
-        &reserve_keypair,
-    ];
+    let mut setup_signers = vec![config.fee_payer.as_ref(), &mint_keypair, &reserve_keypair];
     unique_signers!(setup_signers);
     setup_transaction.sign(&setup_signers, recent_blockhash);
     send_transaction(config, setup_transaction)?;
@@ -316,16 +322,22 @@ fn command_vsa_create(
     stake_pool_address: &Pubkey,
     vote_account: &Pubkey,
 ) -> CommandResult {
-    println!("Creating stake account on {}", vote_account);
+    let (stake_account, _) =
+        find_stake_program_address(&spl_stake_pool::id(), vote_account, stake_pool_address);
+    println!(
+        "Creating stake account {}, delegated to {}",
+        stake_account, vote_account
+    );
     let transaction = checked_transaction_with_signers(
         config,
         &[
             // Create new validator stake account address
-            spl_stake_pool::instruction::create_validator_stake_account_with_vote(
+            spl_stake_pool::instruction::create_validator_stake_account(
                 &spl_stake_pool::id(),
                 stake_pool_address,
                 &config.staker.pubkey(),
                 &config.fee_payer.pubkey(),
+                &stake_account,
                 vote_account,
             ),
         ],
@@ -342,6 +354,10 @@ fn command_vsa_add(
 ) -> CommandResult {
     let (stake_account_address, _) =
         find_stake_program_address(&spl_stake_pool::id(), vote_account, stake_pool_address);
+    println!(
+        "Adding stake account {}, delegated to {}",
+        stake_account_address, vote_account
+    );
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
     let validator_list = get_validator_list(&config.rpc_client, &stake_pool.validator_list)?;
     if validator_list.contains(vote_account) {
@@ -398,6 +414,13 @@ fn command_vsa_remove(
     if !config.no_update {
         command_update(config, stake_pool_address, false, false)?;
     }
+
+    let (stake_account_address, _) =
+        find_stake_program_address(&spl_stake_pool::id(), vote_account, stake_pool_address);
+    println!(
+        "Removing stake account {}, delegated to {}",
+        stake_account_address, vote_account
+    );
 
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
 
@@ -516,13 +539,14 @@ fn command_set_preferred_validator(
 fn add_associated_token_account(
     config: &Config,
     mint: &Pubkey,
+    owner: &Pubkey,
     instructions: &mut Vec<Instruction>,
     rent_free_balances: &mut u64,
 ) -> Pubkey {
     // Account for tokens not specified, creating one
-    let account = get_associated_token_address(&config.fee_payer.pubkey(), mint);
+    let account = get_associated_token_address(owner, mint);
     if get_token_account(&config.rpc_client, &account, mint).is_err() {
-        println!("Creating account to receive tokens {}", account);
+        println!("Creating associated token account {} to receive stake pool tokens of mint {}, owned by {}", account, mint, owner);
 
         let min_account_balance = config
             .rpc_client
@@ -531,11 +555,13 @@ fn add_associated_token_account(
 
         instructions.push(create_associated_token_account(
             &config.fee_payer.pubkey(),
-            &config.fee_payer.pubkey(),
+            owner,
             mint,
         ));
 
         *rent_free_balances += min_account_balance;
+    } else {
+        println!("Using existing associated token account {} to receive stake pool tokens of mint {}, owned by {}", account, mint, owner);
     }
 
     account
@@ -573,7 +599,10 @@ fn command_deposit(
         find_stake_program_address(&spl_stake_pool::id(), &vote_account, stake_pool_address);
 
     let validator_stake_state = get_stake_state(&config.rpc_client, &validator_stake_account)?;
-    println!("Depositing into stake account {}", validator_stake_account);
+    println!(
+        "Depositing stake {} into stake pool account {}",
+        stake, validator_stake_account
+    );
     if config.verbose {
         println!("{:?}", validator_stake_state);
     }
@@ -587,6 +616,7 @@ fn command_deposit(
     let token_receiver = token_receiver.unwrap_or(add_associated_token_account(
         config,
         &stake_pool.pool_mint,
+        &config.token_owner.pubkey(),
         &mut instructions,
         &mut total_rent_free_balances,
     ));
@@ -656,28 +686,102 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
     let validator_list = get_validator_list(&config.rpc_client, &stake_pool.validator_list)?;
     let pool_mint = get_token_mint(&config.rpc_client, &stake_pool.pool_mint)?;
     let epoch_info = config.rpc_client.get_epoch_info()?;
+    let pool_withdraw_authority =
+        find_withdraw_authority_program_address(&spl_stake_pool::id(), stake_pool_address).0;
 
+    if config.verbose {
+        println!("Stake Pool Info");
+        println!("===============");
+        println!("Stake Pool: {}", stake_pool_address);
+        println!("Validator List: {}", stake_pool.validator_list);
+        println!("Manager: {}", stake_pool.manager);
+        println!("Staker: {}", stake_pool.staker);
+        println!("Depositor: {}", stake_pool.deposit_authority);
+        println!("Withdraw Authority: {}", pool_withdraw_authority);
+        println!("Pool Token Mint: {}", stake_pool.pool_mint);
+        println!("Fee Account: {}", stake_pool.manager_fee_account);
+    } else {
+        println!("Stake Pool: {}", stake_pool_address);
+        println!("Pool Token Mint: {}", stake_pool.pool_mint);
+    }
+
+    if let Some(preferred_deposit_validator) = stake_pool.preferred_deposit_validator_vote_address {
+        println!(
+            "Preferred Deposit Validator: {}",
+            preferred_deposit_validator
+        );
+    }
+    if let Some(preferred_withdraw_validator) = stake_pool.preferred_withdraw_validator_vote_address
+    {
+        println!(
+            "Preferred Withraw Validator: {}",
+            preferred_withdraw_validator
+        );
+    }
+    if stake_pool.fee.numerator > 0 {
+        println!(
+            "Fee: {}/{} of epoch rewards",
+            stake_pool.fee.numerator, stake_pool.fee.denominator
+        );
+    } else {
+        println!("Fee: none");
+    }
+
+    if config.verbose {
+        println!();
+        println!("Stake Accounts");
+        println!("--------------");
+    }
     let reserve_stake = config.rpc_client.get_account(&stake_pool.reserve_stake)?;
+    let minimum_reserve_stake_balance = config
+        .rpc_client
+        .get_minimum_balance_for_rent_exemption(STAKE_STATE_LEN)?
+        + 1;
     println!(
-        "Reserve Account: {}\tBalance: {}",
+        "Reserve Account: {}\tAvailable Balance: {}",
         stake_pool.reserve_stake,
-        Sol(reserve_stake.lamports),
+        Sol(reserve_stake.lamports - minimum_reserve_stake_balance),
     );
 
     for validator in &validator_list.validators {
-        println!(
-            "Validator Vote Account: {}\tBalance: {}\tLast Update Epoch: {}{}",
-            validator.vote_account_address,
-            Sol(validator.stake_lamports()),
-            validator.last_update_epoch,
-            if validator.last_update_epoch != epoch_info.epoch {
-                " [UPDATE REQUIRED]"
-            } else {
-                ""
-            }
-        );
+        if config.verbose {
+            let (stake_account_address, _) = find_stake_program_address(
+                &spl_stake_pool::id(),
+                &validator.vote_account_address,
+                stake_pool_address,
+            );
+            let (transient_stake_account_address, _) = find_transient_stake_program_address(
+                &spl_stake_pool::id(),
+                &validator.vote_account_address,
+                stake_pool_address,
+            );
+            println!(
+                "Vote Account: {}\tStake Account: {}\tActive Balance: {}\tTransient Stake Account: {}\tTransient Balance: {}\tLast Update Epoch: {}{}",
+                validator.vote_account_address,
+                stake_account_address,
+                Sol(validator.active_stake_lamports),
+                transient_stake_account_address,
+                Sol(validator.transient_stake_lamports),
+                validator.last_update_epoch,
+                if validator.last_update_epoch != epoch_info.epoch {
+                    " [UPDATE REQUIRED]"
+                } else {
+                    ""
+                }
+            );
+        } else {
+            println!(
+                "Vote Account: {}\tBalance: {}\tLast Update Epoch: {}",
+                validator.vote_account_address,
+                Sol(validator.stake_lamports()),
+                validator.last_update_epoch,
+            );
+        }
     }
 
+    if config.verbose {
+        println!();
+    }
     println!(
         "Total Pool Stake: {}{}",
         Sol(stake_pool.total_stake_lamports),
@@ -692,45 +796,13 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
         spl_token::amount_to_ui_amount(stake_pool.pool_token_supply, pool_mint.decimals)
     );
     println!(
-        "Total number of validators: {}",
+        "Current Number of Validators: {}",
         validator_list.validators.len()
     );
     println!(
-        "Max number of validators: {}",
-        validator_list.max_validators
+        "Max Number of Validators: {}",
+        validator_list.header.max_validators
     );
-
-    if config.verbose {
-        println!();
-
-        let pool_withdraw_authority =
-            find_withdraw_authority_program_address(&spl_stake_pool::id(), stake_pool_address).0;
-
-        let accounts =
-            get_stake_accounts_by_withdraw_authority(&config.rpc_client, &pool_withdraw_authority)?;
-        if accounts.is_empty() {
-            return Err(format!("No stake accounts found for {}", pool_withdraw_authority).into());
-        }
-
-        let mut total_stake_lamports: u64 = 0;
-        for (pubkey, stake_lamports, stake_state) in accounts {
-            total_stake_lamports += stake_lamports;
-            println!(
-                "Stake Account: {}\tVote Account: {}\t{}",
-                pubkey,
-                stake_state.delegation().expect("delegation").voter_pubkey,
-                Sol(stake_lamports)
-            );
-        }
-        println!("Total Stake Account Balance: {}", Sol(total_stake_lamports));
-
-        if pool_mint.supply != stake_pool.pool_token_supply {
-            println!(
-                "BUG! Pool Tokens supply mismatch.  Pool mint reports {}",
-                spl_token::amount_to_ui_amount(pool_mint.supply, pool_mint.decimals)
-            );
-        }
-    }
 
     Ok(())
 }
@@ -755,7 +827,7 @@ fn command_update(
 
     let validator_list = get_validator_list(&config.rpc_client, &stake_pool.validator_list)?;
 
-    let (mut update_list_instructions, update_balance_instruction) =
+    let (mut update_list_instructions, final_instructions) =
         spl_stake_pool::instruction::update_stake_pool(
             &spl_stake_pool::id(),
             &stake_pool,
@@ -787,7 +859,7 @@ fn command_update(
     }
     let transaction = checked_transaction_with_signers(
         config,
-        &[update_balance_instruction],
+        &final_instructions,
         &[config.fee_payer.as_ref()],
     )?;
     send_transaction(config, transaction)?;
@@ -797,7 +869,8 @@ fn command_update(
 
 #[derive(PartialEq, Debug)]
 struct WithdrawAccount {
-    address: Pubkey,
+    stake_address: Pubkey,
+    vote_address: Option<Pubkey>,
     pool_amount: u64,
 }
 
@@ -823,7 +896,7 @@ fn prepare_withdraw_accounts(
     let mut remaining_amount = pool_amount;
 
     // Go through available accounts and withdraw from largest to smallest
-    for (address, lamports, _) in accounts {
+    for (stake_address, lamports, stake) in accounts {
         if lamports <= min_balance {
             continue;
         }
@@ -834,7 +907,8 @@ fn prepare_withdraw_accounts(
 
         // Those accounts will be withdrawn completely with `claim` instruction
         withdraw_from.push(WithdrawAccount {
-            address,
+            stake_address,
+            vote_address: stake.delegation().map(|x| x.voter_pubkey),
             pool_amount,
         });
         remaining_amount -= pool_amount;
@@ -877,7 +951,7 @@ fn command_withdraw(
         find_withdraw_authority_program_address(&spl_stake_pool::id(), stake_pool_address).0;
 
     let pool_token_account = pool_token_account.unwrap_or(get_associated_token_address(
-        &config.fee_payer.pubkey(),
+        &config.token_owner.pubkey(),
         &stake_pool.pool_mint,
     ));
     let token_account = get_token_account(
@@ -898,7 +972,8 @@ fn command_withdraw(
 
     let withdraw_accounts = if use_reserve {
         vec![WithdrawAccount {
-            address: stake_pool.reserve_stake,
+            stake_address: stake_pool.reserve_stake,
+            vote_address: None,
             pool_amount,
         }]
     } else if let Some(vote_account_address) = vote_account_address {
@@ -919,7 +994,8 @@ fn command_withdraw(
             .into());
         }
         vec![WithdrawAccount {
-            address: stake_account_address,
+            stake_address: stake_account_address,
+            vote_address: Some(*vote_account_address),
             pool_amount,
         }]
     } else {
@@ -940,7 +1016,7 @@ fn command_withdraw(
         config.token_owner.as_ref(),
         &user_transfer_authority,
     ];
-    let stake_receiver_account = Keypair::new(); // Will be added to signers if creating new account
+    let mut new_stake_keypairs = vec![];
 
     instructions.push(
         // Approve spending token
@@ -954,9 +1030,6 @@ fn command_withdraw(
         )?,
     );
 
-    // Use separate mutable variable because withdraw might create a new account
-    let mut stake_receiver: Option<Pubkey> = *stake_receiver_param;
-
     let mut total_rent_free_balances = 0;
 
     // Go through prepared accounts and withdraw/claim them
@@ -967,51 +1040,56 @@ fn command_withdraw(
             .unwrap();
 
         println!(
-            "Withdrawing from account {}, amount {}, {} pool tokens",
-            withdraw_account.address,
+            "Withdrawing {}, or {} pool tokens, from stake account {}, delegated to {:?}, stake / withdraw authority {}",
             Sol(sol_withdraw_amount),
             spl_token::amount_to_ui_amount(withdraw_account.pool_amount, pool_mint.decimals),
+            withdraw_account.stake_address,
+            withdraw_account.vote_address,
+            config.staker.pubkey(),
         );
 
-        if stake_receiver.is_none() {
+        // Use separate mutable variable because withdraw might create a new account
+        let stake_receiver = stake_receiver_param.unwrap_or_else(|| {
             // Account for tokens not specified, creating one
+            let stake_receiver_account = Keypair::new(); // Will be added to signers if creating new account
+            let stake_receiver_pubkey = stake_receiver_account.pubkey();
             println!(
                 "Creating account to receive stake {}",
-                stake_receiver_account.pubkey()
+                stake_receiver_pubkey
             );
 
             let stake_receiver_account_balance = config
                 .rpc_client
-                .get_minimum_balance_for_rent_exemption(STAKE_STATE_LEN)?;
+                .get_minimum_balance_for_rent_exemption(STAKE_STATE_LEN)
+                .unwrap();
 
             instructions.push(
                 // Creating new account
                 system_instruction::create_account(
                     &config.fee_payer.pubkey(),
-                    &stake_receiver_account.pubkey(),
+                    &stake_receiver_pubkey,
                     stake_receiver_account_balance,
                     STAKE_STATE_LEN as u64,
                     &stake_program::id(),
                 ),
             );
 
-            signers.push(&stake_receiver_account);
-
             total_rent_free_balances += stake_receiver_account_balance;
-
-            stake_receiver = Some(stake_receiver_account.pubkey());
-        }
+            new_stake_keypairs.push(stake_receiver_account);
+            stake_receiver_pubkey
+        });
 
         instructions.push(spl_stake_pool::instruction::withdraw(
             &spl_stake_pool::id(),
             stake_pool_address,
             &stake_pool.validator_list,
             &pool_withdraw_authority,
-            &withdraw_account.address,
-            &stake_receiver.unwrap(), // Cannot be none at this point
+            &withdraw_account.stake_address,
+            &stake_receiver,
             &config.staker.pubkey(),
             &user_transfer_authority.pubkey(),
             &pool_token_account,
+            &stake_pool.manager_fee_account,
             &stake_pool.pool_mint,
             &spl_token::id(),
             withdraw_account.pool_amount,
@@ -1026,6 +1104,9 @@ fn command_withdraw(
         config,
         total_rent_free_balances + fee_calculator.calculate_fee(transaction.message()),
     )?;
+    for new_stake_keypair in &new_stake_keypairs {
+        signers.push(new_stake_keypair);
+    }
     unique_signers!(signers);
     transaction.sign(&signers, recent_blockhash);
     send_transaction(config, transaction)?;
@@ -1104,6 +1185,27 @@ fn command_set_fee(config: &Config, stake_pool_address: &Pubkey, new_fee: Fee) -
     let transaction = checked_transaction_with_signers(
         config,
         &[spl_stake_pool::instruction::set_fee(
+            &spl_stake_pool::id(),
+            stake_pool_address,
+            &config.manager.pubkey(),
+            new_fee,
+        )],
+        &signers,
+    )?;
+    send_transaction(config, transaction)?;
+    Ok(())
+}
+
+fn command_set_withdrawal_fee(
+    config: &Config,
+    stake_pool_address: &Pubkey,
+    new_fee: Fee,
+) -> CommandResult {
+    let mut signers = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
+    unique_signers!(signers);
+    let transaction = checked_transaction_with_signers(
+        config,
+        &[spl_stake_pool::instruction::set_withdrawal_fee(
             &spl_stake_pool::id(),
             stake_pool_address,
             &config.manager.pubkey(),
@@ -1248,6 +1350,23 @@ fn main() {
                     .help("Fee denominator, fee amount is numerator divided by denominator."),
             )
             .arg(
+                Arg::with_name("withdrawal_fee_numerator")
+                    .long("withdrawal-fee-numerator")
+                    .validator(is_parsable::<u64>)
+                    .value_name("NUMERATOR")
+                    .takes_value(true)
+                    .requires("withdrawal_fee_denominator")
+                    .help("Withdrawal fee numerator, fee amount is numerator divided by denominator [default: 0]"),
+            ).arg(
+                Arg::with_name("withdrawal_fee_denominator")
+                    .long("withdrawal-fee-denominator")
+                    .validator(is_parsable::<u64>)
+                    .value_name("DENOMINATOR")
+                    .takes_value(true)
+                    .requires("withdrawal_fee_numerator")
+                    .help("Withdrawal fee denominator, fee amount is numerator divided by denominator [default: 0]"),
+            )
+            .arg(
                 Arg::with_name("max_validators")
                     .long("max-validators")
                     .short("m")
@@ -1361,7 +1480,7 @@ fn main() {
                     .value_name("ADDRESS")
                     .takes_value(true)
                     .help("New authority to set as Staker and Withdrawer in the stake account removed from the pool.
-                          Defaults to the wallet owner pubkey."),
+                          Defaults to the client keypair."),
             )
         )
         .subcommand(SubCommand::with_name("increase-validator-stake")
@@ -1419,7 +1538,7 @@ fn main() {
                     .validator(is_amount)
                     .value_name("AMOUNT")
                     .takes_value(true)
-                    .help("Amount in lamports to remove from the validator stake account. Must be at least the rent-exempt amount for a stake."),
+                    .help("Amount in SOL to remove from the validator stake account. Must be at least the rent-exempt amount for a stake."),
             )
         )
         .subcommand(SubCommand::with_name("set-preferred-validator")
@@ -1488,8 +1607,9 @@ fn main() {
                     .validator(is_pubkey)
                     .value_name("ADDRESS")
                     .takes_value(true)
-                    .help("Account to receive pool token. Must be initialized account of the stake pool token. \
-                          Defaults to the fee payer's associated pool token account."),
+                    .help("Account to receive the minted pool tokens. \
+                          Defaults to the token-owner's associated pool token account. \
+                          Creates the account if it does not exist."),
             )
         )
         .subcommand(SubCommand::with_name("list")
@@ -1554,7 +1674,7 @@ fn main() {
                     .validator(is_pubkey)
                     .value_name("ADDRESS")
                     .takes_value(true)
-                    .help("Pool token account to withdraw tokens from. Must be owned by the fee payer. Defaults to their associated token account."),
+                    .help("Pool token account to withdraw tokens from. Defaults to the token-owner's associated token account."),
             )
             .arg(
                 Arg::with_name("stake_receiver")
@@ -1562,6 +1682,7 @@ fn main() {
                     .validator(is_pubkey)
                     .value_name("STAKE_ACCOUNT_ADDRESS")
                     .takes_value(true)
+                    .requires("withdraw_from")
                     .help("Stake account to receive SOL from the stake pool. Defaults to a new stake account."),
             )
             .arg(
@@ -1667,6 +1788,36 @@ fn main() {
                     .help("Fee denominator, fee amount is numerator divided by denominator."),
             )
         )
+        .subcommand(SubCommand::with_name("set-withdrawal-fee")
+            .about("Change the withdrawal fee assessed by the stake pool. Must be signed by the manager.")
+            .arg(
+                Arg::with_name("pool")
+                    .index(1)
+                    .validator(is_pubkey)
+                    .value_name("POOL_ADDRESS")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Stake pool address."),
+            )
+            .arg(
+                Arg::with_name("fee_numerator")
+                    .index(2)
+                    .validator(is_parsable::<u64>)
+                    .value_name("NUMERATOR")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Fee numerator, fee amount is numerator divided by denominator."),
+            )
+            .arg(
+                Arg::with_name("fee_denominator")
+                    .index(3)
+                    .validator(is_parsable::<u64>)
+                    .value_name("DENOMINATOR")
+                    .takes_value(true)
+                    .required(true)
+                    .help("Fee denominator, fee amount is numerator divided by denominator."),
+            )
+        )
         .get_matches();
 
     let mut wallet_manager = None;
@@ -1679,62 +1830,41 @@ fn main() {
         let json_rpc_url = value_t!(matches, "json_rpc_url", String)
             .unwrap_or_else(|_| cli_config.json_rpc_url.clone());
 
-        let staker = signer_from_path(
+        let staker = get_signer(
             &matches,
-            &cli_config.keypair_path,
             "staker",
+            &cli_config.keypair_path,
             &mut wallet_manager,
-        )
-        .unwrap_or_else(|e| {
-            eprintln!("error: {}", e);
-            exit(1);
-        });
+        );
+
         let depositor = if matches.is_present("depositor") {
-            Some(
-                signer_from_path(
-                    &matches,
-                    &cli_config.keypair_path,
-                    "depositor",
-                    &mut wallet_manager,
-                )
-                .unwrap_or_else(|e| {
-                    eprintln!("error: {}", e);
-                    exit(1);
-                }),
-            )
+            Some(get_signer(
+                &matches,
+                "depositor",
+                &cli_config.keypair_path,
+                &mut wallet_manager,
+            ))
         } else {
             None
         };
-        let manager = signer_from_path(
+        let manager = get_signer(
             &matches,
-            &cli_config.keypair_path,
             "manager",
-            &mut wallet_manager,
-        )
-        .unwrap_or_else(|e| {
-            eprintln!("error: {}", e);
-            exit(1);
-        });
-        let token_owner = signer_from_path(
-            &matches,
             &cli_config.keypair_path,
+            &mut wallet_manager,
+        );
+        let token_owner = get_signer(
+            &matches,
             "token_owner",
-            &mut wallet_manager,
-        )
-        .unwrap_or_else(|e| {
-            eprintln!("error: {}", e);
-            exit(1);
-        });
-        let fee_payer = signer_from_path(
-            &matches,
             &cli_config.keypair_path,
-            "fee_payer",
             &mut wallet_manager,
-        )
-        .unwrap_or_else(|e| {
-            eprintln!("error: {}", e);
-            exit(1);
-        });
+        );
+        let fee_payer = get_signer(
+            &matches,
+            "fee_payer",
+            &cli_config.keypair_path,
+            &mut wallet_manager,
+        );
         let verbose = matches.is_present("verbose");
         let dry_run = matches.is_present("dry_run");
         let no_update = matches.is_present("no_update");
@@ -1757,6 +1887,8 @@ fn main() {
             let deposit_authority = pubkey_of(arg_matches, "deposit_authority");
             let numerator = value_t_or_exit!(arg_matches, "fee_numerator", u64);
             let denominator = value_t_or_exit!(arg_matches, "fee_denominator", u64);
+            let w_numerator = value_t!(arg_matches, "withdrawal_fee_numerator", u64);
+            let w_denominator = value_t!(arg_matches, "withdrawal_fee_denominator", u64);
             let max_validators = value_t_or_exit!(arg_matches, "max_validators", u32);
             let pool_keypair = keypair_of(arg_matches, "pool_keypair");
             let mint_keypair = keypair_of(arg_matches, "mint_keypair");
@@ -1767,6 +1899,10 @@ fn main() {
                 Fee {
                     denominator,
                     numerator,
+                },
+                Fee {
+                    numerator: w_numerator.unwrap_or(0),
+                    denominator: w_denominator.unwrap_or(0),
                 },
                 max_validators,
                 pool_keypair,
@@ -1883,6 +2019,16 @@ fn main() {
                 numerator,
             };
             command_set_fee(&config, &stake_pool_address, new_fee)
+        }
+        ("set-withdrawal-fee", Some(arg_matches)) => {
+            let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
+            let numerator = value_t_or_exit!(arg_matches, "fee_numerator", u64);
+            let denominator = value_t_or_exit!(arg_matches, "fee_denominator", u64);
+            let new_fee = Fee {
+                denominator,
+                numerator,
+            };
+            command_set_withdrawal_fee(&config, &stake_pool_address, new_fee)
         }
         _ => unreachable!(),
     }

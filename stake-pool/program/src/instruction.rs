@@ -1,7 +1,6 @@
 //! Instruction types
 
 #![allow(clippy::too_many_arguments)]
-
 use {
     crate::{
         find_deposit_authority_program_address, find_stake_program_address,
@@ -53,6 +52,9 @@ pub enum StakePoolInstruction {
         /// Fee assessed as percentage of perceived rewards
         #[allow(dead_code)] // but it's not
         fee: Fee,
+        /// Fee charged per withdrawal as percentage of withdrawal
+        #[allow(dead_code)] // but it's not
+        withdrawal_fee: Fee,
         /// Maximum expected number of validators
         #[allow(dead_code)] // but it's not
         max_validators: u32,
@@ -176,9 +178,9 @@ pub enum StakePoolInstruction {
     /// between SOL staked on different validators, the staker can force all
     /// deposits and/or withdraws to go to one chosen account, or unset that account.
     ///
-    /// 0. `[]` Stake pool
+    /// 0. `[w]` Stake pool
     /// 1. `[s]` Stake pool staker
-    /// 2. `[w]` Validator list
+    /// 2. `[]` Validator list
     ///
     /// Fails if the validator is not part of the stake pool.
     SetPreferredValidator {
@@ -231,6 +233,12 @@ pub enum StakePoolInstruction {
     ///   7. `[]` Pool token program
     UpdateStakePoolBalance,
 
+    ///   Cleans up validator stake account entries marked as `ReadyForRemoval`
+    ///
+    ///   0. `[]` Stake pool
+    ///   1. `[w]` Validator stake list storage account
+    CleanupRemovedValidatorEntries,
+
     ///   Deposit some stake into the pool.  The output is a "pool" token representing ownership
     ///   into the pool. Inputs are converted to the current ratio.
     ///
@@ -267,10 +275,11 @@ pub enum StakePoolInstruction {
     ///   5. `[]` User account to set as a new withdraw authority
     ///   6. `[s]` User transfer authority, for pool token account
     ///   7. `[w]` User account with pool tokens to burn from
-    ///   8. `[w]` Pool token mint account
-    ///   9. `[]` Sysvar clock account (required)
-    ///  10. `[]` Pool token program id
-    ///  11. `[]` Stake program id,
+    ///   8. `[w]` Account to receive pool fee tokens
+    ///   9. `[w]` Pool token mint account
+    ///  10. `[]` Sysvar clock account (required)
+    ///  11. `[]` Pool token program id
+    ///  12. `[]` Stake program id,
     ///  userdata: amount of pool tokens to withdraw
     Withdraw(u64),
 
@@ -299,6 +308,17 @@ pub enum StakePoolInstruction {
     ///  1. `[s]` Manager or current staker
     ///  2. '[]` New staker pubkey
     SetStaker,
+
+    ///  (Manager only) Update Withdrawal fee for next epoch
+    ///
+    ///  0. `[w]` StakePool
+    ///  1. `[s]` Manager
+    ///  2. `[]` Sysvar clock
+    SetWithdrawalFee {
+        /// Fee assessed as percentage of perceived rewards
+        #[allow(dead_code)] // but it's not
+        fee: Fee,
+    },
 }
 
 /// Creates an 'initialize' instruction.
@@ -314,10 +334,12 @@ pub fn initialize(
     token_program_id: &Pubkey,
     deposit_authority: Option<Pubkey>,
     fee: Fee,
+    withdrawal_fee: Fee,
     max_validators: u32,
 ) -> Instruction {
     let init_data = StakePoolInstruction::Initialize {
         fee,
+        withdrawal_fee,
         max_validators,
     };
     let data = init_data.try_to_vec().unwrap();
@@ -515,9 +537,9 @@ pub fn set_preferred_validator(
     Instruction {
         program_id: *program_id,
         accounts: vec![
-            AccountMeta::new_readonly(*stake_pool_address, false),
+            AccountMeta::new(*stake_pool_address, false),
             AccountMeta::new_readonly(*staker, true),
-            AccountMeta::new(*validator_list_address, false),
+            AccountMeta::new_readonly(*validator_list_address, false),
         ],
         data: StakePoolInstruction::SetPreferredValidator {
             validator_type,
@@ -730,6 +752,25 @@ pub fn update_stake_pool_balance(
     }
 }
 
+/// Creates `CleanupRemovedValidatorEntries` instruction (removes entries from the validator list)
+pub fn cleanup_removed_validator_entries(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    validator_list_storage: &Pubkey,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new_readonly(*stake_pool, false),
+        AccountMeta::new(*validator_list_storage, false),
+    ];
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: StakePoolInstruction::CleanupRemovedValidatorEntries
+            .try_to_vec()
+            .unwrap(),
+    }
+}
+
 /// Creates all `UpdateValidatorListBalance` and `UpdateStakePoolBalance`
 /// instructions for fully updating a stake pool each epoch
 pub fn update_stake_pool(
@@ -738,7 +779,7 @@ pub fn update_stake_pool(
     validator_list: &ValidatorList,
     stake_pool_address: &Pubkey,
     no_merge: bool,
-) -> (Vec<Instruction>, Instruction) {
+) -> (Vec<Instruction>, Vec<Instruction>) {
     let vote_accounts: Vec<Pubkey> = validator_list
         .validators
         .iter()
@@ -764,16 +805,23 @@ pub fn update_stake_pool(
         start_index += MAX_VALIDATORS_TO_UPDATE as u32;
     }
 
-    let update_balance_instruction = update_stake_pool_balance(
-        program_id,
-        stake_pool_address,
-        &withdraw_authority,
-        &stake_pool.validator_list,
-        &stake_pool.reserve_stake,
-        &stake_pool.manager_fee_account,
-        &stake_pool.pool_mint,
-    );
-    (update_list_instructions, update_balance_instruction)
+    let final_instructions = vec![
+        update_stake_pool_balance(
+            program_id,
+            stake_pool_address,
+            &withdraw_authority,
+            &stake_pool.validator_list,
+            &stake_pool.reserve_stake,
+            &stake_pool.manager_fee_account,
+            &stake_pool.pool_mint,
+        ),
+        cleanup_removed_validator_entries(
+            program_id,
+            stake_pool_address,
+            &stake_pool.validator_list,
+        ),
+    ];
+    (update_list_instructions, final_instructions)
 }
 
 /// Creates instructions required to deposit into a stake pool, given a stake
@@ -893,6 +941,7 @@ pub fn withdraw(
     user_stake_authority: &Pubkey,
     user_transfer_authority: &Pubkey,
     user_pool_token_account: &Pubkey,
+    manager_fee_account: &Pubkey,
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
     amount: u64,
@@ -906,6 +955,7 @@ pub fn withdraw(
         AccountMeta::new_readonly(*user_stake_authority, false),
         AccountMeta::new_readonly(*user_transfer_authority, true),
         AccountMeta::new(*user_pool_token_account, false),
+        AccountMeta::new(*manager_fee_account, false),
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
@@ -955,6 +1005,27 @@ pub fn set_fee(
         program_id: *program_id,
         accounts,
         data: StakePoolInstruction::SetFee { fee }.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates a 'set fee' instruction.
+pub fn set_withdrawal_fee(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    manager: &Pubkey,
+    fee: Fee,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new(*stake_pool, false),
+        AccountMeta::new_readonly(*manager, true),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+    ];
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: StakePoolInstruction::SetWithdrawalFee { fee }
+            .try_to_vec()
+            .unwrap(),
     }
 }
 

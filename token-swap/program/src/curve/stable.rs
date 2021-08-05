@@ -158,7 +158,9 @@ impl CurveCalculator for StableCurve {
         })
     }
 
-    /// Re-implementation of `remove_liquidty`: https://github.com/curvefi/curve-contract/blob/80bbe179083c9a7062e4c482b0be3bfb7501f2bd/contracts/pool-templates/base/SwapTemplateBase.vy#L513
+    /// Re-implementation of `remove_liquidty`:
+    ///
+    /// <https://github.com/curvefi/curve-contract/blob/80bbe179083c9a7062e4c482b0be3bfb7501f2bd/contracts/pool-templates/base/SwapTemplateBase.vy#L513>
     fn pool_tokens_to_trading_tokens(
         &self,
         pool_tokens: u128,
@@ -199,7 +201,9 @@ impl CurveCalculator for StableCurve {
     }
 
     /// Get the amount of pool tokens for the given amount of token A or B.
-    /// Re-implementation of `calc_token_amount`: https://github.com/curvefi/curve-contract/blob/80bbe179083c9a7062e4c482b0be3bfb7501f2bd/contracts/pool-templates/base/SwapTemplateBase.vy#L267
+    /// Re-implementation of `calc_token_amount`:
+    ///
+    /// <https://github.com/curvefi/curve-contract/blob/80bbe179083c9a7062e4c482b0be3bfb7501f2bd/contracts/pool-templates/base/SwapTemplateBase.vy#L267>
     fn deposit_single_token_type(
         &self,
         source_amount: u128,
