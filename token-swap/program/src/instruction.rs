@@ -110,6 +110,8 @@ pub enum SwapInstruction {
     ///   supply.  Must be empty, not owned by swap authority.
     ///   7. '[]` Token program id
     ///   8. '[writable]` Pool registry
+    ///   9. '[]` System Program
+    ///   10. '[]` Rent
     Initialize(Initialize),
 
     ///   Swap the tokens in the pool.
