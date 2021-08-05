@@ -3877,6 +3877,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "solana-vote-program",
+ "spl-math",
  "spl-token 3.2.0",
  "thiserror",
 ]

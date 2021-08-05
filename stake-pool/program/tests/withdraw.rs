@@ -448,10 +448,10 @@ async fn fail_with_unknown_validator() {
         recent_blockhash,
         stake_pool_accounts,
         _,
-        _,
+        deposit_info,
         user_transfer_authority,
         user_stake_recipient,
-        _,
+        tokens_to_withdraw,
     ) = setup().await;
 
     let validator_stake_account =
@@ -475,69 +475,7 @@ async fn fail_with_unknown_validator() {
         )
         .await;
 
-    let user_pool_account = Keypair::new();
-    let user = Keypair::new();
-    create_token_account(
-        &mut banks_client,
-        &payer,
-        &recent_blockhash,
-        &user_pool_account,
-        &stake_pool_accounts.pool_mint.pubkey(),
-        &user.pubkey(),
-    )
-    .await
-    .unwrap();
-
-    let user = Keypair::new();
-    // make stake account
-    let user_stake = Keypair::new();
-    let lockup = stake_program::Lockup::default();
-    let authorized = stake_program::Authorized {
-        staker: stake_pool_accounts.deposit_authority,
-        withdrawer: stake_pool_accounts.deposit_authority,
-    };
-    create_independent_stake_account(
-        &mut banks_client,
-        &payer,
-        &recent_blockhash,
-        &user_stake,
-        &authorized,
-        &lockup,
-        TEST_STAKE_AMOUNT,
-    )
-    .await;
-    // make pool token account
-    let user_pool_account = Keypair::new();
-    create_token_account(
-        &mut banks_client,
-        &payer,
-        &recent_blockhash,
-        &user_pool_account,
-        &stake_pool_accounts.pool_mint.pubkey(),
-        &user.pubkey(),
-    )
-    .await
-    .unwrap();
-
-    let user_pool_account = user_pool_account.pubkey();
-    let pool_tokens = get_token_balance(&mut banks_client, &user_pool_account).await;
-
-    let tokens_to_burn = pool_tokens / 4;
-
-    // Delegate tokens for burning
-    delegate_tokens(
-        &mut banks_client,
-        &payer,
-        &recent_blockhash,
-        &user_pool_account,
-        &user,
-        &user_transfer_authority.pubkey(),
-        tokens_to_burn,
-    )
-    .await;
-
     let new_authority = Pubkey::new_unique();
-
     let transaction_error = stake_pool_accounts
         .withdraw_stake(
             &mut banks_client,
@@ -545,10 +483,10 @@ async fn fail_with_unknown_validator() {
             &recent_blockhash,
             &user_stake_recipient.pubkey(),
             &user_transfer_authority,
-            &user_pool_account,
+            &deposit_info.pool_account.pubkey(),
             &validator_stake_account.stake_account,
             &new_authority,
-            tokens_to_burn,
+            tokens_to_withdraw,
         )
         .await
         .unwrap()
