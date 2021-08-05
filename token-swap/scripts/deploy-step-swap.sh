@@ -29,9 +29,9 @@ CLUSTER_URL=""
 if [[ $1 == "localnet" ]]; then
     CLUSTER_URL="http://localhost:8899"
 elif [[ $1 == "devnet" ]]; then
-    CLUSTER_URL="https://devnet.solana.com"
+    CLUSTER_URL="https://api.devnet.solana.com"
 elif [[ $1 == "testnet" ]]; then
-    CLUSTER_URL="https://testnet.solana.com"
+    CLUSTER_URL="https://api.testnet.solana.com"
 else
     echo "Unsupported network: $1"
     exit 1
