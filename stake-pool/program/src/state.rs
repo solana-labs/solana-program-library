@@ -973,7 +973,7 @@ mod test {
             ..StakePool::default()
         };
         let rewards = 10;
-        let fee = stake_pool.calc_fee_amount(rewards).unwrap();
+        let fee = stake_pool.calc_epoch_fee_amount(rewards).unwrap();
         assert_eq!(fee, rewards);
     }
 
