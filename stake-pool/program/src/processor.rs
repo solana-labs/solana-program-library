@@ -1,5 +1,6 @@
 //! Program state processor
 
+use crate::instruction::DepositType;
 use {
     crate::{
         error::StakePoolError,
@@ -2430,7 +2431,7 @@ impl Processor {
     fn process_set_deposit_authority(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
-        for_stake_deposit: bool,
+        deposit_type: DepositType,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
@@ -2446,12 +2447,13 @@ impl Processor {
             return Err(StakePoolError::InvalidState.into());
         }
         stake_pool.check_manager(manager_info)?;
-        if for_stake_deposit {
-            stake_pool.stake_deposit_authority = new_sol_deposit_authority.unwrap_or(
-                find_deposit_authority_program_address(program_id, stake_pool_info.key).0,
-            );
-        } else {
-            stake_pool.sol_deposit_authority = new_sol_deposit_authority;
+        match deposit_type {
+            DepositType::Stake => {
+                stake_pool.stake_deposit_authority = new_sol_deposit_authority.unwrap_or(
+                    find_deposit_authority_program_address(program_id, stake_pool_info.key).0,
+                );
+            }
+            DepositType::Sol => stake_pool.sol_deposit_authority = new_sol_deposit_authority,
         }
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
         Ok(())
@@ -2555,13 +2557,9 @@ impl Processor {
                 msg!("Instruction: DepositSol");
                 Self::process_deposit_sol(program_id, accounts, lamports)
             }
-            StakePoolInstruction::SetSolDepositAuthority => {
-                msg!("Instruction: SetSolDepositAuthority");
-                Self::process_set_deposit_authority(program_id, accounts, false)
-            }
-            StakePoolInstruction::SetStakeDepositAuthority => {
-                msg!("Instruction: SetStakeDepositAuthority");
-                Self::process_set_deposit_authority(program_id, accounts, true)
+            StakePoolInstruction::SetDepositAuthority(deposit_type) => {
+                msg!("Instruction: SetDepositAuthority");
+                Self::process_set_deposit_authority(program_id, accounts, deposit_type)
             }
         }
     }
