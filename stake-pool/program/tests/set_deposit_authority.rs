@@ -174,9 +174,10 @@ async fn fail_set_stake_deposit_authority_without_signature() {
         new_stake_deposit_authority,
     ) = setup().await;
 
-    let data = instruction::StakePoolInstruction::SetDepositAuthority(instruction::DepositType::Stake)
-        .try_to_vec()
-        .unwrap();
+    let data =
+        instruction::StakePoolInstruction::SetDepositAuthority(instruction::DepositType::Stake)
+            .try_to_vec()
+            .unwrap();
     let accounts = vec![
         AccountMeta::new(stake_pool_accounts.stake_pool.pubkey(), false),
         AccountMeta::new_readonly(stake_pool_accounts.manager.pubkey(), false),
@@ -322,9 +323,10 @@ async fn fail_set_sol_deposit_authority_without_signature() {
     let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, new_sol_deposit_authority) =
         setup().await;
 
-    let data = instruction::StakePoolInstruction::SetDepositAuthority(instruction::DepositType::Sol)
-        .try_to_vec()
-        .unwrap();
+    let data =
+        instruction::StakePoolInstruction::SetDepositAuthority(instruction::DepositType::Sol)
+            .try_to_vec()
+            .unwrap();
     let accounts = vec![
         AccountMeta::new(stake_pool_accounts.stake_pool.pubkey(), false),
         AccountMeta::new_readonly(stake_pool_accounts.manager.pubkey(), false),
