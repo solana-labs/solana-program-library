@@ -1885,6 +1885,12 @@ impl Processor {
             .checked_sub(pool_tokens_referral_fee)
             .ok_or(StakePoolError::CalculationFailure)?;
 
+        if pool_tokens_user + pool_tokens_manager_deposit_fee + pool_tokens_referral_fee
+            != new_pool_tokens
+        {
+            return Err(StakePoolError::CalculationFailure.into());
+        }
+
         if new_pool_tokens == 0 {
             return Err(StakePoolError::DepositTooSmall.into());
         }
@@ -2036,6 +2042,12 @@ impl Processor {
         let pool_tokens_manager_deposit_fee = pool_tokens_sol_deposit_fee
             .checked_sub(pool_tokens_referral_fee)
             .ok_or(StakePoolError::CalculationFailure)?;
+
+        if pool_tokens_user + pool_tokens_manager_deposit_fee + pool_tokens_referral_fee
+            != new_pool_tokens
+        {
+            return Err(StakePoolError::CalculationFailure.into());
+        }
 
         Self::sol_transfer(
             from_user_lamports_info.clone(),
