@@ -30,8 +30,8 @@ pub const PROGRAM_VERSION: u8 = 1;
 pub const UNINITIALIZED_VERSION: u8 = 0;
 
 /// Number of slots per year
-pub const SLOTS_PER_YEAR: u64 =
-    DEFAULT_TICKS_PER_SECOND / DEFAULT_TICKS_PER_SLOT * SECONDS_PER_DAY * 365;
+// 2 (slots per second) * 60 * 60 * 24 * 365 = 63072000
+pub const SLOTS_PER_YEAR: u64 = 63072000;
 
 // Helpers
 fn pack_decimal(decimal: Decimal, dst: &mut [u8; 16]) {
