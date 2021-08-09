@@ -21,7 +21,7 @@ use bytemuck::{
 const MAX_REGISTRY_SIZE: usize = ((10 * 1024 * 1024) / 32) - 1;
 
 /// Pool Registry
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone)]
 #[repr(packed)]
 pub struct PoolRegistry {
     /// Track if registry has been created

@@ -28,7 +28,7 @@ arbitrary = { version = "0.4", features = ["derive"], optional = true }
 roots = { version = "0.0.7", optional = true }
 
 [dev-dependencies]
-solana-program-test = "1.7.4"
+solana-program-test = "1.7.7"
 solana-sdk = "1.7.7"
 proptest = "1.0"
 sim =  { path = "./sim" }
