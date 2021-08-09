@@ -11,11 +11,7 @@ pub use obligation::*;
 pub use reserve::*;
 
 use crate::math::{Decimal, WAD};
-use solana_program::{
-    clock::{DEFAULT_TICKS_PER_SECOND, DEFAULT_TICKS_PER_SLOT, SECONDS_PER_DAY},
-    msg,
-    program_error::ProgramError,
-};
+use solana_program::{msg, program_error::ProgramError};
 
 /// Collateral tokens are initially valued at a ratio of 5:1 (collateral:liquidity)
 // @FIXME: restore to 5
