@@ -180,6 +180,7 @@ impl Obligation {
     pub fn find_or_add_liquidity_to_borrows(
         &mut self,
         borrow_reserve: Pubkey,
+        cumulative_borrow_rate_wads: Decimal,
     ) -> Result<&mut ObligationLiquidity, ProgramError> {
         if let Some(liquidity_index) = self._find_liquidity_index_in_borrows(borrow_reserve) {
             return Ok(&mut self.borrows[liquidity_index]);
@@ -191,7 +192,7 @@ impl Obligation {
             );
             return Err(LendingError::ObligationReserveLimit.into());
         }
-        let liquidity = ObligationLiquidity::new(borrow_reserve);
+        let liquidity = ObligationLiquidity::new(borrow_reserve, cumulative_borrow_rate_wads);
         self.borrows.push(liquidity);
         Ok(self.borrows.last_mut().unwrap())
     }
@@ -279,10 +280,10 @@ pub struct ObligationLiquidity {
 
 impl ObligationLiquidity {
     /// Create new obligation liquidity
-    pub fn new(borrow_reserve: Pubkey) -> Self {
+    pub fn new(borrow_reserve: Pubkey, cumulative_borrow_rate_wads: Decimal) -> Self {
         Self {
             borrow_reserve,
-            cumulative_borrow_rate_wads: Decimal::zero(),
+            cumulative_borrow_rate_wads,
             borrowed_amount_wads: Decimal::zero(),
             market_value: Decimal::zero(),
         }

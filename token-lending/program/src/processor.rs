@@ -1398,18 +1398,15 @@ fn process_borrow_obligation_liquidity(
         return Err(LendingError::BorrowTooSmall.into());
     }
 
-    // logically i think this should be below but is equiv because how borrow doesn't update rate
     let cumulative_borrow_rate_wads = borrow_reserve.liquidity.cumulative_borrow_rate_wads;
 
     borrow_reserve.liquidity.borrow(borrow_amount)?;
     borrow_reserve.last_update.mark_stale();
     Reserve::pack(borrow_reserve, &mut borrow_reserve_info.data.borrow_mut())?;
 
-    let obligation_liquidity =
-        obligation.find_or_add_liquidity_to_borrows(*borrow_reserve_info.key)?;
-    if obligation_liquidity.cumulative_borrow_rate_wads == Decimal::zero() {
-        obligation_liquidity.cumulative_borrow_rate_wads = cumulative_borrow_rate_wads;
-    }
+    let obligation_liquidity = obligation
+        .find_or_add_liquidity_to_borrows(*borrow_reserve_info.key, cumulative_borrow_rate_wads)?;
+
     obligation_liquidity.borrow(borrow_amount)?;
     obligation.last_update.mark_stale();
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
