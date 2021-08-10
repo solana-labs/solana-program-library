@@ -28,6 +28,8 @@ pub struct Initialize {
     /// swap curve info for pool, including CurveType and anything
     /// else that may be required
     pub swap_curve: SwapCurve,
+    /// nonce used to create valid program address for the pool
+    pub pool_nonce: u8,
 }
 
 /// Swap instruction data
@@ -209,11 +211,14 @@ impl SwapInstruction {
                 if rest.len() >= Fees::LEN {
                     let (fees, rest) = rest.split_at(Fees::LEN);
                     let fees = Fees::unpack_unchecked(fees)?;
-                    let swap_curve = SwapCurve::unpack_unchecked(rest)?;
+                    let (curve, rest) = rest.split_at(SwapCurve::LEN);
+                    let swap_curve = SwapCurve::unpack_unchecked(curve)?;
+                    let pool_nonce = rest[0];
                     Self::Initialize(Initialize {
                         nonce,
                         fees,
                         swap_curve,
+                        pool_nonce
                     })
                 } else {
                     return Err(SwapError::InvalidInstruction.into());
@@ -291,6 +296,7 @@ impl SwapInstruction {
                 nonce,
                 fees,
                 swap_curve,
+                pool_nonce
             }) => {
                 buf.push(0);
                 buf.push(*nonce);
@@ -300,6 +306,7 @@ impl SwapInstruction {
                 let mut swap_curve_slice = [0u8; SwapCurve::LEN];
                 Pack::pack_into_slice(swap_curve, &mut swap_curve_slice[..]);
                 buf.extend_from_slice(&swap_curve_slice);
+                buf.push(*pool_nonce);
             }
             Self::Swap(Swap {
                 amount_in,
@@ -370,12 +377,14 @@ pub fn initialize(
     nonce: u8,
     fees: Fees,
     swap_curve: SwapCurve,
-    pool_registry_pubkey: &Pubkey
+    pool_registry_pubkey: &Pubkey,
+    pool_nonce: u8,
 ) -> Result<Instruction, ProgramError> {
     let init_data = SwapInstruction::Initialize(Initialize {
         nonce,
         fees,
         swap_curve,
+        pool_nonce
     });
     let data = init_data.pack();
 
@@ -653,10 +662,12 @@ mod tests {
             curve_type,
             calculator,
         };
+        let pool_nonce: u8 = 255;
         let check = SwapInstruction::Initialize(Initialize {
             nonce,
             fees,
             swap_curve,
+            pool_nonce
         });
         let packed = check.pack();
         let mut expect = vec![0u8, nonce];

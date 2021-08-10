@@ -88,7 +88,14 @@ async function getConnection(): Promise<Connection> {
 export async function initializePoolRegistry(): Promise<void> {
   const connection = await getConnection();
   payer = await newAccountWithLamports(connection, 172981613440);
-  await TokenSwap.initializePoolRegistry(connection, payer, STEP_SWAP_PROGRAM_ID)
+  const transaction = await TokenSwap.initializePoolRegistry(connection, payer.publicKey, STEP_SWAP_PROGRAM_ID)
+
+  await sendAndConfirmTransaction(
+    'initialize pool registry',
+    connection,
+    transaction,
+    payer
+  );
 }
 
 export async function createTokenSwap(): Promise<void> {
@@ -120,7 +127,7 @@ export async function createTokenSwap(): Promise<void> {
 
   const curveBuffer = Buffer.alloc(1);
   curveBuffer.writeUInt8(CURVE_TYPE, 0);
-  let [tokenSwapKey, nonce] = await PublicKey.findProgramAddress(
+  let [tokenSwapKey, poolNonce] = await PublicKey.findProgramAddress(
     [
       seedKeyVec[0],
       seedKeyVec[1],
@@ -164,7 +171,7 @@ export async function createTokenSwap(): Promise<void> {
   console.log('creating token swap');
   tokenSwap = await TokenSwap.createTokenSwap(
     connection,
-    payer,
+    owner,
     tokenSwapKey,
     authority,
     tokenAccountA,
@@ -184,7 +191,8 @@ export async function createTokenSwap(): Promise<void> {
     OWNER_WITHDRAW_FEE_NUMERATOR,
     OWNER_WITHDRAW_FEE_DENOMINATOR,
     CURVE_TYPE,
-    poolRegistryKey
+    poolRegistryKey,
+    poolNonce
   );
 
   console.log('loading token swap');
@@ -192,6 +200,7 @@ export async function createTokenSwap(): Promise<void> {
     connection,
     tokenSwapKey,
     STEP_SWAP_PROGRAM_ID,
+    payer.publicKey,
     payer,
   );
 
@@ -232,19 +241,22 @@ export async function createTokenSwap(): Promise<void> {
   );
   assert(CURVE_TYPE == fetchedTokenSwap.curveType);
 
-  await tryCreateDuplicateTokenSwap();
+  let success = await tryCreateTokenSwap(CURVE_TYPE);
+  assert(!success);
+  success = await tryCreateTokenSwap(CurveType.Stable);
+  assert(success);
 }
 
-export async function tryCreateDuplicateTokenSwap(): Promise<void> {
-  console.log("attempting to create duplicate pool")
+export async function tryCreateTokenSwap(curveType: number): Promise<boolean> {
+  console.log("attempting to create duplicate pool with curve: ", curveType)
   const connection = await getConnection();
 
   const seedKeyVec = [mintA.publicKey.toBuffer(), mintB.publicKey.toBuffer()];
   seedKeyVec.sort();
 
   const curveBuffer = Buffer.alloc(1);
-  curveBuffer.writeUInt8(CURVE_TYPE, 0);
-  let [tokenSwapKey, _nonce] = await PublicKey.findProgramAddress(
+  curveBuffer.writeUInt8(curveType, 0);
+  let [tokenSwapKey, poolNonce] = await PublicKey.findProgramAddress(
     [
       seedKeyVec[0],
       seedKeyVec[1],
@@ -308,13 +320,56 @@ export async function tryCreateDuplicateTokenSwap(): Promise<void> {
       OWNER_TRADING_FEE_DENOMINATOR,
       OWNER_WITHDRAW_FEE_NUMERATOR,
       OWNER_WITHDRAW_FEE_DENOMINATOR,
-      CURVE_TYPE,
-      poolRegistryKey
+      curveType,
+      poolRegistryKey,
+      poolNonce
     );
-    assert(false);
-  } catch {
 
+    console.log('loading token swap');
+    const fetchedTokenSwap = await TokenSwap.loadTokenSwap(
+      connection,
+      tokenSwapKey,
+      STEP_SWAP_PROGRAM_ID,
+      payer.publicKey,
+      payer,
+    );
+
+    assert(fetchedTokenSwap.tokenProgramId.equals(TOKEN_PROGRAM_ID));
+    assert(fetchedTokenSwap.tokenAccountA.equals(tokenAccountA));
+    assert(fetchedTokenSwap.tokenAccountB.equals(tokenAccountB));
+    assert(fetchedTokenSwap.mintA.equals(mintA.publicKey));
+    assert(fetchedTokenSwap.mintB.equals(mintB.publicKey));
+    assert(fetchedTokenSwap.poolToken.equals(tokenPool.publicKey));
+    assert(fetchedTokenSwap.feeAccount.equals(feeAccount));
+    assert(
+      TRADING_FEE_NUMERATOR == fetchedTokenSwap.tradeFeeNumerator.toNumber(),
+    );
+    assert(
+      TRADING_FEE_DENOMINATOR == fetchedTokenSwap.tradeFeeDenominator.toNumber(),
+    );
+    assert(
+      OWNER_TRADING_FEE_NUMERATOR ==
+        fetchedTokenSwap.ownerTradeFeeNumerator.toNumber(),
+    );
+    assert(
+      OWNER_TRADING_FEE_DENOMINATOR ==
+        fetchedTokenSwap.ownerTradeFeeDenominator.toNumber(),
+    );
+    assert(
+      OWNER_WITHDRAW_FEE_NUMERATOR ==
+        fetchedTokenSwap.ownerWithdrawFeeNumerator.toNumber(),
+    );
+    assert(
+      OWNER_WITHDRAW_FEE_DENOMINATOR ==
+        fetchedTokenSwap.ownerWithdrawFeeDenominator.toNumber(),
+    );
+    assert(CURVE_TYPE == fetchedTokenSwap.curveType);
+
+    return true;
+  } catch {
   }
+
+  return false;
 }
 
 export async function depositAllTokenTypes(): Promise<void> {
