@@ -60,7 +60,7 @@ export class Numberu64 extends BN {
 export const PoolRegistryLayout = BufferLayout.struct([
   BufferLayout.u8('isInitialized'),
   BufferLayout.u32('registrySize'),
-  BufferLayout.blob((10 * 1024 * 1024) - 32, 'accounts'),
+  BufferLayout.blob((2 * 1024 * 1024) - 32, 'accounts'),
 ]);
 
 export const TokenSwapLayout = BufferLayout.struct([
@@ -87,6 +87,7 @@ export const TokenSwapLayout = BufferLayout.struct([
 export const CurveType = Object.freeze({
   ConstantProduct: 0, // Constant product curve, Uniswap-style
   ConstantPrice: 1, // Constant price curve, always X amount of A token for 1 B token, where X is defined at init
+  Stable: 2, // Stable, like uniswap, but with wide zone of 1:1 instead of one point
   Offset: 3, // Offset curve, like Uniswap, but with an additional offset on the token B side
 });
 
@@ -182,9 +183,9 @@ export class TokenSwap {
    */
   static async initializePoolRegistry(
     connection: Connection,
-    payer: Keypair,
+    registryOwner: PublicKey,
     swapProgramId: PublicKey,
-  ): Promise<void> {
+  ): Promise<Transaction> {
     let transaction;
 
     // Allocate memory for the account
@@ -193,13 +194,13 @@ export class TokenSwap {
     );
     transaction = new Transaction();
 
-    const poolRegistryKey = await PublicKey.createWithSeed(payer.publicKey, POOL_REGISTRY_SEED, swapProgramId);
+    const poolRegistryKey = await PublicKey.createWithSeed(registryOwner, POOL_REGISTRY_SEED, swapProgramId);
 
     transaction.add(
       SystemProgram.createAccountWithSeed({
-        fromPubkey: payer.publicKey,
+        fromPubkey: registryOwner,
         newAccountPubkey: poolRegistryKey,
-        basePubkey: payer.publicKey,
+        basePubkey: registryOwner,
         seed: POOL_REGISTRY_SEED,
         lamports: balanceNeeded,
         space: PoolRegistryLayout.span,
@@ -208,18 +209,13 @@ export class TokenSwap {
     );
 
     const instruction = TokenSwap.createInitRegistryInstruction(
-      payer.publicKey,
+      registryOwner,
       poolRegistryKey,
       swapProgramId
     );
 
     transaction.add(instruction);
-    await sendAndConfirmTransaction(
-      'initialize pool registry',
-      connection,
-      transaction,
-      payer
-    );
+    return transaction;
   }
 
   /**
@@ -297,6 +293,7 @@ export class TokenSwap {
     ownerWithdrawFeeDenominator: number,
     curveType: number,
     poolRegistry: PublicKey,
+    poolNonce: number,
   ): TransactionInstruction {
     const keys = [
       {pubkey: payer, isSigner: true, isWritable: false},
@@ -323,6 +320,7 @@ export class TokenSwap {
       BufferLayout.nu64('ownerWithdrawFeeDenominator'),
       BufferLayout.u8('curveType'),
       BufferLayout.blob(32, 'curveParameters'),
+      BufferLayout.u8('poolNonce'),
     ]);
     let data = Buffer.alloc(1024);
     {
@@ -337,6 +335,7 @@ export class TokenSwap {
           ownerWithdrawFeeNumerator,
           ownerWithdrawFeeDenominator,
           curveType,
+          poolNonce
         },
         data,
       );
@@ -353,6 +352,7 @@ export class TokenSwap {
     connection: Connection,
     address: PublicKey,
     programId: PublicKey,
+    registryOwner: PublicKey,
     payer: Keypair,
   ): Promise<TokenSwap> {
     const data = await loadAccount(connection, address, programId);
@@ -361,7 +361,7 @@ export class TokenSwap {
       throw new Error(`Invalid token swap state`);
     }
 
-    const poolRegistry = await PublicKey.createWithSeed(payer.publicKey, POOL_REGISTRY_SEED, programId);
+    const poolRegistry = await PublicKey.createWithSeed(registryOwner, POOL_REGISTRY_SEED, programId);
 
     const [authority] = await PublicKey.findProgramAddress(
       [address.toBuffer()],
@@ -461,6 +461,7 @@ export class TokenSwap {
     ownerWithdrawFeeDenominator: number,
     curveType: number,
     poolRegistry: PublicKey,
+    poolNonce: number,
   ): Promise<TokenSwap> {
     let transaction;
     const tokenSwap = new TokenSwap(
@@ -483,7 +484,7 @@ export class TokenSwap {
       new Numberu64(ownerWithdrawFeeDenominator),
       curveType,
       payer,
-      poolRegistry
+      poolRegistry,
     );
 
     // Allocate memory for the account
@@ -491,15 +492,6 @@ export class TokenSwap {
       connection,
     );
     transaction = new Transaction();
-    /*transaction.add(
-      SystemProgram.createAccount({
-        fromPubkey: payer.publicKey,
-        newAccountPubkey: tokenSwapKey,
-        lamports: balanceNeeded,
-        space: TokenSwapLayout.span,
-        programId: swapProgramId,
-      }),
-    );*/
 
     const instruction = TokenSwap.createInitSwapInstruction(
       payer.publicKey,
@@ -520,7 +512,8 @@ export class TokenSwap {
       ownerWithdrawFeeNumerator,
       ownerWithdrawFeeDenominator,
       curveType,
-      poolRegistry
+      poolRegistry,
+      poolNonce
     );
 
     transaction.add(instruction);

@@ -211,6 +211,7 @@ impl Processor {
         nonce: u8,
         fees: Fees,
         swap_curve: SwapCurve,
+        pool_nonce: u8,
         accounts: &[AccountInfo],
         swap_constraints: &Option<SwapConstraints>,
     ) -> ProgramResult {
@@ -299,13 +300,15 @@ impl Processor {
         seed_key_vec.push(token_b.mint.to_bytes());
         seed_key_vec.sort();
 
-        let (pool_pda, pool_pda_seed_nonce) = Pubkey::find_program_address(
+        let pool_pda = Pubkey::create_program_address(
             &[
                 &seed_key_vec[0][..32],
                 &seed_key_vec[1][..32],
-                &[swap_curve.curve_type as u8]
-            ], program_id);
+                &[swap_curve.curve_type as u8],
+                &[pool_nonce]
+            ], program_id)?;
 
+        msg!("checking pool pda: {}, {} with nonce {}", swap_info.key, pool_pda, pool_nonce);
         if *swap_info.key != pool_pda {
             return Err(SwapError::InvalidProgramAddress.into());
         }
@@ -315,7 +318,7 @@ impl Processor {
                 &seed_key_vec[0][..32],
                 &seed_key_vec[1][..32],
                 &[swap_curve.curve_type as u8],
-                &[pool_pda_seed_nonce]
+                &[pool_nonce]
             ]
         ];
 
@@ -375,6 +378,7 @@ impl Processor {
             pool_fee_account: *fee_account_info.key,
             fees,
             swap_curve,
+            pool_nonce
         });
         SwapVersion::pack(obj, &mut swap_info.data.borrow_mut())?;
         Ok(())
@@ -1058,6 +1062,7 @@ impl Processor {
                 nonce,
                 fees,
                 swap_curve,
+                pool_nonce
             }) => {
                 msg!("Instruction: Init");
                 Self::process_initialize(
@@ -1065,6 +1070,7 @@ impl Processor {
                     nonce,
                     fees,
                     swap_curve,
+                    pool_nonce,
                     accounts,
                     swap_constraints,
                 )
@@ -1360,7 +1366,8 @@ mod tests {
         token_b_mint_account: Account,
         pool_registry_key: Pubkey,
         pool_registry_account: Account,
-        rent_sysvar_account: Account
+        rent_sysvar_account: Account,
+        pool_nonce: u8
     }
 
     impl SwapAccountInfo {
@@ -1383,10 +1390,15 @@ mod tests {
             let (token_b_mint_key, mut token_b_mint_account) =
                 create_mint(&spl_token::id(), user_key, None);
 
-            let (swap_key, _pool_pda_seed_nonce) = Pubkey::find_program_address(
+            let mut seed_key_vec = Vec::new();
+            seed_key_vec.push(token_a_mint_key.to_bytes());
+            seed_key_vec.push(token_b_mint_key.to_bytes());
+            seed_key_vec.sort();
+
+            let (swap_key, pool_nonce) = Pubkey::find_program_address(
                 &[
-                    &token_a_mint_key.to_bytes()[..32],
-                    &token_b_mint_key.to_bytes()[..32],
+                    &seed_key_vec[0][..32],
+                    &seed_key_vec[1][..32],
                     &[swap_curve.curve_type as u8]
                 ], &SWAP_PROGRAM_ID);
 
@@ -1459,7 +1471,8 @@ mod tests {
                 token_b_mint_account,
                 pool_registry_key,
                 pool_registry_account,
-                rent_sysvar_account
+                rent_sysvar_account,
+                pool_nonce
             }
         }
 
@@ -1480,6 +1493,7 @@ mod tests {
                     self.fees.clone(),
                     self.swap_curve.clone(),
                     &self.pool_registry_key,
+                    self.pool_nonce
                 )
                 .unwrap(),
                 vec![
@@ -2589,6 +2603,7 @@ mod tests {
                         accounts.fees.clone(),
                         accounts.swap_curve.clone(),
                         &accounts.pool_registry_key,
+                        accounts.pool_nonce
                     )
                     .unwrap(),
                     vec![
@@ -2769,6 +2784,7 @@ mod tests {
                         accounts.fees.clone(),
                         accounts.swap_curve.clone(),
                         &accounts.pool_registry_key,
+                        accounts.pool_nonce
                     )
                     .unwrap(),
                     vec![
@@ -2843,6 +2859,7 @@ mod tests {
                         accounts.fees.clone(),
                         accounts.swap_curve.clone(),
                         &accounts.pool_registry_key,
+                        accounts.pool_nonce
                     )
                     .unwrap(),
                     vec![
@@ -2913,6 +2930,7 @@ mod tests {
                     accounts.fees,
                     accounts.swap_curve.clone(),
                     &accounts.pool_registry_key,
+                    accounts.pool_nonce
                 )
                 .unwrap(),
                 vec![
@@ -5893,6 +5911,7 @@ mod tests {
                 accounts.fees.clone(),
                 accounts.swap_curve.clone(),
                 &accounts.pool_registry_key,
+                accounts.pool_nonce
             )
             .unwrap(),
             vec![
