@@ -136,10 +136,17 @@ impl StakePool {
 
     /// calculate lamports amount on withdrawal
     pub fn calc_lamports_withdraw_amount(&self, pool_tokens: u64) -> Option<u64> {
-        let (quotient, _) = (pool_tokens as u128)
-            .checked_mul(self.total_stake_lamports as u128)?
-            .checked_ceil_div(self.pool_token_supply as u128)?;
-        u64::try_from(quotient).ok()
+        // `checked_ceil_div` returns `None` for a 0 quotient result, but in this
+        // case, a return of 0 is valid for small amounts of pool tokens. So
+        // we check for that separately
+        let numerator = (pool_tokens as u128).checked_mul(self.total_stake_lamports as u128)?;
+        let denominator = self.pool_token_supply as u128;
+        if numerator < denominator || denominator == 0 {
+            Some(0)
+        } else {
+            let (quotient, _) = numerator.checked_ceil_div(denominator)?;
+            u64::try_from(quotient).ok()
+        }
     }
 
     /// calculate pool tokens to be deducted as withdrawal fees
@@ -781,6 +788,20 @@ mod test {
             .calc_lamports_withdraw_amount(pool_token_fee)
             .unwrap();
         assert_eq!(fee_lamports, LAMPORTS_PER_SOL);
+    }
+
+    #[test]
+    fn zero_withdraw_calculation() {
+        let fee = Fee {
+            numerator: 0,
+            denominator: 1,
+        };
+        let stake_pool = StakePool {
+            fee,
+            ..StakePool::default()
+        };
+        let fee_lamports = stake_pool.calc_lamports_withdraw_amount(0).unwrap();
+        assert_eq!(fee_lamports, 0);
     }
 
     #[test]
