@@ -121,7 +121,7 @@ required for a proposal to be successfully voted on.
 This is why in order to avoid traps and potentially irreversible actions the Council can be used as a safety net
 in a similar way to Multisig to moderate and supervise the voting process at the DAO inception.
 Once the newly born DAO goes through several successful proposal votes and everything is going smoothly
-the council can be removed from DAO through a community vote.
+the council can be removed from the DAO through a community vote.
 
 The Council can also be used for protocols and communities which haven't launched their token yet.
 In such cases the DAO can be setup with the yet to launch token and the Council which would governed
