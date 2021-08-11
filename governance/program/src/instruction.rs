@@ -735,7 +735,7 @@ pub fn create_proposal(
     program_id: &Pubkey,
     // Accounts
     governance: &Pubkey,
-    governing_token_owner_record: &Pubkey,
+    proposal_owner_record: &Pubkey,
     governance_authority: &Pubkey,
     payer: &Pubkey,
     // Args
@@ -756,7 +756,7 @@ pub fn create_proposal(
         AccountMeta::new_readonly(*realm, false),
         AccountMeta::new(proposal_address, false),
         AccountMeta::new(*governance, false),
-        AccountMeta::new(*governing_token_owner_record, false),
+        AccountMeta::new(*proposal_owner_record, false),
         AccountMeta::new_readonly(*governance_authority, true),
         AccountMeta::new_readonly(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
@@ -917,12 +917,14 @@ pub fn finalize_vote(
     realm: &Pubkey,
     governance: &Pubkey,
     proposal: &Pubkey,
+    proposal_owner_record: &Pubkey,
     governing_token_mint: &Pubkey,
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new_readonly(*realm, false),
         AccountMeta::new_readonly(*governance, false),
         AccountMeta::new(*proposal, false),
+        AccountMeta::new(*proposal_owner_record, false),
         AccountMeta::new_readonly(*governing_token_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];
@@ -976,12 +978,12 @@ pub fn cancel_proposal(
     program_id: &Pubkey,
     // Accounts
     proposal: &Pubkey,
-    token_owner_record: &Pubkey,
+    proposal_owner_record: &Pubkey,
     governance_authority: &Pubkey,
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(*proposal, false),
-        AccountMeta::new(*token_owner_record, false),
+        AccountMeta::new(*proposal_owner_record, false),
         AccountMeta::new_readonly(*governance_authority, true),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];
