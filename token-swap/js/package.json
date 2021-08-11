@@ -1,6 +1,6 @@
 {
   "name": "@stepfinance/step-swap",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Step Token Swap JavaScript API",
   "license": "MIT",
   "author": "Step <dev@step.finance>",

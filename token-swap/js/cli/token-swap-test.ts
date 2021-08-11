@@ -206,9 +206,13 @@ export async function createTokenSwap(): Promise<void> {
 
   const poolRegistry = await TokenSwap.loadPoolRegistry(connection, payer.publicKey, STEP_SWAP_PROGRAM_ID);
 
+  if (!poolRegistry) {
+    assert(poolRegistry !== undefined);
+    return;
+  }
   assert(poolRegistry.isInitialized);
   assert(poolRegistry.registrySize == 1);
-  assert(poolRegistry.accounts.length == 1);
+  assert(poolRegistry.accounts[poolRegistry.registrySize - 1].equals(tokenSwapKey));
 
   assert(fetchedTokenSwap.tokenProgramId.equals(TOKEN_PROGRAM_ID));
   assert(fetchedTokenSwap.tokenAccountA.equals(tokenAccountA));
@@ -240,6 +244,7 @@ export async function createTokenSwap(): Promise<void> {
       fetchedTokenSwap.ownerWithdrawFeeDenominator.toNumber(),
   );
   assert(CURVE_TYPE == fetchedTokenSwap.curveType);
+  assert(poolNonce == fetchedTokenSwap.poolNonce);
 
   let success = await tryCreateTokenSwap(CURVE_TYPE);
   assert(!success);
@@ -334,6 +339,17 @@ export async function tryCreateTokenSwap(curveType: number): Promise<boolean> {
       payer,
     );
 
+    const poolRegistry = await TokenSwap.loadPoolRegistry(connection, payer.publicKey, STEP_SWAP_PROGRAM_ID);
+
+    if (!poolRegistry) {
+      assert(poolRegistry !== undefined);
+      return false;
+    }
+
+    assert(poolRegistry.isInitialized);
+    assert(poolRegistry.registrySize > 1);
+    assert(poolRegistry.accounts[poolRegistry.registrySize - 1].equals(tokenSwapKey));
+
     assert(fetchedTokenSwap.tokenProgramId.equals(TOKEN_PROGRAM_ID));
     assert(fetchedTokenSwap.tokenAccountA.equals(tokenAccountA));
     assert(fetchedTokenSwap.tokenAccountB.equals(tokenAccountB));
@@ -363,7 +379,8 @@ export async function tryCreateTokenSwap(curveType: number): Promise<boolean> {
       OWNER_WITHDRAW_FEE_DENOMINATOR ==
         fetchedTokenSwap.ownerWithdrawFeeDenominator.toNumber(),
     );
-    assert(CURVE_TYPE == fetchedTokenSwap.curveType);
+    assert(curveType == fetchedTokenSwap.curveType);
+    assert(poolNonce == fetchedTokenSwap.poolNonce);
 
     return true;
   } catch {
