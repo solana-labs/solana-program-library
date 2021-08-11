@@ -15,7 +15,11 @@ use {
         instruction::InstructionError, signature::Keypair, signature::Signer,
         transaction::Transaction, transaction::TransactionError, transport::TransportError,
     },
-    spl_stake_pool::{error, find_deposit_authority_program_address, id, instruction, state},
+    spl_stake_pool::{
+        error, find_deposit_authority_program_address, id,
+        instruction::{self, DepositType},
+        state,
+    },
 };
 
 async fn setup() -> (BanksClient, Keypair, Hash, StakePoolAccounts, Keypair) {
@@ -53,7 +57,7 @@ async fn success_set_stake_deposit_authority() {
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
             Some(&new_stake_deposit_authority.pubkey()),
-            true,
+            DepositType::Stake,
         )],
         Some(&payer.pubkey()),
     );
@@ -86,7 +90,7 @@ async fn success_set_stake_deposit_authority_to_none() {
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
             Some(&new_stake_deposit_authority.pubkey()),
-            true,
+            DepositType::Stake,
         )],
         Some(&payer.pubkey()),
     );
@@ -108,7 +112,7 @@ async fn success_set_stake_deposit_authority_to_none() {
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
             None,
-            true,
+            DepositType::Stake,
         )],
         Some(&payer.pubkey()),
     );
@@ -141,7 +145,7 @@ async fn fail_stake_wrong_manager() {
             &stake_pool_accounts.stake_pool.pubkey(),
             &new_stake_deposit_authority.pubkey(),
             Some(&new_stake_deposit_authority.pubkey()),
-            true,
+            DepositType::Stake,
         )],
         Some(&payer.pubkey()),
     );
@@ -220,7 +224,7 @@ async fn success_set_sol_deposit_authority() {
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
             Some(&new_sol_deposit_authority.pubkey()),
-            false,
+            DepositType::Sol,
         )],
         Some(&payer.pubkey()),
     );
@@ -248,7 +252,7 @@ async fn success_set_sol_deposit_authority_to_none() {
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
             Some(&new_sol_deposit_authority.pubkey()),
-            false,
+            DepositType::Sol,
         )],
         Some(&payer.pubkey()),
     );
@@ -270,7 +274,7 @@ async fn success_set_sol_deposit_authority_to_none() {
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
             None,
-            false,
+            DepositType::Sol,
         )],
         Some(&payer.pubkey()),
     );
@@ -295,7 +299,7 @@ async fn fail_sol_wrong_manager() {
             &stake_pool_accounts.stake_pool.pubkey(),
             &new_sol_deposit_authority.pubkey(),
             Some(&new_sol_deposit_authority.pubkey()),
-            false,
+            DepositType::Sol,
         )],
         Some(&payer.pubkey()),
     );

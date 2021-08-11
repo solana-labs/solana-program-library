@@ -295,9 +295,10 @@ impl StakePool {
     #[inline]
     pub(crate) fn check_sol_deposit_authority(
         &self,
-        sol_deposit_authority: &AccountInfo,
+        maybe_sol_deposit_authority: Result<&AccountInfo, ProgramError>,
     ) -> Result<(), ProgramError> {
         if let Some(auth) = self.sol_deposit_authority {
+            let sol_deposit_authority = maybe_sol_deposit_authority?;
             if auth != *sol_deposit_authority.key {
                 return Err(StakePoolError::InvalidSolDepositAuthority.into());
             }

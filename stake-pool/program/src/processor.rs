@@ -1886,13 +1886,15 @@ impl Processor {
             .checked_sub(pool_tokens_referral_fee)
             .ok_or(StakePoolError::CalculationFailure)?;
 
-        if pool_tokens_user + pool_tokens_manager_deposit_fee + pool_tokens_referral_fee
+        if pool_tokens_user
+            .saturating_add(pool_tokens_manager_deposit_fee)
+            .saturating_add(pool_tokens_referral_fee)
             != new_pool_tokens
         {
             return Err(StakePoolError::CalculationFailure.into());
         }
 
-        if new_pool_tokens == 0 {
+        if pool_tokens_user == 0 {
             return Err(StakePoolError::DepositTooSmall.into());
         }
 
@@ -1990,7 +1992,7 @@ impl Processor {
         let clock = &Clock::from_account_info(clock_info)?;
         let system_program_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
-        let sol_deposit_authority_info = next_account_info(account_info_iter).ok();
+        let sol_deposit_authority_info = next_account_info(account_info_iter);
 
         check_account_owner(stake_pool_info, program_id)?;
         let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
@@ -2005,9 +2007,7 @@ impl Processor {
             program_id,
             stake_pool_info.key,
         )?;
-        if let Some(sol_deposit_authority) = sol_deposit_authority_info {
-            stake_pool.check_sol_deposit_authority(sol_deposit_authority)?;
-        }
+        stake_pool.check_sol_deposit_authority(sol_deposit_authority_info)?;
         stake_pool.check_mint(pool_mint_info)?;
         stake_pool.check_reserve_stake(reserve_stake_account_info)?;
 
@@ -2044,10 +2044,16 @@ impl Processor {
             .checked_sub(pool_tokens_referral_fee)
             .ok_or(StakePoolError::CalculationFailure)?;
 
-        if pool_tokens_user + pool_tokens_manager_deposit_fee + pool_tokens_referral_fee
+        if pool_tokens_user
+            .saturating_add(pool_tokens_manager_deposit_fee)
+            .saturating_add(pool_tokens_referral_fee)
             != new_pool_tokens
         {
             return Err(StakePoolError::CalculationFailure.into());
+        }
+
+        if pool_tokens_user == 0 {
+            return Err(StakePoolError::DepositTooSmall.into());
         }
 
         Self::sol_transfer(
