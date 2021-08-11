@@ -978,7 +978,7 @@ pub fn cancel_proposal(
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(*proposal, false),
-        AccountMeta::new_readonly(*token_owner_record, false),
+        AccountMeta::new(*token_owner_record, false),
         AccountMeta::new_readonly(*governance_authority, true),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];

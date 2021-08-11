@@ -28,13 +28,16 @@ pub fn process_cancel_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) ->
     let mut proposal_data = get_proposal_data(program_id, proposal_info)?;
     proposal_data.assert_can_cancel()?;
 
-    let token_owner_record_data = get_token_owner_record_data_for_proposal_owner(
+    let mut token_owner_record_data = get_token_owner_record_data_for_proposal_owner(
         program_id,
         token_owner_record_info,
         &proposal_data.token_owner_record,
     )?;
 
     token_owner_record_data.assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
+
+    token_owner_record_data.decrease_unresolved_proposal_count();
+    token_owner_record_data.serialize(&mut *token_owner_record_info.data.borrow_mut())?;
 
     proposal_data.state = ProposalState::Cancelled;
     proposal_data.closed_at = Some(clock.unix_timestamp);

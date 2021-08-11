@@ -136,6 +136,15 @@ impl TokenOwnerRecord {
 
         Ok(())
     }
+
+    /// Decreases unresolved_proposal_count
+    pub fn decrease_unresolved_proposal_count(&mut self) {
+        // Previous versions didn't use the count and it can be already 0
+        // TODO: Remove this check once all outstanding proposals on mainnet are resolved
+        if self.unresolved_proposal_count != 0 {
+            self.unresolved_proposal_count = self.unresolved_proposal_count.checked_sub(1).unwrap();
+        }
+    }
 }
 
 /// Returns TokenOwnerRecord PDA address
@@ -237,7 +246,7 @@ pub fn get_token_owner_record_data_for_proposal_owner(
 
 #[cfg(test)]
 mod test {
-    use solana_program::borsh::get_packed_len;
+    use solana_program::borsh::{get_packed_len, try_from_slice_unchecked};
 
     use super::*;
 
@@ -259,5 +268,61 @@ mod test {
         let size = get_packed_len::<TokenOwnerRecord>();
 
         assert_eq!(token_owner_record.get_max_size(), Some(size));
+    }
+
+    #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+    pub struct TokenOwnerRecordV1 {
+        pub account_type: GovernanceAccountType,
+
+        pub realm: Pubkey,
+
+        pub governing_token_mint: Pubkey,
+
+        pub governing_token_owner: Pubkey,
+
+        pub governing_token_deposit_amount: u64,
+
+        pub unrelinquished_votes_count: u32,
+
+        pub total_votes_count: u32,
+
+        pub reserved: [u8; 8],
+
+        pub governance_delegate: Option<Pubkey>,
+    }
+
+    #[test]
+    fn test_deserialize_v1_0_account() {
+        let token_owner_record_v1_0 = TokenOwnerRecordV1 {
+            account_type: GovernanceAccountType::TokenOwnerRecord,
+            realm: Pubkey::new_unique(),
+            governing_token_mint: Pubkey::new_unique(),
+            governing_token_owner: Pubkey::new_unique(),
+            governing_token_deposit_amount: 10,
+            unrelinquished_votes_count: 2,
+            total_votes_count: 5,
+            reserved: [0; 8],
+            governance_delegate: Some(Pubkey::new_unique()),
+        };
+
+        let mut token_owner_record_v1_0_data = vec![];
+        token_owner_record_v1_0
+            .serialize(&mut token_owner_record_v1_0_data)
+            .unwrap();
+
+        let token_owner_record_v1_1_data: TokenOwnerRecord =
+            try_from_slice_unchecked(&token_owner_record_v1_0_data).unwrap();
+
+        assert_eq!(
+            token_owner_record_v1_0.account_type,
+            token_owner_record_v1_1_data.account_type
+        );
+
+        assert_eq!(0, token_owner_record_v1_1_data.unresolved_proposal_count);
+
+        assert_eq!(
+            token_owner_record_v1_0.governance_delegate,
+            token_owner_record_v1_1_data.governance_delegate
+        );
     }
 }
