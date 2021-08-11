@@ -148,7 +148,7 @@ pub fn process_cast_vote(
     let vote_record_data = VoteRecord {
         account_type: GovernanceAccountType::VoteRecord,
         proposal: *proposal_info.key,
-        governing_token_owner: voter_token_owner_record_data.governing_token_owner.clone(),
+        governing_token_owner: voter_token_owner_record_data.governing_token_owner,
         vote_weight,
         is_relinquished: false,
     };
