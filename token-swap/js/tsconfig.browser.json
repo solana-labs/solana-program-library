@@ -3,10 +3,10 @@
     "allowSyntheticDefaultImports": true,
     "baseUrl": "./src",
     "outDir": "./dist.browser",
-    "target": "es5",
+    "target": "es6",
     "module": "es2015",
     "moduleResolution": "node",
-    "lib": ["es2016", "dom", "es5"],
+    "lib": ["es2016", "dom", "es6"],
     "downlevelIteration": true
   },
   "include": [
