@@ -913,7 +913,6 @@ fn process_deposit_obligation_collateral(
     let deposit_reserve_info = next_account_info(account_info_iter)?;
     let obligation_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
-    let lending_market_authority_info = next_account_info(account_info_iter)?;
     let obligation_owner_info = next_account_info(account_info_iter)?;
     let user_transfer_authority_info = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
@@ -926,7 +925,6 @@ fn process_deposit_obligation_collateral(
         deposit_reserve_info,
         obligation_info,
         lending_market_info,
-        lending_market_authority_info,
         obligation_owner_info,
         user_transfer_authority_info,
         clock,
@@ -943,7 +941,6 @@ fn _deposit_obligation_collateral<'a>(
     deposit_reserve_info: &AccountInfo<'a>,
     obligation_info: &AccountInfo<'a>,
     lending_market_info: &AccountInfo<'a>,
-    lending_market_authority_info: &AccountInfo<'a>,
     obligation_owner_info: &AccountInfo<'a>,
     user_transfer_authority_info: &AccountInfo<'a>,
     clock: &Clock,
@@ -1003,19 +1000,6 @@ fn _deposit_obligation_collateral<'a>(
     if !obligation_owner_info.is_signer {
         msg!("Obligation owner provided must be a signer");
         return Err(LendingError::InvalidSigner.into());
-    }
-
-    let authority_signer_seeds = &[
-        lending_market_info.key.as_ref(),
-        &[lending_market.bump_seed],
-    ];
-    let lending_market_authority_pubkey =
-        Pubkey::create_program_address(authority_signer_seeds, program_id)?;
-    if &lending_market_authority_pubkey != lending_market_authority_info.key {
-        msg!(
-            "Derived lending market authority does not match the lending market authority provided"
-        );
-        return Err(LendingError::InvalidMarketAuthority.into());
     }
 
     obligation
@@ -1093,7 +1077,6 @@ fn process_deposit_reserve_liquidity_and_obligation_collateral(
         reserve_info,
         obligation_info,
         lending_market_info,
-        lending_market_authority_info,
         obligation_owner_info,
         user_transfer_authority_info,
         clock,
@@ -1415,13 +1398,16 @@ fn process_borrow_obligation_liquidity(
         return Err(LendingError::BorrowTooSmall.into());
     }
 
+    let cumulative_borrow_rate_wads = borrow_reserve.liquidity.cumulative_borrow_rate_wads;
+
     borrow_reserve.liquidity.borrow(borrow_amount)?;
     borrow_reserve.last_update.mark_stale();
     Reserve::pack(borrow_reserve, &mut borrow_reserve_info.data.borrow_mut())?;
 
-    obligation
-        .find_or_add_liquidity_to_borrows(*borrow_reserve_info.key)?
-        .borrow(borrow_amount)?;
+    let obligation_liquidity = obligation
+        .find_or_add_liquidity_to_borrows(*borrow_reserve_info.key, cumulative_borrow_rate_wads)?;
+
+    obligation_liquidity.borrow(borrow_amount)?;
     obligation.last_update.mark_stale();
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
 
