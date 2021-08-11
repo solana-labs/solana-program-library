@@ -62,6 +62,10 @@ pub fn process_withdraw_governing_tokens(
         return Err(GovernanceError::AllVotesMustBeRelinquishedToWithdrawGoverningTokens.into());
     }
 
+    if token_owner_record_data.outstanding_proposal_count > 0 {
+        return Err(GovernanceError::AllProposalsMustBeFinalisedToWithdrawGoverningTokens.into());
+    }
+
     transfer_spl_tokens_signed(
         governing_token_holding_info,
         governing_token_destination_info,

@@ -319,6 +319,10 @@ pub enum GovernanceError {
     /// Too many outstanding proposals
     #[error("Too many outstanding proposals")]
     TooManyOutstandingProposals,
+
+    /// All proposals must be finalized to withdraw governing tokens
+    #[error("All proposals must be finalized to withdraw governing tokens")]
+    AllProposalsMustBeFinalisedToWithdrawGoverningTokens,
 }
 
 impl PrintProgramError for GovernanceError {
