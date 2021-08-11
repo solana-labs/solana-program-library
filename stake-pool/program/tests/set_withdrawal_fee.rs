@@ -322,42 +322,6 @@ async fn fail_high_withdrawal_fee_increase_from_0() {
 }
 
 #[tokio::test]
-async fn fail_bad_fee() {
-    let (mut context, stake_pool_accounts, _new_fee) = setup(None).await;
-
-    let new_withdrawal_fee = Fee {
-        numerator: 11,
-        denominator: 10,
-    };
-    let transaction = Transaction::new_signed_with_payer(
-        &[instruction::set_withdrawal_fee(
-            &id(),
-            &stake_pool_accounts.stake_pool.pubkey(),
-            &stake_pool_accounts.manager.pubkey(),
-            new_withdrawal_fee,
-        )],
-        Some(&context.payer.pubkey()),
-        &[&context.payer, &stake_pool_accounts.manager],
-        context.last_blockhash,
-    );
-    let error = context
-        .banks_client
-        .process_transaction(transaction)
-        .await
-        .err()
-        .unwrap()
-        .unwrap();
-
-    match error {
-        TransactionError::InstructionError(_, InstructionError::Custom(error_index)) => {
-            let program_error = error::StakePoolError::FeeTooHigh as u32;
-            assert_eq!(error_index, program_error);
-        }
-        _ => panic!("Wrong error occurs when setting fee too high"),
-    }
-}
-
-#[tokio::test]
 async fn fail_not_updated() {
     let mut context = program_test().start_with_context().await;
     let stake_pool_accounts = StakePoolAccounts::new();

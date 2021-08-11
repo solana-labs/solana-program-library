@@ -6,7 +6,7 @@ use {
         find_deposit_authority_program_address, find_stake_program_address,
         find_transient_stake_program_address, find_withdraw_authority_program_address,
         stake_program,
-        state::{Fee, StakePool, ValidatorList},
+        state::{Fee, FeeType, StakePool, ValidatorList},
         MAX_VALIDATORS_TO_UPDATE,
     },
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
@@ -26,6 +26,17 @@ pub enum PreferredValidatorType {
     Deposit,
     /// Set preferred validator for withdraws
     Withdraw,
+}
+
+/// Defines which validator vote account is set during the
+/// `SetPreferredValidator` instruction
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, BorshSchema)]
+pub enum DepositType {
+    /// Set preferred validator for deposits
+    Stake,
+    /// Set preferred validator for withdraws
+    Sol,
 }
 
 /// Instructions supported by the StakePool program.
@@ -55,6 +66,12 @@ pub enum StakePoolInstruction {
         /// Fee charged per withdrawal as percentage of withdrawal
         #[allow(dead_code)] // but it's not
         withdrawal_fee: Fee,
+        /// Fee charged per deposit as percentage of deposit
+        #[allow(dead_code)] // but it's not
+        deposit_fee: Fee,
+        /// Percentage [0-100] of deposit_fee that goes to referrer
+        #[allow(dead_code)] // but it's not
+        referral_fee: u8,
         /// Maximum expected number of validators
         #[allow(dead_code)] // but it's not
         max_validators: u32,
@@ -244,18 +261,20 @@ pub enum StakePoolInstruction {
     ///
     ///   0. `[w]` Stake pool
     ///   1. `[w]` Validator stake list storage account
-    ///   2. `[]` Stake pool deposit authority
+    ///   2. `[s]/[]` Stake pool deposit authority
     ///   3. `[]` Stake pool withdraw authority
     ///   4. `[w]` Stake account to join the pool (withdraw authority for the stake account should be first set to the stake pool deposit authority)
     ///   5. `[w]` Validator stake account for the stake account to be merged with
     ///   6. `[w]` Reserve stake account, to withdraw rent exempt reserve
     ///   7. `[w]` User account to receive pool tokens
-    ///   8. `[w]` Pool token mint account
-    ///   9. '[]' Sysvar clock account
-    ///   10. '[]' Sysvar stake history account
-    ///   11. `[]` Pool token program id,
-    ///   12. `[]` Stake program id,
-    Deposit,
+    ///   8. `[w]` Account to receive pool fee tokens
+    ///   9. `[w]` Account to receive a portion of pool fee tokens as referral fees
+    ///   10. `[w]` Pool token mint account
+    ///   11. '[]' Sysvar clock account
+    ///   12. '[]' Sysvar stake history account
+    ///   13. `[]` Pool token program id,
+    ///   14. `[]` Stake program id,
+    DepositStake,
 
     ///   Withdraw the token from the pool at the current ratio.
     ///
@@ -281,7 +300,7 @@ pub enum StakePoolInstruction {
     ///  11. `[]` Pool token program id
     ///  12. `[]` Stake program id,
     ///  userdata: amount of pool tokens to withdraw
-    Withdraw(u64),
+    WithdrawStake(u64),
 
     ///  (Manager only) Update manager
     ///
@@ -297,9 +316,9 @@ pub enum StakePoolInstruction {
     ///  1. `[s]` Manager
     ///  2. `[]` Sysvar clock
     SetFee {
-        /// Fee assessed as percentage of perceived rewards
+        /// Type of fee to update and value to update it to
         #[allow(dead_code)] // but it's not
-        fee: Fee,
+        fee: FeeType,
     },
 
     ///  (Manager or staker only) Update staker
@@ -309,16 +328,29 @@ pub enum StakePoolInstruction {
     ///  2. '[]` New staker pubkey
     SetStaker,
 
-    ///  (Manager only) Update Withdrawal fee for next epoch
+    ///   Deposit SOL directly into the pool's reserve account. The output is a "pool" token
+    ///   representing ownership into the pool. Inputs are converted to the current ratio.
+    ///
+    ///   0. `[w]` Stake pool
+    ///   1. `[s]/[]` Stake pool sol deposit authority.
+    ///   2. `[]` Stake pool withdraw authority
+    ///   3. `[w]` Reserve stake account, to withdraw rent exempt reserve
+    ///   4. `[s]` Account providing the lamports to be deposited into the pool
+    ///   5. `[w]` User account to receive pool tokens
+    ///   6. `[w]` Account to receive pool fee tokens
+    ///   7. `[w]` Account to receive a portion of pool fee tokens as referral fees
+    ///   8. `[w]` Pool token mint account
+    ///   9. '[]' Sysvar clock account
+    ///   10 `[]` System program account
+    ///   11. `[]` Pool token program id,
+    DepositSol(u64),
+
+    ///  (Manager only) Update SOL deposit authority
     ///
     ///  0. `[w]` StakePool
     ///  1. `[s]` Manager
-    ///  2. `[]` Sysvar clock
-    SetWithdrawalFee {
-        /// Fee assessed as percentage of perceived rewards
-        #[allow(dead_code)] // but it's not
-        fee: Fee,
-    },
+    ///  2. '[]` New sol_deposit_authority pubkey or none
+    SetDepositAuthority(DepositType),
 }
 
 /// Creates an 'initialize' instruction.
@@ -335,11 +367,15 @@ pub fn initialize(
     deposit_authority: Option<Pubkey>,
     fee: Fee,
     withdrawal_fee: Fee,
+    deposit_fee: Fee,
+    referral_fee: u8,
     max_validators: u32,
 ) -> Instruction {
     let init_data = StakePoolInstruction::Initialize {
         fee,
         withdrawal_fee,
+        deposit_fee,
+        referral_fee,
         max_validators,
     };
     let data = init_data.try_to_vec().unwrap();
@@ -826,7 +862,7 @@ pub fn update_stake_pool(
 
 /// Creates instructions required to deposit into a stake pool, given a stake
 /// account owned by the user.
-pub fn deposit(
+pub fn deposit_stake(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
     validator_list_storage: &Pubkey,
@@ -836,6 +872,8 @@ pub fn deposit(
     validator_stake_account: &Pubkey,
     reserve_stake_account: &Pubkey,
     pool_tokens_to: &Pubkey,
+    manager_fee_account: &Pubkey,
+    referrer_pool_tokens_account: &Pubkey,
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
 ) -> Vec<Instruction> {
@@ -850,6 +888,8 @@ pub fn deposit(
         AccountMeta::new(*validator_stake_account, false),
         AccountMeta::new(*reserve_stake_account, false),
         AccountMeta::new(*pool_tokens_to, false),
+        AccountMeta::new(*manager_fee_account, false),
+        AccountMeta::new(*referrer_pool_tokens_account, false),
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
@@ -872,7 +912,7 @@ pub fn deposit(
         Instruction {
             program_id: *program_id,
             accounts,
-            data: StakePoolInstruction::Deposit.try_to_vec().unwrap(),
+            data: StakePoolInstruction::DepositStake.try_to_vec().unwrap(),
         },
     ]
 }
@@ -880,7 +920,7 @@ pub fn deposit(
 /// Creates instructions required to deposit into a stake pool, given a stake
 /// account owned by the user. The difference with `deposit()` is that a deposit
 /// authority must sign this instruction, which is required for private pools.
-pub fn deposit_with_authority(
+pub fn deposit_stake_with_authority(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
     validator_list_storage: &Pubkey,
@@ -891,6 +931,8 @@ pub fn deposit_with_authority(
     validator_stake_account: &Pubkey,
     reserve_stake_account: &Pubkey,
     pool_tokens_to: &Pubkey,
+    manager_fee_account: &Pubkey,
+    referrer_pool_tokens_account: &Pubkey,
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
 ) -> Vec<Instruction> {
@@ -903,6 +945,8 @@ pub fn deposit_with_authority(
         AccountMeta::new(*validator_stake_account, false),
         AccountMeta::new(*reserve_stake_account, false),
         AccountMeta::new(*pool_tokens_to, false),
+        AccountMeta::new(*manager_fee_account, false),
+        AccountMeta::new(*referrer_pool_tokens_account, false),
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
@@ -925,13 +969,91 @@ pub fn deposit_with_authority(
         Instruction {
             program_id: *program_id,
             accounts,
-            data: StakePoolInstruction::Deposit.try_to_vec().unwrap(),
+            data: StakePoolInstruction::DepositStake.try_to_vec().unwrap(),
         },
     ]
 }
 
-/// Creates a 'withdraw' instruction.
-pub fn withdraw(
+/// Creates instructions required to deposit SOL directly into a stake pool.
+pub fn deposit_sol(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    stake_pool_withdraw_authority: &Pubkey,
+    reserve_stake_account: &Pubkey,
+    lamports_from: &Pubkey,
+    pool_tokens_to: &Pubkey,
+    manager_fee_account: &Pubkey,
+    referrer_pool_tokens_account: &Pubkey,
+    pool_mint: &Pubkey,
+    token_program_id: &Pubkey,
+    amount: u64,
+) -> Vec<Instruction> {
+    let accounts = vec![
+        AccountMeta::new(*stake_pool, false),
+        AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
+        AccountMeta::new(*reserve_stake_account, false),
+        AccountMeta::new(*lamports_from, true),
+        AccountMeta::new(*pool_tokens_to, false),
+        AccountMeta::new(*manager_fee_account, false),
+        AccountMeta::new(*referrer_pool_tokens_account, false),
+        AccountMeta::new(*pool_mint, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(system_program::id(), false),
+        AccountMeta::new_readonly(*token_program_id, false),
+    ];
+    vec![Instruction {
+        program_id: *program_id,
+        accounts,
+        data: StakePoolInstruction::DepositSol(amount)
+            .try_to_vec()
+            .unwrap(),
+    }]
+}
+
+/// Creates instructions required to deposit SOL directly into a stake pool.
+/// The difference with `deposit_sol()` is that a deposit
+/// authority must sign this instruction, which is required for private pools.
+/// `require_deposit_authority` should be false only if
+/// `sol_deposit_authority == None`
+pub fn deposit_sol_with_authority(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    sol_deposit_authority: &Pubkey,
+    stake_pool_withdraw_authority: &Pubkey,
+    reserve_stake_account: &Pubkey,
+    lamports_from: &Pubkey,
+    pool_tokens_to: &Pubkey,
+    manager_fee_account: &Pubkey,
+    referrer_pool_tokens_account: &Pubkey,
+    pool_mint: &Pubkey,
+    token_program_id: &Pubkey,
+    amount: u64,
+) -> Vec<Instruction> {
+    let accounts = vec![
+        AccountMeta::new(*stake_pool, false),
+        AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
+        AccountMeta::new(*reserve_stake_account, false),
+        AccountMeta::new(*lamports_from, true),
+        AccountMeta::new(*pool_tokens_to, false),
+        AccountMeta::new(*manager_fee_account, false),
+        AccountMeta::new(*referrer_pool_tokens_account, false),
+        AccountMeta::new(*pool_mint, false),
+        AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(system_program::id(), false),
+        AccountMeta::new_readonly(*token_program_id, false),
+        AccountMeta::new_readonly(*sol_deposit_authority, true),
+    ];
+    vec![Instruction {
+        program_id: *program_id,
+        accounts,
+        data: StakePoolInstruction::DepositSol(amount)
+            .try_to_vec()
+            .unwrap(),
+    }]
+}
+
+/// Creates a 'WithdrawStake' instruction.
+pub fn withdraw_stake(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
     validator_list_storage: &Pubkey,
@@ -964,7 +1086,9 @@ pub fn withdraw(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::Withdraw(amount).try_to_vec().unwrap(),
+        data: StakePoolInstruction::WithdrawStake(amount)
+            .try_to_vec()
+            .unwrap(),
     }
 }
 
@@ -994,7 +1118,7 @@ pub fn set_fee(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
     manager: &Pubkey,
-    fee: Fee,
+    fee: FeeType,
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
@@ -1008,25 +1132,64 @@ pub fn set_fee(
     }
 }
 
-/// Creates a 'set fee' instruction.
+/// Creates a 'set fee' instruction for setting the epoch fee
+pub fn set_epoch_fee(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    manager: &Pubkey,
+    fee: Fee,
+) -> Instruction {
+    set_fee(program_id, stake_pool, manager, FeeType::Epoch(fee))
+}
+
+/// Creates a 'set fee' instruction for setting withdrawal fee
 pub fn set_withdrawal_fee(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
     manager: &Pubkey,
     fee: Fee,
 ) -> Instruction {
-    let accounts = vec![
-        AccountMeta::new(*stake_pool, false),
-        AccountMeta::new_readonly(*manager, true),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
-    ];
-    Instruction {
-        program_id: *program_id,
-        accounts,
-        data: StakePoolInstruction::SetWithdrawalFee { fee }
-            .try_to_vec()
-            .unwrap(),
-    }
+    set_fee(program_id, stake_pool, manager, FeeType::Withdrawal(fee))
+}
+
+/// Creates a 'set fee' instruction for setting SOL deposit fee
+pub fn set_sol_deposit_fee(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    manager: &Pubkey,
+    fee: Fee,
+) -> Instruction {
+    set_fee(program_id, stake_pool, manager, FeeType::SolDeposit(fee))
+}
+
+/// Creates a 'set fee' instruction for setting stake deposit fee
+pub fn set_stake_deposit_fee(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    manager: &Pubkey,
+    fee: Fee,
+) -> Instruction {
+    set_fee(program_id, stake_pool, manager, FeeType::StakeDeposit(fee))
+}
+
+/// Creates a 'set fee' instruction for setting SOL referral fee
+pub fn set_sol_referral_fee(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    manager: &Pubkey,
+    fee: u8,
+) -> Instruction {
+    set_fee(program_id, stake_pool, manager, FeeType::SolReferral(fee))
+}
+
+/// Creates a 'set fee' instruction for setting stake referral fee
+pub fn set_stake_referral_fee(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    manager: &Pubkey,
+    fee: u8,
+) -> Instruction {
+    set_fee(program_id, stake_pool, manager, FeeType::StakeReferral(fee))
 }
 
 /// Creates a 'set staker' instruction.
@@ -1045,5 +1208,81 @@ pub fn set_staker(
         program_id: *program_id,
         accounts,
         data: StakePoolInstruction::SetStaker.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates a 'set sol deposit authority' instruction.
+pub fn set_deposit_authority(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    manager: &Pubkey,
+    new_sol_deposit_authority: Option<&Pubkey>,
+    for_stake_deposit: bool,
+) -> Instruction {
+    let mut accounts = vec![
+        AccountMeta::new(*stake_pool, false),
+        AccountMeta::new_readonly(*manager, true),
+    ];
+    if let Some(auth) = new_sol_deposit_authority {
+        accounts.push(AccountMeta::new_readonly(*auth, false))
+    }
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: if for_stake_deposit {
+            StakePoolInstruction::SetDepositAuthority(DepositType::Stake)
+                .try_to_vec()
+                .unwrap()
+        } else {
+            StakePoolInstruction::SetDepositAuthority(DepositType::Sol)
+                .try_to_vec()
+                .unwrap()
+        },
+    }
+}
+
+/// Creates a 'set stake deposit authority' instruction.
+pub fn set_stake_deposit_authority(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    manager: &Pubkey,
+    new_stake_deposit_authority: Option<&Pubkey>,
+) -> Instruction {
+    let mut accounts = vec![
+        AccountMeta::new(*stake_pool, false),
+        AccountMeta::new_readonly(*manager, true),
+    ];
+    if let Some(auth) = new_stake_deposit_authority {
+        accounts.push(AccountMeta::new_readonly(*auth, false))
+    }
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: StakePoolInstruction::SetDepositAuthority(DepositType::Stake)
+            .try_to_vec()
+            .unwrap(),
+    }
+}
+
+/// Creates a 'set stake deposit authority' instruction.
+pub fn set_sol_deposit_authority(
+    program_id: &Pubkey,
+    stake_pool: &Pubkey,
+    manager: &Pubkey,
+    new_stake_deposit_authority: Option<&Pubkey>,
+) -> Instruction {
+    let mut accounts = vec![
+        AccountMeta::new(*stake_pool, false),
+        AccountMeta::new_readonly(*manager, true),
+    ];
+    if let Some(auth) = new_stake_deposit_authority {
+        accounts.push(AccountMeta::new_readonly(*auth, false))
+    }
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: StakePoolInstruction::SetDepositAuthority(DepositType::Sol)
+            .try_to_vec()
+            .unwrap(),
     }
 }

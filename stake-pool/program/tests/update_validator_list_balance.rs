@@ -103,7 +103,7 @@ async fn setup(
 
     for deposit_account in &mut deposit_accounts {
         deposit_account
-            .deposit(
+            .deposit_stake(
                 &mut context.banks_client,
                 &context.payer,
                 &context.last_blockhash,

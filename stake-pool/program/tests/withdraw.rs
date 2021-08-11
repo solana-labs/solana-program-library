@@ -51,7 +51,7 @@ async fn setup() -> (
     )
     .await;
 
-    let deposit_info = simple_deposit(
+    let deposit_info = simple_deposit_stake(
         &mut banks_client,
         &payer,
         &recent_blockhash,
@@ -274,7 +274,7 @@ async fn fail_with_wrong_stake_program() {
     let instruction = Instruction {
         program_id: id(),
         accounts,
-        data: instruction::StakePoolInstruction::Withdraw(tokens_to_burn)
+        data: instruction::StakePoolInstruction::WithdrawStake(tokens_to_burn)
             .try_to_vec()
             .unwrap(),
     };
@@ -361,7 +361,7 @@ async fn fail_with_wrong_token_program_id() {
     let wrong_token_program = Keypair::new();
 
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::withdraw(
+        &[instruction::withdraw_stake(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.validator_list.pubkey(),
@@ -475,6 +475,67 @@ async fn fail_with_unknown_validator() {
         )
         .await;
 
+    let user_pool_account = Keypair::new();
+    let user = Keypair::new();
+    create_token_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &user_pool_account,
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &user.pubkey(),
+    )
+    .await
+    .unwrap();
+
+    let user = Keypair::new();
+    // make stake account
+    let user_stake = Keypair::new();
+    let lockup = stake_program::Lockup::default();
+    let authorized = stake_program::Authorized {
+        staker: stake_pool_accounts.stake_deposit_authority,
+        withdrawer: stake_pool_accounts.stake_deposit_authority,
+    };
+    create_independent_stake_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &user_stake,
+        &authorized,
+        &lockup,
+        TEST_STAKE_AMOUNT,
+    )
+    .await;
+    // make pool token account
+    let user_pool_account = Keypair::new();
+    create_token_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &user_pool_account,
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &user.pubkey(),
+    )
+    .await
+    .unwrap();
+
+    let user_pool_account = user_pool_account.pubkey();
+    let pool_tokens = get_token_balance(&mut banks_client, &user_pool_account).await;
+
+    let tokens_to_burn = pool_tokens / 4;
+
+    // Delegate tokens for burning
+    delegate_tokens(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &user_pool_account,
+        &user,
+        &user_transfer_authority.pubkey(),
+        tokens_to_burn,
+    )
+    .await;
+
     let new_authority = Pubkey::new_unique();
     let transaction_error = stake_pool_accounts
         .withdraw_stake(
@@ -585,7 +646,7 @@ async fn fail_without_token_approval() {
     )
     .await;
 
-    let deposit_info = simple_deposit(
+    let deposit_info = simple_deposit_stake(
         &mut banks_client,
         &payer,
         &recent_blockhash,
@@ -656,7 +717,7 @@ async fn fail_with_low_delegation() {
     )
     .await;
 
-    let deposit_info = simple_deposit(
+    let deposit_info = simple_deposit_stake(
         &mut banks_client,
         &payer,
         &recent_blockhash,
@@ -796,7 +857,7 @@ async fn success_with_reserve() {
     let rent = context.banks_client.get_rent().await.unwrap();
     let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
 
-    let deposit_info = simple_deposit(
+    let deposit_info = simple_deposit_stake(
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
@@ -930,10 +991,12 @@ async fn success_with_reserve() {
     assert!(error.is_none());
 
     // first and only deposit, lamports:pool 1:1
+    let tokens_deposit_fee =
+        stake_pool_accounts.calculate_deposit_fee(deposit_info.stake_lamports + stake_rent);
     let tokens_withdrawal_fee =
         stake_pool_accounts.calculate_withdrawal_fee(deposit_info.pool_tokens);
     assert_eq!(
-        deposit_info.stake_lamports + stake_rent,
+        deposit_info.stake_lamports + stake_rent - tokens_deposit_fee,
         deposit_info.pool_tokens,
     );
 
@@ -954,8 +1017,12 @@ async fn success_with_reserve() {
     let stake_state =
         deserialize::<stake_program::StakeState>(&reserve_stake_account.data).unwrap();
     let meta = stake_state.meta().unwrap();
+    // TODO: these numbers dont add up even with +tokens_deposit_fee
     assert_eq!(
-        initial_reserve_lamports + meta.rent_exempt_reserve + tokens_withdrawal_fee,
+        initial_reserve_lamports
+            + meta.rent_exempt_reserve
+            + tokens_withdrawal_fee
+            + tokens_deposit_fee,
         reserve_stake_account.lamports
     );
 
@@ -964,7 +1031,9 @@ async fn success_with_reserve() {
         get_account(&mut context.banks_client, &withdraw_destination.pubkey()).await;
     assert_eq!(
         user_stake_recipient_account.lamports,
-        initial_stake_lamports + deposit_info.stake_lamports + stake_rent - tokens_withdrawal_fee
+        initial_stake_lamports + deposit_info.stake_lamports + stake_rent
+            - tokens_withdrawal_fee
+            - tokens_deposit_fee
     );
 }
 
@@ -1059,7 +1128,7 @@ async fn fail_with_wrong_preferred_withdraw() {
     assert!(error.is_none());
 
     // deposit into preferred, then fail
-    let _preferred_deposit = simple_deposit(
+    let _preferred_deposit = simple_deposit_stake(
         &mut banks_client,
         &payer,
         &recent_blockhash,
@@ -1152,7 +1221,7 @@ async fn success_withdraw_from_transient() {
     let rent = context.banks_client.get_rent().await.unwrap();
     let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
 
-    let deposit_info = simple_deposit(
+    let deposit_info = simple_deposit_stake(
         &mut context.banks_client,
         &context.payer,
         &context.last_blockhash,
