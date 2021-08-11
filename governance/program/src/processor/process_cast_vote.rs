@@ -40,21 +40,21 @@ pub fn process_cast_vote(
     let governance_info = next_account_info(account_info_iter)?; // 1
 
     let proposal_info = next_account_info(account_info_iter)?; // 2
-    let proposal_owner_record_info = next_account_info(account_info_iter)?; // 2
+    let proposal_owner_record_info = next_account_info(account_info_iter)?; // 3
 
-    let voter_token_owner_record_info = next_account_info(account_info_iter)?; // 3
-    let governance_authority_info = next_account_info(account_info_iter)?; // 4
+    let voter_token_owner_record_info = next_account_info(account_info_iter)?; // 4
+    let governance_authority_info = next_account_info(account_info_iter)?; // 5
 
-    let vote_record_info = next_account_info(account_info_iter)?; // 5
-    let governing_token_mint_info = next_account_info(account_info_iter)?; // 6
+    let vote_record_info = next_account_info(account_info_iter)?; // 6
+    let governing_token_mint_info = next_account_info(account_info_iter)?; // 7
 
-    let payer_info = next_account_info(account_info_iter)?; // 7
-    let system_info = next_account_info(account_info_iter)?; // 8
+    let payer_info = next_account_info(account_info_iter)?; // 8
+    let system_info = next_account_info(account_info_iter)?; // 9
 
-    let rent_sysvar_info = next_account_info(account_info_iter)?; // 9
+    let rent_sysvar_info = next_account_info(account_info_iter)?; // 10
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
 
-    let clock_info = next_account_info(account_info_iter)?; // 10
+    let clock_info = next_account_info(account_info_iter)?; // 11
     let clock = Clock::from_account_info(clock_info)?;
 
     if !vote_record_info.data_is_empty() {
