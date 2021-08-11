@@ -338,13 +338,17 @@ async fn test_remove_instruction_with_instruction_from_other_proposal_error() {
         .await
         .unwrap();
 
+    let token_owner_record_cookie2 = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await;
+
     let mut proposal_cookie2 = governance_test
-        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_proposal(&token_owner_record_cookie2, &mut account_governance_cookie)
         .await
         .unwrap();
 
     let proposal_instruction_cookie2 = governance_test
-        .with_nop_instruction(&mut proposal_cookie2, &token_owner_record_cookie, None)
+        .with_nop_instruction(&mut proposal_cookie2, &token_owner_record_cookie2, None)
         .await
         .unwrap();
 
