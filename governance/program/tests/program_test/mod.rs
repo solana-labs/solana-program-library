@@ -1483,6 +1483,7 @@ impl GovernanceProgramTest {
             &token_owner_record_cookie.account.realm,
             &proposal_cookie.account.governance,
             &proposal_cookie.address,
+            &proposal_cookie.account.token_owner_record,
             &token_owner_record_cookie.address,
             &token_owner_record_cookie.token_owner.pubkey(),
             &proposal_cookie.account.governing_token_mint,

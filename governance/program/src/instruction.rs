@@ -875,20 +875,23 @@ pub fn cast_vote(
     realm: &Pubkey,
     governance: &Pubkey,
     proposal: &Pubkey,
-    token_owner_record: &Pubkey,
+    proposal_owner_record: &Pubkey,
+    voter_token_owner_record: &Pubkey,
     governance_authority: &Pubkey,
     governing_token_mint: &Pubkey,
     payer: &Pubkey,
     // Args
     vote: Vote,
 ) -> Instruction {
-    let vote_record_address = get_vote_record_address(program_id, proposal, token_owner_record);
+    let vote_record_address =
+        get_vote_record_address(program_id, proposal, voter_token_owner_record);
 
     let accounts = vec![
         AccountMeta::new_readonly(*realm, false),
         AccountMeta::new_readonly(*governance, false),
         AccountMeta::new(*proposal, false),
-        AccountMeta::new(*token_owner_record, false),
+        AccountMeta::new(*proposal_owner_record, false),
+        AccountMeta::new(*voter_token_owner_record, false),
         AccountMeta::new_readonly(*governance_authority, true),
         AccountMeta::new(vote_record_address, false),
         AccountMeta::new_readonly(*governing_token_mint, false),
