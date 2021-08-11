@@ -756,7 +756,7 @@ pub fn create_proposal(
         AccountMeta::new_readonly(*realm, false),
         AccountMeta::new(proposal_address, false),
         AccountMeta::new(*governance, false),
-        AccountMeta::new_readonly(*governing_token_owner_record, false),
+        AccountMeta::new(*governing_token_owner_record, false),
         AccountMeta::new_readonly(*governance_authority, true),
         AccountMeta::new_readonly(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),

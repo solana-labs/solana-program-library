@@ -58,14 +58,20 @@ pub fn process_create_proposal(
     let mut governance_data =
         get_governance_data_for_realm(program_id, governance_info, realm_info.key)?;
 
-    let token_owner_record_data =
+    let mut token_owner_record_data =
         get_token_owner_record_data_for_realm(program_id, token_owner_record_info, realm_info.key)?;
 
     // Proposal owner (TokenOwner) or its governance_delegate must sign this transaction
     token_owner_record_data.assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
-    // Ensure proposal owner (TokenOwner) has enough tokens to create proposal
+    // Ensure proposal owner (TokenOwner) has enough tokens to create proposal and no unresolved proposals
     token_owner_record_data.assert_can_create_proposal(&realm_data, &governance_data.config)?;
+
+    token_owner_record_data.unresolved_proposal_count = token_owner_record_data
+        .unresolved_proposal_count
+        .checked_add(1)
+        .unwrap();
+    token_owner_record_data.serialize(&mut *token_owner_record_info.data.borrow_mut())?;
 
     let proposal_data = Proposal {
         account_type: GovernanceAccountType::Proposal,

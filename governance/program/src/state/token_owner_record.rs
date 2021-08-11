@@ -43,8 +43,14 @@ pub struct TokenOwnerRecord {
     /// If TokenOwner withdraws vote while voting is still in progress total_votes_count is decreased  and the vote doesn't count towards the total
     pub total_votes_count: u32,
 
+    /// The number of unresolved proposal the TokenOwner currently owns
+    /// The count is increased when TokenOwner creates a proposal
+    /// and decreased  once it's either voted on (Succeeded or Defeated) or Cancelled
+    /// By default it's restricted to 1 unresolved Proposal per token owner
+    pub unresolved_proposal_count: u8,
+
     /// Reserved space for future versions
-    pub reserved: [u8; 8],
+    pub reserved: [u8; 7],
 
     /// A single account that is allowed to operate governance with the deposited governing tokens
     /// It can be delegated to by the governing_token_owner or current governance_delegate
@@ -84,7 +90,7 @@ impl TokenOwnerRecord {
         Err(GovernanceError::GoverningTokenOwnerOrDelegateMustSign.into())
     }
 
-    /// Asserts TokenOwner has enough tokens to be allowed to create proposal
+    /// Asserts TokenOwner has enough tokens to be allowed to create proposal and doesn't have any outstanding proposals
     pub fn assert_can_create_proposal(
         &self,
         realm_data: &Realm,
@@ -101,6 +107,12 @@ impl TokenOwnerRecord {
 
         if self.governing_token_deposit_amount < min_tokens_to_create_proposal {
             return Err(GovernanceError::NotEnoughTokensToCreateProposal.into());
+        }
+
+        // The number of unresolved proposals is currently restricted to 1
+        // If there is a need to change it in the future then it should be added to realm or governance config
+        if self.unresolved_proposal_count > 0 {
+            return Err(GovernanceError::TooManyUnresolvedProposals.into());
         }
 
         Ok(())
@@ -240,7 +252,8 @@ mod test {
             governance_delegate: Some(Pubkey::new_unique()),
             unrelinquished_votes_count: 1,
             total_votes_count: 1,
-            reserved: [0; 8],
+            unresolved_proposal_count: 1,
+            reserved: [0; 7],
         };
 
         let size = get_packed_len::<TokenOwnerRecord>();

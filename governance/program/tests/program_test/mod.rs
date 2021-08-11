@@ -465,7 +465,8 @@ impl GovernanceProgramTest {
             governance_delegate: None,
             unrelinquished_votes_count: 0,
             total_votes_count: 0,
-            reserved: [0; 8],
+            unresolved_proposal_count: 0,
+            reserved: [0; 7],
         };
 
         let governance_delegate = Keypair::from_base58_string(&token_owner.to_base58_string());
