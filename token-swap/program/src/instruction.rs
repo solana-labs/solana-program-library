@@ -639,7 +639,7 @@ mod tests {
     use crate::curve::{base::CurveType, stable::StableCurve};
 
     #[test]
-    fn pack_intialize() {
+    fn pack_initialize() {
         let trade_fee_numerator: u64 = 1;
         let trade_fee_denominator: u64 = 4;
         let owner_trade_fee_numerator: u64 = 2;
@@ -662,7 +662,7 @@ mod tests {
             curve_type,
             calculator,
         };
-        let pool_nonce: u8 = 255;
+        let pool_nonce: u8 = 250;
         let check = SwapInstruction::Initialize(Initialize {
             nonce,
             fees,
@@ -680,6 +680,7 @@ mod tests {
         expect.push(curve_type as u8);
         expect.extend_from_slice(&amp.to_le_bytes());
         expect.extend_from_slice(&[0u8; 24]);
+        expect.push(pool_nonce as u8);
         assert_eq!(packed, expect);
         let unpacked = SwapInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);

@@ -300,16 +300,17 @@ impl Processor {
         seed_key_vec.push(token_b.mint.to_bytes());
         seed_key_vec.sort();
 
-        let pool_pda = Pubkey::create_program_address(
+        // Although this is less efficient, it prevents a malicious attacker providing a nonce
+        // that produces a different valid address, allowing them to inject duplicate/fake pools.
+        let (pool_pda, pool_pda_nonce) = Pubkey::find_program_address(
             &[
                 &seed_key_vec[0][..32],
                 &seed_key_vec[1][..32],
                 &[swap_curve.curve_type as u8],
-                &[pool_nonce]
-            ], program_id)?;
+            ], program_id);
 
         msg!("checking pool pda: {}, {} with nonce {}", swap_info.key, pool_pda, pool_nonce);
-        if *swap_info.key != pool_pda {
+        if *swap_info.key != pool_pda || pool_nonce != pool_pda_nonce {
             return Err(SwapError::InvalidProgramAddress.into());
         }
 
@@ -338,7 +339,7 @@ impl Processor {
             &pool_signer_seeds
         )?;
 
-        pool_registry.append(swap_info.key);
+        pool_registry.append(&pool_pda);
 
         if let Some(swap_constraints) = swap_constraints {
             let owner_key = swap_constraints
