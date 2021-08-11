@@ -53,7 +53,7 @@ async fn test_cancel_proposal() {
         .get_token_owner_record_account(&token_owner_record_cookie.address)
         .await;
 
-    assert_eq!(0, token_owner_record_account.unresolved_proposal_count);
+    assert_eq!(0, token_owner_record_account.outstanding_proposal_count);
 }
 
 #[tokio::test]

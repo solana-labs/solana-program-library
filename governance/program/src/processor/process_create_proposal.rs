@@ -64,11 +64,11 @@ pub fn process_create_proposal(
     // Proposal owner (TokenOwner) or its governance_delegate must sign this transaction
     token_owner_record_data.assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
-    // Ensure proposal owner (TokenOwner) has enough tokens to create proposal and no unresolved proposals
+    // Ensure proposal owner (TokenOwner) has enough tokens to create proposal and no outstanding proposals
     token_owner_record_data.assert_can_create_proposal(&realm_data, &governance_data.config)?;
 
-    token_owner_record_data.unresolved_proposal_count = token_owner_record_data
-        .unresolved_proposal_count
+    token_owner_record_data.outstanding_proposal_count = token_owner_record_data
+        .outstanding_proposal_count
         .checked_add(1)
         .unwrap();
     token_owner_record_data.serialize(&mut *token_owner_record_info.data.borrow_mut())?;

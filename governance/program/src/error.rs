@@ -316,9 +316,9 @@ pub enum GovernanceError {
     #[error("Owner doesn't have enough governing tokens to create Governance")]
     NotEnoughTokensToCreateGovernance,
 
-    /// Too many unresolved proposals
-    #[error("Too many unresolved proposals")]
-    TooManyUnresolvedProposals,
+    /// Too many outstanding proposals
+    #[error("Too many outstanding proposals")]
+    TooManyOutstandingProposals,
 }
 
 impl PrintProgramError for GovernanceError {

@@ -92,7 +92,7 @@ pub fn process_deposit_governing_tokens(
             governance_delegate: None,
             unrelinquished_votes_count: 0,
             total_votes_count: 0,
-            unresolved_proposal_count: 0,
+            outstanding_proposal_count: 0,
             reserved: [0; 7],
         };
 

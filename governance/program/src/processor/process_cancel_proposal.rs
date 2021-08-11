@@ -36,7 +36,7 @@ pub fn process_cancel_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) ->
 
     token_owner_record_data.assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
-    token_owner_record_data.decrease_unresolved_proposal_count();
+    token_owner_record_data.decrease_outstanding_proposal_count();
     token_owner_record_data.serialize(&mut *token_owner_record_info.data.borrow_mut())?;
 
     proposal_data.state = ProposalState::Cancelled;

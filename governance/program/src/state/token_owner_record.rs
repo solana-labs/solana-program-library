@@ -43,11 +43,11 @@ pub struct TokenOwnerRecord {
     /// If TokenOwner withdraws vote while voting is still in progress total_votes_count is decreased  and the vote doesn't count towards the total
     pub total_votes_count: u32,
 
-    /// The number of unresolved proposal the TokenOwner currently owns
+    /// The number of outstanding proposals the TokenOwner currently owns
     /// The count is increased when TokenOwner creates a proposal
     /// and decreased  once it's either voted on (Succeeded or Defeated) or Cancelled
-    /// By default it's restricted to 1 unresolved Proposal per token owner
-    pub unresolved_proposal_count: u8,
+    /// By default it's restricted to 1 outstanding Proposal per token owner
+    pub outstanding_proposal_count: u8,
 
     /// Reserved space for future versions
     pub reserved: [u8; 7],
@@ -109,10 +109,10 @@ impl TokenOwnerRecord {
             return Err(GovernanceError::NotEnoughTokensToCreateProposal.into());
         }
 
-        // The number of unresolved proposals is currently restricted to 1
+        // The number of outstanding proposals is currently restricted to 1
         // If there is a need to change it in the future then it should be added to realm or governance config
-        if self.unresolved_proposal_count > 0 {
-            return Err(GovernanceError::TooManyUnresolvedProposals.into());
+        if self.outstanding_proposal_count > 0 {
+            return Err(GovernanceError::TooManyOutstandingProposals.into());
         }
 
         Ok(())
@@ -137,12 +137,13 @@ impl TokenOwnerRecord {
         Ok(())
     }
 
-    /// Decreases unresolved_proposal_count
-    pub fn decrease_unresolved_proposal_count(&mut self) {
+    /// Decreases outstanding_proposal_count
+    pub fn decrease_outstanding_proposal_count(&mut self) {
         // Previous versions didn't use the count and it can be already 0
         // TODO: Remove this check once all outstanding proposals on mainnet are resolved
-        if self.unresolved_proposal_count != 0 {
-            self.unresolved_proposal_count = self.unresolved_proposal_count.checked_sub(1).unwrap();
+        if self.outstanding_proposal_count != 0 {
+            self.outstanding_proposal_count =
+                self.outstanding_proposal_count.checked_sub(1).unwrap();
         }
     }
 }
@@ -261,7 +262,7 @@ mod test {
             governance_delegate: Some(Pubkey::new_unique()),
             unrelinquished_votes_count: 1,
             total_votes_count: 1,
-            unresolved_proposal_count: 1,
+            outstanding_proposal_count: 1,
             reserved: [0; 7],
         };
 
@@ -318,7 +319,7 @@ mod test {
             token_owner_record_v1_1_data.account_type
         );
 
-        assert_eq!(0, token_owner_record_v1_1_data.unresolved_proposal_count);
+        assert_eq!(0, token_owner_record_v1_1_data.outstanding_proposal_count);
 
         assert_eq!(
             token_owner_record_v1_0.governance_delegate,
