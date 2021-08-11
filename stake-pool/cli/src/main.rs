@@ -37,7 +37,7 @@ use {
     spl_stake_pool::{
         self, find_stake_program_address, find_transient_stake_program_address,
         find_withdraw_authority_program_address,
-        instruction::PreferredValidatorType,
+        instruction::{DepositType, PreferredValidatorType},
         stake_program::{self, StakeState},
         state::{Fee, FeeType, StakePool, ValidatorList},
     },
@@ -1378,7 +1378,7 @@ fn command_set_deposit_authority(
     config: &Config,
     stake_pool_address: &Pubkey,
     new_sol_deposit_authority: Option<Pubkey>,
-    for_stake_deposit: bool,
+    deposit_type: DepositType,
 ) -> CommandResult {
     let mut signers = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
     unique_signers!(signers);
@@ -1389,7 +1389,7 @@ fn command_set_deposit_authority(
             stake_pool_address,
             &config.manager.pubkey(),
             new_sol_deposit_authority.as_ref(),
-            for_stake_deposit,
+            deposit_type,
         )],
         &signers,
     )?;
@@ -2039,8 +2039,8 @@ fn main() {
                     .help("Public key for the new stake pool staker."),
             )
         )
-        .subcommand(SubCommand::with_name("set-sol-deposit-authority")
-            .about("Change sol deposit authority account for the stake pool. Must be signed by the manager.")
+        .subcommand(SubCommand::with_name("set-deposit-authority")
+            .about("Change deposit authority account for the stake pool. Must be signed by the manager.")
             .arg(
                 Arg::with_name("pool")
                     .index(1)
@@ -2051,39 +2051,17 @@ fn main() {
                     .help("Stake pool address."),
             )
             .arg(
-                Arg::with_name("new_sol_deposit_authority")
+                Arg::with_name("deposit_type")
                     .index(2)
-                    .validator(is_pubkey)
-                    .value_name("ADDRESS")
-                    .takes_value(true)
-                    .help("The public key for the new stake pool sol deposit authority."),
-            )
-            .arg(
-                Arg::with_name("unset")
-                    .long("unset")
-                    .takes_value(false)
-                    .help("Unset the sol deposit authority.")
-            )
-            .group(ArgGroup::with_name("validator")
-                .arg("new_sol_deposit_authority")
-                .arg("unset")
-                .required(true)
-            )
-        )
-        .subcommand(SubCommand::with_name("set-stake-deposit-authority")
-            .about("Change stake deposit authority account for the stake pool. Must be signed by the manager.")
-            .arg(
-                Arg::with_name("pool")
-                    .index(1)
-                    .validator(is_pubkey)
-                    .value_name("POOL_ADDRESS")
+                    .value_name("DEPOSIT_TYPE")
+                    .possible_values(&["stake", "sol"]) // DepositType enum
                     .takes_value(true)
                     .required(true)
-                    .help("Stake pool address."),
+                    .help("Deposit type to be updated."),
             )
             .arg(
                 Arg::with_name("new_stake_deposit_authority")
-                    .index(2)
+                    .index(3)
                     .validator(is_pubkey)
                     .value_name("ADDRESS_OR_NONE")
                     .takes_value(true)
@@ -2115,7 +2093,7 @@ fn main() {
             .arg(Arg::with_name("fee_type")
                 .index(2)
                 .value_name("FEE_TYPE")
-                .possible_values(&["epoch", "stake-deposit", "sol-deposit", "withdrawal"]) // PreferredValidatorType enum
+                .possible_values(&["epoch", "stake-deposit", "sol-deposit", "withdrawal"]) // FeeType enum
                 .takes_value(true)
                 .required(true)
                 .help("Fee type to be updated."),
@@ -2139,7 +2117,7 @@ fn main() {
                     .help("Fee denominator, fee amount is numerator divided by denominator."),
             )
         )
-        .subcommand(SubCommand::with_name("set-stake-referral-fee")
+        .subcommand(SubCommand::with_name("set-referral-fee")
             .about("Change the referral fee assessed by the stake pool for stake deposits. Must be signed by the manager.")
             .arg(
                 Arg::with_name("pool")
@@ -2150,29 +2128,17 @@ fn main() {
                     .required(true)
                     .help("Stake pool address."),
             )
-            .arg(
-                Arg::with_name("fee")
-                    .index(2)
-                    .validator(is_valid_percentage)
-                    .value_name("FEE_PERCENTAGE")
-                    .takes_value(true)
-                    .required(true)
-                    .help("Fee percentage, maximum 100"),
-            )
-        ).subcommand(SubCommand::with_name("set-sol-referral-fee")
-            .about("Change the referral fee assessed by the stake pool for SOL deposits. Must be signed by the manager.")
-            .arg(
-                Arg::with_name("pool")
-                    .index(1)
-                    .validator(is_pubkey)
-                    .value_name("POOL_ADDRESS")
-                    .takes_value(true)
-                    .required(true)
-                    .help("Stake pool address."),
+            .arg(Arg::with_name("fee_type")
+                .index(2)
+                .value_name("FEE_TYPE")
+                .possible_values(&["stake", "sol"]) // FeeType enum, kind of
+                .takes_value(true)
+                .required(true)
+                .help("Fee type to be updated."),
             )
             .arg(
                 Arg::with_name("fee")
-                    .index(2)
+                    .index(3)
                     .validator(is_valid_percentage)
                     .value_name("FEE_PERCENTAGE")
                     .takes_value(true)
@@ -2408,26 +2374,20 @@ fn main() {
             let new_staker = pubkey_of(arg_matches, "new_staker").unwrap();
             command_set_staker(&config, &stake_pool_address, &new_staker)
         }
-        ("set-stake-deposit-authority", Some(arg_matches)) => {
+        ("set-deposit-authority", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
             let new_stake_deposit_authority = pubkey_of(arg_matches, "new_stake_deposit_authority");
+            let deposit_type = match arg_matches.value_of("deposit_type").unwrap() {
+                "sol" => DepositType::Sol,
+                "stake" => DepositType::Stake,
+                _ => unreachable!(),
+            };
             let _unset = arg_matches.is_present("unset");
             command_set_deposit_authority(
                 &config,
                 &stake_pool_address,
                 new_stake_deposit_authority,
-                true,
-            )
-        }
-        ("set-sol-deposit-authority", Some(arg_matches)) => {
-            let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
-            let new_sol_deposit_authority = pubkey_of(arg_matches, "new_sol_deposit_authority");
-            let _unset = arg_matches.is_present("unset");
-            command_set_deposit_authority(
-                &config,
-                &stake_pool_address,
-                new_sol_deposit_authority,
-                false,
+                deposit_type,
             )
         }
         ("set-fee", Some(arg_matches)) => {
@@ -2452,21 +2412,18 @@ fn main() {
                 _ => unreachable!(),
             }
         }
-        ("set-stake-referral-fee", Some(arg_matches)) => {
+        ("set-referral-fee", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
             let fee = value_t_or_exit!(arg_matches, "fee", u8);
             if fee > 100u8 {
                 panic!("Invalid fee {}%. Fee needs to be in range [0-100]", fee);
             }
-            command_set_fee(&config, &stake_pool_address, FeeType::StakeReferral(fee))
-        }
-        ("set-sol-referral-fee", Some(arg_matches)) => {
-            let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
-            let fee = value_t_or_exit!(arg_matches, "fee", u8);
-            if fee > 100u8 {
-                panic!("Invalid fee {}%. Fee needs to be in range [0-100]", fee);
-            }
-            command_set_fee(&config, &stake_pool_address, FeeType::SolReferral(fee))
+            let fee_type = match arg_matches.value_of("fee_type").unwrap() {
+                "sol" => FeeType::SolReferral(fee),
+                "stake" => FeeType::StakeReferral(fee),
+                _ => unreachable!(),
+            };
+            command_set_fee(&config, &stake_pool_address, fee_type)
         }
         _ => unreachable!(),
     }

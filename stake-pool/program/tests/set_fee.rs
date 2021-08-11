@@ -13,7 +13,7 @@ use {
     },
     spl_stake_pool::{
         error, id, instruction,
-        state::{Fee, StakePool},
+        state::{Fee, FeeType, StakePool},
     },
 };
 
@@ -50,11 +50,11 @@ async fn success() {
     let old_fee = stake_pool.fee;
 
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::set_epoch_fee(
+        &[instruction::set_fee(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
-            new_fee,
+            FeeType::Epoch(new_fee),
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &stake_pool_accounts.manager],
@@ -108,11 +108,11 @@ async fn fail_wrong_manager() {
 
     let wrong_manager = Keypair::new();
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::set_epoch_fee(
+        &[instruction::set_fee(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &wrong_manager.pubkey(),
-            new_fee,
+            FeeType::Epoch(new_fee),
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &wrong_manager],
@@ -144,11 +144,11 @@ async fn fail_high_fee() {
         denominator: 10,
     };
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::set_epoch_fee(
+        &[instruction::set_fee(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
-            new_fee,
+            FeeType::Epoch(new_fee),
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &stake_pool_accounts.manager],
@@ -193,11 +193,11 @@ async fn fail_not_updated() {
     context.warp_to_slot(50_000).unwrap();
 
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::set_epoch_fee(
+        &[instruction::set_fee(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
-            new_fee,
+            FeeType::Epoch(new_fee),
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &stake_pool_accounts.manager],

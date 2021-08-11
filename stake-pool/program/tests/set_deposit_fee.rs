@@ -11,7 +11,11 @@ use {
         signature::{Keypair, Signer},
         transaction::{Transaction, TransactionError},
     },
-    spl_stake_pool::{error, id, instruction, state::Fee, state::StakePool},
+    spl_stake_pool::{
+        error, id, instruction,
+        state::StakePool,
+        state::{Fee, FeeType},
+    },
 };
 
 async fn setup(fee: Option<Fee>) -> (ProgramTestContext, StakePoolAccounts, Fee) {
@@ -42,11 +46,11 @@ async fn success_stake() {
     let (mut context, stake_pool_accounts, new_deposit_fee) = setup(None).await;
 
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::set_stake_deposit_fee(
+        &[instruction::set_fee(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
-            new_deposit_fee,
+            FeeType::StakeDeposit(new_deposit_fee),
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &stake_pool_accounts.manager],
@@ -80,11 +84,11 @@ async fn success_stake_increase_fee_from_0() {
     };
 
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::set_stake_deposit_fee(
+        &[instruction::set_fee(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
-            new_deposit_fee,
+            FeeType::StakeDeposit(new_deposit_fee),
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &stake_pool_accounts.manager],
@@ -111,11 +115,11 @@ async fn fail_stake_wrong_manager() {
 
     let wrong_manager = Keypair::new();
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::set_stake_deposit_fee(
+        &[instruction::set_fee(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &wrong_manager.pubkey(),
-            new_deposit_fee,
+            FeeType::StakeDeposit(new_deposit_fee),
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &wrong_manager],
@@ -147,11 +151,11 @@ async fn fail_stake_high_deposit_fee() {
         denominator: 100000,
     };
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::set_stake_deposit_fee(
+        &[instruction::set_fee(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
-            new_deposit_fee,
+            FeeType::StakeDeposit(new_deposit_fee),
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &stake_pool_accounts.manager],
@@ -179,11 +183,11 @@ async fn success_sol() {
     let (mut context, stake_pool_accounts, new_deposit_fee) = setup(None).await;
 
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::set_sol_deposit_fee(
+        &[instruction::set_fee(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
-            new_deposit_fee,
+            FeeType::SolDeposit(new_deposit_fee),
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &stake_pool_accounts.manager],
@@ -210,11 +214,11 @@ async fn fail_sol_wrong_manager() {
 
     let wrong_manager = Keypair::new();
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::set_sol_deposit_fee(
+        &[instruction::set_fee(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &wrong_manager.pubkey(),
-            new_deposit_fee,
+            FeeType::SolDeposit(new_deposit_fee),
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &wrong_manager],
@@ -246,11 +250,11 @@ async fn fail_sol_high_deposit_fee() {
         denominator: 100000,
     };
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::set_sol_deposit_fee(
+        &[instruction::set_fee(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
-            new_deposit_fee,
+            FeeType::SolDeposit(new_deposit_fee),
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &stake_pool_accounts.manager],
