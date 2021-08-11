@@ -248,10 +248,10 @@ impl IsInitialized for SwapV1 {
 }
 
 impl Pack for SwapV1 {
-    const LEN: usize = 324;
+    const LEN: usize = 308;
 
     fn pack_into_slice(&self, output: &mut [u8]) {
-        let output = array_mut_ref![output, 0, 324];
+        let output = array_mut_ref![output, 0, 308];
         let (
             is_initialized,
             nonce,
@@ -265,7 +265,7 @@ impl Pack for SwapV1 {
             fees,
             swap_curve,
             pool_nonce
-        ) = mut_array_refs![output, 1, 1, 32, 32, 32, 32, 32, 32, 32, 64, 33, 1];
+        ) = mut_array_refs![output, 1, 1, 32, 32, 32, 32, 32, 32, 32, 48, 33, 1];
         is_initialized[0] = self.is_initialized as u8;
         nonce[0] = self.nonce;
         token_program_id.copy_from_slice(self.token_program_id.as_ref());
@@ -282,7 +282,7 @@ impl Pack for SwapV1 {
 
     /// Unpacks a byte buffer into a [SwapV1](struct.SwapV1.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
-        let input = array_ref![input, 0, 324];
+        let input = array_ref![input, 0, 308];
         #[allow(clippy::ptr_offset_with_cast)]
         let (
             is_initialized,
@@ -297,7 +297,7 @@ impl Pack for SwapV1 {
             fees,
             swap_curve,
             pool_nonce
-        ) = array_refs![input, 1, 1, 32, 32, 32, 32, 32, 32, 32, 64, 33, 1];
+        ) = array_refs![input, 1, 1, 32, 32, 32, 32, 32, 32, 32, 48, 33, 1];
         Ok(Self {
             is_initialized: match is_initialized {
                 [0] => false,
@@ -351,17 +351,19 @@ mod tests {
     const TEST_CURVE_TYPE: u8 = 2;
     const TEST_AMP: u64 = 1;
     const TEST_CURVE: StableCurve = StableCurve { amp: TEST_AMP };
-    const TEST_POOL_NONCE: u8 = 255;
+    const TEST_POOL_NONCE: u8 = 250;
 
     #[test]
     fn pool_registry_pack() {
         let mut pool_registry: Box<PoolRegistry> = try_zeroed_box().unwrap();
         pool_registry.append(&TEST_TOKEN_A);
+        pool_registry.append(&TEST_TOKEN_B);
         let regsize_ref = std::ptr::addr_of!(pool_registry.registry_size);
         let registry_size = unsafe { regsize_ref.read_unaligned() };
         assert_eq!(pool_registry.is_initialized, false);
-        assert_eq!(registry_size, 1);
+        assert_eq!(registry_size, 2);
         assert_eq!(pool_registry.accounts[0], TEST_TOKEN_A);
+        assert_eq!(pool_registry.accounts[1], TEST_TOKEN_B);
     }
 
     #[test]

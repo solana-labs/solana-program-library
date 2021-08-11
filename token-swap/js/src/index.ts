@@ -57,10 +57,26 @@ export class Numberu64 extends BN {
   }
 }
 
+class PublicKeyLayout extends BufferLayout.Blob {
+  constructor(property: string) {
+    super(32, property);
+  }
+  decode(b: any, offset: any) {
+    return new PublicKey(super.decode(b, offset));
+  }
+  encode(src: any, b: any, offset: any) {
+    return super.encode(src.toBuffer(), b, offset);
+  }
+}
+
+function publicKeyLayout(property = "") {
+  return new PublicKeyLayout(property);
+}
+
 export const PoolRegistryLayout = BufferLayout.struct([
   BufferLayout.u8('isInitialized'),
   BufferLayout.u32('registrySize'),
-  BufferLayout.blob((2 * 1024 * 1024) - 32, 'accounts'),
+  BufferLayout.seq(publicKeyLayout(), ((2 * 1024 * 1024) / 32) - 1, "accounts"),
 ]);
 
 export const TokenSwapLayout = BufferLayout.struct([
@@ -82,6 +98,7 @@ export const TokenSwapLayout = BufferLayout.struct([
   Layout.uint64('ownerWithdrawFeeDenominator'),
   BufferLayout.u8('curveType'),
   BufferLayout.blob(32, 'curveParameters'),
+  BufferLayout.u8('poolNonce'),
 ]);
 
 export const CurveType = Object.freeze({
@@ -90,6 +107,12 @@ export const CurveType = Object.freeze({
   Stable: 2, // Stable, like uniswap, but with wide zone of 1:1 instead of one point
   Offset: 3, // Offset curve, like Uniswap, but with an additional offset on the token B side
 });
+
+export type PoolRegistry = {
+  isInitialized: boolean;
+  registrySize: number;
+  accounts: PublicKey[];
+};
 
 /**
  * A program to exchange tokens against a pool of liquidity
@@ -116,6 +139,7 @@ export class TokenSwap {
    * @param ownerWithdrawFeeDenominator The owner withdraw fee denominator
    * @param curveType The curve type
    * @param payer Pays for the transaction
+   * @param poolNonce Nonce for the swap PDA
    */
   constructor(
     private connection: Connection,
@@ -138,6 +162,7 @@ export class TokenSwap {
     public curveType: number,
     public payer: Keypair,
     public poolRegistry: PublicKey,
+    public poolNonce: number,
   ) {
     this.connection = connection;
     this.tokenSwap = tokenSwap;
@@ -159,6 +184,7 @@ export class TokenSwap {
     this.curveType = curveType;
     this.payer = payer;
     this.poolRegistry = poolRegistry;
+    this.poolNonce = poolNonce;
   }
 
   /**
@@ -229,20 +255,18 @@ export class TokenSwap {
     connection: Connection,
     registryOwner: PublicKey,
     swapProgramId: PublicKey,
-  ): Promise<any> {
+  ): Promise<PoolRegistry | undefined> {
     const poolRegistryKey = await PublicKey.createWithSeed(registryOwner, POOL_REGISTRY_SEED, swapProgramId);
     const acc = await connection.getAccountInfo(poolRegistryKey);
-    const decoded = PoolRegistryLayout.decode(acc == null ? undefined : acc.data);
-
-    let keys = [];
-    for (let key = 0; key < decoded.registrySize; key++) {
-      keys.push(new PublicKey(decoded.accounts.slice(32 * key, 32)));
+    if (!acc) {
+      return undefined;
     }
 
+    const decoded = PoolRegistryLayout.decode(acc.data);
     return {
       isInitialized: decoded.isInitialized,
       registrySize: decoded.registrySize,
-      accounts: keys
+      accounts: decoded.accounts
     }
   }
 
@@ -395,6 +419,7 @@ export class TokenSwap {
       tokenSwapData.ownerWithdrawFeeDenominator,
     );
     const curveType = tokenSwapData.curveType;
+    const poolNonce = tokenSwapData.poolNonce;
 
     return new TokenSwap(
       connection,
@@ -416,7 +441,8 @@ export class TokenSwap {
       ownerWithdrawFeeDenominator,
       curveType,
       payer,
-      poolRegistry
+      poolRegistry,
+      poolNonce
     );
   }
 
@@ -485,6 +511,7 @@ export class TokenSwap {
       curveType,
       payer,
       poolRegistry,
+      poolNonce
     );
 
     // Allocate memory for the account
