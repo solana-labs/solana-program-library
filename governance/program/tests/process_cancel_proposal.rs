@@ -48,6 +48,12 @@ async fn test_cancel_proposal() {
 
     assert_eq!(ProposalState::Cancelled, proposal_account.state);
     assert_eq!(Some(clock.unix_timestamp), proposal_account.closed_at);
+
+    let token_owner_record_account = governance_test
+        .get_token_owner_record_account(&token_owner_record_cookie.address)
+        .await;
+
+    assert_eq!(0, token_owner_record_account.outstanding_proposal_count);
 }
 
 #[tokio::test]

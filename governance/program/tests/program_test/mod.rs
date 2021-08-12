@@ -465,7 +465,8 @@ impl GovernanceProgramTest {
             governance_delegate: None,
             unrelinquished_votes_count: 0,
             total_votes_count: 0,
-            reserved: [0; 8],
+            outstanding_proposal_count: 0,
+            reserved: [0; 7],
         };
 
         let governance_delegate = Keypair::from_base58_string(&token_owner.to_base58_string());
@@ -1397,6 +1398,7 @@ impl GovernanceProgramTest {
             &realm_cookie.address,
             &proposal_cookie.account.governance,
             &proposal_cookie.address,
+            &proposal_cookie.account.token_owner_record,
             &proposal_cookie.account.governing_token_mint,
         );
 
@@ -1482,6 +1484,7 @@ impl GovernanceProgramTest {
             &token_owner_record_cookie.account.realm,
             &proposal_cookie.account.governance,
             &proposal_cookie.address,
+            &proposal_cookie.account.token_owner_record,
             &token_owner_record_cookie.address,
             &token_owner_record_cookie.token_owner.pubkey(),
             &proposal_cookie.account.governing_token_mint,
