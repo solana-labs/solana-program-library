@@ -250,6 +250,6 @@ async fn fail_ready_for_removal() {
             let program_error = error::StakePoolError::InvalidPreferredValidator as u32;
             assert_eq!(error_index, program_error);
         }
-        _ => panic!("Wrong error occurs while malicious try to set manager"),
+        _ => panic!("Wrong error occurs while trying to set ReadyForRemoval validator"),
     }
 }
