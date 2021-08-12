@@ -507,6 +507,11 @@ impl Processor {
             return Err(StakePoolError::SignatureMissing.into());
         }
 
+        if stake_pool_info.key == validator_list_info.key {
+            msg!("Cannot use same account for stake pool and validator list");
+            return Err(StakePoolError::AlreadyInUse.into());
+        }
+
         check_account_owner(stake_pool_info, program_id)?;
         let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
         if !stake_pool.is_uninitialized() {
