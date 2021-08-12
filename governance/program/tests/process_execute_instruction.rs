@@ -1,4 +1,4 @@
-#![cfg(feature = "test-bpf")]
+#![cfg(feature = "test-bpf-all")]
 
 mod program_test;
 
@@ -551,8 +551,12 @@ async fn test_execute_instruction_for_other_proposal_error() {
         .advance_clock_by_min_timespan(proposal_instruction_cookie.account.hold_up_time as u64)
         .await;
 
+    let token_owner_record_cookie2 = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await;
+
     let proposal_cookie2 = governance_test
-        .with_proposal(&token_owner_record_cookie, &mut mint_governance_cookie)
+        .with_proposal(&token_owner_record_cookie2, &mut mint_governance_cookie)
         .await
         .unwrap();
 

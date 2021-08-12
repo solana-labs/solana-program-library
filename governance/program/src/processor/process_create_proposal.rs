@@ -36,7 +36,7 @@ pub fn process_create_proposal(
     let proposal_info = next_account_info(account_info_iter)?; // 1
     let governance_info = next_account_info(account_info_iter)?; // 2
 
-    let token_owner_record_info = next_account_info(account_info_iter)?; // 3
+    let proposal_owner_record_info = next_account_info(account_info_iter)?; // 3
     let governance_authority_info = next_account_info(account_info_iter)?; // 4
 
     let payer_info = next_account_info(account_info_iter)?; // 5
@@ -58,21 +58,31 @@ pub fn process_create_proposal(
     let mut governance_data =
         get_governance_data_for_realm(program_id, governance_info, realm_info.key)?;
 
-    let token_owner_record_data =
-        get_token_owner_record_data_for_realm(program_id, token_owner_record_info, realm_info.key)?;
+    let mut proposal_owner_record_data = get_token_owner_record_data_for_realm(
+        program_id,
+        proposal_owner_record_info,
+        realm_info.key,
+    )?;
 
     // Proposal owner (TokenOwner) or its governance_delegate must sign this transaction
-    token_owner_record_data.assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
+    proposal_owner_record_data
+        .assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
-    // Ensure proposal owner (TokenOwner) has enough tokens to create proposal
-    token_owner_record_data.assert_can_create_proposal(&realm_data, &governance_data.config)?;
+    // Ensure proposal owner (TokenOwner) has enough tokens to create proposal and no outstanding proposals
+    proposal_owner_record_data.assert_can_create_proposal(&realm_data, &governance_data.config)?;
+
+    proposal_owner_record_data.outstanding_proposal_count = proposal_owner_record_data
+        .outstanding_proposal_count
+        .checked_add(1)
+        .unwrap();
+    proposal_owner_record_data.serialize(&mut *proposal_owner_record_info.data.borrow_mut())?;
 
     let proposal_data = Proposal {
         account_type: GovernanceAccountType::Proposal,
         governance: *governance_info.key,
         governing_token_mint,
         state: ProposalState::Draft,
-        token_owner_record: *token_owner_record_info.key,
+        token_owner_record: *proposal_owner_record_info.key,
 
         signatories_count: 0,
         signatories_signed_off_count: 0,

@@ -394,6 +394,12 @@ async fn test_cast_vote_with_vote_tipped_to_succeeded() {
         .await;
 
     assert_eq!(ProposalState::Succeeded, proposal_account.state);
+
+    let proposal_owner_record = governance_test
+        .get_token_owner_record_account(&proposal_cookie.account.token_owner_record)
+        .await;
+
+    assert_eq!(0, proposal_owner_record.outstanding_proposal_count);
 }
 
 #[tokio::test]
@@ -479,6 +485,12 @@ async fn test_cast_vote_with_vote_tipped_to_defeated() {
         .await;
 
     assert_eq!(ProposalState::Defeated, proposal_account.state);
+
+    let proposal_owner_record = governance_test
+        .get_token_owner_record_account(&proposal_cookie.account.token_owner_record)
+        .await;
+
+    assert_eq!(0, proposal_owner_record.outstanding_proposal_count);
 }
 
 #[tokio::test]
@@ -530,6 +542,12 @@ async fn test_cast_vote_with_threshold_below_50_and_vote_not_tipped() {
         .await;
 
     assert_eq!(ProposalState::Voting, proposal_account.state);
+
+    let proposal_owner_record = governance_test
+        .get_token_owner_record_account(&proposal_cookie.account.token_owner_record)
+        .await;
+
+    assert_eq!(1, proposal_owner_record.outstanding_proposal_count);
 }
 
 #[tokio::test]
