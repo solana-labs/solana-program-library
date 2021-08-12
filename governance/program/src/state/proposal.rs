@@ -280,7 +280,9 @@ impl Proposal {
 
                 Ok(max_vote_weight.max(total_vote_count))
             }
-            _ => Err(GovernanceError::VoteWeightSourceNotSupported.into()),
+            MintMaxVoteWeightSource::Absolute(_) => {
+                Err(GovernanceError::VoteWeightSourceNotSupported.into())
+            }
         }
     }
 

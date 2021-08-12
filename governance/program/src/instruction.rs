@@ -50,9 +50,8 @@ pub enum GovernanceInstruction {
     /// 5. `[]` System
     /// 6. `[]` SPL Token
     /// 7. `[]` Sysvar Rent
-
-    /// 9. `[]` Council Token Mint - optional
-    /// 10. `[writable]` Council Token Holding account - optional unless council is used. PDA seeds: ['governance',realm,council_mint]
+    /// 8. `[]` Council Token Mint - optional
+    /// 9. `[writable]` Council Token Holding account - optional unless council is used. PDA seeds: ['governance',realm,council_mint]
     ///     The account will be created with the Realm PDA as its owner
     CreateRealm {
         #[allow(dead_code)]
@@ -235,7 +234,7 @@ pub enum GovernanceInstruction {
     ///
     ///   0. `[writable]` Proposal account
     ///   1. `[writable]`  TokenOwnerRecord account of the  Proposal owner
-    ///   2 `[signer]` Governance Authority (Token Owner or Governance Delegate)
+    ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)
     ///   3. `[]` Clock sysvar
     CancelProposal,
 
@@ -290,7 +289,6 @@ pub enum GovernanceInstruction {
     ///   2. `[writable]` TokenOwnerRecord account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
     ///   3. `[writable]` Proposal VoteRecord account. PDA seeds: ['governance',proposal,governing_token_owner_record]
     ///   4. `[]` Governing Token Mint
-
     ///   5. `[signer]` Optional Governance Authority (Token Owner or Governance Delegate)
     ///       It's required only when Proposal is still being voted on
     ///   6. `[writable]` Optional Beneficiary account which would receive lamports when VoteRecord Account is disposed
@@ -389,12 +387,11 @@ pub enum GovernanceInstruction {
     /// Sets realm config
     ///   0. `[writable]` Realm account
     ///   1. `[signer]`  Realm authority    
-
-    ///   3. `[]` Council Token Mint - optional
+    ///   2. `[]` Council Token Mint - optional
     ///       Note: In the current version it's only possible to remove council mint (set it to None)
     ///       After setting council to None it won't be possible to withdraw the tokens from the Realm any longer
     ///       If that's required then it must be done before executing this instruction
-    ///   4. `[writable]` Council Token Holding account - optional unless council is used. PDA seeds: ['governance',realm,council_mint]
+    ///   3. `[writable]` Council Token Holding account - optional unless council is used. PDA seeds: ['governance',realm,council_mint]
     ///       The account will be created with the Realm PDA as its owner
     SetRealmConfig {
         #[allow(dead_code)]

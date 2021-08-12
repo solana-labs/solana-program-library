@@ -1,8 +1,9 @@
 # Governance
 
-Governance is a program the chief purpose of which is to control the upgrade of other programs through democratic means.
-It can also be used as an authority provider for mints and other forms of access control as well where we may want
-a voting population to vote on disbursement of access or funds collectively.
+Governance is a program the chief purpose of which is to create Decentralized Autonomous Organizations (DAOs).
+It can be used as an authority provider for mints, token accounts and other forms of access control where for example
+we may want a voting population to vote on disbursement of funds collectively.
+It can also control upgrades of itself and other programs through democratic means.
 
 ## Architecture
 
@@ -49,7 +50,7 @@ from the governed token account.
 
 ### How does the authority work?
 
-Governance can handle arbitrary executions of code, but it's real power lies in the power to upgrade programs.
+Governance can handle arbitrary executions of code. In the program governance case it can execute program upgrades.
 It does this through executing instructions to the bpf-upgradable-loader program.
 Bpf-upgradable-loader allows any signer who has Upgrade authority over a Buffer account and the Program account itself
 to upgrade it using its Upgrade command.
@@ -65,7 +66,7 @@ mint and transfer instructions for the governed accounts.
 
 ### Proposal accounts
 
-A Proposal is an instance of a Governance created to vote on and execute given set of changes.
+A Proposal is an instance of a Governance created to vote on and execute given set of instructions.
 It is created by someone (Proposal Owner) and tied to a given Governance account
 and has a set of executable instructions to it, a name and a description.
 It goes through various states (draft, voting, executing, ...) and users can vote on it
@@ -101,16 +102,30 @@ When a Proposal is created and signed by its Signatories voters can start voting
 equal to deposited governing tokens into the realm. A vote is tipped once it passes the defined `vote_threshold` of votes
 and enters Succeeded or Defeated state. If Succeeded then Proposal instructions can be executed after they hold_up_time passes.
 
-Users can relinquish their vote any time during Proposal lifetime, but once Proposal it decided their vote can't be changed.
+Users can relinquish their vote any time during Proposal lifetime, but once Proposal is decided their vote can't be changed.
 
 ### Community and Councils governing tokens
 
 Each Governance Realm that gets created has the option to also have a Council mint.
 A council mint is simply a separate mint from the Community mint.
 What this means is that users can submit Proposals that have a different voting population from a different mint
-that can affect the same program. A practical application of this policy may be to have a very large population control
+that can affect the same DAO. A practical application of this policy may be to have a very large population control
 major version bumps of Solana via normal SOL, for instance, but hot fixes be controlled via Council tokens,
 of which there may be only 30, and which may be themselves minted and distributed via proposals by the governing population.
+
+Another important use case is to use the Council for DAO inception. At the beginning of a DAO life
+there are lots of risks and unknowns.
+For example it's not known whether the community of token holders would engage and participate in DAO votes.
+And if it would engage then to what extent. It means it can be difficult for example to decide how many votes are
+required for a proposal to be successfully voted on.
+This is why in order to avoid traps and potentially irreversible actions the Council can be used as a safety net
+in a similar way to Multisig to moderate and supervise the voting process at the DAO inception.
+Once the newly born DAO goes through several successful proposal votes and everything is going smoothly
+the council can be removed from the DAO through a community vote.
+
+The Council can also be used for protocols and communities which haven't launched their token yet.
+In such cases the DAO can be setup with the yet to launch token and the Council which would governed
+the DAO until the token is distributed.
 
 ### Proposal Workflow
 
