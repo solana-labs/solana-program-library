@@ -11,3 +11,4 @@ hfuzz_workspace
 **/.DS_Store
 test-ledger
 docker-target
+.idea
