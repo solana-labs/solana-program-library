@@ -1807,13 +1807,14 @@ impl Processor {
             }
         }
 
-        let stake_state =
-            try_from_slice_unchecked::<stake_program::StakeState>(&stake_info.data.borrow()).ok();
-        let stake_rent = if let Some(stake_program::StakeState::Stake(meta, _)) = stake_state {
+        let (meta, stake) = get_stake_state(stake_info)?;
+
+        // If the stake account is mergeable (full-activated), `meta.rent_exempt_reserve`
+        // will not be merged into `stake.delegation.stake`
+        let unactivated_stake_rent = if stake.delegation.activation_epoch < clock.epoch {
             meta.rent_exempt_reserve
         } else {
-            msg!("Stake state must be Stake");
-            return Err(StakePoolError::InvalidStakeAccountAddress.into());
+            0
         };
 
         let mut validator_stake_info = validator_list
@@ -1880,7 +1881,7 @@ impl Processor {
         let additional_lamports = all_deposit_lamports
             .checked_sub(stake_deposit_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
-        let credited_additional_lamports = std::cmp::min(additional_lamports, stake_rent);
+        let credited_additional_lamports = additional_lamports.min(unactivated_stake_rent);
         let credited_deposit_lamports =
             stake_deposit_lamports.saturating_add(credited_additional_lamports);
 
