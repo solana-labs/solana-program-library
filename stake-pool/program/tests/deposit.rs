@@ -212,9 +212,8 @@ async fn success() {
     // Check minted tokens
     let user_token_balance =
         get_token_balance(&mut context.banks_client, &pool_token_account).await;
-    let tokens_issued_user = tokens_issued
-        - stake_pool_accounts.calculate_deposit_fee(tokens_issued - stake_rent)
-        - stake_pool_accounts.calculate_sol_deposit_fee(stake_rent);
+    let tokens_issued_user =
+        tokens_issued - stake_pool_accounts.calculate_deposit_fee(tokens_issued);
     assert_eq!(user_token_balance, tokens_issued_user);
 
     // Check balances in validator stake account list storage
@@ -357,7 +356,7 @@ async fn success_with_extra_stake_lamports() {
         .expect("get_account")
         .is_none());
 
-    let tokens_issued = stake_lamports + extra_lamports; // For now tokens are 1:1 to stake
+    let tokens_issued = stake_lamports; // For now tokens are 1:1 to stake
 
     // Stake pool should add its balance to the pool balance
     let post_stake_pool = get_account(
@@ -379,12 +378,9 @@ async fn success_with_extra_stake_lamports() {
     // Check minted tokens
     let user_token_balance =
         get_token_balance(&mut context.banks_client, &pool_token_account).await;
-    let tokens_issued_stake = stake_lamports - stake_rent;
-    let tokens_issued_sol = extra_lamports + stake_rent;
 
-    let tokens_issued_user = tokens_issued
-        - stake_pool_accounts.calculate_deposit_fee(tokens_issued_stake)
-        - stake_pool_accounts.calculate_sol_deposit_fee(tokens_issued_sol);
+    let tokens_issued_user =
+        tokens_issued - stake_pool_accounts.calculate_deposit_fee(tokens_issued);
     assert_eq!(user_token_balance, tokens_issued_user);
 
     let referrer_balance_post =
@@ -396,13 +392,9 @@ async fn success_with_extra_stake_lamports() {
     )
     .await;
 
-    let tokens_issued_fees = stake_pool_accounts.calculate_deposit_fee(tokens_issued_stake)
-        + stake_pool_accounts.calculate_sol_deposit_fee(tokens_issued_sol);
+    let tokens_issued_fees = stake_pool_accounts.calculate_deposit_fee(tokens_issued);
     let tokens_issued_referral_fee = stake_pool_accounts
-        .calculate_referral_fee(stake_pool_accounts.calculate_deposit_fee(tokens_issued_stake))
-        + stake_pool_accounts.calculate_sol_referral_fee(
-            stake_pool_accounts.calculate_sol_deposit_fee(tokens_issued_sol),
-        );
+        .calculate_referral_fee(stake_pool_accounts.calculate_deposit_fee(tokens_issued));
     let tokens_issued_manager_fee = tokens_issued_fees - tokens_issued_referral_fee;
 
     assert_eq!(
@@ -486,6 +478,7 @@ async fn fail_with_wrong_stake_program_id() {
         AccountMeta::new(stake_pool_accounts.pool_fee_account.pubkey(), false),
         AccountMeta::new(stake_pool_accounts.pool_mint.pubkey(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
         AccountMeta::new_readonly(spl_token::id(), false),
         AccountMeta::new_readonly(wrong_stake_program, false),
@@ -1081,9 +1074,6 @@ async fn success_with_referral_fee() {
     .await
     .unwrap();
 
-    let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
-
     let referrer_balance_pre =
         get_token_balance(&mut context.banks_client, &referrer_token_account.pubkey()).await;
 
@@ -1114,10 +1104,8 @@ async fn success_with_referral_fee() {
 
     let referrer_balance_post =
         get_token_balance(&mut context.banks_client, &referrer_token_account.pubkey()).await;
-    let referral_fee = stake_pool_accounts.calculate_referral_fee(
-        stake_pool_accounts.calculate_deposit_fee(stake_lamports - stake_rent),
-    ) + stake_pool_accounts
-        .calculate_sol_referral_fee(stake_pool_accounts.calculate_sol_deposit_fee(stake_rent));
+    let referral_fee = stake_pool_accounts
+        .calculate_referral_fee(stake_pool_accounts.calculate_deposit_fee(stake_lamports));
     assert!(referral_fee > 0);
     assert_eq!(referrer_balance_pre + referral_fee, referrer_balance_post);
 }

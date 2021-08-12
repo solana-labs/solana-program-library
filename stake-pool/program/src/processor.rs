@@ -1741,6 +1741,8 @@ impl Processor {
         let pool_mint_info = next_account_info(account_info_iter)?;
         let clock_info = next_account_info(account_info_iter)?;
         let clock = &Clock::from_account_info(clock_info)?;
+        let rent_info = next_account_info(account_info_iter)?;
+        let rent = &Rent::from_account_info(rent_info)?;
         let stake_history_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
         let stake_program_info = next_account_info(account_info_iter)?;
@@ -1807,6 +1809,8 @@ impl Processor {
             }
         }
 
+        let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
+
         let mut validator_stake_info = validator_list
             .find_mut::<ValidatorStakeInfo>(
                 vote_account_address.as_ref(),
@@ -1871,47 +1875,24 @@ impl Processor {
             .checked_sub(stake_deposit_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
 
-        let new_stake_deposit_pool_tokens = stake_pool
-            .calc_pool_tokens_for_deposit(stake_deposit_lamports)
-            .ok_or(StakePoolError::CalculationFailure)?;
-        let new_sol_deposit_pool_tokens = stake_pool
-            .calc_pool_tokens_for_deposit(sol_deposit_lamports)
-            .ok_or(StakePoolError::CalculationFailure)?;
-        let new_pool_tokens = new_stake_deposit_pool_tokens
-            .checked_add(new_sol_deposit_pool_tokens)
+        let new_pool_tokens = stake_pool
+            .calc_pool_tokens_for_deposit(stake_deposit_lamports + stake_rent)
             .ok_or(StakePoolError::CalculationFailure)?;
 
         let pool_tokens_stake_deposit_fee = stake_pool
-            .calc_pool_tokens_stake_deposit_fee(new_stake_deposit_pool_tokens)
-            .ok_or(StakePoolError::CalculationFailure)?;
-        let pool_tokens_sol_deposit_fee = stake_pool
-            .calc_pool_tokens_sol_deposit_fee(new_sol_deposit_pool_tokens)
+            .calc_pool_tokens_stake_deposit_fee(new_pool_tokens)
             .ok_or(StakePoolError::CalculationFailure)?;
 
         let pool_tokens_user = new_pool_tokens
             .checked_sub(pool_tokens_stake_deposit_fee)
-            .ok_or(StakePoolError::CalculationFailure)?
-            .checked_sub(pool_tokens_sol_deposit_fee)
             .ok_or(StakePoolError::CalculationFailure)?;
 
-        let pool_tokens_stake_referral_fee = stake_pool
+        let pool_tokens_referral_fee = stake_pool
             .calc_pool_tokens_stake_referral_fee(pool_tokens_stake_deposit_fee)
             .ok_or(StakePoolError::CalculationFailure)?;
-        let pool_tokens_sol_referral_fee = stake_pool
-            .calc_pool_tokens_sol_referral_fee(pool_tokens_sol_deposit_fee)
-            .ok_or(StakePoolError::CalculationFailure)?;
-        let pool_tokens_referral_fee = pool_tokens_stake_referral_fee
-            .checked_add(pool_tokens_sol_referral_fee)
-            .ok_or(StakePoolError::CalculationFailure)?;
 
-        let pool_tokens_manager_stake_deposit_fee = pool_tokens_stake_deposit_fee
-            .checked_sub(pool_tokens_stake_referral_fee)
-            .ok_or(StakePoolError::CalculationFailure)?;
-        let pool_tokens_manager_sol_deposit_fee = pool_tokens_sol_deposit_fee
-            .checked_sub(pool_tokens_sol_referral_fee)
-            .ok_or(StakePoolError::CalculationFailure)?;
-        let pool_tokens_manager_deposit_fee = pool_tokens_manager_stake_deposit_fee
-            .checked_add(pool_tokens_manager_sol_deposit_fee)
+        let pool_tokens_manager_deposit_fee = pool_tokens_stake_deposit_fee
+            .checked_sub(pool_tokens_referral_fee)
             .ok_or(StakePoolError::CalculationFailure)?;
 
         if pool_tokens_user
