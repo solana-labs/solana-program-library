@@ -615,7 +615,7 @@ impl StakePoolAccounts {
             },
             referral_fee: 25,
             sol_deposit_fee: state::Fee {
-                numerator: 0,
+                numerator: 3,
                 denominator: 100,
             },
             sol_referral_fee: 50,

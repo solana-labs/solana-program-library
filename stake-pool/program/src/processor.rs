@@ -1496,6 +1496,10 @@ impl Processor {
                                 // post merge of two active stakes, withdraw
                                 // the extra back to the reserve
                                 if additional_lamports > 0 {
+                                    msg!(
+                                        "\n\n\nWITHDRAWING {} stake during update\n\n\n",
+                                        additional_lamports
+                                    );
                                     Self::stake_withdraw(
                                         stake_pool_info.key,
                                         validator_stake_info.clone(),
@@ -1741,8 +1745,6 @@ impl Processor {
         let pool_mint_info = next_account_info(account_info_iter)?;
         let clock_info = next_account_info(account_info_iter)?;
         let clock = &Clock::from_account_info(clock_info)?;
-        let rent_info = next_account_info(account_info_iter)?;
-        let rent = &Rent::from_account_info(rent_info)?;
         let stake_history_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
         let stake_program_info = next_account_info(account_info_iter)?;
@@ -1809,7 +1811,14 @@ impl Processor {
             }
         }
 
-        let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
+        let stake_state =
+            try_from_slice_unchecked::<stake_program::StakeState>(&stake_info.data.borrow()).ok();
+        let stake_rent = if let Some(stake_program::StakeState::Stake(meta, _)) = stake_state {
+            meta.rent_exempt_reserve
+        } else {
+            msg!("Stake state must be Stake");
+            return Err(StakePoolError::InvalidStakeAccountAddress.into());
+        };
 
         let mut validator_stake_info = validator_list
             .find_mut::<ValidatorStakeInfo>(
@@ -1822,8 +1831,6 @@ impl Processor {
             msg!("Validator is marked for removal and no longer accepting deposits");
             return Err(StakePoolError::ValidatorNotFound.into());
         }
-
-        msg!("Stake pre merge {}", validator_stake.delegation.stake);
 
         let (stake_deposit_authority_program_address, deposit_bump_seed) =
             find_deposit_authority_program_address(program_id, stake_pool_info.key);
@@ -1862,7 +1869,7 @@ impl Processor {
 
         let (_, post_validator_stake) = get_stake_state(validator_stake_account_info)?;
         let post_all_validator_lamports = validator_stake_account_info.lamports();
-        msg!("Stake post merge {}", post_validator_stake.delegation.stake);
+
         let all_deposit_lamports = post_all_validator_lamports
             .checked_sub(pre_all_validator_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
@@ -1871,9 +1878,13 @@ impl Processor {
             .stake
             .checked_sub(validator_stake.delegation.stake)
             .ok_or(StakePoolError::CalculationFailure)?;
+        let additional_lamports = all_deposit_lamports
+            .checked_sub(stake_deposit_lamports)
+            .ok_or(StakePoolError::CalculationFailure)?;
+        let credited_additional_lamports = std::cmp::min(additional_lamports, stake_rent);
 
         let new_pool_tokens = stake_pool
-            .calc_pool_tokens_for_deposit(stake_deposit_lamports + stake_rent)
+            .calc_pool_tokens_for_deposit(stake_deposit_lamports + credited_additional_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
 
         let pool_tokens_stake_deposit_fee = stake_pool
@@ -1942,9 +1953,7 @@ impl Processor {
         }
 
         // withdraw additional lamports to the reserve
-        let additional_lamports = all_deposit_lamports
-            .checked_sub(stake_deposit_lamports)
-            .ok_or(StakePoolError::CalculationFailure)?;
+
         if additional_lamports > 0 {
             Self::stake_withdraw(
                 stake_pool_info.key,
@@ -1964,9 +1973,11 @@ impl Processor {
             .pool_token_supply
             .checked_add(new_pool_tokens)
             .ok_or(StakePoolError::CalculationFailure)?;
+        // We treat the extra lamports as though they were
+        // transferred directly to the reserve stake account.
         stake_pool.total_stake_lamports = stake_pool
             .total_stake_lamports
-            .checked_add(all_deposit_lamports)
+            .checked_add(stake_deposit_lamports + credited_additional_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
 

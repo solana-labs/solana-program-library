@@ -356,22 +356,28 @@ async fn success_with_extra_stake_lamports() {
         .expect("get_account")
         .is_none());
 
-    let tokens_issued = stake_lamports; // For now tokens are 1:1 to stake
+    let tokens_issued = stake_lamports;
+    // For now tokens are 1:1 to stake
 
     // Stake pool should add its balance to the pool balance
-    let post_stake_pool = get_account(
+
+    // The extra lamports will not get recorded in total stake lamports unless
+    // update_stake_pool_balance is called
+    let intermediate_stake_pool = get_account(
         &mut context.banks_client,
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let post_stake_pool =
-        try_from_slice_unchecked::<state::StakePool>(&post_stake_pool.data.as_slice()).unwrap();
+
+    let intermediate_stake_pool =
+        try_from_slice_unchecked::<state::StakePool>(&intermediate_stake_pool.data.as_slice())
+            .unwrap();
     assert_eq!(
-        post_stake_pool.total_stake_lamports,
-        pre_stake_pool.total_stake_lamports + stake_lamports + extra_lamports
+        intermediate_stake_pool.total_stake_lamports,
+        pre_stake_pool.total_stake_lamports + stake_lamports
     );
     assert_eq!(
-        post_stake_pool.pool_token_supply,
+        intermediate_stake_pool.pool_token_supply,
         pre_stake_pool.pool_token_supply + tokens_issued
     );
 
@@ -386,12 +392,6 @@ async fn success_with_extra_stake_lamports() {
     let referrer_balance_post =
         get_token_balance(&mut context.banks_client, &referrer_token_account.pubkey()).await;
 
-    let manager_pool_balance_post = get_token_balance(
-        &mut context.banks_client,
-        &stake_pool_accounts.pool_fee_account.pubkey(),
-    )
-    .await;
-
     let tokens_issued_fees = stake_pool_accounts.calculate_deposit_fee(tokens_issued);
     let tokens_issued_referral_fee = stake_pool_accounts
         .calculate_referral_fee(stake_pool_accounts.calculate_deposit_fee(tokens_issued));
@@ -402,9 +402,36 @@ async fn success_with_extra_stake_lamports() {
         tokens_issued_referral_fee
     );
 
+    let manager_pool_balance_post = get_token_balance(
+        &mut context.banks_client,
+        &stake_pool_accounts.pool_fee_account.pubkey(),
+    )
+    .await;
     assert_eq!(
         manager_pool_balance_post - manager_pool_balance_pre,
         tokens_issued_manager_fee
+    );
+
+    // Update the pool balance and check that extra_lamports has been recorded as rewards
+    // in the reserve account.
+    stake_pool_accounts
+        .update_stake_pool_balance(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+        )
+        .await;
+    // Stake pool should add its balance to the pool balance
+    let post_stake_pool = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
+    let post_stake_pool =
+        try_from_slice_unchecked::<state::StakePool>(&post_stake_pool.data.as_slice()).unwrap();
+    assert_eq!(
+        post_stake_pool.total_stake_lamports,
+        pre_stake_pool.total_stake_lamports + extra_lamports + stake_lamports
     );
 
     // Check balances in validator stake account list storage
@@ -646,6 +673,24 @@ async fn fail_with_unknown_validator() {
         &authorized,
         &lockup,
         TEST_STAKE_AMOUNT,
+    )
+    .await;
+    let random_vote_account = Keypair::new();
+    create_vote(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &Keypair::new(),
+        &random_vote_account,
+    )
+    .await;
+    delegate_stake_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &user_stake.pubkey(),
+        &user,
+        &random_vote_account.pubkey(),
     )
     .await;
 
