@@ -118,11 +118,11 @@ async fn success_fee_cannot_increase_more_than_once() {
     let old_withdrawal_fee = stake_pool.withdrawal_fee;
 
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::set_withdrawal_fee(
+        &[instruction::set_fee(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
-            new_withdrawal_fee,
+            FeeType::Withdrawal(new_withdrawal_fee),
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &stake_pool_accounts.manager],
@@ -171,11 +171,11 @@ async fn success_fee_cannot_increase_more_than_once() {
 
     // try setting to the old fee in the same epoch
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::set_withdrawal_fee(
+        &[instruction::set_fee(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
-            old_withdrawal_fee,
+            FeeType::Withdrawal(old_withdrawal_fee),
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &stake_pool_accounts.manager],
