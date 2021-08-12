@@ -116,6 +116,9 @@ pub enum StakePoolError {
     /// Provided sol deposit authority does not match the program's
     #[error("InvalidSolDepositAuthority")]
     InvalidSolDepositAuthority,
+    /// Provided preferred validator is invalid
+    #[error("InvalidPreferredValidator")]
+    InvalidPreferredValidator,
 }
 impl From<StakePoolError> for ProgramError {
     fn from(e: StakePoolError) -> Self {
