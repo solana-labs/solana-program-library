@@ -1496,10 +1496,6 @@ impl Processor {
                                 // post merge of two active stakes, withdraw
                                 // the extra back to the reserve
                                 if additional_lamports > 0 {
-                                    msg!(
-                                        "\n\n\nWITHDRAWING {} stake during update\n\n\n",
-                                        additional_lamports
-                                    );
                                     Self::stake_withdraw(
                                         stake_pool_info.key,
                                         validator_stake_info.clone(),
@@ -1832,6 +1828,8 @@ impl Processor {
             return Err(StakePoolError::ValidatorNotFound.into());
         }
 
+        msg!("Stake pre merge {}", validator_stake.delegation.stake);
+
         let (stake_deposit_authority_program_address, deposit_bump_seed) =
             find_deposit_authority_program_address(program_id, stake_pool_info.key);
         if *stake_deposit_authority_info.key == stake_deposit_authority_program_address {
@@ -1869,6 +1867,7 @@ impl Processor {
 
         let (_, post_validator_stake) = get_stake_state(validator_stake_account_info)?;
         let post_all_validator_lamports = validator_stake_account_info.lamports();
+        msg!("Stake post merge {}", post_validator_stake.delegation.stake);
 
         let all_deposit_lamports = post_all_validator_lamports
             .checked_sub(pre_all_validator_lamports)
