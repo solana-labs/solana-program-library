@@ -99,6 +99,12 @@ async fn test_finalize_vote_to_succeeded() {
         ),
         proposal_account.vote_threshold_percentage
     );
+
+    let proposal_owner_record = governance_test
+        .get_token_owner_record_account(&proposal_cookie.account.token_owner_record)
+        .await;
+
+    assert_eq!(0, proposal_owner_record.outstanding_proposal_count);
 }
 
 #[tokio::test]

@@ -43,8 +43,14 @@ pub struct TokenOwnerRecord {
     /// If TokenOwner withdraws vote while voting is still in progress total_votes_count is decreased  and the vote doesn't count towards the total
     pub total_votes_count: u32,
 
+    /// The number of outstanding proposals the TokenOwner currently owns
+    /// The count is increased when TokenOwner creates a proposal
+    /// and decreased  once it's either voted on (Succeeded or Defeated) or Cancelled
+    /// By default it's restricted to 1 outstanding Proposal per token owner
+    pub outstanding_proposal_count: u8,
+
     /// Reserved space for future versions
-    pub reserved: [u8; 8],
+    pub reserved: [u8; 7],
 
     /// A single account that is allowed to operate governance with the deposited governing tokens
     /// It can be delegated to by the governing_token_owner or current governance_delegate
@@ -84,7 +90,7 @@ impl TokenOwnerRecord {
         Err(GovernanceError::GoverningTokenOwnerOrDelegateMustSign.into())
     }
 
-    /// Asserts TokenOwner has enough tokens to be allowed to create proposal
+    /// Asserts TokenOwner has enough tokens to be allowed to create proposal and doesn't have any outstanding proposals
     pub fn assert_can_create_proposal(
         &self,
         realm_data: &Realm,
@@ -101,6 +107,12 @@ impl TokenOwnerRecord {
 
         if self.governing_token_deposit_amount < min_tokens_to_create_proposal {
             return Err(GovernanceError::NotEnoughTokensToCreateProposal.into());
+        }
+
+        // The number of outstanding proposals is currently restricted to 1
+        // If there is a need to change it in the future then it should be added to realm or governance config
+        if self.outstanding_proposal_count > 0 {
+            return Err(GovernanceError::TooManyOutstandingProposals.into());
         }
 
         Ok(())
@@ -123,6 +135,16 @@ impl TokenOwnerRecord {
         }
 
         Ok(())
+    }
+
+    /// Decreases outstanding_proposal_count
+    pub fn decrease_outstanding_proposal_count(&mut self) {
+        // Previous versions didn't use the count and it can be already 0
+        // TODO: Remove this check once all outstanding proposals on mainnet are resolved
+        if self.outstanding_proposal_count != 0 {
+            self.outstanding_proposal_count =
+                self.outstanding_proposal_count.checked_sub(1).unwrap();
+        }
     }
 }
 
@@ -225,7 +247,7 @@ pub fn get_token_owner_record_data_for_proposal_owner(
 
 #[cfg(test)]
 mod test {
-    use solana_program::borsh::get_packed_len;
+    use solana_program::borsh::{get_packed_len, try_from_slice_unchecked};
 
     use super::*;
 
@@ -240,11 +262,68 @@ mod test {
             governance_delegate: Some(Pubkey::new_unique()),
             unrelinquished_votes_count: 1,
             total_votes_count: 1,
-            reserved: [0; 8],
+            outstanding_proposal_count: 1,
+            reserved: [0; 7],
         };
 
         let size = get_packed_len::<TokenOwnerRecord>();
 
         assert_eq!(token_owner_record.get_max_size(), Some(size));
+    }
+
+    #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+    pub struct TokenOwnerRecordV1 {
+        pub account_type: GovernanceAccountType,
+
+        pub realm: Pubkey,
+
+        pub governing_token_mint: Pubkey,
+
+        pub governing_token_owner: Pubkey,
+
+        pub governing_token_deposit_amount: u64,
+
+        pub unrelinquished_votes_count: u32,
+
+        pub total_votes_count: u32,
+
+        pub reserved: [u8; 8],
+
+        pub governance_delegate: Option<Pubkey>,
+    }
+
+    #[test]
+    fn test_deserialize_v1_0_account() {
+        let token_owner_record_v1_0 = TokenOwnerRecordV1 {
+            account_type: GovernanceAccountType::TokenOwnerRecord,
+            realm: Pubkey::new_unique(),
+            governing_token_mint: Pubkey::new_unique(),
+            governing_token_owner: Pubkey::new_unique(),
+            governing_token_deposit_amount: 10,
+            unrelinquished_votes_count: 2,
+            total_votes_count: 5,
+            reserved: [0; 8],
+            governance_delegate: Some(Pubkey::new_unique()),
+        };
+
+        let mut token_owner_record_v1_0_data = vec![];
+        token_owner_record_v1_0
+            .serialize(&mut token_owner_record_v1_0_data)
+            .unwrap();
+
+        let token_owner_record_v1_1_data: TokenOwnerRecord =
+            try_from_slice_unchecked(&token_owner_record_v1_0_data).unwrap();
+
+        assert_eq!(
+            token_owner_record_v1_0.account_type,
+            token_owner_record_v1_1_data.account_type
+        );
+
+        assert_eq!(0, token_owner_record_v1_1_data.outstanding_proposal_count);
+
+        assert_eq!(
+            token_owner_record_v1_0.governance_delegate,
+            token_owner_record_v1_1_data.governance_delegate
+        );
     }
 }

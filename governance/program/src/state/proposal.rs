@@ -292,7 +292,7 @@ impl Proposal {
         config: &GovernanceConfig,
         realm_data: &Realm,
         current_unix_timestamp: UnixTimestamp,
-    ) -> Result<(), ProgramError> {
+    ) -> Result<bool, ProgramError> {
         let max_vote_weight = self.get_max_vote_weight(realm_data, governing_token_mint_supply)?;
 
         if let Some(tipped_state) = self.try_get_tipped_vote_state(max_vote_weight, config) {
@@ -302,9 +302,11 @@ impl Proposal {
             // Capture vote params to correctly display historical results
             self.max_vote_weight = Some(max_vote_weight);
             self.vote_threshold_percentage = Some(config.vote_threshold_percentage.clone());
-        }
 
-        Ok(())
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 
     /// Checks if vote can be tipped and automatically transitioned to Succeeded or Defeated state
