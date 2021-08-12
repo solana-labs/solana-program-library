@@ -102,6 +102,20 @@ async fn setup() -> (
 
 #[tokio::test]
 async fn success() {
+    _success(SuccessTestType::Success).await;
+}
+
+#[tokio::test]
+async fn success_with_closed_manager_fee_account() {
+    _success(SuccessTestType::UninitializedManagerFee).await;
+}
+
+enum SuccessTestType {
+    Success,
+    UninitializedManagerFee,
+}
+
+async fn _success(test_type: SuccessTestType) {
     let (
         mut banks_client,
         payer,
@@ -148,6 +162,60 @@ async fn success() {
     )
     .await;
 
+    let destination_keypair = Keypair::new();
+    create_token_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &destination_keypair,
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &Keypair::new().pubkey(),
+    )
+    .await
+    .unwrap();
+
+    if let SuccessTestType::UninitializedManagerFee = test_type {
+        transfer_spl_tokens(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            &stake_pool_accounts.pool_fee_account.pubkey(),
+            &destination_keypair.pubkey(),
+            &stake_pool_accounts.manager,
+            pool_fee_balance_before,
+        )
+        .await;
+        // Check that the account cannot be frozen due to lack of
+        // freeze authority.
+        let transaction_error = freeze_token_account(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            &stake_pool_accounts.pool_fee_account.pubkey(),
+            &stake_pool_accounts.pool_mint.pubkey(),
+            &stake_pool_accounts.manager,
+        )
+        .await
+        .unwrap_err();
+
+        match transaction_error {
+            TransportError::TransactionError(TransactionError::InstructionError(_, error)) => {
+                assert_eq!(error, InstructionError::Custom(0x10));
+            }
+            _ => panic!("Wrong error occurs while try to withdraw with wrong stake program ID"),
+        }
+        close_token_account(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            &stake_pool_accounts.pool_fee_account.pubkey(),
+            &destination_keypair.pubkey(),
+            &stake_pool_accounts.manager,
+        )
+        .await
+        .unwrap();
+    }
+
     let new_authority = Pubkey::new_unique();
     let error = stake_pool_accounts
         .withdraw_stake(
@@ -169,7 +237,12 @@ async fn success() {
     let stake_pool =
         try_from_slice_unchecked::<state::StakePool>(&stake_pool.data.as_slice()).unwrap();
     // first and only deposit, lamports:pool 1:1
-    let tokens_withdrawal_fee = stake_pool_accounts.calculate_withdrawal_fee(tokens_to_withdraw);
+    let tokens_withdrawal_fee = match test_type {
+        SuccessTestType::Success => {
+            stake_pool_accounts.calculate_withdrawal_fee(tokens_to_withdraw)
+        }
+        _ => 0,
+    };
     let tokens_burnt = tokens_to_withdraw - tokens_withdrawal_fee;
     assert_eq!(
         stake_pool.total_stake_lamports,
@@ -180,16 +253,18 @@ async fn success() {
         stake_pool_before.pool_token_supply - tokens_burnt
     );
 
-    // Check manager received withdrawal fee
-    let pool_fee_balance = get_token_balance(
-        &mut banks_client,
-        &stake_pool_accounts.pool_fee_account.pubkey(),
-    )
-    .await;
-    assert_eq!(
-        pool_fee_balance,
-        pool_fee_balance_before + tokens_withdrawal_fee,
-    );
+    if let SuccessTestType::Success = test_type {
+        // Check manager received withdrawal fee
+        let pool_fee_balance = get_token_balance(
+            &mut banks_client,
+            &stake_pool_accounts.pool_fee_account.pubkey(),
+        )
+        .await;
+        assert_eq!(
+            pool_fee_balance,
+            pool_fee_balance_before + tokens_withdrawal_fee,
+        );
+    }
 
     // Check validator stake list storage
     let validator_list = get_account(

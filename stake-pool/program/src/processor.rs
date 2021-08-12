@@ -33,7 +33,7 @@ use {
         system_instruction, system_program,
         sysvar::Sysvar,
     },
-    spl_token::state::Mint,
+    spl_token::state::{Account, AccountState, Mint},
 };
 
 /// Deserialize the stake state from AccountInfo
@@ -2171,7 +2171,12 @@ impl Processor {
             return Err(StakePoolError::InvalidState.into());
         }
 
-        let pool_tokens_fee = if stake_pool.manager_fee_account == *burn_from_pool_info.key {
+        // To prevent a faulty manager fee account from preventing withdrawals
+        // if the token program does not own the account, or if the account is not initialized
+        let pool_tokens_fee = if stake_pool.manager_fee_account == *burn_from_pool_info.key
+            || check_account_owner(manager_fee_info, &stake_pool.token_program_id).is_err()
+            || Account::unpack(&manager_fee_info.data.borrow())?.state != AccountState::Initialized
+        {
             0
         } else {
             stake_pool
