@@ -2364,6 +2364,7 @@ impl Processor {
 
         check_account_owner(stake_pool_info, program_id)?;
         let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
+        check_account_owner(new_manager_fee_info, &stake_pool.token_program_id)?;
         if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
