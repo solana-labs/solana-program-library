@@ -1871,9 +1871,6 @@ impl Processor {
             .stake
             .checked_sub(validator_stake.delegation.stake)
             .ok_or(StakePoolError::CalculationFailure)?;
-        let sol_deposit_lamports = all_deposit_lamports
-            .checked_sub(stake_deposit_lamports)
-            .ok_or(StakePoolError::CalculationFailure)?;
 
         let new_pool_tokens = stake_pool
             .calc_pool_tokens_for_deposit(stake_deposit_lamports + stake_rent)
@@ -1945,7 +1942,10 @@ impl Processor {
         }
 
         // withdraw additional lamports to the reserve
-        if sol_deposit_lamports > 0 {
+        let additional_lamports = all_deposit_lamports
+            .checked_sub(stake_deposit_lamports)
+            .ok_or(StakePoolError::CalculationFailure)?;
+        if additional_lamports > 0 {
             Self::stake_withdraw(
                 stake_pool_info.key,
                 validator_stake_account_info.clone(),
@@ -1956,7 +1956,7 @@ impl Processor {
                 clock_info.clone(),
                 stake_history_info.clone(),
                 stake_program_info.clone(),
-                sol_deposit_lamports,
+                additional_lamports,
             )?;
         }
 
