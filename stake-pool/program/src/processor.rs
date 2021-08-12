@@ -1881,9 +1881,11 @@ impl Processor {
             .checked_sub(stake_deposit_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
         let credited_additional_lamports = std::cmp::min(additional_lamports, stake_rent);
+        let credited_deposit_lamports =
+            stake_deposit_lamports.saturating_add(credited_additional_lamports);
 
         let new_pool_tokens = stake_pool
-            .calc_pool_tokens_for_deposit(stake_deposit_lamports + credited_additional_lamports)
+            .calc_pool_tokens_for_deposit(credited_deposit_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
 
         let pool_tokens_stake_deposit_fee = stake_pool
@@ -1976,7 +1978,7 @@ impl Processor {
         // transferred directly to the reserve stake account.
         stake_pool.total_stake_lamports = stake_pool
             .total_stake_lamports
-            .checked_add(stake_deposit_lamports + credited_additional_lamports)
+            .checked_add(credited_deposit_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
 
