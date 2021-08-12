@@ -1867,23 +1867,51 @@ impl Processor {
             .stake
             .checked_sub(validator_stake.delegation.stake)
             .ok_or(StakePoolError::CalculationFailure)?;
+        let sol_deposit_lamports = all_deposit_lamports
+            .checked_sub(stake_deposit_lamports)
+            .ok_or(StakePoolError::CalculationFailure)?;
 
-        let new_pool_tokens = stake_pool
-            .calc_pool_tokens_for_deposit(all_deposit_lamports)
+        let new_stake_deposit_pool_tokens = stake_pool
+            .calc_pool_tokens_for_deposit(stake_deposit_lamports)
+            .ok_or(StakePoolError::CalculationFailure)?;
+        let new_sol_deposit_pool_tokens = stake_pool
+            .calc_pool_tokens_for_deposit(sol_deposit_lamports)
+            .ok_or(StakePoolError::CalculationFailure)?;
+        let new_pool_tokens = new_stake_deposit_pool_tokens
+            .checked_add(new_sol_deposit_pool_tokens)
             .ok_or(StakePoolError::CalculationFailure)?;
 
         let pool_tokens_stake_deposit_fee = stake_pool
-            .calc_pool_tokens_stake_deposit_fee(new_pool_tokens)
+            .calc_pool_tokens_stake_deposit_fee(new_stake_deposit_pool_tokens)
             .ok_or(StakePoolError::CalculationFailure)?;
-        let pool_tokens_user = new_pool_tokens
-            .checked_sub(pool_tokens_stake_deposit_fee)
+        let pool_tokens_sol_deposit_fee = stake_pool
+            .calc_pool_tokens_sol_deposit_fee(new_sol_deposit_pool_tokens)
             .ok_or(StakePoolError::CalculationFailure)?;
 
-        let pool_tokens_referral_fee = stake_pool
+        let pool_tokens_user = new_pool_tokens
+            .checked_sub(pool_tokens_stake_deposit_fee)
+            .ok_or(StakePoolError::CalculationFailure)?
+            .checked_sub(pool_tokens_sol_deposit_fee)
+            .ok_or(StakePoolError::CalculationFailure)?;
+
+        let pool_tokens_stake_referral_fee = stake_pool
             .calc_pool_tokens_stake_referral_fee(pool_tokens_stake_deposit_fee)
             .ok_or(StakePoolError::CalculationFailure)?;
-        let pool_tokens_manager_deposit_fee = pool_tokens_stake_deposit_fee
-            .checked_sub(pool_tokens_referral_fee)
+        let pool_tokens_sol_referral_fee = stake_pool
+            .calc_pool_tokens_sol_referral_fee(pool_tokens_sol_deposit_fee)
+            .ok_or(StakePoolError::CalculationFailure)?;
+        let pool_tokens_referral_fee = pool_tokens_stake_referral_fee
+            .checked_add(pool_tokens_sol_referral_fee)
+            .ok_or(StakePoolError::CalculationFailure)?;
+
+        let pool_tokens_manager_stake_deposit_fee = pool_tokens_stake_deposit_fee
+            .checked_sub(pool_tokens_stake_referral_fee)
+            .ok_or(StakePoolError::CalculationFailure)?;
+        let pool_tokens_manager_sol_deposit_fee = pool_tokens_sol_deposit_fee
+            .checked_sub(pool_tokens_sol_referral_fee)
+            .ok_or(StakePoolError::CalculationFailure)?;
+        let pool_tokens_manager_deposit_fee = pool_tokens_manager_stake_deposit_fee
+            .checked_add(pool_tokens_manager_sol_deposit_fee)
             .ok_or(StakePoolError::CalculationFailure)?;
 
         if pool_tokens_user
@@ -1936,10 +1964,7 @@ impl Processor {
         }
 
         // withdraw additional lamports to the reserve
-        let additional_lamports = all_deposit_lamports
-            .checked_sub(stake_deposit_lamports)
-            .ok_or(StakePoolError::CalculationFailure)?;
-        if additional_lamports > 0 {
+        if sol_deposit_lamports > 0 {
             Self::stake_withdraw(
                 stake_pool_info.key,
                 validator_stake_account_info.clone(),
@@ -1950,7 +1975,7 @@ impl Processor {
                 clock_info.clone(),
                 stake_history_info.clone(),
                 stake_program_info.clone(),
-                additional_lamports,
+                sol_deposit_lamports,
             )?;
         }
 
