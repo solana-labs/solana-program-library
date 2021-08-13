@@ -373,6 +373,42 @@ pub enum TokenInstruction {
     ///
     ///   0. `[writable]`  The native token account to sync with its underlying lamports.
     SyncNative,
+    /// Like InitializeAccount2, but does not require the Rent sysvar to be provided
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]`  The account to initialize.
+    ///   1. `[]` The mint this account will be associated with.
+    InitializeAccount3 {
+        /// The new account's owner/multisignature.
+        owner: Pubkey,
+    },
+    /// Like InitializeMultisig, but does not require the Rent sysvar to be provided
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]` The multisignature account to initialize.
+    ///   1. ..1+N. `[]` The signer accounts, must equal to N where 1 <= N <=
+    ///      11.
+    InitializeMultisig2 {
+        /// The number of signers (M) required to validate this multisignature
+        /// account.
+        m: u8,
+    },
+    /// Like InitializeMint, but does not require the Rent sysvar to be provided
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]` The mint to initialize.
+    ///
+    InitializeMint2 {
+        /// Number of base 10 digits to the right of the decimal place.
+        decimals: u8,
+        /// The authority/multisignature to mint tokens.
+        mint_authority: Pubkey,
+        /// The freeze authority/multisignature of the mint.
+        freeze_authority: COption<Pubkey>,
+    },
 }
 impl TokenInstruction {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -475,7 +511,24 @@ impl TokenInstruction {
                 Self::InitializeAccount2 { owner }
             }
             17 => Self::SyncNative,
-
+            18 => {
+                let (owner, _rest) = Self::unpack_pubkey(rest)?;
+                Self::InitializeAccount3 { owner }
+            }
+            19 => {
+                let &m = rest.get(0).ok_or(InvalidInstruction)?;
+                Self::InitializeMultisig2 { m }
+            }
+            20 => {
+                let (&decimals, rest) = rest.split_first().ok_or(InvalidInstruction)?;
+                let (mint_authority, rest) = Self::unpack_pubkey(rest)?;
+                let (freeze_authority, _rest) = Self::unpack_pubkey_option(rest)?;
+                Self::InitializeMint2 {
+                    mint_authority,
+                    freeze_authority,
+                    decimals,
+                }
+            }
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -553,6 +606,24 @@ impl TokenInstruction {
             }
             &Self::SyncNative => {
                 buf.push(17);
+            }
+            &Self::InitializeAccount3 { owner } => {
+                buf.push(18);
+                buf.extend_from_slice(owner.as_ref());
+            }
+            &Self::InitializeMultisig2 { m } => {
+                buf.push(19);
+                buf.push(m);
+            }
+            &Self::InitializeMint2 {
+                ref mint_authority,
+                ref freeze_authority,
+                decimals,
+            } => {
+                buf.push(20);
+                buf.push(decimals);
+                buf.extend_from_slice(mint_authority.as_ref());
+                Self::pack_pubkey_option(freeze_authority, &mut buf);
             }
         };
         buf
@@ -655,6 +726,32 @@ pub fn initialize_mint(
     })
 }
 
+/// Creates a `InitializeMint2` instruction.
+pub fn initialize_mint2(
+    token_program_id: &Pubkey,
+    mint_pubkey: &Pubkey,
+    mint_authority_pubkey: &Pubkey,
+    freeze_authority_pubkey: Option<&Pubkey>,
+    decimals: u8,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+    let freeze_authority = freeze_authority_pubkey.cloned().into();
+    let data = TokenInstruction::InitializeMint2 {
+        mint_authority: *mint_authority_pubkey,
+        freeze_authority,
+        decimals,
+    }
+    .pack();
+
+    let accounts = vec![AccountMeta::new(*mint_pubkey, false)];
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts,
+        data,
+    })
+}
+
 /// Creates a `InitializeAccount` instruction.
 pub fn initialize_account(
     token_program_id: &Pubkey,
@@ -705,6 +802,31 @@ pub fn initialize_account2(
     })
 }
 
+/// Creates a `InitializeAccount3` instruction.
+pub fn initialize_account3(
+    token_program_id: &Pubkey,
+    account_pubkey: &Pubkey,
+    mint_pubkey: &Pubkey,
+    owner_pubkey: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+    let data = TokenInstruction::InitializeAccount3 {
+        owner: *owner_pubkey,
+    }
+    .pack();
+
+    let accounts = vec![
+        AccountMeta::new(*account_pubkey, false),
+        AccountMeta::new_readonly(*mint_pubkey, false),
+    ];
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts,
+        data,
+    })
+}
+
 /// Creates a `InitializeMultisig` instruction.
 pub fn initialize_multisig(
     token_program_id: &Pubkey,
@@ -724,6 +846,35 @@ pub fn initialize_multisig(
     let mut accounts = Vec::with_capacity(1 + 1 + signer_pubkeys.len());
     accounts.push(AccountMeta::new(*multisig_pubkey, false));
     accounts.push(AccountMeta::new_readonly(sysvar::rent::id(), false));
+    for signer_pubkey in signer_pubkeys.iter() {
+        accounts.push(AccountMeta::new_readonly(**signer_pubkey, false));
+    }
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts,
+        data,
+    })
+}
+
+/// Creates a `InitializeMultisig2` instruction.
+pub fn initialize_multisig2(
+    token_program_id: &Pubkey,
+    multisig_pubkey: &Pubkey,
+    signer_pubkeys: &[&Pubkey],
+    m: u8,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+    if !is_valid_signer_index(m as usize)
+        || !is_valid_signer_index(signer_pubkeys.len())
+        || m as usize > signer_pubkeys.len()
+    {
+        return Err(ProgramError::MissingRequiredSignature);
+    }
+    let data = TokenInstruction::InitializeMultisig2 { m }.pack();
+
+    let mut accounts = Vec::with_capacity(1 + 1 + signer_pubkeys.len());
+    accounts.push(AccountMeta::new(*multisig_pubkey, false));
     for signer_pubkey in signer_pubkeys.iter() {
         accounts.push(AccountMeta::new_readonly(**signer_pubkey, false));
     }
@@ -1320,6 +1471,50 @@ mod test {
         let check = TokenInstruction::SyncNative;
         let packed = check.pack();
         let expect = vec![17u8];
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::InitializeAccount3 {
+            owner: Pubkey::new(&[2u8; 32]),
+        };
+        let packed = check.pack();
+        let mut expect = vec![18u8];
+        expect.extend_from_slice(&[2u8; 32]);
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::InitializeMultisig2 { m: 1 };
+        let packed = check.pack();
+        let expect = Vec::from([19u8, 1]);
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::InitializeMint2 {
+            decimals: 2,
+            mint_authority: Pubkey::new(&[1u8; 32]),
+            freeze_authority: COption::None,
+        };
+        let packed = check.pack();
+        let mut expect = Vec::from([20u8, 2]);
+        expect.extend_from_slice(&[1u8; 32]);
+        expect.extend_from_slice(&[0]);
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::InitializeMint2 {
+            decimals: 2,
+            mint_authority: Pubkey::new(&[2u8; 32]),
+            freeze_authority: COption::Some(Pubkey::new(&[3u8; 32])),
+        };
+        let packed = check.pack();
+        let mut expect = vec![20u8, 2];
+        expect.extend_from_slice(&[2u8; 32]);
+        expect.extend_from_slice(&[1]);
+        expect.extend_from_slice(&[3u8; 32]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);

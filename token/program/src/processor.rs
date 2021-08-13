@@ -21,17 +21,21 @@ use solana_program::{
 /// Program state handler.
 pub struct Processor {}
 impl Processor {
-    /// Processes an [InitializeMint](enum.TokenInstruction.html) instruction.
-    pub fn process_initialize_mint(
+    fn _process_initialize_mint(
         accounts: &[AccountInfo],
         decimals: u8,
         mint_authority: Pubkey,
         freeze_authority: COption<Pubkey>,
+        rent_sysvar_account: bool,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let mint_info = next_account_info(account_info_iter)?;
         let mint_data_len = mint_info.data_len();
-        let rent = &Rent::from_account_info(next_account_info(account_info_iter)?)?;
+        let rent = if rent_sysvar_account {
+            Rent::from_account_info(next_account_info(account_info_iter)?)?
+        } else {
+            Rent::get()?
+        };
 
         let mut mint = Mint::unpack_unchecked(&mint_info.data.borrow())?;
         if mint.is_initialized {
@@ -52,9 +56,30 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes an [InitializeMint](enum.TokenInstruction.html) instruction.
+    pub fn process_initialize_mint(
+        accounts: &[AccountInfo],
+        decimals: u8,
+        mint_authority: Pubkey,
+        freeze_authority: COption<Pubkey>,
+    ) -> ProgramResult {
+        Self::_process_initialize_mint(accounts, decimals, mint_authority, freeze_authority, true)
+    }
+
+    /// Processes an [InitializeMint2](enum.TokenInstruction.html) instruction.
+    pub fn process_initialize_mint2(
+        accounts: &[AccountInfo],
+        decimals: u8,
+        mint_authority: Pubkey,
+        freeze_authority: COption<Pubkey>,
+    ) -> ProgramResult {
+        Self::_process_initialize_mint(accounts, decimals, mint_authority, freeze_authority, false)
+    }
+
     fn _process_initialize_account(
         accounts: &[AccountInfo],
         owner: Option<&Pubkey>,
+        rent_sysvar_account: bool,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let new_account_info = next_account_info(account_info_iter)?;
@@ -65,7 +90,11 @@ impl Processor {
             next_account_info(account_info_iter)?.key
         };
         let new_account_info_data_len = new_account_info.data_len();
-        let rent = &Rent::from_account_info(next_account_info(account_info_iter)?)?;
+        let rent = if rent_sysvar_account {
+            Rent::from_account_info(next_account_info(account_info_iter)?)?
+        } else {
+            Rent::get()?
+        };
 
         let mut account = Account::unpack_unchecked(&new_account_info.data.borrow())?;
         if account.is_initialized() {
@@ -105,20 +134,32 @@ impl Processor {
 
     /// Processes an [InitializeAccount](enum.TokenInstruction.html) instruction.
     pub fn process_initialize_account(accounts: &[AccountInfo]) -> ProgramResult {
-        Self::_process_initialize_account(accounts, None)
+        Self::_process_initialize_account(accounts, None, true)
     }
 
     /// Processes an [InitializeAccount2](enum.TokenInstruction.html) instruction.
     pub fn process_initialize_account2(accounts: &[AccountInfo], owner: Pubkey) -> ProgramResult {
-        Self::_process_initialize_account(accounts, Some(&owner))
+        Self::_process_initialize_account(accounts, Some(&owner), true)
     }
 
-    /// Processes a [InitializeMultisig](enum.TokenInstruction.html) instruction.
-    pub fn process_initialize_multisig(accounts: &[AccountInfo], m: u8) -> ProgramResult {
+    /// Processes an [InitializeAccount3](enum.TokenInstruction.html) instruction.
+    pub fn process_initialize_account3(accounts: &[AccountInfo], owner: Pubkey) -> ProgramResult {
+        Self::_process_initialize_account(accounts, Some(&owner), false)
+    }
+
+    fn _process_initialize_multisig(
+        accounts: &[AccountInfo],
+        m: u8,
+        rent_sysvar_account: bool,
+    ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let multisig_info = next_account_info(account_info_iter)?;
         let multisig_info_data_len = multisig_info.data_len();
-        let rent = &Rent::from_account_info(next_account_info(account_info_iter)?)?;
+        let rent = if rent_sysvar_account {
+            Rent::from_account_info(next_account_info(account_info_iter)?)?
+        } else {
+            Rent::get()?
+        };
 
         let mut multisig = Multisig::unpack_unchecked(&multisig_info.data.borrow())?;
         if multisig.is_initialized {
@@ -146,6 +187,16 @@ impl Processor {
         Multisig::pack(multisig, &mut multisig_info.data.borrow_mut())?;
 
         Ok(())
+    }
+
+    /// Processes a [InitializeMultisig](enum.TokenInstruction.html) instruction.
+    pub fn process_initialize_multisig(accounts: &[AccountInfo], m: u8) -> ProgramResult {
+        Self::_process_initialize_multisig(accounts, m, true)
+    }
+
+    /// Processes a [InitializeMultisig2](enum.TokenInstruction.html) instruction.
+    pub fn process_initialize_multisig2(accounts: &[AccountInfo], m: u8) -> ProgramResult {
+        Self::_process_initialize_multisig(accounts, m, false)
     }
 
     /// Processes a [Transfer](enum.TokenInstruction.html) instruction.
@@ -688,6 +739,14 @@ impl Processor {
                 msg!("Instruction: InitializeMint");
                 Self::process_initialize_mint(accounts, decimals, mint_authority, freeze_authority)
             }
+            TokenInstruction::InitializeMint2 {
+                decimals,
+                mint_authority,
+                freeze_authority,
+            } => {
+                msg!("Instruction: InitializeMint2");
+                Self::process_initialize_mint2(accounts, decimals, mint_authority, freeze_authority)
+            }
             TokenInstruction::InitializeAccount => {
                 msg!("Instruction: InitializeAccount");
                 Self::process_initialize_account(accounts)
@@ -696,9 +755,17 @@ impl Processor {
                 msg!("Instruction: InitializeAccount2");
                 Self::process_initialize_account2(accounts, owner)
             }
+            TokenInstruction::InitializeAccount3 { owner } => {
+                msg!("Instruction: InitializeAccount3");
+                Self::process_initialize_account3(accounts, owner)
+            }
             TokenInstruction::InitializeMultisig { m } => {
                 msg!("Instruction: InitializeMultisig");
                 Self::process_initialize_multisig(accounts, m)
+            }
+            TokenInstruction::InitializeMultisig2 { m } => {
+                msg!("Instruction: InitializeMultisig2");
+                Self::process_initialize_multisig2(accounts, m)
             }
             TokenInstruction::Transfer { amount } => {
                 msg!("Instruction: Transfer");
@@ -849,16 +916,60 @@ mod tests {
     use super::*;
     use crate::instruction::*;
     use solana_program::{
-        account_info::IntoAccountInfo, clock::Epoch, instruction::Instruction, sysvar::rent,
+        account_info::IntoAccountInfo, clock::Epoch, instruction::Instruction, program_error,
+        sysvar::rent,
     };
     use solana_sdk::account::{
         create_account_for_test, create_is_signer_account_infos, Account as SolanaAccount,
     };
 
+    struct SyscallStubs {}
+    impl solana_sdk::program_stubs::SyscallStubs for SyscallStubs {
+        fn sol_log(&self, _message: &str) {}
+
+        fn sol_invoke_signed(
+            &self,
+            _instruction: &Instruction,
+            _account_infos: &[AccountInfo],
+            _signers_seeds: &[&[&[u8]]],
+        ) -> ProgramResult {
+            Err(ProgramError::Custom(42)) // Not supported
+        }
+
+        fn sol_get_clock_sysvar(&self, _var_addr: *mut u8) -> u64 {
+            program_error::UNSUPPORTED_SYSVAR
+        }
+
+        fn sol_get_epoch_schedule_sysvar(&self, _var_addr: *mut u8) -> u64 {
+            program_error::UNSUPPORTED_SYSVAR
+        }
+
+        #[allow(deprecated)]
+        fn sol_get_fees_sysvar(&self, _var_addr: *mut u8) -> u64 {
+            program_error::UNSUPPORTED_SYSVAR
+        }
+
+        fn sol_get_rent_sysvar(&self, var_addr: *mut u8) -> u64 {
+            unsafe {
+                *(var_addr as *mut _ as *mut Rent) = Rent::default();
+            }
+            solana_program::entrypoint::SUCCESS
+        }
+    }
+
     fn do_process_instruction(
         instruction: Instruction,
         accounts: Vec<&mut SolanaAccount>,
     ) -> ProgramResult {
+        {
+            use std::sync::Once;
+            static ONCE: Once = Once::new();
+
+            ONCE.call_once(|| {
+                solana_sdk::program_stubs::set_syscall_stubs(Box::new(SyscallStubs {}));
+            });
+        }
+
         let mut meta = instruction
             .accounts
             .iter()
@@ -1066,6 +1177,53 @@ mod tests {
         do_process_instruction(
             initialize_mint(&program_id, &mint2_key, &owner_key, Some(&owner_key), 2).unwrap(),
             vec![&mut mint2_account, &mut rent_sysvar],
+        )
+        .unwrap();
+        let mint = Mint::unpack_unchecked(&mint2_account.data).unwrap();
+        assert_eq!(mint.freeze_authority, COption::Some(owner_key));
+    }
+
+    #[test]
+    fn test_initialize_mint2() {
+        let program_id = crate::id();
+        let owner_key = Pubkey::new_unique();
+        let mint_key = Pubkey::new_unique();
+        let mut mint_account = SolanaAccount::new(42, Mint::get_packed_len(), &program_id);
+        let mint2_key = Pubkey::new_unique();
+        let mut mint2_account =
+            SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
+
+        // mint is not rent exempt
+        assert_eq!(
+            Err(TokenError::NotRentExempt.into()),
+            do_process_instruction(
+                initialize_mint2(&program_id, &mint_key, &owner_key, None, 2).unwrap(),
+                vec![&mut mint_account]
+            )
+        );
+
+        mint_account.lamports = mint_minimum_balance();
+
+        // create new mint
+        do_process_instruction(
+            initialize_mint2(&program_id, &mint_key, &owner_key, None, 2).unwrap(),
+            vec![&mut mint_account],
+        )
+        .unwrap();
+
+        // create twice
+        assert_eq!(
+            Err(TokenError::AlreadyInUse.into()),
+            do_process_instruction(
+                initialize_mint2(&program_id, &mint_key, &owner_key, None, 2,).unwrap(),
+                vec![&mut mint_account]
+            )
+        );
+
+        // create another mint that can freeze
+        do_process_instruction(
+            initialize_mint2(&program_id, &mint2_key, &owner_key, Some(&owner_key), 2).unwrap(),
+            vec![&mut mint2_account],
         )
         .unwrap();
         let mint = Mint::unpack_unchecked(&mint2_account.data).unwrap();
@@ -4216,6 +4374,17 @@ mod tests {
                 ],
             )
         );
+        assert_eq!(
+            Err(TokenError::NotRentExempt.into()),
+            do_process_instruction(
+                initialize_multisig2(&program_id, &multisig_key, &[&signer_keys[0]], 1).unwrap(),
+                vec![
+                    &mut multisig_account,
+                    &mut rent_sysvar,
+                    &mut account_info_iter.next().unwrap(),
+                ],
+            )
+        );
 
         multisig_account.lamports = multisig_minimum_balance();
 
@@ -5806,7 +5975,7 @@ mod tests {
     }
 
     #[test]
-    fn test_initialize_account2() {
+    fn test_initialize_account2_and_3() {
         let program_id = crate::id();
         let account_key = Pubkey::new_unique();
         let mut account_account = SolanaAccount::new(
@@ -5815,6 +5984,11 @@ mod tests {
             &program_id,
         );
         let mut account2_account = SolanaAccount::new(
+            account_minimum_balance(),
+            Account::get_packed_len(),
+            &program_id,
+        );
+        let mut account3_account = SolanaAccount::new(
             account_minimum_balance(),
             Account::get_packed_len(),
             &program_id,
@@ -5851,6 +6025,14 @@ mod tests {
         .unwrap();
 
         assert_eq!(account_account, account2_account);
+
+        do_process_instruction(
+            initialize_account3(&program_id, &account_key, &mint_key, &owner_key).unwrap(),
+            vec![&mut account3_account, &mut mint_account, &mut rent_sysvar],
+        )
+        .unwrap();
+
+        assert_eq!(account_account, account3_account);
     }
 
     #[test]
