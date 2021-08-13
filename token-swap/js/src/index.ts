@@ -190,6 +190,7 @@ export class TokenSwap {
     hostFeeNumerator: number,
     hostFeeDenominator: number,
     curveType: number,
+    curveParameters: Numberu64 = new Numberu64(0),
   ): TransactionInstruction {
     const keys = [
       {pubkey: tokenSwapAccount.publicKey, isSigner: false, isWritable: true},
@@ -216,6 +217,13 @@ export class TokenSwap {
       BufferLayout.blob(32, 'curveParameters'),
     ]);
     let data = Buffer.alloc(1024);
+
+    // package curve parameters
+    // NOTE: currently assume all curves take a single parameter, u64 int
+    //       the remaining 24 of the 32 bytes available are filled with 0s
+    let curveParamsBuffer = Buffer.alloc(32);
+    curveParameters.toBuffer().copy(curveParamsBuffer);
+
     {
       const encodeLength = commandDataLayout.encode(
         {
@@ -230,6 +238,7 @@ export class TokenSwap {
           hostFeeNumerator,
           hostFeeDenominator,
           curveType,
+          curveParameters: curveParamsBuffer,
         },
         data,
       );
@@ -360,6 +369,7 @@ export class TokenSwap {
     hostFeeNumerator: number,
     hostFeeDenominator: number,
     curveType: number,
+    curveParameters?: Numberu64,
   ): Promise<TokenSwap> {
     let transaction;
     const tokenSwap = new TokenSwap(
@@ -421,6 +431,7 @@ export class TokenSwap {
       hostFeeNumerator,
       hostFeeDenominator,
       curveType,
+      curveParameters,
     );
 
     transaction.add(instruction);

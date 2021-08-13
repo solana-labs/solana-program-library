@@ -12,6 +12,7 @@ import {sendAndConfirmTransaction} from '../src/util/send-and-confirm-transactio
 import {newAccountWithLamports} from '../src/util/new-account-with-lamports';
 import {url} from '../src/util/url';
 import {sleep} from '../src/util/sleep';
+import {Numberu64} from '../dist';
 
 // The following globals are created by `createTokenSwap` and used by subsequent tests
 // Token swap
@@ -45,9 +46,6 @@ const OWNER_WITHDRAW_FEE_NUMERATOR = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? 0 : 1;
 const OWNER_WITHDRAW_FEE_DENOMINATOR = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? 0 : 6;
 const HOST_FEE_NUMERATOR = 20;
 const HOST_FEE_DENOMINATOR = 100;
-
-// curve type used to calculate swaps and deposits
-const CURVE_TYPE = CurveType.ConstantProduct;
 
 // Initial amount in each swap token
 let currentSwapTokenA = 1000000;
@@ -88,7 +86,10 @@ async function getConnection(): Promise<Connection> {
   return connection;
 }
 
-export async function createTokenSwap(): Promise<void> {
+export async function createTokenSwap(
+  curveType: number,
+  curveParameters?: Numberu64,
+): Promise<void> {
   const connection = await getConnection();
   const payer = await newAccountWithLamports(connection, 1000000000);
   owner = await newAccountWithLamports(connection, 1000000000);
@@ -169,7 +170,8 @@ export async function createTokenSwap(): Promise<void> {
     OWNER_WITHDRAW_FEE_DENOMINATOR,
     HOST_FEE_NUMERATOR,
     HOST_FEE_DENOMINATOR,
-    CURVE_TYPE,
+    curveType,
+    curveParameters,
   );
 
   console.log('loading token swap');
@@ -213,7 +215,7 @@ export async function createTokenSwap(): Promise<void> {
   assert(
     HOST_FEE_DENOMINATOR == fetchedTokenSwap.hostFeeDenominator.toNumber(),
   );
-  assert(CURVE_TYPE == fetchedTokenSwap.curveType);
+  assert(curveType == fetchedTokenSwap.curveType);
 }
 
 export async function depositAllTokenTypes(): Promise<void> {
