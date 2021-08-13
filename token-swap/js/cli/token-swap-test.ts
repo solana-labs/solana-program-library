@@ -88,7 +88,7 @@ async function getConnection(): Promise<Connection> {
 
 export async function createTokenSwap(
   curveType: number,
-  curveParameters?: Numberu64
+  curveParameters?: Numberu64,
 ): Promise<void> {
   const connection = await getConnection();
   const payer = await newAccountWithLamports(connection, 1000000000);
