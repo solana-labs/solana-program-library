@@ -2002,10 +2002,10 @@ fn main() {
             .arg(
                 Arg::with_name("new_manager")
                     .long("new-manager")
-                    .validator(is_pubkey)
-                    .value_name("ADDRESS")
+                    .validator(is_keypair)
+                    .value_name("KEYPAIR")
                     .takes_value(true)
-                    .help("Public key for the new stake pool manager."),
+                    .help("Keypair for the new stake pool manager."),
             )
             .arg(
                 Arg::with_name("new_fee_receiver")
