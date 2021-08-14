@@ -4374,19 +4374,9 @@ mod tests {
                 ],
             )
         );
-        assert_eq!(
-            Err(TokenError::NotRentExempt.into()),
-            do_process_instruction(
-                initialize_multisig2(&program_id, &multisig_key, &[&signer_keys[0]], 1).unwrap(),
-                vec![
-                    &mut multisig_account,
-                    &mut rent_sysvar,
-                    &mut account_info_iter.next().unwrap(),
-                ],
-            )
-        );
 
         multisig_account.lamports = multisig_minimum_balance();
+        let mut multisig_account2 = multisig_account.clone();
 
         // single signer
         let account_info_iter = &mut signer_accounts.iter_mut();
@@ -4395,6 +4385,17 @@ mod tests {
             vec![
                 &mut multisig_account,
                 &mut rent_sysvar,
+                &mut account_info_iter.next().unwrap(),
+            ],
+        )
+        .unwrap();
+
+        // single signer using `initialize_multisig2`
+        let account_info_iter = &mut signer_accounts.iter_mut();
+        do_process_instruction(
+            initialize_multisig2(&program_id, &multisig_key, &[&signer_keys[0]], 1).unwrap(),
+            vec![
+                &mut multisig_account2,
                 &mut account_info_iter.next().unwrap(),
             ],
         )
@@ -6028,7 +6029,7 @@ mod tests {
 
         do_process_instruction(
             initialize_account3(&program_id, &account_key, &mint_key, &owner_key).unwrap(),
-            vec![&mut account3_account, &mut mint_account, &mut rent_sysvar],
+            vec![&mut account3_account, &mut mint_account],
         )
         .unwrap();
 
