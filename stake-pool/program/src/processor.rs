@@ -1979,7 +1979,7 @@ impl Processor {
         // transferred directly to the reserve stake account.
         stake_pool.total_stake_lamports = stake_pool
             .total_stake_lamports
-            .checked_add(credited_deposit_lamports)
+            .checked_add(all_deposit_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
 
