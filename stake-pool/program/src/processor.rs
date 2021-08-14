@@ -2366,6 +2366,10 @@ impl Processor {
         }
 
         stake_pool.check_manager(manager_info)?;
+        if !new_manager_info.is_signer {
+            msg!("New manager signature missing");
+            return Err(StakePoolError::SignatureMissing.into());
+        }
 
         if stake_pool.pool_mint
             != spl_token::state::Account::unpack_from_slice(&new_manager_fee_info.data.borrow())?
@@ -2412,7 +2416,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes [SetManager](enum.Instruction.html).
+    /// Processes [SetStaker](enum.Instruction.html).
     fn process_set_staker(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;

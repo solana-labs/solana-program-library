@@ -1311,15 +1311,15 @@ fn command_withdraw(
 fn command_set_manager(
     config: &Config,
     stake_pool_address: &Pubkey,
-    new_manager: &Option<Pubkey>,
+    new_manager: &Option<Keypair>,
     new_fee_receiver: &Option<Pubkey>,
 ) -> CommandResult {
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
 
     // If new accounts are missing in the arguments use the old ones
-    let new_manager = match new_manager {
-        None => stake_pool.manager,
-        Some(value) => *value,
+    let (new_manager_pubkey, mut signers): (Pubkey, Vec<&dyn Signer>) = match new_manager {
+        None => (stake_pool.manager, vec![]),
+        Some(value) => (value.pubkey(), vec![value]),
     };
     let new_fee_receiver = match new_fee_receiver {
         None => stake_pool.manager_fee_account,
@@ -1336,7 +1336,10 @@ fn command_set_manager(
         }
     };
 
-    let mut signers = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
+    signers.append(&mut vec![
+        config.fee_payer.as_ref(),
+        config.manager.as_ref(),
+    ]);
     unique_signers!(signers);
     let transaction = checked_transaction_with_signers(
         config,
@@ -1344,7 +1347,7 @@ fn command_set_manager(
             &spl_stake_pool::id(),
             stake_pool_address,
             &config.manager.pubkey(),
-            &new_manager,
+            &new_manager_pubkey,
             &new_fee_receiver,
         )],
         &signers,
@@ -1999,10 +2002,10 @@ fn main() {
             .arg(
                 Arg::with_name("new_manager")
                     .long("new-manager")
-                    .validator(is_pubkey)
-                    .value_name("ADDRESS")
+                    .validator(is_keypair)
+                    .value_name("KEYPAIR")
                     .takes_value(true)
-                    .help("Public key for the new stake pool manager."),
+                    .help("Keypair for the new stake pool manager."),
             )
             .arg(
                 Arg::with_name("new_fee_receiver")
@@ -2360,7 +2363,7 @@ fn main() {
         }
         ("set-manager", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
-            let new_manager: Option<Pubkey> = pubkey_of(arg_matches, "new_manager");
+            let new_manager: Option<Keypair> = keypair_of(arg_matches, "new_manager");
             let new_fee_receiver: Option<Pubkey> = pubkey_of(arg_matches, "new_fee_receiver");
             command_set_manager(
                 &config,

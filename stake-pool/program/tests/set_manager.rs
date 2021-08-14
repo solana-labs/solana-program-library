@@ -71,7 +71,10 @@ async fn test_set_manager() {
         )],
         Some(&payer.pubkey()),
     );
-    transaction.sign(&[&payer, &stake_pool_accounts.manager], recent_blockhash);
+    transaction.sign(
+        &[&payer, &stake_pool_accounts.manager, &new_manager],
+        recent_blockhash,
+    );
     banks_client.process_transaction(transaction).await.unwrap();
 
     let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
@@ -116,7 +119,7 @@ async fn test_set_manager_by_malicious() {
 }
 
 #[tokio::test]
-async fn test_set_manager_without_signature() {
+async fn test_set_manager_without_existing_signature() {
     let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, new_pool_fee, new_manager) =
         setup().await;
 
@@ -126,7 +129,7 @@ async fn test_set_manager_without_signature() {
     let accounts = vec![
         AccountMeta::new(stake_pool_accounts.stake_pool.pubkey(), false),
         AccountMeta::new_readonly(stake_pool_accounts.manager.pubkey(), false),
-        AccountMeta::new_readonly(new_manager.pubkey(), false),
+        AccountMeta::new_readonly(new_manager.pubkey(), true),
         AccountMeta::new_readonly(new_pool_fee.pubkey(), false),
     ];
     let instruction = Instruction {
@@ -136,7 +139,7 @@ async fn test_set_manager_without_signature() {
     };
 
     let mut transaction = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
-    transaction.sign(&[&payer], recent_blockhash);
+    transaction.sign(&[&payer, &new_manager], recent_blockhash);
     let transaction_error = banks_client
         .process_transaction(transaction)
         .await
@@ -151,7 +154,51 @@ async fn test_set_manager_without_signature() {
             let program_error = error::StakePoolError::SignatureMissing as u32;
             assert_eq!(error_index, program_error);
         }
-        _ => panic!("Wrong error occurs while try to set new manager without signature"),
+        _ => panic!(
+            "Wrong error occurs while try to set new manager without existing manager signature"
+        ),
+    }
+}
+
+#[tokio::test]
+async fn test_set_manager_without_new_signature() {
+    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, new_pool_fee, new_manager) =
+        setup().await;
+
+    let data = instruction::StakePoolInstruction::SetManager
+        .try_to_vec()
+        .unwrap();
+    let accounts = vec![
+        AccountMeta::new(stake_pool_accounts.stake_pool.pubkey(), false),
+        AccountMeta::new_readonly(stake_pool_accounts.manager.pubkey(), true),
+        AccountMeta::new_readonly(new_manager.pubkey(), false),
+        AccountMeta::new_readonly(new_pool_fee.pubkey(), false),
+    ];
+    let instruction = Instruction {
+        program_id: id(),
+        accounts,
+        data,
+    };
+
+    let mut transaction = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
+    transaction.sign(&[&payer, &stake_pool_accounts.manager], recent_blockhash);
+    let transaction_error = banks_client
+        .process_transaction(transaction)
+        .await
+        .err()
+        .unwrap();
+
+    match transaction_error {
+        TransportError::TransactionError(TransactionError::InstructionError(
+            _,
+            InstructionError::Custom(error_index),
+        )) => {
+            let program_error = error::StakePoolError::SignatureMissing as u32;
+            assert_eq!(error_index, program_error);
+        }
+        _ => {
+            panic!("Wrong error occurs while try to set new manager without new manager signature")
+        }
     }
 }
 
@@ -199,7 +246,10 @@ async fn test_set_manager_with_wrong_mint_for_pool_fee_acc() {
         )],
         Some(&payer.pubkey()),
     );
-    transaction.sign(&[&payer, &stake_pool_accounts.manager], recent_blockhash);
+    transaction.sign(
+        &[&payer, &stake_pool_accounts.manager, &new_manager],
+        recent_blockhash,
+    );
     let transaction_error = banks_client
         .process_transaction(transaction)
         .await

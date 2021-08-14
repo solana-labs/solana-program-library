@@ -1103,7 +1103,7 @@ pub fn set_manager(
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
         AccountMeta::new_readonly(*manager, true),
-        AccountMeta::new_readonly(*new_manager, false),
+        AccountMeta::new_readonly(*new_manager, true),
         AccountMeta::new_readonly(*new_fee_receiver, false),
     ];
     Instruction {
