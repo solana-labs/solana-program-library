@@ -310,7 +310,7 @@ impl StakePool {
         Ok(())
     }
 
-    /// Check staker validity and signature
+    /// Check mint is correct
     #[inline]
     pub(crate) fn check_mint(&self, mint_info: &AccountInfo) -> Result<(), ProgramError> {
         if *mint_info.key != self.pool_mint {
@@ -371,7 +371,7 @@ impl StakePool {
         }
     }
 
-    /// Check the validator list is valid
+    /// Check the reserve stake is valid
     pub fn check_reserve_stake(
         &self,
         reserve_stake_info: &AccountInfo,
@@ -528,14 +528,14 @@ impl ValidatorStakeInfo {
     }
 
     /// Performs a very cheap comparison, for checking if this validator stake
-    /// info has active lamports equal to the given bytes
-    pub fn memcmp_active_lamports(data: &[u8], lamports_le_bytes: &[u8]) -> bool {
+    /// info does not have active lamports equal to the given bytes
+    pub fn active_lamports_not_equal(data: &[u8], lamports_le_bytes: &[u8]) -> bool {
         sol_memcmp(&data[0..8], lamports_le_bytes, 8) != 0
     }
 
     /// Performs a very cheap comparison, for checking if this validator stake
-    /// info has lamports equal to the given bytes
-    pub fn memcmp_transient_lamports(data: &[u8], lamports_le_bytes: &[u8]) -> bool {
+    /// info does not have lamports equal to the given bytes
+    pub fn transient_lamports_not_equal(data: &[u8], lamports_le_bytes: &[u8]) -> bool {
         sol_memcmp(&data[8..16], lamports_le_bytes, 8) != 0
     }
 

@@ -2200,7 +2200,7 @@ impl Processor {
         let has_active_stake = validator_list
             .find::<ValidatorStakeInfo>(
                 &0u64.to_le_bytes(),
-                ValidatorStakeInfo::memcmp_active_lamports,
+                ValidatorStakeInfo::active_lamports_not_equal,
             )
             .is_some();
 
@@ -2209,7 +2209,7 @@ impl Processor {
             let has_transient_stake = validator_list
                 .find::<ValidatorStakeInfo>(
                     &0u64.to_le_bytes(),
-                    ValidatorStakeInfo::memcmp_transient_lamports,
+                    ValidatorStakeInfo::transient_lamports_not_equal,
                 )
                 .is_some();
             if has_transient_stake || has_active_stake {
