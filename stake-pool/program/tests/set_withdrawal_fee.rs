@@ -106,6 +106,117 @@ async fn success() {
 }
 
 #[tokio::test]
+async fn success_fee_cannot_increase_more_than_once() {
+    let (mut context, stake_pool_accounts, new_withdrawal_fee) = setup(None).await;
+
+    let stake_pool = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
+    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
+    let old_withdrawal_fee = stake_pool.withdrawal_fee;
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction::set_fee(
+            &id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.manager.pubkey(),
+            FeeType::Withdrawal(new_withdrawal_fee),
+        )],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &stake_pool_accounts.manager],
+        context.last_blockhash,
+    );
+    context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap();
+
+    let stake_pool = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
+    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
+
+    assert_eq!(stake_pool.withdrawal_fee, old_withdrawal_fee);
+    assert_eq!(stake_pool.next_withdrawal_fee, Some(new_withdrawal_fee));
+
+    let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
+    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
+
+    context
+        .warp_to_slot(first_normal_slot + slots_per_epoch)
+        .unwrap();
+    stake_pool_accounts
+        .update_all(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &[],
+            false,
+        )
+        .await;
+
+    let stake_pool = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
+    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
+    assert_eq!(stake_pool.withdrawal_fee, new_withdrawal_fee);
+    assert_eq!(stake_pool.next_withdrawal_fee, None);
+
+    // try setting to the old fee in the same epoch
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction::set_fee(
+            &id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.manager.pubkey(),
+            FeeType::Withdrawal(old_withdrawal_fee),
+        )],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &stake_pool_accounts.manager],
+        context.last_blockhash,
+    );
+    context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap();
+
+    let stake_pool = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
+    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
+    assert_eq!(stake_pool.withdrawal_fee, new_withdrawal_fee);
+    assert_eq!(stake_pool.next_withdrawal_fee, Some(old_withdrawal_fee));
+
+    let error = stake_pool_accounts
+        .update_stake_pool_balance(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+        )
+        .await;
+    assert!(error.is_none());
+
+    // Check that nothing has changed after updating the stake pool
+    let stake_pool = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
+    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
+    assert_eq!(stake_pool.withdrawal_fee, new_withdrawal_fee);
+    assert_eq!(stake_pool.next_withdrawal_fee, Some(old_withdrawal_fee));
+}
+
+#[tokio::test]
 async fn success_increase_fee_from_0() {
     let (mut context, stake_pool_accounts, _) = setup(Some(Fee {
         numerator: 0,

@@ -1651,16 +1651,18 @@ impl Processor {
                 .ok_or(StakePoolError::CalculationFailure)?;
         }
 
-        if let Some(next_epoch_fee) = stake_pool.next_epoch_fee {
-            stake_pool.fee = next_epoch_fee;
-            stake_pool.next_epoch_fee = None;
-        }
-        if let Some(next_withdrawal_fee) = stake_pool.next_withdrawal_fee {
-            stake_pool.withdrawal_fee = next_withdrawal_fee;
-            stake_pool.next_withdrawal_fee = None;
+        if stake_pool.last_update_epoch < clock.epoch {
+            if let Some(next_epoch_fee) = stake_pool.next_epoch_fee {
+                stake_pool.fee = next_epoch_fee;
+                stake_pool.next_epoch_fee = None;
+            }
+            if let Some(next_withdrawal_fee) = stake_pool.next_withdrawal_fee {
+                stake_pool.withdrawal_fee = next_withdrawal_fee;
+                stake_pool.next_withdrawal_fee = None;
+            }
+            stake_pool.last_update_epoch = clock.epoch;
         }
         stake_pool.total_stake_lamports = total_stake_lamports;
-        stake_pool.last_update_epoch = clock.epoch;
 
         let pool_mint = Mint::unpack_from_slice(&pool_mint_info.data.borrow())?;
         stake_pool.pool_token_supply = pool_mint.supply;
