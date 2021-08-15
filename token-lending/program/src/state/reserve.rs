@@ -140,6 +140,7 @@ impl Reserve {
         &self,
         amount_to_borrow: u64,
         max_borrow_value: Decimal,
+        remaining_reserve_borrow: Decimal,
     ) -> Result<CalculateBorrowResult, ProgramError> {
         // @TODO: add lookup table https://git.io/JOCYq
         let decimals = 10u64
@@ -149,6 +150,7 @@ impl Reserve {
             let borrow_amount = max_borrow_value
                 .try_mul(decimals)?
                 .try_div(self.liquidity.market_price)?
+                .min(remaining_reserve_borrow)
                 .min(self.liquidity.available_amount.into());
             let (borrow_fee, host_fee) = self
                 .config

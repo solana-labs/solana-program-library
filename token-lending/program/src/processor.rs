@@ -3,7 +3,7 @@
 use crate::{
     error::LendingError,
     instruction::LendingInstruction,
-    math::{Decimal, Rate, TryAdd, TryDiv, TryMul, WAD},
+    math::{Decimal, Rate, TryAdd, TryDiv, TryMul, TrySub, WAD},
     pyth,
     state::{
         CalculateBorrowResult, CalculateLiquidationResult, CalculateRepayResult,
@@ -1386,12 +1386,20 @@ fn process_borrow_obligation_liquidity(
         return Err(LendingError::BorrowTooLarge.into());
     }
 
+    let remaining_reserve_capacity = Decimal::from(borrow_reserve.config.borrow_limit)
+        .try_sub(borrow_reserve.liquidity.borrowed_amount_wads)
+        .unwrap_or_else(|_| Decimal::zero());
+
     let CalculateBorrowResult {
         borrow_amount,
         receive_amount,
         borrow_fee,
         host_fee,
-    } = borrow_reserve.calculate_borrow(liquidity_amount, remaining_borrow_value)?;
+    } = borrow_reserve.calculate_borrow(
+        liquidity_amount,
+        remaining_borrow_value,
+        remaining_reserve_capacity,
+    )?;
 
     if receive_amount == 0 {
         msg!("Borrow amount is too small to receive liquidity after fees");
