@@ -1317,7 +1317,7 @@ impl Processor {
             );
             match maybe_validator_stake_info {
                 Some(vsi) => {
-                    if vsi.status == StakeStatus::ReadyForRemoval {
+                    if vsi.status != StakeStatus::Active {
                         msg!("Validator for {:?} about to be removed, cannot set as preferred deposit account", validator_type);
                         return Err(StakePoolError::InvalidPreferredValidator.into());
                     }
