@@ -1,5 +1,6 @@
 //! State transition types
 
+use spl_token::state::{Account, AccountState};
 use {
     crate::{
         big_vec::BigVec, error::StakePoolError, stake_program::Lockup, MAX_WITHDRAWAL_FEE_INCREASE,
@@ -259,6 +260,23 @@ impl StakePool {
             );
             Err(StakePoolError::InvalidProgramAddress.into())
         }
+    }
+
+    /// Check if the manager fee info is a valid token program account
+    /// capable of receiving tokens from the mint.
+    pub(crate) fn check_manager_fee_info(
+        &self,
+        manager_fee_info: &AccountInfo,
+    ) -> Result<(), ProgramError> {
+        let token_account = Account::unpack(&manager_fee_info.data.borrow())?;
+        if manager_fee_info.owner != &self.token_program_id
+            || token_account.state != AccountState::Initialized
+            || token_account.mint != self.pool_mint
+        {
+            msg!("Manager fee account is not owned by token program, is not initialized, or does not match stake pool's mint");
+            return Err(StakePoolError::InvalidFeeAccount.into());
+        }
+        Ok(())
     }
 
     /// Checks that the withdraw authority is valid
