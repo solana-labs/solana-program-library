@@ -915,7 +915,15 @@ impl StakePoolAccounts {
                     validator_vote_accounts,
                     0,
                     no_merge,
-                ),
+                )
+            ],
+            Some(&payer.pubkey()),
+            &[payer],
+            *recent_blockhash,
+        );
+        banks_client.process_transaction(transaction).await.err().map(|err| { assert!(false); return err });
+        let transaction = Transaction::new_signed_with_payer(
+            &[
                 instruction::update_stake_pool_balance(
                     &id(),
                     &self.stake_pool.pubkey(),

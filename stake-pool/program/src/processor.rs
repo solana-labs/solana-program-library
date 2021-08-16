@@ -31,7 +31,7 @@ use {
         rent::Rent,
         stake_history::StakeHistory,
         system_instruction, system_program,
-        sysvar::Sysvar,
+        sysvar::{self, Sysvar},
     },
     spl_token::state::Mint,
 };
@@ -131,6 +131,15 @@ fn check_account_owner(
     } else {
         Ok(())
     }
+}
+
+fn check_valid_calling_context(instructions_data: &[u8]) -> bool {
+    sysvar::instructions::load_current_index(instructions_data) == 0u16
+        && sysvar::instructions::load_instruction_at(1, instructions_data).is_err()
+        && sysvar::instructions::load_instruction_at(0, instructions_data)
+            .unwrap()
+            .program_id
+            == crate::id()
 }
 
 /// Create a transient stake account without transferring lamports
@@ -1354,6 +1363,7 @@ impl Processor {
         let clock = &Clock::from_account_info(clock_info)?;
         let stake_history_info = next_account_info(account_info_iter)?;
         let stake_program_info = next_account_info(account_info_iter)?;
+        let instructions_sysvar_info = next_account_info(account_info_iter)?;
         let validator_stake_accounts = account_info_iter.as_slice();
 
         check_account_owner(stake_pool_info, program_id)?;
@@ -1369,6 +1379,22 @@ impl Processor {
         )?;
         stake_pool.check_reserve_stake(reserve_stake_info)?;
         check_stake_program(stake_program_info.key)?;
+
+        if !sysvar::instructions::check_id(instructions_sysvar_info.key) {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+
+        let instructions_data: &[u8] = &instructions_sysvar_info.data.borrow();
+
+        // If the current instruction is not the first instruction in the transaction,
+        // is not the sole instruction (i.e. there is at least one more instruction)
+        // or is not the top-level instruction (the condition suffices as stake-pool has
+        // no self re-entrancy) it is possible to hijack merged stake accounts in the
+        // `Initialized` state via secondary instructions in the transaction. Thus, we forbid this.
+        if !check_valid_calling_context(instructions_data) {
+            msg!("UpdateValidatorListBalance is required to be the sole top-level instruction");
+            return Err(StakePoolError::InvalidCallingContext.into());
+        }
 
         check_account_owner(validator_list_info, program_id)?;
         let mut validator_list_data = validator_list_info.data.borrow_mut();
@@ -2622,6 +2648,7 @@ impl PrintProgramError for StakePoolError {
             StakePoolError::DepositTooSmall => msg!("Error: Not enough lamports provided for deposit to result in one pool token"),
             StakePoolError::InvalidStakeDepositAuthority => msg!("Error: Provided stake deposit authority does not match the program's"),
             StakePoolError::InvalidSolDepositAuthority => msg!("Error: Provided sol deposit authority does not match the program's"),
+            StakePoolError::InvalidCallingContext => msg!("Error: The calling context for the instruction is not permitted"),
         }
     }
 }

@@ -116,6 +116,9 @@ pub enum StakePoolError {
     /// Provided sol deposit authority does not match the program's
     #[error("InvalidSolDepositAuthority")]
     InvalidSolDepositAuthority,
+    /// The calling context for the instruction is not permitted
+    #[error("InvalidCallingContext")]
+    InvalidCallingContext,
 }
 impl From<StakePoolError> for ProgramError {
     fn from(e: StakePoolError) -> Self {

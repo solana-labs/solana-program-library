@@ -728,6 +728,7 @@ pub fn update_validator_list_balance(
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
         AccountMeta::new_readonly(stake_program::id(), false),
+        AccountMeta::new_readonly(sysvar::instructions::id(), false),
     ];
     accounts.append(
         &mut validator_vote_accounts
