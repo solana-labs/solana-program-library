@@ -768,6 +768,7 @@ pub fn update_stake_pool_balance(
     reserve_stake: &Pubkey,
     manager_fee_account: &Pubkey,
     stake_pool_mint: &Pubkey,
+    token_program_id: &Pubkey,
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
@@ -777,7 +778,7 @@ pub fn update_stake_pool_balance(
         AccountMeta::new(*manager_fee_account, false),
         AccountMeta::new(*stake_pool_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
-        AccountMeta::new_readonly(spl_token::id(), false),
+        AccountMeta::new_readonly(*token_program_id, false),
     ];
     Instruction {
         program_id: *program_id,
@@ -850,6 +851,7 @@ pub fn update_stake_pool(
             &stake_pool.reserve_stake,
             &stake_pool.manager_fee_account,
             &stake_pool.pool_mint,
+            &stake_pool.token_program_id,
         ),
         cleanup_removed_validator_entries(
             program_id,
