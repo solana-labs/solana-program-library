@@ -1006,6 +1006,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "flash_loan_receiver"
+version = "1.0.0"
+dependencies = [
+ "arrayref",
+ "solana-program",
+ "spl-token 3.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "flate2"
 version = "1.0.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
