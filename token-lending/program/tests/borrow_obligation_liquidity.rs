@@ -12,7 +12,7 @@ use solana_sdk::{
 };
 use spl_token_lending::{
     error::LendingError,
-    instruction::{borrow_obligation_liquidity, refresh_obligation},
+    instruction::{borrow_obligation_liquidity, refresh_obligation, refresh_reserve},
     math::Decimal,
     processor::process_instruction,
     state::{FeeCalculation, INITIAL_COLLATERAL_RATIO},
@@ -28,7 +28,7 @@ async fn test_borrow_usdc_fixed_amount() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(41_000);
+    test.set_bpf_compute_max_units(45_000);
 
     const USDC_TOTAL_BORROW_FRACTIONAL: u64 = 1_000 * FRACTIONAL_TO_USDC;
     const FEE_AMOUNT: u64 = 100;
@@ -400,6 +400,190 @@ async fn test_borrow_too_large() {
         TransactionError::InstructionError(
             1,
             InstructionError::Custom(LendingError::BorrowTooLarge as u32)
+        )
+    );
+}
+
+#[tokio::test]
+async fn test_borrow_limit() {
+    let mut test = ProgramTest::new(
+        "spl_token_lending",
+        spl_token_lending::id(),
+        processor!(process_instruction),
+    );
+
+    const SOL_DEPOSIT_AMOUNT_LAMPORTS: u64 = 100000 * LAMPORTS_TO_SOL * INITIAL_COLLATERAL_RATIO;
+    const SOL_RESERVE_COLLATERAL_LAMPORTS: u64 = 2 * SOL_DEPOSIT_AMOUNT_LAMPORTS;
+
+    let user_accounts_owner = Keypair::new();
+    let lending_market = add_lending_market(&mut test);
+
+    let mut reserve_config = test_reserve_config();
+    reserve_config.loan_to_value_ratio = 50;
+    reserve_config.borrow_limit = 15;
+
+    let sol_oracle = add_sol_oracle(&mut test);
+    let sol_test_reserve = add_reserve(
+        &mut test,
+        &lending_market,
+        &sol_oracle,
+        &user_accounts_owner,
+        AddReserveArgs {
+            collateral_amount: SOL_RESERVE_COLLATERAL_LAMPORTS,
+            liquidity_mint_pubkey: spl_token::native_mint::id(),
+            liquidity_mint_decimals: 9,
+            config: reserve_config,
+            mark_fresh: true,
+            ..AddReserveArgs::default()
+        },
+    );
+
+    let usdc_mint = add_usdc_mint(&mut test);
+    let usdc_oracle = add_usdc_oracle(&mut test);
+    let usdc_test_reserve = add_reserve(
+        &mut test,
+        &lending_market,
+        &usdc_oracle,
+        &user_accounts_owner,
+        AddReserveArgs {
+            liquidity_amount: 1_000_000_000,
+            liquidity_mint_pubkey: usdc_mint.pubkey,
+            liquidity_mint_decimals: usdc_mint.decimals,
+            config: reserve_config,
+            mark_fresh: true,
+            ..AddReserveArgs::default()
+        },
+    );
+
+    let test_obligation = add_obligation(
+        &mut test,
+        &lending_market,
+        &user_accounts_owner,
+        AddObligationArgs {
+            deposits: &[(&sol_test_reserve, SOL_DEPOSIT_AMOUNT_LAMPORTS)],
+            ..AddObligationArgs::default()
+        },
+    );
+
+    let (mut banks_client, payer, recent_blockhash) = test.start().await;
+
+    // Try to borrow more than the borrow limit. This transaction should fail
+    let mut transaction = Transaction::new_with_payer(
+        &[
+            refresh_obligation(
+                spl_token_lending::id(),
+                test_obligation.pubkey,
+                vec![sol_test_reserve.pubkey],
+            ),
+            borrow_obligation_liquidity(
+                spl_token_lending::id(),
+                reserve_config.borrow_limit + 1,
+                usdc_test_reserve.liquidity_supply_pubkey,
+                usdc_test_reserve.user_liquidity_pubkey,
+                usdc_test_reserve.pubkey,
+                usdc_test_reserve.config.fee_receiver,
+                test_obligation.pubkey,
+                lending_market.pubkey,
+                test_obligation.owner,
+                Some(usdc_test_reserve.liquidity_host_pubkey),
+            ),
+        ],
+        Some(&payer.pubkey()),
+    );
+    transaction.sign(&[&payer, &user_accounts_owner], recent_blockhash);
+    assert_eq!(
+        banks_client
+            .process_transaction(transaction)
+            .await
+            .unwrap_err()
+            .unwrap(),
+        TransactionError::InstructionError(
+            1,
+            InstructionError::Custom(LendingError::InvalidAmount as u32)
+        )
+    );
+
+    let obligation = test_obligation.get_state(&mut banks_client).await;
+    assert_eq!(obligation.borrowed_value, Decimal::zero());
+
+    // Also try borrowing INT MAX, which should max out the reserve's borrows.
+    let mut transaction = Transaction::new_with_payer(
+        &[
+            refresh_obligation(
+                spl_token_lending::id(),
+                test_obligation.pubkey,
+                vec![sol_test_reserve.pubkey],
+            ),
+            borrow_obligation_liquidity(
+                spl_token_lending::id(),
+                u64::MAX,
+                usdc_test_reserve.liquidity_supply_pubkey,
+                usdc_test_reserve.user_liquidity_pubkey,
+                usdc_test_reserve.pubkey,
+                usdc_test_reserve.config.fee_receiver,
+                test_obligation.pubkey,
+                lending_market.pubkey,
+                test_obligation.owner,
+                Some(usdc_test_reserve.liquidity_host_pubkey),
+            ),
+            refresh_reserve(
+                spl_token_lending::id(),
+                usdc_test_reserve.pubkey,
+                usdc_oracle.pyth_price_pubkey,
+                usdc_oracle.switchboard_feed_pubkey,
+            ),
+        ],
+        Some(&payer.pubkey()),
+    );
+    transaction.sign(&[&payer, &user_accounts_owner], recent_blockhash);
+    assert!(banks_client.process_transaction(transaction).await.is_ok());
+
+    let reserve = usdc_test_reserve.get_state(&mut banks_client).await;
+    assert_eq!(
+        reserve.liquidity.borrowed_amount_wads,
+        Decimal::from(reserve_config.borrow_limit)
+    );
+
+    // Now try to borrow INT_MAX again, which should fail
+    let mut transaction = Transaction::new_with_payer(
+        &[
+            refresh_reserve(
+                spl_token_lending::id(),
+                usdc_test_reserve.pubkey,
+                usdc_oracle.pyth_price_pubkey,
+                usdc_oracle.switchboard_feed_pubkey,
+            ),
+            refresh_obligation(
+                spl_token_lending::id(),
+                test_obligation.pubkey,
+                vec![sol_test_reserve.pubkey, usdc_test_reserve.pubkey],
+            ),
+            borrow_obligation_liquidity(
+                spl_token_lending::id(),
+                u64::MAX,
+                usdc_test_reserve.liquidity_supply_pubkey,
+                usdc_test_reserve.user_liquidity_pubkey,
+                usdc_test_reserve.pubkey,
+                usdc_test_reserve.config.fee_receiver,
+                test_obligation.pubkey,
+                lending_market.pubkey,
+                test_obligation.owner,
+                Some(usdc_test_reserve.liquidity_host_pubkey),
+            ),
+        ],
+        Some(&payer.pubkey()),
+    );
+    transaction.sign(&[&payer, &user_accounts_owner], recent_blockhash);
+
+    assert_eq!(
+        banks_client
+            .process_transaction(transaction)
+            .await
+            .unwrap_err()
+            .unwrap(),
+        TransactionError::InstructionError(
+            2,
+            InstructionError::Custom(LendingError::BorrowTooSmall as u32)
         )
     );
 }
