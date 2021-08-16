@@ -363,21 +363,20 @@ async fn success_with_extra_stake_lamports() {
 
     // The extra lamports will not get recorded in total stake lamports unless
     // update_stake_pool_balance is called
-    let intermediate_stake_pool = get_account(
+    let post_stake_pool = get_account(
         &mut context.banks_client,
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
 
-    let intermediate_stake_pool =
-        try_from_slice_unchecked::<state::StakePool>(&intermediate_stake_pool.data.as_slice())
-            .unwrap();
+    let post_stake_pool =
+        try_from_slice_unchecked::<state::StakePool>(&post_stake_pool.data.as_slice()).unwrap();
     assert_eq!(
-        intermediate_stake_pool.total_stake_lamports,
-        pre_stake_pool.total_stake_lamports + stake_lamports
+        post_stake_pool.total_stake_lamports,
+        pre_stake_pool.total_stake_lamports + extra_lamports + stake_lamports
     );
     assert_eq!(
-        intermediate_stake_pool.pool_token_supply,
+        post_stake_pool.pool_token_supply,
         pre_stake_pool.pool_token_supply + tokens_issued
     );
 
@@ -410,28 +409,6 @@ async fn success_with_extra_stake_lamports() {
     assert_eq!(
         manager_pool_balance_post - manager_pool_balance_pre,
         tokens_issued_manager_fee
-    );
-
-    // Update the pool balance and check that extra_lamports has been recorded as rewards
-    // in the reserve account.
-    stake_pool_accounts
-        .update_stake_pool_balance(
-            &mut context.banks_client,
-            &context.payer,
-            &context.last_blockhash,
-        )
-        .await;
-    // Stake pool should add its balance to the pool balance
-    let post_stake_pool = get_account(
-        &mut context.banks_client,
-        &stake_pool_accounts.stake_pool.pubkey(),
-    )
-    .await;
-    let post_stake_pool =
-        try_from_slice_unchecked::<state::StakePool>(&post_stake_pool.data.as_slice()).unwrap();
-    assert_eq!(
-        post_stake_pool.total_stake_lamports,
-        pre_stake_pool.total_stake_lamports + extra_lamports + stake_lamports
     );
 
     // Check balances in validator stake account list storage
