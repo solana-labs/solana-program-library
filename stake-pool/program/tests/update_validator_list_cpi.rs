@@ -4,32 +4,21 @@ mod helpers;
 
 use {
     solana_program::{
-        borsh::{get_instance_packed_len, get_packed_len, try_from_slice_unchecked},
-        hash::Hash,
-        program_pack::Pack,
         program::invoke,
         pubkey::Pubkey,
-        system_instruction, system_program,
         instruction::{Instruction, InstructionError, AccountMeta},
         account_info::AccountInfo,
         entrypoint::ProgramResult,
     },
     solana_program_test::*,
     solana_sdk::{
-        account::Account,
-        signature::{Keypair, Signer},
+        signature::Signer,
         transaction::{Transaction, TransactionError},
-        transport::TransportError,
-        msg,
-    },
-    solana_vote_program::{
-        self, vote_instruction,
-        vote_state::{VoteInit, VoteState},
     },
     spl_stake_pool::{
         error::StakePoolError,
-        find_stake_program_address, find_transient_stake_program_address, id, instruction,
-        processor, stake_program, state,
+         id, instruction,
+        processor,
     },
     std::str::FromStr,
     helpers::{StakePoolAccounts,  ValidatorStakeAccount},
@@ -57,7 +46,7 @@ pub(crate) fn cpi_proxy_invocation_processor(
     instruction_data: &[u8],
 ) -> ProgramResult {
     let ix: Instruction = bincode::deserialize(instruction_data).unwrap();
-    let ret = invoke(
+    invoke(
         &ix,
         &accounts[..],
     )?;
@@ -69,7 +58,7 @@ async fn fail_with_cpi_update_validator_list() {
     let proxy_id = Pubkey::from_str("proxy11111111111111111111111111111111111111").unwrap();
     let mut context = program_test_with_cpi().start_with_context().await;
     let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
-    let mut slot = first_normal_slot;
+    let slot = first_normal_slot;
     context.warp_to_slot(slot).unwrap();
 
     let reserve_stake_amount = 1_000_000 as u64;
@@ -108,7 +97,6 @@ async fn fail_with_cpi_update_validator_list() {
     let mut accounts = vec![AccountMeta::new_readonly(spl_stake_pool::id(), false)];
     accounts.append(&mut ix.accounts.to_vec());
     let ix_serialized = bincode::serialize(&ix).unwrap();
-    let ix_deserialized: Instruction = bincode::deserialize(&ix_serialized[..]).unwrap();
 
     let transaction = Transaction::new_signed_with_payer(
         &[Instruction {
