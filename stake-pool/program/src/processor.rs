@@ -1629,9 +1629,15 @@ impl Processor {
         }
 
         let reward_lamports = total_stake_lamports.saturating_sub(previous_lamports);
-        let fee = stake_pool
-            .calc_epoch_fee_amount(reward_lamports)
-            .ok_or(StakePoolError::CalculationFailure)?;
+
+        // If the manager fee info is invalid, they don't deserve to receive the fee.
+        let fee = if stake_pool.check_manager_fee_info(manager_fee_info).is_ok() {
+            stake_pool
+                .calc_epoch_fee_amount(reward_lamports)
+                .ok_or(StakePoolError::CalculationFailure)?
+        } else {
+            0
+        };
 
         if fee > 0 {
             Self::token_mint_to(
