@@ -26,7 +26,10 @@ pub fn process_instruction(
         .ok_or(ProgramError::InvalidInstructionData)?;
 
     if *tag != 0 {
-        msg!("Expecting the 0th instruction to be called. Instead {}th was called.", tag);
+        msg!(
+            "Expecting the 0th instruction to be called. Instead {}th was called.",
+            tag
+        );
         return Err(ProgramError::InvalidInstructionData);
     }
 
@@ -47,7 +50,7 @@ pub fn process_instruction(
             user_transfer_authority_info.clone(),
             spl_token_program_info.clone(),
         ],
-    );
+    )?;
     Ok(())
 }
 
