@@ -688,40 +688,7 @@ async fn fail_with_invalid_calling_context_more_than_one() {
 }
 
 async fn fail_with_invalid_calling_context(calling_context: CallingContext) {
-    let (mut context, stake_pool_accounts, stake_accounts, _, lamports, mut slot) = setup(1).await;
-
-    let deactivated_lamports = lamports;
-    let new_authority = Pubkey::new_unique();
-    // Decrease and remove all validators
-    for stake_account in &stake_accounts {
-        let error = stake_pool_accounts
-            .decrease_validator_stake(
-                &mut context.banks_client,
-                &context.payer,
-                &context.last_blockhash,
-                &stake_account.stake_account,
-                &stake_account.transient_stake_account,
-                deactivated_lamports,
-            )
-            .await;
-        assert!(error.is_none());
-        let error = stake_pool_accounts
-            .remove_validator_from_pool(
-                &mut context.banks_client,
-                &context.payer,
-                &context.last_blockhash,
-                &new_authority,
-                &stake_account.stake_account,
-                &stake_account.transient_stake_account,
-            )
-            .await;
-        assert!(error.is_none());
-    }
-
-    // Warp forward to merge time
-    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
-    slot += slots_per_epoch;
-    context.warp_to_slot(slot).unwrap();
+    let (mut context, stake_pool_accounts, stake_accounts, _, _, _, _) = setup(1).await;
 
     let mut ixs = vec![instruction::update_validator_list_balance(
         &spl_stake_pool::id(),
