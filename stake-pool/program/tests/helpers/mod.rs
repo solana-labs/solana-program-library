@@ -905,23 +905,28 @@ impl StakePoolAccounts {
         no_merge: bool,
     ) -> Option<TransportError> {
         let transaction = Transaction::new_signed_with_payer(
-            &[
-                instruction::update_validator_list_balance(
-                    &id(),
-                    &self.stake_pool.pubkey(),
-                    &self.withdraw_authority,
-                    &self.validator_list.pubkey(),
-                    &self.reserve_stake.pubkey(),
-                    validator_vote_accounts,
-                    0,
-                    no_merge,
-                )
-            ],
+            &[instruction::update_validator_list_balance(
+                &id(),
+                &self.stake_pool.pubkey(),
+                &self.withdraw_authority,
+                &self.validator_list.pubkey(),
+                &self.reserve_stake.pubkey(),
+                validator_vote_accounts,
+                0,
+                no_merge,
+            )],
             Some(&payer.pubkey()),
             &[payer],
             *recent_blockhash,
         );
-        banks_client.process_transaction(transaction).await.err().map(|err| { assert!(false); return err });
+        banks_client
+            .process_transaction(transaction)
+            .await
+            .err()
+            .map(|err| {
+                assert!(false);
+                return err;
+            });
         let transaction = Transaction::new_signed_with_payer(
             &[
                 instruction::update_stake_pool_balance(

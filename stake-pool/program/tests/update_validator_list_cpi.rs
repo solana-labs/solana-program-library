@@ -3,25 +3,21 @@
 mod helpers;
 
 use {
+    helpers::{StakePoolAccounts, ValidatorStakeAccount},
     solana_program::{
-        program::invoke,
-        pubkey::Pubkey,
-        instruction::{Instruction, InstructionError, AccountMeta},
         account_info::AccountInfo,
         entrypoint::ProgramResult,
+        instruction::{AccountMeta, Instruction, InstructionError},
+        program::invoke,
+        pubkey::Pubkey,
     },
     solana_program_test::*,
     solana_sdk::{
         signature::Signer,
         transaction::{Transaction, TransactionError},
     },
-    spl_stake_pool::{
-        error::StakePoolError,
-         id, instruction,
-        processor,
-    },
+    spl_stake_pool::{error::StakePoolError, id, instruction, processor},
     std::str::FromStr,
-    helpers::{StakePoolAccounts,  ValidatorStakeAccount},
 };
 
 pub fn program_test_with_cpi() -> ProgramTest {
@@ -46,10 +42,7 @@ pub(crate) fn cpi_proxy_invocation_processor(
     instruction_data: &[u8],
 ) -> ProgramResult {
     let ix: Instruction = bincode::deserialize(instruction_data).unwrap();
-    invoke(
-        &ix,
-        &accounts[..],
-    )?;
+    invoke(&ix, &accounts[..])?;
     Ok(())
 }
 
