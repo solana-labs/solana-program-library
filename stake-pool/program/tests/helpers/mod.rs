@@ -974,6 +974,7 @@ impl StakePoolAccounts {
                 &self.reserve_stake.pubkey(),
                 &self.pool_fee_account.pubkey(),
                 &self.pool_mint.pubkey(),
+                &spl_token::id(),
             )],
             Some(&payer.pubkey()),
             &[payer],
@@ -1029,6 +1030,7 @@ impl StakePoolAccounts {
                     &self.reserve_stake.pubkey(),
                     &self.pool_fee_account.pubkey(),
                     &self.pool_mint.pubkey(),
+                    &spl_token::id(),
                 ),
                 instruction::cleanup_removed_validator_entries(
                     &id(),

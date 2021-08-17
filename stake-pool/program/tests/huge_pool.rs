@@ -350,6 +350,7 @@ async fn update() {
             &stake_pool_accounts.reserve_stake.pubkey(),
             &stake_pool_accounts.pool_fee_account.pubkey(),
             &stake_pool_accounts.pool_mint.pubkey(),
+            &spl_token::id(),
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer],
