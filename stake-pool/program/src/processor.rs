@@ -1320,9 +1320,17 @@ impl Processor {
                 vote_account_address.as_ref(),
                 ValidatorStakeInfo::memcmp_pubkey,
             );
-            if maybe_validator_stake_info.is_none() {
-                msg!("Validator for {} not present in the stake pool, cannot set as preferred deposit account");
-                return Err(StakePoolError::ValidatorNotFound.into());
+            match maybe_validator_stake_info {
+                Some(vsi) => {
+                    if vsi.status != StakeStatus::Active {
+                        msg!("Validator for {:?} about to be removed, cannot set as preferred deposit account", validator_type);
+                        return Err(StakePoolError::InvalidPreferredValidator.into());
+                    }
+                }
+                None => {
+                    msg!("Validator for {:?} not present in the stake pool, cannot set as preferred deposit account", validator_type);
+                    return Err(StakePoolError::ValidatorNotFound.into());
+                }
             }
         }
 
@@ -2622,6 +2630,7 @@ impl PrintProgramError for StakePoolError {
             StakePoolError::DepositTooSmall => msg!("Error: Not enough lamports provided for deposit to result in one pool token"),
             StakePoolError::InvalidStakeDepositAuthority => msg!("Error: Provided stake deposit authority does not match the program's"),
             StakePoolError::InvalidSolDepositAuthority => msg!("Error: Provided sol deposit authority does not match the program's"),
+            StakePoolError::InvalidPreferredValidator => msg!("Error: Provided preferred validator is invalid"),
         }
     }
 }
