@@ -1642,9 +1642,15 @@ impl Processor {
         }
 
         let reward_lamports = total_stake_lamports.saturating_sub(previous_lamports);
-        let fee = stake_pool
-            .calc_epoch_fee_amount(reward_lamports)
-            .ok_or(StakePoolError::CalculationFailure)?;
+
+        // If the manager fee info is invalid, they don't deserve to receive the fee.
+        let fee = if stake_pool.check_manager_fee_info(manager_fee_info).is_ok() {
+            stake_pool
+                .calc_epoch_fee_amount(reward_lamports)
+                .ok_or(StakePoolError::CalculationFailure)?
+        } else {
+            0
+        };
 
         if fee > 0 {
             Self::token_mint_to(
@@ -2205,7 +2211,11 @@ impl Processor {
             return Err(StakePoolError::InvalidState.into());
         }
 
-        let pool_tokens_fee = if stake_pool.manager_fee_account == *burn_from_pool_info.key {
+        // To prevent a faulty manager fee account from preventing withdrawals
+        // if the token program does not own the account, or if the account is not initialized
+        let pool_tokens_fee = if stake_pool.manager_fee_account == *burn_from_pool_info.key
+            || stake_pool.check_manager_fee_info(manager_fee_info).is_err()
+        {
             0
         } else {
             stake_pool
@@ -2393,6 +2403,7 @@ impl Processor {
 
         check_account_owner(stake_pool_info, program_id)?;
         let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
+        check_account_owner(new_manager_fee_info, &stake_pool.token_program_id)?;
         if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }

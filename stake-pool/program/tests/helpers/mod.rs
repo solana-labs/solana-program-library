@@ -160,6 +160,54 @@ pub async fn create_token_account(
     Ok(())
 }
 
+pub async fn close_token_account(
+    banks_client: &mut BanksClient,
+    payer: &Keypair,
+    recent_blockhash: &Hash,
+    account: &Pubkey,
+    lamports_destination: &Pubkey,
+    manager: &Keypair,
+) -> Result<(), TransportError> {
+    let mut transaction = Transaction::new_with_payer(
+        &[spl_token::instruction::close_account(
+            &spl_token::id(),
+            &account,
+            &lamports_destination,
+            &manager.pubkey(),
+            &[],
+        )
+        .unwrap()],
+        Some(&payer.pubkey()),
+    );
+    transaction.sign(&[payer, manager], *recent_blockhash);
+    banks_client.process_transaction(transaction).await?;
+    Ok(())
+}
+
+pub async fn freeze_token_account(
+    banks_client: &mut BanksClient,
+    payer: &Keypair,
+    recent_blockhash: &Hash,
+    account: &Pubkey,
+    pool_mint: &Pubkey,
+    manager: &Keypair,
+) -> Result<(), TransportError> {
+    let mut transaction = Transaction::new_with_payer(
+        &[spl_token::instruction::freeze_account(
+            &spl_token::id(),
+            &account,
+            pool_mint,
+            &manager.pubkey(),
+            &[],
+        )
+        .unwrap()],
+        Some(&payer.pubkey()),
+    );
+    transaction.sign(&[payer, manager], *recent_blockhash);
+    banks_client.process_transaction(transaction).await?;
+    Ok(())
+}
+
 pub async fn mint_tokens(
     banks_client: &mut BanksClient,
     payer: &Keypair,
