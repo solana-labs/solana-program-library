@@ -21,7 +21,7 @@ use {
     },
     spl_stake_pool::{
         find_stake_program_address, find_transient_stake_program_address, id, instruction,
-        processor, stake_program, state,
+        processor, stake_program, state, state::FeeType,
     },
 };
 
@@ -271,6 +271,8 @@ pub async fn create_stake_pool(
     withdrawal_fee: &state::Fee,
     deposit_fee: &state::Fee,
     referral_fee: u8,
+    sol_deposit_fee: &state::Fee,
+    sol_referral_fee: u8,
     max_validators: u32,
 ) -> Result<(), TransportError> {
     let rent = banks_client.get_rent().await.unwrap();
@@ -311,6 +313,18 @@ pub async fn create_stake_pool(
                 *deposit_fee,
                 referral_fee,
                 max_validators,
+            ),
+            instruction::set_fee(
+                &id(),
+                &stake_pool.pubkey(),
+                &manager.pubkey(),
+                FeeType::SolDeposit(*sol_deposit_fee),
+            ),
+            instruction::set_fee(
+                &id(),
+                &stake_pool.pubkey(),
+                &manager.pubkey(),
+                FeeType::SolReferral(sol_referral_fee),
             ),
         ],
         Some(&payer.pubkey()),
@@ -552,6 +566,8 @@ pub struct StakePoolAccounts {
     pub withdrawal_fee: state::Fee,
     pub deposit_fee: state::Fee,
     pub referral_fee: u8,
+    pub sol_deposit_fee: state::Fee,
+    pub sol_referral_fee: u8,
     pub max_validators: u32,
 }
 
@@ -598,6 +614,11 @@ impl StakePoolAccounts {
                 denominator: 1000,
             },
             referral_fee: 25,
+            sol_deposit_fee: state::Fee {
+                numerator: 3,
+                denominator: 100,
+            },
+            sol_referral_fee: 50,
             max_validators: MAX_TEST_VALIDATORS,
         }
     }
@@ -623,6 +644,14 @@ impl StakePoolAccounts {
 
     pub fn calculate_referral_fee(&self, deposit_fee_collected: u64) -> u64 {
         deposit_fee_collected * self.referral_fee as u64 / 100
+    }
+
+    pub fn calculate_sol_deposit_fee(&self, pool_tokens: u64) -> u64 {
+        pool_tokens * self.sol_deposit_fee.numerator / self.sol_deposit_fee.denominator
+    }
+
+    pub fn calculate_sol_referral_fee(&self, deposit_fee_collected: u64) -> u64 {
+        deposit_fee_collected * self.sol_referral_fee as u64 / 100
     }
 
     pub async fn initialize_stake_pool(
@@ -678,9 +707,12 @@ impl StakePoolAccounts {
             &self.withdrawal_fee,
             &self.deposit_fee,
             self.referral_fee,
+            &self.sol_deposit_fee,
+            self.sol_referral_fee,
             self.max_validators,
         )
         .await?;
+
         Ok(())
     }
 
@@ -694,6 +726,31 @@ impl StakePoolAccounts {
         pool_account: &Pubkey,
         validator_stake_account: &Pubkey,
         current_staker: &Keypair,
+    ) -> Option<TransportError> {
+        self.deposit_stake_with_referral(
+            banks_client,
+            payer,
+            recent_blockhash,
+            stake,
+            pool_account,
+            validator_stake_account,
+            current_staker,
+            &self.pool_fee_account.pubkey(),
+        )
+        .await
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn deposit_stake_with_referral(
+        &self,
+        banks_client: &mut BanksClient,
+        payer: &Keypair,
+        recent_blockhash: &Hash,
+        stake: &Pubkey,
+        pool_account: &Pubkey,
+        validator_stake_account: &Pubkey,
+        current_staker: &Keypair,
+        referrer: &Pubkey,
     ) -> Option<TransportError> {
         let mut signers = vec![payer, current_staker];
         let instructions =
@@ -711,7 +768,7 @@ impl StakePoolAccounts {
                     &self.reserve_stake.pubkey(),
                     pool_account,
                     &self.pool_fee_account.pubkey(),
-                    &self.pool_fee_account.pubkey(),
+                    referrer,
                     &self.pool_mint.pubkey(),
                     &spl_token::id(),
                 )
@@ -727,7 +784,7 @@ impl StakePoolAccounts {
                     &self.reserve_stake.pubkey(),
                     pool_account,
                     &self.pool_fee_account.pubkey(),
-                    &self.pool_fee_account.pubkey(),
+                    &referrer,
                     &self.pool_mint.pubkey(),
                     &spl_token::id(),
                 )
