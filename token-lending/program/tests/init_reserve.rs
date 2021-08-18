@@ -340,6 +340,9 @@ async fn test_update_reserve_config() {
             test_reserve.pubkey,
             lending_market.pubkey,
             lending_market.owner.pubkey(),
+            oracle.pyth_product_pubkey,
+            oracle.pyth_price_pubkey,
+            oracle.switchboard_feed_pubkey,
         )],
         Some(&payer.pubkey()),
     );

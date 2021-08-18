@@ -27,8 +27,7 @@ use solana_program::{
 };
 use spl_token::solana_program::instruction::AccountMeta;
 use spl_token::state::{Account, Mint};
-use std::convert::TryInto;
-use std::result::Result;
+use std::{convert::TryInto, result::Result};
 use switchboard_program::{
     get_aggregator, get_aggregator_result, AggregatorState, RoundResult, SwitchboardAccountType,
 };
@@ -261,51 +260,9 @@ fn process_init_reserve(
         return Err(LendingError::InvalidSigner.into());
     }
 
-    if &lending_market.oracle_program_id != pyth_product_info.owner {
-        msg!("Pyth product account provided is not owned by the lending market oracle program");
-        return Err(LendingError::InvalidOracleConfig.into());
-    }
-    if &lending_market.oracle_program_id != pyth_price_info.owner {
-        msg!("Pyth price account provided is not owned by the lending market oracle program");
-        return Err(LendingError::InvalidOracleConfig.into());
-    }
+    validate_pyth_keys(&lending_market, pyth_product_info, pyth_price_info)?;
+    validate_switchboard_keys(&lending_market, switchboard_feed_info)?;
 
-    let pyth_product_data = pyth_product_info.try_borrow_data()?;
-    let pyth_product = pyth::load::<pyth::Product>(&pyth_product_data)
-        .map_err(|_| ProgramError::InvalidAccountData)?;
-    if pyth_product.magic != pyth::MAGIC {
-        msg!("Pyth product account provided is not a valid Pyth account");
-        return Err(LendingError::InvalidOracleConfig.into());
-    }
-    if pyth_product.ver != pyth::VERSION_2 {
-        msg!("Pyth product account provided has a different version than expected");
-        return Err(LendingError::InvalidOracleConfig.into());
-    }
-    if pyth_product.atype != pyth::AccountType::Product as u32 {
-        msg!("Pyth product account provided is not a valid Pyth product account");
-        return Err(LendingError::InvalidOracleConfig.into());
-    }
-
-    let pyth_price_pubkey_bytes: &[u8; 32] = pyth_price_info
-        .key
-        .as_ref()
-        .try_into()
-        .map_err(|_| LendingError::InvalidAccountInput)?;
-    if &pyth_product.px_acc.val != pyth_price_pubkey_bytes {
-        msg!("Pyth product price account does not match the Pyth price provided");
-        return Err(LendingError::InvalidOracleConfig.into());
-    }
-
-    let quote_currency = get_pyth_product_quote_currency(pyth_product)?;
-    if lending_market.quote_currency != quote_currency {
-        msg!("Lending market quote currency does not match the oracle quote currency");
-        return Err(LendingError::InvalidOracleConfig.into());
-    }
-
-    if &lending_market.switchboard_oracle_program_id != switchboard_feed_info.owner {
-        msg!("Switchboard account provided is not owned by the switchboard oracle program");
-        return Err(LendingError::InvalidOracleConfig.into());
-    }
     let market_price = get_price(switchboard_feed_info, pyth_price_info, clock)?;
 
     let authority_signer_seeds = &[
@@ -1980,7 +1937,6 @@ fn process_withdraw_obligation_collateral_and_redeem_reserve_liquidity(
     )
 }
 
-#[allow(clippy::too_many_arguments)]
 #[inline(never)] // avoid stack frame limit
 fn process_update_reserve_config(
     program_id: &Pubkey,
@@ -1988,11 +1944,14 @@ fn process_update_reserve_config(
     accounts: &[AccountInfo],
 ) -> ProgramResult {
     validate_reserve_config(config)?;
-    let account_info_iter = &mut accounts.iter().peekable();
+    let account_info_iter = &mut accounts.iter();
     let reserve_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
     let lending_market_authority_info = next_account_info(account_info_iter)?;
     let lending_market_owner_info = next_account_info(account_info_iter)?;
+    let pyth_product_info = next_account_info(account_info_iter)?;
+    let pyth_price_info = next_account_info(account_info_iter)?;
+    let switchboard_feed_info = next_account_info(account_info_iter)?;
 
     let mut reserve = Reserve::unpack(&reserve_info.data.borrow())?;
     if reserve_info.owner != program_id {
@@ -2034,6 +1993,17 @@ fn process_update_reserve_config(
         );
         return Err(LendingError::InvalidMarketAuthority.into());
     }
+
+    if *pyth_price_info.key != reserve.liquidity.pyth_oracle_pubkey {
+        validate_pyth_keys(&lending_market, pyth_product_info, pyth_price_info)?;
+        reserve.liquidity.pyth_oracle_pubkey = *pyth_product_info.key;
+    }
+
+    if *switchboard_feed_info.key != reserve.liquidity.switchboard_oracle_pubkey {
+        validate_switchboard_keys(&lending_market, switchboard_feed_info)?;
+        reserve.liquidity.switchboard_oracle_pubkey = *switchboard_feed_info.key;
+    }
+
     reserve.config = config;
     Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
     Ok(())
@@ -2380,6 +2350,68 @@ fn validate_reserve_config(config: ReserveConfig) -> ProgramResult {
     if config.fees.host_fee_percentage > 100 {
         msg!("Host fee percentage must be in range [0, 100]");
         return Err(LendingError::InvalidConfig.into());
+    }
+    Ok(())
+}
+
+/// validates pyth AccountInfos
+#[inline(always)]
+fn validate_pyth_keys(
+    lending_market: &LendingMarket,
+    pyth_product_info: &AccountInfo,
+    pyth_price_info: &AccountInfo,
+) -> ProgramResult {
+    if &lending_market.oracle_program_id != pyth_product_info.owner {
+        msg!("Pyth product account provided is not owned by the lending market oracle program");
+        return Err(LendingError::InvalidOracleConfig.into());
+    }
+    if &lending_market.oracle_program_id != pyth_price_info.owner {
+        msg!("Pyth price account provided is not owned by the lending market oracle program");
+        return Err(LendingError::InvalidOracleConfig.into());
+    }
+
+    let pyth_product_data = pyth_product_info.try_borrow_data()?;
+    let pyth_product = pyth::load::<pyth::Product>(&pyth_product_data)
+        .map_err(|_| ProgramError::InvalidAccountData)?;
+    if pyth_product.magic != pyth::MAGIC {
+        msg!("Pyth product account provided is not a valid Pyth account");
+        return Err(LendingError::InvalidOracleConfig.into());
+    }
+    if pyth_product.ver != pyth::VERSION_2 {
+        msg!("Pyth product account provided has a different version than expected");
+        return Err(LendingError::InvalidOracleConfig.into());
+    }
+    if pyth_product.atype != pyth::AccountType::Product as u32 {
+        msg!("Pyth product account provided is not a valid Pyth product account");
+        return Err(LendingError::InvalidOracleConfig.into());
+    }
+
+    let pyth_price_pubkey_bytes: &[u8; 32] = pyth_price_info
+        .key
+        .as_ref()
+        .try_into()
+        .map_err(|_| LendingError::InvalidAccountInput)?;
+    if &pyth_product.px_acc.val != pyth_price_pubkey_bytes {
+        msg!("Pyth product price account does not match the Pyth price provided");
+        return Err(LendingError::InvalidOracleConfig.into());
+    }
+
+    let quote_currency = get_pyth_product_quote_currency(pyth_product)?;
+    if lending_market.quote_currency != quote_currency {
+        msg!("Lending market quote currency does not match the oracle quote currency");
+        return Err(LendingError::InvalidOracleConfig.into());
+    }
+    Ok(())
+}
+
+/// validates switchboard AccountInfo
+fn validate_switchboard_keys(
+    lending_market: &LendingMarket,
+    switchboard_feed_info: &AccountInfo,
+) -> ProgramResult {
+    if &lending_market.switchboard_oracle_program_id != switchboard_feed_info.owner {
+        msg!("Switchboard account provided is not owned by the switchboard oracle program");
+        return Err(LendingError::InvalidOracleConfig.into());
     }
     Ok(())
 }
