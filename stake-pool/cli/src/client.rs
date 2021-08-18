@@ -113,3 +113,42 @@ pub(crate) fn get_stake_accounts_by_withdraw_authority(
                 .collect()
         })
 }
+
+pub(crate) fn get_stake_pools(
+    rpc_client: &RpcClient,
+) -> Result<Vec<(Pubkey, StakePool, ValidatorList)>, ClientError> {
+    rpc_client
+        .get_program_accounts_with_config(
+            &spl_stake_pool::id(),
+            RpcProgramAccountsConfig {
+                filters: Some(vec![RpcFilterType::Memcmp(Memcmp {
+                    offset: 0, // 0 is the account type
+                    bytes: MemcmpEncodedBytes::Binary("2".to_string()),
+                    encoding: None,
+                })]),
+                account_config: RpcAccountInfoConfig {
+                    encoding: Some(UiAccountEncoding::Base64),
+                    ..RpcAccountInfoConfig::default()
+                },
+                ..RpcProgramAccountsConfig::default()
+            },
+        )
+        .map(|accounts| {
+            accounts
+                .into_iter()
+                .filter_map(|(address, account)| {
+                    match try_from_slice_unchecked::<StakePool>(account.data.as_slice()) {
+                        Ok(stake_pool) => {
+                            get_validator_list(rpc_client, &stake_pool.validator_list)
+                                .map(|v| (address, stake_pool, v))
+                                .ok()
+                        }
+                        Err(err) => {
+                            eprintln!("Invalid stake pool data for {}: {}", address, err);
+                            None
+                        }
+                    }
+                })
+                .collect()
+        })
+}
