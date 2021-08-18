@@ -530,7 +530,7 @@ async fn fail_with_unknown_validator() {
     ) = setup().await;
 
     let validator_stake_account =
-        ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey());
+        ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey(), 111);
     validator_stake_account
         .create_and_delegate(
             &mut banks_client,
@@ -540,7 +540,7 @@ async fn fail_with_unknown_validator() {
         )
         .await;
 
-    let user_stake = ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey());
+    let user_stake = ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey(), 111);
     user_stake
         .create_and_delegate(
             &mut banks_client,
@@ -952,6 +952,7 @@ async fn success_with_reserve() {
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
             deposit_lamports - 1,
+            validator_stake.transient_stake_seed,
         )
         .await;
     assert!(error.is_none());
@@ -1029,6 +1030,7 @@ async fn success_with_reserve() {
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
             stake_rent + 1,
+            validator_stake.transient_stake_seed,
         )
         .await;
     assert!(error.is_none());
@@ -1329,6 +1331,7 @@ async fn success_withdraw_from_transient() {
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
             stake_rent + 1,
+            validator_stake.transient_stake_seed,
         )
         .await;
     assert!(error.is_none());
@@ -1397,6 +1400,7 @@ async fn success_withdraw_from_transient() {
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
             deposit_lamports - 1,
+            validator_stake.transient_stake_seed,
         )
         .await;
     assert!(error.is_none());

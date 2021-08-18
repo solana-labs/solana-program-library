@@ -215,10 +215,12 @@ async fn fail_ready_for_removal() {
     let validator_vote_address = validator_stake_account.vote.pubkey();
 
     // Mark validator as ready for removal
+    let transient_stake_seed = 0;
     let (transient_stake_address, _) = find_transient_stake_program_address(
         &id(),
         &validator_vote_address,
         &stake_pool_accounts.stake_pool.pubkey(),
+        transient_stake_seed,
     );
     let new_authority = Pubkey::new_unique();
     let remove_err = stake_pool_accounts

@@ -612,7 +612,7 @@ async fn fail_with_unknown_validator() {
         .unwrap();
 
     let validator_stake_account =
-        ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey());
+        ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey(), u64::MAX);
     validator_stake_account
         .create_and_delegate(
             &mut banks_client,

@@ -321,6 +321,9 @@ async fn update() {
     let (mut context, stake_pool_accounts, vote_account_pubkeys, _, _, _, _) =
         setup(HUGE_POOL_SIZE, HUGE_POOL_SIZE, STAKE_AMOUNT).await;
 
+    let validator_list = stake_pool_accounts
+        .get_validator_list(&mut context.banks_client)
+        .await;
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::update_validator_list_balance(
             &id(),
@@ -328,6 +331,7 @@ async fn update() {
             &stake_pool_accounts.withdraw_authority,
             &stake_pool_accounts.validator_list.pubkey(),
             &stake_pool_accounts.reserve_stake.pubkey(),
+            &validator_list,
             &vote_account_pubkeys[0..MAX_VALIDATORS_TO_UPDATE],
             0,
             /* no_merge = */ false,
@@ -391,10 +395,12 @@ async fn remove_validator_from_pool() {
     let first_vote = vote_account_pubkeys[0];
     let (stake_address, _) =
         find_stake_program_address(&id(), &first_vote, &stake_pool_accounts.stake_pool.pubkey());
+    let transient_stake_seed = u64::MAX;
     let (transient_stake_address, _) = find_transient_stake_program_address(
         &id(),
         &first_vote,
         &stake_pool_accounts.stake_pool.pubkey(),
+        transient_stake_seed,
     );
 
     let new_authority = Pubkey::new_unique();
@@ -421,6 +427,7 @@ async fn remove_validator_from_pool() {
         &id(),
         &middle_vote,
         &stake_pool_accounts.stake_pool.pubkey(),
+        transient_stake_seed,
     );
 
     let new_authority = Pubkey::new_unique();
@@ -444,6 +451,7 @@ async fn remove_validator_from_pool() {
         &id(),
         &last_vote,
         &stake_pool_accounts.stake_pool.pubkey(),
+        transient_stake_seed,
     );
 
     let new_authority = Pubkey::new_unique();
@@ -585,8 +593,13 @@ async fn add_validator_to_pool() {
     assert_eq!(last_element.transient_stake_lamports, 0);
     assert_eq!(last_element.vote_account_address, test_vote_address);
 
-    let (transient_stake_address, _) =
-        find_transient_stake_program_address(&id(), &test_vote_address, &stake_pool_pubkey);
+    let transient_stake_seed = u64::MAX;
+    let (transient_stake_address, _) = find_transient_stake_program_address(
+        &id(),
+        &test_vote_address,
+        &stake_pool_pubkey,
+        transient_stake_seed,
+    );
     let increase_amount = MINIMUM_ACTIVE_STAKE;
     let error = stake_pool_accounts
         .increase_validator_stake(
@@ -596,6 +609,7 @@ async fn add_validator_to_pool() {
             &transient_stake_address,
             &test_vote_address,
             increase_amount,
+            transient_stake_seed,
         )
         .await;
     assert!(error.is_none(), "{:?}", error);

@@ -119,6 +119,9 @@ pub enum StakePoolError {
     /// Provided preferred validator is invalid
     #[error("InvalidPreferredValidator")]
     InvalidPreferredValidator,
+    /// Provided validator stake account already has a transient stake account in use
+    #[error("TransientAccountInUse")]
+    TransientAccountInUse,
 }
 impl From<StakePoolError> for ProgramError {
     fn from(e: StakePoolError) -> Self {

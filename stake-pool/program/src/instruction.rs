@@ -155,8 +155,14 @@ pub enum StakePoolInstruction {
     ///  7. `[]` Rent sysvar
     ///  8. `[]` System program
     ///  9. `[]` Stake program
-    ///  userdata: amount of lamports to split into the transient stake account
-    DecreaseValidatorStake(u64),
+    DecreaseValidatorStake {
+        /// amount of lamports to split into the transient stake account
+        #[allow(dead_code)] // but it's not
+        lamports: u64,
+        /// seed used to create transient stake account
+        #[allow(dead_code)] // but it's not
+        transient_stake_seed: u64,
+    },
 
     /// (Staker only) Increase stake on a validator from the reserve account
     ///
@@ -186,7 +192,14 @@ pub enum StakePoolInstruction {
     ///  `lamports + stake_rent_exemption`
     ///  The rent-exemption of the stake account is withdrawn back to the reserve
     ///  after it is merged.
-    IncreaseValidatorStake(u64),
+    IncreaseValidatorStake {
+        /// amount of lamports to increase on the given validator
+        #[allow(dead_code)] // but it's not
+        lamports: u64,
+        /// seed used to create transient stake account
+        #[allow(dead_code)] // but it's not
+        transient_stake_seed: u64,
+    },
 
     /// (Staker only) Set the preferred deposit or withdraw stake account for the
     /// stake pool
@@ -502,6 +515,7 @@ pub fn decrease_validator_stake(
     validator_stake: &Pubkey,
     transient_stake: &Pubkey,
     lamports: u64,
+    transient_stake_seed: u64,
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new_readonly(*stake_pool, false),
@@ -518,9 +532,12 @@ pub fn decrease_validator_stake(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::DecreaseValidatorStake(lamports)
-            .try_to_vec()
-            .unwrap(),
+        data: StakePoolInstruction::DecreaseValidatorStake {
+            lamports,
+            transient_stake_seed,
+        }
+        .try_to_vec()
+        .unwrap(),
     }
 }
 
@@ -536,6 +553,7 @@ pub fn increase_validator_stake(
     transient_stake: &Pubkey,
     validator: &Pubkey,
     lamports: u64,
+    transient_stake_seed: u64,
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new_readonly(*stake_pool, false),
@@ -555,9 +573,12 @@ pub fn increase_validator_stake(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::IncreaseValidatorStake(lamports)
-            .try_to_vec()
-            .unwrap(),
+        data: StakePoolInstruction::IncreaseValidatorStake {
+            lamports,
+            transient_stake_seed,
+        }
+        .try_to_vec()
+        .unwrap(),
     }
 }
 
@@ -636,13 +657,18 @@ pub fn remove_validator_from_pool_with_vote(
     stake_pool_address: &Pubkey,
     vote_account_address: &Pubkey,
     new_stake_account_authority: &Pubkey,
+    transient_stake_seed: u64,
 ) -> Instruction {
     let pool_withdraw_authority =
         find_withdraw_authority_program_address(program_id, stake_pool_address).0;
     let (stake_account_address, _) =
         find_stake_program_address(program_id, vote_account_address, stake_pool_address);
-    let (transient_stake_account, _) =
-        find_transient_stake_program_address(program_id, vote_account_address, stake_pool_address);
+    let (transient_stake_account, _) = find_transient_stake_program_address(
+        program_id,
+        vote_account_address,
+        stake_pool_address,
+        transient_stake_seed,
+    );
     remove_validator_from_pool(
         program_id,
         stake_pool_address,
@@ -663,11 +689,16 @@ pub fn increase_validator_stake_with_vote(
     stake_pool_address: &Pubkey,
     vote_account_address: &Pubkey,
     lamports: u64,
+    transient_stake_seed: u64,
 ) -> Instruction {
     let pool_withdraw_authority =
         find_withdraw_authority_program_address(program_id, stake_pool_address).0;
-    let (transient_stake_address, _) =
-        find_transient_stake_program_address(program_id, vote_account_address, stake_pool_address);
+    let (transient_stake_address, _) = find_transient_stake_program_address(
+        program_id,
+        vote_account_address,
+        stake_pool_address,
+        transient_stake_seed,
+    );
 
     increase_validator_stake(
         program_id,
@@ -679,6 +710,7 @@ pub fn increase_validator_stake_with_vote(
         &transient_stake_address,
         vote_account_address,
         lamports,
+        transient_stake_seed,
     )
 }
 
@@ -690,13 +722,18 @@ pub fn decrease_validator_stake_with_vote(
     stake_pool_address: &Pubkey,
     vote_account_address: &Pubkey,
     lamports: u64,
+    transient_stake_seed: u64,
 ) -> Instruction {
     let pool_withdraw_authority =
         find_withdraw_authority_program_address(program_id, stake_pool_address).0;
     let (validator_stake_address, _) =
         find_stake_program_address(program_id, vote_account_address, stake_pool_address);
-    let (transient_stake_address, _) =
-        find_transient_stake_program_address(program_id, vote_account_address, stake_pool_address);
+    let (transient_stake_address, _) = find_transient_stake_program_address(
+        program_id,
+        vote_account_address,
+        stake_pool_address,
+        transient_stake_seed,
+    );
     decrease_validator_stake(
         program_id,
         stake_pool_address,
@@ -706,6 +743,7 @@ pub fn decrease_validator_stake_with_vote(
         &validator_stake_address,
         &transient_stake_address,
         lamports,
+        transient_stake_seed,
     )
 }
 
@@ -714,8 +752,9 @@ pub fn update_validator_list_balance(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
     stake_pool_withdraw_authority: &Pubkey,
-    validator_list: &Pubkey,
+    validator_list_address: &Pubkey,
     reserve_stake: &Pubkey,
+    validator_list: &ValidatorList,
     validator_vote_accounts: &[Pubkey],
     start_index: u32,
     no_merge: bool,
@@ -723,7 +762,7 @@ pub fn update_validator_list_balance(
     let mut accounts = vec![
         AccountMeta::new_readonly(*stake_pool, false),
         AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
-        AccountMeta::new(*validator_list, false),
+        AccountMeta::new(*validator_list_address, false),
         AccountMeta::new(*reserve_stake, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
@@ -733,17 +772,23 @@ pub fn update_validator_list_balance(
         &mut validator_vote_accounts
             .iter()
             .flat_map(|vote_account_address| {
-                let (validator_stake_account, _) =
-                    find_stake_program_address(program_id, vote_account_address, stake_pool);
-                let (transient_stake_account, _) = find_transient_stake_program_address(
-                    program_id,
-                    vote_account_address,
-                    stake_pool,
-                );
-                vec![
-                    AccountMeta::new(validator_stake_account, false),
-                    AccountMeta::new(transient_stake_account, false),
-                ]
+                let validator_stake_info = validator_list.find(vote_account_address);
+                if let Some(validator_stake_info) = validator_stake_info {
+                    let (validator_stake_account, _) =
+                        find_stake_program_address(program_id, vote_account_address, stake_pool);
+                    let (transient_stake_account, _) = find_transient_stake_program_address(
+                        program_id,
+                        vote_account_address,
+                        stake_pool,
+                        validator_stake_info.transient_seed_suffix_start,
+                    );
+                    vec![
+                        AccountMeta::new(validator_stake_account, false),
+                        AccountMeta::new(transient_stake_account, false),
+                    ]
+                } else {
+                    vec![]
+                }
             })
             .collect::<Vec<AccountMeta>>(),
     );
@@ -835,6 +880,7 @@ pub fn update_stake_pool(
             &withdraw_authority,
             &stake_pool.validator_list,
             &stake_pool.reserve_stake,
+            validator_list,
             accounts_chunk,
             start_index,
             no_merge,

@@ -5,16 +5,15 @@ mod helpers;
 use {
     bincode::deserialize,
     helpers::*,
-    solana_program::{
-        clock::Epoch, hash::Hash, instruction::InstructionError, pubkey::Pubkey,
-        system_instruction::SystemError,
-    },
+    solana_program::{clock::Epoch, hash::Hash, instruction::InstructionError, pubkey::Pubkey},
     solana_program_test::*,
     solana_sdk::{
         signature::{Keypair, Signer},
         transaction::{Transaction, TransactionError},
     },
-    spl_stake_pool::{error::StakePoolError, id, instruction, stake_program},
+    spl_stake_pool::{
+        error::StakePoolError, find_transient_stake_program_address, id, instruction, stake_program,
+    },
 };
 
 async fn setup() -> (
@@ -96,6 +95,7 @@ async fn success() {
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
             decrease_lamports,
+            validator_stake.transient_stake_seed,
         )
         .await;
     assert!(error.is_none());
@@ -156,6 +156,7 @@ async fn fail_with_wrong_withdraw_authority() {
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
             decrease_lamports,
+            validator_stake.transient_stake_seed,
         )],
         Some(&payer.pubkey()),
         &[&payer, &stake_pool_accounts.staker],
@@ -201,6 +202,7 @@ async fn fail_with_wrong_validator_list() {
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
             decrease_lamports,
+            validator_stake.transient_stake_seed,
         )],
         Some(&payer.pubkey()),
         &[&payer, &stake_pool_accounts.staker],
@@ -234,7 +236,7 @@ async fn fail_with_unknown_validator() {
         decrease_lamports,
     ) = setup().await;
 
-    let unknown_stake = ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey());
+    let unknown_stake = ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey(), 222);
     unknown_stake
         .create_and_delegate(
             &mut banks_client,
@@ -254,6 +256,7 @@ async fn fail_with_unknown_validator() {
             &unknown_stake.stake_account,
             &unknown_stake.transient_stake_account,
             decrease_lamports,
+            unknown_stake.transient_stake_seed,
         )],
         Some(&payer.pubkey()),
         &[&payer, &stake_pool_accounts.staker],
@@ -295,25 +298,35 @@ async fn fail_decrease_twice() {
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
             decrease_lamports / 3,
+            validator_stake.transient_stake_seed,
         )
         .await;
     assert!(error.is_none());
 
+    let transient_stake_seed = validator_stake.transient_stake_seed * 100;
+    let transient_stake_address = find_transient_stake_program_address(
+        &id(),
+        &validator_stake.vote.pubkey(),
+        &stake_pool_accounts.stake_pool.pubkey(),
+        transient_stake_seed,
+    )
+    .0;
     let error = stake_pool_accounts
         .decrease_validator_stake(
             &mut banks_client,
             &payer,
             &recent_blockhash,
             &validator_stake.stake_account,
-            &validator_stake.transient_stake_account,
+            &transient_stake_address,
             decrease_lamports / 2,
+            transient_stake_seed,
         )
         .await
         .unwrap()
         .unwrap();
     match error {
         TransactionError::InstructionError(_, InstructionError::Custom(error_index)) => {
-            let program_error = SystemError::AccountAlreadyInUse as u32;
+            let program_error = StakePoolError::TransientAccountInUse as u32;
             assert_eq!(error_index, program_error);
         }
         _ => panic!("Wrong error"),
@@ -343,6 +356,7 @@ async fn fail_with_small_lamport_amount() {
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
             lamports,
+            validator_stake.transient_stake_seed,
         )
         .await
         .unwrap()
@@ -374,6 +388,7 @@ async fn fail_overdraw_validator() {
             &validator_stake.stake_account,
             &validator_stake.transient_stake_account,
             deposit_info.stake_lamports * 1_000_000,
+            validator_stake.transient_stake_seed,
         )
         .await
         .unwrap()
