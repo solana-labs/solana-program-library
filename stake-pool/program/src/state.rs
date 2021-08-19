@@ -526,11 +526,11 @@ pub struct ValidatorStakeInfo {
     /// Validator vote account address
     pub vote_account_address: Pubkey,
 
-    /// Start of the validator transient account seeds
-    pub transient_account_seed_start: u64,
+    /// Start of the validator transient account seed suffixess
+    pub transient_seed_suffix_start: u64,
 
-    /// End of the validator transient account seeds
-    pub transient_account_seed_end: u64,
+    /// End of the validator transient account seed suffixes
+    pub transient_seed_suffix_end: u64,
 }
 
 impl ValidatorStakeInfo {
