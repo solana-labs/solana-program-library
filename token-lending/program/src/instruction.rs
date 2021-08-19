@@ -364,7 +364,7 @@ pub enum LendingInstruction {
     },
 
     // 16
-    /// Updates a reserve config parameter
+    /// Updates a reserves config and a reserve price oracle pubkeys
     ///
     /// Accounts expected by this instruction:
     ///
@@ -372,6 +372,9 @@ pub enum LendingInstruction {
     ///   2 `[]` Lending market account.
     ///   3 `[]` Derived lending market authority.
     ///   4 `[signer]` Lending market owner.
+    ///   5 `[]` Pyth product key.
+    ///   6 `[]` Pyth price key.
+    ///   7 `[]` Switchboard key.
     UpdateReserveConfig {
         /// Reserve config to update to
         config: ReserveConfig,
@@ -1190,6 +1193,9 @@ pub fn update_reserve_config(
     reserve_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
     lending_market_owner_pubkey: Pubkey,
+    pyth_product_pubkey: Pubkey,
+    pyth_price_pubkey: Pubkey,
+    switchboard_feed_pubkey: Pubkey,
 ) -> Instruction {
     let (lending_market_authority_pubkey, _bump_seed) = Pubkey::find_program_address(
         &[&lending_market_pubkey.to_bytes()[..PUBKEY_BYTES]],
@@ -1200,6 +1206,9 @@ pub fn update_reserve_config(
         AccountMeta::new_readonly(lending_market_pubkey, false),
         AccountMeta::new_readonly(lending_market_authority_pubkey, false),
         AccountMeta::new_readonly(lending_market_owner_pubkey, true),
+        AccountMeta::new_readonly(pyth_product_pubkey, false),
+        AccountMeta::new_readonly(pyth_price_pubkey, false),
+        AccountMeta::new_readonly(switchboard_feed_pubkey, false),
     ];
     Instruction {
         program_id,

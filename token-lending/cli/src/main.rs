@@ -535,6 +535,33 @@ fn main() {
                         .required(false)
                         .help("Fee receiver address"),
                 )
+                .arg(
+                    Arg::with_name("pyth_product")
+                        .long("pyth-product")
+                        .validator(is_pubkey)
+                        .value_name("PUBKEY")
+                        .takes_value(true)
+                        .required(false)
+                        .help("Pyth product account: https://pyth.network/developers/consumers/accounts"),
+                )
+                .arg(
+                    Arg::with_name("pyth_price")
+                        .long("pyth-price")
+                        .validator(is_pubkey)
+                        .value_name("PUBKEY")
+                        .takes_value(true)
+                        .required(false)
+                        .help("Pyth price account: https://pyth.network/developers/consumers/accounts"),
+                )
+                .arg(
+                    Arg::with_name("switchboard_feed")
+                        .long("switchboard-feed")
+                        .validator(is_pubkey)
+                        .value_name("PUBKEY")
+                        .takes_value(true)
+                        .required(false)
+                        .help("Switchboard price feed account: https://switchboard.xyz/#/explorer"),
+                )
         )
         .get_matches();
 
@@ -686,6 +713,9 @@ fn main() {
             let deposit_limit = value_of(arg_matches, "deposit_limit");
             let borrow_limit = value_of(arg_matches, "borrow_limit");
             let fee_receiver = pubkey_of(arg_matches, "fee_receiver");
+            let pyth_product_pubkey = pubkey_of(arg_matches, "pyth_product");
+            let pyth_price_pubkey = pubkey_of(arg_matches, "pyth_price");
+            let switchboard_feed_pubkey = pubkey_of(arg_matches, "switchboard_feed");
 
             let borrow_fee_wad = borrow_fee.map(|fee| (fee * WAD as f64) as u64);
             let flash_loan_fee_wad = flash_loan_fee.map(|fee| (fee * WAD as f64) as u64);
@@ -709,6 +739,9 @@ fn main() {
                     borrow_limit,
                     fee_receiver,
                 },
+                pyth_product_pubkey,
+                pyth_price_pubkey,
+                switchboard_feed_pubkey,
                 reserve_pubkey,
                 lending_market_pubkey,
                 lending_market_owner_keypair,
@@ -992,10 +1025,13 @@ fn command_add_reserve(
     Ok(())
 }
 
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments, clippy::unnecessary_unwrap)]
 fn command_update_reserve(
     config: &mut Config,
     reserve_config: PartialReserveConfig,
+    pyth_product_pubkey: Option<Pubkey>,
+    pyth_price_pubkey: Option<Pubkey>,
+    switchboard_feed_pubkey: Option<Pubkey>,
     reserve_pubkey: Pubkey,
     lending_market_pubkey: Pubkey,
     lending_market_owner_keypair: Keypair,
@@ -1128,6 +1164,26 @@ fn command_update_reserve(
         reserve.config.fee_receiver = reserve_config.fee_receiver.unwrap();
     }
 
+    let mut new_pyth_product_pubkey = null_pyth_product_oracle_pubkey();
+    if pyth_price_pubkey.is_some() {
+        println!(
+            "Updating pyth oracle pubkey from {} to {}",
+            reserve.liquidity.pyth_oracle_pubkey.to_string(),
+            pyth_price_pubkey.unwrap().to_string(),
+        );
+        reserve.liquidity.pyth_oracle_pubkey = pyth_price_pubkey.unwrap();
+        new_pyth_product_pubkey = pyth_product_pubkey.unwrap();
+    }
+
+    if switchboard_feed_pubkey.is_some() {
+        println!(
+            "Updating switchboard_oracle_pubkey {} to {}",
+            reserve.liquidity.switchboard_oracle_pubkey.to_string(),
+            switchboard_feed_pubkey.unwrap().to_string(),
+        );
+        reserve.liquidity.switchboard_oracle_pubkey = switchboard_feed_pubkey.unwrap();
+    }
+
     let mut transaction = Transaction::new_with_payer(
         &[update_reserve_config(
             config.lending_program_id,
@@ -1135,6 +1191,9 @@ fn command_update_reserve(
             reserve_pubkey,
             lending_market_pubkey,
             lending_market_owner_keypair.pubkey(),
+            new_pyth_product_pubkey,
+            reserve.liquidity.pyth_oracle_pubkey,
+            reserve.liquidity.switchboard_oracle_pubkey,
         )],
         Some(&config.fee_payer.pubkey()),
     );
@@ -1197,4 +1256,10 @@ fn quote_currency_of(matches: &ArgMatches<'_>, name: &str) -> Option<[u8; 32]> {
     } else {
         None
     }
+}
+
+/// We need a bogus value to send up when we don't want to change
+/// the oracle addresses.
+pub fn null_pyth_product_oracle_pubkey() -> Pubkey {
+    Pubkey::from_str("nu11orac1e111111111111111111111111111111111").unwrap()
 }
