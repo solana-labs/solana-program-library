@@ -400,7 +400,6 @@ impl Processor {
             return Err(PoolError::InvalidAmount.into());
         }
 
-
         let user_pass_token_account = Account::unpack(&token_pass_user_account_info.data.borrow())?;
         let user_fail_token_account = Account::unpack(&token_fail_user_account_info.data.borrow())?;
 
