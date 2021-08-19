@@ -49,6 +49,10 @@ pub const WITHDRAWAL_BASELINE_FEE: Fee = Fee {
     denominator: 1000,
 };
 
+/// The maximum number of transient stake accounts respecting
+/// transaction account limits.
+pub const MAX_TRANSIENT_STAKE_ACCOUNTS: usize = 10;
+
 /// Get the stake amount under consideration when calculating pool token
 /// conversions
 #[inline]
