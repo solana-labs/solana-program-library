@@ -861,6 +861,8 @@ impl Processor {
             active_stake_lamports: 0,
             transient_stake_lamports: 0,
             last_update_epoch: clock.epoch,
+            transient_seed_suffix_start: 0,
+            transient_seed_suffix_end: 0,
         })?;
 
         Ok(())

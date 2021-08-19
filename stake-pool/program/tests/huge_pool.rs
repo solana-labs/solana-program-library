@@ -164,6 +164,8 @@ async fn setup(
             active_stake_lamports,
             transient_stake_lamports: 0,
             last_update_epoch: 0,
+            transient_seed_suffix_start: 0,
+            transient_seed_suffix_end: 0,
         });
 
         stake_pool.total_stake_lamports += active_stake_lamports;
