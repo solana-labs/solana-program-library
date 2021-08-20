@@ -36,7 +36,7 @@ async fn setup() -> (
         .await
         .unwrap();
 
-    let user_stake = ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey());
+    let user_stake = ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey(), 0);
     user_stake
         .create_and_delegate(
             &mut banks_client,
@@ -161,7 +161,7 @@ async fn fail_too_little_stake() {
         .await
         .unwrap();
 
-    let user_stake = ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey());
+    let user_stake = ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey(), 0);
     create_vote(
         &mut banks_client,
         &payer,
@@ -227,7 +227,7 @@ async fn fail_too_much_stake() {
         .await
         .unwrap();
 
-    let user_stake = ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey());
+    let user_stake = ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey(), 0);
     user_stake
         .create_and_delegate(
             &mut banks_client,
@@ -435,7 +435,7 @@ async fn fail_add_too_many_validator_stake_accounts() {
         .await
         .unwrap();
 
-    let user_stake = ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey());
+    let user_stake = ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey(), 0);
     user_stake
         .create_and_delegate(
             &mut banks_client,
@@ -455,7 +455,7 @@ async fn fail_add_too_many_validator_stake_accounts() {
         .await;
     assert!(error.is_none());
 
-    let user_stake = ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey());
+    let user_stake = ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey(), 0);
     user_stake
         .create_and_delegate(
             &mut banks_client,

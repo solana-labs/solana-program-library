@@ -440,6 +440,11 @@ fn command_vsa_remove(
     let staker_pubkey = config.staker.pubkey();
     let new_authority = new_authority.as_ref().unwrap_or(&staker_pubkey);
 
+    let validator_list = get_validator_list(&config.rpc_client, &stake_pool.validator_list)?;
+    let validator_stake_info = validator_list
+        .find(vote_account)
+        .ok_or("Vote account not found in validator list")?;
+
     let mut signers = vec![config.fee_payer.as_ref(), config.staker.as_ref()];
     unique_signers!(signers);
     let transaction = checked_transaction_with_signers(
@@ -452,6 +457,7 @@ fn command_vsa_remove(
                 stake_pool_address,
                 vote_account,
                 new_authority,
+                validator_stake_info.transient_seed_suffix_start,
             ),
         ],
         &signers,
@@ -472,6 +478,10 @@ fn command_increase_validator_stake(
     }
 
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
+    let validator_list = get_validator_list(&config.rpc_client, &stake_pool.validator_list)?;
+    let validator_stake_info = validator_list
+        .find(vote_account)
+        .ok_or("Vote account not found in validator list")?;
 
     let mut signers = vec![config.fee_payer.as_ref(), config.staker.as_ref()];
     unique_signers!(signers);
@@ -484,6 +494,7 @@ fn command_increase_validator_stake(
                 stake_pool_address,
                 vote_account,
                 lamports,
+                validator_stake_info.transient_seed_suffix_start,
             ),
         ],
         &signers,
@@ -504,6 +515,10 @@ fn command_decrease_validator_stake(
     }
 
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
+    let validator_list = get_validator_list(&config.rpc_client, &stake_pool.validator_list)?;
+    let validator_stake_info = validator_list
+        .find(vote_account)
+        .ok_or("Vote account not found in validator list")?;
 
     let mut signers = vec![config.fee_payer.as_ref(), config.staker.as_ref()];
     unique_signers!(signers);
@@ -516,6 +531,7 @@ fn command_decrease_validator_stake(
                 stake_pool_address,
                 vote_account,
                 lamports,
+                validator_stake_info.transient_seed_suffix_start,
             ),
         ],
         &signers,
@@ -949,6 +965,7 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
                 &spl_stake_pool::id(),
                 &validator.vote_account_address,
                 stake_pool_address,
+                validator.transient_seed_suffix_start,
             );
             println!(
                 "Vote Account: {}\tStake Account: {}\tActive Balance: {}\tTransient Stake Account: {}\tTransient Balance: {}\tLast Update Epoch: {}{}",

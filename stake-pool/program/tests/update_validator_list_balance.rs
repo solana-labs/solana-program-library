@@ -6,9 +6,9 @@ use {
     helpers::*,
     solana_program::{borsh::try_from_slice_unchecked, program_pack::Pack, pubkey::Pubkey},
     solana_program_test::*,
-    solana_sdk::signature::Signer,
+    solana_sdk::{signature::Signer, system_instruction, transaction::Transaction},
     spl_stake_pool::{
-        stake_program,
+        find_transient_stake_program_address, id, instruction, stake_program,
         state::{StakePool, StakeStatus, ValidatorList},
         MAX_VALIDATORS_TO_UPDATE, MINIMUM_ACTIVE_STAKE,
     },
@@ -48,7 +48,8 @@ async fn setup(
     let mut stake_accounts: Vec<ValidatorStakeAccount> = vec![];
     let mut deposit_accounts: Vec<DepositStakeAccount> = vec![];
     for _ in 0..num_validators {
-        let stake_account = ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey());
+        let stake_account =
+            ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey(), u64::MAX);
         stake_account
             .create_and_delegate(
                 &mut context.banks_client,
@@ -239,6 +240,7 @@ async fn merge_into_reserve() {
                 &stake_account.stake_account,
                 &stake_account.transient_stake_account,
                 lamports,
+                stake_account.transient_stake_seed,
             )
             .await;
         assert!(error.is_none());
@@ -342,6 +344,7 @@ async fn merge_into_validator_stake() {
                 &stake_account.transient_stake_account,
                 &stake_account.vote.pubkey(),
                 reserve_lamports / stake_accounts.len() as u64,
+                stake_account.transient_stake_seed,
             )
             .await;
         assert!(error.is_none());
@@ -469,6 +472,7 @@ async fn merge_transient_stake_after_remove() {
                 &stake_account.stake_account,
                 &stake_account.transient_stake_account,
                 deactivated_lamports,
+                stake_account.transient_stake_seed,
             )
             .await;
         assert!(error.is_none());
@@ -661,6 +665,136 @@ async fn success_with_burned_tokens() {
     let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data).unwrap();
 
     assert_eq!(mint.supply, stake_pool.pool_token_supply);
+}
+
+#[tokio::test]
+async fn success_ignoring_hijacked_transient_stake() {
+    let num_validators = 1;
+    let (mut context, stake_pool_accounts, stake_accounts, _, lamports, _, mut slot) =
+        setup(num_validators).await;
+
+    let pre_lamports = get_validator_list_sum(
+        &mut context.banks_client,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+        &stake_pool_accounts.validator_list.pubkey(),
+    )
+    .await;
+
+    println!("Decrease from all validators");
+    let stake_account = &stake_accounts[0];
+    let error = stake_pool_accounts
+        .decrease_validator_stake(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &stake_account.stake_account,
+            &stake_account.transient_stake_account,
+            lamports,
+            stake_account.transient_stake_seed,
+        )
+        .await;
+    assert!(error.is_none());
+
+    println!("Warp one epoch so the stakes deactivate and merge");
+    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
+    slot += slots_per_epoch;
+    context.warp_to_slot(slot).unwrap();
+
+    println!("During update, hijack the transient stake account");
+    let validator_list = stake_pool_accounts
+        .get_validator_list(&mut context.banks_client)
+        .await;
+    let hijacker = Pubkey::new_unique();
+    let transient_stake_address = find_transient_stake_program_address(
+        &id(),
+        &stake_account.vote.pubkey(),
+        &stake_pool_accounts.stake_pool.pubkey(),
+        stake_account.transient_stake_seed,
+    )
+    .0;
+    let transaction = Transaction::new_signed_with_payer(
+        &[
+            instruction::update_validator_list_balance(
+                &id(),
+                &stake_pool_accounts.stake_pool.pubkey(),
+                &stake_pool_accounts.withdraw_authority,
+                &stake_pool_accounts.validator_list.pubkey(),
+                &stake_pool_accounts.reserve_stake.pubkey(),
+                &validator_list,
+                &[stake_account.vote.pubkey()],
+                0,
+                /* no_merge = */ false,
+            ),
+            system_instruction::transfer(
+                &context.payer.pubkey(),
+                &transient_stake_address,
+                1_000_000_000,
+            ),
+            stake_program::initialize(
+                &transient_stake_address,
+                &stake_program::Authorized {
+                    staker: hijacker,
+                    withdrawer: hijacker,
+                },
+                &stake_program::Lockup::default(),
+            ),
+            instruction::update_stake_pool_balance(
+                &id(),
+                &stake_pool_accounts.stake_pool.pubkey(),
+                &stake_pool_accounts.withdraw_authority,
+                &stake_pool_accounts.validator_list.pubkey(),
+                &stake_pool_accounts.reserve_stake.pubkey(),
+                &stake_pool_accounts.pool_fee_account.pubkey(),
+                &stake_pool_accounts.pool_mint.pubkey(),
+                &spl_token::id(),
+            ),
+            instruction::cleanup_removed_validator_entries(
+                &id(),
+                &stake_pool_accounts.stake_pool.pubkey(),
+                &stake_pool_accounts.validator_list.pubkey(),
+            ),
+        ],
+        Some(&context.payer.pubkey()),
+        &[&context.payer],
+        context.last_blockhash,
+    );
+    let error = context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .err();
+    assert!(error.is_none());
+
+    println!("Update again normally, should be no change in the lamports");
+    stake_pool_accounts
+        .update_all(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            stake_accounts
+                .iter()
+                .map(|v| v.vote.pubkey())
+                .collect::<Vec<Pubkey>>()
+                .as_slice(),
+            false,
+        )
+        .await;
+
+    let expected_lamports = get_validator_list_sum(
+        &mut context.banks_client,
+        &stake_pool_accounts.reserve_stake.pubkey(),
+        &stake_pool_accounts.validator_list.pubkey(),
+    )
+    .await;
+    assert_eq!(pre_lamports, expected_lamports);
+
+    let stake_pool_info = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
+    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data).unwrap();
+    assert_eq!(pre_lamports, stake_pool.total_stake_lamports);
 }
 
 #[tokio::test]

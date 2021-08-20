@@ -19,8 +19,7 @@ use {
         pubkey::{Pubkey, PUBKEY_BYTES},
     },
     spl_math::checked_ceil_div::CheckedCeilDiv,
-    std::convert::TryFrom,
-    std::{fmt, matches},
+    std::{convert::TryFrom, fmt, matches},
 };
 
 /// Enum representing the account type managed by the program

@@ -21,12 +21,14 @@ use {
     },
     spl_stake_pool::{
         find_stake_program_address, find_transient_stake_program_address, id, instruction,
-        processor, stake_program, state, state::FeeType,
+        processor, stake_program,
+        state::{self, FeeType, ValidatorList},
     },
 };
 
 pub const TEST_STAKE_AMOUNT: u64 = 1_500_000_000;
 pub const MAX_TEST_VALIDATORS: u32 = 10_000;
+pub const DEFAULT_TRANSIENT_STAKE_SEED: u64 = 42;
 
 pub fn program_test() -> ProgramTest {
     ProgramTest::new(
@@ -549,21 +551,27 @@ pub async fn authorize_stake_account(
 pub struct ValidatorStakeAccount {
     pub stake_account: Pubkey,
     pub transient_stake_account: Pubkey,
+    pub transient_stake_seed: u64,
     pub vote: Keypair,
     pub validator: Keypair,
     pub stake_pool: Pubkey,
 }
 
 impl ValidatorStakeAccount {
-    pub fn new(stake_pool: &Pubkey) -> Self {
+    pub fn new(stake_pool: &Pubkey, transient_stake_seed: u64) -> Self {
         let validator = Keypair::new();
         let vote = Keypair::new();
         let (stake_account, _) = find_stake_program_address(&id(), &vote.pubkey(), stake_pool);
-        let (transient_stake_account, _) =
-            find_transient_stake_program_address(&id(), &vote.pubkey(), stake_pool);
+        let (transient_stake_account, _) = find_transient_stake_program_address(
+            &id(),
+            &vote.pubkey(),
+            stake_pool,
+            transient_stake_seed,
+        );
         ValidatorStakeAccount {
             stake_account,
             transient_stake_account,
+            transient_stake_seed,
             vote,
             validator,
             stake_pool: *stake_pool,
@@ -933,6 +941,11 @@ impl StakePoolAccounts {
         banks_client.process_transaction(transaction).await.err()
     }
 
+    pub async fn get_validator_list(&self, banks_client: &mut BanksClient) -> ValidatorList {
+        let validator_list_account = get_account(banks_client, &self.validator_list.pubkey()).await;
+        try_from_slice_unchecked::<ValidatorList>(validator_list_account.data.as_slice()).unwrap()
+    }
+
     pub async fn update_validator_list_balance(
         &self,
         banks_client: &mut BanksClient,
@@ -941,6 +954,7 @@ impl StakePoolAccounts {
         validator_vote_accounts: &[Pubkey],
         no_merge: bool,
     ) -> Option<TransportError> {
+        let validator_list = self.get_validator_list(banks_client).await;
         let transaction = Transaction::new_signed_with_payer(
             &[instruction::update_validator_list_balance(
                 &id(),
@@ -948,6 +962,7 @@ impl StakePoolAccounts {
                 &self.withdraw_authority,
                 &self.validator_list.pubkey(),
                 &self.reserve_stake.pubkey(),
+                &validator_list,
                 validator_vote_accounts,
                 0,
                 no_merge,
@@ -1010,6 +1025,7 @@ impl StakePoolAccounts {
         validator_vote_accounts: &[Pubkey],
         no_merge: bool,
     ) -> Option<TransportError> {
+        let validator_list = self.get_validator_list(banks_client).await;
         let transaction = Transaction::new_signed_with_payer(
             &[
                 instruction::update_validator_list_balance(
@@ -1018,6 +1034,7 @@ impl StakePoolAccounts {
                     &self.withdraw_authority,
                     &self.validator_list.pubkey(),
                     &self.reserve_stake.pubkey(),
+                    &validator_list,
                     validator_vote_accounts,
                     0,
                     no_merge,
@@ -1103,6 +1120,7 @@ impl StakePoolAccounts {
         validator_stake: &Pubkey,
         transient_stake: &Pubkey,
         lamports: u64,
+        transient_stake_seed: u64,
     ) -> Option<TransportError> {
         let transaction = Transaction::new_signed_with_payer(
             &[instruction::decrease_validator_stake(
@@ -1114,6 +1132,7 @@ impl StakePoolAccounts {
                 validator_stake,
                 transient_stake,
                 lamports,
+                transient_stake_seed,
             )],
             Some(&payer.pubkey()),
             &[payer, &self.staker],
@@ -1130,6 +1149,7 @@ impl StakePoolAccounts {
         transient_stake: &Pubkey,
         validator: &Pubkey,
         lamports: u64,
+        transient_stake_seed: u64,
     ) -> Option<TransportError> {
         let transaction = Transaction::new_signed_with_payer(
             &[instruction::increase_validator_stake(
@@ -1142,6 +1162,7 @@ impl StakePoolAccounts {
                 transient_stake,
                 validator,
                 lamports,
+                transient_stake_seed,
             )],
             Some(&payer.pubkey()),
             &[payer, &self.staker],
@@ -1181,7 +1202,10 @@ pub async fn simple_add_validator_to_pool(
     recent_blockhash: &Hash,
     stake_pool_accounts: &StakePoolAccounts,
 ) -> ValidatorStakeAccount {
-    let validator_stake = ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey());
+    let validator_stake = ValidatorStakeAccount::new(
+        &stake_pool_accounts.stake_pool.pubkey(),
+        DEFAULT_TRANSIENT_STAKE_SEED,
+    );
     validator_stake
         .create_and_delegate(
             banks_client,
