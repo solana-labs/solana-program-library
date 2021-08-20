@@ -870,6 +870,8 @@ impl Processor {
             active_stake_lamports: 0,
             transient_stake_lamports: 0,
             last_update_epoch: clock.epoch,
+            transient_seed_suffix_start: 0,
+            transient_seed_suffix_end: 0,
         })?;
 
         Ok(())
@@ -1329,9 +1331,17 @@ impl Processor {
                 vote_account_address.as_ref(),
                 ValidatorStakeInfo::memcmp_pubkey,
             );
-            if maybe_validator_stake_info.is_none() {
-                msg!("Validator for {} not present in the stake pool, cannot set as preferred deposit account");
-                return Err(StakePoolError::ValidatorNotFound.into());
+            match maybe_validator_stake_info {
+                Some(vsi) => {
+                    if vsi.status != StakeStatus::Active {
+                        msg!("Validator for {:?} about to be removed, cannot set as preferred deposit account", validator_type);
+                        return Err(StakePoolError::InvalidPreferredValidator.into());
+                    }
+                }
+                None => {
+                    msg!("Validator for {:?} not present in the stake pool, cannot set as preferred deposit account", validator_type);
+                    return Err(StakePoolError::ValidatorNotFound.into());
+                }
             }
         }
 
@@ -1660,9 +1670,15 @@ impl Processor {
         }
 
         let reward_lamports = total_stake_lamports.saturating_sub(previous_lamports);
-        let fee = stake_pool
-            .calc_epoch_fee_amount(reward_lamports)
-            .ok_or(StakePoolError::CalculationFailure)?;
+
+        // If the manager fee info is invalid, they don't deserve to receive the fee.
+        let fee = if stake_pool.check_manager_fee_info(manager_fee_info).is_ok() {
+            stake_pool
+                .calc_epoch_fee_amount(reward_lamports)
+                .ok_or(StakePoolError::CalculationFailure)?
+        } else {
+            0
+        };
 
         if fee > 0 {
             Self::token_mint_to(
@@ -1840,6 +1856,16 @@ impl Processor {
             }
         }
 
+        let (meta, stake) = get_stake_state(stake_info)?;
+
+        // If the stake account is mergeable (full-activated), `meta.rent_exempt_reserve`
+        // will not be merged into `stake.delegation.stake`
+        let unactivated_stake_rent = if stake.delegation.activation_epoch < clock.epoch {
+            meta.rent_exempt_reserve
+        } else {
+            0
+        };
+
         let mut validator_stake_info = validator_list
             .find_mut::<ValidatorStakeInfo>(
                 vote_account_address.as_ref(),
@@ -1892,6 +1918,7 @@ impl Processor {
         let (_, post_validator_stake) = get_stake_state(validator_stake_account_info)?;
         let post_all_validator_lamports = validator_stake_account_info.lamports();
         msg!("Stake post merge {}", post_validator_stake.delegation.stake);
+
         let all_deposit_lamports = post_all_validator_lamports
             .checked_sub(pre_all_validator_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
@@ -1900,14 +1927,21 @@ impl Processor {
             .stake
             .checked_sub(validator_stake.delegation.stake)
             .ok_or(StakePoolError::CalculationFailure)?;
+        let additional_lamports = all_deposit_lamports
+            .checked_sub(stake_deposit_lamports)
+            .ok_or(StakePoolError::CalculationFailure)?;
+        let credited_additional_lamports = additional_lamports.min(unactivated_stake_rent);
+        let credited_deposit_lamports =
+            stake_deposit_lamports.saturating_add(credited_additional_lamports);
 
         let new_pool_tokens = stake_pool
-            .calc_pool_tokens_for_deposit(all_deposit_lamports)
+            .calc_pool_tokens_for_deposit(credited_deposit_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
 
         let pool_tokens_stake_deposit_fee = stake_pool
             .calc_pool_tokens_stake_deposit_fee(new_pool_tokens)
             .ok_or(StakePoolError::CalculationFailure)?;
+
         let pool_tokens_user = new_pool_tokens
             .checked_sub(pool_tokens_stake_deposit_fee)
             .ok_or(StakePoolError::CalculationFailure)?;
@@ -1915,6 +1949,7 @@ impl Processor {
         let pool_tokens_referral_fee = stake_pool
             .calc_pool_tokens_stake_referral_fee(pool_tokens_stake_deposit_fee)
             .ok_or(StakePoolError::CalculationFailure)?;
+
         let pool_tokens_manager_deposit_fee = pool_tokens_stake_deposit_fee
             .checked_sub(pool_tokens_referral_fee)
             .ok_or(StakePoolError::CalculationFailure)?;
@@ -1969,9 +2004,7 @@ impl Processor {
         }
 
         // withdraw additional lamports to the reserve
-        let additional_lamports = all_deposit_lamports
-            .checked_sub(stake_deposit_lamports)
-            .ok_or(StakePoolError::CalculationFailure)?;
+
         if additional_lamports > 0 {
             Self::stake_withdraw(
                 stake_pool_info.key,
@@ -1991,6 +2024,8 @@ impl Processor {
             .pool_token_supply
             .checked_add(new_pool_tokens)
             .ok_or(StakePoolError::CalculationFailure)?;
+        // We treat the extra lamports as though they were
+        // transferred directly to the reserve stake account.
         stake_pool.total_stake_lamports = stake_pool
             .total_stake_lamports
             .checked_add(all_deposit_lamports)
@@ -2204,7 +2239,11 @@ impl Processor {
             return Err(StakePoolError::InvalidState.into());
         }
 
-        let pool_tokens_fee = if stake_pool.manager_fee_account == *burn_from_pool_info.key {
+        // To prevent a faulty manager fee account from preventing withdrawals
+        // if the token program does not own the account, or if the account is not initialized
+        let pool_tokens_fee = if stake_pool.manager_fee_account == *burn_from_pool_info.key
+            || stake_pool.check_manager_fee_info(manager_fee_info).is_err()
+        {
             0
         } else {
             stake_pool
@@ -2392,6 +2431,7 @@ impl Processor {
 
         check_account_owner(stake_pool_info, program_id)?;
         let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
+        check_account_owner(new_manager_fee_info, &stake_pool.token_program_id)?;
         if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
@@ -2648,6 +2688,7 @@ impl PrintProgramError for StakePoolError {
             StakePoolError::DepositTooSmall => msg!("Error: Not enough lamports provided for deposit to result in one pool token"),
             StakePoolError::InvalidStakeDepositAuthority => msg!("Error: Provided stake deposit authority does not match the program's"),
             StakePoolError::InvalidSolDepositAuthority => msg!("Error: Provided sol deposit authority does not match the program's"),
+            StakePoolError::InvalidPreferredValidator => msg!("Error: Provided preferred validator is invalid"),
             StakePoolError::InvalidCallingContext => msg!("Error: The calling context for the instruction is not permitted"),
         }
     }

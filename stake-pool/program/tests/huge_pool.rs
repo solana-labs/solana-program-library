@@ -164,6 +164,8 @@ async fn setup(
             active_stake_lamports,
             transient_stake_lamports: 0,
             last_update_epoch: 0,
+            transient_seed_suffix_start: 0,
+            transient_seed_suffix_end: 0,
         });
 
         stake_pool.total_stake_lamports += active_stake_lamports;
@@ -350,6 +352,7 @@ async fn update() {
             &stake_pool_accounts.reserve_stake.pubkey(),
             &stake_pool_accounts.pool_fee_account.pubkey(),
             &stake_pool_accounts.pool_mint.pubkey(),
+            &spl_token::id(),
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer],

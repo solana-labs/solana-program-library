@@ -57,11 +57,11 @@ pub enum LendingInstruction {
     ///   3. `[]` Reserve liquidity SPL Token mint.
     ///   4. `[writable]` Reserve liquidity supply SPL Token account - uninitialized.
     ///   5. `[writable]` Reserve liquidity fee receiver - uninitialized.
-    ///   6. `[]` Pyth product account.
-    ///   7. `[]` Pyth price account.
+    ///   6. `[writable]` Reserve collateral SPL Token mint - uninitialized.
+    ///   7. `[writable]` Reserve collateral token supply - uninitialized.
+    ///   8. `[]` Pyth product account.
+    ///   9. `[]` Pyth price account.
     ///             This will be used as the reserve liquidity oracle account.
-    ///   8. `[writable]` Reserve collateral SPL Token mint - uninitialized.
-    ///   9. `[writable]` Reserve collateral token supply - uninitialized.
     ///   10 `[]` Lending market account.
     ///   11 `[]` Derived lending market authority.
     ///   12 `[signer]` Lending market owner.

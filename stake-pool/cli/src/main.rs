@@ -1234,14 +1234,22 @@ fn command_withdraw(
             .calc_lamports_withdraw_amount(withdraw_account.pool_amount)
             .unwrap();
 
-        println!(
-            "Withdrawing {}, or {} pool tokens, from stake account {}, delegated to {:?}, stake / withdraw authority {}",
-            Sol(sol_withdraw_amount),
-            spl_token::amount_to_ui_amount(withdraw_account.pool_amount, pool_mint.decimals),
-            withdraw_account.stake_address,
-            withdraw_account.vote_address,
-            config.staker.pubkey(),
-        );
+        if let Some(vote_address) = withdraw_account.vote_address {
+            println!(
+                "Withdrawing {}, or {} pool tokens, from stake account {}, delegated to {}",
+                Sol(sol_withdraw_amount),
+                spl_token::amount_to_ui_amount(withdraw_account.pool_amount, pool_mint.decimals),
+                withdraw_account.stake_address,
+                vote_address,
+            );
+        } else {
+            println!(
+                "Withdrawing {}, or {} pool tokens, from stake account {}",
+                Sol(sol_withdraw_amount),
+                spl_token::amount_to_ui_amount(withdraw_account.pool_amount, pool_mint.decimals),
+                withdraw_account.stake_address,
+            );
+        }
 
         // Use separate mutable variable because withdraw might create a new account
         let stake_receiver = stake_receiver_param.unwrap_or_else(|| {
@@ -1418,6 +1426,23 @@ fn command_set_fee(
         &signers,
     )?;
     send_transaction(config, transaction)?;
+    Ok(())
+}
+
+fn command_list_all_pools(config: &Config) -> CommandResult {
+    let all_pools = get_stake_pools(&config.rpc_client)?;
+    let count = all_pools.len();
+    for (address, stake_pool, validator_list) in all_pools {
+        println!(
+            "Address: {}\tManager: {}\tLamports: {}\tPool tokens: {}\tValidators: {}",
+            address,
+            stake_pool.manager,
+            stake_pool.total_stake_lamports,
+            stake_pool.pool_token_supply,
+            validator_list.validators.len()
+        );
+    }
+    println!("Total number of pools: {}", count);
     Ok(())
 }
 
@@ -2149,6 +2174,9 @@ fn main() {
                     .help("Fee percentage, maximum 100"),
             )
         )
+        .subcommand(SubCommand::with_name("list-all")
+            .about("List information about all stake pools")
+        )
         .get_matches();
 
     let mut wallet_manager = None;
@@ -2428,6 +2456,7 @@ fn main() {
             };
             command_set_fee(&config, &stake_pool_address, fee_type)
         }
+        ("list-all", _) => command_list_all_pools(&config),
         _ => unreachable!(),
     }
     .map_err(|err| {

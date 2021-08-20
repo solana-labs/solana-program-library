@@ -539,6 +539,8 @@ async fn success_with_deactivating_transient_stake() {
             last_update_epoch: 0,
             active_stake_lamports: 0,
             transient_stake_lamports: TEST_STAKE_AMOUNT + stake_rent,
+            transient_seed_suffix_start: 0,
+            transient_seed_suffix_end: 0,
         }],
     };
     assert_eq!(validator_list, expected_list);

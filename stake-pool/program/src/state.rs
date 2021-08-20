@@ -1,5 +1,6 @@
 //! State transition types
 
+use spl_token::state::{Account, AccountState};
 use {
     crate::{
         big_vec::BigVec, error::StakePoolError, stake_program::Lockup, MAX_WITHDRAWAL_FEE_INCREASE,
@@ -261,6 +262,23 @@ impl StakePool {
         }
     }
 
+    /// Check if the manager fee info is a valid token program account
+    /// capable of receiving tokens from the mint.
+    pub(crate) fn check_manager_fee_info(
+        &self,
+        manager_fee_info: &AccountInfo,
+    ) -> Result<(), ProgramError> {
+        let token_account = Account::unpack(&manager_fee_info.data.borrow())?;
+        if manager_fee_info.owner != &self.token_program_id
+            || token_account.state != AccountState::Initialized
+            || token_account.mint != self.pool_mint
+        {
+            msg!("Manager fee account is not owned by token program, is not initialized, or does not match stake pool's mint");
+            return Err(StakePoolError::InvalidFeeAccount.into());
+        }
+        Ok(())
+    }
+
     /// Checks that the withdraw authority is valid
     #[inline]
     pub(crate) fn check_authority_withdraw(
@@ -454,30 +472,6 @@ impl Default for StakeStatus {
     }
 }
 
-/// Packed version of the validator stake info, for use with pointer casts
-#[repr(packed)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct ValidatorStakeInfoPacked {
-    /// Status of the validator stake account
-    pub status: StakeStatus,
-
-    /// Validator vote account address
-    pub vote_account_address: Pubkey,
-
-    /// Amount of active stake delegated to this validator
-    /// Note that if `last_update_epoch` does not match the current epoch then
-    /// this field may not be accurate
-    pub active_stake_lamports: u64,
-
-    /// Amount of transient stake delegated to this validator
-    /// Note that if `last_update_epoch` does not match the current epoch then
-    /// this field may not be accurate
-    pub transient_stake_lamports: u64,
-
-    /// Last epoch the active and transient stake lamports fields were updated
-    pub last_update_epoch: u64,
-}
-
 /// Information about a validator in the pool
 ///
 /// NOTE: ORDER IS VERY IMPORTANT HERE, PLEASE DO NOT RE-ORDER THE FIELDS UNLESS
@@ -502,6 +496,12 @@ pub struct ValidatorStakeInfo {
     /// Last epoch the active and transient stake lamports fields were updated
     pub last_update_epoch: u64,
 
+    /// Start of the validator transient account seed suffixess
+    pub transient_seed_suffix_start: u64,
+
+    /// End of the validator transient account seed suffixes
+    pub transient_seed_suffix_end: u64,
+
     /// Status of the validator stake account
     pub status: StakeStatus,
 
@@ -521,7 +521,7 @@ impl ValidatorStakeInfo {
     /// info matches the vote account address
     pub fn memcmp_pubkey(data: &[u8], vote_address_bytes: &[u8]) -> bool {
         sol_memcmp(
-            &data[25..25 + PUBKEY_BYTES],
+            &data[41..41 + PUBKEY_BYTES],
             vote_address_bytes,
             PUBKEY_BYTES,
         ) == 0
@@ -541,14 +541,14 @@ impl ValidatorStakeInfo {
 
     /// Check that the validator stake info is valid
     pub fn is_not_removed(data: &[u8]) -> bool {
-        FromPrimitive::from_u8(data[24]) != Some(StakeStatus::ReadyForRemoval)
+        FromPrimitive::from_u8(data[40]) != Some(StakeStatus::ReadyForRemoval)
     }
 }
 
 impl Sealed for ValidatorStakeInfo {}
 
 impl Pack for ValidatorStakeInfo {
-    const LEN: usize = 57;
+    const LEN: usize = 73;
     fn pack_into_slice(&self, data: &mut [u8]) {
         let mut data = data;
         self.serialize(&mut data).unwrap();
@@ -790,9 +790,11 @@ mod test {
                 ValidatorStakeInfo {
                     status: StakeStatus::Active,
                     vote_account_address: Pubkey::new_from_array([1; 32]),
-                    active_stake_lamports: 123456789,
-                    transient_stake_lamports: 1111111,
-                    last_update_epoch: 987654321,
+                    active_stake_lamports: u64::from_le_bytes([255; 8]),
+                    transient_stake_lamports: u64::from_le_bytes([128; 8]),
+                    last_update_epoch: u64::from_le_bytes([64; 8]),
+                    transient_seed_suffix_start: 0,
+                    transient_seed_suffix_end: 0,
                 },
                 ValidatorStakeInfo {
                     status: StakeStatus::DeactivatingTransient,
@@ -800,6 +802,8 @@ mod test {
                     active_stake_lamports: 998877665544,
                     transient_stake_lamports: 222222222,
                     last_update_epoch: 11223445566,
+                    transient_seed_suffix_start: 0,
+                    transient_seed_suffix_end: 0,
                 },
                 ValidatorStakeInfo {
                     status: StakeStatus::ReadyForRemoval,
@@ -807,6 +811,8 @@ mod test {
                     active_stake_lamports: 0,
                     transient_stake_lamports: 0,
                     last_update_epoch: 999999999999999,
+                    transient_seed_suffix_start: 0,
+                    transient_seed_suffix_end: 0,
                 },
             ],
         }

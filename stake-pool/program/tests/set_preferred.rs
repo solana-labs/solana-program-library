@@ -14,7 +14,7 @@ use {
         transaction::{Transaction, TransactionError},
     },
     spl_stake_pool::{
-        error, id,
+        error, find_transient_stake_program_address, id,
         instruction::{self, PreferredValidatorType},
         state::StakePool,
     },
@@ -205,5 +205,51 @@ async fn fail_not_present_validator() {
             assert_eq!(error_index, program_error);
         }
         _ => panic!("Wrong error occurs while malicious try to set manager"),
+    }
+}
+
+#[tokio::test]
+async fn fail_ready_for_removal() {
+    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, validator_stake_account) =
+        setup().await;
+    let validator_vote_address = validator_stake_account.vote.pubkey();
+
+    // Mark validator as ready for removal
+    let (transient_stake_address, _) = find_transient_stake_program_address(
+        &id(),
+        &validator_vote_address,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    );
+    let new_authority = Pubkey::new_unique();
+    let remove_err = stake_pool_accounts
+        .remove_validator_from_pool(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            &new_authority,
+            &validator_stake_account.stake_account,
+            &transient_stake_address,
+        )
+        .await;
+    assert!(remove_err.is_none());
+
+    let error = stake_pool_accounts
+        .set_preferred_validator(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            PreferredValidatorType::Withdraw,
+            Some(validator_vote_address),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+
+    match error {
+        TransactionError::InstructionError(_, InstructionError::Custom(error_index)) => {
+            let program_error = error::StakePoolError::InvalidPreferredValidator as u32;
+            assert_eq!(error_index, program_error);
+        }
+        _ => panic!("Wrong error occurs while trying to set ReadyForRemoval validator"),
     }
 }

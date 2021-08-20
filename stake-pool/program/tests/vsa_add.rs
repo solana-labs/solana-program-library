@@ -91,6 +91,8 @@ async fn success() {
                 last_update_epoch: 0,
                 active_stake_lamports: 0,
                 transient_stake_lamports: 0,
+                transient_seed_suffix_start: 0,
+                transient_seed_suffix_end: 0,
             }]
         }
     );

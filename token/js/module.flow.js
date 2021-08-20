@@ -252,6 +252,16 @@ declare module '@solana/spl-token' {
       authority: PublicKey,
       multiSigners: Array<Signer>,
     ): TransactionInstruction;
+    static createTransferCheckedInstruction(
+      programId: PublicKey,
+      source: PublicKey,
+      mint: PublicKey,
+      destination: PublicKey,
+      owner: PublicKey,
+      multiSigners: Array<Signer>,
+      amount: number | u64,
+      decimals: number,
+    ): TransactionInstruction;
     static createBurnCheckedInstruction(
       programId: PublicKey,
       mint: PublicKey,

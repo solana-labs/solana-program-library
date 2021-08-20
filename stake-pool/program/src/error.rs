@@ -116,6 +116,9 @@ pub enum StakePoolError {
     /// Provided sol deposit authority does not match the program's
     #[error("InvalidSolDepositAuthority")]
     InvalidSolDepositAuthority,
+    /// Provided preferred validator is invalid
+    #[error("InvalidPreferredValidator")]
+    InvalidPreferredValidator,
     /// The calling context for the instruction is not permitted
     #[error("InvalidCallingContext")]
     InvalidCallingContext,
