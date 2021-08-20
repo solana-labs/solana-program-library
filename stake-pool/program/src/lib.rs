@@ -25,6 +25,9 @@ const AUTHORITY_DEPOSIT: &[u8] = b"deposit";
 /// Seed for withdraw authority seed
 const AUTHORITY_WITHDRAW: &[u8] = b"withdraw";
 
+/// Seed for transient stake account
+const TRANSIENT_STAKE_SEED_PREFIX: &[u8] = b"transient";
+
 /// Minimum amount of staked SOL required in a validator stake account to allow
 /// for merges without a mismatch on credits observed
 pub const MINIMUM_ACTIVE_STAKE: u64 = LAMPORTS_PER_SOL;
@@ -111,6 +114,7 @@ pub fn find_transient_stake_program_address(
 ) -> (Pubkey, u8) {
     Pubkey::find_program_address(
         &[
+            TRANSIENT_STAKE_SEED_PREFIX,
             &vote_account_address.to_bytes(),
             &stake_pool_address.to_bytes(),
             &seed.to_le_bytes(),

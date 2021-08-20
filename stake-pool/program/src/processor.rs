@@ -11,7 +11,7 @@ use {
             AccountType, Fee, FeeType, StakePool, StakeStatus, ValidatorList, ValidatorListHeader,
             ValidatorStakeInfo,
         },
-        AUTHORITY_DEPOSIT, AUTHORITY_WITHDRAW, MINIMUM_ACTIVE_STAKE,
+        AUTHORITY_DEPOSIT, AUTHORITY_WITHDRAW, MINIMUM_ACTIVE_STAKE, TRANSIENT_STAKE_SEED_PREFIX,
     },
     borsh::{BorshDeserialize, BorshSerialize},
     num_traits::FromPrimitive,
@@ -1102,6 +1102,7 @@ impl Processor {
             transient_stake_seed,
         )?;
         let transient_stake_account_signer_seeds: &[&[_]] = &[
+            TRANSIENT_STAKE_SEED_PREFIX,
             &vote_account_address.to_bytes(),
             &stake_pool_info.key.to_bytes(),
             &transient_stake_seed.to_le_bytes(),
@@ -1237,6 +1238,7 @@ impl Processor {
             transient_stake_seed,
         )?;
         let transient_stake_account_signer_seeds: &[&[_]] = &[
+            TRANSIENT_STAKE_SEED_PREFIX,
             &vote_account_address.to_bytes(),
             &stake_pool_info.key.to_bytes(),
             &transient_stake_seed.to_le_bytes(),
