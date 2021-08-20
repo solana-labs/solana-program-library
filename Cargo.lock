@@ -3799,6 +3799,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-governance-test-sdk"
+version = "0.1.0"
+dependencies = [
+ "solana-program",
+ "solana-sdk",
+]
+
+[[package]]
 name = "spl-math"
 version = "0.1.0"
 dependencies = [
