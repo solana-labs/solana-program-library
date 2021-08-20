@@ -19,7 +19,7 @@ impl From<ProgramInstructionError> for ProgramError {
     }
 }
 
-
+#[allow(dead_code)]
 pub fn map_transaction_error(transport_error: TransportError) -> ProgramError {
     match transport_error {
         TransportError::TransactionError(TransactionError::InstructionError(
@@ -49,4 +49,5 @@ pub fn clone_keypair(source: &Keypair) -> Keypair {
 
 /// NOP (No Operation) Override function
 #[allow(non_snake_case)]
+#[allow(dead_code)]
 pub fn NopOverride<T>(_: &mut T) {}
