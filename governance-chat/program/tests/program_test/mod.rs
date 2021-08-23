@@ -222,10 +222,12 @@ impl GovernanceChatProgramTest {
             message_body.clone(),
         );
 
+        let clock = self.bench.get_clock().await;
+
         let message = Message {
             proposal: proposal_cookie.address,
-            author: Pubkey::new_unique(),
-            post_at: 10,
+            author: proposal_cookie.token_owner.pubkey(),
+            post_at: clock.unix_timestamp,
             parent: None,
             body: message_body,
         };
