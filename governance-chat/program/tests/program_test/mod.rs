@@ -9,7 +9,7 @@ use spl_governance_chat::{
 };
 use spl_governance_test_sdk::{ProgramTestBench, TestBenchProgram};
 
-use self::cookies::MessageCookie;
+use self::cookies::{MessageCookie, ProposalCookie};
 
 pub mod cookies;
 
@@ -37,6 +37,13 @@ impl GovernanceChatProgramTest {
         let bench = ProgramTestBench::start_new(&[chat_program, governance_program]).await;
 
         Self { bench, program_id }
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_proposal(&mut self) -> ProposalCookie {
+        let proposal = Pubkey::new_unique();
+
+        ProposalCookie { address: proposal }
     }
 
     #[allow(dead_code)]

@@ -6,3 +6,8 @@ pub struct MessageCookie {
     pub address: Pubkey,
     pub account: Message,
 }
+
+#[derive(Debug)]
+pub struct ProposalCookie {
+    pub address: Pubkey,
+}
