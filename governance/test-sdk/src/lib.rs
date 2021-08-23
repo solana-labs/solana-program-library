@@ -15,19 +15,20 @@ use crate::tools::map_transaction_error;
 pub mod cookies;
 pub mod tools;
 
-/// Program's test bench which captures test context, rent and payer and common utility functions
-pub struct ProgramTestBench {
-    pub context: ProgramTestContext,
-    pub rent: Rent,
-    pub payer: Keypair,
-}
-
 /// Details of a program which is loaded into the test bench
 #[derive(Clone)]
 pub struct TestBenchProgram<'a> {
     pub program_name: &'a str,
     pub program_id: Pubkey,
     pub process_instruction: Option<ProcessInstructionWithContext>,
+}
+
+/// Program's test bench which captures test context, rent and payer and common utility functions
+pub struct ProgramTestBench {
+    pub context: ProgramTestContext,
+    pub rent: Rent,
+    pub payer: Keypair,
+    pub next_id: u8,
 }
 
 impl ProgramTestBench {
@@ -51,7 +52,14 @@ impl ProgramTestBench {
             context,
             rent,
             payer,
+            next_id: 0,
         }
+    }
+
+    pub fn get_unique_name(&mut self, prefix: &str) -> String {
+        self.next_id = self.next_id + 1;
+
+        format!("{}.{}", prefix, self.next_id)
     }
 
     pub async fn process_transaction(
