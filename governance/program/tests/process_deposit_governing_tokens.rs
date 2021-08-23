@@ -209,7 +209,7 @@ async fn test_deposit_initial_community_tokens_with_owner_must_sign_error() {
         &token_source.pubkey(),
         &token_owner.pubkey(),
         &transfer_authority.pubkey(),
-        &governance_test.context.payer.pubkey(),
+        &governance_test.bench.context.payer.pubkey(),
         &realm_cookie.account.community_mint,
     );
 
@@ -255,7 +255,7 @@ async fn test_deposit_initial_community_tokens_with_invalid_owner_error() {
         &token_source.pubkey(),
         &invalid_owner.pubkey(),
         &transfer_authority.pubkey(),
-        &governance_test.context.payer.pubkey(),
+        &governance_test.bench.context.payer.pubkey(),
         &realm_cookie.account.community_mint,
     );
 
@@ -296,7 +296,7 @@ async fn test_deposit_community_tokens_with_malicious_holding_account_error() {
         &token_owner_record_cookie.token_source,
         &token_owner_record_cookie.token_owner.pubkey(),
         &token_owner_record_cookie.token_owner.pubkey(),
-        &governance_test.context.payer.pubkey(),
+        &governance_test.bench.context.payer.pubkey(),
         &realm_cookie.account.community_mint,
     );
 
