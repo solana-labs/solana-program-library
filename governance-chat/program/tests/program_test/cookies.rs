@@ -1,11 +1,11 @@
 use solana_program::pubkey::Pubkey;
 use solana_sdk::signature::Keypair;
-use spl_governance_chat::state::Message;
+use spl_governance_chat::state::ChatMessage;
 
 #[derive(Debug)]
-pub struct MessageCookie {
+pub struct ChatMessageCookie {
     pub address: Pubkey,
-    pub account: Message,
+    pub account: ChatMessage,
 }
 
 #[derive(Debug)]

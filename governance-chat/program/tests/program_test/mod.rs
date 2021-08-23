@@ -17,11 +17,13 @@ use spl_governance::{
     },
 };
 use spl_governance_chat::{
-    instruction::post_message, processor::process_instruction, state::Message,
+    instruction::post_message,
+    processor::process_instruction,
+    state::{ChatMessage, MessageBody},
 };
 use spl_governance_test_sdk::{ProgramTestBench, TestBenchProgram};
 
-use self::cookies::{MessageCookie, ProposalCookie};
+use self::cookies::{ChatMessageCookie, ProposalCookie};
 
 pub mod cookies;
 
@@ -206,9 +208,12 @@ impl GovernanceChatProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn with_message(&mut self, proposal_cookie: &ProposalCookie) -> MessageCookie {
+    pub async fn with_chat_message(
+        &mut self,
+        proposal_cookie: &ProposalCookie,
+    ) -> ChatMessageCookie {
         let message_account = Keypair::new();
-        let message_body = "My comment".to_string();
+        let message_body = MessageBody::Text("My comment".to_string());
 
         let post_message_ix = post_message(
             &self.program_id,
@@ -225,10 +230,10 @@ impl GovernanceChatProgramTest {
 
         let clock = self.bench.get_clock().await;
 
-        let message = Message {
+        let message = ChatMessage {
             proposal: proposal_cookie.address,
             author: proposal_cookie.token_owner.pubkey(),
-            post_at: clock.unix_timestamp,
+            posted_at: clock.unix_timestamp,
             reply_to: None,
             body: message_body,
         };
@@ -241,16 +246,16 @@ impl GovernanceChatProgramTest {
             .await
             .unwrap();
 
-        MessageCookie {
+        ChatMessageCookie {
             address: message_account.pubkey(),
             account: message,
         }
     }
 
     #[allow(dead_code)]
-    pub async fn get_message_account(&mut self, message_address: &Pubkey) -> Message {
+    pub async fn get_message_account(&mut self, message_address: &Pubkey) -> ChatMessage {
         self.bench
-            .get_borsh_account::<Message>(message_address)
+            .get_borsh_account::<ChatMessage>(message_address)
             .await
     }
 }

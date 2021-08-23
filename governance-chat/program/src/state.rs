@@ -4,28 +4,43 @@ use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{clock::UnixTimestamp, pubkey::Pubkey};
 use spl_governance::tools::account::AccountMaxSize;
 
-/// Message
+/// Chat message body
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub struct Message {
+pub enum MessageBody {
+    /// Text message encoded as utf-8 string
+    Text(String),
+
+    /// Emoticon encoded using utf-8 characters
+    Reaction(String),
+}
+
+/// Chat message
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub struct ChatMessage {
     /// The proposal the message is for
     pub proposal: Pubkey,
 
-    /// Author of the proposal
+    /// Author of the message
     pub author: Pubkey,
 
     /// Message timestamp
-    pub post_at: UnixTimestamp,
+    pub posted_at: UnixTimestamp,
 
     /// Parent message
     pub reply_to: Option<Pubkey>,
 
     /// Body of the message
-    pub body: String,
+    pub body: MessageBody,
 }
 
-impl AccountMaxSize for Message {
+impl AccountMaxSize for ChatMessage {
     fn get_max_size(&self) -> Option<usize> {
-        Some(self.body.len() + 109)
+        let body_size = match self.body.clone() {
+            MessageBody::Text(body) => body.len(),
+            MessageBody::Reaction(body) => body.len(),
+        };
+
+        Some(body_size + 110)
     }
 }
 
@@ -36,12 +51,12 @@ mod test {
 
     #[test]
     fn test_max_size() {
-        let message = Message {
+        let message = ChatMessage {
             proposal: Pubkey::new_unique(),
             author: Pubkey::new_unique(),
-            post_at: 10,
+            posted_at: 10,
             reply_to: Some(Pubkey::new_unique()),
-            body: "message".to_string(),
+            body: MessageBody::Text("message".to_string()),
         };
         let size = message.try_to_vec().unwrap().len();
 

@@ -7,7 +7,7 @@ use solana_program::{
 };
 use spl_governance::tools::account::AccountMaxSize;
 
-/// Creates a new account and serializes data into it using AccountMaxSize
+/// Creates a new account and serializes data into it using AccountMaxSize to determine the account's size
 pub fn create_and_serialize_account<'a, T: BorshSerialize + AccountMaxSize>(
     payer_info: &AccountInfo<'a>,
     account_info: &AccountInfo<'a>,

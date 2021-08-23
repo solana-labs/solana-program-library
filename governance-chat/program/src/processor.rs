@@ -1,7 +1,9 @@
 //! Program processor
 
 use crate::{
-    error::GovernanceChatError, instruction::GovernanceChatInstruction, state::Message,
+    error::GovernanceChatError,
+    instruction::GovernanceChatInstruction,
+    state::{ChatMessage, MessageBody},
     tools::account::create_and_serialize_account,
 };
 use borsh::BorshDeserialize;
@@ -42,19 +44,24 @@ pub fn process_instruction(
 pub fn process_post_message(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    body: String,
+    body: MessageBody,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
     let governance_program_info = next_account_info(account_info_iter)?; // 0
     let governance_info = next_account_info(account_info_iter)?; // 1
-    let proposal_info = next_account_info(account_info_iter)?; // 1
-    let token_owner_record_info = next_account_info(account_info_iter)?; // 1
-    let governance_authority_info = next_account_info(account_info_iter)?; // 1
+    let proposal_info = next_account_info(account_info_iter)?; // 2
+    let token_owner_record_info = next_account_info(account_info_iter)?; // 3
+    let governance_authority_info = next_account_info(account_info_iter)?; // 4
 
-    let message_info = next_account_info(account_info_iter)?; // 1
-    let payer_info = next_account_info(account_info_iter)?; // 1
-    let system_info = next_account_info(account_info_iter)?; // 6
+    let message_info = next_account_info(account_info_iter)?; // 5
+
+    let payer_info = next_account_info(account_info_iter)?; // 6
+    let system_info = next_account_info(account_info_iter)?; // 7
+
+    let reply_to_address = next_account_info(account_info_iter) // 8?
+        .map(|acc| Some(*acc.key))
+        .unwrap_or(None);
 
     let governance_data = get_governance_data(governance_program_info.key, governance_info)?;
 
@@ -66,7 +73,7 @@ pub fn process_post_message(
 
     token_owner_record_data.assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
-    // deserialize proposal to assert it belongs to the given governance and hence same realm as the token owner
+    // deserialize proposal to assert it belongs to the given governance and hence belongs to the same realm as the token owner
     let _proposal_data = get_proposal_data_for_governance(
         governance_program_info.key,
         &proposal_info,
@@ -82,11 +89,11 @@ pub fn process_post_message(
 
     let clock = Clock::get()?;
 
-    let message_data = Message {
+    let message_data = ChatMessage {
         proposal: *proposal_info.key,
         author: token_owner_record_data.governing_token_owner,
-        post_at: clock.unix_timestamp,
-        reply_to: None,
+        posted_at: clock.unix_timestamp,
+        reply_to: reply_to_address,
         body,
     };
 

@@ -13,7 +13,9 @@ async fn test_post_message() {
     let proposal_cookie = governance_chat_test.with_proposal().await;
 
     // Act
-    let message_cookie = governance_chat_test.with_message(&proposal_cookie).await;
+    let message_cookie = governance_chat_test
+        .with_chat_message(&proposal_cookie)
+        .await;
 
     // Assert
     let message_data = governance_chat_test

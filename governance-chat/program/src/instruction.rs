@@ -7,15 +7,27 @@ use solana_program::{
     system_program,
 };
 
+use crate::state::MessageBody;
+
 /// Instructions supported by the Governance program
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 #[allow(clippy::large_enum_variant)]
 pub enum GovernanceChatInstruction {
-    /// Post message
+    /// Posts a message with a comment for a Proposal
+    ///
+    ///   0. `[]` Governance program id
+    ///   1. `[]` Governance account the Proposal is for    
+    ///   2. `[]` Proposal account   
+    ///   3. `[]` TokenOwnerRecord for the message author
+    ///   4. `[signer]` Governance Authority (TokenOwner or Governance Delegate)
+    ///   5. `[writable, signer]` Message account
+    ///   6. `[signer]` Payer    
+    ///   7. `[]` System program    
+    ///   8. `[]` ReplyTo Message account (optional)  
     PostMessage {
         #[allow(dead_code)]
-        /// UTF-8 encoded Message body
-        body: String,
+        /// Message body (text or reaction)
+        body: MessageBody,
     },
 }
 
@@ -32,7 +44,7 @@ pub fn post_message(
     message: &Pubkey,
     payer: &Pubkey,
     // Args
-    body: String,
+    body: MessageBody,
 ) -> Instruction {
     let mut accounts = vec![
         AccountMeta::new_readonly(*governance_program, false),
