@@ -5,10 +5,12 @@ use solana_program_test::processor;
 
 use solana_sdk::{signature::Keypair, signer::Signer};
 use spl_governance::{
-    instruction::create_realm,
+    instruction::{create_account_governance, create_realm, deposit_governing_tokens},
     state::{
-        enums::MintMaxVoteWeightSource,
-        realm::{get_governing_token_holding_address, get_realm_address},
+        enums::{MintMaxVoteWeightSource, VoteThresholdPercentage},
+        governance::GovernanceConfig,
+        realm::get_realm_address,
+        token_owner_record::get_token_owner_record_address,
     },
 };
 use spl_governance_chat::{
@@ -63,12 +65,6 @@ impl GovernanceChatProgramTest {
         let community_token_mint_keypair = Keypair::new();
         let community_token_mint_authority = Keypair::new();
 
-        let community_token_holding_address = get_governing_token_holding_address(
-            &self.program_id,
-            &realm_address,
-            &community_token_mint_keypair.pubkey(),
-        );
-
         self.bench
             .create_mint(
                 &community_token_mint_keypair,
@@ -78,7 +74,7 @@ impl GovernanceChatProgramTest {
 
         let realm_authority = Keypair::new();
 
-        let create_realm_instruction = create_realm(
+        let create_realm_ix = create_realm(
             &self.governance_program_id,
             &realm_authority.pubkey(),
             &community_token_mint_keypair.pubkey(),
@@ -90,7 +86,73 @@ impl GovernanceChatProgramTest {
         );
 
         self.bench
-            .process_transaction(&[create_realm_instruction], None)
+            .process_transaction(&[create_realm_ix], None)
+            .await
+            .unwrap();
+
+        // Create TokenOwnerRecord
+        let token_owner = Keypair::new();
+        let token_source = Keypair::new();
+
+        let transfer_authority = Keypair::new();
+
+        self.bench
+            .create_token_account_with_transfer_authority(
+                &token_source,
+                &community_token_mint_keypair.pubkey(),
+                &community_token_mint_authority,
+                100,
+                &token_owner,
+                &transfer_authority.pubkey(),
+            )
+            .await;
+
+        let deposit_governing_tokens_ix = deposit_governing_tokens(
+            &self.governance_program_id,
+            &realm_address,
+            &token_source.pubkey(),
+            &token_owner.pubkey(),
+            &token_owner.pubkey(),
+            &self.bench.payer.pubkey(),
+            &community_token_mint_keypair.pubkey(),
+        );
+
+        self.bench
+            .process_transaction(&[deposit_governing_tokens_ix], Some(&[&token_owner]))
+            .await
+            .unwrap();
+
+        // Create Governance
+        let governed_account_address = Pubkey::new_unique();
+
+        let governance_config = GovernanceConfig {
+            min_community_tokens_to_create_proposal: 5,
+            min_council_tokens_to_create_proposal: 2,
+            min_instruction_hold_up_time: 10,
+            max_voting_time: 10,
+            vote_threshold_percentage: VoteThresholdPercentage::YesVote(60),
+            vote_weight_source: spl_governance::state::enums::VoteWeightSource::Deposit,
+            proposal_cool_off_time: 0,
+        };
+
+        let token_owner_record_address = get_token_owner_record_address(
+            &self.governance_program_id,
+            &realm_address,
+            &community_token_mint_keypair.pubkey(),
+            &token_owner.pubkey(),
+        );
+
+        let create_account_governance_ix = create_account_governance(
+            &self.governance_program_id,
+            &realm_address,
+            &governed_account_address,
+            &token_owner_record_address,
+            &self.bench.payer.pubkey(),
+            governance_config,
+        );
+
+        self.bench
+            .process_transaction(&[create_account_governance_ix], None)
             .await
             .unwrap();
 
