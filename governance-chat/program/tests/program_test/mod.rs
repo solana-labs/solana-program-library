@@ -217,6 +217,7 @@ impl GovernanceChatProgramTest {
             &proposal_cookie.address,
             &proposal_cookie.token_owner_record_address,
             &proposal_cookie.token_owner.pubkey(),
+            None,
             &message_account.pubkey(),
             &self.bench.payer.pubkey(),
             message_body.clone(),
@@ -228,7 +229,7 @@ impl GovernanceChatProgramTest {
             proposal: proposal_cookie.address,
             author: proposal_cookie.token_owner.pubkey(),
             post_at: clock.unix_timestamp,
-            parent: None,
+            reply_to: None,
             body: message_body,
         };
 

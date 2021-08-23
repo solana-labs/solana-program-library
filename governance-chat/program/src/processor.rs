@@ -86,7 +86,7 @@ pub fn process_post_message(
         proposal: *proposal_info.key,
         author: token_owner_record_data.governing_token_owner,
         post_at: clock.unix_timestamp,
-        parent: None,
+        reply_to: None,
         body,
     };
 

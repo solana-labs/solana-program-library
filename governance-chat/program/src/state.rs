@@ -17,7 +17,7 @@ pub struct Message {
     pub post_at: UnixTimestamp,
 
     /// Parent message
-    pub parent: Option<Pubkey>,
+    pub reply_to: Option<Pubkey>,
 
     /// Body of the message
     pub body: String,
@@ -40,7 +40,7 @@ mod test {
             proposal: Pubkey::new_unique(),
             author: Pubkey::new_unique(),
             post_at: 10,
-            parent: Some(Pubkey::new_unique()),
+            reply_to: Some(Pubkey::new_unique()),
             body: "message".to_string(),
         };
         let size = message.try_to_vec().unwrap().len();

@@ -28,12 +28,13 @@ pub fn post_message(
     proposal: &Pubkey,
     token_owner_record: &Pubkey,
     governance_authority: &Pubkey,
+    reply_to: Option<Pubkey>,
     message: &Pubkey,
     payer: &Pubkey,
     // Args
     body: String,
 ) -> Instruction {
-    let accounts = vec![
+    let mut accounts = vec![
         AccountMeta::new_readonly(*governance_program, false),
         AccountMeta::new_readonly(*governance, false),
         AccountMeta::new_readonly(*proposal, false),
@@ -43,6 +44,10 @@ pub fn post_message(
         AccountMeta::new_readonly(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
     ];
+
+    if let Some(reply_to) = reply_to {
+        accounts.push(AccountMeta::new_readonly(reply_to, false));
+    }
 
     let instruction = GovernanceChatInstruction::PostMessage { body };
 
