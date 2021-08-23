@@ -25,6 +25,8 @@ use spl_governance_test_sdk::{ProgramTestBench, TestBenchProgram};
 
 use crate::program_test::cookies::{ChatMessageCookie, ProposalCookie};
 
+use self::cookies::TokenOwnerRecordCookie;
+
 pub mod cookies;
 
 pub struct GovernanceChatProgramTest {
@@ -203,6 +205,57 @@ impl GovernanceChatProgramTest {
             realm_address,
             governance_address,
             token_owner_record_address,
+            token_owner,
+            governing_token_mint: governing_token_mint_keypair.pubkey(),
+            governing_token_mint_authority: governing_token_mint_authority,
+        }
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_token_owner_deposit(
+        &mut self,
+        proposal_cookie: &ProposalCookie,
+        deposit_amount: u64,
+    ) -> TokenOwnerRecordCookie {
+        let token_owner = Keypair::new();
+        let token_source = Keypair::new();
+
+        let transfer_authority = Keypair::new();
+
+        self.bench
+            .create_token_account_with_transfer_authority(
+                &token_source,
+                &proposal_cookie.governing_token_mint,
+                &proposal_cookie.governing_token_mint_authority,
+                deposit_amount,
+                &token_owner,
+                &transfer_authority.pubkey(),
+            )
+            .await;
+
+        let deposit_governing_tokens_ix = deposit_governing_tokens(
+            &self.governance_program_id,
+            &proposal_cookie.realm_address,
+            &token_source.pubkey(),
+            &token_owner.pubkey(),
+            &token_owner.pubkey(),
+            &self.bench.payer.pubkey(),
+            &proposal_cookie.governing_token_mint,
+        );
+
+        self.bench
+            .process_transaction(&[deposit_governing_tokens_ix], Some(&[&token_owner]))
+            .await
+            .unwrap();
+
+        let token_owner_record_address = get_token_owner_record_address(
+            &self.governance_program_id,
+            &proposal_cookie.realm_address,
+            &proposal_cookie.governing_token_mint,
+            &token_owner.pubkey(),
+        );
+        TokenOwnerRecordCookie {
+            address: token_owner_record_address,
             token_owner,
         }
     }

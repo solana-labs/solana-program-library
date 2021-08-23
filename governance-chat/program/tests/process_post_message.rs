@@ -4,6 +4,7 @@ use program_test::GovernanceChatProgramTest;
 use solana_program_test::tokio;
 use solana_sdk::signature::Keypair;
 use spl_governance::error::GovernanceError;
+use spl_governance_chat::error::GovernanceChatError;
 
 mod program_test;
 
@@ -98,4 +99,32 @@ async fn test_post_message_with_invalid_governance_for_proposal_error() {
 
     // Assert
     assert_eq!(err, GovernanceError::InvalidGovernanceForProposal.into());
+}
+
+#[tokio::test]
+async fn test_post_message_with_not_enough_tokens_error() {
+    // Arrange
+    let mut governance_chat_test = GovernanceChatProgramTest::start_new().await;
+
+    let mut proposal_cookie = governance_chat_test.with_proposal().await;
+
+    let token_owner_record_cookie = governance_chat_test
+        .with_token_owner_deposit(&proposal_cookie, 0)
+        .await;
+
+    proposal_cookie.token_owner_record_address = token_owner_record_cookie.address;
+    proposal_cookie.token_owner = token_owner_record_cookie.token_owner;
+
+    // Act
+    let err = governance_chat_test
+        .with_chat_message(&proposal_cookie, None)
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+    assert_eq!(
+        err,
+        GovernanceChatError::NotEnoughTokensToCommentProposal.into()
+    );
 }
