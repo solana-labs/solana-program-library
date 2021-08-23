@@ -39,7 +39,7 @@ pub struct ProgramTestBench {
 }
 
 impl ProgramTestBench {
-    pub async fn start_new<'a>(programs: &[TestBenchProgram<'a>]) -> Self {
+    pub async fn start_new(programs: &[TestBenchProgram<'_>]) -> Self {
         let mut program_test = ProgramTest::default();
 
         for program in programs {
@@ -64,7 +64,7 @@ impl ProgramTestBench {
     }
 
     pub fn get_unique_name(&mut self, prefix: &str) -> String {
-        self.next_id = self.next_id + 1;
+        self.next_id += 1;
 
         format!("{}.{}", prefix, self.next_id)
     }
@@ -179,9 +179,9 @@ impl ProgramTestBench {
         )
         .await;
 
-        return TokenAccountCookie {
+        TokenAccountCookie {
             address: token_account_keypair.pubkey(),
-        };
+        }
     }
 
     pub async fn mint_tokens(

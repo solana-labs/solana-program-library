@@ -211,6 +211,7 @@ impl GovernanceChatProgramTest {
     pub async fn with_chat_message(
         &mut self,
         proposal_cookie: &ProposalCookie,
+        reply_to: Option<Pubkey>,
     ) -> ChatMessageCookie {
         let message_account = Keypair::new();
         let message_body = MessageBody::Text("My comment".to_string());
@@ -222,7 +223,7 @@ impl GovernanceChatProgramTest {
             &proposal_cookie.address,
             &proposal_cookie.token_owner_record_address,
             &proposal_cookie.token_owner.pubkey(),
-            None,
+            reply_to,
             &message_account.pubkey(),
             &self.bench.payer.pubkey(),
             message_body.clone(),
@@ -234,7 +235,7 @@ impl GovernanceChatProgramTest {
             proposal: proposal_cookie.address,
             author: proposal_cookie.token_owner.pubkey(),
             posted_at: clock.unix_timestamp,
-            reply_to: None,
+            reply_to,
             body: message_body,
         };
 
