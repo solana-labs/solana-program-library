@@ -193,6 +193,7 @@ async fn test_deposit_initial_community_tokens_with_owner_must_sign_error() {
     let token_source = Keypair::new();
 
     governance_test
+        .bench
         .create_token_account_with_transfer_authority(
             &token_source,
             &realm_cookie.account.community_mint,
@@ -215,7 +216,7 @@ async fn test_deposit_initial_community_tokens_with_owner_must_sign_error() {
 
     instruction.accounts[3] = AccountMeta::new_readonly(token_owner.pubkey(), false);
 
-    // // Act
+    // Act
 
     let error = governance_test
         .bench
@@ -240,6 +241,7 @@ async fn test_deposit_initial_community_tokens_with_invalid_owner_error() {
     let invalid_owner = Keypair::new();
 
     governance_test
+        .bench
         .create_token_account_with_transfer_authority(
             &token_source,
             &realm_cookie.account.community_mint,
