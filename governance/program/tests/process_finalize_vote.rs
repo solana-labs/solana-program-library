@@ -67,7 +67,7 @@ async fn test_finalize_vote_to_succeeded() {
         )
         .await;
 
-    let clock = governance_test.get_clock().await;
+    let clock = governance_test.bench.get_clock().await;
 
     // Act
 

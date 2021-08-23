@@ -1,18 +1,15 @@
-use std::{borrow::Borrow, str::FromStr};
+use std::str::FromStr;
 
 use borsh::BorshDeserialize;
 use solana_program::{
     borsh::try_from_slice_unchecked,
     bpf_loader_upgradeable::{self, UpgradeableLoaderState},
-    clock::{Clock, UnixTimestamp},
+    clock::UnixTimestamp,
     instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack},
     pubkey::Pubkey,
-    sysvar,
 };
-
-use bincode::deserialize;
 
 use solana_program_test::*;
 
@@ -20,6 +17,7 @@ use solana_sdk::{
     account::Account,
     signature::{Keypair, Signer},
 };
+
 use spl_governance::{
     instruction::{
         add_signatory, cancel_proposal, cast_vote, create_account_governance,
@@ -1218,7 +1216,7 @@ impl GovernanceProgramTest {
             )
             .await?;
 
-        let clock = self.get_clock().await;
+        let clock = self.bench.get_clock().await;
 
         let account = Proposal {
             account_type: GovernanceAccountType::Proposal,
@@ -1903,29 +1901,8 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn get_bincode_account<T: serde::de::DeserializeOwned>(
-        &mut self,
-        address: &Pubkey,
-    ) -> T {
-        self.bench
-            .context
-            .banks_client
-            .get_account(*address)
-            .await
-            .unwrap()
-            .map(|a| deserialize::<T>(a.data.borrow()).unwrap())
-            .unwrap_or_else(|| panic!("GET-TEST-ACCOUNT-ERROR: Account {}", address))
-    }
-
-    #[allow(dead_code)]
-    pub async fn get_clock(&mut self) -> Clock {
-        self.get_bincode_account::<Clock>(&sysvar::clock::id())
-            .await
-    }
-
-    #[allow(dead_code)]
     pub async fn advance_clock_past_timestamp(&mut self, unix_timestamp: UnixTimestamp) {
-        let mut clock = self.get_clock().await;
+        let mut clock = self.bench.get_clock().await;
         let mut n = 1;
 
         while clock.unix_timestamp <= unix_timestamp {
@@ -1936,20 +1913,20 @@ impl GovernanceProgramTest {
                 .unwrap();
 
             n += 1;
-            clock = self.get_clock().await;
+            clock = self.bench.get_clock().await;
         }
     }
 
     #[allow(dead_code)]
     pub async fn advance_clock_by_min_timespan(&mut self, time_span: u64) {
-        let clock = self.get_clock().await;
+        let clock = self.bench.get_clock().await;
         self.advance_clock_past_timestamp(clock.unix_timestamp + (time_span as i64))
             .await;
     }
 
     #[allow(dead_code)]
     pub async fn advance_clock(&mut self) {
-        let clock = self.get_clock().await;
+        let clock = self.bench.get_clock().await;
         self.bench.context.warp_to_slot(clock.slot + 2).unwrap();
     }
 
@@ -1958,7 +1935,7 @@ impl GovernanceProgramTest {
         &mut self,
         address: &Pubkey,
     ) -> UpgradeableLoaderState {
-        self.get_bincode_account(address).await
+        self.bench.get_bincode_account(address).await
     }
 
     /// TODO: Add to SDK

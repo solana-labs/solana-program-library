@@ -1,13 +1,18 @@
+use std::borrow::Borrow;
+
 use cookies::TokenAccountCookie;
 use solana_program::{
-    instruction::Instruction, program_error::ProgramError, program_pack::Pack, pubkey::Pubkey,
-    rent::Rent, system_instruction,
+    clock::Clock, instruction::Instruction, program_error::ProgramError, program_pack::Pack,
+    pubkey::Pubkey, rent::Rent, system_instruction, sysvar,
 };
 use solana_program_test::{ProgramTest, ProgramTestContext};
 use solana_sdk::{
     process_instruction::ProcessInstructionWithContext, signature::Keypair, signer::Signer,
     transaction::Transaction,
 };
+
+use bincode::deserialize;
+
 use tools::clone_keypair;
 
 use crate::tools::map_transaction_error;
@@ -257,5 +262,25 @@ impl ProgramTestBench {
         )
         .await
         .unwrap();
+    }
+
+    #[allow(dead_code)]
+    pub async fn get_clock(&mut self) -> Clock {
+        self.get_bincode_account::<Clock>(&sysvar::clock::id())
+            .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn get_bincode_account<T: serde::de::DeserializeOwned>(
+        &mut self,
+        address: &Pubkey,
+    ) -> T {
+        self.context
+            .banks_client
+            .get_account(*address)
+            .await
+            .unwrap()
+            .map(|a| deserialize::<T>(a.data.borrow()).unwrap())
+            .unwrap_or_else(|| panic!("GET-TEST-ACCOUNT-ERROR: Account {}", address))
     }
 }

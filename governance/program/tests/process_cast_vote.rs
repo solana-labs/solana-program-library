@@ -37,7 +37,7 @@ async fn test_cast_vote() {
         .await
         .unwrap();
 
-    let clock = governance_test.get_clock().await;
+    let clock = governance_test.bench.get_clock().await;
 
     // Act
     let vote_record_cookie = governance_test
