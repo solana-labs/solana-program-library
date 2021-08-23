@@ -58,6 +58,7 @@ async fn test_remove_signatory() {
     assert_eq!(ProposalState::Draft, proposal_account.state);
 
     let signatory_account = governance_test
+        .bench
         .get_account(&signatory_record_cookie.address)
         .await;
 

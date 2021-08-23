@@ -60,6 +60,7 @@ async fn test_remove_instruction() {
     assert_eq!(proposal_account.instructions_executed_count, 0);
 
     let proposal_instruction_account = governance_test
+        .bench
         .get_account(&proposal_instruction_cookie.address)
         .await;
 
@@ -192,6 +193,7 @@ async fn test_remove_front_instruction() {
     assert_eq!(proposal_account.instructions_next_index, 2);
 
     let proposal_instruction_account = governance_test
+        .bench
         .get_account(&proposal_instruction_cookie.address)
         .await;
 

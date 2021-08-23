@@ -1,8 +1,6 @@
 use std::str::FromStr;
 
-use borsh::BorshDeserialize;
 use solana_program::{
-    borsh::try_from_slice_unchecked,
     bpf_loader_upgradeable::{self, UpgradeableLoaderState},
     clock::UnixTimestamp,
     instruction::{AccountMeta, Instruction},
@@ -13,10 +11,7 @@ use solana_program::{
 
 use solana_program_test::*;
 
-use solana_sdk::{
-    account::Account,
-    signature::{Keypair, Signer},
-};
+use solana_sdk::signature::{Keypair, Signer};
 
 use spl_governance::{
     instruction::{
@@ -1846,29 +1841,36 @@ impl GovernanceProgramTest {
 
     #[allow(dead_code)]
     pub async fn get_token_owner_record_account(&mut self, address: &Pubkey) -> TokenOwnerRecord {
-        self.get_borsh_account::<TokenOwnerRecord>(address).await
+        self.bench
+            .get_borsh_account::<TokenOwnerRecord>(address)
+            .await
     }
 
     #[allow(dead_code)]
     pub async fn get_realm_account(&mut self, root_governance_address: &Pubkey) -> Realm {
-        self.get_borsh_account::<Realm>(root_governance_address)
+        self.bench
+            .get_borsh_account::<Realm>(root_governance_address)
             .await
     }
 
     #[allow(dead_code)]
     pub async fn get_governance_account(&mut self, governance_address: &Pubkey) -> Governance {
-        self.get_borsh_account::<Governance>(governance_address)
+        self.bench
+            .get_borsh_account::<Governance>(governance_address)
             .await
     }
 
     #[allow(dead_code)]
     pub async fn get_proposal_account(&mut self, proposal_address: &Pubkey) -> Proposal {
-        self.get_borsh_account::<Proposal>(proposal_address).await
+        self.bench
+            .get_borsh_account::<Proposal>(proposal_address)
+            .await
     }
 
     #[allow(dead_code)]
     pub async fn get_vote_record_account(&mut self, vote_record_address: &Pubkey) -> VoteRecord {
-        self.get_borsh_account::<VoteRecord>(vote_record_address)
+        self.bench
+            .get_borsh_account::<VoteRecord>(vote_record_address)
             .await
     }
 
@@ -1877,7 +1879,8 @@ impl GovernanceProgramTest {
         &mut self,
         proposal_instruction_address: &Pubkey,
     ) -> ProposalInstruction {
-        self.get_borsh_account::<ProposalInstruction>(proposal_instruction_address)
+        self.bench
+            .get_borsh_account::<ProposalInstruction>(proposal_instruction_address)
             .await
     }
 
@@ -1886,7 +1889,8 @@ impl GovernanceProgramTest {
         &mut self,
         proposal_address: &Pubkey,
     ) -> SignatoryRecord {
-        self.get_borsh_account::<SignatoryRecord>(proposal_address)
+        self.bench
+            .get_borsh_account::<SignatoryRecord>(proposal_address)
             .await
     }
 
@@ -1936,24 +1940,6 @@ impl GovernanceProgramTest {
         address: &Pubkey,
     ) -> UpgradeableLoaderState {
         self.bench.get_bincode_account(address).await
-    }
-
-    /// TODO: Add to SDK
-    pub async fn get_borsh_account<T: BorshDeserialize>(&mut self, address: &Pubkey) -> T {
-        self.get_account(address)
-            .await
-            .map(|a| try_from_slice_unchecked(&a.data).unwrap())
-            .unwrap_or_else(|| panic!("GET-TEST-ACCOUNT-ERROR: Account {} not found", address))
-    }
-
-    #[allow(dead_code)]
-    pub async fn get_account(&mut self, address: &Pubkey) -> Option<Account> {
-        self.bench
-            .context
-            .banks_client
-            .get_account(*address)
-            .await
-            .unwrap()
     }
 
     #[allow(dead_code)]

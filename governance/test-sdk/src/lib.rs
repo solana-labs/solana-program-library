@@ -1,14 +1,16 @@
 use std::borrow::Borrow;
 
+use borsh::BorshDeserialize;
 use cookies::TokenAccountCookie;
 use solana_program::{
-    clock::Clock, instruction::Instruction, program_error::ProgramError, program_pack::Pack,
-    pubkey::Pubkey, rent::Rent, system_instruction, sysvar,
+    borsh::try_from_slice_unchecked, clock::Clock, instruction::Instruction,
+    program_error::ProgramError, program_pack::Pack, pubkey::Pubkey, rent::Rent,
+    system_instruction, sysvar,
 };
 use solana_program_test::{ProgramTest, ProgramTestContext};
 use solana_sdk::{
-    process_instruction::ProcessInstructionWithContext, signature::Keypair, signer::Signer,
-    transaction::Transaction,
+    account::Account, process_instruction::ProcessInstructionWithContext, signature::Keypair,
+    signer::Signer, transaction::Transaction,
 };
 
 use bincode::deserialize;
@@ -282,5 +284,22 @@ impl ProgramTestBench {
             .unwrap()
             .map(|a| deserialize::<T>(a.data.borrow()).unwrap())
             .unwrap_or_else(|| panic!("GET-TEST-ACCOUNT-ERROR: Account {}", address))
+    }
+
+    /// TODO: Add to SDK
+    pub async fn get_borsh_account<T: BorshDeserialize>(&mut self, address: &Pubkey) -> T {
+        self.get_account(address)
+            .await
+            .map(|a| try_from_slice_unchecked(&a.data).unwrap())
+            .unwrap_or_else(|| panic!("GET-TEST-ACCOUNT-ERROR: Account {} not found", address))
+    }
+
+    #[allow(dead_code)]
+    pub async fn get_account(&mut self, address: &Pubkey) -> Option<Account> {
+        self.context
+            .banks_client
+            .get_account(*address)
+            .await
+            .unwrap()
     }
 }

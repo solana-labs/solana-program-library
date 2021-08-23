@@ -241,8 +241,15 @@ impl GovernanceChatProgramTest {
             .unwrap();
 
         MessageCookie {
-            address: Pubkey::new_unique(),
+            address: message_account.pubkey(),
             account: message,
         }
+    }
+
+    #[allow(dead_code)]
+    pub async fn get_message_account(&mut self, message_address: &Pubkey) -> Message {
+        self.bench
+            .get_borsh_account::<Message>(message_address)
+            .await
     }
 }
