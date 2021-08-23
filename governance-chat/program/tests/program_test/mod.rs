@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use solana_program::pubkey::Pubkey;
+use solana_program::{program_error::ProgramError, pubkey::Pubkey};
 use solana_program_test::processor;
 
 use solana_sdk::{signature::Keypair, signer::Signer};
@@ -212,7 +212,7 @@ impl GovernanceChatProgramTest {
         &mut self,
         proposal_cookie: &ProposalCookie,
         reply_to: Option<Pubkey>,
-    ) -> ChatMessageCookie {
+    ) -> Result<ChatMessageCookie, ProgramError> {
         let message_account = Keypair::new();
         let message_body = MessageBody::Text("My comment".to_string());
 
@@ -245,13 +245,12 @@ impl GovernanceChatProgramTest {
                 &[post_message_ix],
                 Some(&[&proposal_cookie.token_owner, &message_account]),
             )
-            .await
-            .unwrap();
+            .await?;
 
-        ChatMessageCookie {
+        Ok(ChatMessageCookie {
             address: message_account.pubkey(),
             account: message,
-        }
+        })
     }
 
     #[allow(dead_code)]

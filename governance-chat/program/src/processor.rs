@@ -31,10 +31,9 @@ pub fn process_instruction(
     let instruction = GovernanceChatInstruction::try_from_slice(input)
         .map_err(|_| ProgramError::InvalidInstructionData)?;
 
-    msg!("GOVERNANCE-CHAT-INSTRUCTION: {:?}", instruction);
-
     match instruction {
         GovernanceChatInstruction::PostMessage { body } => {
+            msg!("GOVERNANCE-CHAT-INSTRUCTION: PostMessage");
             process_post_message(program_id, accounts, body)
         }
     }

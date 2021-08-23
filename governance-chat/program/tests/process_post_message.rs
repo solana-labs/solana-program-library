@@ -2,6 +2,8 @@
 
 use program_test::GovernanceChatProgramTest;
 use solana_program_test::tokio;
+use solana_sdk::signature::Keypair;
+use spl_governance::error::GovernanceError;
 
 mod program_test;
 
@@ -15,7 +17,8 @@ async fn test_post_message() {
     // Act
     let chat_message_cookie = governance_chat_test
         .with_chat_message(&proposal_cookie, None)
-        .await;
+        .await
+        .unwrap();
 
     // Assert
     let chat_message_data = governance_chat_test
@@ -34,12 +37,14 @@ async fn test_post_reply_message() {
 
     let chat_message_cookie1 = governance_chat_test
         .with_chat_message(&proposal_cookie, None)
-        .await;
+        .await
+        .unwrap();
 
     // Act
     let chat_message_cookie2 = governance_chat_test
         .with_chat_message(&proposal_cookie, Some(chat_message_cookie1.address))
-        .await;
+        .await
+        .unwrap();
 
     // Assert
     let chat_message_data = governance_chat_test
@@ -47,4 +52,50 @@ async fn test_post_reply_message() {
         .await;
 
     assert_eq!(chat_message_data, chat_message_cookie2.account);
+}
+
+#[tokio::test]
+async fn test_post_message_with_owner_or_delegate_must_sign_error() {
+    // Arrange
+    let mut governance_chat_test = GovernanceChatProgramTest::start_new().await;
+
+    let mut proposal_cookie = governance_chat_test.with_proposal().await;
+
+    proposal_cookie.token_owner = Keypair::new();
+
+    // Act
+    let err = governance_chat_test
+        .with_chat_message(&proposal_cookie, None)
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+    assert_eq!(
+        err,
+        GovernanceError::GoverningTokenOwnerOrDelegateMustSign.into()
+    );
+}
+
+#[tokio::test]
+async fn test_post_message_with_invalid_governance_for_proposal_error() {
+    // Arrange
+    let mut governance_chat_test = GovernanceChatProgramTest::start_new().await;
+
+    let proposal_cookie1 = governance_chat_test.with_proposal().await;
+
+    let mut proposal_cookie2 = governance_chat_test.with_proposal().await;
+
+    // Try to use proposal from a different realm
+    proposal_cookie2.address = proposal_cookie1.address;
+
+    // Act
+    let err = governance_chat_test
+        .with_chat_message(&proposal_cookie2, None)
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+    assert_eq!(err, GovernanceError::InvalidGovernanceForProposal.into());
 }
