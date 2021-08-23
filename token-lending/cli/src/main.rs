@@ -1164,7 +1164,7 @@ fn command_update_reserve(
         reserve.config.fee_receiver = reserve_config.fee_receiver.unwrap();
     }
 
-    let mut new_pyth_product_pubkey = null_pyth_product_oracle_pubkey();
+    let mut new_pyth_product_pubkey = spl_token_lending::null_pubkey();
     if pyth_price_pubkey.is_some() {
         println!(
             "Updating pyth oracle pubkey from {} to {}",
@@ -1256,10 +1256,4 @@ fn quote_currency_of(matches: &ArgMatches<'_>, name: &str) -> Option<[u8; 32]> {
     } else {
         None
     }
-}
-
-/// We need a bogus value to send up when we don't want to change
-/// the oracle addresses.
-pub fn null_pyth_product_oracle_pubkey() -> Pubkey {
-    Pubkey::from_str("nu11orac1e111111111111111111111111111111111").unwrap()
 }
