@@ -3,7 +3,7 @@
 use crate::{
     error::GovernanceChatError,
     instruction::GovernanceChatInstruction,
-    state::{ChatMessage, MessageBody},
+    state::{assert_is_valid_chat_message, ChatMessage, GovernanceChatAccountType, MessageBody},
     tools::account::create_and_serialize_account,
 };
 use borsh::BorshDeserialize;
@@ -59,9 +59,14 @@ pub fn process_post_message(
     let payer_info = next_account_info(account_info_iter)?; // 6
     let system_info = next_account_info(account_info_iter)?; // 7
 
-    let reply_to_address = next_account_info(account_info_iter) // 8?
-        .map(|acc| Some(*acc.key))
-        .unwrap_or(None);
+    let reply_to_info = next_account_info(account_info_iter); // 8
+
+    let reply_to_address = if let Ok(reply_to_info) = reply_to_info {
+        assert_is_valid_chat_message(program_id, reply_to_info)?;
+        Some(*reply_to_info.key)
+    } else {
+        None
+    };
 
     let governance_data = get_governance_data(governance_program_info.key, governance_info)?;
 
@@ -90,6 +95,7 @@ pub fn process_post_message(
     let clock = Clock::get()?;
 
     let chat_message_data = ChatMessage {
+        account_type: GovernanceChatAccountType::ChatMessage,
         proposal: *proposal_info.key,
         author: token_owner_record_data.governing_token_owner,
         posted_at: clock.unix_timestamp,

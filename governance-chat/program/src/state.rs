@@ -1,8 +1,21 @@
 //! Program state
 
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
-use solana_program::{clock::UnixTimestamp, pubkey::Pubkey};
-use spl_governance::tools::account::AccountMaxSize;
+use solana_program::{
+    account_info::AccountInfo, clock::UnixTimestamp, program_error::ProgramError, pubkey::Pubkey,
+};
+use spl_governance::tools::account::{assert_is_valid_account, AccountMaxSize};
+
+/// Defines all GovernanceChat accounts types
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub enum GovernanceChatAccountType {
+    /// Default uninitialized account state
+    Uninitialized,
+
+    /// Chat message
+    ChatMessage,
+}
 
 /// Chat message body
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
@@ -17,6 +30,9 @@ pub enum MessageBody {
 /// Chat message
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ChatMessage {
+    /// Account type
+    pub account_type: GovernanceChatAccountType,
+
     /// The proposal the message is for
     pub proposal: Pubkey,
 
@@ -40,8 +56,20 @@ impl AccountMaxSize for ChatMessage {
             MessageBody::Reaction(body) => body.len(),
         };
 
-        Some(body_size + 110)
+        Some(body_size + 111)
     }
+}
+
+/// Checks whether realm account exists, is initialized and  owned by Governance program
+pub fn assert_is_valid_chat_message(
+    program_id: &Pubkey,
+    chat_message_info: &AccountInfo,
+) -> Result<(), ProgramError> {
+    assert_is_valid_account(
+        chat_message_info,
+        GovernanceChatAccountType::ChatMessage,
+        program_id,
+    )
 }
 
 #[cfg(test)]
@@ -52,6 +80,7 @@ mod test {
     #[test]
     fn test_max_size() {
         let message = ChatMessage {
+            account_type: GovernanceChatAccountType::ChatMessage,
             proposal: Pubkey::new_unique(),
             author: Pubkey::new_unique(),
             posted_at: 10,

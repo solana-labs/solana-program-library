@@ -19,7 +19,7 @@ use spl_governance::{
 use spl_governance_chat::{
     instruction::post_message,
     processor::process_instruction,
-    state::{ChatMessage, MessageBody},
+    state::{ChatMessage, GovernanceChatAccountType, MessageBody},
 };
 use spl_governance_test_sdk::{ProgramTestBench, TestBenchProgram};
 
@@ -232,6 +232,7 @@ impl GovernanceChatProgramTest {
         let clock = self.bench.get_clock().await;
 
         let message = ChatMessage {
+            account_type: GovernanceChatAccountType::ChatMessage,
             proposal: proposal_cookie.address,
             author: proposal_cookie.token_owner.pubkey(),
             posted_at: clock.unix_timestamp,
