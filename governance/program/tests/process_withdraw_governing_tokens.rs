@@ -285,6 +285,7 @@ async fn test_withdraw_tokens_with_malicious_holding_account_error() {
     // Try to maliciously withdraw from other token account owned by realm
 
     let realm_token_account_cookie = governance_test
+        .bench
         .with_token_account(
             &realm_cookie.account.community_mint,
             &realm_cookie.address,

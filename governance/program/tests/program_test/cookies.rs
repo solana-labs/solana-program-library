@@ -145,8 +145,3 @@ pub struct ProposalInstructionCookie {
     pub account: ProposalInstruction,
     pub instruction: Instruction,
 }
-
-#[derive(Debug)]
-pub struct TokenAccountCookie {
-    pub address: Pubkey,
-}

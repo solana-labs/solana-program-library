@@ -66,7 +66,7 @@ use spl_governance_test_sdk::{
 use self::cookies::{
     GovernanceCookie, GovernedAccountCookie, GovernedMintCookie, GovernedProgramCookie,
     GovernedTokenCookie, ProposalCookie, ProposalInstructionCookie, RealmCookie,
-    TokenAccountCookie, TokenOwnerRecordCookie, VoteRecordCookie,
+    TokenOwnerRecordCookie, VoteRecordCookie,
 };
 
 pub struct GovernanceProgramTest {
@@ -125,11 +125,12 @@ impl GovernanceProgramTest {
             &community_token_mint_keypair.pubkey(),
         );
 
-        self.create_mint(
-            &community_token_mint_keypair,
-            &community_token_mint_authority.pubkey(),
-        )
-        .await;
+        self.bench
+            .create_mint(
+                &community_token_mint_keypair,
+                &community_token_mint_authority.pubkey(),
+            )
+            .await;
 
         let (
             council_token_mint_pubkey,
@@ -145,11 +146,12 @@ impl GovernanceProgramTest {
                 &council_token_mint_keypair.pubkey(),
             );
 
-            self.create_mint(
-                &council_token_mint_keypair,
-                &council_token_mint_authority.pubkey(),
-            )
-            .await;
+            self.bench
+                .create_mint(
+                    &council_token_mint_keypair,
+                    &council_token_mint_authority.pubkey(),
+                )
+                .await;
 
             (
                 Some(council_token_mint_keypair.pubkey()),
@@ -451,20 +453,22 @@ impl GovernanceProgramTest {
     pub async fn mint_community_tokens(&mut self, realm_cookie: &RealmCookie, amount: u64) {
         let token_account_keypair = Keypair::new();
 
-        self.create_empty_token_account(
-            &token_account_keypair,
-            &realm_cookie.account.community_mint,
-            &self.bench.payer.pubkey(),
-        )
-        .await;
+        self.bench
+            .create_empty_token_account(
+                &token_account_keypair,
+                &realm_cookie.account.community_mint,
+                &self.bench.payer.pubkey(),
+            )
+            .await;
 
-        self.mint_tokens(
-            &realm_cookie.account.community_mint,
-            &realm_cookie.community_mint_authority,
-            &token_account_keypair.pubkey(),
-            amount,
-        )
-        .await;
+        self.bench
+            .mint_tokens(
+                &realm_cookie.account.community_mint,
+                &realm_cookie.community_mint_authority,
+                &token_account_keypair.pubkey(),
+                amount,
+            )
+            .await;
     }
 
     #[allow(dead_code)]
@@ -476,13 +480,14 @@ impl GovernanceProgramTest {
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         amount: u64,
     ) {
-        self.mint_tokens(
-            governing_token_mint,
-            governing_token_mint_authority,
-            &token_owner_record_cookie.token_source,
-            amount,
-        )
-        .await;
+        self.bench
+            .mint_tokens(
+                governing_token_mint,
+                governing_token_mint_authority,
+                &token_owner_record_cookie.token_source,
+                amount,
+            )
+            .await;
 
         let deposit_governing_tokens_instruction = deposit_governing_tokens(
             &self.program_id,
@@ -736,7 +741,8 @@ impl GovernanceProgramTest {
         let mint_keypair = Keypair::new();
         let mint_authority = Keypair::new();
 
-        self.create_mint(&mint_keypair, &mint_authority.pubkey())
+        self.bench
+            .create_mint(&mint_keypair, &mint_authority.pubkey())
             .await;
 
         GovernedMintCookie {
@@ -751,26 +757,29 @@ impl GovernanceProgramTest {
         let mint_keypair = Keypair::new();
         let mint_authority = Keypair::new();
 
-        self.create_mint(&mint_keypair, &mint_authority.pubkey())
+        self.bench
+            .create_mint(&mint_keypair, &mint_authority.pubkey())
             .await;
 
         let token_keypair = Keypair::new();
         let token_owner = Keypair::new();
 
-        self.create_empty_token_account(
-            &token_keypair,
-            &mint_keypair.pubkey(),
-            &token_owner.pubkey(),
-        )
-        .await;
+        self.bench
+            .create_empty_token_account(
+                &token_keypair,
+                &mint_keypair.pubkey(),
+                &token_owner.pubkey(),
+            )
+            .await;
 
-        self.mint_tokens(
-            &mint_keypair.pubkey(),
-            &mint_authority,
-            &token_keypair.pubkey(),
-            100,
-        )
-        .await;
+        self.bench
+            .mint_tokens(
+                &mint_keypair.pubkey(),
+                &mint_authority,
+                &token_keypair.pubkey(),
+                100,
+            )
+            .await;
 
         GovernedTokenCookie {
             address: token_keypair.pubkey(),
@@ -1542,12 +1551,13 @@ impl GovernanceProgramTest {
         index: Option<u16>,
     ) -> Result<ProposalInstructionCookie, ProgramError> {
         let token_account_keypair = Keypair::new();
-        self.create_empty_token_account(
-            &token_account_keypair,
-            &governed_mint_cookie.address,
-            &self.bench.payer.pubkey(),
-        )
-        .await;
+        self.bench
+            .create_empty_token_account(
+                &token_account_keypair,
+                &governed_mint_cookie.address,
+                &self.bench.payer.pubkey(),
+            )
+            .await;
 
         let mut instruction = spl_token::instruction::mint_to(
             &spl_token::id(),
@@ -1577,12 +1587,13 @@ impl GovernanceProgramTest {
         index: Option<u16>,
     ) -> Result<ProposalInstructionCookie, ProgramError> {
         let token_account_keypair = Keypair::new();
-        self.create_empty_token_account(
-            &token_account_keypair,
-            &governed_token_cookie.token_mint,
-            &self.bench.payer.pubkey(),
-        )
-        .await;
+        self.bench
+            .create_empty_token_account(
+                &token_account_keypair,
+                &governed_token_cookie.token_mint,
+                &self.bench.payer.pubkey(),
+            )
+            .await;
 
         let mut instruction = spl_token::instruction::transfer(
             &spl_token::id(),
@@ -1977,93 +1988,6 @@ impl GovernanceProgramTest {
         self.get_packed_account(address).await
     }
 
-    pub async fn create_mint(&mut self, mint_keypair: &Keypair, mint_authority: &Pubkey) {
-        let mint_rent = self.bench.rent.minimum_balance(spl_token::state::Mint::LEN);
-
-        let instructions = [
-            system_instruction::create_account(
-                &self.bench.context.payer.pubkey(),
-                &mint_keypair.pubkey(),
-                mint_rent,
-                spl_token::state::Mint::LEN as u64,
-                &spl_token::id(),
-            ),
-            spl_token::instruction::initialize_mint(
-                &spl_token::id(),
-                &mint_keypair.pubkey(),
-                mint_authority,
-                None,
-                0,
-            )
-            .unwrap(),
-        ];
-
-        self.bench
-            .process_transaction(&instructions, Some(&[mint_keypair]))
-            .await
-            .unwrap();
-    }
-
-    #[allow(dead_code)]
-    pub async fn create_empty_token_account(
-        &mut self,
-        token_account_keypair: &Keypair,
-        token_mint: &Pubkey,
-        owner: &Pubkey,
-    ) {
-        let create_account_instruction = system_instruction::create_account(
-            &self.bench.context.payer.pubkey(),
-            &token_account_keypair.pubkey(),
-            self.bench
-                .rent
-                .minimum_balance(spl_token::state::Account::get_packed_len()),
-            spl_token::state::Account::get_packed_len() as u64,
-            &spl_token::id(),
-        );
-
-        let initialize_account_instruction = spl_token::instruction::initialize_account(
-            &spl_token::id(),
-            &token_account_keypair.pubkey(),
-            token_mint,
-            owner,
-        )
-        .unwrap();
-
-        self.bench
-            .process_transaction(
-                &[create_account_instruction, initialize_account_instruction],
-                Some(&[token_account_keypair]),
-            )
-            .await
-            .unwrap();
-    }
-
-    #[allow(dead_code)]
-    pub async fn with_token_account(
-        &mut self,
-        token_mint: &Pubkey,
-        owner: &Pubkey,
-        token_mint_authority: &Keypair,
-        amount: u64,
-    ) -> TokenAccountCookie {
-        let token_account_keypair = Keypair::new();
-
-        self.create_empty_token_account(&token_account_keypair, token_mint, owner)
-            .await;
-
-        self.mint_tokens(
-            token_mint,
-            token_mint_authority,
-            &token_account_keypair.pubkey(),
-            amount,
-        )
-        .await;
-
-        return TokenAccountCookie {
-            address: token_account_keypair.pubkey(),
-        };
-    }
-
     #[allow(dead_code)]
     pub async fn create_token_account_with_transfer_authority(
         &mut self,
@@ -2122,29 +2046,6 @@ impl GovernanceProgramTest {
                 ],
                 Some(&[token_account_keypair, token_mint_authority, owner]),
             )
-            .await
-            .unwrap();
-    }
-
-    pub async fn mint_tokens(
-        &mut self,
-        token_mint: &Pubkey,
-        token_mint_authority: &Keypair,
-        token_account: &Pubkey,
-        amount: u64,
-    ) {
-        let mint_instruction = spl_token::instruction::mint_to(
-            &spl_token::id(),
-            token_mint,
-            token_account,
-            &token_mint_authority.pubkey(),
-            &[],
-            amount,
-        )
-        .unwrap();
-
-        self.bench
-            .process_transaction(&[mint_instruction], Some(&[token_mint_authority]))
             .await
             .unwrap();
     }

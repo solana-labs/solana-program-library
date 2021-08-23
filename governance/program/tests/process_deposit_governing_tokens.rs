@@ -284,6 +284,7 @@ async fn test_deposit_community_tokens_with_malicious_holding_account_error() {
         .await;
 
     governance_test
+        .bench
         .mint_tokens(
             &realm_cookie.account.community_mint,
             &realm_cookie.community_mint_authority,
