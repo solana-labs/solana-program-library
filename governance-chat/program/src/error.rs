@@ -8,7 +8,7 @@ use solana_program::{
 };
 use thiserror::Error;
 
-/// Errors that may be returned by the Governance program
+/// Errors that may be returned by the GovernanceChat program
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
 pub enum GovernanceChatError {
     /// Owner doesn't have enough governing tokens to comment on Proposal

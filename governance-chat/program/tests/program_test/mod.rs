@@ -23,7 +23,7 @@ use spl_governance_chat::{
 };
 use spl_governance_test_sdk::{ProgramTestBench, TestBenchProgram};
 
-use self::cookies::{ChatMessageCookie, ProposalCookie};
+use crate::program_test::cookies::{ChatMessageCookie, ProposalCookie};
 
 pub mod cookies;
 

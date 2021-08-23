@@ -9,7 +9,7 @@ use solana_program::{
 
 use crate::state::MessageBody;
 
-/// Instructions supported by the Governance program
+/// Instructions supported by the GovernanceChat program
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 #[allow(clippy::large_enum_variant)]
 pub enum GovernanceChatInstruction {
@@ -18,9 +18,9 @@ pub enum GovernanceChatInstruction {
     ///   0. `[]` Governance program id
     ///   1. `[]` Governance account the Proposal is for    
     ///   2. `[]` Proposal account   
-    ///   3. `[]` TokenOwnerRecord for the message author
+    ///   3. `[]` TokenOwnerRecord account for the message author
     ///   4. `[signer]` Governance Authority (TokenOwner or Governance Delegate)
-    ///   5. `[writable, signer]` Message account
+    ///   5. `[writable, signer]` ChatMessage account
     ///   6. `[signer]` Payer    
     ///   7. `[]` System program    
     ///   8. `[]` ReplyTo Message account (optional)  
@@ -32,27 +32,28 @@ pub enum GovernanceChatInstruction {
 }
 
 /// Creates PostMessage instruction
+#[allow(clippy::too_many_arguments)]
 pub fn post_message(
     program_id: &Pubkey,
     // Accounts
-    governance_program: &Pubkey,
+    governance_program_id: &Pubkey,
     governance: &Pubkey,
     proposal: &Pubkey,
     token_owner_record: &Pubkey,
     governance_authority: &Pubkey,
     reply_to: Option<Pubkey>,
-    message: &Pubkey,
+    chat_message: &Pubkey,
     payer: &Pubkey,
     // Args
     body: MessageBody,
 ) -> Instruction {
     let mut accounts = vec![
-        AccountMeta::new_readonly(*governance_program, false),
+        AccountMeta::new_readonly(*governance_program_id, false),
         AccountMeta::new_readonly(*governance, false),
         AccountMeta::new_readonly(*proposal, false),
         AccountMeta::new_readonly(*token_owner_record, false),
         AccountMeta::new_readonly(*governance_authority, true),
-        AccountMeta::new(*message, true),
+        AccountMeta::new(*chat_message, true),
         AccountMeta::new_readonly(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
     ];

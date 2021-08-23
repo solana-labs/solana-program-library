@@ -22,7 +22,7 @@ use crate::tools::map_transaction_error;
 pub mod cookies;
 pub mod tools;
 
-/// Details of a program which is loaded into the test bench
+/// Specification of a program which is loaded into the test bench
 #[derive(Clone)]
 pub struct TestBenchProgram<'a> {
     pub program_name: &'a str,
