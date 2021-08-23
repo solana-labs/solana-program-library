@@ -10,7 +10,7 @@ async fn test_post_message() {
     // Arrange
     let mut governance_chat_test = GovernanceChatProgramTest::start_new().await;
 
-    governance_chat_test.with_proposal().await;
+    let proposal_cookie = governance_chat_test.with_proposal().await;
 
-    let _message_cookie = governance_chat_test.with_message().await;
+    let _message_cookie = governance_chat_test.with_message(&proposal_cookie).await;
 }

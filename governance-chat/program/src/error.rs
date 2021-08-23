@@ -10,7 +10,11 @@ use thiserror::Error;
 
 /// Errors that may be returned by the Governance program
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
-pub enum GovernanceChatError {}
+pub enum GovernanceChatError {
+    /// Owner doesn't have enough governing tokens to comment on Proposal
+    #[error("Owner doesn't have enough governing tokens to comment on Proposal")]
+    NotEnoughTokensToCommentProposal = 900,
+}
 
 impl PrintProgramError for GovernanceChatError {
     fn print<E>(&self) {

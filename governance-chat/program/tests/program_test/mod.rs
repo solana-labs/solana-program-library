@@ -198,29 +198,43 @@ impl GovernanceChatProgramTest {
 
         ProposalCookie {
             address: proposal_address,
+            realm_address,
+            governance_address,
+            token_owner_record_address,
+            token_owner,
         }
     }
 
     #[allow(dead_code)]
-    pub async fn with_message(&mut self) -> MessageCookie {
-        let _proposal = Pubkey::new_unique();
+    pub async fn with_message(&mut self, proposal_cookie: &ProposalCookie) -> MessageCookie {
+        let message_account = Keypair::new();
+        let message_body = "My comment".to_string();
 
         let post_message_ix = post_message(
             &self.program_id,
+            &self.governance_program_id,
+            &proposal_cookie.governance_address,
+            &proposal_cookie.address,
+            &proposal_cookie.token_owner_record_address,
+            &proposal_cookie.token_owner.pubkey(),
+            &message_account.pubkey(),
             &self.bench.payer.pubkey(),
-            &self.bench.payer.pubkey(),
+            message_body.clone(),
         );
 
         let message = Message {
-            proposal: Pubkey::new_unique(),
+            proposal: proposal_cookie.address,
             author: Pubkey::new_unique(),
             post_at: 10,
             parent: None,
-            body: "post ".to_string(),
+            body: message_body,
         };
 
         self.bench
-            .process_transaction(&[post_message_ix], None)
+            .process_transaction(
+                &[post_message_ix],
+                Some(&[&proposal_cookie.token_owner, &message_account]),
+            )
             .await
             .unwrap();
 
