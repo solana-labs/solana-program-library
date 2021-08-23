@@ -5,10 +5,13 @@ use solana_program_test::processor;
 
 use solana_sdk::{signature::Keypair, signer::Signer};
 use spl_governance::{
-    instruction::{create_account_governance, create_realm, deposit_governing_tokens},
+    instruction::{
+        create_account_governance, create_proposal, create_realm, deposit_governing_tokens,
+    },
     state::{
         enums::{MintMaxVoteWeightSource, VoteThresholdPercentage},
-        governance::GovernanceConfig,
+        governance::{get_account_governance_address, GovernanceConfig},
+        proposal::get_proposal_address,
         realm::get_realm_address,
         token_owner_record::get_token_owner_record_address,
     },
@@ -62,13 +65,13 @@ impl GovernanceChatProgramTest {
 
         let realm_address = get_realm_address(&self.governance_program_id, &name);
 
-        let community_token_mint_keypair = Keypair::new();
-        let community_token_mint_authority = Keypair::new();
+        let governing_token_mint_keypair = Keypair::new();
+        let governing_token_mint_authority = Keypair::new();
 
         self.bench
             .create_mint(
-                &community_token_mint_keypair,
-                &community_token_mint_authority.pubkey(),
+                &governing_token_mint_keypair,
+                &governing_token_mint_authority.pubkey(),
             )
             .await;
 
@@ -77,7 +80,7 @@ impl GovernanceChatProgramTest {
         let create_realm_ix = create_realm(
             &self.governance_program_id,
             &realm_authority.pubkey(),
-            &community_token_mint_keypair.pubkey(),
+            &governing_token_mint_keypair.pubkey(),
             &self.bench.payer.pubkey(),
             None,
             name.clone(),
@@ -99,8 +102,8 @@ impl GovernanceChatProgramTest {
         self.bench
             .create_token_account_with_transfer_authority(
                 &token_source,
-                &community_token_mint_keypair.pubkey(),
-                &community_token_mint_authority,
+                &governing_token_mint_keypair.pubkey(),
+                &governing_token_mint_authority,
                 100,
                 &token_owner,
                 &transfer_authority.pubkey(),
@@ -114,7 +117,7 @@ impl GovernanceChatProgramTest {
             &token_owner.pubkey(),
             &token_owner.pubkey(),
             &self.bench.payer.pubkey(),
-            &community_token_mint_keypair.pubkey(),
+            &governing_token_mint_keypair.pubkey(),
         );
 
         self.bench
@@ -138,7 +141,7 @@ impl GovernanceChatProgramTest {
         let token_owner_record_address = get_token_owner_record_address(
             &self.governance_program_id,
             &realm_address,
-            &community_token_mint_keypair.pubkey(),
+            &governing_token_mint_keypair.pubkey(),
             &token_owner.pubkey(),
         );
 
@@ -156,9 +159,46 @@ impl GovernanceChatProgramTest {
             .await
             .unwrap();
 
-        let proposal = Pubkey::new_unique();
+        // Create Proposal
 
-        ProposalCookie { address: proposal }
+        let governance_address = get_account_governance_address(
+            &self.governance_program_id,
+            &realm_address,
+            &governed_account_address,
+        );
+
+        let proposal_name = "Proposal #1".to_string();
+        let description_link = "Proposal Description".to_string();
+        let proposal_index = 0;
+
+        let create_proposal_ix = create_proposal(
+            &self.governance_program_id,
+            &governance_address,
+            &token_owner_record_address,
+            &token_owner.pubkey(),
+            &self.bench.payer.pubkey(),
+            &realm_address,
+            proposal_name,
+            description_link.clone(),
+            &governing_token_mint_keypair.pubkey(),
+            proposal_index,
+        );
+
+        self.bench
+            .process_transaction(&[create_proposal_ix], Some(&[&token_owner]))
+            .await
+            .unwrap();
+
+        let proposal_address = get_proposal_address(
+            &self.governance_program_id,
+            &governance_address,
+            &governing_token_mint_keypair.pubkey(),
+            &proposal_index.to_le_bytes(),
+        );
+
+        ProposalCookie {
+            address: proposal_address,
+        }
     }
 
     #[allow(dead_code)]
