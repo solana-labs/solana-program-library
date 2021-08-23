@@ -43,7 +43,7 @@ impl GovernanceChatProgramTest {
     pub async fn with_message(&mut self) -> MessageCookie {
         let _proposal = Pubkey::new_unique();
 
-        let _post_message_ix = post_message(
+        let post_message_ix = post_message(
             &self.program_id,
             &self.bench.payer.pubkey(),
             &self.bench.payer.pubkey(),
@@ -57,10 +57,10 @@ impl GovernanceChatProgramTest {
             body: "post ".to_string(),
         };
 
-        // self.bench()
-        //     .process_transaction(&[post_message_ix], None)
-        //     .await
-        //     .unwrap();
+        self.bench
+            .process_transaction(&[post_message_ix], None)
+            .await
+            .unwrap();
 
         MessageCookie {
             address: Pubkey::new_unique(),

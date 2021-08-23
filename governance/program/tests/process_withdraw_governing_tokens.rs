@@ -117,6 +117,7 @@ async fn test_withdraw_community_tokens_with_owner_must_sign_error() {
 
     // Act
     let err = governance_test
+        .bench
         .process_transaction(&[instruction], None)
         .await
         .err()
@@ -160,6 +161,7 @@ async fn test_withdraw_community_tokens_with_token_owner_record_address_mismatch
 
     // Act
     let err = governance_test
+        .bench
         .process_transaction(&[instruction], Some(&[&hacker_record_cookie.token_owner]))
         .await
         .err()
@@ -303,6 +305,7 @@ async fn test_withdraw_tokens_with_malicious_holding_account_error() {
 
     // Act
     let err = governance_test
+        .bench
         .process_transaction(
             &[instruction],
             Some(&[&token_owner_record_cookie.token_owner]),

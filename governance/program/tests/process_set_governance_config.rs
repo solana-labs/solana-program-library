@@ -106,6 +106,7 @@ async fn test_set_governance_config_with_governance_must_sign_error() {
 
     // Act
     let err = governance_test
+        .bench
         .process_transaction(&[set_governance_config_ix], None)
         .await
         .err()
@@ -136,6 +137,7 @@ async fn test_set_governance_config_with_fake_governance_signer_error() {
 
     // Act
     let err = governance_test
+        .bench
         .process_transaction(&[set_governance_config_ix], Some(&[&governance_signer]))
         .await
         .err()

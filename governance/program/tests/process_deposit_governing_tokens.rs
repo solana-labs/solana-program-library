@@ -218,6 +218,7 @@ async fn test_deposit_initial_community_tokens_with_owner_must_sign_error() {
     // // Act
 
     let error = governance_test
+        .bench
         .process_transaction(&[instruction], Some(&[&transfer_authority]))
         .await
         .err()
@@ -262,6 +263,7 @@ async fn test_deposit_initial_community_tokens_with_invalid_owner_error() {
     // // Act
 
     let error = governance_test
+        .bench
         .process_transaction(&[instruction], Some(&[&transfer_authority, &invalid_owner]))
         .await
         .err()
@@ -306,6 +308,7 @@ async fn test_deposit_community_tokens_with_malicious_holding_account_error() {
     // Act
 
     let err = governance_test
+        .bench
         .process_transaction(
             &[deposit_ix],
             Some(&[&token_owner_record_cookie.token_owner]),

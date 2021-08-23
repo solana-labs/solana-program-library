@@ -1,7 +1,14 @@
-use solana_program::{pubkey::Pubkey, rent::Rent};
+use solana_program::{
+    instruction::Instruction, program_error::ProgramError, pubkey::Pubkey, rent::Rent,
+};
 use solana_program_test::{ProgramTest, ProgramTestContext};
-use solana_sdk::{process_instruction::ProcessInstructionWithContext, signature::Keypair};
+use solana_sdk::{
+    process_instruction::ProcessInstructionWithContext, signature::Keypair, signer::Signer,
+    transaction::Transaction,
+};
 use tools::clone_keypair;
+
+use crate::tools::map_transaction_error;
 
 pub mod tools;
 
@@ -42,5 +49,36 @@ impl ProgramTestBench {
             rent,
             payer,
         }
+    }
+
+    pub async fn process_transaction(
+        &mut self,
+        instructions: &[Instruction],
+        signers: Option<&[&Keypair]>,
+    ) -> Result<(), ProgramError> {
+        let mut transaction = Transaction::new_with_payer(instructions, Some(&self.payer.pubkey()));
+
+        let mut all_signers = vec![&self.payer];
+
+        if let Some(signers) = signers {
+            all_signers.extend_from_slice(signers);
+        }
+
+        let recent_blockhash = self
+            .context
+            .banks_client
+            .get_recent_blockhash()
+            .await
+            .unwrap();
+
+        transaction.sign(&all_signers, recent_blockhash);
+
+        self.context
+            .banks_client
+            .process_transaction(transaction)
+            .await
+            .map_err(map_transaction_error)?;
+
+        Ok(())
     }
 }
