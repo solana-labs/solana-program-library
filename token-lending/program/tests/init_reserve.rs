@@ -255,7 +255,6 @@ async fn test_update_reserve_config() {
     );
 
     let user_accounts_owner = Keypair::new();
-    let user_transfer_authority = Keypair::new();
     let lending_market = add_lending_market(&mut test);
 
     let mint = add_usdc_mint(&mut test);
@@ -272,46 +271,6 @@ async fn test_update_reserve_config() {
             config: test_reserve_config(),
             ..AddReserveArgs::default()
         },
-    );
-
-    let (mut banks_client, payer, recent_blockhash) = test.start().await;
-
-    // Create a reserve
-    let mut transaction = Transaction::new_with_payer(
-        &[init_reserve(
-            spl_token_lending::id(),
-            42,
-            test_reserve.config,
-            test_reserve.user_liquidity_pubkey,
-            test_reserve.user_collateral_pubkey,
-            test_reserve.pubkey,
-            test_reserve.liquidity_mint_pubkey,
-            test_reserve.liquidity_supply_pubkey,
-            test_reserve.collateral_mint_pubkey,
-            test_reserve.collateral_supply_pubkey,
-            oracle.pyth_product_pubkey,
-            oracle.pyth_price_pubkey,
-            oracle.switchboard_feed_pubkey,
-            lending_market.pubkey,
-            lending_market.owner.pubkey(),
-            user_transfer_authority.pubkey(),
-        )],
-        Some(&payer.pubkey()),
-    );
-    transaction.sign(
-        &[&payer, &lending_market.owner, &user_transfer_authority],
-        recent_blockhash,
-    );
-    assert_eq!(
-        banks_client
-            .process_transaction(transaction)
-            .await
-            .unwrap_err()
-            .unwrap(),
-        TransactionError::InstructionError(
-            0,
-            InstructionError::Custom(LendingError::AlreadyInitialized as u32)
-        )
     );
 
     // Update the reserve config
@@ -333,6 +292,7 @@ async fn test_update_reserve_config() {
         fee_receiver: Keypair::new().pubkey(),
     };
 
+    let (mut banks_client, payer, recent_blockhash) = test.start().await;
     let mut transaction = Transaction::new_with_payer(
         &[update_reserve_config(
             spl_token_lending::id(),
@@ -349,6 +309,120 @@ async fn test_update_reserve_config() {
     transaction.sign(&[&payer, &lending_market.owner], recent_blockhash);
     assert!(banks_client.process_transaction(transaction).await.is_ok());
 
-    let test_reserve = test_reserve.get_state(&mut banks_client).await;
-    assert_eq!(test_reserve.config, new_config);
+    let updated_reserve = test_reserve.get_state(&mut banks_client).await;
+    assert_eq!(updated_reserve.config, new_config);
+}
+
+#[tokio::test]
+async fn test_update_invalid_oracle_config() {
+    let mut test = ProgramTest::new(
+        "spl_token_lending",
+        spl_token_lending::id(),
+        processor!(process_instruction),
+    );
+
+    let user_accounts_owner = Keypair::new();
+    let lending_market = add_lending_market(&mut test);
+    let config = test_reserve_config();
+    let mint = add_usdc_mint(&mut test);
+    let oracle = add_usdc_oracle(&mut test);
+    let test_reserve = add_reserve(
+        &mut test,
+        &lending_market,
+        &oracle,
+        &user_accounts_owner,
+        AddReserveArgs {
+            liquidity_amount: 42,
+            liquidity_mint_decimals: mint.decimals,
+            liquidity_mint_pubkey: mint.pubkey,
+            config: config,
+            ..AddReserveArgs::default()
+        },
+    );
+
+    let (mut banks_client, payer, recent_blockhash) = test.start().await;
+
+    // Try setting both of the oracles to null: Should fail
+    let mut transaction = Transaction::new_with_payer(
+        &[update_reserve_config(
+            spl_token_lending::id(),
+            config,
+            test_reserve.pubkey,
+            lending_market.pubkey,
+            lending_market.owner.pubkey(),
+            spl_token_lending::NULL_PUBKEY,
+            spl_token_lending::NULL_PUBKEY,
+            spl_token_lending::NULL_PUBKEY,
+        )],
+        Some(&payer.pubkey()),
+    );
+
+    transaction.sign(&[&payer, &lending_market.owner], recent_blockhash);
+    assert_eq!(
+        banks_client
+            .process_transaction(transaction)
+            .await
+            .unwrap_err()
+            .unwrap(),
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(LendingError::InvalidOracleConfig as u32)
+        )
+    );
+
+    // Set one of the oracles to null
+    let mut transaction = Transaction::new_with_payer(
+        &[update_reserve_config(
+            spl_token_lending::id(),
+            config,
+            test_reserve.pubkey,
+            lending_market.pubkey,
+            lending_market.owner.pubkey(),
+            oracle.pyth_product_pubkey,
+            oracle.pyth_price_pubkey,
+            spl_token_lending::NULL_PUBKEY,
+        )],
+        Some(&payer.pubkey()),
+    );
+    transaction.sign(&[&payer, &lending_market.owner], recent_blockhash);
+    assert!(banks_client.process_transaction(transaction).await.is_ok());
+    let updated_reserve = test_reserve.get_state(&mut banks_client).await;
+    assert_eq!(updated_reserve.config, config);
+    assert_eq!(
+        updated_reserve.liquidity.pyth_oracle_pubkey,
+        oracle.pyth_price_pubkey
+    );
+    assert_eq!(
+        updated_reserve.liquidity.switchboard_oracle_pubkey,
+        spl_token_lending::NULL_PUBKEY
+    );
+
+    // Setting both oracles to null still fails, even if one is
+    // already null
+    let mut transaction = Transaction::new_with_payer(
+        &[update_reserve_config(
+            spl_token_lending::id(),
+            config,
+            test_reserve.pubkey,
+            lending_market.pubkey,
+            lending_market.owner.pubkey(),
+            spl_token_lending::NULL_PUBKEY,
+            spl_token_lending::NULL_PUBKEY,
+            spl_token_lending::NULL_PUBKEY,
+        )],
+        Some(&payer.pubkey()),
+    );
+
+    transaction.sign(&[&payer, &lending_market.owner], recent_blockhash);
+    assert_eq!(
+        banks_client
+            .process_transaction(transaction)
+            .await
+            .unwrap_err()
+            .unwrap(),
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(LendingError::InvalidOracleConfig as u32)
+        )
+    );
 }
