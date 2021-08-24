@@ -11,7 +11,7 @@ version = "2.0.14"
 [dependencies]
 clap = "2.33.3"
 console = "0.14.0"
-serde = "1.0.128"
+serde = "1.0.129"
 serde_derive = "1.0.103"
 serde_json = "1.0.66"
 solana-account-decoder = "=1.7.7"
