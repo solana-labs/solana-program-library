@@ -35,12 +35,17 @@ async fn fn_test_deposit_swap_not_init() {
     );
     let (mut banks_client, payer, recent_blockhash) = pt.start().await;
 
+    let mint_a = Keypair::new();
+    let mint_b = Keypair::new();
     let token_a_amount = 1000;
     let token_b_amount = 9000;
     let mut swap = helpers::create_standard_setup(
         &mut banks_client,
         &payer,
         &recent_blockhash,
+        None,
+        &mint_a, 
+        &mint_b,
         token_a_amount,
         token_b_amount,
     )

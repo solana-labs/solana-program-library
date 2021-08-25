@@ -4007,7 +4007,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token-swap"
-version = "2.2.0"
+version = "2.3.0"
 dependencies = [
  "arbitrary",
  "arrayref",
@@ -4022,6 +4022,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
+ "spl-associated-token-account 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "spl-math",
  "spl-token 3.2.0",
  "thiserror",
