@@ -392,6 +392,9 @@ impl Processor {
         minimum_amount_out: u64,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
+        //we cut the owner fees when routing through pools by 2/3 each
+        const ROUTED_OWNER_FEE_NUMERATOR_MULT: u64 = 2;
+        const ROUTED_OWNER_FEE_DENOMINATOR_MULT: u64 = 3;
         
         let account_info_iter = &mut accounts.iter();
         let swap_info = next_account_info(account_info_iter)?;
@@ -404,6 +407,16 @@ impl Processor {
         let pool_mint_info = next_account_info(account_info_iter)?;
         let pool_fee_account_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
+
+        //we could knock the owner fee in half since its a double swap
+        if swap_info.owner != program_id {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+        let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
+        let new_numerator = token_swap.fees()
+            .owner_trade_fee_numerator.checked_mul(ROUTED_OWNER_FEE_NUMERATOR_MULT).unwrap();
+        let new_denominator = token_swap.fees()
+            .owner_trade_fee_denominator.checked_mul(ROUTED_OWNER_FEE_DENOMINATOR_MULT).unwrap();
 
         let swap_result1 = Self::process_swap_internal(
             program_id,
@@ -420,10 +433,12 @@ impl Processor {
             pool_mint_info,
             pool_fee_account_info,
             token_program_info,
+            //None,
+            Some((new_numerator,new_denominator)),
         )?;
 
         msg!("first swap: {:?}", swap_result1);
-        
+         
         //second swap
 
         let swap_info = next_account_info(account_info_iter)?;
@@ -451,6 +466,8 @@ impl Processor {
             pool_mint_info,
             pool_fee_account_info,
             token_program_info,
+            //None,
+            Some((new_numerator,new_denominator)),
         )?;
 
         msg!("second swap: {:?}", swap_result2);
@@ -491,6 +508,7 @@ impl Processor {
             pool_mint_info,
             pool_fee_account_info,
             token_program_info,
+            None,
         )?;
 
         Ok(())
@@ -510,6 +528,7 @@ impl Processor {
         pool_mint_info: &AccountInfo<'a>,
         pool_fee_account_info: &AccountInfo<'a>,
         token_program_info: &AccountInfo<'a>,
+        owner_trade_fee_numerator_denominator_override: Option<(u64,u64)>,
     ) -> Result<SwapResult, ProgramError> {
 
         if swap_info.owner != program_id {
@@ -550,6 +569,13 @@ impl Processor {
             return Err(SwapError::IncorrectTokenProgramId.into());
         }
 
+        let mut fees = token_swap.fees().clone();
+        if owner_trade_fee_numerator_denominator_override.is_some() {
+            let nd = owner_trade_fee_numerator_denominator_override.unwrap();
+            fees.owner_trade_fee_numerator = nd.0;
+            fees.owner_trade_fee_denominator = nd.1;
+        }
+
         let source_account =
             Self::unpack_token_account(swap_source_info, token_swap.token_program_id())?;
         let dest_account =
@@ -568,7 +594,7 @@ impl Processor {
                 to_u128(source_account.amount)?,
                 to_u128(dest_account.amount)?,
                 trade_direction,
-                token_swap.fees(),
+                &fees,
             )
             .ok_or(SwapError::ZeroTradingTokens)?;
         if result.destination_amount_swapped < to_u128(minimum_amount_out)? {
