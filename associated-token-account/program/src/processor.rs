@@ -55,7 +55,9 @@ pub fn process_instruction(
         .max(1)
         .saturating_sub(associated_token_account_info.lamports());
 
-    if required_lamports > 0 {
+    // If there are already lamports in the account we need to do each step,
+    // otherwise we can create the account in one CPI call
+    if associated_token_account_info.lamports() > 0 {
         msg!(
             "Transfer {} lamports to the associated token account",
             required_lamports
@@ -72,30 +74,46 @@ pub fn process_instruction(
                 system_program_info.clone(),
             ],
         )?;
+
+        msg!("Allocate space for the associated token account");
+        invoke_signed(
+            &system_instruction::allocate(
+                associated_token_account_info.key,
+                spl_token::state::Account::LEN as u64,
+            ),
+            &[
+                associated_token_account_info.clone(),
+                system_program_info.clone(),
+            ],
+            &[associated_token_account_signer_seeds],
+        )?;
+        msg!("Assign the associated token account to the SPL Token program");
+        invoke_signed(
+            &system_instruction::assign(associated_token_account_info.key, spl_token_program_id),
+            &[
+                associated_token_account_info.clone(),
+                system_program_info.clone(),
+            ],
+            &[associated_token_account_signer_seeds],
+        )?;
+    } else {
+        msg!("Create the token account with right amount of lamports and space, and the correct owner");
+        invoke_signed(
+            &system_instruction::create_account(
+                funder_info.key,
+                associated_token_account_info.key,
+                required_lamports,
+                spl_token::state::Account::LEN as u64,
+                spl_token_program_id,
+            ),
+            &[
+                funder_info.clone(),
+                associated_token_account_info.clone(),
+                system_program_info.clone(),
+            ],
+            &[associated_token_account_signer_seeds],
+        )?;
     }
-
-    msg!("Allocate space for the associated token account");
-    invoke_signed(
-        &system_instruction::allocate(
-            associated_token_account_info.key,
-            spl_token::state::Account::LEN as u64,
-        ),
-        &[
-            associated_token_account_info.clone(),
-            system_program_info.clone(),
-        ],
-        &[associated_token_account_signer_seeds],
-    )?;
-
-    msg!("Assign the associated token account to the SPL Token program");
-    invoke_signed(
-        &system_instruction::assign(associated_token_account_info.key, spl_token_program_id),
-        &[
-            associated_token_account_info.clone(),
-            system_program_info.clone(),
-        ],
-        &[associated_token_account_signer_seeds],
-    )?;
 
     msg!("Initialize the associated token account");
     invoke(
