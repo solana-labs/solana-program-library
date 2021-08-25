@@ -45,10 +45,10 @@ pub async fn create_standard_setup<'a>(
         .unwrap());
 
     let fees = Fees {
-        trade_fee_numerator: 5,
-        trade_fee_denominator: 1000,
-        owner_trade_fee_numerator: 3,
-        owner_trade_fee_denominator: 1000,
+        trade_fee_numerator: 20,
+        trade_fee_denominator: 10000,
+        owner_trade_fee_numerator: 10,
+        owner_trade_fee_denominator: 10000,
         owner_withdraw_fee_numerator: 3,
         owner_withdraw_fee_denominator: 1000,
     };

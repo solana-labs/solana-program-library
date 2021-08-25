@@ -20,11 +20,11 @@ const POOL_TOKEN_B_AMOUNT: u64 = 600_000_000_000_000;
 const POOL_TOKEN_B2_AMOUNT: u64 = 300_000_000_000_000;
 const POOL_TOKEN_C_AMOUNT: u64 = 400_000_000_000_000;
 const USER_TOKEN_A_BAL: u64 = 200_000;
-const USER_WILL_SWAP: u64 = 100_000;
+const USER_WILL_SWAP: u64 = 99_999;
 const USER_WILL_EXPECT: u64 = 114_286;
 //const USER_WILL_RECEIVE: u64 = 112_463;
 //if 1/2 router discount used fees
-const USER_WILL_RECEIVE: u64 = 112_806;
+const USER_WILL_RECEIVE: u64 = 113_715; //after 0.5% fee
 
 #[tokio::test]
 async fn fn_swap_router_create_b_c() {
