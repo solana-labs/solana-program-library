@@ -15,6 +15,17 @@ use {
     spl_token_swap::error::SwapError,
 };
 
+const POOL_TOKEN_A_AMOUNT: u64 = 700_000_000_000_000;
+const POOL_TOKEN_B_AMOUNT: u64 = 600_000_000_000_000;
+const POOL_TOKEN_B2_AMOUNT: u64 = 300_000_000_000_000;
+const POOL_TOKEN_C_AMOUNT: u64 = 400_000_000_000_000;
+const USER_TOKEN_A_BAL: u64 = 200_000;
+const USER_WILL_SWAP: u64 = 100_000;
+const USER_WILL_EXPECT: u64 = 114_286;
+//const USER_WILL_RECEIVE: u64 = 112_463;
+//if router discount used fees
+const USER_WILL_RECEIVE: u64 = 112_691;
+
 #[tokio::test]
 async fn fn_dual_swap_create_b_c() {
     let user = Keypair::new();
@@ -32,9 +43,6 @@ async fn fn_dual_swap_create_b_c() {
     let token_c_mint_key = Keypair::new();
 
     //lp1
-    let token_a_amount = 700_000_000_000_000;
-    let token_b_amount = 600_000_000_000_000;
-
     let mut swap1 = helpers::create_standard_setup(
         &mut banks_client,
         &payer,
@@ -42,8 +50,8 @@ async fn fn_dual_swap_create_b_c() {
         None,
         &token_a_mint_key,
         &token_b_mint_key,
-        token_a_amount,
-        token_b_amount,
+        POOL_TOKEN_A_AMOUNT,
+        POOL_TOKEN_B_AMOUNT,
     )
     .await;
     swap1
@@ -52,9 +60,6 @@ async fn fn_dual_swap_create_b_c() {
         .unwrap();
 
     //lp2
-    let token_b2_amount = 300_000_000_000_000;
-    let token_c_amount = 400_000_000_000_000;
-
     let mut swap2 = helpers::create_standard_setup(
         &mut banks_client,
         &payer,
@@ -64,20 +69,21 @@ async fn fn_dual_swap_create_b_c() {
         //use the same mint as the right side of swap1
         &token_b_mint_key,
         &token_c_mint_key,
-        token_b2_amount,
-        token_c_amount,
+        POOL_TOKEN_B2_AMOUNT,
+        POOL_TOKEN_C_AMOUNT,
     )
     .await;
     swap2
         .initialize_swap(&mut banks_client, &payer, &recent_blockhash)
         .await
         .unwrap();
+
     //our test swap will be
     //100,000 A in -> 85,714 B -> 114,286 C out (excluding fees)
-    let amount_user_will_have: u64 = 200_000;
-    let amount_user_will_swap: u64 = 100_000;
-    let mut amount_user_expects: u64 = 114_286;
-    let amount_user_actually_gets: u64 = 112_463; //after fees
+    let amount_user_will_have: u64 = USER_TOKEN_A_BAL;
+    let amount_user_will_swap: u64 = USER_WILL_SWAP;
+    let mut amount_user_expects: u64 = USER_WILL_EXPECT;
+    let amount_user_actually_gets: u64 = USER_WILL_RECEIVE; //after fees
 
     //setup our users token account, owned and paid for by user
     let user_token_a = Keypair::new();
@@ -194,11 +200,8 @@ async fn fn_dual_swap_create_b() {
     let token_a_mint_key = Keypair::new();
     let token_b_mint_key = Keypair::new();
     let token_c_mint_key = Keypair::new();
-
+    
     //lp1
-    let token_a_amount = 700_000_000_000_000;
-    let token_b_amount = 600_000_000_000_000;
-
     let mut swap1 = helpers::create_standard_setup(
         &mut banks_client,
         &payer,
@@ -206,8 +209,8 @@ async fn fn_dual_swap_create_b() {
         None,
         &token_a_mint_key,
         &token_b_mint_key,
-        token_a_amount,
-        token_b_amount,
+        POOL_TOKEN_A_AMOUNT,
+        POOL_TOKEN_B_AMOUNT,
     )
     .await;
     swap1
@@ -216,9 +219,6 @@ async fn fn_dual_swap_create_b() {
         .unwrap();
 
     //lp2
-    let token_b2_amount = 300_000_000_000_000;
-    let token_c_amount = 400_000_000_000_000;
-
     let mut swap2 = helpers::create_standard_setup(
         &mut banks_client,
         &payer,
@@ -228,20 +228,21 @@ async fn fn_dual_swap_create_b() {
         //use the same mint as the right side of swap1
         &token_b_mint_key,
         &token_c_mint_key,
-        token_b2_amount,
-        token_c_amount,
+        POOL_TOKEN_B2_AMOUNT,
+        POOL_TOKEN_C_AMOUNT,
     )
     .await;
     swap2
         .initialize_swap(&mut banks_client, &payer, &recent_blockhash)
         .await
         .unwrap();
+
     //our test swap will be
     //100,000 A in -> 85,714 B -> 114,286 C out (excluding fees)
-    let amount_user_will_have: u64 = 200_000;
-    let amount_user_will_swap: u64 = 100_000;
-    let mut amount_user_expects: u64 = 114_286;
-    let amount_user_actually_gets: u64 = 112_463; //after fees
+    let amount_user_will_have: u64 = USER_TOKEN_A_BAL;
+    let amount_user_will_swap: u64 = USER_WILL_SWAP;
+    let mut amount_user_expects: u64 = USER_WILL_EXPECT;
+    let amount_user_actually_gets: u64 = USER_WILL_RECEIVE; //after fees
 
     //setup our users token account, owned and paid for by user
     let user_token_a = Keypair::new();
@@ -341,9 +342,6 @@ async fn fn_dual_swap_reuse_all() {
     let token_c_mint_key = Keypair::new();
 
     //lp1
-    let token_a_amount = 700_000_000_000_000;
-    let token_b_amount = 600_000_000_000_000;
-
     let mut swap1 = helpers::create_standard_setup(
         &mut banks_client,
         &payer,
@@ -351,8 +349,8 @@ async fn fn_dual_swap_reuse_all() {
         None,
         &token_a_mint_key,
         &token_b_mint_key,
-        token_a_amount,
-        token_b_amount,
+        POOL_TOKEN_A_AMOUNT,
+        POOL_TOKEN_B_AMOUNT,
     )
     .await;
     swap1
@@ -361,9 +359,6 @@ async fn fn_dual_swap_reuse_all() {
         .unwrap();
 
     //lp2
-    let token_b2_amount = 300_000_000_000_000;
-    let token_c_amount = 400_000_000_000_000;
-
     let mut swap2 = helpers::create_standard_setup(
         &mut banks_client,
         &payer,
@@ -373,22 +368,23 @@ async fn fn_dual_swap_reuse_all() {
         //use the same mint as the right side of swap1
         &token_b_mint_key,
         &token_c_mint_key,
-        token_b2_amount,
-        token_c_amount,
+        POOL_TOKEN_B2_AMOUNT,
+        POOL_TOKEN_C_AMOUNT,
     )
     .await;
     swap2
         .initialize_swap(&mut banks_client, &payer, &recent_blockhash)
         .await
         .unwrap();
+        
     //our test swap will be
     //100,000 A in -> 85,714 B -> 114,286 C out (excluding fees)
     let amount_user_had_token_b: u64 = 999_234_432;
     let amount_user_had_token_c: u64 = 123_345_345;
-    let amount_user_will_have: u64 = 200_000;
-    let amount_user_will_swap: u64 = 100_000;
-    let mut amount_user_expects: u64 = 114_286;
-    let amount_user_actually_gets: u64 = 112_463; //after fees
+    let amount_user_will_have: u64 = USER_TOKEN_A_BAL;
+    let amount_user_will_swap: u64 = USER_WILL_SWAP;
+    let mut amount_user_expects: u64 = USER_WILL_EXPECT;
+    let amount_user_actually_gets: u64 = USER_WILL_RECEIVE; //after fees
 
     //setup our users token account, owned and paid for by user
     let user_token_a = Keypair::new();
