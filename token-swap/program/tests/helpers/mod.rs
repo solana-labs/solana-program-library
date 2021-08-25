@@ -45,12 +45,12 @@ pub async fn create_standard_setup<'a>(
         .unwrap());
 
     let fees = Fees {
-        trade_fee_numerator: 1,
-        trade_fee_denominator: 2,
-        owner_trade_fee_numerator: 1,
-        owner_trade_fee_denominator: 10,
-        owner_withdraw_fee_numerator: 1,
-        owner_withdraw_fee_denominator: 5,
+        trade_fee_numerator: 5,
+        trade_fee_denominator: 1000,
+        owner_trade_fee_numerator: 3,
+        owner_trade_fee_denominator: 1000,
+        owner_withdraw_fee_numerator: 3,
+        owner_withdraw_fee_denominator: 1000,
     };
 
     let swap_curve = SwapCurve {
@@ -172,6 +172,13 @@ pub async fn create_account(
     transaction.sign(&[payer, account], *recent_blockhash);
     banks_client.process_transaction(transaction).await?;
     Ok(())
+}
+
+pub async fn get_token_balance(banks_client: &mut BanksClient, token: &Pubkey) -> u64 {
+    let token_account = banks_client.get_account(*token).await.unwrap().unwrap();
+    let account_info: spl_token::state::Account =
+        spl_token::state::Account::unpack_from_slice(token_account.data.as_slice()).unwrap();
+    account_info.amount
 }
 
 pub async fn create_account_with_seed(
