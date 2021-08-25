@@ -1962,6 +1962,10 @@ fn process_update_reserve_config(
         );
         return Err(LendingError::InvalidAccountOwner.into());
     }
+    if &reserve.lending_market != lending_market_info.key {
+        msg!("Reserve lending market does not match the lending market provided");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
 
     let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
     if lending_market_info.owner != program_id {
