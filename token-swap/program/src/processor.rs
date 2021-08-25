@@ -426,13 +426,14 @@ impl Processor {
         
         //second swap
 
-        let swap_info2 = next_account_info(account_info_iter)?;
-        let authority_info2 = next_account_info(account_info_iter)?;
-        let swap_source_info2 = next_account_info(account_info_iter)?;
-        let swap_destination_info2 = next_account_info(account_info_iter)?;
-        let destination_info2 = next_account_info(account_info_iter)?;
-        let pool_mint_info2 = next_account_info(account_info_iter)?;
-        let pool_fee_account_info2 = next_account_info(account_info_iter)?;
+        let swap_info = next_account_info(account_info_iter)?;
+        let authority_info = next_account_info(account_info_iter)?;
+        let source_info = destination_info; //source is prior destination
+        let swap_source_info = next_account_info(account_info_iter)?;
+        let swap_destination_info = next_account_info(account_info_iter)?;
+        let destination_info = next_account_info(account_info_iter)?;
+        let pool_mint_info = next_account_info(account_info_iter)?;
+        let pool_fee_account_info = next_account_info(account_info_iter)?;
 
         let swap_result2 = Self::process_swap_internal(
             program_id,
@@ -440,15 +441,15 @@ impl Processor {
             swap_result1.destination_amount_swapped.try_into().unwrap(),
             //this is where the slippage checks would take hold
             minimum_amount_out,
-            swap_info2,
-            authority_info2,
+            swap_info,
+            authority_info,
             user_transfer_authority_info,
-            destination_info, //source is prior destination
-            swap_source_info2,
-            swap_destination_info2,
-            destination_info2,
-            pool_mint_info2,
-            pool_fee_account_info2,
+            source_info, 
+            swap_source_info,
+            swap_destination_info,
+            destination_info,
+            pool_mint_info,
+            pool_fee_account_info,
             token_program_info,
         )?;
 
