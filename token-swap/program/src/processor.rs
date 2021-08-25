@@ -392,9 +392,9 @@ impl Processor {
         minimum_amount_out: u64,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
-        //we cut the owner fees when routing through pools by 2/3 each
-        const ROUTED_OWNER_FEE_NUMERATOR_MULT: u64 = 2;
-        const ROUTED_OWNER_FEE_DENOMINATOR_MULT: u64 = 3;
+        //we cut the owner fees when routing through pools 
+        const ROUTED_OWNER_FEE_NUMERATOR_MULT: u64 = 1;
+        const ROUTED_OWNER_FEE_DENOMINATOR_MULT: u64 = 2;
         
         let account_info_iter = &mut accounts.iter();
         let swap_info = next_account_info(account_info_iter)?;

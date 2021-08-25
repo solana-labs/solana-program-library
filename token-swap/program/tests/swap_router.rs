@@ -23,11 +23,11 @@ const USER_TOKEN_A_BAL: u64 = 200_000;
 const USER_WILL_SWAP: u64 = 100_000;
 const USER_WILL_EXPECT: u64 = 114_286;
 //const USER_WILL_RECEIVE: u64 = 112_463;
-//if router discount used fees
-const USER_WILL_RECEIVE: u64 = 112_691;
+//if 1/2 router discount used fees
+const USER_WILL_RECEIVE: u64 = 112_806;
 
 #[tokio::test]
-async fn fn_dual_swap_create_b_c() {
+async fn fn_swap_router_create_b_c() {
     let user = Keypair::new();
 
     let mut pt = helpers::program_test();
@@ -186,7 +186,7 @@ async fn fn_dual_swap_create_b_c() {
 }
 
 #[tokio::test]
-async fn fn_dual_swap_create_b() {
+async fn fn_swap_router_create_b() {
     let user = Keypair::new();
 
     let mut pt = helpers::program_test();
@@ -326,7 +326,7 @@ async fn fn_dual_swap_create_b() {
 }
 
 #[tokio::test]
-async fn fn_dual_swap_reuse_all() {
+async fn fn_swap_router_reuse_all() {
     let user = Keypair::new();
 
     let mut pt = helpers::program_test();
