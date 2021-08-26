@@ -393,8 +393,8 @@ impl Processor {
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         //we cut the owner fees when routing through pools 
-        const ROUTED_OWNER_FEE_NUMERATOR_MULT: u64 = 1;
-        const ROUTED_OWNER_FEE_DENOMINATOR_MULT: u64 = 2;
+        const ROUTED_OWNER_FEE_NUMERATOR_MULT: u64 = 6;
+        const ROUTED_OWNER_FEE_DENOMINATOR_MULT: u64 = 10;
         
         let account_info_iter = &mut accounts.iter();
         let swap_info = next_account_info(account_info_iter)?;
@@ -1284,7 +1284,7 @@ impl Processor {
                 amount_in,
                 minimum_amount_out,
             }) => {
-                msg!("Instruction: DualSwap");
+                msg!("Instruction: RoutedSwap");
                 Self::process_routed_swap(program_id, amount_in, minimum_amount_out, accounts)
             }
         }
