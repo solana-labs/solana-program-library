@@ -554,6 +554,7 @@ fn command_transfer(
     fund_recipient: bool,
     mint_decimals: Option<u8>,
     recipient_is_ata_owner: bool,
+    use_unchecked_instruction: bool,
 ) -> CommandResult {
     let sender = if let Some(sender) = sender {
         sender
@@ -692,16 +693,27 @@ fn command_transfer(
         }
     }
 
-    instructions.push(transfer_checked(
-        &spl_token::id(),
-        &sender,
-        &mint_pubkey,
-        &recipient_token_account,
-        &sender_owner,
-        &config.multisigner_pubkeys,
-        transfer_balance,
-        decimals,
-    )?);
+    if use_unchecked_instruction {
+        instructions.push(transfer(
+            &spl_token::id(),
+            &sender,
+            &recipient_token_account,
+            &sender_owner,
+            &config.multisigner_pubkeys,
+            transfer_balance,
+        )?);
+    } else {
+        instructions.push(transfer_checked(
+            &spl_token::id(),
+            &sender,
+            &mint_pubkey,
+            &recipient_token_account,
+            &sender_owner,
+            &config.multisigner_pubkeys,
+            transfer_balance,
+            decimals,
+        )?);
+    }
     Ok(Some((
         minimum_balance_for_rent_exemption,
         vec![instructions],
@@ -715,6 +727,7 @@ fn command_burn(
     ui_amount: f64,
     mint_address: Option<Pubkey>,
     mint_decimals: Option<u8>,
+    use_unchecked_instruction: bool,
 ) -> CommandResult {
     println_display(
         config,
@@ -724,15 +737,26 @@ fn command_burn(
     let (mint_pubkey, decimals) = resolve_mint_info(config, &source, mint_address, mint_decimals)?;
     let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
 
-    let instructions = vec![burn_checked(
-        &spl_token::id(),
-        &source,
-        &mint_pubkey,
-        &source_owner,
-        &config.multisigner_pubkeys,
-        amount,
-        decimals,
-    )?];
+    let instructions = if use_unchecked_instruction {
+        vec![burn(
+            &spl_token::id(),
+            &source,
+            &mint_pubkey,
+            &source_owner,
+            &config.multisigner_pubkeys,
+            amount,
+        )?]
+    } else {
+        vec![burn_checked(
+            &spl_token::id(),
+            &source,
+            &mint_pubkey,
+            &source_owner,
+            &config.multisigner_pubkeys,
+            amount,
+            decimals,
+        )?]
+    };
     Ok(Some((0, vec![instructions])))
 }
 
@@ -743,6 +767,7 @@ fn command_mint(
     recipient: Pubkey,
     mint_decimals: Option<u8>,
     mint_authority: Pubkey,
+    use_unchecked_instruction: bool,
 ) -> CommandResult {
     println_display(
         config,
@@ -755,15 +780,26 @@ fn command_mint(
     let (_, decimals) = resolve_mint_info(config, &recipient, None, mint_decimals)?;
     let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
 
-    let instructions = vec![mint_to_checked(
-        &spl_token::id(),
-        &token,
-        &recipient,
-        &mint_authority,
-        &config.multisigner_pubkeys,
-        amount,
-        decimals,
-    )?];
+    let instructions = if use_unchecked_instruction {
+        vec![mint_to(
+            &spl_token::id(),
+            &token,
+            &recipient,
+            &mint_authority,
+            &config.multisigner_pubkeys,
+            amount,
+        )?]
+    } else {
+        vec![mint_to_checked(
+            &spl_token::id(),
+            &token,
+            &recipient,
+            &mint_authority,
+            &config.multisigner_pubkeys,
+            amount,
+            decimals,
+        )?]
+    };
     Ok(Some((0, vec![instructions])))
 }
 
@@ -903,6 +939,7 @@ fn command_unwrap(
     Ok(Some((0, vec![instructions])))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn command_approve(
     config: &Config,
     account: Pubkey,
@@ -911,6 +948,7 @@ fn command_approve(
     delegate: Pubkey,
     mint_address: Option<Pubkey>,
     mint_decimals: Option<u8>,
+    use_unchecked_instruction: bool,
 ) -> CommandResult {
     println_display(
         config,
@@ -923,16 +961,27 @@ fn command_approve(
     let (mint_pubkey, decimals) = resolve_mint_info(config, &account, mint_address, mint_decimals)?;
     let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
 
-    let instructions = vec![approve_checked(
-        &spl_token::id(),
-        &account,
-        &mint_pubkey,
-        &delegate,
-        &owner,
-        &config.multisigner_pubkeys,
-        amount,
-        decimals,
-    )?];
+    let instructions = if use_unchecked_instruction {
+        vec![approve(
+            &spl_token::id(),
+            &account,
+            &delegate,
+            &owner,
+            &config.multisigner_pubkeys,
+            amount,
+        )?]
+    } else {
+        vec![approve_checked(
+            &spl_token::id(),
+            &account,
+            &mint_pubkey,
+            &delegate,
+            &owner,
+            &config.multisigner_pubkeys,
+            amount,
+            decimals,
+        )?]
+    };
     Ok(Some((0, vec![instructions])))
 }
 
@@ -1359,6 +1408,14 @@ fn main() {
                 ),
         )
         .arg(fee_payer_arg().global(true))
+        .arg(
+            Arg::with_name("use_unchecked_instruction")
+                .long("use-unchecked-instruction")
+                .takes_value(false)
+                .global(true)
+                .hidden(true)
+                .help("Use unchecked instruction if appropriate. Supports transfer, burn, mint, and approve."),
+        )
         .subcommand(SubCommand::with_name("create-token").about("Create a new token")
                 .arg(
                     Arg::with_name("token_keypair")
@@ -2302,6 +2359,7 @@ fn main() {
                 || matches.is_present("allow_unfunded_recipient");
             no_wait = matches.is_present("no_wait");
             let recipient_is_ata_owner = matches.is_present("recipient_is_ata_owner");
+            let use_unchecked_instruction = matches.is_present("use_unchecked_instruction");
 
             command_transfer(
                 &config,
@@ -2314,6 +2372,7 @@ fn main() {
                 fund_recipient,
                 mint_decimals,
                 recipient_is_ata_owner,
+                use_unchecked_instruction,
             )
         }
         ("burn", Some(arg_matches)) => {
@@ -2329,7 +2388,16 @@ fn main() {
             let mint_address =
                 pubkey_of_signer(arg_matches, MINT_ADDRESS_ARG.name, &mut wallet_manager).unwrap();
             let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
-            command_burn(&config, source, owner, amount, mint_address, mint_decimals)
+            let use_unchecked_instruction = matches.is_present("use_unchecked_instruction");
+            command_burn(
+                &config,
+                source,
+                owner,
+                amount,
+                mint_address,
+                mint_decimals,
+                use_unchecked_instruction,
+            )
         }
         ("mint", Some(arg_matches)) => {
             let (mint_authority_signer, mint_authority) =
@@ -2346,6 +2414,7 @@ fn main() {
                 &mut wallet_manager,
             );
             let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
+            let use_unchecked_instruction = matches.is_present("use_unchecked_instruction");
             command_mint(
                 &config,
                 token,
@@ -2353,6 +2422,7 @@ fn main() {
                 recipient,
                 mint_decimals,
                 mint_authority,
+                use_unchecked_instruction,
             )
         }
         ("freeze", Some(arg_matches)) => {
@@ -2419,6 +2489,7 @@ fn main() {
             let mint_address =
                 pubkey_of_signer(arg_matches, MINT_ADDRESS_ARG.name, &mut wallet_manager).unwrap();
             let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
+            let use_unchecked_instruction = matches.is_present("use_unchecked_instruction");
             command_approve(
                 &config,
                 account,
@@ -2427,6 +2498,7 @@ fn main() {
                 delegate,
                 mint_address,
                 mint_decimals,
+                use_unchecked_instruction,
             )
         }
         ("revoke", Some(arg_matches)) => {
