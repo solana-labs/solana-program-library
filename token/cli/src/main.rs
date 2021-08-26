@@ -554,7 +554,7 @@ fn command_transfer(
     fund_recipient: bool,
     mint_decimals: Option<u8>,
     recipient_is_ata_owner: bool,
-    use_legacy_unchecked_instruction: bool,
+    use_unchecked_instruction: bool,
 ) -> CommandResult {
     let sender = if let Some(sender) = sender {
         sender
@@ -693,7 +693,7 @@ fn command_transfer(
         }
     }
 
-    if use_legacy_unchecked_instruction {
+    if use_unchecked_instruction {
         instructions.push(transfer(
             &spl_token::id(),
             &sender,
@@ -727,7 +727,7 @@ fn command_burn(
     ui_amount: f64,
     mint_address: Option<Pubkey>,
     mint_decimals: Option<u8>,
-    use_legacy_unchecked_instruction: bool,
+    use_unchecked_instruction: bool,
 ) -> CommandResult {
     println_display(
         config,
@@ -737,7 +737,7 @@ fn command_burn(
     let (mint_pubkey, decimals) = resolve_mint_info(config, &source, mint_address, mint_decimals)?;
     let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
 
-    let instructions = if use_legacy_unchecked_instruction {
+    let instructions = if use_unchecked_instruction {
         vec![burn(
             &spl_token::id(),
             &source,
@@ -767,7 +767,7 @@ fn command_mint(
     recipient: Pubkey,
     mint_decimals: Option<u8>,
     mint_authority: Pubkey,
-    use_legacy_unchecked_instruction: bool,
+    use_unchecked_instruction: bool,
 ) -> CommandResult {
     println_display(
         config,
@@ -780,7 +780,7 @@ fn command_mint(
     let (_, decimals) = resolve_mint_info(config, &recipient, None, mint_decimals)?;
     let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
 
-    let instructions = if use_legacy_unchecked_instruction {
+    let instructions = if use_unchecked_instruction {
         vec![mint_to(
             &spl_token::id(),
             &token,
@@ -948,7 +948,7 @@ fn command_approve(
     delegate: Pubkey,
     mint_address: Option<Pubkey>,
     mint_decimals: Option<u8>,
-    use_legacy_unchecked_instruction: bool,
+    use_unchecked_instruction: bool,
 ) -> CommandResult {
     println_display(
         config,
@@ -961,7 +961,7 @@ fn command_approve(
     let (mint_pubkey, decimals) = resolve_mint_info(config, &account, mint_address, mint_decimals)?;
     let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
 
-    let instructions = if use_legacy_unchecked_instruction {
+    let instructions = if use_unchecked_instruction {
         vec![approve(
             &spl_token::id(),
             &account,
@@ -1409,8 +1409,8 @@ fn main() {
         )
         .arg(fee_payer_arg().global(true))
         .arg(
-            Arg::with_name("use_legacy_unchecked_instruction")
-                .long("use-legacy-unchecked-instruction")
+            Arg::with_name("use_unchecked_instruction")
+                .long("use-unchecked-instruction")
                 .takes_value(false)
                 .global(true)
                 .hidden(true)
@@ -2359,8 +2359,7 @@ fn main() {
                 || matches.is_present("allow_unfunded_recipient");
             no_wait = matches.is_present("no_wait");
             let recipient_is_ata_owner = matches.is_present("recipient_is_ata_owner");
-            let use_legacy_unchecked_instruction =
-                matches.is_present("use_legacy_unchecked_instruction");
+            let use_unchecked_instruction = matches.is_present("use_unchecked_instruction");
 
             command_transfer(
                 &config,
@@ -2373,7 +2372,7 @@ fn main() {
                 fund_recipient,
                 mint_decimals,
                 recipient_is_ata_owner,
-                use_legacy_unchecked_instruction,
+                use_unchecked_instruction,
             )
         }
         ("burn", Some(arg_matches)) => {
@@ -2389,8 +2388,7 @@ fn main() {
             let mint_address =
                 pubkey_of_signer(arg_matches, MINT_ADDRESS_ARG.name, &mut wallet_manager).unwrap();
             let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
-            let use_legacy_unchecked_instruction =
-                matches.is_present("use_legacy_unchecked_instruction");
+            let use_unchecked_instruction = matches.is_present("use_unchecked_instruction");
             command_burn(
                 &config,
                 source,
@@ -2398,7 +2396,7 @@ fn main() {
                 amount,
                 mint_address,
                 mint_decimals,
-                use_legacy_unchecked_instruction,
+                use_unchecked_instruction,
             )
         }
         ("mint", Some(arg_matches)) => {
@@ -2416,8 +2414,7 @@ fn main() {
                 &mut wallet_manager,
             );
             let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
-            let use_legacy_unchecked_instruction =
-                matches.is_present("use_legacy_unchecked_instruction");
+            let use_unchecked_instruction = matches.is_present("use_unchecked_instruction");
             command_mint(
                 &config,
                 token,
@@ -2425,7 +2422,7 @@ fn main() {
                 recipient,
                 mint_decimals,
                 mint_authority,
-                use_legacy_unchecked_instruction,
+                use_unchecked_instruction,
             )
         }
         ("freeze", Some(arg_matches)) => {
@@ -2492,8 +2489,7 @@ fn main() {
             let mint_address =
                 pubkey_of_signer(arg_matches, MINT_ADDRESS_ARG.name, &mut wallet_manager).unwrap();
             let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
-            let use_legacy_unchecked_instruction =
-                matches.is_present("use_legacy_unchecked_instruction");
+            let use_unchecked_instruction = matches.is_present("use_unchecked_instruction");
             command_approve(
                 &config,
                 account,
@@ -2502,7 +2498,7 @@ fn main() {
                 delegate,
                 mint_address,
                 mint_decimals,
-                use_legacy_unchecked_instruction,
+                use_unchecked_instruction,
             )
         }
         ("revoke", Some(arg_matches)) => {
