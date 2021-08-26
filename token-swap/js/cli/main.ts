@@ -7,10 +7,13 @@ import {
   withdrawAllTokenTypes,
   depositSingleTokenTypeExactAmountIn,
   withdrawSingleTokenTypeExactAmountOut,
+  createSecondTokenSwapForRouting,
+  routedSwap,
+  createAccountsAndRoutedSwapAtomic,
 } from './token-swap-test';
 
 async function main() {
-  // These test cases are designed to run sequentially and in the following order
+  //These test cases are designed to run sequentially and in the following order
   console.log('Run test: initialize pool registry');
   await initializePoolRegistry();
   console.log('Run test: createTokenSwap');
@@ -27,6 +30,17 @@ async function main() {
   await depositSingleTokenTypeExactAmountIn();
   console.log('Run test: withrdaw one exact amount out');
   await withdrawSingleTokenTypeExactAmountOut();
+
+  console.log('Re-Run test: initialize pool registry');
+  await initializePoolRegistry();
+  console.log('Re-Run test: createTokenSwap');
+  await createTokenSwap();
+  console.log('Run test: create second token swap');
+  await createSecondTokenSwapForRouting();
+  console.log('Run test: routed swap');
+  await routedSwap();
+  console.log('Success\n');
+  await createAccountsAndRoutedSwapAtomic();
   console.log('Success\n');
 }
 
