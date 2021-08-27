@@ -48,53 +48,16 @@ pub fn process_instruction(
         &[bump_seed],
     ];
 
-    // Fund the associated token account with the minimum balance to be rent exempt
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
-    let required_lamports = rent
-        .minimum_balance(spl_token::state::Account::LEN)
-        .max(1)
-        .saturating_sub(associated_token_account_info.lamports());
 
-    if required_lamports > 0 {
-        msg!(
-            "Transfer {} lamports to the associated token account",
-            required_lamports
-        );
-        invoke(
-            &system_instruction::transfer(
-                funder_info.key,
-                associated_token_account_info.key,
-                required_lamports,
-            ),
-            &[
-                funder_info.clone(),
-                associated_token_account_info.clone(),
-                system_program_info.clone(),
-            ],
-        )?;
-    }
-
-    msg!("Allocate space for the associated token account");
-    invoke_signed(
-        &system_instruction::allocate(
-            associated_token_account_info.key,
-            spl_token::state::Account::LEN as u64,
-        ),
-        &[
-            associated_token_account_info.clone(),
-            system_program_info.clone(),
-        ],
-        &[associated_token_account_signer_seeds],
-    )?;
-
-    msg!("Assign the associated token account to the SPL Token program");
-    invoke_signed(
-        &system_instruction::assign(associated_token_account_info.key, spl_token_program_id),
-        &[
-            associated_token_account_info.clone(),
-            system_program_info.clone(),
-        ],
-        &[associated_token_account_signer_seeds],
+    create_pda_account(
+        funder_info,
+        rent,
+        spl_token::state::Account::LEN,
+        &spl_token::id(),
+        system_program_info,
+        associated_token_account_info,
+        associated_token_account_signer_seeds,
     )?;
 
     msg!("Initialize the associated token account");
@@ -113,4 +76,60 @@ pub fn process_instruction(
             spl_token_program_info.clone(),
         ],
     )
+}
+
+fn create_pda_account<'a>(
+    funder: &AccountInfo<'a>,
+    rent: &Rent,
+    space: usize,
+    owner: &Pubkey,
+    system_program: &AccountInfo<'a>,
+    new_pda_account: &AccountInfo<'a>,
+    new_pda_signer_seeds: &[&[u8]],
+) -> ProgramResult {
+    if new_pda_account.lamports() > 0 {
+        let required_lamports = rent
+            .minimum_balance(space)
+            .max(1)
+            .saturating_sub(new_pda_account.lamports());
+
+        if required_lamports > 0 {
+            invoke(
+                &system_instruction::transfer(funder.key, new_pda_account.key, required_lamports),
+                &[
+                    funder.clone(),
+                    new_pda_account.clone(),
+                    system_program.clone(),
+                ],
+            )?;
+        }
+
+        invoke_signed(
+            &system_instruction::allocate(new_pda_account.key, space as u64),
+            &[new_pda_account.clone(), system_program.clone()],
+            &[new_pda_signer_seeds],
+        )?;
+
+        invoke_signed(
+            &system_instruction::assign(new_pda_account.key, owner),
+            &[new_pda_account.clone(), system_program.clone()],
+            &[new_pda_signer_seeds],
+        )
+    } else {
+        invoke_signed(
+            &system_instruction::create_account(
+                funder.key,
+                new_pda_account.key,
+                rent.minimum_balance(space).max(1),
+                space as u64,
+                owner,
+            ),
+            &[
+                funder.clone(),
+                new_pda_account.clone(),
+                system_program.clone(),
+            ],
+            &[new_pda_signer_seeds],
+        )
+    }
 }
