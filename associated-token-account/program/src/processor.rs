@@ -52,7 +52,7 @@ pub fn process_instruction(
 
     create_pda_account(
         funder_info,
-        &rent,
+        rent,
         spl_token::state::Account::LEN,
         &spl_token::id(),
         system_program_info,
