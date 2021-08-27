@@ -91,7 +91,7 @@
     "flow-bin": "^0.157.0",
     "flow-remove-types": "^2.145.0",
     "flow-typed": "^3.3.1",
-    "http-server": "^0.12.3",
+    "http-server": "^13.0.1",
     "mkdirp": "^1.0.4",
     "mocha": "^9.0.0",
     "mocha-headless-chrome": "^3.1.0",
