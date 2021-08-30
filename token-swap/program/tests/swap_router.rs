@@ -24,7 +24,7 @@ const USER_WILL_SWAP: u64 = 99_999;
 const USER_WILL_EXPECT: u64 = 114_286;
 //const USER_WILL_RECEIVE: u64 = 112_463;
 //if 1/2 router discount used fees
-const USER_WILL_RECEIVE: u64 = 113_715; //after 0.5% fee
+const USER_WILL_RECEIVE: u64 = 113_694; //after 0.6% fee
 
 #[tokio::test]
 async fn fn_swap_router_create_b_c() {
