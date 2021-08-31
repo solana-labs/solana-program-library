@@ -192,6 +192,7 @@ pub enum SwapInstruction {
     ///   8. `[writable]` Fee account, to receive withdrawal fees
     ///   9. '[]` Token program id
     WithdrawSingleTokenTypeExactAmountOut(WithdrawSingleTokenTypeExactAmountOut),
+
     ///   Initializes the pool registry
     ///
     /// Accounts expected:
@@ -199,6 +200,26 @@ pub enum SwapInstruction {
     /// 0. `[signer]` The account of deployer.
     /// 1. `[writable]` The pool registry account.
     InitializeRegistry(),
+
+    ///   Swap across two pools.
+    ///
+    ///   0. `[]` Token-swap
+    ///   1. `[]` swap authority
+    ///   2. `[]` user transfer authority
+    ///   3. `[writable]` token_(A|B) SOURCE Account, amount is transferable by user transfer authority,
+    ///   4. `[writable]` token_(A|B) Base Account to swap INTO.  Must be the SOURCE token.
+    ///   5. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the MIDDLE token.
+    ///   6. `[writable]` token_(A|B) MIDDLE Account assigned to USER as the owner.
+    ///   7. `[writable]` Pool token mint, to generate trading fees
+    ///   8. '[]` Token program id
+    /// 
+    ///   9. `[]` Token-swap 2
+    ///   10. `[]` swap authority 2
+    ///   11. `[writable]` token_(A|B) Base Account to swap INTO.  Must be the MIDDLE token.
+    ///   12. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the DESTINATION token.
+    ///   13. `[writable]` token_(A|B) DESTINATION Account assigned to USER as the owner.
+    ///   14. `[writable]` Pool token mint, to generate trading fees
+    RoutedSwap(Swap),
 }
 
 impl SwapInstruction {
@@ -270,6 +291,14 @@ impl SwapInstruction {
             },
             6 => Self::InitializeRegistry {
             },
+            7 => {
+                let (amount_in, rest) = Self::unpack_u64(rest)?;
+                let (minimum_amount_out, _rest) = Self::unpack_u64(rest)?;
+                Self::RoutedSwap(Swap {
+                    amount_in,
+                    minimum_amount_out,
+                })
+            }
             _ => return Err(SwapError::InvalidInstruction.into()),
         })
     }
@@ -356,6 +385,14 @@ impl SwapInstruction {
             }
             Self::InitializeRegistry() => {
                 buf.push(6);
+            }
+            Self::RoutedSwap(Swap {
+                amount_in,
+                minimum_amount_out,
+            }) => {
+                buf.push(7);
+                buf.extend_from_slice(&amount_in.to_le_bytes());
+                buf.extend_from_slice(&minimum_amount_out.to_le_bytes());
             }
         }
         buf
@@ -591,6 +628,61 @@ pub fn swap(
     if let Some(host_fee_pubkey) = host_fee_pubkey {
         accounts.push(AccountMeta::new(*host_fee_pubkey, false));
     }
+    
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    })
+}
+
+/// Creates a 'routedswap' instruction.
+pub fn routed_swap(
+    program_id: &Pubkey,
+    token_program_id: &Pubkey,
+    //swap 1
+    swap_pubkey: &Pubkey,
+    authority_pubkey: &Pubkey,
+    user_transfer_authority_pubkey: &Pubkey,
+    source_pubkey: &Pubkey,
+    swap_source_pubkey: &Pubkey,
+    swap_destination_pubkey: &Pubkey,
+    destination_pubkey: &Pubkey,
+    pool_mint_pubkey: &Pubkey,
+    pool_fee_pubkey: &Pubkey,
+    //swap 2
+    swap_pubkey2: &Pubkey,
+    authority_pubkey2: &Pubkey,
+    swap_source_pubkey2: &Pubkey,
+    swap_destination_pubkey2: &Pubkey,
+    destination_pubkey2: &Pubkey,
+    pool_mint_pubkey2: &Pubkey,
+    pool_fee_pubkey2: &Pubkey,
+
+    instruction: Swap,
+) -> Result<Instruction, ProgramError> {
+    let data = SwapInstruction::RoutedSwap(instruction).pack();
+
+    let accounts = vec![
+        AccountMeta::new_readonly(*swap_pubkey, false),
+        AccountMeta::new_readonly(*authority_pubkey, false),
+        AccountMeta::new_readonly(*user_transfer_authority_pubkey, true),
+        AccountMeta::new(*source_pubkey, false),
+        AccountMeta::new(*swap_source_pubkey, false),
+        AccountMeta::new(*swap_destination_pubkey, false),
+        AccountMeta::new(*destination_pubkey, false),
+        AccountMeta::new(*pool_mint_pubkey, false),
+        AccountMeta::new(*pool_fee_pubkey, false),
+        AccountMeta::new_readonly(*token_program_id, false),
+
+        AccountMeta::new_readonly(*swap_pubkey2, false),
+        AccountMeta::new_readonly(*authority_pubkey2, false),
+        AccountMeta::new(*swap_source_pubkey2, false),
+        AccountMeta::new(*swap_destination_pubkey2, false),
+        AccountMeta::new(*destination_pubkey2, false),
+        AccountMeta::new(*pool_mint_pubkey2, false),
+        AccountMeta::new(*pool_fee_pubkey2, false),
+    ];
 
     Ok(Instruction {
         program_id: *program_id,

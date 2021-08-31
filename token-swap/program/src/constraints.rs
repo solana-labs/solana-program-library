@@ -62,7 +62,7 @@ impl<'a> SwapConstraints<'a> {
 const OWNER_KEY: &str = env!("SWAP_PROGRAM_OWNER_FEE_ADDRESS");
 #[cfg(feature = "production")]
 const FEES: &Fees = &Fees {
-    trade_fee_numerator: 0,
+    trade_fee_numerator: 20,
     trade_fee_denominator: 10000,
     owner_trade_fee_numerator: 10,
     owner_trade_fee_denominator: 10000,

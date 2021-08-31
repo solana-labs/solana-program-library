@@ -3,7 +3,7 @@
 use crate::constraints::{SwapConstraints, SWAP_CONSTRAINTS};
 use crate::{
     curve::{
-        base::SwapCurve,
+        base::{SwapCurve, SwapResult},
         calculator::{RoundDirection, TradeDirection},
         fees::Fees,
     },
@@ -385,6 +385,96 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes an [DualSwap](enum.Instruction.html).
+    pub fn process_routed_swap(
+        program_id: &Pubkey,
+        amount_in: u64,
+        minimum_amount_out: u64,
+        accounts: &[AccountInfo],
+    ) -> ProgramResult {
+        //we cut the owner fees when routing through pools 
+        const ROUTED_OWNER_FEE_NUMERATOR_MULT: u64 = 6;
+        const ROUTED_OWNER_FEE_DENOMINATOR_MULT: u64 = 10;
+        
+        let account_info_iter = &mut accounts.iter();
+        let swap_info = next_account_info(account_info_iter)?;
+        let authority_info = next_account_info(account_info_iter)?;
+        let user_transfer_authority_info = next_account_info(account_info_iter)?;
+        let source_info = next_account_info(account_info_iter)?;
+        let swap_source_info = next_account_info(account_info_iter)?;
+        let swap_destination_info = next_account_info(account_info_iter)?;
+        let destination_info = next_account_info(account_info_iter)?;
+        let pool_mint_info = next_account_info(account_info_iter)?;
+        let pool_fee_account_info = next_account_info(account_info_iter)?;
+        let token_program_info = next_account_info(account_info_iter)?;
+
+        //we could knock the owner fee in half since its a double swap
+        if swap_info.owner != program_id {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+        let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
+        let new_numerator = token_swap.fees()
+            .owner_trade_fee_numerator.checked_mul(ROUTED_OWNER_FEE_NUMERATOR_MULT).unwrap();
+        let new_denominator = token_swap.fees()
+            .owner_trade_fee_denominator.checked_mul(ROUTED_OWNER_FEE_DENOMINATOR_MULT).unwrap();
+
+        let swap_result1 = Self::process_swap_internal(
+            program_id,
+            amount_in,
+            //we frankly don't care how much this swaps, we'll do the min out check on the second swap
+            0,
+            swap_info,
+            authority_info,
+            user_transfer_authority_info,
+            source_info,
+            swap_source_info,
+            swap_destination_info,
+            destination_info,
+            pool_mint_info,
+            pool_fee_account_info,
+            token_program_info,
+            //None,
+            Some((new_numerator,new_denominator)),
+        )?;
+
+        msg!("first swap: {:?}", swap_result1);
+         
+        //second swap
+
+        let swap_info = next_account_info(account_info_iter)?;
+        let authority_info = next_account_info(account_info_iter)?;
+        let source_info = destination_info; //source is prior destination
+        let swap_source_info = next_account_info(account_info_iter)?;
+        let swap_destination_info = next_account_info(account_info_iter)?;
+        let destination_info = next_account_info(account_info_iter)?;
+        let pool_mint_info = next_account_info(account_info_iter)?;
+        let pool_fee_account_info = next_account_info(account_info_iter)?;
+
+        let swap_result2 = Self::process_swap_internal(
+            program_id,
+            //amount of swap1 out becomes swap 2 in
+            swap_result1.destination_amount_swapped.try_into().unwrap(),
+            //this is where the slippage checks would take hold
+            minimum_amount_out,
+            swap_info,
+            authority_info,
+            user_transfer_authority_info,
+            source_info, 
+            swap_source_info,
+            swap_destination_info,
+            destination_info,
+            pool_mint_info,
+            pool_fee_account_info,
+            token_program_info,
+            //None,
+            Some((new_numerator,new_denominator)),
+        )?;
+
+        msg!("second swap: {:?}", swap_result2);
+
+        Ok(())
+    }
+
     /// Processes an [Swap](enum.Instruction.html).
     pub fn process_swap(
         program_id: &Pubkey,
@@ -403,6 +493,43 @@ impl Processor {
         let pool_mint_info = next_account_info(account_info_iter)?;
         let pool_fee_account_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
+
+        let _swap_result = Self::process_swap_internal(
+            program_id,
+            amount_in,
+            minimum_amount_out,
+            swap_info,
+            authority_info,
+            user_transfer_authority_info,
+            source_info,
+            swap_source_info,
+            swap_destination_info,
+            destination_info,
+            pool_mint_info,
+            pool_fee_account_info,
+            token_program_info,
+            None,
+        )?;
+
+        Ok(())
+    }
+
+    fn process_swap_internal<'a> (
+        program_id: &Pubkey,
+        amount_in: u64,
+        minimum_amount_out: u64,
+        swap_info: &AccountInfo<'a>,
+        authority_info: &AccountInfo<'a>,
+        user_transfer_authority_info: &AccountInfo<'a>,
+        source_info: &AccountInfo<'a>,
+        swap_source_info: &AccountInfo<'a>,
+        swap_destination_info: &AccountInfo<'a>,
+        destination_info: &AccountInfo<'a>,
+        pool_mint_info: &AccountInfo<'a>,
+        pool_fee_account_info: &AccountInfo<'a>,
+        token_program_info: &AccountInfo<'a>,
+        owner_trade_fee_numerator_denominator_override: Option<(u64,u64)>,
+    ) -> Result<SwapResult, ProgramError> {
 
         if swap_info.owner != program_id {
             return Err(ProgramError::IncorrectProgramId);
@@ -442,6 +569,13 @@ impl Processor {
             return Err(SwapError::IncorrectTokenProgramId.into());
         }
 
+        let mut fees = token_swap.fees().clone();
+        if owner_trade_fee_numerator_denominator_override.is_some() {
+            let nd = owner_trade_fee_numerator_denominator_override.unwrap();
+            fees.owner_trade_fee_numerator = nd.0;
+            fees.owner_trade_fee_denominator = nd.1;
+        }
+
         let source_account =
             Self::unpack_token_account(swap_source_info, token_swap.token_program_id())?;
         let dest_account =
@@ -460,7 +594,7 @@ impl Processor {
                 to_u128(source_account.amount)?,
                 to_u128(dest_account.amount)?,
                 trade_direction,
-                token_swap.fees(),
+                &fees,
             )
             .ok_or(SwapError::ZeroTradingTokens)?;
         if result.destination_amount_swapped < to_u128(minimum_amount_out)? {
@@ -522,7 +656,7 @@ impl Processor {
             to_u64(result.destination_amount_swapped)?,
         )?;
 
-        Ok(())
+        Ok(result)
     }
 
     /// Processes an [DepositAllTokenTypes](enum.Instruction.html).
@@ -1145,6 +1279,13 @@ impl Processor {
                     program_id,
                     accounts,
                 )
+            }
+            SwapInstruction::RoutedSwap(Swap {
+                amount_in,
+                minimum_amount_out,
+            }) => {
+                msg!("Instruction: RoutedSwap");
+                Self::process_routed_swap(program_id, amount_in, minimum_amount_out, accounts)
             }
         }
     }

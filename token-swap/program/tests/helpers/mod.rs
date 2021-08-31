@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use {
-    solana_program::{hash::Hash, program_pack::Pack, pubkey::Pubkey, system_instruction},
+    solana_program::{instruction::Instruction, hash::Hash, program_pack::Pack, pubkey::Pubkey, system_instruction},
     solana_program_test::*,
     solana_sdk::{
         signature::{Keypair, Signer},
@@ -29,22 +29,28 @@ pub fn program_test() -> ProgramTest {
     )
 }
 
-pub async fn create_standard_setup(
+pub async fn create_standard_setup<'a>(
     banks_client: &mut BanksClient,
     payer: &Keypair,
     recent_blockhash: &Hash,
+    pool_registry_key: Option<Pubkey>,
+    token_a_mint: &'a Keypair,
+    token_b_mint: &'a Keypair,
     token_a_amount: u64,
     token_b_amount: u64,
-) -> TokenSwapAccounts {
-    let pool_registry_key = create_pool_registry(banks_client, payer, recent_blockhash, payer).await.unwrap();
+) -> TokenSwapAccounts<'a> {
+    let pool_registry_key = pool_registry_key.unwrap_or(
+        create_pool_registry(banks_client, payer, recent_blockhash, payer)
+        .await
+        .unwrap());
 
     let fees = Fees {
-        trade_fee_numerator: 1,
-        trade_fee_denominator: 2,
-        owner_trade_fee_numerator: 1,
-        owner_trade_fee_denominator: 10,
-        owner_withdraw_fee_numerator: 1,
-        owner_withdraw_fee_denominator: 5,
+        trade_fee_numerator: 20,
+        trade_fee_denominator: 10000,
+        owner_trade_fee_numerator: 10,
+        owner_trade_fee_denominator: 10000,
+        owner_withdraw_fee_numerator: 3,
+        owner_withdraw_fee_denominator: 1000,
     };
 
     let swap_curve = SwapCurve {
@@ -59,6 +65,8 @@ pub async fn create_standard_setup(
         pool_registry_key,
         fees,
         swap_curve,
+        token_a_mint,
+        token_b_mint,
         token_a_amount,
         token_b_amount,
     )
@@ -164,6 +172,13 @@ pub async fn create_account(
     transaction.sign(&[payer, account], *recent_blockhash);
     banks_client.process_transaction(transaction).await?;
     Ok(())
+}
+
+pub async fn get_token_balance(banks_client: &mut BanksClient, token: &Pubkey) -> u64 {
+    let token_account = banks_client.get_account(*token).await.unwrap().unwrap();
+    let account_info: spl_token::state::Account =
+        spl_token::state::Account::unpack_from_slice(token_account.data.as_slice()).unwrap();
+    account_info.amount
 }
 
 pub async fn create_account_with_seed(
@@ -361,16 +376,16 @@ pub async fn create_pool_registry(
     Ok(pool_registry_key)
 }
 
-pub struct TokenSwapAccounts {
+pub struct TokenSwapAccounts<'a> {
     pub fees: Fees,
     pub swap_curve: SwapCurve,
     pub swap_pubkey: Pubkey,
     pub authority_pubkey: Pubkey,
     pub nonce: u8,
     pub token_a_key: Keypair,
-    pub token_a_mint_key: Keypair,
+    pub token_a_mint_key: &'a Keypair,
     pub token_b_key: Keypair,
-    pub token_b_mint_key: Keypair,
+    pub token_b_mint_key: &'a Keypair,
     pub pool_mint_key: Keypair,
     pub pool_fee_key: Keypair,
     pub pool_token_key: Keypair,
@@ -378,7 +393,7 @@ pub struct TokenSwapAccounts {
     pub pool_nonce: u8,
 }
 
-impl TokenSwapAccounts {
+impl<'a> TokenSwapAccounts<'a> {
     pub async fn new(
         mut banks_client: &mut BanksClient,
         payer: &Keypair,
@@ -386,13 +401,13 @@ impl TokenSwapAccounts {
         pool_registry_pubkey: Pubkey,
         fees: Fees,
         swap_curve: SwapCurve,
+        token_a_mint_key: &'a Keypair,
+        token_b_mint_key: &'a Keypair,
         token_a_amount: u64,
         token_b_amount: u64,
-    ) -> Self {
+    ) -> TokenSwapAccounts<'a> {
         //random keys for these
-        let token_a_mint_key = Keypair::new();
         let token_a_key = Keypair::new();
-        let token_b_mint_key = Keypair::new();
         let token_b_key = Keypair::new();
         let pool_mint_key = Keypair::new();
         let pool_fee_key = Keypair::new();
@@ -485,6 +500,7 @@ impl TokenSwapAccounts {
         )
         .await
         .unwrap();
+
         //create the B mint and pool's token account
         create_mint(
             &mut banks_client,
@@ -560,6 +576,109 @@ impl TokenSwapAccounts {
                 self.pool_nonce,
             )
             .unwrap()],
+            Some(&payer.pubkey()),
+        );
+        transaction.sign(&[payer], *recent_blockhash);
+        banks_client.process_transaction(transaction).await?;
+        Ok(())
+    }
+
+    pub async fn routed_swap(
+        &mut self,
+        banks_client: &mut BanksClient,
+        payer: &Keypair,
+        recent_blockhash: &Hash,
+        other_swap: &TokenSwapAccounts<'a>,
+        token_a: &Pubkey,
+        token_b: Option<&Pubkey>,
+        token_c: Option<&Pubkey>,
+        amt_in: u64,
+        amt_out: u64,
+    ) -> Result<(), TransportError> {
+        let mut ins = Vec::<Instruction>::new();
+        let mut created_token_b = false;
+        //if token_b needs created, create it
+        let token_b = match token_b {
+            Some(t) => *t,
+            _ => {
+                //create ata
+                ins.push(spl_associated_token_account::create_associated_token_account(
+                    &payer.pubkey(), 
+                    &payer.pubkey(), 
+                    &self.token_b_mint_key.pubkey(),
+                ));
+                created_token_b = true;
+                spl_associated_token_account::get_associated_token_address(
+                    &payer.pubkey(), 
+                    &self.token_b_mint_key.pubkey(),
+                )
+            },
+        };
+        //if token_c needs created, create it
+        let token_c = match token_c {
+            Some(t) => *t,
+            _ => {
+                //create ata
+                ins.push(spl_associated_token_account::create_associated_token_account(
+                    &payer.pubkey(), 
+                    &payer.pubkey(), 
+                    &other_swap.token_b_mint_key.pubkey(),
+                ));
+                spl_associated_token_account::get_associated_token_address(
+                    &payer.pubkey(), 
+                    &other_swap.token_b_mint_key.pubkey(),
+                )
+            },
+        };
+
+        //swap ins
+        ins.push(
+            instruction::routed_swap(
+                &id(),
+                &spl_token::id(),
+                &self.swap_pubkey,
+                &self.authority_pubkey,
+                &payer.pubkey(),
+                token_a,
+                &self.token_a_key.pubkey(),
+                &self.token_b_key.pubkey(),
+                &token_b,
+                &self.pool_mint_key.pubkey(),
+                &self.pool_fee_key.pubkey(),
+
+                &other_swap.swap_pubkey,
+                &other_swap.authority_pubkey,
+                &other_swap.token_a_key.pubkey(),
+                &other_swap.token_b_key.pubkey(),
+                &token_c,
+                &other_swap.pool_mint_key.pubkey(),
+                &other_swap.pool_fee_key.pubkey(),
+                instruction::Swap {
+                    amount_in: amt_in,
+                    minimum_amount_out: amt_out,
+                },
+            ).unwrap()
+        );
+
+        //cleanup the intermediary token account if we created it
+        if created_token_b {
+            ins.push(
+                spl_token::instruction::close_account(
+                    &spl_token::id(), 
+                    &token_b, 
+                    &payer.pubkey(), 
+                    &payer.pubkey(), 
+                    &[
+                        &payer.pubkey()
+                    ]
+                ).unwrap()
+            );
+        }
+
+        //now create and execute tx
+        
+        let mut transaction = Transaction::new_with_payer(
+            &ins.into_boxed_slice(),
             Some(&payer.pubkey()),
         );
         transaction.sign(&[payer], *recent_blockhash);

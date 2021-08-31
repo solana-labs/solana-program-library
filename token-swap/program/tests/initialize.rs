@@ -27,7 +27,9 @@ use {
 async fn fn_test_initialize_fail_wrong_swap_acct() {
     let (mut banks_client, payer, recent_blockhash) = helpers::program_test().start().await;
 
-    let mut swap = helpers::create_standard_setup(&mut banks_client, &payer, &recent_blockhash, 1000, 2000).await;
+    let mint_a = Keypair::new();
+    let mint_b = Keypair::new();
+    let mut swap = helpers::create_standard_setup(&mut banks_client, &payer, &recent_blockhash, None, &mint_a, &mint_b, 1000, 2000).await;
 
     // wrong pda for swap account
     swap.swap_pubkey = Pubkey::new_unique();
@@ -54,7 +56,9 @@ async fn fn_test_initialize_fail_wrong_swap_acct() {
 async fn fn_test_initialize_fail_wrong_nonce() {
     let (mut banks_client, payer, recent_blockhash) = helpers::program_test().start().await;
 
-    let mut swap = helpers::create_standard_setup(&mut banks_client, &payer, &recent_blockhash, 1000, 2000).await;
+    let mint_a = Keypair::new();
+    let mint_b = Keypair::new();
+    let mut swap = helpers::create_standard_setup(&mut banks_client, &payer, &recent_blockhash, None, &mint_a, &mint_b, 1000, 2000).await;
 
     // wrong nonce for authority_key
     swap.nonce -= 1;
@@ -81,7 +85,9 @@ async fn fn_test_initialize_fail_wrong_nonce() {
 async fn fn_test_initialize_fail_uninit_token_a() {
     let (mut banks_client, payer, recent_blockhash) = helpers::program_test().start().await;
 
-    let mut swap = helpers::create_standard_setup(&mut banks_client, &payer, &recent_blockhash, 1000, 2000).await;
+    let mint_a = Keypair::new();
+    let mint_b = Keypair::new();
+    let mut swap = helpers::create_standard_setup(&mut banks_client, &payer, &recent_blockhash, None, &mint_a, &mint_b, 1000, 2000).await;
 
     // uninitialized token a account
     let token_a_key = Keypair::new();
@@ -121,7 +127,9 @@ async fn fn_test_initialize_fail_uninit_token_a() {
 async fn fn_test_initialize_fail_uninit_token_b() {
     let (mut banks_client, payer, recent_blockhash) = helpers::program_test().start().await;
 
-    let mut swap = helpers::create_standard_setup(&mut banks_client, &payer, &recent_blockhash, 1000, 2000).await;
+    let mint_a = Keypair::new();
+    let mint_b = Keypair::new();
+    let mut swap = helpers::create_standard_setup(&mut banks_client, &payer, &recent_blockhash, None, &mint_a, &mint_b, 1000, 2000).await;
 
     // uninitialized token b account
     let token_b_key = Keypair::new();
@@ -161,7 +169,9 @@ async fn fn_test_initialize_fail_uninit_token_b() {
 async fn fn_test_initialize_fail_uninit_pool_mint() {
     let (mut banks_client, payer, recent_blockhash) = helpers::program_test().start().await;
 
-    let mut swap = helpers::create_standard_setup(&mut banks_client, &payer, &recent_blockhash, 1000, 2000).await;
+    let mint_a = Keypair::new();
+    let mint_b = Keypair::new();
+    let mut swap = helpers::create_standard_setup(&mut banks_client, &payer, &recent_blockhash, None, &mint_a, &mint_b, 1000, 2000).await;
 
     // uninitialized pool mint
     let pool_mint_key = Keypair::new();
@@ -201,7 +211,9 @@ async fn fn_test_initialize_fail_uninit_pool_mint() {
 async fn fn_test_initialize_fail_token_a_wrong_owner() {
     let (mut banks_client, payer, recent_blockhash) = helpers::program_test().start().await;
 
-    let mut swap = helpers::create_standard_setup(&mut banks_client, &payer, &recent_blockhash, 1000, 2000).await;
+    let mint_a = Keypair::new();
+    let mint_b = Keypair::new();
+    let mut swap = helpers::create_standard_setup(&mut banks_client, &payer, &recent_blockhash, None, &mint_a, &mint_b, 1000, 2000).await;
 
     // token A account owner is not swap authority
     let new_account = Keypair::new();
@@ -252,7 +264,9 @@ async fn fn_test_initialize_fail_token_a_wrong_owner() {
 async fn fn_test_initialize_fail_token_b_wrong_owner() {
     let (mut banks_client, payer, recent_blockhash) = helpers::program_test().start().await;
 
-    let mut swap = helpers::create_standard_setup(&mut banks_client, &payer, &recent_blockhash, 1000, 2000).await;
+    let mint_a = Keypair::new();
+    let mint_b = Keypair::new();
+    let mut swap = helpers::create_standard_setup(&mut banks_client, &payer, &recent_blockhash, None, &mint_a, &mint_b, 1000, 2000).await;
 
     // token B account owner is not swap authority
     let new_account = Keypair::new();
@@ -303,7 +317,9 @@ async fn fn_test_initialize_fail_token_b_wrong_owner() {
 async fn fn_test_initialize_fail_pool_token_owner_is_swap_authority() {
     let (mut banks_client, payer, recent_blockhash) = helpers::program_test().start().await;
 
-    let mut swap = helpers::create_standard_setup(&mut banks_client, &payer, &recent_blockhash, 1000, 2000).await;
+    let mint_a = Keypair::new();
+    let mint_b = Keypair::new();
+    let mut swap = helpers::create_standard_setup(&mut banks_client, &payer, &recent_blockhash, None, &mint_a, &mint_b, 1000, 2000).await;
 
     // pool token account owner is swap authority
     //change the pool token account owner
@@ -340,7 +356,9 @@ async fn fn_test_initialize_fail_pool_token_owner_is_swap_authority() {
 async fn fn_test_initialize_fail_pool_mint_auth_is_not_swap_authority() {
     let (mut banks_client, payer, recent_blockhash) = helpers::program_test().start().await;
 
-    let mut swap = helpers::create_standard_setup(&mut banks_client, &payer, &recent_blockhash, 1000, 2000).await;
+    let mint_a = Keypair::new();
+    let mint_b = Keypair::new();
+    let mut swap = helpers::create_standard_setup(&mut banks_client, &payer, &recent_blockhash, None, &mint_a, &mint_b, 1000, 2000).await;
 
     // pool mint authority is not swap authority
 
@@ -383,7 +401,9 @@ async fn fn_test_initialize_fail_pool_mint_auth_is_not_swap_authority() {
 async fn fn_test_initialize_fail_pool_mint_auth_has_freeze_authority() {
     let (mut banks_client, payer, recent_blockhash) = helpers::program_test().start().await;
 
-    let mut swap = helpers::create_standard_setup(&mut banks_client, &payer, &recent_blockhash, 1000, 2000).await;
+    let mint_a = Keypair::new();
+    let mint_b = Keypair::new();
+    let mut swap = helpers::create_standard_setup(&mut banks_client, &payer, &recent_blockhash, None, &mint_a, &mint_b, 1000, 2000).await;
 
     // pool mint token has freeze authority
 
@@ -429,7 +449,9 @@ async fn fn_test_initialize_fail_pool_mint_auth_has_freeze_authority() {
 async fn fn_test_initialize_pass() {
     let (mut banks_client, payer, recent_blockhash) = helpers::program_test().start().await;
 
-    let mut swap = helpers::create_standard_setup(&mut banks_client, &payer, &recent_blockhash, 1000, 2000).await;
+    let mint_a = Keypair::new();
+    let mint_b = Keypair::new();
+    let mut swap = helpers::create_standard_setup(&mut banks_client, &payer, &recent_blockhash, None, &mint_a, &mint_b, 1000, 2000).await;
 
     // create valid swap
     swap.initialize_swap(&mut banks_client, &payer, &recent_blockhash)
@@ -493,7 +515,9 @@ async fn fn_test_initialize_pass() {
 async fn fn_test_initialize_twice() {
     let (mut banks_client, payer, recent_blockhash) = helpers::program_test().start().await;
 
-    let mut swap = helpers::create_standard_setup(&mut banks_client, &payer, &recent_blockhash, 1000, 2000).await;
+    let mint_a = Keypair::new();
+    let mint_b = Keypair::new();
+    let mut swap = helpers::create_standard_setup(&mut banks_client, &payer, &recent_blockhash, None, &mint_a, &mint_b, 1000, 2000).await;
 
     // create valid swap
     swap.initialize_swap(&mut banks_client, &payer, &recent_blockhash)
@@ -550,13 +574,17 @@ async fn fn_test_initialize_invalid_flat_swap() {
     let token_a_amount = 1000;
     let token_b_amount = 2000;
 
-    let mut swap = helpers::TokenSwapAccounts::new(
+    let mint_a = Keypair::new();
+    let mint_b = Keypair::new();
+    let mut swap: helpers::TokenSwapAccounts = helpers::TokenSwapAccounts::new(
         &mut banks_client,
         &payer,
         &recent_blockhash,
         pool_registry_key,
         fees,
         swap_curve,
+        &mint_a,
+        &mint_b,
         token_a_amount,
         token_b_amount,
     )
@@ -604,13 +632,17 @@ async fn fn_test_initialize_valid_flat_swap() {
     let token_a_amount = 1000;
     let token_b_amount = 2000;
 
-    let mut swap = helpers::TokenSwapAccounts::new(
+    let mint_a = Keypair::new();
+    let mint_b = Keypair::new();
+    let mut swap: helpers::TokenSwapAccounts = helpers::TokenSwapAccounts::new(
         &mut banks_client,
         &payer,
         &recent_blockhash,
         pool_registry_key,
         fees,
         swap_curve,
+        &mint_a,
+        &mint_b,
         token_a_amount,
         token_b_amount,
     )
@@ -644,13 +676,17 @@ async fn fn_test_initialize_invalid_offset_swap() {
     let token_a_amount = 1000;
     let token_b_amount = 2000;
 
-    let mut swap = helpers::TokenSwapAccounts::new(
+    let mint_a = Keypair::new();
+    let mint_b = Keypair::new();
+    let mut swap: helpers::TokenSwapAccounts = helpers::TokenSwapAccounts::new(
         &mut banks_client,
         &payer,
         &recent_blockhash,
         pool_registry_key,
         fees,
         swap_curve,
+        &mint_a,
+        &mint_b,
         token_a_amount,
         token_b_amount,
     )
@@ -698,13 +734,17 @@ async fn fn_test_initialize_valid_offset_swap() {
     let token_a_amount = 1000;
     let token_b_amount = 2000;
 
-    let mut swap = helpers::TokenSwapAccounts::new(
+    let mint_a = Keypair::new();
+    let mint_b = Keypair::new();
+    let mut swap: helpers::TokenSwapAccounts = helpers::TokenSwapAccounts::new(
         &mut banks_client,
         &payer,
         &recent_blockhash,
         pool_registry_key,
         fees,
         swap_curve,
+        &mint_a,
+        &mint_b,
         token_a_amount,
         token_b_amount,
     )
