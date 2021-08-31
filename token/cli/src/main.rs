@@ -14,6 +14,7 @@ use solana_clap_utils::{
         is_valid_signer, normalize_to_url_if_moniker,
     },
     keypair::{signer_from_path, CliSignerInfo},
+    memo::memo_arg,
     nonce::*,
     offline::{self, *},
     ArgConstant,
@@ -555,6 +556,7 @@ fn command_transfer(
     mint_decimals: Option<u8>,
     recipient_is_ata_owner: bool,
     use_unchecked_instruction: bool,
+    memo: Option<String>,
 ) -> CommandResult {
     let sender = if let Some(sender) = sender {
         sender
@@ -714,12 +716,16 @@ fn command_transfer(
             decimals,
         )?);
     }
+    if let Some(text) = memo {
+        instructions.push(spl_memo::build_memo(text.as_bytes(), &[&config.fee_payer]));
+    }
     Ok(Some((
         minimum_balance_for_rent_exemption,
         vec![instructions],
     )))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn command_burn(
     config: &Config,
     source: Pubkey,
@@ -728,6 +734,7 @@ fn command_burn(
     mint_address: Option<Pubkey>,
     mint_decimals: Option<u8>,
     use_unchecked_instruction: bool,
+    memo: Option<String>,
 ) -> CommandResult {
     println_display(
         config,
@@ -737,7 +744,7 @@ fn command_burn(
     let (mint_pubkey, decimals) = resolve_mint_info(config, &source, mint_address, mint_decimals)?;
     let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
 
-    let instructions = if use_unchecked_instruction {
+    let mut instructions = if use_unchecked_instruction {
         vec![burn(
             &spl_token::id(),
             &source,
@@ -757,6 +764,9 @@ fn command_burn(
             decimals,
         )?]
     };
+    if let Some(text) = memo {
+        instructions.push(spl_memo::build_memo(text.as_bytes(), &[&config.fee_payer]));
+    }
     Ok(Some((0, vec![instructions])))
 }
 
@@ -1458,13 +1468,8 @@ fn main() {
                             "Enable the mint authority to freeze associated token accounts."
                         ),
                 )
-                .arg(
-                    Arg::with_name("memo")
-                        .long("memo")
-                        .takes_value(true)
-                        .help("Specify text that should be written as a memo when the token is created"),
-                )
                 .nonce_args(true)
+                .arg(memo_arg())
                 .offline_args(),
         )
         .subcommand(
@@ -1682,6 +1687,7 @@ fn main() {
                 .arg(multisig_signer_arg())
                 .arg(mint_decimals_arg())
                 .nonce_args(true)
+                .arg(memo_arg())
                 .offline_args_config(&SignOnlyNeedsMintDecimals{}),
         )
         .subcommand(
@@ -1715,6 +1721,7 @@ fn main() {
                 .arg(multisig_signer_arg())
                 .mint_args()
                 .nonce_args(true)
+                .arg(memo_arg())
                 .offline_args_config(&SignOnlyNeedsFullMintSpec{}),
         )
         .subcommand(
@@ -2360,6 +2367,7 @@ fn main() {
             no_wait = matches.is_present("no_wait");
             let recipient_is_ata_owner = matches.is_present("recipient_is_ata_owner");
             let use_unchecked_instruction = matches.is_present("use_unchecked_instruction");
+            let memo = value_t!(arg_matches, "memo", String).ok();
 
             command_transfer(
                 &config,
@@ -2373,6 +2381,7 @@ fn main() {
                 mint_decimals,
                 recipient_is_ata_owner,
                 use_unchecked_instruction,
+                memo,
             )
         }
         ("burn", Some(arg_matches)) => {
@@ -2389,6 +2398,7 @@ fn main() {
                 pubkey_of_signer(arg_matches, MINT_ADDRESS_ARG.name, &mut wallet_manager).unwrap();
             let mint_decimals = value_of::<u8>(arg_matches, MINT_DECIMALS_ARG.name);
             let use_unchecked_instruction = matches.is_present("use_unchecked_instruction");
+            let memo = value_t!(arg_matches, "memo", String).ok();
             command_burn(
                 &config,
                 source,
@@ -2397,6 +2407,7 @@ fn main() {
                 mint_address,
                 mint_decimals,
                 use_unchecked_instruction,
+                memo,
             )
         }
         ("mint", Some(arg_matches)) => {
