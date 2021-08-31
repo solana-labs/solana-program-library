@@ -19,7 +19,7 @@ use solana_program::{bpf_loader, entrypoint::ProgramResult, pubkey::Pubkey, syst
 
 pub struct NativeTokenSwap {
     pub user_account: NativeAccountData,
-    pub nonce: u8,
+    pub bump_seed: u8,
     pub authority_account: NativeAccountData,
     pub fees: Fees,
     pub swap_curve: SwapCurve,
@@ -51,7 +51,7 @@ impl NativeTokenSwap {
         user_account.is_signer = true;
         let mut swap_account =
             NativeAccountData::new(SwapVersion::LATEST_LEN, spl_token_swap::id());
-        let (authority_key, nonce) = Pubkey::find_program_address(
+        let (authority_key, bump_seed) = Pubkey::find_program_address(
             &[&swap_account.key.to_bytes()[..]],
             &spl_token_swap::id(),
         );
@@ -86,7 +86,6 @@ impl NativeTokenSwap {
             &pool_mint_account.key,
             &pool_fee_account.key,
             &pool_token_account.key,
-            nonce,
             fees.clone(),
             swap_curve.clone(),
         )
@@ -109,7 +108,7 @@ impl NativeTokenSwap {
 
         Self {
             user_account,
-            nonce,
+            bump_seed,
             authority_account,
             fees,
             swap_curve,

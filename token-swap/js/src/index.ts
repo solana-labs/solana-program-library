@@ -57,7 +57,7 @@ export class Numberu64 extends BN {
 export const TokenSwapLayout = BufferLayout.struct([
   BufferLayout.u8('version'),
   BufferLayout.u8('isInitialized'),
-  BufferLayout.u8('nonce'),
+  BufferLayout.u8('bumpSeed'),
   Layout.publicKey('tokenProgramId'),
   Layout.publicKey('tokenAccountA'),
   Layout.publicKey('tokenAccountB'),
@@ -180,7 +180,6 @@ export class TokenSwap {
     tokenAccountPool: PublicKey,
     tokenProgramId: PublicKey,
     swapProgramId: PublicKey,
-    nonce: number,
     tradeFeeNumerator: number,
     tradeFeeDenominator: number,
     ownerTradeFeeNumerator: number,
@@ -204,7 +203,6 @@ export class TokenSwap {
     ];
     const commandDataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
-      BufferLayout.u8('nonce'),
       BufferLayout.nu64('tradeFeeNumerator'),
       BufferLayout.nu64('tradeFeeDenominator'),
       BufferLayout.nu64('ownerTradeFeeNumerator'),
@@ -228,7 +226,6 @@ export class TokenSwap {
       const encodeLength = commandDataLayout.encode(
         {
           instruction: 0, // InitializeSwap instruction
-          nonce,
           tradeFeeNumerator,
           tradeFeeDenominator,
           ownerTradeFeeNumerator,
@@ -334,7 +331,6 @@ export class TokenSwap {
    * @param payer Pays for the transaction
    * @param tokenSwapAccount The token swap account
    * @param authority The authority over the swap and accounts
-   * @param nonce The nonce used to generate the authority
    * @param tokenAccountA: The token swap's Token A account
    * @param tokenAccountB: The token swap's Token B account
    * @param poolToken The pool token
@@ -359,7 +355,6 @@ export class TokenSwap {
     tokenAccountPool: PublicKey,
     swapProgramId: PublicKey,
     tokenProgramId: PublicKey,
-    nonce: number,
     tradeFeeNumerator: number,
     tradeFeeDenominator: number,
     ownerTradeFeeNumerator: number,
@@ -421,7 +416,6 @@ export class TokenSwap {
       tokenAccountPool,
       tokenProgramId,
       swapProgramId,
-      nonce,
       tradeFeeNumerator,
       tradeFeeDenominator,
       ownerTradeFeeNumerator,

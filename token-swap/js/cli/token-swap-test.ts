@@ -19,8 +19,8 @@ import {Numberu64} from '../dist';
 let tokenSwap: TokenSwap;
 // authority of the token and accounts
 let authority: PublicKey;
-// nonce used to generate the authority public key
-let nonce: number;
+// bump seed used to generate the authority public key
+let bumpSeed: number;
 // owner of the user accounts
 let owner: Account;
 // Token pool
@@ -95,7 +95,7 @@ export async function createTokenSwap(
   owner = await newAccountWithLamports(connection, 1000000000);
   const tokenSwapAccount = new Account();
 
-  [authority, nonce] = await PublicKey.findProgramAddress(
+  [authority, bumpSeed] = await PublicKey.findProgramAddress(
     [tokenSwapAccount.publicKey.toBuffer()],
     TOKEN_SWAP_PROGRAM_ID,
   );
@@ -161,7 +161,6 @@ export async function createTokenSwap(
     tokenAccountPool,
     TOKEN_SWAP_PROGRAM_ID,
     TOKEN_PROGRAM_ID,
-    nonce,
     TRADING_FEE_NUMERATOR,
     TRADING_FEE_DENOMINATOR,
     OWNER_TRADING_FEE_NUMERATOR,
