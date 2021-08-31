@@ -17,7 +17,7 @@ borsh = "0.9"
 num-derive = "0.3"
 num-traits = "0.2"
 num_enum = "0.5.4"
-serde = "1.0.129"
+serde = "1.0.130"
 serde_derive = "1.0.103"
 solana-program = "1.7.11"
 spl-math = { version = "0.1", path = "../../libraries/math", features = [ "no-entrypoint" ] }
