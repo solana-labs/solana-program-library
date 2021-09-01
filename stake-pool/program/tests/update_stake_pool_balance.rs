@@ -44,7 +44,7 @@ async fn setup() -> (
         )
         .await;
 
-        let _deposit_info = simple_deposit(
+        let _deposit_info = simple_deposit_stake(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
@@ -64,6 +64,12 @@ async fn setup() -> (
 #[tokio::test]
 async fn success() {
     let (mut context, stake_pool_accounts, stake_accounts) = setup().await;
+
+    let pre_fee = get_token_balance(
+        &mut context.banks_client,
+        &stake_pool_accounts.pool_fee_account.pubkey(),
+    )
+    .await;
 
     let pre_balance = get_validator_list_sum(
         &mut context.banks_client,
@@ -134,7 +140,7 @@ async fn success() {
     let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
     assert_eq!(post_balance, stake_pool.total_stake_lamports);
 
-    let actual_fee = get_token_balance(
+    let post_fee = get_token_balance(
         &mut context.banks_client,
         &stake_pool_accounts.pool_fee_account.pubkey(),
     )
@@ -144,6 +150,7 @@ async fn success() {
         &stake_pool_accounts.pool_mint.pubkey(),
     )
     .await;
+    let actual_fee = post_fee - pre_fee;
     assert_eq!(pool_token_supply - pre_token_supply, actual_fee);
 
     let expected_fee_lamports =

@@ -299,6 +299,30 @@ pub enum GovernanceError {
     /// Invalid governing token holding account
     #[error("Invalid governing token holding account")]
     InvalidGoverningTokenHoldingAccount,
+
+    /// Realm council mint change is not supported
+    #[error("Realm council mint change is not supported")]
+    RealmCouncilMintChangeIsNotSupported,
+
+    /// Not supported mint max vote weight source
+    #[error("Not supported mint max vote weight source")]
+    MintMaxVoteWeightSourceNotSupported,
+
+    /// Invalid max vote weight supply fraction
+    #[error("Invalid max vote weight supply fraction")]
+    InvalidMaxVoteWeightSupplyFraction,
+
+    /// Owner doesn't have enough governing tokens to create Governance
+    #[error("Owner doesn't have enough governing tokens to create Governance")]
+    NotEnoughTokensToCreateGovernance,
+
+    /// Too many outstanding proposals
+    #[error("Too many outstanding proposals")]
+    TooManyOutstandingProposals,
+
+    /// All proposals must be finalized to withdraw governing tokens
+    #[error("All proposals must be finalized to withdraw governing tokens")]
+    AllProposalsMustBeFinalisedToWithdrawGoverningTokens,
 }
 
 impl PrintProgramError for GovernanceError {

@@ -89,6 +89,7 @@ declare module '@solana/spl-token' {
       programId: PublicKey,
       mint: PublicKey,
       owner: PublicKey,
+      allowOwnerOffCurve?: boolean,
     ): Promise<PublicKey>;
     static createMint(
       connection: Connection,
@@ -245,6 +246,16 @@ declare module '@solana/spl-token' {
       mint: PublicKey,
       authority: PublicKey,
       multiSigners: Array<Signer>,
+    ): TransactionInstruction;
+    static createTransferCheckedInstruction(
+      programId: PublicKey,
+      source: PublicKey,
+      mint: PublicKey,
+      destination: PublicKey,
+      owner: PublicKey,
+      multiSigners: Array<Signer>,
+      amount: number | u64,
+      decimals: number,
     ): TransactionInstruction;
     static createAssociatedTokenAccountInstruction(
       associatedProgramId: PublicKey,

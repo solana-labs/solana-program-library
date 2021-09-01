@@ -26,7 +26,7 @@ const AUTHORITY_DEPOSIT: &[u8] = b"deposit";
 const AUTHORITY_WITHDRAW: &[u8] = b"withdraw";
 
 /// Seed for transient stake account
-const TRANSIENT_STAKE_SEED: &[u8] = b"transient";
+const TRANSIENT_STAKE_SEED_PREFIX: &[u8] = b"transient";
 
 /// Minimum amount of staked SOL required in a validator stake account to allow
 /// for merges without a mismatch on credits observed
@@ -49,8 +49,13 @@ pub const WITHDRAWAL_BASELINE_FEE: Fee = Fee {
     denominator: 1000,
 };
 
+/// The maximum number of transient stake accounts respecting
+/// transaction account limits.
+pub const MAX_TRANSIENT_STAKE_ACCOUNTS: usize = 10;
+
 /// Get the stake amount under consideration when calculating pool token
 /// conversions
+#[inline]
 pub fn minimum_stake_lamports(meta: &Meta) -> u64 {
     meta.rent_exempt_reserve
         .saturating_add(MINIMUM_ACTIVE_STAKE)
@@ -58,6 +63,7 @@ pub fn minimum_stake_lamports(meta: &Meta) -> u64 {
 
 /// Get the stake amount under consideration when calculating pool token
 /// conversions
+#[inline]
 pub fn minimum_reserve_lamports(meta: &Meta) -> u64 {
     meta.rent_exempt_reserve.saturating_add(1)
 }
@@ -79,7 +85,7 @@ pub fn find_withdraw_authority_program_address(
     stake_pool_address: &Pubkey,
 ) -> (Pubkey, u8) {
     Pubkey::find_program_address(
-        &[&stake_pool_address.to_bytes()[..32], AUTHORITY_WITHDRAW],
+        &[&stake_pool_address.to_bytes(), AUTHORITY_WITHDRAW],
         program_id,
     )
 }
@@ -92,8 +98,8 @@ pub fn find_stake_program_address(
 ) -> (Pubkey, u8) {
     Pubkey::find_program_address(
         &[
-            &vote_account_address.to_bytes()[..32],
-            &stake_pool_address.to_bytes()[..32],
+            &vote_account_address.to_bytes(),
+            &stake_pool_address.to_bytes(),
         ],
         program_id,
     )
@@ -104,12 +110,14 @@ pub fn find_transient_stake_program_address(
     program_id: &Pubkey,
     vote_account_address: &Pubkey,
     stake_pool_address: &Pubkey,
+    seed: u64,
 ) -> (Pubkey, u8) {
     Pubkey::find_program_address(
         &[
-            TRANSIENT_STAKE_SEED,
-            &vote_account_address.to_bytes()[..32],
-            &stake_pool_address.to_bytes()[..32],
+            TRANSIENT_STAKE_SEED_PREFIX,
+            &vote_account_address.to_bytes(),
+            &stake_pool_address.to_bytes(),
+            &seed.to_le_bytes(),
         ],
         program_id,
     )

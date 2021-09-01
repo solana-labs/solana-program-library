@@ -1,7 +1,11 @@
 //! State transition types
 
+use spl_token::state::{Account, AccountState};
 use {
-    crate::{big_vec::BigVec, error::StakePoolError, stake_program::Lockup},
+    crate::{
+        big_vec::BigVec, error::StakePoolError, stake_program::Lockup, MAX_WITHDRAWAL_FEE_INCREASE,
+        WITHDRAWAL_BASELINE_FEE,
+    },
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
     num_derive::FromPrimitive,
     num_traits::FromPrimitive,
@@ -14,7 +18,8 @@ use {
         program_pack::{Pack, Sealed},
         pubkey::{Pubkey, PUBKEY_BYTES},
     },
-    std::convert::TryFrom,
+    spl_math::checked_ceil_div::CheckedCeilDiv,
+    std::{convert::TryFrom, fmt, matches},
 };
 
 /// Enum representing the account type managed by the program
@@ -48,7 +53,7 @@ pub struct StakePool {
     /// distribution
     pub staker: Pubkey,
 
-    /// Deposit authority
+    /// Stake deposit authority
     ///
     /// If a depositor pubkey is specified on initialization, then deposits must be
     /// signed by this authority. If no deposit authority is specified,
@@ -57,11 +62,11 @@ pub struct StakePool {
     ///     &[&stake_pool_address.to_bytes()[..32], b"deposit"],
     ///     program_id,
     /// )`
-    pub deposit_authority: Pubkey,
+    pub stake_deposit_authority: Pubkey,
 
-    /// Withdrawal authority bump seed
+    /// Stake withdrawal authority bump seed
     /// for `create_program_address(&[state::StakePool account, "withdrawal"])`
-    pub withdraw_bump_seed: u8,
+    pub stake_withdraw_bump_seed: u8,
 
     /// Validator stake list storage account
     pub validator_list: Pubkey,
@@ -104,8 +109,8 @@ pub struct StakePool {
     /// Preferred withdraw validator vote account pubkey
     pub preferred_withdraw_validator_vote_address: Option<Pubkey>,
 
-    /// Fee assessed on deposits
-    pub deposit_fee: Fee,
+    /// Fee assessed on stake deposits
+    pub stake_deposit_fee: Fee,
 
     /// Fee assessed on withdrawals
     pub withdrawal_fee: Fee,
@@ -113,14 +118,28 @@ pub struct StakePool {
     /// Future withdrawal fee, to be set for the following epoch
     pub next_withdrawal_fee: Option<Fee>,
 
-    /// Fees paid out to referrers on referred deposits.
+    /// Fees paid out to referrers on referred stake deposits.
     /// Expressed as a percentage (0 - 100) of deposit fees.
-    /// i.e. `deposit_fee`% is collected as deposit fees for every deposit
-    /// and `referral_fee`% of the collected deposit fees is paid out to the referrer
-    pub referral_fee: u8,
+    /// i.e. `stake_deposit_fee`% of stake deposited is collected as deposit fees for every deposit
+    /// and `stake_referral_fee`% of the collected stake deposit fees is paid out to the referrer
+    pub stake_referral_fee: u8,
+
+    /// Toggles whether the `DepositSol` instruction requires a signature from
+    /// the `deposit_authority`
+    pub sol_deposit_authority: Option<Pubkey>,
+
+    /// Fee assessed on SOL deposits
+    pub sol_deposit_fee: Fee,
+
+    /// Fees paid out to referrers on referred SOL deposits.
+    /// Expressed as a percentage (0 - 100) of SOL deposit fees.
+    /// i.e. `sol_deposit_fee`% of SOL deposited is collected as deposit fees for every deposit
+    /// and `sol_referral_fee`% of the collected SOL deposit fees is paid out to the referrer
+    pub sol_referral_fee: u8,
 }
 impl StakePool {
     /// calculate the pool tokens that should be minted for a deposit of `stake_lamports`
+    #[inline]
     pub fn calc_pool_tokens_for_deposit(&self, stake_lamports: u64) -> Option<u64> {
         if self.total_stake_lamports == 0 || self.pool_token_supply == 0 {
             return Some(stake_lamports);
@@ -134,41 +153,87 @@ impl StakePool {
     }
 
     /// calculate lamports amount on withdrawal
+    #[inline]
     pub fn calc_lamports_withdraw_amount(&self, pool_tokens: u64) -> Option<u64> {
+        // `checked_ceil_div` returns `None` for a 0 quotient result, but in this
+        // case, a return of 0 is valid for small amounts of pool tokens. So
+        // we check for that separately
+        let numerator = (pool_tokens as u128).checked_mul(self.total_stake_lamports as u128)?;
+        let denominator = self.pool_token_supply as u128;
+        if numerator < denominator || denominator == 0 {
+            Some(0)
+        } else {
+            let (quotient, _) = numerator.checked_ceil_div(denominator)?;
+            u64::try_from(quotient).ok()
+        }
+    }
+
+    /// calculate pool tokens to be deducted as withdrawal fees
+    #[inline]
+    pub fn calc_pool_tokens_withdrawal_fee(&self, pool_tokens: u64) -> Option<u64> {
+        u64::try_from(self.withdrawal_fee.apply(pool_tokens)?).ok()
+    }
+
+    /// calculate pool tokens to be deducted as stake deposit fees
+    #[inline]
+    pub fn calc_pool_tokens_stake_deposit_fee(&self, pool_tokens_minted: u64) -> Option<u64> {
+        u64::try_from(self.stake_deposit_fee.apply(pool_tokens_minted)?).ok()
+    }
+
+    /// calculate pool tokens to be deducted from deposit fees as referral fees
+    #[inline]
+    pub fn calc_pool_tokens_stake_referral_fee(&self, stake_deposit_fee: u64) -> Option<u64> {
         u64::try_from(
-            (pool_tokens as u128)
-                .checked_mul(self.total_stake_lamports as u128)?
-                .checked_div(self.pool_token_supply as u128)?,
+            (stake_deposit_fee as u128)
+                .checked_mul(self.stake_referral_fee as u128)?
+                .checked_div(100u128)?,
         )
         .ok()
     }
 
-    /// calculate pool tokens to be deducted as withdrawal fees
-    pub fn calc_pool_tokens_withdrawal_fee(&self, pool_tokens: u64) -> Option<u64> {
-        u64::try_from(self.withdrawal_fee.apply(pool_tokens)?).ok()
+    /// calculate pool tokens to be deducted as SOL deposit fees
+    #[inline]
+    pub fn calc_pool_tokens_sol_deposit_fee(&self, pool_tokens_minted: u64) -> Option<u64> {
+        u64::try_from(self.sol_deposit_fee.apply(pool_tokens_minted)?).ok()
+    }
+
+    /// calculate pool tokens to be deducted from SOL deposit fees as referral fees
+    #[inline]
+    pub fn calc_pool_tokens_sol_referral_fee(&self, sol_deposit_fee: u64) -> Option<u64> {
+        u64::try_from(
+            (sol_deposit_fee as u128)
+                .checked_mul(self.sol_referral_fee as u128)?
+                .checked_div(100u128)?,
+        )
+        .ok()
     }
 
     /// Calculate the fee in pool tokens that goes to the manager
     ///
     /// This function assumes that `reward_lamports` has not already been added
     /// to the stake pool's `total_stake_lamports`
-    pub fn calc_fee_amount(&self, reward_lamports: u64) -> Option<u64> {
+    #[inline]
+    pub fn calc_epoch_fee_amount(&self, reward_lamports: u64) -> Option<u64> {
         if reward_lamports == 0 {
             return Some(0);
         }
         let total_stake_lamports =
             (self.total_stake_lamports as u128).checked_add(reward_lamports as u128)?;
         let fee_lamports = self.fee.apply(reward_lamports)?;
-        u64::try_from(
-            (self.pool_token_supply as u128)
-                .checked_mul(fee_lamports)?
-                .checked_div(total_stake_lamports.checked_sub(fee_lamports)?)?,
-        )
-        .ok()
+        if total_stake_lamports == fee_lamports || self.pool_token_supply == 0 {
+            Some(reward_lamports)
+        } else {
+            u64::try_from(
+                (self.pool_token_supply as u128)
+                    .checked_mul(fee_lamports)?
+                    .checked_div(total_stake_lamports.checked_sub(fee_lamports)?)?,
+            )
+            .ok()
+        }
     }
 
     /// Checks that the withdraw or deposit authority is valid
-    fn check_authority(
+    fn check_program_derived_authority(
         authority_address: &Pubkey,
         program_id: &Pubkey,
         stake_pool_address: &Pubkey,
@@ -196,34 +261,74 @@ impl StakePool {
         }
     }
 
+    /// Check if the manager fee info is a valid token program account
+    /// capable of receiving tokens from the mint.
+    pub(crate) fn check_manager_fee_info(
+        &self,
+        manager_fee_info: &AccountInfo,
+    ) -> Result<(), ProgramError> {
+        let token_account = Account::unpack(&manager_fee_info.data.borrow())?;
+        if manager_fee_info.owner != &self.token_program_id
+            || token_account.state != AccountState::Initialized
+            || token_account.mint != self.pool_mint
+        {
+            msg!("Manager fee account is not owned by token program, is not initialized, or does not match stake pool's mint");
+            return Err(StakePoolError::InvalidFeeAccount.into());
+        }
+        Ok(())
+    }
+
     /// Checks that the withdraw authority is valid
+    #[inline]
     pub(crate) fn check_authority_withdraw(
         &self,
         withdraw_authority: &Pubkey,
         program_id: &Pubkey,
         stake_pool_address: &Pubkey,
     ) -> Result<(), ProgramError> {
-        Self::check_authority(
+        Self::check_program_derived_authority(
             withdraw_authority,
             program_id,
             stake_pool_address,
             crate::AUTHORITY_WITHDRAW,
-            self.withdraw_bump_seed,
+            self.stake_withdraw_bump_seed,
         )
     }
     /// Checks that the deposit authority is valid
-    pub(crate) fn check_deposit_authority(
+    #[inline]
+    pub(crate) fn check_stake_deposit_authority(
         &self,
-        deposit_authority: &Pubkey,
+        stake_deposit_authority: &Pubkey,
     ) -> Result<(), ProgramError> {
-        if self.deposit_authority == *deposit_authority {
+        if self.stake_deposit_authority == *stake_deposit_authority {
             Ok(())
         } else {
-            Err(StakePoolError::InvalidProgramAddress.into())
+            Err(StakePoolError::InvalidStakeDepositAuthority.into())
         }
     }
 
-    /// Check staker validity and signature
+    /// Checks that the deposit authority is valid
+    /// Does nothing if `sol_deposit_authority` is currently not set
+    #[inline]
+    pub(crate) fn check_sol_deposit_authority(
+        &self,
+        maybe_sol_deposit_authority: Result<&AccountInfo, ProgramError>,
+    ) -> Result<(), ProgramError> {
+        if let Some(auth) = self.sol_deposit_authority {
+            let sol_deposit_authority = maybe_sol_deposit_authority?;
+            if auth != *sol_deposit_authority.key {
+                return Err(StakePoolError::InvalidSolDepositAuthority.into());
+            }
+            if !sol_deposit_authority.is_signer {
+                msg!("SOL Deposit authority signature missing");
+                return Err(StakePoolError::SignatureMissing.into());
+            }
+        }
+        Ok(())
+    }
+
+    /// Check mint is correct
+    #[inline]
     pub(crate) fn check_mint(&self, mint_info: &AccountInfo) -> Result<(), ProgramError> {
         if *mint_info.key != self.pool_mint {
             Err(StakePoolError::WrongPoolMint.into())
@@ -283,7 +388,7 @@ impl StakePool {
         }
     }
 
-    /// Check the validator list is valid
+    /// Check the reserve stake is valid
     pub fn check_reserve_stake(
         &self,
         reserve_stake_info: &AccountInfo,
@@ -308,6 +413,18 @@ impl StakePool {
     /// Check if StakePool is currently uninitialized
     pub fn is_uninitialized(&self) -> bool {
         self.account_type == AccountType::Uninitialized
+    }
+
+    /// Updates one of the StakePool's fees.
+    pub fn update_fee(&mut self, fee: &FeeType) {
+        match fee {
+            FeeType::SolReferral(new_fee) => self.sol_referral_fee = *new_fee,
+            FeeType::StakeReferral(new_fee) => self.stake_referral_fee = *new_fee,
+            FeeType::Epoch(new_fee) => self.next_epoch_fee = Some(*new_fee),
+            FeeType::Withdrawal(new_fee) => self.next_withdrawal_fee = Some(*new_fee),
+            FeeType::SolDeposit(new_fee) => self.sol_deposit_fee = *new_fee,
+            FeeType::StakeDeposit(new_fee) => self.stake_deposit_fee = *new_fee,
+        }
     }
 }
 
@@ -354,30 +471,6 @@ impl Default for StakeStatus {
     }
 }
 
-/// Packed version of the validator stake info, for use with pointer casts
-#[repr(packed)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct ValidatorStakeInfoPacked {
-    /// Status of the validator stake account
-    pub status: StakeStatus,
-
-    /// Validator vote account address
-    pub vote_account_address: Pubkey,
-
-    /// Amount of active stake delegated to this validator
-    /// Note that if `last_update_epoch` does not match the current epoch then
-    /// this field may not be accurate
-    pub active_stake_lamports: u64,
-
-    /// Amount of transient stake delegated to this validator
-    /// Note that if `last_update_epoch` does not match the current epoch then
-    /// this field may not be accurate
-    pub transient_stake_lamports: u64,
-
-    /// Last epoch the active and transient stake lamports fields were updated
-    pub last_update_epoch: u64,
-}
-
 /// Information about a validator in the pool
 ///
 /// NOTE: ORDER IS VERY IMPORTANT HERE, PLEASE DO NOT RE-ORDER THE FIELDS UNLESS
@@ -402,6 +495,12 @@ pub struct ValidatorStakeInfo {
     /// Last epoch the active and transient stake lamports fields were updated
     pub last_update_epoch: u64,
 
+    /// Start of the validator transient account seed suffixess
+    pub transient_seed_suffix_start: u64,
+
+    /// End of the validator transient account seed suffixes
+    pub transient_seed_suffix_end: u64,
+
     /// Status of the validator stake account
     pub status: StakeStatus,
 
@@ -421,34 +520,34 @@ impl ValidatorStakeInfo {
     /// info matches the vote account address
     pub fn memcmp_pubkey(data: &[u8], vote_address_bytes: &[u8]) -> bool {
         sol_memcmp(
-            &data[25..25 + PUBKEY_BYTES],
+            &data[41..41 + PUBKEY_BYTES],
             vote_address_bytes,
             PUBKEY_BYTES,
         ) == 0
     }
 
     /// Performs a very cheap comparison, for checking if this validator stake
-    /// info has active lamports equal to the given bytes
-    pub fn memcmp_active_lamports(data: &[u8], lamports_le_bytes: &[u8]) -> bool {
+    /// info does not have active lamports equal to the given bytes
+    pub fn active_lamports_not_equal(data: &[u8], lamports_le_bytes: &[u8]) -> bool {
         sol_memcmp(&data[0..8], lamports_le_bytes, 8) != 0
     }
 
     /// Performs a very cheap comparison, for checking if this validator stake
-    /// info has lamports equal to the given bytes
-    pub fn memcmp_transient_lamports(data: &[u8], lamports_le_bytes: &[u8]) -> bool {
+    /// info does not have lamports equal to the given bytes
+    pub fn transient_lamports_not_equal(data: &[u8], lamports_le_bytes: &[u8]) -> bool {
         sol_memcmp(&data[8..16], lamports_le_bytes, 8) != 0
     }
 
     /// Check that the validator stake info is valid
     pub fn is_not_removed(data: &[u8]) -> bool {
-        FromPrimitive::from_u8(data[24]) != Some(StakeStatus::ReadyForRemoval)
+        FromPrimitive::from_u8(data[40]) != Some(StakeStatus::ReadyForRemoval)
     }
 }
 
 impl Sealed for ValidatorStakeInfo {}
 
 impl Pack for ValidatorStakeInfo {
-    const LEN: usize = 57;
+    const LEN: usize = 73;
     fn pack_into_slice(&self, data: &mut [u8]) {
         let mut data = data;
         self.serialize(&mut data).unwrap();
@@ -569,6 +668,96 @@ impl Fee {
     }
 }
 
+impl fmt::Display for Fee {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}/{}", self.numerator, self.denominator)
+    }
+}
+
+/// The type of fees that can be set on the stake pool
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub enum FeeType {
+    /// Referral fees for SOL deposits
+    SolReferral(u8),
+    /// Referral fees for stake deposits
+    StakeReferral(u8),
+    /// Management fee paid per epoch
+    Epoch(Fee),
+    /// Withdrawal fee
+    Withdrawal(Fee),
+    /// Deposit fee for SOL deposits
+    SolDeposit(Fee),
+    /// Deposit fee for stake deposits
+    StakeDeposit(Fee),
+}
+
+impl FeeType {
+    /// Checks if the provided fee is too high, returning an error if so
+    pub fn check_too_high(&self) -> Result<(), StakePoolError> {
+        let too_high = match self {
+            Self::SolReferral(pct) => *pct > 100u8,
+            Self::StakeReferral(pct) => *pct > 100u8,
+            Self::Epoch(fee) => fee.numerator > fee.denominator,
+            Self::Withdrawal(fee) => fee.numerator > fee.denominator,
+            Self::SolDeposit(fee) => fee.numerator > fee.denominator,
+            Self::StakeDeposit(fee) => fee.numerator > fee.denominator,
+        };
+        if too_high {
+            msg!("Fee greater than 100%: {:?}", self);
+            return Err(StakePoolError::FeeTooHigh);
+        }
+        Ok(())
+    }
+
+    /// Withdrawal fees have some additional restrictions,
+    /// this fn checks if those are met, returning an error if not.
+    /// Does nothing and returns Ok if fee type is not withdrawal
+    pub fn check_withdrawal(&self, old_withdrawal_fee: &Fee) -> Result<(), StakePoolError> {
+        let fee = match self {
+            Self::Withdrawal(fee) => fee,
+            _ => return Ok(()),
+        };
+
+        // If the previous withdrawal fee was 0, we allow the fee to be set to a
+        // maximum of (WITHDRAWAL_BASELINE_FEE * MAX_WITHDRAWAL_FEE_INCREASE)
+        let (old_num, old_denom) =
+            if old_withdrawal_fee.denominator == 0 || old_withdrawal_fee.numerator == 0 {
+                (
+                    WITHDRAWAL_BASELINE_FEE.numerator,
+                    WITHDRAWAL_BASELINE_FEE.denominator,
+                )
+            } else {
+                (old_withdrawal_fee.numerator, old_withdrawal_fee.denominator)
+            };
+
+        // Check that new_fee / old_fee <= MAX_WITHDRAWAL_FEE_INCREASE
+        // Program fails if provided numerator or denominator is too large, resulting in overflow
+        if (old_num as u128)
+            .checked_mul(fee.denominator as u128)
+            .map(|x| x.checked_mul(MAX_WITHDRAWAL_FEE_INCREASE.numerator as u128))
+            .ok_or(StakePoolError::CalculationFailure)?
+            < (fee.numerator as u128)
+                .checked_mul(old_denom as u128)
+                .map(|x| x.checked_mul(MAX_WITHDRAWAL_FEE_INCREASE.denominator as u128))
+                .ok_or(StakePoolError::CalculationFailure)?
+        {
+            msg!(
+                "Fee increase exceeds maximum allowed, proposed increase factor ({} / {})",
+                fee.numerator * old_denom,
+                old_num * fee.denominator,
+            );
+            return Err(StakePoolError::FeeIncreaseTooHigh);
+        }
+        Ok(())
+    }
+
+    /// Returns if the contained fee can only be updated earliest on the next epoch
+    #[inline]
+    pub fn can_only_change_next_epoch(&self) -> bool {
+        matches!(self, Self::Withdrawal(_) | Self::Epoch(_))
+    }
+}
+
 #[cfg(test)]
 mod test {
     use {
@@ -600,9 +789,11 @@ mod test {
                 ValidatorStakeInfo {
                     status: StakeStatus::Active,
                     vote_account_address: Pubkey::new_from_array([1; 32]),
-                    active_stake_lamports: 123456789,
-                    transient_stake_lamports: 1111111,
-                    last_update_epoch: 987654321,
+                    active_stake_lamports: u64::from_le_bytes([255; 8]),
+                    transient_stake_lamports: u64::from_le_bytes([128; 8]),
+                    last_update_epoch: u64::from_le_bytes([64; 8]),
+                    transient_seed_suffix_start: 0,
+                    transient_seed_suffix_end: 0,
                 },
                 ValidatorStakeInfo {
                     status: StakeStatus::DeactivatingTransient,
@@ -610,6 +801,8 @@ mod test {
                     active_stake_lamports: 998877665544,
                     transient_stake_lamports: 222222222,
                     last_update_epoch: 11223445566,
+                    transient_seed_suffix_start: 0,
+                    transient_seed_suffix_end: 0,
                 },
                 ValidatorStakeInfo {
                     status: StakeStatus::ReadyForRemoval,
@@ -617,6 +810,8 @@ mod test {
                     active_stake_lamports: 0,
                     transient_stake_lamports: 0,
                     last_update_epoch: 999999999999999,
+                    transient_seed_suffix_start: 0,
+                    transient_seed_suffix_end: 0,
                 },
             ],
         }
@@ -769,7 +964,7 @@ mod test {
             ..StakePool::default()
         };
         let reward_lamports = 10 * LAMPORTS_PER_SOL;
-        let pool_token_fee = stake_pool.calc_fee_amount(reward_lamports).unwrap();
+        let pool_token_fee = stake_pool.calc_epoch_fee_amount(reward_lamports).unwrap();
 
         stake_pool.total_stake_lamports += reward_lamports;
         stake_pool.pool_token_supply += pool_token_fee;
@@ -777,7 +972,36 @@ mod test {
         let fee_lamports = stake_pool
             .calc_lamports_withdraw_amount(pool_token_fee)
             .unwrap();
-        assert_eq!(fee_lamports, LAMPORTS_PER_SOL - 1); // lose 1 lamport of precision
+        assert_eq!(fee_lamports, LAMPORTS_PER_SOL);
+    }
+
+    #[test]
+    fn zero_withdraw_calculation() {
+        let fee = Fee {
+            numerator: 0,
+            denominator: 1,
+        };
+        let stake_pool = StakePool {
+            fee,
+            ..StakePool::default()
+        };
+        let fee_lamports = stake_pool.calc_lamports_withdraw_amount(0).unwrap();
+        assert_eq!(fee_lamports, 0);
+    }
+
+    #[test]
+    fn divide_by_zero_fee() {
+        let stake_pool = StakePool {
+            total_stake_lamports: 0,
+            fee: Fee {
+                numerator: 1,
+                denominator: 10,
+            },
+            ..StakePool::default()
+        };
+        let rewards = 10;
+        let fee = stake_pool.calc_epoch_fee_amount(rewards).unwrap();
+        assert_eq!(fee, rewards);
     }
 
     proptest! {
@@ -793,7 +1017,7 @@ mod test {
                 fee,
                 ..StakePool::default()
             };
-            let pool_token_fee = stake_pool.calc_fee_amount(reward_lamports).unwrap();
+            let pool_token_fee = stake_pool.calc_epoch_fee_amount(reward_lamports).unwrap();
 
             stake_pool.total_stake_lamports += reward_lamports;
             stake_pool.pool_token_supply += pool_token_fee;
@@ -812,6 +1036,35 @@ mod test {
             assert!(max_fee_lamports - fee_lamports <= epsilon,
                 "Max expected fee in lamports {}, actually receive {}, epsilon {}",
                 max_fee_lamports, fee_lamports, epsilon);
+        }
+    }
+
+    prop_compose! {
+        fn total_tokens_and_deposit()(total_lamports in 1..u64::MAX)(
+            total_lamports in Just(total_lamports),
+            pool_token_supply in 1..=total_lamports,
+            deposit_lamports in 1..total_lamports,
+        ) -> (u64, u64, u64) {
+            (total_lamports - deposit_lamports, pool_token_supply.saturating_sub(deposit_lamports).max(1), deposit_lamports)
+        }
+    }
+
+    proptest! {
+        #[test]
+        fn deposit_and_withdraw(
+            (total_stake_lamports, pool_token_supply, deposit_stake) in total_tokens_and_deposit()
+        ) {
+            let mut stake_pool = StakePool {
+                total_stake_lamports,
+                pool_token_supply,
+                ..StakePool::default()
+            };
+            let deposit_result = stake_pool.calc_pool_tokens_for_deposit(deposit_stake).unwrap();
+            prop_assume!(deposit_result > 0);
+            stake_pool.total_stake_lamports += deposit_stake;
+            stake_pool.pool_token_supply += deposit_result;
+            let withdraw_result = stake_pool.calc_lamports_withdraw_amount(deposit_result).unwrap();
+            assert!(withdraw_result <= deposit_stake);
         }
     }
 }

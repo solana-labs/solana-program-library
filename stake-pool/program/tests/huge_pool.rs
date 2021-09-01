@@ -32,7 +32,7 @@ use {
     spl_token::state::{Account as SplAccount, AccountState as SplAccountState, Mint},
 };
 
-const HUGE_POOL_SIZE: u32 = 4_000;
+const HUGE_POOL_SIZE: u32 = 3_950;
 const ACCOUNT_RENT_EXEMPTION: u64 = 1_000_000_000; // go with something big to be safe
 const STAKE_AMOUNT: u64 = 200_000_000_000;
 const STAKE_ACCOUNT_RENT_EXEMPTION: u64 = 2_282_880;
@@ -56,15 +56,15 @@ async fn setup(
     stake_pool_accounts.max_validators = max_validators;
 
     let stake_pool_pubkey = stake_pool_accounts.stake_pool.pubkey();
-    let (_, withdraw_bump_seed) =
+    let (_, stake_withdraw_bump_seed) =
         find_withdraw_authority_program_address(&id(), &stake_pool_pubkey);
 
     let mut stake_pool = StakePool {
         account_type: AccountType::StakePool,
         manager: stake_pool_accounts.manager.pubkey(),
         staker: stake_pool_accounts.staker.pubkey(),
-        deposit_authority: stake_pool_accounts.deposit_authority,
-        withdraw_bump_seed,
+        stake_deposit_authority: stake_pool_accounts.stake_deposit_authority,
+        stake_withdraw_bump_seed,
         validator_list: stake_pool_accounts.validator_list.pubkey(),
         reserve_stake: stake_pool_accounts.reserve_stake.pubkey(),
         pool_mint: stake_pool_accounts.pool_mint.pubkey(),
@@ -78,10 +78,13 @@ async fn setup(
         next_epoch_fee: None,
         preferred_deposit_validator_vote_address: None,
         preferred_withdraw_validator_vote_address: None,
-        deposit_fee: Fee::default(),
+        stake_deposit_fee: Fee::default(),
+        sol_deposit_fee: Fee::default(),
         withdrawal_fee: Fee::default(),
         next_withdrawal_fee: None,
-        referral_fee: 0,
+        stake_referral_fee: 0,
+        sol_referral_fee: 0,
+        sol_deposit_authority: None,
     };
 
     let mut validator_list = ValidatorList::new(max_validators);
@@ -161,6 +164,8 @@ async fn setup(
             active_stake_lamports,
             transient_stake_lamports: 0,
             last_update_epoch: 0,
+            transient_seed_suffix_start: 0,
+            transient_seed_suffix_end: 0,
         });
 
         stake_pool.total_stake_lamports += active_stake_lamports;
@@ -316,6 +321,9 @@ async fn update() {
     let (mut context, stake_pool_accounts, vote_account_pubkeys, _, _, _, _) =
         setup(HUGE_POOL_SIZE, HUGE_POOL_SIZE, STAKE_AMOUNT).await;
 
+    let validator_list = stake_pool_accounts
+        .get_validator_list(&mut context.banks_client)
+        .await;
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::update_validator_list_balance(
             &id(),
@@ -323,6 +331,7 @@ async fn update() {
             &stake_pool_accounts.withdraw_authority,
             &stake_pool_accounts.validator_list.pubkey(),
             &stake_pool_accounts.reserve_stake.pubkey(),
+            &validator_list,
             &vote_account_pubkeys[0..MAX_VALIDATORS_TO_UPDATE],
             0,
             /* no_merge = */ false,
@@ -347,6 +356,7 @@ async fn update() {
             &stake_pool_accounts.reserve_stake.pubkey(),
             &stake_pool_accounts.pool_fee_account.pubkey(),
             &stake_pool_accounts.pool_mint.pubkey(),
+            &spl_token::id(),
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer],
@@ -385,10 +395,12 @@ async fn remove_validator_from_pool() {
     let first_vote = vote_account_pubkeys[0];
     let (stake_address, _) =
         find_stake_program_address(&id(), &first_vote, &stake_pool_accounts.stake_pool.pubkey());
+    let transient_stake_seed = u64::MAX;
     let (transient_stake_address, _) = find_transient_stake_program_address(
         &id(),
         &first_vote,
         &stake_pool_accounts.stake_pool.pubkey(),
+        transient_stake_seed,
     );
 
     let new_authority = Pubkey::new_unique();
@@ -415,6 +427,7 @@ async fn remove_validator_from_pool() {
         &id(),
         &middle_vote,
         &stake_pool_accounts.stake_pool.pubkey(),
+        transient_stake_seed,
     );
 
     let new_authority = Pubkey::new_unique();
@@ -438,6 +451,7 @@ async fn remove_validator_from_pool() {
         &id(),
         &last_vote,
         &stake_pool_accounts.stake_pool.pubkey(),
+        transient_stake_seed,
     );
 
     let new_authority = Pubkey::new_unique();
@@ -579,8 +593,13 @@ async fn add_validator_to_pool() {
     assert_eq!(last_element.transient_stake_lamports, 0);
     assert_eq!(last_element.vote_account_address, test_vote_address);
 
-    let (transient_stake_address, _) =
-        find_transient_stake_program_address(&id(), &test_vote_address, &stake_pool_pubkey);
+    let transient_stake_seed = u64::MAX;
+    let (transient_stake_address, _) = find_transient_stake_program_address(
+        &id(),
+        &test_vote_address,
+        &stake_pool_pubkey,
+        transient_stake_seed,
+    );
     let increase_amount = MINIMUM_ACTIVE_STAKE;
     let error = stake_pool_accounts
         .increase_validator_stake(
@@ -590,9 +609,10 @@ async fn add_validator_to_pool() {
             &transient_stake_address,
             &test_vote_address,
             increase_amount,
+            transient_stake_seed,
         )
         .await;
-    assert!(error.is_none());
+    assert!(error.is_none(), "{:?}", error);
 
     let validator_list = get_account(
         &mut context.banks_client,
@@ -655,7 +675,7 @@ async fn set_preferred() {
 }
 
 #[tokio::test]
-async fn deposit() {
+async fn deposit_stake() {
     let (mut context, stake_pool_accounts, _, vote_pubkey, user, stake_pubkey, pool_account_pubkey) =
         setup(HUGE_POOL_SIZE, HUGE_POOL_SIZE, STAKE_AMOUNT).await;
 

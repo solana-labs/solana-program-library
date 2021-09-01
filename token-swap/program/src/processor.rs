@@ -61,9 +61,9 @@ impl Processor {
     pub fn authority_id(
         program_id: &Pubkey,
         my_info: &Pubkey,
-        nonce: u8,
+        bump_seed: u8,
     ) -> Result<Pubkey, SwapError> {
-        Pubkey::create_program_address(&[&my_info.to_bytes()[..32], &[nonce]], program_id)
+        Pubkey::create_program_address(&[&my_info.to_bytes()[..32], &[bump_seed]], program_id)
             .or(Err(SwapError::InvalidProgramAddress))
     }
 
@@ -74,11 +74,11 @@ impl Processor {
         burn_account: AccountInfo<'a>,
         mint: AccountInfo<'a>,
         authority: AccountInfo<'a>,
-        nonce: u8,
+        bump_seed: u8,
         amount: u64,
     ) -> Result<(), ProgramError> {
         let swap_bytes = swap.to_bytes();
-        let authority_signature_seeds = [&swap_bytes[..32], &[nonce]];
+        let authority_signature_seeds = [&swap_bytes[..32], &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
 
         let ix = spl_token::instruction::burn(
@@ -104,11 +104,11 @@ impl Processor {
         mint: AccountInfo<'a>,
         destination: AccountInfo<'a>,
         authority: AccountInfo<'a>,
-        nonce: u8,
+        bump_seed: u8,
         amount: u64,
     ) -> Result<(), ProgramError> {
         let swap_bytes = swap.to_bytes();
-        let authority_signature_seeds = [&swap_bytes[..32], &[nonce]];
+        let authority_signature_seeds = [&swap_bytes[..32], &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
         let ix = spl_token::instruction::mint_to(
             token_program.key,
@@ -129,11 +129,11 @@ impl Processor {
         source: AccountInfo<'a>,
         destination: AccountInfo<'a>,
         authority: AccountInfo<'a>,
-        nonce: u8,
+        bump_seed: u8,
         amount: u64,
     ) -> Result<(), ProgramError> {
         let swap_bytes = swap.to_bytes();
-        let authority_signature_seeds = [&swap_bytes[..32], &[nonce]];
+        let authority_signature_seeds = [&swap_bytes[..32], &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
         let ix = spl_token::instruction::transfer(
             token_program.key,
@@ -168,7 +168,7 @@ impl Processor {
             return Err(ProgramError::IncorrectProgramId);
         }
         if *authority_info.key
-            != Self::authority_id(program_id, swap_account_info.key, token_swap.nonce())?
+            != Self::authority_id(program_id, swap_account_info.key, token_swap.bump_seed())?
         {
             return Err(SwapError::InvalidProgramAddress.into());
         }
@@ -205,7 +205,6 @@ impl Processor {
     /// Processes an [Initialize](enum.Instruction.html).
     pub fn process_initialize(
         program_id: &Pubkey,
-        nonce: u8,
         fees: Fees,
         swap_curve: SwapCurve,
         accounts: &[AccountInfo],
@@ -226,7 +225,9 @@ impl Processor {
             return Err(SwapError::AlreadyInUse.into());
         }
 
-        if *authority_info.key != Self::authority_id(program_id, swap_info.key, nonce)? {
+        let (swap_authority, bump_seed) =
+            Pubkey::find_program_address(&[&swap_info.key.to_bytes()], program_id);
+        if *authority_info.key != swap_authority {
             return Err(SwapError::InvalidProgramAddress.into());
         }
         let token_a = Self::unpack_token_account(token_a_info, &token_program_id)?;
@@ -301,13 +302,13 @@ impl Processor {
             pool_mint_info.clone(),
             destination_info.clone(),
             authority_info.clone(),
-            nonce,
+            bump_seed,
             to_u64(initial_amount)?,
         )?;
 
         let obj = SwapVersion::SwapV1(SwapV1 {
             is_initialized: true,
-            nonce,
+            bump_seed,
             token_program_id,
             token_a: *token_a_info.key,
             token_b: *token_b_info.key,
@@ -346,7 +347,8 @@ impl Processor {
         }
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
 
-        if *authority_info.key != Self::authority_id(program_id, swap_info.key, token_swap.nonce())?
+        if *authority_info.key
+            != Self::authority_id(program_id, swap_info.key, token_swap.bump_seed())?
         {
             return Err(SwapError::InvalidProgramAddress.into());
         }
@@ -421,7 +423,7 @@ impl Processor {
             source_info.clone(),
             swap_source_info.clone(),
             user_transfer_authority_info.clone(),
-            token_swap.nonce(),
+            token_swap.bump_seed(),
             to_u64(result.source_amount_swapped)?,
         )?;
 
@@ -461,7 +463,7 @@ impl Processor {
                         pool_mint_info.clone(),
                         host_fee_account_info.clone(),
                         authority_info.clone(),
-                        token_swap.nonce(),
+                        token_swap.bump_seed(),
                         to_u64(host_fee)?,
                     )?;
                 }
@@ -472,7 +474,7 @@ impl Processor {
                 pool_mint_info.clone(),
                 pool_fee_account_info.clone(),
                 authority_info.clone(),
-                token_swap.nonce(),
+                token_swap.bump_seed(),
                 to_u64(pool_token_amount)?,
             )?;
         }
@@ -483,7 +485,7 @@ impl Processor {
             swap_destination_info.clone(),
             destination_info.clone(),
             authority_info.clone(),
-            token_swap.nonce(),
+            token_swap.bump_seed(),
             to_u64(result.destination_amount_swapped)?,
         )?;
 
@@ -571,7 +573,7 @@ impl Processor {
             source_a_info.clone(),
             token_a_info.clone(),
             user_transfer_authority_info.clone(),
-            token_swap.nonce(),
+            token_swap.bump_seed(),
             token_a_amount,
         )?;
         Self::token_transfer(
@@ -580,7 +582,7 @@ impl Processor {
             source_b_info.clone(),
             token_b_info.clone(),
             user_transfer_authority_info.clone(),
-            token_swap.nonce(),
+            token_swap.bump_seed(),
             token_b_amount,
         )?;
         Self::token_mint_to(
@@ -589,7 +591,7 @@ impl Processor {
             pool_mint_info.clone(),
             dest_info.clone(),
             authority_info.clone(),
-            token_swap.nonce(),
+            token_swap.bump_seed(),
             pool_token_amount,
         )?;
 
@@ -684,7 +686,7 @@ impl Processor {
                 source_info.clone(),
                 pool_fee_account_info.clone(),
                 user_transfer_authority_info.clone(),
-                token_swap.nonce(),
+                token_swap.bump_seed(),
                 to_u64(withdraw_fee)?,
             )?;
         }
@@ -694,7 +696,7 @@ impl Processor {
             source_info.clone(),
             pool_mint_info.clone(),
             user_transfer_authority_info.clone(),
-            token_swap.nonce(),
+            token_swap.bump_seed(),
             to_u64(pool_token_amount)?,
         )?;
 
@@ -705,7 +707,7 @@ impl Processor {
                 token_a_info.clone(),
                 dest_token_a_info.clone(),
                 authority_info.clone(),
-                token_swap.nonce(),
+                token_swap.bump_seed(),
                 token_a_amount,
             )?;
         }
@@ -716,7 +718,7 @@ impl Processor {
                 token_b_info.clone(),
                 dest_token_b_info.clone(),
                 authority_info.clone(),
-                token_swap.nonce(),
+                token_swap.bump_seed(),
                 token_b_amount,
             )?;
         }
@@ -810,7 +812,7 @@ impl Processor {
                     source_info.clone(),
                     swap_token_a_info.clone(),
                     user_transfer_authority_info.clone(),
-                    token_swap.nonce(),
+                    token_swap.bump_seed(),
                     source_token_amount,
                 )?;
             }
@@ -821,7 +823,7 @@ impl Processor {
                     source_info.clone(),
                     swap_token_b_info.clone(),
                     user_transfer_authority_info.clone(),
-                    token_swap.nonce(),
+                    token_swap.bump_seed(),
                     source_token_amount,
                 )?;
             }
@@ -832,7 +834,7 @@ impl Processor {
             pool_mint_info.clone(),
             destination_info.clone(),
             authority_info.clone(),
-            token_swap.nonce(),
+            token_swap.bump_seed(),
             pool_token_amount,
         )?;
 
@@ -936,7 +938,7 @@ impl Processor {
                 source_info.clone(),
                 pool_fee_account_info.clone(),
                 user_transfer_authority_info.clone(),
-                token_swap.nonce(),
+                token_swap.bump_seed(),
                 to_u64(withdraw_fee)?,
             )?;
         }
@@ -946,7 +948,7 @@ impl Processor {
             source_info.clone(),
             pool_mint_info.clone(),
             user_transfer_authority_info.clone(),
-            token_swap.nonce(),
+            token_swap.bump_seed(),
             to_u64(burn_pool_token_amount)?,
         )?;
 
@@ -958,7 +960,7 @@ impl Processor {
                     swap_token_a_info.clone(),
                     destination_info.clone(),
                     authority_info.clone(),
-                    token_swap.nonce(),
+                    token_swap.bump_seed(),
                     destination_token_amount,
                 )?;
             }
@@ -969,7 +971,7 @@ impl Processor {
                     swap_token_b_info.clone(),
                     destination_info.clone(),
                     authority_info.clone(),
-                    token_swap.nonce(),
+                    token_swap.bump_seed(),
                     destination_token_amount,
                 )?;
             }
@@ -992,20 +994,9 @@ impl Processor {
     ) -> ProgramResult {
         let instruction = SwapInstruction::unpack(input)?;
         match instruction {
-            SwapInstruction::Initialize(Initialize {
-                nonce,
-                fees,
-                swap_curve,
-            }) => {
+            SwapInstruction::Initialize(Initialize { fees, swap_curve }) => {
                 msg!("Instruction: Init");
-                Self::process_initialize(
-                    program_id,
-                    nonce,
-                    fees,
-                    swap_curve,
-                    accounts,
-                    swap_constraints,
-                )
+                Self::process_initialize(program_id, fees, swap_curve, accounts, swap_constraints)
             }
             SwapInstruction::Swap(Swap {
                 amount_in,
@@ -1082,7 +1073,7 @@ impl PrintProgramError for SwapError {
         match self {
             SwapError::AlreadyInUse => msg!("Error: Swap account already in use"),
             SwapError::InvalidProgramAddress => {
-                msg!("Error: Invalid program address generated from nonce and key")
+                msg!("Error: Invalid program address generated from bump seed and key")
             }
             SwapError::InvalidOwner => {
                 msg!("Error: The input account owner is not the program address")
@@ -1228,7 +1219,7 @@ mod tests {
     }
 
     struct SwapAccountInfo {
-        nonce: u8,
+        bump_seed: u8,
         authority_key: Pubkey,
         fees: Fees,
         swap_curve: SwapCurve,
@@ -1260,7 +1251,7 @@ mod tests {
         ) -> Self {
             let swap_key = Pubkey::new_unique();
             let swap_account = Account::new(0, SwapVersion::LATEST_LEN, &SWAP_PROGRAM_ID);
-            let (authority_key, nonce) =
+            let (authority_key, bump_seed) =
                 Pubkey::find_program_address(&[&swap_key.to_bytes()[..]], &SWAP_PROGRAM_ID);
 
             let (pool_mint_key, mut pool_mint_account) =
@@ -1303,7 +1294,7 @@ mod tests {
             );
 
             SwapAccountInfo {
-                nonce,
+                bump_seed,
                 authority_key,
                 fees,
                 swap_curve,
@@ -1338,7 +1329,6 @@ mod tests {
                     &self.pool_mint_key,
                     &self.pool_fee_key,
                     &self.pool_token_key,
-                    self.nonce,
                     self.fees.clone(),
                     self.swap_curve.clone(),
                 )
@@ -1929,11 +1919,11 @@ mod tests {
         let mut mint = (Pubkey::new_unique(), Account::default());
         let mut destination = (Pubkey::new_unique(), Account::default());
         let token_program = (spl_token::id(), Account::default());
-        let (authority_key, nonce) =
+        let (authority_key, bump_seed) =
             Pubkey::find_program_address(&[&swap_key.to_bytes()[..]], &SWAP_PROGRAM_ID);
         let mut authority = (authority_key, Account::default());
         let swap_bytes = swap_key.to_bytes();
-        let authority_signature_seeds = [&swap_bytes[..32], &[nonce]];
+        let authority_signature_seeds = [&swap_bytes[..32], &[bump_seed]];
         let signers = &[&authority_signature_seeds[..]];
         let ix = mint_to(
             &token_program.0,
@@ -1985,17 +1975,6 @@ mod tests {
 
         let mut accounts =
             SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
-
-        // wrong nonce for authority_key
-        {
-            let old_nonce = accounts.nonce;
-            accounts.nonce = old_nonce - 1;
-            assert_eq!(
-                Err(SwapError::InvalidProgramAddress.into()),
-                accounts.initialize_swap()
-            );
-            accounts.nonce = old_nonce;
-        }
 
         // uninitialized token a account
         {
@@ -2434,7 +2413,6 @@ mod tests {
                         &accounts.pool_mint_key,
                         &accounts.pool_fee_key,
                         &accounts.pool_token_key,
-                        accounts.nonce,
                         accounts.fees.clone(),
                         accounts.swap_curve.clone(),
                     )
@@ -2620,7 +2598,6 @@ mod tests {
                         &accounts.pool_mint_key,
                         &accounts.pool_fee_key,
                         &accounts.pool_token_key,
-                        accounts.nonce,
                         accounts.fees.clone(),
                         accounts.swap_curve.clone(),
                     )
@@ -2692,7 +2669,6 @@ mod tests {
                         &accounts.pool_mint_key,
                         &accounts.pool_fee_key,
                         &accounts.pool_token_key,
-                        accounts.nonce,
                         accounts.fees.clone(),
                         accounts.swap_curve.clone(),
                     )
@@ -2760,7 +2736,6 @@ mod tests {
                     &accounts.pool_mint_key,
                     &accounts.pool_fee_key,
                     &accounts.pool_token_key,
-                    accounts.nonce,
                     accounts.fees,
                     accounts.swap_curve.clone(),
                 )
@@ -2789,7 +2764,7 @@ mod tests {
         }
         let swap_state = SwapVersion::unpack(&accounts.swap_account.data).unwrap();
         assert!(swap_state.is_initialized());
-        assert_eq!(swap_state.nonce(), accounts.nonce);
+        assert_eq!(swap_state.bump_seed(), accounts.bump_seed);
         assert_eq!(
             swap_state.swap_curve().curve_type,
             accounts.swap_curve.curve_type
@@ -2912,7 +2887,7 @@ mod tests {
             accounts.swap_account = old_swap_account;
         }
 
-        // wrong nonce for authority_key
+        // wrong bump seed for authority_key
         {
             let (
                 token_a_key,
@@ -2923,7 +2898,7 @@ mod tests {
                 mut pool_account,
             ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
             let old_authority = accounts.authority_key;
-            let (bad_authority_key, _nonce) = Pubkey::find_program_address(
+            let (bad_authority_key, _bump_seed) = Pubkey::find_program_address(
                 &[&accounts.swap_key.to_bytes()[..]],
                 &spl_token::id(),
             );
@@ -3526,7 +3501,7 @@ mod tests {
             accounts.swap_account = old_swap_account;
         }
 
-        // wrong nonce for authority_key
+        // wrong bump seed for authority_key
         {
             let (
                 token_a_key,
@@ -3537,7 +3512,7 @@ mod tests {
                 mut pool_account,
             ) = accounts.setup_token_accounts(&user_key, &withdrawer_key, initial_a, initial_b, 0);
             let old_authority = accounts.authority_key;
-            let (bad_authority_key, _nonce) = Pubkey::find_program_address(
+            let (bad_authority_key, _bump_seed) = Pubkey::find_program_address(
                 &[&accounts.swap_key.to_bytes()[..]],
                 &spl_token::id(),
             );
@@ -4324,7 +4299,7 @@ mod tests {
             accounts.swap_account = old_swap_account;
         }
 
-        // wrong nonce for authority_key
+        // wrong bump seed for authority_key
         {
             let (
                 token_a_key,
@@ -4335,7 +4310,7 @@ mod tests {
                 mut pool_account,
             ) = accounts.setup_token_accounts(&user_key, &depositor_key, deposit_a, deposit_b, 0);
             let old_authority = accounts.authority_key;
-            let (bad_authority_key, _nonce) = Pubkey::find_program_address(
+            let (bad_authority_key, _bump_seed) = Pubkey::find_program_address(
                 &[&accounts.swap_key.to_bytes()[..]],
                 &spl_token::id(),
             );
@@ -4840,7 +4815,7 @@ mod tests {
             accounts.swap_account = old_swap_account;
         }
 
-        // wrong nonce for authority_key
+        // wrong bump seed for authority_key
         {
             let (
                 _token_a_key,
@@ -4851,7 +4826,7 @@ mod tests {
                 mut pool_account,
             ) = accounts.setup_token_accounts(&user_key, &withdrawer_key, initial_a, initial_b, 0);
             let old_authority = accounts.authority_key;
-            let (bad_authority_key, _nonce) = Pubkey::find_program_address(
+            let (bad_authority_key, _bump_seed) = Pubkey::find_program_address(
                 &[&accounts.swap_key.to_bytes()[..]],
                 &spl_token::id(),
             );
@@ -5730,7 +5705,6 @@ mod tests {
                 &accounts.pool_mint_key,
                 &accounts.pool_fee_key,
                 &accounts.pool_token_key,
-                accounts.nonce,
                 accounts.fees.clone(),
                 accounts.swap_curve.clone(),
             )
@@ -5918,7 +5892,7 @@ mod tests {
             accounts.swap_account = old_swap_account;
         }
 
-        // wrong nonce
+        // wrong bump seed
         {
             let (
                 token_a_key,
@@ -5929,7 +5903,7 @@ mod tests {
                 _pool_account,
             ) = accounts.setup_token_accounts(&user_key, &swapper_key, initial_a, initial_b, 0);
             let old_authority = accounts.authority_key;
-            let (bad_authority_key, _nonce) = Pubkey::find_program_address(
+            let (bad_authority_key, _bump_seed) = Pubkey::find_program_address(
                 &[&accounts.swap_key.to_bytes()[..]],
                 &spl_token::id(),
             );
