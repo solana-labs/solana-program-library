@@ -886,6 +886,7 @@ impl Processor {
         let validator_list_info = next_account_info(account_info_iter)?;
         let stake_account_info = next_account_info(account_info_iter)?;
         let transient_stake_account_info = next_account_info(account_info_iter)?;
+        let destination_stake_account_info = next_account_info(account_info_iter)?;
         let clock_info = next_account_info(account_info_iter)?;
         let clock = &Clock::from_account_info(clock_info)?;
         let stake_program_info = next_account_info(account_info_iter)?;
@@ -994,9 +995,20 @@ impl Processor {
             StakeStatus::ReadyForRemoval
         };
 
-        Self::stake_authorize_signed(
+        // split whole thing into destination stake account
+        Self::stake_split(
             stake_pool_info.key,
             stake_account_info.clone(),
+            withdraw_authority_info.clone(),
+            AUTHORITY_WITHDRAW,
+            stake_pool.stake_withdraw_bump_seed,
+            stake_account_info.lamports(),
+            destination_stake_account_info.clone(),
+        )?;
+
+        Self::stake_authorize_signed(
+            stake_pool_info.key,
+            destination_stake_account_info.clone(),
             withdraw_authority_info.clone(),
             AUTHORITY_WITHDRAW,
             stake_pool.stake_withdraw_bump_seed,

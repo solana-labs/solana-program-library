@@ -152,6 +152,33 @@ fn checked_transaction_with_signers<T: Signers>(
     Ok(transaction)
 }
 
+fn new_stake_account(
+    fee_payer: &Pubkey,
+    instructions: &mut Vec<Instruction>,
+    lamports: u64,
+) -> Keypair {
+    // Account for tokens not specified, creating one
+    let stake_receiver_keypair = Keypair::new();
+    let stake_receiver_pubkey = stake_receiver_keypair.pubkey();
+    println!(
+        "Creating account to receive stake {}",
+        stake_receiver_pubkey
+    );
+
+    instructions.push(
+        // Creating new account
+        system_instruction::create_account(
+            fee_payer,
+            &stake_receiver_pubkey,
+            lamports,
+            STAKE_STATE_LEN as u64,
+            &stake_program::id(),
+        ),
+    );
+
+    stake_receiver_keypair
+}
+
 #[allow(clippy::too_many_arguments)]
 fn command_create_pool(
     config: &Config,
@@ -423,6 +450,7 @@ fn command_vsa_remove(
     stake_pool_address: &Pubkey,
     vote_account: &Pubkey,
     new_authority: &Option<Pubkey>,
+    stake_receiver: &Option<Pubkey>,
 ) -> CommandResult {
     if !config.no_update {
         command_update(config, stake_pool_address, false, false)?;
@@ -437,6 +465,20 @@ fn command_vsa_remove(
 
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
 
+    let mut instructions = vec![];
+    let mut stake_keypair = None;
+
+    let stake_receiver = stake_receiver.unwrap_or_else(|| {
+        let new_stake_keypair = new_stake_account(
+            &config.fee_payer.pubkey(),
+            &mut instructions,
+            /* stake_receiver_account_balance = */ 0,
+        );
+        let stake_pubkey = new_stake_keypair.pubkey();
+        stake_keypair = Some(new_stake_keypair);
+        stake_pubkey
+    });
+
     let staker_pubkey = config.staker.pubkey();
     let new_authority = new_authority.as_ref().unwrap_or(&staker_pubkey);
 
@@ -446,6 +488,9 @@ fn command_vsa_remove(
         .ok_or("Vote account not found in validator list")?;
 
     let mut signers = vec![config.fee_payer.as_ref(), config.staker.as_ref()];
+    if let Some(stake_keypair) = stake_keypair.as_ref() {
+        signers.push(stake_keypair);
+    }
     unique_signers!(signers);
     let transaction = checked_transaction_with_signers(
         config,
@@ -458,6 +503,7 @@ fn command_vsa_remove(
                 vote_account,
                 new_authority,
                 validator_stake_info.transient_seed_suffix_start,
+                &stake_receiver,
             ),
         ],
         &signers,
@@ -1270,33 +1316,19 @@ fn command_withdraw(
 
         // Use separate mutable variable because withdraw might create a new account
         let stake_receiver = stake_receiver_param.unwrap_or_else(|| {
-            // Account for tokens not specified, creating one
-            let stake_receiver_account = Keypair::new(); // Will be added to signers if creating new account
-            let stake_receiver_pubkey = stake_receiver_account.pubkey();
-            println!(
-                "Creating account to receive stake {}",
-                stake_receiver_pubkey
-            );
-
             let stake_receiver_account_balance = config
                 .rpc_client
                 .get_minimum_balance_for_rent_exemption(STAKE_STATE_LEN)
                 .unwrap();
-
-            instructions.push(
-                // Creating new account
-                system_instruction::create_account(
-                    &config.fee_payer.pubkey(),
-                    &stake_receiver_pubkey,
-                    stake_receiver_account_balance,
-                    STAKE_STATE_LEN as u64,
-                    &stake_program::id(),
-                ),
+            let stake_keypair = new_stake_account(
+                &config.fee_payer.pubkey(),
+                &mut instructions,
+                stake_receiver_account_balance,
             );
-
+            let stake_pubkey = stake_keypair.pubkey();
             total_rent_free_balances += stake_receiver_account_balance;
-            new_stake_keypairs.push(stake_receiver_account);
-            stake_receiver_pubkey
+            new_stake_keypairs.push(stake_keypair);
+            stake_pubkey
         });
 
         instructions.push(spl_stake_pool::instruction::withdraw_stake(
@@ -1752,6 +1784,14 @@ fn main() {
                     .takes_value(true)
                     .help("New authority to set as Staker and Withdrawer in the stake account removed from the pool.
                           Defaults to the client keypair."),
+            )
+            .arg(
+                Arg::with_name("stake_receiver")
+                    .long("stake-receiver")
+                    .validator(is_pubkey)
+                    .value_name("ADDRESS")
+                    .takes_value(true)
+                    .help("Stake account to receive SOL from the stake pool. Defaults to a new stake account."),
             )
         )
         .subcommand(SubCommand::with_name("increase-validator-stake")
@@ -2318,8 +2358,15 @@ fn main() {
         ("remove-validator", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
             let vote_account = pubkey_of(arg_matches, "vote_account").unwrap();
-            let new_authority: Option<Pubkey> = pubkey_of(arg_matches, "new_authority");
-            command_vsa_remove(&config, &stake_pool_address, &vote_account, &new_authority)
+            let new_authority = pubkey_of(arg_matches, "new_authority");
+            let stake_receiver = pubkey_of(arg_matches, "stake_receiver");
+            command_vsa_remove(
+                &config,
+                &stake_pool_address,
+                &vote_account,
+                &new_authority,
+                &stake_receiver,
+            )
         }
         ("increase-validator-stake", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
