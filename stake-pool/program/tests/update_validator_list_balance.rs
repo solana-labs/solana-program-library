@@ -6,7 +6,11 @@ use {
     helpers::*,
     solana_program::{borsh::try_from_slice_unchecked, program_pack::Pack, pubkey::Pubkey},
     solana_program_test::*,
-    solana_sdk::{signature::Signer, system_instruction, transaction::Transaction},
+    solana_sdk::{
+        signature::{Keypair, Signer},
+        system_instruction,
+        transaction::Transaction,
+    },
     spl_stake_pool::{
         find_transient_stake_program_address, id, instruction, stake_program,
         state::{StakePool, StakeStatus, ValidatorList},
@@ -462,6 +466,7 @@ async fn merge_transient_stake_after_remove() {
     let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
     let deactivated_lamports = lamports;
     let new_authority = Pubkey::new_unique();
+    let destination_stake = Keypair::new();
     // Decrease and remove all validators
     for stake_account in &stake_accounts {
         let error = stake_pool_accounts
@@ -484,6 +489,7 @@ async fn merge_transient_stake_after_remove() {
                 &new_authority,
                 &stake_account.stake_account,
                 &stake_account.transient_stake_account,
+                &destination_stake,
             )
             .await;
         assert!(error.is_none());

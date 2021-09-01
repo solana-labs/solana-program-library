@@ -404,6 +404,7 @@ async fn remove_validator_from_pool() {
     );
 
     let new_authority = Pubkey::new_unique();
+    let destination_stake = Keypair::new();
     let error = stake_pool_accounts
         .remove_validator_from_pool(
             &mut context.banks_client,
@@ -412,6 +413,7 @@ async fn remove_validator_from_pool() {
             &new_authority,
             &stake_address,
             &transient_stake_address,
+            &destination_stake,
         )
         .await;
     assert!(error.is_none());
@@ -431,6 +433,7 @@ async fn remove_validator_from_pool() {
     );
 
     let new_authority = Pubkey::new_unique();
+    let destination_stake = Keypair::new();
     let error = stake_pool_accounts
         .remove_validator_from_pool(
             &mut context.banks_client,
@@ -439,6 +442,7 @@ async fn remove_validator_from_pool() {
             &new_authority,
             &stake_address,
             &transient_stake_address,
+            &destination_stake,
         )
         .await;
     assert!(error.is_none());
@@ -455,6 +459,7 @@ async fn remove_validator_from_pool() {
     );
 
     let new_authority = Pubkey::new_unique();
+    let destination_stake = Keypair::new();
     let error = stake_pool_accounts
         .remove_validator_from_pool(
             &mut context.banks_client,
@@ -463,6 +468,7 @@ async fn remove_validator_from_pool() {
             &new_authority,
             &stake_address,
             &transient_stake_address,
+            &destination_stake,
         )
         .await;
     assert!(error.is_none());

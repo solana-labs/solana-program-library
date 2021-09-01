@@ -1093,20 +1093,31 @@ impl StakePoolAccounts {
         new_authority: &Pubkey,
         validator_stake: &Pubkey,
         transient_stake: &Pubkey,
+        destination_stake: &Keypair,
     ) -> Option<TransportError> {
         let transaction = Transaction::new_signed_with_payer(
-            &[instruction::remove_validator_from_pool(
-                &id(),
-                &self.stake_pool.pubkey(),
-                &self.staker.pubkey(),
-                &self.withdraw_authority,
-                &new_authority,
-                &self.validator_list.pubkey(),
-                validator_stake,
-                transient_stake,
-            )],
+            &[
+                system_instruction::create_account(
+                    &payer.pubkey(),
+                    &destination_stake.pubkey(),
+                    0,
+                    std::mem::size_of::<stake_program::StakeState>() as u64,
+                    &stake_program::id(),
+                ),
+                instruction::remove_validator_from_pool(
+                    &id(),
+                    &self.stake_pool.pubkey(),
+                    &self.staker.pubkey(),
+                    &self.withdraw_authority,
+                    &new_authority,
+                    &self.validator_list.pubkey(),
+                    validator_stake,
+                    transient_stake,
+                    &destination_stake.pubkey(),
+                ),
+            ],
             Some(&payer.pubkey()),
-            &[payer, &self.staker],
+            &[payer, &self.staker, destination_stake],
             *recent_blockhash,
         );
         banks_client.process_transaction(transaction).await.err()
