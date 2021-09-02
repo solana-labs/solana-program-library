@@ -54,6 +54,11 @@ use output::*;
 mod sort;
 use sort::sort_and_parse_token_accounts;
 
+mod rpc_client_utils;
+
+mod bench;
+use bench::*;
+
 pub const OWNER_ADDRESS_ARG: ArgConstant<'static> = ArgConstant {
     name: "owner",
     long: "owner",
@@ -183,7 +188,7 @@ fn is_multisig_minimum_signers(string: String) -> Result<(), String> {
     }
 }
 
-type Error = Box<dyn std::error::Error>;
+pub(crate) type Error = Box<dyn std::error::Error>;
 type CommandResult = Result<Option<(u64, Vec<Vec<Instruction>>)>, Error>;
 
 fn new_throwaway_signer() -> (Box<dyn Signer>, Pubkey) {
@@ -208,7 +213,7 @@ fn get_signer(
     })
 }
 
-fn check_fee_payer_balance(config: &Config, required_balance: u64) -> Result<(), Error> {
+pub(crate) fn check_fee_payer_balance(config: &Config, required_balance: u64) -> Result<(), Error> {
     let balance = config.rpc_client.get_balance(&config.fee_payer)?;
     if balance < required_balance {
         Err(format!(
@@ -505,7 +510,7 @@ fn command_authorize(
     Ok(Some((0, vec![instructions])))
 }
 
-fn resolve_mint_info(
+pub(crate) fn resolve_mint_info(
     config: &Config,
     token_account: &Pubkey,
     mint_address: Option<Pubkey>,
@@ -1426,6 +1431,7 @@ fn main() {
                 .hidden(true)
                 .help("Use unchecked instruction if appropriate. Supports transfer, burn, mint, and approve."),
         )
+        .bench_subcommand()
         .subcommand(SubCommand::with_name("create-token").about("Create a new token")
                 .arg(
                     Arg::with_name("token_keypair")
@@ -2161,6 +2167,7 @@ fn main() {
                 .value_of("json_rpc_url")
                 .unwrap_or(&cli_config.json_rpc_url),
         );
+        let websocket_url = solana_cli_config::Config::compute_websocket_url(&json_rpc_url);
 
         let (signer, fee_payer) = signer_from_path(
             matches,
@@ -2240,7 +2247,11 @@ fn main() {
         let multisigner_pubkeys = multisigner_ids.iter().collect::<Vec<_>>();
 
         Config {
-            rpc_client: RpcClient::new_with_commitment(json_rpc_url, CommitmentConfig::confirmed()),
+            rpc_client: Arc::new(RpcClient::new_with_commitment(
+                json_rpc_url,
+                CommitmentConfig::confirmed(),
+            )),
+            websocket_url,
             output_format,
             fee_payer,
             default_keypair_path: cli_config.keypair_path,
@@ -2255,6 +2266,13 @@ fn main() {
     solana_logger::setup_with_default("solana=info");
 
     let _ = match (sub_command, sub_matches) {
+        ("bench", Some(arg_matches)) => bench_process_command(
+            arg_matches,
+            &config,
+            std::mem::take(&mut bulk_signers),
+            &mut wallet_manager,
+        )
+        .map(|_| None),
         ("create-token", Some(arg_matches)) => {
             let decimals = value_t_or_exit!(arg_matches, "decimals", u8);
             let mint_authority =
