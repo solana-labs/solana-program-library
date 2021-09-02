@@ -85,6 +85,7 @@ where
         &self,
         data_len: usize,
     ) -> TokenClientResult<u64>;
+
     async fn get_recent_blockhash(&self) -> TokenClientResult<Hash>;
 
     async fn send_transaction(&self, transaction: Transaction) -> TokenClientResult<ST::Output>;

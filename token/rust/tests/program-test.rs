@@ -18,30 +18,34 @@ async fn create_associated_token_account() {
     let payer =
         Keypair::from_bytes(&ctx.lock().await.payer.to_bytes()).expect("failed to copy keypair");
 
-    let client =
-        TokenBanksClient::new_from_context(Arc::clone(&ctx), TokenBanksClientProcessTransaction);
-    let client: Arc<Box<dyn TokenClient<TokenBanksClientProcessTransaction>>> =
-        Arc::new(Box::new(client));
+    let client: Arc<dyn TokenClient<TokenBanksClientProcessTransaction>> = Arc::new(
+        TokenBanksClient::new_from_context(Arc::clone(&ctx), TokenBanksClientProcessTransaction),
+    );
 
     let mint_account = Keypair::new();
-    let mint_authority = Keypair::new().pubkey();
+    let mint_authority = Keypair::new();
 
     let token = Token::create_mint(
         Arc::clone(&client),
         &payer,
         &mint_account,
-        &mint_authority,
+        &mint_authority.pubkey(),
         None,
         6,
     )
     .await
     .expect("failed to create mint");
 
-    let account_owner = Keypair::new();
-    token
-        .create_associated_token_account(&account_owner.pubkey())
+    let alice = Keypair::new();
+    let alice_vault = token
+        .create_associated_token_account(&alice.pubkey())
         .await
         .expect("failed to create associated token account");
+
+    token
+        .mint_to(&alice_vault, &mint_authority, u64::pow(10, 6))
+        .await
+        .expect("failed to mint token");
 
     println!("{:?}", token);
 }

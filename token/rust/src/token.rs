@@ -24,7 +24,7 @@ pub enum TokenError {
 pub type TokenResult<T> = Result<T, TokenError>;
 
 pub struct Token<'a, ST> {
-    client: Arc<Box<dyn TokenClient<ST>>>,
+    client: Arc<dyn TokenClient<ST>>,
     pubkey: Pubkey,
     payer: &'a Keypair,
 }
@@ -43,7 +43,7 @@ where
     ST: SendTransaction,
 {
     async fn process_ixs<T: Signers>(
-        client: &Arc<Box<dyn TokenClient<ST>>>,
+        client: &Arc<dyn TokenClient<ST>>,
         payer: &Keypair,
         instructions: &[Instruction],
         signing_keypairs: &T,
@@ -71,10 +71,10 @@ where
     }
 
     /// Create and initialize a token.
-    pub async fn create_mint(
-        client: Arc<Box<dyn TokenClient<ST>>>,
+    pub async fn create_mint<S: Signer>(
+        client: Arc<dyn TokenClient<ST>>,
         payer: &'a Keypair,
-        mint_account: &'a Keypair,
+        mint_account: &'a S,
         mint_authority: &'a Pubkey,
         freeze_authority: Option<&'a Pubkey>,
         decimals: u8,
@@ -135,12 +135,10 @@ where
     }
 
     /// Mint new tokens
-    pub async fn mint_to(
+    pub async fn mint_to<S: Signer>(
         &self,
-        mint: &Pubkey,
-        account: &Pubkey,
-        owner: &Pubkey,
-        signer_pubkeys: &[&Pubkey],
+        dest: &Pubkey,
+        authority: S,
         amount: u64,
     ) -> TokenResult<()> {
         Self::process_ixs(
@@ -148,13 +146,13 @@ where
             self.payer,
             &[instruction::mint_to(
                 &spl_token::id(),
-                mint,
-                account,
-                owner,
-                signer_pubkeys,
+                &self.pubkey,
+                dest,
+                &authority.pubkey(),
+                &[],
                 amount,
             )?],
-            &([] as [&Keypair; 0]),
+            &[&authority],
         )
         .await
         .map(|_| ())
