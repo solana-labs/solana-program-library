@@ -45,14 +45,14 @@ async fn setup() -> (
 
     let validator_stake =
         ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey(), u64::MAX);
-    validator_stake
-        .create_and_delegate(
-            &mut context.banks_client,
-            &context.payer,
-            &context.last_blockhash,
-            &stake_pool_accounts.staker,
-        )
-        .await;
+    create_vote(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &validator_stake.validator,
+        &validator_stake.vote,
+    )
+    .await;
 
     let error = stake_pool_accounts
         .add_validator_to_pool(
@@ -60,6 +60,7 @@ async fn setup() -> (
             &context.payer,
             &context.last_blockhash,
             &validator_stake.stake_account,
+            &validator_stake.vote.pubkey(),
         )
         .await;
     assert!(error.is_none());

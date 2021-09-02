@@ -19,7 +19,9 @@ use {
         transaction::TransactionError,
         transport::TransportError,
     },
-    spl_stake_pool::{error, id, instruction, minimum_stake_lamports, stake_program, state},
+    spl_stake_pool::{
+        error::StakePoolError, id, instruction, minimum_stake_lamports, stake_program, state,
+    },
     spl_token::error as token_error,
 };
 
@@ -595,7 +597,7 @@ async fn fail_with_wrong_validator_list_account() {
             _,
             InstructionError::Custom(error_index),
         ) => {
-            let program_error = error::StakePoolError::InvalidValidatorStakeList as u32;
+            let program_error = StakePoolError::InvalidValidatorStakeList as u32;
             assert_eq!(error_index, program_error);
         }
         _ => panic!("Wrong error occurs while try to make a deposit with wrong validator stake list account"),
@@ -611,19 +613,16 @@ async fn fail_with_unknown_validator() {
         .await
         .unwrap();
 
-    let validator_stake_account =
-        ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey(), u64::MAX);
-    validator_stake_account
-        .create_and_delegate(
-            &mut banks_client,
-            &payer,
-            &recent_blockhash,
-            &stake_pool_accounts.staker,
-        )
-        .await;
+    let unknown_stake = create_unknown_validator_stake(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
 
-    let user_pool_account = Keypair::new();
     let user = Keypair::new();
+    let user_pool_account = Keypair::new();
     create_token_account(
         &mut banks_client,
         &payer,
@@ -652,48 +651,37 @@ async fn fail_with_unknown_validator() {
         TEST_STAKE_AMOUNT,
     )
     .await;
-    let random_vote_account = Keypair::new();
-    create_vote(
-        &mut banks_client,
-        &payer,
-        &recent_blockhash,
-        &Keypair::new(),
-        &random_vote_account,
-    )
-    .await;
     delegate_stake_account(
         &mut banks_client,
         &payer,
         &recent_blockhash,
         &user_stake.pubkey(),
         &user,
-        &random_vote_account.pubkey(),
+        &unknown_stake.vote.pubkey(),
     )
     .await;
 
-    let transaction_error = stake_pool_accounts
+    let error = stake_pool_accounts
         .deposit_stake(
             &mut banks_client,
             &payer,
             &recent_blockhash,
             &user_stake.pubkey(),
             &user_pool_account.pubkey(),
-            &validator_stake_account.stake_account,
+            &unknown_stake.stake_account,
             &user,
         )
         .await
         .unwrap()
         .unwrap();
 
-    match transaction_error {
-        TransactionError::InstructionError(_, InstructionError::Custom(error_index)) => {
-            let program_error = error::StakePoolError::ValidatorNotFound as u32;
-            assert_eq!(error_index, program_error);
-        }
-        _ => {
-            panic!("Wrong error occurs while try to make a deposit with unknown validator account")
-        }
-    }
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(
+            2,
+            InstructionError::Custom(StakePoolError::InvalidStakeAccountAddress as u32)
+        )
+    );
 }
 
 #[tokio::test]
@@ -726,7 +714,7 @@ async fn fail_with_wrong_withdraw_authority() {
 
     match transaction_error {
         TransactionError::InstructionError(_, InstructionError::Custom(error_index)) => {
-            let program_error = error::StakePoolError::InvalidProgramAddress as u32;
+            let program_error = StakePoolError::InvalidProgramAddress as u32;
             assert_eq!(error_index, program_error);
         }
         _ => panic!("Wrong error occurs while try to make a deposit with wrong withdraw authority"),
@@ -974,7 +962,7 @@ async fn fail_without_stake_deposit_authority_signature() {
         TransactionError::InstructionError(_, InstructionError::Custom(error_index)) => {
             assert_eq!(
                 error_index,
-                error::StakePoolError::InvalidStakeDepositAuthority as u32
+                StakePoolError::InvalidStakeDepositAuthority as u32
             );
         }
         _ => panic!("Wrong error occurs while try to make a deposit with wrong stake program ID"),
@@ -1064,7 +1052,7 @@ async fn fail_with_wrong_preferred_deposit() {
         TransactionError::InstructionError(_, InstructionError::Custom(error_index)) => {
             assert_eq!(
                 error_index,
-                error::StakePoolError::IncorrectDepositVoteAddress as u32
+                StakePoolError::IncorrectDepositVoteAddress as u32
             );
         }
         _ => panic!("Wrong error occurs while try to make a deposit with wrong stake program ID"),

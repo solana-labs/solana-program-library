@@ -37,15 +37,6 @@ setup_pool () {
     --mint-keypair $mint_keyfile
 }
 
-create_validator_stakes() {
-  pool=$1
-  validator_list=$2
-  for validator in $(cat $validator_list)
-  do
-    $spl_stake_pool create-validator-stake $pool $validator
-  done
-}
-
 add_validator_stakes () {
   pool=$1
   validator_list=$2
@@ -65,7 +56,5 @@ setup_pool $max_validators $stake_pool_keyfile $mint_keyfile
 
 stake_pool_pubkey=$(solana-keygen pubkey $stake_pool_keyfile)
 
-echo "Creating validator stake accounts"
-create_validator_stakes $stake_pool_pubkey $validator_list
 echo "Adding validator stake accounts to the pool"
 add_validator_stakes $stake_pool_pubkey $validator_list

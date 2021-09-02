@@ -54,14 +54,25 @@ async fn setup(
     for _ in 0..num_validators {
         let stake_account =
             ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey(), u64::MAX);
-        stake_account
-            .create_and_delegate(
+        create_vote(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            &stake_account.validator,
+            &stake_account.vote,
+        )
+        .await;
+
+        let error = stake_pool_accounts
+            .add_validator_to_pool(
                 &mut context.banks_client,
                 &context.payer,
                 &context.last_blockhash,
-                &stake_pool_accounts.staker,
+                &stake_account.stake_account,
+                &stake_account.vote.pubkey(),
             )
             .await;
+        assert!(error.is_none());
 
         let deposit_account = DepositStakeAccount::new_with_vote(
             stake_account.vote.pubkey(),
@@ -89,22 +100,14 @@ async fn setup(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            &[],
+            stake_accounts
+                .iter()
+                .map(|v| v.vote.pubkey())
+                .collect::<Vec<Pubkey>>()
+                .as_slice(),
             false,
         )
         .await;
-
-    for stake_account in &stake_accounts {
-        let error = stake_pool_accounts
-            .add_validator_to_pool(
-                &mut context.banks_client,
-                &context.payer,
-                &context.last_blockhash,
-                &stake_account.stake_account,
-            )
-            .await;
-        assert!(error.is_none());
-    }
 
     for deposit_account in &mut deposit_accounts {
         deposit_account
