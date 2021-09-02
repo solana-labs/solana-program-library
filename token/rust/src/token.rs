@@ -19,6 +19,12 @@ pub enum TokenError {
     Client(TokenClientError),
     #[error("program error: {0}")]
     Program(#[from] ProgramError),
+    #[error("account not found")]
+    AccountNotFound,
+    #[error("invalid account owner")]
+    AccountInvalidOwner,
+    #[error("invalid account mint")]
+    AccountInvalidMint,
 }
 
 pub type TokenResult<T> = Result<T, TokenError>;
@@ -134,11 +140,31 @@ where
         .map_err(Into::into)
     }
 
+    /// Retrieve account information
+    pub async fn get_account_info(&self, account: Pubkey) -> TokenResult<state::Account> {
+        let account = self
+            .client
+            .get_account(account)
+            .await
+            .map_err(TokenError::Client)?
+            .ok_or(TokenError::AccountNotFound)?;
+        if account.owner != spl_token::id() {
+            return Err(TokenError::AccountInvalidOwner);
+        }
+
+        let account = state::Account::unpack_from_slice(&account.data)?;
+        if account.mint != *self.get_address() {
+            return Err(TokenError::AccountInvalidMint);
+        }
+
+        Ok(account)
+    }
+
     /// Mint new tokens
     pub async fn mint_to<S: Signer>(
         &self,
         dest: &Pubkey,
-        authority: S,
+        authority: &S,
         amount: u64,
     ) -> TokenResult<()> {
         Self::process_ixs(
@@ -152,19 +178,18 @@ where
                 &[],
                 amount,
             )?],
-            &[&authority],
+            &[authority],
         )
         .await
         .map(|_| ())
     }
 
     /// Transfer tokens to another account
-    pub async fn transfer(
+    pub async fn transfer<S: Signer>(
         &self,
         source: &Pubkey,
         destination: &Pubkey,
-        authority: &Pubkey,
-        signer_pubkeys: &[&Pubkey],
+        authority: &S,
         amount: u64,
     ) -> TokenResult<ST::Output> {
         Self::process_ixs(
@@ -174,11 +199,11 @@ where
                 &spl_token::id(),
                 source,
                 destination,
-                authority,
-                signer_pubkeys,
+                &authority.pubkey(),
+                &[],
                 amount,
             )?],
-            &([] as [&Keypair; 0]),
+            &[authority],
         )
         .await
     }

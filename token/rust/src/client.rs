@@ -1,7 +1,9 @@
 use async_trait::async_trait;
 use solana_client::rpc_client::RpcClient;
 use solana_program_test::{tokio::sync::Mutex, BanksClient, ProgramTestContext};
-use solana_sdk::{hash::Hash, signature::Signature, transaction::Transaction};
+use solana_sdk::{
+    account::Account, hash::Hash, pubkey::Pubkey, signature::Signature, transaction::Transaction,
+};
 use std::{fmt, future::Future, pin::Pin, sync::Arc};
 
 type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
@@ -89,6 +91,8 @@ where
     async fn get_recent_blockhash(&self) -> TokenClientResult<Hash>;
 
     async fn send_transaction(&self, transaction: Transaction) -> TokenClientResult<ST::Output>;
+
+    async fn get_account(&self, address: Pubkey) -> TokenClientResult<Option<Account>>;
 }
 
 enum TokenBanksClientContext {
@@ -170,6 +174,13 @@ where
         })
         .await
     }
+
+    async fn get_account(&self, address: Pubkey) -> TokenClientResult<Option<Account>> {
+        self.run_in_lock(|client| {
+            Box::pin(async move { client.get_account(address).await.map_err(Into::into) })
+        })
+        .await
+    }
 }
 
 /// Token client for `RpcClient` from crate `solana-client`.
@@ -213,5 +224,12 @@ where
 
     async fn send_transaction(&self, transaction: Transaction) -> TokenClientResult<ST::Output> {
         self.send.send(self.client, transaction).await
+    }
+
+    async fn get_account(&self, address: Pubkey) -> TokenClientResult<Option<Account>> {
+        Ok(self
+            .client
+            .get_account_with_commitment(&address, self.client.commitment())?
+            .value)
     }
 }
