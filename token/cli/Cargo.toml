@@ -10,6 +10,8 @@ version = "2.0.14"
 
 [dependencies]
 clap = "2.33.3"
+chrono = "0.4"
+chrono-humanize = "0.2.1"
 console = "0.14.0"
 serde = "1.0.130"
 serde_derive = "1.0.103"
@@ -22,6 +24,7 @@ solana-client = "=1.7.11"
 solana-logger = "=1.7.11"
 solana-remote-wallet = "=1.7.11"
 solana-sdk = "=1.7.11"
+solana-transaction-status = "=1.7.11"
 spl-token = { version = "3.2", path="../program", features = [ "no-entrypoint" ] }
 spl-associated-token-account = { version = "1.0", path="../../associated-token-account/program", features = [ "no-entrypoint" ] }
 spl-memo = { version = "3.0.1", path="../../memo/program", features = ["no-entrypoint"] }
