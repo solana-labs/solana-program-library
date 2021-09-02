@@ -672,97 +672,6 @@ impl Processor {
             .map_err(|e| e.into())
     }
 
-    /// Processes `CreateValidatorStakeAccount` instruction.
-    fn process_create_validator_stake_account(
-        program_id: &Pubkey,
-        accounts: &[AccountInfo],
-    ) -> ProgramResult {
-        let account_info_iter = &mut accounts.iter();
-        let stake_pool_info = next_account_info(account_info_iter)?;
-        let staker_info = next_account_info(account_info_iter)?;
-        let funder_info = next_account_info(account_info_iter)?;
-        let stake_account_info = next_account_info(account_info_iter)?;
-        let validator_info = next_account_info(account_info_iter)?;
-        let rent_info = next_account_info(account_info_iter)?;
-        let rent = &Rent::from_account_info(rent_info)?;
-        let clock_info = next_account_info(account_info_iter)?;
-        let stake_history_info = next_account_info(account_info_iter)?;
-        let stake_config_info = next_account_info(account_info_iter)?;
-        let system_program_info = next_account_info(account_info_iter)?;
-        let stake_program_info = next_account_info(account_info_iter)?;
-
-        check_account_owner(stake_pool_info, program_id)?;
-        let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
-        if !stake_pool.is_valid() {
-            return Err(StakePoolError::InvalidState.into());
-        }
-        stake_pool.check_staker(staker_info)?;
-
-        check_system_program(system_program_info.key)?;
-        check_stake_program(stake_program_info.key)?;
-
-        let (stake_address, bump_seed) =
-            crate::find_stake_program_address(program_id, validator_info.key, stake_pool_info.key);
-        if stake_address != *stake_account_info.key {
-            return Err(StakePoolError::InvalidStakeAccountAddress.into());
-        }
-
-        let stake_account_signer_seeds: &[&[_]] = &[
-            &validator_info.key.to_bytes()[..32],
-            &stake_pool_info.key.to_bytes()[..32],
-            &[bump_seed],
-        ];
-
-        // Fund the stake account with 1 SOL + rent-exempt balance
-        let required_lamports = MINIMUM_ACTIVE_STAKE
-            + rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
-
-        // Create new stake account
-        invoke_signed(
-            &system_instruction::create_account(
-                funder_info.key,
-                stake_account_info.key,
-                required_lamports,
-                std::mem::size_of::<stake_program::StakeState>() as u64,
-                &stake_program::id(),
-            ),
-            &[funder_info.clone(), stake_account_info.clone()],
-            &[stake_account_signer_seeds],
-        )?;
-
-        invoke(
-            &stake_program::initialize(
-                stake_account_info.key,
-                &stake_program::Authorized {
-                    staker: *staker_info.key,
-                    withdrawer: *staker_info.key,
-                },
-                &stake_program::Lockup::default(),
-            ),
-            &[
-                stake_account_info.clone(),
-                rent_info.clone(),
-                stake_program_info.clone(),
-            ],
-        )?;
-
-        invoke(
-            &stake_program::delegate_stake(
-                stake_account_info.key,
-                staker_info.key,
-                validator_info.key,
-            ),
-            &[
-                stake_account_info.clone(),
-                validator_info.clone(),
-                clock_info.clone(),
-                stake_history_info.clone(),
-                stake_config_info.clone(),
-                staker_info.clone(),
-            ],
-        )
-    }
-
     /// Processes `AddValidatorToPool` instruction.
     fn process_add_validator_to_pool(
         program_id: &Pubkey,
@@ -771,15 +680,21 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
         let staker_info = next_account_info(account_info_iter)?;
+        let funder_info = next_account_info(account_info_iter)?;
         let withdraw_authority_info = next_account_info(account_info_iter)?;
         let validator_list_info = next_account_info(account_info_iter)?;
-        let stake_account_info = next_account_info(account_info_iter)?;
+        let stake_info = next_account_info(account_info_iter)?;
+        let validator_vote_info = next_account_info(account_info_iter)?;
+        let rent_info = next_account_info(account_info_iter)?;
+        let rent = &Rent::from_account_info(rent_info)?;
         let clock_info = next_account_info(account_info_iter)?;
         let clock = &Clock::from_account_info(clock_info)?;
-        let _stake_history_info = next_account_info(account_info_iter)?;
-        //let stake_history = &StakeHistory::from_account_info(stake_history_info)?;
+        let stake_history_info = next_account_info(account_info_iter)?;
+        let stake_config_info = next_account_info(account_info_iter)?;
+        let system_program_info = next_account_info(account_info_iter)?;
         let stake_program_info = next_account_info(account_info_iter)?;
 
+        check_system_program(system_program_info.key)?;
         check_stake_program(stake_program_info.key)?;
 
         check_account_owner(stake_pool_info, program_id)?;
@@ -811,58 +726,77 @@ impl Processor {
         if header.max_validators == validator_list.len() {
             return Err(ProgramError::AccountDataTooSmall);
         }
-
-        let (meta, stake) = get_stake_state(stake_account_info)?;
-        let vote_account_address = stake.delegation.voter_pubkey;
-        check_validator_stake_address(
-            program_id,
-            stake_pool_info.key,
-            stake_account_info.key,
-            &vote_account_address,
-        )?;
-
-        if meta.lockup != stake_program::Lockup::default() {
-            msg!("Stake account has a lockup");
-            return Err(StakePoolError::WrongStakeState.into());
-        }
-
         let maybe_validator_stake_info = validator_list.find::<ValidatorStakeInfo>(
-            vote_account_address.as_ref(),
+            validator_vote_info.key.as_ref(),
             ValidatorStakeInfo::memcmp_pubkey,
         );
         if maybe_validator_stake_info.is_some() {
             return Err(StakePoolError::ValidatorAlreadyAdded.into());
         }
 
-        // Check amount of lamports
-        let stake_lamports = **stake_account_info.lamports.borrow();
-        let minimum_lamport_amount = minimum_stake_lamports(&meta);
-        if stake_lamports != minimum_lamport_amount
-            || stake.delegation.stake != MINIMUM_ACTIVE_STAKE
-        {
-            msg!(
-                "Error: attempting to add (stake: {}, delegation: {}), below minimum",
-                stake_lamports,
-                stake.delegation.stake,
-            );
-            return Err(StakePoolError::StakeLamportsNotEqualToMinimum.into());
+        let (stake_address, bump_seed) = crate::find_stake_program_address(
+            program_id,
+            validator_vote_info.key,
+            stake_pool_info.key,
+        );
+        if stake_address != *stake_info.key {
+            return Err(StakePoolError::InvalidStakeAccountAddress.into());
         }
 
-        // Check if stake is warmed up
-        //Self::check_stake_activation(stake_account_info, clock, stake_history)?;
+        let stake_account_signer_seeds: &[&[_]] = &[
+            &validator_vote_info.key.to_bytes()[..32],
+            &stake_pool_info.key.to_bytes()[..32],
+            &[bump_seed],
+        ];
 
-        // Update Withdrawer and Staker authority to the program withdraw authority
-        Self::stake_authorize(
-            stake_account_info.clone(),
-            staker_info.clone(),
-            withdraw_authority_info.key,
+        // Fund the stake account with 1 SOL + rent-exempt balance
+        let required_lamports = MINIMUM_ACTIVE_STAKE
+            + rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
+
+        // Create new stake account
+        invoke_signed(
+            &system_instruction::create_account(
+                funder_info.key,
+                stake_info.key,
+                required_lamports,
+                std::mem::size_of::<stake_program::StakeState>() as u64,
+                &stake_program::id(),
+            ),
+            &[funder_info.clone(), stake_info.clone()],
+            &[stake_account_signer_seeds],
+        )?;
+
+        invoke(
+            &stake_program::initialize(
+                stake_info.key,
+                &stake_program::Authorized {
+                    staker: *withdraw_authority_info.key,
+                    withdrawer: *withdraw_authority_info.key,
+                },
+                &stake_program::Lockup::default(),
+            ),
+            &[
+                stake_info.clone(),
+                rent_info.clone(),
+                stake_program_info.clone(),
+            ],
+        )?;
+
+        Self::stake_delegate(
+            stake_info.clone(),
+            validator_vote_info.clone(),
             clock_info.clone(),
-            stake_program_info.clone(),
+            stake_history_info.clone(),
+            stake_config_info.clone(),
+            withdraw_authority_info.clone(),
+            stake_pool_info.key,
+            AUTHORITY_WITHDRAW,
+            stake_pool.stake_withdraw_bump_seed,
         )?;
 
         validator_list.push(ValidatorStakeInfo {
             status: StakeStatus::Active,
-            vote_account_address,
+            vote_account_address: *validator_vote_info.key,
             active_stake_lamports: 0,
             transient_stake_lamports: 0,
             last_update_epoch: clock.epoch,
@@ -2590,10 +2524,6 @@ impl Processor {
                     referral_fee,
                     max_validators,
                 )
-            }
-            StakePoolInstruction::CreateValidatorStakeAccount => {
-                msg!("Instruction: CreateValidatorStakeAccount");
-                Self::process_create_validator_stake_account(program_id, accounts)
             }
             StakePoolInstruction::AddValidatorToPool => {
                 msg!("Instruction: AddValidatorToPool");

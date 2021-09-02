@@ -564,23 +564,13 @@ async fn add_validator_to_pool() {
     let (stake_address, _) =
         find_stake_program_address(&id(), &test_vote_address, &stake_pool_pubkey);
 
-    create_validator_stake_account(
-        &mut context.banks_client,
-        &context.payer,
-        &context.last_blockhash,
-        &stake_pool_pubkey,
-        &stake_pool_accounts.staker,
-        &stake_address,
-        &test_vote_address,
-    )
-    .await;
-
     let error = stake_pool_accounts
         .add_validator_to_pool(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
             &stake_address,
+            &test_vote_address,
         )
         .await;
     assert!(error.is_none());

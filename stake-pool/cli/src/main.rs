@@ -357,36 +357,6 @@ fn command_create_pool(
     Ok(())
 }
 
-fn command_vsa_create(
-    config: &Config,
-    stake_pool_address: &Pubkey,
-    vote_account: &Pubkey,
-) -> CommandResult {
-    let (stake_account, _) =
-        find_stake_program_address(&spl_stake_pool::id(), vote_account, stake_pool_address);
-    println!(
-        "Creating stake account {}, delegated to {}",
-        stake_account, vote_account
-    );
-    let transaction = checked_transaction_with_signers(
-        config,
-        &[
-            // Create new validator stake account address
-            spl_stake_pool::instruction::create_validator_stake_account(
-                &spl_stake_pool::id(),
-                stake_pool_address,
-                &config.staker.pubkey(),
-                &config.fee_payer.pubkey(),
-                &stake_account,
-                vote_account,
-            ),
-        ],
-        &[config.fee_payer.as_ref(), config.staker.as_ref()],
-    )?;
-    send_transaction(config, transaction)?;
-    Ok(())
-}
-
 fn command_vsa_add(
     config: &Config,
     stake_pool_address: &Pubkey,
@@ -408,20 +378,6 @@ fn command_vsa_add(
         return Ok(());
     }
 
-    let stake_state = get_stake_state(&config.rpc_client, &stake_account_address)?;
-    if let stake_program::StakeState::Stake(meta, _stake) = stake_state {
-        if meta.authorized.withdrawer != config.staker.pubkey() {
-            let error = format!(
-                "Stake account withdraw authority must be the staker {}, actual {}",
-                config.staker.pubkey(),
-                meta.authorized.withdrawer
-            );
-            return Err(error.into());
-        }
-    } else {
-        return Err("Stake account is not active.".into());
-    }
-
     if !config.no_update {
         command_update(config, stake_pool_address, false, false)?;
     }
@@ -435,6 +391,7 @@ fn command_vsa_add(
                 &spl_stake_pool::id(),
                 &stake_pool,
                 stake_pool_address,
+                &config.fee_payer.pubkey(),
                 vote_account,
             ),
         ],
@@ -1714,27 +1671,6 @@ fn main() {
                     .help("Stake pool reserve keypair [default: new keypair]"),
             )
         )
-        .subcommand(SubCommand::with_name("create-validator-stake")
-            .about("Create a new stake account to use with the pool. Must be signed by the pool staker.")
-            .arg(
-                Arg::with_name("pool")
-                    .index(1)
-                    .validator(is_pubkey)
-                    .value_name("POOL_ADDRESS")
-                    .takes_value(true)
-                    .required(true)
-                    .help("Stake pool address"),
-            )
-            .arg(
-                Arg::with_name("vote_account")
-                    .index(2)
-                    .validator(is_pubkey)
-                    .value_name("VOTE_ACCOUNT_ADDRESS")
-                    .takes_value(true)
-                    .required(true)
-                    .help("The validator vote account that this stake will be delegated to"),
-            )
-        )
         .subcommand(SubCommand::with_name("add-validator")
             .about("Add validator account to the stake pool. Must be signed by the pool staker.")
             .arg(
@@ -2344,11 +2280,6 @@ fn main() {
                 mint_keypair,
                 reserve_keypair,
             )
-        }
-        ("create-validator-stake", Some(arg_matches)) => {
-            let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
-            let vote_account_address = pubkey_of(arg_matches, "vote_account").unwrap();
-            command_vsa_create(&config, &stake_pool_address, &vote_account_address)
         }
         ("add-validator", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();

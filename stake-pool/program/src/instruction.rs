@@ -77,42 +77,24 @@ pub enum StakePoolInstruction {
         max_validators: u32,
     },
 
-    ///   (Staker only) Creates new program account for accumulating stakes for
-    ///   a particular validator
-    ///
-    ///   0. `[]` Stake pool account this stake will belong to
-    ///   1. `[s]` Staker
-    ///   2. `[ws]` Funding account (must be a system account)
-    ///   3. `[w]` Stake account to be created
-    ///   4. `[]` Validator this stake account will vote for
-    ///   5. `[]` Rent sysvar
-    ///   6. `[]` Stake History sysvar
-    ///   7. `[]` Stake Config sysvar
-    ///   8. `[]` System program
-    ///   9. `[]` Stake program
-    CreateValidatorStakeAccount,
-
     ///   (Staker only) Adds stake account delegated to validator to the pool's
     ///   list of managed validators.
     ///
-    ///   The stake account must have the rent-exempt amount plus at least 1 SOL,
-    ///   and at most 1.001 SOL.
-    ///
-    ///   Once we delegate even 1 SOL, it will accrue rewards one epoch later,
-    ///   so we'll have more than 1 active SOL at this point.
-    ///   At 10% annualized rewards, 1 epoch of 2 days will accrue
-    ///   0.000547945 SOL, so we check that it is at least 1 SOL, and at most
-    ///   1.001 SOL.
+    ///   The stake account will have the rent-exempt amount plus 1 SOL.
     ///
     ///   0. `[w]` Stake pool
     ///   1. `[s]` Staker
-    ///   2. `[]` Stake pool withdraw authority
-    ///   3. `[w]` Validator stake list storage account
-    ///   4. `[w]` Stake account to add to the pool, its withdraw authority must
-    ///      be set to the staker
-    ///   5. `[]` Clock sysvar
-    ///   6. '[]' Sysvar stake history account
-    ///   7. `[]` Stake program
+    ///   2. `[ws]` Funding account (must be a system account)
+    ///   3. `[]` Stake pool withdraw authority
+    ///   4. `[w]` Validator stake list storage account
+    ///   5. `[w]` Stake account to add to the pool
+    ///   6. `[]` Validator this stake account will be delegated to
+    ///   7. `[]` Rent sysvar
+    ///   8. `[]` Clock sysvar
+    ///   9. '[]' Stake history sysvar
+    ///  10. '[]' Stake config sysvar
+    ///  11. `[]` System program
+    ///  12. `[]` Stake program
     AddValidatorToPool,
 
     ///   (Staker only) Removes validator from the pool
@@ -415,54 +397,30 @@ pub fn initialize(
     }
 }
 
-/// Creates `CreateValidatorStakeAccount` instruction (create new stake account for the validator)
-pub fn create_validator_stake_account(
+/// Creates `AddValidatorToPool` instruction (add new validator stake account to the pool)
+pub fn add_validator_to_pool(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
     staker: &Pubkey,
     funder: &Pubkey,
-    stake_account: &Pubkey,
+    stake_pool_withdraw: &Pubkey,
+    validator_list: &Pubkey,
+    stake: &Pubkey,
     validator: &Pubkey,
 ) -> Instruction {
     let accounts = vec![
-        AccountMeta::new_readonly(*stake_pool, false),
+        AccountMeta::new(*stake_pool, false),
         AccountMeta::new_readonly(*staker, true),
         AccountMeta::new(*funder, true),
-        AccountMeta::new(*stake_account, false),
+        AccountMeta::new_readonly(*stake_pool_withdraw, false),
+        AccountMeta::new(*validator_list, false),
+        AccountMeta::new(*stake, false),
         AccountMeta::new_readonly(*validator, false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
         AccountMeta::new_readonly(stake_program::config_id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
-        AccountMeta::new_readonly(stake_program::id(), false),
-    ];
-    Instruction {
-        program_id: *program_id,
-        accounts,
-        data: StakePoolInstruction::CreateValidatorStakeAccount
-            .try_to_vec()
-            .unwrap(),
-    }
-}
-
-/// Creates `AddValidatorToPool` instruction (add new validator stake account to the pool)
-pub fn add_validator_to_pool(
-    program_id: &Pubkey,
-    stake_pool: &Pubkey,
-    staker: &Pubkey,
-    stake_pool_withdraw: &Pubkey,
-    validator_list: &Pubkey,
-    stake_account: &Pubkey,
-) -> Instruction {
-    let accounts = vec![
-        AccountMeta::new(*stake_pool, false),
-        AccountMeta::new_readonly(*staker, true),
-        AccountMeta::new_readonly(*stake_pool_withdraw, false),
-        AccountMeta::new(*validator_list, false),
-        AccountMeta::new(*stake_account, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
-        AccountMeta::new_readonly(sysvar::stake_history::id(), false),
         AccountMeta::new_readonly(stake_program::id(), false),
     ];
     Instruction {
@@ -610,32 +568,13 @@ pub fn set_preferred_validator(
     }
 }
 
-/// Creates `CreateValidatorStakeAccount` instruction with a vote account
-pub fn create_validator_stake_account_with_vote(
-    program_id: &Pubkey,
-    stake_pool_address: &Pubkey,
-    staker: &Pubkey,
-    funder: &Pubkey,
-    vote_account_address: &Pubkey,
-) -> Instruction {
-    let (stake_account, _) =
-        find_stake_program_address(program_id, vote_account_address, stake_pool_address);
-    create_validator_stake_account(
-        program_id,
-        stake_pool_address,
-        staker,
-        funder,
-        &stake_account,
-        vote_account_address,
-    )
-}
-
 /// Create an `AddValidatorToPool` instruction given an existing stake pool and
 /// vote account
 pub fn add_validator_to_pool_with_vote(
     program_id: &Pubkey,
     stake_pool: &StakePool,
     stake_pool_address: &Pubkey,
+    funder: &Pubkey,
     vote_account_address: &Pubkey,
 ) -> Instruction {
     let pool_withdraw_authority =
@@ -646,9 +585,11 @@ pub fn add_validator_to_pool_with_vote(
         program_id,
         stake_pool_address,
         &stake_pool.staker,
+        funder,
         &pool_withdraw_authority,
         &stake_pool.validator_list,
         &stake_account_address,
+        vote_account_address,
     )
 }
 

@@ -239,15 +239,13 @@ async fn fail_with_unknown_validator() {
         reserve_lamports,
     ) = setup().await;
 
-    let unknown_stake = ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey(), 1241);
-    unknown_stake
-        .create_and_delegate(
-            &mut banks_client,
-            &payer,
-            &recent_blockhash,
-            &stake_pool_accounts.staker,
-        )
-        .await;
+    let unknown_stake = create_unknown_validator_stake(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
 
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::increase_validator_stake(
@@ -273,13 +271,13 @@ async fn fail_with_unknown_validator() {
         .unwrap()
         .unwrap();
 
-    match error {
-        TransactionError::InstructionError(_, InstructionError::Custom(error_index)) => {
-            let program_error = StakePoolError::ValidatorNotFound as u32;
-            assert_eq!(error_index, program_error);
-        }
-        _ => panic!("Wrong error"),
-    }
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(StakePoolError::ValidatorNotFound as u32)
+        )
+    );
 }
 
 #[tokio::test]

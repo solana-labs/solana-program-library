@@ -23,6 +23,7 @@ use {
         find_stake_program_address, find_transient_stake_program_address, id, instruction,
         processor, stake_program,
         state::{self, FeeType, ValidatorList},
+        MINIMUM_ACTIVE_STAKE,
     },
 };
 
@@ -481,31 +482,6 @@ pub async fn create_blank_stake_account(
     lamports
 }
 
-pub async fn create_validator_stake_account(
-    banks_client: &mut BanksClient,
-    payer: &Keypair,
-    recent_blockhash: &Hash,
-    stake_pool: &Pubkey,
-    staker: &Keypair,
-    stake_account: &Pubkey,
-    validator: &Pubkey,
-) {
-    let transaction = Transaction::new_signed_with_payer(
-        &[instruction::create_validator_stake_account(
-            &id(),
-            &stake_pool,
-            &staker.pubkey(),
-            &payer.pubkey(),
-            &stake_account,
-            &validator,
-        )],
-        Some(&payer.pubkey()),
-        &[payer, staker],
-        *recent_blockhash,
-    );
-    banks_client.process_transaction(transaction).await.unwrap();
-}
-
 pub async fn delegate_stake_account(
     banks_client: &mut BanksClient,
     payer: &Keypair,
@@ -548,6 +524,49 @@ pub async fn authorize_stake_account(
     banks_client.process_transaction(transaction).await.unwrap();
 }
 
+pub async fn create_unknown_validator_stake(
+    banks_client: &mut BanksClient,
+    payer: &Keypair,
+    recent_blockhash: &Hash,
+    stake_pool: &Pubkey,
+) -> ValidatorStakeAccount {
+    let mut unknown_stake = ValidatorStakeAccount::new(stake_pool, 222);
+    create_vote(
+        banks_client,
+        payer,
+        recent_blockhash,
+        &unknown_stake.validator,
+        &unknown_stake.vote,
+    )
+    .await;
+    let user = Keypair::new();
+    let fake_validator_stake = Keypair::new();
+    create_independent_stake_account(
+        banks_client,
+        payer,
+        recent_blockhash,
+        &fake_validator_stake,
+        &stake_program::Authorized {
+            staker: user.pubkey(),
+            withdrawer: user.pubkey(),
+        },
+        &stake_program::Lockup::default(),
+        MINIMUM_ACTIVE_STAKE,
+    )
+    .await;
+    delegate_stake_account(
+        banks_client,
+        payer,
+        recent_blockhash,
+        &fake_validator_stake.pubkey(),
+        &user,
+        &unknown_stake.vote.pubkey(),
+    )
+    .await;
+    unknown_stake.stake_account = fake_validator_stake.pubkey();
+    unknown_stake
+}
+
 pub struct ValidatorStakeAccount {
     pub stake_account: Pubkey,
     pub transient_stake_account: Pubkey,
@@ -576,34 +595,6 @@ impl ValidatorStakeAccount {
             validator,
             stake_pool: *stake_pool,
         }
-    }
-
-    pub async fn create_and_delegate(
-        &self,
-        mut banks_client: &mut BanksClient,
-        payer: &Keypair,
-        recent_blockhash: &Hash,
-        staker: &Keypair,
-    ) {
-        create_vote(
-            &mut banks_client,
-            &payer,
-            &recent_blockhash,
-            &self.validator,
-            &self.vote,
-        )
-        .await;
-
-        create_validator_stake_account(
-            &mut banks_client,
-            &payer,
-            &recent_blockhash,
-            &self.stake_pool,
-            staker,
-            &self.stake_account,
-            &self.vote.pubkey(),
-        )
-        .await;
     }
 }
 
@@ -1068,15 +1059,18 @@ impl StakePoolAccounts {
         payer: &Keypair,
         recent_blockhash: &Hash,
         stake: &Pubkey,
+        validator: &Pubkey,
     ) -> Option<TransportError> {
         let transaction = Transaction::new_signed_with_payer(
             &[instruction::add_validator_to_pool(
                 &id(),
                 &self.stake_pool.pubkey(),
                 &self.staker.pubkey(),
+                &payer.pubkey(),
                 &self.withdraw_authority,
                 &self.validator_list.pubkey(),
                 stake,
+                validator,
             )],
             Some(&payer.pubkey()),
             &[payer, &self.staker],
@@ -1217,14 +1211,15 @@ pub async fn simple_add_validator_to_pool(
         &stake_pool_accounts.stake_pool.pubkey(),
         DEFAULT_TRANSIENT_STAKE_SEED,
     );
-    validator_stake
-        .create_and_delegate(
-            banks_client,
-            &payer,
-            &recent_blockhash,
-            &stake_pool_accounts.staker,
-        )
-        .await;
+
+    create_vote(
+        banks_client,
+        payer,
+        recent_blockhash,
+        &validator_stake.validator,
+        &validator_stake.vote,
+    )
+    .await;
 
     let error = stake_pool_accounts
         .add_validator_to_pool(
@@ -1232,6 +1227,7 @@ pub async fn simple_add_validator_to_pool(
             &payer,
             &recent_blockhash,
             &validator_stake.stake_account,
+            &validator_stake.vote.pubkey(),
         )
         .await;
     assert!(error.is_none());
