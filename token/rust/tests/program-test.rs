@@ -2,69 +2,182 @@ use solana_program_test::{
     tokio::{self, sync::Mutex},
     ProgramTest,
 };
-use solana_sdk::signer::{keypair::Keypair, Signer};
+use solana_sdk::{
+    program_option::COption,
+    signer::{keypair::Keypair, Signer},
+};
+use spl_token::{instruction, state};
 use spl_token_client::{
     client::{TokenBanksClient, TokenBanksClientProcessTransaction, TokenClient},
     token::Token,
 };
 use std::sync::Arc;
 
+struct TestContext {
+    // pub ctx: Arc<Mutex<ProgramTestContext>>,
+    // pub client: Arc<dyn TokenClient<TokenBanksClientProcessTransaction>>,
+    // pub payer: Keypair,
+    pub decimals: u8,
+    pub mint_authority: Keypair,
+    pub token: Token<TokenBanksClientProcessTransaction, Keypair>,
+
+    pub alice: Keypair,
+    pub bob: Keypair,
+}
+
+impl TestContext {
+    async fn new() -> Self {
+        let program_test = ProgramTest::default();
+        let ctx = program_test.start_with_context().await;
+        let ctx = Arc::new(Mutex::new(ctx));
+
+        let payer = keypair_clone(&ctx.lock().await.payer);
+
+        let client: Arc<dyn TokenClient<TokenBanksClientProcessTransaction>> =
+            Arc::new(TokenBanksClient::new_from_context(
+                Arc::clone(&ctx),
+                TokenBanksClientProcessTransaction,
+            ));
+
+        let decimals: u8 = 6;
+
+        let mint_account = Keypair::new();
+        let mint_authority = Keypair::new();
+        let mint_authority_pubkey = mint_authority.pubkey();
+
+        let token = Token::create_mint(
+            Arc::clone(&client),
+            keypair_clone(&payer),
+            &mint_account,
+            &mint_authority_pubkey,
+            None,
+            decimals,
+        )
+        .await
+        .expect("failed to create mint");
+
+        Self {
+            // ctx,
+            // client,
+            // payer,
+            decimals,
+            mint_authority,
+            token,
+
+            alice: Keypair::new(),
+            bob: Keypair::new(),
+        }
+    }
+}
+
+fn keypair_clone(kp: &Keypair) -> Keypair {
+    Keypair::from_bytes(&kp.to_bytes()).expect("failed to copy keypair")
+}
+
 #[tokio::test]
-async fn create_associated_token_account() {
-    let program_test = ProgramTest::default();
-    let ctx = program_test.start_with_context().await;
-    let ctx = Arc::new(Mutex::new(ctx));
+async fn associated_token_account() {
+    let TestContext { token, alice, .. } = TestContext::new().await;
 
-    let payer =
-        Keypair::from_bytes(&ctx.lock().await.payer.to_bytes()).expect("failed to copy keypair");
-
-    let client: Arc<dyn TokenClient<TokenBanksClientProcessTransaction>> = Arc::new(
-        TokenBanksClient::new_from_context(Arc::clone(&ctx), TokenBanksClientProcessTransaction),
-    );
-
-    let decimals: u8 = 6;
-
-    let mint_account = Keypair::new();
-    let mint_authority = Keypair::new();
-    let mint_authority_pubkey = mint_authority.pubkey();
-
-    // Create token
-    let token = Token::create_mint(
-        Arc::clone(&client),
-        &payer,
-        &mint_account,
-        &mint_authority_pubkey,
-        None,
-        decimals,
-    )
-    .await
-    .expect("failed to create mint");
-
-    // Create associated address
-    let alice = Keypair::new();
     let alice_vault = token
         .create_associated_token_account(&alice.pubkey())
         .await
         .expect("failed to create associated token account");
 
-    let bob = Keypair::new();
-    let bob_vault = token
-        .create_associated_token_account(&bob.pubkey())
-        .await
-        .expect("failed to create associated token account");
-
-    // Get associated address
     assert_eq!(
         token.get_associated_token_address(&alice.pubkey()),
         alice_vault
     );
 
-    // Mint
+    assert_eq!(
+        token
+            .get_account_info(alice_vault)
+            .await
+            .expect("failed to get account info"),
+        state::Account {
+            mint: *token.get_address(),
+            owner: alice.pubkey(),
+            amount: 0,
+            delegate: COption::None,
+            state: state::AccountState::Initialized,
+            is_native: COption::None,
+            delegated_amount: 0,
+            close_authority: COption::None,
+        }
+    );
+}
+
+#[tokio::test]
+async fn get_or_create_associated_token_account() {
+    let TestContext { token, alice, .. } = TestContext::new().await;
+
+    assert_eq!(
+        token
+            .get_or_create_associated_account_info(&alice.pubkey())
+            .await
+            .expect("failed to get account info"),
+        state::Account {
+            mint: *token.get_address(),
+            owner: alice.pubkey(),
+            amount: 0,
+            delegate: COption::None,
+            state: state::AccountState::Initialized,
+            is_native: COption::None,
+            delegated_amount: 0,
+            close_authority: COption::None,
+        }
+    );
+}
+
+#[tokio::test]
+async fn set_authority() {
+    let TestContext {
+        mint_authority,
+        token,
+        alice,
+        ..
+    } = TestContext::new().await;
+
+    let alice_vault = token
+        .create_associated_token_account(&alice.pubkey())
+        .await
+        .expect("failed to create associated token account");
+
+    token
+        .mint_to(&alice_vault, &mint_authority, 1)
+        .await
+        .expect("failed to mint token");
+
+    token
+        .set_authority(
+            None,
+            instruction::AuthorityType::MintTokens,
+            &mint_authority,
+        )
+        .await
+        .expect("failed to set authority");
+}
+
+#[tokio::test]
+async fn mint_to() {
+    let TestContext {
+        decimals,
+        mint_authority,
+        token,
+        alice,
+        ..
+    } = TestContext::new().await;
+
+    let alice_vault = token
+        .create_associated_token_account(&alice.pubkey())
+        .await
+        .expect("failed to create associated token account");
+
     let mint_amount = 10 * u64::pow(10, decimals as u32);
     token
         .mint_to(&alice_vault, &mint_authority, mint_amount)
         .await
         .expect("failed to mint token");
+
     assert_eq!(
         token
             .get_account_info(alice_vault)
@@ -73,31 +186,40 @@ async fn create_associated_token_account() {
             .amount,
         mint_amount
     );
+}
 
-    // Get or create associated account info
-    assert_eq!(
-        token
-            .get_or_create_associated_account_info(&alice.pubkey())
-            .await
-            .expect("failed to get account")
-            .amount,
-        mint_amount
-    );
-    assert_eq!(
-        token
-            .get_or_create_associated_account_info(&Keypair::new().pubkey())
-            .await
-            .expect("failed to get account")
-            .amount,
-        0
-    );
+#[tokio::test]
+async fn transfer() {
+    let TestContext {
+        decimals,
+        mint_authority,
+        token,
+        alice,
+        bob,
+        ..
+    } = TestContext::new().await;
 
-    // Transfer
+    let alice_vault = token
+        .create_associated_token_account(&alice.pubkey())
+        .await
+        .expect("failed to create associated token account");
+    let bob_vault = token
+        .create_associated_token_account(&bob.pubkey())
+        .await
+        .expect("failed to create associated token account");
+
+    let mint_amount = 10 * u64::pow(10, decimals as u32);
+    token
+        .mint_to(&alice_vault, &mint_authority, mint_amount)
+        .await
+        .expect("failed to mint token");
+
     let transfer_amount = mint_amount.overflowing_div(3).0;
     token
         .transfer(&alice_vault, &bob_vault, &alice, transfer_amount)
         .await
         .expect("failed to transfer");
+
     assert_eq!(
         token
             .get_account_info(alice_vault)

@@ -4,7 +4,7 @@ use solana_sdk::{
     program_error::ProgramError,
     program_pack::Pack,
     pubkey::Pubkey,
-    signer::{keypair::Keypair, signers::Signers, Signer},
+    signer::{signers::Signers, Signer},
     system_instruction,
     transaction::Transaction,
 };
@@ -29,13 +29,16 @@ pub enum TokenError {
 
 pub type TokenResult<T> = Result<T, TokenError>;
 
-pub struct Token<'a, ST> {
+pub struct Token<ST, TS> {
     client: Arc<dyn TokenClient<ST>>,
     pubkey: Pubkey,
-    payer: &'a Keypair,
+    payer: TS,
 }
 
-impl<ST> fmt::Debug for Token<'_, ST> {
+impl<ST, TS> fmt::Debug for Token<ST, TS>
+where
+    TS: Signer,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Token")
             .field("pubkey", &self.pubkey)
@@ -44,13 +47,14 @@ impl<ST> fmt::Debug for Token<'_, ST> {
     }
 }
 
-impl<'a, ST> Token<'a, ST>
+impl<ST, TS> Token<ST, TS>
 where
     ST: SendTransaction,
+    TS: Signer,
 {
     async fn process_ixs<T: Signers>(
         client: &Arc<dyn TokenClient<ST>>,
-        payer: &Keypair,
+        payer: &TS,
         instructions: &[Instruction],
         signing_keypairs: &T,
     ) -> TokenResult<ST::Output> {
@@ -77,17 +81,17 @@ where
     }
 
     /// Create and initialize a token.
-    pub async fn create_mint<S: Signer>(
+    pub async fn create_mint<'a, S: Signer>(
         client: Arc<dyn TokenClient<ST>>,
-        payer: &'a Keypair,
+        payer: TS,
         mint_account: &'a S,
         mint_authority: &'a Pubkey,
         freeze_authority: Option<&'a Pubkey>,
         decimals: u8,
-    ) -> TokenResult<Token<'a, ST>> {
+    ) -> TokenResult<Self> {
         Self::process_ixs(
             &client,
-            payer,
+            &payer,
             &[
                 system_instruction::create_account(
                     &payer.pubkey(),
@@ -127,13 +131,13 @@ where
     pub async fn create_associated_token_account(&self, owner: &Pubkey) -> TokenResult<Pubkey> {
         Self::process_ixs(
             &self.client,
-            self.payer,
+            &self.payer,
             &[create_associated_token_account(
                 &self.payer.pubkey(),
                 owner,
                 &self.pubkey,
             )],
-            &[self.payer],
+            &[&self.payer],
         )
         .await
         .map(|_| self.get_associated_token_address(owner))
@@ -177,6 +181,30 @@ where
         }
     }
 
+    /// Assign a new authority to the account.
+    pub async fn set_authority<S: Signer>(
+        &self,
+        new_authority: Option<&Pubkey>,
+        authority_type: instruction::AuthorityType,
+        current_authority: &S,
+    ) -> TokenResult<()> {
+        Self::process_ixs(
+            &self.client,
+            &self.payer,
+            &[instruction::set_authority(
+                &spl_token::id(),
+                &self.pubkey,
+                new_authority,
+                authority_type,
+                &current_authority.pubkey(),
+                &[],
+            )?],
+            &[current_authority],
+        )
+        .await
+        .map(|_| ())
+    }
+
     /// Mint new tokens
     pub async fn mint_to<S: Signer>(
         &self,
@@ -186,7 +214,7 @@ where
     ) -> TokenResult<()> {
         Self::process_ixs(
             &self.client,
-            self.payer,
+            &self.payer,
             &[instruction::mint_to(
                 &spl_token::id(),
                 &self.pubkey,
@@ -211,7 +239,7 @@ where
     ) -> TokenResult<ST::Output> {
         Self::process_ixs(
             &self.client,
-            self.payer,
+            &self.payer,
             &[instruction::transfer(
                 &spl_token::id(),
                 source,
