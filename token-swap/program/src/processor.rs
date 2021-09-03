@@ -419,6 +419,7 @@ impl Processor {
             .owner_trade_fee_denominator.checked_mul(ROUTED_OWNER_FEE_DENOMINATOR_MULT).unwrap();
 
         let swap_result1 = Self::process_swap_internal(
+            false,
             program_id,
             amount_in,
             //we frankly don't care how much this swaps, we'll do the min out check on the second swap
@@ -451,6 +452,7 @@ impl Processor {
         let pool_fee_account_info = next_account_info(account_info_iter)?;
 
         let swap_result2 = Self::process_swap_internal(
+            true,
             program_id,
             //amount of swap1 out becomes swap 2 in
             swap_result1.destination_amount_swapped.try_into().unwrap(),
@@ -495,6 +497,7 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let _swap_result = Self::process_swap_internal(
+            false,
             program_id,
             amount_in,
             minimum_amount_out,
@@ -515,6 +518,7 @@ impl Processor {
     }
 
     fn process_swap_internal<'a> (
+        collect_dust: bool,
         program_id: &Pubkey,
         amount_in: u64,
         minimum_amount_out: u64,
@@ -587,19 +591,32 @@ impl Processor {
         } else {
             TradeDirection::BtoA
         };
-        let result = token_swap
+        let amount_in_u128 = to_u128(amount_in)?;
+        let mut result = token_swap
             .swap_curve()
             .swap(
-                to_u128(amount_in)?,
+                amount_in_u128,
                 to_u128(source_account.amount)?,
                 to_u128(dest_account.amount)?,
                 trade_direction,
                 &fees,
             )
             .ok_or(SwapError::ZeroTradingTokens)?;
+
+        //sometimes this is off by a dust amount - we want to clean that dust
+        //under certain circumstances, such as a routed swap with temp acct
+        //note that if this was off significantly, the output slippage
+        //would be triggered
+        if collect_dust {
+            result.source_amount_swapped = amount_in_u128;
+        }
+        //unmut
+        let result = result;
+
         if result.destination_amount_swapped < to_u128(minimum_amount_out)? {
             return Err(SwapError::ExceededSlippage.into());
         }
+
 
         let (swap_token_a_amount, swap_token_b_amount) = match trade_direction {
             TradeDirection::AtoB => (
