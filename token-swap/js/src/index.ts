@@ -664,7 +664,7 @@ export class TokenSwap {
    * @param poolSourceB Pool's source token B account
    * @param poolDestinationC Pool's destination token C account
    * @param userDestinationC User's destination token C account
-   * @param userTransferAuthority Account delegated to transfer user's tokens, must own the intermediary account
+   * @param userTransferAuthority Account delegated to transfer user's tokens, must own the intermediary account and wrapped SOL output accounts
    * @param refundTo The account to send intermediate account close funds to, and to unwrap SOL to
    * @param tokenSwapForBtoC The second TokenSwap object representing the B to C swap
    * @param amountIn Amount to transfer from source account
