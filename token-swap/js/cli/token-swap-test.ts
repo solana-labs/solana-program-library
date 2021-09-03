@@ -781,6 +781,8 @@ export async function routedSwap(): Promise<void> {
   console.log('Creating swap token c account');
   let userAccountC = await mintC.createAccount(owner.publicKey);
 
+  console.log('userTransferAuthority', userTransferAuthority.publicKey.toString());
+  console.log('owner.publicKey', owner.publicKey.toString());
   console.log('Swapping');
   await tokenSwap.routedSwap(
     userAccountA,
@@ -791,6 +793,7 @@ export async function routedSwap(): Promise<void> {
     tokenAccountC,
     userAccountC,
     userTransferAuthority,
+    owner.publicKey,
     tokenSwap2,
     SWAP_AMOUNT_IN, 
     ROUTED_SWAP_AMOUNT_OUT2,
@@ -925,21 +928,11 @@ export async function createAccountsAndRoutedSwapAtomic(): Promise<void> {
       newAccountC,
       tokenSwap2.poolToken,
       tokenSwap2.feeAccount,
+      owner.publicKey,
       tokenSwap.swapProgramId,
       tokenSwap.tokenProgramId,
       SWAP_AMOUNT_IN,
       0,  //apps should set this for sure, but in this test can't be ROUTED_SWAP_AMOUNT_OUT anymore because we already swapped some
-    ),
-  );
-
-  //close the middle(B) account we created for the routing
-  transaction.add(
-    Token.createCloseAccountInstruction(
-      mintB.programId,
-      newAccountB.publicKey,
-      owner.publicKey,
-      userTransferAuthority.publicKey,
-      [userTransferAuthority],
     ),
   );
 

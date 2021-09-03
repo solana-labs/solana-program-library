@@ -20,7 +20,7 @@ use solana_program::{
     decode_error::DecodeError,
     entrypoint::ProgramResult,
     msg,
-    program::invoke_signed,
+    program::{invoke, invoke_signed},
     program_error::{PrintProgramError, ProgramError},
     program_option::COption,
     program_pack::Pack,
@@ -450,6 +450,7 @@ impl Processor {
         let destination_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let pool_fee_account_info = next_account_info(account_info_iter)?;
+        let refund_account_info = next_account_info(account_info_iter)?;
 
         let swap_result2 = Self::process_swap_internal(
             true,
@@ -474,6 +475,26 @@ impl Processor {
 
         msg!("second swap: {:?}", swap_result2);
 
+        //let token_b_data = swap_source_info.data;
+        let token_b = Self::unpack_token_account(source_info, token_program_info.key)?;
+        if token_b.owner == *user_transfer_authority_info.key && token_b.amount == 0 {
+            invoke(
+                &spl_token::instruction::close_account(
+                    token_program_info.key,
+                    source_info.key,
+                    refund_account_info.key,
+                    user_transfer_authority_info.key,
+                    &[],
+                )?,
+                &[
+                    token_program_info.clone(),
+                    source_info.clone(),
+                    refund_account_info.clone(),
+                    user_transfer_authority_info.clone(),
+                ],
+            )?;
+        }
+        
         Ok(())
     }
 

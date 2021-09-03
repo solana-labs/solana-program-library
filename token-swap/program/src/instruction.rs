@@ -658,6 +658,8 @@ pub fn routed_swap(
     destination_pubkey2: &Pubkey,
     pool_mint_pubkey2: &Pubkey,
     pool_fee_pubkey2: &Pubkey,
+    //for unwrap and cleanup
+    refund_pubkey: &Pubkey,
 
     instruction: Swap,
 ) -> Result<Instruction, ProgramError> {
@@ -682,6 +684,7 @@ pub fn routed_swap(
         AccountMeta::new(*destination_pubkey2, false),
         AccountMeta::new(*pool_mint_pubkey2, false),
         AccountMeta::new(*pool_fee_pubkey2, false),
+        AccountMeta::new(*refund_pubkey, false),
     ];
 
     Ok(Instruction {

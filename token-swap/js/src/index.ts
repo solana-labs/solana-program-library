@@ -673,6 +673,7 @@ export class TokenSwap {
     poolDestinationC: PublicKey,
     userDestinationC: PublicKey,
     userTransferAuthority: Keypair,
+    refundTo: PublicKey,
     tokenSwapForBtoC: TokenSwap,
     amountIn: number | Numberu64,
     minimumAmountOut: number | Numberu64,
@@ -698,6 +699,7 @@ export class TokenSwap {
           userDestinationC,
           tokenSwapForBtoC.poolToken,
           tokenSwapForBtoC.feeAccount,
+          refundTo,
           this.swapProgramId,
           this.tokenProgramId,
           amountIn,
@@ -726,6 +728,7 @@ export class TokenSwap {
     userDestination2: PublicKey,
     poolMint2: PublicKey,
     feeAccount2: PublicKey,
+    refundTo: PublicKey,
     swapProgramId: PublicKey,
     tokenProgramId: PublicKey,
     amountIn: number | Numberu64,
@@ -765,6 +768,7 @@ export class TokenSwap {
       {pubkey: userDestination2, isSigner: false, isWritable: true},
       {pubkey: poolMint2, isSigner: false, isWritable: true},
       {pubkey: feeAccount2, isSigner: false, isWritable: true},
+      {pubkey: refundTo, isSigner: false, isWritable: true},
     ];
     return new TransactionInstruction({
       keys,

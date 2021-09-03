@@ -241,7 +241,6 @@ async fn fn_swap_router_test_dust_collection() {
     //100,000 A in -> 85,714 B -> 114,286 C out (excluding fees)
     let amount_user_will_have: u64 = USER_TOKEN_A_BAL;
     let amount_user_will_swap: u64 = USER_WILL_SWAP;
-    let mut amount_user_expects: u64 = 0;
 
     //setup our users token account, owned and paid for by user
     let user_token_a = Keypair::new();
@@ -279,7 +278,7 @@ async fn fn_swap_router_test_dust_collection() {
             None,
             None,
             amount_user_will_swap,
-            amount_user_expects,
+            0,
         )
         .await
         .unwrap();

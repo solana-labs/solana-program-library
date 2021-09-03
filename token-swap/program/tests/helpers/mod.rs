@@ -596,7 +596,6 @@ impl<'a> TokenSwapAccounts<'a> {
         amt_out: u64,
     ) -> Result<(), TransportError> {
         let mut ins = Vec::<Instruction>::new();
-        let mut created_token_b = false;
         //if token_b needs created, create it
         let token_b = match token_b {
             Some(t) => *t,
@@ -607,7 +606,6 @@ impl<'a> TokenSwapAccounts<'a> {
                     &payer.pubkey(), 
                     &self.token_b_mint_key.pubkey(),
                 ));
-                created_token_b = true;
                 spl_associated_token_account::get_associated_token_address(
                     &payer.pubkey(), 
                     &self.token_b_mint_key.pubkey(),
@@ -653,27 +651,15 @@ impl<'a> TokenSwapAccounts<'a> {
                 &token_c,
                 &other_swap.pool_mint_key.pubkey(),
                 &other_swap.pool_fee_key.pubkey(),
+
+                &payer.pubkey(),
+
                 instruction::Swap {
                     amount_in: amt_in,
                     minimum_amount_out: amt_out,
                 },
             ).unwrap()
         );
-
-        //cleanup the intermediary token account if we created it
-        if created_token_b {
-            ins.push(
-                spl_token::instruction::close_account(
-                    &spl_token::id(), 
-                    &token_b, 
-                    &payer.pubkey(), 
-                    &payer.pubkey(), 
-                    &[
-                        &payer.pubkey()
-                    ]
-                ).unwrap()
-            );
-        }
 
         //now create and execute tx
         
