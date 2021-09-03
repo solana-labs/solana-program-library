@@ -74,6 +74,24 @@ async fn create_associated_token_account() {
         mint_amount
     );
 
+    // Get or create associated account info
+    assert_eq!(
+        token
+            .get_or_create_associated_account_info(&alice.pubkey())
+            .await
+            .expect("failed to get account")
+            .amount,
+        mint_amount
+    );
+    assert_eq!(
+        token
+            .get_or_create_associated_account_info(&Keypair::new().pubkey())
+            .await
+            .expect("failed to get account")
+            .amount,
+        0
+    );
+
     // Transfer
     let transfer_amount = mint_amount.overflowing_div(3).0;
     token

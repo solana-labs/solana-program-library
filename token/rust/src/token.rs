@@ -140,7 +140,7 @@ where
         .map_err(Into::into)
     }
 
-    /// Retrieve account information
+    /// Retrieve account information.
     pub async fn get_account_info(&self, account: Pubkey) -> TokenResult<state::Account> {
         let account = self
             .client
@@ -158,6 +158,23 @@ where
         }
 
         Ok(account)
+    }
+
+    /// Retrieve the associated account or create one if not found.
+    pub async fn get_or_create_associated_account_info(
+        &self,
+        owner: &Pubkey,
+    ) -> TokenResult<state::Account> {
+        let account = self.get_associated_token_address(owner);
+        match self.get_account_info(account).await {
+            Ok(account) => Ok(account),
+            // AccountInvalidOwner is possible if account already received some lamports.
+            Err(TokenError::AccountNotFound) | Err(TokenError::AccountInvalidOwner) => {
+                self.create_associated_token_account(owner).await?;
+                self.get_account_info(account).await
+            }
+            Err(error) => Err(error),
+        }
     }
 
     /// Mint new tokens
