@@ -1434,6 +1434,9 @@ impl PrintProgramError for SwapError {
             SwapError::UnsupportedCurveOperation => {
                 msg!("Error: The operation cannot be performed on the given curve")
             }
+            SwapError::TransferAuthorityOwnsNonNativeOutput => {
+                msg!("Error: Non-native token output to transfer authority owned account")
+            }
         }
     }
 }
