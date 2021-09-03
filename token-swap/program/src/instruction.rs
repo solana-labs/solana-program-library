@@ -126,8 +126,8 @@ pub enum SwapInstruction {
     ///   5. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the DESTINATION token.
     ///   6. `[writable]` token_(A|B) DESTINATION Account assigned to USER as the owner.
     ///   7. `[writable]` Pool token mint, to generate trading fees
-    ///   8. '[]` Token program id
-    ///   9 `[optional, writable]` Host fee account to receive additional trading fees
+    ///   8. `[writable]` refund account to unwrap WSOL to
+    ///   9. '[]` Token program id
     Swap(Swap),
 
     ///   Deposit both types of tokens into the pool.  The output is a "pool"
@@ -219,6 +219,7 @@ pub enum SwapInstruction {
     ///   12. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the DESTINATION token.
     ///   13. `[writable]` token_(A|B) DESTINATION Account assigned to USER as the owner.
     ///   14. `[writable]` Pool token mint, to generate trading fees
+    ///   15. `[writable]` refund account to unwrap WSOL to
     RoutedSwap(Swap),
 }
 
@@ -609,6 +610,8 @@ pub fn swap(
     pool_mint_pubkey: &Pubkey,
     pool_fee_pubkey: &Pubkey,
     host_fee_pubkey: Option<&Pubkey>,
+    //for unwrapping sol
+    refund_pubkey: &Pubkey,
     instruction: Swap,
 ) -> Result<Instruction, ProgramError> {
     let data = SwapInstruction::Swap(instruction).pack();
@@ -623,6 +626,7 @@ pub fn swap(
         AccountMeta::new(*destination_pubkey, false),
         AccountMeta::new(*pool_mint_pubkey, false),
         AccountMeta::new(*pool_fee_pubkey, false),
+        AccountMeta::new(*refund_pubkey, false),
         AccountMeta::new_readonly(*token_program_id, false),
     ];
     if let Some(host_fee_pubkey) = host_fee_pubkey {

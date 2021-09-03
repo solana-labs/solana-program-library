@@ -420,6 +420,7 @@ impl Processor {
 
         let swap_result1 = Self::process_swap_internal(
             false,
+            false,
             program_id,
             amount_in,
             //we frankly don't care how much this swaps, we'll do the min out check on the second swap
@@ -433,8 +434,8 @@ impl Processor {
             destination_info,
             pool_mint_info,
             pool_fee_account_info,
+            None,
             token_program_info,
-            //None,
             Some((new_numerator,new_denominator)),
         )?;
 
@@ -454,6 +455,7 @@ impl Processor {
 
         let swap_result2 = Self::process_swap_internal(
             true,
+            true,
             program_id,
             //amount of swap1 out becomes swap 2 in
             swap_result1.destination_amount_swapped.try_into().unwrap(),
@@ -468,6 +470,7 @@ impl Processor {
             destination_info,
             pool_mint_info,
             pool_fee_account_info,
+            Some(refund_account_info),
             token_program_info,
             //None,
             Some((new_numerator,new_denominator)),
@@ -475,9 +478,11 @@ impl Processor {
 
         msg!("second swap: {:?}", swap_result2);
 
-        //let token_b_data = swap_source_info.data;
+        //if transfer authority owns the intermediary token
+        //and the token account is empty, we close it
         let token_b = Self::unpack_token_account(source_info, token_program_info.key)?;
-        if token_b.owner == *user_transfer_authority_info.key && token_b.amount == 0 {
+        if token_b.owner == *user_transfer_authority_info.key 
+                && token_b.amount == 0 {
             invoke(
                 &spl_token::instruction::close_account(
                     token_program_info.key,
@@ -487,7 +492,6 @@ impl Processor {
                     &[],
                 )?,
                 &[
-                    token_program_info.clone(),
                     source_info.clone(),
                     refund_account_info.clone(),
                     user_transfer_authority_info.clone(),
@@ -515,10 +519,12 @@ impl Processor {
         let destination_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let pool_fee_account_info = next_account_info(account_info_iter)?;
+        let refund_account_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
         let _swap_result = Self::process_swap_internal(
             false,
+            true,
             program_id,
             amount_in,
             minimum_amount_out,
@@ -531,6 +537,7 @@ impl Processor {
             destination_info,
             pool_mint_info,
             pool_fee_account_info,
+            Some(refund_account_info),
             token_program_info,
             None,
         )?;
@@ -540,6 +547,7 @@ impl Processor {
 
     fn process_swap_internal<'a> (
         collect_dust: bool,
+        close_wsol: bool,
         program_id: &Pubkey,
         amount_in: u64,
         minimum_amount_out: u64,
@@ -552,6 +560,7 @@ impl Processor {
         destination_info: &AccountInfo<'a>,
         pool_mint_info: &AccountInfo<'a>,
         pool_fee_account_info: &AccountInfo<'a>,
+        refund_account_info: Option<&AccountInfo<'a>>,
         token_program_info: &AccountInfo<'a>,
         owner_trade_fee_numerator_denominator_override: Option<(u64,u64)>,
     ) -> Result<SwapResult, ProgramError> {
@@ -693,6 +702,29 @@ impl Processor {
             token_swap.nonce(),
             to_u64(result.destination_amount_swapped)?,
         )?;
+
+        //if the destination token is WSOL, we close it
+        if close_wsol {
+            if let Some(refund) = refund_account_info {
+                let token_c = Self::unpack_token_account(destination_info, token_program_info.key)?;
+                if token_c.owner == *refund.key 
+                        && token_c.is_native.is_some() {
+                    invoke(
+                        &spl_token::instruction::close_account(
+                            token_program_info.key,
+                            destination_info.key,
+                            refund.key,
+                            refund.key,
+                            &[],
+                        )?,
+                        &[
+                            destination_info.clone(),
+                            refund.clone(),
+                        ],
+                    )?;
+                }
+            }
+        }
 
         Ok(result)
     }
@@ -1844,6 +1876,7 @@ mod tests {
                     &self.pool_mint_key,
                     &self.pool_fee_key,
                     None,
+                    user_key,
                     Swap {
                         amount_in,
                         minimum_amount_out,
@@ -1860,6 +1893,7 @@ mod tests {
                     &mut user_destination_account,
                     &mut self.pool_mint_account,
                     &mut self.pool_fee_account,
+                    &mut Account::default(),
                     &mut Account::default(),
                 ],
             )?;
@@ -5924,6 +5958,7 @@ mod tests {
                         &accounts.pool_mint_key,
                         &accounts.pool_fee_key,
                         None,
+                        &user_key,
                         Swap {
                             amount_in: initial_a,
                             minimum_amount_out: minimum_token_b_amount,
@@ -5940,6 +5975,7 @@ mod tests {
                         &mut token_b_account,
                         &mut accounts.pool_mint_account,
                         &mut accounts.pool_fee_account,
+                        &mut Account::default(),
                         &mut Account::default(),
                     ],
                 ),
@@ -5999,6 +6035,7 @@ mod tests {
                         &accounts.pool_mint_key,
                         &accounts.pool_fee_key,
                         None,
+                        &user_key,
                         Swap {
                             amount_in: initial_a,
                             minimum_amount_out: minimum_token_b_amount,
@@ -6015,6 +6052,7 @@ mod tests {
                         &mut token_b_account,
                         &mut accounts.pool_mint_account,
                         &mut accounts.pool_fee_account,
+                        &mut Account::default(),
                         &mut Account::default(),
                     ],
                 ),
@@ -6168,6 +6206,7 @@ mod tests {
                         &accounts.pool_mint_key,
                         &accounts.pool_fee_key,
                         None,
+                        &user_key,
                         Swap {
                             amount_in: initial_a,
                             minimum_amount_out: minimum_token_b_amount,
@@ -6184,6 +6223,7 @@ mod tests {
                         &mut token_b_account,
                         &mut accounts.pool_mint_account,
                         &mut accounts.pool_fee_account,
+                        &mut Account::default(),
                         &mut Account::default(),
                     ],
                 ),

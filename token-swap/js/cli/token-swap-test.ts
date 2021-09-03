@@ -687,6 +687,7 @@ export async function createAccountAndSwapAtomic(): Promise<void> {
       newAccount.publicKey,
       tokenSwap.poolToken,
       tokenSwap.feeAccount,
+      owner.publicKey,
       tokenSwap.swapProgramId,
       tokenSwap.tokenProgramId,
       SWAP_AMOUNT_IN,
@@ -734,6 +735,7 @@ export async function swap(): Promise<void> {
     tokenAccountB,
     userAccountB,
     userTransferAuthority,
+    owner.publicKey,
     SWAP_AMOUNT_IN,
     SWAP_AMOUNT_OUT,
   );
@@ -805,8 +807,10 @@ export async function routedSwap(): Promise<void> {
   info = await mintA.getAccountInfo(userAccountA);
   assert(info.amount.toNumber() == 0);
 
-  info = await mintB.getAccountInfo(userAccountB);
-  assert(info.amount.toNumber() == 0);
+  try {
+    await mintB.getAccountInfo(userAccountB);
+    assert(false, "user intermediary account should not exist");
+  } catch { }
 
   info = await mintC.getAccountInfo(userAccountC);
   console.log("ROUTED_SWAP_AMOUNT_OUT2",info.amount.toNumber());
