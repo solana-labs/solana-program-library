@@ -749,7 +749,7 @@ impl Processor {
             &[bump_seed],
         ];
 
-        // Fund the stake account with 1 SOL + rent-exempt balance
+        // Fund the stake account with the minimum + rent-exempt balance
         let required_lamports = MINIMUM_ACTIVE_STAKE
             + rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
 
