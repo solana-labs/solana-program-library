@@ -703,28 +703,36 @@ impl Processor {
             to_u64(result.destination_amount_swapped)?,
         )?;
 
-        //if the destination token is WSOL, we close it
-        if close_wsol {
-            if let Some(refund) = refund_account_info {
-                let token_c = Self::unpack_token_account(destination_info, token_program_info.key)?;
-                if token_c.owner == *user_transfer_authority_info.key 
-                        && token_c.is_native.is_some() {
-                    invoke(
-                        &spl_token::instruction::close_account(
-                            token_program_info.key,
-                            destination_info.key,
-                            refund.key,
-                            user_transfer_authority_info.key,
-                            &[],
-                        )?,
-                        &[
-                            destination_info.clone(),
-                            refund.clone(),
-                            user_transfer_authority_info.clone(),
-                        ],
-                    )?;
-                }
+        //if the destination token is WSOL, we close it if we can
+        let token_c = Self::unpack_token_account(destination_info, token_program_info.key)?;
+        if token_c.owner == *user_transfer_authority_info.key {
+            //if the transfer authority owns this token, we do not want to exit this operation
+            //without handling the closing of the token
+            if refund_account_info.is_none() || token_c.is_native.is_none() || !close_wsol
+            {
+                //currently there is no valid reason for the transfer authority to own
+                //a non-native output token; this would likely be a bug to the inputs
+                //which if left unchecked would result in a stranded token
+                return Err(SwapError::TransferAuthorityOwnsNonNativeOutput.into());
             }
+            let refund = refund_account_info.unwrap();
+            invoke(
+                &spl_token::instruction::close_account(
+                    token_program_info.key,
+                    destination_info.key,
+                    refund.key,
+                    user_transfer_authority_info.key,
+                    &[],
+                )?,
+                &[
+                    destination_info.clone(),
+                    refund.clone(),
+                    user_transfer_authority_info.clone(),
+                ],
+            )?;
+        //if we should have closed but authority was set wrong, just leave a message?
+        } else if close_wsol && token_c.is_native.is_none() {
+            msg!("couldn't close native token; user transfer authority must own");
         }
 
         Ok(result)

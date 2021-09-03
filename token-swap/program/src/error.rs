@@ -102,6 +102,9 @@ pub enum SwapError {
     /// The operation cannot be performed on the given curve
     #[error("The operation cannot be performed on the given curve")]
     UnsupportedCurveOperation,
+    /// Non-native token output to transfer authority owned account
+    #[error("Non-native token output to transfer authority owned account")]
+    TransferAuthorityOwnsNonNativeOutput
 }
 impl From<SwapError> for ProgramError {
     fn from(e: SwapError) -> Self {
