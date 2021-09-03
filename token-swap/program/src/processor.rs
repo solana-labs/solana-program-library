@@ -703,36 +703,45 @@ impl Processor {
             to_u64(result.destination_amount_swapped)?,
         )?;
 
+        //some checks to prevent stranded token and unwrap sol
         if is_final_swap {
-            //if the destination token is WSOL, we close it if we can
             let token_b = Self::unpack_token_account(destination_info, token_program_info.key)?;
 
+            let owner_is_refunder = match refund_account_info {
+                None => false,
+                Some(r) => *r.key == token_b.owner
+            };
+
+            //if we can potentially close out this account
             if token_b.owner == *user_transfer_authority_info.key {
-                //if the transfer authority owns this token, we do not want to exit this operation
-                //without handling the closing of the token
-                if refund_account_info.is_none() || token_b.is_native.is_none()
-                {
-                    //currently there is no valid reason for the transfer authority to own
-                    //a non-native output token; this would likely be a bug to the inputs
-                    //which if left unchecked would result in a stranded token
-                    return Err(SwapError::TransferAuthorityOwnsNonNativeOutput.into());
+                //this is a safety check. if the owner isn't the refunder then this
+                //must be a temp authority. A temp authority on the output should ONLY
+                //be used for WSOL
+                if !owner_is_refunder && !token_b.is_native() {
+                    return Err(SwapError::NonRefunderTransferAuthorityOwnsNonNativeOutput.into());
+                } 
+                
+                if token_b.is_native() {
+                    if refund_account_info.is_none() {
+                        return Err(SwapError::TransferAuthorityOwnsNativeOutputRefunderEmpty.into());
+                    }
+                    let refund = refund_account_info.unwrap();
+                    invoke(
+                        &spl_token::instruction::close_account(
+                            token_program_info.key,
+                            destination_info.key,
+                            refund.key,
+                            user_transfer_authority_info.key,
+                            &[],
+                        )?,
+                        &[
+                            destination_info.clone(),
+                            refund.clone(),
+                            user_transfer_authority_info.clone(),
+                        ],
+                    )?;
                 }
-                let refund = refund_account_info.unwrap();
-                invoke(
-                    &spl_token::instruction::close_account(
-                        token_program_info.key,
-                        destination_info.key,
-                        refund.key,
-                        user_transfer_authority_info.key,
-                        &[],
-                    )?,
-                    &[
-                        destination_info.clone(),
-                        refund.clone(),
-                        user_transfer_authority_info.clone(),
-                    ],
-                )?;
-            //if we should have closed but authority was set wrong, just leave a message?
+            //we should have closed but authority was set wrong, just leave a message?
             } else if token_b.is_native() {
                 msg!("couldn't close native token; user transfer authority must own");
             }
@@ -1437,8 +1446,11 @@ impl PrintProgramError for SwapError {
             SwapError::UnsupportedCurveOperation => {
                 msg!("Error: The operation cannot be performed on the given curve")
             }
-            SwapError::TransferAuthorityOwnsNonNativeOutput => {
+            SwapError::NonRefunderTransferAuthorityOwnsNonNativeOutput => {
                 msg!("Error: Non-native token output to transfer authority owned account")
+            }
+            SwapError::TransferAuthorityOwnsNativeOutputRefunderEmpty => {
+                msg!("Error: A refunder is required when a non-owner transfer authority owns native output")
             }
         }
     }
