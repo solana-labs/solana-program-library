@@ -707,19 +707,20 @@ impl Processor {
         if close_wsol {
             if let Some(refund) = refund_account_info {
                 let token_c = Self::unpack_token_account(destination_info, token_program_info.key)?;
-                if token_c.owner == *refund.key 
+                if token_c.owner == *user_transfer_authority_info.key 
                         && token_c.is_native.is_some() {
                     invoke(
                         &spl_token::instruction::close_account(
                             token_program_info.key,
                             destination_info.key,
                             refund.key,
-                            refund.key,
+                            user_transfer_authority_info.key,
                             &[],
                         )?,
                         &[
                             destination_info.clone(),
                             refund.clone(),
+                            user_transfer_authority_info.clone(),
                         ],
                     )?;
                 }
