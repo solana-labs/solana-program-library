@@ -20,7 +20,7 @@ use solana_program::{
     decode_error::DecodeError,
     entrypoint::ProgramResult,
     msg,
-    program::invoke_signed,
+    program::{invoke, invoke_signed},
     program_error::{PrintProgramError, ProgramError},
     program_option::COption,
     program_pack::Pack,
@@ -419,6 +419,8 @@ impl Processor {
             .owner_trade_fee_denominator.checked_mul(ROUTED_OWNER_FEE_DENOMINATOR_MULT).unwrap();
 
         let swap_result1 = Self::process_swap_internal(
+            false,
+            false,
             program_id,
             amount_in,
             //we frankly don't care how much this swaps, we'll do the min out check on the second swap
@@ -432,8 +434,8 @@ impl Processor {
             destination_info,
             pool_mint_info,
             pool_fee_account_info,
+            None,
             token_program_info,
-            //None,
             Some((new_numerator,new_denominator)),
         )?;
 
@@ -449,8 +451,11 @@ impl Processor {
         let destination_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let pool_fee_account_info = next_account_info(account_info_iter)?;
+        let refund_account_info = next_account_info(account_info_iter)?;
 
         let swap_result2 = Self::process_swap_internal(
+            true,
+            true,
             program_id,
             //amount of swap1 out becomes swap 2 in
             swap_result1.destination_amount_swapped.try_into().unwrap(),
@@ -465,6 +470,7 @@ impl Processor {
             destination_info,
             pool_mint_info,
             pool_fee_account_info,
+            Some(refund_account_info),
             token_program_info,
             //None,
             Some((new_numerator,new_denominator)),
@@ -472,6 +478,27 @@ impl Processor {
 
         msg!("second swap: {:?}", swap_result2);
 
+        //if transfer authority owns the intermediary token
+        //and the token account is empty, we close it
+        let token_b = Self::unpack_token_account(source_info, token_program_info.key)?;
+        if token_b.owner == *user_transfer_authority_info.key 
+                && token_b.amount == 0 {
+            invoke(
+                &spl_token::instruction::close_account(
+                    token_program_info.key,
+                    source_info.key,
+                    refund_account_info.key,
+                    user_transfer_authority_info.key,
+                    &[],
+                )?,
+                &[
+                    source_info.clone(),
+                    refund_account_info.clone(),
+                    user_transfer_authority_info.clone(),
+                ],
+            )?;
+        }
+        
         Ok(())
     }
 
@@ -492,9 +519,12 @@ impl Processor {
         let destination_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let pool_fee_account_info = next_account_info(account_info_iter)?;
+        let refund_account_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
         let _swap_result = Self::process_swap_internal(
+            false,
+            true,
             program_id,
             amount_in,
             minimum_amount_out,
@@ -507,6 +537,7 @@ impl Processor {
             destination_info,
             pool_mint_info,
             pool_fee_account_info,
+            Some(refund_account_info),
             token_program_info,
             None,
         )?;
@@ -515,6 +546,8 @@ impl Processor {
     }
 
     fn process_swap_internal<'a> (
+        collect_dust: bool,
+        is_final_swap: bool,
         program_id: &Pubkey,
         amount_in: u64,
         minimum_amount_out: u64,
@@ -527,6 +560,7 @@ impl Processor {
         destination_info: &AccountInfo<'a>,
         pool_mint_info: &AccountInfo<'a>,
         pool_fee_account_info: &AccountInfo<'a>,
+        refund_account_info: Option<&AccountInfo<'a>>,
         token_program_info: &AccountInfo<'a>,
         owner_trade_fee_numerator_denominator_override: Option<(u64,u64)>,
     ) -> Result<SwapResult, ProgramError> {
@@ -587,19 +621,32 @@ impl Processor {
         } else {
             TradeDirection::BtoA
         };
-        let result = token_swap
+        let amount_in_u128 = to_u128(amount_in)?;
+        let mut result = token_swap
             .swap_curve()
             .swap(
-                to_u128(amount_in)?,
+                amount_in_u128,
                 to_u128(source_account.amount)?,
                 to_u128(dest_account.amount)?,
                 trade_direction,
                 &fees,
             )
             .ok_or(SwapError::ZeroTradingTokens)?;
+
+        //sometimes this is off by a dust amount - we want to clean that dust
+        //under certain circumstances, such as a routed swap with temp acct
+        //note that if this was off significantly, the output slippage
+        //would be triggered
+        if collect_dust {
+            result.source_amount_swapped = amount_in_u128;
+        }
+        //unmut
+        let result = result;
+
         if result.destination_amount_swapped < to_u128(minimum_amount_out)? {
             return Err(SwapError::ExceededSlippage.into());
         }
+
 
         let (swap_token_a_amount, swap_token_b_amount) = match trade_direction {
             TradeDirection::AtoB => (
@@ -655,6 +702,50 @@ impl Processor {
             token_swap.nonce(),
             to_u64(result.destination_amount_swapped)?,
         )?;
+
+        //some checks to prevent stranded token and unwrap sol
+        if is_final_swap {
+            let token_b = Self::unpack_token_account(destination_info, token_program_info.key)?;
+
+            let owner_is_refunder = match refund_account_info {
+                None => false,
+                Some(r) => *r.key == token_b.owner
+            };
+
+            //if we can potentially close out this account
+            if token_b.owner == *user_transfer_authority_info.key {
+                //this is a safety check. if the owner isn't the refunder then this
+                //must be a temp authority. A temp authority on the output should ONLY
+                //be used for WSOL
+                if !owner_is_refunder && !token_b.is_native() {
+                    return Err(SwapError::NonRefunderTransferAuthorityOwnsNonNativeOutput.into());
+                } 
+                
+                if token_b.is_native() {
+                    if refund_account_info.is_none() {
+                        return Err(SwapError::TransferAuthorityOwnsNativeOutputRefunderEmpty.into());
+                    }
+                    let refund = refund_account_info.unwrap();
+                    invoke(
+                        &spl_token::instruction::close_account(
+                            token_program_info.key,
+                            destination_info.key,
+                            refund.key,
+                            user_transfer_authority_info.key,
+                            &[],
+                        )?,
+                        &[
+                            destination_info.clone(),
+                            refund.clone(),
+                            user_transfer_authority_info.clone(),
+                        ],
+                    )?;
+                }
+            //we should have closed but authority was set wrong, just leave a message?
+            } else if token_b.is_native() {
+                msg!("couldn't close native token; user transfer authority must own");
+            }
+        }
 
         Ok(result)
     }
@@ -1355,6 +1446,12 @@ impl PrintProgramError for SwapError {
             SwapError::UnsupportedCurveOperation => {
                 msg!("Error: The operation cannot be performed on the given curve")
             }
+            SwapError::NonRefunderTransferAuthorityOwnsNonNativeOutput => {
+                msg!("Error: Non-native token output to transfer authority owned account")
+            }
+            SwapError::TransferAuthorityOwnsNativeOutputRefunderEmpty => {
+                msg!("Error: A refunder is required when a non-owner transfer authority owns native output")
+            }
         }
     }
 }
@@ -1806,6 +1903,7 @@ mod tests {
                     &self.pool_mint_key,
                     &self.pool_fee_key,
                     None,
+                    user_key,
                     Swap {
                         amount_in,
                         minimum_amount_out,
@@ -1822,6 +1920,7 @@ mod tests {
                     &mut user_destination_account,
                     &mut self.pool_mint_account,
                     &mut self.pool_fee_account,
+                    &mut Account::default(),
                     &mut Account::default(),
                 ],
             )?;
@@ -5886,6 +5985,7 @@ mod tests {
                         &accounts.pool_mint_key,
                         &accounts.pool_fee_key,
                         None,
+                        &user_key,
                         Swap {
                             amount_in: initial_a,
                             minimum_amount_out: minimum_token_b_amount,
@@ -5902,6 +6002,7 @@ mod tests {
                         &mut token_b_account,
                         &mut accounts.pool_mint_account,
                         &mut accounts.pool_fee_account,
+                        &mut Account::default(),
                         &mut Account::default(),
                     ],
                 ),
@@ -5961,6 +6062,7 @@ mod tests {
                         &accounts.pool_mint_key,
                         &accounts.pool_fee_key,
                         None,
+                        &user_key,
                         Swap {
                             amount_in: initial_a,
                             minimum_amount_out: minimum_token_b_amount,
@@ -5977,6 +6079,7 @@ mod tests {
                         &mut token_b_account,
                         &mut accounts.pool_mint_account,
                         &mut accounts.pool_fee_account,
+                        &mut Account::default(),
                         &mut Account::default(),
                     ],
                 ),
@@ -6130,6 +6233,7 @@ mod tests {
                         &accounts.pool_mint_key,
                         &accounts.pool_fee_key,
                         None,
+                        &user_key,
                         Swap {
                             amount_in: initial_a,
                             minimum_amount_out: minimum_token_b_amount,
@@ -6146,6 +6250,7 @@ mod tests {
                         &mut token_b_account,
                         &mut accounts.pool_mint_account,
                         &mut accounts.pool_fee_account,
+                        &mut Account::default(),
                         &mut Account::default(),
                     ],
                 ),

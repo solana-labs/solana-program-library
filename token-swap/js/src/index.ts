@@ -562,6 +562,7 @@ export class TokenSwap {
    * @param poolDestination Pool's destination token account
    * @param userDestination User's destination token account
    * @param userTransferAuthority Account delegated to transfer user's tokens
+   * @param refundTo The account to send intermediate account close funds to, and to unwrap SOL to
    * @param amountIn Amount to transfer from source account
    * @param minimumAmountOut Minimum amount of tokens the user will receive
    */
@@ -571,6 +572,7 @@ export class TokenSwap {
     poolDestination: PublicKey,
     userDestination: PublicKey,
     userTransferAuthority: Keypair,
+    refundTo: PublicKey,
     amountIn: number | Numberu64,
     minimumAmountOut: number | Numberu64,
   ): Promise<TransactionSignature> {
@@ -588,6 +590,7 @@ export class TokenSwap {
           userDestination,
           this.poolToken,
           this.feeAccount,
+          refundTo,
           this.swapProgramId,
           this.tokenProgramId,
           amountIn,
@@ -609,6 +612,7 @@ export class TokenSwap {
     userDestination: PublicKey,
     poolMint: PublicKey,
     feeAccount: PublicKey,
+    refundTo: PublicKey,
     swapProgramId: PublicKey,
     tokenProgramId: PublicKey,
     amountIn: number | Numberu64,
@@ -640,6 +644,7 @@ export class TokenSwap {
       {pubkey: userDestination, isSigner: false, isWritable: true},
       {pubkey: poolMint, isSigner: false, isWritable: true},
       {pubkey: feeAccount, isSigner: false, isWritable: true},
+      {pubkey: refundTo, isSigner: false, isWritable: true},
       {pubkey: tokenProgramId, isSigner: false, isWritable: false},
     ];
     return new TransactionInstruction({
@@ -659,7 +664,8 @@ export class TokenSwap {
    * @param poolSourceB Pool's source token B account
    * @param poolDestinationC Pool's destination token C account
    * @param userDestinationC User's destination token C account
-   * @param userTransferAuthority Account delegated to transfer user's tokens
+   * @param userTransferAuthority Account delegated to transfer user's tokens, must own the intermediary account and wrapped SOL output accounts
+   * @param refundTo The account to send intermediate account close funds to, and to unwrap SOL to
    * @param tokenSwapForBtoC The second TokenSwap object representing the B to C swap
    * @param amountIn Amount to transfer from source account
    * @param minimumAmountOut Minimum amount of tokens the user will receive
@@ -673,6 +679,7 @@ export class TokenSwap {
     poolDestinationC: PublicKey,
     userDestinationC: PublicKey,
     userTransferAuthority: Keypair,
+    refundTo: PublicKey,
     tokenSwapForBtoC: TokenSwap,
     amountIn: number | Numberu64,
     minimumAmountOut: number | Numberu64,
@@ -698,6 +705,7 @@ export class TokenSwap {
           userDestinationC,
           tokenSwapForBtoC.poolToken,
           tokenSwapForBtoC.feeAccount,
+          refundTo,
           this.swapProgramId,
           this.tokenProgramId,
           amountIn,
@@ -726,6 +734,7 @@ export class TokenSwap {
     userDestination2: PublicKey,
     poolMint2: PublicKey,
     feeAccount2: PublicKey,
+    refundTo: PublicKey,
     swapProgramId: PublicKey,
     tokenProgramId: PublicKey,
     amountIn: number | Numberu64,
@@ -765,6 +774,7 @@ export class TokenSwap {
       {pubkey: userDestination2, isSigner: false, isWritable: true},
       {pubkey: poolMint2, isSigner: false, isWritable: true},
       {pubkey: feeAccount2, isSigner: false, isWritable: true},
+      {pubkey: refundTo, isSigner: false, isWritable: true},
     ];
     return new TransactionInstruction({
       keys,

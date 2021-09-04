@@ -10,6 +10,8 @@ import {
   createSecondTokenSwapForRouting,
   routedSwap,
   createAccountsAndRoutedSwapAtomic,
+  createThirdTokenSwapForNative,
+  swapNative,
 } from './token-swap-test';
 
 async function main() {
@@ -41,6 +43,12 @@ async function main() {
   await routedSwap();
   console.log('Success\n');
   await createAccountsAndRoutedSwapAtomic();
+  
+  console.log('Run test: createThirdTokenSwap');
+  await createThirdTokenSwapForNative();
+  console.log('Run test: swapNative');
+  await swapNative();
+
   console.log('Success\n');
 }
 
