@@ -1,7 +1,6 @@
 // TODO: In v1.8 timeframe delete this module and use `send_and_confirm_messages_with_spinner()`
 //       from the Solana monorepo
 use {
-    solana_cli_output::display::new_spinner_progress_bar,
     solana_client::{
         rpc_client::RpcClient,
         rpc_config::RpcSendTransactionConfig,
@@ -17,6 +16,16 @@ use {
     solana_transaction_status::TransactionConfirmationStatus,
     std::{collections::HashMap, error, sync::Arc, thread::sleep, time::Duration},
 };
+
+/// TODO: In v1.8 timeframe switch to using `solana_cli_output::display::new_spinner_progress_bar()`
+fn new_spinner_progress_bar() -> indicatif::ProgressBar {
+    let progress_bar = indicatif::ProgressBar::new(42);
+    progress_bar.set_style(
+        indicatif::ProgressStyle::default_spinner().template("{spinner:.green} {wide_msg}"),
+    );
+    progress_bar.enable_steady_tick(100);
+    progress_bar
+}
 
 pub fn send_and_confirm_messages_with_spinner<T: Signers>(
     rpc_client: Arc<RpcClient>,
@@ -43,7 +52,7 @@ pub fn send_and_confirm_messages_with_spinner<T: Signers>(
     let mut transaction_errors = vec![None; messages.len()];
     let set_message =
         |confirmed_transactions, block_height: u64, last_valid_block_height: u64, status: &str| {
-            progress_bar.set_message(&format!(
+            progress_bar.set_message(format!(
                 "{:>5.1}% | {:<40}[block height {}; block hash valid for {} blocks]",
                 confirmed_transactions as f64 * 100. / messages.len() as f64,
                 status,
