@@ -1,3 +1,4 @@
+#![allow(deprecated)] // TODO: Remove when SPL upgrades to Solana 1.8
 use clap::{
     crate_description, crate_name, crate_version, value_t, value_t_or_exit, App, AppSettings, Arg,
     ArgMatches, SubCommand,
