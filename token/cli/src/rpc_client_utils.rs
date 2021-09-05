@@ -24,60 +24,91 @@ pub fn send_and_confirm_messages_with_spinner<T: Signers>(
     messages: &[Message],
     signers: &T,
 ) -> Result<Vec<Option<TransactionError>>, Box<dyn error::Error>> {
-    let commitment = rpc_client.commitment();
     let progress_bar = new_spinner_progress_bar();
-    let mut send_retries = 5;
+    let mut expired_blockhash_retries = 5;
     let send_transaction_interval = Duration::from_millis(10); /* ~100 TPS */
 
-    let Fees {
-        blockhash,
-        fee_calculator: _,
-        mut last_valid_block_height,
-    } = rpc_client.get_fees()?;
-
-    let mut transactions = vec![];
-    let mut transaction_errors = vec![None; messages.len()];
-    for (i, message) in messages.iter().enumerate() {
-        let mut transaction = Transaction::new_unsigned(message.clone());
-        transaction.try_sign(signers, blockhash)?;
-        transactions.push((i, transaction));
-    }
-
-    progress_bar.set_message("Finding leader nodes...");
+    progress_bar.set_message("Connecting...");
     let tpu_client = TpuClient::new(
         rpc_client.clone(),
         websocket_url,
         TpuClientConfig::default(),
     )?;
-    loop {
-        // Send all transactions
-        let mut pending_transactions = HashMap::new();
-        let num_transactions = transactions.len();
-        for (i, transaction) in transactions {
-            if !tpu_client.send_transaction(&transaction) {
-                let _result = rpc_client
-                    .send_transaction_with_config(
-                        &transaction,
-                        RpcSendTransactionConfig {
-                            preflight_commitment: Some(commitment.commitment),
-                            ..RpcSendTransactionConfig::default()
-                        },
-                    )
-                    .ok();
-            }
-            pending_transactions.insert(transaction.signatures[0], (i, transaction));
-            progress_bar.set_message(&format!(
-                "[{}/{}] Transactions sent",
-                pending_transactions.len(),
-                num_transactions
-            ));
 
-            sleep(send_transaction_interval);
+    let mut transactions = messages
+        .iter()
+        .enumerate()
+        .map(|(i, message)| (i, Transaction::new_unsigned(message.clone())))
+        .collect::<Vec<_>>();
+    let mut transaction_errors = vec![None; messages.len()];
+    let set_message =
+        |confirmed_transactions, block_height: u64, last_valid_block_height: u64, status: &str| {
+            progress_bar.set_message(&format!(
+                "{:>5.1}% | {:<40}[block height {}; block hash valid for {} blocks]",
+                confirmed_transactions as f64 * 100. / messages.len() as f64,
+                status,
+                block_height,
+                last_valid_block_height.saturating_sub(block_height),
+            ));
+        };
+
+    let mut confirmed_transactions = 0;
+    let mut block_height = rpc_client.get_block_height()?;
+    while expired_blockhash_retries > 0 {
+        let Fees {
+            blockhash,
+            fee_calculator: _,
+            last_valid_block_height,
+        } = rpc_client.get_fees()?;
+
+        let mut pending_transactions = HashMap::new();
+        for (i, mut transaction) in transactions {
+            transaction.try_sign(signers, blockhash)?;
+            pending_transactions.insert(transaction.signatures[0], (i, transaction));
         }
 
-        // Collect statuses for all the transactions, drop those that are confirmed
         loop {
-            let mut block_height = 0;
+            // Send all pending transactions
+            let num_transactions = pending_transactions.len();
+            for (index, (_i, transaction)) in pending_transactions.values().enumerate() {
+                if !tpu_client.send_transaction(transaction) {
+                    let _ = rpc_client.send_transaction_with_config(
+                        transaction,
+                        RpcSendTransactionConfig {
+                            skip_preflight: true,
+                            ..RpcSendTransactionConfig::default()
+                        },
+                    );
+                }
+                set_message(
+                    confirmed_transactions,
+                    block_height,
+                    last_valid_block_height,
+                    &format!("Sending {}/{} transactions", index + 1, num_transactions,),
+                );
+                sleep(send_transaction_interval);
+            }
+
+            // Wait for the next block before checking fro transaction statuses
+            set_message(
+                confirmed_transactions,
+                block_height,
+                last_valid_block_height,
+                &format!("Waiting for next block, {} pending...", num_transactions),
+            );
+
+            block_height = rpc_client.get_block_height()?;
+            let mut new_block_height = block_height;
+            while block_height == new_block_height {
+                sleep(Duration::from_millis(200));
+                new_block_height = rpc_client.get_block_height()?;
+            }
+
+            if new_block_height > last_valid_block_height {
+                break;
+            }
+
+            // Collect statuses for the transactions, drop those that are confirmed
             let pending_signatures = pending_transactions.keys().cloned().collect::<Vec<_>>();
             for pending_signatures_chunk in
                 pending_signatures.chunks(MAX_GET_SIGNATURE_STATUSES_QUERY_ITEMS)
@@ -92,6 +123,7 @@ pub fn send_and_confirm_messages_with_spinner<T: Signers>(
                                 if *confirmation_status != TransactionConfirmationStatus::Processed
                                 {
                                     if let Some((i, _)) = pending_transactions.remove(signature) {
+                                        confirmed_transactions += 1;
                                         transaction_errors[i] = status.err;
                                     }
                                 }
@@ -99,67 +131,32 @@ pub fn send_and_confirm_messages_with_spinner<T: Signers>(
                                 || status.confirmations.unwrap() > 1
                             {
                                 if let Some((i, _)) = pending_transactions.remove(signature) {
+                                    confirmed_transactions += 1;
                                     transaction_errors[i] = status.err;
                                 }
                             }
                         }
                     }
                 }
-
-                block_height = rpc_client.get_block_height()?;
-                progress_bar.set_message(&format!(
-                    "[{}/{}] Transactions confirmed. Retrying in {} blocks",
-                    num_transactions - pending_transactions.len(),
-                    num_transactions,
-                    last_valid_block_height.saturating_sub(block_height)
-                ));
+                set_message(
+                    confirmed_transactions,
+                    block_height,
+                    last_valid_block_height,
+                    "Checking transaction status...",
+                );
             }
 
             if pending_transactions.is_empty() {
                 return Ok(transaction_errors);
             }
-
-            if block_height > last_valid_block_height {
-                break;
-            }
-
-            for (_i, transaction) in pending_transactions.values() {
-                if !tpu_client.send_transaction(transaction) {
-                    let _result = rpc_client
-                        .send_transaction_with_config(
-                            transaction,
-                            RpcSendTransactionConfig {
-                                preflight_commitment: Some(commitment.commitment),
-                                ..RpcSendTransactionConfig::default()
-                            },
-                        )
-                        .ok();
-                }
-            }
-
-            if cfg!(not(test)) {
-                // Retry twice a second
-                sleep(Duration::from_millis(500));
-            }
         }
 
-        if send_retries == 0 {
-            return Err("Transactions failed".into());
-        }
-        send_retries -= 1;
-
-        // Re-sign any failed transactions with a new blockhash and retry
-        let Fees {
-            blockhash,
-            fee_calculator: _,
-            last_valid_block_height: new_last_valid_block_height,
-        } = rpc_client.get_fees()?;
-
-        last_valid_block_height = new_last_valid_block_height;
-        transactions = vec![];
-        for (_, (i, mut transaction)) in pending_transactions.into_iter() {
-            transaction.try_sign(signers, blockhash)?;
-            transactions.push((i, transaction));
-        }
+        transactions = pending_transactions.into_iter().map(|(_k, v)| v).collect();
+        progress_bar.println(format!(
+            "Blockhash expired. {} retries remaining",
+            expired_blockhash_retries
+        ));
+        expired_blockhash_retries -= 1;
     }
+    Err("Max retries exceeded".into())
 }

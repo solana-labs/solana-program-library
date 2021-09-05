@@ -4,7 +4,6 @@ use {
         config::Config, owner_address_arg,
         rpc_client_utils::send_and_confirm_messages_with_spinner, Error,
     },
-    chrono_humanize::{Accuracy, HumanTime, Tense},
     clap::{value_t_or_exit, App, AppSettings, Arg, ArgMatches, SubCommand},
     solana_clap_utils::{
         input_parsers::pubkey_of_signer,
@@ -469,12 +468,11 @@ fn send_messages(
         }
     }
     let elapsed = Instant::now().duration_since(start);
-    println!(
-        "Elapsed time: {}",
-        HumanTime::from(chrono::Duration::from_std(elapsed).unwrap())
-            .to_text_en(Accuracy::Precise, Tense::Present)
-    );
     let tps = messages.len() as f64 / elapsed.as_secs_f64();
-    println!("Average TPS: {:.2}", tps);
+    println!(
+        "Average TPS: {:.2}\nElapsed time: {} seconds",
+        tps,
+        elapsed.as_secs_f64(),
+    );
     Ok(())
 }

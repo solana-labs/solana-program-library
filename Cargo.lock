@@ -3792,8 +3792,6 @@ dependencies = [
 name = "spl-token-cli"
 version = "2.0.14"
 dependencies = [
- "chrono",
- "chrono-humanize",
  "clap",
  "console 0.14.1",
  "serde",
