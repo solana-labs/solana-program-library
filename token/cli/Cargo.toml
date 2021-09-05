@@ -10,8 +10,6 @@ version = "2.0.14"
 
 [dependencies]
 clap = "2.33.3"
-chrono = "0.4"
-chrono-humanize = "0.2.1"
 console = "0.14.0"
 serde = "1.0.130"
 serde_derive = "1.0.103"
