@@ -108,6 +108,11 @@ pub enum SwapError {
     /// A refunder is required when a non-owner transfer authority owns native output
     #[error("A refunder is required when a non-owner transfer authority owns native output")]
     TransferAuthorityOwnsNativeOutputRefunderEmpty,
+
+    // 30.
+    /// A swap must be comprised of the required mint
+    #[error("A swap must be comprised of the required mint")]
+    InvalidMint,
 }
 impl From<SwapError> for ProgramError {
     fn from(e: SwapError) -> Self {

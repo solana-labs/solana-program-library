@@ -26,6 +26,8 @@ pub struct SwapConstraints<'a> {
     pub valid_curve_types: &'a [CurveType],
     /// Valid fees
     pub fees: &'a Fees,
+    /// A mint required to be on one side of a swap pool
+    pub required_mint: &'a str,
 }
 
 impl<'a> SwapConstraints<'a> {
@@ -59,6 +61,8 @@ impl<'a> SwapConstraints<'a> {
 }
 
 #[cfg(feature = "production")]
+const REQUIRED_MINT_ADDRESS: &str = env!("REQUIRED_MINT_ADDRESS");
+#[cfg(feature = "production")]
 const OWNER_KEY: &str = env!("SWAP_PROGRAM_OWNER_FEE_ADDRESS");
 #[cfg(feature = "production")]
 const FEES: &Fees = &Fees {
@@ -85,6 +89,7 @@ pub const SWAP_CONSTRAINTS: Option<SwapConstraints> = {
             owner_key: OWNER_KEY,
             valid_curve_types: VALID_CURVE_TYPES,
             fees: FEES,
+            required_mint: REQUIRED_MINT_ADDRESS,
         })
     }
     #[cfg(not(feature = "production"))]
@@ -107,6 +112,7 @@ mod tests {
         let owner_trade_fee_denominator = 5;
         let owner_withdraw_fee_numerator = 4;
         let owner_withdraw_fee_denominator = 10;
+        let required_mint = "";
         let owner_key = "";
         let curve_type = CurveType::ConstantProduct;
         let valid_fees = Fees {
@@ -126,6 +132,7 @@ mod tests {
             owner_key,
             valid_curve_types: &[curve_type],
             fees: &valid_fees,
+            required_mint,
         };
 
         constraints.validate_curve(&swap_curve).unwrap();

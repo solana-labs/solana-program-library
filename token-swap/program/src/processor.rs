@@ -309,7 +309,6 @@ impl Processor {
                 &[swap_curve.curve_type as u8],
             ], program_id);
 
-        msg!("checking pool pda: {}, {} with nonce {}", swap_info.key, pool_pda, pool_nonce);
         if *swap_info.key != pool_pda || pool_nonce != pool_pda_nonce {
             return Err(SwapError::InvalidProgramAddress.into());
         }
@@ -322,6 +321,29 @@ impl Processor {
                 &[pool_nonce]
             ]
         ];
+
+        if let Some(swap_constraints) = swap_constraints {
+            let owner_key = swap_constraints
+                .owner_key
+                .parse::<Pubkey>()
+                .map_err(|_| SwapError::InvalidOwner)?;
+            if fee_account.owner != owner_key {
+                return Err(SwapError::InvalidOwner.into());
+            }
+
+            let required_mint = swap_constraints
+                .required_mint
+                .parse::<Pubkey>()
+                .map_err(|_| SwapError::InvalidMint)?;
+            if token_a.mint != required_mint && token_b.mint != required_mint {
+                return Err(SwapError::InvalidMint.into());
+            }
+            
+            swap_constraints.validate_curve(&swap_curve)?;
+            swap_constraints.validate_fees(&fees)?;
+        }
+        fees.validate()?;
+        swap_curve.calculator.validate()?;
 
         invoke_signed(
             &system_instruction::create_account(
@@ -340,20 +362,6 @@ impl Processor {
         )?;
 
         pool_registry.append(&pool_pda);
-
-        if let Some(swap_constraints) = swap_constraints {
-            let owner_key = swap_constraints
-                .owner_key
-                .parse::<Pubkey>()
-                .map_err(|_| SwapError::InvalidOwner)?;
-            if fee_account.owner != owner_key {
-                return Err(SwapError::InvalidOwner.into());
-            }
-            swap_constraints.validate_curve(&swap_curve)?;
-            swap_constraints.validate_fees(&fees)?;
-        }
-        fees.validate()?;
-        swap_curve.calculator.validate()?;
 
         let initial_amount = swap_curve.calculator.new_pool_supply();
 
@@ -385,7 +393,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes an [DualSwap](enum.Instruction.html).
+    /// Processes an [RoutedSwap](enum.Instruction.html).
     pub fn process_routed_swap(
         program_id: &Pubkey,
         amount_in: u64,
@@ -1451,6 +1459,9 @@ impl PrintProgramError for SwapError {
             }
             SwapError::TransferAuthorityOwnsNativeOutputRefunderEmpty => {
                 msg!("Error: A refunder is required when a non-owner transfer authority owns native output")
+            }
+            SwapError::InvalidMint => {
+                msg!("Error: A swap must be comprised of the required mint ({})", SWAP_CONSTRAINTS.unwrap().required_mint)
             }
         }
     }
@@ -2949,6 +2960,249 @@ mod tests {
                 accounts.initialize_swap()
             );
             accounts.token_b_account = old_account;
+        }
+
+        // right required mint in constraint
+        {
+            let trade_fee_numerator = 25;
+            let trade_fee_denominator = 10000;
+            let owner_trade_fee_numerator = 5;
+            let owner_trade_fee_denominator = 10000;
+            let fees = Fees {
+                trade_fee_numerator,
+                trade_fee_denominator,
+                owner_trade_fee_numerator,
+                owner_trade_fee_denominator,
+                owner_withdraw_fee_numerator,
+                owner_withdraw_fee_denominator,
+            };
+            let curve = ConstantProductCurve {};
+            let swap_curve = SwapCurve {
+                curve_type: CurveType::ConstantProduct,
+                calculator: Box::new(curve),
+            };
+
+            let mut accounts = SwapAccountInfo::new(
+                &user_key,
+                fees.clone(),
+                swap_curve,
+                token_a_amount,
+                token_b_amount,
+            );
+
+            //use proper required mint
+            let required_mint = accounts.token_a_mint_key.to_string();
+            
+            let valid_curve_types = &[CurveType::ConstantProduct];
+
+            //use proper owner
+            let fee_account = spl_token::state::Account::unpack(&accounts.pool_fee_account.data).unwrap();
+            let owner_as_str = fee_account.owner.to_string();
+            let constraints = Some(SwapConstraints {
+                owner_key: &owner_as_str,
+                valid_curve_types,
+                fees: &fees,
+                required_mint: &required_mint,
+            });
+
+            assert_eq!(
+
+                //this err is a side affect of getting past the point in the code where the invalid 
+                //mint is checked its what we expect because this is what happens if you try and swap 
+                //without using banks_client.  It's the best we can do for now.
+                //tl;dr; it's not an InvalidMint err.
+                Err(ProgramError::InvalidAccountData),
+
+                do_process_instruction_with_fee_constraints(
+                    initialize(
+                        &SWAP_PROGRAM_ID,
+                        &spl_token::id(),
+                        &accounts.payer_key,
+                        &accounts.swap_key,
+                        &accounts.authority_key,
+                        &accounts.token_a_key,
+                        &accounts.token_b_key,
+                        &accounts.pool_mint_key,
+                        &accounts.pool_fee_key,
+                        &accounts.pool_token_key,
+                        accounts.nonce,
+                        accounts.fees.clone(),
+                        accounts.swap_curve.clone(),
+                        &accounts.pool_registry_key,
+                        accounts.pool_nonce
+                    )
+                    .unwrap(),
+                    vec![
+                        &mut accounts.payer_account,
+                        &mut accounts.swap_account,
+                        &mut Account::default(),
+                        &mut accounts.token_a_account,
+                        &mut accounts.token_b_account,
+                        &mut accounts.pool_mint_account,
+                        &mut accounts.pool_fee_account,
+                        &mut accounts.pool_token_account,
+                        &mut Account::default(),
+                        &mut accounts.pool_registry_account,
+                        &mut Account::default(),
+                        &mut accounts.rent_sysvar_account,
+                    ],
+                    &constraints,
+                )
+            );
+        }
+
+        // wrong required mint in constraint
+        {
+            let trade_fee_numerator = 25;
+            let trade_fee_denominator = 10000;
+            let owner_trade_fee_numerator = 5;
+            let owner_trade_fee_denominator = 10000;
+            let fees = Fees {
+                trade_fee_numerator,
+                trade_fee_denominator,
+                owner_trade_fee_numerator,
+                owner_trade_fee_denominator,
+                owner_withdraw_fee_numerator,
+                owner_withdraw_fee_denominator,
+            };
+            let curve = ConstantProductCurve {};
+            let swap_curve = SwapCurve {
+                curve_type: CurveType::ConstantProduct,
+                calculator: Box::new(curve),
+            };
+            let new_key = Pubkey::new_unique();
+            let required_mint = &new_key.to_string();
+            let valid_curve_types = &[CurveType::ConstantProduct];
+            //use proper owner
+            let fee_account = spl_token::state::Account::unpack(&accounts.pool_fee_account.data).unwrap();
+            let owner_as_str = bs58::encode(fee_account.owner).into_string();
+            let constraints = Some(SwapConstraints {
+                owner_key: &owner_as_str,
+                valid_curve_types,
+                fees: &fees,
+                required_mint,
+            });
+            let mut accounts = SwapAccountInfo::new(
+                &user_key,
+                fees.clone(),
+                swap_curve,
+                token_a_amount,
+                token_b_amount,
+            );
+            assert_eq!(
+                Err(SwapError::InvalidMint.into()),
+                do_process_instruction_with_fee_constraints(
+                    initialize(
+                        &SWAP_PROGRAM_ID,
+                        &spl_token::id(),
+                        &accounts.payer_key,
+                        &accounts.swap_key,
+                        &accounts.authority_key,
+                        &accounts.token_a_key,
+                        &accounts.token_b_key,
+                        &accounts.pool_mint_key,
+                        &accounts.pool_fee_key,
+                        &accounts.pool_token_key,
+                        accounts.nonce,
+                        accounts.fees.clone(),
+                        accounts.swap_curve.clone(),
+                        &accounts.pool_registry_key,
+                        accounts.pool_nonce
+                    )
+                    .unwrap(),
+                    vec![
+                        &mut accounts.payer_account,
+                        &mut accounts.swap_account,
+                        &mut Account::default(),
+                        &mut accounts.token_a_account,
+                        &mut accounts.token_b_account,
+                        &mut accounts.pool_mint_account,
+                        &mut accounts.pool_fee_account,
+                        &mut accounts.pool_token_account,
+                        &mut Account::default(),
+                        &mut accounts.pool_registry_account,
+                        &mut Account::default(),
+                        &mut accounts.rent_sysvar_account,
+                    ],
+                    &constraints,
+                )
+            );
+        }
+
+        // wrong owner key in constraint
+        {
+            let new_key = Pubkey::new_unique();
+            let trade_fee_numerator = 25;
+            let trade_fee_denominator = 10000;
+            let owner_trade_fee_numerator = 5;
+            let owner_trade_fee_denominator = 10000;
+            let fees = Fees {
+                trade_fee_numerator,
+                trade_fee_denominator,
+                owner_trade_fee_numerator,
+                owner_trade_fee_denominator,
+                owner_withdraw_fee_numerator,
+                owner_withdraw_fee_denominator,
+            };
+            let curve = ConstantProductCurve {};
+            let swap_curve = SwapCurve {
+                curve_type: CurveType::ConstantProduct,
+                calculator: Box::new(curve),
+            };
+            let owner_key = &new_key.to_string();
+            let required_mint = &new_key.to_string();
+            let valid_curve_types = &[CurveType::ConstantProduct];
+            let constraints = Some(SwapConstraints {
+                owner_key,
+                valid_curve_types,
+                fees: &fees,
+                required_mint,
+            });
+            let mut accounts = SwapAccountInfo::new(
+                &user_key,
+                fees.clone(),
+                swap_curve,
+                token_a_amount,
+                token_b_amount,
+            );
+            assert_eq!(
+                Err(SwapError::InvalidOwner.into()),
+                do_process_instruction_with_fee_constraints(
+                    initialize(
+                        &SWAP_PROGRAM_ID,
+                        &spl_token::id(),
+                        &accounts.payer_key,
+                        &accounts.swap_key,
+                        &accounts.authority_key,
+                        &accounts.token_a_key,
+                        &accounts.token_b_key,
+                        &accounts.pool_mint_key,
+                        &accounts.pool_fee_key,
+                        &accounts.pool_token_key,
+                        accounts.nonce,
+                        accounts.fees.clone(),
+                        accounts.swap_curve.clone(),
+                        &accounts.pool_registry_key,
+                        accounts.pool_nonce
+                    )
+                    .unwrap(),
+                    vec![
+                        &mut accounts.payer_account,
+                        &mut accounts.swap_account,
+                        &mut Account::default(),
+                        &mut accounts.token_a_account,
+                        &mut accounts.token_b_account,
+                        &mut accounts.pool_mint_account,
+                        &mut accounts.pool_fee_account,
+                        &mut accounts.pool_token_account,
+                        &mut Account::default(),
+                        &mut accounts.pool_registry_account,
+                        &mut Account::default(),
+                        &mut accounts.rent_sysvar_account,
+                    ],
+                    &constraints,
+                )
+            );
         }
 
     }
