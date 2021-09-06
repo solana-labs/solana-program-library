@@ -177,7 +177,7 @@ impl Default for SwapCurve {
 /// Clone takes advantage of pack / unpack to get around the difficulty of
 /// cloning dynamic objects.
 /// Note that this is only to be used for testing.
-#[cfg(any(test, feature = "fuzz"))]
+#[cfg(any(test, feature = "fuzz", feature = "test-bpf"))]
 impl Clone for SwapCurve {
     fn clone(&self) -> Self {
         let mut packed_self = [0u8; Self::LEN];
@@ -293,8 +293,6 @@ mod tests {
         let owner_trade_fee_denominator = 0;
         let owner_withdraw_fee_numerator = 0;
         let owner_withdraw_fee_denominator = 0;
-        let host_fee_numerator = 0;
-        let host_fee_denominator = 0;
 
         let fees = Fees {
             trade_fee_numerator,
@@ -302,9 +300,7 @@ mod tests {
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator,
-            host_fee_numerator,
-            host_fee_denominator,
+            owner_withdraw_fee_denominator
         };
         let source_amount = 100;
         let curve = ConstantProductCurve {};
@@ -339,17 +335,13 @@ mod tests {
         let owner_trade_fee_denominator = 100;
         let owner_withdraw_fee_numerator = 0;
         let owner_withdraw_fee_denominator = 0;
-        let host_fee_numerator = 0;
-        let host_fee_denominator = 0;
         let fees = Fees {
             trade_fee_numerator,
             trade_fee_denominator,
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator,
-            host_fee_numerator,
-            host_fee_denominator,
+            owner_withdraw_fee_denominator
         };
         let source_amount: u128 = 100;
         let curve = ConstantProductCurve {};

@@ -1,6 +1,6 @@
 [package]
 name = "spl-token-swap"
-version = "2.1.0"
+version = "2.3.0"
 description = "Solana Program Library Token Swap"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library"
@@ -11,12 +11,15 @@ edition = "2018"
 no-entrypoint = []
 production = []
 fuzz = ["arbitrary", "roots"]
+test-bpf = []
 
 [dependencies]
 arrayref = "0.3.6"
+bs58 = "0.4.0"
 enum_dispatch = "0.3.7"
 num-derive = "0.3"
 num-traits = "0.2"
+bytemuck = { version = "1.7.2", features = ["derive", "extern_crate_alloc"] }
 solana-program = "1.7.7"
 spl-math = { version = "0.1", path = "../../libraries/math", features = [ "no-entrypoint" ] }
 spl-token = { version = "3.2", path = "../../token/program", features = [ "no-entrypoint" ] }
@@ -25,6 +28,8 @@ arbitrary = { version = "0.4", features = ["derive"], optional = true }
 roots = { version = "0.0.7", optional = true }
 
 [dev-dependencies]
+solana-program-test = "1.7.7"
+spl-associated-token-account = { version = "1.0.3", features = ["no-entrypoint"] }
 solana-sdk = "1.7.7"
 proptest = "1.0"
 sim =  { path = "./sim" }

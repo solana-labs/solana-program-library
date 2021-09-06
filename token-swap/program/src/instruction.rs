@@ -9,6 +9,7 @@ use solana_program::{
     program_error::ProgramError,
     program_pack::Pack,
     pubkey::Pubkey,
+    sysvar,
 };
 use std::convert::TryInto;
 use std::mem::size_of;
@@ -27,6 +28,8 @@ pub struct Initialize {
     /// swap curve info for pool, including CurveType and anything
     /// else that may be required
     pub swap_curve: SwapCurve,
+    /// nonce used to create valid program address for the pool
+    pub pool_nonce: u8,
 }
 
 /// Swap instruction data
@@ -108,6 +111,9 @@ pub enum SwapInstruction {
     ///   6. `[writable]` Pool Token Account to deposit the initial pool token
     ///   supply.  Must be empty, not owned by swap authority.
     ///   7. '[]` Token program id
+    ///   8. '[writable]` Pool registry
+    ///   9. '[]` System Program
+    ///   10. '[]` Rent
     Initialize(Initialize),
 
     ///   Swap the tokens in the pool.
@@ -120,9 +126,8 @@ pub enum SwapInstruction {
     ///   5. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the DESTINATION token.
     ///   6. `[writable]` token_(A|B) DESTINATION Account assigned to USER as the owner.
     ///   7. `[writable]` Pool token mint, to generate trading fees
-    ///   8. `[writable]` Fee account, to receive trading fees
+    ///   8. `[writable]` refund account to unwrap WSOL to
     ///   9. '[]` Token program id
-    ///   10 `[optional, writable]` Host fee account to receive additional trading fees
     Swap(Swap),
 
     ///   Deposit both types of tokens into the pool.  The output is a "pool"
@@ -187,6 +192,35 @@ pub enum SwapInstruction {
     ///   8. `[writable]` Fee account, to receive withdrawal fees
     ///   9. '[]` Token program id
     WithdrawSingleTokenTypeExactAmountOut(WithdrawSingleTokenTypeExactAmountOut),
+
+    ///   Initializes the pool registry
+    ///
+    /// Accounts expected:
+    ///
+    /// 0. `[signer]` The account of deployer.
+    /// 1. `[writable]` The pool registry account.
+    InitializeRegistry(),
+
+    ///   Swap across two pools.
+    ///
+    ///   0. `[]` Token-swap
+    ///   1. `[]` swap authority
+    ///   2. `[]` user transfer authority
+    ///   3. `[writable]` token_(A|B) SOURCE Account, amount is transferable by user transfer authority,
+    ///   4. `[writable]` token_(A|B) Base Account to swap INTO.  Must be the SOURCE token.
+    ///   5. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the MIDDLE token.
+    ///   6. `[writable]` token_(A|B) MIDDLE Account assigned to USER as the owner.
+    ///   7. `[writable]` Pool token mint, to generate trading fees
+    ///   8. '[]` Token program id
+    /// 
+    ///   9. `[]` Token-swap 2
+    ///   10. `[]` swap authority 2
+    ///   11. `[writable]` token_(A|B) Base Account to swap INTO.  Must be the MIDDLE token.
+    ///   12. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the DESTINATION token.
+    ///   13. `[writable]` token_(A|B) DESTINATION Account assigned to USER as the owner.
+    ///   14. `[writable]` Pool token mint, to generate trading fees
+    ///   15. `[writable]` refund account to unwrap WSOL to
+    RoutedSwap(Swap),
 }
 
 impl SwapInstruction {
@@ -199,11 +233,14 @@ impl SwapInstruction {
                 if rest.len() >= Fees::LEN {
                     let (fees, rest) = rest.split_at(Fees::LEN);
                     let fees = Fees::unpack_unchecked(fees)?;
-                    let swap_curve = SwapCurve::unpack_unchecked(rest)?;
+                    let (curve, rest) = rest.split_at(SwapCurve::LEN);
+                    let swap_curve = SwapCurve::unpack_unchecked(curve)?;
+                    let pool_nonce = rest[0];
                     Self::Initialize(Initialize {
                         nonce,
                         fees,
                         swap_curve,
+                        pool_nonce
                     })
                 } else {
                     return Err(SwapError::InvalidInstruction.into());
@@ -252,6 +289,16 @@ impl SwapInstruction {
                     destination_token_amount,
                     maximum_pool_token_amount,
                 })
+            },
+            6 => Self::InitializeRegistry {
+            },
+            7 => {
+                let (amount_in, rest) = Self::unpack_u64(rest)?;
+                let (minimum_amount_out, _rest) = Self::unpack_u64(rest)?;
+                Self::RoutedSwap(Swap {
+                    amount_in,
+                    minimum_amount_out,
+                })
             }
             _ => return Err(SwapError::InvalidInstruction.into()),
         })
@@ -279,6 +326,7 @@ impl SwapInstruction {
                 nonce,
                 fees,
                 swap_curve,
+                pool_nonce
             }) => {
                 buf.push(0);
                 buf.push(*nonce);
@@ -288,6 +336,7 @@ impl SwapInstruction {
                 let mut swap_curve_slice = [0u8; SwapCurve::LEN];
                 Pack::pack_into_slice(swap_curve, &mut swap_curve_slice[..]);
                 buf.extend_from_slice(&swap_curve_slice);
+                buf.push(*pool_nonce);
             }
             Self::Swap(Swap {
                 amount_in,
@@ -335,6 +384,17 @@ impl SwapInstruction {
                 buf.extend_from_slice(&destination_token_amount.to_le_bytes());
                 buf.extend_from_slice(&maximum_pool_token_amount.to_le_bytes());
             }
+            Self::InitializeRegistry() => {
+                buf.push(6);
+            }
+            Self::RoutedSwap(Swap {
+                amount_in,
+                minimum_amount_out,
+            }) => {
+                buf.push(7);
+                buf.extend_from_slice(&amount_in.to_le_bytes());
+                buf.extend_from_slice(&minimum_amount_out.to_le_bytes());
+            }
         }
         buf
     }
@@ -344,6 +404,7 @@ impl SwapInstruction {
 pub fn initialize(
     program_id: &Pubkey,
     token_program_id: &Pubkey,
+    payer_pubkey: &Pubkey,
     swap_pubkey: &Pubkey,
     authority_pubkey: &Pubkey,
     token_a_pubkey: &Pubkey,
@@ -354,16 +415,20 @@ pub fn initialize(
     nonce: u8,
     fees: Fees,
     swap_curve: SwapCurve,
+    pool_registry_pubkey: &Pubkey,
+    pool_nonce: u8,
 ) -> Result<Instruction, ProgramError> {
     let init_data = SwapInstruction::Initialize(Initialize {
         nonce,
         fees,
         swap_curve,
+        pool_nonce
     });
     let data = init_data.pack();
 
     let accounts = vec![
-        AccountMeta::new(*swap_pubkey, true),
+        AccountMeta::new(*payer_pubkey, true),
+        AccountMeta::new(*swap_pubkey, false),
         AccountMeta::new_readonly(*authority_pubkey, false),
         AccountMeta::new_readonly(*token_a_pubkey, false),
         AccountMeta::new_readonly(*token_b_pubkey, false),
@@ -371,6 +436,9 @@ pub fn initialize(
         AccountMeta::new_readonly(*fee_pubkey, false),
         AccountMeta::new(*destination_pubkey, false),
         AccountMeta::new_readonly(*token_program_id, false),
+        AccountMeta::new(*pool_registry_pubkey, false),
+        AccountMeta::new_readonly(solana_program::system_program::id(), false),
+        AccountMeta::new_readonly(sysvar::rent::id(), false),
     ];
 
     Ok(Instruction {
@@ -542,6 +610,8 @@ pub fn swap(
     pool_mint_pubkey: &Pubkey,
     pool_fee_pubkey: &Pubkey,
     host_fee_pubkey: Option<&Pubkey>,
+    //for unwrapping sol
+    refund_pubkey: &Pubkey,
     instruction: Swap,
 ) -> Result<Instruction, ProgramError> {
     let data = SwapInstruction::Swap(instruction).pack();
@@ -556,11 +626,92 @@ pub fn swap(
         AccountMeta::new(*destination_pubkey, false),
         AccountMeta::new(*pool_mint_pubkey, false),
         AccountMeta::new(*pool_fee_pubkey, false),
+        AccountMeta::new(*refund_pubkey, false),
         AccountMeta::new_readonly(*token_program_id, false),
     ];
     if let Some(host_fee_pubkey) = host_fee_pubkey {
         accounts.push(AccountMeta::new(*host_fee_pubkey, false));
     }
+    
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    })
+}
+
+/// Creates a 'routedswap' instruction.
+pub fn routed_swap(
+    program_id: &Pubkey,
+    token_program_id: &Pubkey,
+    //swap 1
+    swap_pubkey: &Pubkey,
+    authority_pubkey: &Pubkey,
+    user_transfer_authority_pubkey: &Pubkey,
+    source_pubkey: &Pubkey,
+    swap_source_pubkey: &Pubkey,
+    swap_destination_pubkey: &Pubkey,
+    destination_pubkey: &Pubkey,
+    pool_mint_pubkey: &Pubkey,
+    pool_fee_pubkey: &Pubkey,
+    //swap 2
+    swap_pubkey2: &Pubkey,
+    authority_pubkey2: &Pubkey,
+    swap_source_pubkey2: &Pubkey,
+    swap_destination_pubkey2: &Pubkey,
+    destination_pubkey2: &Pubkey,
+    pool_mint_pubkey2: &Pubkey,
+    pool_fee_pubkey2: &Pubkey,
+    //for unwrap and cleanup
+    refund_pubkey: &Pubkey,
+
+    instruction: Swap,
+) -> Result<Instruction, ProgramError> {
+    let data = SwapInstruction::RoutedSwap(instruction).pack();
+
+    let accounts = vec![
+        AccountMeta::new_readonly(*swap_pubkey, false),
+        AccountMeta::new_readonly(*authority_pubkey, false),
+        AccountMeta::new_readonly(*user_transfer_authority_pubkey, true),
+        AccountMeta::new(*source_pubkey, false),
+        AccountMeta::new(*swap_source_pubkey, false),
+        AccountMeta::new(*swap_destination_pubkey, false),
+        AccountMeta::new(*destination_pubkey, false),
+        AccountMeta::new(*pool_mint_pubkey, false),
+        AccountMeta::new(*pool_fee_pubkey, false),
+        AccountMeta::new_readonly(*token_program_id, false),
+
+        AccountMeta::new_readonly(*swap_pubkey2, false),
+        AccountMeta::new_readonly(*authority_pubkey2, false),
+        AccountMeta::new(*swap_source_pubkey2, false),
+        AccountMeta::new(*swap_destination_pubkey2, false),
+        AccountMeta::new(*destination_pubkey2, false),
+        AccountMeta::new(*pool_mint_pubkey2, false),
+        AccountMeta::new(*pool_fee_pubkey2, false),
+        AccountMeta::new(*refund_pubkey, false),
+    ];
+
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    })
+}
+
+
+/// Creates an 'initialize_registry' instruction.
+pub fn initialize_registry(
+    program_id: &Pubkey,
+    payer: &Pubkey,
+    pool_registry_pubkey: &Pubkey
+) -> Result<Instruction, ProgramError> {
+    let init_data = SwapInstruction::InitializeRegistry();
+    let data = init_data.pack();
+
+    let accounts = vec![
+        AccountMeta::new(*payer, true),
+        AccountMeta::new(*pool_registry_pubkey, false),
+    ];
 
     Ok(Instruction {
         program_id: *program_id,
@@ -587,24 +738,20 @@ mod tests {
     use crate::curve::{base::CurveType, stable::StableCurve};
 
     #[test]
-    fn pack_intialize() {
+    fn pack_initialize() {
         let trade_fee_numerator: u64 = 1;
         let trade_fee_denominator: u64 = 4;
         let owner_trade_fee_numerator: u64 = 2;
         let owner_trade_fee_denominator: u64 = 5;
         let owner_withdraw_fee_numerator: u64 = 1;
         let owner_withdraw_fee_denominator: u64 = 3;
-        let host_fee_numerator: u64 = 5;
-        let host_fee_denominator: u64 = 20;
         let fees = Fees {
             trade_fee_numerator,
             trade_fee_denominator,
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator,
-            host_fee_numerator,
-            host_fee_denominator,
+            owner_withdraw_fee_denominator
         };
         let nonce: u8 = 255;
         let amp: u64 = 1;
@@ -614,10 +761,12 @@ mod tests {
             curve_type,
             calculator,
         };
+        let pool_nonce: u8 = 250;
         let check = SwapInstruction::Initialize(Initialize {
             nonce,
             fees,
             swap_curve,
+            pool_nonce
         });
         let packed = check.pack();
         let mut expect = vec![0u8, nonce];
@@ -627,11 +776,10 @@ mod tests {
         expect.extend_from_slice(&owner_trade_fee_denominator.to_le_bytes());
         expect.extend_from_slice(&owner_withdraw_fee_numerator.to_le_bytes());
         expect.extend_from_slice(&owner_withdraw_fee_denominator.to_le_bytes());
-        expect.extend_from_slice(&host_fee_numerator.to_le_bytes());
-        expect.extend_from_slice(&host_fee_denominator.to_le_bytes());
         expect.push(curve_type as u8);
         expect.extend_from_slice(&amp.to_le_bytes());
         expect.extend_from_slice(&[0u8; 24]);
+        expect.push(pool_nonce as u8);
         assert_eq!(packed, expect);
         let unpacked = SwapInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);

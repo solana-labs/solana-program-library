@@ -1,7 +1,7 @@
 # Token Swap Program
 
 A Uniswap-like exchange for the Token program on the Solana blockchain, deployed
-to `SwaPpA9LAaLfeLi3a68M4DjnLqgtticKg6CnyNwgAC8` on all networks.
+to `SSwpMgqNDsyV7mAgN9ady4bDVu5ySjmmXejXvy2vLt1` on all networks.
 
 Full documentation is available at https://spl.solana.com/token-swap
 
@@ -22,8 +22,8 @@ deploy the program, allow others to create pools, and earn a "protocol fee" on
 all activity.
 
 Since Solana programs cannot contain any modifiable state, we must hard-code
-all constraints into the program.  `SwapConstraints` in `program/src/constraints.rs`
-contains all hard-coded fields for fees.  Additionally the
+all constraints into the program. `SwapConstraints` in `program/src/constraints.rs`
+contains all hard-coded fields for fees. Additionally the
 `SWAP_PROGRAM_OWNER_FEE_ADDRESS` environment variable specifies the public key
 that must own all fee accounts.
 
@@ -31,7 +31,7 @@ You can build the production version of Token Swap running on devnet, testnet, a
 mainnet-beta using the following command:
 
 ```sh
-SWAP_PROGRAM_OWNER_FEE_ADDRESS=HfoTxFR1Tm6kGmWgYWD6J7YHVy1UwqSULUGVLXkJqaKN cargo build-bpf --features=production
+SWAP_PROGRAM_OWNER_FEE_ADDRESS=5Cebzty8iwgAUx9jyfZVAT2iMvXBECLwEVgT6T8KYmvS cargo build-bpf --features=production
 ```
 
 ## Testing
@@ -72,7 +72,7 @@ exact problem.
 ### Integration tests
 
 You can test the JavaScript bindings and on-chain interactions using
-`solana-test-validator`, included in the Solana Tool Suite.  See the
+`solana-test-validator`, included in the Solana Tool Suite. See the
 [CLI installation instructions](https://docs.solana.com/cli/install-solana-cli-tools).
 
 From `./js`, install the required modules:
@@ -90,5 +90,5 @@ npm run start-with-test-validator
 If you are testing a production build, use:
 
 ```sh
-SWAP_PROGRAM_OWNER_FEE_ADDRESS="HfoTxFR1Tm6kGmWgYWD6J7YHVy1UwqSULUGVLXkJqaKN" npm run start-with-test-validator
+SWAP_PROGRAM_OWNER_FEE_ADDRESS="5Cebzty8iwgAUx9jyfZVAT2iMvXBECLwEVgT6T8KYmvS" npm run start-with-test-validator
 ```

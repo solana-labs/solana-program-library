@@ -4,10 +4,65 @@ use crate::curve::{base::SwapCurve, fees::Fees};
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use enum_dispatch::enum_dispatch;
 use solana_program::{
+    account_info::AccountInfo,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
 };
+use std::{
+    cell::RefMut,
+};
+use bytemuck::{
+    from_bytes_mut,
+    Pod, Zeroable,
+};
+
+/// Max number of accounts in registry
+const MAX_REGISTRY_SIZE: usize = ((2 * 1024 * 1024) / 32) - 1;
+
+/// Pool Registry
+#[derive(Copy, Clone)]
+#[repr(packed)]
+pub struct PoolRegistry {
+    /// Track if registry has been created
+    pub is_initialized: bool,
+    /// Current size of the registry array
+    pub registry_size: u32,
+    /// Array of pubkeys
+    pub accounts: [Pubkey; MAX_REGISTRY_SIZE]
+}
+unsafe impl Zeroable for PoolRegistry {}
+unsafe impl Pod for PoolRegistry {}
+
+impl PoolRegistry {
+    #[inline]
+    /// Loads the registry byte blob into a struct
+    pub fn load<'a>(
+        registry_account: &'a AccountInfo,
+        program_id: &Pubkey,
+    ) -> Result<RefMut<'a, Self>, ProgramError> {
+        if registry_account.owner != program_id {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+        let account_data: RefMut<'a, [u8]>;
+        let state: RefMut<'a, Self>;
+
+        account_data = RefMut::map(registry_account.try_borrow_mut_data()?, |data| *data);
+        state = RefMut::map(account_data, |data| from_bytes_mut(data));
+
+        Ok(state)
+    }
+
+    /// Adds a pubkey to the registry
+    pub fn append(&mut self, key: &Pubkey) {
+        self.accounts[PoolRegistry::index_of(self.registry_size)] = *key;
+        self.registry_size += 1;
+    }
+    /// Gets a key by index
+    pub fn index_of(counter: u32) -> usize {
+        std::convert::TryInto::try_into(counter).unwrap()
+    }
+}
 
 /// Trait representing access to program state across all versions
 #[enum_dispatch]
@@ -37,6 +92,9 @@ pub trait SwapState {
     fn fees(&self) -> &Fees;
     /// Curve associated with swap
     fn swap_curve(&self) -> &SwapCurve;
+
+    /// Bump seed used to generate the pool program address / authority
+    fn pool_nonce(&self) -> u8;
 }
 
 /// All versions of SwapState
@@ -124,6 +182,12 @@ pub struct SwapV1 {
     /// Swap curve parameters, to be unpacked and used by the SwapCurve, which
     /// calculates swaps, deposits, and withdrawals
     pub swap_curve: SwapCurve,
+
+    /// Nonce used in pool program address.
+    /// The program address is created deterministically with the nonce,
+    /// swap program id, mint A, mint B, and curve type. This program address has
+    /// authority over the pool account.
+    pub pool_nonce: u8,
 }
 
 impl SwapState for SwapV1 {
@@ -170,6 +234,10 @@ impl SwapState for SwapV1 {
     fn swap_curve(&self) -> &SwapCurve {
         &self.swap_curve
     }
+
+    fn pool_nonce(&self) -> u8 {
+        self.pool_nonce
+    }
 }
 
 impl Sealed for SwapV1 {}
@@ -180,10 +248,10 @@ impl IsInitialized for SwapV1 {
 }
 
 impl Pack for SwapV1 {
-    const LEN: usize = 323;
+    const LEN: usize = 308;
 
     fn pack_into_slice(&self, output: &mut [u8]) {
-        let output = array_mut_ref![output, 0, 323];
+        let output = array_mut_ref![output, 0, 308];
         let (
             is_initialized,
             nonce,
@@ -196,7 +264,8 @@ impl Pack for SwapV1 {
             pool_fee_account,
             fees,
             swap_curve,
-        ) = mut_array_refs![output, 1, 1, 32, 32, 32, 32, 32, 32, 32, 64, 33];
+            pool_nonce
+        ) = mut_array_refs![output, 1, 1, 32, 32, 32, 32, 32, 32, 32, 48, 33, 1];
         is_initialized[0] = self.is_initialized as u8;
         nonce[0] = self.nonce;
         token_program_id.copy_from_slice(self.token_program_id.as_ref());
@@ -208,11 +277,12 @@ impl Pack for SwapV1 {
         pool_fee_account.copy_from_slice(self.pool_fee_account.as_ref());
         self.fees.pack_into_slice(&mut fees[..]);
         self.swap_curve.pack_into_slice(&mut swap_curve[..]);
+        pool_nonce[0] = self.pool_nonce;
     }
 
     /// Unpacks a byte buffer into a [SwapV1](struct.SwapV1.html).
     fn unpack_from_slice(input: &[u8]) -> Result<Self, ProgramError> {
-        let input = array_ref![input, 0, 323];
+        let input = array_ref![input, 0, 308];
         #[allow(clippy::ptr_offset_with_cast)]
         let (
             is_initialized,
@@ -226,7 +296,8 @@ impl Pack for SwapV1 {
             pool_fee_account,
             fees,
             swap_curve,
-        ) = array_refs![input, 1, 1, 32, 32, 32, 32, 32, 32, 32, 64, 33];
+            pool_nonce
+        ) = array_refs![input, 1, 1, 32, 32, 32, 32, 32, 32, 32, 48, 33, 1];
         Ok(Self {
             is_initialized: match is_initialized {
                 [0] => false,
@@ -243,6 +314,7 @@ impl Pack for SwapV1 {
             pool_fee_account: Pubkey::new_from_array(*pool_fee_account),
             fees: Fees::unpack_from_slice(fees)?,
             swap_curve: SwapCurve::unpack_from_slice(swap_curve)?,
+            pool_nonce: pool_nonce[0],
         })
     }
 }
@@ -254,15 +326,17 @@ mod tests {
 
     use std::convert::TryInto;
 
+    use bytemuck::{
+        try_zeroed_box
+    };
+
     const TEST_FEES: Fees = Fees {
         trade_fee_numerator: 1,
         trade_fee_denominator: 4,
         owner_trade_fee_numerator: 3,
         owner_trade_fee_denominator: 10,
         owner_withdraw_fee_numerator: 2,
-        owner_withdraw_fee_denominator: 7,
-        host_fee_numerator: 5,
-        host_fee_denominator: 20,
+        owner_withdraw_fee_denominator: 7
     };
 
     const TEST_NONCE: u8 = 255;
@@ -277,6 +351,20 @@ mod tests {
     const TEST_CURVE_TYPE: u8 = 2;
     const TEST_AMP: u64 = 1;
     const TEST_CURVE: StableCurve = StableCurve { amp: TEST_AMP };
+    const TEST_POOL_NONCE: u8 = 250;
+
+    #[test]
+    fn pool_registry_pack() {
+        let mut pool_registry: Box<PoolRegistry> = try_zeroed_box().unwrap();
+        pool_registry.append(&TEST_TOKEN_A);
+        pool_registry.append(&TEST_TOKEN_B);
+        let regsize_ref = std::ptr::addr_of!(pool_registry.registry_size);
+        let registry_size = unsafe { regsize_ref.read_unaligned() };
+        assert_eq!(pool_registry.is_initialized, false);
+        assert_eq!(registry_size, 2);
+        assert_eq!(pool_registry.accounts[0], TEST_TOKEN_A);
+        assert_eq!(pool_registry.accounts[1], TEST_TOKEN_B);
+    }
 
     #[test]
     fn swap_version_pack() {
@@ -298,6 +386,7 @@ mod tests {
             pool_fee_account: TEST_POOL_FEE_ACCOUNT,
             fees: TEST_FEES,
             swap_curve: swap_curve.clone(),
+            pool_nonce: TEST_POOL_NONCE,
         });
 
         let mut packed = [0u8; SwapVersion::LATEST_LEN];
@@ -315,6 +404,7 @@ mod tests {
         assert_eq!(*unpacked.pool_fee_account(), TEST_POOL_FEE_ACCOUNT);
         assert_eq!(*unpacked.fees(), TEST_FEES);
         assert_eq!(*unpacked.swap_curve(), swap_curve);
+        assert_eq!(unpacked.pool_nonce(), TEST_POOL_NONCE);
     }
 
     #[test]
@@ -337,6 +427,7 @@ mod tests {
             pool_fee_account: TEST_POOL_FEE_ACCOUNT,
             fees: TEST_FEES,
             swap_curve,
+            pool_nonce: TEST_POOL_NONCE,
         };
 
         let mut packed = [0u8; SwapV1::LEN];
@@ -358,11 +449,10 @@ mod tests {
         packed.extend_from_slice(&TEST_FEES.owner_trade_fee_denominator.to_le_bytes());
         packed.extend_from_slice(&TEST_FEES.owner_withdraw_fee_numerator.to_le_bytes());
         packed.extend_from_slice(&TEST_FEES.owner_withdraw_fee_denominator.to_le_bytes());
-        packed.extend_from_slice(&TEST_FEES.host_fee_numerator.to_le_bytes());
-        packed.extend_from_slice(&TEST_FEES.host_fee_denominator.to_le_bytes());
         packed.push(TEST_CURVE_TYPE);
         packed.extend_from_slice(&TEST_AMP.to_le_bytes());
         packed.extend_from_slice(&[0u8; 24]);
+        packed.push(TEST_POOL_NONCE);
         let unpacked = SwapV1::unpack(&packed).unwrap();
         assert_eq!(swap_info, unpacked);
 

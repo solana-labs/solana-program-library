@@ -84,23 +84,19 @@ fn main() {
 }
 
 fn run_fuzz(fuzz_data: FuzzData) {
-    let trade_fee_numerator = 25;
+    let trade_fee_numerator = 20;
     let trade_fee_denominator = 10000;
-    let owner_trade_fee_numerator = 5;
+    let owner_trade_fee_numerator = 10;
     let owner_trade_fee_denominator = 10000;
     let owner_withdraw_fee_numerator = 30;
     let owner_withdraw_fee_denominator = 10000;
-    let host_fee_numerator = 1;
-    let host_fee_denominator = 5;
     let fees = Fees {
         trade_fee_numerator,
         trade_fee_denominator,
         owner_trade_fee_numerator,
         owner_trade_fee_denominator,
         owner_withdraw_fee_numerator,
-        owner_withdraw_fee_denominator,
-        host_fee_numerator,
-        host_fee_denominator,
+        owner_withdraw_fee_denominator
     };
     let swap_curve = get_swap_curve(fuzz_data.curve_type);
     let mut token_swap = NativeTokenSwap::new(

@@ -341,6 +341,20 @@ name = "bytemuck"
 version = "1.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72957246c41db82b8ef88a5486143830adeb8227ef9837740bdec67724cf2c5b"
+dependencies = [
+ "bytemuck_derive",
+]
+
+[[package]]
+name = "bytemuck_derive"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8e215f8c2f9f79cb53c8335e687ffd07d5bfcb6fe5fc80723762d0be46e7cc54"
+dependencies = [
+ "proc-macro2 1.0.26",
+ "quote 1.0.9",
+ "syn 1.0.69",
+]
 
 [[package]]
 name = "byteorder"
@@ -3993,10 +4007,12 @@ dependencies = [
 
 [[package]]
 name = "spl-token-swap"
-version = "2.1.0"
+version = "2.3.0"
 dependencies = [
  "arbitrary",
  "arrayref",
+ "bs58 0.4.0",
+ "bytemuck",
  "enum_dispatch",
  "num-derive",
  "num-traits",
@@ -4004,7 +4020,9 @@ dependencies = [
  "roots",
  "sim",
  "solana-program",
+ "solana-program-test",
  "solana-sdk",
+ "spl-associated-token-account 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "spl-math",
  "spl-token 3.2.0",
  "thiserror",
