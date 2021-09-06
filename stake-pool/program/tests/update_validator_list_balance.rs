@@ -4,7 +4,7 @@ mod helpers;
 
 use {
     helpers::*,
-    solana_program::{borsh::try_from_slice_unchecked, pubkey::Pubkey},
+    solana_program::{borsh::try_from_slice_unchecked, program_pack::Pack, pubkey::Pubkey},
     solana_program_test::*,
     solana_sdk::signature::Signer,
     spl_stake_pool::{
@@ -12,6 +12,7 @@ use {
         state::{StakePool, StakeStatus, ValidatorList},
         MAX_VALIDATORS_TO_UPDATE, MINIMUM_ACTIVE_STAKE,
     },
+    spl_token::state::Mint,
 };
 
 async fn setup(
@@ -20,6 +21,7 @@ async fn setup(
     ProgramTestContext,
     StakePoolAccounts,
     Vec<ValidatorStakeAccount>,
+    Vec<DepositStakeAccount>,
     u64,
     u64,
     u64,
@@ -82,11 +84,7 @@ async fn setup(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
-            stake_accounts
-                .iter()
-                .map(|v| v.vote.pubkey())
-                .collect::<Vec<Pubkey>>()
-                .as_slice(),
+            &[],
             false,
         )
         .await;
@@ -103,7 +101,7 @@ async fn setup(
         assert!(error.is_none());
     }
 
-    for deposit_account in &deposit_accounts {
+    for deposit_account in &mut deposit_accounts {
         deposit_account
             .deposit(
                 &mut context.banks_client,
@@ -135,6 +133,7 @@ async fn setup(
         context,
         stake_pool_accounts,
         stake_accounts,
+        deposit_accounts,
         TEST_STAKE_AMOUNT,
         reserve_stake_amount,
         slot,
@@ -148,6 +147,7 @@ async fn success() {
         mut context,
         stake_pool_accounts,
         stake_accounts,
+        _,
         validator_lamports,
         reserve_lamports,
         mut slot,
@@ -211,7 +211,7 @@ async fn success() {
 
 #[tokio::test]
 async fn merge_into_reserve() {
-    let (mut context, stake_pool_accounts, stake_accounts, lamports, _, mut slot) =
+    let (mut context, stake_pool_accounts, stake_accounts, _, lamports, _, mut slot) =
         setup(MAX_VALIDATORS_TO_UPDATE).await;
 
     let pre_lamports = get_validator_list_sum(
@@ -229,7 +229,7 @@ async fn merge_into_reserve() {
         .unwrap();
     let pre_reserve_lamports = reserve_stake.lamports;
 
-    // Decrease from all validators
+    println!("Decrease from all validators");
     for stake_account in &stake_accounts {
         let error = stake_pool_accounts
             .decrease_validator_stake(
@@ -244,7 +244,7 @@ async fn merge_into_reserve() {
         assert!(error.is_none());
     }
 
-    // Update, should not change, no merges yet
+    println!("Update, should not change, no merges yet");
     stake_pool_accounts
         .update_all(
             &mut context.banks_client,
@@ -275,7 +275,7 @@ async fn merge_into_reserve() {
     let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data).unwrap();
     assert_eq!(expected_lamports, stake_pool.total_stake_lamports);
 
-    // Warp one more epoch so the stakes deactivate
+    println!("Warp one more epoch so the stakes deactivate");
     let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
     slot += slots_per_epoch;
     context.warp_to_slot(slot).unwrap();
@@ -321,7 +321,7 @@ async fn merge_into_reserve() {
 
 #[tokio::test]
 async fn merge_into_validator_stake() {
-    let (mut context, stake_pool_accounts, stake_accounts, lamports, reserve_lamports, mut slot) =
+    let (mut context, stake_pool_accounts, stake_accounts, _, lamports, reserve_lamports, mut slot) =
         setup(MAX_VALIDATORS_TO_UPDATE).await;
 
     let rent = context.banks_client.get_rent().await.unwrap();
@@ -452,7 +452,7 @@ async fn merge_into_validator_stake() {
 
 #[tokio::test]
 async fn merge_transient_stake_after_remove() {
-    let (mut context, stake_pool_accounts, stake_accounts, lamports, reserve_lamports, mut slot) =
+    let (mut context, stake_pool_accounts, stake_accounts, _, lamports, reserve_lamports, mut slot) =
         setup(1).await;
 
     let rent = context.banks_client.get_rent().await.unwrap();
@@ -565,9 +565,18 @@ async fn merge_transient_stake_after_remove() {
         reserve_lamports + deactivated_lamports + 2 * stake_rent + 1
     );
 
-    // Update stake pool balance, should be gone
+    // Update stake pool balance and cleanup, should be gone
     let error = stake_pool_accounts
         .update_stake_pool_balance(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+        )
+        .await;
+    assert!(error.is_none());
+
+    let error = stake_pool_accounts
+        .cleanup_removed_validator_entries(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
@@ -583,6 +592,75 @@ async fn merge_transient_stake_after_remove() {
     let validator_list =
         try_from_slice_unchecked::<ValidatorList>(validator_list.data.as_slice()).unwrap();
     assert_eq!(validator_list.validators.len(), 0);
+}
+
+#[tokio::test]
+async fn success_with_burned_tokens() {
+    let num_validators = 5;
+    let (mut context, stake_pool_accounts, stake_accounts, deposit_accounts, _, _, mut slot) =
+        setup(num_validators).await;
+
+    let mint_info = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.pool_mint.pubkey(),
+    )
+    .await;
+    let mint = Mint::unpack(&mint_info.data).unwrap();
+
+    let stake_pool_info = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
+    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data).unwrap();
+    assert_eq!(mint.supply, stake_pool.pool_token_supply);
+
+    burn_tokens(
+        &mut context.banks_client,
+        &context.payer,
+        &context.last_blockhash,
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &deposit_accounts[0].pool_account.pubkey(),
+        &deposit_accounts[0].authority,
+        deposit_accounts[0].pool_tokens,
+    )
+    .await
+    .unwrap();
+
+    let mint_info = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.pool_mint.pubkey(),
+    )
+    .await;
+    let mint = Mint::unpack(&mint_info.data).unwrap();
+    assert_ne!(mint.supply, stake_pool.pool_token_supply);
+
+    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
+    slot += slots_per_epoch;
+    context.warp_to_slot(slot).unwrap();
+
+    stake_pool_accounts
+        .update_all(
+            &mut context.banks_client,
+            &context.payer,
+            &context.last_blockhash,
+            stake_accounts
+                .iter()
+                .map(|v| v.vote.pubkey())
+                .collect::<Vec<Pubkey>>()
+                .as_slice(),
+            false,
+        )
+        .await;
+
+    let stake_pool_info = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
+    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data).unwrap();
+
+    assert_eq!(mint.supply, stake_pool.pool_token_supply);
 }
 
 #[tokio::test]

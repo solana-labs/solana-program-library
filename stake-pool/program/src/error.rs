@@ -99,6 +99,15 @@ pub enum StakePoolError {
     /// The mint has an invalid freeze authority
     #[error("InvalidMintFreezeAuthority")]
     InvalidMintFreezeAuthority,
+    /// Proposed fee increase exceeds stipulated ratio
+    #[error("FeeIncreaseTooHigh")]
+    FeeIncreaseTooHigh,
+    /// Not enough pool tokens provided to withdraw stake with one lamport
+    #[error("WithdrawalTooSmall")]
+    WithdrawalTooSmall,
+    /// Not enough lamports provided for deposit to result in one pool token
+    #[error("DepositTooSmall")]
+    DepositTooSmall,
 }
 impl From<StakePoolError> for ProgramError {
     fn from(e: StakePoolError) -> Self {

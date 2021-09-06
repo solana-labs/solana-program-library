@@ -38,14 +38,14 @@
         "@solana/web3.js": "^1.20.0"
     },
     "devDependencies": {
-        "@rollup/plugin-commonjs": "^19.0.0",
+        "@rollup/plugin-commonjs": "^20.0.0",
         "@rollup/plugin-node-resolve": "^13.0.0",
         "@rollup/plugin-typescript": "^8.2.1",
         "@solana/spl-token": "^0.1.6",
         "@solana/web3.js": "^1.20.0",
         "@types/eslint": "^7.2.13",
         "@types/eslint-plugin-prettier": "^3.1.0",
-        "@types/node": "^15.14.0",
+        "@types/node": "^16.0.0",
         "@types/prettier": "^2.3.1",
         "@typescript-eslint/eslint-plugin": "^4.28.0",
         "@typescript-eslint/parser": "^4.28.1",

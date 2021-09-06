@@ -5,9 +5,11 @@ use crate::{
     state::{
         enums::GovernanceAccountType,
         governance::{
-            assert_is_valid_governance_config, get_program_governance_address_seeds,
+            assert_valid_create_governance_args, get_program_governance_address_seeds,
             GovernanceConfig,
         },
+        realm::get_realm_data,
+        token_owner_record::get_token_owner_record_data_for_realm,
     },
     tools::{
         account::create_and_serialize_account_signed,
@@ -36,30 +38,42 @@ pub fn process_create_program_governance(
     let realm_info = next_account_info(account_info_iter)?; // 0
     let program_governance_info = next_account_info(account_info_iter)?; // 0
 
-    let governed_program_data_info = next_account_info(account_info_iter)?; // 1
-    let governed_program_upgrade_authority_info = next_account_info(account_info_iter)?; // 2
+    let governed_program_info = next_account_info(account_info_iter)?; // 1
+    let governed_program_data_info = next_account_info(account_info_iter)?; // 2
+    let governed_program_upgrade_authority_info = next_account_info(account_info_iter)?; // 3
 
-    let payer_info = next_account_info(account_info_iter)?; // 3
-    let bpf_upgrade_loader_info = next_account_info(account_info_iter)?; // 4
+    let token_owner_record_info = next_account_info(account_info_iter)?; // 4
 
-    let system_info = next_account_info(account_info_iter)?; // 5
+    let payer_info = next_account_info(account_info_iter)?; // 5
+    let bpf_upgrade_loader_info = next_account_info(account_info_iter)?; // 6
 
-    let rent_sysvar_info = next_account_info(account_info_iter)?; // 6
+    let system_info = next_account_info(account_info_iter)?; // 7
+
+    let rent_sysvar_info = next_account_info(account_info_iter)?; // 8
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
 
-    assert_is_valid_governance_config(program_id, &config, realm_info)?;
+    assert_valid_create_governance_args(program_id, &config, realm_info)?;
+
+    let realm_data = get_realm_data(program_id, realm_info)?;
+    let token_owner_record_data =
+        get_token_owner_record_data_for_realm(program_id, token_owner_record_info, realm_info.key)?;
+
+    token_owner_record_data.assert_can_create_governance(&realm_data)?;
 
     let program_governance_data = Governance {
         account_type: GovernanceAccountType::ProgramGovernance,
-        config: config.clone(),
+        realm: *realm_info.key,
+        governed_account: *governed_program_info.key,
+        config,
         proposals_count: 0,
+        reserved: [0; 8],
     };
 
     create_and_serialize_account_signed::<Governance>(
         payer_info,
         program_governance_info,
         &program_governance_data,
-        &get_program_governance_address_seeds(&config.realm, &config.governed_account),
+        &get_program_governance_address_seeds(realm_info.key, governed_program_info.key),
         program_id,
         system_info,
         rent,
@@ -67,7 +81,7 @@ pub fn process_create_program_governance(
 
     if transfer_upgrade_authority {
         set_program_upgrade_authority(
-            &config.governed_account,
+            governed_program_info.key,
             governed_program_data_info,
             governed_program_upgrade_authority_info,
             program_governance_info,
@@ -75,7 +89,7 @@ pub fn process_create_program_governance(
         )?;
     } else {
         assert_program_upgrade_authority_is_signer(
-            &config.governed_account,
+            governed_program_info.key,
             governed_program_data_info,
             governed_program_upgrade_authority_info,
         )?;

@@ -136,7 +136,7 @@ async fn fail_wrong_manager() {
 }
 
 #[tokio::test]
-async fn fail_bad_fee() {
+async fn fail_high_fee() {
     let (mut context, stake_pool_accounts, _new_fee) = setup().await;
 
     let new_fee = Fee {
@@ -167,7 +167,7 @@ async fn fail_bad_fee() {
             let program_error = error::StakePoolError::FeeTooHigh as u32;
             assert_eq!(error_index, program_error);
         }
-        _ => panic!("Wrong error occurs while malicious try to set manager"),
+        _ => panic!("Wrong error occurs when setting fee too high"),
     }
 }
 
@@ -216,6 +216,6 @@ async fn fail_not_updated() {
             let program_error = error::StakePoolError::StakeListAndPoolOutOfDate as u32;
             assert_eq!(error_index, program_error);
         }
-        _ => panic!("Wrong error occurs while malicious try to set manager"),
+        _ => panic!("Wrong error occurs when stake pool out of date"),
     }
 }

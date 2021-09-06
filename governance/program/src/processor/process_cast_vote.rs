@@ -14,8 +14,9 @@ use crate::{
     instruction::Vote,
     state::{
         enums::{GovernanceAccountType, VoteWeight},
-        governance::get_governance_data,
+        governance::get_governance_data_for_realm,
         proposal::get_proposal_data_for_governance_and_governing_mint,
+        realm::get_realm_data_for_governing_token_mint,
         token_owner_record::get_token_owner_record_data_for_realm_and_governing_mint,
         vote_record::{get_vote_record_address_seeds, VoteRecord},
     },
@@ -32,28 +33,35 @@ pub fn process_cast_vote(
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
-    let governance_info = next_account_info(account_info_iter)?; // 0
-    let proposal_info = next_account_info(account_info_iter)?; // 1
-    let token_owner_record_info = next_account_info(account_info_iter)?; // 2
-    let governance_authority_info = next_account_info(account_info_iter)?; // 3
+    let realm_info = next_account_info(account_info_iter)?; // 0
+    let governance_info = next_account_info(account_info_iter)?; // 1
+    let proposal_info = next_account_info(account_info_iter)?; // 2
+    let token_owner_record_info = next_account_info(account_info_iter)?; // 3
+    let governance_authority_info = next_account_info(account_info_iter)?; // 4
 
-    let vote_record_info = next_account_info(account_info_iter)?; // 4
-    let governing_token_mint_info = next_account_info(account_info_iter)?; // 5
+    let vote_record_info = next_account_info(account_info_iter)?; // 5
+    let governing_token_mint_info = next_account_info(account_info_iter)?; // 6
 
-    let payer_info = next_account_info(account_info_iter)?; // 6
-    let system_info = next_account_info(account_info_iter)?; // 7
+    let payer_info = next_account_info(account_info_iter)?; // 7
+    let system_info = next_account_info(account_info_iter)?; // 8
 
-    let rent_sysvar_info = next_account_info(account_info_iter)?; // 8
+    let rent_sysvar_info = next_account_info(account_info_iter)?; // 9
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
 
-    let clock_info = next_account_info(account_info_iter)?; // 9
+    let clock_info = next_account_info(account_info_iter)?; // 10
     let clock = Clock::from_account_info(clock_info)?;
 
     if !vote_record_info.data_is_empty() {
         return Err(GovernanceError::VoteAlreadyExists.into());
     }
 
-    let governance_data = get_governance_data(program_id, governance_info)?;
+    let realm_data = get_realm_data_for_governing_token_mint(
+        program_id,
+        realm_info,
+        governing_token_mint_info.key,
+    )?;
+    let governance_data =
+        get_governance_data_for_realm(program_id, governance_info, realm_info.key)?;
 
     let mut proposal_data = get_proposal_data_for_governance_and_governing_mint(
         program_id,
@@ -66,7 +74,7 @@ pub fn process_cast_vote(
     let mut token_owner_record_data = get_token_owner_record_data_for_realm_and_governing_mint(
         program_id,
         token_owner_record_info,
-        &governance_data.config.realm,
+        &governance_data.realm,
         governing_token_mint_info.key,
     )?;
     token_owner_record_data.assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
@@ -104,12 +112,13 @@ pub fn process_cast_vote(
         }
     };
 
-    let governing_token_supply = get_spl_token_mint_supply(governing_token_mint_info)?;
+    let governing_token_mint_supply = get_spl_token_mint_supply(governing_token_mint_info)?;
     proposal_data.try_tip_vote(
-        governing_token_supply,
+        governing_token_mint_supply,
         &governance_data.config,
+        &realm_data,
         clock.unix_timestamp,
-    );
+    )?;
 
     proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
 

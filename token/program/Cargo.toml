@@ -1,6 +1,6 @@
 [package]
 name = "spl-token"
-version = "3.1.1"
+version = "3.2.0"
 description = "Solana Program Library Token"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library"
@@ -15,12 +15,12 @@ no-entrypoint = []
 arrayref = "0.3.6"
 num-derive = "0.3"
 num-traits = "0.2"
-num_enum = "0.5.1"
-solana-program = "1.7.4"
+num_enum = "0.5.3"
+solana-program = "1.7.7"
 thiserror = "1.0"
 
 [dev-dependencies]
-solana-sdk = "1.7.4"
+solana-sdk = "1.7.7"
 
 [lib]
 crate-type = ["cdylib", "lib"]

@@ -1,0 +1,20 @@
+[package]
+name = "binary-option"
+version = "0.1.0"
+edition = "2018"
+license = "WTFPL"
+
+[features]
+no-entrypoint = []
+test-bpf = []
+
+[dependencies]
+solana-program = "1.7.4"
+thiserror = "1.0"
+spl-token = {version = "3.1.1", path = "../../token/program", features = ["no-entrypoint"]}
+arrayref = "0.3.6"
+borsh = "0.9"
+uint = "0.9"
+
+[lib]
+crate-type = ["cdylib", "lib"]

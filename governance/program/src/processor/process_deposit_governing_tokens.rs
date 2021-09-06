@@ -50,7 +50,12 @@ pub fn process_deposit_governing_tokens(
     let realm_data = get_realm_data(program_id, realm_info)?;
     let governing_token_mint = get_spl_token_mint(governing_token_holding_info)?;
 
-    realm_data.assert_is_valid_governing_token_mint(&governing_token_mint)?;
+    realm_data.assert_is_valid_governing_token_mint_and_holding(
+        program_id,
+        realm_info.key,
+        &governing_token_mint,
+        governing_token_holding_info.key,
+    )?;
 
     let amount = get_spl_token_amount(governing_token_source_info)?;
 
@@ -87,6 +92,7 @@ pub fn process_deposit_governing_tokens(
             governance_delegate: None,
             unrelinquished_votes_count: 0,
             total_votes_count: 0,
+            reserved: [0; 8],
         };
 
         create_and_serialize_account_signed(

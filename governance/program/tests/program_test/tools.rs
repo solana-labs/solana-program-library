@@ -7,7 +7,10 @@ use solana_sdk::{signature::Keypair, transaction::TransactionError, transport::T
 /// Instruction errors not mapped in the sdk
 pub enum ProgramInstructionError {
     /// Incorrect authority provided
-    IncorrectAuthority,
+    IncorrectAuthority = 600,
+
+    /// Cross-program invocation with unauthorized signer or writable account
+    PrivilegeEscalation,
 }
 
 impl From<ProgramInstructionError> for ProgramError {
@@ -28,6 +31,9 @@ pub fn map_transaction_error(transport_error: TransportError) -> ProgramError {
         )) => ProgramError::try_from(instruction_error).unwrap_or_else(|ie| match ie {
             InstructionError::IncorrectAuthority => {
                 ProgramInstructionError::IncorrectAuthority.into()
+            }
+            InstructionError::PrivilegeEscalation => {
+                ProgramInstructionError::PrivilegeEscalation.into()
             }
             _ => panic!("TEST-INSTRUCTION-ERROR {:?}", ie),
         }),

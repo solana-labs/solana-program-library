@@ -367,6 +367,13 @@ impl Processor {
                     } else {
                         return Err(TokenError::InvalidInstruction.into());
                     }
+
+                    account.delegate = COption::None;
+                    account.delegated_amount = 0;
+
+                    if account.is_native() {
+                        account.close_authority = COption::None;
+                    }
                 }
                 AuthorityType::CloseAccount => {
                     let authority = account.close_authority.unwrap_or(account.owner);
@@ -641,6 +648,33 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes a [SyncNative](enum.TokenInstruction.html) instruction
+    pub fn process_sync_native(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let native_account_info = next_account_info(account_info_iter)?;
+
+        if native_account_info.owner != program_id {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+        let mut native_account = Account::unpack(&native_account_info.data.borrow())?;
+
+        if let COption::Some(rent_exempt_reserve) = native_account.is_native {
+            let new_amount = native_account_info
+                .lamports()
+                .checked_sub(rent_exempt_reserve)
+                .ok_or(TokenError::Overflow)?;
+            if new_amount < native_account.amount {
+                return Err(TokenError::InvalidState.into());
+            }
+            native_account.amount = new_amount;
+        } else {
+            return Err(TokenError::NonNativeNotSupported.into());
+        }
+
+        Account::pack(native_account, &mut native_account_info.data.borrow_mut())?;
+        Ok(())
+    }
+
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         let instruction = TokenInstruction::unpack(input)?;
@@ -721,6 +755,10 @@ impl Processor {
                 msg!("Instruction: BurnChecked");
                 Self::process_burn(program_id, accounts, amount, Some(decimals))
             }
+            TokenInstruction::SyncNative => {
+                msg!("Instruction: SyncNative");
+                Self::process_sync_native(program_id, accounts)
+            }
         }
     }
 
@@ -798,6 +836,9 @@ impl PrintProgramError for TokenError {
             TokenError::AccountFrozen => msg!("Error: Account is frozen"),
             TokenError::MintDecimalsMismatch => {
                 msg!("Error: decimals different from the Mint decimals")
+            }
+            TokenError::NonNativeNotSupported => {
+                msg!("Error: Instruction does not support non-native tokens")
             }
         }
     }
@@ -3003,6 +3044,7 @@ mod tests {
         let owner2_key = Pubkey::new_unique();
         let mut owner2_account = SolanaAccount::default();
         let owner3_key = Pubkey::new_unique();
+        let mut owner3_account = SolanaAccount::default();
         let mint_key = Pubkey::new_unique();
         let mut mint_account =
             SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
@@ -3133,18 +3175,60 @@ mod tests {
             )
         );
 
+        // set delegate
+        do_process_instruction(
+            approve(
+                &program_id,
+                &account_key,
+                &owner2_key,
+                &owner_key,
+                &[],
+                u64::MAX,
+            )
+            .unwrap(),
+            vec![
+                &mut account_account,
+                &mut owner2_account,
+                &mut owner_account,
+            ],
+        )
+        .unwrap();
+        let account = Account::unpack_unchecked(&account_account.data).unwrap();
+        assert_eq!(account.delegate, COption::Some(owner2_key));
+        assert_eq!(account.delegated_amount, u64::MAX);
+
         // set owner
         do_process_instruction(
             set_authority(
                 &program_id,
                 &account_key,
-                Some(&owner2_key),
+                Some(&owner3_key),
                 AuthorityType::AccountOwner,
                 &owner_key,
                 &[],
             )
             .unwrap(),
             vec![&mut account_account, &mut owner_account],
+        )
+        .unwrap();
+
+        // check delegate cleared
+        let account = Account::unpack_unchecked(&account_account.data).unwrap();
+        assert_eq!(account.delegate, COption::None);
+        assert_eq!(account.delegated_amount, 0);
+
+        // set owner without existing delegate
+        do_process_instruction(
+            set_authority(
+                &program_id,
+                &account_key,
+                Some(&owner2_key),
+                AuthorityType::AccountOwner,
+                &owner3_key,
+                &[],
+            )
+            .unwrap(),
+            vec![&mut account_account, &mut owner3_account],
         )
         .unwrap();
 
@@ -4986,6 +5070,9 @@ mod tests {
         let mut account3_account = SolanaAccount::new(account_minimum_balance(), 0, &program_id);
         let owner_key = Pubkey::new_unique();
         let mut owner_account = SolanaAccount::default();
+        let owner2_key = Pubkey::new_unique();
+        let mut owner2_account = SolanaAccount::default();
+        let owner3_key = Pubkey::new_unique();
         let mut rent_sysvar = rent_sysvar();
 
         // initialize native account
@@ -5125,13 +5212,49 @@ mod tests {
         assert!(account.is_native());
         assert_eq!(account.amount, 40);
 
+        // set close authority
+        do_process_instruction(
+            set_authority(
+                &program_id,
+                &account_key,
+                Some(&owner3_key),
+                AuthorityType::CloseAccount,
+                &owner_key,
+                &[],
+            )
+            .unwrap(),
+            vec![&mut account_account, &mut owner_account],
+        )
+        .unwrap();
+        let account = Account::unpack_unchecked(&account_account.data).unwrap();
+        assert_eq!(account.close_authority, COption::Some(owner3_key));
+
+        // set new account owner
+        do_process_instruction(
+            set_authority(
+                &program_id,
+                &account_key,
+                Some(&owner2_key),
+                AuthorityType::AccountOwner,
+                &owner_key,
+                &[],
+            )
+            .unwrap(),
+            vec![&mut account_account, &mut owner_account],
+        )
+        .unwrap();
+
+        // close authority cleared
+        let account = Account::unpack_unchecked(&account_account.data).unwrap();
+        assert_eq!(account.close_authority, COption::None);
+
         // close native account
         do_process_instruction(
-            close_account(&program_id, &account_key, &account3_key, &owner_key, &[]).unwrap(),
+            close_account(&program_id, &account_key, &account3_key, &owner2_key, &[]).unwrap(),
             vec![
                 &mut account_account,
                 &mut account3_account,
-                &mut owner_account,
+                &mut owner2_account,
             ],
         )
         .unwrap();
@@ -5728,5 +5851,127 @@ mod tests {
         .unwrap();
 
         assert_eq!(account_account, account2_account);
+    }
+
+    #[test]
+    fn test_sync_native() {
+        let program_id = crate::id();
+        let mint_key = Pubkey::new_unique();
+        let mut mint_account =
+            SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
+        let native_account_key = Pubkey::new_unique();
+        let lamports = 40;
+        let mut native_account = SolanaAccount::new(
+            account_minimum_balance() + lamports,
+            Account::get_packed_len(),
+            &program_id,
+        );
+        let non_native_account_key = Pubkey::new_unique();
+        let mut non_native_account = SolanaAccount::new(
+            account_minimum_balance() + 50,
+            Account::get_packed_len(),
+            &program_id,
+        );
+
+        let owner_key = Pubkey::new_unique();
+        let mut owner_account = SolanaAccount::default();
+        let mut rent_sysvar = rent_sysvar();
+
+        // initialize non-native mint
+        do_process_instruction(
+            initialize_mint(&program_id, &mint_key, &owner_key, None, 2).unwrap(),
+            vec![&mut mint_account, &mut rent_sysvar],
+        )
+        .unwrap();
+
+        // initialize non-native account
+        do_process_instruction(
+            initialize_account(&program_id, &non_native_account_key, &mint_key, &owner_key)
+                .unwrap(),
+            vec![
+                &mut non_native_account,
+                &mut mint_account,
+                &mut owner_account,
+                &mut rent_sysvar,
+            ],
+        )
+        .unwrap();
+
+        let account = Account::unpack_unchecked(&non_native_account.data).unwrap();
+        assert!(!account.is_native());
+        assert_eq!(account.amount, 0);
+
+        // fail sync non-native
+        assert_eq!(
+            Err(TokenError::NonNativeNotSupported.into()),
+            do_process_instruction(
+                sync_native(&program_id, &non_native_account_key,).unwrap(),
+                vec![&mut non_native_account],
+            )
+        );
+
+        // fail sync uninitialized
+        assert_eq!(
+            Err(ProgramError::UninitializedAccount),
+            do_process_instruction(
+                sync_native(&program_id, &native_account_key,).unwrap(),
+                vec![&mut native_account],
+            )
+        );
+
+        // wrap native account
+        do_process_instruction(
+            initialize_account(
+                &program_id,
+                &native_account_key,
+                &crate::native_mint::id(),
+                &owner_key,
+            )
+            .unwrap(),
+            vec![
+                &mut native_account,
+                &mut mint_account,
+                &mut owner_account,
+                &mut rent_sysvar,
+            ],
+        )
+        .unwrap();
+        let account = Account::unpack_unchecked(&native_account.data).unwrap();
+        assert!(account.is_native());
+        assert_eq!(account.amount, lamports);
+
+        // sync, no change
+        do_process_instruction(
+            sync_native(&program_id, &native_account_key).unwrap(),
+            vec![&mut native_account],
+        )
+        .unwrap();
+        let account = Account::unpack_unchecked(&native_account.data).unwrap();
+        assert_eq!(account.amount, lamports);
+
+        // transfer sol
+        let new_lamports = lamports + 50;
+        native_account.lamports = account_minimum_balance() + new_lamports;
+
+        // success sync
+        do_process_instruction(
+            sync_native(&program_id, &native_account_key).unwrap(),
+            vec![&mut native_account],
+        )
+        .unwrap();
+        let account = Account::unpack_unchecked(&native_account.data).unwrap();
+        assert_eq!(account.amount, new_lamports);
+
+        // reduce sol
+        native_account.lamports -= 1;
+
+        // fail sync
+        assert_eq!(
+            Err(TokenError::InvalidState.into()),
+            do_process_instruction(
+                sync_native(&program_id, &native_account_key,).unwrap(),
+                vec![&mut native_account],
+            )
+        );
     }
 }
