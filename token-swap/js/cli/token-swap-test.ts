@@ -169,7 +169,7 @@ export async function createTokenSwap(): Promise<void> {
   );
 
   const seedKeyVec = [mintA.publicKey.toBuffer(), mintB.publicKey.toBuffer()];
-  seedKeyVec.sort();
+  seedKeyVec.sort(Buffer.compare);
 
   const curveBuffer = Buffer.alloc(1);
   curveBuffer.writeUInt8(CURVE_TYPE, 0);
