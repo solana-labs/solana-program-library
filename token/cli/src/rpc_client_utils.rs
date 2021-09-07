@@ -14,7 +14,13 @@ use {
         transaction::{Transaction, TransactionError},
     },
     solana_transaction_status::TransactionConfirmationStatus,
-    std::{collections::HashMap, error, sync::Arc, thread::sleep, time::Duration},
+    std::{
+        collections::HashMap,
+        error,
+        sync::Arc,
+        thread::sleep,
+        time::{Duration, Instant},
+    },
 };
 
 /// TODO: In v1.8 timeframe switch to using `solana_cli_output::display::new_spinner_progress_bar()`
@@ -35,7 +41,8 @@ pub fn send_and_confirm_messages_with_spinner<T: Signers>(
 ) -> Result<Vec<Option<TransactionError>>, Box<dyn error::Error>> {
     let progress_bar = new_spinner_progress_bar();
     let mut expired_blockhash_retries = 5;
-    let send_transaction_interval = Duration::from_millis(10); /* ~100 TPS */
+    let send_transaction_interval = Duration::from_millis(10); /* Send at ~100 TPS */
+    let transaction_resend_interval = Duration::from_secs(3); /* Retry batch send after 3 seconds */
 
     progress_bar.set_message("Connecting...");
     let tpu_client = TpuClient::new(
@@ -53,7 +60,7 @@ pub fn send_and_confirm_messages_with_spinner<T: Signers>(
     let set_message =
         |confirmed_transactions, block_height: u64, last_valid_block_height: u64, status: &str| {
             progress_bar.set_message(format!(
-                "{:>5.1}% | {:<40}[block height {}; block hash valid for {} blocks]",
+                "{:>5.1}% | {:<40}[block height {}; re-sign in {} blocks]",
                 confirmed_transactions as f64 * 100. / messages.len() as f64,
                 status,
                 block_height,
@@ -76,29 +83,34 @@ pub fn send_and_confirm_messages_with_spinner<T: Signers>(
             pending_transactions.insert(transaction.signatures[0], (i, transaction));
         }
 
+        let mut last_resend = Instant::now() - transaction_resend_interval;
         loop {
-            // Send all pending transactions
             let num_transactions = pending_transactions.len();
-            for (index, (_i, transaction)) in pending_transactions.values().enumerate() {
-                if !tpu_client.send_transaction(transaction) {
-                    let _ = rpc_client.send_transaction_with_config(
-                        transaction,
-                        RpcSendTransactionConfig {
-                            skip_preflight: true,
-                            ..RpcSendTransactionConfig::default()
-                        },
+
+            // Periodically re-send all pending transactions
+            if Instant::now().duration_since(last_resend) > transaction_resend_interval {
+                for (index, (_i, transaction)) in pending_transactions.values().enumerate() {
+                    if !tpu_client.send_transaction(transaction) {
+                        let _ = rpc_client.send_transaction_with_config(
+                            transaction,
+                            RpcSendTransactionConfig {
+                                skip_preflight: true,
+                                ..RpcSendTransactionConfig::default()
+                            },
+                        );
+                    }
+                    set_message(
+                        confirmed_transactions,
+                        block_height,
+                        last_valid_block_height,
+                        &format!("Sending {}/{} transactions", index + 1, num_transactions,),
                     );
+                    sleep(send_transaction_interval);
                 }
-                set_message(
-                    confirmed_transactions,
-                    block_height,
-                    last_valid_block_height,
-                    &format!("Sending {}/{} transactions", index + 1, num_transactions,),
-                );
-                sleep(send_transaction_interval);
+                last_resend = Instant::now();
             }
 
-            // Wait for the next block before checking fro transaction statuses
+            // Wait for the next block before checking for transaction statuses
             set_message(
                 confirmed_transactions,
                 block_height,
