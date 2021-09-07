@@ -134,6 +134,7 @@ async fn set_authority() {
         mint_authority,
         token,
         alice,
+        bob,
         ..
     } = TestContext::new().await;
 
@@ -149,12 +150,39 @@ async fn set_authority() {
 
     token
         .set_authority(
+            token.get_address(),
             None,
             instruction::AuthorityType::MintTokens,
             &mint_authority,
         )
         .await
         .expect("failed to set authority");
+
+    // TODO: compare
+    // Err(Client(TransactionError(InstructionError(0, Custom(5)))))
+    assert!(token
+        .mint_to(&alice_vault, &mint_authority, 1)
+        .await
+        .is_err());
+
+    token
+        .set_authority(
+            &alice_vault,
+            Some(&bob.pubkey()),
+            instruction::AuthorityType::AccountOwner,
+            &alice,
+        )
+        .await
+        .expect("failed to set_authority");
+
+    assert_eq!(
+        token
+            .get_account_info(alice_vault)
+            .await
+            .expect("failed to get account info")
+            .owner,
+        bob.pubkey(),
+    );
 }
 
 #[tokio::test]

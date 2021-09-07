@@ -184,22 +184,23 @@ where
     /// Assign a new authority to the account.
     pub async fn set_authority<S: Signer>(
         &self,
+        account: &Pubkey,
         new_authority: Option<&Pubkey>,
         authority_type: instruction::AuthorityType,
-        current_authority: &S,
+        owner: &S,
     ) -> TokenResult<()> {
         Self::process_ixs(
             &self.client,
             &self.payer,
             &[instruction::set_authority(
                 &spl_token::id(),
-                &self.pubkey,
+                account,
                 new_authority,
                 authority_type,
-                &current_authority.pubkey(),
+                &owner.pubkey(),
                 &[],
             )?],
-            &[current_authority],
+            &[owner],
         )
         .await
         .map(|_| ())
