@@ -40,6 +40,10 @@ perform_action() {
                 echo "Error: SWAP_PROGRAM_OWNER_FEE_ADDRESS not set"
                 exit
             fi
+            if [[ -z "${REQUIRED_MINT_ADDRESS}" ]]; then
+                echo "Error: REQUIRED_MINT_ADDRESS not set"
+                exit
+            fi
             pushd program
             cargo build-bpf --features=production
             popd
