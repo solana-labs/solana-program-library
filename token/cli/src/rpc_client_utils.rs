@@ -42,7 +42,7 @@ pub fn send_and_confirm_messages_with_spinner<T: Signers>(
     let progress_bar = new_spinner_progress_bar();
     let mut expired_blockhash_retries = 5;
     let send_transaction_interval = Duration::from_millis(10); /* Send at ~100 TPS */
-    let transaction_resend_interval = Duration::from_secs(3); /* Retry batch send after 3 seconds */
+    let transaction_resend_interval = Duration::from_secs(4); /* Retry batch send after 4 seconds */
 
     progress_bar.set_message("Connecting...");
     let tpu_client = TpuClient::new(
@@ -57,16 +57,24 @@ pub fn send_and_confirm_messages_with_spinner<T: Signers>(
         .map(|(i, message)| (i, Transaction::new_unsigned(message.clone())))
         .collect::<Vec<_>>();
     let mut transaction_errors = vec![None; messages.len()];
-    let set_message =
-        |confirmed_transactions, block_height: u64, last_valid_block_height: u64, status: &str| {
-            progress_bar.set_message(format!(
-                "{:>5.1}% | {:<40}[block height {}; re-sign in {} blocks]",
-                confirmed_transactions as f64 * 100. / messages.len() as f64,
-                status,
-                block_height,
-                last_valid_block_height.saturating_sub(block_height),
-            ));
-        };
+    let set_message = |confirmed_transactions,
+                       block_height: Option<u64>,
+                       last_valid_block_height: u64,
+                       status: &str| {
+        progress_bar.set_message(format!(
+            "{:>5.1}% | {:<40}{}",
+            confirmed_transactions as f64 * 100. / messages.len() as f64,
+            status,
+            match block_height {
+                Some(block_height) => format!(
+                    " [block height {}; re-sign in {} blocks]",
+                    block_height,
+                    last_valid_block_height.saturating_sub(block_height),
+                ),
+                None => String::new(),
+            },
+        ));
+    };
 
     let mut confirmed_transactions = 0;
     let mut block_height = rpc_client.get_block_height()?;
@@ -90,7 +98,9 @@ pub fn send_and_confirm_messages_with_spinner<T: Signers>(
             // Periodically re-send all pending transactions
             if Instant::now().duration_since(last_resend) > transaction_resend_interval {
                 for (index, (_i, transaction)) in pending_transactions.values().enumerate() {
-                    if !tpu_client.send_transaction(transaction) {
+                    let method = if tpu_client.send_transaction(transaction) {
+                        "TPU"
+                    } else {
                         let _ = rpc_client.send_transaction_with_config(
                             transaction,
                             RpcSendTransactionConfig {
@@ -98,12 +108,18 @@ pub fn send_and_confirm_messages_with_spinner<T: Signers>(
                                 ..RpcSendTransactionConfig::default()
                             },
                         );
-                    }
+                        "RPC"
+                    };
                     set_message(
                         confirmed_transactions,
-                        block_height,
+                        None, //block_height,
                         last_valid_block_height,
-                        &format!("Sending {}/{} transactions", index + 1, num_transactions,),
+                        &format!(
+                            "Sending {}/{} transactions (via {})",
+                            index + 1,
+                            num_transactions,
+                            method
+                        ),
                     );
                     sleep(send_transaction_interval);
                 }
@@ -113,17 +129,17 @@ pub fn send_and_confirm_messages_with_spinner<T: Signers>(
             // Wait for the next block before checking for transaction statuses
             set_message(
                 confirmed_transactions,
-                block_height,
+                Some(block_height),
                 last_valid_block_height,
                 &format!("Waiting for next block, {} pending...", num_transactions),
             );
 
-            block_height = rpc_client.get_block_height()?;
             let mut new_block_height = block_height;
             while block_height == new_block_height {
-                sleep(Duration::from_millis(200));
+                sleep(Duration::from_millis(500));
                 new_block_height = rpc_client.get_block_height()?;
             }
+            block_height = new_block_height;
 
             if new_block_height > last_valid_block_height {
                 break;
@@ -161,7 +177,7 @@ pub fn send_and_confirm_messages_with_spinner<T: Signers>(
                 }
                 set_message(
                     confirmed_transactions,
-                    block_height,
+                    Some(block_height),
                     last_valid_block_height,
                     "Checking transaction status...",
                 );
