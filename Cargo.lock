@@ -3736,7 +3736,7 @@ dependencies = [
 
 [[package]]
 name = "spl-stake-pool"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "arrayref",
  "bincode",
@@ -3758,7 +3758,7 @@ dependencies = [
 
 [[package]]
 name = "spl-stake-pool-cli"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "bincode",
  "borsh",
