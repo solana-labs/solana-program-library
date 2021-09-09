@@ -193,6 +193,7 @@ async fn test_deposit_initial_community_tokens_with_owner_must_sign_error() {
     let token_source = Keypair::new();
 
     governance_test
+        .bench
         .create_token_account_with_transfer_authority(
             &token_source,
             &realm_cookie.account.community_mint,
@@ -209,15 +210,16 @@ async fn test_deposit_initial_community_tokens_with_owner_must_sign_error() {
         &token_source.pubkey(),
         &token_owner.pubkey(),
         &transfer_authority.pubkey(),
-        &governance_test.context.payer.pubkey(),
+        &governance_test.bench.context.payer.pubkey(),
         &realm_cookie.account.community_mint,
     );
 
     instruction.accounts[3] = AccountMeta::new_readonly(token_owner.pubkey(), false);
 
-    // // Act
+    // Act
 
     let error = governance_test
+        .bench
         .process_transaction(&[instruction], Some(&[&transfer_authority]))
         .await
         .err()
@@ -239,6 +241,7 @@ async fn test_deposit_initial_community_tokens_with_invalid_owner_error() {
     let invalid_owner = Keypair::new();
 
     governance_test
+        .bench
         .create_token_account_with_transfer_authority(
             &token_source,
             &realm_cookie.account.community_mint,
@@ -255,13 +258,14 @@ async fn test_deposit_initial_community_tokens_with_invalid_owner_error() {
         &token_source.pubkey(),
         &invalid_owner.pubkey(),
         &transfer_authority.pubkey(),
-        &governance_test.context.payer.pubkey(),
+        &governance_test.bench.context.payer.pubkey(),
         &realm_cookie.account.community_mint,
     );
 
     // // Act
 
     let error = governance_test
+        .bench
         .process_transaction(&[instruction], Some(&[&transfer_authority, &invalid_owner]))
         .await
         .err()
@@ -282,6 +286,7 @@ async fn test_deposit_community_tokens_with_malicious_holding_account_error() {
         .await;
 
     governance_test
+        .bench
         .mint_tokens(
             &realm_cookie.account.community_mint,
             &realm_cookie.community_mint_authority,
@@ -296,7 +301,7 @@ async fn test_deposit_community_tokens_with_malicious_holding_account_error() {
         &token_owner_record_cookie.token_source,
         &token_owner_record_cookie.token_owner.pubkey(),
         &token_owner_record_cookie.token_owner.pubkey(),
-        &governance_test.context.payer.pubkey(),
+        &governance_test.bench.context.payer.pubkey(),
         &realm_cookie.account.community_mint,
     );
 
@@ -306,6 +311,7 @@ async fn test_deposit_community_tokens_with_malicious_holding_account_error() {
     // Act
 
     let err = governance_test
+        .bench
         .process_transaction(
             &[deposit_ix],
             Some(&[&token_owner_record_cookie.token_owner]),

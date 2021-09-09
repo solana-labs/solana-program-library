@@ -116,6 +116,7 @@ async fn test_set_community_governance_delegate_with_owner_must_sign_error() {
 
     // Act
     let err = governance_test
+        .bench
         .process_transaction(&[instruction], None)
         .await
         .err()

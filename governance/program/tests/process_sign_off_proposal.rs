@@ -38,7 +38,7 @@ async fn test_sign_off_proposal() {
         .await
         .unwrap();
 
-    let clock = governance_test.get_clock().await;
+    let clock = governance_test.bench.get_clock().await;
 
     // Act
     governance_test

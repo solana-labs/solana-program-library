@@ -6,7 +6,7 @@ use spl_governance::state::{
     vote_record::VoteRecord,
 };
 
-use crate::tools::clone_keypair;
+use spl_governance_test_sdk::tools::clone_keypair;
 
 pub trait AccountCookie {
     fn get_address(&self) -> Pubkey;
@@ -144,9 +144,4 @@ pub struct ProposalInstructionCookie {
     pub address: Pubkey,
     pub account: ProposalInstruction,
     pub instruction: Instruction,
-}
-
-#[derive(Debug)]
-pub struct TokenAccountCookie {
-    pub address: Pubkey,
 }

@@ -11,6 +11,8 @@ members = [
   "feature-proposal/program",
   "feature-proposal/cli",
   "governance/program",
+  "governance/test-sdk",
+  "governance/chat/program",
   "libraries/math",
   "memo/program",
   "name-service/program",

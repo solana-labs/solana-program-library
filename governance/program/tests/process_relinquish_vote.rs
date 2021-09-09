@@ -129,6 +129,7 @@ async fn test_relinquish_active_yes_vote() {
     assert_eq!(0, token_owner_record.total_votes_count);
 
     let vote_record_account = governance_test
+        .bench
         .get_account(&vote_record_cookie.address)
         .await;
 
@@ -195,6 +196,7 @@ async fn test_relinquish_active_no_vote() {
     assert_eq!(0, token_owner_record.total_votes_count);
 
     let vote_record_account = governance_test
+        .bench
         .get_account(&vote_record_cookie.address)
         .await;
 
