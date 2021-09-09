@@ -33,9 +33,6 @@ pub fn process_instruction(
         AssociatedTokenAccountInstruction::CreateAssociatedTokenAccount {} => {
             process_create_associated_token_account(program_id, accounts)
         }
-        AssociatedTokenAccountInstruction::MintTo { amount } => {
-            process_mint_to(program_id, accounts, amount)
-        }
     }
 }
 
@@ -101,13 +98,4 @@ pub fn process_create_associated_token_account(
             spl_token_program_info.clone(),
         ],
     )
-}
-
-/// Processes CreateAssociatedTokenAccount instruction
-pub fn process_mint_to(
-    _program_id: &Pubkey,
-    _accounts: &[AccountInfo],
-    _amount: u64,
-) -> ProgramResult {
-    Ok(())
 }
