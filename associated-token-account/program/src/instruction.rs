@@ -25,7 +25,6 @@ pub enum AssociatedTokenAccountInstruction {
 }
 
 /// Creates CreateAssociatedTokenAccount instruction
-/// It's same as lib::create_associated_token_account but uses explicit instruction data
 pub fn create_associated_token_account(
     funding_address: &Pubkey,
     wallet_address: &Pubkey,
