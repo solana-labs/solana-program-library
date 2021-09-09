@@ -29,6 +29,7 @@ base64 = "0.13"
 proptest = "1.0"
 solana-program-test = "1.7.11"
 solana-sdk = "1.7.11"
+spl-governance-test-sdk = { version = "0.1.0", path ="../test-sdk"}
 
 [lib]
 crate-type = ["cdylib", "lib"]
