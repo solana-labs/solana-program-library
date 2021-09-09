@@ -3659,7 +3659,25 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
+ "spl-governance-test-sdk",
  "spl-token 3.2.0",
+ "thiserror",
+]
+
+[[package]]
+name = "spl-governance-test-sdk"
+version = "0.1.0"
+dependencies = [
+ "arrayref",
+ "bincode",
+ "borsh",
+ "num-derive",
+ "num-traits",
+ "serde",
+ "serde_derive",
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
  "thiserror",
 ]
 
