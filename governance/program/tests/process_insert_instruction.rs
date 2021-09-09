@@ -175,6 +175,8 @@ async fn test_insert_instruction_with_instruction_already_exists_error() {
         .await
         .unwrap();
 
+    governance_test.advance_clock().await;
+
     // Act
     let err = governance_test
         .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, Some(0))
