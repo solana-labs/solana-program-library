@@ -9,12 +9,7 @@ pub mod tools;
 
 // Export current SDK types for downstream users building with a different SDK version
 pub use solana_program;
-use solana_program::{
-    instruction::{AccountMeta, Instruction},
-    program_pack::Pack,
-    pubkey::Pubkey,
-    sysvar,
-};
+use solana_program::{instruction::Instruction, program_pack::Pack, pubkey::Pubkey};
 
 solana_program::declare_id!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
 
@@ -72,20 +67,9 @@ pub fn create_associated_token_account(
     wallet_address: &Pubkey,
     spl_token_mint_address: &Pubkey,
 ) -> Instruction {
-    let associated_account_address =
-        get_associated_token_address(wallet_address, spl_token_mint_address);
-
-    Instruction {
-        program_id: id(),
-        accounts: vec![
-            AccountMeta::new(*funding_address, true),
-            AccountMeta::new(associated_account_address, false),
-            AccountMeta::new_readonly(*wallet_address, false),
-            AccountMeta::new_readonly(*spl_token_mint_address, false),
-            AccountMeta::new_readonly(solana_program::system_program::id(), false),
-            AccountMeta::new_readonly(spl_token::id(), false),
-            AccountMeta::new_readonly(sysvar::rent::id(), false),
-        ],
-        data: vec![],
-    }
+    instruction::create_associated_token_account(
+        funding_address,
+        wallet_address,
+        spl_token_mint_address,
+    )
 }
