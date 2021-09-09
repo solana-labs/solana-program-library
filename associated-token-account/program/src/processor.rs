@@ -20,23 +20,18 @@ pub fn process_instruction(
     accounts: &[AccountInfo],
     input: &[u8],
 ) -> ProgramResult {
-    if input.len() == 0 {
-        msg!("ASSOCIATED-TOKEN-ACCOUNT-INSTRUCTION: CreateAssociatedTokenAccount(default)");
-        process_create_associated_token_account(program_id, accounts)?;
-        return Ok(());
-    }
-
-    let instruction = AssociatedTokenAccountInstruction::try_from_slice(input)
-        .map_err(|_| ProgramError::InvalidInstructionData)?;
+    let instruction = if input.len() == 0 {
+        AssociatedTokenAccountInstruction::CreateAssociatedTokenAccount
+    } else {
+        AssociatedTokenAccountInstruction::try_from_slice(input)
+            .map_err(|_| ProgramError::InvalidInstructionData)?
+    };
 
     msg!("ASSOCIATED-TOKEN-ACCOUNT-INSTRUCTION: {:?}", instruction);
 
     match instruction {
         AssociatedTokenAccountInstruction::CreateAssociatedTokenAccount {} => {
             process_create_associated_token_account(program_id, accounts)
-        }
-        AssociatedTokenAccountInstruction::MintTo {} => {
-            todo!()
         }
     }
 }
