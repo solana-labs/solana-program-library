@@ -24,6 +24,7 @@ pub enum MessageBody {
     Text(String),
 
     /// Emoticon encoded using utf-8 characters
+    /// In the UI reactions are displayed together under the parent message (as opposed to hierarchical replies)
     Reaction(String),
 }
 
