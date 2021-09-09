@@ -12,7 +12,7 @@ use crate::{get_associated_token_address, id};
 /// Instructions supported by the AssociatedTokenAccount program
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum AssociatedTokenAccountInstruction {
-    /// Create an associated token account for the given wallet address and token mint
+    /// Creates an associated token account for the given wallet address and token mint
     ///
     ///   0. `[writeable,signer]` Funding account (must be a system account)
     ///   1. `[writeable]` Associated token account address to be created

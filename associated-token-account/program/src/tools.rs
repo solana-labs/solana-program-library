@@ -9,7 +9,7 @@ use solana_program::{
     system_instruction,
 };
 
-/// Creates associated token account as PDA
+/// Creates associated token account using Program Derived Address for the given seeds
 pub fn create_pda_account<'a>(
     funder: &AccountInfo<'a>,
     rent: &Rent,

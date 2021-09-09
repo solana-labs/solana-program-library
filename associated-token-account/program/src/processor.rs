@@ -20,7 +20,7 @@ pub fn process_instruction(
     accounts: &[AccountInfo],
     input: &[u8],
 ) -> ProgramResult {
-    let instruction = if input.len() == 0 {
+    let instruction = if input.is_empty() {
         AssociatedTokenAccountInstruction::CreateAssociatedTokenAccount
     } else {
         AssociatedTokenAccountInstruction::try_from_slice(input)
