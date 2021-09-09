@@ -14,6 +14,10 @@ pub enum GovernanceChatError {
     /// Owner doesn't have enough governing tokens to comment on Proposal
     #[error("Owner doesn't have enough governing tokens to comment on Proposal")]
     NotEnoughTokensToCommentProposal = 900,
+
+    /// Account already initialized
+    #[error("Account already initialized")]
+    AccountAlreadyInitialized,
 }
 
 impl PrintProgramError for GovernanceChatError {

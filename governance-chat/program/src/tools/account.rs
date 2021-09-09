@@ -3,9 +3,11 @@
 use borsh::BorshSerialize;
 use solana_program::{
     account_info::AccountInfo, program::invoke, program_error::ProgramError, pubkey::Pubkey,
-    rent::Rent, system_instruction::create_account, sysvar::Sysvar,
+    rent::Rent, system_instruction::create_account, system_program, sysvar::Sysvar,
 };
 use spl_governance::tools::account::AccountMaxSize;
+
+use crate::error::GovernanceChatError;
 
 /// Creates a new account and serializes data into it using AccountMaxSize to determine the account's size
 pub fn create_and_serialize_account<'a, T: BorshSerialize + AccountMaxSize>(
@@ -15,6 +17,11 @@ pub fn create_and_serialize_account<'a, T: BorshSerialize + AccountMaxSize>(
     program_id: &Pubkey,
     system_info: &AccountInfo<'a>,
 ) -> Result<(), ProgramError> {
+    // Assert the account is not initialized yet
+    if !(account_info.data_is_empty() && *account_info.owner == system_program::id()) {
+        return Err(GovernanceChatError::AccountAlreadyInitialized.into());
+    }
+
     let (serialized_data, account_size) = if let Some(max_size) = account_data.get_max_size() {
         (None, max_size)
     } else {
