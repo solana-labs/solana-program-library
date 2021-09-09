@@ -4,7 +4,7 @@ use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
     instruction::{AccountMeta, Instruction},
     pubkey::Pubkey,
-    sysvar,
+    system_program, sysvar,
 };
 
 use crate::{get_associated_token_address, id};
@@ -22,10 +22,19 @@ pub enum AssociatedTokenAccountInstruction {
     ///   5. `[]` SPL Token program
     ///   6. `[]` Rent sysvar
     CreateAssociatedTokenAccount,
+
+    /// Mints tokens to an associated token account
+    /// If the account doesn't exist then it'll be created
+    MintTo {
+        /// Amount to mint
+        #[allow(dead_code)]
+        amount: u64,
+    },
 }
 
 /// Creates CreateAssociatedTokenAccount instruction
 pub fn create_associated_token_account(
+    // Accounts
     funding_address: &Pubkey,
     wallet_address: &Pubkey,
     spl_token_mint_address: &Pubkey,
@@ -45,6 +54,35 @@ pub fn create_associated_token_account(
             AccountMeta::new_readonly(solana_program::system_program::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
             AccountMeta::new_readonly(sysvar::rent::id(), false),
+        ],
+        data: instruction_data.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates MintTo instruction
+pub fn mint_to(
+    // Accounts
+    mint: &Pubkey,
+    mint_authority: &Pubkey,
+    wallet: &Pubkey,
+    payer: &Pubkey,
+    // Args
+    amount: u64,
+) -> Instruction {
+    let associated_account_address = get_associated_token_address(wallet, mint);
+
+    let instruction_data = AssociatedTokenAccountInstruction::MintTo { amount };
+
+    Instruction {
+        program_id: id(),
+        accounts: vec![
+            AccountMeta::new(*mint, false),
+            AccountMeta::new_readonly(*mint_authority, true),
+            AccountMeta::new_readonly(*wallet, false),
+            AccountMeta::new(associated_account_address, false),
+            AccountMeta::new(*payer, true),
+            AccountMeta::new_readonly(spl_token::id(), false),
+            AccountMeta::new_readonly(system_program::id(), false),
         ],
         data: instruction_data.try_to_vec().unwrap(),
     }
