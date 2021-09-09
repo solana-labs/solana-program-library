@@ -3,7 +3,9 @@
 #![forbid(unsafe_code)]
 
 mod entrypoint;
+pub mod instruction;
 pub mod processor;
+pub mod tools;
 
 // Export current SDK types for downstream users building with a different SDK version
 pub use solana_program;

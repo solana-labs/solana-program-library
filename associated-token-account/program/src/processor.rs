@@ -1,15 +1,16 @@
 //! Program state processor
 
 use crate::*;
+use crate::{instruction::AssociatedTokenAccountInstruction, tools::create_pda_account};
+use borsh::BorshDeserialize;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
     msg,
-    program::{invoke, invoke_signed},
+    program::invoke,
     program_error::ProgramError,
     pubkey::Pubkey,
     rent::Rent,
-    system_instruction,
     sysvar::Sysvar,
 };
 
@@ -17,7 +18,33 @@ use solana_program::{
 pub fn process_instruction(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    _input: &[u8],
+    input: &[u8],
+) -> ProgramResult {
+    if input.len() == 0 {
+        msg!("ASSOCIATED-TOKEN-ACCOUNT-INSTRUCTION: CreateAssociatedTokenAccount(default)");
+        process_create_associated_token_account(program_id, accounts)?;
+        return Ok(());
+    }
+
+    let instruction = AssociatedTokenAccountInstruction::try_from_slice(input)
+        .map_err(|_| ProgramError::InvalidInstructionData)?;
+
+    msg!("ASSOCIATED-TOKEN-ACCOUNT-INSTRUCTION: {:?}", instruction);
+
+    match instruction {
+        AssociatedTokenAccountInstruction::CreateAssociatedTokenAccount {} => {
+            process_create_associated_token_account(program_id, accounts)
+        }
+        AssociatedTokenAccountInstruction::MintTo {} => {
+            todo!()
+        }
+    }
+}
+
+/// Processes CreateAssociatedTokenAccount instruction
+pub fn process_create_associated_token_account(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -76,60 +103,4 @@ pub fn process_instruction(
             spl_token_program_info.clone(),
         ],
     )
-}
-
-fn create_pda_account<'a>(
-    funder: &AccountInfo<'a>,
-    rent: &Rent,
-    space: usize,
-    owner: &Pubkey,
-    system_program: &AccountInfo<'a>,
-    new_pda_account: &AccountInfo<'a>,
-    new_pda_signer_seeds: &[&[u8]],
-) -> ProgramResult {
-    if new_pda_account.lamports() > 0 {
-        let required_lamports = rent
-            .minimum_balance(space)
-            .max(1)
-            .saturating_sub(new_pda_account.lamports());
-
-        if required_lamports > 0 {
-            invoke(
-                &system_instruction::transfer(funder.key, new_pda_account.key, required_lamports),
-                &[
-                    funder.clone(),
-                    new_pda_account.clone(),
-                    system_program.clone(),
-                ],
-            )?;
-        }
-
-        invoke_signed(
-            &system_instruction::allocate(new_pda_account.key, space as u64),
-            &[new_pda_account.clone(), system_program.clone()],
-            &[new_pda_signer_seeds],
-        )?;
-
-        invoke_signed(
-            &system_instruction::assign(new_pda_account.key, owner),
-            &[new_pda_account.clone(), system_program.clone()],
-            &[new_pda_signer_seeds],
-        )
-    } else {
-        invoke_signed(
-            &system_instruction::create_account(
-                funder.key,
-                new_pda_account.key,
-                rent.minimum_balance(space).max(1),
-                space as u64,
-                owner,
-            ),
-            &[
-                funder.clone(),
-                new_pda_account.clone(),
-                system_program.clone(),
-            ],
-            &[new_pda_signer_seeds],
-        )
-    }
 }
