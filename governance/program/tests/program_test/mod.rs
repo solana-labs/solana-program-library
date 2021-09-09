@@ -78,10 +78,6 @@ pub struct GovernanceProgramTest {
 
 impl GovernanceProgramTest {
     pub async fn start_new() -> Self {
-        Self::start_with_programs(&[]).await
-    }
-
-    pub async fn start_with_programs<'a>(programs: &[TestBenchProgram<'a>]) -> Self {
         let program_id = Pubkey::from_str("Governance111111111111111111111111111111111").unwrap();
 
         let program = TestBenchProgram {
@@ -90,10 +86,7 @@ impl GovernanceProgramTest {
             process_instruction: processor!(process_instruction),
         };
 
-        let mut all_programs = programs.to_vec();
-        all_programs.push(program);
-
-        let bench = ProgramTestBench::start_with_programs(&all_programs).await;
+        let bench = ProgramTestBench::start_new(&[program]).await;
 
         Self {
             bench,

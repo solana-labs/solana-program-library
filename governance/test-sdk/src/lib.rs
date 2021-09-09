@@ -21,7 +21,7 @@ pub struct TestBenchProgram<'a> {
 }
 
 impl ProgramTestBench {
-    pub async fn start_with_programs<'a>(programs: &[TestBenchProgram<'a>]) -> Self {
+    pub async fn start_new<'a>(programs: &[TestBenchProgram<'a>]) -> Self {
         let mut program_test = ProgramTest::default();
 
         for program in programs {
