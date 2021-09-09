@@ -736,10 +736,9 @@ fn command_deposit_sol(
     let amount = native_token::sol_to_lamports(amount);
 
     // Check withdraw_from balance
-    let from_pubkey = from.as_ref().map_or_else(
-        || config.fee_payer.pubkey(),
-        |keypair| keypair.pubkey(),
-    );
+    let from_pubkey = from
+        .as_ref()
+        .map_or_else(|| config.fee_payer.pubkey(), |keypair| keypair.pubkey());
     let from_balance = config.rpc_client.get_balance(&from_pubkey)?;
     if from_balance < amount {
         return Err(format!(
@@ -756,10 +755,7 @@ fn command_deposit_sol(
 
     // ephemeral SOL account just to do the transfer
     let user_sol_transfer = Keypair::new();
-    let mut signers = vec![
-        config.fee_payer.as_ref(),
-        &user_sol_transfer,
-    ];
+    let mut signers = vec![config.fee_payer.as_ref(), &user_sol_transfer];
     if let Some(keypair) = from.as_ref() {
         signers.push(keypair)
     }
