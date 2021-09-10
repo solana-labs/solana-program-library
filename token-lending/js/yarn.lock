@@ -163,9 +163,9 @@
     dotenv "10.0.0"
 
 "@solana/web3.js@^1.20.0", "@solana/web3.js@^1.21.0":
-  version "1.25.0"
-  resolved "https://registry.yarnpkg.com/@solana/web3.js/-/web3.js-1.25.0.tgz#6677259badf105dc19f4be522edd1e6af117e511"
-  integrity sha512-GH0dzLfbiD8L68qujEhVCshSAcLpQpenHr1quwU8gybphmZsHUe5FIEyd7g7mpLMC7WEHEiEuFKEZnLOAx/TaA==
+  version "1.26.0"
+  resolved "https://registry.yarnpkg.com/@solana/web3.js/-/web3.js-1.26.0.tgz#bdd71616ce0ff40258dfe3a8d3a401ed5658fbae"
+  integrity sha512-XXrE8srfA3ilMvpOs6WdGOIuY8epc0sF9Tl4M6BHNnfS5pbSQ+jJJdEhwi6AzURgXWWu//242Tq347iLSQhRqQ==
   dependencies:
     "@babel/runtime" "^7.12.5"
     "@solana/buffer-layout" "^3.0.0"
