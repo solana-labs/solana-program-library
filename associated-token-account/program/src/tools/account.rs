@@ -1,4 +1,4 @@
-//! Utility functions
+//! Account utility functions
 
 use solana_program::{
     account_info::AccountInfo,
@@ -11,7 +11,7 @@ use solana_program::{
 
 /// Creates associated token account using Program Derived Address for the given seeds
 pub fn create_pda_account<'a>(
-    funder: &AccountInfo<'a>,
+    payer: &AccountInfo<'a>,
     rent: &Rent,
     space: usize,
     owner: &Pubkey,
@@ -27,9 +27,9 @@ pub fn create_pda_account<'a>(
 
         if required_lamports > 0 {
             invoke(
-                &system_instruction::transfer(funder.key, new_pda_account.key, required_lamports),
+                &system_instruction::transfer(payer.key, new_pda_account.key, required_lamports),
                 &[
-                    funder.clone(),
+                    payer.clone(),
                     new_pda_account.clone(),
                     system_program.clone(),
                 ],
@@ -50,14 +50,14 @@ pub fn create_pda_account<'a>(
     } else {
         invoke_signed(
             &system_instruction::create_account(
-                funder.key,
+                payer.key,
                 new_pda_account.key,
                 rent.minimum_balance(space).max(1),
                 space as u64,
                 owner,
             ),
             &[
-                funder.clone(),
+                payer.clone(),
                 new_pda_account.clone(),
                 system_program.clone(),
             ],
