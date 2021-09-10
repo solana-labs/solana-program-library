@@ -104,15 +104,21 @@ pub enum SwapError {
     UnsupportedCurveOperation,
     /// Non-native token output to transfer authority owned account
     #[error("Non-native token output to transfer authority owned account")]
-    NonRefunderTransferAuthorityOwnsNonNativeOutput,
-    /// A refunder is required when a non-owner transfer authority owns native output
-    #[error("A refunder is required when a non-owner transfer authority owns native output")]
-    TransferAuthorityOwnsNativeOutputRefunderEmpty,
+    NonRefundeeTransferAuthorityOwnsNonNative,
+    /// A refundee is required when a non-owner transfer authority owns native output
+    #[error("A refundee is required when a non-owner transfer authority owns native output")]
+    TransferAuthorityOwnsButRefundeeNotProvided,
 
     // 30.
     /// A swap must be comprised of the required mint
     #[error("A swap must be comprised of the required mint")]
     InvalidMint,
+    /// A non-refundee transfer authority owned account was left not empty
+    #[error(" A non-refundee transfer authority owned account was left not empty")]
+    NonRefundeeTransferAuthorityNotEmpty,
+    /// A routed swap requires an empty intermediary
+    #[error("A routed swap requires an empty intermediary")]
+    RoutedSwapRequiresEmptyIntermediary,
 }
 impl From<SwapError> for ProgramError {
     fn from(e: SwapError) -> Self {

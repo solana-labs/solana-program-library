@@ -4,6 +4,7 @@ import {
   PublicKey,
   SystemProgram,
   Transaction,
+  TransactionInstruction,
 } from '@solana/web3.js';
 import {AccountLayout, Token, TOKEN_PROGRAM_ID, NATIVE_MINT} from '@solana/spl-token';
 
@@ -1125,7 +1126,7 @@ export async function swapNative(): Promise<void> {
     let nativeSwapAmount = newBalance - balance;
     console.log("nativeSwapAmount", nativeSwapAmount)
     //not testing the math, just the functionality
-    assert(nativeSwapAmount == 0, "lamports of refunder should not increase when dont own the output account")
+    assert(nativeSwapAmount < 0, "lamports of refunder increased")
 
     //verify native sol account not closed
     let nativeAccount = await connection.getAccountInfo(userAccountNative);
@@ -1182,6 +1183,129 @@ export async function swapNative(): Promise<void> {
     assert(nativeAccount == null, "wsol account not closed");
   }
 
+}
+
+export async function swapNativeToNewATALargeBoiTest(): Promise<void> {
+
+    //create user transfer authority, also use as temp native account
+    const userTransferAuthority = Keypair.generate();
+
+    const balanceNeeded = await Token.getMinBalanceRentForExemptAccount(
+      connection,
+    );
+
+    //use a temp account for the middle(B) token, even if user already has some, this is safest
+    const newAccountB = Keypair.generate();
+    
+    //find ata address for C
+    let newAccountC = await Token.getAssociatedTokenAddress(
+      mintA.associatedProgramId, 
+      mintA.programId, 
+      mintA.publicKey, 
+      owner.publicKey,
+    );
+  
+    const transaction = new Transaction();
+
+    //create an token account to hold the native sol. 
+    //We use our already temporary throwaway authority to be the **account address**
+    transaction.add(
+      SystemProgram.createAccount({
+        fromPubkey: owner.publicKey,
+        newAccountPubkey: userTransferAuthority.publicKey,
+        lamports: balanceNeeded + SWAP_AMOUNT_IN,
+        space: AccountLayout.span,
+        programId: TOKEN_PROGRAM_ID,
+      })
+    );
+    //our throwaway authority is both the address AND the owner of this token
+    transaction.add(
+      Token.createInitAccountInstruction(
+        TOKEN_PROGRAM_ID,
+        NATIVE_MINT,
+        userTransferAuthority.publicKey,
+        userTransferAuthority.publicKey,
+      )
+    );
+  
+    //create temp account for token B
+    transaction.add(
+      SystemProgram.createAccount({
+        fromPubkey: owner.publicKey,
+        newAccountPubkey: newAccountB.publicKey,
+        lamports: balanceNeeded,
+        space: AccountLayout.span,
+        programId: mintB.programId,
+      }),
+    );
+    //init B token account, assign to temp authority
+    transaction.add(
+      Token.createInitAccountInstruction(
+        mintB.programId,
+        mintB.publicKey,
+        newAccountB.publicKey,
+        userTransferAuthority.publicKey,
+      ),
+    );
+  
+    //init ATA for token C
+    transaction.add(
+      Token.createAssociatedTokenAccountInstruction(
+        mintA.associatedProgramId,
+        mintA.programId,
+        mintA.publicKey,
+        newAccountC,
+        owner.publicKey,
+        owner.publicKey,
+      ),
+    );
+  
+    //swap
+    transaction.add(
+      TokenSwap.routedSwapInstruction(
+        tokenSwap3.tokenSwap,
+        tokenSwap3.authority,
+        userTransferAuthority.publicKey,
+        userTransferAuthority.publicKey,
+        tokenSwap3.tokenAccountB,
+        tokenSwap3.tokenAccountA,
+        newAccountB.publicKey,
+        tokenSwap3.poolToken,
+        tokenSwap3.feeAccount,
+        tokenSwap.tokenSwap,
+        tokenSwap.authority,
+        tokenSwap.tokenAccountB,
+        tokenSwap.tokenAccountA,
+        newAccountC,
+        tokenSwap.poolToken,
+        tokenSwap.feeAccount,
+        owner.publicKey,
+        tokenSwap.swapProgramId,
+        tokenSwap.tokenProgramId,
+        SWAP_AMOUNT_IN,
+        0,  //apps should set this for sure, but in this test can't be ROUTED_SWAP_AMOUNT_OUT anymore because we already swapped some
+      ),
+    );
+  
+    console.log("before swap");
+    let solBalanceBefore = await connection.getBalance(owner.publicKey);
+    console.log("userAccountA (users wallet)", solBalanceBefore);
+  
+    // Send the instructions
+    console.log('sending biggest large boi instruction');
+    await sendAndConfirmTransaction(
+      'create accounts native, swap, cleanup',
+      connection,
+      transaction,
+      owner,
+      userTransferAuthority,
+      newAccountB,
+    );
+  
+    console.log("after swap");
+    let solBalanceAfter = await connection.getBalance(owner.publicKey);
+    console.log("userAccountA (users wallet)", solBalanceAfter);
+    console.log("newAccountC", (await mintA.getAccountInfo(newAccountC)).amount.toNumber());
 }
 
 export async function depositSingleTokenTypeExactAmountIn(): Promise<void> {

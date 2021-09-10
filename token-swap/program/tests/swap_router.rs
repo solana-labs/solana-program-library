@@ -492,7 +492,6 @@ async fn fn_swap_router_reuse_all() {
     let amount_user_will_have: u64 = USER_TOKEN_A_BAL;
     let amount_user_will_swap: u64 = USER_WILL_SWAP;
     let mut amount_user_expects: u64 = USER_WILL_EXPECT;
-    let amount_user_actually_gets: u64 = USER_WILL_RECEIVE; //after fees
 
     //setup our users token account, owned and paid for by user
     let user_token_a = Keypair::new();
@@ -575,32 +574,36 @@ async fn fn_swap_router_reuse_all() {
         -(amount_user_expects as f32 * 0.005) as u64; //0.5% slippage
 
     {
-    swap1
-        .routed_swap(
-            &mut banks_client,
-            &user,
-            &recent_blockhash,
-            &swap2,
-            &user_token_a.pubkey(),
-            Some(&user_token_b.pubkey()),
-            Some(&user_token_c.pubkey()),
-            amount_user_will_swap,
-            amount_user_expects,
-        )
-        .await
-        .unwrap();
+        let res = swap1
+            .routed_swap(
+                &mut banks_client,
+                &user,
+                &recent_blockhash,
+                &swap2,
+                &user_token_a.pubkey(),
+                Some(&user_token_b.pubkey()),
+                Some(&user_token_c.pubkey()),
+                amount_user_will_swap,
+                amount_user_expects,
+            )
+            .await
+            .unwrap_err()
+            .unwrap(); //unwrap the enclosed transaction err
+
+        //support for intermediary account with a balance is not supported
+        assert_eq!(
+            TransactionError::InstructionError(0, InstructionError::Custom(crate::SwapError::RoutedSwapRequiresEmptyIntermediary as u32)),
+            res);
     }
 
-
-    //assert that unswapped amount remains
+    //all remained unchanged
     let user_token_a_bal = helpers::get_token_balance(&mut banks_client, &user_token_a.pubkey()).await;
-    assert_eq!(user_token_a_bal, amount_user_will_have - amount_user_will_swap);
-
+    assert_eq!(user_token_a_bal, amount_user_will_have);
 
     //assert that prior balances remain in place
     let user_token_b_bal = helpers::get_token_balance(&mut banks_client, &user_token_b.pubkey()).await;
     assert_eq!(user_token_b_bal, amount_user_had_token_b);
 
     let user_token_c_bal = helpers::get_token_balance(&mut banks_client, &user_token_c.pubkey()).await;
-    assert_eq!(user_token_c_bal, amount_user_had_token_c + amount_user_actually_gets);
+    assert_eq!(user_token_c_bal, amount_user_had_token_c);
 }
