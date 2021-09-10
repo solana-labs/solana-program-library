@@ -67,7 +67,7 @@ fn get_associated_token_address_and_bump_seed_internal(
 ///   5. `[]` SPL Token program
 ///   6. `[]` Rent sysvar
 ///
-// TODO: Uncomment after 1.0.4 is released on-chain
+// TODO: Uncomment after 1.0.4 is released
 // #[deprecated(
 //     since = "1.0.4",
 //     note = "please use `instruction::create_associated_token_account` instead"

@@ -227,14 +227,14 @@ async fn test_create_account_mismatch() {
 }
 
 #[tokio::test]
-async fn test_create_associated_token_account_using_default_instruction() {
+async fn test_create_associated_token_account_using_implicit_instruction() {
     let wallet_address = Pubkey::new_unique();
     let token_mint_address = Pubkey::new_unique();
     let associated_token_address =
         get_associated_token_address(&wallet_address, &token_mint_address);
 
     let (mut banks_client, payer, recent_blockhash) =
-        program_test(token_mint_address, true).start().await;
+        program_test(token_mint_address, false).start().await;
     let rent = banks_client.get_rent().await.unwrap();
     let expected_token_account_balance = rent.minimum_balance(spl_token::state::Account::LEN);
 
@@ -247,8 +247,11 @@ async fn test_create_associated_token_account_using_default_instruction() {
         None,
     );
 
-    let mut create_associated_token_account_ix =
-        create_associated_token_account(&payer.pubkey(), &wallet_address, &token_mint_address);
+    let mut create_associated_token_account_ix = deprecated_create_associated_token_account(
+        &payer.pubkey(),
+        &wallet_address,
+        &token_mint_address,
+    );
 
     // Use default instruction
     create_associated_token_account_ix.data = vec![];
@@ -294,7 +297,6 @@ async fn test_create_associated_token_account_using_deprecated_instruction_creat
     );
 
     // Use legacy instruction creator
-    #[allow(deprecated)]
     let create_associated_token_account_ix = deprecated_create_associated_token_account(
         &payer.pubkey(),
         &wallet_address,
