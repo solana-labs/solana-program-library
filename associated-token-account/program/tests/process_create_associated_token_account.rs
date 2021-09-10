@@ -273,7 +273,7 @@ async fn test_create_associated_token_account_using_default_instruction() {
 }
 
 #[tokio::test]
-async fn test_create_associated_token_account_using_deprecated_instruction() {
+async fn test_create_associated_token_account_using_deprecated_instruction_creator() {
     let wallet_address = Pubkey::new_unique();
     let token_mint_address = Pubkey::new_unique();
     let associated_token_address =
