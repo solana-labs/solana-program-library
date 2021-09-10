@@ -455,6 +455,7 @@ fn command_vsa_remove(
             stake_pool_address,
             vote_account,
             new_authority,
+            validator_stake_info.transient_seed_suffix_start,
             &stake_receiver,
         ),
     );
