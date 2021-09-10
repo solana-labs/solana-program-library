@@ -21,7 +21,7 @@ pub fn process_instruction(
     input: &[u8],
 ) -> ProgramResult {
     let instruction = if input.is_empty() {
-        AssociatedTokenAccountInstruction::CreateAssociatedTokenAccount
+        AssociatedTokenAccountInstruction::Create
     } else {
         AssociatedTokenAccountInstruction::try_from_slice(input)
             .map_err(|_| ProgramError::InvalidInstructionData)?
@@ -30,7 +30,7 @@ pub fn process_instruction(
     msg!("ASSOCIATED-TOKEN-ACCOUNT-INSTRUCTION: {:?}", instruction);
 
     match instruction {
-        AssociatedTokenAccountInstruction::CreateAssociatedTokenAccount {} => {
+        AssociatedTokenAccountInstruction::Create {} => {
             process_create_associated_token_account(program_id, accounts)
         }
     }

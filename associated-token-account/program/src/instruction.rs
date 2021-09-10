@@ -21,7 +21,7 @@ pub enum AssociatedTokenAccountInstruction {
     ///   4. `[]` System program
     ///   5. `[]` SPL Token program
     ///   6. `[]` Rent sysvar
-    CreateAssociatedTokenAccount,
+    Create,
 }
 
 /// Creates CreateAssociatedTokenAccount instruction
@@ -33,7 +33,7 @@ pub fn create_associated_token_account(
     let associated_account_address =
         get_associated_token_address(wallet_address, spl_token_mint_address);
 
-    let instruction_data = AssociatedTokenAccountInstruction::CreateAssociatedTokenAccount {};
+    let instruction_data = AssociatedTokenAccountInstruction::Create {};
 
     Instruction {
         program_id: id(),
