@@ -27,7 +27,7 @@ pub fn process_instruction(
             .map_err(|_| ProgramError::InvalidInstructionData)?
     };
 
-    msg!("ASSOCIATED-TOKEN-ACCOUNT-INSTRUCTION: {:?}", instruction);
+    msg!("{:?}", instruction);
 
     match instruction {
         AssociatedTokenAccountInstruction::Create {} => {
