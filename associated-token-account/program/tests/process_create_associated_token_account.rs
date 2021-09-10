@@ -26,7 +26,7 @@ async fn test_associated_token_address() {
         get_associated_token_address(&wallet_address, &token_mint_address);
 
     let (mut banks_client, payer, recent_blockhash) =
-        program_test(token_mint_address).start().await;
+        program_test(token_mint_address, true).start().await;
     let rent = banks_client.get_rent().await.unwrap();
     let expected_token_account_balance = rent.minimum_balance(spl_token::state::Account::LEN);
 
@@ -72,7 +72,7 @@ async fn test_create_with_a_lamport() {
         get_associated_token_address(&wallet_address, &token_mint_address);
 
     let (mut banks_client, payer, recent_blockhash) =
-        program_test(token_mint_address).start().await;
+        program_test(token_mint_address, true).start().await;
     let rent = banks_client.get_rent().await.unwrap();
     let expected_token_account_balance = rent.minimum_balance(spl_token::state::Account::LEN);
 
@@ -125,7 +125,7 @@ async fn test_create_with_excess_lamports() {
         get_associated_token_address(&wallet_address, &token_mint_address);
 
     let (mut banks_client, payer, recent_blockhash) =
-        program_test(token_mint_address).start().await;
+        program_test(token_mint_address, true).start().await;
     let rent = banks_client.get_rent().await.unwrap();
     let expected_token_account_balance = rent.minimum_balance(spl_token::state::Account::LEN);
 
@@ -178,7 +178,7 @@ async fn test_create_account_mismatch() {
         get_associated_token_address(&wallet_address, &token_mint_address);
 
     let (mut banks_client, payer, recent_blockhash) =
-        program_test(token_mint_address).start().await;
+        program_test(token_mint_address, true).start().await;
 
     let mut instruction =
         create_associated_token_account(&payer.pubkey(), &wallet_address, &token_mint_address);
@@ -234,7 +234,7 @@ async fn test_create_associated_token_account_using_default_instruction() {
         get_associated_token_address(&wallet_address, &token_mint_address);
 
     let (mut banks_client, payer, recent_blockhash) =
-        program_test(token_mint_address).start().await;
+        program_test(token_mint_address, true).start().await;
     let rent = banks_client.get_rent().await.unwrap();
     let expected_token_account_balance = rent.minimum_balance(spl_token::state::Account::LEN);
 
@@ -280,7 +280,7 @@ async fn test_create_associated_token_account_using_deprecated_instruction_creat
         get_associated_token_address(&wallet_address, &token_mint_address);
 
     let (mut banks_client, payer, recent_blockhash) =
-        program_test(token_mint_address).start().await;
+        program_test(token_mint_address, false).start().await;
     let rent = banks_client.get_rent().await.unwrap();
     let expected_token_account_balance = rent.minimum_balance(spl_token::state::Account::LEN);
 

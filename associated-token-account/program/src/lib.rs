@@ -9,7 +9,12 @@ pub mod tools;
 
 // Export current SDK types for downstream users building with a different SDK version
 pub use solana_program;
-use solana_program::{instruction::Instruction, program_pack::Pack, pubkey::Pubkey};
+use solana_program::{
+    instruction::{AccountMeta, Instruction},
+    program_pack::Pack,
+    pubkey::Pubkey,
+    sysvar,
+};
 
 solana_program::declare_id!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
 
@@ -72,9 +77,16 @@ pub fn create_associated_token_account(
     wallet_address: &Pubkey,
     spl_token_mint_address: &Pubkey,
 ) -> Instruction {
-    instruction::create_associated_token_account(
+    let mut instruction = instruction::create_associated_token_account(
         funding_address,
         wallet_address,
         spl_token_mint_address,
-    )
+    );
+
+    // TODO: Remove after ATA 1.0.4 and Token 3.2.0 are released (Token::InitializeAccount3 is required if rent account is not provided)
+    instruction
+        .accounts
+        .push(AccountMeta::new_readonly(sysvar::rent::id(), false));
+
+    instruction
 }

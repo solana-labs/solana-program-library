@@ -4,7 +4,6 @@ use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
     instruction::{AccountMeta, Instruction},
     pubkey::Pubkey,
-    sysvar,
 };
 
 use crate::{get_associated_token_address, id};
@@ -20,7 +19,6 @@ pub enum AssociatedTokenAccountInstruction {
     ///   3. `[]` The token mint for the new associated token account
     ///   4. `[]` System program
     ///   5. `[]` SPL Token program
-    ///   6. `[]` Rent sysvar
     Create,
 }
 
@@ -44,7 +42,6 @@ pub fn create_associated_token_account(
             AccountMeta::new_readonly(*spl_token_mint_address, false),
             AccountMeta::new_readonly(solana_program::system_program::id(), false),
             AccountMeta::new_readonly(spl_token::id(), false),
-            AccountMeta::new_readonly(sysvar::rent::id(), false),
         ],
         data: instruction_data.try_to_vec().unwrap(),
     }

@@ -4,12 +4,21 @@ use solana_program_test::ProgramTest;
 use solana_program_test::*;
 use spl_associated_token_account::{id, processor::process_instruction};
 
-pub fn program_test(token_mint_address: Pubkey) -> ProgramTest {
+pub fn program_test(token_mint_address: Pubkey, use_latest_spl_token: bool) -> ProgramTest {
     let mut pc = ProgramTest::new(
         "spl_associated_token_account",
         id(),
         processor!(process_instruction),
     );
+
+    if use_latest_spl_token {
+        // TODO: Remove after Token 3.2.0 is released (InitializeAccount3 is required if rent account is not provided)
+        pc.add_program(
+            "spl_token",
+            spl_token::id(),
+            processor!(spl_token::processor::Processor::process),
+        );
+    }
 
     // Add a token mint account
     //
