@@ -1209,6 +1209,7 @@ export async function swapNativeToNewATALargeBoiTest(): Promise<void> {
 
     //create an token account to hold the native sol. 
     //We use our already temporary throwaway authority to be the **account address**
+    //the program will see this is temporary and delete this for us, no cleanup needed.
     transaction.add(
       SystemProgram.createAccount({
         fromPubkey: owner.publicKey,
@@ -1238,7 +1239,9 @@ export async function swapNativeToNewATALargeBoiTest(): Promise<void> {
         programId: mintB.programId,
       }),
     );
-    //init B token account, assign to temp authority
+    //init B token account, assign ownership to temp authority
+    //because we set the authority to the temp authority
+    //the program will see this is temporary and delete this for us, no cleanup needed.
     transaction.add(
       Token.createInitAccountInstruction(
         mintB.programId,
