@@ -459,7 +459,7 @@ fn command_vsa_remove(
         ),
     );
     unique_signers!(signers);
-    let transaction = checked_transaction_with_signers(config, instructions, &signers)?;
+    let transaction = checked_transaction_with_signers(config, &instructions, &signers)?;
     send_transaction(config, transaction)?;
     Ok(())
 }
