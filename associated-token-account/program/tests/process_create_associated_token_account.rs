@@ -10,9 +10,11 @@ use solana_sdk::{
     transaction::{Transaction, TransactionError},
 };
 use spl_associated_token_account::{
-    create_associated_token_account as legacy_create_associated_token_account,
     get_associated_token_address, instruction::create_associated_token_account,
 };
+
+#[allow(deprecated)]
+use spl_associated_token_account::create_associated_token_account as deprecated_create_associated_token_account;
 
 use program_test::program_test;
 
@@ -271,7 +273,7 @@ async fn test_create_associated_token_account_using_default_instruction() {
 }
 
 #[tokio::test]
-async fn test_create_associated_token_account_using_legacy_instruction() {
+async fn test_create_associated_token_account_using_deprecated_instruction() {
     let wallet_address = Pubkey::new_unique();
     let token_mint_address = Pubkey::new_unique();
     let associated_token_address =
@@ -292,7 +294,8 @@ async fn test_create_associated_token_account_using_legacy_instruction() {
     );
 
     // Use legacy instruction creator
-    let create_associated_token_account_ix = legacy_create_associated_token_account(
+    #[allow(deprecated)]
+    let create_associated_token_account_ix = deprecated_create_associated_token_account(
         &payer.pubkey(),
         &wallet_address,
         &token_mint_address,

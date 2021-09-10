@@ -62,6 +62,10 @@ fn get_associated_token_address_and_bump_seed_internal(
 ///   5. `[]` SPL Token program
 ///   6. `[]` Rent sysvar
 ///
+#[deprecated(
+    since = "1.0.4",
+    note = "please use `instruction::create_associated_token_account` instead"
+)]
 pub fn create_associated_token_account(
     funding_address: &Pubkey,
     wallet_address: &Pubkey,
