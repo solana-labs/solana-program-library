@@ -12,6 +12,7 @@ import {
   createAccountsAndRoutedSwapAtomic,
   createThirdTokenSwapForNative,
   swapNative,
+  swapNativeToNewATALargeBoiTest,
 } from './token-swap-test';
 
 async function main() {
@@ -48,6 +49,8 @@ async function main() {
   await createThirdTokenSwapForNative();
   console.log('Run test: swapNative');
   await swapNative();
+  console.log('Run test: swapNativeToNewATALargeBoiTest');
+  await swapNativeToNewATALargeBoiTest();
 
   console.log('Success\n');
 }

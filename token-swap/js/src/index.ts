@@ -602,6 +602,46 @@ export class TokenSwap {
     );
   }
 
+  /**
+   * Swap token A for token B
+   *
+   * @param userSource User's source token account
+   * @param poolSource Pool's source token account
+   * @param poolDestination Pool's destination token account
+   * @param userDestination User's destination token account
+   * @param userTransferAuthority Account delegated to transfer user's tokens
+   * @param refundTo The account to send intermediate account close funds to, and to unwrap SOL to
+   * @param amountIn Amount to transfer from source account
+   * @param minimumAmountOut Minimum amount of tokens the user will receive
+   */
+  createSwapInstruction(
+    userSource: PublicKey,
+    poolSource: PublicKey,
+    poolDestination: PublicKey,
+    userDestination: PublicKey,
+    userTransferAuthority: Keypair,
+    refundTo: PublicKey,
+    amountIn: number | Numberu64,
+    minimumAmountOut: number | Numberu64,
+  ): TransactionInstruction {
+    return TokenSwap.swapInstruction(
+          this.tokenSwap,
+          this.authority,
+          userTransferAuthority.publicKey,
+          userSource,
+          poolSource,
+          poolDestination,
+          userDestination,
+          this.poolToken,
+          this.feeAccount,
+          refundTo,
+          this.swapProgramId,
+          this.tokenProgramId,
+          amountIn,
+          minimumAmountOut,
+        );
+  }  
+
   static swapInstruction(
     tokenSwap: PublicKey,
     authority: PublicKey,

@@ -138,6 +138,7 @@ impl Processor {
         let swap_bytes = swap.to_bytes();
         let authority_signature_seeds = [&swap_bytes[..32], &[nonce]];
         let signers = &[&authority_signature_seeds[..]];
+
         let ix = spl_token::instruction::transfer(
             token_program.key,
             source.key,
@@ -416,6 +417,22 @@ impl Processor {
         let pool_fee_account_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
+        let swap_info2 = next_account_info(account_info_iter)?;
+        let authority_info2 = next_account_info(account_info_iter)?;
+        let source_info2 = destination_info; //source is prior destination
+        let swap_source_info2 = next_account_info(account_info_iter)?;
+        let swap_destination_info2 = next_account_info(account_info_iter)?;
+        let destination_info2 = next_account_info(account_info_iter)?;
+        let pool_mint_info2 = next_account_info(account_info_iter)?;
+        let pool_fee_account_info2 = next_account_info(account_info_iter)?;
+        let refund_account_info = next_account_info(account_info_iter)?;
+
+
+        let token_b = Self::unpack_token_account(destination_info, token_program_info.key)?;
+        if token_b.amount > 0 {
+            return Err(SwapError::RoutedSwapRequiresEmptyIntermediary.into());
+        }
+
         //we could knock the owner fee in half since its a double swap
         if swap_info.owner != program_id {
             return Err(ProgramError::IncorrectProgramId);
@@ -427,7 +444,7 @@ impl Processor {
             .owner_trade_fee_denominator.checked_mul(ROUTED_OWNER_FEE_DENOMINATOR_MULT).unwrap();
 
         let swap_result1 = Self::process_swap_internal(
-            false,
+            true,
             false,
             program_id,
             amount_in,
@@ -442,7 +459,7 @@ impl Processor {
             destination_info,
             pool_mint_info,
             pool_fee_account_info,
-            None,
+            Some(refund_account_info),
             token_program_info,
             Some((new_numerator,new_denominator)),
         )?;
@@ -450,17 +467,7 @@ impl Processor {
         msg!("first swap: {:?}", swap_result1);
          
         //second swap
-
-        let swap_info = next_account_info(account_info_iter)?;
-        let authority_info = next_account_info(account_info_iter)?;
-        let source_info = destination_info; //source is prior destination
-        let swap_source_info = next_account_info(account_info_iter)?;
-        let swap_destination_info = next_account_info(account_info_iter)?;
-        let destination_info = next_account_info(account_info_iter)?;
-        let pool_mint_info = next_account_info(account_info_iter)?;
-        let pool_fee_account_info = next_account_info(account_info_iter)?;
-        let refund_account_info = next_account_info(account_info_iter)?;
-
+        
         let swap_result2 = Self::process_swap_internal(
             true,
             true,
@@ -469,15 +476,15 @@ impl Processor {
             swap_result1.destination_amount_swapped.try_into().unwrap(),
             //this is where the slippage checks would take hold
             minimum_amount_out,
-            swap_info,
-            authority_info,
+            swap_info2,
+            authority_info2,
             user_transfer_authority_info,
-            source_info, 
-            swap_source_info,
-            swap_destination_info,
-            destination_info,
-            pool_mint_info,
-            pool_fee_account_info,
+            source_info2, 
+            swap_source_info2,
+            swap_destination_info2,
+            destination_info2,
+            pool_mint_info2,
+            pool_fee_account_info2,
             Some(refund_account_info),
             token_program_info,
             //None,
@@ -485,27 +492,6 @@ impl Processor {
         )?;
 
         msg!("second swap: {:?}", swap_result2);
-
-        //if transfer authority owns the intermediary token
-        //and the token account is empty, we close it
-        let token_b = Self::unpack_token_account(source_info, token_program_info.key)?;
-        if token_b.owner == *user_transfer_authority_info.key 
-                && token_b.amount == 0 {
-            invoke(
-                &spl_token::instruction::close_account(
-                    token_program_info.key,
-                    source_info.key,
-                    refund_account_info.key,
-                    user_transfer_authority_info.key,
-                    &[],
-                )?,
-                &[
-                    source_info.clone(),
-                    refund_account_info.clone(),
-                    user_transfer_authority_info.clone(),
-                ],
-            )?;
-        }
         
         Ok(())
     }
@@ -555,7 +541,7 @@ impl Processor {
 
     fn process_swap_internal<'a> (
         collect_dust: bool,
-        is_final_swap: bool,
+        output_unwrap: bool,
         program_id: &Pubkey,
         amount_in: u64,
         minimum_amount_out: u64,
@@ -641,11 +627,9 @@ impl Processor {
             )
             .ok_or(SwapError::ZeroTradingTokens)?;
 
-        //sometimes this is off by a dust amount - we want to clean that dust
-        //under certain circumstances, such as a routed swap with temp acct
-        //note that if this was off significantly, the output slippage
-        //would be triggered
         if collect_dust {
+            //note that if this was off significantly, the output slippage
+            //would be triggered
             result.source_amount_swapped = amount_in_u128;
         }
         //unmut
@@ -654,7 +638,6 @@ impl Processor {
         if result.destination_amount_swapped < to_u128(minimum_amount_out)? {
             return Err(SwapError::ExceededSlippage.into());
         }
-
 
         let (swap_token_a_amount, swap_token_b_amount) = match trade_direction {
             TradeDirection::AtoB => (
@@ -711,27 +694,78 @@ impl Processor {
             to_u64(result.destination_amount_swapped)?,
         )?;
 
+
         //some checks to prevent stranded token and unwrap sol
-        if is_final_swap {
+
+        //CHECK FOR INPUT CLOSING CAPABILITY
+        //this could be wrapped sol temp account, or second swap of a route
+        //in both cases the token would be owned by the xfer auth, which shouldn't be the refundee
+        let token_a = Self::unpack_token_account(source_info, token_program_info.key)?;
+        let owner_is_refundee = match refund_account_info {
+            None => false,
+            Some(r) => *r.key == token_a.owner
+        };
+        //if we have permission to close out this account
+        if token_a.owner == *user_transfer_authority_info.key {
+            //if the owner isn't the refundee then this must be a temp account
+            //A non-native temp account on the input should always be left empty so we can close it
+            //this is stopping a caller from shooting themselves in the foot
+            if !owner_is_refundee && token_a.amount > 0 && !token_a.is_native() {
+                return Err(SwapError::NonRefundeeTransferAuthorityNotEmpty.into());
+            } 
+            
+            //if empty, we close it
+            if token_a.amount == 0 || token_a.is_native() {
+                if refund_account_info.is_none() {
+                    return Err(SwapError::TransferAuthorityOwnsButRefundeeNotProvided.into());
+                }
+
+                let refund = refund_account_info.unwrap();
+                invoke(
+                    &spl_token::instruction::close_account(
+                        token_program_info.key,
+                        source_info.key,
+                        refund.key,
+                        user_transfer_authority_info.key,
+                        &[],
+                    )?,
+                    &[
+                        source_info.clone(),
+                        refund.clone(),
+                        user_transfer_authority_info.clone(),
+                    ],
+                )?;
+            }
+        //we could have closed but authority was set wrong, just leave a message
+        } else if token_a.is_native() {
+            msg!("couldn't close input native token account automatically; user transfer authority must own");
+        } else if token_a.amount == 0 {
+            msg!("couldn't close input empty token account automatically; user transfer authority must own");
+        }
+
+        //CHECK FOR OUTPUT CLOSING CAPABILITY
+        //this is only for output accounts that are wrapped SOL
+        //when that is the case, we can close them and send the SOL to the refundee
+        if output_unwrap {
             let token_b = Self::unpack_token_account(destination_info, token_program_info.key)?;
 
-            let owner_is_refunder = match refund_account_info {
+            let owner_is_refundee = match refund_account_info {
                 None => false,
                 Some(r) => *r.key == token_b.owner
             };
 
             //if we can potentially close out this account
             if token_b.owner == *user_transfer_authority_info.key {
-                //this is a safety check. if the owner isn't the refunder then this
+                //this is a safety check. if the owner isn't the refundee then this
                 //must be a temp authority. A temp authority on the output should ONLY
                 //be used for WSOL
-                if !owner_is_refunder && !token_b.is_native() {
-                    return Err(SwapError::NonRefunderTransferAuthorityOwnsNonNativeOutput.into());
+                if !owner_is_refundee && !token_b.is_native() {
+                    return Err(SwapError::NonRefundeeTransferAuthorityOwnsNonNative.into());
                 } 
                 
                 if token_b.is_native() {
                     if refund_account_info.is_none() {
-                        return Err(SwapError::TransferAuthorityOwnsNativeOutputRefunderEmpty.into());
+                        return Err(SwapError::TransferAuthorityOwnsButRefundeeNotProvided.into());
                     }
                     let refund = refund_account_info.unwrap();
                     invoke(
@@ -1454,14 +1488,20 @@ impl PrintProgramError for SwapError {
             SwapError::UnsupportedCurveOperation => {
                 msg!("Error: The operation cannot be performed on the given curve")
             }
-            SwapError::NonRefunderTransferAuthorityOwnsNonNativeOutput => {
+            SwapError::NonRefundeeTransferAuthorityOwnsNonNative => {
                 msg!("Error: Non-native token output to transfer authority owned account")
             }
-            SwapError::TransferAuthorityOwnsNativeOutputRefunderEmpty => {
-                msg!("Error: A refunder is required when a non-owner transfer authority owns native output")
+            SwapError::TransferAuthorityOwnsButRefundeeNotProvided => {
+                msg!("Error: A refundee is required when a non-owner transfer authority owns native output")
             }
             SwapError::InvalidMint => {
                 msg!("Error: A swap must be comprised of the required mint ({})", SWAP_CONSTRAINTS.unwrap().required_mint)
+            }
+            SwapError::NonRefundeeTransferAuthorityNotEmpty => {
+                msg!("Error: A non-refundee transfer authority owned account was left not empty")
+            }
+            SwapError::RoutedSwapRequiresEmptyIntermediary => {
+                msg!("Error: A routed swap requires an empty intermediary")
             }
         }
     }
