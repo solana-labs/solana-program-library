@@ -8,7 +8,7 @@ The Token JavaScript library comprises:
 
 ## Getting Started
 
-First, make sure you've already deployed the associate-token-account by going into `associated-token-account/pogram` and running:
+First, make sure you've already deployed the associate-token-account by going into `associated-token-account/program` and running:
 
 ```bash
 $ cargo build-bpf
