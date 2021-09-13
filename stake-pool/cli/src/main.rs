@@ -447,23 +447,20 @@ fn command_vsa_remove(
     if let Some(stake_keypair) = stake_keypair.as_ref() {
         signers.push(stake_keypair);
     }
+    instructions.push(
+        // Create new validator stake account address
+        spl_stake_pool::instruction::remove_validator_from_pool_with_vote(
+            &spl_stake_pool::id(),
+            &stake_pool,
+            stake_pool_address,
+            vote_account,
+            new_authority,
+            validator_stake_info.transient_seed_suffix_start,
+            &stake_receiver,
+        ),
+    );
     unique_signers!(signers);
-    let transaction = checked_transaction_with_signers(
-        config,
-        &[
-            // Create new validator stake account address
-            spl_stake_pool::instruction::remove_validator_from_pool_with_vote(
-                &spl_stake_pool::id(),
-                &stake_pool,
-                stake_pool_address,
-                vote_account,
-                new_authority,
-                validator_stake_info.transient_seed_suffix_start,
-                &stake_receiver,
-            ),
-        ],
-        &signers,
-    )?;
+    let transaction = checked_transaction_with_signers(config, &instructions, &signers)?;
     send_transaction(config, transaction)?;
     Ok(())
 }
