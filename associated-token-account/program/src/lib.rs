@@ -3,7 +3,9 @@
 #![forbid(unsafe_code)]
 
 mod entrypoint;
+pub mod instruction;
 pub mod processor;
+pub mod tools;
 
 // Export current SDK types for downstream users building with a different SDK version
 pub use solana_program;
@@ -65,25 +67,26 @@ fn get_associated_token_address_and_bump_seed_internal(
 ///   5. `[]` SPL Token program
 ///   6. `[]` Rent sysvar
 ///
+// TODO: Uncomment after 1.0.4 is released
+// #[deprecated(
+//     since = "1.0.4",
+//     note = "please use `instruction::create_associated_token_account` instead"
+// )]
 pub fn create_associated_token_account(
     funding_address: &Pubkey,
     wallet_address: &Pubkey,
     spl_token_mint_address: &Pubkey,
 ) -> Instruction {
-    let associated_account_address =
-        get_associated_token_address(wallet_address, spl_token_mint_address);
+    let mut instruction = instruction::create_associated_token_account(
+        funding_address,
+        wallet_address,
+        spl_token_mint_address,
+    );
 
-    Instruction {
-        program_id: id(),
-        accounts: vec![
-            AccountMeta::new(*funding_address, true),
-            AccountMeta::new(associated_account_address, false),
-            AccountMeta::new_readonly(*wallet_address, false),
-            AccountMeta::new_readonly(*spl_token_mint_address, false),
-            AccountMeta::new_readonly(solana_program::system_program::id(), false),
-            AccountMeta::new_readonly(spl_token::id(), false),
-            AccountMeta::new_readonly(sysvar::rent::id(), false),
-        ],
-        data: vec![],
-    }
+    // TODO: Remove after ATA 1.0.4 and Token 3.2.0 are released (Token::InitializeAccount3 is required if rent account is not provided)
+    instruction
+        .accounts
+        .push(AccountMeta::new_readonly(sysvar::rent::id(), false));
+
+    instruction
 }
