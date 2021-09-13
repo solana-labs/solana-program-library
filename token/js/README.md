@@ -8,7 +8,13 @@ The Token JavaScript library comprises:
 
 ## Getting Started
 
-First fetch the npm dependencies, including `@solana/web3.js`, by running:
+First, make sure you've already deployed the associate-token-account by going into `associated-token-account/pogram` and running:
+
+```bash
+$ cargo build-bpf
+```
+
+Once that's complete, come back to the `token/program/js` folder and install the npm dependencies, including `@solana/web3.js`, by running:
 ```bash
 $ npm install
 ```
