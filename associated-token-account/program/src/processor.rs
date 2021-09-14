@@ -51,7 +51,7 @@ pub fn process_create_associated_token_account(
     let spl_token_program_info = next_account_info(account_info_iter)?;
     let spl_token_program_id = spl_token_program_info.key;
 
-    // TODO: Remove after ATA 1.0.4 and Token 3.2.0 are released and just use Rent::get()
+    // TODO: Remove after ATA 1.0.4 and Token >3.2.0 are released and just use Rent::get()
     let (rent_sysvar_info, rent) = next_account_info(account_info_iter)
         .map(|info| (Some(info), Rent::from_account_info(info).unwrap()))
         .unwrap_or((None, Rent::get().unwrap()));
