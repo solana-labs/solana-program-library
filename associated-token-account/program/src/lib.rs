@@ -83,7 +83,7 @@ pub fn create_associated_token_account(
         spl_token_mint_address,
     );
 
-    // TODO: Remove after ATA 1.0.4 and Token 3.2.0 are released (Token::InitializeAccount3 is required if rent account is not provided)
+    // TODO: Remove after ATA 1.0.4 and Token  >3.2.0 are released (Token::InitializeAccount3 is required if rent account is not provided)
     instruction
         .accounts
         .push(AccountMeta::new_readonly(sysvar::rent::id(), false));
