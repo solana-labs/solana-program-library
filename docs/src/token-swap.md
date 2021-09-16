@@ -52,7 +52,7 @@ The Token Swap Program's source is available on
 ## Interface
 
 [JavaScript
-bindings](https://github.com/solana-labs/solana-program-library/tree/master/token-swap/js)
+bindings](https://github.com/solana-labs/solana-program-library/blob/master/token-swap/js/src/index.ts)
 are available that support loading the Token Swap Program on to a chain and
 issuing instructions.
 
