@@ -13,7 +13,6 @@ use {
         signers::Signers,
         transaction::{Transaction, TransactionError},
     },
-    solana_transaction_status::TransactionConfirmationStatus,
     std::{
         collections::HashMap,
         error,
@@ -156,17 +155,7 @@ pub fn send_and_confirm_messages_with_spinner<T: Signers>(
                         pending_signatures_chunk.iter().zip(statuses.into_iter())
                     {
                         if let Some(status) = status {
-                            if let Some(confirmation_status) = &status.confirmation_status {
-                                if *confirmation_status != TransactionConfirmationStatus::Processed
-                                {
-                                    if let Some((i, _)) = pending_transactions.remove(signature) {
-                                        confirmed_transactions += 1;
-                                        transaction_errors[i] = status.err;
-                                    }
-                                }
-                            } else if status.confirmations.is_none()
-                                || status.confirmations.unwrap() > 1
-                            {
+                            if status.satisfies_commitment(rpc_client.commitment()) {
                                 if let Some((i, _)) = pending_transactions.remove(signature) {
                                     confirmed_transactions += 1;
                                     transaction_errors[i] = status.err;
