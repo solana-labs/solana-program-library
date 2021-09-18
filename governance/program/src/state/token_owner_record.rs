@@ -111,7 +111,7 @@ impl TokenOwnerRecord {
 
         // The number of outstanding proposals is currently restricted to 1
         // If there is a need to change it in the future then it should be added to realm or governance config
-        if self.outstanding_proposal_count > 0 {
+        if self.outstanding_proposal_count >= 10 {
             return Err(GovernanceError::TooManyOutstandingProposals.into());
         }
 

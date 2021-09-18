@@ -1,4 +1,5 @@
-anchor_version = "0.13.2"
+anchor_version = "0.16.1"
+solana_version = "1.7.11"
 
 [workspace]
 members = ["governance/program"]
