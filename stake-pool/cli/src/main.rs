@@ -1105,12 +1105,9 @@ fn prepare_withdraw_accounts(
             continue;
         }
 
-        let available_for_withdrawal: u64 = if lamports > *MIN_STAKE_BALANCE
-        {
-            stake_pool
-                .calc_lamports_withdraw_amount(lamports - *MIN_STAKE_BALANCE)
-                .unwrap()
-        } else { 0 };
+        let available_for_withdrawal = stake_pool
+                .calc_lamports_withdraw_amount(lamports.saturating_sub(*MIN_STAKE_BALANCE))
+                .unwrap();
 
         let pool_amount = u64::min(available_for_withdrawal, remaining_amount);
 
