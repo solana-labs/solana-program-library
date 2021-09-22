@@ -1106,8 +1106,8 @@ fn prepare_withdraw_accounts(
         }
 
         let available_for_withdrawal = stake_pool
-                .calc_lamports_withdraw_amount(lamports.saturating_sub(*MIN_STAKE_BALANCE))
-                .unwrap();
+            .calc_lamports_withdraw_amount(lamports.saturating_sub(*MIN_STAKE_BALANCE))
+            .unwrap();
 
         let pool_amount = u64::min(available_for_withdrawal, remaining_amount);
 
@@ -1191,8 +1191,10 @@ fn command_withdraw(
         let stake_account = config.rpc_client.get_account(&stake_account_address)?;
 
         let available_for_withdrawal = stake_pool
-                .calc_lamports_withdraw_amount(stake_account.lamports.saturating_sub(*MIN_STAKE_BALANCE))
-                .unwrap();
+            .calc_lamports_withdraw_amount(
+                stake_account.lamports.saturating_sub(*MIN_STAKE_BALANCE),
+            )
+            .unwrap();
 
         if available_for_withdrawal < pool_amount {
             return Err(format!(
