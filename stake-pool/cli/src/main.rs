@@ -1190,12 +1190,9 @@ fn command_withdraw(
         );
         let stake_account = config.rpc_client.get_account(&stake_account_address)?;
 
-        let available_for_withdrawal: u64 = if stake_account.lamports > *MIN_STAKE_BALANCE
-        {
-            stake_pool
-                .calc_lamports_withdraw_amount(stake_account.lamports - *MIN_STAKE_BALANCE)
-                .unwrap()
-        } else { 0 };
+        let available_for_withdrawal = stake_pool
+                .calc_lamports_withdraw_amount(stake_account.lamports.saturating_sub(*MIN_STAKE_BALANCE))
+                .unwrap();
 
         if available_for_withdrawal < pool_amount {
             return Err(format!(
