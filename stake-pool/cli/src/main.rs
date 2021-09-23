@@ -2079,9 +2079,9 @@ fn main() {
                 Arg::with_name("new_stake_deposit_authority")
                     .index(3)
                     .validator(is_pubkey)
-                    .value_name("ADDRESS_OR_NONE")
+                    .value_name("AUTHORITY_ADDRESS")
                     .takes_value(true)
-                    .help("'none', or a public key for the new stake pool sol deposit authority."),
+                    .help("Public key for the new stake pool sol deposit authority."),
             )
             .arg(
                 Arg::with_name("unset")
@@ -2096,7 +2096,7 @@ fn main() {
             )
         )
         .subcommand(SubCommand::with_name("set-fee")
-            .about("Change the [management/withdrawal/stake deposit/sol deposit] fee assessed by the stake pool. Must be signed by the manager.")
+            .about("Change the [epoch/withdraw/stake deposit/sol deposit] fee assessed by the stake pool. Must be signed by the manager.")
             .arg(
                 Arg::with_name("pool")
                     .index(1)
