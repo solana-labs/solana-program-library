@@ -52,14 +52,23 @@ providers for direct SOL deposits.
 ## Operation
 
 A stake pool manager creates a stake pool, and the staker includes validators that will
-receive delegations from the pool by adding "validator stake accounts" to the pool.
+receive delegations from the pool by adding "validator stake accounts" to the pool
+using the `add-validator` instruction. In this command, the stake pool creates
+a new stake account and delegates it to the desired validator.
 
 At this point, users can participate with deposits. They can directly deposit
-SOL into the stake pool's reserve account, to be redistributed by the staker.
+SOL into the stake pool using the `deposit-sol` instruction. Within this instruction,
+the stake pool will move SOL into the pool's reserve account, to be redistributed
+by the staker.
 
 Alternatively, users can deposit a stake account into the pool.  To do this,
 they must delegate a stake account to the one of the validators in the stake pool.
-Once it's active, the user can deposit their stake into the pool.
+If the stake pool has a preferred deposit validator, the user must delegate their
+stake to that validator's vote account.
+
+Once the stake becomes active, which happens at the following epoch boundary
+(maximum 2 days), the user can deposit their stake into the pool using the
+`deposit-stake` instruction.
 
 In exchange for their deposit (SOL or stake), the user receives SPL tokens
 representing their fractional ownership in pool. A percentage of the rewards
@@ -67,7 +76,13 @@ earned by the pool goes to the pool manager as an epoch fee.
 
 Over time, as the stakes in the stake pool accrue staking rewards, the user's fractional
 ownership will be worth more than their initial deposit. Whenever the user chooses,
-they can withdraw activated stake in exchange for their SPL pool tokens.
+they can use the `withdraw-stake` instruction to withdraw an activated stake account
+in exchange for their SPL pool tokens. The user will get back a SOL stake account
+immediately.
+
+Note: if the user wants to withdraw the SOL in the stake account, they must first
+deactivate the stake account and wait until the next epoch boundary (maximum 2 days).
+Once the stake is inactive, they can freely withdraw the SOL.
 
 The stake pool staker can add and remove validators, or rebalance the pool by
 decreasing the stake on a validator, waiting an epoch to move it into the stake
@@ -118,11 +133,12 @@ must sign every stake deposit instruction.
 
 This can also be useful in a few situations:
 
-* Create a private stake pool
+* Control who deposits into the stake pool
 * Prohibit a form of deposit. For example, the manager only wishes to have SOL
-  deposits, so they set a stake deposit authority
-* Maintenance mode. If the pool needs more time to reset fees or otherwise, the
-  manager can temporarily make the pool private
+  deposits, so they set a stake deposit authority, making it only possible to
+  deposit a stake account if that authority signs the transaction.
+* Maintenance mode. If the pool needs time to reset fees or otherwise, the
+  manager can temporarily restrict new deposits by setting deposit authorities.
 
 Note: in order to keep user funds safe, withdrawals are always permitted.
 
@@ -272,16 +288,18 @@ Signature: 5yPXfVj5cbKBfZiEVi2UR5bXzVDuc2c3ruBwSjkAqpvxPHigwGHiS1mXQVE4qwok5moMW
 ```
 
 In order to protect stake pool depositors from malicious managers, the program
-applies the new fee for the following epoch. For example, if the fee is 1% at
-epoch 100, and the manager sets it to 10%, the manager will still gain 1% for
-the rewards earned during epoch 100. Starting with epoch 101, the manager will
-earn 10%.
+applies the new fee for the following epoch.
+
+For example, if the fee is 1% at epoch 100, and the manager sets it to 10%, the
+manager will still gain 1% for the rewards earned during epoch 100. Starting
+with epoch 101, the manager will earn 10%.
 
 Additionally, to prevent a malicious manager from immediately setting the withdrawal
 fee to a very high amount, making it practically impossible for users to withdraw,
-the stake pool program enforces a limit of 1.5x increase per epoch. For example,
-if the current withdrawal fee is 2.5%, the maximum that can be set for the next
-epoch is 3.75%.
+the stake pool program currently enforces a limit of 1.5x increase per epoch.
+
+For example, if the current withdrawal fee is 2.5%, the maximum that can be set
+for the next epoch is 3.75%.
 
 The possible options for the fee type are `epoch`, `withdrawal`, `sol-deposit`,
 and `stake-deposit`.
@@ -425,8 +443,14 @@ Signature: 4XprnR768Ch6LUvqUVLTjMCiqdYvtjNfECh4izErqwbsASTGjUBz7NtLZHAiraTqhs7b9
 ```
 
 Unlike a normal withdrawal, the validator stake account is totally moved from
-the stake pool and into a new account belonging to the administrator. The authority
-for the withdrawn stake account can also be specified using the `--new-authority` flag:
+the stake pool and into a new account belonging to the administrator.
+
+Note: since removal is only possible when the validator stake is at the minimum
+amount of 0.00328288, the administrator does not get any control of user funds,
+and only recovers the amount contributed during `add-validator`.
+
+The authority for the withdrawn stake account can also be specified using the
+`--new-authority` flag:
 
 ```console
 $ spl-stake-pool remove-validator Zg5YBPAk8RqBR9kaLLSoN5C8Uv7nErBz1WC63HTsCPR J3xu64PWShcMen99kU3igxtwbke2Nwfo8pkZNRgrq66H --new-authority 4SnSuUtJGKvk2GYpBwmEsWG53zTurVM8yXGsoiZQyMJn
@@ -680,7 +704,7 @@ Two epochs later, when the stake is fully active and has received one epoch of
 rewards, we can deposit the stake into the stake pool.
 
 ```console
-$ spl-stake-pool deposit Zg5YBPAk8RqBR9kaLLSoN5C8Uv7nErBz1WC63HTsCPR 97wBBiLVA7fUViEew8yV8R6tTdKithZDVz8LHLfF9sTJ
+$ spl-stake-pool deposit-stake Zg5YBPAk8RqBR9kaLLSoN5C8Uv7nErBz1WC63HTsCPR 97wBBiLVA7fUViEew8yV8R6tTdKithZDVz8LHLfF9sTJ
 Depositing stake 97wBBiLVA7fUViEew8yV8R6tTdKithZDVz8LHLfF9sTJ into stake pool account F8e8Ympp4MkDSPZdvRxdQUZXRkMBDdyqgHa363GShAPt
 Using existing associated token account DgyZrAq88bnG1TNRxpgDQzWXpzEurCvfY2ukKFWBvADQ to receive stake pool tokens of mint BoNneHKDrX9BHjjvSpPfnQyRjsnc9WFH71v8wrgCd7LB, owned by 4SnSuUtJGKvk2GYpBwmEsWG53zTurVM8yXGsoiZQyMJn
 Signature: 45x2UtA1b49eBPtRHdkvA3k8JneZzfwjptNN1kKQZaPABYiJ4hSA8qwi7qLNN5b3Fr4Z6vXhJprrTCpkk3f8UqgD
@@ -692,7 +716,7 @@ Alternatively, you can create an SPL token account yourself and pass it as the
 `token-receiver` for the command.
 
 ```console
-$ spl-stake-pool deposit Zg5YBPAk8RqBR9kaLLSoN5C8Uv7nErBz1WC63HTsCPR 97wBBiLVA7fUViEew8yV8R6tTdKithZDVz8LHLfF9sTJ --token-receiver 34XMHa3JUPv46ftU4dGHvemZ9oKVjnciRePYMcX3rjEF
+$ spl-stake-pool deposit-stake Zg5YBPAk8RqBR9kaLLSoN5C8Uv7nErBz1WC63HTsCPR 97wBBiLVA7fUViEew8yV8R6tTdKithZDVz8LHLfF9sTJ --token-receiver 34XMHa3JUPv46ftU4dGHvemZ9oKVjnciRePYMcX3rjEF
 Depositing stake 97wBBiLVA7fUViEew8yV8R6tTdKithZDVz8LHLfF9sTJ into stake pool account F8e8Ympp4MkDSPZdvRxdQUZXRkMBDdyqgHa363GShAPt
 Signature: 4AESGZzqBVfj5xQnMiPWAwzJnAtQDRFK1Ha6jqKKTs46Zm5fw3LqgU1mRAT6CKTywVfFMHZCLm1hcQNScSMwVvjQ
 ```
