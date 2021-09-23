@@ -10,6 +10,7 @@ use crate::{
         proposal::get_proposal_address,
         proposal_instruction::{get_proposal_instruction_address, InstructionData},
         realm::{get_governing_token_holding_address, get_realm_address, RealmConfigArgs},
+        realm_addins::get_realm_addins_address,
         signatory_record::get_signatory_record_address,
         token_owner_record::get_token_owner_record_address,
         vote_record::get_vote_record_address,
@@ -50,9 +51,13 @@ pub enum GovernanceInstruction {
     /// 5. `[]` System
     /// 6. `[]` SPL Token
     /// 7. `[]` Sysvar Rent
+
     /// 8. `[]` Council Token Mint - optional
     /// 9. `[writable]` Council Token Holding account - optional unless council is used. PDA seeds: ['governance',realm,council_mint]
     ///     The account will be created with the Realm PDA as its owner
+
+    /// 10. `[writable]` RealmAddins account. PDA seeds: ['realm-addins', realm]
+    /// 11. `[]` Optional Community Voter Weight Addins Program Id
     CreateRealm {
         #[allow(dead_code)]
         /// UTF-8 encoded Governance Realm name
@@ -393,6 +398,10 @@ pub enum GovernanceInstruction {
     ///       If that's required then it must be done before executing this instruction
     ///   3. `[writable]` Council Token Holding account - optional unless council is used. PDA seeds: ['governance',realm,council_mint]
     ///       The account will be created with the Realm PDA as its owner
+    ///   4. `[signer]` Payer
+    ///   5. `[]` System
+    ///   6. `[writable]` RealmAddins account. PDA seeds: ['realm-addins', realm]
+    ///   7. `[]` Optional Community Voter Weight Addins Program Id    
     SetRealmConfig {
         #[allow(dead_code)]
         /// Realm config args
@@ -409,6 +418,7 @@ pub fn create_realm(
     community_token_mint: &Pubkey,
     payer: &Pubkey,
     council_token_mint: Option<Pubkey>,
+    community_voter_weight_addin: Option<Pubkey>,
     // Args
     name: String,
     min_community_tokens_to_create_governance: u64,
@@ -440,11 +450,26 @@ pub fn create_realm(
         false
     };
 
+    let realm_addins_address = get_realm_addins_address(program_id, &realm_address);
+    accounts.push(AccountMeta::new(realm_addins_address, false));
+
+    let use_community_voter_weight_addin =
+        if let Some(community_voter_weight_addin) = community_voter_weight_addin {
+            accounts.push(AccountMeta::new_readonly(
+                community_voter_weight_addin,
+                false,
+            ));
+            true
+        } else {
+            false
+        };
+
     let instruction = GovernanceInstruction::CreateRealm {
         config_args: RealmConfigArgs {
             use_council_mint,
             min_community_tokens_to_create_governance,
             community_mint_max_vote_weight_source,
+            use_community_voter_weight_addin,
         },
         name,
     };
@@ -583,10 +608,34 @@ pub fn create_account_governance(
     // Args
     config: GovernanceConfig,
 ) -> Instruction {
+    create_account_governance2(
+        program_id,
+        realm,
+        governed_account,
+        token_owner_record,
+        payer,
+        None,
+        config,
+    )
+}
+
+/// Creates CreateAccountGovernance instruction using optional voter weight addin
+#[allow(clippy::too_many_arguments)]
+pub fn create_account_governance2(
+    program_id: &Pubkey,
+    // Accounts
+    realm: &Pubkey,
+    governed_account: &Pubkey,
+    token_owner_record: &Pubkey,
+    payer: &Pubkey,
+    voter_weight_record: Option<Pubkey>,
+    // Args
+    config: GovernanceConfig,
+) -> Instruction {
     let account_governance_address =
         get_account_governance_address(program_id, realm, governed_account);
 
-    let accounts = vec![
+    let mut accounts = vec![
         AccountMeta::new_readonly(*realm, false),
         AccountMeta::new(account_governance_address, false),
         AccountMeta::new_readonly(*governed_account, false),
@@ -595,6 +644,12 @@ pub fn create_account_governance(
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
     ];
+
+    if let Some(voter_weight_record) = voter_weight_record {
+        let realm_addins_address = get_realm_addins_address(program_id, realm);
+        accounts.push(AccountMeta::new_readonly(realm_addins_address, false));
+        accounts.push(AccountMeta::new(voter_weight_record, false));
+    }
 
     let instruction = GovernanceInstruction::CreateAccountGovernance { config };
 
@@ -1165,13 +1220,15 @@ pub fn set_realm_authority(
 }
 
 /// Creates SetRealmConfig instruction
+#[allow(clippy::too_many_arguments)]
 pub fn set_realm_config(
     program_id: &Pubkey,
     // Accounts
     realm: &Pubkey,
     realm_authority: &Pubkey,
     council_token_mint: Option<Pubkey>,
-
+    payer: &Pubkey,
+    community_voter_weight_addin: Option<Pubkey>,
     // Args
     min_community_tokens_to_create_governance: u64,
     community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
@@ -1192,11 +1249,31 @@ pub fn set_realm_config(
         false
     };
 
+    accounts.push(AccountMeta::new_readonly(*payer, true));
+    accounts.push(AccountMeta::new_readonly(system_program::id(), false));
+
+    // Always pass realm_addins_address because it's needed when use_community_voter_weight_addin is set to true
+    // but also when it's set to false and the addin is being  removed from the realm
+    let realm_addins_address = get_realm_addins_address(program_id, realm);
+    accounts.push(AccountMeta::new(realm_addins_address, false));
+
+    let use_community_voter_weight_addin =
+        if let Some(community_voter_weight_addin) = community_voter_weight_addin {
+            accounts.push(AccountMeta::new_readonly(
+                community_voter_weight_addin,
+                false,
+            ));
+            true
+        } else {
+            false
+        };
+
     let instruction = GovernanceInstruction::SetRealmConfig {
         config_args: RealmConfigArgs {
             use_council_mint,
             min_community_tokens_to_create_governance,
             community_mint_max_vote_weight_source,
+            use_community_voter_weight_addin,
         },
     };
 

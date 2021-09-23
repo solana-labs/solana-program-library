@@ -98,6 +98,7 @@ async fn test_execute_flag_instruction_error() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_execute_instruction_after_flagged_with_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;

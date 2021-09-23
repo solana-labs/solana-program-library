@@ -38,6 +38,9 @@ pub enum GovernanceAccountType {
 
     /// Token Governance account
     TokenGovernance,
+
+    /// Realm addins account
+    RealmAddins,
 }
 
 impl Default for GovernanceAccountType {

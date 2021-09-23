@@ -1,9 +1,12 @@
 use solana_program::{instruction::Instruction, pubkey::Pubkey};
 use solana_sdk::signature::Keypair;
-use spl_governance::state::{
-    governance::Governance, proposal::Proposal, proposal_instruction::ProposalInstruction,
-    realm::Realm, signatory_record::SignatoryRecord, token_owner_record::TokenOwnerRecord,
-    vote_record::VoteRecord,
+use spl_governance::{
+    addins::voter_weight::VoterWeightRecord,
+    state::{
+        governance::Governance, proposal::Proposal, proposal_instruction::ProposalInstruction,
+        realm::Realm, realm_addins::RealmAddins, signatory_record::SignatoryRecord,
+        token_owner_record::TokenOwnerRecord, vote_record::VoteRecord,
+    },
 };
 
 use spl_governance_test_sdk::tools::clone_keypair;
@@ -27,6 +30,14 @@ pub struct RealmCookie {
     pub council_token_holding_account: Option<Pubkey>,
 
     pub realm_authority: Option<Keypair>,
+
+    pub realm_addins: Option<RealmAddinsCookie>,
+}
+
+#[derive(Debug)]
+pub struct RealmAddinsCookie {
+    pub address: Pubkey,
+    pub account_data: RealmAddins,
 }
 
 #[derive(Debug)]
@@ -44,6 +55,8 @@ pub struct TokenOwnerRecordCookie {
     pub governance_authority: Option<Keypair>,
 
     pub governance_delegate: Keypair,
+
+    pub voter_weight_record: Option<VoterWeightRecordCookie>,
 }
 
 impl TokenOwnerRecordCookie {
@@ -144,4 +157,10 @@ pub struct ProposalInstructionCookie {
     pub address: Pubkey,
     pub account: ProposalInstruction,
     pub instruction: Instruction,
+}
+
+#[derive(Debug)]
+pub struct VoterWeightRecordCookie {
+    pub address: Pubkey,
+    pub account: VoterWeightRecord,
 }

@@ -119,8 +119,12 @@ impl TokenOwnerRecord {
     }
 
     /// Asserts TokenOwner has enough tokens to be allowed to create governance
-    pub fn assert_can_create_governance(&self, realm_data: &Realm) -> Result<(), ProgramError> {
-        let min_tokens_to_create_governance =
+    pub fn assert_can_create_governance(
+        &self,
+        realm_data: &Realm,
+        voter_weight: u64,
+    ) -> Result<(), ProgramError> {
+        let min_weight_to_create_governance =
             if self.governing_token_mint == realm_data.community_mint {
                 realm_data.config.min_community_tokens_to_create_governance
             } else if Some(self.governing_token_mint) == realm_data.config.council_mint {
@@ -130,7 +134,7 @@ impl TokenOwnerRecord {
                 return Err(GovernanceError::InvalidGoverningTokenMint.into());
             };
 
-        if self.governing_token_deposit_amount < min_tokens_to_create_governance {
+        if voter_weight < min_weight_to_create_governance {
             return Err(GovernanceError::NotEnoughTokensToCreateGovernance.into());
         }
 
