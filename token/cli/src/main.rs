@@ -20,7 +20,9 @@ use solana_clap_utils::{
     offline::{self, *},
     ArgConstant,
 };
-use solana_cli_output::{return_signers, CliSignature, OutputFormat};
+use solana_cli_output::{
+    return_signers_with_config, CliSignature, OutputFormat, ReturnSignersConfig,
+};
 use solana_client::{
     blockhash_query::BlockhashQuery, rpc_client::RpcClient, rpc_request::TokenAccountsFilter,
 };
@@ -2233,6 +2235,7 @@ fn main() {
 
         let blockhash_query = BlockhashQuery::new_from_matches(matches);
         let sign_only = matches.is_present(SIGN_ONLY_ARG.name);
+        let dump_transaction_message = matches.is_present(DUMP_TRANSACTION_MESSAGE.name);
 
         let multisig_signers = signers_of(matches, MULTISIG_SIGNER_ARG.name, &mut wallet_manager)
             .unwrap_or_else(|e| {
@@ -2260,6 +2263,7 @@ fn main() {
             nonce_authority,
             blockhash_query,
             sign_only,
+            dump_transaction_message,
             multisigner_pubkeys,
         }
     };
@@ -2664,7 +2668,16 @@ fn main() {
 
                 if config.sign_only {
                     transaction.try_partial_sign(&signers, recent_blockhash)?;
-                    println!("{}", return_signers(&transaction, &config.output_format)?);
+                    println!(
+                        "{}",
+                        return_signers_with_config(
+                            &transaction,
+                            &config.output_format,
+                            &ReturnSignersConfig {
+                                dump_transaction_message: config.dump_transaction_message,
+                            }
+                        )?
+                    );
                 } else {
                     transaction.try_sign(&signers, recent_blockhash)?;
                     let signature = if no_wait {
