@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate lazy_static;
-
 mod client;
 
 use {
@@ -40,6 +37,7 @@ use {
         instruction::{DepositType, PreferredValidatorType},
         stake_program::{self, StakeState},
         state::{Fee, FeeType, StakePool, ValidatorList},
+        MINIMUM_ACTIVE_STAKE,
     },
     std::{process::exit, sync::Arc},
 };
@@ -60,9 +58,6 @@ type Error = Box<dyn std::error::Error>;
 type CommandResult = Result<(), Error>;
 
 const STAKE_STATE_LEN: usize = 200;
-lazy_static! {
-    static ref MIN_STAKE_BALANCE: u64 = native_token::sol_to_lamports(1.0);
-}
 
 macro_rules! unique_signers {
     ($vec:ident) => {
@@ -1089,7 +1084,9 @@ fn prepare_withdraw_accounts(
     if accounts.is_empty() {
         return Err("No accounts found.".to_string().into());
     }
-    let min_balance = rpc_client.get_minimum_balance_for_rent_exemption(STAKE_STATE_LEN)? + 1;
+    let min_balance = rpc_client
+        .get_minimum_balance_for_rent_exemption(STAKE_STATE_LEN)?
+        .saturating_add(MINIMUM_ACTIVE_STAKE);
     let pool_mint = get_token_mint(rpc_client, &stake_pool.pool_mint)?;
 
     // Sort from highest to lowest balance
@@ -1106,7 +1103,7 @@ fn prepare_withdraw_accounts(
         }
 
         let available_for_withdrawal = stake_pool
-            .calc_lamports_withdraw_amount(lamports.saturating_sub(*MIN_STAKE_BALANCE))
+            .calc_lamports_withdraw_amount(lamports.saturating_sub(min_balance))
             .unwrap();
 
         let pool_amount = u64::min(available_for_withdrawal, remaining_amount);
@@ -1165,6 +1162,9 @@ fn command_withdraw(
         &pool_token_account,
         &stake_pool.pool_mint,
     )?;
+    let stake_account_rent_exemption = config
+        .rpc_client
+        .get_minimum_balance_for_rent_exemption(STAKE_STATE_LEN)?;
 
     // Check withdraw_from balance
     if token_account.amount < pool_amount {
@@ -1192,7 +1192,10 @@ fn command_withdraw(
 
         let available_for_withdrawal = stake_pool
             .calc_lamports_withdraw_amount(
-                stake_account.lamports.saturating_sub(*MIN_STAKE_BALANCE),
+                stake_account
+                    .lamports
+                    .saturating_sub(MINIMUM_ACTIVE_STAKE)
+                    .saturating_sub(stake_account_rent_exemption),
             )
             .unwrap();
 
@@ -1268,17 +1271,13 @@ fn command_withdraw(
 
         // Use separate mutable variable because withdraw might create a new account
         let stake_receiver = stake_receiver_param.unwrap_or_else(|| {
-            let stake_receiver_account_balance = config
-                .rpc_client
-                .get_minimum_balance_for_rent_exemption(STAKE_STATE_LEN)
-                .unwrap();
             let stake_keypair = new_stake_account(
                 &config.fee_payer.pubkey(),
                 &mut instructions,
-                stake_receiver_account_balance,
+                stake_account_rent_exemption,
             );
             let stake_pubkey = stake_keypair.pubkey();
-            total_rent_free_balances += stake_receiver_account_balance;
+            total_rent_free_balances += stake_account_rent_exemption;
             new_stake_keypairs.push(stake_keypair);
             stake_pubkey
         });

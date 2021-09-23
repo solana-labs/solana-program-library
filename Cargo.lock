@@ -3807,7 +3807,6 @@ dependencies = [
  "borsh",
  "bs58 0.4.0",
  "clap",
- "lazy_static",
  "serde_json",
  "solana-account-decoder",
  "solana-clap-utils",
