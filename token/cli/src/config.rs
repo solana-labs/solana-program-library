@@ -20,6 +20,7 @@ pub(crate) struct Config<'a> {
     pub(crate) nonce_authority: Option<Pubkey>,
     pub(crate) blockhash_query: BlockhashQuery,
     pub(crate) sign_only: bool,
+    pub(crate) dump_transaction_message: bool,
     pub(crate) multisigner_pubkeys: Vec<&'a Pubkey>,
 }
 
