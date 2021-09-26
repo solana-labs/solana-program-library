@@ -316,13 +316,10 @@ async fn fail_double_remove() {
         .unwrap()
         .unwrap();
 
-    assert_eq!(
+    assert!(matches!(
         error,
-        TransactionError::InstructionError(
-            1,
-            InstructionError::BorshIoError("Unkown".to_string()), // sic
-        )
-    );
+        TransactionError::InstructionError(1, InstructionError::BorshIoError(_),)
+    ));
 }
 
 #[tokio::test]
