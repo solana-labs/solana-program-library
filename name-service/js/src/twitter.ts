@@ -29,7 +29,7 @@ export const TWITTER_VERIFICATION_AUTHORITY = new PublicKey(
   'FvPH7PrVrLGKPfqaf3xJodFTjZriqrAXXLTVWEorTFBi'
 );
 // The address of the name registry that will be a parent to all twitter handle registries,
-// it should be owned by the TWITTER_VERIFICATION_AUTHORITY and it's name is irrelevant
+// it should be owned by the TWITTER_VERIFICATION_AUTHORITY and its name is irrelevant
 export const TWITTER_ROOT_PARENT_REGISTRY_KEY = new PublicKey(
   '4YcexoW3r78zz16J2aqmukBLRwGq6rAvWzJpkYAXqebv'
 );
