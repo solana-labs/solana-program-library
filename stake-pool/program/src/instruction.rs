@@ -28,15 +28,17 @@ pub enum PreferredValidatorType {
     Withdraw,
 }
 
-/// Defines which deposit authority to update in the `SetDepositAuthority`
+/// Defines which authority to update in the `SetFundingAuthority`
 /// instruction
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize, BorshSchema)]
-pub enum DepositType {
+pub enum FundingType {
     /// Sets the stake deposit authority
-    Stake,
+    StakeDeposit,
     /// Sets the SOL deposit authority
-    Sol,
+    SolDeposit,
+    /// Sets the SOL withdraw authority
+    SolWithdraw,
 }
 
 /// Instructions supported by the StakePool program.
@@ -345,8 +347,8 @@ pub enum StakePoolInstruction {
     ///
     ///  0. `[w]` StakePool
     ///  1. `[s]` Manager
-    ///  2. '[]` New sol_deposit_authority pubkey or none
-    SetDepositAuthority(DepositType),
+    ///  2. '[]` New authority pubkey or none
+    SetFundingAuthority(FundingType),
 }
 
 /// Creates an 'initialize' instruction.
@@ -376,7 +378,7 @@ pub fn initialize(
     };
     let data = init_data.try_to_vec().unwrap();
     let mut accounts = vec![
-        AccountMeta::new(*stake_pool, true),
+        AccountMeta::new(*stake_pool, false),
         AccountMeta::new_readonly(*manager, true),
         AccountMeta::new_readonly(*staker, false),
         AccountMeta::new(*validator_list, false),
@@ -1145,13 +1147,13 @@ pub fn set_staker(
     }
 }
 
-/// Creates a 'set deposit authority' instruction.
-pub fn set_deposit_authority(
+/// Creates a 'SetFundingAuthority' instruction.
+pub fn set_funding_authority(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
     manager: &Pubkey,
     new_sol_deposit_authority: Option<&Pubkey>,
-    deposit_type: DepositType,
+    funding_type: FundingType,
 ) -> Instruction {
     let mut accounts = vec![
         AccountMeta::new(*stake_pool, false),
@@ -1163,7 +1165,7 @@ pub fn set_deposit_authority(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::SetDepositAuthority(deposit_type)
+        data: StakePoolInstruction::SetFundingAuthority(funding_type)
             .try_to_vec()
             .unwrap(),
     }

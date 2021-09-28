@@ -16,7 +16,7 @@ use {
     },
     spl_stake_pool::{
         error, id,
-        instruction::{self, DepositType},
+        instruction::{self, FundingType},
         state,
     },
     spl_token::error as token_error,
@@ -97,7 +97,7 @@ async fn success() {
     )
     .await;
     let pre_stake_pool =
-        try_from_slice_unchecked::<state::StakePool>(&pre_stake_pool.data.as_slice()).unwrap();
+        try_from_slice_unchecked::<state::StakePool>(pre_stake_pool.data.as_slice()).unwrap();
 
     // Save reserve state before depositing
     let pre_reserve_lamports = get_account(
@@ -128,7 +128,7 @@ async fn success() {
     )
     .await;
     let post_stake_pool =
-        try_from_slice_unchecked::<state::StakePool>(&post_stake_pool.data.as_slice()).unwrap();
+        try_from_slice_unchecked::<state::StakePool>(post_stake_pool.data.as_slice()).unwrap();
     assert_eq!(
         post_stake_pool.total_stake_lamports,
         pre_stake_pool.total_stake_lamports + TEST_STAKE_AMOUNT
@@ -317,12 +317,12 @@ async fn success_with_sol_deposit_authority() {
     let sol_deposit_authority = Keypair::new();
 
     let mut transaction = Transaction::new_with_payer(
-        &[instruction::set_deposit_authority(
+        &[instruction::set_funding_authority(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
             Some(&sol_deposit_authority.pubkey()),
-            DepositType::Sol,
+            FundingType::SolDeposit,
         )],
         Some(&payer.pubkey()),
     );
@@ -368,12 +368,12 @@ async fn fail_without_sol_deposit_authority_signature() {
     .unwrap();
 
     let mut transaction = Transaction::new_with_payer(
-        &[instruction::set_deposit_authority(
+        &[instruction::set_funding_authority(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
             Some(&sol_deposit_authority.pubkey()),
-            DepositType::Sol,
+            FundingType::SolDeposit,
         )],
         Some(&payer.pubkey()),
     );

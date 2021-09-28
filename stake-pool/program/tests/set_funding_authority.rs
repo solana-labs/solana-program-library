@@ -17,7 +17,7 @@ use {
     },
     spl_stake_pool::{
         error, find_deposit_authority_program_address, id,
-        instruction::{self, DepositType},
+        instruction::{self, FundingType},
         state,
     },
 };
@@ -43,21 +43,16 @@ async fn setup() -> (BanksClient, Keypair, Hash, StakePoolAccounts, Keypair) {
 
 #[tokio::test]
 async fn success_set_stake_deposit_authority() {
-    let (
-        mut banks_client,
-        payer,
-        recent_blockhash,
-        stake_pool_accounts,
-        new_stake_deposit_authority,
-    ) = setup().await;
+    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, new_authority) =
+        setup().await;
 
     let mut transaction = Transaction::new_with_payer(
-        &[instruction::set_deposit_authority(
+        &[instruction::set_funding_authority(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
-            Some(&new_stake_deposit_authority.pubkey()),
-            DepositType::Stake,
+            Some(&new_authority.pubkey()),
+            FundingType::StakeDeposit,
         )],
         Some(&payer.pubkey()),
     );
@@ -66,53 +61,17 @@ async fn success_set_stake_deposit_authority() {
 
     let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
     let stake_pool =
-        try_from_slice_unchecked::<state::StakePool>(&stake_pool.data.as_slice()).unwrap();
+        try_from_slice_unchecked::<state::StakePool>(stake_pool.data.as_slice()).unwrap();
 
-    assert_eq!(
-        stake_pool.stake_deposit_authority,
-        new_stake_deposit_authority.pubkey()
-    );
-}
-
-#[tokio::test]
-async fn success_set_stake_deposit_authority_to_none() {
-    let (
-        mut banks_client,
-        payer,
-        recent_blockhash,
-        stake_pool_accounts,
-        new_stake_deposit_authority,
-    ) = setup().await;
+    assert_eq!(stake_pool.stake_deposit_authority, new_authority.pubkey());
 
     let mut transaction = Transaction::new_with_payer(
-        &[instruction::set_deposit_authority(
-            &id(),
-            &stake_pool_accounts.stake_pool.pubkey(),
-            &stake_pool_accounts.manager.pubkey(),
-            Some(&new_stake_deposit_authority.pubkey()),
-            DepositType::Stake,
-        )],
-        Some(&payer.pubkey()),
-    );
-    transaction.sign(&[&payer, &stake_pool_accounts.manager], recent_blockhash);
-    banks_client.process_transaction(transaction).await.unwrap();
-
-    let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
-    let stake_pool =
-        try_from_slice_unchecked::<state::StakePool>(&stake_pool.data.as_slice()).unwrap();
-
-    assert_eq!(
-        stake_pool.stake_deposit_authority,
-        new_stake_deposit_authority.pubkey()
-    );
-
-    let mut transaction = Transaction::new_with_payer(
-        &[instruction::set_deposit_authority(
+        &[instruction::set_funding_authority(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
             None,
-            DepositType::Stake,
+            FundingType::StakeDeposit,
         )],
         Some(&payer.pubkey()),
     );
@@ -121,7 +80,7 @@ async fn success_set_stake_deposit_authority_to_none() {
 
     let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
     let stake_pool =
-        try_from_slice_unchecked::<state::StakePool>(&stake_pool.data.as_slice()).unwrap();
+        try_from_slice_unchecked::<state::StakePool>(stake_pool.data.as_slice()).unwrap();
 
     assert_eq!(
         stake_pool.stake_deposit_authority,
@@ -130,26 +89,21 @@ async fn success_set_stake_deposit_authority_to_none() {
 }
 
 #[tokio::test]
-async fn fail_stake_wrong_manager() {
-    let (
-        mut banks_client,
-        payer,
-        recent_blockhash,
-        stake_pool_accounts,
-        new_stake_deposit_authority,
-    ) = setup().await;
+async fn fail_wrong_manager() {
+    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, new_authority) =
+        setup().await;
 
     let mut transaction = Transaction::new_with_payer(
-        &[instruction::set_deposit_authority(
+        &[instruction::set_funding_authority(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
-            &new_stake_deposit_authority.pubkey(),
-            Some(&new_stake_deposit_authority.pubkey()),
-            DepositType::Stake,
+            &new_authority.pubkey(),
+            Some(&new_authority.pubkey()),
+            FundingType::StakeDeposit,
         )],
         Some(&payer.pubkey()),
     );
-    transaction.sign(&[&payer, &new_stake_deposit_authority], recent_blockhash);
+    transaction.sign(&[&payer, &new_authority], recent_blockhash);
     let transaction_error = banks_client
         .process_transaction(transaction)
         .await
@@ -169,23 +123,17 @@ async fn fail_stake_wrong_manager() {
 }
 
 #[tokio::test]
-async fn fail_set_stake_deposit_authority_without_signature() {
-    let (
-        mut banks_client,
-        payer,
-        recent_blockhash,
-        stake_pool_accounts,
-        new_stake_deposit_authority,
-    ) = setup().await;
+async fn fail_without_signature() {
+    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, new_authority) =
+        setup().await;
 
-    let data =
-        instruction::StakePoolInstruction::SetDepositAuthority(instruction::DepositType::Stake)
-            .try_to_vec()
-            .unwrap();
+    let data = instruction::StakePoolInstruction::SetFundingAuthority(FundingType::StakeDeposit)
+        .try_to_vec()
+        .unwrap();
     let accounts = vec![
         AccountMeta::new(stake_pool_accounts.stake_pool.pubkey(), false),
         AccountMeta::new_readonly(stake_pool_accounts.manager.pubkey(), false),
-        AccountMeta::new_readonly(new_stake_deposit_authority.pubkey(), false),
+        AccountMeta::new_readonly(new_authority.pubkey(), false),
     ];
     let instruction = Instruction {
         program_id: id(),
@@ -219,12 +167,12 @@ async fn success_set_sol_deposit_authority() {
         setup().await;
 
     let mut transaction = Transaction::new_with_payer(
-        &[instruction::set_deposit_authority(
+        &[instruction::set_funding_authority(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
             Some(&new_sol_deposit_authority.pubkey()),
-            DepositType::Sol,
+            FundingType::SolDeposit,
         )],
         Some(&payer.pubkey()),
     );
@@ -233,35 +181,7 @@ async fn success_set_sol_deposit_authority() {
 
     let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
     let stake_pool =
-        try_from_slice_unchecked::<state::StakePool>(&stake_pool.data.as_slice()).unwrap();
-
-    assert_eq!(
-        stake_pool.sol_deposit_authority,
-        Some(new_sol_deposit_authority.pubkey())
-    );
-}
-
-#[tokio::test]
-async fn success_set_sol_deposit_authority_to_none() {
-    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, new_sol_deposit_authority) =
-        setup().await;
-
-    let mut transaction = Transaction::new_with_payer(
-        &[instruction::set_deposit_authority(
-            &id(),
-            &stake_pool_accounts.stake_pool.pubkey(),
-            &stake_pool_accounts.manager.pubkey(),
-            Some(&new_sol_deposit_authority.pubkey()),
-            DepositType::Sol,
-        )],
-        Some(&payer.pubkey()),
-    );
-    transaction.sign(&[&payer, &stake_pool_accounts.manager], recent_blockhash);
-    banks_client.process_transaction(transaction).await.unwrap();
-
-    let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
-    let stake_pool =
-        try_from_slice_unchecked::<state::StakePool>(&stake_pool.data.as_slice()).unwrap();
+        try_from_slice_unchecked::<state::StakePool>(stake_pool.data.as_slice()).unwrap();
 
     assert_eq!(
         stake_pool.sol_deposit_authority,
@@ -269,12 +189,12 @@ async fn success_set_sol_deposit_authority_to_none() {
     );
 
     let mut transaction = Transaction::new_with_payer(
-        &[instruction::set_deposit_authority(
+        &[instruction::set_funding_authority(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
             None,
-            DepositType::Sol,
+            FundingType::SolDeposit,
         )],
         Some(&payer.pubkey()),
     );
@@ -283,81 +203,54 @@ async fn success_set_sol_deposit_authority_to_none() {
 
     let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
     let stake_pool =
-        try_from_slice_unchecked::<state::StakePool>(&stake_pool.data.as_slice()).unwrap();
+        try_from_slice_unchecked::<state::StakePool>(stake_pool.data.as_slice()).unwrap();
 
     assert_eq!(stake_pool.sol_deposit_authority, None);
 }
 
 #[tokio::test]
-async fn fail_sol_wrong_manager() {
-    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, new_sol_deposit_authority) =
+async fn success_set_withdraw_authority() {
+    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, new_authority) =
         setup().await;
 
     let mut transaction = Transaction::new_with_payer(
-        &[instruction::set_deposit_authority(
+        &[instruction::set_funding_authority(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
-            &new_sol_deposit_authority.pubkey(),
-            Some(&new_sol_deposit_authority.pubkey()),
-            DepositType::Sol,
+            &stake_pool_accounts.manager.pubkey(),
+            Some(&new_authority.pubkey()),
+            FundingType::SolWithdraw,
         )],
         Some(&payer.pubkey()),
     );
-    transaction.sign(&[&payer, &new_sol_deposit_authority], recent_blockhash);
-    let transaction_error = banks_client
-        .process_transaction(transaction)
-        .await
-        .err()
-        .unwrap();
+    transaction.sign(&[&payer, &stake_pool_accounts.manager], recent_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
 
-    match transaction_error {
-        TransportError::TransactionError(TransactionError::InstructionError(
-            _,
-            InstructionError::Custom(error_index),
-        )) => {
-            let program_error = error::StakePoolError::WrongManager as u32;
-            assert_eq!(error_index, program_error);
-        }
-        _ => panic!("Wrong error occurs while malicious try to set manager"),
-    }
-}
+    let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
+    let stake_pool =
+        try_from_slice_unchecked::<state::StakePool>(stake_pool.data.as_slice()).unwrap();
 
-#[tokio::test]
-async fn fail_set_sol_deposit_authority_without_signature() {
-    let (mut banks_client, payer, recent_blockhash, stake_pool_accounts, new_sol_deposit_authority) =
-        setup().await;
+    assert_eq!(
+        stake_pool.sol_withdraw_authority,
+        Some(new_authority.pubkey())
+    );
 
-    let data =
-        instruction::StakePoolInstruction::SetDepositAuthority(instruction::DepositType::Sol)
-            .try_to_vec()
-            .unwrap();
-    let accounts = vec![
-        AccountMeta::new(stake_pool_accounts.stake_pool.pubkey(), false),
-        AccountMeta::new_readonly(stake_pool_accounts.manager.pubkey(), false),
-        AccountMeta::new_readonly(new_sol_deposit_authority.pubkey(), false),
-    ];
-    let instruction = Instruction {
-        program_id: id(),
-        accounts,
-        data,
-    };
+    let mut transaction = Transaction::new_with_payer(
+        &[instruction::set_funding_authority(
+            &id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.manager.pubkey(),
+            None,
+            FundingType::SolWithdraw,
+        )],
+        Some(&payer.pubkey()),
+    );
+    transaction.sign(&[&payer, &stake_pool_accounts.manager], recent_blockhash);
+    banks_client.process_transaction(transaction).await.unwrap();
 
-    let mut transaction = Transaction::new_with_payer(&[instruction], Some(&payer.pubkey()));
-    transaction.sign(&[&payer], recent_blockhash);
-    let transaction_error = banks_client
-        .process_transaction(transaction)
-        .await
-        .err()
-        .unwrap();
+    let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
+    let stake_pool =
+        try_from_slice_unchecked::<state::StakePool>(stake_pool.data.as_slice()).unwrap();
 
-    match transaction_error {
-        TransportError::TransactionError(TransactionError::InstructionError(
-            _,
-            InstructionError::Custom(error_index),
-        )) => {
-            let program_error = error::StakePoolError::SignatureMissing as u32;
-            assert_eq!(error_index, program_error);
-        }
-        _ => panic!("Wrong error occurs while try to set new manager without signature"),
-    }
+    assert_eq!(stake_pool.sol_withdraw_authority, None);
 }

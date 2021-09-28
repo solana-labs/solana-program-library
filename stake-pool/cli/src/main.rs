@@ -34,7 +34,7 @@ use {
     spl_stake_pool::{
         self, find_stake_program_address, find_transient_stake_program_address,
         find_withdraw_authority_program_address,
-        instruction::{DepositType, PreferredValidatorType},
+        instruction::{FundingType, PreferredValidatorType},
         stake_program::{self, StakeState},
         state::{Fee, FeeType, StakePool, ValidatorList},
         MINIMUM_ACTIVE_STAKE,
@@ -177,8 +177,8 @@ fn new_stake_account(
 fn command_create_pool(
     config: &Config,
     stake_deposit_authority: Option<Keypair>,
-    fee: Fee,
-    withdrawal_fee: Fee,
+    epoch_fee: Fee,
+    stake_withdrawal_fee: Fee,
     stake_deposit_fee: Fee,
     stake_referral_fee: u8,
     max_validators: u32,
@@ -309,8 +309,8 @@ fn command_create_pool(
                 &pool_fee_account,
                 &spl_token::id(),
                 stake_deposit_authority.as_ref().map(|x| x.pubkey()),
-                fee,
-                withdrawal_fee,
+                epoch_fee,
+                stake_withdrawal_fee,
                 stake_deposit_fee,
                 stake_referral_fee,
                 max_validators,
@@ -879,18 +879,29 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
     }
 
     // Display fees information
-    if stake_pool.fee.numerator > 0 && stake_pool.fee.denominator > 0 {
-        println!("Epoch Fee: {} of epoch rewards", stake_pool.fee);
+    if stake_pool.epoch_fee.numerator > 0 && stake_pool.epoch_fee.denominator > 0 {
+        println!("Epoch Fee: {} of epoch rewards", stake_pool.epoch_fee);
     } else {
         println!("Epoch Fee: none");
     }
-    if stake_pool.withdrawal_fee.numerator > 0 && stake_pool.withdrawal_fee.denominator > 0 {
+    if stake_pool.stake_withdrawal_fee.numerator > 0
+        && stake_pool.stake_withdrawal_fee.denominator > 0
+    {
         println!(
-            "Withdrawal Fee: {} of withdrawal amount",
-            stake_pool.withdrawal_fee
+            "Stake Withdrawal Fee: {} of withdrawal amount",
+            stake_pool.stake_withdrawal_fee
         );
     } else {
-        println!("Withdrawal Fee: none");
+        println!("Stake Withdrawal Fee: none");
+    }
+    if stake_pool.sol_withdrawal_fee.numerator > 0 && stake_pool.sol_withdrawal_fee.denominator > 0
+    {
+        println!(
+            "SOL Withdrawal Fee: {} of withdrawal amount",
+            stake_pool.sol_withdrawal_fee
+        );
+    } else {
+        println!("SOL Withdrawal Fee: none");
     }
     if stake_pool.stake_deposit_fee.numerator > 0 && stake_pool.stake_deposit_fee.denominator > 0 {
         println!(
@@ -1385,22 +1396,22 @@ fn command_set_staker(
     Ok(())
 }
 
-fn command_set_deposit_authority(
+fn command_set_funding_authority(
     config: &Config,
     stake_pool_address: &Pubkey,
     new_sol_deposit_authority: Option<Pubkey>,
-    deposit_type: DepositType,
+    funding_type: FundingType,
 ) -> CommandResult {
     let mut signers = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
     unique_signers!(signers);
     let transaction = checked_transaction_with_signers(
         config,
-        &[spl_stake_pool::instruction::set_deposit_authority(
+        &[spl_stake_pool::instruction::set_funding_authority(
             &spl_stake_pool::id(),
             stake_pool_address,
             &config.manager.pubkey(),
             new_sol_deposit_authority.as_ref(),
-            deposit_type,
+            funding_type,
         )],
         &signers,
     )?;
@@ -1559,24 +1570,24 @@ fn main() {
         .subcommand(SubCommand::with_name("create-pool")
             .about("Create a new stake pool")
             .arg(
-                Arg::with_name("fee_numerator")
-                    .long("fee-numerator")
+                Arg::with_name("epoch_fee_numerator")
+                    .long("epoch-fee-numerator")
                     .short("n")
                     .validator(is_parsable::<u64>)
                     .value_name("NUMERATOR")
                     .takes_value(true)
                     .required(true)
-                    .help("Fee numerator, fee amount is numerator divided by denominator."),
+                    .help("Epoch fee numerator, fee amount is numerator divided by denominator."),
             )
             .arg(
-                Arg::with_name("fee_denominator")
-                    .long("fee-denominator")
+                Arg::with_name("epoch_fee_denominator")
+                    .long("epoch-fee-denominator")
                     .short("d")
                     .validator(is_parsable::<u64>)
                     .value_name("DENOMINATOR")
                     .takes_value(true)
                     .required(true)
-                    .help("Fee denominator, fee amount is numerator divided by denominator."),
+                    .help("Epoch fee denominator, fee amount is numerator divided by denominator."),
             )
             .arg(
                 Arg::with_name("withdrawal_fee_numerator")
@@ -2054,8 +2065,8 @@ fn main() {
                     .help("Public key for the new stake pool staker."),
             )
         )
-        .subcommand(SubCommand::with_name("set-deposit-authority")
-            .about("Change deposit authority account for the stake pool. Must be signed by the manager.")
+        .subcommand(SubCommand::with_name("set-funding-authority")
+            .about("Change one of the funding authorities for the stake pool. Must be signed by the manager.")
             .arg(
                 Arg::with_name("pool")
                     .index(1)
@@ -2066,21 +2077,21 @@ fn main() {
                     .help("Stake pool address."),
             )
             .arg(
-                Arg::with_name("deposit_type")
+                Arg::with_name("funding_type")
                     .index(2)
-                    .value_name("DEPOSIT_TYPE")
-                    .possible_values(&["stake", "sol"]) // DepositType enum
+                    .value_name("FUNDING_TYPE")
+                    .possible_values(&["stake-deposit", "sol-deposit", "sol-withdraw"]) // FundingType enum
                     .takes_value(true)
                     .required(true)
-                    .help("Deposit type to be updated."),
+                    .help("Funding type to be updated."),
             )
             .arg(
-                Arg::with_name("new_stake_deposit_authority")
+                Arg::with_name("new_authority")
                     .index(3)
                     .validator(is_pubkey)
                     .value_name("AUTHORITY_ADDRESS")
                     .takes_value(true)
-                    .help("Public key for the new stake pool sol deposit authority."),
+                    .help("Public key for the new stake pool funding authority."),
             )
             .arg(
                 Arg::with_name("unset")
@@ -2089,7 +2100,7 @@ fn main() {
                     .help("Unset the stake deposit authority. The program will use a program derived address.")
             )
             .group(ArgGroup::with_name("validator")
-                .arg("new_stake_deposit_authority")
+                .arg("new_authority")
                 .arg("unset")
                 .required(true)
             )
@@ -2108,7 +2119,7 @@ fn main() {
             .arg(Arg::with_name("fee_type")
                 .index(2)
                 .value_name("FEE_TYPE")
-                .possible_values(&["epoch", "stake-deposit", "sol-deposit", "withdrawal"]) // FeeType enum
+                .possible_values(&["epoch", "stake-deposit", "sol-deposit", "stake-withdrawal", "sol-withdrawal"]) // FeeType enum
                 .takes_value(true)
                 .required(true)
                 .help("Fee type to be updated."),
@@ -2231,8 +2242,8 @@ fn main() {
     let _ = match matches.subcommand() {
         ("create-pool", Some(arg_matches)) => {
             let stake_deposit_authority = keypair_of(arg_matches, "stake_deposit_authority");
-            let numerator = value_t_or_exit!(arg_matches, "fee_numerator", u64);
-            let denominator = value_t_or_exit!(arg_matches, "fee_denominator", u64);
+            let e_numerator = value_t_or_exit!(arg_matches, "epoch_fee_numerator", u64);
+            let e_denominator = value_t_or_exit!(arg_matches, "epoch_fee_denominator", u64);
             let w_numerator = value_t!(arg_matches, "withdrawal_fee_numerator", u64);
             let w_denominator = value_t!(arg_matches, "withdrawal_fee_denominator", u64);
             let d_numerator = value_t!(arg_matches, "deposit_fee_numerator", u64);
@@ -2246,8 +2257,8 @@ fn main() {
                 &config,
                 stake_deposit_authority,
                 Fee {
-                    denominator,
-                    numerator,
+                    numerator: e_numerator,
+                    denominator: e_denominator,
                 },
                 Fee {
                     numerator: w_numerator.unwrap_or(0),
@@ -2383,20 +2394,21 @@ fn main() {
             let new_staker = pubkey_of(arg_matches, "new_staker").unwrap();
             command_set_staker(&config, &stake_pool_address, &new_staker)
         }
-        ("set-deposit-authority", Some(arg_matches)) => {
+        ("set-funding-authority", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
             let new_stake_deposit_authority = pubkey_of(arg_matches, "new_stake_deposit_authority");
-            let deposit_type = match arg_matches.value_of("deposit_type").unwrap() {
-                "sol" => DepositType::Sol,
-                "stake" => DepositType::Stake,
+            let funding_type = match arg_matches.value_of("funding_type").unwrap() {
+                "sol-deposit" => FundingType::SolDeposit,
+                "stake-deposit" => FundingType::StakeDeposit,
+                "sol-withdraw" => FundingType::SolWithdraw,
                 _ => unreachable!(),
             };
             let _unset = arg_matches.is_present("unset");
-            command_set_deposit_authority(
+            command_set_funding_authority(
                 &config,
                 &stake_pool_address,
                 new_stake_deposit_authority,
-                deposit_type,
+                funding_type,
             )
         }
         ("set-fee", Some(arg_matches)) => {
@@ -2415,9 +2427,16 @@ fn main() {
                 "sol-deposit" => {
                     command_set_fee(&config, &stake_pool_address, FeeType::SolDeposit(new_fee))
                 }
-                "withdrawal" => {
-                    command_set_fee(&config, &stake_pool_address, FeeType::Withdrawal(new_fee))
-                }
+                "stake-withdrawal" => command_set_fee(
+                    &config,
+                    &stake_pool_address,
+                    FeeType::StakeWithdrawal(new_fee),
+                ),
+                "sol-withdrawal" => command_set_fee(
+                    &config,
+                    &stake_pool_address,
+                    FeeType::SolWithdrawal(new_fee),
+                ),
                 _ => unreachable!(),
             }
         }

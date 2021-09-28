@@ -63,7 +63,7 @@ async fn success_stake() {
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
     assert_eq!(stake_pool.stake_referral_fee, new_referral_fee);
 }
 
@@ -94,7 +94,7 @@ async fn success_stake_increase_fee_from_0() {
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
     assert_eq!(stake_pool.stake_referral_fee, new_referral_fee);
 }
 
@@ -190,7 +190,7 @@ async fn success_sol() {
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
     assert_eq!(stake_pool.sol_referral_fee, new_referral_fee);
 }
 

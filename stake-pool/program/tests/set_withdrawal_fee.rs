@@ -49,15 +49,33 @@ async fn success() {
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
-    let old_withdrawal_fee = stake_pool.withdrawal_fee;
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
+    let old_stake_withdrawal_fee = stake_pool.stake_withdrawal_fee;
+    let old_sol_withdrawal_fee = stake_pool.sol_withdrawal_fee;
 
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::set_fee(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
-            FeeType::Withdrawal(new_withdrawal_fee),
+            FeeType::StakeWithdrawal(new_withdrawal_fee),
+        )],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &stake_pool_accounts.manager],
+        context.last_blockhash,
+    );
+    context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap();
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction::set_fee(
+            &id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.manager.pubkey(),
+            FeeType::SolWithdrawal(new_withdrawal_fee),
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &stake_pool_accounts.manager],
@@ -74,10 +92,15 @@ async fn success() {
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
 
-    assert_eq!(stake_pool.withdrawal_fee, old_withdrawal_fee);
-    assert_eq!(stake_pool.next_withdrawal_fee, Some(new_withdrawal_fee));
+    assert_eq!(stake_pool.stake_withdrawal_fee, old_stake_withdrawal_fee);
+    assert_eq!(
+        stake_pool.next_stake_withdrawal_fee,
+        Some(new_withdrawal_fee)
+    );
+    assert_eq!(stake_pool.sol_withdrawal_fee, old_sol_withdrawal_fee);
+    assert_eq!(stake_pool.next_sol_withdrawal_fee, Some(new_withdrawal_fee));
 
     let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
     let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
@@ -100,9 +123,11 @@ async fn success() {
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
-    assert_eq!(stake_pool.withdrawal_fee, new_withdrawal_fee);
-    assert_eq!(stake_pool.next_withdrawal_fee, None);
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
+    assert_eq!(stake_pool.stake_withdrawal_fee, new_withdrawal_fee);
+    assert_eq!(stake_pool.next_stake_withdrawal_fee, None);
+    assert_eq!(stake_pool.sol_withdrawal_fee, new_withdrawal_fee);
+    assert_eq!(stake_pool.next_sol_withdrawal_fee, None);
 }
 
 #[tokio::test]
@@ -114,15 +139,33 @@ async fn success_fee_cannot_increase_more_than_once() {
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
-    let old_withdrawal_fee = stake_pool.withdrawal_fee;
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
+    let old_stake_withdrawal_fee = stake_pool.stake_withdrawal_fee;
+    let old_sol_withdrawal_fee = stake_pool.sol_withdrawal_fee;
 
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::set_fee(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
-            FeeType::Withdrawal(new_withdrawal_fee),
+            FeeType::StakeWithdrawal(new_withdrawal_fee),
+        )],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &stake_pool_accounts.manager],
+        context.last_blockhash,
+    );
+    context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap();
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction::set_fee(
+            &id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.manager.pubkey(),
+            FeeType::SolWithdrawal(new_withdrawal_fee),
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &stake_pool_accounts.manager],
@@ -139,10 +182,15 @@ async fn success_fee_cannot_increase_more_than_once() {
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
 
-    assert_eq!(stake_pool.withdrawal_fee, old_withdrawal_fee);
-    assert_eq!(stake_pool.next_withdrawal_fee, Some(new_withdrawal_fee));
+    assert_eq!(stake_pool.stake_withdrawal_fee, old_stake_withdrawal_fee);
+    assert_eq!(
+        stake_pool.next_stake_withdrawal_fee,
+        Some(new_withdrawal_fee)
+    );
+    assert_eq!(stake_pool.sol_withdrawal_fee, old_sol_withdrawal_fee);
+    assert_eq!(stake_pool.next_sol_withdrawal_fee, Some(new_withdrawal_fee));
 
     let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
     let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
@@ -165,9 +213,11 @@ async fn success_fee_cannot_increase_more_than_once() {
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
-    assert_eq!(stake_pool.withdrawal_fee, new_withdrawal_fee);
-    assert_eq!(stake_pool.next_withdrawal_fee, None);
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
+    assert_eq!(stake_pool.stake_withdrawal_fee, new_withdrawal_fee);
+    assert_eq!(stake_pool.next_stake_withdrawal_fee, None);
+    assert_eq!(stake_pool.sol_withdrawal_fee, new_withdrawal_fee);
+    assert_eq!(stake_pool.next_sol_withdrawal_fee, None);
 
     // try setting to the old fee in the same epoch
     let transaction = Transaction::new_signed_with_payer(
@@ -175,7 +225,23 @@ async fn success_fee_cannot_increase_more_than_once() {
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
-            FeeType::Withdrawal(old_withdrawal_fee),
+            FeeType::StakeWithdrawal(old_stake_withdrawal_fee),
+        )],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &stake_pool_accounts.manager],
+        context.last_blockhash,
+    );
+    context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap();
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction::set_fee(
+            &id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.manager.pubkey(),
+            FeeType::SolWithdrawal(old_sol_withdrawal_fee),
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &stake_pool_accounts.manager],
@@ -192,9 +258,17 @@ async fn success_fee_cannot_increase_more_than_once() {
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
-    assert_eq!(stake_pool.withdrawal_fee, new_withdrawal_fee);
-    assert_eq!(stake_pool.next_withdrawal_fee, Some(old_withdrawal_fee));
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
+    assert_eq!(stake_pool.stake_withdrawal_fee, new_withdrawal_fee);
+    assert_eq!(
+        stake_pool.next_stake_withdrawal_fee,
+        Some(old_stake_withdrawal_fee)
+    );
+    assert_eq!(stake_pool.sol_withdrawal_fee, new_withdrawal_fee);
+    assert_eq!(
+        stake_pool.next_sol_withdrawal_fee,
+        Some(old_sol_withdrawal_fee)
+    );
 
     let error = stake_pool_accounts
         .update_stake_pool_balance(
@@ -211,9 +285,17 @@ async fn success_fee_cannot_increase_more_than_once() {
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
-    assert_eq!(stake_pool.withdrawal_fee, new_withdrawal_fee);
-    assert_eq!(stake_pool.next_withdrawal_fee, Some(old_withdrawal_fee));
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
+    assert_eq!(stake_pool.stake_withdrawal_fee, new_withdrawal_fee);
+    assert_eq!(
+        stake_pool.next_stake_withdrawal_fee,
+        Some(old_stake_withdrawal_fee)
+    );
+    assert_eq!(stake_pool.sol_withdrawal_fee, new_withdrawal_fee);
+    assert_eq!(
+        stake_pool.next_sol_withdrawal_fee,
+        Some(old_sol_withdrawal_fee)
+    );
 }
 
 #[tokio::test]
@@ -233,15 +315,33 @@ async fn success_increase_fee_from_0() {
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
-    let old_withdrawal_fee = stake_pool.withdrawal_fee;
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
+    let old_stake_withdrawal_fee = stake_pool.stake_withdrawal_fee;
+    let old_sol_withdrawal_fee = stake_pool.sol_withdrawal_fee;
 
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::set_fee(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
-            FeeType::Withdrawal(new_withdrawal_fee),
+            FeeType::StakeWithdrawal(new_withdrawal_fee),
+        )],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &stake_pool_accounts.manager],
+        context.last_blockhash,
+    );
+    context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .unwrap();
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction::set_fee(
+            &id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.manager.pubkey(),
+            FeeType::SolWithdrawal(new_withdrawal_fee),
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &stake_pool_accounts.manager],
@@ -258,10 +358,15 @@ async fn success_increase_fee_from_0() {
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
 
-    assert_eq!(stake_pool.withdrawal_fee, old_withdrawal_fee);
-    assert_eq!(stake_pool.next_withdrawal_fee, Some(new_withdrawal_fee));
+    assert_eq!(stake_pool.stake_withdrawal_fee, old_stake_withdrawal_fee);
+    assert_eq!(
+        stake_pool.next_stake_withdrawal_fee,
+        Some(new_withdrawal_fee)
+    );
+    assert_eq!(stake_pool.sol_withdrawal_fee, old_sol_withdrawal_fee);
+    assert_eq!(stake_pool.next_sol_withdrawal_fee, Some(new_withdrawal_fee));
 
     let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
     let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
@@ -284,14 +389,16 @@ async fn success_increase_fee_from_0() {
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
-    assert_eq!(stake_pool.withdrawal_fee, new_withdrawal_fee);
-    assert_eq!(stake_pool.next_withdrawal_fee, None);
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
+    assert_eq!(stake_pool.stake_withdrawal_fee, new_withdrawal_fee);
+    assert_eq!(stake_pool.next_stake_withdrawal_fee, None);
+    assert_eq!(stake_pool.sol_withdrawal_fee, new_withdrawal_fee);
+    assert_eq!(stake_pool.next_sol_withdrawal_fee, None);
 }
 
 #[tokio::test]
 async fn fail_wrong_manager() {
-    let (mut context, stake_pool_accounts, new_withdrawal_fee) = setup(None).await;
+    let (mut context, stake_pool_accounts, new_stake_withdrawal_fee) = setup(None).await;
 
     let wrong_manager = Keypair::new();
     let transaction = Transaction::new_signed_with_payer(
@@ -299,7 +406,7 @@ async fn fail_wrong_manager() {
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &wrong_manager.pubkey(),
-            FeeType::Withdrawal(new_withdrawal_fee),
+            FeeType::StakeWithdrawal(new_stake_withdrawal_fee),
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &wrong_manager],
@@ -324,9 +431,9 @@ async fn fail_wrong_manager() {
 
 #[tokio::test]
 async fn fail_high_withdrawal_fee() {
-    let (mut context, stake_pool_accounts, _new_withdrawal_fee) = setup(None).await;
+    let (mut context, stake_pool_accounts, _new_stake_withdrawal_fee) = setup(None).await;
 
-    let new_withdrawal_fee = Fee {
+    let new_stake_withdrawal_fee = Fee {
         numerator: 11,
         denominator: 10,
     };
@@ -335,7 +442,7 @@ async fn fail_high_withdrawal_fee() {
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
-            FeeType::Withdrawal(new_withdrawal_fee),
+            FeeType::StakeWithdrawal(new_stake_withdrawal_fee),
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &stake_pool_accounts.manager],
@@ -359,8 +466,8 @@ async fn fail_high_withdrawal_fee() {
 }
 
 #[tokio::test]
-async fn fail_high_withdrawal_fee_increase() {
-    let (mut context, stake_pool_accounts, _new_withdrawal_fee) = setup(None).await;
+async fn fail_high_stake_fee_increase() {
+    let (mut context, stake_pool_accounts, _new_stake_withdrawal_fee) = setup(None).await;
     let new_withdrawal_fee = Fee {
         numerator: 46,
         denominator: 10_000,
@@ -370,7 +477,7 @@ async fn fail_high_withdrawal_fee_increase() {
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
-            FeeType::Withdrawal(new_withdrawal_fee),
+            FeeType::StakeWithdrawal(new_withdrawal_fee),
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &stake_pool_accounts.manager],
@@ -394,8 +501,44 @@ async fn fail_high_withdrawal_fee_increase() {
 }
 
 #[tokio::test]
-async fn fail_high_withdrawal_fee_increase_from_0() {
-    let (mut context, stake_pool_accounts, _new_withdrawal_fee) = setup(Some(Fee {
+async fn fail_high_sol_fee_increase() {
+    let (mut context, stake_pool_accounts, _new_stake_withdrawal_fee) = setup(None).await;
+    let new_withdrawal_fee = Fee {
+        numerator: 46,
+        denominator: 10_000,
+    };
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction::set_fee(
+            &id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.manager.pubkey(),
+            FeeType::SolWithdrawal(new_withdrawal_fee),
+        )],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &stake_pool_accounts.manager],
+        context.last_blockhash,
+    );
+    let error = context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .err()
+        .unwrap()
+        .unwrap();
+
+    match error {
+        TransactionError::InstructionError(_, InstructionError::Custom(error_index)) => {
+            let program_error = error::StakePoolError::FeeIncreaseTooHigh as u32;
+            assert_eq!(error_index, program_error);
+        }
+        _ => panic!("Wrong error occurs when increasing fee by too large a factor"),
+    }
+}
+
+#[tokio::test]
+async fn fail_high_stake_fee_increase_from_0() {
+    let (mut context, stake_pool_accounts, _new_stake_withdrawal_fee) = setup(Some(Fee {
         numerator: 0,
         denominator: 1,
     }))
@@ -409,7 +552,46 @@ async fn fail_high_withdrawal_fee_increase_from_0() {
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
-            FeeType::Withdrawal(new_withdrawal_fee),
+            FeeType::StakeWithdrawal(new_withdrawal_fee),
+        )],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &stake_pool_accounts.manager],
+        context.last_blockhash,
+    );
+    let error = context
+        .banks_client
+        .process_transaction(transaction)
+        .await
+        .err()
+        .unwrap()
+        .unwrap();
+
+    match error {
+        TransactionError::InstructionError(_, InstructionError::Custom(error_index)) => {
+            let program_error = error::StakePoolError::FeeIncreaseTooHigh as u32;
+            assert_eq!(error_index, program_error);
+        }
+        _ => panic!("Wrong error occurs when increasing fee by too large a factor"),
+    }
+}
+
+#[tokio::test]
+async fn fail_high_sol_fee_increase_from_0() {
+    let (mut context, stake_pool_accounts, _new_stake_withdrawal_fee) = setup(Some(Fee {
+        numerator: 0,
+        denominator: 1,
+    }))
+    .await;
+    let new_withdrawal_fee = Fee {
+        numerator: 16,
+        denominator: 10_000,
+    };
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction::set_fee(
+            &id(),
+            &stake_pool_accounts.stake_pool.pubkey(),
+            &stake_pool_accounts.manager.pubkey(),
+            FeeType::SolWithdrawal(new_withdrawal_fee),
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &stake_pool_accounts.manager],
@@ -445,7 +627,7 @@ async fn fail_not_updated() {
         )
         .await
         .unwrap();
-    let new_withdrawal_fee = Fee {
+    let new_stake_withdrawal_fee = Fee {
         numerator: 11,
         denominator: 100,
     };
@@ -458,7 +640,7 @@ async fn fail_not_updated() {
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.manager.pubkey(),
-            FeeType::Withdrawal(new_withdrawal_fee),
+            FeeType::StakeWithdrawal(new_stake_withdrawal_fee),
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &stake_pool_accounts.manager],
