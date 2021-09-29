@@ -9,6 +9,7 @@ on:
     paths-ignore:
     - 'docs/**'
 
+
 jobs:
   all_github_action_checks:
     runs-on: ubuntu-latest
