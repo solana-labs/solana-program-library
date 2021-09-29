@@ -500,11 +500,9 @@ impl Processor {
         let reserve_stake_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let manager_fee_info = next_account_info(account_info_iter)?;
-        let clock_info = next_account_info(account_info_iter)?;
-        let clock = &Clock::from_account_info(clock_info)?;
-        let rent_info = next_account_info(account_info_iter)?;
-        let rent = &Rent::from_account_info(rent_info)?;
         let token_program_info = next_account_info(account_info_iter)?;
+
+        let rent = Rent::get()?;
 
         if !manager_info.is_signer {
             msg!("Manager did not sign initialization");
@@ -654,7 +652,7 @@ impl Processor {
         stake_pool.pool_mint = *pool_mint_info.key;
         stake_pool.manager_fee_account = *manager_fee_info.key;
         stake_pool.token_program_id = *token_program_info.key;
-        stake_pool.last_update_epoch = clock.epoch;
+        stake_pool.last_update_epoch = Clock::get()?.epoch;
         stake_pool.total_stake_lamports = total_stake_lamports;
         stake_pool.epoch_fee = epoch_fee;
         stake_pool.next_epoch_fee = None;
@@ -1579,9 +1577,8 @@ impl Processor {
         let reserve_stake_info = next_account_info(account_info_iter)?;
         let manager_fee_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
-        let clock_info = next_account_info(account_info_iter)?;
-        let clock = &Clock::from_account_info(clock_info)?;
         let token_program_info = next_account_info(account_info_iter)?;
+        let clock = Clock::get()?;
 
         check_account_owner(stake_pool_info, program_id)?;
         let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
@@ -2024,11 +2021,11 @@ impl Processor {
         let manager_fee_info = next_account_info(account_info_iter)?;
         let referrer_fee_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
-        let clock_info = next_account_info(account_info_iter)?;
-        let clock = &Clock::from_account_info(clock_info)?;
         let system_program_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
         let sol_deposit_authority_info = next_account_info(account_info_iter);
+
+        let clock = Clock::get()?;
 
         check_account_owner(stake_pool_info, program_id)?;
         let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
@@ -2404,7 +2401,6 @@ impl Processor {
         let manager_fee_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let clock_info = next_account_info(account_info_iter)?;
-        let clock = &Clock::from_account_info(clock_info)?;
         let stake_history_info = next_account_info(account_info_iter)?;
         let stake_program_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
@@ -2436,7 +2432,7 @@ impl Processor {
 
         // We want this to hold to ensure that withdraw_sol burns pool tokens
         // at the right price
-        if stake_pool.last_update_epoch < clock.epoch {
+        if stake_pool.last_update_epoch < Clock::get()?.epoch {
             return Err(StakePoolError::StakeListAndPoolOutOfDate.into());
         }
 
@@ -2568,8 +2564,7 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
         let manager_info = next_account_info(account_info_iter)?;
-        let clock_info = next_account_info(account_info_iter)?;
-        let clock = &Clock::from_account_info(clock_info)?;
+        let clock = Clock::get()?;
 
         check_account_owner(stake_pool_info, program_id)?;
         let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
@@ -2738,25 +2733,25 @@ impl Processor {
                 msg!("Instruction: WithdrawStake");
                 Self::process_withdraw_stake(program_id, accounts, amount)
             }
-            StakePoolInstruction::SetManager => {
-                msg!("Instruction: SetManager");
-                Self::process_set_manager(program_id, accounts)
-            }
             StakePoolInstruction::SetFee { fee } => {
                 msg!("Instruction: SetFee");
                 Self::process_set_fee(program_id, accounts, fee)
+            }
+            StakePoolInstruction::SetManager => {
+                msg!("Instruction: SetManager");
+                Self::process_set_manager(program_id, accounts)
             }
             StakePoolInstruction::SetStaker => {
                 msg!("Instruction: SetStaker");
                 Self::process_set_staker(program_id, accounts)
             }
-            StakePoolInstruction::DepositSol(lamports) => {
-                msg!("Instruction: DepositSol");
-                Self::process_deposit_sol(program_id, accounts, lamports)
-            }
             StakePoolInstruction::SetFundingAuthority(funding_type) => {
                 msg!("Instruction: SetFundingAuthority");
                 Self::process_set_funding_authority(program_id, accounts, funding_type)
+            }
+            StakePoolInstruction::DepositSol(lamports) => {
+                msg!("Instruction: DepositSol");
+                Self::process_deposit_sol(program_id, accounts, lamports)
             }
             StakePoolInstruction::WithdrawSol(pool_tokens) => {
                 msg!("Instruction: WithdrawSol");

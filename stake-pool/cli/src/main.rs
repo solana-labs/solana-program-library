@@ -776,7 +776,7 @@ fn command_deposit_sol(
     let pool_withdraw_authority =
         find_withdraw_authority_program_address(&spl_stake_pool::id(), stake_pool_address).0;
 
-    let mut deposit_instructions = if let Some(deposit_authority) = config.depositor.as_ref() {
+    let deposit_instruction = if let Some(deposit_authority) = config.depositor.as_ref() {
         let expected_sol_deposit_authority = stake_pool.sol_deposit_authority.ok_or_else(|| {
             "SOL deposit authority specified in arguments but stake pool has none".to_string()
         })?;
@@ -820,7 +820,7 @@ fn command_deposit_sol(
         )
     };
 
-    instructions.append(&mut deposit_instructions);
+    instructions.push(deposit_instruction);
 
     let mut transaction =
         Transaction::new_with_payer(&instructions, Some(&config.fee_payer.pubkey()));
@@ -1023,6 +1023,10 @@ fn command_update(
     force: bool,
     no_merge: bool,
 ) -> CommandResult {
+    if config.no_update {
+        println!("Update requested, but --no-update flag specified, so doing nothing");
+        return Ok(());
+    }
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
     let epoch_info = config.rpc_client.get_epoch_info()?;
 

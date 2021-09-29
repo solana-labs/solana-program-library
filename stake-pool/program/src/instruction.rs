@@ -55,10 +55,8 @@ pub enum StakePoolInstruction {
     ///       and staker / withdrawer authority set to pool withdraw authority.
     ///   5. `[]` Pool token mint. Must have zero supply, owned by withdraw authority.
     ///   6. `[]` Pool account to deposit the generated fee for manager.
-    ///   7. `[]` Clock sysvar
-    ///   8. `[]` Rent sysvar
-    ///   9. `[]` Token program id
-    ///  10. `[]` (Optional) Deposit authority that must sign all deposits.
+    ///   7. `[]` Token program id
+    ///   8. `[]` (Optional) Deposit authority that must sign all deposits.
     ///      Defaults to the program address generated using
     ///      `find_deposit_authority_program_address`, making deposits permissionless.
     Initialize {
@@ -244,8 +242,7 @@ pub enum StakePoolInstruction {
     ///   3. `[]` Reserve stake account
     ///   4. `[w]` Account to receive pool fee tokens
     ///   5. `[w]` Pool mint account
-    ///   6. `[]` Sysvar clock account
-    ///   7. `[]` Pool token program
+    ///   6. `[]` Pool token program
     UpdateStakePoolBalance,
 
     ///   Cleans up validator stake account entries marked as `ReadyForRemoval`
@@ -312,7 +309,6 @@ pub enum StakePoolInstruction {
     ///
     ///  0. `[w]` StakePool
     ///  1. `[s]` Manager
-    ///  2. `[]` Sysvar clock
     SetFee {
         /// Type of fee to update and value to update it to
         #[allow(dead_code)] // but it's not
@@ -337,10 +333,9 @@ pub enum StakePoolInstruction {
     ///   5. `[w]` Account to receive fee tokens
     ///   6. `[w]` Account to receive a portion of fee as referral fees
     ///   7. `[w]` Pool token mint account
-    ///   8. '[]' Sysvar clock account
-    ///   9. `[]` System program account
-    ///  10. `[]` Token program id
-    ///  11. `[s]` (Optional) Stake pool sol deposit authority.
+    ///   8. `[]` System program account
+    ///   9. `[]` Token program id
+    ///  10. `[s]` (Optional) Stake pool sol deposit authority.
     DepositSol(u64),
 
     ///  (Manager only) Update SOL deposit authority
@@ -366,7 +361,7 @@ pub enum StakePoolInstruction {
     ///  10. `[]` Stake program account
     ///  11. `[]` Token program id
     ///  12. `[s]` (Optional) Stake pool sol withdraw authority
-    WithdrawSol(u64),
+    WithdrawSol(u64)
 }
 
 /// Creates an 'initialize' instruction.
@@ -403,8 +398,6 @@ pub fn initialize(
         AccountMeta::new_readonly(*reserve_stake, false),
         AccountMeta::new_readonly(*pool_mint, false),
         AccountMeta::new_readonly(*manager_pool_account, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
-        AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
     ];
     if let Some(deposit_authority) = deposit_authority {
@@ -788,7 +781,6 @@ pub fn update_stake_pool_balance(
         AccountMeta::new_readonly(*reserve_stake, false),
         AccountMeta::new(*manager_fee_account, false),
         AccountMeta::new(*stake_pool_mint, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
     ];
     Instruction {
@@ -1011,7 +1003,6 @@ pub fn deposit_sol(
         AccountMeta::new(*manager_fee_account, false),
         AccountMeta::new(*referrer_pool_tokens_account, false),
         AccountMeta::new(*pool_mint, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
     ];
@@ -1116,7 +1107,7 @@ pub fn withdraw_sol(
     manager_fee_account: &Pubkey,
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
-    amount: u64,
+    pool_tokens: u64,
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
@@ -1135,7 +1126,7 @@ pub fn withdraw_sol(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::WithdrawSol(amount)
+        data: StakePoolInstruction::WithdrawSol(pool_tokens)
             .try_to_vec()
             .unwrap(),
     }
@@ -1156,7 +1147,7 @@ pub fn withdraw_sol_with_authority(
     manager_fee_account: &Pubkey,
     pool_mint: &Pubkey,
     token_program_id: &Pubkey,
-    amount: u64,
+    pool_tokens: u64,
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
@@ -1176,7 +1167,7 @@ pub fn withdraw_sol_with_authority(
     Instruction {
         program_id: *program_id,
         accounts,
-        data: StakePoolInstruction::WithdrawSol(amount)
+        data: StakePoolInstruction::WithdrawSol(pool_tokens)
             .try_to_vec()
             .unwrap(),
     }
@@ -1213,7 +1204,6 @@ pub fn set_fee(
     let accounts = vec![
         AccountMeta::new(*stake_pool, false),
         AccountMeta::new_readonly(*manager, true),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];
     Instruction {
         program_id: *program_id,
