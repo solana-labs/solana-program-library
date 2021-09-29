@@ -78,7 +78,7 @@ pub fn process_create_associated_token_account(
         funder_info,
         &rent,
         spl_token::state::Account::LEN,
-        &spl_token::id(),
+        spl_token_program_id,
         system_program_info,
         associated_token_account_info,
         associated_token_account_signer_seeds,
