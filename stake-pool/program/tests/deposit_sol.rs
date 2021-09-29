@@ -165,7 +165,7 @@ async fn fail_with_wrong_token_program_id() {
     let wrong_token_program = Keypair::new();
 
     let mut transaction = Transaction::new_with_payer(
-        &instruction::deposit_sol(
+        &[instruction::deposit_sol(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.withdraw_authority,
@@ -177,7 +177,7 @@ async fn fail_with_wrong_token_program_id() {
             &stake_pool_accounts.pool_mint.pubkey(),
             &wrong_token_program.pubkey(),
             TEST_STAKE_AMOUNT,
-        ),
+        )],
         Some(&context.payer.pubkey()),
     );
     transaction.sign(&[&context.payer], context.last_blockhash);
@@ -427,7 +427,7 @@ async fn success_with_referral_fee() {
         get_token_balance(&mut context.banks_client, &referrer_token_account.pubkey()).await;
 
     let mut transaction = Transaction::new_with_payer(
-        &instruction::deposit_sol(
+        &[instruction::deposit_sol(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.withdraw_authority,
@@ -439,7 +439,7 @@ async fn success_with_referral_fee() {
             &stake_pool_accounts.pool_mint.pubkey(),
             &spl_token::id(),
             TEST_STAKE_AMOUNT,
-        ),
+        )],
         Some(&context.payer.pubkey()),
     );
     transaction.sign(&[&context.payer], context.last_blockhash);
@@ -464,7 +464,7 @@ async fn fail_with_invalid_referrer() {
     let invalid_token_account = Keypair::new();
 
     let mut transaction = Transaction::new_with_payer(
-        &instruction::deposit_sol(
+        &[instruction::deposit_sol(
             &id(),
             &stake_pool_accounts.stake_pool.pubkey(),
             &stake_pool_accounts.withdraw_authority,
@@ -476,7 +476,7 @@ async fn fail_with_invalid_referrer() {
             &stake_pool_accounts.pool_mint.pubkey(),
             &spl_token::id(),
             TEST_STAKE_AMOUNT,
-        ),
+        )],
         Some(&context.payer.pubkey()),
     );
     transaction.sign(&[&context.payer], context.last_blockhash);

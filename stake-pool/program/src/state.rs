@@ -180,8 +180,14 @@ impl StakePool {
 
     /// calculate pool tokens to be deducted as withdrawal fees
     #[inline]
-    pub fn calc_pool_tokens_withdrawal_fee(&self, pool_tokens: u64) -> Option<u64> {
+    pub fn calc_pool_tokens_stake_withdrawal_fee(&self, pool_tokens: u64) -> Option<u64> {
         u64::try_from(self.stake_withdrawal_fee.apply(pool_tokens)?).ok()
+    }
+
+    /// calculate pool tokens to be deducted as withdrawal fees
+    #[inline]
+    pub fn calc_pool_tokens_sol_withdrawal_fee(&self, pool_tokens: u64) -> Option<u64> {
+        u64::try_from(self.sol_withdrawal_fee.apply(pool_tokens)?).ok()
     }
 
     /// calculate pool tokens to be deducted as stake deposit fees
@@ -331,6 +337,26 @@ impl StakePool {
             }
             if !sol_deposit_authority.is_signer {
                 msg!("SOL Deposit authority signature missing");
+                return Err(StakePoolError::SignatureMissing.into());
+            }
+        }
+        Ok(())
+    }
+
+    /// Checks that the sol withdraw authority is valid
+    /// Does nothing if `sol_withdraw_authority` is currently not set
+    #[inline]
+    pub(crate) fn check_sol_withdraw_authority(
+        &self,
+        maybe_sol_withdraw_authority: Result<&AccountInfo, ProgramError>,
+    ) -> Result<(), ProgramError> {
+        if let Some(auth) = self.sol_withdraw_authority {
+            let sol_withdraw_authority = maybe_sol_withdraw_authority?;
+            if auth != *sol_withdraw_authority.key {
+                return Err(StakePoolError::InvalidSolWithdrawAuthority.into());
+            }
+            if !sol_withdraw_authority.is_signer {
+                msg!("SOL withdraw authority signature missing");
                 return Err(StakePoolError::SignatureMissing.into());
             }
         }

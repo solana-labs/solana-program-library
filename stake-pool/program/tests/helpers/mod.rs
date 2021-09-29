@@ -856,7 +856,7 @@ impl StakePoolAccounts {
         sol_deposit_authority: Option<&Keypair>,
     ) -> Option<TransportError> {
         let mut signers = vec![payer];
-        let instructions = if let Some(sol_deposit_authority) = sol_deposit_authority {
+        let instruction = if let Some(sol_deposit_authority) = sol_deposit_authority {
             signers.push(sol_deposit_authority);
             instruction::deposit_sol_with_authority(
                 &id(),
@@ -888,7 +888,7 @@ impl StakePoolAccounts {
             )
         };
         let transaction = Transaction::new_signed_with_payer(
-            &instructions,
+            &[instruction],
             Some(&payer.pubkey()),
             &signers,
             *recent_blockhash,

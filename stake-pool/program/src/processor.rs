@@ -2009,7 +2009,7 @@ impl Processor {
         Ok(())
     }
 
-    /// Processes [DepositStake](enum.Instruction.html).
+    /// Processes [DepositSol](enum.Instruction.html).
     fn process_deposit_sol(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -2035,8 +2035,6 @@ impl Processor {
         if !stake_pool.is_valid() {
             return Err(StakePoolError::InvalidState.into());
         }
-
-        // Self::check_stake_activation(stake_info, clock, stake_history)?;
 
         stake_pool.check_authority_withdraw(
             withdraw_authority_info.key,
@@ -2215,7 +2213,7 @@ impl Processor {
             0
         } else {
             stake_pool
-                .calc_pool_tokens_withdrawal_fee(pool_tokens)
+                .calc_pool_tokens_stake_withdrawal_fee(pool_tokens)
                 .ok_or(StakePoolError::CalculationFailure)?
         };
         let pool_tokens_burnt = pool_tokens
@@ -2386,6 +2384,143 @@ impl Processor {
                     .ok_or(StakePoolError::CalculationFailure)?;
             }
         }
+
+        Ok(())
+    }
+
+    /// Processes [WithdrawSol](enum.Instruction.html).
+    fn process_withdraw_sol(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        pool_tokens: u64,
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let stake_pool_info = next_account_info(account_info_iter)?;
+        let withdraw_authority_info = next_account_info(account_info_iter)?;
+        let user_transfer_authority_info = next_account_info(account_info_iter)?;
+        let burn_from_pool_info = next_account_info(account_info_iter)?;
+        let reserve_stake_info = next_account_info(account_info_iter)?;
+        let destination_lamports_info = next_account_info(account_info_iter)?;
+        let manager_fee_info = next_account_info(account_info_iter)?;
+        let pool_mint_info = next_account_info(account_info_iter)?;
+        let clock_info = next_account_info(account_info_iter)?;
+        let clock = &Clock::from_account_info(clock_info)?;
+        let stake_history_info = next_account_info(account_info_iter)?;
+        let stake_program_info = next_account_info(account_info_iter)?;
+        let token_program_info = next_account_info(account_info_iter)?;
+        let sol_withdraw_authority_info = next_account_info(account_info_iter);
+
+        check_account_owner(stake_pool_info, program_id)?;
+        let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
+        if !stake_pool.is_valid() {
+            return Err(StakePoolError::InvalidState.into());
+        }
+
+        stake_pool.check_authority_withdraw(
+            withdraw_authority_info.key,
+            program_id,
+            stake_pool_info.key,
+        )?;
+        stake_pool.check_sol_withdraw_authority(sol_withdraw_authority_info)?;
+        stake_pool.check_mint(pool_mint_info)?;
+        stake_pool.check_reserve_stake(reserve_stake_info)?;
+
+        if stake_pool.token_program_id != *token_program_info.key {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+        check_stake_program(stake_program_info.key)?;
+
+        if stake_pool.manager_fee_account != *manager_fee_info.key {
+            return Err(StakePoolError::InvalidFeeAccount.into());
+        }
+
+        // We want this to hold to ensure that withdraw_sol burns pool tokens
+        // at the right price
+        if stake_pool.last_update_epoch < clock.epoch {
+            return Err(StakePoolError::StakeListAndPoolOutOfDate.into());
+        }
+
+        // To prevent a faulty manager fee account from preventing withdrawals
+        // if the token program does not own the account, or if the account is not initialized
+        let pool_tokens_fee = if stake_pool.manager_fee_account == *burn_from_pool_info.key
+            || stake_pool.check_manager_fee_info(manager_fee_info).is_err()
+        {
+            0
+        } else {
+            stake_pool
+                .calc_pool_tokens_sol_withdrawal_fee(pool_tokens)
+                .ok_or(StakePoolError::CalculationFailure)?
+        };
+        let pool_tokens_burnt = pool_tokens
+            .checked_sub(pool_tokens_fee)
+            .ok_or(StakePoolError::CalculationFailure)?;
+
+        let withdraw_lamports = stake_pool
+            .calc_lamports_withdraw_amount(pool_tokens_burnt)
+            .ok_or(StakePoolError::CalculationFailure)?;
+
+        if withdraw_lamports == 0 {
+            return Err(StakePoolError::WithdrawalTooSmall.into());
+        }
+
+        let new_reserve_lamports = reserve_stake_info.lamports().saturating_sub(withdraw_lamports);
+        let stake_state = try_from_slice_unchecked::<stake_program::StakeState>(
+            &reserve_stake_info.data.borrow(),
+        )?;
+        if let stake_program::StakeState::Initialized(meta) = stake_state {
+            let minimum_reserve_lamports = minimum_reserve_lamports(&meta);
+            if new_reserve_lamports < minimum_reserve_lamports {
+                msg!("Attempting to withdraw {} lamports, maximum possible SOL withdrawal is {} lamports",
+                    withdraw_lamports,
+                    reserve_stake_info.lamports().saturating_sub(minimum_reserve_lamports)
+                );
+                return Err(StakePoolError::SolWithdrawalTooLarge.into());
+            }
+        } else {
+            msg!("Reserve stake account not in intialized state");
+            return Err(StakePoolError::WrongStakeState.into());
+        };
+
+        Self::token_burn(
+            token_program_info.clone(),
+            burn_from_pool_info.clone(),
+            pool_mint_info.clone(),
+            user_transfer_authority_info.clone(),
+            pool_tokens_burnt,
+        )?;
+
+        if pool_tokens_fee > 0 {
+            Self::token_transfer(
+                token_program_info.clone(),
+                burn_from_pool_info.clone(),
+                manager_fee_info.clone(),
+                user_transfer_authority_info.clone(),
+                pool_tokens_fee,
+            )?;
+        }
+
+        Self::stake_withdraw(
+            stake_pool_info.key,
+            reserve_stake_info.clone(),
+            withdraw_authority_info.clone(),
+            AUTHORITY_WITHDRAW,
+            stake_pool.stake_withdraw_bump_seed,
+            destination_lamports_info.clone(),
+            clock_info.clone(),
+            stake_history_info.clone(),
+            stake_program_info.clone(),
+            withdraw_lamports,
+        )?;
+
+        stake_pool.pool_token_supply = stake_pool
+            .pool_token_supply
+            .checked_sub(pool_tokens_burnt)
+            .ok_or(StakePoolError::CalculationFailure)?;
+        stake_pool.total_stake_lamports = stake_pool
+            .total_stake_lamports
+            .checked_sub(withdraw_lamports)
+            .ok_or(StakePoolError::CalculationFailure)?;
+        stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
 
         Ok(())
     }
@@ -2623,6 +2758,10 @@ impl Processor {
                 msg!("Instruction: SetFundingAuthority");
                 Self::process_set_funding_authority(program_id, accounts, funding_type)
             }
+            StakePoolInstruction::WithdrawSol(pool_tokens) => {
+                msg!("Instruction: WithdrawSol");
+                Self::process_withdraw_sol(program_id, accounts, pool_tokens)
+            }
         }
     }
 }
@@ -2669,6 +2808,8 @@ impl PrintProgramError for StakePoolError {
             StakePoolError::InvalidSolDepositAuthority => msg!("Error: Provided sol deposit authority does not match the program's"),
             StakePoolError::InvalidPreferredValidator => msg!("Error: Provided preferred validator is invalid"),
             StakePoolError::TransientAccountInUse => msg!("Error: Provided validator stake account already has a transient stake account in use"),
+            StakePoolError::InvalidSolWithdrawAuthority => msg!("Error: Provided sol withdraw authority does not match the program's"),
+            StakePoolError::SolWithdrawalTooLarge => msg!("Error: Too much SOL withdrawn from the stake pool's reserve account"),
         }
     }
 }
