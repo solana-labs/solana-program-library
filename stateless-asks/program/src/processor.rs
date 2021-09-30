@@ -125,14 +125,14 @@ impl Processor {
 
     /// Processes [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
-        let instruction = StakePoolInstruction::try_from_slice(input)?;
+        let instruction = StatelessOfferInstruction::try_from_slice(input)?;
         match instruction {
-            StalessOfferInstruction::AcceptOffer {
+            StatelessOfferInstruction::AcceptOffer {
                 maker_size,
                 taker_size,
                 bump_seed,
             } => {
-                msg!("Instruction: Initialize stake pool");
+                msg!("Instruction: accept offer");
                 Self::process_accept_offer(
                     program_id,
                     accounts,
