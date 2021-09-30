@@ -8,7 +8,7 @@ uses the PDA as a one way hash of the offer that the maker wants
 to create.  The maker then only needs to approve their token to the
 PDA address for the taker to receive the items.  The maker doesn't
 need to be online to complete the transaction, but needs to advertize
-the offer over an off-chain.
+the offer off-chain.
 
 ## Maker
 1. compute the offer PDA
