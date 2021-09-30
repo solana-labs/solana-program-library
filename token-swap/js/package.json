@@ -58,7 +58,7 @@
     "@types/bn.js": "^5.1.0",
     "eslint": "^7.9.0",
     "eslint-plugin-import": "^2.22.0",
-    "flow-bin": "0.160.2",
+    "flow-bin": "0.161.0",
     "flow-typed": "^3.2.0",
     "flowgen": "^1.14.1",
     "mz": "^2.7.0",
