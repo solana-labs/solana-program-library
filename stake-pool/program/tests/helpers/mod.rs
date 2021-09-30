@@ -932,6 +932,58 @@ impl StakePoolAccounts {
         banks_client.process_transaction(transaction).await.err()
     }
 
+    #[allow(clippy::too_many_arguments)]
+    pub async fn withdraw_sol(
+        &self,
+        banks_client: &mut BanksClient,
+        payer: &Keypair,
+        recent_blockhash: &Hash,
+        user: &Keypair,
+        pool_account: &Pubkey,
+        amount: u64,
+        sol_withdraw_authority: Option<&Keypair>,
+    ) -> Option<TransportError> {
+        let mut signers = vec![payer, user];
+        let instruction = if let Some(sol_withdraw_authority) = sol_withdraw_authority {
+            signers.push(sol_withdraw_authority);
+            instruction::withdraw_sol_with_authority(
+                &id(),
+                &self.stake_pool.pubkey(),
+                &sol_withdraw_authority.pubkey(),
+                &self.withdraw_authority,
+                &user.pubkey(),
+                pool_account,
+                &self.reserve_stake.pubkey(),
+                &user.pubkey(),
+                &self.pool_fee_account.pubkey(),
+                &self.pool_mint.pubkey(),
+                &spl_token::id(),
+                amount,
+            )
+        } else {
+            instruction::withdraw_sol(
+                &id(),
+                &self.stake_pool.pubkey(),
+                &self.withdraw_authority,
+                &user.pubkey(),
+                pool_account,
+                &self.reserve_stake.pubkey(),
+                &user.pubkey(),
+                &self.pool_fee_account.pubkey(),
+                &self.pool_mint.pubkey(),
+                &spl_token::id(),
+                amount,
+            )
+        };
+        let transaction = Transaction::new_signed_with_payer(
+            &[instruction],
+            Some(&payer.pubkey()),
+            &signers,
+            *recent_blockhash,
+        );
+        banks_client.process_transaction(transaction).await.err()
+    }
+
     pub async fn get_validator_list(&self, banks_client: &mut BanksClient) -> ValidatorList {
         let validator_list_account = get_account(banks_client, &self.validator_list.pubkey()).await;
         try_from_slice_unchecked::<ValidatorList>(validator_list_account.data.as_slice()).unwrap()

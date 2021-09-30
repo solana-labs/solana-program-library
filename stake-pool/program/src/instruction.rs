@@ -361,7 +361,7 @@ pub enum StakePoolInstruction {
     ///  10. `[]` Stake program account
     ///  11. `[]` Token program id
     ///  12. `[s]` (Optional) Stake pool sol withdraw authority
-    WithdrawSol(u64)
+    WithdrawSol(u64),
 }
 
 /// Creates an 'initialize' instruction.
@@ -1137,8 +1137,8 @@ pub fn withdraw_sol(
 pub fn withdraw_sol_with_authority(
     program_id: &Pubkey,
     stake_pool: &Pubkey,
-    stake_pool_withdraw_authority: &Pubkey,
     sol_withdraw_authority: &Pubkey,
+    stake_pool_withdraw_authority: &Pubkey,
     user_transfer_authority: &Pubkey,
     pool_tokens_from: &Pubkey,
     reserve_stake_account: &Pubkey,

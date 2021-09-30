@@ -50,33 +50,6 @@ async fn setup() -> (ProgramTestContext, StakePoolAccounts, Keypair, Pubkey) {
     )
     .await
     .unwrap();
-    let mut transaction = Transaction::new_with_payer(
-        &[
-            instruction::set_fee(
-                &id(),
-                &stake_pool_accounts.stake_pool.pubkey(),
-                &stake_pool_accounts.manager.pubkey(),
-                state::FeeType::SolDeposit(stake_pool_accounts.deposit_fee),
-            ),
-            instruction::set_fee(
-                &id(),
-                &stake_pool_accounts.stake_pool.pubkey(),
-                &stake_pool_accounts.manager.pubkey(),
-                state::FeeType::SolReferral(stake_pool_accounts.referral_fee),
-            ),
-        ],
-        Some(&context.payer.pubkey()),
-    );
-
-    transaction.sign(
-        &[&context.payer, &stake_pool_accounts.manager],
-        context.last_blockhash,
-    );
-    context
-        .banks_client
-        .process_transaction(transaction)
-        .await
-        .unwrap();
 
     (
         context,
@@ -142,7 +115,7 @@ async fn success() {
     let user_token_balance =
         get_token_balance(&mut context.banks_client, &pool_token_account).await;
     let tokens_issued_user =
-        tokens_issued - stake_pool_accounts.calculate_deposit_fee(tokens_issued);
+        tokens_issued - stake_pool_accounts.calculate_sol_deposit_fee(tokens_issued);
     assert_eq!(user_token_balance, tokens_issued_user);
 
     // Check reserve
@@ -451,8 +424,9 @@ async fn success_with_referral_fee() {
 
     let referrer_balance_post =
         get_token_balance(&mut context.banks_client, &referrer_token_account.pubkey()).await;
-    let referral_fee = stake_pool_accounts
-        .calculate_referral_fee(stake_pool_accounts.calculate_deposit_fee(TEST_STAKE_AMOUNT));
+    let referral_fee = stake_pool_accounts.calculate_sol_referral_fee(
+        stake_pool_accounts.calculate_sol_deposit_fee(TEST_STAKE_AMOUNT),
+    );
     assert!(referral_fee > 0);
     assert_eq!(referrer_balance_pre + referral_fee, referrer_balance_post);
 }

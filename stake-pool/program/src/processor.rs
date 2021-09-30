@@ -2445,7 +2445,9 @@ impl Processor {
             return Err(StakePoolError::WithdrawalTooSmall.into());
         }
 
-        let new_reserve_lamports = reserve_stake_info.lamports().saturating_sub(withdraw_lamports);
+        let new_reserve_lamports = reserve_stake_info
+            .lamports()
+            .saturating_sub(withdraw_lamports);
         let stake_state = try_from_slice_unchecked::<stake_program::StakeState>(
             &reserve_stake_info.data.borrow(),
         )?;

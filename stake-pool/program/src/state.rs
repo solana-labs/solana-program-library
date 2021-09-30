@@ -752,7 +752,11 @@ impl Fee {
 
 impl fmt::Display for Fee {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}/{}", self.numerator, self.denominator)
+        if self.numerator > 0 && self.denominator > 0 {
+            write!(f, "{}/{}", self.numerator, self.denominator)
+        } else {
+            write!(f, "none")
+        }
     }
 }
 
