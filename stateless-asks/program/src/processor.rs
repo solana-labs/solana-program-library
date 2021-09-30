@@ -114,12 +114,12 @@ impl Processor {
         Self::token_transfer(
             token_program_info.clone(),
             auth_taker_account.clone(),
-            taker_dst_account.clone(),
+            maker_dst_account.clone(),
             transfer_authority.clone(),
             taker_size,
             seeds,
         )?;
-        msg!("done tx from temp to taker {}", taker_size);
+        msg!("done tx from temp to maker {}", taker_size);
         msg!("done!");
     }
 
