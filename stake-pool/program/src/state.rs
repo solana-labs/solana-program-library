@@ -333,6 +333,7 @@ impl StakePool {
         if let Some(auth) = self.sol_deposit_authority {
             let sol_deposit_authority = maybe_sol_deposit_authority?;
             if auth != *sol_deposit_authority.key {
+                msg!("Expected {}, received {}", auth, sol_deposit_authority.key);
                 return Err(StakePoolError::InvalidSolDepositAuthority.into());
             }
             if !sol_deposit_authority.is_signer {

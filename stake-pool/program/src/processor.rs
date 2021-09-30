@@ -28,7 +28,6 @@ use {
         program_pack::Pack,
         pubkey::Pubkey,
         rent::Rent,
-        stake_history::StakeHistory,
         system_instruction, system_program,
         sysvar::Sysvar,
     },
@@ -483,6 +482,7 @@ impl Processor {
     }
 
     /// Processes `Initialize` instruction.
+    #[inline(never)] // needed due to stack size violation
     fn process_initialize(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -675,6 +675,7 @@ impl Processor {
     }
 
     /// Processes `AddValidatorToPool` instruction.
+    #[inline(never)] // needed due to stack size violation
     fn process_add_validator_to_pool(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -810,6 +811,7 @@ impl Processor {
     }
 
     /// Processes `RemoveValidatorFromPool` instruction.
+    #[inline(never)] // needed due to stack size violation
     fn process_remove_validator_from_pool(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -967,6 +969,7 @@ impl Processor {
     }
 
     /// Processes `DecreaseValidatorStake` instruction.
+    #[inline(never)] // needed due to stack size violation
     fn process_decrease_validator_stake(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -1105,6 +1108,7 @@ impl Processor {
     }
 
     /// Processes `IncreaseValidatorStake` instruction.
+    #[inline(never)] // needed due to stack size violation
     fn process_increase_validator_stake(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -1264,6 +1268,7 @@ impl Processor {
     }
 
     /// Process `SetPreferredValidator` instruction
+    #[inline(never)] // needed due to stack size violation
     fn process_set_preferred_validator(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -1326,6 +1331,7 @@ impl Processor {
     }
 
     /// Processes `UpdateValidatorListBalance` instruction.
+    #[inline(always)] // needed to maximize number of validators
     fn process_update_validator_list_balance(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -1566,6 +1572,7 @@ impl Processor {
     }
 
     /// Processes `UpdateStakePoolBalance` instruction.
+    #[inline(always)] // needed to optimize number of validators
     fn process_update_stake_pool_balance(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -1685,6 +1692,7 @@ impl Processor {
     }
 
     /// Processes the `CleanupRemovedValidatorEntries` instruction
+    #[inline(never)] // needed to avoid stack size violation
     fn process_cleanup_removed_validator_entries(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -1713,33 +1721,8 @@ impl Processor {
         Ok(())
     }
 
-    /// Check stake activation status
-    #[allow(clippy::unnecessary_wraps)]
-    fn _check_stake_activation(
-        stake_info: &AccountInfo,
-        clock: &Clock,
-        stake_history: &StakeHistory,
-    ) -> ProgramResult {
-        let stake_acc_state =
-            try_from_slice_unchecked::<stake_program::StakeState>(&stake_info.data.borrow())
-                .unwrap();
-        let delegation = stake_acc_state.delegation();
-        if let Some(delegation) = delegation {
-            let target_epoch = clock.epoch;
-            let history = Some(stake_history);
-            let fix_stake_deactivate = true;
-            let (effective, activating, deactivating) = delegation
-                .stake_activating_and_deactivating(target_epoch, history, fix_stake_deactivate);
-            if activating != 0 || deactivating != 0 || effective == 0 {
-                return Err(StakePoolError::UserStakeNotActive.into());
-            }
-        } else {
-            return Err(StakePoolError::WrongStakeState.into());
-        }
-        Ok(())
-    }
-
     /// Processes [DepositStake](enum.Instruction.html).
+    #[inline(never)] // needed to avoid stack size violation
     fn process_deposit_stake(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
@@ -2007,6 +1990,7 @@ impl Processor {
     }
 
     /// Processes [DepositSol](enum.Instruction.html).
+    #[inline(never)] // needed to avoid stack size violation
     fn process_deposit_sol(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -2147,6 +2131,7 @@ impl Processor {
     }
 
     /// Processes [WithdrawStake](enum.Instruction.html).
+    #[inline(never)] // needed to avoid stack size violation
     fn process_withdraw_stake(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -2386,6 +2371,7 @@ impl Processor {
     }
 
     /// Processes [WithdrawSol](enum.Instruction.html).
+    #[inline(never)] // needed to avoid stack size violation
     fn process_withdraw_sol(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -2522,6 +2508,7 @@ impl Processor {
     }
 
     /// Processes [SetManager](enum.Instruction.html).
+    #[inline(never)] // needed to avoid stack size violation
     fn process_set_manager(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
@@ -2556,6 +2543,7 @@ impl Processor {
     }
 
     /// Processes [SetFee](enum.Instruction.html).
+    #[inline(never)] // needed to avoid stack size violation
     fn process_set_fee(
         program_id: &Pubkey,
         accounts: &[AccountInfo],
@@ -2584,6 +2572,7 @@ impl Processor {
     }
 
     /// Processes [SetStaker](enum.Instruction.html).
+    #[inline(never)] // needed to avoid stack size violation
     fn process_set_staker(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let stake_pool_info = next_account_info(account_info_iter)?;
@@ -2607,6 +2596,7 @@ impl Processor {
     }
 
     /// Processes [SetFundingAuthority](enum.Instruction.html).
+    #[inline(never)] // needed to avoid stack size violation
     fn process_set_funding_authority(
         program_id: &Pubkey,
         accounts: &[AccountInfo],

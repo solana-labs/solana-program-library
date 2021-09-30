@@ -1041,7 +1041,6 @@ pub fn deposit_sol_with_authority(
         AccountMeta::new(*manager_fee_account, false),
         AccountMeta::new(*referrer_pool_tokens_account, false),
         AccountMeta::new(*pool_mint, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
         AccountMeta::new_readonly(*sol_deposit_authority, true),
