@@ -24,13 +24,17 @@ pub enum StatelessOfferInstruction {
     ///  Bob (or anyone) executes AcceptOffer
     ///
     AcceptOffer {
+        #[allow(dead_code)]
         maker_size: u64,
+        #[allow(dead_code)]
         taker_size: u64,
+        #[allow(dead_code)]
         bump_seed: u8,
     },
 }
 
 /// Creates an 'initialize' instruction.
+#[allow(clippy::too_many_arguments)]
 pub fn accept_offer(
     program_id: &Pubkey,
     maker_wallet: &Pubkey,
