@@ -73,6 +73,10 @@ impl Processor {
         assert_is_ata(taker_src_account, taker_wallet.key, taker_src_mint.key)?;
         assert_is_ata(taker_dst_account, taker_wallet.key, maker_src_mint.key)?;
         msg!("start");
+        // Both of these transfers will fail if the the `transfer_authority` is the the delegate of these ATA's
+        // One consideration is that the taker can get tricked in the case that the maker size is greater than
+        // the token amount in the maker's ATA, but these stateless offers should just be invalidated in 
+        // the client.
         Self::token_transfer(
             token_program_info.clone(),
             maker_src_account.clone(),
@@ -86,9 +90,9 @@ impl Processor {
             token_program_info.clone(),
             taker_src_account.clone(),
             maker_dst_account.clone(),
-            transfer_authority.clone(),
+            taker_wallet.clone(),
             taker_size,
-            seeds,
+            &[],
         )?;
         msg!("done tx from taker to maker {}", taker_size);
         msg!("done!");
