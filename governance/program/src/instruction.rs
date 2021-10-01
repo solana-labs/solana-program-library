@@ -687,13 +687,14 @@ pub fn create_mint_governance(
     governed_mint_authority: &Pubkey,
     token_owner_record: &Pubkey,
     payer: &Pubkey,
+    voter_weight_record: Option<Pubkey>,
     // Args
     config: GovernanceConfig,
     transfer_mint_authority: bool,
 ) -> Instruction {
     let mint_governance_address = get_mint_governance_address(program_id, realm, governed_mint);
 
-    let accounts = vec![
+    let mut accounts = vec![
         AccountMeta::new_readonly(*realm, false),
         AccountMeta::new(mint_governance_address, false),
         AccountMeta::new(*governed_mint, false),
@@ -704,6 +705,8 @@ pub fn create_mint_governance(
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
     ];
+
+    with_voter_weight_accounts(program_id, &mut accounts, realm, voter_weight_record);
 
     let instruction = GovernanceInstruction::CreateMintGovernance {
         config,
