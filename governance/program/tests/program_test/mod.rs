@@ -1599,6 +1599,13 @@ impl GovernanceProgramTest {
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         vote: Vote,
     ) -> Result<VoteRecordCookie, ProgramError> {
+        let voter_weight_record =
+            if let Some(voter_weight_record) = &token_owner_record_cookie.voter_weight_record {
+                Some(voter_weight_record.address)
+            } else {
+                None
+            };
+
         let vote_instruction = cast_vote(
             &self.program_id,
             &token_owner_record_cookie.account.realm,
@@ -1609,6 +1616,7 @@ impl GovernanceProgramTest {
             &token_owner_record_cookie.token_owner.pubkey(),
             &proposal_cookie.account.governing_token_mint,
             &self.bench.payer.pubkey(),
+            voter_weight_record,
             vote.clone(),
         );
 

@@ -5,6 +5,7 @@ use solana_program_test::*;
 mod program_test;
 
 use program_test::*;
+use spl_governance::{instruction::Vote, state::enums::VoteWeight};
 
 #[tokio::test]
 async fn test_create_governance_with_voter_weight_addin() {
@@ -80,4 +81,55 @@ async fn test_create_proposal_with_voter_weight_addin() {
         .await;
 
     assert_eq!(proposal_cookie.account, proposal_account);
+}
+
+#[tokio::test]
+async fn test_cast_vote_with_voter_weight_addin() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_with_voter_weight_addin().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+
+    let mut token_owner_record_cookie =
+        governance_test.with_token_owner_record(&realm_cookie).await;
+
+    governance_test
+        .with_voter_weight_addin_deposit(&mut token_owner_record_cookie)
+        .await
+        .unwrap();
+
+    let mut account_governance_cookie = governance_test
+        .with_account_governance(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+        )
+        .await
+        .unwrap();
+
+    let proposal_cookie = governance_test
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .await
+        .unwrap();
+
+    // Act
+    let vote_record_cookie = governance_test
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::Yes)
+        .await
+        .unwrap();
+
+    // Assert
+
+    let vote_record_account = governance_test
+        .get_vote_record_account(&vote_record_cookie.address)
+        .await;
+
+    assert_eq!(VoteWeight::Yes(100), vote_record_account.vote_weight);
+
+    let proposal_account = governance_test
+        .get_proposal_account(&proposal_cookie.address)
+        .await;
+
+    assert_eq!(100, proposal_account.yes_votes_count);
 }

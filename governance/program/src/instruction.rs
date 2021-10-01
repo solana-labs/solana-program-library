@@ -911,13 +911,14 @@ pub fn cast_vote(
     governance_authority: &Pubkey,
     governing_token_mint: &Pubkey,
     payer: &Pubkey,
+    voter_weight_record: Option<Pubkey>,
     // Args
     vote: Vote,
 ) -> Instruction {
     let vote_record_address =
         get_vote_record_address(program_id, proposal, voter_token_owner_record);
 
-    let accounts = vec![
+    let mut accounts = vec![
         AccountMeta::new_readonly(*realm, false),
         AccountMeta::new_readonly(*governance, false),
         AccountMeta::new(*proposal, false),
@@ -931,6 +932,8 @@ pub fn cast_vote(
         AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];
+
+    with_voter_weight_accounts(program_id, &mut accounts, realm, voter_weight_record);
 
     let instruction = GovernanceInstruction::CastVote { vote };
 

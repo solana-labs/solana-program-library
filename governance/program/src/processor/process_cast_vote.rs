@@ -98,23 +98,28 @@ pub fn process_cast_vote(
         .checked_add(1)
         .unwrap();
 
-    let vote_amount = voter_token_owner_record_data.governing_token_deposit_amount;
+    let voter_weight = voter_token_owner_record_data.resolve_voter_weight(
+        program_id,
+        account_info_iter,
+        realm_info.key,
+        &realm_data,
+    )?;
 
     // Calculate Proposal voting weights
     let vote_weight = match vote {
         Vote::Yes => {
             proposal_data.yes_votes_count = proposal_data
                 .yes_votes_count
-                .checked_add(vote_amount)
+                .checked_add(voter_weight)
                 .unwrap();
-            VoteWeight::Yes(vote_amount)
+            VoteWeight::Yes(voter_weight)
         }
         Vote::No => {
             proposal_data.no_votes_count = proposal_data
                 .no_votes_count
-                .checked_add(vote_amount)
+                .checked_add(voter_weight)
                 .unwrap();
-            VoteWeight::No(vote_amount)
+            VoteWeight::No(voter_weight)
         }
     };
 
