@@ -75,7 +75,7 @@ impl Processor {
         msg!("start");
         // Both of these transfers will fail if the the `transfer_authority` is the the delegate of these ATA's
         // One consideration is that the taker can get tricked in the case that the maker size is greater than
-        // the token amount in the maker's ATA, but these stateless offers should just be invalidated in 
+        // the token amount in the maker's ATA, but these stateless offers should just be invalidated in
         // the client.
         Self::token_transfer(
             token_program_info.clone(),
