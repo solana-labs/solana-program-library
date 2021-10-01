@@ -5,7 +5,10 @@ use std::slice::Iter;
 use crate::{
     addins::voter_weight::get_voter_weight_record_data_for_token_owner_record,
     error::GovernanceError,
-    state::{enums::GovernanceAccountType, governance::GovernanceConfig, realm::Realm},
+    state::{
+        enums::GovernanceAccountType, governance::GovernanceConfig, realm::Realm,
+        realm_addins::get_realm_addins_data_for_realm,
+    },
     tools::account::{get_account_data, AccountMaxSize},
     PROGRAM_AUTHORITY_SEED,
 };
@@ -17,8 +20,6 @@ use solana_program::{
     program_pack::IsInitialized,
     pubkey::Pubkey,
 };
-
-use super::realm_addins::get_realm_addins_data_for_realm;
 
 /// Governance Token Owner Record
 /// Account PDA seeds: ['governance', realm, token_mint, token_owner ]

@@ -1285,7 +1285,7 @@ pub fn set_realm_config(
     }
 }
 
-/// Adds voter weight accounts if voter_weight_record is Some
+/// Adds voter weight accounts to the given accounts if voter_weight_record is Some
 pub fn with_voter_weight_accounts(
     program_id: &Pubkey,
     accounts: &mut Vec<AccountMeta>,
