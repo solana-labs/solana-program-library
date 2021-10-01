@@ -19,10 +19,11 @@ use spl_governance::{
     instruction::{
         add_signatory, cancel_proposal, cast_vote, create_account_governance,
         create_mint_governance, create_program_governance, create_proposal, create_realm,
-        create_token_governance, deposit_governing_tokens, execute_instruction, finalize_vote,
-        flag_instruction_error, insert_instruction, relinquish_vote, remove_instruction,
-        remove_signatory, set_governance_config, set_governance_delegate, set_realm_authority,
-        set_realm_config, sign_off_proposal, withdraw_governing_tokens, Vote,
+        create_token_governance, create_token_owner_record, deposit_governing_tokens,
+        execute_instruction, finalize_vote, flag_instruction_error, insert_instruction,
+        relinquish_vote, remove_instruction, remove_signatory, set_governance_config,
+        set_governance_delegate, set_realm_authority, set_realm_config, sign_off_proposal,
+        withdraw_governing_tokens, Vote,
     },
     processor::process_instruction,
     state::{
@@ -364,15 +365,51 @@ impl GovernanceProgramTest {
         &mut self,
         realm_cookie: &RealmCookie,
     ) -> TokenOwnerRecordCookie {
-        self.with_initial_governing_token_deposit(
+        let token_owner = Keypair::new();
+
+        let create_token_owner_record_ix = create_token_owner_record(
+            &self.program_id,
+            &realm_cookie.address,
+            &token_owner.pubkey(),
+            &realm_cookie.account.community_mint,
+            &self.bench.payer.pubkey(),
+        );
+
+        self.bench
+            .process_transaction(&[create_token_owner_record_ix], None)
+            .await
+            .unwrap();
+
+        let account = TokenOwnerRecord {
+            account_type: GovernanceAccountType::TokenOwnerRecord,
+            realm: realm_cookie.address,
+            governing_token_mint: realm_cookie.account.community_mint,
+            governing_token_owner: token_owner.pubkey(),
+            governing_token_deposit_amount: 0,
+            governance_delegate: None,
+            unrelinquished_votes_count: 0,
+            total_votes_count: 0,
+            outstanding_proposal_count: 0,
+            reserved: [0; 7],
+        };
+
+        let token_owner_record_address = get_token_owner_record_address(
+            &self.program_id,
             &realm_cookie.address,
             &realm_cookie.account.community_mint,
-            &realm_cookie.community_mint_authority,
-            // Deposit 0 to create token owner record
-            // TODO: Make it possible to create TokenOwnerRecord without depositing
-            0,
-        )
-        .await
+            &token_owner.pubkey(),
+        );
+
+        TokenOwnerRecordCookie {
+            address: token_owner_record_address,
+            account,
+            token_source_amount: 0,
+            token_source: Pubkey::new_unique(),
+            token_owner,
+            governance_authority: None,
+            governance_delegate: Keypair::new(),
+            voter_weight_record: None,
+        }
     }
 
     #[allow(dead_code)]
