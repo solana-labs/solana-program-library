@@ -34,6 +34,7 @@ pub fn process_instruction(
         VoterWeightAddinInstruction::Deposit { amount } => {
             process_deposit(program_id, accounts, amount)
         }
+        VoterWeightAddinInstruction::Withdraw {} => Ok(()),
     }
 }
 
