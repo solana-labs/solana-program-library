@@ -1083,6 +1083,13 @@ impl GovernanceProgramTest {
     ) -> Result<GovernanceCookie, ProgramError> {
         let config = self.get_default_governance_config();
 
+        let voter_weight_record =
+            if let Some(voter_weight_record) = &token_owner_record_cookie.voter_weight_record {
+                Some(voter_weight_record.address)
+            } else {
+                None
+            };
+
         let mut create_program_governance_instruction = create_program_governance(
             &self.program_id,
             &realm_cookie.address,
@@ -1090,6 +1097,7 @@ impl GovernanceProgramTest {
             &governed_program_cookie.upgrade_authority.pubkey(),
             &token_owner_record_cookie.address,
             &self.bench.payer.pubkey(),
+            voter_weight_record,
             config.clone(),
             governed_program_cookie.transfer_upgrade_authority,
         );

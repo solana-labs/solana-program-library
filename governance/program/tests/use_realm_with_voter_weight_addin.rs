@@ -201,3 +201,40 @@ async fn test_create_mint_governance_with_voter_weight_addin() {
 
     assert_eq!(mint_governance_cookie.account, mint_governance_account);
 }
+
+#[tokio::test]
+async fn test_create_program_governance_with_voter_weight_addin() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_with_voter_weight_addin().await;
+    let governed_program_cookie = governance_test.with_governed_program().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+
+    let mut token_owner_record_cookie =
+        governance_test.with_token_owner_record(&realm_cookie).await;
+
+    governance_test
+        .with_voter_weight_addin_deposit(&mut token_owner_record_cookie)
+        .await
+        .unwrap();
+
+    // Act
+    let program_governance_cookie = governance_test
+        .with_program_governance(
+            &realm_cookie,
+            &governed_program_cookie,
+            &token_owner_record_cookie,
+        )
+        .await
+        .unwrap();
+
+    // Assert
+    let program_governance_account = governance_test
+        .get_governance_account(&program_governance_cookie.address)
+        .await;
+
+    assert_eq!(
+        program_governance_cookie.account,
+        program_governance_account
+    );
+}
