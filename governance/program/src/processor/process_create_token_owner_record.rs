@@ -18,7 +18,7 @@ use crate::{
     tools::account::create_and_serialize_account_signed,
 };
 
-/// Processes DepositGoverningTokens instruction
+/// Processes CreateTokenOwnerRecord instruction
 pub fn process_create_token_owner_record(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
