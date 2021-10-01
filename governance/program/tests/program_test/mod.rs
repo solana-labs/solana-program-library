@@ -1153,6 +1153,13 @@ impl GovernanceProgramTest {
     ) -> Result<GovernanceCookie, ProgramError> {
         let config = self.get_default_governance_config();
 
+        let voter_weight_record =
+            if let Some(voter_weight_record) = &token_owner_record_cookie.voter_weight_record {
+                Some(voter_weight_record.address)
+            } else {
+                None
+            };
+
         let mut create_mint_governance_instruction = create_mint_governance(
             &self.program_id,
             &realm_cookie.address,
@@ -1160,6 +1167,7 @@ impl GovernanceProgramTest {
             &governed_mint_cookie.mint_authority.pubkey(),
             &token_owner_record_cookie.address,
             &self.bench.payer.pubkey(),
+            voter_weight_record,
             config.clone(),
             governed_mint_cookie.transfer_mint_authority,
         );
