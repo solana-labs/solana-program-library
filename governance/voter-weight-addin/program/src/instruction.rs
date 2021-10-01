@@ -28,4 +28,15 @@ pub enum VoterWeightAddinInstruction {
         #[allow(dead_code)]
         amount: u64,
     },
+
+    /// Withdraws deposited tokens
+    /// Note: This instruction should ensure the tokens can be withdrawn form the Realm
+    ///       by calling TokenOwnerRecord.assert_can_withdraw_governing_tokens()
+    ///
+    /// 0. `[]` Governance Program Id
+    /// 1. `[]` Realm account
+    /// 2. `[]` Governing Token mint
+    /// 3. `[]` TokenOwnerRecord
+    /// 4. `[writable]` VoterWeightRecord
+    Withdraw {},
 }

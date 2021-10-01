@@ -149,6 +149,23 @@ impl TokenOwnerRecord {
         Ok(())
     }
 
+    /// Asserts TokenOwner can withdraw tokens from Realm
+    pub fn assert_can_withdraw_governing_tokens(&self) -> Result<(), ProgramError> {
+        if self.unrelinquished_votes_count > 0 {
+            return Err(
+                GovernanceError::AllVotesMustBeRelinquishedToWithdrawGoverningTokens.into(),
+            );
+        }
+
+        if self.outstanding_proposal_count > 0 {
+            return Err(
+                GovernanceError::AllProposalsMustBeFinalisedToWithdrawGoverningTokens.into(),
+            );
+        }
+
+        Ok(())
+    }
+
     /// Decreases outstanding_proposal_count
     pub fn decrease_outstanding_proposal_count(&mut self) {
         // Previous versions didn't use the count and it can be already 0
