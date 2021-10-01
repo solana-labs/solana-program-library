@@ -17,7 +17,7 @@ use solana_sdk::signature::{Keypair, Signer};
 use spl_governance::{
     addins::voter_weight::{VoterWeightAccountType, VoterWeightRecord},
     instruction::{
-        add_signatory, cancel_proposal, cast_vote, create_account_governance2,
+        add_signatory, cancel_proposal, cast_vote, create_account_governance,
         create_mint_governance, create_program_governance, create_proposal, create_realm,
         create_token_governance, deposit_governing_tokens, execute_instruction, finalize_vote,
         flag_instruction_error, insert_instruction, relinquish_vote, remove_instruction,
@@ -945,7 +945,7 @@ impl GovernanceProgramTest {
                 None
             };
 
-        let create_account_governance_instruction = create_account_governance2(
+        let create_account_governance_instruction = create_account_governance(
             &self.program_id,
             &realm_cookie.address,
             &governed_account_cookie.address,
@@ -1315,12 +1315,20 @@ impl GovernanceProgramTest {
 
         let governance_authority = token_owner_record_cookie.get_governance_authority();
 
+        let voter_weight_record =
+            if let Some(voter_weight_record) = &token_owner_record_cookie.voter_weight_record {
+                Some(voter_weight_record.address)
+            } else {
+                None
+            };
+
         let mut create_proposal_instruction = create_proposal(
             &self.program_id,
             &governance_cookie.address,
             &token_owner_record_cookie.address,
             &governance_authority.pubkey(),
             &self.bench.payer.pubkey(),
+            voter_weight_record,
             &governance_cookie.account.realm,
             name.clone(),
             description_link.clone(),
@@ -2087,7 +2095,7 @@ impl GovernanceProgramTest {
     #[allow(dead_code)]
     pub async fn with_voter_weight_addin_deposit(
         &mut self,
-        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        token_owner_record_cookie: &mut TokenOwnerRecordCookie,
     ) -> Result<VoterWeightRecordCookie, ProgramError> {
         let voter_weight_record_account = Keypair::new();
 
@@ -2118,7 +2126,7 @@ impl GovernanceProgramTest {
             .process_transaction(&[deposit_ix], Some(&[&voter_weight_record_account]))
             .await?;
 
-        Ok(VoterWeightRecordCookie {
+        let voter_weight_record_cookie = VoterWeightRecordCookie {
             address: voter_weight_record_account.pubkey(),
             account: VoterWeightRecord {
                 account_type: VoterWeightAccountType::VoterWeightRecord,
@@ -2128,6 +2136,10 @@ impl GovernanceProgramTest {
                 voter_weight: 100,
                 voter_weight_expiry: None,
             },
-        })
+        };
+
+        token_owner_record_cookie.voter_weight_record = Some(voter_weight_record_cookie.clone());
+
+        Ok(voter_weight_record_cookie)
     }
 }

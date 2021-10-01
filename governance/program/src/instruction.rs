@@ -597,31 +597,9 @@ pub fn set_governance_delegate(
     }
 }
 
-/// Creates CreateAccountGovernance instruction
-pub fn create_account_governance(
-    program_id: &Pubkey,
-    // Accounts
-    realm: &Pubkey,
-    governed_account: &Pubkey,
-    token_owner_record: &Pubkey,
-    payer: &Pubkey,
-    // Args
-    config: GovernanceConfig,
-) -> Instruction {
-    create_account_governance2(
-        program_id,
-        realm,
-        governed_account,
-        token_owner_record,
-        payer,
-        None,
-        config,
-    )
-}
-
 /// Creates CreateAccountGovernance instruction using optional voter weight addin
 #[allow(clippy::too_many_arguments)]
-pub fn create_account_governance2(
+pub fn create_account_governance(
     program_id: &Pubkey,
     // Accounts
     realm: &Pubkey,
@@ -645,11 +623,7 @@ pub fn create_account_governance2(
         AccountMeta::new_readonly(sysvar::rent::id(), false),
     ];
 
-    if let Some(voter_weight_record) = voter_weight_record {
-        let realm_addins_address = get_realm_addins_address(program_id, realm);
-        accounts.push(AccountMeta::new_readonly(realm_addins_address, false));
-        accounts.push(AccountMeta::new(voter_weight_record, false));
-    }
+    with_voter_weight_accounts(program_id, &mut accounts, realm, voter_weight_record);
 
     let instruction = GovernanceInstruction::CreateAccountGovernance { config };
 
@@ -792,6 +766,7 @@ pub fn create_proposal(
     proposal_owner_record: &Pubkey,
     governance_authority: &Pubkey,
     payer: &Pubkey,
+    voter_weight_record: Option<Pubkey>,
     // Args
     realm: &Pubkey,
     name: String,
@@ -806,7 +781,7 @@ pub fn create_proposal(
         &proposal_index.to_le_bytes(),
     );
 
-    let accounts = vec![
+    let mut accounts = vec![
         AccountMeta::new_readonly(*realm, false),
         AccountMeta::new(proposal_address, false),
         AccountMeta::new(*governance, false),
@@ -817,6 +792,8 @@ pub fn create_proposal(
         AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];
+
+    with_voter_weight_accounts(program_id, &mut accounts, realm, voter_weight_record);
 
     let instruction = GovernanceInstruction::CreateProposal {
         name,
@@ -1281,5 +1258,19 @@ pub fn set_realm_config(
         program_id: *program_id,
         accounts,
         data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Adds voter weight accounts if voter_weight_record is Some
+fn with_voter_weight_accounts(
+    program_id: &Pubkey,
+    accounts: &mut Vec<AccountMeta>,
+    realm: &Pubkey,
+    voter_weight_record: Option<Pubkey>,
+) {
+    if let Some(voter_weight_record) = voter_weight_record {
+        let realm_addins_address = get_realm_addins_address(program_id, realm);
+        accounts.push(AccountMeta::new_readonly(realm_addins_address, false));
+        accounts.push(AccountMeta::new(voter_weight_record, false));
     }
 }

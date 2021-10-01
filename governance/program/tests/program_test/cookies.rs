@@ -159,7 +159,7 @@ pub struct ProposalInstructionCookie {
     pub instruction: Instruction,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct VoterWeightRecordCookie {
     pub address: Pubkey,
     pub account: VoterWeightRecord,
