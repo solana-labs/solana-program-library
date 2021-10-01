@@ -1,9 +1,9 @@
 use super::error::UtilError;
 use solana_program::{
     account_info::AccountInfo,
+    entrypoint::ProgramResult,
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack},
-    entrypoint::ProgramResult,
     pubkey::Pubkey,
 };
 use spl_associated_token_account::get_associated_token_address;

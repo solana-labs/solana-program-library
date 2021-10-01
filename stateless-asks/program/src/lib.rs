@@ -1,6 +1,6 @@
+pub mod error;
 pub mod instruction;
 pub mod processor;
-pub mod error;
 pub mod validation_utils;
 
 #[cfg(not(feature = "no-entrypoint"))]

@@ -3,15 +3,10 @@
 use crate::instruction::StatelessOfferInstruction;
 use crate::validation_utils::{assert_is_ata, assert_keys_equal};
 use {
-    borsh::{BorshDeserialize},
+    borsh::BorshDeserialize,
     solana_program::{
-        account_info::next_account_info,
-        account_info::AccountInfo,
-        entrypoint::ProgramResult,
-        msg,
-        program::{invoke_signed},
-        program_error::ProgramError,
-        pubkey::Pubkey,
+        account_info::next_account_info, account_info::AccountInfo, entrypoint::ProgramResult, msg,
+        program::invoke_signed, program_error::ProgramError, pubkey::Pubkey,
     },
 };
 
@@ -36,7 +31,11 @@ impl Processor {
             &[],
             amount,
         )?;
-        invoke_signed(&ix, &[source, destination, authority, token_program], &[seeds])
+        invoke_signed(
+            &ix,
+            &[source, destination, authority, token_program],
+            &[seeds],
+        )
     }
 
     /// Processes `Initialize` instruction.
@@ -58,7 +57,7 @@ impl Processor {
         let taker_src_mint = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
         let transfer_authority = next_account_info(account_info_iter)?;
-        let seeds= &[
+        let seeds = &[
             b"stateless_offer",
             maker_src_account.key.as_ref(),
             maker_dst_account.key.as_ref(),
@@ -106,13 +105,7 @@ impl Processor {
                 bump_seed,
             } => {
                 msg!("Instruction: accept offer");
-                Self::process_accept_offer(
-                    program_id,
-                    accounts,
-                    maker_size,
-                    taker_size,
-                    bump_seed,
-                )
+                Self::process_accept_offer(program_id, accounts, maker_size, taker_size, bump_seed)
             }
         }
     }
