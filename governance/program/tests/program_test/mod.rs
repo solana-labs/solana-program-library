@@ -951,6 +951,7 @@ impl GovernanceProgramTest {
             &governed_account_cookie.address,
             &token_owner_record_cookie.address,
             &self.bench.payer.pubkey(),
+            &token_owner_record_cookie.token_owner.pubkey(),
             voter_weight_record,
             governance_config.clone(),
         );
@@ -965,7 +966,10 @@ impl GovernanceProgramTest {
         };
 
         self.bench
-            .process_transaction(&[create_account_governance_instruction], None)
+            .process_transaction(
+                &[create_account_governance_instruction],
+                Some(&[&token_owner_record_cookie.token_owner]),
+            )
             .await?;
 
         let account_governance_address = get_account_governance_address(
@@ -1097,6 +1101,7 @@ impl GovernanceProgramTest {
             &governed_program_cookie.upgrade_authority.pubkey(),
             &token_owner_record_cookie.address,
             &self.bench.payer.pubkey(),
+            &token_owner_record_cookie.token_owner.pubkey(),
             voter_weight_record,
             config.clone(),
             governed_program_cookie.transfer_upgrade_authority,
@@ -1104,7 +1109,10 @@ impl GovernanceProgramTest {
 
         instruction_override(&mut create_program_governance_instruction);
 
-        let default_signers = &[&governed_program_cookie.upgrade_authority];
+        let default_signers = &[
+            &governed_program_cookie.upgrade_authority,
+            &token_owner_record_cookie.token_owner,
+        ];
         let signers = signers_override.unwrap_or(default_signers);
 
         self.bench
@@ -1175,6 +1183,7 @@ impl GovernanceProgramTest {
             &governed_mint_cookie.mint_authority.pubkey(),
             &token_owner_record_cookie.address,
             &self.bench.payer.pubkey(),
+            &token_owner_record_cookie.token_owner.pubkey(),
             voter_weight_record,
             config.clone(),
             governed_mint_cookie.transfer_mint_authority,
@@ -1182,7 +1191,10 @@ impl GovernanceProgramTest {
 
         instruction_override(&mut create_mint_governance_instruction);
 
-        let default_signers = &[&governed_mint_cookie.mint_authority];
+        let default_signers = &[
+            &governed_mint_cookie.mint_authority,
+            &token_owner_record_cookie.token_owner,
+        ];
         let signers = signers_override.unwrap_or(default_signers);
 
         self.bench
@@ -1253,6 +1265,7 @@ impl GovernanceProgramTest {
             &governed_token_cookie.token_owner.pubkey(),
             &token_owner_record_cookie.address,
             &self.bench.payer.pubkey(),
+            &token_owner_record_cookie.token_owner.pubkey(),
             voter_weight_record,
             config.clone(),
             governed_token_cookie.transfer_token_owner,
@@ -1260,7 +1273,10 @@ impl GovernanceProgramTest {
 
         instruction_override(&mut create_token_governance_instruction);
 
-        let default_signers = &[&governed_token_cookie.token_owner];
+        let default_signers = &[
+            &governed_token_cookie.token_owner,
+            &token_owner_record_cookie.token_owner,
+        ];
         let signers = signers_override.unwrap_or(default_signers);
 
         self.bench
