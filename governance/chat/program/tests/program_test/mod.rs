@@ -5,7 +5,9 @@ use solana_program_test::processor;
 
 use solana_sdk::{signature::Keypair, signer::Signer};
 use spl_governance::{
-    instruction::{create_proposal, create_realm, deposit_governing_tokens},
+    instruction::{
+        create_account_governance, create_proposal, create_realm, deposit_governing_tokens,
+    },
     state::{
         enums::{MintMaxVoteWeightSource, VoteThresholdPercentage},
         governance::{get_account_governance_address, GovernanceConfig},
@@ -85,6 +87,7 @@ impl GovernanceChatProgramTest {
             &governing_token_mint_keypair.pubkey(),
             &self.bench.payer.pubkey(),
             None,
+            None,
             name.clone(),
             1,
             MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,
@@ -147,18 +150,19 @@ impl GovernanceChatProgramTest {
             &token_owner.pubkey(),
         );
 
-        let create_account_governance_ix = create_account_governance2(
+        let create_account_governance_ix = create_account_governance(
             &self.governance_program_id,
             &realm_address,
             &governed_account_address,
             &token_owner_record_address,
             &self.bench.payer.pubkey(),
+            &token_owner.pubkey(),
             None,
             governance_config,
         );
 
         self.bench
-            .process_transaction(&[create_account_governance_ix], None)
+            .process_transaction(&[create_account_governance_ix], Some(&[&token_owner]))
             .await
             .unwrap();
 
@@ -172,7 +176,7 @@ impl GovernanceChatProgramTest {
 
         let proposal_name = "Proposal #1".to_string();
         let description_link = "Proposal Description".to_string();
-        let proposal_index = 0;
+        let proposal_index: u32 = 0;
 
         let create_proposal_ix = create_proposal(
             &self.governance_program_id,
@@ -180,6 +184,7 @@ impl GovernanceChatProgramTest {
             &token_owner_record_address,
             &token_owner.pubkey(),
             &self.bench.payer.pubkey(),
+            None,
             &realm_address,
             proposal_name,
             description_link.clone(),
