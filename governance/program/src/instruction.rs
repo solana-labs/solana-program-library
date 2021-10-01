@@ -644,6 +644,7 @@ pub fn create_program_governance(
     governed_program_upgrade_authority: &Pubkey,
     token_owner_record: &Pubkey,
     payer: &Pubkey,
+    voter_weight_record: Option<Pubkey>,
     // Args
     config: GovernanceConfig,
     transfer_upgrade_authority: bool,
@@ -652,7 +653,7 @@ pub fn create_program_governance(
         get_program_governance_address(program_id, realm, governed_program);
     let governed_program_data_address = get_program_data_address(governed_program);
 
-    let accounts = vec![
+    let mut accounts = vec![
         AccountMeta::new_readonly(*realm, false),
         AccountMeta::new(program_governance_address, false),
         AccountMeta::new_readonly(*governed_program, false),
@@ -664,6 +665,8 @@ pub fn create_program_governance(
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
     ];
+
+    with_voter_weight_accounts(program_id, &mut accounts, realm, voter_weight_record);
 
     let instruction = GovernanceInstruction::CreateProgramGovernance {
         config,
