@@ -54,10 +54,14 @@ pub fn process_create_token_governance(
     let token_owner_record_data =
         get_token_owner_record_data_for_realm(program_id, token_owner_record_info, realm_info.key)?;
 
-    token_owner_record_data.assert_can_create_governance(
+    let voter_weight = token_owner_record_data.resolve_voter_weight(
+        program_id,
+        account_info_iter,
+        realm_info.key,
         &realm_data,
-        token_owner_record_data.governing_token_deposit_amount,
     )?;
+
+    token_owner_record_data.assert_can_create_governance(&realm_data, voter_weight)?;
 
     let token_governance_data = Governance {
         account_type: GovernanceAccountType::TokenGovernance,

@@ -727,13 +727,14 @@ pub fn create_token_governance(
     governed_token_owner: &Pubkey,
     token_owner_record: &Pubkey,
     payer: &Pubkey,
+    voter_weight_record: Option<Pubkey>,
     // Args
     config: GovernanceConfig,
     transfer_token_owner: bool,
 ) -> Instruction {
     let token_governance_address = get_token_governance_address(program_id, realm, governed_token);
 
-    let accounts = vec![
+    let mut accounts = vec![
         AccountMeta::new_readonly(*realm, false),
         AccountMeta::new(token_governance_address, false),
         AccountMeta::new(*governed_token, false),
@@ -744,6 +745,8 @@ pub fn create_token_governance(
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
     ];
+
+    with_voter_weight_accounts(program_id, &mut accounts, realm, voter_weight_record);
 
     let instruction = GovernanceInstruction::CreateTokenGovernance {
         config,
