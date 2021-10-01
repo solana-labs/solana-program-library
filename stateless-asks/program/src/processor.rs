@@ -10,7 +10,6 @@ use {
         entrypoint::ProgramResult,
         msg,
         program::{invoke, invoke_signed},
-        program_error::ProgramError,
         pubkey::Pubkey,
     },
 };
