@@ -66,8 +66,8 @@ pub fn accept_offer(
         AccountMeta::new(*taker_dst_account, false),
         AccountMeta::new_readonly(*maker_mint, false),
         AccountMeta::new_readonly(*taker_mint, false),
-        AccountMeta::new_readonly(*token_program_id, false),
         AccountMeta::new_readonly(*authority, false),
+        AccountMeta::new_readonly(*token_program_id, false),
     ];
     Instruction {
         program_id: *program_id,

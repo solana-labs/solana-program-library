@@ -49,8 +49,8 @@ fn process_accept_offer(
     let taker_dst_account = next_account_info(account_info_iter)?;
     let maker_src_mint = next_account_info(account_info_iter)?;
     let taker_src_mint = next_account_info(account_info_iter)?;
-    let token_program_info = next_account_info(account_info_iter)?;
     let transfer_authority = next_account_info(account_info_iter)?;
+    let token_program_info = next_account_info(account_info_iter)?;
     let seeds = &[
         b"stateless_offer",
         maker_src_account.key.as_ref(),
