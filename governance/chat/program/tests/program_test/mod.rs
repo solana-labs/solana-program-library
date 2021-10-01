@@ -5,9 +5,7 @@ use solana_program_test::processor;
 
 use solana_sdk::{signature::Keypair, signer::Signer};
 use spl_governance::{
-    instruction::{
-        create_account_governance, create_proposal, create_realm, deposit_governing_tokens,
-    },
+    instruction::{create_proposal, create_realm, deposit_governing_tokens},
     state::{
         enums::{MintMaxVoteWeightSource, VoteThresholdPercentage},
         governance::{get_account_governance_address, GovernanceConfig},
@@ -149,12 +147,13 @@ impl GovernanceChatProgramTest {
             &token_owner.pubkey(),
         );
 
-        let create_account_governance_ix = create_account_governance(
+        let create_account_governance_ix = create_account_governance2(
             &self.governance_program_id,
             &realm_address,
             &governed_account_address,
             &token_owner_record_address,
             &self.bench.payer.pubkey(),
+            None,
             governance_config,
         );
 

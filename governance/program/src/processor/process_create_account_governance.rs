@@ -1,7 +1,6 @@
 //! Program state processor
 
 use crate::{
-    addins::voter_weight::get_voter_weight_record_data_for_token_owner_record,
     state::{
         enums::GovernanceAccountType,
         governance::{
@@ -9,7 +8,6 @@ use crate::{
             GovernanceConfig,
         },
         realm::get_realm_data,
-        realm_addins::get_realm_addins_data_for_realm,
         token_owner_record::get_token_owner_record_data_for_realm,
     },
     tools::account::create_and_serialize_account_signed,
@@ -48,26 +46,12 @@ pub fn process_create_account_governance(
     let token_owner_record_data =
         get_token_owner_record_data_for_realm(program_id, token_owner_record_info, realm_info.key)?;
 
-    // if the realm uses addin for community voter weight then use the externally provided weight
-    let voter_weight = if realm_data.config.use_community_voter_weight_addin
-        && realm_data.community_mint == token_owner_record_data.governing_token_mint
-    {
-        let realm_addins_info = next_account_info(account_info_iter)?; // 7
-        let voter_weight_record_info = next_account_info(account_info_iter)?; // 8
-
-        let realm_addins_data =
-            get_realm_addins_data_for_realm(program_id, realm_addins_info, realm_info.key)?;
-
-        let voter_weight_record_data = get_voter_weight_record_data_for_token_owner_record(
-            &realm_addins_data.community_voter_weight.unwrap(),
-            voter_weight_record_info,
-            &token_owner_record_data,
-        )?;
-        voter_weight_record_data.assert_is_up_to_date()?;
-        voter_weight_record_data.voter_weight
-    } else {
-        token_owner_record_data.governing_token_deposit_amount
-    };
+    let voter_weight = token_owner_record_data.resolve_voter_weight(
+        program_id,
+        account_info_iter,
+        realm_info.key,
+        &realm_data,
+    )?;
 
     token_owner_record_data.assert_can_create_governance(&realm_data, voter_weight)?;
 

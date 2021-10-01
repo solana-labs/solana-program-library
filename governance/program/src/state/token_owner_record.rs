@@ -1,6 +1,9 @@
 //! Token Owner Record Account
 
+use std::slice::Iter;
+
 use crate::{
+    addins::voter_weight::get_voter_weight_record_data_for_token_owner_record,
     error::GovernanceError,
     state::{enums::GovernanceAccountType, governance::GovernanceConfig, realm::Realm},
     tools::account::{get_account_data, AccountMaxSize},
@@ -9,9 +12,13 @@ use crate::{
 
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
-    account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
+    account_info::{next_account_info, AccountInfo},
+    program_error::ProgramError,
+    program_pack::IsInitialized,
     pubkey::Pubkey,
 };
+
+use super::realm_addins::get_realm_addins_data_for_realm;
 
 /// Governance Token Owner Record
 /// Account PDA seeds: ['governance', realm, token_mint, token_owner ]
@@ -95,8 +102,9 @@ impl TokenOwnerRecord {
         &self,
         realm_data: &Realm,
         config: &GovernanceConfig,
+        voter_weight: u64,
     ) -> Result<(), ProgramError> {
-        let min_tokens_to_create_proposal =
+        let min_weight_to_create_proposal =
             if self.governing_token_mint == realm_data.community_mint {
                 config.min_community_tokens_to_create_proposal
             } else if Some(self.governing_token_mint) == realm_data.config.council_mint {
@@ -105,11 +113,11 @@ impl TokenOwnerRecord {
                 return Err(GovernanceError::InvalidGoverningTokenMint.into());
             };
 
-        if self.governing_token_deposit_amount < min_tokens_to_create_proposal {
+        if voter_weight < min_weight_to_create_proposal {
             return Err(GovernanceError::NotEnoughTokensToCreateProposal.into());
         }
 
-        // The number of outstanding proposals is currently restricted to 1
+        // The number of outstanding proposals is currently restricted to 10
         // If there is a need to change it in the future then it should be added to realm or governance config
         if self.outstanding_proposal_count >= 10 {
             return Err(GovernanceError::TooManyOutstandingProposals.into());
@@ -148,6 +156,36 @@ impl TokenOwnerRecord {
         if self.outstanding_proposal_count != 0 {
             self.outstanding_proposal_count =
                 self.outstanding_proposal_count.checked_sub(1).unwrap();
+        }
+    }
+
+    /// Resolves voter's weight using either the amount deposited into the realm or weight provided by voter weight addin (if configured)
+    pub fn resolve_voter_weight(
+        &self,
+        program_id: &Pubkey,
+        account_info_iter: &mut Iter<AccountInfo>,
+        realm: &Pubkey,
+        realm_data: &Realm,
+    ) -> Result<u64, ProgramError> {
+        // if the realm uses addin for community voter weight then use the externally provided weight
+        if realm_data.config.use_community_voter_weight_addin
+            && realm_data.community_mint == self.governing_token_mint
+        {
+            let realm_addins_info = next_account_info(account_info_iter)?;
+            let voter_weight_record_info = next_account_info(account_info_iter)?;
+
+            let realm_addins_data =
+                get_realm_addins_data_for_realm(program_id, realm_addins_info, realm)?;
+
+            let voter_weight_record_data = get_voter_weight_record_data_for_token_owner_record(
+                &realm_addins_data.community_voter_weight.unwrap(),
+                voter_weight_record_info,
+                &self,
+            )?;
+            voter_weight_record_data.assert_is_up_to_date()?;
+            Ok(voter_weight_record_data.voter_weight)
+        } else {
+            Ok(self.governing_token_deposit_amount)
         }
     }
 }
