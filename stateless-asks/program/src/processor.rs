@@ -67,7 +67,7 @@ fn process_accept_offer(
     assert_is_ata(taker_src_account, taker_wallet.key, taker_src_mint.key)?;
     assert_is_ata(taker_dst_account, taker_wallet.key, maker_src_mint.key)?;
     msg!("start");
-    // Both of these transfers will fail if the the `transfer_authority` is the the delegate of these ATA's
+    // Both of these transfers will fail if the `transfer_authority` is the delegate of these ATA's
     // One consideration is that the taker can get tricked in the case that the maker size is greater than
     // the token amount in the maker's ATA, but these stateless offers should just be invalidated in
     // the client.
