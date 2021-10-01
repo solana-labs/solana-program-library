@@ -180,7 +180,7 @@ impl TokenOwnerRecord {
             let voter_weight_record_data = get_voter_weight_record_data_for_token_owner_record(
                 &realm_addins_data.community_voter_weight.unwrap(),
                 voter_weight_record_info,
-                &self,
+                self,
             )?;
             voter_weight_record_data.assert_is_up_to_date()?;
             Ok(voter_weight_record_data.voter_weight)
