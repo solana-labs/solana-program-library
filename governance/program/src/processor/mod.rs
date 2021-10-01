@@ -9,6 +9,7 @@ mod process_create_program_governance;
 mod process_create_proposal;
 mod process_create_realm;
 mod process_create_token_governance;
+mod process_create_token_owner_record;
 mod process_deposit_governing_tokens;
 mod process_execute_instruction;
 mod process_finalize_vote;
@@ -36,6 +37,7 @@ use process_create_program_governance::*;
 use process_create_proposal::*;
 use process_create_realm::*;
 use process_create_token_governance::*;
+use process_create_token_owner_record::*;
 use process_deposit_governing_tokens::*;
 use process_execute_instruction::*;
 use process_finalize_vote::*;
@@ -175,6 +177,9 @@ pub fn process_instruction(
         } => process_set_realm_authority(program_id, accounts, new_realm_authority),
         GovernanceInstruction::SetRealmConfig { config_args } => {
             process_set_realm_config(program_id, accounts, config_args)
+        }
+        GovernanceInstruction::CreateTokenOwnerRecord {} => {
+            process_create_token_owner_record(program_id, accounts)
         }
     }
 }

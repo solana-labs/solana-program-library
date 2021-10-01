@@ -407,6 +407,10 @@ pub enum GovernanceInstruction {
         /// Realm config args
         config_args: RealmConfigArgs,
     },
+
+    /// Creates TokenOwnerRecord with 0 deposit amount.
+    /// It's used to register TokenOwner when voter weight addin is used
+    CreateTokenOwnerRecord {},
 }
 
 /// Creates CreateRealm instruction
@@ -1292,5 +1296,39 @@ pub fn with_voter_weight_accounts(
         let realm_addins_address = get_realm_addins_address(program_id, realm);
         accounts.push(AccountMeta::new_readonly(realm_addins_address, false));
         accounts.push(AccountMeta::new(voter_weight_record, false));
+    }
+}
+
+/// Creates CreateTokenOwnerRecord instruction
+pub fn create_token_owner_record(
+    program_id: &Pubkey,
+    // Accounts
+    realm: &Pubkey,
+    governing_token_owner: &Pubkey,
+    governing_token_mint: &Pubkey,
+    payer: &Pubkey,
+) -> Instruction {
+    let token_owner_record_address = get_token_owner_record_address(
+        program_id,
+        realm,
+        governing_token_mint,
+        governing_token_owner,
+    );
+
+    let accounts = vec![
+        AccountMeta::new_readonly(*realm, false),
+        AccountMeta::new_readonly(*governing_token_owner, false),
+        AccountMeta::new(token_owner_record_address, false),
+        AccountMeta::new_readonly(*governing_token_mint, false),
+        AccountMeta::new_readonly(*payer, true),
+        AccountMeta::new_readonly(system_program::id(), false),
+    ];
+
+    let instruction = GovernanceInstruction::CreateTokenOwnerRecord {};
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
     }
 }

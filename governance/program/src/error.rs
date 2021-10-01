@@ -343,6 +343,10 @@ pub enum GovernanceError {
     /// Invalid RealmAddins for Realm
     #[error("Invalid RealmAddins for Realm")]
     InvalidRealmAddinsForRealm,
+
+    /// TokenOwnerRecord already exists
+    #[error("TokenOwnerRecord already exists")]
+    TokenOwnerRecordAlreadyExists,
 }
 
 impl PrintProgramError for GovernanceError {
