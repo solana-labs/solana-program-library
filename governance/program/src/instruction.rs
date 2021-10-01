@@ -606,6 +606,7 @@ pub fn create_account_governance(
     governed_account: &Pubkey,
     token_owner_record: &Pubkey,
     payer: &Pubkey,
+    governance_authority: &Pubkey,
     voter_weight_record: Option<Pubkey>,
     // Args
     config: GovernanceConfig,
@@ -621,6 +622,7 @@ pub fn create_account_governance(
         AccountMeta::new_readonly(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
+        AccountMeta::new_readonly(*governance_authority, true),
     ];
 
     with_voter_weight_accounts(program_id, &mut accounts, realm, voter_weight_record);
@@ -644,6 +646,7 @@ pub fn create_program_governance(
     governed_program_upgrade_authority: &Pubkey,
     token_owner_record: &Pubkey,
     payer: &Pubkey,
+    governance_authority: &Pubkey,
     voter_weight_record: Option<Pubkey>,
     // Args
     config: GovernanceConfig,
@@ -664,6 +667,7 @@ pub fn create_program_governance(
         AccountMeta::new_readonly(bpf_loader_upgradeable::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
+        AccountMeta::new_readonly(*governance_authority, true),
     ];
 
     with_voter_weight_accounts(program_id, &mut accounts, realm, voter_weight_record);
@@ -690,6 +694,7 @@ pub fn create_mint_governance(
     governed_mint_authority: &Pubkey,
     token_owner_record: &Pubkey,
     payer: &Pubkey,
+    governance_authority: &Pubkey,
     voter_weight_record: Option<Pubkey>,
     // Args
     config: GovernanceConfig,
@@ -707,6 +712,7 @@ pub fn create_mint_governance(
         AccountMeta::new_readonly(spl_token::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
+        AccountMeta::new_readonly(*governance_authority, true),
     ];
 
     with_voter_weight_accounts(program_id, &mut accounts, realm, voter_weight_record);
@@ -733,6 +739,7 @@ pub fn create_token_governance(
     governed_token_owner: &Pubkey,
     token_owner_record: &Pubkey,
     payer: &Pubkey,
+    governance_authority: &Pubkey,
     voter_weight_record: Option<Pubkey>,
     // Args
     config: GovernanceConfig,
@@ -750,6 +757,7 @@ pub fn create_token_governance(
         AccountMeta::new_readonly(spl_token::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
+        AccountMeta::new_readonly(*governance_authority, true),
     ];
 
     with_voter_weight_accounts(program_id, &mut accounts, realm, voter_weight_record);

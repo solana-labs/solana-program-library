@@ -152,7 +152,7 @@ async fn test_create_program_governance_without_transferring_upgrade_authority_w
             |i| {
                 i.accounts[4].is_signer = false; // governed_program_upgrade_authority
             },
-            Some(&[]),
+            Some(&[&token_owner_record_cookie.token_owner]),
         )
         .await
         .err()

@@ -140,7 +140,7 @@ async fn test_create_token_governance_without_transferring_token_owner_with_owne
             |i| {
                 i.accounts[3].is_signer = false; // governed_token_owner
             },
-            Some(&[]),
+            Some(&[&token_owner_record_cookie.token_owner]),
         )
         .await
         .err()

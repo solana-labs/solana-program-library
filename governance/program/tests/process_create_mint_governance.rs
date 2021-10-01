@@ -142,7 +142,7 @@ async fn test_create_mint_governance_without_transferring_mint_authority_with_au
             |i| {
                 i.accounts[3].is_signer = false; // governed_mint_authority
             },
-            Some(&[]),
+            Some(&[&token_owner_record_cookie.token_owner]),
         )
         .await
         .err()
