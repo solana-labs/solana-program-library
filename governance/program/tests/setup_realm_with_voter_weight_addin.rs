@@ -30,7 +30,7 @@ async fn test_create_realm_with_voter_weight_addin() {
         .get_realm_config_data(&realm_config_cookie.address)
         .await;
 
-    assert_eq!(realm_config_cookie.account_data, realm_config_data);
+    assert_eq!(realm_config_cookie.account, realm_config_data);
 }
 
 #[tokio::test]
@@ -68,7 +68,7 @@ async fn test_set_realm_voter_weight_addin_for_realm_without_addins() {
         .get_realm_config_data(&realm_config_cookie.address)
         .await;
 
-    assert_eq!(realm_config_cookie.account_data, realm_config_data);
+    assert_eq!(realm_config_cookie.account, realm_config_data);
 }
 
 #[tokio::test]
@@ -107,7 +107,7 @@ async fn test_set_realm_voter_weight_addin_for_realm_without_council_and_addins(
         .get_realm_config_data(&realm_config_cookie.address)
         .await;
 
-    assert_eq!(realm_config_cookie.account_data, realm_config_data);
+    assert_eq!(realm_config_cookie.account, realm_config_data);
 }
 
 #[tokio::test]
@@ -148,7 +148,7 @@ async fn test_set_realm_voter_weight_addin_for_realm_with_existing_voter_weight_
         .get_realm_config_data(&realm_config_cookie.address)
         .await;
 
-    assert_eq!(realm_config_cookie.account_data, realm_config_data);
+    assert_eq!(realm_config_cookie.account, realm_config_data);
     assert_eq!(
         realm_config_data.community_voter_weight,
         Some(community_voter_weight_addin_address)
