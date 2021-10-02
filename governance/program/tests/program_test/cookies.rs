@@ -37,7 +37,7 @@ pub struct RealmCookie {
 #[derive(Debug)]
 pub struct RealmConfigCookie {
     pub address: Pubkey,
-    pub account_data: RealmConfigAccount,
+    pub account: RealmConfigAccount,
 }
 
 #[derive(Debug)]

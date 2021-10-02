@@ -1,4 +1,4 @@
-//! RRealmConfig account
+//! RealmConfig account
 
 use solana_program::{
     account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
@@ -14,7 +14,7 @@ use crate::{
 };
 
 /// RealmConfig account
-/// The account is a optional extension the RealmConfig stored on Realm account
+/// The account is an optional extension to RealmConfig stored on Realm account
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct RealmConfigAccount {
     /// Governance account type
