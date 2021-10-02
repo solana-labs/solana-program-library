@@ -31,11 +31,17 @@ pub struct RealmConfigAccount {
 
     /// Reserved for council voter weight addin
     pub reserved_2: Option<Pubkey>,
+
+    /// Reserved for council max vote weight addin
+    pub reserved_3: Option<Pubkey>,
+
+    /// Reserved
+    pub reserved: [u8; 128],
 }
 
 impl AccountMaxSize for RealmConfigAccount {
     fn get_max_size(&self) -> Option<usize> {
-        Some(1 + 32 + 33 * 3)
+        Some(1 + 32 + 33 * 4 + 128)
     }
 }
 
@@ -91,6 +97,8 @@ mod test {
             community_voter_weight: Some(Pubkey::new_unique()),
             reserved_1: Some(Pubkey::new_unique()),
             reserved_2: Some(Pubkey::new_unique()),
+            reserved_3: Some(Pubkey::new_unique()),
+            reserved: [0; 128],
         };
 
         let size = realm_config.try_to_vec().unwrap().len();

@@ -79,6 +79,8 @@ pub fn process_set_realm_config(
                 community_voter_weight: Some(*community_voter_weight_addin_info.key),
                 reserved_1: None,
                 reserved_2: None,
+                reserved_3: None,
+                reserved: [0; 128],
             };
 
             let rent = Rent::get().unwrap();

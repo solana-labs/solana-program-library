@@ -94,6 +94,8 @@ pub fn process_create_realm(
             community_voter_weight: Some(*community_voter_weight_addin_info.key),
             reserved_1: None,
             reserved_2: None,
+            reserved_3: None,
+            reserved: [0; 128],
         };
 
         create_and_serialize_account_signed::<RealmConfigAccount>(

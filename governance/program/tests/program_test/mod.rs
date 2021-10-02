@@ -253,6 +253,8 @@ impl GovernanceProgramTest {
                     community_voter_weight: self.voter_weight_addin_id,
                     reserved_1: None,
                     reserved_2: None,
+                    reserved_3: None,
+                    reserved: [0; 128],
                 },
             })
         } else {
@@ -814,6 +816,8 @@ impl GovernanceProgramTest {
                     ),
                     reserved_1: None,
                     reserved_2: None,
+                    reserved_3: None,
+                    reserved: [0; 128],
                 },
             })
         }
