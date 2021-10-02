@@ -118,6 +118,9 @@ pub enum GovernanceInstruction {
     ///   4. `[signer]` Payer
     ///   5. `[]` System program
     ///   6. `[]` Sysvar Rent
+    ///   7. `[signer]` Governance authority
+    ///   8. `[]` Optional Realm Config
+    ///   9. `[]` Optional Voter Weight Record
     CreateAccountGovernance {
         /// Governance config
         #[allow(dead_code)]
@@ -136,6 +139,9 @@ pub enum GovernanceInstruction {
     ///   7. `[]` bpf_upgradeable_loader program
     ///   8. `[]` System program
     ///   9. `[]` Sysvar Rent
+    ///   10. `[signer]` Governance authority
+    ///   11. `[]` Optional Realm Config
+    ///   12. `[]` Optional Voter Weight Record
     CreateProgramGovernance {
         /// Governance config
         #[allow(dead_code)]
@@ -159,6 +165,8 @@ pub enum GovernanceInstruction {
     ///   6. `[]` System program
     ///   7. `[]` Rent sysvar
     ///   8. `[]` Clock sysvar
+    ///   9. `[]` Optional Realm Config
+    ///   10. `[]` Optional Voter Weight Record
     CreateProposal {
         #[allow(dead_code)]
         /// UTF-8 encoded name of the proposal
@@ -268,6 +276,8 @@ pub enum GovernanceInstruction {
     ///   8. `[]` System program
     ///   9. `[]` Rent sysvar
     ///   10. `[]` Clock sysvar
+    ///   11. `[]` Optional Realm Config
+    ///   12. `[]` Optional Voter Weight Record
     CastVote {
         #[allow(dead_code)]
         /// Yes/No vote
@@ -322,6 +332,9 @@ pub enum GovernanceInstruction {
     ///   6. `[]` SPL Token program
     ///   7. `[]` System program
     ///   8. `[]` Sysvar Rent
+    ///   8. `[signer]` Governance authority
+    ///   9. `[]` Optional Realm Config
+    ///   10. `[]` Optional Voter Weight Record
     CreateMintGovernance {
         #[allow(dead_code)]
         /// Governance config
@@ -345,6 +358,9 @@ pub enum GovernanceInstruction {
     ///   6. `[]` SPL Token program
     ///   7. `[]` System program
     ///   8. `[]` Sysvar Rent
+    ///   9. `[signer]` Governance authority
+    ///   10. `[]` Optional Realm Config
+    ///   11. `[]` Optional Voter Weight Record   
     CreateTokenGovernance {
         #[allow(dead_code)]
         /// Governance config
@@ -408,8 +424,15 @@ pub enum GovernanceInstruction {
         config_args: RealmConfigArgs,
     },
 
-    /// Creates TokenOwnerRecord with 0 deposit amount.
-    /// It's used to register TokenOwner when voter weight addin is used
+    /// Creates TokenOwnerRecord with 0 deposit amount
+    /// It's used to register TokenOwner when voter weight addin is used and the Governance program doesn't take deposits
+    ///
+    ///   0. `[]` Realm account
+    ///   1. `[]` Governing Token Owner account
+    ///   2. `[writable]` TokenOwnerRecord account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
+    ///   3. `[]` Governing Token Mint   
+    ///   4. `[signer]` Payer
+    ///   5. `[]` System
     CreateTokenOwnerRecord {},
 }
 
@@ -1295,7 +1318,7 @@ pub fn with_voter_weight_accounts(
     if let Some(voter_weight_record) = voter_weight_record {
         let realm_config_address = get_realm_config_address(program_id, realm);
         accounts.push(AccountMeta::new_readonly(realm_config_address, false));
-        accounts.push(AccountMeta::new(voter_weight_record, false));
+        accounts.push(AccountMeta::new_readonly(voter_weight_record, false));
     }
 }
 
