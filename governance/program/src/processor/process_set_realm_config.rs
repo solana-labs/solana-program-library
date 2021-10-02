@@ -14,8 +14,8 @@ use crate::{
     state::{
         enums::GovernanceAccountType,
         realm::{assert_valid_realm_config_args, get_realm_data_for_authority, RealmConfigArgs},
-        realm_addins::{
-            get_realm_addins_address_seeds, get_realm_addins_data_for_realm, RealmAddins,
+        realm_config::{
+            get_realm_config_address_seeds, get_realm_config_data_for_realm, RealmConfigAccount,
         },
     },
     tools::account::create_and_serialize_account_signed,
@@ -66,15 +66,15 @@ pub fn process_set_realm_config(
 
     let payer_info = next_account_info(account_info_iter)?; // 4
     let system_info = next_account_info(account_info_iter)?; // 5
-    let realm_addins_info = next_account_info(account_info_iter)?; // 6
+    let realm_config_info = next_account_info(account_info_iter)?; // 6
 
     // Setup community voter weight addin
     if realm_config_args.use_community_voter_weight_addin {
         let community_voter_weight_addin_info = next_account_info(account_info_iter)?; // 7
 
-        if realm_addins_info.data_is_empty() {
-            let realm_addins_data = RealmAddins {
-                account_type: GovernanceAccountType::RealmAddins,
+        if realm_config_info.data_is_empty() {
+            let realm_config_data = RealmConfigAccount {
+                account_type: GovernanceAccountType::RealmConfig,
                 realm: *realm_info.key,
                 community_voter_weight: Some(*community_voter_weight_addin_info.key),
                 reserved_1: None,
@@ -82,26 +82,26 @@ pub fn process_set_realm_config(
             };
 
             let rent = Rent::get().unwrap();
-            create_and_serialize_account_signed::<RealmAddins>(
+            create_and_serialize_account_signed::<RealmConfigAccount>(
                 payer_info,
-                realm_addins_info,
-                &realm_addins_data,
-                &get_realm_addins_address_seeds(realm_info.key),
+                realm_config_info,
+                &realm_config_data,
+                &get_realm_config_address_seeds(realm_info.key),
                 program_id,
                 system_info,
                 &rent,
             )?;
         } else {
-            let mut realm_addins_data =
-                get_realm_addins_data_for_realm(program_id, realm_addins_info, realm_info.key)?;
-            realm_addins_data.community_voter_weight = Some(*community_voter_weight_addin_info.key);
-            realm_addins_data.serialize(&mut *realm_addins_info.data.borrow_mut())?;
+            let mut realm_config_data =
+                get_realm_config_data_for_realm(program_id, realm_config_info, realm_info.key)?;
+            realm_config_data.community_voter_weight = Some(*community_voter_weight_addin_info.key);
+            realm_config_data.serialize(&mut *realm_config_info.data.borrow_mut())?;
         }
     } else if realm_data.config.use_community_voter_weight_addin {
-        let mut realm_addins_data =
-            get_realm_addins_data_for_realm(program_id, realm_addins_info, realm_info.key)?;
-        realm_addins_data.community_voter_weight = None;
-        realm_addins_data.serialize(&mut *realm_addins_info.data.borrow_mut())?;
+        let mut realm_config_data =
+            get_realm_config_data_for_realm(program_id, realm_config_info, realm_info.key)?;
+        realm_config_data.community_voter_weight = None;
+        realm_config_data.serialize(&mut *realm_config_info.data.borrow_mut())?;
     }
 
     realm_data.config.community_mint_max_vote_weight_source =

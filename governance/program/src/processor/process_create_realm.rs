@@ -16,7 +16,7 @@ use crate::{
             assert_valid_realm_config_args, get_governing_token_holding_address_seeds,
             get_realm_address_seeds, Realm, RealmConfig, RealmConfigArgs,
         },
-        realm_addins::{get_realm_addins_address_seeds, RealmAddins},
+        realm_config::{get_realm_config_address_seeds, RealmConfigAccount},
     },
     tools::{
         account::create_and_serialize_account_signed, spl_token::create_spl_token_account_signed,
@@ -85,22 +85,22 @@ pub fn process_create_realm(
     };
 
     if config_args.use_community_voter_weight_addin {
-        let realm_addins_info = next_account_info(account_info_iter)?; // 10
+        let realm_config_info = next_account_info(account_info_iter)?; // 10
         let community_voter_weight_addin_info = next_account_info(account_info_iter)?; //11
 
-        let realm_addins_data = RealmAddins {
-            account_type: GovernanceAccountType::RealmAddins,
+        let realm_config_data = RealmConfigAccount {
+            account_type: GovernanceAccountType::RealmConfig,
             realm: *realm_info.key,
             community_voter_weight: Some(*community_voter_weight_addin_info.key),
             reserved_1: None,
             reserved_2: None,
         };
 
-        create_and_serialize_account_signed::<RealmAddins>(
+        create_and_serialize_account_signed::<RealmConfigAccount>(
             payer_info,
-            realm_addins_info,
-            &realm_addins_data,
-            &get_realm_addins_address_seeds(realm_info.key),
+            realm_config_info,
+            &realm_config_data,
+            &get_realm_config_address_seeds(realm_info.key),
             program_id,
             system_info,
             rent,

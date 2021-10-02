@@ -4,7 +4,7 @@ use spl_governance::{
     addins::voter_weight::VoterWeightRecord,
     state::{
         governance::Governance, proposal::Proposal, proposal_instruction::ProposalInstruction,
-        realm::Realm, realm_addins::RealmAddins, signatory_record::SignatoryRecord,
+        realm::Realm, realm_config::RealmConfigAccount, signatory_record::SignatoryRecord,
         token_owner_record::TokenOwnerRecord, vote_record::VoteRecord,
     },
 };
@@ -31,13 +31,13 @@ pub struct RealmCookie {
 
     pub realm_authority: Option<Keypair>,
 
-    pub realm_addins: Option<RealmAddinsCookie>,
+    pub realm_config: Option<RealmConfigCookie>,
 }
 
 #[derive(Debug)]
-pub struct RealmAddinsCookie {
+pub struct RealmConfigCookie {
     pub address: Pubkey,
-    pub account_data: RealmAddins,
+    pub account_data: RealmConfigAccount,
 }
 
 #[derive(Debug)]

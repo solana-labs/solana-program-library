@@ -24,13 +24,13 @@ async fn test_create_realm_with_voter_weight_addin() {
 
     assert!(realm_account_data.config.use_community_voter_weight_addin);
 
-    let realm_addins_cookie = realm_cookie.realm_addins.unwrap();
+    let realm_config_cookie = realm_cookie.realm_config.unwrap();
 
-    let realm_addins_data = governance_test
-        .get_realm_addins_data(&realm_addins_cookie.address)
+    let realm_config_data = governance_test
+        .get_realm_config_data(&realm_config_cookie.address)
         .await;
 
-    assert_eq!(realm_addins_cookie.account_data, realm_addins_data);
+    assert_eq!(realm_config_cookie.account_data, realm_config_data);
 }
 
 #[tokio::test]
@@ -62,13 +62,13 @@ async fn test_set_realm_voter_weight_addin_for_realm_without_addins() {
 
     assert!(realm_account_data.config.use_community_voter_weight_addin);
 
-    let realm_addins_cookie = realm_cookie.realm_addins.unwrap();
+    let realm_config_cookie = realm_cookie.realm_config.unwrap();
 
-    let realm_addins_data = governance_test
-        .get_realm_addins_data(&realm_addins_cookie.address)
+    let realm_config_data = governance_test
+        .get_realm_config_data(&realm_config_cookie.address)
         .await;
 
-    assert_eq!(realm_addins_cookie.account_data, realm_addins_data);
+    assert_eq!(realm_config_cookie.account_data, realm_config_data);
 }
 
 #[tokio::test]
@@ -101,13 +101,13 @@ async fn test_set_realm_voter_weight_addin_for_realm_without_council_and_addins(
 
     assert!(realm_account_data.config.use_community_voter_weight_addin);
 
-    let realm_addins_cookie = realm_cookie.realm_addins.unwrap();
+    let realm_config_cookie = realm_cookie.realm_config.unwrap();
 
-    let realm_addins_data = governance_test
-        .get_realm_addins_data(&realm_addins_cookie.address)
+    let realm_config_data = governance_test
+        .get_realm_config_data(&realm_config_cookie.address)
         .await;
 
-    assert_eq!(realm_addins_cookie.account_data, realm_addins_data);
+    assert_eq!(realm_config_cookie.account_data, realm_config_data);
 }
 
 #[tokio::test]
@@ -142,15 +142,15 @@ async fn test_set_realm_voter_weight_addin_for_realm_with_existing_voter_weight_
 
     assert!(realm_account_data.config.use_community_voter_weight_addin);
 
-    let realm_addins_cookie = realm_cookie.realm_addins.unwrap();
+    let realm_config_cookie = realm_cookie.realm_config.unwrap();
 
-    let realm_addins_data = governance_test
-        .get_realm_addins_data(&realm_addins_cookie.address)
+    let realm_config_data = governance_test
+        .get_realm_config_data(&realm_config_cookie.address)
         .await;
 
-    assert_eq!(realm_addins_cookie.account_data, realm_addins_data);
+    assert_eq!(realm_config_cookie.account_data, realm_config_data);
     assert_eq!(
-        realm_addins_data.community_voter_weight,
+        realm_config_data.community_voter_weight,
         Some(community_voter_weight_addin_address)
     );
 }
@@ -209,9 +209,9 @@ async fn test_set_realm_config_with_no_voter_weight_addin_for_realm_with_existin
 
     assert!(!realm_account_data.config.use_community_voter_weight_addin);
 
-    let realm_addins_data = governance_test
-        .get_realm_addins_data(&realm_cookie.realm_addins.unwrap().address)
+    let realm_config_data = governance_test
+        .get_realm_config_data(&realm_cookie.realm_config.unwrap().address)
         .await;
 
-    assert!(realm_addins_data.community_voter_weight.is_none());
+    assert!(realm_config_data.community_voter_weight.is_none());
 }
