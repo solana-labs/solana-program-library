@@ -44,7 +44,7 @@ use spl_governance::{
             get_governing_token_holding_address, get_realm_address, Realm, RealmConfig,
             RealmConfigArgs,
         },
-        realm_addins::{get_realm_addins_address, RealmAddins},
+        realm_config::{get_realm_config_address, RealmConfigAccount},
         signatory_record::{get_signatory_record_address, SignatoryRecord},
         token_owner_record::{get_token_owner_record_address, TokenOwnerRecord},
         vote_record::{get_vote_record_address, VoteRecord},
@@ -55,7 +55,7 @@ use spl_governance::{
 pub mod cookies;
 
 use crate::program_test::cookies::{
-    RealmAddinsCookie, SignatoryRecordCookie, VoterWeightRecordCookie,
+    RealmConfigCookie, SignatoryRecordCookie, VoterWeightRecordCookie,
 };
 
 use spl_governance_test_sdk::{
@@ -244,11 +244,11 @@ impl GovernanceProgramTest {
             },
         };
 
-        let realm_addins_cookie = if config_args.use_community_voter_weight_addin {
-            Some(RealmAddinsCookie {
-                address: get_realm_addins_address(&self.program_id, &realm_address),
-                account_data: RealmAddins {
-                    account_type: GovernanceAccountType::RealmAddins,
+        let realm_config_cookie = if config_args.use_community_voter_weight_addin {
+            Some(RealmConfigCookie {
+                address: get_realm_config_address(&self.program_id, &realm_address),
+                account_data: RealmConfigAccount {
+                    account_type: GovernanceAccountType::RealmConfig,
                     realm: realm_address,
                     community_voter_weight: self.voter_weight_addin_id,
                     reserved_1: None,
@@ -269,7 +269,7 @@ impl GovernanceProgramTest {
             council_token_holding_account: council_token_holding_address,
             council_mint_authority: council_token_mint_authority,
             realm_authority: Some(realm_authority),
-            realm_addins: realm_addins_cookie,
+            realm_config: realm_config_cookie,
         }
     }
 
@@ -342,7 +342,7 @@ impl GovernanceProgramTest {
                 realm_cookie.council_mint_authority.as_ref().unwrap(),
             )),
             realm_authority: Some(realm_authority),
-            realm_addins: None,
+            realm_config: None,
         }
     }
 
@@ -804,10 +804,10 @@ impl GovernanceProgramTest {
             } else {
                 5
             };
-            realm_cookie.realm_addins = Some(RealmAddinsCookie {
-                address: get_realm_addins_address(&self.program_id, &realm_cookie.address),
-                account_data: RealmAddins {
-                    account_type: GovernanceAccountType::RealmAddins,
+            realm_cookie.realm_config = Some(RealmConfigCookie {
+                address: get_realm_config_address(&self.program_id, &realm_cookie.address),
+                account_data: RealmConfigAccount {
+                    account_type: GovernanceAccountType::RealmConfig,
                     realm: realm_cookie.address,
                     community_voter_weight: Some(
                         set_realm_config_ix.accounts[community_voter_weight_addin_index].pubkey,
@@ -2071,9 +2071,12 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn get_realm_addins_data(&mut self, realm_addins_address: &Pubkey) -> RealmAddins {
+    pub async fn get_realm_config_data(
+        &mut self,
+        realm_config_address: &Pubkey,
+    ) -> RealmConfigAccount {
         self.bench
-            .get_borsh_account::<RealmAddins>(realm_addins_address)
+            .get_borsh_account::<RealmConfigAccount>(realm_config_address)
             .await
     }
 

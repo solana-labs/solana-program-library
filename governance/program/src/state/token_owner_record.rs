@@ -7,7 +7,7 @@ use crate::{
     error::GovernanceError,
     state::{
         enums::GovernanceAccountType, governance::GovernanceConfig, realm::Realm,
-        realm_addins::get_realm_addins_data_for_realm,
+        realm_config::get_realm_config_data_for_realm,
     },
     tools::account::{get_account_data, AccountMaxSize},
     PROGRAM_AUTHORITY_SEED,
@@ -189,14 +189,14 @@ impl TokenOwnerRecord {
         if realm_data.config.use_community_voter_weight_addin
             && realm_data.community_mint == self.governing_token_mint
         {
-            let realm_addins_info = next_account_info(account_info_iter)?;
+            let realm_config_info = next_account_info(account_info_iter)?;
             let voter_weight_record_info = next_account_info(account_info_iter)?;
 
-            let realm_addins_data =
-                get_realm_addins_data_for_realm(program_id, realm_addins_info, realm)?;
+            let realm_config_data =
+                get_realm_config_data_for_realm(program_id, realm_config_info, realm)?;
 
             let voter_weight_record_data = get_voter_weight_record_data_for_token_owner_record(
-                &realm_addins_data.community_voter_weight.unwrap(),
+                &realm_config_data.community_voter_weight.unwrap(),
                 voter_weight_record_info,
                 self,
             )?;

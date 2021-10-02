@@ -340,9 +340,9 @@ pub enum GovernanceError {
     #[error("VoterWeightRecord expired")]
     VoterWeightRecordExpired,
 
-    /// Invalid RealmAddins for Realm
-    #[error("Invalid RealmAddins for Realm")]
-    InvalidRealmAddinsForRealm,
+    /// Invalid RealmConfig for Realm
+    #[error("Invalid RealmConfig for Realm")]
+    InvalidRealmConfigForRealm,
 
     /// TokenOwnerRecord already exists
     #[error("TokenOwnerRecord already exists")]

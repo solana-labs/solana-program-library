@@ -10,7 +10,7 @@ use crate::{
         proposal::get_proposal_address,
         proposal_instruction::{get_proposal_instruction_address, InstructionData},
         realm::{get_governing_token_holding_address, get_realm_address, RealmConfigArgs},
-        realm_addins::get_realm_addins_address,
+        realm_config::get_realm_config_address,
         signatory_record::get_signatory_record_address,
         token_owner_record::get_token_owner_record_address,
         vote_record::get_vote_record_address,
@@ -56,8 +56,8 @@ pub enum GovernanceInstruction {
     /// 9. `[writable]` Council Token Holding account - optional unless council is used. PDA seeds: ['governance',realm,council_mint]
     ///     The account will be created with the Realm PDA as its owner
 
-    /// 10. `[writable]` RealmAddins account. PDA seeds: ['realm-addins', realm]
-    /// 11. `[]` Optional Community Voter Weight Addins Program Id
+    /// 10. `[writable]` RealmConfig account. PDA seeds: ['realm-config', realm]
+    /// 11. `[]` Optional Community Voter Weight Addin Program Id
     CreateRealm {
         #[allow(dead_code)]
         /// UTF-8 encoded Governance Realm name
@@ -400,8 +400,8 @@ pub enum GovernanceInstruction {
     ///       The account will be created with the Realm PDA as its owner
     ///   4. `[signer]` Payer
     ///   5. `[]` System
-    ///   6. `[writable]` RealmAddins account. PDA seeds: ['realm-addins', realm]
-    ///   7. `[]` Optional Community Voter Weight Addins Program Id    
+    ///   6. `[writable]` RealmConfig account. PDA seeds: ['realm-config', realm]
+    ///   7. `[]` Optional Community Voter Weight Addin Program Id    
     SetRealmConfig {
         #[allow(dead_code)]
         /// Realm config args
@@ -454,8 +454,8 @@ pub fn create_realm(
         false
     };
 
-    let realm_addins_address = get_realm_addins_address(program_id, &realm_address);
-    accounts.push(AccountMeta::new(realm_addins_address, false));
+    let realm_config_address = get_realm_config_address(program_id, &realm_address);
+    accounts.push(AccountMeta::new(realm_config_address, false));
 
     let use_community_voter_weight_addin =
         if let Some(community_voter_weight_addin) = community_voter_weight_addin {
@@ -1253,10 +1253,10 @@ pub fn set_realm_config(
     accounts.push(AccountMeta::new_readonly(*payer, true));
     accounts.push(AccountMeta::new_readonly(system_program::id(), false));
 
-    // Always pass realm_addins_address because it's needed when use_community_voter_weight_addin is set to true
+    // Always pass realm_config_address because it's needed when use_community_voter_weight_addin is set to true
     // but also when it's set to false and the addin is being  removed from the realm
-    let realm_addins_address = get_realm_addins_address(program_id, realm);
-    accounts.push(AccountMeta::new(realm_addins_address, false));
+    let realm_config_address = get_realm_config_address(program_id, realm);
+    accounts.push(AccountMeta::new(realm_config_address, false));
 
     let use_community_voter_weight_addin =
         if let Some(community_voter_weight_addin) = community_voter_weight_addin {
@@ -1293,8 +1293,8 @@ pub fn with_voter_weight_accounts(
     voter_weight_record: Option<Pubkey>,
 ) {
     if let Some(voter_weight_record) = voter_weight_record {
-        let realm_addins_address = get_realm_addins_address(program_id, realm);
-        accounts.push(AccountMeta::new_readonly(realm_addins_address, false));
+        let realm_config_address = get_realm_config_address(program_id, realm);
+        accounts.push(AccountMeta::new_readonly(realm_config_address, false));
         accounts.push(AccountMeta::new(voter_weight_record, false));
     }
 }
