@@ -247,7 +247,7 @@ impl GovernanceProgramTest {
         let realm_config_cookie = if config_args.use_community_voter_weight_addin {
             Some(RealmConfigCookie {
                 address: get_realm_config_address(&self.program_id, &realm_address),
-                account_data: RealmConfigAccount {
+                account: RealmConfigAccount {
                     account_type: GovernanceAccountType::RealmConfig,
                     realm: realm_address,
                     community_voter_weight: self.voter_weight_addin_id,
@@ -808,7 +808,7 @@ impl GovernanceProgramTest {
             };
             realm_cookie.realm_config = Some(RealmConfigCookie {
                 address: get_realm_config_address(&self.program_id, &realm_cookie.address),
-                account_data: RealmConfigAccount {
+                account: RealmConfigAccount {
                     account_type: GovernanceAccountType::RealmConfig,
                     realm: realm_cookie.address,
                     community_voter_weight: Some(
