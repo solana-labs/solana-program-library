@@ -9,7 +9,7 @@ use crate::{
     },
     error::SwapError,
     instruction::{
-        DepositAllTokenTypes, DepositSingleTokenTypeExactAmountIn, Initialize, Swap,
+        DepositAllTokenTypes, DepositSingleTokenTypeExactAmountIn, Initialize, Swap, DeregisterPool,
         SwapInstruction, WithdrawAllTokenTypes, WithdrawSingleTokenTypeExactAmountOut,
     },
     state::{SwapState, SwapV1, SwapVersion, PoolRegistry},
@@ -1312,6 +1312,45 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes DeregisterPool
+    pub fn process_deregister_pool(
+        program_id: &Pubkey,
+        pool_index: u64,
+        accounts: &[AccountInfo],
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let payer_info = next_account_info(account_info_iter)?;
+        let pool_registry_account = next_account_info(account_info_iter)?;
+        
+        if !payer_info.is_signer {
+            return Err(ProgramError::MissingRequiredSignature);
+        }
+
+        let pool_registry_seed = "poolregistry";
+        let pool_registry_key = Pubkey::create_with_seed(
+            &payer_info.key,
+            &pool_registry_seed,
+            &program_id,
+        )
+        .unwrap();
+
+        if pool_registry_key != *pool_registry_account.key {
+            msg!("Error: pool registry pubkey incorrect");
+            return Err(ProgramError::InvalidArgument);
+        }
+
+        let mut pool_registry = PoolRegistry::load(pool_registry_account, program_id)?;
+        if !pool_registry.is_initialized {
+            return Err(ProgramError::AccountAlreadyInitialized.into());
+        }
+
+        //we took the arg as a u64 for consistency, convert to u32
+        let pool_index: u32 = pool_index.try_into().unwrap();
+        pool_registry.remove(pool_index)?;
+
+        Ok(())
+    }
+
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         Self::process_with_constraints(program_id, accounts, input, &SWAP_CONSTRAINTS)
@@ -1419,6 +1458,12 @@ impl Processor {
             }) => {
                 msg!("Instruction: RoutedSwap");
                 Self::process_routed_swap(program_id, amount_in, minimum_amount_out, accounts)
+            }
+            SwapInstruction::DeregisterPool(DeregisterPool {
+                pool_index,
+            }) => {
+                msg!("Instruction: DeregisterPool");
+                Self::process_deregister_pool(program_id, pool_index, accounts)
             }
         }
     }

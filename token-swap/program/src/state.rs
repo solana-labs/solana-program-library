@@ -58,6 +58,24 @@ impl PoolRegistry {
         self.accounts[PoolRegistry::index_of(self.registry_size)] = *key;
         self.registry_size += 1;
     }
+
+    /// Remove the item at the provided index by replacing it with the last item in
+    /// the registry and decreasing the size by 1. If the index provided IS the last
+    /// item, the size is simply decreased by 1.
+    pub fn remove(&mut self, index: u32) -> Result<(), ProgramError> {
+        if index >= self.registry_size {
+            return Err(ProgramError::InvalidArgument);
+        }
+        else if index == self.registry_size - 1 {
+            self.registry_size -= 1;
+        } else {
+            let last = self.accounts[PoolRegistry::index_of(self.registry_size - 1)];
+            self.registry_size -= 1;
+            self.accounts[PoolRegistry::index_of(index)] = last;
+        }
+        Ok(())
+    }
+
     /// Gets a key by index
     pub fn index_of(counter: u32) -> usize {
         std::convert::TryInto::try_into(counter).unwrap()
@@ -364,6 +382,32 @@ mod tests {
         assert_eq!(registry_size, 2);
         assert_eq!(pool_registry.accounts[0], TEST_TOKEN_A);
         assert_eq!(pool_registry.accounts[1], TEST_TOKEN_B);
+    }
+
+    #[test]
+    fn pool_registry_remove() {
+        let mut pool_registry: Box<PoolRegistry> = try_zeroed_box().unwrap();
+        pool_registry.append(&Pubkey::new_unique());
+        pool_registry.append(&Pubkey::new_unique());
+        let mid = Pubkey::new_unique();
+        pool_registry.append(&mid);
+        pool_registry.append(&Pubkey::new_unique());
+        let last = Pubkey::new_unique();
+        pool_registry.append(&last);
+
+        assert_eq!(pool_registry.accounts[2], mid);
+        assert_eq!(pool_registry.accounts[4], last);
+        let regsize_ref = std::ptr::addr_of!(pool_registry.registry_size);
+        let registry_size = unsafe { regsize_ref.read_unaligned() };
+        assert_eq!(registry_size, 5u32);
+
+        pool_registry.remove(2).unwrap();
+
+        assert_eq!(pool_registry.accounts[2], last);
+        let regsize_ref = std::ptr::addr_of!(pool_registry.registry_size);
+        let registry_size = unsafe { regsize_ref.read_unaligned() };
+        assert_eq!(registry_size, 4u32);
+
     }
 
     #[test]

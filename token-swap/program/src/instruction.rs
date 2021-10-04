@@ -95,6 +95,14 @@ pub struct WithdrawSingleTokenTypeExactAmountOut {
     pub maximum_pool_token_amount: u64,
 }
 
+/// DeregisterPool instruction data
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq)]
+pub struct DeregisterPool {
+    /// The pubkey of the pool to deregister
+    pub pool_index: u64,
+}
+
 /// Instructions supported by the token swap program.
 #[repr(C)]
 #[derive(Debug, PartialEq)]
@@ -221,6 +229,14 @@ pub enum SwapInstruction {
     ///   14. `[writable]` Pool token mint, to generate trading fees
     ///   15. `[writable]` refund account to unwrap WSOL to
     RoutedSwap(Swap),
+
+    ///   Deregisters a pool from the pool registry
+    ///
+    /// Accounts expected:
+    ///
+    /// 0. `[signer]` The account of deployer.
+    /// 1. `[writable]` The pool registry account.
+    DeregisterPool(DeregisterPool),
 }
 
 impl SwapInstruction {
@@ -299,7 +315,13 @@ impl SwapInstruction {
                     amount_in,
                     minimum_amount_out,
                 })
-            }
+            },
+            8 => {
+                let (pool_index, _rest) = Self::unpack_u64(rest)?;
+                Self::DeregisterPool(DeregisterPool {
+                    pool_index,
+                })
+            },
             _ => return Err(SwapError::InvalidInstruction.into()),
         })
     }
@@ -394,6 +416,12 @@ impl SwapInstruction {
                 buf.push(7);
                 buf.extend_from_slice(&amount_in.to_le_bytes());
                 buf.extend_from_slice(&minimum_amount_out.to_le_bytes());
+            }
+            Self::DeregisterPool(DeregisterPool {
+                pool_index,
+            }) => {
+                buf.push(8);
+                buf.extend_from_slice(&pool_index.to_le_bytes());
             }
         }
         buf
@@ -706,6 +734,29 @@ pub fn initialize_registry(
     pool_registry_pubkey: &Pubkey
 ) -> Result<Instruction, ProgramError> {
     let init_data = SwapInstruction::InitializeRegistry();
+    let data = init_data.pack();
+
+    let accounts = vec![
+        AccountMeta::new(*payer, true),
+        AccountMeta::new(*pool_registry_pubkey, false),
+    ];
+
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    })
+}
+
+
+/// Creates an 'deregister_pool' instruction.
+pub fn deregister_pool(
+    program_id: &Pubkey,
+    payer: &Pubkey,
+    pool_registry_pubkey: &Pubkey,
+    pool_index: u64,
+) -> Result<Instruction, ProgramError> {
+    let init_data = SwapInstruction::DeregisterPool(DeregisterPool{pool_index});
     let data = init_data.pack();
 
     let accounts = vec![
