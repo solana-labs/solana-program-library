@@ -77,7 +77,11 @@ pub enum GovernanceInstruction {
     ///  7. `[]` System
     ///  8. `[]` SPL Token
     ///  9. `[]` Sysvar Rent
-    DepositGoverningTokens {},
+    DepositGoverningTokens {
+        /// The amount to deposit into the realm
+        #[allow(dead_code)]
+        amount: u64,
+    },
 
     /// Withdraws governing tokens (Community or Council) from Governance Realm and downgrades your voter weight within the Realm
     /// Note: It's only possible to withdraw tokens if the Voter doesn't have any outstanding active votes
@@ -466,6 +470,7 @@ pub fn deposit_governing_tokens(
     governing_token_transfer_authority: &Pubkey,
     payer: &Pubkey,
     // Args
+    amount: u64,
     governing_token_mint: &Pubkey,
 ) -> Instruction {
     let token_owner_record_address = get_token_owner_record_address(
@@ -491,7 +496,7 @@ pub fn deposit_governing_tokens(
         AccountMeta::new_readonly(sysvar::rent::id(), false),
     ];
 
-    let instruction = GovernanceInstruction::DepositGoverningTokens {};
+    let instruction = GovernanceInstruction::DepositGoverningTokens { amount };
 
     Instruction {
         program_id: *program_id,

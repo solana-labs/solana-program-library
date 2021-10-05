@@ -86,8 +86,8 @@ pub fn process_instruction(
             process_create_realm(program_id, accounts, name, config_args)
         }
 
-        GovernanceInstruction::DepositGoverningTokens {} => {
-            process_deposit_governing_tokens(program_id, accounts)
+        GovernanceInstruction::DepositGoverningTokens { amount } => {
+            process_deposit_governing_tokens(program_id, accounts, amount)
         }
 
         GovernanceInstruction::WithdrawGoverningTokens {} => {

@@ -398,6 +398,7 @@ impl GovernanceProgramTest {
             &token_owner.pubkey(),
             &token_owner.pubkey(),
             &self.bench.payer.pubkey(),
+            amount,
             governing_mint,
         );
 
@@ -490,6 +491,7 @@ impl GovernanceProgramTest {
             &token_owner_record_cookie.token_owner.pubkey(),
             &token_owner_record_cookie.token_owner.pubkey(),
             &self.bench.payer.pubkey(),
+            amount,
             governing_token_mint,
         );
 
