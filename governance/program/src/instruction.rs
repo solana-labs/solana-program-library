@@ -461,6 +461,7 @@ pub fn create_realm(
 }
 
 /// Creates DepositGoverningTokens instruction
+#[allow(clippy::too_many_arguments)]
 pub fn deposit_governing_tokens(
     program_id: &Pubkey,
     // Accounts
