@@ -75,6 +75,14 @@ where
             .map_err(TokenError::Client)
     }
 
+    pub fn new(client: Arc<dyn TokenClient<ST>>, address: Pubkey, payer: TS) -> Self {
+        Token {
+            client,
+            pubkey: address,
+            payer,
+        }
+    }
+
     /// Get token address.
     pub fn get_address(&self) -> &Pubkey {
         &self.pubkey
@@ -115,11 +123,7 @@ where
         )
         .await?;
 
-        Ok(Token {
-            client,
-            pubkey: mint_account.pubkey(),
-            payer,
-        })
+        Ok(Self::new(client, mint_account.pubkey(), payer))
     }
 
     /// Get the address for the associated token account.
