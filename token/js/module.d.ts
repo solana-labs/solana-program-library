@@ -257,6 +257,38 @@ declare module '@solana/spl-token' {
       amount: number | u64,
       decimals: number,
     ): TransactionInstruction;
+    static createApproveCheckedInstruction(
+      programId: PublicKey,
+      account: PublicKey,
+      mint: PublicKey,
+      delegate: PublicKey,
+      owner: PublicKey,
+      multiSigners: Array<Signer>,
+      amount: number | u64,
+      decimals: number,
+    ): TransactionInstruction;
+    static createMintToCheckedInstruction(
+      programId: PublicKey,
+      mint: PublicKey,
+      dest: PublicKey,
+      authority: PublicKey,
+      multiSigners: Array<Signer>,
+      amount: number | u64,
+      decimals: number,
+    ): TransactionInstruction;
+    static createBurnCheckedInstruction(
+      programId: PublicKey,
+      mint: PublicKey,
+      account: PublicKey,
+      owner: PublicKey,
+      multiSigners: Array<Signer>,
+      amount: number | u64,
+      decimals: number,
+    ): TransactionInstruction;
+    static createSyncNativeInstruction(
+      programId: PublicKey,
+      nativeAccount: PublicKey,
+    ): TransactionInstruction;
     static createAssociatedTokenAccountInstruction(
       associatedProgramId: PublicKey,
       programId: PublicKey,
