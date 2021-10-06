@@ -1,5 +1,7 @@
 //! Program state processor
 
+use solana_program::program_option::COption;
+
 use crate::instruction::StatelessOfferInstruction;
 use crate::validation_utils::{assert_is_ata, assert_keys_equal};
 use {
@@ -9,6 +11,8 @@ use {
         account_info::AccountInfo,
         entrypoint::ProgramResult,
         msg,
+        program_pack::Pack,
+        program_error::ProgramError,
         program::{invoke, invoke_signed},
         pubkey::Pubkey,
         system_instruction, system_program,
@@ -52,6 +56,12 @@ fn process_accept_offer(
     let taker_src_mint = next_account_info(account_info_iter)?;
     let transfer_authority = next_account_info(account_info_iter)?;
     let token_program_info = next_account_info(account_info_iter)?;
+
+    let maker_src_token_account: spl_token::state::Account = spl_token::state::Account::unpack(&maker_src_account.data.borrow())?;
+    // Ensure that the delegated amount is exactly equal to the maker_size 
+    if maker_src_token_account.delegated_amount != maker_size {
+        return Err(ProgramError::InvalidAccountData.into());
+    }
     let seeds = &[
         b"stateless_offer",
         maker_src_account.key.as_ref(),
@@ -63,6 +73,10 @@ fn process_accept_offer(
     ];
     let authority_key = Pubkey::create_program_address(seeds, program_id).unwrap();
     assert_keys_equal(authority_key, *transfer_authority.key)?;
+    // Ensure that authority is the delegate of this token account
+    if maker_src_token_account.delegate != COption::Some(authority_key) {
+        return Err(ProgramError::InvalidAccountData.into());
+    }
     assert_keys_equal(spl_token::id(), *token_program_info.key)?;
     msg!("start");
     // Both of these transfers will fail if the `transfer_authority` is the delegate of these ATA's
@@ -138,6 +152,13 @@ fn process_accept_offer(
                 token_program_info.clone(),
             ],
         )?;
+    }
+    let maker_src_token_account: spl_token::state::Account = spl_token::state::Account::unpack(&maker_src_account.data.borrow())?;
+    if maker_src_token_account.delegated_amount != 0 {
+        return Err(ProgramError::InvalidAccountData.into());
+    }
+    if maker_src_token_account.delegate != COption::None {
+        return Err(ProgramError::IllegalOwner.into());
     }
     msg!("done tx from taker to maker {}", taker_size);
     msg!("done!");
