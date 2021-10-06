@@ -62,17 +62,22 @@ impl PoolRegistry {
     /// Remove the item at the provided index by replacing it with the last item in
     /// the registry and decreasing the size by 1. If the index provided IS the last
     /// item, the size is simply decreased by 1.
+    /// Also clears out the last item in the list after (or if) moving.
     pub fn remove(&mut self, index: u32) -> Result<(), ProgramError> {
         if index >= self.registry_size {
             return Err(ProgramError::InvalidArgument);
         }
-        else if index == self.registry_size - 1 {
-            self.registry_size -= 1;
-        } else {
-            let last = self.accounts[PoolRegistry::index_of(self.registry_size - 1)];
-            self.registry_size -= 1;
+
+        let last_index = PoolRegistry::index_of(self.registry_size - 1);
+
+        if index != self.registry_size - 1 {
+            let last = self.accounts[last_index];
             self.accounts[PoolRegistry::index_of(index)] = last;
         }
+
+        self.accounts[last_index] = Pubkey::default();
+        self.registry_size -= 1;
+
         Ok(())
     }
 
