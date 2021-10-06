@@ -11,9 +11,9 @@ use {
         account_info::AccountInfo,
         entrypoint::ProgramResult,
         msg,
-        program_pack::Pack,
-        program_error::ProgramError,
         program::{invoke, invoke_signed},
+        program_error::ProgramError,
+        program_pack::Pack,
         pubkey::Pubkey,
         system_instruction, system_program,
     },
@@ -57,8 +57,9 @@ fn process_accept_offer(
     let transfer_authority = next_account_info(account_info_iter)?;
     let token_program_info = next_account_info(account_info_iter)?;
 
-    let maker_src_token_account: spl_token::state::Account = spl_token::state::Account::unpack(&maker_src_account.data.borrow())?;
-    // Ensure that the delegated amount is exactly equal to the maker_size 
+    let maker_src_token_account: spl_token::state::Account =
+        spl_token::state::Account::unpack(&maker_src_account.data.borrow())?;
+    // Ensure that the delegated amount is exactly equal to the maker_size
     if maker_src_token_account.delegated_amount != maker_size {
         return Err(ProgramError::InvalidAccountData.into());
     }
@@ -153,7 +154,8 @@ fn process_accept_offer(
             ],
         )?;
     }
-    let maker_src_token_account: spl_token::state::Account = spl_token::state::Account::unpack(&maker_src_account.data.borrow())?;
+    let maker_src_token_account: spl_token::state::Account =
+        spl_token::state::Account::unpack(&maker_src_account.data.borrow())?;
     if maker_src_token_account.delegated_amount != 0 {
         return Err(ProgramError::InvalidAccountData.into());
     }
