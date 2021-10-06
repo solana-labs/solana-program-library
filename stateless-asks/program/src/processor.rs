@@ -9,10 +9,9 @@ use {
         account_info::AccountInfo,
         entrypoint::ProgramResult,
         msg,
-        system_program,
-        system_instruction,
         program::{invoke, invoke_signed},
         pubkey::Pubkey,
+        system_instruction, system_program,
     },
 };
 
@@ -72,7 +71,12 @@ fn process_accept_offer(
     // the client.
     assert_is_ata(maker_src_account, maker_wallet.key, maker_src_mint.key)?;
     assert_is_ata(taker_dst_account, taker_wallet.key, maker_src_mint.key)?;
-    msg!("Transferring {} from {} to {}", maker_src_mint.key, maker_wallet.key, taker_wallet.key);
+    msg!(
+        "Transferring {} from {} to {}",
+        maker_src_mint.key,
+        maker_wallet.key,
+        taker_wallet.key
+    );
     invoke_signed(
         &spl_token::instruction::transfer(
             token_program_info.key,
@@ -92,23 +96,32 @@ fn process_accept_offer(
     )?;
     msg!("done tx from maker to taker {}", maker_size);
     if *taker_src_mint.key == spl_token::native_mint::id() {
-        msg!("Transferring lamports from {} to {}", taker_wallet.key, maker_wallet.key);
+        msg!(
+            "Transferring lamports from {} to {}",
+            taker_wallet.key,
+            maker_wallet.key
+        );
         assert_keys_equal(*taker_wallet.key, *taker_src_account.key)?;
         assert_keys_equal(*maker_wallet.key, *maker_dst_account.key)?;
         let system_program_info = next_account_info(account_info_iter)?;
         assert_keys_equal(system_program::id(), *system_program_info.key)?;
         invoke(
-            &system_instruction::transfer(
-                taker_src_account.key,
-                maker_dst_account.key,
-                taker_size,
-            ),
-            &[taker_src_account.clone(), maker_dst_account.clone(), system_program_info.clone()],
+            &system_instruction::transfer(taker_src_account.key, maker_dst_account.key, taker_size),
+            &[
+                taker_src_account.clone(),
+                maker_dst_account.clone(),
+                system_program_info.clone(),
+            ],
         )?;
     } else {
         assert_is_ata(maker_dst_account, maker_wallet.key, taker_src_mint.key)?;
         assert_is_ata(taker_src_account, taker_wallet.key, taker_src_mint.key)?;
-        msg!("Transferring {} from {} to {}", taker_src_mint.key, taker_wallet.key, maker_wallet.key);
+        msg!(
+            "Transferring {} from {} to {}",
+            taker_src_mint.key,
+            taker_wallet.key,
+            maker_wallet.key
+        );
         invoke(
             &spl_token::instruction::transfer(
                 token_program_info.key,
