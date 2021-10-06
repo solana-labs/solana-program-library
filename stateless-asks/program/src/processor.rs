@@ -62,15 +62,13 @@ fn process_accept_offer(
     ];
     let authority_key = Pubkey::create_program_address(seeds, program_id).unwrap();
     assert_keys_equal(authority_key, *transfer_authority.key)?;
-    assert_is_ata(maker_src_account, maker_wallet.key, maker_src_mint.key)?;
-    assert_is_ata(maker_dst_account, maker_wallet.key, taker_src_mint.key)?;
-    assert_is_ata(taker_src_account, taker_wallet.key, taker_src_mint.key)?;
-    assert_is_ata(taker_dst_account, taker_wallet.key, maker_src_mint.key)?;
     msg!("start");
     // Both of these transfers will fail if the `transfer_authority` is the delegate of these ATA's
     // One consideration is that the taker can get tricked in the case that the maker size is greater than
     // the token amount in the maker's ATA, but these stateless offers should just be invalidated in
     // the client.
+    assert_is_ata(maker_src_account, maker_wallet.key, maker_src_mint.key)?;
+    assert_is_ata(taker_dst_account, taker_wallet.key, maker_src_mint.key)?;
     invoke_signed(
         &spl_token::instruction::transfer(
             token_program_info.key,
@@ -89,6 +87,8 @@ fn process_accept_offer(
         &[seeds],
     )?;
     msg!("done tx from maker to taker {}", maker_size);
+    assert_is_ata(maker_dst_account, maker_wallet.key, taker_src_mint.key)?;
+    assert_is_ata(taker_src_account, taker_wallet.key, taker_src_mint.key)?;
     invoke(
         &spl_token::instruction::transfer(
             token_program_info.key,
