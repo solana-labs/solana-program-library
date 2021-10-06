@@ -409,6 +409,19 @@ pub enum TokenInstruction {
         /// The freeze authority/multisignature of the mint.
         freeze_authority: COption<Pubkey>,
     },
+    /// Like Revoke, but allows the delegate to revoke itself 
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   * Single owner
+    ///   0. `[writable]` The source account.
+    ///   1. `[signer]` The source account owner.
+    ///
+    ///   * Multisignature owner
+    ///   0. `[writable]` The source account.
+    ///   1. `[]` The source account's multisignature owner.
+    ///   2. ..2+M `[signer]` M signer accounts
+    Revoke2,
 }
 impl TokenInstruction {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -529,6 +542,7 @@ impl TokenInstruction {
                     decimals,
                 }
             }
+            21 => Self::Revoke2,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -625,6 +639,7 @@ impl TokenInstruction {
                 buf.extend_from_slice(mint_authority.as_ref());
                 Self::pack_pubkey_option(freeze_authority, &mut buf);
             }
+            &Self::Revoke2 => buf.push(21),
         };
         buf
     }
@@ -1295,6 +1310,33 @@ pub fn sync_native(
         program_id: *token_program_id,
         accounts: vec![AccountMeta::new(*account_pubkey, false)],
         data: TokenInstruction::SyncNative.pack(),
+    })
+}
+
+/// Creates a `Revoke2` instruction.
+pub fn revoke2(
+    token_program_id: &Pubkey,
+    source_pubkey: &Pubkey,
+    owner_pubkey: &Pubkey,
+    signer_pubkeys: &[&Pubkey],
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+    let data = TokenInstruction::Revoke2.pack();
+
+    let mut accounts = Vec::with_capacity(2 + signer_pubkeys.len());
+    accounts.push(AccountMeta::new(*source_pubkey, false));
+    accounts.push(AccountMeta::new_readonly(
+        *owner_pubkey,
+        signer_pubkeys.is_empty(),
+    ));
+    for signer_pubkey in signer_pubkeys.iter() {
+        accounts.push(AccountMeta::new_readonly(**signer_pubkey, true));
+    }
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts,
+        data,
     })
 }
 

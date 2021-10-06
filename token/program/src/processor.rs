@@ -386,6 +386,41 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes an [Revoke2](enum.TokenInstruction.html) instruction.
+    pub fn process_revoke2(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let source_account_info = next_account_info(account_info_iter)?;
+
+        let mut source_account = Account::unpack(&source_account_info.data.borrow())?;
+
+        let owner_info = next_account_info(account_info_iter)?;
+
+        if source_account.is_frozen() {
+            return Err(TokenError::AccountFrozen.into());
+        }
+
+        if source_account.delegate != COption::Some(*owner_info.key) {
+            Self::validate_owner(
+                program_id,
+                &source_account.owner,
+                owner_info,
+                account_info_iter.as_slice(),
+            )?;
+        } else {
+            // If the onwer_info is equal to the current delegate, it may revoke itself if it signs
+            if !owner_info.is_signer {
+                return Err(TokenError::OwnerMismatch.into());
+            }
+        }
+
+        source_account.delegate = COption::None;
+        source_account.delegated_amount = 0;
+
+        Account::pack(source_account, &mut source_account_info.data.borrow_mut())?;
+
+        Ok(())
+    }
+
     /// Processes a [SetAuthority](enum.TokenInstruction.html) instruction.
     pub fn process_set_authority(
         program_id: &Pubkey,
@@ -826,6 +861,10 @@ impl Processor {
                 msg!("Instruction: SyncNative");
                 Self::process_sync_native(program_id, accounts)
             }
+            TokenInstruction::Revoke2 => {
+                msg!("Instruction: Revoke2");
+                Self::process_revoke2(program_id, accounts)
+            }
         }
     }
 
@@ -913,6 +952,7 @@ impl PrintProgramError for TokenError {
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
     use crate::instruction::*;
     use solana_program::{
@@ -6156,5 +6196,159 @@ mod tests {
                 vec![&mut native_account],
             )
         );
+    }
+
+    #[test]
+    fn test_revoke2() {
+        let program_id = crate::id();
+        let mint_key = Pubkey::new_unique();
+        let mut mint_account =
+            SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
+        let token_account_key = Pubkey::new_unique();
+        let mut token_account = SolanaAccount::new(
+            account_minimum_balance() + 50,
+            Account::get_packed_len(),
+            &program_id,
+        );
+
+        let owner_key = Pubkey::new_unique();
+        let mut owner_account = SolanaAccount::default();
+
+        let delegate_key = Pubkey::new_unique();
+        let mut delegate_account = SolanaAccount::default();
+
+        let random_key = Pubkey::new_unique();
+        let mut random_account = SolanaAccount::default();
+
+        let mut rent_sysvar = rent_sysvar();
+
+        // initialize non-native mint
+        do_process_instruction(
+            initialize_mint(&program_id, &mint_key, &owner_key, None, 2).unwrap(),
+            vec![&mut mint_account, &mut rent_sysvar],
+        )
+        .unwrap();
+
+        // initialize non-native account
+        do_process_instruction(
+            initialize_account(&program_id, &token_account_key, &mint_key, &owner_key)
+                .unwrap(),
+            vec![
+                &mut token_account,
+                &mut mint_account,
+                &mut owner_account,
+                &mut rent_sysvar,
+            ],
+        )
+        .unwrap();
+
+        // delegate account 
+        assert_eq!(
+            Ok(()),
+            do_process_instruction(
+                approve(&program_id, &token_account_key, &delegate_key, &owner_key, &[], 1).unwrap(),
+                vec![&mut token_account, &mut delegate_account, &mut owner_account],
+            )
+        );
+
+        let account = Account::unpack_unchecked(&token_account.data).unwrap();
+        // check delegate 
+        assert_eq!(
+            account.delegate,
+            COption::Some(delegate_key)
+        );
+
+        // check delegate 
+        assert_eq!(
+            account.delegated_amount,
+            1, 
+        );
+
+        // revoke account with random account (will fail) 
+        assert_eq!(
+            Err(TokenError::OwnerMismatch.into()),
+            do_process_instruction(
+                revoke2(&program_id, &token_account_key, &random_key, &[]).unwrap(),
+                vec![&mut token_account, &mut random_account],
+            )
+        );
+
+        // revoke account with owner
+        assert_eq!(
+            Ok(()),
+            do_process_instruction(
+                revoke2(&program_id, &token_account_key, &owner_key, &[]).unwrap(),
+                vec![&mut token_account, &mut owner_account],
+            )
+        );
+
+        let account = Account::unpack_unchecked(&token_account.data).unwrap();
+
+        // check delegate 
+        assert_eq!(
+            account.delegate,
+            COption::None
+        );
+
+        // check delegate 
+        assert_eq!(
+            account.delegated_amount,
+            0, 
+        );
+
+        // delegate account 
+        assert_eq!(
+            Ok(()),
+            do_process_instruction(
+                approve(&program_id, &token_account_key, &delegate_key, &owner_key, &[], 1).unwrap(),
+                vec![&mut token_account, &mut delegate_account, &mut owner_account],
+            )
+        );
+
+        let account = Account::unpack_unchecked(&token_account.data).unwrap();
+        // check delegate 
+        assert_eq!(
+            account.delegate,
+            COption::Some(delegate_key)
+        );
+
+        // check delegate 
+        assert_eq!(
+            account.delegated_amount,
+            1, 
+        );
+        
+        // try revoking account with delegate with Revoke, should fail because the delegate cannot revoke
+        assert_eq!(
+            Err(TokenError::OwnerMismatch.into()),
+            do_process_instruction(
+                revoke(&program_id, &token_account_key, &delegate_key, &[]).unwrap(),
+                vec![&mut token_account, &mut delegate_account],
+            )
+        );
+
+        // revoke account with delegate with Revoke2
+        assert_eq!(
+            Ok(()),
+            do_process_instruction(
+                revoke2(&program_id, &token_account_key, &delegate_key, &[]).unwrap(),
+                vec![&mut token_account, &mut delegate_account],
+            )
+        );
+
+        let account = Account::unpack_unchecked(&token_account.data).unwrap();
+
+        // check delegate 
+        assert_eq!(
+            account.delegate,
+            COption::None
+        );
+
+        // check delegate 
+        assert_eq!(
+            account.delegated_amount,
+            0, 
+        );
+
     }
 }
