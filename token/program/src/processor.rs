@@ -6231,8 +6231,7 @@ mod tests {
 
         // initialize non-native account
         do_process_instruction(
-            initialize_account(&program_id, &token_account_key, &mint_key, &owner_key)
-                .unwrap(),
+            initialize_account(&program_id, &token_account_key, &mint_key, &owner_key).unwrap(),
             vec![
                 &mut token_account,
                 &mut mint_account,
@@ -6242,29 +6241,35 @@ mod tests {
         )
         .unwrap();
 
-        // delegate account 
+        // delegate account
         assert_eq!(
             Ok(()),
             do_process_instruction(
-                approve(&program_id, &token_account_key, &delegate_key, &owner_key, &[], 1).unwrap(),
-                vec![&mut token_account, &mut delegate_account, &mut owner_account],
+                approve(
+                    &program_id,
+                    &token_account_key,
+                    &delegate_key,
+                    &owner_key,
+                    &[],
+                    1
+                )
+                .unwrap(),
+                vec![
+                    &mut token_account,
+                    &mut delegate_account,
+                    &mut owner_account
+                ],
             )
         );
 
         let account = Account::unpack_unchecked(&token_account.data).unwrap();
-        // check delegate 
-        assert_eq!(
-            account.delegate,
-            COption::Some(delegate_key)
-        );
+        // check delegate
+        assert_eq!(account.delegate, COption::Some(delegate_key));
 
-        // check delegate 
-        assert_eq!(
-            account.delegated_amount,
-            1, 
-        );
+        // check delegate
+        assert_eq!(account.delegated_amount, 1,);
 
-        // revoke account with random account (will fail) 
+        // revoke account with random account (will fail)
         assert_eq!(
             Err(TokenError::OwnerMismatch.into()),
             do_process_instruction(
@@ -6284,40 +6289,40 @@ mod tests {
 
         let account = Account::unpack_unchecked(&token_account.data).unwrap();
 
-        // check delegate 
-        assert_eq!(
-            account.delegate,
-            COption::None
-        );
+        // check delegate
+        assert_eq!(account.delegate, COption::None);
 
-        // check delegate 
-        assert_eq!(
-            account.delegated_amount,
-            0, 
-        );
+        // check delegate
+        assert_eq!(account.delegated_amount, 0,);
 
-        // delegate account 
+        // delegate account
         assert_eq!(
             Ok(()),
             do_process_instruction(
-                approve(&program_id, &token_account_key, &delegate_key, &owner_key, &[], 1).unwrap(),
-                vec![&mut token_account, &mut delegate_account, &mut owner_account],
+                approve(
+                    &program_id,
+                    &token_account_key,
+                    &delegate_key,
+                    &owner_key,
+                    &[],
+                    1
+                )
+                .unwrap(),
+                vec![
+                    &mut token_account,
+                    &mut delegate_account,
+                    &mut owner_account
+                ],
             )
         );
 
         let account = Account::unpack_unchecked(&token_account.data).unwrap();
-        // check delegate 
-        assert_eq!(
-            account.delegate,
-            COption::Some(delegate_key)
-        );
+        // check delegate
+        assert_eq!(account.delegate, COption::Some(delegate_key));
 
-        // check delegate 
-        assert_eq!(
-            account.delegated_amount,
-            1, 
-        );
-        
+        // check delegate
+        assert_eq!(account.delegated_amount, 1,);
+
         // try revoking account with delegate with Revoke, should fail because the delegate cannot revoke
         assert_eq!(
             Err(TokenError::OwnerMismatch.into()),
@@ -6338,17 +6343,10 @@ mod tests {
 
         let account = Account::unpack_unchecked(&token_account.data).unwrap();
 
-        // check delegate 
-        assert_eq!(
-            account.delegate,
-            COption::None
-        );
+        // check delegate
+        assert_eq!(account.delegate, COption::None);
 
-        // check delegate 
-        assert_eq!(
-            account.delegated_amount,
-            0, 
-        );
-
+        // check delegate
+        assert_eq!(account.delegated_amount, 0,);
     }
 }

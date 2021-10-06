@@ -409,7 +409,7 @@ pub enum TokenInstruction {
         /// The freeze authority/multisignature of the mint.
         freeze_authority: COption<Pubkey>,
     },
-    /// Like Revoke, but allows the delegate to revoke itself 
+    /// Like Revoke, but allows the delegate to revoke itself
     ///
     /// Accounts expected by this instruction:
     ///
