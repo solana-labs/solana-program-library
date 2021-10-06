@@ -82,7 +82,7 @@ async fn success() {
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
     assert_eq!(pre_balance, stake_pool.total_stake_lamports);
 
     let pre_token_supply = get_token_supply(
@@ -137,7 +137,7 @@ async fn success() {
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
     assert_eq!(post_balance, stake_pool.total_stake_lamports);
 
     let post_fee = get_token_balance(
@@ -153,8 +153,8 @@ async fn success() {
     let actual_fee = post_fee - pre_fee;
     assert_eq!(pool_token_supply - pre_token_supply, actual_fee);
 
-    let expected_fee_lamports =
-        (post_balance - pre_balance) * stake_pool.fee.numerator / stake_pool.fee.denominator;
+    let expected_fee_lamports = (post_balance - pre_balance) * stake_pool.epoch_fee.numerator
+        / stake_pool.epoch_fee.denominator;
     let actual_fee_lamports = stake_pool.calc_pool_tokens_for_deposit(actual_fee).unwrap();
     assert_eq!(actual_fee_lamports, expected_fee_lamports);
 
@@ -179,7 +179,7 @@ async fn success_ignoring_extra_lamports() {
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
     assert_eq!(pre_balance, stake_pool.total_stake_lamports);
 
     let pre_token_supply = get_token_supply(

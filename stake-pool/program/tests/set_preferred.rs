@@ -69,7 +69,7 @@ async fn success_deposit() {
     assert!(error.is_none());
 
     let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
-    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
 
     assert_eq!(
         stake_pool.preferred_deposit_validator_vote_address,
@@ -97,7 +97,7 @@ async fn success_withdraw() {
     assert!(error.is_none());
 
     let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
-    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
 
     assert_eq!(stake_pool.preferred_deposit_validator_vote_address, None);
     assert_eq!(
@@ -124,7 +124,7 @@ async fn success_unset() {
     assert!(error.is_none());
 
     let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
-    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
 
     assert_eq!(
         stake_pool.preferred_withdraw_validator_vote_address,
@@ -143,7 +143,7 @@ async fn success_unset() {
     assert!(error.is_none());
 
     let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
-    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
 
     assert_eq!(stake_pool.preferred_withdraw_validator_vote_address, None);
 }

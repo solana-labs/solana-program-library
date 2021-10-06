@@ -98,7 +98,7 @@ pub struct StakePool {
     pub lockup: Lockup,
 
     /// Fee taken as a proportion of rewards each epoch
-    pub fee: Fee,
+    pub epoch_fee: Fee,
 
     /// Fee for next epoch
     pub next_epoch_fee: Option<Fee>,
@@ -113,10 +113,10 @@ pub struct StakePool {
     pub stake_deposit_fee: Fee,
 
     /// Fee assessed on withdrawals
-    pub withdrawal_fee: Fee,
+    pub stake_withdrawal_fee: Fee,
 
-    /// Future withdrawal fee, to be set for the following epoch
-    pub next_withdrawal_fee: Option<Fee>,
+    /// Future stake withdrawal fee, to be set for the following epoch
+    pub next_stake_withdrawal_fee: Option<Fee>,
 
     /// Fees paid out to referrers on referred stake deposits.
     /// Expressed as a percentage (0 - 100) of deposit fees.
@@ -125,7 +125,7 @@ pub struct StakePool {
     pub stake_referral_fee: u8,
 
     /// Toggles whether the `DepositSol` instruction requires a signature from
-    /// the `deposit_authority`
+    /// this `sol_deposit_authority`
     pub sol_deposit_authority: Option<Pubkey>,
 
     /// Fee assessed on SOL deposits
@@ -136,6 +136,16 @@ pub struct StakePool {
     /// i.e. `sol_deposit_fee`% of SOL deposited is collected as deposit fees for every deposit
     /// and `sol_referral_fee`% of the collected SOL deposit fees is paid out to the referrer
     pub sol_referral_fee: u8,
+
+    /// Toggles whether the `WithdrawSol` instruction requires a signature from
+    /// the `deposit_authority`
+    pub sol_withdraw_authority: Option<Pubkey>,
+
+    /// Fee assessed on SOL withdrawals
+    pub sol_withdrawal_fee: Fee,
+
+    /// Future SOL withdrawal fee, to be set for the following epoch
+    pub next_sol_withdrawal_fee: Option<Fee>,
 }
 impl StakePool {
     /// calculate the pool tokens that should be minted for a deposit of `stake_lamports`
@@ -170,8 +180,14 @@ impl StakePool {
 
     /// calculate pool tokens to be deducted as withdrawal fees
     #[inline]
-    pub fn calc_pool_tokens_withdrawal_fee(&self, pool_tokens: u64) -> Option<u64> {
-        u64::try_from(self.withdrawal_fee.apply(pool_tokens)?).ok()
+    pub fn calc_pool_tokens_stake_withdrawal_fee(&self, pool_tokens: u64) -> Option<u64> {
+        u64::try_from(self.stake_withdrawal_fee.apply(pool_tokens)?).ok()
+    }
+
+    /// calculate pool tokens to be deducted as withdrawal fees
+    #[inline]
+    pub fn calc_pool_tokens_sol_withdrawal_fee(&self, pool_tokens: u64) -> Option<u64> {
+        u64::try_from(self.sol_withdrawal_fee.apply(pool_tokens)?).ok()
     }
 
     /// calculate pool tokens to be deducted as stake deposit fees
@@ -219,7 +235,7 @@ impl StakePool {
         }
         let total_stake_lamports =
             (self.total_stake_lamports as u128).checked_add(reward_lamports as u128)?;
-        let fee_lamports = self.fee.apply(reward_lamports)?;
+        let fee_lamports = self.epoch_fee.apply(reward_lamports)?;
         if total_stake_lamports == fee_lamports || self.pool_token_supply == 0 {
             Some(reward_lamports)
         } else {
@@ -317,10 +333,31 @@ impl StakePool {
         if let Some(auth) = self.sol_deposit_authority {
             let sol_deposit_authority = maybe_sol_deposit_authority?;
             if auth != *sol_deposit_authority.key {
+                msg!("Expected {}, received {}", auth, sol_deposit_authority.key);
                 return Err(StakePoolError::InvalidSolDepositAuthority.into());
             }
             if !sol_deposit_authority.is_signer {
                 msg!("SOL Deposit authority signature missing");
+                return Err(StakePoolError::SignatureMissing.into());
+            }
+        }
+        Ok(())
+    }
+
+    /// Checks that the sol withdraw authority is valid
+    /// Does nothing if `sol_withdraw_authority` is currently not set
+    #[inline]
+    pub(crate) fn check_sol_withdraw_authority(
+        &self,
+        maybe_sol_withdraw_authority: Result<&AccountInfo, ProgramError>,
+    ) -> Result<(), ProgramError> {
+        if let Some(auth) = self.sol_withdraw_authority {
+            let sol_withdraw_authority = maybe_sol_withdraw_authority?;
+            if auth != *sol_withdraw_authority.key {
+                return Err(StakePoolError::InvalidSolWithdrawAuthority.into());
+            }
+            if !sol_withdraw_authority.is_signer {
+                msg!("SOL withdraw authority signature missing");
                 return Err(StakePoolError::SignatureMissing.into());
             }
         }
@@ -416,15 +453,23 @@ impl StakePool {
     }
 
     /// Updates one of the StakePool's fees.
-    pub fn update_fee(&mut self, fee: &FeeType) {
+    pub fn update_fee(&mut self, fee: &FeeType) -> Result<(), StakePoolError> {
         match fee {
             FeeType::SolReferral(new_fee) => self.sol_referral_fee = *new_fee,
             FeeType::StakeReferral(new_fee) => self.stake_referral_fee = *new_fee,
             FeeType::Epoch(new_fee) => self.next_epoch_fee = Some(*new_fee),
-            FeeType::Withdrawal(new_fee) => self.next_withdrawal_fee = Some(*new_fee),
+            FeeType::StakeWithdrawal(new_fee) => {
+                new_fee.check_withdrawal(&self.stake_withdrawal_fee)?;
+                self.next_stake_withdrawal_fee = Some(*new_fee)
+            }
+            FeeType::SolWithdrawal(new_fee) => {
+                new_fee.check_withdrawal(&self.sol_withdrawal_fee)?;
+                self.next_sol_withdrawal_fee = Some(*new_fee)
+            }
             FeeType::SolDeposit(new_fee) => self.sol_deposit_fee = *new_fee,
             FeeType::StakeDeposit(new_fee) => self.stake_deposit_fee = *new_fee,
-        }
+        };
+        Ok(())
     }
 }
 
@@ -666,58 +711,11 @@ impl Fee {
             .checked_mul(self.numerator as u128)?
             .checked_div(self.denominator as u128)
     }
-}
-
-impl fmt::Display for Fee {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}/{}", self.numerator, self.denominator)
-    }
-}
-
-/// The type of fees that can be set on the stake pool
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub enum FeeType {
-    /// Referral fees for SOL deposits
-    SolReferral(u8),
-    /// Referral fees for stake deposits
-    StakeReferral(u8),
-    /// Management fee paid per epoch
-    Epoch(Fee),
-    /// Withdrawal fee
-    Withdrawal(Fee),
-    /// Deposit fee for SOL deposits
-    SolDeposit(Fee),
-    /// Deposit fee for stake deposits
-    StakeDeposit(Fee),
-}
-
-impl FeeType {
-    /// Checks if the provided fee is too high, returning an error if so
-    pub fn check_too_high(&self) -> Result<(), StakePoolError> {
-        let too_high = match self {
-            Self::SolReferral(pct) => *pct > 100u8,
-            Self::StakeReferral(pct) => *pct > 100u8,
-            Self::Epoch(fee) => fee.numerator > fee.denominator,
-            Self::Withdrawal(fee) => fee.numerator > fee.denominator,
-            Self::SolDeposit(fee) => fee.numerator > fee.denominator,
-            Self::StakeDeposit(fee) => fee.numerator > fee.denominator,
-        };
-        if too_high {
-            msg!("Fee greater than 100%: {:?}", self);
-            return Err(StakePoolError::FeeTooHigh);
-        }
-        Ok(())
-    }
 
     /// Withdrawal fees have some additional restrictions,
     /// this fn checks if those are met, returning an error if not.
     /// Does nothing and returns Ok if fee type is not withdrawal
     pub fn check_withdrawal(&self, old_withdrawal_fee: &Fee) -> Result<(), StakePoolError> {
-        let fee = match self {
-            Self::Withdrawal(fee) => fee,
-            _ => return Ok(()),
-        };
-
         // If the previous withdrawal fee was 0, we allow the fee to be set to a
         // maximum of (WITHDRAWAL_BASELINE_FEE * MAX_WITHDRAWAL_FEE_INCREASE)
         let (old_num, old_denom) =
@@ -733,20 +731,69 @@ impl FeeType {
         // Check that new_fee / old_fee <= MAX_WITHDRAWAL_FEE_INCREASE
         // Program fails if provided numerator or denominator is too large, resulting in overflow
         if (old_num as u128)
-            .checked_mul(fee.denominator as u128)
+            .checked_mul(self.denominator as u128)
             .map(|x| x.checked_mul(MAX_WITHDRAWAL_FEE_INCREASE.numerator as u128))
             .ok_or(StakePoolError::CalculationFailure)?
-            < (fee.numerator as u128)
+            < (self.numerator as u128)
                 .checked_mul(old_denom as u128)
                 .map(|x| x.checked_mul(MAX_WITHDRAWAL_FEE_INCREASE.denominator as u128))
                 .ok_or(StakePoolError::CalculationFailure)?
         {
             msg!(
                 "Fee increase exceeds maximum allowed, proposed increase factor ({} / {})",
-                fee.numerator * old_denom,
-                old_num * fee.denominator,
+                self.numerator * old_denom,
+                old_num * self.denominator,
             );
             return Err(StakePoolError::FeeIncreaseTooHigh);
+        }
+        Ok(())
+    }
+}
+
+impl fmt::Display for Fee {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.numerator > 0 && self.denominator > 0 {
+            write!(f, "{}/{}", self.numerator, self.denominator)
+        } else {
+            write!(f, "none")
+        }
+    }
+}
+
+/// The type of fees that can be set on the stake pool
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub enum FeeType {
+    /// Referral fees for SOL deposits
+    SolReferral(u8),
+    /// Referral fees for stake deposits
+    StakeReferral(u8),
+    /// Management fee paid per epoch
+    Epoch(Fee),
+    /// Stake withdrawal fee
+    StakeWithdrawal(Fee),
+    /// Deposit fee for SOL deposits
+    SolDeposit(Fee),
+    /// Deposit fee for stake deposits
+    StakeDeposit(Fee),
+    /// SOL withdrawal fee
+    SolWithdrawal(Fee),
+}
+
+impl FeeType {
+    /// Checks if the provided fee is too high, returning an error if so
+    pub fn check_too_high(&self) -> Result<(), StakePoolError> {
+        let too_high = match self {
+            Self::SolReferral(pct) => *pct > 100u8,
+            Self::StakeReferral(pct) => *pct > 100u8,
+            Self::Epoch(fee) => fee.numerator > fee.denominator,
+            Self::StakeWithdrawal(fee) => fee.numerator > fee.denominator,
+            Self::SolWithdrawal(fee) => fee.numerator > fee.denominator,
+            Self::SolDeposit(fee) => fee.numerator > fee.denominator,
+            Self::StakeDeposit(fee) => fee.numerator > fee.denominator,
+        };
+        if too_high {
+            msg!("Fee greater than 100%: {:?}", self);
+            return Err(StakePoolError::FeeTooHigh);
         }
         Ok(())
     }
@@ -754,7 +801,10 @@ impl FeeType {
     /// Returns if the contained fee can only be updated earliest on the next epoch
     #[inline]
     pub fn can_only_change_next_epoch(&self) -> bool {
-        matches!(self, Self::Withdrawal(_) | Self::Epoch(_))
+        matches!(
+            self,
+            Self::StakeWithdrawal(_) | Self::SolWithdrawal(_) | Self::Epoch(_)
+        )
     }
 }
 
@@ -953,14 +1003,14 @@ mod test {
     #[test]
     fn specific_fee_calculation() {
         // 10% of 10 SOL in rewards should be 1 SOL in fees
-        let fee = Fee {
+        let epoch_fee = Fee {
             numerator: 1,
             denominator: 10,
         };
         let mut stake_pool = StakePool {
             total_stake_lamports: 100 * LAMPORTS_PER_SOL,
             pool_token_supply: 100 * LAMPORTS_PER_SOL,
-            fee,
+            epoch_fee,
             ..StakePool::default()
         };
         let reward_lamports = 10 * LAMPORTS_PER_SOL;
@@ -977,12 +1027,12 @@ mod test {
 
     #[test]
     fn zero_withdraw_calculation() {
-        let fee = Fee {
+        let epoch_fee = Fee {
             numerator: 0,
             denominator: 1,
         };
         let stake_pool = StakePool {
-            fee,
+            epoch_fee,
             ..StakePool::default()
         };
         let fee_lamports = stake_pool.calc_lamports_withdraw_amount(0).unwrap();
@@ -993,7 +1043,7 @@ mod test {
     fn divide_by_zero_fee() {
         let stake_pool = StakePool {
             total_stake_lamports: 0,
-            fee: Fee {
+            epoch_fee: Fee {
                 numerator: 1,
                 denominator: 10,
             },
@@ -1010,11 +1060,11 @@ mod test {
             (numerator, denominator) in fee(),
             (total_stake_lamports, reward_lamports) in total_stake_and_rewards(),
         ) {
-            let fee = Fee { denominator, numerator };
+            let epoch_fee = Fee { denominator, numerator };
             let mut stake_pool = StakePool {
                 total_stake_lamports,
                 pool_token_supply: total_stake_lamports,
-                fee,
+                epoch_fee,
                 ..StakePool::default()
             };
             let pool_token_fee = stake_pool.calc_epoch_fee_amount(reward_lamports).unwrap();
@@ -1023,7 +1073,7 @@ mod test {
             stake_pool.pool_token_supply += pool_token_fee;
 
             let fee_lamports = stake_pool.calc_lamports_withdraw_amount(pool_token_fee).unwrap();
-            let max_fee_lamports = u64::try_from((reward_lamports as u128) * (fee.numerator as u128) / (fee.denominator as u128)).unwrap();
+            let max_fee_lamports = u64::try_from((reward_lamports as u128) * (epoch_fee.numerator as u128) / (epoch_fee.denominator as u128)).unwrap();
             assert!(max_fee_lamports >= fee_lamports,
                 "Max possible fee must always be greater than or equal to what is actually withdrawn, max {} actual {}",
                 max_fee_lamports,

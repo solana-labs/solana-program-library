@@ -46,8 +46,8 @@ async fn success() {
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
-    let old_fee = stake_pool.fee;
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
+    let old_fee = stake_pool.epoch_fee;
 
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::set_fee(
@@ -71,9 +71,9 @@ async fn success() {
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
 
-    assert_eq!(stake_pool.fee, old_fee);
+    assert_eq!(stake_pool.epoch_fee, old_fee);
     assert_eq!(stake_pool.next_epoch_fee, Some(new_fee));
 
     let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
@@ -97,8 +97,8 @@ async fn success() {
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
-    assert_eq!(stake_pool.fee, new_fee);
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
+    assert_eq!(stake_pool.epoch_fee, new_fee);
     assert_eq!(stake_pool.next_epoch_fee, None);
 }
 

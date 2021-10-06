@@ -79,7 +79,7 @@ async fn test_set_manager() {
 
     let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
     let stake_pool =
-        try_from_slice_unchecked::<state::StakePool>(&stake_pool.data.as_slice()).unwrap();
+        try_from_slice_unchecked::<state::StakePool>(stake_pool.data.as_slice()).unwrap();
 
     assert_eq!(stake_pool.manager, new_manager.pubkey());
 }

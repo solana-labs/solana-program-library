@@ -72,3 +72,5 @@ echo "Depositing stakes into stake pool"
 deposit_stakes $stake_pool_pubkey $validator_list
 echo "Withdrawing stakes from stake pool"
 withdraw_stakes $stake_pool_pubkey $validator_list $half_sol_amount
+echo "Withdrawing sol from stake pool"
+$spl_stake_pool withdraw-sol $stake_pool_pubkey $half_sol_amount

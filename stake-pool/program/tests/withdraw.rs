@@ -132,7 +132,7 @@ async fn _success(test_type: SuccessTestType) {
     let stake_pool_before =
         get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
     let stake_pool_before =
-        try_from_slice_unchecked::<state::StakePool>(&stake_pool_before.data.as_slice()).unwrap();
+        try_from_slice_unchecked::<state::StakePool>(stake_pool_before.data.as_slice()).unwrap();
 
     // Check user recipient stake account balance
     let initial_stake_lamports = get_account(&mut banks_client, &user_stake_recipient.pubkey())
@@ -235,7 +235,7 @@ async fn _success(test_type: SuccessTestType) {
     // Check pool stats
     let stake_pool = get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
     let stake_pool =
-        try_from_slice_unchecked::<state::StakePool>(&stake_pool.data.as_slice()).unwrap();
+        try_from_slice_unchecked::<state::StakePool>(stake_pool.data.as_slice()).unwrap();
     // first and only deposit, lamports:pool 1:1
     let tokens_withdrawal_fee = match test_type {
         SuccessTestType::Success => {
@@ -301,7 +301,7 @@ async fn _success(test_type: SuccessTestType) {
         deserialize::<stake_program::StakeState>(&validator_stake_account.data).unwrap();
     let meta = stake_state.meta().unwrap();
     assert_eq!(
-        validator_stake_account.lamports - minimum_stake_lamports(&meta),
+        validator_stake_account.lamports - minimum_stake_lamports(meta),
         validator_stake_item.active_stake_lamports
     );
 

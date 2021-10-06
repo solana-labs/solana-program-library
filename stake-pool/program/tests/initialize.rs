@@ -50,8 +50,8 @@ async fn create_required_accounts(
 
     create_independent_stake_account(
         banks_client,
-        &payer,
-        &recent_blockhash,
+        payer,
+        recent_blockhash,
         &stake_pool_accounts.reserve_stake,
         &stake_program::Authorized {
             staker: stake_pool_accounts.withdraw_authority,
@@ -154,7 +154,7 @@ async fn fail_with_already_initialized_validator_list() {
 async fn fail_with_high_fee() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let mut stake_pool_accounts = StakePoolAccounts::new();
-    stake_pool_accounts.fee = state::Fee {
+    stake_pool_accounts.epoch_fee = state::Fee {
         numerator: 100001,
         denominator: 100000,
     };
@@ -252,7 +252,7 @@ async fn fail_with_wrong_max_validators() {
                 &stake_pool_accounts.pool_fee_account.pubkey(),
                 &spl_token::id(),
                 None,
-                stake_pool_accounts.fee,
+                stake_pool_accounts.epoch_fee,
                 stake_pool_accounts.withdrawal_fee,
                 stake_pool_accounts.deposit_fee,
                 stake_pool_accounts.referral_fee,
@@ -325,7 +325,7 @@ async fn fail_with_wrong_mint_authority() {
         &stake_pool_accounts.manager,
         &stake_pool_accounts.staker.pubkey(),
         &None,
-        &stake_pool_accounts.fee,
+        &stake_pool_accounts.epoch_fee,
         &stake_pool_accounts.withdrawal_fee,
         &stake_pool_accounts.deposit_fee,
         stake_pool_accounts.referral_fee,
@@ -415,7 +415,7 @@ async fn fail_with_freeze_authority() {
         &stake_pool_accounts.manager,
         &stake_pool_accounts.staker.pubkey(),
         &None,
-        &stake_pool_accounts.fee,
+        &stake_pool_accounts.epoch_fee,
         &stake_pool_accounts.withdrawal_fee,
         &stake_pool_accounts.deposit_fee,
         stake_pool_accounts.referral_fee,
@@ -507,7 +507,7 @@ async fn fail_with_wrong_token_program_id() {
                 &stake_pool_accounts.pool_fee_account.pubkey(),
                 &wrong_token_program.pubkey(),
                 None,
-                stake_pool_accounts.fee,
+                stake_pool_accounts.epoch_fee,
                 stake_pool_accounts.withdrawal_fee,
                 stake_pool_accounts.deposit_fee,
                 stake_pool_accounts.referral_fee,
@@ -586,7 +586,7 @@ async fn fail_with_wrong_fee_account() {
         &stake_pool_accounts.manager,
         &stake_pool_accounts.staker.pubkey(),
         &None,
-        &stake_pool_accounts.fee,
+        &stake_pool_accounts.epoch_fee,
         &stake_pool_accounts.withdrawal_fee,
         &stake_pool_accounts.deposit_fee,
         stake_pool_accounts.referral_fee,
@@ -679,7 +679,7 @@ async fn fail_with_not_rent_exempt_pool() {
                 &stake_pool_accounts.pool_fee_account.pubkey(),
                 &spl_token::id(),
                 None,
-                stake_pool_accounts.fee,
+                stake_pool_accounts.epoch_fee,
                 stake_pool_accounts.withdrawal_fee,
                 stake_pool_accounts.deposit_fee,
                 stake_pool_accounts.referral_fee,
@@ -756,7 +756,7 @@ async fn fail_with_not_rent_exempt_validator_list() {
                 &stake_pool_accounts.pool_fee_account.pubkey(),
                 &spl_token::id(),
                 None,
-                stake_pool_accounts.fee,
+                stake_pool_accounts.epoch_fee,
                 stake_pool_accounts.withdrawal_fee,
                 stake_pool_accounts.deposit_fee,
                 stake_pool_accounts.referral_fee,
@@ -810,7 +810,7 @@ async fn fail_without_manager_signature() {
     let rent_validator_list = rent.minimum_balance(validator_list_size);
 
     let init_data = instruction::StakePoolInstruction::Initialize {
-        fee: stake_pool_accounts.fee,
+        fee: stake_pool_accounts.epoch_fee,
         withdrawal_fee: stake_pool_accounts.withdrawal_fee,
         deposit_fee: stake_pool_accounts.deposit_fee,
         referral_fee: stake_pool_accounts.referral_fee,
@@ -934,7 +934,7 @@ async fn fail_with_pre_minted_pool_tokens() {
         &stake_pool_accounts.manager,
         &stake_pool_accounts.staker.pubkey(),
         &None,
-        &stake_pool_accounts.fee,
+        &stake_pool_accounts.epoch_fee,
         &stake_pool_accounts.withdrawal_fee,
         &stake_pool_accounts.deposit_fee,
         stake_pool_accounts.referral_fee,
@@ -1000,7 +1000,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.manager,
             &stake_pool_accounts.staker.pubkey(),
             &None,
-            &stake_pool_accounts.fee,
+            &stake_pool_accounts.epoch_fee,
             &stake_pool_accounts.withdrawal_fee,
             &stake_pool_accounts.deposit_fee,
             stake_pool_accounts.referral_fee,
@@ -1050,7 +1050,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.manager,
             &stake_pool_accounts.staker.pubkey(),
             &None,
-            &stake_pool_accounts.fee,
+            &stake_pool_accounts.epoch_fee,
             &stake_pool_accounts.withdrawal_fee,
             &stake_pool_accounts.deposit_fee,
             stake_pool_accounts.referral_fee,
@@ -1103,7 +1103,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.manager,
             &stake_pool_accounts.staker.pubkey(),
             &None,
-            &stake_pool_accounts.fee,
+            &stake_pool_accounts.epoch_fee,
             &stake_pool_accounts.withdrawal_fee,
             &stake_pool_accounts.deposit_fee,
             stake_pool_accounts.referral_fee,
@@ -1156,7 +1156,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.manager,
             &stake_pool_accounts.staker.pubkey(),
             &None,
-            &stake_pool_accounts.fee,
+            &stake_pool_accounts.epoch_fee,
             &stake_pool_accounts.withdrawal_fee,
             &stake_pool_accounts.deposit_fee,
             stake_pool_accounts.referral_fee,

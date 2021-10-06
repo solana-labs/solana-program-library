@@ -69,7 +69,7 @@ pub async fn create_mint(
             spl_token::instruction::initialize_mint(
                 &spl_token::id(),
                 &pool_mint.pubkey(),
-                &manager,
+                manager,
                 None,
                 0,
             )
@@ -174,8 +174,8 @@ pub async fn close_token_account(
     let mut transaction = Transaction::new_with_payer(
         &[spl_token::instruction::close_account(
             &spl_token::id(),
-            &account,
-            &lamports_destination,
+            account,
+            lamports_destination,
             &manager.pubkey(),
             &[],
         )
@@ -198,7 +198,7 @@ pub async fn freeze_token_account(
     let mut transaction = Transaction::new_with_payer(
         &[spl_token::instruction::freeze_account(
             &spl_token::id(),
-            &account,
+            account,
             pool_mint,
             &manager.pubkey(),
             &[],
@@ -291,8 +291,8 @@ pub async fn delegate_tokens(
     let transaction = Transaction::new_signed_with_payer(
         &[spl_token::instruction::approve(
             &spl_token::id(),
-            &account,
-            &delegate,
+            account,
+            delegate,
             &manager.pubkey(),
             &[],
             amount,
@@ -318,7 +318,7 @@ pub async fn create_stake_pool(
     manager: &Keypair,
     staker: &Pubkey,
     stake_deposit_authority: &Option<Keypair>,
-    fee: &state::Fee,
+    epoch_fee: &state::Fee,
     withdrawal_fee: &state::Fee,
     deposit_fee: &state::Fee,
     referral_fee: u8,
@@ -359,7 +359,7 @@ pub async fn create_stake_pool(
                 pool_token_account,
                 &spl_token::id(),
                 stake_deposit_authority.as_ref().map(|k| k.pubkey()),
-                *fee,
+                *epoch_fee,
                 *withdrawal_fee,
                 *deposit_fee,
                 referral_fee,
@@ -492,9 +492,9 @@ pub async fn delegate_stake_account(
 ) {
     let mut transaction = Transaction::new_with_payer(
         &[stake_program::delegate_stake(
-            &stake,
+            stake,
             &authorized.pubkey(),
-            &vote,
+            vote,
         )],
         Some(&payer.pubkey()),
     );
@@ -513,9 +513,9 @@ pub async fn authorize_stake_account(
 ) {
     let mut transaction = Transaction::new_with_payer(
         &[stake_program::authorize(
-            &stake,
+            stake,
             &authorized.pubkey(),
-            &new_authorized,
+            new_authorized,
             stake_authorize,
         )],
         Some(&payer.pubkey()),
@@ -609,7 +609,7 @@ pub struct StakePoolAccounts {
     pub withdraw_authority: Pubkey,
     pub stake_deposit_authority: Pubkey,
     pub stake_deposit_authority_keypair: Option<Keypair>,
-    pub fee: state::Fee,
+    pub epoch_fee: state::Fee,
     pub withdrawal_fee: state::Fee,
     pub deposit_fee: state::Fee,
     pub referral_fee: u8,
@@ -648,7 +648,7 @@ impl StakePoolAccounts {
             withdraw_authority,
             stake_deposit_authority,
             stake_deposit_authority_keypair: None,
-            fee: state::Fee {
+            epoch_fee: state::Fee {
                 numerator: 1,
                 denominator: 100,
             },
@@ -678,7 +678,7 @@ impl StakePoolAccounts {
     }
 
     pub fn calculate_fee(&self, amount: u64) -> u64 {
-        amount * self.fee.numerator / self.fee.denominator
+        amount * self.epoch_fee.numerator / self.epoch_fee.denominator
     }
 
     pub fn calculate_withdrawal_fee(&self, pool_tokens: u64) -> u64 {
@@ -710,16 +710,16 @@ impl StakePoolAccounts {
     ) -> Result<(), TransportError> {
         create_mint(
             &mut banks_client,
-            &payer,
-            &recent_blockhash,
+            payer,
+            recent_blockhash,
             &self.pool_mint,
             &self.withdraw_authority,
         )
         .await?;
         create_token_account(
             &mut banks_client,
-            &payer,
-            &recent_blockhash,
+            payer,
+            recent_blockhash,
             &self.pool_fee_account,
             &self.pool_mint.pubkey(),
             &self.manager.pubkey(),
@@ -727,8 +727,8 @@ impl StakePoolAccounts {
         .await?;
         create_independent_stake_account(
             &mut banks_client,
-            &payer,
-            &recent_blockhash,
+            payer,
+            recent_blockhash,
             &self.reserve_stake,
             &stake_program::Authorized {
                 staker: self.withdraw_authority,
@@ -740,8 +740,8 @@ impl StakePoolAccounts {
         .await;
         create_stake_pool(
             &mut banks_client,
-            &payer,
-            &recent_blockhash,
+            payer,
+            recent_blockhash,
             &self.stake_pool,
             &self.validator_list,
             &self.reserve_stake.pubkey(),
@@ -750,7 +750,7 @@ impl StakePoolAccounts {
             &self.manager,
             &self.staker.pubkey(),
             &self.stake_deposit_authority_keypair,
-            &self.fee,
+            &self.epoch_fee,
             &self.withdrawal_fee,
             &self.deposit_fee,
             self.referral_fee,
@@ -831,7 +831,7 @@ impl StakePoolAccounts {
                     &self.reserve_stake.pubkey(),
                     pool_account,
                     &self.pool_fee_account.pubkey(),
-                    &referrer,
+                    referrer,
                     &self.pool_mint.pubkey(),
                     &spl_token::id(),
                 )
@@ -856,7 +856,7 @@ impl StakePoolAccounts {
         sol_deposit_authority: Option<&Keypair>,
     ) -> Option<TransportError> {
         let mut signers = vec![payer];
-        let instructions = if let Some(sol_deposit_authority) = sol_deposit_authority {
+        let instruction = if let Some(sol_deposit_authority) = sol_deposit_authority {
             signers.push(sol_deposit_authority);
             instruction::deposit_sol_with_authority(
                 &id(),
@@ -888,7 +888,7 @@ impl StakePoolAccounts {
             )
         };
         let transaction = Transaction::new_signed_with_payer(
-            &instructions,
+            &[instruction],
             Some(&payer.pubkey()),
             &signers,
             *recent_blockhash,
@@ -927,6 +927,58 @@ impl StakePoolAccounts {
             )],
             Some(&payer.pubkey()),
             &[payer, user_transfer_authority],
+            *recent_blockhash,
+        );
+        banks_client.process_transaction(transaction).await.err()
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn withdraw_sol(
+        &self,
+        banks_client: &mut BanksClient,
+        payer: &Keypair,
+        recent_blockhash: &Hash,
+        user: &Keypair,
+        pool_account: &Pubkey,
+        amount: u64,
+        sol_withdraw_authority: Option<&Keypair>,
+    ) -> Option<TransportError> {
+        let mut signers = vec![payer, user];
+        let instruction = if let Some(sol_withdraw_authority) = sol_withdraw_authority {
+            signers.push(sol_withdraw_authority);
+            instruction::withdraw_sol_with_authority(
+                &id(),
+                &self.stake_pool.pubkey(),
+                &sol_withdraw_authority.pubkey(),
+                &self.withdraw_authority,
+                &user.pubkey(),
+                pool_account,
+                &self.reserve_stake.pubkey(),
+                &user.pubkey(),
+                &self.pool_fee_account.pubkey(),
+                &self.pool_mint.pubkey(),
+                &spl_token::id(),
+                amount,
+            )
+        } else {
+            instruction::withdraw_sol(
+                &id(),
+                &self.stake_pool.pubkey(),
+                &self.withdraw_authority,
+                &user.pubkey(),
+                pool_account,
+                &self.reserve_stake.pubkey(),
+                &user.pubkey(),
+                &self.pool_fee_account.pubkey(),
+                &self.pool_mint.pubkey(),
+                &spl_token::id(),
+                amount,
+            )
+        };
+        let transaction = Transaction::new_signed_with_payer(
+            &[instruction],
+            Some(&payer.pubkey()),
+            &signers,
             *recent_blockhash,
         );
         banks_client.process_transaction(transaction).await.err()
@@ -1079,6 +1131,7 @@ impl StakePoolAccounts {
         banks_client.process_transaction(transaction).await.err()
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn remove_validator_from_pool(
         &self,
         banks_client: &mut BanksClient,
@@ -1103,7 +1156,7 @@ impl StakePoolAccounts {
                     &self.stake_pool.pubkey(),
                     &self.staker.pubkey(),
                     &self.withdraw_authority,
-                    &new_authority,
+                    new_authority,
                     &self.validator_list.pubkey(),
                     validator_stake,
                     transient_stake,
@@ -1117,6 +1170,7 @@ impl StakePoolAccounts {
         banks_client.process_transaction(transaction).await.err()
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn decrease_validator_stake(
         &self,
         banks_client: &mut BanksClient,
@@ -1146,6 +1200,7 @@ impl StakePoolAccounts {
         banks_client.process_transaction(transaction).await.err()
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn increase_validator_stake(
         &self,
         banks_client: &mut BanksClient,
@@ -1224,8 +1279,8 @@ pub async fn simple_add_validator_to_pool(
     let error = stake_pool_accounts
         .add_validator_to_pool(
             banks_client,
-            &payer,
-            &recent_blockhash,
+            payer,
+            recent_blockhash,
             &validator_stake.stake_account,
             &validator_stake.vote.pubkey(),
         )

@@ -31,8 +31,9 @@ This document is intended for the main actors of the stake pool system:
 * user: provides staked SOL into an existing stake pool
 
 In its current iteration, the stake pool accepts active stakes or SOL, so
-deposits may come from either an active stake or SOL wallet. Withdrawals, on the
-other hand, only return a fully active stake account, except in certain exceptions.
+deposits may come from either an active stake or SOL wallet. Withdrawals
+can return a fully active stake account from one of the stake pool's accounts,
+or SOL from the reserve.
 
 This means that stake pool managers and stakers must be comfortable with
 creating and delegating stakes, which are more advanced operations than sending and
@@ -74,15 +75,23 @@ In exchange for their deposit (SOL or stake), the user receives SPL tokens
 representing their fractional ownership in pool. A percentage of the rewards
 earned by the pool goes to the pool manager as an epoch fee.
 
-Over time, as the stakes in the stake pool accrue staking rewards, the user's fractional
-ownership will be worth more than their initial deposit. Whenever the user chooses,
-they can use the `withdraw-stake` instruction to withdraw an activated stake account
-in exchange for their SPL pool tokens. The user will get back a SOL stake account
-immediately.
+Over time, as the stakes in the pool accrue rewards, the user's fractional
+ownership will be worth more than their initial deposit.
 
-Note: if the user wants to withdraw the SOL in the stake account, they must first
-deactivate the stake account and wait until the next epoch boundary (maximum 2 days).
-Once the stake is inactive, they can freely withdraw the SOL.
+Whenever they wish to exit the pool, the user may use the `withdraw-sol` instruction
+to receive SOL from the stake pool's reserve in exchange for stake pool tokens.
+Note that this operation will fail if there is not enough SOL in the stake pool's
+reserve, which is normal if the stake pool manager stakes all of the SOL in the pool.
+
+Alternatively, they can use the `withdraw-stake` instruction to withdraw an
+activated stake account in exchange for their SPL pool tokens. The user will get
+back a SOL stake account immediately. The ability to withdraw stake is always
+possible, under all circumstances.
+
+Note: when withdrawing stake, if the user wants to withdraw the SOL in the stake
+account, they must first deactivate the stake account and wait until the next
+epoch boundary (maximum 2 days).  Once the stake is inactive, they can freely
+withdraw the SOL.
 
 The stake pool staker can add and remove validators, or rebalance the pool by
 decreasing the stake on a validator, waiting an epoch to move it into the stake
@@ -96,7 +105,7 @@ is recovered when removing the validator.
 ### Fees
 
 The stake pool program provides managers many options for making the pool
-financially viable, predominantly through fees. There are four different sources
+financially viable, predominantly through fees. There are five different sources
 of fees:
 
 * Epoch: every epoch (roughly 2 days), the stake accounts in the pool earn 
@@ -104,29 +113,39 @@ of fees:
   account as a proportion of the earned rewards. For example, if the pool earns
   10 SOL in rewards, and the fee is set to 2%, the manager will earn pool tokens
   worth 0.2 SOL.
-* Withdraw: sends a proportion of the desired withdrawal amount to the manager.
+* SOL withdraw: sends a proportion of the desired withdrawal amount to the manager
   For example, if a user wishes to withdraw 100 pool tokens, and the fee is set
   to 3%, 3 pool tokens go to the manager, and the remaining 97 tokens go to the
-  user in the form of a SOL stake account.
+  user in the form of a SOL.
+* Stake withdraw: sends a proportion of the desired withdrawal amount to the manager
+  before creating a new stake for the user.
 * SOL deposit: converts the entire SOL deposit into pool tokens, then sends a
   proportion of those to the manager, and the rest to the user
 * Stake deposit: converts the stake account's delegation plus rent-exemption 
   to pool tokens, sends a proportion of those to the manager, and the rest to
   the user
-* Referral: during SOL or stake deposits, the pool manager has the option to
-  redistribute a percentage of the fees to another address as a referral fee.
-  This option is particularly attractive for wallet providers. When a wallet
-  integrates a stake pool, the wallet developer will have the option to earn
-  additional tokens anytime a user deposits into the stake pool. Stake pool
-  managers can use this feature to create strategic partnerships and entice
-  greater adoption of stake pools!
 
-### Deposit restrictions
+For partner applications, there's the option of a referral fee on deposits.
+During SOL or stake deposits, the stake pool can redistribute a percentage of
+the fees to another address as a referral fee.
+
+This option is particularly attractive for wallet providers. When a wallet
+integrates a stake pool, the wallet developer will have the option to earn
+additional tokens anytime a user deposits into the stake pool. Stake pool
+managers can use this feature to create strategic partnerships and entice
+greater adoption of stake pools!
+
+### Funding restrictions
 
 To give the manager more control over funds entering the pool, stake pools allow
-deposit restrictions on SOL and stakes through a SOL deposit authority
-and a stake deposit authority. If the field is set, that authority must sign the
-associated deposit instruction.
+deposit and withdrawal restrictions on SOL and stakes through three different
+"funding authorities":
+
+* SOL deposit
+* Stake deposit
+* SOL withdrawal
+
+If the field is set, that authority must sign the associated instruction.
 
 For example, if the manager sets a stake deposit authority, then that address
 must sign every stake deposit instruction.
@@ -140,7 +159,7 @@ This can also be useful in a few situations:
 * Maintenance mode. If the pool needs time to reset fees or otherwise, the
   manager can temporarily restrict new deposits by setting deposit authorities.
 
-Note: in order to keep user funds safe, withdrawals are always permitted.
+Note: in order to keep user funds safe, stake withdrawals are always permitted.
 
 ## Background
 
@@ -301,8 +320,8 @@ the stake pool program currently enforces a limit of 1.5x increase per epoch.
 For example, if the current withdrawal fee is 2.5%, the maximum that can be set
 for the next epoch is 3.75%.
 
-The possible options for the fee type are `epoch`, `withdrawal`, `sol-deposit`,
-and `stake-deposit`.
+The possible options for the fee type are `epoch`, `sol-withdrawal`,
+`stake-withdrawal`, `sol-deposit`, and `stake-deposit`.
 
 ### Set referral fee
 
@@ -338,6 +357,39 @@ stake pool staker cannot steal funds from the stake pool.
 
 Note: to avoid "disturbing the manager", the staker can also reassign their stake
 authority.
+
+### Set Funding Authority
+
+To restrict who can interact with the pool, the stake pool manager may require
+a particular signature on stake deposits, SOL deposits, or SOL withdrawals. This
+does not make the pool private, since all information is available on-chain, but
+it restricts who can use the pool.
+
+As an example, let's say a pool wants to restrict all SOL withdrawals.
+
+```console
+$ spl-stake-pool set-funding-authority Zg5YBPAk8RqBR9kaLLSoN5C8Uv7nErBz1WC63HTsCPR sol-withdraw AZ1PgxWSxw4ezX8gvpNgGsr39jJHCwtkaXr1mNMwWWeK
+Signature: 3gx7ckGNSL7gUUyxh4CU3RH3Lyt88hiCvYQ4QRKtnmrZHvAS93ebP6bf39WYGTeKDMVSJUuwBEmk9VFSaWtXsHVV
+```
+
+After running this command, `AZ1PgxWSxw4ezX8gvpNgGsr39jJHCwtkaXr1mNMwWWeK` must
+sign all SOL withdrawals, otherwise the operation fails.
+
+After some time, if the manager wishes to enable SOL withdrawals, they can remove
+the restriction:
+
+```console
+$ spl-stake-pool set-funding-authority Zg5YBPAk8RqBR9kaLLSoN5C8Uv7nErBz1WC63HTsCPR sol-withdraw --unset
+Signature: 5kWeBqoxyvANMHCP4ydsZRf8QU4hMotLnKkFbTEdvqEVywo4F3MpZtay7D57FbjJZpdp72fc3vrbxJi9qDLfLCnD
+```
+
+Now, anyone can withdraw SOL from the stake pool, provided there is enough SOL left
+in the reserve.
+
+The options for funding authorities are `sol-withdraw`, `sol-deposit`, and `stake-deposit`.
+
+Note: it is impossible to restrict stake withdrawals. This would create an opportunity
+for malicious pool managers to effectively lock user funds.
 
 ## Stake Pool Staker Examples
 
@@ -674,6 +726,31 @@ SPL token command-line utility.
 ```console
 $ spl-token balance BoNneHKDrX9BHjjvSpPfnQyRjsnc9WFH71v8wrgCd7LB
 100.00000000
+```
+
+### Withdraw SOL
+
+Stake pools allow SOL withdrawals directly from the reserve and into a normal
+SOL wallet account, and in exchange burns the provided pool tokens.
+
+```console
+$ spl-stake-pool withdraw-sol Zg5YBPAk8RqBR9kaLLSoN5C8Uv7nErBz1WC63HTsCPR 2
+Signature: 4bqZKUUrjVspqTGqGqX4zxnHnJB67WbeukKUZRmxJ2yFmr275CtHPjZNzQJD9Pe7Q6mSxnUpcVv9FUdAbGP9RyBc
+```
+
+The stake pool burned 2 pool tokens. In return, the stake pool sent SOL to the
+fee payer for the transaction.  You can check that the pool tokens have been burned:
+
+```console
+$ spl-token balance BoNneHKDrX9BHjjvSpPfnQyRjsnc9WFH71v8wrgCd7LB
+98.00000000
+```
+
+And you can check that the fee payer has been credited:
+
+```console
+$ solana balance
+49.660334743 SOL
 ```
 
 ### Deposit stake

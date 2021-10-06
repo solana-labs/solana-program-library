@@ -3,7 +3,6 @@
 mod helpers;
 
 use {
-    bincode,
     borsh::BorshSerialize,
     helpers::*,
     solana_program::{
@@ -74,17 +73,20 @@ async fn setup(
         pool_token_supply: 0,
         last_update_epoch: 0,
         lockup: stake_program::Lockup::default(),
-        fee: stake_pool_accounts.fee,
+        epoch_fee: stake_pool_accounts.epoch_fee,
         next_epoch_fee: None,
         preferred_deposit_validator_vote_address: None,
         preferred_withdraw_validator_vote_address: None,
         stake_deposit_fee: Fee::default(),
         sol_deposit_fee: Fee::default(),
-        withdrawal_fee: Fee::default(),
-        next_withdrawal_fee: None,
+        stake_withdrawal_fee: Fee::default(),
+        next_stake_withdrawal_fee: None,
         stake_referral_fee: 0,
         sol_referral_fee: 0,
         sol_deposit_authority: None,
+        sol_withdraw_authority: None,
+        sol_withdrawal_fee: Fee::default(),
+        next_sol_withdrawal_fee: None,
     };
 
     let mut validator_list = ValidatorList::new(max_validators);
@@ -127,13 +129,11 @@ async fn setup(
         program_test.add_account(vote_pubkey, vote_account);
     }
 
-    for i in 0..num_validators as usize {
-        let vote_account_address = vote_account_pubkeys[i];
-
+    for vote_account_address in vote_account_pubkeys.iter().take(num_validators as usize) {
         // create validator stake account
         let stake = stake_program::Stake {
             delegation: stake_program::Delegation {
-                voter_pubkey: vote_account_address,
+                voter_pubkey: *vote_account_address,
                 stake: stake_amount,
                 activation_epoch: 0,
                 deactivation_epoch: u64::MAX,
@@ -154,13 +154,13 @@ async fn setup(
         );
 
         let (stake_address, _) =
-            find_stake_program_address(&id(), &vote_account_address, &stake_pool_pubkey);
+            find_stake_program_address(&id(), vote_account_address, &stake_pool_pubkey);
         program_test.add_account(stake_address, stake_account);
         let active_stake_lamports = stake_amount - MINIMUM_ACTIVE_STAKE;
         // add to validator list
         validator_list.validators.push(ValidatorStakeInfo {
             status: StakeStatus::Active,
-            vote_account_address,
+            vote_account_address: *vote_account_address,
             active_stake_lamports,
             transient_stake_lamports: 0,
             last_update_epoch: 0,
@@ -658,7 +658,7 @@ async fn set_preferred() {
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
 
     assert_eq!(
         stake_pool.preferred_deposit_validator_vote_address,

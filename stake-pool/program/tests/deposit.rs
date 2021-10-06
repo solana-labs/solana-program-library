@@ -149,7 +149,7 @@ async fn success() {
     )
     .await;
     let pre_stake_pool =
-        try_from_slice_unchecked::<state::StakePool>(&pre_stake_pool.data.as_slice()).unwrap();
+        try_from_slice_unchecked::<state::StakePool>(pre_stake_pool.data.as_slice()).unwrap();
 
     // Save validator stake account record before depositing
     let validator_list = get_account(
@@ -201,7 +201,7 @@ async fn success() {
     )
     .await;
     let post_stake_pool =
-        try_from_slice_unchecked::<state::StakePool>(&post_stake_pool.data.as_slice()).unwrap();
+        try_from_slice_unchecked::<state::StakePool>(post_stake_pool.data.as_slice()).unwrap();
     assert_eq!(
         post_stake_pool.total_stake_lamports,
         pre_stake_pool.total_stake_lamports + stake_lamports
@@ -244,7 +244,7 @@ async fn success() {
         deserialize::<stake_program::StakeState>(&validator_stake_account.data).unwrap();
     let meta = stake_state.meta().unwrap();
     assert_eq!(
-        validator_stake_account.lamports - minimum_stake_lamports(&meta),
+        validator_stake_account.lamports - minimum_stake_lamports(meta),
         post_validator_stake_item.stake_lamports()
     );
     assert_eq!(post_validator_stake_item.transient_stake_lamports, 0);
@@ -314,7 +314,7 @@ async fn success_with_extra_stake_lamports() {
     )
     .await;
     let pre_stake_pool =
-        try_from_slice_unchecked::<state::StakePool>(&pre_stake_pool.data.as_slice()).unwrap();
+        try_from_slice_unchecked::<state::StakePool>(pre_stake_pool.data.as_slice()).unwrap();
 
     // Save validator stake account record before depositing
     let validator_list = get_account(
@@ -372,7 +372,7 @@ async fn success_with_extra_stake_lamports() {
     .await;
 
     let post_stake_pool =
-        try_from_slice_unchecked::<state::StakePool>(&post_stake_pool.data.as_slice()).unwrap();
+        try_from_slice_unchecked::<state::StakePool>(post_stake_pool.data.as_slice()).unwrap();
     assert_eq!(
         post_stake_pool.total_stake_lamports,
         pre_stake_pool.total_stake_lamports + extra_lamports + stake_lamports
@@ -439,7 +439,7 @@ async fn success_with_extra_stake_lamports() {
         deserialize::<stake_program::StakeState>(&validator_stake_account.data).unwrap();
     let meta = stake_state.meta().unwrap();
     assert_eq!(
-        validator_stake_account.lamports - minimum_stake_lamports(&meta),
+        validator_stake_account.lamports - minimum_stake_lamports(meta),
         post_validator_stake_item.stake_lamports()
     );
     assert_eq!(post_validator_stake_item.transient_stake_lamports, 0);
