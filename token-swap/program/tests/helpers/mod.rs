@@ -39,10 +39,14 @@ pub async fn create_standard_setup<'a>(
     token_a_amount: u64,
     token_b_amount: u64,
 ) -> TokenSwapAccounts<'a> {
-    let pool_registry_key = pool_registry_key.unwrap_or(
-        create_pool_registry(banks_client, payer, recent_blockhash, payer)
-        .await
-        .unwrap());
+    let pool_registry_key = match pool_registry_key {
+        Some(a) => a,
+        None => {
+            create_pool_registry(banks_client, payer, recent_blockhash, payer)
+            .await
+            .unwrap()
+        },
+    };
 
     let fees = Fees {
         trade_fee_numerator: 20,

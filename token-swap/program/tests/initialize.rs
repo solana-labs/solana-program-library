@@ -8,10 +8,13 @@ use {
     solana_sdk::{
         instruction::InstructionError,
         signature::{Keypair, Signer},
-        transaction::TransactionError,
+        transaction::{TransactionError, Transaction},
         transport::TransportError,
+        account::ReadableAccount,
     },
     spl_token_swap::{
+        id,
+        instruction,
         curve::{
             base::{CurveType, SwapCurve},
             constant_price::ConstantPriceCurve,
@@ -19,8 +22,9 @@ use {
             offset::OffsetCurve,
         },
         error::SwapError,
-        state::SwapVersion,
+        state::{SwapVersion, PoolRegistry},
     },
+    bytemuck::from_bytes,
 };
 
 #[tokio::test]
@@ -548,6 +552,133 @@ async fn fn_test_initialize_twice() {
             panic!("Wrong error occurs while creating swap twice")
         }
     }
+}
+
+#[tokio::test]
+async fn fn_test_pool_reg_removes() {
+    let (mut banks_client, payer, recent_blockhash) = helpers::program_test().start().await;
+
+    let mints: Vec<Keypair> = (0..6).map(|_|Keypair::new()).collect();
+
+    let mut swap = helpers::create_standard_setup(&mut banks_client, &payer, &recent_blockhash, None, &mints.get(0).unwrap(), &mints.get(1).unwrap(), 1000, 2000).await;
+    let fixed_pool_reg = swap.pool_registry_pubkey;
+
+    // create valid swap
+    swap.initialize_swap(&mut banks_client, &payer, &recent_blockhash)
+        .await
+        .unwrap();
+
+    //grab a new blockhash from the chain
+    let (recent_blockhash, _calc) = banks_client
+        .get_new_blockhash(&recent_blockhash)
+        .await
+        .unwrap();
+
+    let mut swap = helpers::create_standard_setup(&mut banks_client, &payer, &recent_blockhash, Some(fixed_pool_reg), &mints.get(2).unwrap(), &mints.get(3).unwrap(), 1000, 2000).await;
+    
+    // create valid swap
+    swap.initialize_swap(&mut banks_client, &payer, &recent_blockhash)
+        .await
+        .unwrap();
+    let mid_key = swap.swap_pubkey;
+
+    //grab a new blockhash from the chain
+    let (recent_blockhash, _calc) = banks_client
+        .get_new_blockhash(&recent_blockhash)
+        .await
+        .unwrap();
+
+    let mut swap = helpers::create_standard_setup(&mut banks_client, &payer, &recent_blockhash, Some(fixed_pool_reg), &mints.get(4).unwrap(), &mints.get(5).unwrap(), 1000, 2000).await;
+
+    // create valid swap
+    swap.initialize_swap(&mut banks_client, &payer, &recent_blockhash)
+        .await
+        .unwrap();
+    let last_key = swap.swap_pubkey;
+
+    //validate middle account in registry is middle we created
+    let reg_account = banks_client.get_account(fixed_pool_reg)
+        .await
+        .unwrap()
+        .unwrap();
+    let data = reg_account.data();
+    let reg: &PoolRegistry = from_bytes(data);
+    let regsize_ref = std::ptr::addr_of!(reg.registry_size);
+    let registry_size = unsafe { regsize_ref.read_unaligned() };
+    assert_eq!(registry_size, 3);
+    assert_eq!(reg.accounts[1], mid_key);
+    assert_eq!(reg.accounts[2], last_key);
+
+    //grab a new blockhash from the chain
+    let (recent_blockhash, _calc) = banks_client
+        .get_new_blockhash(&recent_blockhash)
+        .await
+        .unwrap();
+
+    //remove index 1 (middle swap pool in reg)
+    let mut tx = Transaction::new_with_payer(
+        &[
+            instruction::deregister_pool(
+                &id(),
+                &payer.pubkey(),
+                &fixed_pool_reg,
+                1,
+            ).unwrap()
+        ],
+        Some(&payer.pubkey()),
+    );
+    tx.sign(&[&payer], recent_blockhash);
+    banks_client.process_transaction(tx)
+        .await
+        .unwrap();
+    
+    //validate middle account in registry is now the last we created
+    let reg_account = banks_client.get_account(fixed_pool_reg)
+        .await
+        .unwrap()
+        .unwrap();
+    let data = reg_account.data();
+    let reg: &PoolRegistry = from_bytes(data);
+    let regsize_ref = std::ptr::addr_of!(reg.registry_size);
+    let registry_size = unsafe { regsize_ref.read_unaligned() };
+    assert_eq!(registry_size, 2);
+    assert_eq!(reg.accounts[1], last_key);
+
+    //grab a new blockhash from the chain
+    let (recent_blockhash, _calc) = banks_client
+        .get_new_blockhash(&recent_blockhash)
+        .await
+        .unwrap();
+
+    //remove index 1 (last swap pool in reg)
+    let mut tx = Transaction::new_with_payer(
+        &[
+            instruction::deregister_pool(
+                &id(),
+                &payer.pubkey(),
+                &fixed_pool_reg,
+                1,
+            ).unwrap()
+        ],
+        Some(&payer.pubkey()),
+    );
+    tx.sign(&[&payer], recent_blockhash);
+    banks_client.process_transaction(tx)
+        .await
+        .unwrap();
+    
+    //validate registry is now size 1, and the 1 is not mid or last
+    let reg_account = banks_client.get_account(fixed_pool_reg)
+        .await
+        .unwrap()
+        .unwrap();
+    let data = reg_account.data();
+    let reg: &PoolRegistry = from_bytes(data);
+    let regsize_ref = std::ptr::addr_of!(reg.registry_size);
+    let registry_size = unsafe { regsize_ref.read_unaligned() };
+    assert_eq!(registry_size, 1);
+    assert!(reg.accounts[0] != mid_key);
+    assert!(reg.accounts[0] != last_key);
 }
 
 #[tokio::test]
