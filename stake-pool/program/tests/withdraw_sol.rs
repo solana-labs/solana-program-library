@@ -119,8 +119,8 @@ async fn success() {
     let amount_withdrawn_minus_fee =
         pool_tokens - stake_pool_accounts.calculate_withdrawal_fee(pool_tokens);
     assert_eq!(
-        post_stake_pool.total_stake_lamports,
-        pre_stake_pool.total_stake_lamports - amount_withdrawn_minus_fee
+        post_stake_pool.total_lamports,
+        pre_stake_pool.total_lamports - amount_withdrawn_minus_fee
     );
     assert_eq!(
         post_stake_pool.pool_token_supply,

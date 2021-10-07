@@ -203,8 +203,8 @@ async fn success() {
     let post_stake_pool =
         try_from_slice_unchecked::<state::StakePool>(post_stake_pool.data.as_slice()).unwrap();
     assert_eq!(
-        post_stake_pool.total_stake_lamports,
-        pre_stake_pool.total_stake_lamports + stake_lamports
+        post_stake_pool.total_lamports,
+        pre_stake_pool.total_lamports + stake_lamports
     );
     assert_eq!(
         post_stake_pool.pool_token_supply,
@@ -374,8 +374,8 @@ async fn success_with_extra_stake_lamports() {
     let post_stake_pool =
         try_from_slice_unchecked::<state::StakePool>(post_stake_pool.data.as_slice()).unwrap();
     assert_eq!(
-        post_stake_pool.total_stake_lamports,
-        pre_stake_pool.total_stake_lamports + extra_lamports + stake_lamports
+        post_stake_pool.total_lamports,
+        pre_stake_pool.total_lamports + extra_lamports + stake_lamports
     );
     assert_eq!(
         post_stake_pool.pool_token_supply,

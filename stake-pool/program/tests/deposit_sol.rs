@@ -103,8 +103,8 @@ async fn success() {
     let post_stake_pool =
         try_from_slice_unchecked::<state::StakePool>(post_stake_pool.data.as_slice()).unwrap();
     assert_eq!(
-        post_stake_pool.total_stake_lamports,
-        pre_stake_pool.total_stake_lamports + TEST_STAKE_AMOUNT
+        post_stake_pool.total_lamports,
+        pre_stake_pool.total_lamports + TEST_STAKE_AMOUNT
     );
     assert_eq!(
         post_stake_pool.pool_token_supply,
