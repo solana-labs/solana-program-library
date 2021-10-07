@@ -347,7 +347,7 @@ pub enum LendingInstruction {
     ///   0. `[writable]` Source withdraw reserve collateral supply SPL Token account.
     ///   1. `[writable]` Destination collateral token account.
     ///                     Minted by withdraw reserve collateral mint.
-    ///   2. `[]` Withdraw reserve account - refreshed.
+    ///   2. `[writable]` Withdraw reserve account - refreshed.
     ///   3. `[writable]` Obligation account - refreshed.
     ///   4. `[]` Lending market account.
     ///   5. `[]` Derived lending market authority.
