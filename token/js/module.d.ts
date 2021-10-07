@@ -120,6 +120,14 @@ declare module '@solana/spl-token' {
       multiSigners: Array<Signer>,
       amount: number | u64,
     ): Promise<TransactionSignature>;
+    transferChecked(
+      source: PublicKey,
+      destination: PublicKey,
+      owner: any,
+      multiSigners: Array<Signer>,
+      amount: number | u64,
+      decimals: number,
+    ): Promise<TransactionSignature>;
     approve(
       account: PublicKey,
       delegate: PublicKey,
