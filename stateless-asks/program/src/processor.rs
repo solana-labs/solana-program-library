@@ -71,7 +71,7 @@ fn process_accept_offer(
         maker_src_token_account.delegated_amount
     );
     if maker_src_token_account.delegated_amount != maker_size {
-        return Err(ProgramError::InvalidAccountData.into());
+        return Err(ProgramError::InvalidAccountData);
     }
     msg!("Delegated Amount matches");
     let seeds = &[
@@ -88,7 +88,7 @@ fn process_accept_offer(
     // Ensure that authority is the delegate of this token account
     msg!("Authority key matches");
     if maker_src_token_account.delegate != COption::Some(authority_key) {
-        return Err(ProgramError::InvalidAccountData.into());
+        return Err(ProgramError::InvalidAccountData);
     }
     msg!("Delegate matches");
     assert_keys_equal(spl_token::id(), *token_program_info.key)?;
