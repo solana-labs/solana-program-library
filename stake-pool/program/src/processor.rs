@@ -607,8 +607,7 @@ impl Processor {
         let stake_state = try_from_slice_unchecked::<stake_program::StakeState>(
             &reserve_stake_info.data.borrow(),
         )?;
-        let total_stake_lamports = if let stake_program::StakeState::Initialized(meta) = stake_state
-        {
+        let total_lamports = if let stake_program::StakeState::Initialized(meta) = stake_state {
             if meta.lockup != stake_program::Lockup::default() {
                 msg!("Reserve stake account has some lockup");
                 return Err(StakePoolError::WrongStakeState.into());
@@ -653,7 +652,7 @@ impl Processor {
         stake_pool.manager_fee_account = *manager_fee_info.key;
         stake_pool.token_program_id = *token_program_info.key;
         stake_pool.last_update_epoch = Clock::get()?.epoch;
-        stake_pool.total_stake_lamports = total_stake_lamports;
+        stake_pool.total_lamports = total_lamports;
         stake_pool.epoch_fee = epoch_fee;
         stake_pool.next_epoch_fee = None;
         stake_pool.preferred_deposit_validator_vote_address = None;
@@ -1614,30 +1613,31 @@ impl Processor {
             return Err(StakePoolError::InvalidState.into());
         }
 
-        let previous_lamports = stake_pool.total_stake_lamports;
+        let previous_lamports = stake_pool.total_lamports;
+        let previous_pool_token_supply = stake_pool.pool_token_supply;
         let reserve_stake = try_from_slice_unchecked::<stake_program::StakeState>(
             &reserve_stake_info.data.borrow(),
         )?;
-        let mut total_stake_lamports =
-            if let stake_program::StakeState::Initialized(meta) = reserve_stake {
-                reserve_stake_info
-                    .lamports()
-                    .checked_sub(minimum_reserve_lamports(&meta))
-                    .ok_or(StakePoolError::CalculationFailure)?
-            } else {
-                msg!("Reserve stake account in unknown state, aborting");
-                return Err(StakePoolError::WrongStakeState.into());
-            };
+        let mut total_lamports = if let stake_program::StakeState::Initialized(meta) = reserve_stake
+        {
+            reserve_stake_info
+                .lamports()
+                .checked_sub(minimum_reserve_lamports(&meta))
+                .ok_or(StakePoolError::CalculationFailure)?
+        } else {
+            msg!("Reserve stake account in unknown state, aborting");
+            return Err(StakePoolError::WrongStakeState.into());
+        };
         for validator_stake_record in validator_list.iter::<ValidatorStakeInfo>() {
             if validator_stake_record.last_update_epoch < clock.epoch {
                 return Err(StakePoolError::StakeListOutOfDate.into());
             }
-            total_stake_lamports = total_stake_lamports
+            total_lamports = total_lamports
                 .checked_add(validator_stake_record.stake_lamports())
                 .ok_or(StakePoolError::CalculationFailure)?;
         }
 
-        let reward_lamports = total_stake_lamports.saturating_sub(previous_lamports);
+        let reward_lamports = total_lamports.saturating_sub(previous_lamports);
 
         // If the manager fee info is invalid, they don't deserve to receive the fee.
         let fee = if stake_pool.check_manager_fee_info(manager_fee_info).is_ok() {
@@ -1659,11 +1659,6 @@ impl Processor {
                 stake_pool.stake_withdraw_bump_seed,
                 fee,
             )?;
-
-            stake_pool.pool_token_supply = stake_pool
-                .pool_token_supply
-                .checked_add(fee)
-                .ok_or(StakePoolError::CalculationFailure)?;
         }
 
         if stake_pool.last_update_epoch < clock.epoch {
@@ -1680,8 +1675,10 @@ impl Processor {
                 stake_pool.next_sol_withdrawal_fee = None;
             }
             stake_pool.last_update_epoch = clock.epoch;
+            stake_pool.last_epoch_total_lamports = previous_lamports;
+            stake_pool.last_epoch_pool_token_supply = previous_pool_token_supply;
         }
-        stake_pool.total_stake_lamports = total_stake_lamports;
+        stake_pool.total_lamports = total_lamports;
 
         let pool_mint = Mint::unpack_from_slice(&pool_mint_info.data.borrow())?;
         stake_pool.pool_token_supply = pool_mint.supply;
@@ -1974,8 +1971,8 @@ impl Processor {
             .ok_or(StakePoolError::CalculationFailure)?;
         // We treat the extra lamports as though they were
         // transferred directly to the reserve stake account.
-        stake_pool.total_stake_lamports = stake_pool
-            .total_stake_lamports
+        stake_pool.total_lamports = stake_pool
+            .total_lamports
             .checked_add(all_deposit_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
@@ -2121,8 +2118,8 @@ impl Processor {
             .pool_token_supply
             .checked_add(new_pool_tokens)
             .ok_or(StakePoolError::CalculationFailure)?;
-        stake_pool.total_stake_lamports = stake_pool
-            .total_stake_lamports
+        stake_pool.total_lamports = stake_pool
+            .total_lamports
             .checked_add(deposit_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
@@ -2345,8 +2342,8 @@ impl Processor {
             .pool_token_supply
             .checked_sub(pool_tokens_burnt)
             .ok_or(StakePoolError::CalculationFailure)?;
-        stake_pool.total_stake_lamports = stake_pool
-            .total_stake_lamports
+        stake_pool.total_lamports = stake_pool
+            .total_lamports
             .checked_sub(withdraw_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
@@ -2500,8 +2497,8 @@ impl Processor {
             .pool_token_supply
             .checked_sub(pool_tokens_burnt)
             .ok_or(StakePoolError::CalculationFailure)?;
-        stake_pool.total_stake_lamports = stake_pool
-            .total_stake_lamports
+        stake_pool.total_lamports = stake_pool
+            .total_lamports
             .checked_sub(withdraw_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;

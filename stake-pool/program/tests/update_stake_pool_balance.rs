@@ -83,7 +83,7 @@ async fn success() {
     )
     .await;
     let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
-    assert_eq!(pre_balance, stake_pool.total_stake_lamports);
+    assert_eq!(pre_balance, stake_pool.total_lamports);
 
     let pre_token_supply = get_token_supply(
         &mut context.banks_client,
@@ -138,7 +138,7 @@ async fn success() {
     )
     .await;
     let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
-    assert_eq!(post_balance, stake_pool.total_stake_lamports);
+    assert_eq!(post_balance, stake_pool.total_lamports);
 
     let post_fee = get_token_balance(
         &mut context.banks_client,
@@ -162,6 +162,8 @@ async fn success() {
     assert_eq!(expected_fee, actual_fee);
 
     assert_eq!(pool_token_supply, stake_pool.pool_token_supply);
+    assert_eq!(pre_token_supply, stake_pool.last_epoch_pool_token_supply);
+    assert_eq!(pre_balance, stake_pool.last_epoch_total_lamports);
 }
 
 #[tokio::test]
@@ -180,7 +182,7 @@ async fn success_ignoring_extra_lamports() {
     )
     .await;
     let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
-    assert_eq!(pre_balance, stake_pool.total_stake_lamports);
+    assert_eq!(pre_balance, stake_pool.total_lamports);
 
     let pre_token_supply = get_token_supply(
         &mut context.banks_client,

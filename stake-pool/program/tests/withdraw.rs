@@ -245,8 +245,8 @@ async fn _success(test_type: SuccessTestType) {
     };
     let tokens_burnt = tokens_to_withdraw - tokens_withdrawal_fee;
     assert_eq!(
-        stake_pool.total_stake_lamports,
-        stake_pool_before.total_stake_lamports - tokens_burnt
+        stake_pool.total_lamports,
+        stake_pool_before.total_lamports - tokens_burnt
     );
     assert_eq!(
         stake_pool.pool_token_supply,

@@ -967,7 +967,7 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
     }
     println!(
         "Total Pool Stake: {}{}",
-        Sol(stake_pool.total_stake_lamports),
+        Sol(stake_pool.total_lamports),
         if stake_pool.last_update_epoch != epoch_info.epoch {
             " [UPDATE REQUIRED]"
         } else {
@@ -1542,7 +1542,7 @@ fn command_list_all_pools(config: &Config) -> CommandResult {
             "Address: {}\tManager: {}\tLamports: {}\tPool tokens: {}\tValidators: {}",
             address,
             stake_pool.manager,
-            stake_pool.total_stake_lamports,
+            stake_pool.total_lamports,
             stake_pool.pool_token_supply,
             validator_list.validators.len()
         );

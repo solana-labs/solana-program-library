@@ -214,7 +214,7 @@ async fn success() {
     )
     .await;
     let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data).unwrap();
-    assert_eq!(new_lamports, stake_pool.total_stake_lamports);
+    assert_eq!(new_lamports, stake_pool.total_lamports);
 }
 
 #[tokio::test]
@@ -282,7 +282,7 @@ async fn merge_into_reserve() {
     )
     .await;
     let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data).unwrap();
-    assert_eq!(expected_lamports, stake_pool.total_stake_lamports);
+    assert_eq!(expected_lamports, stake_pool.total_lamports);
 
     println!("Warp one more epoch so the stakes deactivate");
     let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
@@ -325,7 +325,7 @@ async fn merge_into_reserve() {
     )
     .await;
     let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data).unwrap();
-    assert_eq!(expected_lamports, stake_pool.total_stake_lamports);
+    assert_eq!(expected_lamports, stake_pool.total_lamports);
 }
 
 #[tokio::test]
@@ -389,7 +389,7 @@ async fn merge_into_validator_stake() {
     )
     .await;
     let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data).unwrap();
-    assert_eq!(expected_lamports, stake_pool.total_stake_lamports);
+    assert_eq!(expected_lamports, stake_pool.total_lamports);
 
     // Warp one more epoch so the stakes activate, ready to merge
     let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
@@ -422,7 +422,7 @@ async fn merge_into_validator_stake() {
     )
     .await;
     let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data).unwrap();
-    assert_eq!(current_lamports, stake_pool.total_stake_lamports);
+    assert_eq!(current_lamports, stake_pool.total_lamports);
 
     // Check that transient accounts are gone
     for stake_account in &stake_accounts {
@@ -803,7 +803,7 @@ async fn success_ignoring_hijacked_transient_stake() {
     )
     .await;
     let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data).unwrap();
-    assert_eq!(pre_lamports, stake_pool.total_stake_lamports);
+    assert_eq!(pre_lamports, stake_pool.total_lamports);
 }
 
 #[tokio::test]

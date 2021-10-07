@@ -86,12 +86,12 @@ pub struct StakePool {
     /// Total stake under management.
     /// Note that if `last_update_epoch` does not match the current epoch then
     /// this field may not be accurate
-    pub total_stake_lamports: u64,
+    pub total_lamports: u64,
 
     /// Total supply of pool tokens (should always match the supply in the Pool Mint)
     pub pool_token_supply: u64,
 
-    /// Last epoch the `total_stake_lamports` field was updated
+    /// Last epoch the `total_lamports` field was updated
     pub last_update_epoch: u64,
 
     /// Lockup that all stakes in the pool must have
@@ -146,18 +146,24 @@ pub struct StakePool {
 
     /// Future SOL withdrawal fee, to be set for the following epoch
     pub next_sol_withdrawal_fee: Option<Fee>,
+
+    /// Last epoch's total pool tokens, used only for APR estimation
+    pub last_epoch_pool_token_supply: u64,
+
+    /// Last epoch's total lamports, used only for APR estimation
+    pub last_epoch_total_lamports: u64,
 }
 impl StakePool {
     /// calculate the pool tokens that should be minted for a deposit of `stake_lamports`
     #[inline]
     pub fn calc_pool_tokens_for_deposit(&self, stake_lamports: u64) -> Option<u64> {
-        if self.total_stake_lamports == 0 || self.pool_token_supply == 0 {
+        if self.total_lamports == 0 || self.pool_token_supply == 0 {
             return Some(stake_lamports);
         }
         u64::try_from(
             (stake_lamports as u128)
                 .checked_mul(self.pool_token_supply as u128)?
-                .checked_div(self.total_stake_lamports as u128)?,
+                .checked_div(self.total_lamports as u128)?,
         )
         .ok()
     }
@@ -168,7 +174,7 @@ impl StakePool {
         // `checked_ceil_div` returns `None` for a 0 quotient result, but in this
         // case, a return of 0 is valid for small amounts of pool tokens. So
         // we check for that separately
-        let numerator = (pool_tokens as u128).checked_mul(self.total_stake_lamports as u128)?;
+        let numerator = (pool_tokens as u128).checked_mul(self.total_lamports as u128)?;
         let denominator = self.pool_token_supply as u128;
         if numerator < denominator || denominator == 0 {
             Some(0)
@@ -227,22 +233,21 @@ impl StakePool {
     /// Calculate the fee in pool tokens that goes to the manager
     ///
     /// This function assumes that `reward_lamports` has not already been added
-    /// to the stake pool's `total_stake_lamports`
+    /// to the stake pool's `total_lamports`
     #[inline]
     pub fn calc_epoch_fee_amount(&self, reward_lamports: u64) -> Option<u64> {
         if reward_lamports == 0 {
             return Some(0);
         }
-        let total_stake_lamports =
-            (self.total_stake_lamports as u128).checked_add(reward_lamports as u128)?;
+        let total_lamports = (self.total_lamports as u128).checked_add(reward_lamports as u128)?;
         let fee_lamports = self.epoch_fee.apply(reward_lamports)?;
-        if total_stake_lamports == fee_lamports || self.pool_token_supply == 0 {
+        if total_lamports == fee_lamports || self.pool_token_supply == 0 {
             Some(reward_lamports)
         } else {
             u64::try_from(
                 (self.pool_token_supply as u128)
                     .checked_mul(fee_lamports)?
-                    .checked_div(total_stake_lamports.checked_sub(fee_lamports)?)?,
+                    .checked_div(total_lamports.checked_sub(fee_lamports)?)?,
             )
             .ok()
         }
@@ -816,7 +821,10 @@ mod test {
         solana_program::borsh::{
             get_instance_packed_len, get_packed_len, try_from_slice_unchecked,
         },
-        solana_program::native_token::LAMPORTS_PER_SOL,
+        solana_program::{
+            clock::{DEFAULT_SLOTS_PER_EPOCH, DEFAULT_S_PER_SLOT, SECONDS_PER_DAY},
+            native_token::LAMPORTS_PER_SOL,
+        },
     };
 
     fn uninitialized_validator_list() -> ValidatorList {
@@ -992,11 +1000,11 @@ mod test {
     }
 
     prop_compose! {
-        fn total_stake_and_rewards()(total_stake_lamports in 1..u64::MAX)(
-            total_stake_lamports in Just(total_stake_lamports),
-            rewards in 0..=total_stake_lamports,
+        fn total_stake_and_rewards()(total_lamports in 1..u64::MAX)(
+            total_lamports in Just(total_lamports),
+            rewards in 0..=total_lamports,
         ) -> (u64, u64) {
-            (total_stake_lamports - rewards, rewards)
+            (total_lamports - rewards, rewards)
         }
     }
 
@@ -1008,7 +1016,7 @@ mod test {
             denominator: 10,
         };
         let mut stake_pool = StakePool {
-            total_stake_lamports: 100 * LAMPORTS_PER_SOL,
+            total_lamports: 100 * LAMPORTS_PER_SOL,
             pool_token_supply: 100 * LAMPORTS_PER_SOL,
             epoch_fee,
             ..StakePool::default()
@@ -1016,7 +1024,7 @@ mod test {
         let reward_lamports = 10 * LAMPORTS_PER_SOL;
         let pool_token_fee = stake_pool.calc_epoch_fee_amount(reward_lamports).unwrap();
 
-        stake_pool.total_stake_lamports += reward_lamports;
+        stake_pool.total_lamports += reward_lamports;
         stake_pool.pool_token_supply += pool_token_fee;
 
         let fee_lamports = stake_pool
@@ -1042,7 +1050,7 @@ mod test {
     #[test]
     fn divide_by_zero_fee() {
         let stake_pool = StakePool {
-            total_stake_lamports: 0,
+            total_lamports: 0,
             epoch_fee: Fee {
                 numerator: 1,
                 denominator: 10,
@@ -1054,22 +1062,44 @@ mod test {
         assert_eq!(fee, rewards);
     }
 
+    #[test]
+    fn approximate_apr_calculation() {
+        // 8% / year means roughly .044% / epoch
+        let stake_pool = StakePool {
+            last_epoch_total_lamports: 100_000,
+            last_epoch_pool_token_supply: 100_000,
+            total_lamports: 100_044,
+            pool_token_supply: 100_000,
+            ..StakePool::default()
+        };
+        let pool_token_value =
+            stake_pool.total_lamports as f64 / stake_pool.pool_token_supply as f64;
+        let last_epoch_pool_token_value = stake_pool.last_epoch_total_lamports as f64
+            / stake_pool.last_epoch_pool_token_supply as f64;
+        let epoch_rate = pool_token_value / last_epoch_pool_token_value - 1.0;
+        const SECONDS_PER_EPOCH: f64 = DEFAULT_SLOTS_PER_EPOCH as f64 * DEFAULT_S_PER_SLOT;
+        const EPOCHS_PER_YEAR: f64 = SECONDS_PER_DAY as f64 * 365.25 / SECONDS_PER_EPOCH;
+        const EPSILON: f64 = 0.00001;
+        let yearly_rate = epoch_rate * EPOCHS_PER_YEAR;
+        assert!((yearly_rate - 0.080355).abs() < EPSILON);
+    }
+
     proptest! {
         #[test]
         fn fee_calculation(
             (numerator, denominator) in fee(),
-            (total_stake_lamports, reward_lamports) in total_stake_and_rewards(),
+            (total_lamports, reward_lamports) in total_stake_and_rewards(),
         ) {
             let epoch_fee = Fee { denominator, numerator };
             let mut stake_pool = StakePool {
-                total_stake_lamports,
-                pool_token_supply: total_stake_lamports,
+                total_lamports,
+                pool_token_supply: total_lamports,
                 epoch_fee,
                 ..StakePool::default()
             };
             let pool_token_fee = stake_pool.calc_epoch_fee_amount(reward_lamports).unwrap();
 
-            stake_pool.total_stake_lamports += reward_lamports;
+            stake_pool.total_lamports += reward_lamports;
             stake_pool.pool_token_supply += pool_token_fee;
 
             let fee_lamports = stake_pool.calc_lamports_withdraw_amount(pool_token_fee).unwrap();
@@ -1082,7 +1112,7 @@ mod test {
             // since we do two "flooring" conversions, the max epsilon should be
             // correct up to 2 lamports (one for each floor division), plus a
             // correction for huge discrepancies between rewards and total stake
-            let epsilon = 2 + reward_lamports / total_stake_lamports;
+            let epsilon = 2 + reward_lamports / total_lamports;
             assert!(max_fee_lamports - fee_lamports <= epsilon,
                 "Max expected fee in lamports {}, actually receive {}, epsilon {}",
                 max_fee_lamports, fee_lamports, epsilon);
@@ -1102,16 +1132,16 @@ mod test {
     proptest! {
         #[test]
         fn deposit_and_withdraw(
-            (total_stake_lamports, pool_token_supply, deposit_stake) in total_tokens_and_deposit()
+            (total_lamports, pool_token_supply, deposit_stake) in total_tokens_and_deposit()
         ) {
             let mut stake_pool = StakePool {
-                total_stake_lamports,
+                total_lamports,
                 pool_token_supply,
                 ..StakePool::default()
             };
             let deposit_result = stake_pool.calc_pool_tokens_for_deposit(deposit_stake).unwrap();
             prop_assume!(deposit_result > 0);
-            stake_pool.total_stake_lamports += deposit_stake;
+            stake_pool.total_lamports += deposit_stake;
             stake_pool.pool_token_supply += deposit_result;
             let withdraw_result = stake_pool.calc_lamports_withdraw_amount(deposit_result).unwrap();
             assert!(withdraw_result <= deposit_stake);

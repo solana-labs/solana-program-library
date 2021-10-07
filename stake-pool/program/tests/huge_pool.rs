@@ -69,7 +69,7 @@ async fn setup(
         pool_mint: stake_pool_accounts.pool_mint.pubkey(),
         manager_fee_account: stake_pool_accounts.pool_fee_account.pubkey(),
         token_program_id: spl_token::id(),
-        total_stake_lamports: 0,
+        total_lamports: 0,
         pool_token_supply: 0,
         last_update_epoch: 0,
         lockup: stake_program::Lockup::default(),
@@ -87,6 +87,8 @@ async fn setup(
         sol_withdraw_authority: None,
         sol_withdrawal_fee: Fee::default(),
         next_sol_withdrawal_fee: None,
+        last_epoch_pool_token_supply: 0,
+        last_epoch_total_lamports: 0,
     };
 
     let mut validator_list = ValidatorList::new(max_validators);
@@ -168,7 +170,7 @@ async fn setup(
             transient_seed_suffix_end: 0,
         });
 
-        stake_pool.total_stake_lamports += active_stake_lamports;
+        stake_pool.total_lamports += active_stake_lamports;
         stake_pool.pool_token_supply += active_stake_lamports;
     }
 
