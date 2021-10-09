@@ -24,5 +24,4 @@ jobs:
          source .travis/script.sh
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
- 
 
