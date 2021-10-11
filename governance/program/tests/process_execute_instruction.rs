@@ -209,7 +209,6 @@ async fn test_execute_transfer_instruction() {
 }
 
 #[tokio::test]
-#[ignore] // There  is some bug in ProgramTest and this test randomly times out
 async fn test_execute_upgrade_program_instruction() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
