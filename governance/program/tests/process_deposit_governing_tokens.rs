@@ -18,7 +18,8 @@ async fn test_deposit_initial_community_tokens() {
     // Act
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     // Assert
 
@@ -61,7 +62,8 @@ async fn test_deposit_initial_council_tokens() {
     // Act
     let token_owner_record_cookie = governance_test
         .with_council_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     // Assert
     let token_owner_record = governance_test
@@ -100,7 +102,8 @@ async fn test_deposit_subsequent_community_tokens() {
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let deposit_amount = 5;
     let total_deposit_amount = token_owner_record_cookie
@@ -146,7 +149,8 @@ async fn test_deposit_subsequent_council_tokens() {
 
     let token_owner_record_cookie = governance_test
         .with_council_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let deposit_amount = 5;
     let total_deposit_amount = token_owner_record_cookie
@@ -283,7 +287,8 @@ async fn test_deposit_community_tokens_with_malicious_holding_account_error() {
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     governance_test
         .bench

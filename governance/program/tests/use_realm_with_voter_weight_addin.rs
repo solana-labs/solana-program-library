@@ -5,7 +5,7 @@ use solana_program_test::*;
 mod program_test;
 
 use program_test::*;
-use spl_governance::{instruction::Vote, state::enums::VoteWeight};
+use spl_governance::{error::GovernanceError, instruction::Vote, state::enums::VoteWeight};
 
 #[tokio::test]
 async fn test_create_account_governance_with_voter_weight_addin() {
@@ -236,5 +236,26 @@ async fn test_create_program_governance_with_voter_weight_addin() {
     assert_eq!(
         program_governance_cookie.account,
         program_governance_account
+    );
+}
+
+#[tokio::test]
+async fn test_realm_with_voter_weight_addin_with_deposits_not_allowed() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_with_voter_weight_addin().await;
+    let realm_cookie = governance_test.with_realm().await;
+
+    // Act
+
+    let err = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+    assert_eq!(
+        err,
+        GovernanceError::GoverningTokenDepositsNotAllowed.into()
     );
 }

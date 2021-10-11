@@ -352,7 +352,7 @@ impl GovernanceProgramTest {
     pub async fn with_community_token_deposit(
         &mut self,
         realm_cookie: &RealmCookie,
-    ) -> TokenOwnerRecordCookie {
+    ) -> Result<TokenOwnerRecordCookie, ProgramError> {
         self.with_initial_governing_token_deposit(
             &realm_cookie.address,
             &realm_cookie.account.community_mint,
@@ -419,7 +419,7 @@ impl GovernanceProgramTest {
         &mut self,
         realm_cookie: &RealmCookie,
         amount: u64,
-    ) -> TokenOwnerRecordCookie {
+    ) -> Result<TokenOwnerRecordCookie, ProgramError> {
         self.with_initial_governing_token_deposit(
             &realm_cookie.address,
             &realm_cookie.account.community_mint,
@@ -468,7 +468,7 @@ impl GovernanceProgramTest {
         &mut self,
         realm_cookie: &RealmCookie,
         amount: u64,
-    ) -> TokenOwnerRecordCookie {
+    ) -> Result<TokenOwnerRecordCookie, ProgramError> {
         self.with_initial_governing_token_deposit(
             &realm_cookie.address,
             &realm_cookie.account.config.council_mint.unwrap(),
@@ -482,7 +482,7 @@ impl GovernanceProgramTest {
     pub async fn with_council_token_deposit(
         &mut self,
         realm_cookie: &RealmCookie,
-    ) -> TokenOwnerRecordCookie {
+    ) -> Result<TokenOwnerRecordCookie, ProgramError> {
         self.with_initial_governing_token_deposit(
             &realm_cookie.address,
             &realm_cookie.account.config.council_mint.unwrap(),
@@ -499,7 +499,7 @@ impl GovernanceProgramTest {
         governing_mint: &Pubkey,
         governing_mint_authority: &Keypair,
         amount: u64,
-    ) -> TokenOwnerRecordCookie {
+    ) -> Result<TokenOwnerRecordCookie, ProgramError> {
         let token_owner = Keypair::new();
         let token_source = Keypair::new();
 
@@ -531,8 +531,7 @@ impl GovernanceProgramTest {
                 &[deposit_governing_tokens_instruction],
                 Some(&[&token_owner]),
             )
-            .await
-            .unwrap();
+            .await?;
 
         let token_owner_record_address = get_token_owner_record_address(
             &self.program_id,
@@ -556,7 +555,7 @@ impl GovernanceProgramTest {
 
         let governance_delegate = Keypair::from_base58_string(&token_owner.to_base58_string());
 
-        TokenOwnerRecordCookie {
+        Ok(TokenOwnerRecordCookie {
             address: token_owner_record_address,
             account,
 
@@ -566,7 +565,7 @@ impl GovernanceProgramTest {
             governance_authority: None,
             governance_delegate,
             voter_weight_record: None,
-        }
+        })
     }
 
     #[allow(dead_code)]

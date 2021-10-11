@@ -22,7 +22,8 @@ async fn test_set_governance_config() {
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let mut account_governance_cookie = governance_test
         .with_account_governance(
@@ -157,7 +158,8 @@ async fn test_set_governance_config_with_invalid_governance_authority_error() {
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let mut account_governance_cookie = governance_test
         .with_account_governance(

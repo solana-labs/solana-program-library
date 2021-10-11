@@ -25,7 +25,8 @@ async fn test_finalize_vote_to_succeeded() {
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let mut account_governance_cookie = governance_test
         .with_account_governance_using_config(
@@ -117,7 +118,8 @@ async fn test_finalize_vote_to_defeated() {
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let mut account_governance_cookie = governance_test
         .with_account_governance(
@@ -184,7 +186,8 @@ async fn test_finalize_vote_with_invalid_mint_error() {
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let mut account_governance_cookie = governance_test
         .with_account_governance(
@@ -243,7 +246,8 @@ async fn test_finalize_vote_with_invalid_governance_error() {
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let mut account_governance_cookie = governance_test
         .with_account_governance(

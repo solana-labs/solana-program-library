@@ -17,7 +17,8 @@ async fn test_cancel_proposal() {
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let mut account_governance_cookie = governance_test
         .with_account_governance(
@@ -66,7 +67,8 @@ async fn test_cancel_proposal_with_already_completed_error() {
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let mut account_governance_cookie = governance_test
         .with_account_governance(
@@ -112,7 +114,8 @@ async fn test_cancel_proposal_with_owner_or_delegate_must_sign_error() {
 
     let mut token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let mut account_governance_cookie = governance_test
         .with_account_governance(
@@ -130,7 +133,8 @@ async fn test_cancel_proposal_with_owner_or_delegate_must_sign_error() {
 
     let token_owner_record_cookie2 = governance_test
         .with_council_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     token_owner_record_cookie.token_owner = token_owner_record_cookie2.token_owner;
 

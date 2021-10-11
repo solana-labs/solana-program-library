@@ -347,6 +347,10 @@ pub enum GovernanceError {
     /// TokenOwnerRecord already exists
     #[error("TokenOwnerRecord already exists")]
     TokenOwnerRecordAlreadyExists,
+
+    /// Governing token deposits not allowed
+    #[error("Governing token deposits not allowed")]
+    GoverningTokenDepositsNotAllowed,
 }
 
 impl PrintProgramError for GovernanceError {

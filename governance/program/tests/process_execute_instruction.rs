@@ -26,7 +26,8 @@ async fn test_execute_mint_instruction() {
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let mut mint_governance_cookie = governance_test
         .with_mint_governance(
@@ -122,7 +123,8 @@ async fn test_execute_transfer_instruction() {
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let mut token_governance_cookie = governance_test
         .with_token_governance(
@@ -218,7 +220,8 @@ async fn test_execute_upgrade_program_instruction() {
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let mut program_governance_cookie = governance_test
         .with_program_governance(
@@ -344,7 +347,8 @@ async fn test_execute_instruction_with_invalid_state_errors() {
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let mut mint_governance_cookie = governance_test
         .with_mint_governance(
@@ -506,7 +510,8 @@ async fn test_execute_instruction_for_other_proposal_error() {
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let mut mint_governance_cookie = governance_test
         .with_mint_governance(
@@ -555,7 +560,8 @@ async fn test_execute_instruction_for_other_proposal_error() {
 
     let token_owner_record_cookie2 = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let proposal_cookie2 = governance_test
         .with_proposal(&token_owner_record_cookie2, &mut mint_governance_cookie)
@@ -588,7 +594,8 @@ async fn test_execute_mint_instruction_twice_error() {
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let mut mint_governance_cookie = governance_test
         .with_mint_governance(

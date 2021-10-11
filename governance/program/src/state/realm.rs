@@ -125,6 +125,21 @@ impl Realm {
 
         Ok(())
     }
+
+    /// Asserts the given governing token can be deposited into the realm
+    pub fn asset_governing_tokens_deposits_allowed(
+        &self,
+        governing_token_mint: &Pubkey,
+    ) -> Result<(), ProgramError> {
+        // If the deposit is for the community token and the realm uses community voter weight addin then panic
+        if self.config.use_community_voter_weight_addin
+            && self.community_mint == *governing_token_mint
+        {
+            return Err(GovernanceError::GoverningTokenDepositsNotAllowed.into());
+        }
+
+        Ok(())
+    }
 }
 
 /// Checks whether realm account exists, is initialized and  owned by Governance program
