@@ -76,8 +76,8 @@ fn process_accept_offer(
     msg!("Delegated Amount matches");
     let seeds = &[
         b"stateless_offer",
-        maker_src_account.key.as_ref(),
-        maker_dst_account.key.as_ref(),
+        maker_wallet.key.as_ref(),
+        maker_src_mint.key.as_ref(),
         taker_src_mint.key.as_ref(),
         &maker_size.to_le_bytes(),
         &taker_size.to_le_bytes(),
