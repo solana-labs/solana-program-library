@@ -250,7 +250,7 @@ impl GovernanceProgramTest {
                 account: RealmConfigAccount {
                     account_type: GovernanceAccountType::RealmConfig,
                     realm: realm_address,
-                    community_voter_weight: self.voter_weight_addin_id,
+                    community_voter_weight_addin: self.voter_weight_addin_id,
                     reserved_1: None,
                     reserved_2: None,
                     reserved_3: None,
@@ -810,7 +810,7 @@ impl GovernanceProgramTest {
                 account: RealmConfigAccount {
                     account_type: GovernanceAccountType::RealmConfig,
                     realm: realm_cookie.address,
-                    community_voter_weight: Some(
+                    community_voter_weight_addin: Some(
                         set_realm_config_ix.accounts[community_voter_weight_addin_index].pubkey,
                     ),
                     reserved_1: None,

@@ -24,7 +24,7 @@ pub struct RealmConfigAccount {
     pub realm: Pubkey,
 
     /// Addin providing voter weights for community token
-    pub community_voter_weight: Option<Pubkey>,
+    pub community_voter_weight_addin: Option<Pubkey>,
 
     /// Reserved for community max vote weight addin
     pub reserved_1: Option<Pubkey>,
@@ -94,7 +94,7 @@ mod test {
         let realm_config = RealmConfigAccount {
             account_type: GovernanceAccountType::Realm,
             realm: Pubkey::new_unique(),
-            community_voter_weight: Some(Pubkey::new_unique()),
+            community_voter_weight_addin: Some(Pubkey::new_unique()),
             reserved_1: Some(Pubkey::new_unique()),
             reserved_2: Some(Pubkey::new_unique()),
             reserved_3: Some(Pubkey::new_unique()),

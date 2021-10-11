@@ -91,7 +91,7 @@ pub fn process_create_realm(
         let realm_config_data = RealmConfigAccount {
             account_type: GovernanceAccountType::RealmConfig,
             realm: *realm_info.key,
-            community_voter_weight: Some(*community_voter_weight_addin_info.key),
+            community_voter_weight_addin: Some(*community_voter_weight_addin_info.key),
             reserved_1: None,
             reserved_2: None,
             reserved_3: None,

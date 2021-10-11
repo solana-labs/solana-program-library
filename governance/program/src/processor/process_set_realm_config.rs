@@ -76,7 +76,7 @@ pub fn process_set_realm_config(
             let realm_config_data = RealmConfigAccount {
                 account_type: GovernanceAccountType::RealmConfig,
                 realm: *realm_info.key,
-                community_voter_weight: Some(*community_voter_weight_addin_info.key),
+                community_voter_weight_addin: Some(*community_voter_weight_addin_info.key),
                 reserved_1: None,
                 reserved_2: None,
                 reserved_3: None,
@@ -96,13 +96,14 @@ pub fn process_set_realm_config(
         } else {
             let mut realm_config_data =
                 get_realm_config_data_for_realm(program_id, realm_config_info, realm_info.key)?;
-            realm_config_data.community_voter_weight = Some(*community_voter_weight_addin_info.key);
+            realm_config_data.community_voter_weight_addin =
+                Some(*community_voter_weight_addin_info.key);
             realm_config_data.serialize(&mut *realm_config_info.data.borrow_mut())?;
         }
     } else if realm_data.config.use_community_voter_weight_addin {
         let mut realm_config_data =
             get_realm_config_data_for_realm(program_id, realm_config_info, realm_info.key)?;
-        realm_config_data.community_voter_weight = None;
+        realm_config_data.community_voter_weight_addin = None;
         realm_config_data.serialize(&mut *realm_config_info.data.borrow_mut())?;
     }
 
