@@ -1493,7 +1493,7 @@ fn command_set_staker(
 fn command_set_funding_authority(
     config: &Config,
     stake_pool_address: &Pubkey,
-    new_sol_deposit_authority: Option<Pubkey>,
+    new_authority: Option<Pubkey>,
     funding_type: FundingType,
 ) -> CommandResult {
     let mut signers = vec![config.fee_payer.as_ref(), config.manager.as_ref()];
@@ -1504,7 +1504,7 @@ fn command_set_funding_authority(
             &spl_stake_pool::id(),
             stake_pool_address,
             &config.manager.pubkey(),
-            new_sol_deposit_authority.as_ref(),
+            new_authority.as_ref(),
             funding_type,
         )],
         &signers,
@@ -2540,7 +2540,7 @@ fn main() {
         }
         ("set-funding-authority", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
-            let new_stake_deposit_authority = pubkey_of(arg_matches, "new_stake_deposit_authority");
+            let new_authority = pubkey_of(arg_matches, "new_authority");
             let funding_type = match arg_matches.value_of("funding_type").unwrap() {
                 "sol-deposit" => FundingType::SolDeposit,
                 "stake-deposit" => FundingType::StakeDeposit,
@@ -2548,12 +2548,7 @@ fn main() {
                 _ => unreachable!(),
             };
             let _unset = arg_matches.is_present("unset");
-            command_set_funding_authority(
-                &config,
-                &stake_pool_address,
-                new_stake_deposit_authority,
-                funding_type,
-            )
+            command_set_funding_authority(&config, &stake_pool_address, new_authority, funding_type)
         }
         ("set-fee", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
