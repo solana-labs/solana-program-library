@@ -27,7 +27,7 @@ if [[ -n $1 ]]; then
     solana --version
     ;;
   *)
-    echo "$0: Note: ignoring unknown argument: $1" >&2
+    echo "solana-version.sh: Note: ignoring unknown argument: $1" >&2
     ;;
   esac
 fi

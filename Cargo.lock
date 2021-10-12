@@ -3860,6 +3860,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-token-2022"
+version = "0.1.0"
+dependencies = [
+ "arrayref",
+ "num-derive",
+ "num-traits",
+ "num_enum",
+ "solana-program",
+ "solana-sdk",
+ "thiserror",
+]
+
+[[package]]
 name = "spl-token-cli"
 version = "2.0.15"
 dependencies = [
