@@ -27,6 +27,7 @@ members = [
   "token-swap/program/fuzz",
   "token/cli",
   "token/program",
+  "token/program-2022",
   "utils/cgen",
   "utils/test-client",
   "token-lending/flash_loan_receiver",
