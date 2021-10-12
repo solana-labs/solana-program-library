@@ -414,9 +414,9 @@ pub enum GovernanceInstruction {
     ///       If that's required then it must be done before executing this instruction
     ///   3. `[writable]` Council Token Holding account - optional unless council is used. PDA seeds: ['governance',realm,council_mint]
     ///       The account will be created with the Realm PDA as its owner
-    ///   4. `[signer]` Payer
-    ///   5. `[]` System
-    ///   6. `[writable]` RealmConfig account. PDA seeds: ['realm-config', realm]
+    ///   4. `[]` System
+    ///   5. `[writable]` RealmConfig account. PDA seeds: ['realm-config', realm]
+    ///   6. `[signer]` Optional Payer
     ///   7. `[]` Optional Community Voter Weight Addin Program Id    
     SetRealmConfig {
         #[allow(dead_code)]
@@ -1273,7 +1273,6 @@ pub fn set_realm_config(
         false
     };
 
-    accounts.push(AccountMeta::new_readonly(*payer, true));
     accounts.push(AccountMeta::new_readonly(system_program::id(), false));
 
     // Always pass realm_config_address because it's needed when use_community_voter_weight_addin is set to true
@@ -1283,6 +1282,7 @@ pub fn set_realm_config(
 
     let use_community_voter_weight_addin =
         if let Some(community_voter_weight_addin) = community_voter_weight_addin {
+            accounts.push(AccountMeta::new(*payer, true));
             accounts.push(AccountMeta::new_readonly(
                 community_voter_weight_addin,
                 false,

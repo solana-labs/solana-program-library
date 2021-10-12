@@ -64,12 +64,12 @@ pub fn process_set_realm_config(
         realm_data.config.council_mint = None;
     }
 
-    let payer_info = next_account_info(account_info_iter)?; // 4
-    let system_info = next_account_info(account_info_iter)?; // 5
-    let realm_config_info = next_account_info(account_info_iter)?; // 6
+    let system_info = next_account_info(account_info_iter)?; // 4
+    let realm_config_info = next_account_info(account_info_iter)?; // 5
 
     // Setup community voter weight addin
     if realm_config_args.use_community_voter_weight_addin {
+        let payer_info = next_account_info(account_info_iter)?; // 6
         let community_voter_weight_addin_info = next_account_info(account_info_iter)?; // 7
 
         if realm_config_info.data_is_empty() {
@@ -84,6 +84,7 @@ pub fn process_set_realm_config(
             };
 
             let rent = Rent::get().unwrap();
+
             create_and_serialize_account_signed::<RealmConfigAccount>(
                 payer_info,
                 realm_config_info,
