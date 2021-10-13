@@ -21,9 +21,7 @@ use crate::{
     },
     tools::{
         account::create_and_serialize_account_signed,
-        spl_token::{
-            get_spl_token_amount, get_spl_token_mint, get_spl_token_owner, transfer_spl_tokens,
-        },
+        spl_token::{get_spl_token_mint, get_spl_token_owner, transfer_spl_tokens},
     },
 };
 
@@ -31,6 +29,7 @@ use crate::{
 pub fn process_deposit_governing_tokens(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
+    amount: u64,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -58,8 +57,6 @@ pub fn process_deposit_governing_tokens(
         &governing_token_mint,
         governing_token_holding_info.key,
     )?;
-
-    let amount = get_spl_token_amount(governing_token_source_info)?;
 
     transfer_spl_tokens(
         governing_token_source_info,

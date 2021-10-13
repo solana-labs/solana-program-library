@@ -103,13 +103,14 @@ impl GovernanceChatProgramTest {
         let token_source = Keypair::new();
 
         let transfer_authority = Keypair::new();
+        let amount = 100;
 
         self.bench
             .create_token_account_with_transfer_authority(
                 &token_source,
                 &governing_token_mint_keypair.pubkey(),
                 &governing_token_mint_authority,
-                100,
+                amount,
                 &token_owner,
                 &transfer_authority.pubkey(),
             )
@@ -122,6 +123,7 @@ impl GovernanceChatProgramTest {
             &token_owner.pubkey(),
             &token_owner.pubkey(),
             &self.bench.payer.pubkey(),
+            amount,
             &governing_token_mint_keypair.pubkey(),
         );
 
@@ -244,6 +246,7 @@ impl GovernanceChatProgramTest {
             &token_owner.pubkey(),
             &token_owner.pubkey(),
             &self.bench.payer.pubkey(),
+            deposit_amount,
             &proposal_cookie.governing_token_mint,
         );
 

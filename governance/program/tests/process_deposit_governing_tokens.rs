@@ -196,13 +196,15 @@ async fn test_deposit_initial_community_tokens_with_owner_must_sign_error() {
     let transfer_authority = Keypair::new();
     let token_source = Keypair::new();
 
+    let amount = 10;
+
     governance_test
         .bench
         .create_token_account_with_transfer_authority(
             &token_source,
             &realm_cookie.account.community_mint,
             &realm_cookie.community_mint_authority,
-            10,
+            amount,
             &token_owner,
             &transfer_authority.pubkey(),
         )
@@ -215,6 +217,7 @@ async fn test_deposit_initial_community_tokens_with_owner_must_sign_error() {
         &token_owner.pubkey(),
         &transfer_authority.pubkey(),
         &governance_test.bench.context.payer.pubkey(),
+        amount,
         &realm_cookie.account.community_mint,
     );
 
@@ -244,13 +247,15 @@ async fn test_deposit_initial_community_tokens_with_invalid_owner_error() {
 
     let invalid_owner = Keypair::new();
 
+    let amount = 10;
+
     governance_test
         .bench
         .create_token_account_with_transfer_authority(
             &token_source,
             &realm_cookie.account.community_mint,
             &realm_cookie.community_mint_authority,
-            10,
+            amount,
             &token_owner,
             &transfer_authority.pubkey(),
         )
@@ -263,6 +268,7 @@ async fn test_deposit_initial_community_tokens_with_invalid_owner_error() {
         &invalid_owner.pubkey(),
         &transfer_authority.pubkey(),
         &governance_test.bench.context.payer.pubkey(),
+        amount,
         &realm_cookie.account.community_mint,
     );
 
@@ -290,13 +296,15 @@ async fn test_deposit_community_tokens_with_malicious_holding_account_error() {
         .await
         .unwrap();
 
+    let amount = 50;
+
     governance_test
         .bench
         .mint_tokens(
             &realm_cookie.account.community_mint,
             &realm_cookie.community_mint_authority,
             &token_owner_record_cookie.token_source,
-            50,
+            amount,
         )
         .await;
 
@@ -307,6 +315,7 @@ async fn test_deposit_community_tokens_with_malicious_holding_account_error() {
         &token_owner_record_cookie.token_owner.pubkey(),
         &token_owner_record_cookie.token_owner.pubkey(),
         &governance_test.bench.context.payer.pubkey(),
+        amount,
         &realm_cookie.account.community_mint,
     );
 

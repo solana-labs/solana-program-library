@@ -26,7 +26,6 @@ mod process_sign_off_proposal;
 mod process_withdraw_governing_tokens;
 
 use crate::instruction::GovernanceInstruction;
-use borsh::BorshDeserialize;
 
 use process_add_signatory::*;
 use process_cancel_proposal::*;
@@ -54,8 +53,8 @@ use process_sign_off_proposal::*;
 use process_withdraw_governing_tokens::*;
 
 use solana_program::{
-    account_info::AccountInfo, entrypoint::ProgramResult, msg, program_error::ProgramError,
-    pubkey::Pubkey,
+    account_info::AccountInfo, borsh::try_from_slice_unchecked, entrypoint::ProgramResult, msg,
+    program_error::ProgramError, pubkey::Pubkey,
 };
 
 /// Processes an instruction
@@ -64,8 +63,9 @@ pub fn process_instruction(
     accounts: &[AccountInfo],
     input: &[u8],
 ) -> ProgramResult {
-    let instruction = GovernanceInstruction::try_from_slice(input)
-        .map_err(|_| ProgramError::InvalidInstructionData)?;
+    // Use try_from_slice_unchecked to support forward compatibility of newer UI with older program
+    let instruction: GovernanceInstruction =
+        try_from_slice_unchecked(input).map_err(|_| ProgramError::InvalidInstructionData)?;
 
     if let GovernanceInstruction::InsertInstruction {
         index,
@@ -88,8 +88,8 @@ pub fn process_instruction(
             process_create_realm(program_id, accounts, name, config_args)
         }
 
-        GovernanceInstruction::DepositGoverningTokens {} => {
-            process_deposit_governing_tokens(program_id, accounts)
+        GovernanceInstruction::DepositGoverningTokens { amount } => {
+            process_deposit_governing_tokens(program_id, accounts, amount)
         }
 
         GovernanceInstruction::WithdrawGoverningTokens {} => {
