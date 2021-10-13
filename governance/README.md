@@ -5,6 +5,15 @@ It can be used as an authority provider for mints, token accounts and other form
 we may want a voting population to vote on disbursement of funds collectively.
 It can also control upgrades of itself and other programs through democratic means.
 
+## Governance UI
+
+UI for the governance program is work in progress and there are currently two versions available:
+
+- [MVP UI](https://github.com/solana-labs/oyster) project which provides basic UI to create and manage DAOs: [mvp-governance-ui](https://solana-labs.github.io/oyster-gov/#/)
+
+- [Governance UI](https://github.com/blockworks-foundation/governance-ui) project build together
+  with the [MNGO](https://mango.markets/) team: [governance-ui](https://dao-beta.mango.markets/realms)
+
 ## Architecture
 
 ### Accounts diagram (Program Governance use case)
