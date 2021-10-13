@@ -323,6 +323,34 @@ pub enum GovernanceError {
     /// All proposals must be finalized to withdraw governing tokens
     #[error("All proposals must be finalized to withdraw governing tokens")]
     AllProposalsMustBeFinalisedToWithdrawGoverningTokens,
+
+    /// Invalid VoterWeightRecord for Realm
+    #[error("Invalid VoterWeightRecord for Realm")]
+    InvalidVoterWeightRecordForRealm,
+
+    /// Invalid VoterWeightRecord for GoverningTokenMint
+    #[error("Invalid VoterWeightRecord for GoverningTokenMint")]
+    InvalidVoterWeightRecordForGoverningTokenMint,
+
+    /// Invalid VoterWeightRecord for TokenOwner
+    #[error("Invalid VoterWeightRecord for TokenOwner")]
+    InvalidVoterWeightRecordForTokenOwner,
+
+    /// VoterWeightRecord expired
+    #[error("VoterWeightRecord expired")]
+    VoterWeightRecordExpired,
+
+    /// Invalid RealmConfig for Realm
+    #[error("Invalid RealmConfig for Realm")]
+    InvalidRealmConfigForRealm,
+
+    /// TokenOwnerRecord already exists
+    #[error("TokenOwnerRecord already exists")]
+    TokenOwnerRecordAlreadyExists,
+
+    /// Governing token deposits not allowed
+    #[error("Governing token deposits not allowed")]
+    GoverningTokenDepositsNotAllowed,
 }
 
 impl PrintProgramError for GovernanceError {

@@ -26,14 +26,21 @@ pub struct RealmConfigArgs {
 
     /// The source used for community mint max vote weight source
     pub community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
+
+    /// Indicates whether an external addin program should be used to provide community voters weights
+    /// If yes then the voters weight program account must be passed to the instruction
+    pub use_community_voter_weight_addin: bool,
 }
 
 /// Realm Config defining Realm parameters.
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct RealmConfig {
+    /// Indicates whether an external addin program should be used to provide voters weights for the community mint
+    pub use_community_voter_weight_addin: bool,
+
     /// Reserved space for future versions
-    pub reserved: [u8; 8],
+    pub reserved: [u8; 7],
 
     /// Min number of community tokens required to create a governance
     pub min_community_tokens_to_create_governance: u64,
@@ -114,6 +121,21 @@ impl Realm {
 
         if governing_token_holding_address != *governing_token_holding {
             return Err(GovernanceError::InvalidGoverningTokenHoldingAccount.into());
+        }
+
+        Ok(())
+    }
+
+    /// Asserts the given governing token can be deposited into the realm
+    pub fn asset_governing_tokens_deposits_allowed(
+        &self,
+        governing_token_mint: &Pubkey,
+    ) -> Result<(), ProgramError> {
+        // If the deposit is for the community token and the realm uses community voter weight addin then panic
+        if self.config.use_community_voter_weight_addin
+            && self.community_mint == *governing_token_mint
+        {
+            return Err(GovernanceError::GoverningTokenDepositsNotAllowed.into());
         }
 
         Ok(())
@@ -222,6 +244,9 @@ pub fn assert_valid_realm_config_args(config_args: &RealmConfigArgs) -> Result<(
 #[cfg(test)]
 mod test {
 
+    use crate::instruction::GovernanceInstruction;
+    use solana_program::borsh::try_from_slice_unchecked;
+
     use super::*;
 
     #[test]
@@ -235,7 +260,8 @@ mod test {
             name: "test-realm".to_string(),
             config: RealmConfig {
                 council_mint: Some(Pubkey::new_unique()),
-                reserved: [0; 8],
+                use_community_voter_weight_addin: false,
+                reserved: [0; 7],
 
                 community_mint_max_vote_weight_source: MintMaxVoteWeightSource::Absolute(100),
                 min_community_tokens_to_create_governance: 10,
@@ -245,5 +271,77 @@ mod test {
         let size = realm.try_to_vec().unwrap().len();
 
         assert_eq!(realm.get_max_size(), Some(size));
+    }
+
+    #[test]
+    fn test_deserialize_v2_realm_account_from_v1() {
+        // Arrange
+        let realm_v1 = spl_governance_v1::state::realm::Realm {
+            account_type: spl_governance_v1::state::enums::GovernanceAccountType::Realm,
+            community_mint: Pubkey::new_unique(),
+            config: spl_governance_v1::state::realm::RealmConfig {
+                council_mint: Some(Pubkey::new_unique()),
+                reserved: [0; 8],
+                community_mint_max_vote_weight_source:
+                    spl_governance_v1::state::enums::MintMaxVoteWeightSource::Absolute(100),
+                min_community_tokens_to_create_governance: 10,
+            },
+            reserved: [0; 8],
+            authority: Some(Pubkey::new_unique()),
+            name: "test-realm-v1".to_string(),
+        };
+
+        let mut realm_v1_data = vec![];
+        realm_v1.serialize(&mut realm_v1_data).unwrap();
+
+        // Act
+        let realm_v2: Realm = try_from_slice_unchecked(&realm_v1_data).unwrap();
+
+        // Assert
+        assert!(!realm_v2.config.use_community_voter_weight_addin);
+        assert_eq!(realm_v2.account_type, GovernanceAccountType::Realm);
+        assert_eq!(
+            realm_v2.config.min_community_tokens_to_create_governance,
+            realm_v1.config.min_community_tokens_to_create_governance,
+        );
+    }
+
+    #[test]
+    fn test_deserialize_v1_create_realm_instruction_from_v2() {
+        // Arrange
+        let create_realm_ix = GovernanceInstruction::CreateRealm {
+            name: "test-realm".to_string(),
+            config_args: RealmConfigArgs {
+                use_council_mint: true,
+                min_community_tokens_to_create_governance: 100,
+                community_mint_max_vote_weight_source:
+                    MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,
+                use_community_voter_weight_addin: false,
+            },
+        };
+
+        let mut create_realm_ix_data = vec![];
+        create_realm_ix
+            .serialize(&mut create_realm_ix_data)
+            .unwrap();
+
+        // Act
+        let create_realm_ix_v1: spl_governance_v1::instruction::GovernanceInstruction =
+            try_from_slice_unchecked(&create_realm_ix_data).unwrap();
+
+        // Assert
+        if let spl_governance_v1::instruction::GovernanceInstruction::CreateRealm {
+            name,
+            config_args,
+        } = create_realm_ix_v1
+        {
+            assert_eq!("test-realm", name);
+            assert_eq!(
+                spl_governance_v1::state::enums::MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,
+                config_args.community_mint_max_vote_weight_source
+            );
+        } else {
+            panic!("Can't deserialize v1 CreateRealm instruction from v2");
+        }
     }
 }

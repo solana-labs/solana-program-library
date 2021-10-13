@@ -18,7 +18,8 @@ async fn test_create_token_governance() {
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     // Act
     let token_governance_cookie = governance_test
@@ -54,7 +55,8 @@ async fn test_create_token_governance_without_transferring_token_owner() {
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     governed_token_cookie.transfer_token_owner = false;
 
@@ -96,7 +98,8 @@ async fn test_create_token_governance_without_transferring_token_owner_with_inva
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     governed_token_cookie.transfer_token_owner = false;
     governed_token_cookie.token_owner = Keypair::new();
@@ -127,7 +130,8 @@ async fn test_create_token_governance_without_transferring_token_owner_with_owne
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     governed_token_cookie.transfer_token_owner = false;
 
@@ -140,7 +144,7 @@ async fn test_create_token_governance_without_transferring_token_owner_with_owne
             |i| {
                 i.accounts[3].is_signer = false; // governed_token_owner
             },
-            Some(&[]),
+            Some(&[&token_owner_record_cookie.token_owner]),
         )
         .await
         .err()
@@ -160,7 +164,8 @@ async fn test_create_token_governance_with_invalid_token_owner_error() {
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     governed_token_cookie.token_owner = Keypair::new();
 
@@ -189,7 +194,8 @@ async fn test_create_token_governance_with_invalid_realm_error() {
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let token_governance_cookie = governance_test
         .with_token_governance(

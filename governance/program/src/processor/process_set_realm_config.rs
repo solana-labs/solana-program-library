@@ -5,18 +5,27 @@ use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
     pubkey::Pubkey,
+    rent::Rent,
+    sysvar::Sysvar,
 };
 
 use crate::{
     error::GovernanceError,
-    state::realm::{assert_valid_realm_config_args, get_realm_data_for_authority, RealmConfigArgs},
+    state::{
+        enums::GovernanceAccountType,
+        realm::{assert_valid_realm_config_args, get_realm_data_for_authority, RealmConfigArgs},
+        realm_config::{
+            get_realm_config_address_seeds, get_realm_config_data_for_realm, RealmConfigAccount,
+        },
+    },
+    tools::account::create_and_serialize_account_signed,
 };
 
 /// Processes SetRealmConfig instruction
 pub fn process_set_realm_config(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    config_args: RealmConfigArgs,
+    realm_config_args: RealmConfigArgs,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -30,10 +39,12 @@ pub fn process_set_realm_config(
         return Err(GovernanceError::RealmAuthorityMustSign.into());
     }
 
-    assert_valid_realm_config_args(&config_args)?;
+    assert_valid_realm_config_args(&realm_config_args)?;
 
-    if config_args.use_council_mint {
-        let council_token_mint_info = next_account_info(account_info_iter)?;
+    // Setup council
+    if realm_config_args.use_council_mint {
+        let council_token_mint_info = next_account_info(account_info_iter)?; // 2
+        let _council_token_holding_info = next_account_info(account_info_iter)?; // 3
 
         // Council mint can only be at present set to none (removed) and changing it to other mint is not supported
         // It might be implemented in future versions but it needs careful planning
@@ -53,10 +64,56 @@ pub fn process_set_realm_config(
         realm_data.config.council_mint = None;
     }
 
+    let system_info = next_account_info(account_info_iter)?; // 4
+    let realm_config_info = next_account_info(account_info_iter)?; // 5
+
+    // Setup community voter weight addin
+    if realm_config_args.use_community_voter_weight_addin {
+        let payer_info = next_account_info(account_info_iter)?; // 6
+        let community_voter_weight_addin_info = next_account_info(account_info_iter)?; // 7
+
+        if realm_config_info.data_is_empty() {
+            let realm_config_data = RealmConfigAccount {
+                account_type: GovernanceAccountType::RealmConfig,
+                realm: *realm_info.key,
+                community_voter_weight_addin: Some(*community_voter_weight_addin_info.key),
+                reserved_1: None,
+                reserved_2: None,
+                reserved_3: None,
+                reserved: [0; 128],
+            };
+
+            let rent = Rent::get().unwrap();
+
+            create_and_serialize_account_signed::<RealmConfigAccount>(
+                payer_info,
+                realm_config_info,
+                &realm_config_data,
+                &get_realm_config_address_seeds(realm_info.key),
+                program_id,
+                system_info,
+                &rent,
+            )?;
+        } else {
+            let mut realm_config_data =
+                get_realm_config_data_for_realm(program_id, realm_config_info, realm_info.key)?;
+            realm_config_data.community_voter_weight_addin =
+                Some(*community_voter_weight_addin_info.key);
+            realm_config_data.serialize(&mut *realm_config_info.data.borrow_mut())?;
+        }
+    } else if realm_data.config.use_community_voter_weight_addin {
+        let mut realm_config_data =
+            get_realm_config_data_for_realm(program_id, realm_config_info, realm_info.key)?;
+        realm_config_data.community_voter_weight_addin = None;
+        realm_config_data.serialize(&mut *realm_config_info.data.borrow_mut())?;
+    }
+
     realm_data.config.community_mint_max_vote_weight_source =
-        config_args.community_mint_max_vote_weight_source;
+        realm_config_args.community_mint_max_vote_weight_source;
     realm_data.config.min_community_tokens_to_create_governance =
-        config_args.min_community_tokens_to_create_governance;
+        realm_config_args.min_community_tokens_to_create_governance;
+    realm_data.config.use_community_voter_weight_addin =
+        realm_config_args.use_community_voter_weight_addin;
 
     realm_data.serialize(&mut *realm_info.data.borrow_mut())?;
 

@@ -16,7 +16,8 @@ async fn test_set_community_governance_delegate() {
     let realm_cookie = governance_test.with_realm().await;
     let mut token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     // Act
     governance_test
@@ -41,7 +42,8 @@ async fn test_set_governance_delegate_to_none() {
     let realm_cookie = governance_test.with_realm().await;
     let mut token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     governance_test
         .with_community_governance_delegate(&realm_cookie, &mut token_owner_record_cookie)
@@ -73,7 +75,8 @@ async fn test_set_council_governance_delegate() {
     let realm_cookie = governance_test.with_realm().await;
     let mut token_owner_record_cookie = governance_test
         .with_council_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     // Act
     governance_test
@@ -98,7 +101,8 @@ async fn test_set_community_governance_delegate_with_owner_must_sign_error() {
     let realm_cookie = governance_test.with_realm().await;
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let hacker_governance_delegate = Keypair::new();
 
@@ -136,7 +140,8 @@ async fn test_set_community_governance_delegate_signed_by_governance_delegate() 
     let realm_cookie = governance_test.with_realm().await;
     let mut token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     governance_test
         .with_community_governance_delegate(&realm_cookie, &mut token_owner_record_cookie)

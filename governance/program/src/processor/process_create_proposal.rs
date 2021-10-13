@@ -68,8 +68,19 @@ pub fn process_create_proposal(
     proposal_owner_record_data
         .assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
+    let voter_weight = proposal_owner_record_data.resolve_voter_weight(
+        program_id,
+        account_info_iter,
+        realm_info.key,
+        &realm_data,
+    )?;
+
     // Ensure proposal owner (TokenOwner) has enough tokens to create proposal and no outstanding proposals
-    proposal_owner_record_data.assert_can_create_proposal(&realm_data, &governance_data.config)?;
+    proposal_owner_record_data.assert_can_create_proposal(
+        &realm_data,
+        &governance_data.config,
+        voter_weight,
+    )?;
 
     proposal_owner_record_data.outstanding_proposal_count = proposal_owner_record_data
         .outstanding_proposal_count

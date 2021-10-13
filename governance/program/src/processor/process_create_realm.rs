@@ -16,6 +16,7 @@ use crate::{
             assert_valid_realm_config_args, get_governing_token_holding_address_seeds,
             get_realm_address_seeds, Realm, RealmConfig, RealmConfigArgs,
         },
+        realm_config::{get_realm_config_address_seeds, RealmConfigAccount},
     },
     tools::{
         account::create_and_serialize_account_signed, spl_token::create_spl_token_account_signed,
@@ -62,8 +63,8 @@ pub fn process_create_realm(
     )?;
 
     let council_token_mint_address = if config_args.use_council_mint {
-        let council_token_mint_info = next_account_info(account_info_iter)?;
-        let council_token_holding_info = next_account_info(account_info_iter)?;
+        let council_token_mint_info = next_account_info(account_info_iter)?; // 8
+        let council_token_holding_info = next_account_info(account_info_iter)?; // 9
 
         create_spl_token_account_signed(
             payer_info,
@@ -83,6 +84,31 @@ pub fn process_create_realm(
         None
     };
 
+    if config_args.use_community_voter_weight_addin {
+        let realm_config_info = next_account_info(account_info_iter)?; // 10
+        let community_voter_weight_addin_info = next_account_info(account_info_iter)?; //11
+
+        let realm_config_data = RealmConfigAccount {
+            account_type: GovernanceAccountType::RealmConfig,
+            realm: *realm_info.key,
+            community_voter_weight_addin: Some(*community_voter_weight_addin_info.key),
+            reserved_1: None,
+            reserved_2: None,
+            reserved_3: None,
+            reserved: [0; 128],
+        };
+
+        create_and_serialize_account_signed::<RealmConfigAccount>(
+            payer_info,
+            realm_config_info,
+            &realm_config_data,
+            &get_realm_config_address_seeds(realm_info.key),
+            program_id,
+            system_info,
+            rent,
+        )?;
+    }
+
     let realm_data = Realm {
         account_type: GovernanceAccountType::Realm,
         community_mint: *governance_token_mint_info.key,
@@ -92,11 +118,12 @@ pub fn process_create_realm(
         authority: Some(*realm_authority_info.key),
         config: RealmConfig {
             council_mint: council_token_mint_address,
-            reserved: [0; 8],
+            reserved: [0; 7],
             community_mint_max_vote_weight_source: config_args
                 .community_mint_max_vote_weight_source,
             min_community_tokens_to_create_governance: config_args
                 .min_community_tokens_to_create_governance,
+            use_community_voter_weight_addin: config_args.use_community_voter_weight_addin,
         },
     };
 

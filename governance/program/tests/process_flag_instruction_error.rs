@@ -21,7 +21,8 @@ async fn test_execute_flag_instruction_error() {
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let mut account_governance_cookie = governance_test
         .with_account_governance(
@@ -107,7 +108,8 @@ async fn test_execute_instruction_after_flagged_with_error() {
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let mut mint_governance_cookie = governance_test
         .with_mint_governance(
@@ -196,7 +198,8 @@ async fn test_execute_second_instruction_after_first_instruction_flagged_with_er
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let mut mint_governance_cookie = governance_test
         .with_mint_governance(
@@ -281,7 +284,8 @@ async fn test_flag_instruction_error_with_instruction_already_executed_error() {
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let mut mint_governance_cookie = governance_test
         .with_mint_governance(
@@ -365,7 +369,8 @@ async fn test_flag_instruction_error_with_owner_or_delegate_must_sign_error() {
 
     let mut token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let mut account_governance_cookie = governance_test
         .with_account_governance(
@@ -408,7 +413,8 @@ async fn test_flag_instruction_error_with_owner_or_delegate_must_sign_error() {
 
     let token_owner_record_cookie2 = governance_test
         .with_council_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     // Try to maliciously sign using different owner signature
     token_owner_record_cookie.token_owner = token_owner_record_cookie2.token_owner;

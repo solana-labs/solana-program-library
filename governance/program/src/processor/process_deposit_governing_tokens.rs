@@ -50,6 +50,8 @@ pub fn process_deposit_governing_tokens(
     let realm_data = get_realm_data(program_id, realm_info)?;
     let governing_token_mint = get_spl_token_mint(governing_token_holding_info)?;
 
+    realm_data.asset_governing_tokens_deposits_allowed(&governing_token_mint)?;
+
     realm_data.assert_is_valid_governing_token_mint_and_holding(
         program_id,
         realm_info.key,

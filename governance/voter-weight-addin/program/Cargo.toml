@@ -1,7 +1,7 @@
 [package]
-name = "spl-governance-chat"
+name = "spl-governance-voter-weight-addin"
 version = "0.1.0"
-description = "Solana Program Library Governance Chat Program"
+description = "Solana Program Library Governance Voter Weight Addin Program"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library"
 license = "Apache-2.0"
@@ -19,9 +19,10 @@ num-derive = "0.3"
 num-traits = "0.2"
 serde = "1.0.127"
 serde_derive = "1.0.103"
-solana-program = "1.8.0"
+solana-program = "1.7.11"
 spl-token = { version = "3.2", path = "../../../token/program", features = [ "no-entrypoint" ] }
-spl-governance= { version = "2.1.0", path ="../../program", features = [ "no-entrypoint" ]}
+spl-governance= { version = "2.1.1", path ="../../program", features = [ "no-entrypoint" ]}
+spl-governance-chat= { version = "0.1.0", path ="../../chat/program", features = [ "no-entrypoint" ]}
 thiserror = "1.0"
 
 
@@ -29,8 +30,8 @@ thiserror = "1.0"
 assert_matches = "1.5.0"
 base64 = "0.13"
 proptest = "1.0"
-solana-program-test = "1.8.0"
-solana-sdk = "1.8.0"
+solana-program-test = "1.7.11"
+solana-sdk = "1.7.11"
 spl-governance-test-sdk = { version = "0.1.0", path ="../../test-sdk"}
 
 

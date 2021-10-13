@@ -10,6 +10,7 @@ use crate::{
         proposal::get_proposal_address,
         proposal_instruction::{get_proposal_instruction_address, InstructionData},
         realm::{get_governing_token_holding_address, get_realm_address, RealmConfigArgs},
+        realm_config::get_realm_config_address,
         signatory_record::get_signatory_record_address,
         token_owner_record::get_token_owner_record_address,
         vote_record::get_vote_record_address,
@@ -50,9 +51,13 @@ pub enum GovernanceInstruction {
     /// 5. `[]` System
     /// 6. `[]` SPL Token
     /// 7. `[]` Sysvar Rent
+
     /// 8. `[]` Council Token Mint - optional
     /// 9. `[writable]` Council Token Holding account - optional unless council is used. PDA seeds: ['governance',realm,council_mint]
     ///     The account will be created with the Realm PDA as its owner
+
+    /// 10. `[writable]` RealmConfig account. PDA seeds: ['realm-config', realm]
+    /// 11. `[]` Optional Community Voter Weight Addin Program Id
     CreateRealm {
         #[allow(dead_code)]
         /// UTF-8 encoded Governance Realm name
@@ -113,6 +118,9 @@ pub enum GovernanceInstruction {
     ///   4. `[signer]` Payer
     ///   5. `[]` System program
     ///   6. `[]` Sysvar Rent
+    ///   7. `[signer]` Governance authority
+    ///   8. `[]` Optional Realm Config
+    ///   9. `[]` Optional Voter Weight Record
     CreateAccountGovernance {
         /// Governance config
         #[allow(dead_code)]
@@ -131,6 +139,9 @@ pub enum GovernanceInstruction {
     ///   7. `[]` bpf_upgradeable_loader program
     ///   8. `[]` System program
     ///   9. `[]` Sysvar Rent
+    ///   10. `[signer]` Governance authority
+    ///   11. `[]` Optional Realm Config
+    ///   12. `[]` Optional Voter Weight Record
     CreateProgramGovernance {
         /// Governance config
         #[allow(dead_code)]
@@ -154,6 +165,8 @@ pub enum GovernanceInstruction {
     ///   6. `[]` System program
     ///   7. `[]` Rent sysvar
     ///   8. `[]` Clock sysvar
+    ///   9. `[]` Optional Realm Config
+    ///   10. `[]` Optional Voter Weight Record
     CreateProposal {
         #[allow(dead_code)]
         /// UTF-8 encoded name of the proposal
@@ -263,6 +276,8 @@ pub enum GovernanceInstruction {
     ///   8. `[]` System program
     ///   9. `[]` Rent sysvar
     ///   10. `[]` Clock sysvar
+    ///   11. `[]` Optional Realm Config
+    ///   12. `[]` Optional Voter Weight Record
     CastVote {
         #[allow(dead_code)]
         /// Yes/No vote
@@ -317,6 +332,9 @@ pub enum GovernanceInstruction {
     ///   6. `[]` SPL Token program
     ///   7. `[]` System program
     ///   8. `[]` Sysvar Rent
+    ///   8. `[signer]` Governance authority
+    ///   9. `[]` Optional Realm Config
+    ///   10. `[]` Optional Voter Weight Record
     CreateMintGovernance {
         #[allow(dead_code)]
         /// Governance config
@@ -340,6 +358,9 @@ pub enum GovernanceInstruction {
     ///   6. `[]` SPL Token program
     ///   7. `[]` System program
     ///   8. `[]` Sysvar Rent
+    ///   9. `[signer]` Governance authority
+    ///   10. `[]` Optional Realm Config
+    ///   11. `[]` Optional Voter Weight Record   
     CreateTokenGovernance {
         #[allow(dead_code)]
         /// Governance config
@@ -393,11 +414,26 @@ pub enum GovernanceInstruction {
     ///       If that's required then it must be done before executing this instruction
     ///   3. `[writable]` Council Token Holding account - optional unless council is used. PDA seeds: ['governance',realm,council_mint]
     ///       The account will be created with the Realm PDA as its owner
+    ///   4. `[]` System
+    ///   5. `[writable]` RealmConfig account. PDA seeds: ['realm-config', realm]
+    ///   6. `[signer]` Optional Payer
+    ///   7. `[]` Optional Community Voter Weight Addin Program Id    
     SetRealmConfig {
         #[allow(dead_code)]
         /// Realm config args
         config_args: RealmConfigArgs,
     },
+
+    /// Creates TokenOwnerRecord with 0 deposit amount
+    /// It's used to register TokenOwner when voter weight addin is used and the Governance program doesn't take deposits
+    ///
+    ///   0. `[]` Realm account
+    ///   1. `[]` Governing Token Owner account
+    ///   2. `[writable]` TokenOwnerRecord account. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
+    ///   3. `[]` Governing Token Mint   
+    ///   4. `[signer]` Payer
+    ///   5. `[]` System
+    CreateTokenOwnerRecord {},
 }
 
 /// Creates CreateRealm instruction
@@ -409,6 +445,7 @@ pub fn create_realm(
     community_token_mint: &Pubkey,
     payer: &Pubkey,
     council_token_mint: Option<Pubkey>,
+    community_voter_weight_addin: Option<Pubkey>,
     // Args
     name: String,
     min_community_tokens_to_create_governance: u64,
@@ -440,11 +477,26 @@ pub fn create_realm(
         false
     };
 
+    let realm_config_address = get_realm_config_address(program_id, &realm_address);
+    accounts.push(AccountMeta::new(realm_config_address, false));
+
+    let use_community_voter_weight_addin =
+        if let Some(community_voter_weight_addin) = community_voter_weight_addin {
+            accounts.push(AccountMeta::new_readonly(
+                community_voter_weight_addin,
+                false,
+            ));
+            true
+        } else {
+            false
+        };
+
     let instruction = GovernanceInstruction::CreateRealm {
         config_args: RealmConfigArgs {
             use_council_mint,
             min_community_tokens_to_create_governance,
             community_mint_max_vote_weight_source,
+            use_community_voter_weight_addin,
         },
         name,
     };
@@ -572,7 +624,8 @@ pub fn set_governance_delegate(
     }
 }
 
-/// Creates CreateAccountGovernance instruction
+/// Creates CreateAccountGovernance instruction using optional voter weight addin
+#[allow(clippy::too_many_arguments)]
 pub fn create_account_governance(
     program_id: &Pubkey,
     // Accounts
@@ -580,13 +633,15 @@ pub fn create_account_governance(
     governed_account: &Pubkey,
     token_owner_record: &Pubkey,
     payer: &Pubkey,
+    governance_authority: &Pubkey,
+    voter_weight_record: Option<Pubkey>,
     // Args
     config: GovernanceConfig,
 ) -> Instruction {
     let account_governance_address =
         get_account_governance_address(program_id, realm, governed_account);
 
-    let accounts = vec![
+    let mut accounts = vec![
         AccountMeta::new_readonly(*realm, false),
         AccountMeta::new(account_governance_address, false),
         AccountMeta::new_readonly(*governed_account, false),
@@ -594,7 +649,10 @@ pub fn create_account_governance(
         AccountMeta::new_readonly(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
+        AccountMeta::new_readonly(*governance_authority, true),
     ];
+
+    with_voter_weight_accounts(program_id, &mut accounts, realm, voter_weight_record);
 
     let instruction = GovernanceInstruction::CreateAccountGovernance { config };
 
@@ -615,6 +673,8 @@ pub fn create_program_governance(
     governed_program_upgrade_authority: &Pubkey,
     token_owner_record: &Pubkey,
     payer: &Pubkey,
+    governance_authority: &Pubkey,
+    voter_weight_record: Option<Pubkey>,
     // Args
     config: GovernanceConfig,
     transfer_upgrade_authority: bool,
@@ -623,7 +683,7 @@ pub fn create_program_governance(
         get_program_governance_address(program_id, realm, governed_program);
     let governed_program_data_address = get_program_data_address(governed_program);
 
-    let accounts = vec![
+    let mut accounts = vec![
         AccountMeta::new_readonly(*realm, false),
         AccountMeta::new(program_governance_address, false),
         AccountMeta::new_readonly(*governed_program, false),
@@ -634,7 +694,10 @@ pub fn create_program_governance(
         AccountMeta::new_readonly(bpf_loader_upgradeable::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
+        AccountMeta::new_readonly(*governance_authority, true),
     ];
+
+    with_voter_weight_accounts(program_id, &mut accounts, realm, voter_weight_record);
 
     let instruction = GovernanceInstruction::CreateProgramGovernance {
         config,
@@ -658,13 +721,15 @@ pub fn create_mint_governance(
     governed_mint_authority: &Pubkey,
     token_owner_record: &Pubkey,
     payer: &Pubkey,
+    governance_authority: &Pubkey,
+    voter_weight_record: Option<Pubkey>,
     // Args
     config: GovernanceConfig,
     transfer_mint_authority: bool,
 ) -> Instruction {
     let mint_governance_address = get_mint_governance_address(program_id, realm, governed_mint);
 
-    let accounts = vec![
+    let mut accounts = vec![
         AccountMeta::new_readonly(*realm, false),
         AccountMeta::new(mint_governance_address, false),
         AccountMeta::new(*governed_mint, false),
@@ -674,7 +739,10 @@ pub fn create_mint_governance(
         AccountMeta::new_readonly(spl_token::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
+        AccountMeta::new_readonly(*governance_authority, true),
     ];
+
+    with_voter_weight_accounts(program_id, &mut accounts, realm, voter_weight_record);
 
     let instruction = GovernanceInstruction::CreateMintGovernance {
         config,
@@ -698,13 +766,15 @@ pub fn create_token_governance(
     governed_token_owner: &Pubkey,
     token_owner_record: &Pubkey,
     payer: &Pubkey,
+    governance_authority: &Pubkey,
+    voter_weight_record: Option<Pubkey>,
     // Args
     config: GovernanceConfig,
     transfer_token_owner: bool,
 ) -> Instruction {
     let token_governance_address = get_token_governance_address(program_id, realm, governed_token);
 
-    let accounts = vec![
+    let mut accounts = vec![
         AccountMeta::new_readonly(*realm, false),
         AccountMeta::new(token_governance_address, false),
         AccountMeta::new(*governed_token, false),
@@ -714,7 +784,10 @@ pub fn create_token_governance(
         AccountMeta::new_readonly(spl_token::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
+        AccountMeta::new_readonly(*governance_authority, true),
     ];
+
+    with_voter_weight_accounts(program_id, &mut accounts, realm, voter_weight_record);
 
     let instruction = GovernanceInstruction::CreateTokenGovernance {
         config,
@@ -737,6 +810,7 @@ pub fn create_proposal(
     proposal_owner_record: &Pubkey,
     governance_authority: &Pubkey,
     payer: &Pubkey,
+    voter_weight_record: Option<Pubkey>,
     // Args
     realm: &Pubkey,
     name: String,
@@ -751,7 +825,7 @@ pub fn create_proposal(
         &proposal_index.to_le_bytes(),
     );
 
-    let accounts = vec![
+    let mut accounts = vec![
         AccountMeta::new_readonly(*realm, false),
         AccountMeta::new(proposal_address, false),
         AccountMeta::new(*governance, false),
@@ -762,6 +836,8 @@ pub fn create_proposal(
         AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];
+
+    with_voter_weight_accounts(program_id, &mut accounts, realm, voter_weight_record);
 
     let instruction = GovernanceInstruction::CreateProposal {
         name,
@@ -879,13 +955,14 @@ pub fn cast_vote(
     governance_authority: &Pubkey,
     governing_token_mint: &Pubkey,
     payer: &Pubkey,
+    voter_weight_record: Option<Pubkey>,
     // Args
     vote: Vote,
 ) -> Instruction {
     let vote_record_address =
         get_vote_record_address(program_id, proposal, voter_token_owner_record);
 
-    let accounts = vec![
+    let mut accounts = vec![
         AccountMeta::new_readonly(*realm, false),
         AccountMeta::new_readonly(*governance, false),
         AccountMeta::new(*proposal, false),
@@ -899,6 +976,8 @@ pub fn cast_vote(
         AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];
+
+    with_voter_weight_accounts(program_id, &mut accounts, realm, voter_weight_record);
 
     let instruction = GovernanceInstruction::CastVote { vote };
 
@@ -1165,13 +1244,15 @@ pub fn set_realm_authority(
 }
 
 /// Creates SetRealmConfig instruction
+#[allow(clippy::too_many_arguments)]
 pub fn set_realm_config(
     program_id: &Pubkey,
     // Accounts
     realm: &Pubkey,
     realm_authority: &Pubkey,
     council_token_mint: Option<Pubkey>,
-
+    payer: &Pubkey,
+    community_voter_weight_addin: Option<Pubkey>,
     // Args
     min_community_tokens_to_create_governance: u64,
     community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
@@ -1192,13 +1273,81 @@ pub fn set_realm_config(
         false
     };
 
+    accounts.push(AccountMeta::new_readonly(system_program::id(), false));
+
+    // Always pass realm_config_address because it's needed when use_community_voter_weight_addin is set to true
+    // but also when it's set to false and the addin is being  removed from the realm
+    let realm_config_address = get_realm_config_address(program_id, realm);
+    accounts.push(AccountMeta::new(realm_config_address, false));
+
+    let use_community_voter_weight_addin =
+        if let Some(community_voter_weight_addin) = community_voter_weight_addin {
+            accounts.push(AccountMeta::new(*payer, true));
+            accounts.push(AccountMeta::new_readonly(
+                community_voter_weight_addin,
+                false,
+            ));
+            true
+        } else {
+            false
+        };
+
     let instruction = GovernanceInstruction::SetRealmConfig {
         config_args: RealmConfigArgs {
             use_council_mint,
             min_community_tokens_to_create_governance,
             community_mint_max_vote_weight_source,
+            use_community_voter_weight_addin,
         },
     };
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Adds voter weight accounts to the given accounts if voter_weight_record is Some
+pub fn with_voter_weight_accounts(
+    program_id: &Pubkey,
+    accounts: &mut Vec<AccountMeta>,
+    realm: &Pubkey,
+    voter_weight_record: Option<Pubkey>,
+) {
+    if let Some(voter_weight_record) = voter_weight_record {
+        let realm_config_address = get_realm_config_address(program_id, realm);
+        accounts.push(AccountMeta::new_readonly(realm_config_address, false));
+        accounts.push(AccountMeta::new_readonly(voter_weight_record, false));
+    }
+}
+
+/// Creates CreateTokenOwnerRecord instruction
+pub fn create_token_owner_record(
+    program_id: &Pubkey,
+    // Accounts
+    realm: &Pubkey,
+    governing_token_owner: &Pubkey,
+    governing_token_mint: &Pubkey,
+    payer: &Pubkey,
+) -> Instruction {
+    let token_owner_record_address = get_token_owner_record_address(
+        program_id,
+        realm,
+        governing_token_mint,
+        governing_token_owner,
+    );
+
+    let accounts = vec![
+        AccountMeta::new_readonly(*realm, false),
+        AccountMeta::new_readonly(*governing_token_owner, false),
+        AccountMeta::new(token_owner_record_address, false),
+        AccountMeta::new_readonly(*governing_token_mint, false),
+        AccountMeta::new_readonly(*payer, true),
+        AccountMeta::new_readonly(system_program::id(), false),
+    ];
+
+    let instruction = GovernanceInstruction::CreateTokenOwnerRecord {};
 
     Instruction {
         program_id: *program_id,
