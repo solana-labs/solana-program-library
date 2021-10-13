@@ -5,10 +5,12 @@
 use solana_program::{
     account_info::AccountInfo,
     entrypoint,
-    entrypoint::{ProgramResult, HEAP_LENGTH, HEAP_START_ADDRESS},
+    entrypoint::{ProgramResult, HEAP_LENGTH},
     pubkey::Pubkey,
 };
 use std::{alloc::Layout, mem::size_of, ptr::null_mut, usize};
+
+const HEAP_START_ADDRESS: u64 = 0x300000000;
 
 /// Developers can implement their own heap by defining their own
 /// `#[global_allocator]`.  The following implements a dummy for test purposes
