@@ -1064,28 +1064,75 @@ struct WithdrawAccount {
 fn prepare_withdraw_accounts(
     rpc_client: &RpcClient,
     stake_pool: &StakePool,
-    pool_withdraw_authority: &Pubkey,
     pool_amount: u64,
+    stake_pool_address: &Pubkey,
 ) -> Result<Vec<WithdrawAccount>, Error> {
-    let mut accounts =
-        get_stake_accounts_by_withdraw_authority(rpc_client, pool_withdraw_authority)?;
-    if accounts.is_empty() {
-        return Err("No accounts found.".to_string().into());
-    }
     let min_balance = rpc_client
         .get_minimum_balance_for_rent_exemption(STAKE_STATE_LEN)?
         .saturating_add(MINIMUM_ACTIVE_STAKE);
     let pool_mint = get_token_mint(rpc_client, &stake_pool.pool_mint)?;
 
-    // Sort from highest to lowest balance
-    accounts.sort_by(|a, b| b.1.cmp(&a.1));
+    let validator_list = get_validator_list(rpc_client, &stake_pool.validator_list)?;
+
+    let mut accounts: Vec<(Pubkey, u64, Option<Pubkey>)> = Vec::new();
+
+    let mut sorted_active_stake_accounts = validator_list
+        .validators
+        .iter()
+        .map(|validator| {
+            let (stake_account_address, _) = find_stake_program_address(
+                &spl_stake_pool::id(),
+                &validator.vote_account_address,
+                stake_pool_address,
+            );
+            (
+                stake_account_address,
+                validator.active_stake_lamports,
+                Some(validator.vote_account_address),
+            )
+        })
+        .collect::<Vec<_>>();
+
+    sorted_active_stake_accounts.sort_by(|a, b| b.1.cmp(&a.1));
+
+    accounts.append(&mut sorted_active_stake_accounts);
+
+    let mut sorted_transient_stake_accounts = validator_list
+        .validators
+        .iter()
+        .map(|validator| {
+            let (transient_stake_account_address, _) = find_transient_stake_program_address(
+                &spl_stake_pool::id(),
+                &validator.vote_account_address,
+                stake_pool_address,
+                validator.transient_seed_suffix_start,
+            );
+            (
+                transient_stake_account_address,
+                validator.active_stake_lamports,
+                Some(validator.vote_account_address),
+            )
+        })
+        .collect::<Vec<_>>();
+
+    sorted_transient_stake_accounts.sort_by(|a, b| b.1.cmp(&a.1));
+
+    accounts.append(&mut sorted_transient_stake_accounts);
+
+    let reserve_stake = rpc_client.get_account(&stake_pool.reserve_stake)?;
+
+    accounts.push((stake_pool.reserve_stake, reserve_stake.lamports, None));
+
+    if accounts.is_empty() {
+        return Err("No accounts found.".to_string().into());
+    }
 
     // Prepare the list of accounts to withdraw from
     let mut withdraw_from: Vec<WithdrawAccount> = vec![];
     let mut remaining_amount = pool_amount;
 
     // Go through available accounts and withdraw from largest to smallest
-    for (stake_address, lamports, stake) in accounts {
+    for (stake_address, lamports, vote_address_opt) in accounts {
         if lamports <= min_balance {
             continue;
         }
@@ -1099,7 +1146,7 @@ fn prepare_withdraw_accounts(
         // Those accounts will be withdrawn completely with `claim` instruction
         withdraw_from.push(WithdrawAccount {
             stake_address,
-            vote_address: stake.delegation().map(|x| x.voter_pubkey),
+            vote_address: vote_address_opt,
             pool_amount,
         });
         remaining_amount -= pool_amount;
@@ -1204,8 +1251,8 @@ fn command_withdraw_stake(
         prepare_withdraw_accounts(
             &config.rpc_client,
             &stake_pool,
-            &pool_withdraw_authority,
             pool_amount,
+            stake_pool_address,
         )?
     };
 
