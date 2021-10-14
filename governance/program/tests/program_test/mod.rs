@@ -52,6 +52,7 @@ use spl_governance::{
     tools::bpf_loader_upgradeable::get_program_data_address,
 };
 
+pub mod addins;
 pub mod cookies;
 
 use crate::program_test::cookies::{
@@ -63,10 +64,13 @@ use spl_governance_test_sdk::{
     ProgramTestBench, TestBenchProgram,
 };
 
-use self::cookies::{
-    GovernanceCookie, GovernedAccountCookie, GovernedMintCookie, GovernedProgramCookie,
-    GovernedTokenCookie, ProposalCookie, ProposalInstructionCookie, RealmCookie,
-    TokenOwnerRecordCookie, VoteRecordCookie,
+use self::{
+    addins::ensure_voter_weight_addin_is_built,
+    cookies::{
+        GovernanceCookie, GovernedAccountCookie, GovernedMintCookie, GovernedProgramCookie,
+        GovernedTokenCookie, ProposalCookie, ProposalInstructionCookie, RealmCookie,
+        TokenOwnerRecordCookie, VoteRecordCookie,
+    },
 };
 
 pub struct GovernanceProgramTest {
@@ -84,6 +88,8 @@ impl GovernanceProgramTest {
 
     #[allow(dead_code)]
     pub async fn start_with_voter_weight_addin() -> Self {
+        ensure_voter_weight_addin_is_built();
+
         Self::start_impl(true).await
     }
 

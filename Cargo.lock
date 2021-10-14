@@ -3674,13 +3674,14 @@ dependencies = [
 
 [[package]]
 name = "spl-governance"
-version = "2.1.1"
+version = "2.1.2"
 dependencies = [
  "arrayref",
  "assert_matches",
  "base64 0.13.0",
  "bincode",
  "borsh",
+ "lazy_static",
  "num-derive",
  "num-traits",
  "proptest",
@@ -3712,7 +3713,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-governance 2.1.1",
+ "spl-governance 2.1.2",
  "spl-governance-test-sdk",
  "spl-token 3.2.0",
  "thiserror",
@@ -3753,7 +3754,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-governance 2.1.1",
+ "spl-governance 2.1.2",
  "spl-governance-chat",
  "spl-governance-test-sdk",
  "spl-token 3.2.0",
