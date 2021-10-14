@@ -1,8 +1,10 @@
 //! Program state processor
 
+use metaplex_token_metadata::state::Metadata;
 use solana_program::program_option::COption;
 
 use crate::instruction::StatelessOfferInstruction;
+use crate::error::UtilError;
 use crate::validation_utils::{assert_is_ata, assert_keys_equal};
 use {
     borsh::BorshDeserialize,
@@ -27,12 +29,20 @@ impl Processor {
         let instruction = StatelessOfferInstruction::try_from_slice(input)?;
         match instruction {
             StatelessOfferInstruction::AcceptOffer {
+                has_metadata,
                 maker_size,
                 taker_size,
                 bump_seed,
             } => {
                 msg!("Instruction: accept offer");
-                process_accept_offer(program_id, accounts, maker_size, taker_size, bump_seed)
+                process_accept_offer(
+                    program_id,
+                    accounts,
+                    has_metadata,
+                    maker_size,
+                    taker_size,
+                    bump_seed,
+                )
             }
         }
     }
@@ -41,8 +51,9 @@ impl Processor {
 fn process_accept_offer(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
+    has_metadata: bool,
     maker_size: u64,
-    taker_size: u64,
+    mut taker_size: u64,
     bump_seed: u8,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
@@ -56,6 +67,93 @@ fn process_accept_offer(
     let taker_src_mint = next_account_info(account_info_iter)?;
     let transfer_authority = next_account_info(account_info_iter)?;
     let token_program_info = next_account_info(account_info_iter)?;
+
+    let mut system_program_info: Option<&AccountInfo> = None;
+    let is_native = *taker_src_mint.key == spl_token::native_mint::id();
+    if is_native {
+        assert_keys_equal(*taker_wallet.key, *taker_src_account.key)?;
+        assert_keys_equal(*maker_wallet.key, *maker_dst_account.key)?;
+        system_program_info = Some(next_account_info(account_info_iter)?);
+    }
+
+    taker_size = if has_metadata {
+        let metadata_info = next_account_info(account_info_iter)?;
+        let metadata = Metadata::try_from_slice(&metadata_info.data.borrow())?;
+        let fees = metadata.data.seller_fee_basis_points;
+        let total_fee = (fees as u64)
+            .checked_mul(taker_size)
+            .ok_or(UtilError::NumericalOverflow)?
+            .checked_div(10000)
+            .ok_or(UtilError::NumericalOverflow)?;
+        let remaining_size = taker_size
+            .checked_sub(total_fee)
+            .ok_or(UtilError::NumericalOverflow)?;
+        match metadata.data.creators {
+            Some(creators) => {
+                for creator in creators {
+                    let pct = creator.share as u64;
+                    let creator_fee = pct
+                        .checked_mul(total_fee)
+                        .ok_or(UtilError::NumericalOverflow)?
+                        .checked_div(100)
+                        .ok_or(UtilError::NumericalOverflow)?;
+                    let current_creator_info = next_account_info(account_info_iter)?;
+                    assert_keys_equal(creator.address, *current_creator_info.key)?;
+                    if !is_native {
+                        let current_creator_token_account_info =
+                            next_account_info(account_info_iter)?;
+                        assert_is_ata(
+                            current_creator_token_account_info,
+                            current_creator_info.key,
+                            taker_src_mint.key,
+                        )?;
+                        invoke(
+                            &spl_token::instruction::transfer(
+                                token_program_info.key,
+                                taker_src_account.key,
+                                current_creator_token_account_info.key,
+                                taker_wallet.key,
+                                &[],
+                                creator_fee,
+                            )?,
+                            &[
+                                taker_src_account.clone(),
+                                current_creator_token_account_info.clone(),
+                                taker_wallet.clone(),
+                                token_program_info.clone(),
+                            ],
+                        )?;
+                    } else {
+                        match system_program_info {
+                            Some(sys_program_info) => {
+                                invoke(
+                                    &system_instruction::transfer(
+                                        taker_src_account.key,
+                                        current_creator_info.key,
+                                        creator_fee,
+                                    ),
+                                    &[
+                                        taker_src_account.clone(),
+                                        current_creator_info.clone(),
+                                        sys_program_info.clone(),
+                                    ],
+                                )?;
+                            }
+                            None => {
+                                msg!("Invalid System Program Info");
+                                return Err(ProgramError::IncorrectProgramId);
+                            }
+                        }
+                    }
+                }
+                remaining_size
+            }
+            None => taker_size,
+        }
+    } else {
+        taker_size
+    };
+
     let maker_src_token_account: spl_token::state::Account =
         spl_token::state::Account::unpack(&maker_src_account.data.borrow())?;
     msg!("Processed Accounts");
@@ -129,18 +227,24 @@ fn process_accept_offer(
             taker_wallet.key,
             maker_wallet.key
         );
-        assert_keys_equal(*taker_wallet.key, *taker_src_account.key)?;
-        assert_keys_equal(*maker_wallet.key, *maker_dst_account.key)?;
-        let system_program_info = next_account_info(account_info_iter)?;
-        assert_keys_equal(system_program::id(), *system_program_info.key)?;
-        invoke(
-            &system_instruction::transfer(taker_src_account.key, maker_dst_account.key, taker_size),
-            &[
-                taker_src_account.clone(),
-                maker_dst_account.clone(),
-                system_program_info.clone(),
-            ],
-        )?;
+        match system_program_info {
+            Some(sys_program_info) => {
+                assert_keys_equal(system_program::id(), *sys_program_info.key)?;
+                invoke(
+                    &system_instruction::transfer(
+                        taker_src_account.key,
+                        maker_dst_account.key,
+                        taker_size,
+                    ),
+                    &[
+                        taker_src_account.clone(),
+                        maker_dst_account.clone(),
+                        sys_program_info.clone(),
+                    ],
+                )?;
+            }
+            _ => return Err(ProgramError::InvalidAccountData),
+        }
     } else {
         assert_is_ata(maker_dst_account, maker_wallet.key, taker_src_mint.key)?;
         assert_is_ata(taker_src_account, taker_wallet.key, taker_src_mint.key)?;
