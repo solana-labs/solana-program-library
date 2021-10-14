@@ -67,7 +67,6 @@ fn process_accept_offer(
     let taker_src_mint = next_account_info(account_info_iter)?;
     let transfer_authority = next_account_info(account_info_iter)?;
     let token_program_info = next_account_info(account_info_iter)?;
-
     let mut system_program_info: Option<&AccountInfo> = None;
     let is_native = *taker_src_mint.key == spl_token::native_mint::id();
     if is_native {
@@ -75,10 +74,9 @@ fn process_accept_offer(
         assert_keys_equal(*maker_wallet.key, *maker_dst_account.key)?;
         system_program_info = Some(next_account_info(account_info_iter)?);
     }
-
     taker_size = if has_metadata {
         let metadata_info = next_account_info(account_info_iter)?;
-        let metadata = Metadata::try_from_slice(&metadata_info.data.borrow())?;
+        let metadata = Metadata::from_account_info(metadata_info)?;
         let fees = metadata.data.seller_fee_basis_points;
         let total_fee = (fees as u64)
             .checked_mul(taker_size)
@@ -107,23 +105,25 @@ fn process_accept_offer(
                             current_creator_info.key,
                             taker_src_mint.key,
                         )?;
-                        invoke(
-                            &spl_token::instruction::transfer(
-                                token_program_info.key,
-                                taker_src_account.key,
-                                current_creator_token_account_info.key,
-                                taker_wallet.key,
-                                &[],
-                                creator_fee,
-                            )?,
-                            &[
-                                taker_src_account.clone(),
-                                current_creator_token_account_info.clone(),
-                                taker_wallet.clone(),
-                                token_program_info.clone(),
-                            ],
-                        )?;
-                    } else {
+                        if creator_fee > 0 {
+                            invoke(
+                                &spl_token::instruction::transfer(
+                                    token_program_info.key,
+                                    taker_src_account.key,
+                                    current_creator_token_account_info.key,
+                                    taker_wallet.key,
+                                    &[],
+                                    creator_fee,
+                                )?,
+                                &[
+                                    taker_src_account.clone(),
+                                    current_creator_token_account_info.clone(),
+                                    taker_wallet.clone(),
+                                    token_program_info.clone(),
+                                ],
+                            )?;
+                        }
+                    } else if creator_fee > 0 {
                         match system_program_info {
                             Some(sys_program_info) => {
                                 invoke(
@@ -156,7 +156,6 @@ fn process_accept_offer(
 
     let maker_src_token_account: spl_token::state::Account =
         spl_token::state::Account::unpack(&maker_src_account.data.borrow())?;
-    msg!("Processed Accounts");
     // Ensure that the delegated amount is exactly equal to the maker_size
     msg!(
         "Delegate {}",
@@ -171,7 +170,6 @@ fn process_accept_offer(
     if maker_src_token_account.delegated_amount != maker_size {
         return Err(ProgramError::InvalidAccountData);
     }
-    msg!("Delegated Amount matches");
     let seeds = &[
         b"stateless_offer",
         maker_wallet.key.as_ref(),
@@ -181,7 +179,7 @@ fn process_accept_offer(
         &taker_size.to_le_bytes(),
         &[bump_seed],
     ];
-    let authority_key = Pubkey::create_program_address(seeds, program_id).unwrap();
+    let authority_key = Pubkey::create_program_address(seeds, program_id)?;
     assert_keys_equal(authority_key, *transfer_authority.key)?;
     // Ensure that authority is the delegate of this token account
     msg!("Authority key matches");
@@ -190,19 +188,12 @@ fn process_accept_offer(
     }
     msg!("Delegate matches");
     assert_keys_equal(spl_token::id(), *token_program_info.key)?;
-    msg!("start");
     // Both of these transfers will fail if the `transfer_authority` is the delegate of these ATA's
     // One consideration is that the taker can get tricked in the case that the maker size is greater than
     // the token amount in the maker's ATA, but these stateless offers should just be invalidated in
     // the client.
     assert_is_ata(maker_src_account, maker_wallet.key, maker_src_mint.key)?;
     assert_is_ata(taker_dst_account, taker_wallet.key, maker_src_mint.key)?;
-    msg!(
-        "Transferring {} from {} to {}",
-        maker_src_mint.key,
-        maker_wallet.key,
-        taker_wallet.key
-    );
     invoke_signed(
         &spl_token::instruction::transfer(
             token_program_info.key,
@@ -222,11 +213,6 @@ fn process_accept_offer(
     )?;
     msg!("done tx from maker to taker {}", maker_size);
     if *taker_src_mint.key == spl_token::native_mint::id() {
-        msg!(
-            "Transferring lamports from {} to {}",
-            taker_wallet.key,
-            maker_wallet.key
-        );
         match system_program_info {
             Some(sys_program_info) => {
                 assert_keys_equal(system_program::id(), *sys_program_info.key)?;
@@ -248,12 +234,6 @@ fn process_accept_offer(
     } else {
         assert_is_ata(maker_dst_account, maker_wallet.key, taker_src_mint.key)?;
         assert_is_ata(taker_src_account, taker_wallet.key, taker_src_mint.key)?;
-        msg!(
-            "Transferring {} from {} to {}",
-            taker_src_mint.key,
-            taker_wallet.key,
-            maker_wallet.key
-        );
         invoke(
             &spl_token::instruction::transfer(
                 token_program_info.key,
