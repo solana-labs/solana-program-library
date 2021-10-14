@@ -3,8 +3,8 @@
 use metaplex_token_metadata::state::Metadata;
 use solana_program::program_option::COption;
 
-use crate::instruction::StatelessOfferInstruction;
 use crate::error::UtilError;
+use crate::instruction::StatelessOfferInstruction;
 use crate::validation_utils::{assert_is_ata, assert_keys_equal};
 use {
     borsh::BorshDeserialize,

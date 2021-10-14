@@ -129,15 +129,12 @@ pub fn accept_offer_with_metadata(
         accounts.push(AccountMeta::new_readonly(system_program::id(), false));
     }
     accounts.push(AccountMeta::new_readonly(*metadata, false));
-    let mut count = 0;
-    for creator in creators.iter() {
+    for (count, creator) in creators.iter().enumerate() {
         if is_native || count % 2 == 0 {
             accounts.push(AccountMeta::new_readonly(**creator, false));
-        }
-        else if !is_native && count % 2 == 1 {
+        } else if !is_native && count % 2 == 1 {
             accounts.push(AccountMeta::new(**creator, false));
         }
-        count += 1;
     }
     Instruction {
         program_id: *program_id,
