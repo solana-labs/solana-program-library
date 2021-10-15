@@ -1,7 +1,5 @@
 mod client;
 
-use spl_stake_pool::state::ValidatorStakeInfo;
-use std::cmp::Ordering;
 use {
     crate::client::*,
     clap::{
@@ -33,6 +31,7 @@ use {
         transaction::Transaction,
     },
     spl_associated_token_account::{create_associated_token_account, get_associated_token_address},
+    spl_stake_pool::state::ValidatorStakeInfo,
     spl_stake_pool::{
         self, find_stake_program_address, find_transient_stake_program_address,
         find_withdraw_authority_program_address,
@@ -41,6 +40,7 @@ use {
         state::{Fee, FeeType, StakePool, ValidatorList},
         MINIMUM_ACTIVE_STAKE,
     },
+    std::cmp::Ordering,
     std::{process::exit, sync::Arc},
 };
 
@@ -1066,7 +1066,7 @@ struct WithdrawAccount {
 fn sorted_accounts<F>(
     validator_list: &ValidatorList,
     stake_pool: &StakePool,
-    get_account: F,
+    get_pubkey: F,
 ) -> Vec<(Pubkey, u64, Option<Pubkey>)>
 where
     F: Fn(&ValidatorStakeInfo) -> Pubkey,
@@ -1076,7 +1076,7 @@ where
         .iter()
         .map(|validator| {
             (
-                get_account(validator),
+                get_pubkey(validator),
                 validator.active_stake_lamports,
                 Some(validator.vote_account_address),
             )
