@@ -1113,7 +1113,7 @@ fn prepare_withdraw_accounts(
 
     accounts.append(&mut sorted_accounts(
         &validator_list,
-        &stake_pool,
+        stake_pool,
         |validator| {
             let (stake_account_address, _) = find_stake_program_address(
                 &spl_stake_pool::id(),
@@ -1127,7 +1127,7 @@ fn prepare_withdraw_accounts(
 
     accounts.append(&mut sorted_accounts(
         &validator_list,
-        &stake_pool,
+        stake_pool,
         |validator| {
             let (transient_stake_account_address, _) = find_transient_stake_program_address(
                 &spl_stake_pool::id(),
