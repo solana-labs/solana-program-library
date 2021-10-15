@@ -77,43 +77,6 @@ pub(crate) fn get_stake_state(
     Ok(stake_state)
 }
 
-pub(crate) fn get_stake_accounts_by_withdraw_authority(
-    rpc_client: &RpcClient,
-    withdraw_authority: &Pubkey,
-) -> Result<Vec<(Pubkey, u64, stake_program::StakeState)>, ClientError> {
-    rpc_client
-        .get_program_accounts_with_config(
-            &stake_program::id(),
-            #[allow(clippy::needless_update)] // TODO: Remove after updating to solana >=1.6.10
-            RpcProgramAccountsConfig {
-                filters: Some(vec![RpcFilterType::Memcmp(Memcmp {
-                    offset: 44, // 44 is Withdrawer authority offset in stake account stake
-                    bytes: MemcmpEncodedBytes::Binary(format!("{}", withdraw_authority)),
-                    encoding: None,
-                })]),
-                account_config: RpcAccountInfoConfig {
-                    encoding: Some(UiAccountEncoding::Base64),
-                    ..RpcAccountInfoConfig::default()
-                },
-                ..RpcProgramAccountsConfig::default()
-            },
-        )
-        .map(|accounts| {
-            accounts
-                .into_iter()
-                .filter_map(
-                    |(address, account)| match deserialize(account.data.as_slice()) {
-                        Ok(stake_state) => Some((address, account.lamports, stake_state)),
-                        Err(err) => {
-                            eprintln!("Invalid stake account data for {}: {}", address, err);
-                            None
-                        }
-                    },
-                )
-                .collect()
-        })
-}
-
 pub(crate) fn get_stake_pools(
     rpc_client: &RpcClient,
 ) -> Result<Vec<(Pubkey, StakePool, ValidatorList)>, ClientError> {
