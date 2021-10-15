@@ -1,5 +1,7 @@
 mod client;
 
+use spl_stake_pool::state::ValidatorStakeInfo;
+use std::cmp::Ordering;
 use {
     crate::client::*,
     clap::{
@@ -1061,6 +1063,39 @@ struct WithdrawAccount {
     pool_amount: u64,
 }
 
+fn sorted_accounts<F>(
+    validator_list: &ValidatorList,
+    stake_pool: &StakePool,
+    get_account: F,
+) -> Vec<(Pubkey, u64, Option<Pubkey>)>
+where
+    F: Fn(&ValidatorStakeInfo) -> Pubkey,
+{
+    let mut result: Vec<(Pubkey, u64, Option<Pubkey>)> = validator_list
+        .validators
+        .iter()
+        .map(|validator| {
+            (
+                get_account(validator),
+                validator.active_stake_lamports,
+                Some(validator.vote_account_address),
+            )
+        })
+        .collect::<Vec<_>>();
+
+    result.sort_by(|left, right| {
+        if left.2 == stake_pool.preferred_withdraw_validator_vote_address {
+            Ordering::Less
+        } else if right.2 == stake_pool.preferred_withdraw_validator_vote_address {
+            Ordering::Greater
+        } else {
+            right.1.cmp(&left.1)
+        }
+    });
+
+    result
+}
+
 fn prepare_withdraw_accounts(
     rpc_client: &RpcClient,
     stake_pool: &StakePool,
@@ -1072,60 +1107,42 @@ fn prepare_withdraw_accounts(
         .saturating_add(MINIMUM_ACTIVE_STAKE);
     let pool_mint = get_token_mint(rpc_client, &stake_pool.pool_mint)?;
 
-    let validator_list = get_validator_list(rpc_client, &stake_pool.validator_list)?;
+    let validator_list: ValidatorList = get_validator_list(rpc_client, &stake_pool.validator_list)?;
 
     let mut accounts: Vec<(Pubkey, u64, Option<Pubkey>)> = Vec::new();
 
-    let mut sorted_active_stake_accounts = validator_list
-        .validators
-        .iter()
-        .map(|validator| {
+    accounts.append(&mut sorted_accounts(
+        &validator_list,
+        &stake_pool,
+        |validator| {
             let (stake_account_address, _) = find_stake_program_address(
                 &spl_stake_pool::id(),
                 &validator.vote_account_address,
                 stake_pool_address,
             );
-            (
-                stake_account_address,
-                validator.active_stake_lamports,
-                Some(validator.vote_account_address),
-            )
-        })
-        .collect::<Vec<_>>();
 
-    sorted_active_stake_accounts.sort_by(|a, b| b.1.cmp(&a.1));
+            stake_account_address
+        },
+    ));
 
-    accounts.append(&mut sorted_active_stake_accounts);
-
-    let mut sorted_transient_stake_accounts = validator_list
-        .validators
-        .iter()
-        .map(|validator| {
+    accounts.append(&mut sorted_accounts(
+        &validator_list,
+        &stake_pool,
+        |validator| {
             let (transient_stake_account_address, _) = find_transient_stake_program_address(
                 &spl_stake_pool::id(),
                 &validator.vote_account_address,
                 stake_pool_address,
                 validator.transient_seed_suffix_start,
             );
-            (
-                transient_stake_account_address,
-                validator.active_stake_lamports,
-                Some(validator.vote_account_address),
-            )
-        })
-        .collect::<Vec<_>>();
 
-    sorted_transient_stake_accounts.sort_by(|a, b| b.1.cmp(&a.1));
-
-    accounts.append(&mut sorted_transient_stake_accounts);
+            transient_stake_account_address
+        },
+    ));
 
     let reserve_stake = rpc_client.get_account(&stake_pool.reserve_stake)?;
 
     accounts.push((stake_pool.reserve_stake, reserve_stake.lamports, None));
-
-    if accounts.is_empty() {
-        return Err("No accounts found.".to_string().into());
-    }
 
     // Prepare the list of accounts to withdraw from
     let mut withdraw_from: Vec<WithdrawAccount> = vec![];
