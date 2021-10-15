@@ -76,6 +76,15 @@ fn process_accept_offer(
     }
     taker_size = if has_metadata {
         let metadata_info = next_account_info(account_info_iter)?;
+        let (metadata_key, _) = Pubkey::find_program_address(
+            &[
+                b"metadata",
+                metaplex_token_metadata::id().as_ref(),
+                maker_src_mint.key.as_ref(),
+            ],
+            &metaplex_token_metadata::id(),
+        );
+        assert_keys_equal(metadata_key, *metadata_info.key)?;
         let metadata = Metadata::from_account_info(metadata_info)?;
         let fees = metadata.data.seller_fee_basis_points;
         let total_fee = (fees as u64)

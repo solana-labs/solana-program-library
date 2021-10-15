@@ -129,16 +129,8 @@ pub fn accept_offer_with_metadata(
         accounts.push(AccountMeta::new_readonly(system_program::id(), false));
     }
     accounts.push(AccountMeta::new_readonly(*metadata, false));
-    for (count, creator) in creators.iter().enumerate() {
-        if is_native || count % 2 == 0 {
-            // This branch is entered when the taker uses SOL or count is even
-            accounts.push(AccountMeta::new(**creator, false));
-        } else if !is_native && count % 2 == 1 {
-            // This branch is entered when taker is not SOL and count is odd
-            // These accounts correspond to the the Associated Token Accounts of the corresponding creator
-            // at the previous index
-            accounts.push(AccountMeta::new(**creator, false));
-        }
+    for creator in creators.iter() {
+        accounts.push(AccountMeta::new(**creator, false));
     }
     Instruction {
         program_id: *program_id,
