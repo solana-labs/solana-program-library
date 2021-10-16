@@ -2200,8 +2200,6 @@ impl GovernanceProgramTest {
 
         // Governance program has no dependency on the voter-weight-addin program and hence we can't use its instruction creator here
         // and the instruction has to be created manually
-        // TODO: Currently the addin spl_governance_voter_weight_addin.so must be manually copied to tests/fixtures to work on CI
-        //       We should automate this step as part of the build to build the addin before governance
         let accounts = vec![
             AccountMeta::new_readonly(self.program_id, false),
             AccountMeta::new_readonly(token_owner_record_cookie.account.realm, false),
