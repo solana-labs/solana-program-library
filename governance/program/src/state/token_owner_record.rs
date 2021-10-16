@@ -9,7 +9,7 @@ use crate::{
         enums::GovernanceAccountType, governance::GovernanceConfig, realm::Realm,
         realm_config::get_realm_config_data_for_realm,
     },
-    tools::account::{get_account_data, AccountMaxSize},
+    tools::account::get_account_data,
     PROGRAM_AUTHORITY_SEED,
 };
 
@@ -20,6 +20,7 @@ use solana_program::{
     program_pack::IsInitialized,
     pubkey::Pubkey,
 };
+use spl_governance_tools::account::AccountMaxSize;
 
 /// Governance Token Owner Record
 /// Account PDA seeds: ['governance', realm, token_mint, token_owner ]

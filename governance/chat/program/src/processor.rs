@@ -4,7 +4,6 @@ use crate::{
     error::GovernanceChatError,
     instruction::GovernanceChatInstruction,
     state::{assert_is_valid_chat_message, ChatMessage, GovernanceChatAccountType, MessageBody},
-    tools::account::create_and_serialize_account,
 };
 use borsh::BorshDeserialize;
 
@@ -21,6 +20,7 @@ use spl_governance::state::{
     governance::get_governance_data, proposal::get_proposal_data_for_governance,
     token_owner_record::get_token_owner_record_data_for_realm,
 };
+use spl_governance_tools::account::create_and_serialize_account;
 
 /// Processes an instruction
 pub fn process_instruction(

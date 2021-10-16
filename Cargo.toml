@@ -13,6 +13,7 @@ members = [
   "governance/voter-weight-addin/program",
   "governance/program",
   "governance/test-sdk",
+  "governance/tools",
   "governance/chat/program",
   "libraries/math",
   "memo/program",

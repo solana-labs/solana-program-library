@@ -6,16 +6,9 @@ use solana_program::{
     program_error::ProgramError, program_pack::IsInitialized, pubkey::Pubkey, rent::Rent,
     system_instruction::create_account,
 };
+use spl_governance_tools::account::AccountMaxSize;
 
 use crate::error::GovernanceError;
-
-/// Trait for accounts to return their max size
-pub trait AccountMaxSize {
-    /// Returns max account size or None if max size is not known and actual instance size should be used
-    fn get_max_size(&self) -> Option<usize> {
-        None
-    }
-}
 
 /// Creates a new account and serializes data into it using the provided seeds to invoke signed CPI call
 /// Note: This functions also checks the provided account PDA matches the supplied seeds

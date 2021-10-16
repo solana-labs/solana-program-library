@@ -5,9 +5,16 @@ use solana_program::{
     account_info::AccountInfo, program::invoke, program_error::ProgramError, pubkey::Pubkey,
     rent::Rent, system_instruction::create_account, system_program, sysvar::Sysvar,
 };
-use spl_governance::tools::account::AccountMaxSize;
 
-use crate::error::GovernanceChatError;
+use crate::error::GovernanceToolsError;
+
+/// Trait for accounts to return their max size
+pub trait AccountMaxSize {
+    /// Returns max account size or None if max size is not known and actual instance size should be used
+    fn get_max_size(&self) -> Option<usize> {
+        None
+    }
+}
 
 /// Creates a new account and serializes data into it using AccountMaxSize to determine the account's size
 pub fn create_and_serialize_account<'a, T: BorshSerialize + AccountMaxSize>(
@@ -19,7 +26,7 @@ pub fn create_and_serialize_account<'a, T: BorshSerialize + AccountMaxSize>(
 ) -> Result<(), ProgramError> {
     // Assert the account is not initialized yet
     if !(account_info.data_is_empty() && *account_info.owner == system_program::id()) {
-        return Err(GovernanceChatError::AccountAlreadyInitialized.into());
+        return Err(GovernanceToolsError::AccountAlreadyInitialized.into());
     }
 
     let (serialized_data, account_size) = if let Some(max_size) = account_data.get_max_size() {

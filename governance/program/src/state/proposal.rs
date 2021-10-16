@@ -6,6 +6,7 @@ use solana_program::{
     account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
     pubkey::Pubkey,
 };
+use spl_governance_tools::account::AccountMaxSize;
 
 use crate::{
     error::GovernanceError,
@@ -18,7 +19,7 @@ use crate::{
         proposal_instruction::ProposalInstruction,
         realm::Realm,
     },
-    tools::account::{get_account_data, AccountMaxSize},
+    tools::account::get_account_data,
     PROGRAM_AUTHORITY_SEED,
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
