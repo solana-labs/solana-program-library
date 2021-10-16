@@ -77,9 +77,9 @@ pub fn process_set_realm_config(
                 account_type: GovernanceAccountType::RealmConfig,
                 realm: *realm_info.key,
                 community_voter_weight_addin: Some(*community_voter_weight_addin_info.key),
-                reserved_1: None,
-                reserved_2: None,
-                reserved_3: None,
+                community_max_vote_weight_addin: None,
+                council_voter_weight_addin: None,
+                council_max_vote_weight_addin: None,
                 reserved: [0; 128],
             };
 

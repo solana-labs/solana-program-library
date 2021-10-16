@@ -257,9 +257,9 @@ impl GovernanceProgramTest {
                     account_type: GovernanceAccountType::RealmConfig,
                     realm: realm_address,
                     community_voter_weight_addin: self.voter_weight_addin_id,
-                    reserved_1: None,
-                    reserved_2: None,
-                    reserved_3: None,
+                    community_max_vote_weight_addin: None,
+                    council_voter_weight_addin: None,
+                    council_max_vote_weight_addin: None,
                     reserved: [0; 128],
                 },
             })
@@ -821,9 +821,9 @@ impl GovernanceProgramTest {
                     community_voter_weight_addin: Some(
                         set_realm_config_ix.accounts[community_voter_weight_addin_index].pubkey,
                     ),
-                    reserved_1: None,
-                    reserved_2: None,
-                    reserved_3: None,
+                    community_max_vote_weight_addin: None,
+                    council_voter_weight_addin: None,
+                    council_max_vote_weight_addin: None,
                     reserved: [0; 128],
                 },
             })
