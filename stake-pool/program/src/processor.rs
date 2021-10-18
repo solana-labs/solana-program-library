@@ -163,7 +163,7 @@ fn create_transient_stake_account<'a>(
 /// Program state handler.
 pub struct Processor {}
 impl Processor {
-    /// Issue a stake_deactivate instruction.
+    /// Issue a delegate_stake instruction.
     #[allow(clippy::too_many_arguments)]
     fn stake_delegate<'a>(
         stake_info: AccountInfo<'a>,
@@ -1389,6 +1389,16 @@ impl Processor {
         stake_pool.check_reserve_stake(reserve_stake_info)?;
         check_stake_program(stake_program_info.key)?;
 
+        if validator_stake_accounts
+            .len()
+            .checked_rem(2)
+            .ok_or(StakePoolError::CalculationFailure)?
+            != 0
+        {
+            msg!("Odd number of validator stake accounts passed in, should be pairs of validator stake and transient stake accounts");
+            return Err(StakePoolError::UnexpectedValidatorListAccountSize.into());
+        }
+
         check_account_owner(validator_list_info, program_id)?;
         let mut validator_list_data = validator_list_info.data.borrow_mut();
         let (validator_list_header, mut validator_slice) =
@@ -1766,9 +1776,7 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
         let stake_program_info = next_account_info(account_info_iter)?;
 
-        if *stake_program_info.key != stake_program::id() {
-            return Err(ProgramError::IncorrectProgramId);
-        }
+        check_stake_program(stake_program_info.key)?;
 
         check_account_owner(stake_pool_info, program_id)?;
         let mut stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool_info.data.borrow())?;
@@ -2102,18 +2110,16 @@ impl Processor {
             deposit_lamports,
         )?;
 
-        if pool_tokens_user > 0 {
-            Self::token_mint_to(
-                stake_pool_info.key,
-                token_program_info.clone(),
-                pool_mint_info.clone(),
-                dest_user_pool_info.clone(),
-                withdraw_authority_info.clone(),
-                AUTHORITY_WITHDRAW,
-                stake_pool.stake_withdraw_bump_seed,
-                pool_tokens_user,
-            )?;
-        }
+        Self::token_mint_to(
+            stake_pool_info.key,
+            token_program_info.clone(),
+            pool_mint_info.clone(),
+            dest_user_pool_info.clone(),
+            withdraw_authority_info.clone(),
+            AUTHORITY_WITHDRAW,
+            stake_pool.stake_withdraw_bump_seed,
+            pool_tokens_user,
+        )?;
 
         if pool_tokens_manager_deposit_fee > 0 {
             Self::token_mint_to(
