@@ -994,14 +994,29 @@ async fn success_with_reserve() {
     assert!(error.is_none());
 
     // first and only deposit, lamports:pool 1:1
-    let tokens_deposit_fee =
-        stake_pool_accounts.calculate_deposit_fee(deposit_info.stake_lamports + stake_rent);
-    let tokens_withdrawal_fee =
-        stake_pool_accounts.calculate_withdrawal_fee(deposit_info.pool_tokens);
+    let stake_pool = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
+    let stake_pool =
+        try_from_slice_unchecked::<state::StakePool>(stake_pool.data.as_slice()).unwrap();
+    // the entire deposit is actually stake since it isn't activated, so only
+    // the stake deposit fee is charged
+    let deposit_fee = stake_pool
+        .calc_pool_tokens_stake_deposit_fee(stake_rent + deposit_info.stake_lamports)
+        .unwrap();
     assert_eq!(
-        deposit_info.stake_lamports + stake_rent - tokens_deposit_fee,
+        deposit_info.stake_lamports + stake_rent - deposit_fee,
         deposit_info.pool_tokens,
+        "stake {} rent {} deposit fee {} pool tokens {}",
+        deposit_info.stake_lamports,
+        stake_rent,
+        deposit_fee,
+        deposit_info.pool_tokens
     );
+
+    let withdrawal_fee = stake_pool_accounts.calculate_withdrawal_fee(deposit_info.pool_tokens);
 
     // Check tokens used
     let user_token_balance = get_token_balance(
@@ -1020,12 +1035,8 @@ async fn success_with_reserve() {
     let stake_state =
         deserialize::<stake_program::StakeState>(&reserve_stake_account.data).unwrap();
     let meta = stake_state.meta().unwrap();
-    // TODO: these numbers dont add up even with +tokens_deposit_fee
     assert_eq!(
-        initial_reserve_lamports
-            + meta.rent_exempt_reserve
-            + tokens_withdrawal_fee
-            + tokens_deposit_fee,
+        initial_reserve_lamports + meta.rent_exempt_reserve + withdrawal_fee + deposit_fee,
         reserve_stake_account.lamports
     );
 
@@ -1035,8 +1046,8 @@ async fn success_with_reserve() {
     assert_eq!(
         user_stake_recipient_account.lamports,
         initial_stake_lamports + deposit_info.stake_lamports + stake_rent
-            - tokens_withdrawal_fee
-            - tokens_deposit_fee
+            - withdrawal_fee
+            - deposit_fee
     );
 }
 
