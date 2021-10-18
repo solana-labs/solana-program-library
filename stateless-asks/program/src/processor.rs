@@ -2,6 +2,7 @@
 
 use metaplex_token_metadata::state::Metadata;
 use solana_program::program_option::COption;
+use std::slice::Iter;
 
 use crate::error::UtilError;
 use crate::instruction::StatelessOfferInstruction;
@@ -53,7 +54,7 @@ fn process_accept_offer(
     accounts: &[AccountInfo],
     has_metadata: bool,
     maker_size: u64,
-    mut taker_size: u64,
+    taker_size: u64,
     bump_seed: u8,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
@@ -74,9 +75,18 @@ fn process_accept_offer(
         assert_keys_equal(*maker_wallet.key, *maker_dst_account.key)?;
         system_program_info = Some(next_account_info(account_info_iter)?);
     }
-    taker_size = if has_metadata {
+    let seeds = &[
+        b"stateless_offer",
+        maker_wallet.key.as_ref(),
+        maker_src_mint.key.as_ref(),
+        taker_src_mint.key.as_ref(),
+        &maker_size.to_le_bytes(),
+        &taker_size.to_le_bytes(),
+        &[bump_seed],
+    ];
+    let (maker_pay_size, taker_pay_size) = if has_metadata {
         let metadata_info = next_account_info(account_info_iter)?;
-        let (metadata_key, _) = Pubkey::find_program_address(
+        let (maker_metadata_key, _) = Pubkey::find_program_address(
             &[
                 b"metadata",
                 metaplex_token_metadata::id().as_ref(),
@@ -84,83 +94,50 @@ fn process_accept_offer(
             ],
             &metaplex_token_metadata::id(),
         );
-        assert_keys_equal(metadata_key, *metadata_info.key)?;
-        let metadata = Metadata::from_account_info(metadata_info)?;
-        let fees = metadata.data.seller_fee_basis_points;
-        let total_fee = (fees as u64)
-            .checked_mul(taker_size)
-            .ok_or(UtilError::NumericalOverflow)?
-            .checked_div(10000)
-            .ok_or(UtilError::NumericalOverflow)?;
-        let remaining_size = taker_size
-            .checked_sub(total_fee)
-            .ok_or(UtilError::NumericalOverflow)?;
-        match metadata.data.creators {
-            Some(creators) => {
-                for creator in creators {
-                    let pct = creator.share as u64;
-                    let creator_fee = pct
-                        .checked_mul(total_fee)
-                        .ok_or(UtilError::NumericalOverflow)?
-                        .checked_div(100)
-                        .ok_or(UtilError::NumericalOverflow)?;
-                    let current_creator_info = next_account_info(account_info_iter)?;
-                    assert_keys_equal(creator.address, *current_creator_info.key)?;
-                    if !is_native {
-                        let current_creator_token_account_info =
-                            next_account_info(account_info_iter)?;
-                        assert_is_ata(
-                            current_creator_token_account_info,
-                            current_creator_info.key,
-                            taker_src_mint.key,
-                        )?;
-                        if creator_fee > 0 {
-                            invoke(
-                                &spl_token::instruction::transfer(
-                                    token_program_info.key,
-                                    taker_src_account.key,
-                                    current_creator_token_account_info.key,
-                                    taker_wallet.key,
-                                    &[],
-                                    creator_fee,
-                                )?,
-                                &[
-                                    taker_src_account.clone(),
-                                    current_creator_token_account_info.clone(),
-                                    taker_wallet.clone(),
-                                    token_program_info.clone(),
-                                ],
-                            )?;
-                        }
-                    } else if creator_fee > 0 {
-                        match system_program_info {
-                            Some(sys_program_info) => {
-                                invoke(
-                                    &system_instruction::transfer(
-                                        taker_src_account.key,
-                                        current_creator_info.key,
-                                        creator_fee,
-                                    ),
-                                    &[
-                                        taker_src_account.clone(),
-                                        current_creator_info.clone(),
-                                        sys_program_info.clone(),
-                                    ],
-                                )?;
-                            }
-                            None => {
-                                msg!("Invalid System Program Info");
-                                return Err(ProgramError::IncorrectProgramId);
-                            }
-                        }
-                    }
-                }
-                remaining_size
-            }
-            None => taker_size,
+        let (taker_metadata_key, _) = Pubkey::find_program_address(
+            &[
+                b"metadata",
+                metaplex_token_metadata::id().as_ref(),
+                taker_src_mint.key.as_ref(),
+            ],
+            &metaplex_token_metadata::id(),
+        );
+        if *metadata_info.key == maker_metadata_key {
+            msg!("Taker pays for fees");
+            let taker_remaining_size = pay_creator_fees(
+                account_info_iter,
+                metadata_info,
+                taker_src_account,
+                taker_wallet,
+                token_program_info,
+                system_program_info,
+                taker_src_mint,
+                taker_size,
+                is_native,
+                &[],
+            )?;
+            (maker_size, taker_remaining_size)
+        } else if *metadata_info.key == taker_metadata_key {
+            msg!("Maker pays for fees");
+            let maker_remaining_size = pay_creator_fees(
+                account_info_iter,
+                metadata_info,
+                maker_src_account,
+                transfer_authority, // Delegate signs for transfer
+                token_program_info,
+                system_program_info,
+                maker_src_mint,
+                maker_size,
+                is_native,
+                seeds,
+            )?;
+            (maker_remaining_size, taker_size)
+        } else {
+            msg!("Neither maker nor taker metadata keys match");
+            return Err(ProgramError::InvalidAccountData);
         }
     } else {
-        taker_size
+        (maker_size, taker_size)
     };
 
     let maker_src_token_account: spl_token::state::Account =
@@ -176,18 +153,9 @@ fn process_accept_offer(
         "Delegated Amount {}",
         maker_src_token_account.delegated_amount
     );
-    if maker_src_token_account.delegated_amount != maker_size {
+    if maker_src_token_account.delegated_amount != maker_pay_size {
         return Err(ProgramError::InvalidAccountData);
     }
-    let seeds = &[
-        b"stateless_offer",
-        maker_wallet.key.as_ref(),
-        maker_src_mint.key.as_ref(),
-        taker_src_mint.key.as_ref(),
-        &maker_size.to_le_bytes(),
-        &taker_size.to_le_bytes(),
-        &[bump_seed],
-    ];
     let authority_key = Pubkey::create_program_address(seeds, program_id)?;
     assert_keys_equal(authority_key, *transfer_authority.key)?;
     // Ensure that authority is the delegate of this token account
@@ -210,7 +178,7 @@ fn process_accept_offer(
             taker_dst_account.key,
             transfer_authority.key,
             &[],
-            maker_size,
+            maker_pay_size,
         )?,
         &[
             maker_src_account.clone(),
@@ -220,7 +188,7 @@ fn process_accept_offer(
         ],
         &[seeds],
     )?;
-    msg!("done tx from maker to taker {}", maker_size);
+    msg!("done tx from maker to taker {}", maker_pay_size);
     if *taker_src_mint.key == spl_token::native_mint::id() {
         match system_program_info {
             Some(sys_program_info) => {
@@ -229,7 +197,7 @@ fn process_accept_offer(
                     &system_instruction::transfer(
                         taker_src_account.key,
                         maker_dst_account.key,
-                        taker_size,
+                        taker_pay_size,
                     ),
                     &[
                         taker_src_account.clone(),
@@ -250,7 +218,7 @@ fn process_accept_offer(
                 maker_dst_account.key,
                 taker_wallet.key,
                 &[],
-                taker_size,
+                taker_pay_size,
             )?,
             &[
                 taker_src_account.clone(),
@@ -260,7 +228,128 @@ fn process_accept_offer(
             ],
         )?;
     }
-    msg!("done tx from taker to maker {}", taker_size);
+    msg!("done tx from taker to maker {}", taker_pay_size);
     msg!("done!");
     Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn pay_creator_fees<'a>(
+    account_info_iter: &mut Iter<AccountInfo<'a>>,
+    metadata_info: &AccountInfo<'a>,
+    src_account_info: &AccountInfo<'a>,
+    src_authority_info: &AccountInfo<'a>,
+    token_program_info: &AccountInfo<'a>,
+    system_program_info: Option<&AccountInfo<'a>>,
+    fee_mint: &AccountInfo<'a>,
+    size: u64,
+    is_native: bool,
+    seeds: &[&[u8]],
+) -> Result<u64, ProgramError> {
+    let metadata = Metadata::from_account_info(metadata_info)?;
+    let fees = metadata.data.seller_fee_basis_points;
+    let total_fee = (fees as u64)
+        .checked_mul(size)
+        .ok_or(UtilError::NumericalOverflow)?
+        .checked_div(10000)
+        .ok_or(UtilError::NumericalOverflow)?;
+    let mut remaining_fee = total_fee;
+    let remaining_size = size
+        .checked_sub(total_fee)
+        .ok_or(UtilError::NumericalOverflow)?;
+    match metadata.data.creators {
+        Some(creators) => {
+            for creator in creators {
+                let pct = creator.share as u64;
+                let creator_fee = pct
+                    .checked_mul(total_fee)
+                    .ok_or(UtilError::NumericalOverflow)?
+                    .checked_div(100)
+                    .ok_or(UtilError::NumericalOverflow)?;
+                remaining_fee = remaining_fee
+                    .checked_sub(creator_fee)
+                    .ok_or(UtilError::NumericalOverflow)?;
+                let current_creator_info = next_account_info(account_info_iter)?;
+                assert_keys_equal(creator.address, *current_creator_info.key)?;
+                if !is_native {
+                    let current_creator_token_account_info = next_account_info(account_info_iter)?;
+                    assert_is_ata(
+                        current_creator_token_account_info,
+                        current_creator_info.key,
+                        fee_mint.key,
+                    )?;
+                    if creator_fee > 0 {
+                        if seeds.is_empty() {
+                            invoke(
+                                &spl_token::instruction::transfer(
+                                    token_program_info.key,
+                                    src_account_info.key,
+                                    current_creator_token_account_info.key,
+                                    src_authority_info.key,
+                                    &[],
+                                    creator_fee,
+                                )?,
+                                &[
+                                    src_account_info.clone(),
+                                    current_creator_token_account_info.clone(),
+                                    src_authority_info.clone(),
+                                    token_program_info.clone(),
+                                ],
+                            )?;
+                        } else {
+                            invoke_signed(
+                                &spl_token::instruction::transfer(
+                                    token_program_info.key,
+                                    src_account_info.key,
+                                    current_creator_token_account_info.key,
+                                    src_authority_info.key,
+                                    &[],
+                                    creator_fee,
+                                )?,
+                                &[
+                                    src_account_info.clone(),
+                                    current_creator_token_account_info.clone(),
+                                    src_authority_info.clone(),
+                                    token_program_info.clone(),
+                                ],
+                                &[seeds],
+                            )?;
+                        }
+                    }
+                } else if creator_fee > 0 {
+                    if !seeds.is_empty() {
+                        msg!("Maker cannot pay with native SOL");
+                        return Err(ProgramError::InvalidAccountData);
+                    }
+                    match system_program_info {
+                        Some(sys_program_info) => {
+                            invoke(
+                                &system_instruction::transfer(
+                                    src_account_info.key,
+                                    current_creator_info.key,
+                                    creator_fee,
+                                ),
+                                &[
+                                    src_account_info.clone(),
+                                    current_creator_info.clone(),
+                                    sys_program_info.clone(),
+                                ],
+                            )?;
+                        }
+                        None => {
+                            msg!("Invalid System Program Info");
+                            return Err(ProgramError::IncorrectProgramId);
+                        }
+                    }
+                }
+            }
+        }
+        None => {
+            msg!("No creators found in metadata");
+        }
+    }
+    // Any dust is returned to the party posting the NFT
+    Ok(remaining_size
+        .checked_add(remaining_fee)
+        .ok_or(UtilError::NumericalOverflow)?)
 }
