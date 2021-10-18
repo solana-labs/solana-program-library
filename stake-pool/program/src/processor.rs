@@ -565,6 +565,15 @@ impl Processor {
             return Err(StakePoolError::FeeTooHigh.into());
         }
 
+        if *token_program_info.key != spl_token::id() {
+            msg!(
+                "Only the SPL token program is currently supported, expected {}, received {}",
+                spl_token::id(),
+                *token_program_info.key
+            );
+            return Err(ProgramError::IncorrectProgramId);
+        }
+
         if manager_fee_info.owner != token_program_info.key {
             return Err(ProgramError::IncorrectProgramId);
         }
