@@ -146,7 +146,7 @@ pub fn get_proposal_instruction_data(
     program_id: &Pubkey,
     proposal_instruction_info: &AccountInfo,
 ) -> Result<ProposalInstruction, ProgramError> {
-    get_account_data::<ProposalInstruction>(proposal_instruction_info, program_id)
+    get_account_data::<ProposalInstruction>(program_id, proposal_instruction_info)
 }
 
 ///  Deserializes and returns ProposalInstruction account and checks it belongs to the given Proposal

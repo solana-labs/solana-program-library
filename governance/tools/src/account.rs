@@ -137,8 +137,8 @@ pub fn create_and_serialize_account_signed<'a, T: BorshSerialize + AccountMaxSiz
 
 /// Deserializes account and checks it's initialized and owned by the specified program
 pub fn get_account_data<T: BorshDeserialize + IsInitialized>(
-    account_info: &AccountInfo,
     owner_program_id: &Pubkey,
+    account_info: &AccountInfo,
 ) -> Result<T, ProgramError> {
     if account_info.data_is_empty() {
         return Err(GovernanceToolsError::AccountDoesNotExist.into());

@@ -56,7 +56,7 @@ pub fn get_realm_config_data(
     program_id: &Pubkey,
     realm_config_info: &AccountInfo,
 ) -> Result<RealmConfigAccount, ProgramError> {
-    get_account_data::<RealmConfigAccount>(realm_config_info, program_id)
+    get_account_data::<RealmConfigAccount>(program_id, realm_config_info)
 }
 
 /// Deserializes RealmConfig account and checks the owner program and the Realm it belongs to

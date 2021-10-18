@@ -241,7 +241,7 @@ pub fn get_token_owner_record_data(
     program_id: &Pubkey,
     token_owner_record_info: &AccountInfo,
 ) -> Result<TokenOwnerRecord, ProgramError> {
-    get_account_data::<TokenOwnerRecord>(token_owner_record_info, program_id)
+    get_account_data::<TokenOwnerRecord>(program_id, token_owner_record_info)
 }
 
 /// Deserializes TokenOwnerRecord account and checks its PDA against the provided seeds

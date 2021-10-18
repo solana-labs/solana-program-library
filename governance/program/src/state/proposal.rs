@@ -450,7 +450,7 @@ pub fn get_proposal_data(
     program_id: &Pubkey,
     proposal_info: &AccountInfo,
 ) -> Result<Proposal, ProgramError> {
-    get_account_data::<Proposal>(proposal_info, program_id)
+    get_account_data::<Proposal>(program_id, proposal_info)
 }
 
 /// Deserializes Proposal and validates it belongs to the given Governance and Governing Mint

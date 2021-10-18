@@ -90,7 +90,7 @@ pub fn get_signatory_record_data(
     program_id: &Pubkey,
     signatory_record_info: &AccountInfo,
 ) -> Result<SignatoryRecord, ProgramError> {
-    get_account_data::<SignatoryRecord>(signatory_record_info, program_id)
+    get_account_data::<SignatoryRecord>(program_id, signatory_record_info)
 }
 
 /// Deserializes SignatoryRecord  and validates its PDA

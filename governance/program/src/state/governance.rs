@@ -109,7 +109,7 @@ pub fn get_governance_data(
     program_id: &Pubkey,
     governance_info: &AccountInfo,
 ) -> Result<Governance, ProgramError> {
-    get_account_data::<Governance>(governance_info, program_id)
+    get_account_data::<Governance>(program_id, governance_info)
 }
 
 /// Deserializes Governance account, checks owner program and asserts governance belongs to the given ream

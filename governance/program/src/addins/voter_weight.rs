@@ -79,7 +79,7 @@ pub fn get_voter_weight_record_data(
     program_id: &Pubkey,
     voter_weight_record_info: &AccountInfo,
 ) -> Result<VoterWeightRecord, ProgramError> {
-    get_account_data::<VoterWeightRecord>(voter_weight_record_info, program_id)
+    get_account_data::<VoterWeightRecord>(program_id, voter_weight_record_info)
 }
 
 /// Deserializes VoterWeightRecord account, checks owner program and asserts it's for the same realm, mint and token owner as the provided TokenOwnerRecord
