@@ -644,15 +644,17 @@ impl Processor {
         stake_pool.account_type = AccountType::StakePool;
         stake_pool.manager = *manager_info.key;
         stake_pool.staker = *staker_info.key;
-        stake_pool.reserve_stake = *reserve_stake_info.key;
         stake_pool.stake_deposit_authority = stake_deposit_authority;
         stake_pool.stake_withdraw_bump_seed = stake_withdraw_bump_seed;
         stake_pool.validator_list = *validator_list_info.key;
+        stake_pool.reserve_stake = *reserve_stake_info.key;
         stake_pool.pool_mint = *pool_mint_info.key;
         stake_pool.manager_fee_account = *manager_fee_info.key;
         stake_pool.token_program_id = *token_program_info.key;
-        stake_pool.last_update_epoch = Clock::get()?.epoch;
         stake_pool.total_lamports = total_lamports;
+        stake_pool.pool_token_supply = 0;
+        stake_pool.last_update_epoch = Clock::get()?.epoch;
+        stake_pool.lockup = stake_program::Lockup::default();
         stake_pool.epoch_fee = epoch_fee;
         stake_pool.next_epoch_fee = None;
         stake_pool.preferred_deposit_validator_vote_address = None;
@@ -666,7 +668,9 @@ impl Processor {
         stake_pool.sol_referral_fee = referral_fee;
         stake_pool.sol_withdraw_authority = None;
         stake_pool.sol_withdrawal_fee = withdrawal_fee;
-        stake_pool.next_stake_withdrawal_fee = None;
+        stake_pool.next_sol_withdrawal_fee = None;
+        stake_pool.last_epoch_pool_token_supply = 0;
+        stake_pool.last_epoch_total_lamports = 0;
 
         stake_pool
             .serialize(&mut *stake_pool_info.data.borrow_mut())
