@@ -454,10 +454,107 @@ async fn fail_with_wrong_token_program_id() {
     .await
     .unwrap();
 
+    create_token_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts.pool_fee_account,
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &stake_pool_accounts.manager.pubkey(),
+    )
+    .await
+    .unwrap();
+
+    let rent = banks_client.get_rent().await.unwrap();
+    let rent_stake_pool = rent.minimum_balance(get_packed_len::<state::StakePool>());
+    let validator_list_size = get_instance_packed_len(&state::ValidatorList::new(
+        stake_pool_accounts.max_validators,
+    ))
+    .unwrap();
+    let rent_validator_list = rent.minimum_balance(validator_list_size);
+
+    let mut transaction = Transaction::new_with_payer(
+        &[
+            system_instruction::create_account(
+                &payer.pubkey(),
+                &stake_pool_accounts.stake_pool.pubkey(),
+                rent_stake_pool,
+                get_packed_len::<state::StakePool>() as u64,
+                &id(),
+            ),
+            system_instruction::create_account(
+                &payer.pubkey(),
+                &stake_pool_accounts.validator_list.pubkey(),
+                rent_validator_list,
+                validator_list_size as u64,
+                &id(),
+            ),
+            instruction::initialize(
+                &id(),
+                &stake_pool_accounts.stake_pool.pubkey(),
+                &stake_pool_accounts.manager.pubkey(),
+                &stake_pool_accounts.staker.pubkey(),
+                &stake_pool_accounts.validator_list.pubkey(),
+                &stake_pool_accounts.reserve_stake.pubkey(),
+                &stake_pool_accounts.pool_mint.pubkey(),
+                &stake_pool_accounts.pool_fee_account.pubkey(),
+                &wrong_token_program.pubkey(),
+                None,
+                stake_pool_accounts.epoch_fee,
+                stake_pool_accounts.withdrawal_fee,
+                stake_pool_accounts.deposit_fee,
+                stake_pool_accounts.referral_fee,
+                stake_pool_accounts.max_validators,
+            ),
+        ],
+        Some(&payer.pubkey()),
+    );
+    transaction.sign(
+        &[
+            &payer,
+            &stake_pool_accounts.stake_pool,
+            &stake_pool_accounts.validator_list,
+            &stake_pool_accounts.manager,
+        ],
+        recent_blockhash,
+    );
+    let transaction_error = banks_client
+        .process_transaction(transaction)
+        .await
+        .err()
+        .unwrap();
+
+    match transaction_error {
+        TransportError::TransactionError(TransactionError::InstructionError(_, error)) => {
+            assert_eq!(error, InstructionError::IncorrectProgramId);
+        }
+        _ => panic!(
+            "Wrong error occurs while try to initialize stake pool with wrong token program ID"
+        ),
+    }
+}
+
+#[tokio::test]
+async fn fail_with_fee_owned_by_wrong_token_program_id() {
+    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
+    let stake_pool_accounts = StakePoolAccounts::new();
+
+    let wrong_token_program = Keypair::new();
+
+    create_mint(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts.pool_mint,
+        &stake_pool_accounts.withdraw_authority,
+    )
+    .await
+    .unwrap();
+
     let rent = banks_client.get_rent().await.unwrap();
 
     let account_rent = rent.minimum_balance(spl_token::state::Account::LEN);
-    let mut transaction = Transaction::new_with_payer(
+    let transaction = Transaction::new_signed_with_payer(
         &[system_instruction::create_account(
             &payer.pubkey(),
             &stake_pool_accounts.pool_fee_account.pubkey(),
@@ -466,8 +563,6 @@ async fn fail_with_wrong_token_program_id() {
             &wrong_token_program.pubkey(),
         )],
         Some(&payer.pubkey()),
-    );
-    transaction.sign(
         &[&payer, &stake_pool_accounts.pool_fee_account],
         recent_blockhash,
     );
