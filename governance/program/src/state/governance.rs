@@ -6,14 +6,16 @@ use crate::{
         enums::{GovernanceAccountType, VoteThresholdPercentage, VoteWeightSource},
         realm::assert_is_valid_realm,
     },
-    tools::account::get_account_data,
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
     account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
     pubkey::Pubkey,
 };
-use spl_governance_tools::account::AccountMaxSize;
+use spl_governance_tools::{
+    account::{get_account_data, AccountMaxSize},
+    error::GovernanceToolsError,
+};
 
 /// Governance config
 #[repr(C)]
@@ -95,7 +97,7 @@ impl Governance {
             GovernanceAccountType::TokenGovernance => {
                 get_token_governance_address_seeds(&self.realm, &self.governed_account)
             }
-            _ => return Err(GovernanceError::InvalidAccountType.into()),
+            _ => return Err(GovernanceToolsError::InvalidAccountType.into()),
         };
 
         Ok(seeds)

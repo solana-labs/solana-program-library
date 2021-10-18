@@ -6,11 +6,9 @@ use solana_program::{
 };
 
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
-use spl_governance_tools::account::AccountMaxSize;
+use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 
-use crate::{
-    error::GovernanceError, state::enums::GovernanceAccountType, tools::account::get_account_data,
-};
+use crate::{error::GovernanceError, state::enums::GovernanceAccountType};
 
 /// RealmConfig account
 /// The account is an optional extension to RealmConfig stored on Realm account

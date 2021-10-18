@@ -3,7 +3,6 @@
 use crate::{
     error::GovernanceError,
     state::enums::{GovernanceAccountType, InstructionExecutionStatus},
-    tools::account::get_account_data,
     PROGRAM_AUTHORITY_SEED,
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
@@ -15,7 +14,7 @@ use solana_program::{
     program_pack::IsInitialized,
     pubkey::Pubkey,
 };
-use spl_governance_tools::account::AccountMaxSize;
+use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 
 /// InstructionData wrapper. It can be removed once Borsh serialization for Instruction is supported in the SDK
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]

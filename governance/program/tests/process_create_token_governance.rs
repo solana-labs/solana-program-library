@@ -6,6 +6,8 @@ use solana_program_test::*;
 use program_test::*;
 use solana_sdk::{signature::Keypair, signer::Signer};
 use spl_governance::error::GovernanceError;
+use spl_governance_tools::error::GovernanceToolsError;
+
 use spl_token::error::TokenError;
 
 #[tokio::test]
@@ -221,5 +223,5 @@ async fn test_create_token_governance_with_invalid_realm_error() {
         .unwrap();
 
     // Assert
-    assert_eq!(err, GovernanceError::InvalidAccountType.into());
+    assert_eq!(err, GovernanceToolsError::InvalidAccountType.into());
 }

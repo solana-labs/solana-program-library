@@ -14,6 +14,18 @@ pub enum GovernanceToolsError {
     /// Account already initialized
     #[error("Account already initialized")]
     AccountAlreadyInitialized = 1100,
+
+    /// Account doesn't exist
+    #[error("Account doesn't exist")]
+    AccountDoesNotExist,
+
+    /// Invalid account owner
+    #[error("Invalid account owner")]
+    InvalidAccountOwner,
+
+    /// Invalid Account type
+    #[error("Invalid Account type")]
+    InvalidAccountType,
 }
 
 impl PrintProgramError for GovernanceToolsError {

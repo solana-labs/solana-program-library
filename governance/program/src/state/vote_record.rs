@@ -4,10 +4,10 @@ use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::account_info::AccountInfo;
 use solana_program::program_error::ProgramError;
 use solana_program::{program_pack::IsInitialized, pubkey::Pubkey};
-use spl_governance_tools::account::AccountMaxSize;
+use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 
 use crate::error::GovernanceError;
-use crate::tools::account::get_account_data;
+
 use crate::PROGRAM_AUTHORITY_SEED;
 
 use crate::state::enums::{GovernanceAccountType, VoteWeight};

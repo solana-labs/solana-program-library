@@ -8,6 +8,7 @@ use solana_program::{
     rent::Rent,
     sysvar::Sysvar,
 };
+use spl_governance_tools::account::create_and_serialize_account_signed;
 
 use crate::{
     error::GovernanceError,
@@ -18,7 +19,6 @@ use crate::{
             get_realm_config_address_seeds, get_realm_config_data_for_realm, RealmConfigAccount,
         },
     },
-    tools::account::create_and_serialize_account_signed,
 };
 
 /// Processes SetRealmConfig instruction

@@ -5,16 +5,14 @@ use solana_program::{
     entrypoint::ProgramResult,
     pubkey::Pubkey,
 };
+use spl_governance_tools::account::dispose_account;
 
-use crate::{
-    state::{
-        enums::{ProposalState, VoteWeight},
-        governance::get_governance_data,
-        proposal::get_proposal_data_for_governance_and_governing_mint,
-        token_owner_record::get_token_owner_record_data_for_realm_and_governing_mint,
-        vote_record::get_vote_record_data_for_proposal_and_token_owner,
-    },
-    tools::account::dispose_account,
+use crate::state::{
+    enums::{ProposalState, VoteWeight},
+    governance::get_governance_data,
+    proposal::get_proposal_data_for_governance_and_governing_mint,
+    token_owner_record::get_token_owner_record_data_for_realm_and_governing_mint,
+    vote_record::get_vote_record_data_for_proposal_and_token_owner,
 };
 
 use borsh::BorshSerialize;

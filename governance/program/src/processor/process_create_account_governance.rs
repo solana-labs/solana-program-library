@@ -1,16 +1,13 @@
 //! Program state processor
 
-use crate::{
-    state::{
-        enums::GovernanceAccountType,
-        governance::{
-            assert_valid_create_governance_args, get_account_governance_address_seeds, Governance,
-            GovernanceConfig,
-        },
-        realm::get_realm_data,
-        token_owner_record::get_token_owner_record_data_for_realm,
+use crate::state::{
+    enums::GovernanceAccountType,
+    governance::{
+        assert_valid_create_governance_args, get_account_governance_address_seeds, Governance,
+        GovernanceConfig,
     },
-    tools::account::create_and_serialize_account_signed,
+    realm::get_realm_data,
+    token_owner_record::get_token_owner_record_data_for_realm,
 };
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -19,6 +16,7 @@ use solana_program::{
     rent::Rent,
     sysvar::Sysvar,
 };
+use spl_governance_tools::account::create_and_serialize_account_signed;
 
 /// Processes CreateAccountGovernance instruction
 pub fn process_create_account_governance(

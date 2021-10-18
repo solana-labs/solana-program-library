@@ -8,6 +8,7 @@ use solana_program::{
     rent::Rent,
     sysvar::Sysvar,
 };
+use spl_governance_tools::account::create_and_serialize_account_signed;
 
 use crate::{
     error::GovernanceError,
@@ -23,7 +24,7 @@ use crate::{
         },
         vote_record::{get_vote_record_address_seeds, VoteRecord},
     },
-    tools::{account::create_and_serialize_account_signed, spl_token::get_spl_token_mint_supply},
+    tools::spl_token::get_spl_token_mint_supply,
 };
 
 use borsh::BorshSerialize;

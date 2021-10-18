@@ -9,6 +9,7 @@ use solana_program::{
     rent::Rent,
     sysvar::Sysvar,
 };
+use spl_governance_tools::account::create_and_serialize_account_signed;
 
 use crate::{
     error::GovernanceError,
@@ -19,7 +20,6 @@ use crate::{
         realm::get_realm_data_for_governing_token_mint,
         token_owner_record::get_token_owner_record_data_for_realm,
     },
-    tools::account::create_and_serialize_account_signed,
 };
 
 /// Processes CreateProposal instruction

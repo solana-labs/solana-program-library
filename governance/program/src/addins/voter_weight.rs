@@ -9,12 +9,9 @@ use solana_program::{
     pubkey::Pubkey,
     sysvar::Sysvar,
 };
-use spl_governance_tools::account::AccountMaxSize;
+use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 
-use crate::{
-    error::GovernanceError, state::token_owner_record::TokenOwnerRecord,
-    tools::account::get_account_data,
-};
+use crate::{error::GovernanceError, state::token_owner_record::TokenOwnerRecord};
 
 /// VoterWeight account type
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]

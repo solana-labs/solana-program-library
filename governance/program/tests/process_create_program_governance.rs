@@ -9,6 +9,7 @@ use spl_governance::{
     error::GovernanceError, tools::bpf_loader_upgradeable::get_program_upgrade_authority,
 };
 use spl_governance_test_sdk::tools::ProgramInstructionError;
+use spl_governance_tools::error::GovernanceToolsError;
 
 #[tokio::test]
 async fn test_create_program_governance() {
@@ -232,5 +233,5 @@ async fn test_create_program_governance_with_invalid_realm_error() {
         .unwrap();
 
     // Assert
-    assert_eq!(err, GovernanceError::InvalidAccountType.into());
+    assert_eq!(err, GovernanceToolsError::InvalidAccountType.into());
 }
