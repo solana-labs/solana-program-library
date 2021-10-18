@@ -367,7 +367,7 @@ async fn fail_with_small_lamport_amount() {
 }
 
 #[tokio::test]
-async fn fail_overdraw_validator() {
+async fn fail_big_overdraw() {
     let (
         mut banks_client,
         payer,
@@ -392,8 +392,43 @@ async fn fail_overdraw_validator() {
         .unwrap()
         .unwrap();
 
-    match error {
-        TransactionError::InstructionError(_, InstructionError::InsufficientFunds) => {}
-        _ => panic!("Wrong error occurs while overdrawing stake account on decrease"),
-    }
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(0, InstructionError::InsufficientFunds)
+    );
+}
+
+#[tokio::test]
+async fn fail_overdraw() {
+    let (
+        mut banks_client,
+        payer,
+        recent_blockhash,
+        stake_pool_accounts,
+        validator_stake,
+        deposit_info,
+        _decrease_lamports,
+    ) = setup().await;
+
+    let rent = banks_client.get_rent().await.unwrap();
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
+
+    let error = stake_pool_accounts
+        .decrease_validator_stake(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            &validator_stake.stake_account,
+            &validator_stake.transient_stake_account,
+            deposit_info.stake_lamports + stake_rent + 1,
+            validator_stake.transient_stake_seed,
+        )
+        .await
+        .unwrap()
+        .unwrap();
+
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(0, InstructionError::InsufficientFunds)
+    );
 }

@@ -1019,7 +1019,7 @@ impl Processor {
             return Err(StakePoolError::InvalidState.into());
         }
 
-        let (_meta, stake) = get_stake_state(validator_stake_account_info)?;
+        let (meta, stake) = get_stake_state(validator_stake_account_info)?;
         let vote_account_address = stake.delegation.voter_pubkey;
         check_validator_stake_address(
             program_id,
@@ -1067,6 +1067,20 @@ impl Processor {
                 lamports
             );
             return Err(ProgramError::AccountNotRentExempt);
+        }
+
+        let remaining_lamports = validator_stake_account_info
+            .lamports()
+            .checked_sub(lamports)
+            .ok_or(ProgramError::InsufficientFunds)?;
+        let required_lamports = minimum_stake_lamports(&meta);
+        if remaining_lamports < required_lamports {
+            msg!("Need at least {} lamports in the stake account after decrease, {} requested, {} is the current possible maximum",
+                required_lamports,
+                lamports,
+                validator_stake_account_info.lamports().checked_sub(required_lamports).ok_or(StakePoolError::CalculationFailure)?
+            );
+            return Err(ProgramError::InsufficientFunds);
         }
 
         create_transient_stake_account(
