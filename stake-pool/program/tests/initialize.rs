@@ -11,14 +11,14 @@ use {
         instruction::{AccountMeta, Instruction},
         program_pack::Pack,
         pubkey::Pubkey,
-        system_instruction, sysvar,
+        stake, system_instruction, sysvar,
     },
     solana_program_test::*,
     solana_sdk::{
         instruction::InstructionError, signature::Keypair, signature::Signer,
         transaction::Transaction, transaction::TransactionError, transport::TransportError,
     },
-    spl_stake_pool::{error, id, instruction, stake_program, state},
+    spl_stake_pool::{error, id, instruction, state},
 };
 
 async fn create_required_accounts(
@@ -53,11 +53,11 @@ async fn create_required_accounts(
         payer,
         recent_blockhash,
         &stake_pool_accounts.reserve_stake,
-        &stake_program::Authorized {
+        &stake::state::Authorized {
             staker: stake_pool_accounts.withdraw_authority,
             withdrawer: stake_pool_accounts.withdraw_authority,
         },
-        &stake_program::Lockup::default(),
+        &stake::state::Lockup::default(),
         1,
     )
     .await;
@@ -1074,11 +1074,11 @@ async fn fail_with_bad_reserve() {
             &payer,
             &recent_blockhash,
             &bad_stake,
-            &stake_program::Authorized {
+            &stake::state::Authorized {
                 staker: wrong_authority,
                 withdrawer: stake_pool_accounts.withdraw_authority,
             },
-            &stake_program::Lockup::default(),
+            &stake::state::Lockup::default(),
             1,
         )
         .await;
@@ -1124,11 +1124,11 @@ async fn fail_with_bad_reserve() {
             &payer,
             &recent_blockhash,
             &bad_stake,
-            &stake_program::Authorized {
+            &stake::state::Authorized {
                 staker: stake_pool_accounts.withdraw_authority,
                 withdrawer: wrong_authority,
             },
-            &stake_program::Lockup::default(),
+            &stake::state::Lockup::default(),
             1,
         )
         .await;
@@ -1174,13 +1174,13 @@ async fn fail_with_bad_reserve() {
             &payer,
             &recent_blockhash,
             &bad_stake,
-            &stake_program::Authorized {
+            &stake::state::Authorized {
                 staker: stake_pool_accounts.withdraw_authority,
                 withdrawer: stake_pool_accounts.withdraw_authority,
             },
-            &stake_program::Lockup {
+            &stake::state::Lockup {
                 custodian: wrong_authority,
-                ..stake_program::Lockup::default()
+                ..stake::state::Lockup::default()
             },
             1,
         )
@@ -1223,15 +1223,15 @@ async fn fail_with_bad_reserve() {
     {
         let bad_stake = Keypair::new();
         let rent = banks_client.get_rent().await.unwrap();
-        let lamports = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
+        let lamports = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
 
         let transaction = Transaction::new_signed_with_payer(
             &[system_instruction::create_account(
                 &payer.pubkey(),
                 &bad_stake.pubkey(),
                 lamports,
-                std::mem::size_of::<stake_program::StakeState>() as u64,
-                &stake_program::id(),
+                std::mem::size_of::<stake::state::StakeState>() as u64,
+                &stake::program::id(),
             )],
             Some(&payer.pubkey()),
             &[&payer, &bad_stake],

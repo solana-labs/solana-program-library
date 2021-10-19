@@ -4,7 +4,7 @@ mod helpers;
 
 use {
     helpers::*,
-    solana_program::{borsh::try_from_slice_unchecked, program_pack::Pack, pubkey::Pubkey},
+    solana_program::{borsh::try_from_slice_unchecked, program_pack::Pack, pubkey::Pubkey, stake},
     solana_program_test::*,
     solana_sdk::{
         signature::{Keypair, Signer},
@@ -12,7 +12,7 @@ use {
         transaction::Transaction,
     },
     spl_stake_pool::{
-        find_transient_stake_program_address, id, instruction, stake_program,
+        find_transient_stake_program_address, id, instruction,
         state::{StakePool, StakeStatus, ValidatorList},
         MAX_VALIDATORS_TO_UPDATE, MINIMUM_ACTIVE_STAKE,
     },
@@ -163,7 +163,7 @@ async fn success() {
 
     // Check current balance in the list
     let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
     // initially, have all of the deposits plus their rent, and the reserve stake
     let initial_lamports =
         (validator_lamports + stake_rent) * num_validators as u64 + reserve_lamports;
@@ -436,7 +436,7 @@ async fn merge_into_validator_stake() {
 
     // Check validator stake accounts have the expected balance now:
     // validator stake account minimum + deposited lamports + rents + increased lamports
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
     let expected_lamports = MINIMUM_ACTIVE_STAKE
         + lamports
         + reserve_lamports / stake_accounts.len() as u64
@@ -466,7 +466,7 @@ async fn merge_transient_stake_after_remove() {
         setup(1).await;
 
     let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
     let deactivated_lamports = lamports;
     let new_authority = Pubkey::new_unique();
     let destination_stake = Keypair::new();
@@ -739,13 +739,13 @@ async fn success_ignoring_hijacked_transient_stake() {
                 &transient_stake_address,
                 1_000_000_000,
             ),
-            stake_program::initialize(
+            stake::instruction::initialize(
                 &transient_stake_address,
-                &stake_program::Authorized {
+                &stake::state::Authorized {
                     staker: hijacker,
                     withdrawer: hijacker,
                 },
-                &stake_program::Lockup::default(),
+                &stake::state::Lockup::default(),
             ),
             instruction::update_stake_pool_balance(
                 &id(),
