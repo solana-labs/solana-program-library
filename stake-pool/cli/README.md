@@ -15,10 +15,11 @@ have a usable keypair, created at the default location using `solana-keygen new`
 Builds the stake pool program and sets up a `solana-test-validator` with some
 new validator vote accounts.
 
-The only input it accepts is a number, for the number of vote accounts to create, e.g.:
+It accepts the number of vote accounts to create and validator list file path to output
+vote accounts, e.g.:
 
 ```bash
-$ ./setup-local.sh 100
+$ ./setup-local.sh 100 validator_list.txt
 ```
 
 #### Important notes on local network
@@ -39,13 +40,23 @@ $ solana delegate-stake --force stake.json CzDy6uxLTko5Jjcdm46AozMmrARY6R2aDBagd
 
 Creates a new stake pool with the parameters hardcoded in the script:
 
-* fee numerator
-* fee denominator
+* epoch fee numerator
+* epoch fee denominator
+* withdrawal fee numerator
+* withdrawal fee denominator
+* deposit fee numerator
+* deposit fee denominator
+* referral fee
+* manager
+* staker
 * maximum number of validators
 * list of validator vote accounts
+* (Optional) deposit authority, for restricted pools
+
+Modify the parameters to suit your needs, and your pool will be created!
 
 ```bash
-$ ./setup-stake-pool.sh 100 validator_list.txt
+$ ./setup-stake-pool.sh
 ```
 
 ### deposit-withdraw.sh
