@@ -6,13 +6,11 @@ use solana_program::{
     entrypoint::ProgramResult,
     pubkey::Pubkey,
 };
+use spl_governance_tools::account::dispose_account;
 
-use crate::{
-    state::{
-        proposal::get_proposal_data, signatory_record::get_signatory_record_data_for_seeds,
-        token_owner_record::get_token_owner_record_data_for_proposal_owner,
-    },
-    tools::account::dispose_account,
+use crate::state::{
+    proposal::get_proposal_data, signatory_record::get_signatory_record_data_for_seeds,
+    token_owner_record::get_token_owner_record_data_for_proposal_owner,
 };
 
 /// Processes RemoveSignatory instruction

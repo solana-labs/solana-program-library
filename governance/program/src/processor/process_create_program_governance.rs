@@ -11,11 +11,8 @@ use crate::{
         realm::get_realm_data,
         token_owner_record::get_token_owner_record_data_for_realm,
     },
-    tools::{
-        account::create_and_serialize_account_signed,
-        bpf_loader_upgradeable::{
-            assert_program_upgrade_authority_is_signer, set_program_upgrade_authority,
-        },
+    tools::bpf_loader_upgradeable::{
+        assert_program_upgrade_authority_is_signer, set_program_upgrade_authority,
     },
 };
 use solana_program::{
@@ -25,6 +22,7 @@ use solana_program::{
     rent::Rent,
     sysvar::Sysvar,
 };
+use spl_governance_tools::account::create_and_serialize_account_signed;
 
 /// Processes CreateProgramGovernance instruction
 pub fn process_create_program_governance(

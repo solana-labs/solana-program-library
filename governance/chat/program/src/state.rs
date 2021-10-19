@@ -4,7 +4,8 @@ use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
     account_info::AccountInfo, clock::UnixTimestamp, program_error::ProgramError, pubkey::Pubkey,
 };
-use spl_governance::tools::account::{assert_is_valid_account, AccountMaxSize};
+
+use spl_governance_tools::account::{assert_is_valid_account, AccountMaxSize};
 
 /// Defines all GovernanceChat accounts types
 #[repr(C)]

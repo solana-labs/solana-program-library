@@ -5,6 +5,7 @@ use solana_program_test::*;
 
 use program_test::*;
 use spl_governance::{error::GovernanceError, state::enums::VoteThresholdPercentage};
+use spl_governance_tools::error::GovernanceToolsError;
 
 #[tokio::test]
 async fn test_create_account_governance() {
@@ -77,7 +78,7 @@ async fn test_create_account_governance_with_invalid_realm_error() {
 
     // Assert
 
-    assert_eq!(err, GovernanceError::InvalidAccountType.into());
+    assert_eq!(err, GovernanceToolsError::InvalidAccountType.into());
 }
 
 #[tokio::test]

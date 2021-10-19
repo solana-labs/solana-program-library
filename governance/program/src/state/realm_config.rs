@@ -6,12 +6,9 @@ use solana_program::{
 };
 
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
+use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 
-use crate::{
-    error::GovernanceError,
-    state::enums::GovernanceAccountType,
-    tools::account::{get_account_data, AccountMaxSize},
-};
+use crate::{error::GovernanceError, state::enums::GovernanceAccountType};
 
 /// RealmConfig account
 /// The account is an optional extension to RealmConfig stored on Realm account
@@ -26,14 +23,17 @@ pub struct RealmConfigAccount {
     /// Addin providing voter weights for community token
     pub community_voter_weight_addin: Option<Pubkey>,
 
-    /// Reserved for community max vote weight addin
-    pub reserved_1: Option<Pubkey>,
+    /// Addin providing max vote weight for community token
+    /// Note: This field is not implemented in the current version
+    pub community_max_vote_weight_addin: Option<Pubkey>,
 
-    /// Reserved for council voter weight addin
-    pub reserved_2: Option<Pubkey>,
+    /// Addin providing voter weights for council token
+    /// Note: This field is not implemented in the current version
+    pub council_voter_weight_addin: Option<Pubkey>,
 
-    /// Reserved for council max vote weight addin
-    pub reserved_3: Option<Pubkey>,
+    /// Addin providing max vote weight for council token
+    /// Note: This field is not implemented in the current version
+    pub council_max_vote_weight_addin: Option<Pubkey>,
 
     /// Reserved
     pub reserved: [u8; 128],
@@ -56,7 +56,7 @@ pub fn get_realm_config_data(
     program_id: &Pubkey,
     realm_config_info: &AccountInfo,
 ) -> Result<RealmConfigAccount, ProgramError> {
-    get_account_data::<RealmConfigAccount>(realm_config_info, program_id)
+    get_account_data::<RealmConfigAccount>(program_id, realm_config_info)
 }
 
 /// Deserializes RealmConfig account and checks the owner program and the Realm it belongs to
@@ -95,9 +95,9 @@ mod test {
             account_type: GovernanceAccountType::Realm,
             realm: Pubkey::new_unique(),
             community_voter_weight_addin: Some(Pubkey::new_unique()),
-            reserved_1: Some(Pubkey::new_unique()),
-            reserved_2: Some(Pubkey::new_unique()),
-            reserved_3: Some(Pubkey::new_unique()),
+            community_max_vote_weight_addin: Some(Pubkey::new_unique()),
+            council_voter_weight_addin: Some(Pubkey::new_unique()),
+            council_max_vote_weight_addin: Some(Pubkey::new_unique()),
             reserved: [0; 128],
         };
 

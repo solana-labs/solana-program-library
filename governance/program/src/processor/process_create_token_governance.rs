@@ -10,10 +10,7 @@ use crate::{
         realm::get_realm_data,
         token_owner_record::get_token_owner_record_data_for_realm,
     },
-    tools::{
-        account::create_and_serialize_account_signed,
-        spl_token::{assert_spl_token_owner_is_signer, set_spl_token_owner},
-    },
+    tools::spl_token::{assert_spl_token_owner_is_signer, set_spl_token_owner},
 };
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -22,6 +19,7 @@ use solana_program::{
     rent::Rent,
     sysvar::Sysvar,
 };
+use spl_governance_tools::account::create_and_serialize_account_signed;
 
 /// Processes CreateTokenGovernance instruction
 pub fn process_create_token_governance(

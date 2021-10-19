@@ -21,7 +21,8 @@ serde = "1.0.127"
 serde_derive = "1.0.103"
 solana-program = "1.8.0"
 spl-token = { version = "3.2", path = "../../../token/program", features = [ "no-entrypoint" ] }
-spl-governance= { version = "2.1.0", path ="../../program", features = [ "no-entrypoint" ]}
+spl-governance= { version = "2.1.2", path ="../../program", features = [ "no-entrypoint" ]}
+spl-governance-tools= { version = "0.1.0", path ="../../tools"}
 thiserror = "1.0"
 
 

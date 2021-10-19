@@ -9,7 +9,6 @@ use crate::{
         enums::GovernanceAccountType, governance::GovernanceConfig, realm::Realm,
         realm_config::get_realm_config_data_for_realm,
     },
-    tools::account::{get_account_data, AccountMaxSize},
     PROGRAM_AUTHORITY_SEED,
 };
 
@@ -20,6 +19,7 @@ use solana_program::{
     program_pack::IsInitialized,
     pubkey::Pubkey,
 };
+use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 
 /// Governance Token Owner Record
 /// Account PDA seeds: ['governance', realm, token_mint, token_owner ]
@@ -241,7 +241,7 @@ pub fn get_token_owner_record_data(
     program_id: &Pubkey,
     token_owner_record_info: &AccountInfo,
 ) -> Result<TokenOwnerRecord, ProgramError> {
-    get_account_data::<TokenOwnerRecord>(token_owner_record_info, program_id)
+    get_account_data::<TokenOwnerRecord>(program_id, token_owner_record_info)
 }
 
 /// Deserializes TokenOwnerRecord account and checks its PDA against the provided seeds

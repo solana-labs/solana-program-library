@@ -6,6 +6,7 @@ use solana_program::{
     account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
     pubkey::Pubkey,
 };
+use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 
 use crate::{
     error::GovernanceError,
@@ -18,7 +19,6 @@ use crate::{
         proposal_instruction::ProposalInstruction,
         realm::Realm,
     },
-    tools::account::{get_account_data, AccountMaxSize},
     PROGRAM_AUTHORITY_SEED,
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
@@ -450,7 +450,7 @@ pub fn get_proposal_data(
     program_id: &Pubkey,
     proposal_info: &AccountInfo,
 ) -> Result<Proposal, ProgramError> {
-    get_account_data::<Proposal>(proposal_info, program_id)
+    get_account_data::<Proposal>(program_id, proposal_info)
 }
 
 /// Deserializes Proposal and validates it belongs to the given Governance and Governing Mint

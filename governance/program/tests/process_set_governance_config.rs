@@ -12,6 +12,8 @@ use spl_governance::{
 };
 use spl_governance_test_sdk::tools::ProgramInstructionError;
 
+use spl_governance_tools::error::GovernanceToolsError;
+
 #[tokio::test]
 async fn test_set_governance_config() {
     // Arrange
@@ -145,7 +147,7 @@ async fn test_set_governance_config_with_fake_governance_signer_error() {
         .unwrap();
 
     // Assert
-    assert_eq!(err, GovernanceError::AccountDoesNotExist.into());
+    assert_eq!(err, GovernanceToolsError::AccountDoesNotExist.into());
 }
 
 #[tokio::test]

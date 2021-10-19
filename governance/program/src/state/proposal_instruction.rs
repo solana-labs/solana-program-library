@@ -3,7 +3,6 @@
 use crate::{
     error::GovernanceError,
     state::enums::{GovernanceAccountType, InstructionExecutionStatus},
-    tools::account::{get_account_data, AccountMaxSize},
     PROGRAM_AUTHORITY_SEED,
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
@@ -15,6 +14,7 @@ use solana_program::{
     program_pack::IsInitialized,
     pubkey::Pubkey,
 };
+use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 
 /// InstructionData wrapper. It can be removed once Borsh serialization for Instruction is supported in the SDK
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
@@ -146,7 +146,7 @@ pub fn get_proposal_instruction_data(
     program_id: &Pubkey,
     proposal_instruction_info: &AccountInfo,
 ) -> Result<ProposalInstruction, ProgramError> {
-    get_account_data::<ProposalInstruction>(proposal_instruction_info, program_id)
+    get_account_data::<ProposalInstruction>(program_id, proposal_instruction_info)
 }
 
 ///  Deserializes and returns ProposalInstruction account and checks it belongs to the given Proposal

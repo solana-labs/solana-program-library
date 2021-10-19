@@ -162,20 +162,6 @@ pub enum GovernanceError {
     #[error("Invalid Signatory Mint")]
     InvalidSignatoryMint,
 
-    /// ---- Account Tools Errors ----
-
-    /// Invalid account owner
-    #[error("Invalid account owner")]
-    InvalidAccountOwner,
-
-    /// Account doesn't exist
-    #[error("Account doesn't exist")]
-    AccountDoesNotExist,
-
-    /// Invalid Account type
-    #[error("Invalid Account type")]
-    InvalidAccountType,
-
     /// Proposal does not belong to the given Governance
     #[error("Proposal does not belong to the given Governance")]
     InvalidGovernanceForProposal,

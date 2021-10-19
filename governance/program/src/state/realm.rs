@@ -5,11 +5,11 @@ use solana_program::{
     account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
     pubkey::Pubkey,
 };
+use spl_governance_tools::account::{assert_is_valid_account, get_account_data, AccountMaxSize};
 
 use crate::{
     error::GovernanceError,
     state::enums::{GovernanceAccountType, MintMaxVoteWeightSource},
-    tools::account::{assert_is_valid_account, get_account_data, AccountMaxSize},
     PROGRAM_AUTHORITY_SEED,
 };
 
@@ -155,7 +155,7 @@ pub fn get_realm_data(
     program_id: &Pubkey,
     realm_info: &AccountInfo,
 ) -> Result<Realm, ProgramError> {
-    get_account_data::<Realm>(realm_info, program_id)
+    get_account_data::<Realm>(program_id, realm_info)
 }
 
 /// Deserializes account and checks the given authority is Realm's authority
@@ -164,7 +164,7 @@ pub fn get_realm_data_for_authority(
     realm_info: &AccountInfo,
     realm_authority: &Pubkey,
 ) -> Result<Realm, ProgramError> {
-    let realm_data = get_account_data::<Realm>(realm_info, program_id)?;
+    let realm_data = get_account_data::<Realm>(program_id, realm_info)?;
 
     if realm_data.authority.is_none() {
         return Err(GovernanceError::RealmHasNoAuthority.into());

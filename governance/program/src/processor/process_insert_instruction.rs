@@ -10,6 +10,7 @@ use solana_program::{
     rent::Rent,
     sysvar::Sysvar,
 };
+use spl_governance_tools::account::create_and_serialize_account_signed;
 
 use crate::{
     error::GovernanceError,
@@ -22,7 +23,6 @@ use crate::{
         },
         token_owner_record::get_token_owner_record_data_for_proposal_owner,
     },
-    tools::account::create_and_serialize_account_signed,
 };
 
 /// Processes InsertInstruction instruction

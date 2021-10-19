@@ -8,6 +8,7 @@ use solana_program::{
     rent::Rent,
     sysvar::Sysvar,
 };
+use spl_governance_tools::account::create_and_serialize_account_signed;
 
 use crate::{
     error::GovernanceError,
@@ -19,10 +20,7 @@ use crate::{
             TokenOwnerRecord,
         },
     },
-    tools::{
-        account::create_and_serialize_account_signed,
-        spl_token::{get_spl_token_mint, get_spl_token_owner, transfer_spl_tokens},
-    },
+    tools::spl_token::{get_spl_token_mint, get_spl_token_owner, transfer_spl_tokens},
 };
 
 /// Processes DepositGoverningTokens instruction

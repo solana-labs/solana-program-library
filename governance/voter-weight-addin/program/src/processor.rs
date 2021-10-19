@@ -5,8 +5,6 @@ use spl_governance::{
     addins::voter_weight::{VoterWeightAccountType, VoterWeightRecord},
     state::token_owner_record::get_token_owner_record_data_for_realm_and_governing_mint,
 };
-// TODO: Move to shared governance tools
-use spl_governance_chat::tools::account::create_and_serialize_account;
 
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -15,6 +13,7 @@ use solana_program::{
     program_error::ProgramError,
     pubkey::Pubkey,
 };
+use spl_governance_tools::account::create_and_serialize_account;
 
 use crate::instruction::VoterWeightAddinInstruction;
 

@@ -4,10 +4,11 @@ use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::account_info::AccountInfo;
 use solana_program::program_error::ProgramError;
 use solana_program::{program_pack::IsInitialized, pubkey::Pubkey};
+use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 
 use crate::error::GovernanceError;
-use crate::tools::account::get_account_data;
-use crate::{tools::account::AccountMaxSize, PROGRAM_AUTHORITY_SEED};
+
+use crate::PROGRAM_AUTHORITY_SEED;
 
 use crate::state::enums::{GovernanceAccountType, VoteWeight};
 
@@ -55,7 +56,7 @@ pub fn get_vote_record_data(
     program_id: &Pubkey,
     vote_record_info: &AccountInfo,
 ) -> Result<VoteRecord, ProgramError> {
-    get_account_data::<VoteRecord>(vote_record_info, program_id)
+    get_account_data::<VoteRecord>(program_id, vote_record_info)
 }
 
 /// Deserializes VoteRecord and checks it belongs to the provided Proposal and Governing Token Owner

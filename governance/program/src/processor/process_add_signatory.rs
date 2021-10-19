@@ -8,15 +8,13 @@ use solana_program::{
     rent::Rent,
     sysvar::Sysvar,
 };
+use spl_governance_tools::account::create_and_serialize_account_signed;
 
-use crate::{
-    state::{
-        enums::GovernanceAccountType,
-        proposal::get_proposal_data,
-        signatory_record::{get_signatory_record_address_seeds, SignatoryRecord},
-        token_owner_record::get_token_owner_record_data_for_proposal_owner,
-    },
-    tools::account::create_and_serialize_account_signed,
+use crate::state::{
+    enums::GovernanceAccountType,
+    proposal::get_proposal_data,
+    signatory_record::{get_signatory_record_address_seeds, SignatoryRecord},
+    token_owner_record::get_token_owner_record_data_for_proposal_owner,
 };
 
 /// Processes AddSignatory instruction
