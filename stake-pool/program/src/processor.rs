@@ -592,10 +592,17 @@ impl Processor {
             return Err(StakePoolError::WrongAccountMint.into());
         }
 
-        let stake_deposit_authority = match next_account_info(account_info_iter) {
-            Ok(stake_deposit_authority_info) => *stake_deposit_authority_info.key,
-            Err(_) => find_deposit_authority_program_address(program_id, stake_pool_info.key).0,
-        };
+        let (stake_deposit_authority, sol_deposit_authority) =
+            match next_account_info(account_info_iter) {
+                Ok(deposit_authority_info) => (
+                    *deposit_authority_info.key,
+                    Some(*deposit_authority_info.key),
+                ),
+                Err(_) => (
+                    find_deposit_authority_program_address(program_id, stake_pool_info.key).0,
+                    None,
+                ),
+            };
         let (withdraw_authority_key, stake_withdraw_bump_seed) =
             crate::find_withdraw_authority_program_address(program_id, stake_pool_info.key);
 
@@ -676,7 +683,7 @@ impl Processor {
         stake_pool.stake_withdrawal_fee = withdrawal_fee;
         stake_pool.next_stake_withdrawal_fee = None;
         stake_pool.stake_referral_fee = referral_fee;
-        stake_pool.sol_deposit_authority = None;
+        stake_pool.sol_deposit_authority = sol_deposit_authority;
         stake_pool.sol_deposit_fee = deposit_fee;
         stake_pool.sol_referral_fee = referral_fee;
         stake_pool.sol_withdraw_authority = None;

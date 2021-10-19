@@ -671,7 +671,7 @@ impl StakePoolAccounts {
         }
     }
 
-    pub fn new_with_stake_deposit_authority(stake_deposit_authority: Keypair) -> Self {
+    pub fn new_with_deposit_authority(stake_deposit_authority: Keypair) -> Self {
         let mut stake_pool_accounts = Self::new();
         stake_pool_accounts.stake_deposit_authority = stake_deposit_authority.pubkey();
         stake_pool_accounts.stake_deposit_authority_keypair = Some(stake_deposit_authority);
