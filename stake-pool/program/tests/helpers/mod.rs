@@ -6,7 +6,7 @@ use {
         hash::Hash,
         program_pack::Pack,
         pubkey::Pubkey,
-        system_instruction, system_program,
+        stake, system_instruction, system_program,
     },
     solana_program_test::*,
     solana_sdk::{
@@ -21,7 +21,7 @@ use {
     },
     spl_stake_pool::{
         find_stake_program_address, find_transient_stake_program_address, id, instruction,
-        processor, stake_program,
+        processor,
         state::{self, FeeType, ValidatorList},
         MINIMUM_ACTIVE_STAKE,
     },
@@ -431,16 +431,16 @@ pub async fn create_independent_stake_account(
     payer: &Keypair,
     recent_blockhash: &Hash,
     stake: &Keypair,
-    authorized: &stake_program::Authorized,
-    lockup: &stake_program::Lockup,
+    authorized: &stake::state::Authorized,
+    lockup: &stake::state::Lockup,
     stake_amount: u64,
 ) -> u64 {
     let rent = banks_client.get_rent().await.unwrap();
     let lamports =
-        rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>()) + stake_amount;
+        rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>()) + stake_amount;
 
     let transaction = Transaction::new_signed_with_payer(
-        &stake_program::create_account(
+        &stake::instruction::create_account(
             &payer.pubkey(),
             &stake.pubkey(),
             authorized,
@@ -463,15 +463,15 @@ pub async fn create_blank_stake_account(
     stake: &Keypair,
 ) -> u64 {
     let rent = banks_client.get_rent().await.unwrap();
-    let lamports = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>()) + 1;
+    let lamports = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>()) + 1;
 
     let transaction = Transaction::new_signed_with_payer(
         &[system_instruction::create_account(
             &payer.pubkey(),
             &stake.pubkey(),
             lamports,
-            std::mem::size_of::<stake_program::StakeState>() as u64,
-            &stake_program::id(),
+            std::mem::size_of::<stake::state::StakeState>() as u64,
+            &stake::program::id(),
         )],
         Some(&payer.pubkey()),
         &[payer, stake],
@@ -491,7 +491,7 @@ pub async fn delegate_stake_account(
     vote: &Pubkey,
 ) {
     let mut transaction = Transaction::new_with_payer(
-        &[stake_program::delegate_stake(
+        &[stake::instruction::delegate_stake(
             stake,
             &authorized.pubkey(),
             vote,
@@ -509,14 +509,15 @@ pub async fn authorize_stake_account(
     stake: &Pubkey,
     authorized: &Keypair,
     new_authorized: &Pubkey,
-    stake_authorize: stake_program::StakeAuthorize,
+    stake_authorize: stake::state::StakeAuthorize,
 ) {
     let mut transaction = Transaction::new_with_payer(
-        &[stake_program::authorize(
+        &[stake::instruction::authorize(
             stake,
             &authorized.pubkey(),
             new_authorized,
             stake_authorize,
+            None,
         )],
         Some(&payer.pubkey()),
     );
@@ -546,11 +547,11 @@ pub async fn create_unknown_validator_stake(
         payer,
         recent_blockhash,
         &fake_validator_stake,
-        &stake_program::Authorized {
+        &stake::state::Authorized {
             staker: user.pubkey(),
             withdrawer: user.pubkey(),
         },
-        &stake_program::Lockup::default(),
+        &stake::state::Lockup::default(),
         MINIMUM_ACTIVE_STAKE,
     )
     .await;
@@ -726,11 +727,11 @@ impl StakePoolAccounts {
             payer,
             recent_blockhash,
             &self.reserve_stake,
-            &stake_program::Authorized {
+            &stake::state::Authorized {
                 staker: self.withdraw_authority,
                 withdrawer: self.withdraw_authority,
             },
-            &stake_program::Lockup::default(),
+            &stake::state::Lockup::default(),
             reserve_lamports,
         )
         .await;
@@ -1144,8 +1145,8 @@ impl StakePoolAccounts {
                     &payer.pubkey(),
                     &destination_stake.pubkey(),
                     0,
-                    std::mem::size_of::<stake_program::StakeState>() as u64,
-                    &stake_program::id(),
+                    std::mem::size_of::<stake::state::StakeState>() as u64,
+                    &stake::program::id(),
                 ),
                 instruction::remove_validator_from_pool(
                     &id(),
@@ -1323,8 +1324,8 @@ impl DepositStakeAccount {
         payer: &Keypair,
         recent_blockhash: &Hash,
     ) {
-        let lockup = stake_program::Lockup::default();
-        let authorized = stake_program::Authorized {
+        let lockup = stake::state::Lockup::default();
+        let authorized = stake::state::Authorized {
             staker: self.authority.pubkey(),
             withdrawer: self.authority.pubkey(),
         };
@@ -1395,8 +1396,8 @@ pub async fn simple_deposit_stake(
     let authority = Keypair::new();
     // make stake account
     let stake = Keypair::new();
-    let lockup = stake_program::Lockup::default();
-    let authorized = stake_program::Authorized {
+    let lockup = stake::state::Lockup::default();
+    let authorized = stake::state::Authorized {
         staker: authority.pubkey(),
         withdrawer: authority.pubkey(),
     };
@@ -1487,6 +1488,6 @@ pub async fn get_validator_list_sum(
         .map(|info| info.stake_lamports())
         .sum();
     let rent = banks_client.get_rent().await.unwrap();
-    let rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
+    let rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
     validator_sum + reserve_stake.lamports - rent - 1
 }

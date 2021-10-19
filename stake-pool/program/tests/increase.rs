@@ -5,7 +5,9 @@ mod helpers;
 use {
     bincode::deserialize,
     helpers::*,
-    solana_program::{clock::Epoch, hash::Hash, instruction::InstructionError, pubkey::Pubkey},
+    solana_program::{
+        clock::Epoch, hash::Hash, instruction::InstructionError, pubkey::Pubkey, stake,
+    },
     solana_program_test::*,
     solana_sdk::{
         signature::{Keypair, Signer},
@@ -13,7 +15,7 @@ use {
     },
     spl_stake_pool::{
         error::StakePoolError, find_transient_stake_program_address, id, instruction,
-        stake_program, MINIMUM_ACTIVE_STAKE,
+        MINIMUM_ACTIVE_STAKE,
     },
 };
 
@@ -93,7 +95,7 @@ async fn success() {
     assert!(transient_account.is_none());
 
     let rent = banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
     let increase_amount = reserve_lamports - stake_rent - 1;
     let error = stake_pool_accounts
         .increase_validator_stake(
@@ -115,7 +117,7 @@ async fn success() {
     )
     .await;
     let reserve_stake_state =
-        deserialize::<stake_program::StakeState>(&reserve_stake_account.data).unwrap();
+        deserialize::<stake::state::StakeState>(&reserve_stake_account.data).unwrap();
     assert_eq!(
         pre_reserve_stake_account.lamports - increase_amount - stake_rent,
         reserve_stake_account.lamports
@@ -126,7 +128,7 @@ async fn success() {
     let transient_stake_account =
         get_account(&mut banks_client, &validator_stake.transient_stake_account).await;
     let transient_stake_state =
-        deserialize::<stake_program::StakeState>(&transient_stake_account.data).unwrap();
+        deserialize::<stake::state::StakeState>(&transient_stake_account.data).unwrap();
     assert_eq!(
         transient_stake_account.lamports,
         increase_amount + stake_rent

@@ -5,14 +5,16 @@ mod helpers;
 use {
     bincode::deserialize,
     helpers::*,
-    solana_program::{clock::Epoch, hash::Hash, instruction::InstructionError, pubkey::Pubkey},
+    solana_program::{
+        clock::Epoch, hash::Hash, instruction::InstructionError, pubkey::Pubkey, stake,
+    },
     solana_program_test::*,
     solana_sdk::{
         signature::{Keypair, Signer},
         transaction::{Transaction, TransactionError},
     },
     spl_stake_pool::{
-        error::StakePoolError, find_transient_stake_program_address, id, instruction, stake_program,
+        error::StakePoolError, find_transient_stake_program_address, id, instruction,
     },
 };
 
@@ -104,7 +106,7 @@ async fn success() {
     let validator_stake_account =
         get_account(&mut banks_client, &validator_stake.stake_account).await;
     let validator_stake_state =
-        deserialize::<stake_program::StakeState>(&validator_stake_account.data).unwrap();
+        deserialize::<stake::state::StakeState>(&validator_stake_account.data).unwrap();
     assert_eq!(
         pre_validator_stake_account.lamports - decrease_lamports,
         validator_stake_account.lamports
@@ -121,7 +123,7 @@ async fn success() {
     let transient_stake_account =
         get_account(&mut banks_client, &validator_stake.transient_stake_account).await;
     let transient_stake_state =
-        deserialize::<stake_program::StakeState>(&transient_stake_account.data).unwrap();
+        deserialize::<stake::state::StakeState>(&transient_stake_account.data).unwrap();
     assert_eq!(transient_stake_account.lamports, decrease_lamports);
     assert_ne!(
         transient_stake_state
@@ -344,7 +346,7 @@ async fn fail_with_small_lamport_amount() {
     ) = setup().await;
 
     let rent = banks_client.get_rent().await.unwrap();
-    let lamports = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
+    let lamports = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
 
     let error = stake_pool_accounts
         .decrease_validator_stake(
@@ -411,7 +413,7 @@ async fn fail_overdraw() {
     ) = setup().await;
 
     let rent = banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
 
     let error = stake_pool_accounts
         .decrease_validator_stake(

@@ -5,7 +5,7 @@ mod helpers;
 use {
     helpers::*,
     solana_program::{
-        borsh::try_from_slice_unchecked, instruction::InstructionError, pubkey::Pubkey,
+        borsh::try_from_slice_unchecked, instruction::InstructionError, pubkey::Pubkey, stake,
     },
     solana_program_test::*,
     solana_sdk::{
@@ -17,7 +17,7 @@ use {
         error::StakePoolError,
         id,
         instruction::{self, FundingType},
-        stake_program, state,
+        state,
     },
 };
 
@@ -189,7 +189,7 @@ async fn fail_overdraw_reserve() {
     .await;
 
     let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
     let error = stake_pool_accounts
         .increase_validator_stake(
             &mut context.banks_client,

@@ -11,7 +11,7 @@ use {
         hash::Hash,
         instruction::{AccountMeta, Instruction, InstructionError},
         pubkey::Pubkey,
-        sysvar,
+        stake, sysvar,
     },
     solana_program_test::*,
     solana_sdk::{
@@ -19,9 +19,7 @@ use {
         transaction::{Transaction, TransactionError},
         transport::TransportError,
     },
-    spl_stake_pool::{
-        error::StakePoolError, id, instruction, minimum_stake_lamports, stake_program, state,
-    },
+    spl_stake_pool::{error::StakePoolError, id, instruction, minimum_stake_lamports, state},
     spl_token::error::TokenError,
 };
 
@@ -298,10 +296,10 @@ async fn _success(test_type: SuccessTestType) {
     let validator_stake_account =
         get_account(&mut banks_client, &validator_stake_account.stake_account).await;
     let stake_state =
-        deserialize::<stake_program::StakeState>(&validator_stake_account.data).unwrap();
+        deserialize::<stake::state::StakeState>(&validator_stake_account.data).unwrap();
     let meta = stake_state.meta().unwrap();
     assert_eq!(
-        validator_stake_account.lamports - minimum_stake_lamports(meta),
+        validator_stake_account.lamports - minimum_stake_lamports(&meta),
         validator_stake_item.active_stake_lamports
     );
 
@@ -856,7 +854,7 @@ async fn success_with_reserve() {
 
     let deposit_lamports = TEST_STAKE_AMOUNT;
     let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
 
     let deposit_info = simple_deposit_stake(
         &mut context.banks_client,
@@ -1032,8 +1030,7 @@ async fn success_with_reserve() {
         &stake_pool_accounts.reserve_stake.pubkey(),
     )
     .await;
-    let stake_state =
-        deserialize::<stake_program::StakeState>(&reserve_stake_account.data).unwrap();
+    let stake_state = deserialize::<stake::state::StakeState>(&reserve_stake_account.data).unwrap();
     let meta = stake_state.meta().unwrap();
     assert_eq!(
         initial_reserve_lamports + meta.rent_exempt_reserve + withdrawal_fee + deposit_fee,
@@ -1233,7 +1230,7 @@ async fn success_withdraw_from_transient() {
 
     let deposit_lamports = TEST_STAKE_AMOUNT;
     let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
 
     let deposit_info = simple_deposit_stake(
         &mut context.banks_client,

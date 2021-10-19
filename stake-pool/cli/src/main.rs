@@ -20,6 +20,7 @@ use {
         instruction::Instruction,
         program_pack::Pack,
         pubkey::Pubkey,
+        stake,
     },
     solana_remote_wallet::remote_wallet::RemoteWalletManager,
     solana_sdk::{
@@ -36,7 +37,6 @@ use {
         self, find_stake_program_address, find_transient_stake_program_address,
         find_withdraw_authority_program_address,
         instruction::{FundingType, PreferredValidatorType},
-        stake_program::{self, StakeState},
         state::{Fee, FeeType, StakePool, ValidatorList},
         MINIMUM_ACTIVE_STAKE,
     },
@@ -168,7 +168,7 @@ fn new_stake_account(
             &stake_receiver_pubkey,
             lamports,
             STAKE_STATE_LEN as u64,
-            &stake_program::id(),
+            &stake::program::id(),
         ),
     );
 
@@ -241,15 +241,15 @@ fn command_create_pool(
             &reserve_keypair.pubkey(),
             reserve_stake_balance,
             STAKE_STATE_LEN as u64,
-            &stake_program::id(),
+            &stake::program::id(),
         ),
-        stake_program::initialize(
+        stake::instruction::initialize(
             &reserve_keypair.pubkey(),
-            &stake_program::Authorized {
+            &stake::state::Authorized {
                 staker: withdraw_authority,
                 withdrawer: withdraw_authority,
             },
-            &stake_program::Lockup::default(),
+            &stake::state::Lockup::default(),
         ),
         // Account for the stake pool mint
         system_instruction::create_account(
@@ -610,7 +610,7 @@ fn command_deposit_stake(
         println!("Depositing stake account {:?}", stake_state);
     }
     let vote_account = match stake_state {
-        StakeState::Stake(_, stake) => Ok(stake.delegation.voter_pubkey),
+        stake::state::StakeState::Stake(_, stake) => Ok(stake.delegation.voter_pubkey),
         _ => Err("Wrong stake account state, must be delegated to validator"),
     }?;
 

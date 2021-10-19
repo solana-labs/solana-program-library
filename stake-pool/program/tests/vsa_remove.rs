@@ -10,7 +10,7 @@ use {
         borsh::try_from_slice_unchecked,
         instruction::{AccountMeta, Instruction, InstructionError},
         pubkey::Pubkey,
-        system_instruction, sysvar,
+        stake, system_instruction, sysvar,
     },
     solana_program_test::*,
     solana_sdk::{
@@ -19,8 +19,7 @@ use {
         transport::TransportError,
     },
     spl_stake_pool::{
-        error::StakePoolError, find_transient_stake_program_address, id, instruction,
-        stake_program, state,
+        error::StakePoolError, find_transient_stake_program_address, id, instruction, state,
     },
 };
 
@@ -131,9 +130,9 @@ async fn success() {
         .unwrap();
     assert!(account.is_none());
     let stake = get_account(&mut context.banks_client, &destination_stake.pubkey()).await;
-    let stake_state = deserialize::<stake_program::StakeState>(&stake.data).unwrap();
+    let stake_state = deserialize::<stake::state::StakeState>(&stake.data).unwrap();
     match stake_state {
-        stake_program::StakeState::Stake(meta, _) => {
+        stake::state::StakeState::Stake(meta, _) => {
             assert_eq!(&meta.authorized.staker, &new_authority);
             assert_eq!(&meta.authorized.withdrawer, &new_authority);
         }
@@ -380,7 +379,7 @@ async fn fail_no_signature() {
         AccountMeta::new_readonly(validator_stake.transient_stake_account, false),
         AccountMeta::new(destination_stake.pubkey(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
-        AccountMeta::new_readonly(stake_program::id(), false),
+        AccountMeta::new_readonly(stake::program::id(), false),
     ];
     let instruction = Instruction {
         program_id: id(),
@@ -465,7 +464,7 @@ async fn success_with_deactivating_transient_stake() {
         setup().await;
 
     let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
     let deposit_info = simple_deposit_stake(
         &mut context.banks_client,
         &context.payer,
@@ -667,9 +666,9 @@ async fn success_resets_preferred_validator() {
 
     // Check of stake account authority has changed
     let stake = get_account(&mut context.banks_client, &destination_stake.pubkey()).await;
-    let stake_state = deserialize::<stake_program::StakeState>(&stake.data).unwrap();
+    let stake_state = deserialize::<stake::state::StakeState>(&stake.data).unwrap();
     match stake_state {
-        stake_program::StakeState::Stake(meta, _) => {
+        stake::state::StakeState::Stake(meta, _) => {
             assert_eq!(&meta.authorized.staker, &new_authority);
             assert_eq!(&meta.authorized.withdrawer, &new_authority);
         }
@@ -756,13 +755,13 @@ async fn success_with_hijacked_transient_account() {
                 &transient_stake_address,
                 1_000_000_000,
             ),
-            stake_program::initialize(
+            stake::instruction::initialize(
                 &transient_stake_address,
-                &stake_program::Authorized {
+                &stake::state::Authorized {
                     staker: hijacker.pubkey(),
                     withdrawer: hijacker.pubkey(),
                 },
-                &stake_program::Lockup::default(),
+                &stake::state::Lockup::default(),
             ),
             instruction::update_stake_pool_balance(
                 &id(),

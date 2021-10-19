@@ -5,7 +5,6 @@ use {
     crate::{
         find_deposit_authority_program_address, find_stake_program_address,
         find_transient_stake_program_address, find_withdraw_authority_program_address,
-        stake_program,
         state::{Fee, FeeType, StakePool, ValidatorList},
         MAX_VALIDATORS_TO_UPDATE,
     },
@@ -13,7 +12,7 @@ use {
     solana_program::{
         instruction::{AccountMeta, Instruction},
         pubkey::Pubkey,
-        system_program, sysvar,
+        stake, system_program, sysvar,
     },
 };
 
@@ -443,9 +442,9 @@ pub fn add_validator_to_pool(
         AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
-        AccountMeta::new_readonly(stake_program::config_id(), false),
+        AccountMeta::new_readonly(stake::config::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
-        AccountMeta::new_readonly(stake_program::id(), false),
+        AccountMeta::new_readonly(stake::program::id(), false),
     ];
     Instruction {
         program_id: *program_id,
@@ -478,7 +477,7 @@ pub fn remove_validator_from_pool(
         AccountMeta::new_readonly(*transient_stake_account, false),
         AccountMeta::new(*destination_stake_account, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
-        AccountMeta::new_readonly(stake_program::id(), false),
+        AccountMeta::new_readonly(stake::program::id(), false),
     ];
     Instruction {
         program_id: *program_id,
@@ -512,7 +511,7 @@ pub fn decrease_validator_stake(
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
-        AccountMeta::new_readonly(stake_program::id(), false),
+        AccountMeta::new_readonly(stake::program::id(), false),
     ];
     Instruction {
         program_id: *program_id,
@@ -551,9 +550,9 @@ pub fn increase_validator_stake(
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
-        AccountMeta::new_readonly(stake_program::config_id(), false),
+        AccountMeta::new_readonly(stake::config::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
-        AccountMeta::new_readonly(stake_program::id(), false),
+        AccountMeta::new_readonly(stake::program::id(), false),
     ];
     Instruction {
         program_id: *program_id,
@@ -736,7 +735,7 @@ pub fn update_validator_list_balance(
         AccountMeta::new(*reserve_stake, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
-        AccountMeta::new_readonly(stake_program::id(), false),
+        AccountMeta::new_readonly(stake::program::id(), false),
     ];
     accounts.append(
         &mut validator_vote_accounts
@@ -911,20 +910,22 @@ pub fn deposit_stake(
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
-        AccountMeta::new_readonly(stake_program::id(), false),
+        AccountMeta::new_readonly(stake::program::id(), false),
     ];
     vec![
-        stake_program::authorize(
+        stake::instruction::authorize(
             deposit_stake_address,
             deposit_stake_withdraw_authority,
             &stake_pool_deposit_authority,
-            stake_program::StakeAuthorize::Staker,
+            stake::state::StakeAuthorize::Staker,
+            None,
         ),
-        stake_program::authorize(
+        stake::instruction::authorize(
             deposit_stake_address,
             deposit_stake_withdraw_authority,
             &stake_pool_deposit_authority,
-            stake_program::StakeAuthorize::Withdrawer,
+            stake::state::StakeAuthorize::Withdrawer,
+            None,
         ),
         Instruction {
             program_id: *program_id,
@@ -968,20 +969,22 @@ pub fn deposit_stake_with_authority(
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
-        AccountMeta::new_readonly(stake_program::id(), false),
+        AccountMeta::new_readonly(stake::program::id(), false),
     ];
     vec![
-        stake_program::authorize(
+        stake::instruction::authorize(
             deposit_stake_address,
             deposit_stake_withdraw_authority,
             stake_pool_deposit_authority,
-            stake_program::StakeAuthorize::Staker,
+            stake::state::StakeAuthorize::Staker,
+            None,
         ),
-        stake_program::authorize(
+        stake::instruction::authorize(
             deposit_stake_address,
             deposit_stake_withdraw_authority,
             stake_pool_deposit_authority,
-            stake_program::StakeAuthorize::Withdrawer,
+            stake::state::StakeAuthorize::Withdrawer,
+            None,
         ),
         Instruction {
             program_id: *program_id,
@@ -1094,7 +1097,7 @@ pub fn withdraw_stake(
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
-        AccountMeta::new_readonly(stake_program::id(), false),
+        AccountMeta::new_readonly(stake::program::id(), false),
     ];
     Instruction {
         program_id: *program_id,
@@ -1130,7 +1133,7 @@ pub fn withdraw_sol(
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
-        AccountMeta::new_readonly(stake_program::id(), false),
+        AccountMeta::new_readonly(stake::program::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
     ];
     Instruction {
@@ -1170,7 +1173,7 @@ pub fn withdraw_sol_with_authority(
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::stake_history::id(), false),
-        AccountMeta::new_readonly(stake_program::id(), false),
+        AccountMeta::new_readonly(stake::program::id(), false),
         AccountMeta::new_readonly(*token_program_id, false),
         AccountMeta::new_readonly(*sol_withdraw_authority, true),
     ];

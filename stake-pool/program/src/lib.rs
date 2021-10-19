@@ -15,8 +15,8 @@ pub mod entrypoint;
 // Export current sdk types for downstream users building with a different sdk version
 pub use solana_program;
 use {
-    crate::{stake_program::Meta, state::Fee},
-    solana_program::{native_token::LAMPORTS_PER_SOL, pubkey::Pubkey},
+    crate::state::Fee,
+    solana_program::{native_token::LAMPORTS_PER_SOL, pubkey::Pubkey, stake::state::Meta},
 };
 
 /// Seed for deposit authority seed

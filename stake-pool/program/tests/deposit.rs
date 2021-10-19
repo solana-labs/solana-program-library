@@ -10,7 +10,7 @@ use {
         borsh::try_from_slice_unchecked,
         instruction::{AccountMeta, Instruction, InstructionError},
         pubkey::Pubkey,
-        sysvar,
+        stake, sysvar,
     },
     solana_program_test::*,
     solana_sdk::{
@@ -19,9 +19,7 @@ use {
         transaction::TransactionError,
         transport::TransportError,
     },
-    spl_stake_pool::{
-        error::StakePoolError, id, instruction, minimum_stake_lamports, stake_program, state,
-    },
+    spl_stake_pool::{error::StakePoolError, id, instruction, minimum_stake_lamports, state},
     spl_token::error as token_error,
 };
 
@@ -63,9 +61,9 @@ async fn setup() -> (
     let user = Keypair::new();
     // make stake account
     let deposit_stake = Keypair::new();
-    let lockup = stake_program::Lockup::default();
+    let lockup = stake::state::Lockup::default();
 
-    let authorized = stake_program::Authorized {
+    let authorized = stake::state::Authorized {
         staker: user.pubkey(),
         withdrawer: user.pubkey(),
     };
@@ -140,7 +138,7 @@ async fn success() {
     ) = setup().await;
 
     let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
 
     // Save stake pool state before depositing
     let pre_stake_pool = get_account(
@@ -246,10 +244,10 @@ async fn success() {
     )
     .await;
     let stake_state =
-        deserialize::<stake_program::StakeState>(&validator_stake_account.data).unwrap();
+        deserialize::<stake::state::StakeState>(&validator_stake_account.data).unwrap();
     let meta = stake_state.meta().unwrap();
     assert_eq!(
-        validator_stake_account.lamports - minimum_stake_lamports(meta),
+        validator_stake_account.lamports - minimum_stake_lamports(&meta),
         post_validator_stake_item.stake_lamports()
     );
     assert_eq!(post_validator_stake_item.transient_stake_lamports, 0);
@@ -310,7 +308,7 @@ async fn success_with_extra_stake_lamports() {
     .await;
 
     let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
 
     // Save stake pool state before depositing
     let pre_stake_pool = get_account(
@@ -441,10 +439,10 @@ async fn success_with_extra_stake_lamports() {
     )
     .await;
     let stake_state =
-        deserialize::<stake_program::StakeState>(&validator_stake_account.data).unwrap();
+        deserialize::<stake::state::StakeState>(&validator_stake_account.data).unwrap();
     let meta = stake_state.meta().unwrap();
     assert_eq!(
-        validator_stake_account.lamports - minimum_stake_lamports(meta),
+        validator_stake_account.lamports - minimum_stake_lamports(&meta),
         post_validator_stake_item.stake_lamports()
     );
     assert_eq!(post_validator_stake_item.transient_stake_lamports, 0);
@@ -641,8 +639,8 @@ async fn fail_with_unknown_validator() {
 
     // make stake account
     let user_stake = Keypair::new();
-    let lockup = stake_program::Lockup::default();
-    let authorized = stake_program::Authorized {
+    let lockup = stake::state::Lockup::default();
+    let authorized = stake::state::Authorized {
         staker: user.pubkey(),
         withdrawer: user.pubkey(),
     };
@@ -816,8 +814,8 @@ async fn success_with_stake_deposit_authority() {
 
     let user = Keypair::new();
     let user_stake = Keypair::new();
-    let lockup = stake_program::Lockup::default();
-    let authorized = stake_program::Authorized {
+    let lockup = stake::state::Lockup::default();
+    let authorized = stake::state::Authorized {
         staker: user.pubkey(),
         withdrawer: user.pubkey(),
     };
@@ -898,8 +896,8 @@ async fn fail_without_stake_deposit_authority_signature() {
 
     let user = Keypair::new();
     let user_stake = Keypair::new();
-    let lockup = stake_program::Lockup::default();
-    let authorized = stake_program::Authorized {
+    let lockup = stake::state::Lockup::default();
+    let authorized = stake::state::Authorized {
         staker: user.pubkey(),
         withdrawer: user.pubkey(),
     };
@@ -1127,7 +1125,7 @@ async fn success_with_referral_fee() {
     let stake_pool =
         try_from_slice_unchecked::<state::StakePool>(stake_pool.data.as_slice()).unwrap();
     let rent = context.banks_client.get_rent().await.unwrap();
-    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
     let fee_tokens = stake_pool
         .calc_pool_tokens_sol_deposit_fee(stake_rent)
         .unwrap()
