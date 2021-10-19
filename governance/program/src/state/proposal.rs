@@ -168,17 +168,24 @@ impl Proposal {
             .map_err(|_| GovernanceError::InvalidStateCannotVote)?;
 
         // Check if we are still within the configured max_voting_time period
-        if self
-            .voting_at
-            .unwrap()
-            .checked_add(config.max_voting_time as i64)
-            .unwrap()
-            < current_unix_timestamp
-        {
+        if self.has_vote_time_ended(config, current_unix_timestamp) {
             return Err(GovernanceError::ProposalVotingTimeExpired.into());
         }
 
         Ok(())
+    }
+
+    /// Checks whether the voting time has ended for the proposal
+    pub fn has_vote_time_ended(
+        &self,
+        config: &GovernanceConfig,
+        current_unix_timestamp: UnixTimestamp,
+    ) -> bool {
+        self.voting_at
+            .unwrap()
+            .checked_add(config.max_voting_time as i64)
+            .unwrap()
+            < current_unix_timestamp
     }
 
     /// Checks if Proposal can be finalized
