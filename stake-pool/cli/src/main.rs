@@ -10,9 +10,9 @@ use {
         input_parsers::{keypair_of, pubkey_of},
         input_validators::{
             is_amount, is_keypair, is_keypair_or_ask_keyword, is_parsable, is_pubkey, is_url,
-            is_valid_percentage,
+            is_valid_percentage, is_valid_pubkey,
         },
-        keypair::signer_from_path,
+        keypair::{signer_from_path_with_config, SignerFromPathConfig},
     },
     solana_client::rpc_client::RpcClient,
     solana_program::{
@@ -88,12 +88,14 @@ fn get_signer(
     keypair_name: &str,
     keypair_path: &str,
     wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
+    signer_from_path_config: SignerFromPathConfig,
 ) -> Box<dyn Signer> {
-    signer_from_path(
+    signer_from_path_with_config(
         matches,
         matches.value_of(keypair_name).unwrap_or(keypair_path),
         keypair_name,
         wallet_manager,
+        &signer_from_path_config,
     )
     .unwrap_or_else(|e| {
         eprintln!("error: {}", e);
@@ -596,6 +598,7 @@ fn command_deposit_stake(
     config: &Config,
     stake_pool_address: &Pubkey,
     stake: &Pubkey,
+    withdraw_authority: Box<dyn Signer>,
     pool_token_receiver_account: &Option<Pubkey>,
     referrer_token_account: &Option<Pubkey>,
 ) -> CommandResult {
@@ -634,7 +637,7 @@ fn command_deposit_stake(
     }
 
     let mut instructions: Vec<Instruction> = vec![];
-    let mut signers = vec![config.fee_payer.as_ref(), config.staker.as_ref()];
+    let mut signers = vec![config.fee_payer.as_ref(), withdraw_authority.as_ref()];
 
     let mut total_rent_free_balances: u64 = 0;
 
@@ -672,7 +675,7 @@ fn command_deposit_stake(
                 &stake_deposit_authority.pubkey(),
                 &pool_withdraw_authority,
                 stake,
-                &config.staker.pubkey(),
+                &withdraw_authority.pubkey(),
                 &validator_stake_account,
                 &stake_pool.reserve_stake,
                 &pool_token_receiver_account,
@@ -688,7 +691,7 @@ fn command_deposit_stake(
                 &stake_pool.validator_list,
                 &pool_withdraw_authority,
                 stake,
-                &config.staker.pubkey(),
+                &withdraw_authority.pubkey(),
                 &validator_stake_account,
                 &stake_pool.reserve_stake,
                 &pool_token_receiver_account,
@@ -1371,8 +1374,8 @@ fn command_withdraw_stake(
 fn command_withdraw_sol(
     config: &Config,
     stake_pool_address: &Pubkey,
-    sol_receiver: &Option<Pubkey>,
     pool_token_account: &Option<Pubkey>,
+    sol_receiver: &Pubkey,
     pool_amount: f64,
 ) -> CommandResult {
     if !config.no_update {
@@ -1383,7 +1386,6 @@ fn command_withdraw_sol(
     let pool_mint = get_token_mint(&config.rpc_client, &stake_pool.pool_mint)?;
     let pool_amount = spl_token::ui_amount_to_amount(pool_amount, pool_mint.decimals);
 
-    let sol_receiver = sol_receiver.unwrap_or_else(|| config.fee_payer.pubkey());
     let pool_token_account = pool_token_account.unwrap_or(get_associated_token_address(
         &config.token_owner.pubkey(),
         &stake_pool.pool_mint,
@@ -1450,7 +1452,7 @@ fn command_withdraw_sol(
             &user_transfer_authority.pubkey(),
             &pool_token_account,
             &stake_pool.reserve_stake,
-            &sol_receiver,
+            sol_receiver,
             &stake_pool.manager_fee_account,
             &stake_pool.pool_mint,
             &spl_token::id(),
@@ -1464,7 +1466,7 @@ fn command_withdraw_sol(
             &user_transfer_authority.pubkey(),
             &pool_token_account,
             &stake_pool.reserve_stake,
-            &sol_receiver,
+            sol_receiver,
             &stake_pool.manager_fee_account,
             &stake_pool.pool_mint,
             &spl_token::id(),
@@ -2012,6 +2014,15 @@ fn main() {
                     .help("Stake address to join the pool"),
             )
             .arg(
+                Arg::with_name("withdraw_authority")
+                    .long("withdraw-authority")
+                    .validator(is_keypair)
+                    .value_name("KEYPAIR")
+                    .takes_value(true)
+                    .help("Withdraw authority for the stake account to be deposited. \
+                          Defaults to the fee payer."),
+            )
+            .arg(
                 Arg::with_name("token_receiver")
                     .long("token-receiver")
                     .validator(is_pubkey)
@@ -2181,8 +2192,17 @@ fn main() {
                     .help("Stake pool address."),
             )
             .arg(
-                Arg::with_name("amount")
+                Arg::with_name("sol_receiver")
                     .index(2)
+                    .validator(is_valid_pubkey)
+                    .value_name("SYSTEM_ACCOUNT_ADDRESS_OR_KEYPAIR")
+                    .takes_value(true)
+                    .required(true)
+                    .help("System account to receive SOL from the stake pool. Defaults to the payer."),
+            )
+            .arg(
+                Arg::with_name("amount")
+                    .index(3)
                     .validator(is_amount)
                     .value_name("AMOUNT")
                     .takes_value(true)
@@ -2196,14 +2216,6 @@ fn main() {
                     .value_name("ADDRESS")
                     .takes_value(true)
                     .help("Pool token account to withdraw tokens from. Defaults to the token-owner's associated token account."),
-            )
-            .arg(
-                Arg::with_name("sol_receiver")
-                    .long("sol-receiver")
-                    .validator(is_pubkey)
-                    .value_name("SYSTEM_ACCOUNT_ADDRESS")
-                    .takes_value(true)
-                    .help("System account to receive SOL from the stake pool. Defaults to the payer."),
             )
         )
         .subcommand(SubCommand::with_name("set-manager")
@@ -2373,12 +2385,12 @@ fn main() {
         .get_matches();
 
     let mut wallet_manager = None;
+    let cli_config = if let Some(config_file) = matches.value_of("config_file") {
+        solana_cli_config::Config::load(config_file).unwrap_or_default()
+    } else {
+        solana_cli_config::Config::default()
+    };
     let config = {
-        let cli_config = if let Some(config_file) = matches.value_of("config_file") {
-            solana_cli_config::Config::load(config_file).unwrap_or_default()
-        } else {
-            solana_cli_config::Config::default()
-        };
         let json_rpc_url = value_t!(matches, "json_rpc_url", String)
             .unwrap_or_else(|_| cli_config.json_rpc_url.clone());
 
@@ -2387,6 +2399,9 @@ fn main() {
             "staker",
             &cli_config.keypair_path,
             &mut wallet_manager,
+            SignerFromPathConfig {
+                allow_null_signer: false,
+            },
         );
 
         let funding_authority = if matches.is_present("funding_authority") {
@@ -2395,6 +2410,9 @@ fn main() {
                 "funding_authority",
                 &cli_config.keypair_path,
                 &mut wallet_manager,
+                SignerFromPathConfig {
+                    allow_null_signer: false,
+                },
             ))
         } else {
             None
@@ -2404,18 +2422,27 @@ fn main() {
             "manager",
             &cli_config.keypair_path,
             &mut wallet_manager,
+            SignerFromPathConfig {
+                allow_null_signer: false,
+            },
         );
         let token_owner = get_signer(
             &matches,
             "token_owner",
             &cli_config.keypair_path,
             &mut wallet_manager,
+            SignerFromPathConfig {
+                allow_null_signer: false,
+            },
         );
         let fee_payer = get_signer(
             &matches,
             "fee_payer",
             &cli_config.keypair_path,
             &mut wallet_manager,
+            SignerFromPathConfig {
+                allow_null_signer: false,
+            },
         );
         let verbose = matches.is_present("verbose");
         let dry_run = matches.is_present("dry_run");
@@ -2523,10 +2550,20 @@ fn main() {
             let stake_account = pubkey_of(arg_matches, "stake_account").unwrap();
             let token_receiver: Option<Pubkey> = pubkey_of(arg_matches, "token_receiver");
             let referrer: Option<Pubkey> = pubkey_of(arg_matches, "referrer");
+            let withdraw_authority = get_signer(
+                arg_matches,
+                "withdraw_authority",
+                &cli_config.keypair_path,
+                &mut wallet_manager,
+                SignerFromPathConfig {
+                    allow_null_signer: false,
+                },
+            );
             command_deposit_stake(
                 &config,
                 &stake_pool_address,
                 &stake_account,
+                withdraw_authority,
                 &token_receiver,
                 &referrer,
             )
@@ -2577,12 +2614,21 @@ fn main() {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
             let pool_account = pubkey_of(arg_matches, "pool_account");
             let pool_amount = value_t_or_exit!(arg_matches, "amount", f64);
-            let sol_receiver = pubkey_of(arg_matches, "sol_receiver");
+            let sol_receiver = get_signer(
+                arg_matches,
+                "sol_receiver",
+                &cli_config.keypair_path,
+                &mut wallet_manager,
+                SignerFromPathConfig {
+                    allow_null_signer: true,
+                },
+            )
+            .pubkey();
             command_withdraw_sol(
                 &config,
                 &stake_pool_address,
-                &sol_receiver,
                 &pool_account,
+                &sol_receiver,
                 pool_amount,
             )
         }

@@ -734,23 +734,25 @@ Stake pools allow SOL withdrawals directly from the reserve and into a normal
 SOL wallet account, and in exchange burns the provided pool tokens.
 
 ```console
-$ spl-stake-pool withdraw-sol Zg5YBPAk8RqBR9kaLLSoN5C8Uv7nErBz1WC63HTsCPR 2
+$ spl-stake-pool withdraw-sol Zg5YBPAk8RqBR9kaLLSoN5C8Uv7nErBz1WC63HTsCPR 7VXPpSxneL6JLj18Naw2gkukXtjBZfbmPh18cnoUCMD8 2
 Signature: 4bqZKUUrjVspqTGqGqX4zxnHnJB67WbeukKUZRmxJ2yFmr275CtHPjZNzQJD9Pe7Q6mSxnUpcVv9FUdAbGP9RyBc
 ```
 
-The stake pool burned 2 pool tokens. In return, the stake pool sent SOL to the
-fee payer for the transaction.  You can check that the pool tokens have been burned:
+The stake pool has burned 2 pool tokens, and in return, sent SOL to
+`7VXPpSxneL6JLj18Naw2gkukXtjBZfbmPh18cnoUCMD8`.
+
+You can check that the pool tokens have been burned:
 
 ```console
 $ spl-token balance BoNneHKDrX9BHjjvSpPfnQyRjsnc9WFH71v8wrgCd7LB
 98.00000000
 ```
 
-And you can check that the fee payer has been credited:
+And you can check that the recipient has been credited:
 
 ```console
-$ solana balance
-49.660334743 SOL
+$ solana balance 7VXPpSxneL6JLj18Naw2gkukXtjBZfbmPh18cnoUCMD8
+2 SOL
 ```
 
 ### Deposit stake
@@ -788,12 +790,15 @@ Signature: 45x2UtA1b49eBPtRHdkvA3k8JneZzfwjptNN1kKQZaPABYiJ4hSA8qwi7qLNN5b3Fr4Z6
 ```
 
 The CLI will default to using the fee payer's
-[Associated Token Account](associated-token-account.md) for stake pool tokens.
+[Associated Token Account](associated-token-account.md) for stake pool tokens
+and the withdraw authority on the deposited stake account.
+
 Alternatively, you can create an SPL token account yourself and pass it as the
-`token-receiver` for the command.
+`token-receiver` for the command, and specify the withdraw authority on the
+stake account using the `withdraw-authority` flag.
 
 ```console
-$ spl-stake-pool deposit-stake Zg5YBPAk8RqBR9kaLLSoN5C8Uv7nErBz1WC63HTsCPR 97wBBiLVA7fUViEew8yV8R6tTdKithZDVz8LHLfF9sTJ --token-receiver 34XMHa3JUPv46ftU4dGHvemZ9oKVjnciRePYMcX3rjEF
+$ spl-stake-pool deposit-stake Zg5YBPAk8RqBR9kaLLSoN5C8Uv7nErBz1WC63HTsCPR 97wBBiLVA7fUViEew8yV8R6tTdKithZDVz8LHLfF9sTJ --token-receiver 34XMHa3JUPv46ftU4dGHvemZ9oKVjnciRePYMcX3rjEF --withdraw-authority authority.json
 Depositing stake 97wBBiLVA7fUViEew8yV8R6tTdKithZDVz8LHLfF9sTJ into stake pool account F8e8Ympp4MkDSPZdvRxdQUZXRkMBDdyqgHa363GShAPt
 Signature: 4AESGZzqBVfj5xQnMiPWAwzJnAtQDRFK1Ha6jqKKTs46Zm5fw3LqgU1mRAT6CKTywVfFMHZCLm1hcQNScSMwVvjQ
 ```
