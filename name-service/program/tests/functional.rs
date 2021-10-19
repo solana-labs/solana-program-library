@@ -34,7 +34,7 @@ async fn test_name_service() {
     let owner = Keypair::new();
 
     let hashed_root_name: Vec<u8> = hashv(&[(HASH_PREFIX.to_owned() + root_name).as_bytes()])
-        .0
+        .as_ref()
         .to_vec();
     let (root_name_account_key, _) = get_seeds_and_key(
         &program_id,
@@ -78,7 +78,7 @@ async fn test_name_service() {
     let sol_subdomains_class = Keypair::new();
 
     let hashed_name: Vec<u8> = hashv(&[(HASH_PREFIX.to_owned() + name).as_bytes()])
-        .0
+        .as_ref()
         .to_vec();
     let (name_account_key, _) = get_seeds_and_key(
         &program_id,
