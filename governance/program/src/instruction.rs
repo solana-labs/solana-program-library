@@ -253,6 +253,7 @@ pub enum GovernanceInstruction {
     ///   1. `[writable]`  TokenOwnerRecord account of the  Proposal owner
     ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)
     ///   3. `[]` Clock sysvar
+    ///   4. `[]` Governance account
     CancelProposal,
 
     /// Signs off Proposal indicating the Signatory approves the Proposal
@@ -262,7 +263,6 @@ pub enum GovernanceInstruction {
     ///   1. `[writable]` Signatory Record account
     ///   2. `[signer]` Signatory account
     ///   3. `[]` Clock sysvar
-    ///   4. `[]` Governance account the Proposal is for
     SignOffProposal,
 
     ///  Uses your voter weight (deposited Community or Council tokens) to cast a vote on a Proposal

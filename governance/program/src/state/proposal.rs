@@ -354,6 +354,8 @@ impl Proposal {
         match self.state {
             ProposalState::Draft | ProposalState::SigningOff => Ok(()),
             ProposalState::Voting => {
+                // Note: If there is no tipping point the proposal can be still in Voting state but already past the configured max_voting_time
+                // In that case we treat the proposal as finalized and it's no longer allowed to be canceled
                 if self.has_vote_time_ended(config, current_unix_timestamp) {
                     return Err(GovernanceError::ProposalVotingTimeExpired.into());
                 }

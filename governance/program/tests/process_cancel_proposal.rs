@@ -201,3 +201,48 @@ async fn test_cancel_proposal_with_vote_time_expired_error() {
 
     assert_eq!(err, GovernanceError::ProposalVotingTimeExpired.into());
 }
+
+#[tokio::test]
+async fn test_cancel_proposal_in_voting_state() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let mut account_governance_cookie = governance_test
+        .with_account_governance(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+        )
+        .await
+        .unwrap();
+
+    let proposal_cookie = governance_test
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .await
+        .unwrap();
+
+    governance_test.advance_clock().await;
+
+    // Act
+
+    governance_test
+        .cancel_proposal(&proposal_cookie, &token_owner_record_cookie)
+        .await
+        .unwrap();
+
+    // Assert
+
+    let proposal_account = governance_test
+        .get_proposal_account(&proposal_cookie.address)
+        .await;
+
+    assert_eq!(ProposalState::Cancelled, proposal_account.state);
+}
