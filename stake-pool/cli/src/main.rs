@@ -9,7 +9,7 @@ use {
     solana_clap_utils::{
         input_parsers::{keypair_of, pubkey_of},
         input_validators::{
-            is_amount, is_keypair, is_keypair_or_ask_keyword, is_parsable, is_pubkey, is_url,
+            is_amount, is_keypair_or_ask_keyword, is_parsable, is_pubkey, is_url,
             is_valid_percentage, is_valid_pubkey,
         },
         keypair::{signer_from_path_with_config, SignerFromPathConfig},
@@ -180,7 +180,7 @@ fn new_stake_account(
 #[allow(clippy::too_many_arguments)]
 fn command_create_pool(
     config: &Config,
-    stake_deposit_authority: Option<Keypair>,
+    deposit_authority: Option<Keypair>,
     epoch_fee: Fee,
     stake_withdrawal_fee: Fee,
     stake_deposit_fee: Fee,
@@ -312,7 +312,7 @@ fn command_create_pool(
                 &mint_keypair.pubkey(),
                 &pool_fee_account,
                 &spl_token::id(),
-                stake_deposit_authority.as_ref().map(|x| x.pubkey()),
+                deposit_authority.as_ref().map(|x| x.pubkey()),
                 epoch_fee,
                 stake_withdrawal_fee,
                 stake_deposit_fee,
@@ -342,9 +342,13 @@ fn command_create_pool(
         &validator_list,
         config.manager.as_ref(),
     ];
-    if let Some(stake_deposit_authority) = stake_deposit_authority {
+    if let Some(deposit_authority) = deposit_authority {
+        println!(
+            "Deposits will be restricted to {} only, this can be changed using the set-funding-authority command.",
+            deposit_authority.pubkey()
+        );
         let mut initialize_signers = initialize_signers.clone();
-        initialize_signers.push(&stake_deposit_authority);
+        initialize_signers.push(&deposit_authority);
         unique_signers!(initialize_signers);
         initialize_transaction.sign(&initialize_signers, recent_blockhash);
     } else {
@@ -1672,7 +1676,7 @@ fn main() {
             Arg::with_name("staker")
                 .long("staker")
                 .value_name("KEYPAIR")
-                .validator(is_keypair)
+                .validator(is_keypair_or_ask_keyword)
                 .takes_value(true)
                 .help(
                     "Specify the stake pool staker. \
@@ -1684,7 +1688,7 @@ fn main() {
             Arg::with_name("manager")
                 .long("manager")
                 .value_name("KEYPAIR")
-                .validator(is_keypair)
+                .validator(is_keypair_or_ask_keyword)
                 .takes_value(true)
                 .help(
                     "Specify the stake pool manager. \
@@ -1696,7 +1700,7 @@ fn main() {
             Arg::with_name("funding_authority")
                 .long("funding-authority")
                 .value_name("KEYPAIR")
-                .validator(is_keypair)
+                .validator(is_keypair_or_ask_keyword)
                 .takes_value(true)
                 .help(
                     "Specify the stake pool funding authority, for deposits or withdrawals. \
@@ -1707,7 +1711,7 @@ fn main() {
             Arg::with_name("token_owner")
                 .long("token-owner")
                 .value_name("KEYPAIR")
-                .validator(is_keypair)
+                .validator(is_keypair_or_ask_keyword)
                 .takes_value(true)
                 .help(
                     "Specify the owner of the pool token account. \
@@ -1719,7 +1723,7 @@ fn main() {
             Arg::with_name("fee_payer")
                 .long("fee-payer")
                 .value_name("KEYPAIR")
-                .validator(is_keypair)
+                .validator(is_keypair_or_ask_keyword)
                 .takes_value(true)
                 .help(
                     "Specify the fee-payer account. \
@@ -1802,11 +1806,11 @@ fn main() {
                     .help("Max number of validators included in the stake pool"),
             )
             .arg(
-                Arg::with_name("stake_deposit_authority")
-                    .long("stake-deposit-authority")
+                Arg::with_name("deposit_authority")
+                    .long("deposit-authority")
                     .short("a")
                     .validator(is_keypair_or_ask_keyword)
-                    .value_name("STAKE_DEPOSIT_AUTHORITY_KEYPAIR")
+                    .value_name("DEPOSIT_AUTHORITY_KEYPAIR")
                     .takes_value(true)
                     .help("Deposit authority required to sign all deposits into the stake pool"),
             )
@@ -2016,7 +2020,7 @@ fn main() {
             .arg(
                 Arg::with_name("withdraw_authority")
                     .long("withdraw-authority")
-                    .validator(is_keypair)
+                    .validator(is_keypair_or_ask_keyword)
                     .value_name("KEYPAIR")
                     .takes_value(true)
                     .help("Withdraw authority for the stake account to be deposited. \
@@ -2232,7 +2236,7 @@ fn main() {
             .arg(
                 Arg::with_name("new_manager")
                     .long("new-manager")
-                    .validator(is_keypair)
+                    .validator(is_keypair_or_ask_keyword)
                     .value_name("KEYPAIR")
                     .takes_value(true)
                     .help("Keypair for the new stake pool manager."),
@@ -2463,7 +2467,7 @@ fn main() {
 
     let _ = match matches.subcommand() {
         ("create-pool", Some(arg_matches)) => {
-            let stake_deposit_authority = keypair_of(arg_matches, "stake_deposit_authority");
+            let deposit_authority = keypair_of(arg_matches, "deposit_authority");
             let e_numerator = value_t_or_exit!(arg_matches, "epoch_fee_numerator", u64);
             let e_denominator = value_t_or_exit!(arg_matches, "epoch_fee_denominator", u64);
             let w_numerator = value_t!(arg_matches, "withdrawal_fee_numerator", u64);
@@ -2477,7 +2481,7 @@ fn main() {
             let reserve_keypair = keypair_of(arg_matches, "reserve_keypair");
             command_create_pool(
                 &config,
-                stake_deposit_authority,
+                deposit_authority,
                 Fee {
                     numerator: e_numerator,
                     denominator: e_denominator,
