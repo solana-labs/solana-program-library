@@ -794,11 +794,11 @@ async fn fail_with_uninitialized_validator_list() {} // TODO
 async fn fail_with_out_of_dated_pool_balances() {} // TODO
 
 #[tokio::test]
-async fn success_with_stake_deposit_authority() {
+async fn success_with_deposit_authority() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_deposit_authority = Keypair::new();
     let stake_pool_accounts =
-        StakePoolAccounts::new_with_stake_deposit_authority(stake_deposit_authority);
+        StakePoolAccounts::new_with_deposit_authority(stake_deposit_authority);
     stake_pool_accounts
         .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
         .await
@@ -876,11 +876,11 @@ async fn success_with_stake_deposit_authority() {
 }
 
 #[tokio::test]
-async fn fail_without_stake_deposit_authority_signature() {
+async fn fail_without_deposit_authority_signature() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
     let stake_deposit_authority = Keypair::new();
     let mut stake_pool_accounts =
-        StakePoolAccounts::new_with_stake_deposit_authority(stake_deposit_authority);
+        StakePoolAccounts::new_with_deposit_authority(stake_deposit_authority);
     stake_pool_accounts
         .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
         .await
