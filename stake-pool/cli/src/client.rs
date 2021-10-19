@@ -7,11 +7,8 @@ use {
         rpc_config::{RpcAccountInfoConfig, RpcProgramAccountsConfig},
         rpc_filter::{Memcmp, MemcmpEncodedBytes, RpcFilterType},
     },
-    solana_program::{borsh::try_from_slice_unchecked, program_pack::Pack, pubkey::Pubkey},
-    spl_stake_pool::{
-        stake_program,
-        state::{StakePool, ValidatorList},
-    },
+    solana_program::{borsh::try_from_slice_unchecked, program_pack::Pack, pubkey::Pubkey, stake},
+    spl_stake_pool::state::{StakePool, ValidatorList},
 };
 
 type Error = Box<dyn std::error::Error>;
@@ -70,7 +67,7 @@ pub fn get_token_mint(
 pub(crate) fn get_stake_state(
     rpc_client: &RpcClient,
     stake_address: &Pubkey,
-) -> Result<stake_program::StakeState, Error> {
+) -> Result<stake::state::StakeState, Error> {
     let account_data = rpc_client.get_account_data(stake_address)?;
     let stake_state = deserialize(account_data.as_slice())
         .map_err(|err| format!("Invalid stake account {}: {}", stake_address, err))?;
