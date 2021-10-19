@@ -152,3 +152,52 @@ async fn test_cancel_proposal_with_owner_or_delegate_must_sign_error() {
         GovernanceError::GoverningTokenOwnerOrDelegateMustSign.into()
     );
 }
+
+#[tokio::test]
+async fn test_cancel_proposal_with_vote_time_expired_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let mut account_governance_cookie = governance_test
+        .with_account_governance(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+        )
+        .await
+        .unwrap();
+
+    let clock = governance_test.bench.get_clock().await;
+
+    let proposal_cookie = governance_test
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .await
+        .unwrap();
+
+    // Advance timestamp past max_voting_time
+    governance_test
+        .advance_clock_past_timestamp(
+            account_governance_cookie.account.config.max_voting_time as i64 + clock.unix_timestamp,
+        )
+        .await;
+
+    // Act
+
+    let err = governance_test
+        .cancel_proposal(&proposal_cookie, &token_owner_record_cookie)
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+
+    assert_eq!(err, GovernanceError::ProposalVotingTimeExpired.into());
+}

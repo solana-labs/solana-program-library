@@ -262,6 +262,7 @@ pub enum GovernanceInstruction {
     ///   1. `[writable]` Signatory Record account
     ///   2. `[signer]` Signatory account
     ///   3. `[]` Clock sysvar
+    ///   4. `[]` Governance account the Proposal is for
     SignOffProposal,
 
     ///  Uses your voter weight (deposited Community or Council tokens) to cast a vote on a Proposal
@@ -1064,12 +1065,14 @@ pub fn cancel_proposal(
     proposal: &Pubkey,
     proposal_owner_record: &Pubkey,
     governance_authority: &Pubkey,
+    governance: &Pubkey,
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(*proposal, false),
         AccountMeta::new(*proposal_owner_record, false),
         AccountMeta::new_readonly(*governance_authority, true),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(*governance, false),
     ];
 
     let instruction = GovernanceInstruction::CancelProposal {};

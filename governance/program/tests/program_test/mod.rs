@@ -1669,6 +1669,7 @@ impl GovernanceProgramTest {
             &proposal_cookie.address,
             &token_owner_record_cookie.address,
             &token_owner_record_cookie.token_owner.pubkey(),
+            &proposal_cookie.account.governance,
         );
 
         self.bench

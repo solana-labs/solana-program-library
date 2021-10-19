@@ -181,6 +181,7 @@ impl Proposal {
         config: &GovernanceConfig,
         current_unix_timestamp: UnixTimestamp,
     ) -> bool {
+        // Check if we passed vote_end_time determined by the configured max_voting_time period
         self.voting_at
             .unwrap()
             .checked_add(config.max_voting_time as i64)
@@ -197,14 +198,8 @@ impl Proposal {
         self.assert_is_voting_state()
             .map_err(|_| GovernanceError::InvalidStateCannotFinalize)?;
 
-        // Check if we passed the configured max_voting_time period yet
-        if self
-            .voting_at
-            .unwrap()
-            .checked_add(config.max_voting_time as i64)
-            .unwrap()
-            >= current_unix_timestamp
-        {
+        // We can only finalize the vote after the configured max_voting_time has expired and vote time ended
+        if !self.has_vote_time_ended(config, current_unix_timestamp) {
             return Err(GovernanceError::CannotFinalizeVotingInProgress.into());
         }
 
@@ -351,9 +346,19 @@ impl Proposal {
     }
 
     /// Checks if Proposal can be canceled in the given state
-    pub fn assert_can_cancel(&self) -> Result<(), ProgramError> {
+    pub fn assert_can_cancel(
+        &self,
+        config: &GovernanceConfig,
+        current_unix_timestamp: UnixTimestamp,
+    ) -> Result<(), ProgramError> {
         match self.state {
-            ProposalState::Draft | ProposalState::SigningOff | ProposalState::Voting => Ok(()),
+            ProposalState::Draft | ProposalState::SigningOff => Ok(()),
+            ProposalState::Voting => {
+                if self.has_vote_time_ended(config, current_unix_timestamp) {
+                    return Err(GovernanceError::ProposalVotingTimeExpired.into());
+                }
+                Ok(())
+            }
             ProposalState::Executing
             | ProposalState::ExecutingWithErrors
             | ProposalState::Completed
@@ -707,9 +712,15 @@ mod test {
         #[test]
         fn test_assert_can_cancel(state in cancellable_states()) {
 
+            // Arrange
             let mut proposal = create_test_proposal();
+            let governance_config = create_test_governance_config();
+
+            // Act
             proposal.state = state;
-            proposal.assert_can_cancel().unwrap();
+
+            // Assert
+            proposal.assert_can_cancel(&governance_config,1).unwrap();
 
         }
 
@@ -733,8 +744,10 @@ mod test {
                 let mut proposal = create_test_proposal();
                 proposal.state = state;
 
+                let governance_config = create_test_governance_config();
+
                 // Act
-                let err = proposal.assert_can_cancel().err().unwrap();
+                let err = proposal.assert_can_cancel(&governance_config,1).err().unwrap();
 
                 // Assert
                 assert_eq!(err, GovernanceError::InvalidStateCannotCancelProposal.into());
