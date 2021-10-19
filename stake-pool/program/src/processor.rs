@@ -1784,8 +1784,6 @@ impl Processor {
             return Err(StakePoolError::InvalidState.into());
         }
 
-        //Self::check_stake_activation(stake_info, clock, stake_history)?;
-
         stake_pool.check_authority_withdraw(
             withdraw_authority_info.key,
             program_id,
@@ -1835,16 +1833,6 @@ impl Processor {
                 return Err(StakePoolError::IncorrectDepositVoteAddress.into());
             }
         }
-
-        let (meta, stake) = get_stake_state(stake_info)?;
-
-        // If the stake account is mergeable (full-activated), `meta.rent_exempt_reserve`
-        // will not be merged into `stake.delegation.stake`
-        let unactivated_stake_rent = if stake.delegation.activation_epoch < clock.epoch {
-            meta.rent_exempt_reserve
-        } else {
-            0
-        };
 
         let mut validator_stake_info = validator_list
             .find_mut::<ValidatorStakeInfo>(
@@ -1899,7 +1887,7 @@ impl Processor {
         let post_all_validator_lamports = validator_stake_account_info.lamports();
         msg!("Stake post merge {}", post_validator_stake.delegation.stake);
 
-        let all_deposit_lamports = post_all_validator_lamports
+        let total_deposit_lamports = post_all_validator_lamports
             .checked_sub(pre_all_validator_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
         let stake_deposit_lamports = post_validator_stake
@@ -1907,30 +1895,39 @@ impl Processor {
             .stake
             .checked_sub(validator_stake.delegation.stake)
             .ok_or(StakePoolError::CalculationFailure)?;
-        let additional_lamports = all_deposit_lamports
+        let sol_deposit_lamports = total_deposit_lamports
             .checked_sub(stake_deposit_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
-        let credited_additional_lamports = additional_lamports.min(unactivated_stake_rent);
-        let credited_deposit_lamports =
-            stake_deposit_lamports.saturating_add(credited_additional_lamports);
 
         let new_pool_tokens = stake_pool
-            .calc_pool_tokens_for_deposit(credited_deposit_lamports)
+            .calc_pool_tokens_for_deposit(total_deposit_lamports)
+            .ok_or(StakePoolError::CalculationFailure)?;
+        let new_pool_tokens_from_stake = stake_pool
+            .calc_pool_tokens_for_deposit(stake_deposit_lamports)
+            .ok_or(StakePoolError::CalculationFailure)?;
+        let new_pool_tokens_from_sol = new_pool_tokens
+            .checked_sub(new_pool_tokens_from_stake)
             .ok_or(StakePoolError::CalculationFailure)?;
 
-        let pool_tokens_stake_deposit_fee = stake_pool
-            .calc_pool_tokens_stake_deposit_fee(new_pool_tokens)
+        let stake_deposit_fee = stake_pool
+            .calc_pool_tokens_stake_deposit_fee(new_pool_tokens_from_stake)
+            .ok_or(StakePoolError::CalculationFailure)?;
+        let sol_deposit_fee = stake_pool
+            .calc_pool_tokens_sol_deposit_fee(new_pool_tokens_from_sol)
             .ok_or(StakePoolError::CalculationFailure)?;
 
+        let total_fee = stake_deposit_fee
+            .checked_add(sol_deposit_fee)
+            .ok_or(StakePoolError::CalculationFailure)?;
         let pool_tokens_user = new_pool_tokens
-            .checked_sub(pool_tokens_stake_deposit_fee)
+            .checked_sub(total_fee)
             .ok_or(StakePoolError::CalculationFailure)?;
 
         let pool_tokens_referral_fee = stake_pool
-            .calc_pool_tokens_stake_referral_fee(pool_tokens_stake_deposit_fee)
+            .calc_pool_tokens_stake_referral_fee(total_fee)
             .ok_or(StakePoolError::CalculationFailure)?;
 
-        let pool_tokens_manager_deposit_fee = pool_tokens_stake_deposit_fee
+        let pool_tokens_manager_deposit_fee = total_fee
             .checked_sub(pool_tokens_referral_fee)
             .ok_or(StakePoolError::CalculationFailure)?;
 
@@ -1946,18 +1943,16 @@ impl Processor {
             return Err(StakePoolError::DepositTooSmall.into());
         }
 
-        if pool_tokens_user > 0 {
-            Self::token_mint_to(
-                stake_pool_info.key,
-                token_program_info.clone(),
-                pool_mint_info.clone(),
-                dest_user_pool_info.clone(),
-                withdraw_authority_info.clone(),
-                AUTHORITY_WITHDRAW,
-                stake_pool.stake_withdraw_bump_seed,
-                pool_tokens_user,
-            )?;
-        }
+        Self::token_mint_to(
+            stake_pool_info.key,
+            token_program_info.clone(),
+            pool_mint_info.clone(),
+            dest_user_pool_info.clone(),
+            withdraw_authority_info.clone(),
+            AUTHORITY_WITHDRAW,
+            stake_pool.stake_withdraw_bump_seed,
+            pool_tokens_user,
+        )?;
         if pool_tokens_manager_deposit_fee > 0 {
             Self::token_mint_to(
                 stake_pool_info.key,
@@ -1984,8 +1979,7 @@ impl Processor {
         }
 
         // withdraw additional lamports to the reserve
-
-        if additional_lamports > 0 {
+        if sol_deposit_lamports > 0 {
             Self::stake_withdraw(
                 stake_pool_info.key,
                 validator_stake_account_info.clone(),
@@ -1996,7 +1990,7 @@ impl Processor {
                 clock_info.clone(),
                 stake_history_info.clone(),
                 stake_program_info.clone(),
-                additional_lamports,
+                sol_deposit_lamports,
             )?;
         }
 
@@ -2008,7 +2002,7 @@ impl Processor {
         // transferred directly to the reserve stake account.
         stake_pool.total_lamports = stake_pool
             .total_lamports
-            .checked_add(all_deposit_lamports)
+            .checked_add(total_deposit_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
         stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;
 

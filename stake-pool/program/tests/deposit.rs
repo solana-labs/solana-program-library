@@ -214,8 +214,13 @@ async fn success() {
     // Check minted tokens
     let user_token_balance =
         get_token_balance(&mut context.banks_client, &pool_token_account).await;
-    let tokens_issued_user =
-        tokens_issued - stake_pool_accounts.calculate_deposit_fee(tokens_issued);
+    let tokens_issued_user = tokens_issued
+        - post_stake_pool
+            .calc_pool_tokens_sol_deposit_fee(stake_rent)
+            .unwrap()
+        - post_stake_pool
+            .calc_pool_tokens_stake_deposit_fee(stake_lamports - stake_rent)
+            .unwrap();
     assert_eq!(user_token_balance, tokens_issued_user);
 
     // Check balances in validator stake account list storage
@@ -358,7 +363,7 @@ async fn success_with_extra_stake_lamports() {
         .expect("get_account")
         .is_none());
 
-    let tokens_issued = stake_lamports;
+    let tokens_issued = stake_lamports + extra_lamports;
     // For now tokens are 1:1 to stake
 
     // Stake pool should add its balance to the pool balance
@@ -386,22 +391,22 @@ async fn success_with_extra_stake_lamports() {
     let user_token_balance =
         get_token_balance(&mut context.banks_client, &pool_token_account).await;
 
-    let tokens_issued_user =
-        tokens_issued - stake_pool_accounts.calculate_deposit_fee(tokens_issued);
+    let fee_tokens = post_stake_pool
+        .calc_pool_tokens_sol_deposit_fee(extra_lamports + stake_rent)
+        .unwrap()
+        + post_stake_pool
+            .calc_pool_tokens_stake_deposit_fee(stake_lamports - stake_rent)
+            .unwrap();
+    let tokens_issued_user = tokens_issued - fee_tokens;
     assert_eq!(user_token_balance, tokens_issued_user);
 
     let referrer_balance_post =
         get_token_balance(&mut context.banks_client, &referrer_token_account.pubkey()).await;
 
-    let tokens_issued_fees = stake_pool_accounts.calculate_deposit_fee(tokens_issued);
-    let tokens_issued_referral_fee = stake_pool_accounts
-        .calculate_referral_fee(stake_pool_accounts.calculate_deposit_fee(tokens_issued));
-    let tokens_issued_manager_fee = tokens_issued_fees - tokens_issued_referral_fee;
+    let referral_fee = stake_pool_accounts.calculate_referral_fee(fee_tokens);
+    let manager_fee = fee_tokens - referral_fee;
 
-    assert_eq!(
-        referrer_balance_post - referrer_balance_pre,
-        tokens_issued_referral_fee
-    );
+    assert_eq!(referrer_balance_post - referrer_balance_pre, referral_fee);
 
     let manager_pool_balance_post = get_token_balance(
         &mut context.banks_client,
@@ -410,7 +415,7 @@ async fn success_with_extra_stake_lamports() {
     .await;
     assert_eq!(
         manager_pool_balance_post - manager_pool_balance_pre,
-        tokens_issued_manager_fee
+        manager_fee
     );
 
     // Check balances in validator stake account list storage
@@ -1114,8 +1119,22 @@ async fn success_with_referral_fee() {
 
     let referrer_balance_post =
         get_token_balance(&mut context.banks_client, &referrer_token_account.pubkey()).await;
-    let referral_fee = stake_pool_accounts
-        .calculate_referral_fee(stake_pool_accounts.calculate_deposit_fee(stake_lamports));
+    let stake_pool = get_account(
+        &mut context.banks_client,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
+    let stake_pool =
+        try_from_slice_unchecked::<state::StakePool>(stake_pool.data.as_slice()).unwrap();
+    let rent = context.banks_client.get_rent().await.unwrap();
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
+    let fee_tokens = stake_pool
+        .calc_pool_tokens_sol_deposit_fee(stake_rent)
+        .unwrap()
+        + stake_pool
+            .calc_pool_tokens_stake_deposit_fee(stake_lamports - stake_rent)
+            .unwrap();
+    let referral_fee = stake_pool_accounts.calculate_referral_fee(fee_tokens);
     assert!(referral_fee > 0);
     assert_eq!(referrer_balance_pre + referral_fee, referrer_balance_post);
 }

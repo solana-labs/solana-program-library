@@ -807,6 +807,22 @@ $ spl-token balance BoNneHKDrX9BHjjvSpPfnQyRjsnc9WFH71v8wrgCd7LB
 10.00000000
 ```
 
+#### Note on stake deposit fee
+
+Stake pools have separate fees for stake and SOL, so the total fee from depositing
+a stake account is calculated from the rent-exempt reserve as SOL, and the delegation
+as stake.
+
+For example, if a stake pool has a stake deposit fee of 1%, and a SOL deposit fee
+of 5%, and you deposit a stake account with 10 SOL in stake, and .00228288 SOL
+in rent-exemption, the total fee charged is:
+
+```
+total_fee = stake_delegation * stake_deposit_fee + rent_exemption * sol_deposit_fee
+total_fee = 10 * 1% + .00228288 * 5%
+total_fee = 0.100114144
+```
+
 ### Update
 
 Every epoch, the network pays out rewards to stake accounts managed by the stake

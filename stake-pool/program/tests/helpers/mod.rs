@@ -685,10 +685,6 @@ impl StakePoolAccounts {
         pool_tokens * self.withdrawal_fee.numerator / self.withdrawal_fee.denominator
     }
 
-    pub fn calculate_deposit_fee(&self, pool_tokens: u64) -> u64 {
-        pool_tokens * self.deposit_fee.numerator / self.deposit_fee.denominator
-    }
-
     pub fn calculate_referral_fee(&self, deposit_fee_collected: u64) -> u64 {
         deposit_fee_collected * self.referral_fee as u64 / 100
     }
