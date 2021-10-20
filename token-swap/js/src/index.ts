@@ -57,14 +57,14 @@ export class Numberu64 extends BN {
   }
 }
 
-class PublicKeyLayout extends BufferLayout.Blob {
+class PublicKeyLayout extends BufferLayout.Blob<any> {
   constructor(property: string) {
     super(32, property);
   }
-  decode(b: any, offset: any) {
+  decode(b: Buffer, offset: number) {
     return new PublicKey(super.decode(b, offset));
   }
-  encode(src: any, b: any, offset: any) {
+  encode(src: PublicKey, b: Buffer, offset: number) {
     return super.encode(src.toBuffer(), b, offset);
   }
 }
@@ -73,13 +73,48 @@ function publicKeyLayout(property = '') {
   return new PublicKeyLayout(property);
 }
 
-export const PoolRegistryLayout = BufferLayout.struct([
+export type PoolRegistry = {
+  isInitialized: boolean;
+  registrySize: number;
+  accounts: PublicKey[];
+};
+
+export const PoolRegistryLayout = BufferLayout.struct<PoolRegistry>([
   BufferLayout.u8('isInitialized'),
   BufferLayout.u32('registrySize'),
   BufferLayout.seq(publicKeyLayout(), (2 * 1024 * 1024) / 32 - 1, 'accounts'),
 ]);
 
-export const TokenSwapLayout = BufferLayout.struct([
+export enum CurveType {
+  ConstantProduct = 0, // Constant product curve, Uniswap-style
+  ConstantPrice = 1, // Constant price curve, always X amount of A token for 1 B token, where X is defined at init
+  Stable = 2, // Stable, like uniswap, but with wide zone of 1:1 instead of one point
+  ConstantProductWithOffset = 3, // Offset curve, like Uniswap, but with an additional offset on the token B side
+}
+
+export type TokenSwapLayoutInterface = {
+  version: number;
+  isInitialized: number;
+  nonce: number;
+  tokenProgramId: Buffer;
+  tokenAccountA: Buffer;
+  tokenAccountB: Buffer;
+  tokenPool: Buffer;
+  mintA: Buffer;
+  mintB: Buffer;
+  feeAccount: Buffer;
+  tradeFeeNumerator: Buffer;
+  tradeFeeDenominator: Buffer;
+  ownerTradeFeeNumerator: Buffer;
+  ownerTradeFeeDenominator: Buffer;
+  ownerWithdrawFeeNumerator: Buffer;
+  ownerWithdrawFeeDenominator: Buffer;
+  curveType: CurveType;
+  curveParameters: Buffer;
+  poolNonce: number;
+};
+
+export const TokenSwapLayout = BufferLayout.struct<TokenSwapLayoutInterface>([
   BufferLayout.u8('version'),
   BufferLayout.u8('isInitialized'),
   BufferLayout.u8('nonce'),
@@ -100,19 +135,6 @@ export const TokenSwapLayout = BufferLayout.struct([
   BufferLayout.blob(32, 'curveParameters'),
   BufferLayout.u8('poolNonce'),
 ]);
-
-export const CurveType = Object.freeze({
-  ConstantProduct: 0, // Constant product curve, Uniswap-style
-  ConstantPrice: 1, // Constant price curve, always X amount of A token for 1 B token, where X is defined at init
-  Stable: 2, // Stable, like uniswap, but with wide zone of 1:1 instead of one point
-  Offset: 3, // Offset curve, like Uniswap, but with an additional offset on the token B side
-});
-
-export type PoolRegistry = {
-  isInitialized: boolean;
-  registrySize: number;
-  accounts: PublicKey[];
-};
 
 /**
  * A program to exchange tokens against a pool of liquidity
@@ -270,12 +292,7 @@ export class TokenSwap {
       return undefined;
     }
 
-    const decoded = PoolRegistryLayout.decode(acc.data);
-    return {
-      isInitialized: decoded.isInitialized,
-      registrySize: decoded.registrySize,
-      accounts: decoded.accounts,
-    };
+    return PoolRegistryLayout.decode(acc.data);
   }
 
   static createInitRegistryInstruction(
