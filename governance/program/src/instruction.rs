@@ -253,6 +253,7 @@ pub enum GovernanceInstruction {
     ///   1. `[writable]`  TokenOwnerRecord account of the  Proposal owner
     ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)
     ///   3. `[]` Clock sysvar
+    ///   4. `[]` Governance account
     CancelProposal,
 
     /// Signs off Proposal indicating the Signatory approves the Proposal
@@ -1064,12 +1065,14 @@ pub fn cancel_proposal(
     proposal: &Pubkey,
     proposal_owner_record: &Pubkey,
     governance_authority: &Pubkey,
+    governance: &Pubkey,
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(*proposal, false),
         AccountMeta::new(*proposal_owner_record, false),
         AccountMeta::new_readonly(*governance_authority, true),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(*governance, false),
     ];
 
     let instruction = GovernanceInstruction::CancelProposal {};

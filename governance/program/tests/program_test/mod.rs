@@ -354,6 +354,7 @@ impl GovernanceProgramTest {
         }
     }
 
+    // Creates TokenOwner which owns 100 community tokens and deposits them into the given Realm
     #[allow(dead_code)]
     pub async fn with_community_token_deposit(
         &mut self,
@@ -1668,6 +1669,7 @@ impl GovernanceProgramTest {
             &proposal_cookie.address,
             &token_owner_record_cookie.address,
             &token_owner_record_cookie.token_owner.pubkey(),
+            &proposal_cookie.account.governance,
         );
 
         self.bench
