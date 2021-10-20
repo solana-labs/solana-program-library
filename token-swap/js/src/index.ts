@@ -20,6 +20,10 @@ export const STEP_SWAP_PROGRAM_ID: PublicKey = new PublicKey(
   'SSwpMgqNDsyV7mAgN9ady4bDVu5ySjmmXejXvy2vLt1',
 );
 
+export const STEP_SWAP_OWNER: PublicKey = new PublicKey(
+  'GkT2mRSujbydLUmA178ykHe7hZtaUpkmX2sfwS8suWb3',
+);
+
 export const POOL_REGISTRY_SEED: string = 'poolregistry';
 
 /**
