@@ -1530,9 +1530,7 @@ impl Processor {
                             if let Some(stake::state::StakeState::Stake(_, validator_stake)) =
                                 validator_stake_state
                             {
-                                if stake_program::active_stakes_can_merge(&stake, &validator_stake)
-                                    .is_ok()
-                                {
+                                if validator_stake.delegation.activation_epoch < clock.epoch {
                                     let additional_lamports = transient_stake_info
                                         .lamports()
                                         .saturating_sub(stake.delegation.stake);

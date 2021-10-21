@@ -89,7 +89,7 @@ async fn setup() -> (
     )
     .await;
 
-    slot += 2 * slots_per_epoch;
+    slot += slots_per_epoch;
     context.warp_to_slot(slot).unwrap();
     stake_pool_accounts
         .update_all(
