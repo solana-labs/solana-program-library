@@ -15,6 +15,7 @@ borsh = "0.9.1"
 solana-program = "1.8.0"
 spl-token = { version = "3.2", path = "../../token/program", features = ["no-entrypoint"] }
 spl-associated-token-account = {version = "1.0.3", features = ["no-entrypoint"]}
+metaplex-token-metadata = { version = "0.0.1", features = ["no-entrypoint"] }
 thiserror = "1.0"
 
 [dev-dependencies]
