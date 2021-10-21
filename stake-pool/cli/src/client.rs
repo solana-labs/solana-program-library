@@ -83,7 +83,7 @@ pub(crate) fn get_stake_pools(
             RpcProgramAccountsConfig {
                 filters: Some(vec![RpcFilterType::Memcmp(Memcmp {
                     offset: 0, // 0 is the account type
-                    bytes: MemcmpEncodedBytes::Binary("2".to_string()),
+                    bytes: MemcmpEncodedBytes::Base58("2".to_string()),
                     encoding: None,
                 })]),
                 account_config: RpcAccountInfoConfig {
