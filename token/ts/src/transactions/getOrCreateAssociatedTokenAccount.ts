@@ -1,6 +1,5 @@
 import { Connection, PublicKey, sendAndConfirmTransaction, Signer, Transaction } from '@solana/web3.js';
-import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from '../constants';
-import { TokenError } from '../errors';
+import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, TokenError } from '../constants';
 import { createAssociatedTokenAccountInstruction } from '../instructions';
 import { Account, getAccountInfo, getAssociatedTokenAddress } from '../state';
 

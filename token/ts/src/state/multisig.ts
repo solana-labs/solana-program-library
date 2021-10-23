@@ -2,8 +2,7 @@ import { struct, u8 } from '@solana/buffer-layout';
 import { bool, publicKey } from '@solana/buffer-layout-utils';
 import { Commitment, Connection, PublicKey } from '@solana/web3.js';
 import { Buffer } from 'buffer';
-import { TOKEN_PROGRAM_ID } from '../constants';
-import { TokenError } from '../errors';
+import { TOKEN_PROGRAM_ID, TokenError } from '../constants';
 
 /** Information about a multisig */
 export interface Multisig {

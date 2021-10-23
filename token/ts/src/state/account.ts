@@ -1,8 +1,7 @@
 import { struct, u32, u8 } from '@solana/buffer-layout';
 import { publicKey, u64 } from '@solana/buffer-layout-utils';
 import { Commitment, Connection, PublicKey } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID } from '../constants';
-import { TokenError } from '../errors';
+import { TOKEN_PROGRAM_ID, TokenError } from '../constants';
 
 /** @TODO: docs */
 export enum AccountState {
