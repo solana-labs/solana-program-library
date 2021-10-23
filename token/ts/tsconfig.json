@@ -14,18 +14,10 @@
         "esModuleInterop": true,
         "resolveJsonModule": true,
         "isolatedModules": true,
-        "typeRoots": [
-            "node_modules/@types",
-            "types"
-        ]
+        "typeRoots": ["node_modules/@types", "types"]
     },
-    "include": [
-        "src",
-        "types"
-    ],
-    "exclude": [
-        "node_modules"
-    ],
+    "include": ["src", "types"],
+    "exclude": ["node_modules"],
     "typedocOptions": {
         "entryPoints": "src/index.ts",
         "out": "docs",
