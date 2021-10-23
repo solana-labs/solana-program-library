@@ -20,20 +20,20 @@ export async function createAssociatedTokenAccount(
     programId = TOKEN_PROGRAM_ID,
     associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID
 ): Promise<PublicKey> {
-    const associatedAddress = await getAssociatedTokenAddress(mint, owner, false, programId, associatedTokenProgramId);
+    const associatedToken = await getAssociatedTokenAddress(mint, owner, false, programId, associatedTokenProgramId);
 
     const transaction = new Transaction().add(
         createAssociatedTokenAccountInstruction(
-            associatedTokenProgramId,
-            programId,
             mint,
-            associatedAddress,
+            associatedToken,
             owner,
-            payer.publicKey
+            payer.publicKey,
+            programId,
+            associatedTokenProgramId
         )
     );
 
     await sendAndConfirmTransaction(connection, transaction, [payer]);
 
-    return associatedAddress;
+    return associatedToken;
 }

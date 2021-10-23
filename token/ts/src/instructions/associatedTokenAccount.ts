@@ -2,10 +2,10 @@ import { PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, TransactionInstruction } 
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from '../constants';
 
 /**
- * Construct an AssociatedTokenProgram instruction
+ * Construct an AssociatedTokenAccount instruction
  *
  * @param mint                     Token mint account
- * @param associatedTokenAccount   New associated token account
+ * @param associatedToken          New associated token account
  * @param owner                    Owner of the new account
  * @param payer                    Payer of fees
  * @param programId                SPL Token program account
@@ -15,7 +15,7 @@ import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from '../constants';
  */
 export function createAssociatedTokenAccountInstruction(
     mint: PublicKey,
-    associatedTokenAccount: PublicKey,
+    associatedToken: PublicKey,
     owner: PublicKey,
     payer: PublicKey,
     programId = TOKEN_PROGRAM_ID,
@@ -23,7 +23,7 @@ export function createAssociatedTokenAccountInstruction(
 ): TransactionInstruction {
     const keys = [
         { pubkey: payer, isSigner: true, isWritable: true },
-        { pubkey: associatedTokenAccount, isSigner: false, isWritable: true },
+        { pubkey: associatedToken, isSigner: false, isWritable: true },
         { pubkey: owner, isSigner: false, isWritable: false },
         { pubkey: mint, isSigner: false, isWritable: false },
         { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },

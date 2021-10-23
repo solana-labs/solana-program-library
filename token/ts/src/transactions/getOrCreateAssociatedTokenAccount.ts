@@ -20,13 +20,13 @@ export async function getOrCreateAssociatedTokenAccount(
     programId = ASSOCIATED_TOKEN_PROGRAM_ID,
     tokenProgramId = TOKEN_PROGRAM_ID
 ): Promise<Account> {
-    const associatedAddress = await getAssociatedTokenAddress(mint, owner, false, programId, tokenProgramId);
+    const associatedToken = await getAssociatedTokenAddress(mint, owner, false, programId, tokenProgramId);
 
     // This is the optimal logic, considering TX fee, client-side computation, RPC roundtrips and guaranteed idempotent.
     // Sadly we can't do this atomically.
     let account: Account;
     try {
-        account = await getAccountInfo(connection, associatedAddress);
+        account = await getAccountInfo(connection, associatedToken);
     } catch (err: any) {
         // INVALID_ACCOUNT_OWNER can be possible if the associated address has already been received some lamports,
         // becoming system accounts. Assuming program derived addressing is safe, this is the only case for the
@@ -36,12 +36,12 @@ export async function getOrCreateAssociatedTokenAccount(
             try {
                 const transaction = new Transaction().add(
                     createAssociatedTokenAccountInstruction(
-                        programId,
-                        tokenProgramId,
                         mint,
-                        associatedAddress,
+                        associatedToken,
                         owner,
-                        payer.publicKey
+                        payer.publicKey,
+                        programId,
+                        tokenProgramId
                     )
                 );
 
@@ -52,7 +52,7 @@ export async function getOrCreateAssociatedTokenAccount(
             }
 
             // Now this should always succeed
-            account = await getAccountInfo(connection, associatedAddress);
+            account = await getAccountInfo(connection, associatedToken);
         } else {
             throw err;
         }
