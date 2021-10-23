@@ -17,4 +17,5 @@ export * from './mintToChecked';
 export * from './burnChecked';
 export * from './syncNative';
 
+export * from './createAssociatedTokenAccount';
 export * from './getOrCreateAssociatedTokenAccount';

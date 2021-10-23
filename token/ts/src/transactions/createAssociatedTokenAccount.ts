@@ -1,7 +1,7 @@
 import { Connection, PublicKey, sendAndConfirmTransaction, Signer, Transaction } from '@solana/web3.js';
-import { getAssociatedTokenAddress } from './getOrCreateAssociatedTokenAccount';
 import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from '../constants';
 import { createAssociatedTokenAccountInstruction } from '../instructions';
+import { getAssociatedTokenAddress } from '../state';
 
 /**
  * Create and initialize the associated account.
