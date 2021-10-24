@@ -1,4 +1,5 @@
 export * from './instructions';
 export * from './state';
-export * from './transactions';
+export * from './actions';
 export * from './constants';
+export * from './errors';

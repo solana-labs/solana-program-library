@@ -16,7 +16,7 @@ const dataLayout = struct<{
  * @param source       Source account
  * @param destination  Destination account
  * @param owner        Owner of the source account
- * @param multiSigners Signing accounts if `owner` is a multiSig
+ * @param multiSigners Signing accounts if `owner` is a multisig
  * @param amount       Number of tokens to transfer
  * @param programId    SPL Token program account
  *

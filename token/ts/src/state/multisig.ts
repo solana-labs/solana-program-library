@@ -2,17 +2,20 @@ import { struct, u8 } from '@solana/buffer-layout';
 import { bool, publicKey } from '@solana/buffer-layout-utils';
 import { Commitment, Connection, PublicKey } from '@solana/web3.js';
 import { Buffer } from 'buffer';
-import { TOKEN_PROGRAM_ID, TokenError } from '../constants';
+import { TOKEN_PROGRAM_ID } from '../constants';
+import { TokenAccountNotFoundError, TokenInvalidAccountOwnerError, TokenInvalidAccountSizeError } from '../errors';
 
 /** Information about a multisig */
 export interface Multisig {
-    /** The number of signers required */
+    /** Address of the multisig */
+    address: PublicKey;
+    /** Number of signers required */
     m: number;
     /** Number of possible signers, corresponds to the number of `signers` that are valid */
     n: number;
     /** Is this mint initialized */
     isInitialized: boolean;
-    /** The full set of signers, of which `n` are nonempty */
+    /** Full set of signers, of which `n` are valid */
     signer1: PublicKey;
     signer2: PublicKey;
     signer3: PublicKey;
@@ -26,8 +29,11 @@ export interface Multisig {
     signer11: PublicKey;
 }
 
-/** @TODO: document */
-export const MultisigLayout = struct<Multisig>([
+/** Multisig as stored by the program */
+export type RawMultisig = Omit<Multisig, 'address'>;
+
+/** Buffer layout for de/serializing a multisig */
+export const MultisigLayout = struct<RawMultisig>([
     u8('m'),
     u8('n'),
     bool('isInitialized'),
@@ -44,38 +50,43 @@ export const MultisigLayout = struct<Multisig>([
     publicKey('signer11'),
 ]);
 
-/** @TODO: document */
-export const MULTISIG_LEN = MultisigLayout.span;
+/** Byte length of a multisig */
+export const MULTISIG_SIZE = MultisigLayout.span;
 
-/** Get the minimum lamport balance for a Multsig to be rent exempt
+/**
+ * Retrieve information about a multisig
  *
- * @param connection @TODO: docs
- * @param commitment @TODO: docs
+ * @param connection Connection to use
+ * @param address    Multisig account
+ * @param commitment Desired level of commitment for querying the state
+ * @param programId  SPL Token program account
  *
- * @return amount of lamports required
+ * @return Multisig information
+ */
+export async function getMultisigInfo(
+    connection: Connection,
+    address: PublicKey,
+    commitment?: Commitment,
+    programId = TOKEN_PROGRAM_ID
+): Promise<Multisig> {
+    const info = await connection.getAccountInfo(address, commitment);
+    if (!info) throw new TokenAccountNotFoundError();
+    if (!info.owner.equals(programId)) throw new TokenInvalidAccountOwnerError();
+    if (info.data.length != MULTISIG_SIZE) throw new TokenInvalidAccountSizeError();
+
+    return { address, ...MultisigLayout.decode(Buffer.from(info.data)) };
+}
+
+/** Get the minimum lamport balance for a multisig to be rent exempt
+ *
+ * @param connection Connection to use
+ * @param commitment Desired level of commitment for querying the state
+ *
+ * @return Amount of lamports required
  */
 export async function getMinimumBalanceForRentExemptMultisig(
     connection: Connection,
     commitment?: Commitment
 ): Promise<number> {
-    return await connection.getMinimumBalanceForRentExemption(MULTISIG_LEN, commitment);
-}
-
-/**
- * Retrieve Multisig information
- *
- * @param multisig Public key of the account
- * @TODO: docs
- */
-export async function getMultisigInfo(
-    connection: Connection,
-    multisig: PublicKey,
-    programId = TOKEN_PROGRAM_ID
-): Promise<Multisig> {
-    const info = await connection.getAccountInfo(multisig);
-    if (!info) throw new Error(TokenError.ACCOUNT_NOT_FOUND);
-    if (!info.owner.equals(programId)) throw new Error(TokenError.INVALID_ACCOUNT_OWNER);
-    if (info.data.length != MULTISIG_LEN) throw new Error(TokenError.INVALID_ACCOUNT_SIZE);
-
-    return MultisigLayout.decode(Buffer.from(info.data));
+    return await connection.getMinimumBalanceForRentExemption(MULTISIG_SIZE, commitment);
 }

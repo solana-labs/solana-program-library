@@ -9,9 +9,9 @@ const dataLayout = struct<{ instruction: TokenInstruction }>([u8('instruction')]
 /**
  * Construct a Revoke instruction
  *
- * @param account      Public key of the account
- * @param owner        Owner of the source account
- * @param multiSigners Signing accounts if `owner` is a multiSig
+ * @param account      Address of the token account
+ * @param owner        Owner of the account
+ * @param multiSigners Signing accounts if `owner` is a multisig
  * @param programId    SPL Token program account
  *
  * @return Instruction to add to a transaction

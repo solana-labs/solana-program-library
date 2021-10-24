@@ -10,16 +10,16 @@ const dataLayout = struct<{ instruction: TokenInstruction }>([u8('instruction')]
  * Construct a Close instruction
  *
  * @param account      Account to close
- * @param dest         Account to receive the remaining balance of the closed account
+ * @param destination  Account to receive the remaining balance of the closed account
  * @param authority    Account close authority
- * @param multiSigners Signing accounts if `authority` is a multiSig
+ * @param multiSigners Signing accounts if `authority` is a multisig
  * @param programId    SPL Token program account
  *
  * @return Instruction to add to a transaction
  */
 export function createCloseAccountInstruction(
     account: PublicKey,
-    dest: PublicKey,
+    destination: PublicKey,
     authority: PublicKey,
     multiSigners: Signer[],
     programId = TOKEN_PROGRAM_ID
@@ -27,7 +27,7 @@ export function createCloseAccountInstruction(
     const keys = addSigners(
         [
             { pubkey: account, isSigner: false, isWritable: true },
-            { pubkey: dest, isSigner: false, isWritable: true },
+            { pubkey: destination, isSigner: false, isWritable: true },
         ],
         authority,
         multiSigners

@@ -5,7 +5,7 @@ import { TOKEN_PROGRAM_ID } from '../constants';
 import { TokenInstruction } from './types';
 import { addSigners } from './utils';
 
-/** @TODO: document */
+/** Authority types defined by the program */
 export enum AuthorityType {
     MintTokens = 0,
     FreezeAccount = 1,
@@ -23,11 +23,11 @@ const dataLayout = struct<{
 /**
  * Construct a SetAuthority instruction
  *
- * @param account          Public key of the account
+ * @param account          Address of the token account
  * @param newAuthority     New authority of the account
  * @param authorityType    Type of authority to set
  * @param currentAuthority Current authority of the specified type
- * @param multiSigners     Signing accounts if `currentAuthority` is a multiSig
+ * @param multiSigners     Signing accounts if `currentAuthority` is a multisig
  * @param programId        SPL Token program account
  *
  * @return Instruction to add to a transaction

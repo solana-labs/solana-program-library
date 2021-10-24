@@ -1,4 +1,4 @@
-/** @TODO: docs */
+/** Instructions defined by the program */
 export enum TokenInstruction {
     InitializeMint,
     InitializeAccount,

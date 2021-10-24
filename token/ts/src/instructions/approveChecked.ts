@@ -14,11 +14,11 @@ const dataLayout = struct<{
 /**
  * Construct an ApproveChecked instruction
  *
- * @param account      Public key of the account
+ * @param account      Account to set the delegate for
  * @param mint         Mint account
- * @param delegate     Account authorized to perform a transfer of tokens from the source account
- * @param owner        Owner of the source account
- * @param multiSigners Signing accounts if `owner` is a multiSig
+ * @param delegate     Account authorized to transfer of tokens from the account
+ * @param owner        Owner of the account
+ * @param multiSigners Signing accounts if `owner` is a multisig
  * @param amount       Maximum number of tokens the delegate may transfer
  * @param decimals     Number of decimals in approve amount
  * @param programId    SPL Token program account

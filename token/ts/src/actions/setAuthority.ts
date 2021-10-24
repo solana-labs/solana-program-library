@@ -1,4 +1,5 @@
 import {
+    ConfirmOptions,
     Connection,
     PublicKey,
     sendAndConfirmTransaction,
@@ -8,15 +9,20 @@ import {
 } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants';
 import { AuthorityType, createSetAuthorityInstruction } from '../instructions';
+import { getSigners } from './utils';
 
 /**
  * Assign a new authority to the account
  *
- * @param account          Public key of the account
+ * @param connection       Connection to use
+ * @param payer            Payer of the transaction fees
+ * @param account          Address of the account
  * @param newAuthority     New authority of the account
  * @param authorityType    Type of authority to set
  * @param currentAuthority Current authority of the account
- * @param multiSigners     Signing accounts if `currentAuthority` is a multiSig
+ * @param multiSigners     Signing accounts if `currentAuthority` is a multisig
+ * @param confirmOptions   Options for confirming the transaction
+ * @param programId        SPL Token program account
  *
  * @return Signature of the confirmed transaction
  */
@@ -28,17 +34,10 @@ export async function setAuthority(
     authorityType: AuthorityType,
     currentAuthority: Signer | PublicKey,
     multiSigners: Signer[],
+    confirmOptions?: ConfirmOptions,
     programId = TOKEN_PROGRAM_ID
 ): Promise<TransactionSignature> {
-    let currentAuthorityPublicKey: PublicKey;
-    let signers: Signer[];
-    if (currentAuthority instanceof PublicKey) {
-        currentAuthorityPublicKey = currentAuthority;
-        signers = multiSigners;
-    } else {
-        currentAuthorityPublicKey = currentAuthority.publicKey;
-        signers = [currentAuthority];
-    }
+    const [currentAuthorityPublicKey, signers] = getSigners(currentAuthority, multiSigners);
 
     const transaction = new Transaction().add(
         createSetAuthorityInstruction(
@@ -51,5 +50,5 @@ export async function setAuthority(
         )
     );
 
-    return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers]);
+    return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);
 }

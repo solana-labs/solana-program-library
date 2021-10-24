@@ -12,7 +12,7 @@ const dataLayout = struct<{ instruction: TokenInstruction }>([u8('instruction')]
  * @param account      Account to freeze
  * @param mint         Mint account
  * @param authority    Mint freeze authority
- * @param multiSigners Signing accounts if `authority` is a multiSig
+ * @param multiSigners Signing accounts if `authority` is a multisig
  * @param programId    SPL Token program account
  *
  * @return Instruction to add to a transaction

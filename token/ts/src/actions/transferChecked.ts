@@ -1,4 +1,5 @@
 import {
+    ConfirmOptions,
     Connection,
     PublicKey,
     sendAndConfirmTransaction,
@@ -8,40 +9,39 @@ import {
 } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants';
 import { createTransferCheckedInstruction } from '../instructions';
+import { getSigners } from './utils';
 
 /**
  * Transfer tokens to another account, asserting the token mint and decimals
  *
- * @param source       Source account
- * @param destination  Destination account
- * @param owner        Owner of the source account
- * @param multiSigners Signing accounts if `owner` is a multiSig
- * @param amount       Number of tokens to transfer
- * @param decimals     Number of decimals in transfer amount
+ * @param connection     Connection to use
+ * @param payer          Payer of the transaction fees
+ * @param source         Source account
+ * @param mint           Mint for the account
+ * @param destination    Destination account
+ * @param owner          Owner of the source account
+ * @param multiSigners   Signing accounts if `owner` is a multisig
+ * @param amount         Number of tokens to transfer
+ * @param decimals       Number of decimals in transfer amount
+ * @param confirmOptions Options for confirming the transaction
+ * @param programId      SPL Token program account
  *
  * @return Signature of the confirmed transaction
  */
 export async function transferChecked(
     connection: Connection,
-    mint: PublicKey,
     payer: Signer,
     source: PublicKey,
+    mint: PublicKey,
     destination: PublicKey,
     owner: Signer | PublicKey,
     multiSigners: Signer[],
     amount: number | bigint,
     decimals: number,
+    confirmOptions?: ConfirmOptions,
     programId = TOKEN_PROGRAM_ID
 ): Promise<TransactionSignature> {
-    let ownerPublicKey: PublicKey;
-    let signers: Signer[];
-    if (owner instanceof PublicKey) {
-        ownerPublicKey = owner;
-        signers = multiSigners;
-    } else {
-        ownerPublicKey = owner.publicKey;
-        signers = [owner];
-    }
+    const [ownerPublicKey, signers] = getSigners(owner, multiSigners);
 
     const transaction = new Transaction().add(
         createTransferCheckedInstruction(
@@ -56,5 +56,5 @@ export async function transferChecked(
         )
     );
 
-    return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers]);
+    return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);
 }

@@ -1,37 +1,31 @@
 import { struct, u32, u8 } from '@solana/buffer-layout';
 import { publicKey, u64 } from '@solana/buffer-layout-utils';
 import { Commitment, Connection, PublicKey } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID, TokenError } from '../constants';
+import { TOKEN_PROGRAM_ID } from '../constants';
+import { TokenAccountNotFoundError, TokenInvalidAccountOwnerError, TokenInvalidAccountSizeError } from '../errors';
 
-/** @TODO: docs */
-export enum AccountState {
-    Uninitialized,
-    Initialized,
-    Frozen,
-}
-
-/** Information about an account */
+/** Information about a token account */
 export interface Account {
-    /** The address of this account */
+    /** Address of the account */
     address: PublicKey;
-    /** The mint associated with this account */
+    /** Mint associated with the account */
     mint: PublicKey;
-    /** Owner of this account */
+    /** Owner of the account */
     owner: PublicKey;
-    /** Amount of tokens this account holds */
+    /** Number of tokens the account holds */
     amount: bigint;
-    /** The delegate for this account */
+    /** Authority that can transfer tokens from the account */
     delegate: PublicKey | null;
-    /** The amount of tokens the delegate authorized to the delegate */
+    /** Number of tokens the delegate is authorized to transfer */
     delegatedAmount: bigint;
-    /** Is this account initialized */
+    /** True if the account is initialized */
     isInitialized: boolean;
-    /** Is this account frozen */
+    /** True if the account is frozen */
     isFrozen: boolean;
-    /** Is this a native token account */
+    /** True if the account is a native token account */
     isNative: boolean;
     /**
-     * If this account is a native token, it must be rent-exempt. This value logs the rent-exempt reserve which must
+     * If the account is a native token account, it must be rent-exempt. The rent-exempt reserve is the amount that must
      * remain in the balance until the account is closed.
      */
     rentExemptReserve: bigint | null;
@@ -39,7 +33,14 @@ export interface Account {
     closeAuthority: PublicKey | null;
 }
 
-/** @TODO: docs */
+/** Token account state as stored by the program */
+export enum AccountState {
+    Uninitialized,
+    Initialized,
+    Frozen,
+}
+
+/** Token account as stored by the program */
 export interface RawAccount {
     mint: PublicKey;
     owner: PublicKey;
@@ -54,7 +55,7 @@ export interface RawAccount {
     closeAuthority: PublicKey;
 }
 
-/** @TODO: docs */
+/** Buffer layout for de/serializing a token account */
 export const AccountLayout = struct<RawAccount>([
     publicKey('mint'),
     publicKey('owner'),
@@ -69,64 +70,57 @@ export const AccountLayout = struct<RawAccount>([
     publicKey('closeAuthority'),
 ]);
 
-/** @TODO: docs */
-export const ACCOUNT_LEN = AccountLayout.span;
+/** Byte length of a token account */
+export const ACCOUNT_SIZE = AccountLayout.span;
 
-/** Get the minimum lamport balance for an Account to be rent exempt
+/**
+ * Retrieve information about a token account
  *
- * @param connection @TODO: docs
- * @param commitment @TODO: docs
+ * @param connection Connection to use
+ * @param address    Token account
+ * @param commitment Desired level of commitment for querying the state
+ * @param programId  SPL Token program account
  *
- * @return amount of lamports required
+ * @return Token account information
+ */
+export async function getAccountInfo(
+    connection: Connection,
+    address: PublicKey,
+    commitment?: Commitment,
+    programId = TOKEN_PROGRAM_ID
+): Promise<Account> {
+    const info = await connection.getAccountInfo(address, commitment);
+    if (!info) throw new TokenAccountNotFoundError();
+    if (!info.owner.equals(programId)) throw new TokenInvalidAccountOwnerError();
+    if (info.data.length != ACCOUNT_SIZE) throw new TokenInvalidAccountSizeError();
+
+    const rawAccount = AccountLayout.decode(Buffer.from(info.data));
+
+    return {
+        address,
+        mint: rawAccount.mint,
+        owner: rawAccount.owner,
+        amount: rawAccount.amount,
+        delegate: rawAccount.delegateOption ? rawAccount.delegate : null,
+        delegatedAmount: rawAccount.delegatedAmount,
+        isInitialized: rawAccount.state !== AccountState.Uninitialized,
+        isFrozen: rawAccount.state === AccountState.Frozen,
+        isNative: !!rawAccount.isNativeOption,
+        rentExemptReserve: rawAccount.isNativeOption ? rawAccount.isNative : null,
+        closeAuthority: rawAccount.closeAuthorityOption ? rawAccount.closeAuthority : null,
+    };
+}
+
+/** Get the minimum lamport balance for a token account to be rent exempt
+ *
+ * @param connection Connection to use
+ * @param commitment Desired level of commitment for querying the state
+ *
+ * @return Amount of lamports required
  */
 export async function getMinimumBalanceForRentExemptAccount(
     connection: Connection,
     commitment?: Commitment
 ): Promise<number> {
-    return await connection.getMinimumBalanceForRentExemption(ACCOUNT_LEN, commitment);
-}
-
-/**
- * Retrieve account information
- *
- * @param account Public key of the account
- *
- * @TODO: docs
- */
-export async function getAccountInfo(
-    connection: Connection,
-    account: PublicKey,
-    commitment?: Commitment,
-    programId = TOKEN_PROGRAM_ID
-): Promise<Account> {
-    const info = await connection.getAccountInfo(account, commitment);
-    if (!info) throw new Error(TokenError.ACCOUNT_NOT_FOUND);
-    if (!info.owner.equals(programId)) throw new Error(TokenError.INVALID_ACCOUNT_OWNER);
-    if (info.data.length != ACCOUNT_LEN) throw new Error(TokenError.INVALID_ACCOUNT_SIZE);
-
-    const accountInfo = AccountLayout.decode(Buffer.from(info.data));
-    // @FIXME
-    accountInfo.address = account;
-
-    if (!accountInfo.delegateOption) {
-        accountInfo.delegate = null;
-        accountInfo.delegatedAmount = BigInt(0);
-    }
-
-    accountInfo.isInitialized = accountInfo.state !== AccountState.Initialized;
-    accountInfo.isFrozen = accountInfo.state === AccountState.Frozen;
-
-    if (accountInfo.isNativeOption) {
-        accountInfo.rentExemptReserve = accountInfo.isNative;
-        accountInfo.isNative = true;
-    } else {
-        accountInfo.rentExemptReserve = null;
-        accountInfo.isNative = false;
-    }
-
-    if (!accountInfo.closeAuthorityOption) {
-        accountInfo.closeAuthority = null;
-    }
-
-    return accountInfo;
+    return await connection.getMinimumBalanceForRentExemption(ACCOUNT_SIZE, commitment);
 }

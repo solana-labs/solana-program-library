@@ -19,3 +19,4 @@ export * from './syncNative';
 
 export * from './createAssociatedTokenAccount';
 export * from './getOrCreateAssociatedTokenAccount';
+export { getSigners } from './utils';

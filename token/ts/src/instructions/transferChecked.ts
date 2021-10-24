@@ -18,7 +18,7 @@ const dataLayout = struct<{
  * @param mint         Mint account
  * @param destination  Destination account
  * @param owner        Owner of the source account
- * @param multiSigners Signing accounts if `owner` is a multiSig
+ * @param multiSigners Signing accounts if `owner` is a multisig
  * @param amount       Number of tokens to transfer
  * @param decimals     Number of decimals in transfer amount
  * @param programId    SPL Token program account

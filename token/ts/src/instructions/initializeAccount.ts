@@ -8,16 +8,16 @@ const dataLayout = struct<{ instruction: TokenInstruction }>([u8('instruction')]
 /**
  * Construct an InitializeAccount instruction
  *
- * @param mint      Token mint account
- * @param account   New account
+ * @param account   New token account
+ * @param mint      Mint account
  * @param owner     Owner of the new account
  * @param programId SPL Token program account
  *
  * @return Instruction to add to a transaction
  */
 export function createInitializeAccountInstruction(
-    mint: PublicKey,
     account: PublicKey,
+    mint: PublicKey,
     owner: PublicKey,
     programId = TOKEN_PROGRAM_ID
 ): TransactionInstruction {

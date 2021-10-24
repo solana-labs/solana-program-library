@@ -1,11 +1,17 @@
 import { struct, u32, u8 } from '@solana/buffer-layout';
 import { bool, publicKey, u64 } from '@solana/buffer-layout-utils';
 import { Commitment, Connection, PublicKey } from '@solana/web3.js';
-import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, TokenError } from '../constants';
+import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID } from '../constants';
+import {
+    TokenAccountNotFoundError,
+    TokenInvalidAccountOwnerError,
+    TokenInvalidAccountSizeError,
+    TokenOwnerOffCurveError,
+} from '../errors';
 
 /** Information about a mint */
 export interface Mint {
-    /** The address of this mint */
+    /** Address of the mint */
     address: PublicKey;
     /**
      * Optional authority used to mint new tokens. The mint authority may only be provided during mint creation.
@@ -22,16 +28,18 @@ export interface Mint {
     freezeAuthority: PublicKey | null;
 }
 
-/** @TODO: document */
+/** Mint as stored by the program */
 export interface RawMint {
-    mintAuthority: PublicKey | null;
+    mintAuthorityOption: 1 | 0;
+    mintAuthority: PublicKey;
     supply: bigint;
     decimals: number;
     isInitialized: boolean;
-    freezeAuthority: PublicKey | null;
+    freezeAuthorityOption: 1 | 0;
+    freezeAuthority: PublicKey;
 }
 
-/** @TODO: document */
+/** Buffer layout for de/serializing a mint */
 export const MintLayout = struct<RawMint>([
     u32('mintAuthorityOption'),
     publicKey('mintAuthority'),
@@ -42,50 +50,54 @@ export const MintLayout = struct<RawMint>([
     publicKey('freezeAuthority'),
 ]);
 
-/** @TODO: document */
-export const MINT_LEN = MintLayout.span;
+/** Byte length of a mint */
+export const MINT_SIZE = MintLayout.span;
 
-/** Get the minimum lamport balance for a Mint to be rent exempt
+/**
+ * Retrieve information about a mint
  *
- * @param connection @TODO: docs
- * @param commitment @TODO: docs
+ * @param connection Connection to use
+ * @param address    Mint account
+ * @param commitment Desired level of commitment for querying the state
+ * @param programId  SPL Token program account
  *
- * @return amount of lamports required
+ * @return Mint information
+ */
+export async function getMintInfo(
+    connection: Connection,
+    address: PublicKey,
+    commitment?: Commitment,
+    programId = TOKEN_PROGRAM_ID
+): Promise<Mint> {
+    const info = await connection.getAccountInfo(address, commitment);
+    if (!info) throw new TokenAccountNotFoundError();
+    if (!info.owner.equals(programId)) throw new TokenInvalidAccountOwnerError();
+    if (info.data.length != MINT_SIZE) throw new TokenInvalidAccountSizeError();
+
+    const rawMint = MintLayout.decode(Buffer.from(info.data));
+
+    return {
+        address,
+        mintAuthority: rawMint.mintAuthorityOption ? rawMint.mintAuthority : null,
+        supply: rawMint.supply,
+        decimals: rawMint.decimals,
+        isInitialized: rawMint.isInitialized,
+        freezeAuthority: rawMint.freezeAuthorityOption ? rawMint.freezeAuthority : null,
+    };
+}
+
+/** Get the minimum lamport balance for a mint to be rent exempt
+ *
+ * @param connection Connection to use
+ * @param commitment Desired level of commitment for querying the state
+ *
+ * @return Amount of lamports required
  */
 export async function getMinimumBalanceForRentExemptMint(
     connection: Connection,
     commitment?: Commitment
 ): Promise<number> {
-    return await connection.getMinimumBalanceForRentExemption(MINT_LEN, commitment);
-}
-
-/**
- * Retrieve mint information
- *
- * @TODO: docs
- */
-export async function getMintInfo(
-    connection: Connection,
-    address: PublicKey,
-    programId = TOKEN_PROGRAM_ID
-): Promise<Mint> {
-    const info = await connection.getAccountInfo(address);
-    if (!info) throw new Error(TokenError.ACCOUNT_NOT_FOUND);
-    if (!info.owner.equals(programId)) throw new Error(TokenError.INVALID_ACCOUNT_OWNER);
-    if (info.data.length != MINT_LEN) throw new Error(TokenError.INVALID_ACCOUNT_SIZE);
-
-    const mintInfo = MintLayout.decode(Buffer.from(info.data));
-
-    // @FIXME
-    if (!mintInfo.mintAuthorityOption) {
-        mintInfo.mintAuthority = null;
-    }
-
-    if (!mintInfo.freezeAuthorityOption) {
-        mintInfo.freezeAuthority = null;
-    }
-
-    return mintInfo;
+    return await connection.getMinimumBalanceForRentExemption(MINT_SIZE, commitment);
 }
 
 /**
@@ -93,7 +105,7 @@ export async function getMintInfo(
  *
  * @param mint                     Token mint account
  * @param owner                    Owner of the new account
- * @param allowOwnerOffCurve       @TODO: docs
+ * @param allowOwnerOffCurve       Allow the owner account to be a PDA (Program Derived Address)
  * @param programId                SPL Token program account
  * @param associatedTokenProgramId SPL Associated Token program account
  *
@@ -106,9 +118,7 @@ export async function getAssociatedTokenAddress(
     programId = TOKEN_PROGRAM_ID,
     associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID
 ): Promise<PublicKey> {
-    if (!allowOwnerOffCurve && !PublicKey.isOnCurve(owner.toBuffer())) {
-        throw new Error(`Owner cannot sign: ${owner.toString()}`);
-    }
+    if (!allowOwnerOffCurve && !PublicKey.isOnCurve(owner.toBuffer())) throw new TokenOwnerOffCurveError();
 
     const [address] = await PublicKey.findProgramAddress(
         [owner.toBuffer(), programId.toBuffer(), mint.toBuffer()],

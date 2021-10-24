@@ -13,10 +13,10 @@ const dataLayout = struct<{
 /**
  * Construct an Approve instruction
  *
- * @param account      Public key of the account
- * @param delegate     Account authorized to perform a transfer of tokens from the source account
- * @param owner        Owner of the source account
- * @param multiSigners Signing accounts if `owner` is a multiSig
+ * @param account      Account to set the delegate for
+ * @param delegate     Account authorized to transfer tokens from the account
+ * @param owner        Owner of the account
+ * @param multiSigners Signing accounts if `owner` is a multisig
  * @param amount       Maximum number of tokens the delegate may transfer
  * @param programId    SPL Token program account
  *

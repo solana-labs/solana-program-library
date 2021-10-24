@@ -1,4 +1,5 @@
 import {
+    ConfirmOptions,
     Connection,
     Keypair,
     PublicKey,
@@ -9,17 +10,18 @@ import {
 } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants';
 import { createInitializeMintInstruction } from '../instructions';
-import { getMinimumBalanceForRentExemptMint, MINT_LEN } from '../state';
+import { getMinimumBalanceForRentExemptMint, MINT_SIZE } from '../state';
 
 /**
- * Create and initialize a mint
+ * Create and initialize a new mint
  *
  * @param connection      Connection to use
- * @param payer           Fee payer for transaction
+ * @param payer           Payer of the transaction and initialization fees
  * @param mintAuthority   Account or multisig that will control minting
  * @param freezeAuthority Optional account or multisig that can freeze token accounts
  * @param decimals        Location of the decimal place
- * @param programId       Optional token programId, uses the system programId by default
+ * @param confirmOptions  Options for confirming the transaction
+ * @param programId       SPL Token program account
  *
  * @return Address of the new mint
  */
@@ -29,24 +31,25 @@ export async function createMint(
     mintAuthority: PublicKey,
     freezeAuthority: PublicKey | null,
     decimals: number,
+    confirmOptions?: ConfirmOptions,
     programId = TOKEN_PROGRAM_ID
 ): Promise<PublicKey> {
     const lamports = await getMinimumBalanceForRentExemptMint(connection);
 
-    const mintAccount = Keypair.generate();
+    const mint = Keypair.generate();
 
     const transaction = new Transaction().add(
         SystemProgram.createAccount({
             fromPubkey: payer.publicKey,
-            newAccountPubkey: mintAccount.publicKey,
-            space: MINT_LEN,
+            newAccountPubkey: mint.publicKey,
+            space: MINT_SIZE,
             lamports,
             programId,
         }),
-        createInitializeMintInstruction(mintAccount.publicKey, decimals, mintAuthority, freezeAuthority, programId)
+        createInitializeMintInstruction(mint.publicKey, decimals, mintAuthority, freezeAuthority, programId)
     );
 
-    await sendAndConfirmTransaction(connection, transaction, [payer, mintAccount]);
+    await sendAndConfirmTransaction(connection, transaction, [payer, mint], confirmOptions);
 
-    return mintAccount.publicKey;
+    return mint.publicKey;
 }

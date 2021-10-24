@@ -15,9 +15,9 @@ const dataLayout = struct<{
  * Construct a MintToChecked instruction
  *
  * @param mint         Public key of the mint
- * @param dest         Public key of the account to mint to
+ * @param destination  Address of the token account to mint to
  * @param authority    The mint authority
- * @param multiSigners Signing accounts if `authority` is a multiSig
+ * @param multiSigners Signing accounts if `authority` is a multisig
  * @param amount       Amount to mint
  * @param decimals     Number of decimals in amount to mint
  * @param programId    SPL Token program account
@@ -26,7 +26,7 @@ const dataLayout = struct<{
  */
 export function createMintToCheckedInstruction(
     mint: PublicKey,
-    dest: PublicKey,
+    destination: PublicKey,
     authority: PublicKey,
     multiSigners: Signer[],
     amount: number | bigint,
@@ -36,7 +36,7 @@ export function createMintToCheckedInstruction(
     const keys = addSigners(
         [
             { pubkey: mint, isSigner: false, isWritable: true },
-            { pubkey: dest, isSigner: false, isWritable: true },
+            { pubkey: destination, isSigner: false, isWritable: true },
         ],
         authority,
         multiSigners

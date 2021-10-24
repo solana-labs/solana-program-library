@@ -8,11 +8,3 @@ export const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey('ATokenGPvbdGVxr1b2hvZb
 
 /** Address of the special mint for wrapped native SOL */
 export const NATIVE_MINT = new PublicKey('So11111111111111111111111111111111111111112');
-
-/** @TODO: docs */
-export enum TokenError {
-    ACCOUNT_NOT_FOUND = 'ACCOUNT_NOT_FOUND',
-    INVALID_ACCOUNT_OWNER = 'INVALID_ACCOUNT_OWNER',
-    INVALID_ACCOUNT_SIZE = 'INVALID_ACCOUNT_SIZE',
-    INVALID_MINT = 'INVALID_MINT',
-}
