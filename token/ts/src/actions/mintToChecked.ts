@@ -9,7 +9,7 @@ import {
 } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants';
 import { createMintToCheckedInstruction } from '../instructions';
-import { getSigners } from './utils';
+import { getSigners } from './internal';
 
 /**
  * Mint new tokens, asserting the token mint and decimals

@@ -9,7 +9,7 @@ import {
 } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants';
 import { createCloseAccountInstruction } from '../instructions';
-import { getSigners } from './utils';
+import { getSigners } from './internal';
 
 /**
  * Close a token account

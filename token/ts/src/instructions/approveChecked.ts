@@ -3,7 +3,7 @@ import { u64 } from '@solana/buffer-layout-utils';
 import { PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants';
 import { TokenInstruction } from './types';
-import { addSigners } from './utils';
+import { addSigners } from './internal';
 
 const dataLayout = struct<{
     instruction: TokenInstruction;

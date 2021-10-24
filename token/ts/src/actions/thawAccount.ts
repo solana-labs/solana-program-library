@@ -9,7 +9,7 @@ import {
 } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants';
 import { createThawAccountInstruction } from '../instructions';
-import { getSigners } from './utils';
+import { getSigners } from './internal';
 
 /**
  * Thaw (unfreeze) a token account

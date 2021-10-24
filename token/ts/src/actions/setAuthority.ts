@@ -9,7 +9,7 @@ import {
 } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants';
 import { AuthorityType, createSetAuthorityInstruction } from '../instructions';
-import { getSigners } from './utils';
+import { getSigners } from './internal';
 
 /**
  * Assign a new authority to the account

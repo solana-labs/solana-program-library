@@ -3,7 +3,7 @@ import { publicKey } from '@solana/buffer-layout-utils';
 import { PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants';
 import { TokenInstruction } from './types';
-import { addSigners } from './utils';
+import { addSigners } from './internal';
 
 /** Authority types defined by the program */
 export enum AuthorityType {
