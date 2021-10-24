@@ -20,6 +20,7 @@
         "build": "yarn clean && tsc",
         "watch": "yarn build -w",
         "deploy": "yarn docs && gh-pages --dist docs --dotfiles",
+        "example": "node --experimental-specifier-resolution=node --loader ts-node/esm examples/create_mint_and_transfer_tokens.ts",
         "test": "node --experimental-specifier-resolution=node --loader ts-node/esm test/index.ts",
         "docs": "shx rm -rf docs && NODE_OPTIONS=--max_old_space_size=4096 typedoc && shx cp .nojekyll docs/",
         "fmt": "prettier --write '{*,**/*}.{js,ts,jsx,tsx,json}'",
