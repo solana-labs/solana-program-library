@@ -12,7 +12,7 @@ import { createBurnCheckedInstruction } from '../instructions';
 import { getSigners } from './internal';
 
 /**
- * Burn tokens, asserting the token mint and decimals
+ * Burn tokens from an account, asserting the token mint and decimals
  *
  * @param connection     Connection to use
  * @param payer          Payer of the transaction fees

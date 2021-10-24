@@ -12,7 +12,7 @@ import { createTransferCheckedInstruction } from '../instructions';
 import { getSigners } from './internal';
 
 /**
- * Transfer tokens to another account, asserting the token mint and decimals
+ * Transfer tokens from one account to another, asserting the token mint and decimals
  *
  * @param connection     Connection to use
  * @param payer          Payer of the transaction fees

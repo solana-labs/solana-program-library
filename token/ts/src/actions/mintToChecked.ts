@@ -12,7 +12,7 @@ import { createMintToCheckedInstruction } from '../instructions';
 import { getSigners } from './internal';
 
 /**
- * Mint new tokens, asserting the token mint and decimals
+ * Mint tokens to an account, asserting the token mint and decimals
  *
  * @param connection     Connection to use
  * @param payer          Payer of the transaction fees

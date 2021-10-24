@@ -12,8 +12,8 @@ import { createApproveCheckedInstruction } from '../instructions';
 import { getSigners } from './internal';
 
 /**
- * Grant a third-party permission to transfer up the specified number of tokens from an account,
- * asserting the token mint and decimals
+ * Approve a delegate permission to transfer up to a maximum number of tokens from an account, asserting the token mint
+ * and decimals
  *
  * @param connection     Connection to use
  * @param payer          Payer of the transaction fees
