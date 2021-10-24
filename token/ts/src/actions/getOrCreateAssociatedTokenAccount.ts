@@ -47,8 +47,7 @@ export async function getOrCreateAssociatedTokenAccount(
     // Sadly we can't do this atomically.
     let account: Account;
     try {
-        // @TODO: check if this is correct -- does ATA program or token program own the account?
-        account = await getAccountInfo(connection, associatedToken, commitment, associatedTokenProgramId);
+        account = await getAccountInfo(connection, associatedToken, commitment, programId);
     } catch (error: unknown) {
         // TokenAccountNotFoundError can be possible if the associated address has already received some lamports,
         // becoming a system account. Assuming program derived addressing is safe, this is the only case for the
@@ -74,7 +73,7 @@ export async function getOrCreateAssociatedTokenAccount(
             }
 
             // Now this should always succeed
-            account = await getAccountInfo(connection, associatedToken, commitment, associatedTokenProgramId);
+            account = await getAccountInfo(connection, associatedToken, commitment, programId);
         } else {
             throw error;
         }
@@ -82,5 +81,6 @@ export async function getOrCreateAssociatedTokenAccount(
 
     if (!account.mint.equals(mint)) throw new TokenInvalidMintError();
     if (!account.owner.equals(owner)) throw new TokenInvalidOwnerError();
+
     return account;
 }
