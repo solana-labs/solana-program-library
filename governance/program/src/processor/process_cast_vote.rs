@@ -12,7 +12,6 @@ use spl_governance_tools::account::create_and_serialize_account_signed;
 
 use crate::{
     error::GovernanceError,
-    instruction::Vote,
     state::{
         enums::GovernanceAccountType,
         governance::get_governance_data_for_realm,
@@ -33,7 +32,7 @@ use borsh::BorshSerialize;
 pub fn process_cast_vote(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    vote: Vote,
+    choices: Vec<VoteChoice>,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -106,39 +105,28 @@ pub fn process_cast_vote(
         &realm_data,
     )?;
 
+    let mut vote_choices = vec![];
+
     // Calculate Proposal voting weights
-    // TODO: Pass choices to the instruction and validate it's correct for given vote type
-    // TODO: Set options in a loop
-    let vote_choices = match vote {
-        Vote::Yes => {
-            proposal_data.options[0].vote_weight = proposal_data.options[0]
-                .vote_weight
-                .checked_add(voter_weight)
-                .unwrap();
+    // TODO: Validate choices are valid for given proposal vote type
+    for i in 0..proposal_data.options.len() {
+        let choice_weight = if choices[i].weight == 1 {
+            voter_weight
+        } else {
+            0
+        };
+        // TODO throw for weight != 0 and weight != 1
 
-            vec![
-                VoteChoice {
-                    rank: 0,
-                    weight: voter_weight,
-                },
-                VoteChoice { rank: 0, weight: 0 },
-            ]
-        }
-        Vote::No => {
-            proposal_data.options[1].vote_weight = proposal_data.options[1]
-                .vote_weight
-                .checked_add(voter_weight)
-                .unwrap();
+        vote_choices.push(VoteChoice {
+            rank: 0,
+            weight: choice_weight,
+        });
 
-            vec![
-                VoteChoice { rank: 0, weight: 0 },
-                VoteChoice {
-                    rank: 0,
-                    weight: voter_weight,
-                },
-            ]
-        }
-    };
+        proposal_data.options[i].vote_weight = proposal_data.options[i]
+            .vote_weight
+            .checked_add(choice_weight)
+            .unwrap();
+    }
 
     let governing_token_mint_supply = get_spl_token_mint_supply(governing_token_mint_info)?;
     if proposal_data.try_tip_vote(

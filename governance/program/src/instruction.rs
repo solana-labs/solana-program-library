@@ -13,7 +13,7 @@ use crate::{
         realm_config::get_realm_config_address,
         signatory_record::get_signatory_record_address,
         token_owner_record::get_token_owner_record_address,
-        vote_record::get_vote_record_address,
+        vote_record::{get_vote_record_address, VoteChoice},
     },
     tools::bpf_loader_upgradeable::get_program_data_address,
 };
@@ -285,8 +285,9 @@ pub enum GovernanceInstruction {
     ///   12. `[]` Optional Voter Weight Record
     CastVote {
         #[allow(dead_code)]
-        /// Yes/No vote
-        vote: Vote,
+        /// vote choices
+        /// TODO: Create VoteChoice (with intentions only) and VoteChoiceWeight
+        choices: Vec<VoteChoice>,
     },
 
     /// Finalizes vote in case the Vote was not automatically tipped within max_voting_time period
@@ -964,7 +965,7 @@ pub fn cast_vote(
     payer: &Pubkey,
     voter_weight_record: Option<Pubkey>,
     // Args
-    vote: Vote,
+    choices: Vec<VoteChoice>,
 ) -> Instruction {
     let vote_record_address =
         get_vote_record_address(program_id, proposal, voter_token_owner_record);
@@ -986,7 +987,7 @@ pub fn cast_vote(
 
     with_voter_weight_accounts(program_id, &mut accounts, realm, voter_weight_record);
 
-    let instruction = GovernanceInstruction::CastVote { vote };
+    let instruction = GovernanceInstruction::CastVote { choices };
 
     Instruction {
         program_id: *program_id,

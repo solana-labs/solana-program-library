@@ -1705,6 +1705,21 @@ impl GovernanceProgramTest {
                 None
             };
 
+        let choices = match vote {
+            Vote::Yes => {
+                vec![
+                    VoteChoice { rank: 0, weight: 1 },
+                    VoteChoice { rank: 0, weight: 0 },
+                ]
+            }
+            Vote::No => {
+                vec![
+                    VoteChoice { rank: 0, weight: 0 },
+                    VoteChoice { rank: 0, weight: 1 },
+                ]
+            }
+        };
+
         let vote_instruction = cast_vote(
             &self.program_id,
             &token_owner_record_cookie.account.realm,
@@ -1716,7 +1731,7 @@ impl GovernanceProgramTest {
             &proposal_cookie.account.governing_token_mint,
             &self.bench.payer.pubkey(),
             voter_weight_record,
-            vote.clone(),
+            choices,
         );
 
         self.bench

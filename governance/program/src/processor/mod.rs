@@ -144,7 +144,9 @@ pub fn process_instruction(
         GovernanceInstruction::SignOffProposal {} => {
             process_sign_off_proposal(program_id, accounts)
         }
-        GovernanceInstruction::CastVote { vote } => process_cast_vote(program_id, accounts, vote),
+        GovernanceInstruction::CastVote { choices } => {
+            process_cast_vote(program_id, accounts, choices)
+        }
 
         GovernanceInstruction::FinalizeVote {} => process_finalize_vote(program_id, accounts),
 
