@@ -3743,7 +3743,7 @@ dependencies = [
 
 [[package]]
 name = "spl-governance"
-version = "2.1.2"
+version = "2.1.3"
 dependencies = [
  "arrayref",
  "assert_matches",
@@ -3783,7 +3783,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-governance 2.1.2",
+ "spl-governance 2.1.3",
  "spl-governance-test-sdk",
  "spl-governance-tools",
  "spl-token 3.2.0",
@@ -3841,7 +3841,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-governance 2.1.2",
+ "spl-governance 2.1.3",
  "spl-governance-test-sdk",
  "spl-governance-tools",
  "spl-token 3.2.0",
