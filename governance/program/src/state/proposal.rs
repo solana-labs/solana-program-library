@@ -43,6 +43,13 @@ pub struct ProposalOptionVote {
     pub weight: u64,
 }
 
+/// Proposal type
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub enum ProposalType {
+    /// Yes/No vote with tipping point (when mathematically possible)
+    YesNoVote,
+}
+
 /// Governance Proposal
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct Proposal {
@@ -67,6 +74,9 @@ pub struct Proposal {
 
     /// The number of signatories who already signed
     pub signatories_signed_off_count: u8,
+
+    /// Proposal type
+    pub proposal_type: ProposalType,
 
     /// Proposal options
     pub options: Vec<ProposalOptionVote>,
@@ -126,7 +136,7 @@ pub struct Proposal {
 impl AccountMaxSize for Proposal {
     fn get_max_size(&self) -> Option<usize> {
         let options_size: usize = self.options.iter().map(|o| o.label.len() + 12).sum();
-        Some(self.name.len() + self.description_link.len() + options_size + 193)
+        Some(self.name.len() + self.description_link.len() + options_size + 194)
     }
 }
 
@@ -598,6 +608,7 @@ mod test {
             executing_at: Some(10),
             closed_at: Some(10),
 
+            proposal_type: ProposalType::YesNoVote,
             options: vec![
                 ProposalOptionVote {
                     label: "yes".to_string(),

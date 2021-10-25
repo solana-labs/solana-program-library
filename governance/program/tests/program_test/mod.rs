@@ -36,7 +36,9 @@ use spl_governance::{
             get_program_governance_address, get_token_governance_address, Governance,
             GovernanceConfig,
         },
-        proposal::{get_proposal_address, Proposal, ProposalOption, ProposalOptionVote},
+        proposal::{
+            get_proposal_address, Proposal, ProposalOption, ProposalOptionVote, ProposalType,
+        },
         proposal_instruction::{
             get_proposal_instruction_address, InstructionData, ProposalInstruction,
         },
@@ -1441,6 +1443,7 @@ impl GovernanceProgramTest {
             name.clone(),
             description_link.clone(),
             &token_owner_record_cookie.account.governing_token_mint,
+            ProposalType::YesNoVote,
             options,
             proposal_index,
         );
@@ -1479,6 +1482,7 @@ impl GovernanceProgramTest {
             token_owner_record: token_owner_record_cookie.address,
             signatories_signed_off_count: 0,
 
+            proposal_type: ProposalType::YesNoVote,
             options: vec![
                 ProposalOptionVote {
                     label: "Yes".to_string(),
