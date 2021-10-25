@@ -125,13 +125,8 @@ pub struct Proposal {
 
 impl AccountMaxSize for Proposal {
     fn get_max_size(&self) -> Option<usize> {
-        Some(
-            self.name.len()
-                + self.description_link.len()
-                + self.options[0].label.len()
-                + self.options[1].label.len()
-                + 217,
-        )
+        let options_size: usize = self.options.iter().map(|o| o.label.len() + 12).sum();
+        Some(self.name.len() + self.description_link.len() + options_size + 193)
     }
 }
 
@@ -623,6 +618,26 @@ mod test {
         }
     }
 
+    fn create_test_multi_option_proposal() -> Proposal {
+        let mut proposal = create_test_proposal();
+        proposal.options = vec![
+            ProposalOptionVote {
+                label: "option 1".to_string(),
+                weight: 0,
+            },
+            ProposalOptionVote {
+                label: "option 2".to_string(),
+                weight: 0,
+            },
+            ProposalOptionVote {
+                label: "option 3".to_string(),
+                weight: 0,
+            },
+        ];
+
+        proposal
+    }
+
     fn create_test_realm() -> Realm {
         Realm {
             account_type: GovernanceAccountType::Realm,
@@ -658,6 +673,14 @@ mod test {
     #[test]
     fn test_max_size() {
         let proposal = create_test_proposal();
+        let size = proposal.try_to_vec().unwrap().len();
+
+        assert_eq!(proposal.get_max_size(), Some(size));
+    }
+
+    #[test]
+    fn test_multi_option_proposal_max_size() {
+        let proposal = create_test_multi_option_proposal();
         let size = proposal.try_to_vec().unwrap().len();
 
         assert_eq!(proposal.get_max_size(), Some(size));

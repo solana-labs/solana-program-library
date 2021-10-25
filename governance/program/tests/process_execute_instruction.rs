@@ -337,6 +337,7 @@ async fn test_execute_upgrade_program_instruction() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn test_execute_instruction_with_invalid_state_errors() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;

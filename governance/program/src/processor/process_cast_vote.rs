@@ -109,12 +109,8 @@ pub fn process_cast_vote(
 
     // Calculate Proposal voting weights
     // TODO: Validate choices are valid for given proposal vote type
-    for (i, option) in proposal_data.options.iter_mut().enumerate() {
-        let choice_weight = if choices[i].weight == 1 {
-            voter_weight
-        } else {
-            0
-        };
+    for (option, choice) in proposal_data.options.iter_mut().zip(choices) {
+        let choice_weight = if choice.weight == 1 { voter_weight } else { 0 };
         // TODO throw for weight != 0 and weight != 1
 
         vote_choices.push(VoteChoice {
