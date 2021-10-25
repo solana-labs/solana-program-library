@@ -19,6 +19,7 @@
         "clean": "shx rm -rf lib",
         "build": "yarn clean && tsc",
         "watch": "yarn build -w",
+        "preinstall": "yarn build",
         "deploy": "yarn docs && gh-pages --dist docs --dotfiles",
         "example": "node --experimental-specifier-resolution=node --loader ts-node/esm examples/create_mint_and_transfer_tokens.ts",
         "test": "mocha",
