@@ -49,7 +49,6 @@ impl Default for GovernanceAccountType {
     }
 }
 
-
 /// What state a Proposal is in
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
