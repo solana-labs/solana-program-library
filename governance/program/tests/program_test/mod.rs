@@ -29,7 +29,7 @@ use spl_governance::{
     state::{
         enums::{
             GovernanceAccountType, InstructionExecutionFlags, InstructionExecutionStatus,
-            MintMaxVoteWeightSource, ProposalState, VoteThresholdPercentage, VoteWeight,
+            MintMaxVoteWeightSource, ProposalState, VoteThresholdPercentage,
         },
         governance::{
             get_account_governance_address, get_mint_governance_address,
@@ -47,7 +47,7 @@ use spl_governance::{
         realm_config::{get_realm_config_address, RealmConfigAccount},
         signatory_record::{get_signatory_record_address, SignatoryRecord},
         token_owner_record::{get_token_owner_record_address, TokenOwnerRecord},
-        vote_record::{get_vote_record_address, VoteRecord},
+        vote_record::{get_vote_record_address, VoteChoice, VoteRecord},
     },
     tools::bpf_loader_upgradeable::get_program_data_address,
 };
@@ -1721,16 +1721,28 @@ impl GovernanceProgramTest {
             .account
             .governing_token_deposit_amount;
 
-        let vote_weight = match vote {
-            Vote::Yes => VoteWeight::Yes(vote_amount),
-            Vote::No => VoteWeight::No(vote_amount),
+        let vote_choices = match vote {
+            Vote::Yes => vec![
+                VoteChoice {
+                    rank: 0,
+                    weight: vote_amount,
+                },
+                VoteChoice { rank: 0, weight: 0 },
+            ],
+            Vote::No => vec![
+                VoteChoice { rank: 0, weight: 0 },
+                VoteChoice {
+                    rank: 0,
+                    weight: vote_amount,
+                },
+            ],
         };
 
         let account = VoteRecord {
             account_type: GovernanceAccountType::VoteRecord,
             proposal: proposal_cookie.address,
             governing_token_owner: token_owner_record_cookie.token_owner.pubkey(),
-            vote_weight,
+            choices: vote_choices,
             is_relinquished: false,
         };
 

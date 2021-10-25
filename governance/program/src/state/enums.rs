@@ -49,16 +49,6 @@ impl Default for GovernanceAccountType {
     }
 }
 
-/// Vote  with number of votes
-#[repr(C)]
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub enum VoteWeight {
-    /// Yes vote
-    Yes(u64),
-
-    /// No vote
-    No(u64),
-}
 
 /// What state a Proposal is in
 #[repr(C)]

@@ -10,8 +10,7 @@ use solana_program::{
 use spl_governance_tools::account::dispose_account;
 
 use crate::state::{
-    enums::{ProposalState, VoteWeight},
-    governance::get_governance_data,
+    enums::ProposalState, governance::get_governance_data,
     proposal::get_proposal_data_for_governance_and_governing_mint,
     token_owner_record::get_token_owner_record_data_for_realm_and_governing_mint,
     vote_record::get_vote_record_data_for_proposal_and_token_owner,
@@ -70,20 +69,17 @@ pub fn process_relinquish_vote(program_id: &Pubkey, accounts: &[AccountInfo]) ->
         token_owner_record_data
             .assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
-        match vote_record_data.vote_weight {
-            VoteWeight::Yes(vote_amount) => {
-                proposal_data.yes_votes_count = proposal_data
-                    .yes_votes_count
-                    .checked_sub(vote_amount)
-                    .unwrap();
-            }
-            VoteWeight::No(vote_amount) => {
-                proposal_data.no_votes_count = proposal_data
-                    .no_votes_count
-                    .checked_sub(vote_amount)
-                    .unwrap();
-            }
-        };
+        // TODO: iterate for all choices
+        proposal_data.yes_votes_count = proposal_data
+            .yes_votes_count
+            .checked_sub(vote_record_data.choices[0].weight)
+            .unwrap();
+
+        proposal_data.no_votes_count = proposal_data
+            .no_votes_count
+            .checked_sub(vote_record_data.choices[1].weight)
+            .unwrap();
+
         proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
 
         dispose_account(vote_record_info, beneficiary_info);

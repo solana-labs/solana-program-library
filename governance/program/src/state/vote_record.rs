@@ -10,10 +10,19 @@ use crate::error::GovernanceError;
 
 use crate::PROGRAM_AUTHORITY_SEED;
 
-use crate::state::enums::{GovernanceAccountType, VoteWeight};
+use crate::state::enums::GovernanceAccountType;
+
+/// Vote choice
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub struct VoteChoice {
+    /// The rank given to the choice by voter
+    pub rank: u8,
+
+    /// The weight given by the voter to the choice
+    pub weight: u64,
+}
 
 /// Proposal VoteRecord
-#[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct VoteRecord {
     /// Governance account type
@@ -29,8 +38,8 @@ pub struct VoteRecord {
     /// Indicates whether the vote was relinquished by voter
     pub is_relinquished: bool,
 
-    /// Voter's vote: Yes/No and amount
-    pub vote_weight: VoteWeight,
+    /// Voter choices
+    pub choices: Vec<VoteChoice>,
 }
 
 impl AccountMaxSize for VoteRecord {}

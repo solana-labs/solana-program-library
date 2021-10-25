@@ -14,7 +14,7 @@ use crate::{
     error::GovernanceError,
     instruction::Vote,
     state::{
-        enums::{GovernanceAccountType, VoteWeight},
+        enums::GovernanceAccountType,
         governance::get_governance_data_for_realm,
         proposal::get_proposal_data_for_governance_and_governing_mint,
         realm::get_realm_data_for_governing_token_mint,
@@ -22,7 +22,7 @@ use crate::{
             get_token_owner_record_data_for_proposal_owner,
             get_token_owner_record_data_for_realm_and_governing_mint,
         },
-        vote_record::{get_vote_record_address_seeds, VoteRecord},
+        vote_record::{get_vote_record_address_seeds, VoteChoice, VoteRecord},
     },
     tools::spl_token::get_spl_token_mint_supply,
 };
@@ -107,20 +107,35 @@ pub fn process_cast_vote(
     )?;
 
     // Calculate Proposal voting weights
-    let vote_weight = match vote {
+    // TODO: Pass choices to the instruction and validate it's correct for given vote type
+    let vote_choices = match vote {
         Vote::Yes => {
             proposal_data.yes_votes_count = proposal_data
                 .yes_votes_count
                 .checked_add(voter_weight)
                 .unwrap();
-            VoteWeight::Yes(voter_weight)
+
+            vec![
+                VoteChoice {
+                    rank: 0,
+                    weight: voter_weight,
+                },
+                VoteChoice { rank: 0, weight: 0 },
+            ]
         }
         Vote::No => {
             proposal_data.no_votes_count = proposal_data
                 .no_votes_count
                 .checked_add(voter_weight)
                 .unwrap();
-            VoteWeight::No(voter_weight)
+
+            vec![
+                VoteChoice { rank: 0, weight: 0 },
+                VoteChoice {
+                    rank: 0,
+                    weight: voter_weight,
+                },
+            ]
         }
     };
 
@@ -155,7 +170,7 @@ pub fn process_cast_vote(
         account_type: GovernanceAccountType::VoteRecord,
         proposal: *proposal_info.key,
         governing_token_owner: voter_token_owner_record_data.governing_token_owner,
-        vote_weight,
+        choices: vote_choices,
         is_relinquished: false,
     };
 
