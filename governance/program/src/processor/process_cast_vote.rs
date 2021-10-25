@@ -21,7 +21,7 @@ use crate::{
             get_token_owner_record_data_for_proposal_owner,
             get_token_owner_record_data_for_realm_and_governing_mint,
         },
-        vote_record::{get_vote_record_address_seeds, VoteChoice, VoteRecord},
+        vote_record::{get_vote_record_address_seeds, VoteChoice, VoteChoiceWeight, VoteRecord},
     },
     tools::spl_token::get_spl_token_mint_supply,
 };
@@ -105,16 +105,20 @@ pub fn process_cast_vote(
         &realm_data,
     )?;
 
-    let mut vote_choices = vec![];
+    let mut weighted_choices = vec![];
 
     // Calculate Proposal voting weights
     // TODO: Validate choices are valid for given proposal vote type
+    // YesNo - only once choice 100% and no rank
     for (option, choice) in proposal_data.options.iter_mut().zip(choices) {
-        let choice_weight = if choice.weight == 1 { voter_weight } else { 0 };
-        // TODO throw for weight != 0 and weight != 1
+        let choice_weight = match choice.weight_percentage {
+            100 => voter_weight,
+            0 => 0,
+            _ => return Err(GovernanceError::InvalidVoteChoiceWeightPercentage.into()),
+        };
 
-        vote_choices.push(VoteChoice {
-            rank: 0,
+        weighted_choices.push(VoteChoiceWeight {
+            rank: choice.rank,
             weight: choice_weight,
         });
 
@@ -152,7 +156,7 @@ pub fn process_cast_vote(
         account_type: GovernanceAccountType::VoteRecord,
         proposal: *proposal_info.key,
         governing_token_owner: voter_token_owner_record_data.governing_token_owner,
-        choices: vote_choices,
+        choices: weighted_choices,
         is_relinquished: false,
     };
 

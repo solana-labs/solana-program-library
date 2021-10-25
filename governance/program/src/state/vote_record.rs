@@ -18,6 +18,16 @@ pub struct VoteChoice {
     /// The rank given to the choice by voter
     pub rank: u8,
 
+    /// The voter's weight percentage allocated to the choice
+    pub weight_percentage: u8,
+}
+
+/// Vote choice
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub struct VoteChoiceWeight {
+    /// The rank given to the choice by voter
+    pub rank: u8,
+
     /// The weight given by the voter to the choice
     pub weight: u64,
 }
@@ -38,8 +48,8 @@ pub struct VoteRecord {
     /// Indicates whether the vote was relinquished by voter
     pub is_relinquished: bool,
 
-    /// Voter choices
-    pub choices: Vec<VoteChoice>,
+    /// Voter choice weights
+    pub choices: Vec<VoteChoiceWeight>,
 }
 
 impl AccountMaxSize for VoteRecord {}

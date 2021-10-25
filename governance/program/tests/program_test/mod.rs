@@ -47,7 +47,7 @@ use spl_governance::{
         realm_config::{get_realm_config_address, RealmConfigAccount},
         signatory_record::{get_signatory_record_address, SignatoryRecord},
         token_owner_record::{get_token_owner_record_address, TokenOwnerRecord},
-        vote_record::{get_vote_record_address, VoteChoice, VoteRecord},
+        vote_record::{get_vote_record_address, VoteChoice, VoteChoiceWeight, VoteRecord},
     },
     tools::bpf_loader_upgradeable::get_program_data_address,
 };
@@ -1728,14 +1728,26 @@ impl GovernanceProgramTest {
         let choices = match vote {
             Vote::Yes => {
                 vec![
-                    VoteChoice { rank: 0, weight: 1 },
-                    VoteChoice { rank: 0, weight: 0 },
+                    VoteChoice {
+                        rank: 0,
+                        weight_percentage: 100,
+                    },
+                    VoteChoice {
+                        rank: 0,
+                        weight_percentage: 0,
+                    },
                 ]
             }
             Vote::No => {
                 vec![
-                    VoteChoice { rank: 0, weight: 0 },
-                    VoteChoice { rank: 0, weight: 1 },
+                    VoteChoice {
+                        rank: 0,
+                        weight_percentage: 0,
+                    },
+                    VoteChoice {
+                        rank: 0,
+                        weight_percentage: 100,
+                    },
                 ]
             }
         };
@@ -1765,17 +1777,17 @@ impl GovernanceProgramTest {
             .account
             .governing_token_deposit_amount;
 
-        let vote_choices = match vote {
+        let weighted_choices = match vote {
             Vote::Yes => vec![
-                VoteChoice {
+                VoteChoiceWeight {
                     rank: 0,
                     weight: vote_amount,
                 },
-                VoteChoice { rank: 0, weight: 0 },
+                VoteChoiceWeight { rank: 0, weight: 0 },
             ],
             Vote::No => vec![
-                VoteChoice { rank: 0, weight: 0 },
-                VoteChoice {
+                VoteChoiceWeight { rank: 0, weight: 0 },
+                VoteChoiceWeight {
                     rank: 0,
                     weight: vote_amount,
                 },
@@ -1786,7 +1798,7 @@ impl GovernanceProgramTest {
             account_type: GovernanceAccountType::VoteRecord,
             proposal: proposal_cookie.address,
             governing_token_owner: token_owner_record_cookie.token_owner.pubkey(),
-            choices: vote_choices,
+            choices: weighted_choices,
             is_relinquished: false,
         };
 

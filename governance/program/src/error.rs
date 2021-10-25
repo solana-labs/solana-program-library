@@ -337,6 +337,10 @@ pub enum GovernanceError {
     /// Governing token deposits not allowed
     #[error("Governing token deposits not allowed")]
     GoverningTokenDepositsNotAllowed,
+
+    /// Invalid vote choice weight percentage
+    #[error("Invalid vote choice weight percentage")]
+    InvalidVoteChoiceWeightPercentage,
 }
 
 impl PrintProgramError for GovernanceError {
