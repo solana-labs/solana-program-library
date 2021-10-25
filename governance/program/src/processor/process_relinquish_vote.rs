@@ -69,16 +69,12 @@ pub fn process_relinquish_vote(program_id: &Pubkey, accounts: &[AccountInfo]) ->
         token_owner_record_data
             .assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
-        // TODO: iterate for all choices
-        proposal_data.options[0].vote_weight = proposal_data.options[0]
-            .vote_weight
-            .checked_sub(vote_record_data.choices[0].weight)
-            .unwrap();
-
-        proposal_data.options[1].vote_weight = proposal_data.options[1]
-            .vote_weight
-            .checked_sub(vote_record_data.choices[1].weight)
-            .unwrap();
+        for i in 0..proposal_data.options.len() {
+            proposal_data.options[i].vote_weight = proposal_data.options[i]
+                .vote_weight
+                .checked_sub(vote_record_data.choices[i].weight)
+                .unwrap();
+        }
 
         proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
 
