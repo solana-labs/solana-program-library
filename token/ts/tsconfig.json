@@ -9,14 +9,13 @@
         "target": "es6",
         "module": "esnext",
         "moduleResolution": "node",
-        "jsx": "react",
         "strict": true,
         "esModuleInterop": true,
         "resolveJsonModule": true,
         "isolatedModules": true,
         "typeRoots": ["node_modules/@types", "types"]
     },
-    "include": ["src", "types"],
+    "include": ["src", "types", "test"],
     "exclude": ["node_modules"],
     "typedocOptions": {
         "entryPoints": "src/index.ts",
