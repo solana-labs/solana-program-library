@@ -12,7 +12,7 @@ import { createApproveInstruction } from '../instructions';
 import { getSigners } from './internal';
 
 /**
- * Approve a delegate permission to transfer up to a maximum number of tokens from an account
+ * Approve a delegate to transfer up to a maximum number of tokens from an account
  *
  * @param connection     Connection to use
  * @param payer          Payer of the transaction fees

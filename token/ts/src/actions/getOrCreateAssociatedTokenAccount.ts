@@ -18,7 +18,7 @@ import { createAssociatedTokenAccountInstruction } from '../instructions';
 import { Account, getAccountInfo, getAssociatedTokenAddress } from '../state';
 
 /**
- * Retrieve the associated token account, or create it if not found
+ * Retrieve the associated token account, or create it if it doesn't exist
  *
  * @param connection               Connection to use
  * @param payer                    Payer of the transaction and initialization fees

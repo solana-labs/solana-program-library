@@ -7,7 +7,7 @@ import { addSigners } from './internal';
 const dataLayout = struct<{ instruction: TokenInstruction }>([u8('instruction')]);
 
 /**
- * Construct a Close instruction
+ * Construct a CloseAccount instruction
  *
  * @param account      Account to close
  * @param destination  Account to receive the remaining balance of the closed account

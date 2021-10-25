@@ -9,7 +9,7 @@ export * from './revoke'; //               5
 export * from './setAuthority'; //         6
 export * from './mintTo'; //               7
 export * from './burn'; //                 8
-export * from './close'; //                9
+export * from './closeAccount'; //         9
 export * from './freezeAccount'; //       10
 export * from './thawAccount'; //         11
 export * from './transferChecked'; //     12

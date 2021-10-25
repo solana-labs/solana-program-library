@@ -12,7 +12,7 @@ import { createRevokeInstruction } from '../instructions';
 import { getSigners } from './internal';
 
 /**
- * Cancel approval for the transfer of any remaining tokens
+ * Revoke approval for the transfer of tokens from an account
  *
  * @param connection     Connection to use
  * @param payer          Payer of the transaction fees
