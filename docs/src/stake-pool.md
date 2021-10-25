@@ -297,6 +297,18 @@ This account holds onto additional stake used when rebalancing between validator
 For a stake pool with 1000 validators, the cost to create a stake pool is less
 than 0.5 SOL.
 
+The `create-pool` command allows setting all of the accounts and keypairs to
+pre-generated values, including:
+
+* stake pool, through the `--pool-keypair` flag
+* validator list, through the `--validator-list-keypair` flag
+* pool token mint, through the `--mint-keypair` flag
+* pool reserve stake account, through the `--reserve-keypair` flag
+
+Otherwise, these will all default to newly-generated keypairs.
+
+You can always check out the available options by running `spl-stake-pool create-pool -h`.
+
 ### Create a restricted stake pool
 
 If a manager would like to restrict deposits (stake and SOL) to one key in

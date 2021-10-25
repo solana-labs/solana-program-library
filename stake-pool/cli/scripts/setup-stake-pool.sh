@@ -71,9 +71,11 @@ build_stake_pool_cli
 
 echo "Creating pool"
 stake_pool_keyfile=$keys_dir/stake-pool.json
+validator_list_keyfile=$keys_dir/validator-list.json
 mint_keyfile=$keys_dir/mint.json
 reserve_keyfile=$keys_dir/reserve.json
 create_keypair $stake_pool_keyfile
+create_keypair $validator_list_keyfile
 create_keypair $mint_keyfile
 create_keypair $reserve_keyfile
 
@@ -83,6 +85,7 @@ $spl_stake_pool \
   create-pool \
   "${command_args[@]}" \
   --pool-keypair "$stake_pool_keyfile" \
+  --validator-list-keypair "$validator_list_keyfile" \
   --mint-keypair "$mint_keyfile" \
   --reserve-keypair "$reserve_keyfile"
 
