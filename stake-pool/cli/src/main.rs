@@ -187,6 +187,7 @@ fn command_create_pool(
     stake_referral_fee: u8,
     max_validators: u32,
     stake_pool_keypair: Option<Keypair>,
+    validator_list_keypair: Option<Keypair>,
     mint_keypair: Option<Keypair>,
     reserve_keypair: Option<Keypair>,
 ) -> CommandResult {
@@ -198,7 +199,7 @@ fn command_create_pool(
 
     let stake_pool_keypair = stake_pool_keypair.unwrap_or_else(Keypair::new);
 
-    let validator_list = Keypair::new();
+    let validator_list_keypair = validator_list_keypair.unwrap_or_else(Keypair::new);
 
     let reserve_stake_balance = config
         .rpc_client
@@ -288,7 +289,7 @@ fn command_create_pool(
             // Validator stake account list storage
             system_instruction::create_account(
                 &config.fee_payer.pubkey(),
-                &validator_list.pubkey(),
+                &validator_list_keypair.pubkey(),
                 validator_list_balance,
                 validator_list_size as u64,
                 &spl_stake_pool::id(),
@@ -307,7 +308,7 @@ fn command_create_pool(
                 &stake_pool_keypair.pubkey(),
                 &config.manager.pubkey(),
                 &config.staker.pubkey(),
-                &validator_list.pubkey(),
+                &validator_list_keypair.pubkey(),
                 &reserve_keypair.pubkey(),
                 &mint_keypair.pubkey(),
                 &pool_fee_account,
@@ -335,11 +336,15 @@ fn command_create_pool(
     setup_transaction.sign(&setup_signers, recent_blockhash);
     send_transaction(config, setup_transaction)?;
 
-    println!("Creating stake pool {}", stake_pool_keypair.pubkey());
+    println!(
+        "Creating stake pool {} with validator list {}",
+        stake_pool_keypair.pubkey(),
+        validator_list_keypair.pubkey()
+    );
     let mut initialize_signers = vec![
         config.fee_payer.as_ref(),
         &stake_pool_keypair,
-        &validator_list,
+        &validator_list_keypair,
         config.manager.as_ref(),
     ];
     if let Some(deposit_authority) = deposit_authority {
@@ -874,6 +879,7 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
         println!("Fee Account: {}", stake_pool.manager_fee_account);
     } else {
         println!("Stake Pool: {}", stake_pool_address);
+        println!("Validator List: {}", stake_pool.validator_list);
         println!("Pool Token Mint: {}", stake_pool.pool_mint);
     }
 
@@ -1824,6 +1830,14 @@ fn main() {
                     .help("Stake pool keypair [default: new keypair]"),
             )
             .arg(
+                Arg::with_name("validator_list_keypair")
+                    .long("validator-list-keypair")
+                    .validator(is_keypair_or_ask_keyword)
+                    .value_name("PATH")
+                    .takes_value(true)
+                    .help("Validator list keypair [default: new keypair]"),
+            )
+            .arg(
                 Arg::with_name("mint_keypair")
                     .long("mint-keypair")
                     .validator(is_keypair_or_ask_keyword)
@@ -2477,6 +2491,7 @@ fn main() {
             let referral_fee = value_t!(arg_matches, "referral_fee", u8);
             let max_validators = value_t_or_exit!(arg_matches, "max_validators", u32);
             let pool_keypair = keypair_of(arg_matches, "pool_keypair");
+            let validator_list_keypair = keypair_of(arg_matches, "validator_list_keypair");
             let mint_keypair = keypair_of(arg_matches, "mint_keypair");
             let reserve_keypair = keypair_of(arg_matches, "reserve_keypair");
             command_create_pool(
@@ -2497,6 +2512,7 @@ fn main() {
                 referral_fee.unwrap_or(0),
                 max_validators,
                 pool_keypair,
+                validator_list_keypair,
                 mint_keypair,
                 reserve_keypair,
             )
