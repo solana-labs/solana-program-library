@@ -16,7 +16,7 @@ use crate::{
     state::{
         enums::{GovernanceAccountType, InstructionExecutionFlags, ProposalState},
         governance::get_governance_data_for_realm,
-        proposal::{get_proposal_address_seeds, Proposal, ProposalOption},
+        proposal::{get_proposal_address_seeds, Proposal, ProposalOption, ProposalOptionVote},
         realm::get_realm_data_for_governing_token_mint,
         token_owner_record::get_token_owner_record_data_for_realm,
     },
@@ -29,6 +29,7 @@ pub fn process_create_proposal(
     name: String,
     description_link: String,
     governing_token_mint: Pubkey,
+    options: Vec<ProposalOption>,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -88,6 +89,14 @@ pub fn process_create_proposal(
         .unwrap();
     proposal_owner_record_data.serialize(&mut *proposal_owner_record_info.data.borrow_mut())?;
 
+    let proposal_options = options
+        .iter()
+        .map(|o| ProposalOptionVote {
+            label: o.label.to_string(),
+            weight: 0,
+        })
+        .collect();
+
     let proposal_data = Proposal {
         account_type: GovernanceAccountType::Proposal,
         governance: *governance_info.key,
@@ -115,17 +124,8 @@ pub fn process_create_proposal(
 
         execution_flags: InstructionExecutionFlags::None,
 
-        // TODO: Pass options in the instruction
-        options: vec![
-            ProposalOption {
-                label: "Yes".to_string(),
-                vote_weight: 0,
-            },
-            ProposalOption {
-                label: "No".to_string(),
-                vote_weight: 0,
-            },
-        ],
+        // TODO: validate options for proposal type
+        options: proposal_options,
 
         max_vote_weight: None,
         vote_threshold_percentage: None,

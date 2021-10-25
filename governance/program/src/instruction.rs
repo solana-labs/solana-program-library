@@ -7,7 +7,7 @@ use crate::{
             get_account_governance_address, get_mint_governance_address,
             get_program_governance_address, get_token_governance_address, GovernanceConfig,
         },
-        proposal::get_proposal_address,
+        proposal::{get_proposal_address, ProposalOption},
         proposal_instruction::{get_proposal_instruction_address, InstructionData},
         realm::{get_governing_token_holding_address, get_realm_address, RealmConfigArgs},
         realm_config::get_realm_config_address,
@@ -173,6 +173,11 @@ pub enum GovernanceInstruction {
         #[allow(dead_code)]
         /// Governing Token Mint the Proposal is created for
         governing_token_mint: Pubkey,
+
+        #[allow(dead_code)]
+        /// Proposal options
+        /// TODO: Use ProposalOptionArgs
+        options: Vec<ProposalOption>,
     },
 
     /// Adds a signatory to the Proposal which means this Proposal can't leave Draft state until yet another Signatory signs
@@ -814,6 +819,7 @@ pub fn create_proposal(
     name: String,
     description_link: String,
     governing_token_mint: &Pubkey,
+    options: Vec<ProposalOption>,
     proposal_index: u32,
 ) -> Instruction {
     let proposal_address = get_proposal_address(
@@ -841,6 +847,7 @@ pub fn create_proposal(
         name,
         description_link,
         governing_token_mint: *governing_token_mint,
+        options,
     };
 
     Instruction {

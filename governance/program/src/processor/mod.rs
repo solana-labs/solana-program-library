@@ -128,12 +128,14 @@ pub fn process_instruction(
             name,
             description_link,
             governing_token_mint,
+            options,
         } => process_create_proposal(
             program_id,
             accounts,
             name,
             description_link,
             governing_token_mint,
+            options,
         ),
         GovernanceInstruction::AddSignatory { signatory } => {
             process_add_signatory(program_id, accounts, signatory)

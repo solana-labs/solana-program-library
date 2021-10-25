@@ -60,7 +60,7 @@ async fn test_cast_vote() {
         token_owner_record_cookie
             .account
             .governing_token_deposit_amount,
-        proposal_account.options[0].vote_weight
+        proposal_account.options[0].weight
     );
 
     assert_eq!(proposal_account.state, ProposalState::Succeeded);

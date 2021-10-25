@@ -109,7 +109,7 @@ pub fn process_cast_vote(
 
     // Calculate Proposal voting weights
     // TODO: Validate choices are valid for given proposal vote type
-    for i in 0..proposal_data.options.len() {
+    for (i, option) in proposal_data.options.iter_mut().enumerate() {
         let choice_weight = if choices[i].weight == 1 {
             voter_weight
         } else {
@@ -122,10 +122,7 @@ pub fn process_cast_vote(
             weight: choice_weight,
         });
 
-        proposal_data.options[i].vote_weight = proposal_data.options[i]
-            .vote_weight
-            .checked_add(choice_weight)
-            .unwrap();
+        option.weight = option.weight.checked_add(choice_weight).unwrap();
     }
 
     let governing_token_mint_supply = get_spl_token_mint_supply(governing_token_mint_info)?;

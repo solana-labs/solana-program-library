@@ -36,7 +36,7 @@ use spl_governance::{
             get_program_governance_address, get_token_governance_address, Governance,
             GovernanceConfig,
         },
-        proposal::{get_proposal_address, Proposal, ProposalOption},
+        proposal::{get_proposal_address, Proposal, ProposalOption, ProposalOptionVote},
         proposal_instruction::{
             get_proposal_instruction_address, InstructionData, ProposalInstruction,
         },
@@ -1421,6 +1421,15 @@ impl GovernanceProgramTest {
                 None
             };
 
+        let options = vec![
+            ProposalOption {
+                label: "Yes".to_string(),
+            },
+            ProposalOption {
+                label: "No".to_string(),
+            },
+        ];
+
         let mut create_proposal_instruction = create_proposal(
             &self.program_id,
             &governance_cookie.address,
@@ -1432,6 +1441,7 @@ impl GovernanceProgramTest {
             name.clone(),
             description_link.clone(),
             &token_owner_record_cookie.account.governing_token_mint,
+            options,
             proposal_index,
         );
 
@@ -1470,13 +1480,13 @@ impl GovernanceProgramTest {
             signatories_signed_off_count: 0,
 
             options: vec![
-                ProposalOption {
+                ProposalOptionVote {
                     label: "Yes".to_string(),
-                    vote_weight: 0,
+                    weight: 0,
                 },
-                ProposalOption {
+                ProposalOptionVote {
                     label: "No".to_string(),
-                    vote_weight: 0,
+                    weight: 0,
                 },
             ],
 
