@@ -23,7 +23,7 @@ use spl_governance::{
         execute_instruction, finalize_vote, flag_instruction_error, insert_instruction,
         relinquish_vote, remove_instruction, remove_signatory, set_governance_config,
         set_governance_delegate, set_realm_authority, set_realm_config, sign_off_proposal,
-        withdraw_governing_tokens, Vote,
+        withdraw_governing_tokens,
     },
     processor::process_instruction,
     state::{
@@ -72,6 +72,16 @@ use self::{
         TokenOwnerRecordCookie, VoteRecordCookie,
     },
 };
+
+/// Yes/No Vote
+pub enum Vote {
+    /// Yes vote
+    #[allow(dead_code)]
+    Yes,
+    /// No vote
+    #[allow(dead_code)]
+    No,
+}
 
 pub struct GovernanceProgramTest {
     pub bench: ProgramTestBench,

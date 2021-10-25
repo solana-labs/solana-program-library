@@ -9,8 +9,7 @@ use program_test::*;
 use solana_sdk::signature::Signer;
 
 use spl_governance::{
-    error::GovernanceError,
-    instruction::{withdraw_governing_tokens, Vote},
+    error::GovernanceError, instruction::withdraw_governing_tokens,
     state::token_owner_record::get_token_owner_record_address,
 };
 

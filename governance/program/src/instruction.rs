@@ -25,16 +25,6 @@ use solana_program::{
     system_program, sysvar,
 };
 
-/// Yes/No Vote
-#[repr(C)]
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub enum Vote {
-    /// Yes vote
-    Yes,
-    /// No vote
-    No,
-}
-
 /// Instructions supported by the Governance program
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 #[repr(C)]

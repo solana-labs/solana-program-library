@@ -5,7 +5,7 @@ use solana_program_test::*;
 mod program_test;
 
 use program_test::*;
-use spl_governance::{error::GovernanceError, instruction::Vote};
+use spl_governance::error::GovernanceError;
 
 #[tokio::test]
 async fn test_create_account_governance_with_voter_weight_addin() {

@@ -12,7 +12,6 @@ use solana_program_test::tokio;
 use program_test::*;
 use spl_governance::{
     error::GovernanceError,
-    instruction::Vote,
     state::enums::{InstructionExecutionStatus, ProposalState},
 };
 
