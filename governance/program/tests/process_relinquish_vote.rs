@@ -52,7 +52,7 @@ async fn test_relinquish_voted_proposal() {
         .get_proposal_account(&proposal_cookie.address)
         .await;
 
-    assert_eq!(100, proposal_account.yes_votes_count);
+    assert_eq!(100, proposal_account.options[0].vote_weight);
     assert_eq!(ProposalState::Succeeded, proposal_account.state);
 
     let token_owner_record = governance_test
@@ -119,8 +119,8 @@ async fn test_relinquish_active_yes_vote() {
         .get_proposal_account(&proposal_cookie.address)
         .await;
 
-    assert_eq!(0, proposal_account.yes_votes_count);
-    assert_eq!(0, proposal_account.no_votes_count);
+    assert_eq!(0, proposal_account.options[0].vote_weight);
+    assert_eq!(0, proposal_account.options[1].vote_weight);
     assert_eq!(ProposalState::Voting, proposal_account.state);
 
     let token_owner_record = governance_test
@@ -187,8 +187,8 @@ async fn test_relinquish_active_no_vote() {
         .get_proposal_account(&proposal_cookie.address)
         .await;
 
-    assert_eq!(0, proposal_account.yes_votes_count);
-    assert_eq!(0, proposal_account.no_votes_count);
+    assert_eq!(0, proposal_account.options[0].vote_weight);
+    assert_eq!(0, proposal_account.options[1].vote_weight);
     assert_eq!(ProposalState::Voting, proposal_account.state);
 
     let token_owner_record = governance_test
@@ -500,7 +500,7 @@ async fn test_relinquish_proposal_in_voting_state_after_vote_time_ended() {
         .await;
 
     // Proposal should be still in voting state but the vote count should not change
-    assert_eq!(100, proposal_account.yes_votes_count);
+    assert_eq!(100, proposal_account.options[0].vote_weight);
     assert_eq!(ProposalState::Voting, proposal_account.state);
 
     let token_owner_record = governance_test

@@ -36,7 +36,7 @@ use spl_governance::{
             get_program_governance_address, get_token_governance_address, Governance,
             GovernanceConfig,
         },
-        proposal::{get_proposal_address, Proposal},
+        proposal::{get_proposal_address, Proposal, ProposalOption},
         proposal_instruction::{
             get_proposal_instruction_address, InstructionData, ProposalInstruction,
         },
@@ -1458,8 +1458,17 @@ impl GovernanceProgramTest {
             instructions_next_index: 0,
             token_owner_record: token_owner_record_cookie.address,
             signatories_signed_off_count: 0,
-            yes_votes_count: 0,
-            no_votes_count: 0,
+
+            options: vec![
+                ProposalOption {
+                    label: "Yes".to_string(),
+                    vote_weight: 0,
+                },
+                ProposalOption {
+                    label: "No".to_string(),
+                    vote_weight: 0,
+                },
+            ],
 
             execution_flags: InstructionExecutionFlags::None,
             max_vote_weight: None,

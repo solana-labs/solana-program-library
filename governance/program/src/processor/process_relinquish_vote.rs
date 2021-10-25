@@ -70,13 +70,13 @@ pub fn process_relinquish_vote(program_id: &Pubkey, accounts: &[AccountInfo]) ->
             .assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
         // TODO: iterate for all choices
-        proposal_data.yes_votes_count = proposal_data
-            .yes_votes_count
+        proposal_data.options[0].vote_weight = proposal_data.options[0]
+            .vote_weight
             .checked_sub(vote_record_data.choices[0].weight)
             .unwrap();
 
-        proposal_data.no_votes_count = proposal_data
-            .no_votes_count
+        proposal_data.options[1].vote_weight = proposal_data.options[1]
+            .vote_weight
             .checked_sub(vote_record_data.choices[1].weight)
             .unwrap();
 

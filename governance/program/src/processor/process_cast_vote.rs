@@ -108,10 +108,11 @@ pub fn process_cast_vote(
 
     // Calculate Proposal voting weights
     // TODO: Pass choices to the instruction and validate it's correct for given vote type
+    // TODO: Set options in a loop
     let vote_choices = match vote {
         Vote::Yes => {
-            proposal_data.yes_votes_count = proposal_data
-                .yes_votes_count
+            proposal_data.options[0].vote_weight = proposal_data.options[0]
+                .vote_weight
                 .checked_add(voter_weight)
                 .unwrap();
 
@@ -124,8 +125,8 @@ pub fn process_cast_vote(
             ]
         }
         Vote::No => {
-            proposal_data.no_votes_count = proposal_data
-                .no_votes_count
+            proposal_data.options[1].vote_weight = proposal_data.options[1]
+                .vote_weight
                 .checked_add(voter_weight)
                 .unwrap();
 

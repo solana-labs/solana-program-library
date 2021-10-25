@@ -16,7 +16,7 @@ use crate::{
     state::{
         enums::{GovernanceAccountType, InstructionExecutionFlags, ProposalState},
         governance::get_governance_data_for_realm,
-        proposal::{get_proposal_address_seeds, Proposal},
+        proposal::{get_proposal_address_seeds, Proposal, ProposalOption},
         realm::get_realm_data_for_governing_token_mint,
         token_owner_record::get_token_owner_record_data_for_realm,
     },
@@ -115,8 +115,18 @@ pub fn process_create_proposal(
 
         execution_flags: InstructionExecutionFlags::None,
 
-        yes_votes_count: 0,
-        no_votes_count: 0,
+        // TODO: Pass options in the instruction
+        options: vec![
+            ProposalOption {
+                label: "Yes".to_string(),
+                vote_weight: 0,
+            },
+            ProposalOption {
+                label: "No".to_string(),
+                vote_weight: 0,
+            },
+        ],
+
         max_vote_weight: None,
         vote_threshold_percentage: None,
     };
