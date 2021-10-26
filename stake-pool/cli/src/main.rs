@@ -1079,21 +1079,15 @@ struct WithdrawAccount {
 fn sorted_accounts<F>(
     validator_list: &ValidatorList,
     stake_pool: &StakePool,
-    get_pubkey: F,
+    get_info: F,
 ) -> Vec<(Pubkey, u64, Option<Pubkey>)>
 where
-    F: Fn(&ValidatorStakeInfo) -> Pubkey,
+    F: Fn(&ValidatorStakeInfo) -> (Pubkey, u64, Option<Pubkey>),
 {
     let mut result: Vec<(Pubkey, u64, Option<Pubkey>)> = validator_list
         .validators
         .iter()
-        .map(|validator| {
-            (
-                get_pubkey(validator),
-                validator.active_stake_lamports,
-                Some(validator.vote_account_address),
-            )
-        })
+        .map(get_info)
         .collect::<Vec<_>>();
 
     result.sort_by(|left, right| {
@@ -1114,12 +1108,12 @@ fn prepare_withdraw_accounts(
     stake_pool: &StakePool,
     pool_amount: u64,
     stake_pool_address: &Pubkey,
+    skip_fee: bool,
 ) -> Result<Vec<WithdrawAccount>, Error> {
     let min_balance = rpc_client
         .get_minimum_balance_for_rent_exemption(STAKE_STATE_LEN)?
         .saturating_add(MINIMUM_ACTIVE_STAKE);
     let pool_mint = get_token_mint(rpc_client, &stake_pool.pool_mint)?;
-
     let validator_list: ValidatorList = get_validator_list(rpc_client, &stake_pool.validator_list)?;
 
     let mut accounts: Vec<(Pubkey, u64, Option<Pubkey>)> = Vec::new();
@@ -1134,7 +1128,11 @@ fn prepare_withdraw_accounts(
                 stake_pool_address,
             );
 
-            stake_account_address
+            (
+                stake_account_address,
+                validator.active_stake_lamports,
+                Some(validator.vote_account_address),
+            )
         },
     ));
 
@@ -1149,7 +1147,11 @@ fn prepare_withdraw_accounts(
                 validator.transient_seed_suffix_start,
             );
 
-            transient_stake_account_address
+            (
+                transient_stake_account_address,
+                validator.transient_stake_lamports,
+                Some(validator.vote_account_address),
+            )
         },
     ));
 
@@ -1161,15 +1163,26 @@ fn prepare_withdraw_accounts(
     let mut withdraw_from: Vec<WithdrawAccount> = vec![];
     let mut remaining_amount = pool_amount;
 
+    let fee = stake_pool.stake_withdrawal_fee;
+    let inverse_fee = Fee {
+        numerator: fee.denominator - fee.numerator,
+        denominator: fee.denominator,
+    };
+
     // Go through available accounts and withdraw from largest to smallest
     for (stake_address, lamports, vote_address_opt) in accounts {
         if lamports <= min_balance {
             continue;
         }
 
-        let available_for_withdrawal = stake_pool
-            .calc_lamports_withdraw_amount(lamports.saturating_sub(min_balance))
-            .unwrap();
+        let available_for_withdrawal_wo_fee =
+            stake_pool.calc_pool_tokens_for_deposit(lamports).unwrap();
+
+        let available_for_withdrawal = if skip_fee {
+            available_for_withdrawal_wo_fee
+        } else {
+            available_for_withdrawal_wo_fee * inverse_fee.denominator / inverse_fee.numerator
+        };
 
         let pool_amount = u64::min(available_for_withdrawal, remaining_amount);
 
@@ -1283,6 +1296,7 @@ fn command_withdraw_stake(
             &stake_pool,
             pool_amount,
             stake_pool_address,
+            stake_pool.manager_fee_account == pool_token_account,
         )?
     };
 
