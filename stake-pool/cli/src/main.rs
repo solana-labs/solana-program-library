@@ -1079,21 +1079,15 @@ struct WithdrawAccount {
 fn sorted_accounts<F>(
     validator_list: &ValidatorList,
     stake_pool: &StakePool,
-    get_pubkey: F,
+    get_info: F,
 ) -> Vec<(Pubkey, u64, Option<Pubkey>)>
 where
-    F: Fn(&ValidatorStakeInfo) -> Pubkey,
+    F: Fn(&ValidatorStakeInfo) -> (Pubkey, u64, Option<Pubkey>),
 {
     let mut result: Vec<(Pubkey, u64, Option<Pubkey>)> = validator_list
         .validators
         .iter()
-        .map(|validator| {
-            (
-                get_pubkey(validator),
-                validator.active_stake_lamports,
-                Some(validator.vote_account_address),
-            )
-        })
+        .map(get_info)
         .collect::<Vec<_>>();
 
     result.sort_by(|left, right| {
@@ -1119,7 +1113,6 @@ fn prepare_withdraw_accounts(
         .get_minimum_balance_for_rent_exemption(STAKE_STATE_LEN)?
         .saturating_add(MINIMUM_ACTIVE_STAKE);
     let pool_mint = get_token_mint(rpc_client, &stake_pool.pool_mint)?;
-
     let validator_list: ValidatorList = get_validator_list(rpc_client, &stake_pool.validator_list)?;
 
     let mut accounts: Vec<(Pubkey, u64, Option<Pubkey>)> = Vec::new();
@@ -1134,7 +1127,11 @@ fn prepare_withdraw_accounts(
                 stake_pool_address,
             );
 
-            stake_account_address
+            (
+                stake_account_address,
+                validator.active_stake_lamports,
+                Some(validator.vote_account_address),
+            )
         },
     ));
 
@@ -1149,7 +1146,11 @@ fn prepare_withdraw_accounts(
                 validator.transient_seed_suffix_start,
             );
 
-            transient_stake_account_address
+            (
+                transient_stake_account_address,
+                validator.transient_stake_lamports,
+                Some(validator.vote_account_address),
+            )
         },
     ));
 
@@ -1167,9 +1168,7 @@ fn prepare_withdraw_accounts(
             continue;
         }
 
-        let available_for_withdrawal = stake_pool
-            .calc_lamports_withdraw_amount(lamports.saturating_sub(min_balance))
-            .unwrap();
+        let available_for_withdrawal = stake_pool.calc_pool_tokens_for_deposit(lamports).unwrap();
 
         let pool_amount = u64::min(available_for_withdrawal, remaining_amount);
 
