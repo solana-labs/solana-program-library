@@ -35,9 +35,9 @@ export interface Account {
 
 /** Token account state as stored by the program */
 export enum AccountState {
-    Uninitialized,
-    Initialized,
-    Frozen,
+    Uninitialized = 0,
+    Initialized = 1,
+    Frozen = 2,
 }
 
 /** Token account as stored by the program */
