@@ -19,6 +19,7 @@ import { getMinimumBalanceForRentExemptMultisig, MULTISIG_SIZE } from '../state'
  * @param payer          Payer of the transaction and initialization fees
  * @param signers        Full set of signers
  * @param m              Number of required signatures
+ * @param keypair        Optional keypair, defaulting to a new random one
  * @param confirmOptions Options for confirming the transaction
  * @param programId      SPL Token program account
  *
@@ -29,25 +30,26 @@ export async function createMultisig(
     payer: Signer,
     signers: PublicKey[],
     m: number,
+    keypair?: Keypair,
     confirmOptions?: ConfirmOptions,
     programId = TOKEN_PROGRAM_ID
 ): Promise<PublicKey> {
-    const lamports = await getMinimumBalanceForRentExemptMultisig(connection);
+    keypair ||= Keypair.generate();
 
-    const multisig = Keypair.generate();
+    const lamports = await getMinimumBalanceForRentExemptMultisig(connection);
 
     const transaction = new Transaction().add(
         SystemProgram.createAccount({
             fromPubkey: payer.publicKey,
-            newAccountPubkey: multisig.publicKey,
+            newAccountPubkey: keypair.publicKey,
             space: MULTISIG_SIZE,
             lamports,
             programId,
         }),
-        createInitializeMultisigInstruction(multisig.publicKey, signers, m, programId)
+        createInitializeMultisigInstruction(keypair.publicKey, signers, m, programId)
     );
 
-    await sendAndConfirmTransaction(connection, transaction, [payer, multisig], confirmOptions);
+    await sendAndConfirmTransaction(connection, transaction, [payer, keypair], confirmOptions);
 
-    return multisig.publicKey;
+    return keypair.publicKey;
 }

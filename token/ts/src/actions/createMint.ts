@@ -20,6 +20,7 @@ import { getMinimumBalanceForRentExemptMint, MINT_SIZE } from '../state';
  * @param mintAuthority   Account or multisig that will control minting
  * @param freezeAuthority Optional account or multisig that can freeze token accounts
  * @param decimals        Location of the decimal place
+ * @param keypair         Optional keypair, defaulting to a new random one
  * @param confirmOptions  Options for confirming the transaction
  * @param programId       SPL Token program account
  *
@@ -31,25 +32,26 @@ export async function createMint(
     mintAuthority: PublicKey,
     freezeAuthority: PublicKey | null,
     decimals: number,
+    keypair?: Keypair,
     confirmOptions?: ConfirmOptions,
     programId = TOKEN_PROGRAM_ID
 ): Promise<PublicKey> {
-    const lamports = await getMinimumBalanceForRentExemptMint(connection);
+    keypair ||= Keypair.generate();
 
-    const mint = Keypair.generate();
+    const lamports = await getMinimumBalanceForRentExemptMint(connection);
 
     const transaction = new Transaction().add(
         SystemProgram.createAccount({
             fromPubkey: payer.publicKey,
-            newAccountPubkey: mint.publicKey,
+            newAccountPubkey: keypair.publicKey,
             space: MINT_SIZE,
             lamports,
             programId,
         }),
-        createInitializeMintInstruction(mint.publicKey, decimals, mintAuthority, freezeAuthority, programId)
+        createInitializeMintInstruction(keypair.publicKey, decimals, mintAuthority, freezeAuthority, programId)
     );
 
-    await sendAndConfirmTransaction(connection, transaction, [payer, mint], confirmOptions);
+    await sendAndConfirmTransaction(connection, transaction, [payer, keypair], confirmOptions);
 
-    return mint.publicKey;
+    return keypair.publicKey;
 }

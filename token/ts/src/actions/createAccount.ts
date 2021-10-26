@@ -11,6 +11,7 @@ import {
 import { TOKEN_PROGRAM_ID } from '../constants';
 import { createInitializeAccountInstruction } from '../instructions';
 import { ACCOUNT_SIZE, getMinimumBalanceForRentExemptAccount } from '../state';
+import { createAssociatedTokenAccount } from './createAssociatedTokenAccount';
 
 /**
  * Create and initialize a new token account
@@ -19,6 +20,7 @@ import { ACCOUNT_SIZE, getMinimumBalanceForRentExemptAccount } from '../state';
  * @param payer          Payer of the transaction and initialization fees
  * @param mint           Mint for the account
  * @param owner          Owner of the new account
+ * @param keypair        Optional keypair, defaulting to the associated token account for the `mint` and `owner`
  * @param confirmOptions Options for confirming the transaction
  * @param programId      SPL Token program account
  *
@@ -29,25 +31,28 @@ export async function createAccount(
     payer: Signer,
     mint: PublicKey,
     owner: PublicKey,
+    keypair?: Keypair,
     confirmOptions?: ConfirmOptions,
     programId = TOKEN_PROGRAM_ID
 ): Promise<PublicKey> {
-    const lamports = await getMinimumBalanceForRentExemptAccount(connection);
+    // If a keypair isn't provided, create the associated token account and return its address
+    if (!keypair) return await createAssociatedTokenAccount(connection, payer, mint, owner, confirmOptions, programId);
 
-    const account = Keypair.generate();
+    // Otherwise, create the account with the provided keypair and return its public key
+    const lamports = await getMinimumBalanceForRentExemptAccount(connection);
 
     const transaction = new Transaction().add(
         SystemProgram.createAccount({
             fromPubkey: payer.publicKey,
-            newAccountPubkey: account.publicKey,
+            newAccountPubkey: keypair.publicKey,
             space: ACCOUNT_SIZE,
             lamports,
             programId,
         }),
-        createInitializeAccountInstruction(account.publicKey, mint, owner, programId)
+        createInitializeAccountInstruction(keypair.publicKey, mint, owner, programId)
     );
 
-    await sendAndConfirmTransaction(connection, transaction, [payer, account], confirmOptions);
+    await sendAndConfirmTransaction(connection, transaction, [payer, keypair], confirmOptions);
 
-    return account.publicKey;
+    return keypair.publicKey;
 }
