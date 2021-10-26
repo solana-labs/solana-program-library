@@ -458,7 +458,7 @@ impl Proposal {
         //       and I decided to fight it another day
         if self.vote_type != VoteType::SingleChoice
             // Tipping should not be allowed for opinion only proposals (surveys without rejection) to allow everybody's voice to be heard
-            && !self.has_reject_option 
+            && !self.has_reject_option
             && !self.options.len() != 2
         {
             return None;
