@@ -141,6 +141,8 @@ $ spl-token balance AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM
 
 ### Example: View all Tokens that you own
 
+Use the -v flag to list all tokens if you have multiple accounts
+
 ```console
 $ spl-token accounts
 Token                                         Balance
