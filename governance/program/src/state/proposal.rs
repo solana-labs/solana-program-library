@@ -453,32 +453,37 @@ impl Proposal {
         max_vote_weight: u64,
         config: &GovernanceConfig,
     ) -> Option<ProposalState> {
-        // Tipping is currently only supported for YesNo votes
-        if self.vote_type != VoteType::SingleChoice {
+        // Vote tipping is currently supported for SingleChoice votes with single Yes and No (rejection) options only
+        // Note: Tipping for multiple options (single choice and multiple choices) should be possible but it requires a great deal of considerations
+        //       and I decided to fight it another day
+        if self.vote_type != VoteType::SingleChoice
+            // Tipping should not be allowed for opinion only proposals (surveys without rejection) to allow everybody's voice to be heard
+            && !self.has_reject_option 
+            && !self.options.len() != 2
+        {
             return None;
         };
 
-        // TODO: generalize for multi option case
         let yes_vote_weight = self.options[0].vote_weight;
-        let no_vote_weight = self.options[1].vote_weight;
+        let reject_vote_weight = self.options[1].vote_weight;
 
         if yes_vote_weight == max_vote_weight {
             return Some(ProposalState::Succeeded);
         }
-        if no_vote_weight == max_vote_weight {
+        if reject_vote_weight == max_vote_weight {
             return Some(ProposalState::Defeated);
         }
 
-        let yes_vote_threshold_count =
+        let min_vote_threshold_weight =
             get_min_vote_threshold_weight(&config.vote_threshold_percentage, max_vote_weight)
                 .unwrap();
 
-        if yes_vote_weight >= yes_vote_threshold_count
+        if yes_vote_weight >= min_vote_threshold_weight
             && yes_vote_weight > (max_vote_weight - yes_vote_weight)
         {
             return Some(ProposalState::Succeeded);
-        } else if no_vote_weight > (max_vote_weight - yes_vote_threshold_count)
-            || no_vote_weight >= (max_vote_weight - no_vote_weight)
+        } else if reject_vote_weight > (max_vote_weight - min_vote_threshold_weight)
+            || reject_vote_weight >= (max_vote_weight - reject_vote_weight)
         {
             return Some(ProposalState::Defeated);
         }
