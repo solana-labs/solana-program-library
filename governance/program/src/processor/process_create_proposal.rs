@@ -17,7 +17,8 @@ use crate::{
         enums::{GovernanceAccountType, InstructionExecutionFlags, ProposalState},
         governance::get_governance_data_for_realm,
         proposal::{
-            get_proposal_address_seeds, Proposal, ProposalOption, ProposalOptionArg, VoteType,
+            get_proposal_address_seeds, OptionVoteResult, Proposal, ProposalOption,
+            ProposalOptionArg, VoteType,
         },
         realm::get_realm_data_for_governing_token_mint,
         token_owner_record::get_token_owner_record_data_for_realm,
@@ -96,7 +97,8 @@ pub fn process_create_proposal(
         .iter()
         .map(|o| ProposalOption {
             label: o.label.to_string(),
-            weight: 0,
+            vote_weight: 0,
+            vote_result: OptionVoteResult::None,
         })
         .collect();
 

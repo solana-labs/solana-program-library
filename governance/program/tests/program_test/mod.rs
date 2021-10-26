@@ -36,7 +36,10 @@ use spl_governance::{
             get_program_governance_address, get_token_governance_address, Governance,
             GovernanceConfig,
         },
-        proposal::{get_proposal_address, Proposal, ProposalOption, ProposalOptionArg, VoteType},
+        proposal::{
+            get_proposal_address, OptionVoteResult, Proposal, ProposalOption, ProposalOptionArg,
+            VoteType,
+        },
         proposal_instruction::{
             get_proposal_instruction_address, InstructionData, ProposalInstruction,
         },
@@ -1484,11 +1487,13 @@ impl GovernanceProgramTest {
             options: vec![
                 ProposalOption {
                     label: "Yes".to_string(),
-                    weight: 0,
+                    vote_weight: 0,
+                    vote_result: OptionVoteResult::None,
                 },
                 ProposalOption {
                     label: "No".to_string(),
-                    weight: 0,
+                    vote_weight: 0,
+                    vote_result: OptionVoteResult::None,
                 },
             ],
             has_reject_option: true,

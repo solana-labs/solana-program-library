@@ -74,7 +74,7 @@ pub fn process_relinquish_vote(program_id: &Pubkey, accounts: &[AccountInfo]) ->
             .iter_mut()
             .zip(vote_record_data.choices)
         {
-            option.weight = option.weight.checked_sub(choice.weight).unwrap();
+            option.vote_weight = option.vote_weight.checked_sub(choice.weight).unwrap();
         }
 
         proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;

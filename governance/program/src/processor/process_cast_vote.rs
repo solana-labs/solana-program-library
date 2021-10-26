@@ -124,7 +124,7 @@ pub fn process_cast_vote(
             weight: choice_weight,
         });
 
-        option.weight = option.weight.checked_add(choice_weight).unwrap();
+        option.vote_weight = option.vote_weight.checked_add(choice_weight).unwrap();
     }
 
     let governing_token_mint_supply = get_spl_token_mint_supply(governing_token_mint_info)?;
