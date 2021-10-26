@@ -1425,3 +1425,118 @@ async fn success_withdraw_all_fee_tokens() {
     .await;
     assert_eq!(fee_tokens, 0);
 }
+
+#[tokio::test]
+async fn success_empty_out_stake_with_fee() {
+    let (
+        mut banks_client,
+        payer,
+        recent_blockhash,
+        stake_pool_accounts,
+        _,
+        deposit_info,
+        user_transfer_authority,
+        user_stake_recipient,
+        tokens_to_withdraw,
+    ) = setup().await;
+
+    // add another validator and deposit into it
+    let other_validator_stake_account = simple_add_validator_to_pool(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts,
+    )
+    .await;
+
+    let other_deposit_info = simple_deposit_stake(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts,
+        &other_validator_stake_account,
+        TEST_STAKE_AMOUNT,
+    )
+    .await
+    .unwrap();
+
+    // move tokens to new account
+    transfer_spl_tokens(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &deposit_info.pool_account.pubkey(),
+        &other_deposit_info.pool_account.pubkey(),
+        &user_transfer_authority,
+        tokens_to_withdraw,
+    )
+    .await;
+
+    let user_tokens =
+        get_token_balance(&mut banks_client, &other_deposit_info.pool_account.pubkey()).await;
+
+    let user_transfer_authority = Keypair::new();
+    delegate_tokens(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &other_deposit_info.pool_account.pubkey(),
+        &other_deposit_info.authority,
+        &user_transfer_authority.pubkey(),
+        user_tokens,
+    )
+    .await;
+
+    // calculate exactly how much to withdraw, given the fee, to get the account
+    // down to 0, using an inverse fee calculation
+    let validator_stake_account = get_account(
+        &mut banks_client,
+        &other_validator_stake_account.stake_account,
+    )
+    .await;
+    let stake_state =
+        deserialize::<stake::state::StakeState>(&validator_stake_account.data).unwrap();
+    let meta = stake_state.meta().unwrap();
+    let lamports_to_withdraw = validator_stake_account.lamports - minimum_stake_lamports(&meta);
+    let stake_pool_account =
+        get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
+    let stake_pool =
+        try_from_slice_unchecked::<state::StakePool>(stake_pool_account.data.as_slice()).unwrap();
+    let fee = stake_pool.stake_withdrawal_fee;
+    let inverse_fee = state::Fee {
+        numerator: fee.denominator - fee.numerator,
+        denominator: fee.denominator,
+    };
+    let pool_tokens_to_withdraw =
+        lamports_to_withdraw * inverse_fee.denominator / inverse_fee.numerator;
+
+    let new_authority = Pubkey::new_unique();
+    let error = stake_pool_accounts
+        .withdraw_stake(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            &user_stake_recipient.pubkey(),
+            &user_transfer_authority,
+            &other_deposit_info.pool_account.pubkey(),
+            &other_validator_stake_account.stake_account,
+            &new_authority,
+            pool_tokens_to_withdraw,
+        )
+        .await;
+    assert!(error.is_none());
+
+    // Check balance of validator stake account is MINIMUM + rent-exemption
+    let validator_stake_account = get_account(
+        &mut banks_client,
+        &other_validator_stake_account.stake_account,
+    )
+    .await;
+    let stake_state =
+        deserialize::<stake::state::StakeState>(&validator_stake_account.data).unwrap();
+    let meta = stake_state.meta().unwrap();
+    assert_eq!(
+        validator_stake_account.lamports,
+        minimum_stake_lamports(&meta)
+    );
+}
