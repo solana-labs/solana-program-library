@@ -387,15 +387,32 @@ impl Proposal {
                     .checked_div(MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE as u128)
                     .unwrap() as u64;
 
-                // TODO: generalize for multi option case
-                let yes_vote_weight = self.options[0].vote_weight;
-                let no_vote_weight = self.options[1].vote_weight;
+                // TODO: Consider removing the reject option from options collection
+                let (reject_vote_weight, option_count) = if self.has_reject_option {
+                    (
+                        // The reject option is always the last option
+                        self.options.last().unwrap().vote_weight,
+                        self.options.len() - 1,
+                    )
+                } else {
+                    (0, self.options.len())
+                };
+
+                let max_option_vote_weight = self
+                    .options
+                    .iter()
+                    .take(option_count)
+                    .map(|o| o.vote_weight)
+                    .max()
+                    .unwrap();
 
                 // When the fraction is used it's possible we can go over the calculated max_vote_weight
                 // and we have to adjust it in case more votes have been cast
-                let total_vote_count = yes_vote_weight.checked_add(no_vote_weight).unwrap();
+                let total_vote_weight = max_option_vote_weight
+                    .checked_add(reject_vote_weight)
+                    .unwrap();
 
-                Ok(max_vote_weight.max(total_vote_count))
+                Ok(max_vote_weight.max(total_vote_weight))
             }
             MintMaxVoteWeightSource::Absolute(_) => {
                 Err(GovernanceError::VoteWeightSourceNotSupported.into())
