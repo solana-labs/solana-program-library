@@ -1,5 +1,7 @@
 //! Proposal  Account
 
+use std::cmp::Ordering;
+
 use solana_program::clock::{Slot, UnixTimestamp};
 
 use solana_program::{
@@ -316,11 +318,13 @@ impl Proposal {
             {
                 option.vote_result = OptionVoteResult::Succeeded;
 
-                if option.vote_weight > best_succeeded_option_weight {
-                    best_succeeded_option_weight = option.vote_weight;
-                    best_succeeded_option_count = 1;
-                } else if option.vote_weight == best_succeeded_option_weight {
-                    best_succeeded_option_count = best_succeeded_option_count + 1;
+                match option.vote_weight.cmp(&best_succeeded_option_weight) {
+                    Ordering::Greater => {
+                        best_succeeded_option_weight = option.vote_weight;
+                        best_succeeded_option_count = 1;
+                    }
+                    Ordering::Equal => best_succeeded_option_count += 1,
+                    Ordering::Less => {}
                 }
             }
         }
@@ -383,6 +387,7 @@ impl Proposal {
                     .checked_div(MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE as u128)
                     .unwrap() as u64;
 
+                // TODO: generalize for multi option case
                 let yes_vote_weight = self.options[0].vote_weight;
                 let no_vote_weight = self.options[1].vote_weight;
 
@@ -436,6 +441,7 @@ impl Proposal {
             return None;
         };
 
+        // TODO: generalize for multi option case
         let yes_vote_weight = self.options[0].vote_weight;
         let no_vote_weight = self.options[1].vote_weight;
 
