@@ -25,16 +25,16 @@ use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 
 /// Proposal Option
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub struct ProposalOption {
+pub struct ProposalOptionArg {
     /// Option label
     /// TODO: make label optional or create ProposalOptions with a collection of labels
+    /// add has_reject_option flag
     pub label: String,
 }
 
 /// Proposal Option
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-
-pub struct ProposalOptionVote {
+pub struct ProposalOption {
     /// Option label
     /// TODO: Use ProposalOption here
     pub label: String,
@@ -43,11 +43,14 @@ pub struct ProposalOptionVote {
     pub weight: u64,
 }
 
-/// Proposal type
+/// Proposal vote type
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub enum ProposalType {
-    /// Yes/No vote with tipping point (when mathematically possible)
-    YesNoVote,
+pub enum VoteType {
+    /// Single choice vote with mutually exclusive choices a
+    /// Note: Yse/No vote is a single choice with rejection option
+    SingleChoice,
+    /// Multiple options can be selected
+    MultiChoice,
 }
 
 /// Governance Proposal
@@ -66,6 +69,7 @@ pub struct Proposal {
     /// Current proposal state
     pub state: ProposalState,
 
+    // TODO: add state_at  timestamp
     /// The TokenOwnerRecord representing the user who created and owns this Proposal
     pub token_owner_record: Pubkey,
 
@@ -75,11 +79,17 @@ pub struct Proposal {
     /// The number of signatories who already signed
     pub signatories_signed_off_count: u8,
 
-    /// Proposal type
-    pub proposal_type: ProposalType,
+    /// Vote type
+    pub vote_type: VoteType,
 
     /// Proposal options
-    pub options: Vec<ProposalOptionVote>,
+    pub options: Vec<ProposalOption>,
+
+    /// Indicate whether the proposal has a reject option allowing to reject the proposal
+    /// Only proposals with the reject option can have executable instructions attached to them
+    /// and without it the proposal is only none executable survey
+    /// The reject option should be the last one in the options collection
+    pub has_reject_option: bool,
 
     /// The number of the instructions already executed
     pub instructions_executed_count: u16,
@@ -136,7 +146,7 @@ pub struct Proposal {
 impl AccountMaxSize for Proposal {
     fn get_max_size(&self) -> Option<usize> {
         let options_size: usize = self.options.iter().map(|o| o.label.len() + 12).sum();
-        Some(self.name.len() + self.description_link.len() + options_size + 194)
+        Some(self.name.len() + self.description_link.len() + options_size + 195)
     }
 }
 
@@ -246,7 +256,7 @@ impl Proposal {
 
         let max_vote_weight = self.get_max_vote_weight(realm_data, governing_token_mint_supply)?;
 
-        self.state = self.get_final_vote_state(max_vote_weight, config);
+        self.state = self.get_final_vote_state(max_vote_weight, config)?;
         self.voting_completed_at = Some(current_unix_timestamp);
 
         // Capture vote params to correctly display historical results
@@ -256,25 +266,32 @@ impl Proposal {
         Ok(())
     }
 
+    /// Returns final proposal state after vote ends
     fn get_final_vote_state(
         &mut self,
         max_vote_weight: u64,
         config: &GovernanceConfig,
-    ) -> ProposalState {
-        let yes_vote_threshold_count =
-            get_yes_vote_threshold_count(&config.vote_threshold_percentage, max_vote_weight)
+    ) -> Result<ProposalState, ProgramError> {
+        let yes_vote_threshold_weight =
+            get_yes_vote_threshold_weight(&config.vote_threshold_percentage, max_vote_weight)
                 .unwrap();
 
-        let yes_vote_weight = self.options[0].weight;
-        let no_vote_weight = self.options[1].weight;
+        match self.vote_type {
+            VoteType::SingleChoice => {
+                let yes_vote_weight = self.options[0].weight;
+                let no_vote_weight = self.options[1].weight;
 
-        // Yes vote must be equal or above the required yes_vote_threshold_percentage and higher than No vote
-        // The same number of Yes and No votes is a tie and resolved as Defeated
-        // In other words  +1 vote as a tie breaker is required to Succeed
-        if yes_vote_weight >= yes_vote_threshold_count && yes_vote_weight > no_vote_weight {
-            ProposalState::Succeeded
-        } else {
-            ProposalState::Defeated
+                // Yes vote must be equal or above the required yes_vote_threshold_percentage and higher than No vote
+                // The same number of Yes and No votes is a tie and resolved as Defeated
+                // In other words  +1 vote as a tie breaker is required to Succeed
+                if yes_vote_weight >= yes_vote_threshold_weight && yes_vote_weight > no_vote_weight
+                {
+                    Ok(ProposalState::Succeeded)
+                } else {
+                    Ok(ProposalState::Defeated)
+                }
+            }
+            VoteType::MultiChoice => Err(GovernanceError::VoteTypeNotSupported.into()),
         }
     }
 
@@ -349,6 +366,11 @@ impl Proposal {
         max_vote_weight: u64,
         config: &GovernanceConfig,
     ) -> Option<ProposalState> {
+        // Tipping is currently only supported for YesNo votes
+        if self.vote_type != VoteType::SingleChoice {
+            return None;
+        };
+
         let yes_vote_weight = self.options[0].weight;
         let no_vote_weight = self.options[1].weight;
 
@@ -360,7 +382,7 @@ impl Proposal {
         }
 
         let yes_vote_threshold_count =
-            get_yes_vote_threshold_count(&config.vote_threshold_percentage, max_vote_weight)
+            get_yes_vote_threshold_weight(&config.vote_threshold_percentage, max_vote_weight)
                 .unwrap();
 
         if yes_vote_weight >= yes_vote_threshold_count
@@ -464,7 +486,7 @@ impl Proposal {
 }
 
 /// Converts threshold in percentages to actual vote count
-fn get_yes_vote_threshold_count(
+fn get_yes_vote_threshold_weight(
     vote_threshold_percentage: &VoteThresholdPercentage,
     max_vote_weight: u64,
 ) -> Result<u64, ProgramError> {
@@ -608,17 +630,18 @@ mod test {
             executing_at: Some(10),
             closed_at: Some(10),
 
-            proposal_type: ProposalType::YesNoVote,
+            vote_type: VoteType::SingleChoice,
             options: vec![
-                ProposalOptionVote {
+                ProposalOption {
                     label: "yes".to_string(),
                     weight: 0,
                 },
-                ProposalOptionVote {
+                ProposalOption {
                     label: "no".to_string(),
                     weight: 0,
                 },
             ],
+            has_reject_option: true,
 
             execution_flags: InstructionExecutionFlags::Ordered,
 
@@ -632,15 +655,15 @@ mod test {
     fn create_test_multi_option_proposal() -> Proposal {
         let mut proposal = create_test_proposal();
         proposal.options = vec![
-            ProposalOptionVote {
+            ProposalOption {
                 label: "option 1".to_string(),
                 weight: 0,
             },
-            ProposalOptionVote {
+            ProposalOption {
                 label: "option 2".to_string(),
                 weight: 0,
             },
-            ProposalOptionVote {
+            ProposalOption {
                 label: "option 3".to_string(),
                 weight: 0,
             },
@@ -1160,7 +1183,7 @@ mod test {
             proposal.try_tip_vote(governing_token_supply, &governance_config,&realm, current_timestamp).unwrap();
 
             // Assert
-            let yes_vote_threshold_count = get_yes_vote_threshold_count(&yes_vote_threshold_percentage,governing_token_supply).unwrap();
+            let yes_vote_threshold_count = get_yes_vote_threshold_weight(&yes_vote_threshold_percentage,governing_token_supply).unwrap();
 
             let no_vote_weight = proposal.options[1].weight;
 
@@ -1206,7 +1229,7 @@ mod test {
             // Assert
             let no_vote_weight = proposal.options[1].weight;
 
-            let yes_vote_threshold_count = get_yes_vote_threshold_count(&yes_vote_threshold_percentage,governing_token_supply).unwrap();
+            let yes_vote_threshold_count = get_yes_vote_threshold_weight(&yes_vote_threshold_percentage,governing_token_supply).unwrap();
 
             if yes_votes_count >= yes_vote_threshold_count &&  yes_votes_count > no_vote_weight
             {

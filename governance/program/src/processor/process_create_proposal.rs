@@ -17,7 +17,7 @@ use crate::{
         enums::{GovernanceAccountType, InstructionExecutionFlags, ProposalState},
         governance::get_governance_data_for_realm,
         proposal::{
-            get_proposal_address_seeds, Proposal, ProposalOption, ProposalOptionVote, ProposalType,
+            get_proposal_address_seeds, Proposal, ProposalOption, ProposalOptionArg, VoteType,
         },
         realm::get_realm_data_for_governing_token_mint,
         token_owner_record::get_token_owner_record_data_for_realm,
@@ -31,8 +31,8 @@ pub fn process_create_proposal(
     name: String,
     description_link: String,
     governing_token_mint: Pubkey,
-    proposal_type: ProposalType,
-    options: Vec<ProposalOption>,
+    vote_type: VoteType,
+    options: Vec<ProposalOptionArg>,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -94,7 +94,7 @@ pub fn process_create_proposal(
 
     let proposal_options = options
         .iter()
-        .map(|o| ProposalOptionVote {
+        .map(|o| ProposalOption {
             label: o.label.to_string(),
             weight: 0,
         })
@@ -127,9 +127,11 @@ pub fn process_create_proposal(
 
         execution_flags: InstructionExecutionFlags::None,
 
-        proposal_type,
+        vote_type,
         // TODO: validate options for proposal type
         options: proposal_options,
+        // TODO: populate from args
+        has_reject_option: true,
 
         max_vote_weight: None,
         vote_threshold_percentage: None,

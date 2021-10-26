@@ -36,9 +36,7 @@ use spl_governance::{
             get_program_governance_address, get_token_governance_address, Governance,
             GovernanceConfig,
         },
-        proposal::{
-            get_proposal_address, Proposal, ProposalOption, ProposalOptionVote, ProposalType,
-        },
+        proposal::{get_proposal_address, Proposal, ProposalOption, ProposalOptionArg, VoteType},
         proposal_instruction::{
             get_proposal_instruction_address, InstructionData, ProposalInstruction,
         },
@@ -1424,10 +1422,10 @@ impl GovernanceProgramTest {
             };
 
         let options = vec![
-            ProposalOption {
+            ProposalOptionArg {
                 label: "Yes".to_string(),
             },
-            ProposalOption {
+            ProposalOptionArg {
                 label: "No".to_string(),
             },
         ];
@@ -1443,7 +1441,7 @@ impl GovernanceProgramTest {
             name.clone(),
             description_link.clone(),
             &token_owner_record_cookie.account.governing_token_mint,
-            ProposalType::YesNoVote,
+            VoteType::SingleChoice,
             options,
             proposal_index,
         );
@@ -1482,17 +1480,18 @@ impl GovernanceProgramTest {
             token_owner_record: token_owner_record_cookie.address,
             signatories_signed_off_count: 0,
 
-            proposal_type: ProposalType::YesNoVote,
+            vote_type: VoteType::SingleChoice,
             options: vec![
-                ProposalOptionVote {
+                ProposalOption {
                     label: "Yes".to_string(),
                     weight: 0,
                 },
-                ProposalOptionVote {
+                ProposalOption {
                     label: "No".to_string(),
                     weight: 0,
                 },
             ],
+            has_reject_option: true,
 
             execution_flags: InstructionExecutionFlags::None,
             max_vote_weight: None,

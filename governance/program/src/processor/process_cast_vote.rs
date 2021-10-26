@@ -109,8 +109,10 @@ pub fn process_cast_vote(
 
     // Calculate Proposal voting weights
     // TODO: Validate choices are valid for given proposal vote type
+    //  Assert option.len() === choices().len()
     // YesNo - only once choice 100% and no rank
     for (option, choice) in proposal_data.options.iter_mut().zip(choices) {
+        // TODO: generalize as single choice
         let choice_weight = match choice.weight_percentage {
             100 => voter_weight,
             0 => 0,

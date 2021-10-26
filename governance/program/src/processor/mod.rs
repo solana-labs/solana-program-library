@@ -128,7 +128,7 @@ pub fn process_instruction(
             name,
             description_link,
             governing_token_mint,
-            proposal_type,
+            vote_type: proposal_type,
             options,
         } => process_create_proposal(
             program_id,

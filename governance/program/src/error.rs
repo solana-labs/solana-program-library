@@ -341,6 +341,10 @@ pub enum GovernanceError {
     /// Invalid vote choice weight percentage
     #[error("Invalid vote choice weight percentage")]
     InvalidVoteChoiceWeightPercentage,
+
+    /// Vote type not supported
+    #[error("Vote type not supported")]
+    VoteTypeNotSupported,
 }
 
 impl PrintProgramError for GovernanceError {
