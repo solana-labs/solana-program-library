@@ -222,7 +222,7 @@ async fn test_execute_second_instruction_after_first_instruction_flagged_with_er
         .unwrap();
 
     let proposal_instruction_cookie1 = governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie,0,  None)
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .unwrap();
 
@@ -319,7 +319,7 @@ async fn test_flag_instruction_error_with_instruction_already_executed_error() {
 
     // Add another instruction to prevent Proposal from transitioning to Competed state
     governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie,0,  None)
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .unwrap();
 
