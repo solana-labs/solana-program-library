@@ -30,7 +30,6 @@ pub fn process_create_proposal(
     accounts: &[AccountInfo],
     name: String,
     description_link: String,
-    governing_token_mint: Pubkey,
     vote_type: VoteType,
     options: Vec<String>,
     use_reject_option: bool,
@@ -42,23 +41,27 @@ pub fn process_create_proposal(
     let governance_info = next_account_info(account_info_iter)?; // 2
 
     let proposal_owner_record_info = next_account_info(account_info_iter)?; // 3
-    let governance_authority_info = next_account_info(account_info_iter)?; // 4
+    let governing_token_mint_info = next_account_info(account_info_iter)?; // 4
+    let governance_authority_info = next_account_info(account_info_iter)?; // 5
 
-    let payer_info = next_account_info(account_info_iter)?; // 5
-    let system_info = next_account_info(account_info_iter)?; // 6
+    let payer_info = next_account_info(account_info_iter)?; // 6
+    let system_info = next_account_info(account_info_iter)?; // 7
 
-    let rent_sysvar_info = next_account_info(account_info_iter)?; // 7
+    let rent_sysvar_info = next_account_info(account_info_iter)?; // 8
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
 
-    let clock_info = next_account_info(account_info_iter)?; // 8
+    let clock_info = next_account_info(account_info_iter)?; // 9
     let clock = Clock::from_account_info(clock_info)?;
 
     if !proposal_info.data_is_empty() {
         return Err(GovernanceError::ProposalAlreadyExists.into());
     }
 
-    let realm_data =
-        get_realm_data_for_governing_token_mint(program_id, realm_info, &governing_token_mint)?;
+    let realm_data = get_realm_data_for_governing_token_mint(
+        program_id,
+        realm_info,
+        governing_token_mint_info.key,
+    )?;
 
     let mut governance_data =
         get_governance_data_for_realm(program_id, governance_info, realm_info.key)?;
@@ -120,7 +123,7 @@ pub fn process_create_proposal(
     let proposal_data = Proposal {
         account_type: GovernanceAccountType::Proposal,
         governance: *governance_info.key,
-        governing_token_mint,
+        governing_token_mint: *governing_token_mint_info.key,
         state: ProposalState::Draft,
         token_owner_record: *proposal_owner_record_info.key,
 
@@ -155,7 +158,7 @@ pub fn process_create_proposal(
         &proposal_data,
         &get_proposal_address_seeds(
             governance_info.key,
-            &governing_token_mint,
+            governing_token_mint_info.key,
             &governance_data.proposals_count.to_le_bytes(),
         ),
         program_id,

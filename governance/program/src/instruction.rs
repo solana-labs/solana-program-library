@@ -154,25 +154,22 @@ pub enum GovernanceInstruction {
     ///   1. `[writable]` Proposal account. PDA seeds ['governance',governance, governing_token_mint, proposal_index]
     ///   2. `[writable]` Governance account
     ///   3. `[writable]` TokenOwnerRecord account of the Proposal owner
-    ///   4. `[signer]` Governance Authority (Token Owner or Governance Delegate)
-    ///   5. `[signer]` Payer
-    ///   6. `[]` System program
-    ///   7. `[]` Rent sysvar
-    ///   8. `[]` Clock sysvar
-    ///   9. `[]` Optional Realm Config
-    ///   10. `[]` Optional Voter Weight Record
+    ///   4. `[]` Governing Token Mint the Proposal is created for
+    ///   5. `[signer]` Governance Authority (Token Owner or Governance Delegate)
+    ///   6. `[signer]` Payer
+    ///   7. `[]` System program
+    ///   8. `[]` Rent sysvar
+    ///   9. `[]` Clock sysvar
+    ///   10. `[]` Optional Realm Config
+    ///   11. `[]` Optional Voter Weight Record
     CreateProposal {
         #[allow(dead_code)]
         /// UTF-8 encoded name of the proposal
         name: String,
 
         #[allow(dead_code)]
-        /// Link to gist explaining proposal
+        /// Link to a gist explaining the proposal
         description_link: String,
-
-        #[allow(dead_code)]
-        /// Governing Token Mint the Proposal is created for
-        governing_token_mint: Pubkey,
 
         #[allow(dead_code)]
         /// Proposal vote type
@@ -848,6 +845,7 @@ pub fn create_proposal(
         AccountMeta::new(proposal_address, false),
         AccountMeta::new(*governance, false),
         AccountMeta::new(*proposal_owner_record, false),
+        AccountMeta::new_readonly(*governing_token_mint, false),
         AccountMeta::new_readonly(*governance_authority, true),
         AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
@@ -860,7 +858,6 @@ pub fn create_proposal(
     let instruction = GovernanceInstruction::CreateProposal {
         name,
         description_link,
-        governing_token_mint: *governing_token_mint,
         vote_type,
         options,
         use_reject_option,

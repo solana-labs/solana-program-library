@@ -129,7 +129,6 @@ pub fn process_instruction(
         GovernanceInstruction::CreateProposal {
             name,
             description_link,
-            governing_token_mint,
             vote_type: proposal_type,
             options,
             use_reject_option,
@@ -138,7 +137,6 @@ pub fn process_instruction(
             accounts,
             name,
             description_link,
-            governing_token_mint,
             proposal_type,
             options,
             use_reject_option,
