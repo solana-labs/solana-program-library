@@ -676,9 +676,9 @@ pub fn get_proposal_address<'a>(
 /// Assert options to create proposal are valid
 pub fn assert_valid_proposal_options(
     vote_type: &VoteType,
-    options: &Vec<String>,
+    options: &[String],
 ) -> Result<(), ProgramError> {
-    if options.len() == 0 {
+    if options.is_empty() {
         return Err(GovernanceError::InvalidProposalOptions.into());
     }
 
