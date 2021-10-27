@@ -141,7 +141,7 @@ async fn test_cast_vote_with_voter_weight_addin() {
         .get_proposal_account(&proposal_cookie.address)
         .await;
 
-    assert_eq!(100, proposal_account.options[0].vote_weight);
+    assert_eq!(120, proposal_account.options[0].vote_weight);
 }
 
 #[tokio::test]

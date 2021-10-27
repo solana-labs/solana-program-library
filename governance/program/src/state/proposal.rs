@@ -25,6 +25,8 @@ use crate::{
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 
+use super::vote_record::Vote;
+
 /// Proposal option vote status
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum OptionVoteResult {
@@ -553,6 +555,51 @@ impl Proposal {
 
         Ok(())
     }
+
+    /// Asserts the given vote is valid for the proposal
+    pub fn assert_valid_vote(&self, vote: &Vote) -> Result<(), ProgramError> {
+        match vote {
+            Vote::Approve(choices) => {
+                if self.options.len() != choices.len() {
+                    return Err(GovernanceError::InvalidVote.into());
+                }
+
+                let mut choice_count = 0;
+
+                for choice in choices {
+                    if choice.rank > 0 {
+                        return Err(GovernanceError::InvalidVote.into());
+                    }
+
+                    if choice.weight_percentage == 100 {
+                        choice_count += 1;
+                    } else if choice.weight_percentage != 0 {
+                        return Err(GovernanceError::InvalidVote.into());
+                    }
+                }
+
+                match self.vote_type {
+                    VoteType::SingleChoice => {
+                        if choice_count != 1 {
+                            return Err(GovernanceError::InvalidVote.into());
+                        }
+                    }
+                    VoteType::MultiChoice => {
+                        if choice_count == 0 {
+                            return Err(GovernanceError::InvalidVote.into());
+                        }
+                    }
+                }
+            }
+            Vote::Deny => {
+                if self.deny_vote_weight.is_none() {
+                    return Err(GovernanceError::InvalidVote.into());
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
 
 /// Converts threshold in percentages to actual vote weight
@@ -671,6 +718,7 @@ mod test {
     use crate::state::{
         enums::{MintMaxVoteWeightSource, VoteThresholdPercentage, VoteWeightSource},
         realm::RealmConfig,
+        vote_record::VoteChoice,
     };
 
     use {super::*, proptest::prelude::*};
@@ -1592,5 +1640,134 @@ mod test {
 
         // Assert
         assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    pub fn test_assert_valid_vote_with_deny_vote_for_survey_only_proposal_error() {
+        // Arrange
+        let mut proposal = create_test_proposal();
+        proposal.deny_vote_weight = None;
+
+        let vote = Vote::Deny;
+
+        // Act
+        let result = proposal.assert_valid_vote(&vote);
+
+        // Assert
+        assert_eq!(result, Err(GovernanceError::InvalidVote.into()));
+    }
+
+    #[test]
+    pub fn test_assert_valid_vote_with_too_many_options_error() {
+        // Arrange
+        let proposal = create_test_proposal();
+
+        let choices = vec![
+            VoteChoice {
+                rank: 0,
+                weight_percentage: 100,
+            },
+            VoteChoice {
+                rank: 0,
+                weight_percentage: 100,
+            },
+        ];
+
+        let vote = Vote::Approve(choices.clone());
+
+        // Ensure
+        assert!(proposal.options.len() != choices.len());
+
+        // Act
+        let result = proposal.assert_valid_vote(&vote);
+
+        // Assert
+        assert_eq!(result, Err(GovernanceError::InvalidVote.into()));
+    }
+
+    #[test]
+    pub fn test_assert_valid_vote_with_no_choice_for_single_choice_error() {
+        // Arrange
+        let proposal = create_test_proposal();
+
+        let choices = vec![VoteChoice {
+            rank: 0,
+            weight_percentage: 0,
+        }];
+
+        let vote = Vote::Approve(choices.clone());
+
+        // Ensure
+        assert_eq!(proposal.options.len(), choices.len());
+
+        // Act
+        let result = proposal.assert_valid_vote(&vote);
+
+        // Assert
+        assert_eq!(result, Err(GovernanceError::InvalidVote.into()));
+    }
+
+    #[test]
+    pub fn test_assert_valid_vote_with_to_many_choices_for_single_choice_error() {
+        // Arrange
+        let proposal = create_test_multi_option_proposal();
+        let choices = vec![
+            VoteChoice {
+                rank: 0,
+                weight_percentage: 100,
+            },
+            VoteChoice {
+                rank: 0,
+                weight_percentage: 100,
+            },
+            VoteChoice {
+                rank: 0,
+                weight_percentage: 0,
+            },
+        ];
+
+        let vote = Vote::Approve(choices.clone());
+
+        // Ensure
+        assert_eq!(proposal.options.len(), choices.len());
+
+        // Act
+        let result = proposal.assert_valid_vote(&vote);
+
+        // Assert
+        assert_eq!(result, Err(GovernanceError::InvalidVote.into()));
+    }
+
+    #[test]
+    pub fn test_assert_valid_vote_with_no_choices_for_multi_choice_error() {
+        // Arrange
+        let mut proposal = create_test_multi_option_proposal();
+        proposal.vote_type = VoteType::MultiChoice;
+
+        let choices = vec![
+            VoteChoice {
+                rank: 0,
+                weight_percentage: 0,
+            },
+            VoteChoice {
+                rank: 0,
+                weight_percentage: 0,
+            },
+            VoteChoice {
+                rank: 0,
+                weight_percentage: 0,
+            },
+        ];
+
+        let vote = Vote::Approve(choices.clone());
+
+        // Ensure
+        assert_eq!(proposal.options.len(), choices.len());
+
+        // Act
+        let result = proposal.assert_valid_vote(&vote);
+
+        // Assert
+        assert_eq!(result, Err(GovernanceError::InvalidVote.into()));
     }
 }

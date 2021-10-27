@@ -105,13 +105,9 @@ pub fn process_cast_vote(
         &realm_data,
     )?;
 
-    // TODO: Add test to reject proposal without rejection
+    proposal_data.assert_valid_vote(&vote)?;
 
     // Calculate Proposal voting weights
-    // TODO: Validate choices are valid for given proposal vote type. Single choice should have one choice only, no deny shouldn't have Deny vote
-    //  Assert option.len() === choices().len()
-    // YesNo - only once choice 100% and no rank
-
     match vote.clone() {
         Vote::Approve(choices) => {
             for (option, choice) in proposal_data.options.iter_mut().zip(choices) {
