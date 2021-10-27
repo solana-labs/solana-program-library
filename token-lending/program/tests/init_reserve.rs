@@ -15,6 +15,7 @@ use spl_token_lending::{
     instruction::{init_reserve, update_reserve_config},
     processor::process_instruction,
     state::{ReserveConfig, ReserveFees, INITIAL_COLLATERAL_RATIO},
+    math::{Decimal},
 };
 
 #[tokio::test]
@@ -31,6 +32,133 @@ async fn test_success() {
     let user_accounts_owner = Keypair::new();
     let lending_market = add_lending_market(&mut test);
     let sol_oracle = add_sol_oracle(&mut test);
+
+    let (mut banks_client, payer, _recent_blockhash) = test.start().await;
+
+    const RESERVE_AMOUNT: u64 = 42;
+
+    let sol_user_liquidity_account = create_and_mint_to_token_account(
+        &mut banks_client,
+        spl_token::native_mint::id(),
+        None,
+        &payer,
+        user_accounts_owner.pubkey(),
+        RESERVE_AMOUNT,
+    )
+    .await;
+
+    let mut config = test_reserve_config();
+    let fee_receiver_keypair = Keypair::new();
+    config.fee_receiver = fee_receiver_keypair.pubkey();
+
+    let sol_reserve = TestReserve::init(
+        "sol".to_owned(),
+        &mut banks_client,
+        &lending_market,
+        &sol_oracle,
+        RESERVE_AMOUNT,
+        config,
+        spl_token::native_mint::id(),
+        sol_user_liquidity_account,
+        &fee_receiver_keypair,
+        &payer,
+        &user_accounts_owner,
+    )
+    .await
+    .unwrap();
+
+    sol_reserve.validate_state(&mut banks_client).await;
+
+    let sol_liquidity_supply =
+        get_token_balance(&mut banks_client, sol_reserve.liquidity_supply_pubkey).await;
+    assert_eq!(sol_liquidity_supply, RESERVE_AMOUNT);
+    let user_sol_balance =
+        get_token_balance(&mut banks_client, sol_reserve.user_liquidity_pubkey).await;
+    assert_eq!(user_sol_balance, 0);
+    let user_sol_collateral_balance =
+        get_token_balance(&mut banks_client, sol_reserve.user_collateral_pubkey).await;
+    assert_eq!(
+        user_sol_collateral_balance,
+        RESERVE_AMOUNT * INITIAL_COLLATERAL_RATIO
+    );
+}
+
+#[tokio::test]
+async fn test_init_reserve_null_oracles() {
+    let mut test = ProgramTest::new(
+        "spl_token_lending",
+        spl_token_lending::id(),
+        processor!(process_instruction),
+    );
+
+    // limit to track compute unit increase
+    test.set_bpf_compute_max_units(70_000);
+
+    let user_accounts_owner = Keypair::new();
+    let lending_market = add_lending_market(&mut test);
+    let all_null_oracles = TestOracle {
+      pyth_product_pubkey: spl_token_lending::NULL_PUBKEY,
+      pyth_price_pubkey: spl_token_lending::NULL_PUBKEY,
+      switchboard_feed_pubkey: spl_token_lending::NULL_PUBKEY,
+      price: Decimal::from(1u64),
+    };
+
+    let (mut banks_client, payer, _recent_blockhash) = test.start().await;
+
+    const RESERVE_AMOUNT: u64 = 42;
+
+    let sol_user_liquidity_account = create_and_mint_to_token_account(
+        &mut banks_client,
+        spl_token::native_mint::id(),
+        None,
+        &payer,
+        user_accounts_owner.pubkey(),
+        RESERVE_AMOUNT,
+    )
+    .await;
+
+    let mut config = test_reserve_config();
+    let fee_receiver_keypair = Keypair::new();
+    config.fee_receiver = fee_receiver_keypair.pubkey();
+
+    assert_eq!(
+      TestReserve::init(
+          "sol".to_owned(),
+          &mut banks_client,
+          &lending_market,
+          &all_null_oracles,
+          RESERVE_AMOUNT,
+          config,
+          spl_token::native_mint::id(),
+          sol_user_liquidity_account,
+          &fee_receiver_keypair,
+          &payer,
+          &user_accounts_owner,
+      )
+      .await
+      .unwrap_err(),
+      TransactionError::InstructionError(
+        8,
+        InstructionError::Custom(LendingError::InvalidOracleConfig as u32)
+    )
+  );
+}
+
+#[tokio::test]
+async fn test_null_switchboard() {
+    let mut test = ProgramTest::new(
+        "spl_token_lending",
+        spl_token_lending::id(),
+        processor!(process_instruction),
+    );
+
+    // limit to track compute unit increase
+    test.set_bpf_compute_max_units(70_000);
+
+    let user_accounts_owner = Keypair::new();
+    let lending_market = add_lending_market(&mut test);
+    let mut sol_oracle = add_sol_oracle(&mut test);
+    sol_oracle.switchboard_feed_pubkey = spl_token_lending::NULL_PUBKEY;
 
     let (mut banks_client, payer, _recent_blockhash) = test.start().await;
 
