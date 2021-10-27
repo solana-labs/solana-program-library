@@ -1477,9 +1477,7 @@ impl GovernanceProgramTest {
             voting_completed_at: None,
             executing_at: None,
             closed_at: None,
-            instructions_executed_count: 0,
-            instructions_count: 0,
-            instructions_next_index: 0,
+
             token_owner_record: token_owner_record_cookie.address,
             signatories_signed_off_count: 0,
 
@@ -1489,11 +1487,17 @@ impl GovernanceProgramTest {
                     label: "Yes".to_string(),
                     vote_weight: 0,
                     vote_result: OptionVoteResult::None,
+                    instructions_executed_count: 0,
+                    instructions_count: 0,
+                    instructions_next_index: 0,
                 },
                 ProposalOption {
                     label: "No".to_string(),
                     vote_weight: 0,
                     vote_result: OptionVoteResult::None,
+                    instructions_executed_count: 0,
+                    instructions_count: 0,
+                    instructions_next_index: 0,
                 },
             ],
             has_reject_option: true,
@@ -2020,11 +2024,12 @@ impl GovernanceProgramTest {
         let hold_up_time = 15;
 
         let instruction_data: InstructionData = instruction.clone().into();
+        let mut yes_option = &mut proposal_cookie.account.options[0];
 
-        let instruction_index = index.unwrap_or(proposal_cookie.account.instructions_next_index);
+        let instruction_index = index.unwrap_or(yes_option.instructions_next_index);
         let option_index = 0;
 
-        proposal_cookie.account.instructions_next_index += 1;
+        yes_option.instructions_next_index += 1;
 
         let insert_instruction_instruction = insert_instruction(
             &self.program_id,

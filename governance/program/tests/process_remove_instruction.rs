@@ -56,9 +56,11 @@ async fn test_remove_instruction() {
         .get_proposal_account(&proposal_cookie.address)
         .await;
 
-    assert_eq!(proposal_account.instructions_count, 0);
-    assert_eq!(proposal_account.instructions_next_index, 1);
-    assert_eq!(proposal_account.instructions_executed_count, 0);
+    let yes_option = proposal_account.options.first().unwrap();
+
+    assert_eq!(yes_option.instructions_count, 0);
+    assert_eq!(yes_option.instructions_next_index, 1);
+    assert_eq!(yes_option.instructions_executed_count, 0);
 
     let proposal_instruction_account = governance_test
         .bench
@@ -126,8 +128,10 @@ async fn test_replace_instruction() {
         .get_proposal_account(&proposal_cookie.address)
         .await;
 
-    assert_eq!(proposal_account.instructions_count, 2);
-    assert_eq!(proposal_account.instructions_next_index, 2);
+    let yes_option = proposal_account.options.first().unwrap();
+
+    assert_eq!(yes_option.instructions_count, 2);
+    assert_eq!(yes_option.instructions_next_index, 2);
 
     let proposal_instruction_account2 = governance_test
         .get_proposal_instruction_account(&proposal_instruction_cookie2.address)
@@ -192,8 +196,10 @@ async fn test_remove_front_instruction() {
         .get_proposal_account(&proposal_cookie.address)
         .await;
 
-    assert_eq!(proposal_account.instructions_count, 1);
-    assert_eq!(proposal_account.instructions_next_index, 2);
+    let yes_option = proposal_account.options.first().unwrap();
+
+    assert_eq!(yes_option.instructions_count, 1);
+    assert_eq!(yes_option.instructions_next_index, 2);
 
     let proposal_instruction_account = governance_test
         .bench

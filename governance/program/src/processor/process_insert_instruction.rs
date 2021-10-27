@@ -71,20 +71,20 @@ pub fn process_insert_instruction(
 
     token_owner_record_data.assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
-    match instruction_index.cmp(&proposal_data.instructions_next_index) {
+    // TODO: should we use some safe access?
+    let option = &mut proposal_data.options[option_index as usize];
+
+    match instruction_index.cmp(&option.instructions_next_index) {
         Ordering::Greater => return Err(GovernanceError::InvalidInstructionIndex.into()),
         // If the index is the same as instructions_next_index then we are adding a new instruction
         // If the index is below instructions_next_index then we are inserting into an existing empty space
         Ordering::Equal => {
-            proposal_data.instructions_next_index = proposal_data
-                .instructions_next_index
-                .checked_add(1)
-                .unwrap();
+            option.instructions_next_index = option.instructions_next_index.checked_add(1).unwrap();
         }
         Ordering::Less => {}
     }
 
-    proposal_data.instructions_count = proposal_data.instructions_count.checked_add(1).unwrap();
+    option.instructions_count = option.instructions_count.checked_add(1).unwrap();
     proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
 
     let proposal_instruction_data = ProposalInstruction {

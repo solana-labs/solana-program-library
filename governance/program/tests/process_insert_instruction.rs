@@ -55,9 +55,11 @@ async fn test_insert_instruction() {
         .get_proposal_account(&proposal_cookie.address)
         .await;
 
-    assert_eq!(proposal_account.instructions_count, 1);
-    assert_eq!(proposal_account.instructions_next_index, 1);
-    assert_eq!(proposal_account.instructions_executed_count, 0);
+    let yes_option = proposal_account.options.first().unwrap();
+
+    assert_eq!(yes_option.instructions_count, 1);
+    assert_eq!(yes_option.instructions_next_index, 1);
+    assert_eq!(yes_option.instructions_executed_count, 0);
 }
 
 #[tokio::test]
@@ -104,9 +106,11 @@ async fn test_insert_multiple_instructions() {
         .get_proposal_account(&proposal_cookie.address)
         .await;
 
-    assert_eq!(proposal_account.instructions_count, 2);
-    assert_eq!(proposal_account.instructions_next_index, 2);
-    assert_eq!(proposal_account.instructions_executed_count, 0);
+    let yes_option = proposal_account.options.first().unwrap();
+
+    assert_eq!(yes_option.instructions_count, 2);
+    assert_eq!(yes_option.instructions_next_index, 2);
+    assert_eq!(yes_option.instructions_executed_count, 0);
 }
 
 #[tokio::test]

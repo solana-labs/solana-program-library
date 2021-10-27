@@ -99,6 +99,9 @@ pub fn process_create_proposal(
             label: o.label.to_string(),
             vote_weight: 0,
             vote_result: OptionVoteResult::None,
+            instructions_executed_count: 0,
+            instructions_count: 0,
+            instructions_next_index: 0,
         })
         .collect();
 
@@ -122,10 +125,6 @@ pub fn process_create_proposal(
         voting_completed_at: None,
         executing_at: None,
         closed_at: None,
-
-        instructions_executed_count: 0,
-        instructions_count: 0,
-        instructions_next_index: 0,
 
         execution_flags: InstructionExecutionFlags::None,
 

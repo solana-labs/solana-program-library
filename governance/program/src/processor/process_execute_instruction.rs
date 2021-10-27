@@ -65,16 +65,18 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
         proposal_data.state = ProposalState::Executing;
     }
 
-    proposal_data.instructions_executed_count = proposal_data
-        .instructions_executed_count
-        .checked_add(1)
-        .unwrap();
+    // TODO: test for out of bounds index
+    let mut option = &mut proposal_data.options[proposal_instruction_data.option_index as usize];
+    option.instructions_executed_count = option.instructions_executed_count.checked_add(1).unwrap();
 
     // Checking for Executing and ExecutingWithErrors states because instruction can still be executed after being flagged with error
     // The check for instructions_executed_count ensures Proposal can't be transitioned to Completed state from ExecutingWithErrors
     if (proposal_data.state == ProposalState::Executing
         || proposal_data.state == ProposalState::ExecutingWithErrors)
-        && proposal_data.instructions_executed_count == proposal_data.instructions_count
+        && proposal_data
+            .options
+            .iter()
+            .all(|o| o.instructions_executed_count == o.instructions_count)
     {
         proposal_data.closed_at = Some(clock.unix_timestamp);
         proposal_data.state = ProposalState::Completed;

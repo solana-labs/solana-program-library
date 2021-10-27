@@ -80,7 +80,9 @@ async fn test_execute_flag_instruction_error() {
         .get_proposal_account(&proposal_cookie.address)
         .await;
 
-    assert_eq!(0, proposal_account.instructions_executed_count);
+    let yes_option = proposal_account.options.first().unwrap();
+
+    assert_eq!(0, yes_option.instructions_executed_count);
     assert_eq!(ProposalState::ExecutingWithErrors, proposal_account.state);
     assert_eq!(None, proposal_account.closed_at);
     assert_eq!(Some(clock.unix_timestamp), proposal_account.executing_at);

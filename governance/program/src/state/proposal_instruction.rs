@@ -171,16 +171,6 @@ pub fn get_proposal_instruction_data_for_proposal(
     Ok(proposal_instruction_data)
 }
 
-///  Deserializes ProposalInstruction account and checks it belongs to the given Proposal
-pub fn assert_proposal_instruction_for_proposal(
-    program_id: &Pubkey,
-    proposal_instruction_info: &AccountInfo,
-    proposal: &Pubkey,
-) -> Result<(), ProgramError> {
-    get_proposal_instruction_data_for_proposal(program_id, proposal_instruction_info, proposal)
-        .map(|_| ())
-}
-
 #[cfg(test)]
 mod test {
 

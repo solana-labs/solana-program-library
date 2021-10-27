@@ -57,6 +57,15 @@ pub struct ProposalOption {
 
     /// Vote result for the option
     pub vote_result: OptionVoteResult,
+
+    /// The number of the instructions already executed
+    pub instructions_executed_count: u16,
+
+    /// The number of instructions included in the option
+    pub instructions_count: u16,
+
+    /// The index of the the next instruction to be added
+    pub instructions_next_index: u16,
 }
 
 /// Proposal vote type
@@ -108,15 +117,6 @@ pub struct Proposal {
     /// The reject option should be the last one in the options collection
     pub has_reject_option: bool,
 
-    /// The number of the instructions already executed
-    pub instructions_executed_count: u16,
-
-    /// The number of instructions included in the proposal
-    pub instructions_count: u16,
-
-    /// The index of the the next instruction to be added
-    pub instructions_next_index: u16,
-
     /// When the Proposal was created and entered Draft state
     pub draft_at: UnixTimestamp,
 
@@ -162,8 +162,8 @@ pub struct Proposal {
 
 impl AccountMaxSize for Proposal {
     fn get_max_size(&self) -> Option<usize> {
-        let options_size: usize = self.options.iter().map(|o| o.label.len() + 13).sum();
-        Some(self.name.len() + self.description_link.len() + options_size + 195)
+        let options_size: usize = self.options.iter().map(|o| o.label.len() + 19).sum();
+        Some(self.name.len() + self.description_link.len() + options_size + 189)
     }
 }
 
@@ -730,20 +730,23 @@ mod test {
                     label: "yes".to_string(),
                     vote_weight: 0,
                     vote_result: OptionVoteResult::None,
+                    instructions_executed_count: 10,
+                    instructions_count: 10,
+                    instructions_next_index: 10,
                 },
                 ProposalOption {
                     label: "no".to_string(),
                     vote_weight: 0,
                     vote_result: OptionVoteResult::None,
+                    instructions_executed_count: 10,
+                    instructions_count: 10,
+                    instructions_next_index: 10,
                 },
             ],
             has_reject_option: true,
 
             execution_flags: InstructionExecutionFlags::Ordered,
 
-            instructions_executed_count: 10,
-            instructions_count: 10,
-            instructions_next_index: 10,
             vote_threshold_percentage: Some(VoteThresholdPercentage::YesVote(100)),
         }
     }
@@ -755,16 +758,25 @@ mod test {
                 label: "option 1".to_string(),
                 vote_weight: 0,
                 vote_result: OptionVoteResult::None,
+                instructions_executed_count: 10,
+                instructions_count: 10,
+                instructions_next_index: 10,
             },
             ProposalOption {
                 label: "option 2".to_string(),
                 vote_weight: 0,
                 vote_result: OptionVoteResult::None,
+                instructions_executed_count: 10,
+                instructions_count: 10,
+                instructions_next_index: 10,
             },
             ProposalOption {
                 label: "option 3".to_string(),
                 vote_weight: 0,
                 vote_result: OptionVoteResult::None,
+                instructions_executed_count: 10,
+                instructions_count: 10,
+                instructions_next_index: 10,
             },
         ];
 

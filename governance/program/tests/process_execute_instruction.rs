@@ -86,7 +86,9 @@ async fn test_execute_mint_instruction() {
         .get_proposal_account(&proposal_cookie.address)
         .await;
 
-    assert_eq!(1, proposal_account.instructions_executed_count);
+    let yes_option = proposal_account.options.first().unwrap();
+
+    assert_eq!(1, yes_option.instructions_executed_count);
     assert_eq!(ProposalState::Completed, proposal_account.state);
     assert_eq!(Some(clock.unix_timestamp), proposal_account.closed_at);
     assert_eq!(Some(clock.unix_timestamp), proposal_account.executing_at);
@@ -183,7 +185,9 @@ async fn test_execute_transfer_instruction() {
         .get_proposal_account(&proposal_cookie.address)
         .await;
 
-    assert_eq!(1, proposal_account.instructions_executed_count);
+    let yes_option = proposal_account.options.first().unwrap();
+
+    assert_eq!(1, yes_option.instructions_executed_count);
     assert_eq!(ProposalState::Completed, proposal_account.state);
     assert_eq!(Some(clock.unix_timestamp), proposal_account.closed_at);
     assert_eq!(Some(clock.unix_timestamp), proposal_account.executing_at);
@@ -300,7 +304,9 @@ async fn test_execute_upgrade_program_instruction() {
         .get_proposal_account(&proposal_cookie.address)
         .await;
 
-    assert_eq!(1, proposal_account.instructions_executed_count);
+    let yes_option = proposal_account.options.first().unwrap();
+
+    assert_eq!(1, yes_option.instructions_executed_count);
     assert_eq!(ProposalState::Completed, proposal_account.state);
     assert_eq!(Some(clock.unix_timestamp), proposal_account.closed_at);
     assert_eq!(Some(clock.unix_timestamp), proposal_account.executing_at);
