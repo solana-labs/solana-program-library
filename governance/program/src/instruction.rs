@@ -13,7 +13,7 @@ use crate::{
         realm_config::get_realm_config_address,
         signatory_record::get_signatory_record_address,
         token_owner_record::get_token_owner_record_address,
-        vote_record::{get_vote_record_address, VoteChoice},
+        vote_record::{get_vote_record_address, Vote},
     },
     tools::bpf_loader_upgradeable::get_program_data_address,
 };
@@ -180,10 +180,10 @@ pub enum GovernanceInstruction {
         options: Vec<String>,
 
         #[allow(dead_code)]
-        /// Indicates whether the proposal has a reject option
-        /// A proposal without the reject option is a none binding survey
-        /// And only proposals with the reject options can have executable instructions
-        use_reject_option: bool,
+        /// Indicates whether the proposal has the deny option
+        /// A proposal without the rejecting option is a none binding survey
+        /// Only proposals with the rejecting option can have executable instructions
+        use_deny_option: bool,
     },
 
     /// Adds a signatory to the Proposal which means this Proposal can't leave Draft state until yet another Signatory signs
@@ -289,9 +289,8 @@ pub enum GovernanceInstruction {
     ///   12. `[]` Optional Voter Weight Record
     CastVote {
         #[allow(dead_code)]
-        /// vote choices
-        /// TODO: Create VoteChoice (with intentions only) and VoteChoiceWeight
-        choices: Vec<VoteChoice>,
+        /// User's vote
+        vote: Vote,
     },
 
     /// Finalizes vote in case the Vote was not automatically tipped within max_voting_time period
@@ -830,7 +829,7 @@ pub fn create_proposal(
     governing_token_mint: &Pubkey,
     vote_type: VoteType,
     options: Vec<String>,
-    use_reject_option: bool,
+    use_deny_option: bool,
     proposal_index: u32,
 ) -> Instruction {
     let proposal_address = get_proposal_address(
@@ -860,7 +859,7 @@ pub fn create_proposal(
         description_link,
         vote_type,
         options,
-        use_reject_option,
+        use_deny_option,
     };
 
     Instruction {
@@ -975,7 +974,7 @@ pub fn cast_vote(
     payer: &Pubkey,
     voter_weight_record: Option<Pubkey>,
     // Args
-    choices: Vec<VoteChoice>,
+    vote: Vote,
 ) -> Instruction {
     let vote_record_address =
         get_vote_record_address(program_id, proposal, voter_token_owner_record);
@@ -997,7 +996,7 @@ pub fn cast_vote(
 
     with_voter_weight_accounts(program_id, &mut accounts, realm, voter_weight_record);
 
-    let instruction = GovernanceInstruction::CastVote { choices };
+    let instruction = GovernanceInstruction::CastVote { vote };
 
     Instruction {
         program_id: *program_id,

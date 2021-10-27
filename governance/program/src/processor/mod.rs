@@ -131,7 +131,7 @@ pub fn process_instruction(
             description_link,
             vote_type: proposal_type,
             options,
-            use_reject_option,
+            use_deny_option,
         } => process_create_proposal(
             program_id,
             accounts,
@@ -139,7 +139,7 @@ pub fn process_instruction(
             description_link,
             proposal_type,
             options,
-            use_reject_option,
+            use_deny_option,
         ),
         GovernanceInstruction::AddSignatory { signatory } => {
             process_add_signatory(program_id, accounts, signatory)
@@ -150,9 +150,7 @@ pub fn process_instruction(
         GovernanceInstruction::SignOffProposal {} => {
             process_sign_off_proposal(program_id, accounts)
         }
-        GovernanceInstruction::CastVote { choices } => {
-            process_cast_vote(program_id, accounts, choices)
-        }
+        GovernanceInstruction::CastVote { vote } => process_cast_vote(program_id, accounts, vote),
 
         GovernanceInstruction::FinalizeVote {} => process_finalize_vote(program_id, accounts),
 

@@ -21,7 +21,7 @@ use crate::{
             get_token_owner_record_data_for_proposal_owner,
             get_token_owner_record_data_for_realm_and_governing_mint,
         },
-        vote_record::{get_vote_record_address_seeds, VoteChoice, VoteChoiceWeight, VoteRecord},
+        vote_record::{get_vote_record_address_seeds, Vote, VoteRecord},
     },
     tools::spl_token::get_spl_token_mint_supply,
 };
@@ -32,7 +32,7 @@ use borsh::BorshSerialize;
 pub fn process_cast_vote(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    choices: Vec<VoteChoice>,
+    vote: Vote,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -105,26 +105,31 @@ pub fn process_cast_vote(
         &realm_data,
     )?;
 
-    let mut weighted_choices = vec![];
+    // TODO: Add test to reject proposal without rejection
 
     // Calculate Proposal voting weights
-    // TODO: Validate choices are valid for given proposal vote type
+    // TODO: Validate choices are valid for given proposal vote type. Single choice should have one choice only, no deny shouldn't have Deny vote
     //  Assert option.len() === choices().len()
     // YesNo - only once choice 100% and no rank
-    for (option, choice) in proposal_data.options.iter_mut().zip(choices) {
-        // TODO: generalize as single choice
-        let choice_weight = match choice.weight_percentage {
-            100 => voter_weight,
-            0 => 0,
-            _ => return Err(GovernanceError::InvalidVoteChoiceWeightPercentage.into()),
-        };
 
-        weighted_choices.push(VoteChoiceWeight {
-            rank: choice.rank,
-            weight: choice_weight,
-        });
-
-        option.vote_weight = option.vote_weight.checked_add(choice_weight).unwrap();
+    match vote.clone() {
+        Vote::Approve(choices) => {
+            for (option, choice) in proposal_data.options.iter_mut().zip(choices) {
+                option.vote_weight = option
+                    .vote_weight
+                    .checked_add(choice.get_choice_weight(voter_weight)?)
+                    .unwrap();
+            }
+        }
+        Vote::Deny => {
+            proposal_data.deny_vote_weight = Some(
+                proposal_data
+                    .deny_vote_weight
+                    .unwrap()
+                    .checked_add(voter_weight)
+                    .unwrap(),
+            )
+        }
     }
 
     let governing_token_mint_supply = get_spl_token_mint_supply(governing_token_mint_info)?;
@@ -158,7 +163,8 @@ pub fn process_cast_vote(
         account_type: GovernanceAccountType::VoteRecord,
         proposal: *proposal_info.key,
         governing_token_owner: voter_token_owner_record_data.governing_token_owner,
-        choices: weighted_choices,
+        voter_weight,
+        vote,
         is_relinquished: false,
     };
 

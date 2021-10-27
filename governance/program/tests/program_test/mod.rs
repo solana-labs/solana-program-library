@@ -47,7 +47,7 @@ use spl_governance::{
         realm_config::{get_realm_config_address, RealmConfigAccount},
         signatory_record::{get_signatory_record_address, SignatoryRecord},
         token_owner_record::{get_token_owner_record_address, TokenOwnerRecord},
-        vote_record::{get_vote_record_address, VoteChoice, VoteChoiceWeight, VoteRecord},
+        vote_record::{get_vote_record_address, Vote, VoteChoice, VoteRecord},
     },
     tools::bpf_loader_upgradeable::get_program_data_address,
 };
@@ -74,7 +74,7 @@ use self::{
 };
 
 /// Yes/No Vote
-pub enum Vote {
+pub enum YesNoVote {
     /// Yes vote
     #[allow(dead_code)]
     Yes,
@@ -1384,14 +1384,14 @@ impl GovernanceProgramTest {
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         governance_cookie: &mut GovernanceCookie,
         options: Vec<String>,
-        use_reject_option: bool,
+        use_deny_option: bool,
         vote_type: VoteType,
     ) -> Result<ProposalCookie, ProgramError> {
         self.with_proposal_using_instruction_impl(
             token_owner_record_cookie,
             governance_cookie,
             options,
-            use_reject_option,
+            use_deny_option,
             vote_type,
             NopOverride,
         )
@@ -1444,7 +1444,7 @@ impl GovernanceProgramTest {
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         governance_cookie: &mut GovernanceCookie,
         options: Vec<String>,
-        use_reject_option: bool,
+        use_deny_option: bool,
         vote_type: VoteType,
         instruction_override: F,
     ) -> Result<ProposalCookie, ProgramError> {
@@ -1477,7 +1477,7 @@ impl GovernanceProgramTest {
             &token_owner_record_cookie.account.governing_token_mint,
             vote_type.clone(),
             options.clone(),
-            use_reject_option,
+            use_deny_option,
             proposal_index,
         );
 
@@ -1504,7 +1504,7 @@ impl GovernanceProgramTest {
             })
             .collect();
 
-        let reject_option_vote_weight = if use_reject_option { Some(0) } else { None };
+        let deny_vote_weight = if use_deny_option { Some(0) } else { None };
 
         let account = Proposal {
             account_type: GovernanceAccountType::Proposal,
@@ -1529,7 +1529,7 @@ impl GovernanceProgramTest {
 
             vote_type: vote_type,
             options: proposal_options,
-            reject_option_vote_weight,
+            deny_vote_weight,
 
             execution_flags: InstructionExecutionFlags::None,
             max_vote_weight: None,
@@ -1757,7 +1757,7 @@ impl GovernanceProgramTest {
         &mut self,
         proposal_cookie: &ProposalCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
-        vote: Vote,
+        yes_no_vote: YesNoVote,
     ) -> Result<VoteRecordCookie, ProgramError> {
         let voter_weight_record =
             if let Some(voter_weight_record) = &token_owner_record_cookie.voter_weight_record {
@@ -1766,31 +1766,12 @@ impl GovernanceProgramTest {
                 None
             };
 
-        let choices = match vote {
-            Vote::Yes => {
-                vec![
-                    VoteChoice {
-                        rank: 0,
-                        weight_percentage: 100,
-                    },
-                    VoteChoice {
-                        rank: 0,
-                        weight_percentage: 0,
-                    },
-                ]
-            }
-            Vote::No => {
-                vec![
-                    VoteChoice {
-                        rank: 0,
-                        weight_percentage: 0,
-                    },
-                    VoteChoice {
-                        rank: 0,
-                        weight_percentage: 100,
-                    },
-                ]
-            }
+        let vote = match yes_no_vote {
+            YesNoVote::Yes => Vote::Approve(vec![VoteChoice {
+                rank: 0,
+                weight_percentage: 100,
+            }]),
+            YesNoVote::No => Vote::Deny,
         };
 
         let vote_instruction = cast_vote(
@@ -1804,7 +1785,7 @@ impl GovernanceProgramTest {
             &proposal_cookie.account.governing_token_mint,
             &self.bench.payer.pubkey(),
             voter_weight_record,
-            choices,
+            vote.clone(),
         );
 
         self.bench
@@ -1818,28 +1799,12 @@ impl GovernanceProgramTest {
             .account
             .governing_token_deposit_amount;
 
-        let weighted_choices = match vote {
-            Vote::Yes => vec![
-                VoteChoiceWeight {
-                    rank: 0,
-                    weight: vote_amount,
-                },
-                VoteChoiceWeight { rank: 0, weight: 0 },
-            ],
-            Vote::No => vec![
-                VoteChoiceWeight { rank: 0, weight: 0 },
-                VoteChoiceWeight {
-                    rank: 0,
-                    weight: vote_amount,
-                },
-            ],
-        };
-
         let account = VoteRecord {
             account_type: GovernanceAccountType::VoteRecord,
             proposal: proposal_cookie.address,
             governing_token_owner: token_owner_record_cookie.token_owner.pubkey(),
-            choices: weighted_choices,
+            vote,
+            voter_weight: vote_amount,
             is_relinquished: false,
         };
 
@@ -2338,7 +2303,7 @@ impl GovernanceProgramTest {
         let deposit_ix = Instruction {
             program_id: self.voter_weight_addin_id.unwrap(),
             accounts,
-            data: vec![1, 100, 0, 0, 0, 0, 0, 0, 0], // 1 - Deposit instruction, 100 amount (u64)
+            data: vec![1, 120, 0, 0, 0, 0, 0, 0, 0], // 1 - Deposit instruction, 100 amount (u64)
         };
 
         self.bench

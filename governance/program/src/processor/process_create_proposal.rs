@@ -33,7 +33,7 @@ pub fn process_create_proposal(
     description_link: String,
     vote_type: VoteType,
     options: Vec<String>,
-    use_reject_option: bool,
+    use_deny_option: bool,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -111,7 +111,7 @@ pub fn process_create_proposal(
         })
         .collect();
 
-    let reject_option_vote_weight = if use_reject_option { Some(0) } else { None };
+    let deny_vote_weight = if use_deny_option { Some(0) } else { None };
 
     let proposal_data = Proposal {
         account_type: GovernanceAccountType::Proposal,
@@ -138,7 +138,7 @@ pub fn process_create_proposal(
 
         vote_type,
         options: proposal_options,
-        reject_option_vote_weight,
+        deny_vote_weight,
 
         max_vote_weight: None,
         vote_threshold_percentage: None,

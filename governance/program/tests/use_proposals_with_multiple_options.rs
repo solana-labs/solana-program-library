@@ -8,7 +8,7 @@ use program_test::*;
 use spl_governance::{error::GovernanceError, state::proposal::VoteType};
 
 #[tokio::test]
-async fn test_create_proposal_with_single_choice_options_and_reject_option() {
+async fn test_create_proposal_with_single_choice_options_and_deny_option() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -48,13 +48,13 @@ async fn test_create_proposal_with_single_choice_options_and_reject_option() {
         .await;
 
     assert_eq!(proposal_account.vote_type, VoteType::SingleChoice);
-    assert!(proposal_account.reject_option_vote_weight.is_some());
+    assert!(proposal_account.deny_vote_weight.is_some());
 
     assert_eq!(proposal_cookie.account, proposal_account);
 }
 
 #[tokio::test]
-async fn test_create_proposal_with_multiple_choice_options_and_without_reject_option() {
+async fn test_create_proposal_with_multiple_choice_options_and_without_deny_option() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -94,7 +94,7 @@ async fn test_create_proposal_with_multiple_choice_options_and_without_reject_op
         .await;
 
     assert_eq!(proposal_account.vote_type, VoteType::MultiChoice);
-    assert!(!proposal_account.reject_option_vote_weight.is_some());
+    assert!(!proposal_account.deny_vote_weight.is_some());
 
     assert_eq!(proposal_cookie.account, proposal_account);
 }

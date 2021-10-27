@@ -16,20 +16,32 @@ use crate::state::enums::GovernanceAccountType;
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct VoteChoice {
     /// The rank given to the choice by voter
+    /// Note: The filed is not used in the current version
     pub rank: u8,
 
-    /// The voter's weight percentage allocated to the choice
+    /// The voter's weight percentage given by the voter to the choice
     pub weight_percentage: u8,
 }
 
-/// Vote choice
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub struct VoteChoiceWeight {
-    /// The rank given to the choice by voter
-    pub rank: u8,
+impl VoteChoice {
+    /// Returns the choice weight given the voter's weight
+    pub fn get_choice_weight(&self, voter_weight: u64) -> Result<u64, ProgramError> {
+        Ok(match self.weight_percentage {
+            100 => voter_weight,
+            0 => 0,
+            _ => return Err(GovernanceError::InvalidVoteChoiceWeightPercentage.into()),
+        })
+    }
+}
 
-    /// The weight given by the voter to the choice
-    pub weight: u64,
+/// User's vote
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub enum Vote {
+    /// Vote approving choices
+    Approve(Vec<VoteChoice>),
+
+    /// Vote rejecting proposal
+    Deny,
 }
 
 /// Proposal VoteRecord
@@ -48,8 +60,11 @@ pub struct VoteRecord {
     /// Indicates whether the vote was relinquished by voter
     pub is_relinquished: bool,
 
-    /// Voter choice weights
-    pub choices: Vec<VoteChoiceWeight>,
+    /// The weight of the user casting the vote
+    pub voter_weight: u64,
+
+    /// Voter's vote
+    pub vote: Vote,
 }
 
 impl AccountMaxSize for VoteRecord {}
