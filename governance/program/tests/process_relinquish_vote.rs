@@ -427,6 +427,8 @@ async fn test_relinquish_vote_with_already_relinquished_error() {
     governance_test
         .mint_community_tokens(&realm_cookie, 10)
         .await;
+
+    governance_test.advance_clock();
     // Act
 
     let err = governance_test
