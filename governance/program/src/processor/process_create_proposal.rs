@@ -97,7 +97,7 @@ pub fn process_create_proposal(
         .unwrap();
     proposal_owner_record_data.serialize(&mut *proposal_owner_record_info.data.borrow_mut())?;
 
-    assert_valid_proposal_options(&vote_type, &options)?;
+    assert_valid_proposal_options(&options, &vote_type)?;
 
     let proposal_options: Vec<ProposalOption> = options
         .iter()

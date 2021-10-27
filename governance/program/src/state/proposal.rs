@@ -63,11 +63,10 @@ pub struct ProposalOption {
 /// Proposal vote type
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum VoteType {
-    /// Single choice vote with mutually exclusive choices a
-    /// Note: Yse/No vote is a single choice with rejection option
+    /// Single choice vote with mutually exclusive choices
+    /// Note: Yes/No vote is a single choice (Yes) vote with the deny option (No)
     SingleChoice,
     /// Multiple options can be selected
-    /// TODO: add N of M choices
     MultiChoice,
 }
 
@@ -697,16 +696,20 @@ pub fn get_proposal_address<'a>(
     .0
 }
 
-/// Assert options to create proposal are valid
+/// Assert options to create proposal are valid for the Proposal vote_type
 pub fn assert_valid_proposal_options(
-    vote_type: &VoteType,
     options: &[String],
+    vote_type: &VoteType,
 ) -> Result<(), ProgramError> {
     if options.is_empty() {
         return Err(GovernanceError::InvalidProposalOptions.into());
     }
 
     if options.len() == 1 && *vote_type == VoteType::MultiChoice {
+        return Err(GovernanceError::InvalidProposalOptions.into());
+    }
+
+    if options.iter().any(|o| o.is_empty()) {
         return Err(GovernanceError::InvalidProposalOptions.into());
     }
 

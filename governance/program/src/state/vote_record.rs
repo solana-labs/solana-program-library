@@ -12,7 +12,9 @@ use crate::PROGRAM_AUTHORITY_SEED;
 
 use crate::state::enums::GovernanceAccountType;
 
-/// Vote choice
+/// Voter choice for a proposal option
+/// In the current version only 1) Single choice and 2) Multiple choices proposals are supported
+/// In the future versions we can add support for 1) Quadratic voting, 2) Ranked choice voting and 3) Weighted voting
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct VoteChoice {
     /// The rank given to the choice by voter
