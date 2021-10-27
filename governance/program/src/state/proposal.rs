@@ -20,20 +20,21 @@ use crate::{
         governance::GovernanceConfig,
         proposal_instruction::ProposalInstruction,
         realm::Realm,
+        vote_record::Vote,
     },
     PROGRAM_AUTHORITY_SEED,
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 
-use super::vote_record::Vote;
-
-/// Proposal option vote status
+/// Proposal option vote result
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum OptionVoteResult {
     /// Vote on the option is not resolved yet
     None,
+
     /// Vote on the option is completed and the option passed
     Succeeded,
+
     /// Vote on the option is completed and the option was defeated
     Defeated,
 }
@@ -66,6 +67,7 @@ pub enum VoteType {
     /// Single choice vote with mutually exclusive choices
     /// Note: Yes/No vote is a single choice (Yes) vote with the deny option (No)
     SingleChoice,
+
     /// Multiple options can be selected
     MultiChoice,
 }
@@ -102,10 +104,10 @@ pub struct Proposal {
     /// Proposal options
     pub options: Vec<ProposalOption>,
 
-    /// The weight of proposal rejection votes
+    /// The weight of the Proposal rejection votes
     /// If the proposal has no deny option then the weight is None
     /// Only proposals with the deny option can have executable instructions attached to them
-    /// Without the deny option a proposal is only none executable survey
+    /// Without the deny option a proposal is only non executable survey
     pub deny_vote_weight: Option<u64>,
 
     /// When the Proposal was created and entered Draft state
@@ -428,7 +430,7 @@ impl Proposal {
         if self.vote_type != VoteType::SingleChoice
             // Tipping should not be allowed for opinion only proposals (surveys without rejection) to allow everybody's voice to be heard
             && self.deny_vote_weight.is_none()
-            && !self.options.len() != 2
+            && !self.options.len() != 1
         {
             return None;
         };
@@ -1651,6 +1653,7 @@ mod test {
         let mut proposal = create_test_proposal();
         proposal.deny_vote_weight = None;
 
+        // Survey only proposal can't be denied
         let vote = Vote::Deny;
 
         // Act

@@ -181,7 +181,7 @@ pub enum GovernanceInstruction {
 
         #[allow(dead_code)]
         /// Indicates whether the proposal has the deny option
-        /// A proposal without the rejecting option is a none binding survey
+        /// A proposal without the rejecting option is a non binding survey
         /// Only proposals with the rejecting option can have executable instructions
         use_deny_option: bool,
     },
