@@ -29,6 +29,7 @@ use crate::{
 pub fn process_insert_instruction(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
+    option_index: u8,
     instruction_index: u16,
     hold_up_time: u32,
     instruction: InstructionData,
@@ -88,6 +89,7 @@ pub fn process_insert_instruction(
 
     let proposal_instruction_data = ProposalInstruction {
         account_type: GovernanceAccountType::ProposalInstruction,
+        option_index,
         instruction_index,
         hold_up_time,
         instruction,
@@ -102,6 +104,7 @@ pub fn process_insert_instruction(
         &proposal_instruction_data,
         &get_proposal_instruction_address_seeds(
             proposal_info.key,
+            &option_index.to_le_bytes(),
             &instruction_index.to_le_bytes(),
         ),
         program_id,

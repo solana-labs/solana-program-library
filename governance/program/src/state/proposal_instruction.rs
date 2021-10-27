@@ -86,6 +86,9 @@ pub struct ProposalInstruction {
     /// The Proposal the instruction belongs to
     pub proposal: Pubkey,
 
+    /// The option index the instruction belongs to
+    pub option_index: u8,
+
     /// Unique instruction index within it's parent Proposal
     pub instruction_index: u16,
 
@@ -106,7 +109,7 @@ pub struct ProposalInstruction {
 
 impl AccountMaxSize for ProposalInstruction {
     fn get_max_size(&self) -> Option<usize> {
-        Some(self.instruction.accounts.len() * 34 + self.instruction.data.len() + 89)
+        Some(self.instruction.accounts.len() * 34 + self.instruction.data.len() + 90)
     }
 }
 
@@ -119,11 +122,13 @@ impl IsInitialized for ProposalInstruction {
 /// Returns ProposalInstruction PDA seeds
 pub fn get_proposal_instruction_address_seeds<'a>(
     proposal: &'a Pubkey,
-    instruction_index_le_bytes: &'a [u8],
-) -> [&'a [u8]; 3] {
+    option_index: &'a [u8; 1],
+    instruction_index_le_bytes: &'a [u8; 2], // u16 le bytes
+) -> [&'a [u8]; 4] {
     [
         PROGRAM_AUTHORITY_SEED,
         proposal.as_ref(),
+        option_index,
         instruction_index_le_bytes,
     ]
 }
@@ -132,10 +137,11 @@ pub fn get_proposal_instruction_address_seeds<'a>(
 pub fn get_proposal_instruction_address<'a>(
     program_id: &Pubkey,
     proposal: &'a Pubkey,
-    instruction_index_le_bytes: &'a [u8],
+    option_index: &'a [u8; 1],
+    instruction_index_le_bytes: &'a [u8; 2], // u16 le bytes
 ) -> Pubkey {
     Pubkey::find_program_address(
-        &get_proposal_instruction_address_seeds(proposal, instruction_index_le_bytes),
+        &get_proposal_instruction_address_seeds(proposal, option_index, instruction_index_le_bytes),
         program_id,
     )
     .0
@@ -207,6 +213,7 @@ mod test {
         ProposalInstruction {
             account_type: GovernanceAccountType::ProposalInstruction,
             proposal: Pubkey::new_unique(),
+            option_index: 0,
             instruction_index: 1,
             hold_up_time: 10,
             instruction: create_test_instruction_data(),

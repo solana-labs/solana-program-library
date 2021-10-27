@@ -226,6 +226,9 @@ pub enum GovernanceInstruction {
     ///   7. `[]` Rent sysvar
     InsertInstruction {
         #[allow(dead_code)]
+        /// The index of the option the instruction is for
+        option_index: u8,
+        #[allow(dead_code)]
         /// Instruction index to be inserted at.
         index: u16,
         #[allow(dead_code)]
@@ -1099,12 +1102,17 @@ pub fn insert_instruction(
     governance_authority: &Pubkey,
     payer: &Pubkey,
     // Args
+    option_index: u8,
     index: u16,
     hold_up_time: u32,
     instruction: InstructionData,
 ) -> Instruction {
-    let proposal_instruction_address =
-        get_proposal_instruction_address(program_id, proposal, &index.to_le_bytes());
+    let proposal_instruction_address = get_proposal_instruction_address(
+        program_id,
+        proposal,
+        &option_index.to_le_bytes(),
+        &index.to_le_bytes(),
+    );
 
     let accounts = vec![
         AccountMeta::new_readonly(*governance, false),
@@ -1118,6 +1126,7 @@ pub fn insert_instruction(
     ];
 
     let instruction = GovernanceInstruction::InsertInstruction {
+        option_index,
         index,
         hold_up_time,
         instruction,

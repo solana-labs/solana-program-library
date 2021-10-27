@@ -68,6 +68,7 @@ pub fn process_instruction(
         try_from_slice_unchecked(input).map_err(|_| ProgramError::InvalidInstructionData)?;
 
     if let GovernanceInstruction::InsertInstruction {
+        option_index,
         index,
         hold_up_time,
         instruction: _,
@@ -75,7 +76,8 @@ pub fn process_instruction(
     {
         // Do not dump instruction data into logs
         msg!(
-            "GOVERNANCE-INSTRUCTION: InsertInstruction {{ index: {:?}, hold_up_time: {:?} }}",
+            "GOVERNANCE-INSTRUCTION: InsertInstruction {{option_index: {:?}, index: {:?}, hold_up_time: {:?} }}",
+            option_index,
             index,
             hold_up_time
         );
@@ -159,10 +161,18 @@ pub fn process_instruction(
         GovernanceInstruction::CancelProposal {} => process_cancel_proposal(program_id, accounts),
 
         GovernanceInstruction::InsertInstruction {
+            option_index,
             index,
             hold_up_time,
             instruction,
-        } => process_insert_instruction(program_id, accounts, index, hold_up_time, instruction),
+        } => process_insert_instruction(
+            program_id,
+            accounts,
+            option_index,
+            index,
+            hold_up_time,
+            instruction,
+        ),
 
         GovernanceInstruction::RemoveInstruction {} => {
             process_remove_instruction(program_id, accounts)

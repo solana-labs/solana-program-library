@@ -2022,6 +2022,7 @@ impl GovernanceProgramTest {
         let instruction_data: InstructionData = instruction.clone().into();
 
         let instruction_index = index.unwrap_or(proposal_cookie.account.instructions_next_index);
+        let option_index = 0;
 
         proposal_cookie.account.instructions_next_index += 1;
 
@@ -2032,6 +2033,7 @@ impl GovernanceProgramTest {
             &token_owner_record_cookie.address,
             &token_owner_record_cookie.token_owner.pubkey(),
             &self.bench.payer.pubkey(),
+            option_index,
             instruction_index,
             hold_up_time,
             instruction_data.clone(),
@@ -2047,11 +2049,13 @@ impl GovernanceProgramTest {
         let proposal_instruction_address = get_proposal_instruction_address(
             &self.program_id,
             &proposal_cookie.address,
+            &option_index.to_le_bytes(),
             &instruction_index.to_le_bytes(),
         );
 
         let proposal_instruction_data = ProposalInstruction {
             account_type: GovernanceAccountType::ProposalInstruction,
+            option_index,
             instruction_index,
             hold_up_time,
             instruction: instruction_data,
