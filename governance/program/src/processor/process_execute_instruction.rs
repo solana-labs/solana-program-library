@@ -65,7 +65,6 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
         proposal_data.state = ProposalState::Executing;
     }
 
-    // TODO: test for out of bounds index
     let mut option = &mut proposal_data.options[proposal_instruction_data.option_index as usize];
     option.instructions_executed_count = option.instructions_executed_count.checked_add(1).unwrap();
 

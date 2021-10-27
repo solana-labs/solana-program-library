@@ -71,7 +71,6 @@ pub fn process_insert_instruction(
 
     token_owner_record_data.assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
-    // TODO: should we use some safe access?
     let option = &mut proposal_data.options[option_index as usize];
 
     match instruction_index.cmp(&option.instructions_next_index) {

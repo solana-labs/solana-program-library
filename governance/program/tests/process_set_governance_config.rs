@@ -205,6 +205,7 @@ async fn test_set_governance_config_with_invalid_governance_authority_error() {
         .with_instruction(
             &mut proposal_cookie,
             &token_owner_record_cookie,
+            0,
             None,
             &mut set_governance_config_ix,
         )

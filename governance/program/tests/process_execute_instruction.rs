@@ -633,7 +633,7 @@ async fn test_execute_mint_instruction_twice_error() {
         .unwrap();
 
     governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, None)
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .unwrap();
 

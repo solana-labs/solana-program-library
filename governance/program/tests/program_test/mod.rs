@@ -1881,6 +1881,7 @@ impl GovernanceProgramTest {
         self.with_instruction(
             proposal_cookie,
             token_owner_record_cookie,
+            0,
             None,
             &mut set_governance_config_ix,
         )
@@ -1917,6 +1918,7 @@ impl GovernanceProgramTest {
         self.with_instruction(
             proposal_cookie,
             token_owner_record_cookie,
+            0,
             index,
             &mut instruction,
         )
@@ -1953,6 +1955,7 @@ impl GovernanceProgramTest {
         self.with_instruction(
             proposal_cookie,
             token_owner_record_cookie,
+            0,
             index,
             &mut instruction,
         )
@@ -2022,6 +2025,7 @@ impl GovernanceProgramTest {
         self.with_instruction(
             proposal_cookie,
             token_owner_record_cookie,
+            0,
             None,
             &mut upgrade_instruction,
         )
@@ -2033,6 +2037,7 @@ impl GovernanceProgramTest {
         &mut self,
         proposal_cookie: &mut ProposalCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
+        option_index: u8,
         index: Option<u16>,
     ) -> Result<ProposalInstructionCookie, ProgramError> {
         // Create NOP instruction as a placeholder
@@ -2046,6 +2051,7 @@ impl GovernanceProgramTest {
         self.with_instruction(
             proposal_cookie,
             token_owner_record_cookie,
+            option_index,
             index,
             &mut instruction,
         )
@@ -2057,6 +2063,7 @@ impl GovernanceProgramTest {
         &mut self,
         proposal_cookie: &mut ProposalCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
+        option_index: u8,
         index: Option<u16>,
         instruction: &mut Instruction,
     ) -> Result<ProposalInstructionCookie, ProgramError> {
@@ -2066,7 +2073,6 @@ impl GovernanceProgramTest {
         let mut yes_option = &mut proposal_cookie.account.options[0];
 
         let instruction_index = index.unwrap_or(yes_option.instructions_next_index);
-        let option_index = 0;
 
         yes_option.instructions_next_index += 1;
 

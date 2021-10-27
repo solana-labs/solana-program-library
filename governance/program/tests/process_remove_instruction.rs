@@ -35,7 +35,7 @@ async fn test_remove_instruction() {
         .unwrap();
 
     let proposal_instruction_cookie = governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, None)
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .unwrap();
 
@@ -98,12 +98,12 @@ async fn test_replace_instruction() {
         .unwrap();
 
     let proposal_instruction_cookie = governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, None)
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .unwrap();
 
     governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, None)
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .unwrap();
 
@@ -119,7 +119,7 @@ async fn test_replace_instruction() {
         .unwrap();
 
     let proposal_instruction_cookie2 = governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, Some(0))
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, Some(0))
         .await
         .unwrap();
 
@@ -171,12 +171,12 @@ async fn test_remove_front_instruction() {
         .unwrap();
 
     let proposal_instruction_cookie = governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, None)
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .unwrap();
 
     governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, None)
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .unwrap();
 
@@ -237,7 +237,7 @@ async fn test_remove_instruction_with_owner_or_delegate_must_sign_error() {
         .unwrap();
 
     let proposal_instruction_cookie = governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, None)
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .unwrap();
 
@@ -294,7 +294,7 @@ async fn test_remove_instruction_with_proposal_not_editable_error() {
         .unwrap();
 
     let proposal_instruction_cookie = governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, None)
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .unwrap();
 
@@ -349,7 +349,7 @@ async fn test_remove_instruction_with_instruction_from_other_proposal_error() {
         .unwrap();
 
     governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, None)
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .unwrap();
 
@@ -364,7 +364,7 @@ async fn test_remove_instruction_with_instruction_from_other_proposal_error() {
         .unwrap();
 
     let proposal_instruction_cookie2 = governance_test
-        .with_nop_instruction(&mut proposal_cookie2, &token_owner_record_cookie2, None)
+        .with_nop_instruction(&mut proposal_cookie2, &token_owner_record_cookie2, 0, None)
         .await
         .unwrap();
 

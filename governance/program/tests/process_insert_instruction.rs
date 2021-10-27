@@ -36,7 +36,7 @@ async fn test_insert_instruction() {
 
     // Act
     let proposal_instruction_cookie = governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, None)
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .unwrap();
 
@@ -91,12 +91,12 @@ async fn test_insert_multiple_instructions() {
 
     // Act
     governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, None)
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .unwrap();
 
     governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, None)
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .unwrap();
 
@@ -142,7 +142,7 @@ async fn test_insert_instruction_with_invalid_index_error() {
 
     // Act
     let err = governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, Some(1))
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, Some(1))
         .await
         .err()
         .unwrap();
@@ -179,7 +179,7 @@ async fn test_insert_instruction_with_instruction_already_exists_error() {
         .unwrap();
 
     governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, None)
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .unwrap();
 
@@ -187,7 +187,7 @@ async fn test_insert_instruction_with_instruction_already_exists_error() {
 
     // Act
     let err = governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, Some(0))
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, Some(0))
         .await
         .err()
         .unwrap();
@@ -230,7 +230,7 @@ async fn test_insert_instruction_with_invalid_hold_up_time_error() {
 
     // Act
     let err = governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, None)
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .err()
         .unwrap();
@@ -270,7 +270,7 @@ async fn test_insert_instruction_with_not_editable_proposal_error() {
 
     // Act
     let err = governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, None)
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .err()
         .unwrap();
@@ -318,7 +318,7 @@ async fn test_insert_instruction_with_owner_or_delegate_must_sign_error() {
 
     // Act
     let err = governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, None)
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .err()
         .unwrap();
