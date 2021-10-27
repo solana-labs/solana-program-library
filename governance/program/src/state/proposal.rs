@@ -311,6 +311,8 @@ impl Proposal {
                     Ordering::Equal => best_succeeded_option_count += 1,
                     Ordering::Less => {}
                 }
+            } else {
+                option.vote_result = OptionVoteResult::Defeated;
             }
         }
 
@@ -420,7 +422,7 @@ impl Proposal {
     /// If yes then Some(ProposalState) is returned and None otherwise
     #[allow(clippy::float_cmp)]
     pub fn try_get_tipped_vote_state(
-        &self,
+        &mut self,
         max_vote_weight: u64,
         config: &GovernanceConfig,
     ) -> Option<ProposalState> {
@@ -428,20 +430,25 @@ impl Proposal {
         // Note: Tipping for multiple options (single choice and multiple choices) should be possible but it requires a great deal of considerations
         //       and I decided to fight it another day
         if self.vote_type != VoteType::SingleChoice
-            // Tipping should not be allowed for opinion only proposals (surveys without rejection) to allow everybody's voice to be heard
-            && self.deny_vote_weight.is_none()
-            && !self.options.len() != 1
+        // Tipping should not be allowed for opinion only proposals (surveys without rejection) to allow everybody's voice to be heard
+        || self.deny_vote_weight.is_none()
+        || self.options.len() != 1
         {
             return None;
         };
 
-        let yes_vote_weight = self.options[0].vote_weight;
+        let mut yes_option = &mut self.options[0];
+
+        let yes_vote_weight = yes_option.vote_weight;
         let deny_vote_weight = self.deny_vote_weight.unwrap();
 
         if yes_vote_weight == max_vote_weight {
+            yes_option.vote_result = OptionVoteResult::Succeeded;
             return Some(ProposalState::Succeeded);
         }
+
         if deny_vote_weight == max_vote_weight {
+            yes_option.vote_result = OptionVoteResult::Defeated;
             return Some(ProposalState::Defeated);
         }
 
@@ -452,10 +459,12 @@ impl Proposal {
         if yes_vote_weight >= min_vote_threshold_weight
             && yes_vote_weight > (max_vote_weight - yes_vote_weight)
         {
+            yes_option.vote_result = OptionVoteResult::Succeeded;
             return Some(ProposalState::Succeeded);
         } else if deny_vote_weight > (max_vote_weight - min_vote_threshold_weight)
             || deny_vote_weight >= (max_vote_weight - deny_vote_weight)
         {
+            yes_option.vote_result = OptionVoteResult::Defeated;
             return Some(ProposalState::Defeated);
         }
 
@@ -522,6 +531,12 @@ impl Proposal {
             | ProposalState::Defeated => {
                 return Err(GovernanceError::InvalidStateCannotExecuteInstruction.into())
             }
+        }
+
+        if self.options[proposal_instruction_data.option_index as usize].vote_result
+            != OptionVoteResult::Succeeded
+        {
+            return Err(GovernanceError::CannotExecuteDefeatedOption.into());
         }
 
         if self

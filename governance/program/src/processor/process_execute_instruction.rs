@@ -14,7 +14,7 @@ use solana_program::{
 use crate::state::{
     enums::{InstructionExecutionStatus, ProposalState},
     governance::get_governance_data,
-    proposal::get_proposal_data_for_governance,
+    proposal::{get_proposal_data_for_governance, OptionVoteResult},
     proposal_instruction::get_proposal_instruction_data_for_proposal,
 };
 
@@ -75,6 +75,7 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
         && proposal_data
             .options
             .iter()
+            .filter(|o| o.vote_result == OptionVoteResult::Succeeded)
             .all(|o| o.instructions_executed_count == o.instructions_count)
     {
         proposal_data.closed_at = Some(clock.unix_timestamp);

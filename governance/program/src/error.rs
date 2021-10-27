@@ -357,6 +357,10 @@ pub enum GovernanceError {
     /// Invalid vote
     #[error("Invalid vote")]
     InvalidVote,
+
+    /// Cannot execute defeated option
+    #[error("Cannot execute defeated option")]
+    CannotExecuteDefeatedOption,
 }
 
 impl PrintProgramError for GovernanceError {

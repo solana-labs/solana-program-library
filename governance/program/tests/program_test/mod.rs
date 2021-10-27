@@ -1759,13 +1759,6 @@ impl GovernanceProgramTest {
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         yes_no_vote: YesNoVote,
     ) -> Result<VoteRecordCookie, ProgramError> {
-        let voter_weight_record =
-            if let Some(voter_weight_record) = &token_owner_record_cookie.voter_weight_record {
-                Some(voter_weight_record.address)
-            } else {
-                None
-            };
-
         let vote = match yes_no_vote {
             YesNoVote::Yes => Vote::Approve(vec![VoteChoice {
                 rank: 0,
@@ -1773,6 +1766,24 @@ impl GovernanceProgramTest {
             }]),
             YesNoVote::No => Vote::Deny,
         };
+
+        self.with_cast_multi_option_vote(proposal_cookie, token_owner_record_cookie, vote)
+            .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_cast_multi_option_vote(
+        &mut self,
+        proposal_cookie: &ProposalCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        vote: Vote,
+    ) -> Result<VoteRecordCookie, ProgramError> {
+        let voter_weight_record =
+            if let Some(voter_weight_record) = &token_owner_record_cookie.voter_weight_record {
+                Some(voter_weight_record.address)
+            } else {
+                None
+            };
 
         let vote_instruction = cast_vote(
             &self.program_id,
