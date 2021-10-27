@@ -349,6 +349,10 @@ pub enum GovernanceError {
     /// InvalidProposalOptions
     #[error("Invalid proposal options")]
     InvalidProposalOptions,
+
+    /// Proposal is not not executable
+    #[error("Proposal is not not executable")]
+    ProposalIsNotExecutable,
 }
 
 impl PrintProgramError for GovernanceError {

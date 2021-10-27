@@ -147,7 +147,6 @@ pub fn process_create_proposal(
         execution_flags: InstructionExecutionFlags::None,
 
         vote_type,
-        // TODO: validate options for proposal type
         options: proposal_options,
         has_reject_option: use_reject_option,
 

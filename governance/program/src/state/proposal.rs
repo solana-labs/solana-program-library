@@ -510,9 +510,18 @@ impl Proposal {
     }
 
     /// Checks if Instructions can be edited (inserted or removed) for the Proposal in the given state
+    /// It also asserts whether the Proposal is executable (has the reject option)
     pub fn assert_can_edit_instructions(&self) -> Result<(), ProgramError> {
-        self.assert_is_draft_state()
-            .map_err(|_| GovernanceError::InvalidStateCannotEditInstructions.into())
+        if self.assert_is_draft_state().is_err() {
+            return Err(GovernanceError::InvalidStateCannotEditInstructions.into());
+        }
+
+        // For security purposes only proposals with the reject option can have executable instructions
+        if !self.has_reject_option {
+            return Err(GovernanceError::ProposalIsNotExecutable.into());
+        }
+
+        Ok(())
     }
 
     /// Checks if Instructions can be executed for the Proposal in the given state
