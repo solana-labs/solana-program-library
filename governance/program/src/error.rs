@@ -345,6 +345,10 @@ pub enum GovernanceError {
     /// Vote type not supported
     #[error("Vote type not supported")]
     VoteTypeNotSupported,
+
+    /// InvalidProposalOptions
+    #[error("Invalid proposal options")]
+    InvalidProposalOptions,
 }
 
 impl PrintProgramError for GovernanceError {

@@ -25,8 +25,6 @@ use crate::{
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 
-
-
 /// Proposal option vote status
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum OptionVoteResult {
@@ -664,6 +662,22 @@ pub fn get_proposal_address<'a>(
         program_id,
     )
     .0
+}
+
+/// Assert options to create proposal are valid
+pub fn assert_valid_proposal_options(
+    vote_type: &VoteType,
+    options: &Vec<String>,
+) -> Result<(), ProgramError> {
+    if options.len() == 0 {
+        return Err(GovernanceError::InvalidProposalOptions.into());
+    }
+
+    if options.len() == 1 && *vote_type == VoteType::MultiChoice {
+        return Err(GovernanceError::InvalidProposalOptions.into());
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]

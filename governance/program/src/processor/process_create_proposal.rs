@@ -17,7 +17,8 @@ use crate::{
         enums::{GovernanceAccountType, InstructionExecutionFlags, ProposalState},
         governance::get_governance_data_for_realm,
         proposal::{
-            get_proposal_address_seeds, OptionVoteResult, Proposal, ProposalOption, VoteType,
+            assert_valid_proposal_options, get_proposal_address_seeds, OptionVoteResult, Proposal,
+            ProposalOption, VoteType,
         },
         realm::get_realm_data_for_governing_token_mint,
         token_owner_record::get_token_owner_record_data_for_realm,
@@ -95,6 +96,8 @@ pub fn process_create_proposal(
         .checked_add(1)
         .unwrap();
     proposal_owner_record_data.serialize(&mut *proposal_owner_record_info.data.borrow_mut())?;
+
+    assert_valid_proposal_options(&vote_type, &options)?;
 
     let mut proposal_options: Vec<ProposalOption> = options
         .iter()
