@@ -120,7 +120,7 @@ async fn test_relinquish_active_yes_vote() {
         .await;
 
     assert_eq!(0, proposal_account.options[0].vote_weight);
-    assert_eq!(0, proposal_account.options[1].vote_weight);
+    assert_eq!(0, proposal_account.reject_option_vote_weight.unwrap());
     assert_eq!(ProposalState::Voting, proposal_account.state);
 
     let token_owner_record = governance_test
@@ -188,7 +188,7 @@ async fn test_relinquish_active_no_vote() {
         .await;
 
     assert_eq!(0, proposal_account.options[0].vote_weight);
-    assert_eq!(0, proposal_account.options[1].vote_weight);
+    assert_eq!(0, proposal_account.reject_option_vote_weight.unwrap());
     assert_eq!(ProposalState::Voting, proposal_account.state);
 
     let token_owner_record = governance_test

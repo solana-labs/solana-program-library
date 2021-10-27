@@ -1492,7 +1492,7 @@ impl GovernanceProgramTest {
 
         let clock = self.bench.get_clock().await;
 
-        let mut proposal_options: Vec<ProposalOption> = options
+        let proposal_options: Vec<ProposalOption> = options
             .iter()
             .map(|o| ProposalOption {
                 label: o.to_string(),
@@ -1504,17 +1504,7 @@ impl GovernanceProgramTest {
             })
             .collect();
 
-        // TODO: Use separate option for rejection
-        if use_reject_option {
-            proposal_options.push(ProposalOption {
-                label: "No".to_string(),
-                vote_weight: 0,
-                vote_result: OptionVoteResult::None,
-                instructions_executed_count: 0,
-                instructions_count: 0,
-                instructions_next_index: 0,
-            })
-        }
+        let reject_option_vote_weight = if use_reject_option { Some(0) } else { None };
 
         let account = Proposal {
             account_type: GovernanceAccountType::Proposal,
@@ -1539,7 +1529,7 @@ impl GovernanceProgramTest {
 
             vote_type: vote_type,
             options: proposal_options,
-            has_reject_option: use_reject_option,
+            reject_option_vote_weight,
 
             execution_flags: InstructionExecutionFlags::None,
             max_vote_weight: None,

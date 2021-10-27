@@ -40,7 +40,6 @@ pub enum OptionVoteResult {
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ProposalOption {
     /// Option label
-    /// TODO: Use ProposalOption here
     pub label: String,
 
     /// Vote weight for the option
@@ -102,11 +101,11 @@ pub struct Proposal {
     /// Proposal options
     pub options: Vec<ProposalOption>,
 
-    /// Indicate whether the proposal has a reject option allowing to reject the proposal
+    /// The weight of proposal rejection votes
+    /// If the proposal has no rejection option then should be set to None
     /// Only proposals with the reject option can have executable instructions attached to them
-    /// and without it the proposal is only none executable survey
-    /// The reject option should be the last one in the options collection
-    pub has_reject_option: bool,
+    /// and without it a proposal is only none executable survey
+    pub reject_option_vote_weight: Option<u64>,
 
     /// When the Proposal was created and entered Draft state
     pub draft_at: UnixTimestamp,
@@ -154,7 +153,7 @@ pub struct Proposal {
 impl AccountMaxSize for Proposal {
     fn get_max_size(&self) -> Option<usize> {
         let options_size: usize = self.options.iter().map(|o| o.label.len() + 19).sum();
-        Some(self.name.len() + self.description_link.len() + options_size + 189)
+        Some(self.name.len() + self.description_link.len() + options_size + 197)
     }
 }
 
@@ -287,25 +286,17 @@ impl Proposal {
                 .unwrap();
 
         // If the proposal has a reject option then any other option must beat it regardless of the configured min_vote_threshold_weight
-        let (reject_vote_weight, option_count) = if self.has_reject_option {
-            (
-                // The reject option is always the last option
-                self.options.last().unwrap().vote_weight,
-                self.options.len() - 1,
-            )
-        } else {
-            (0, self.options.len())
-        };
+        let reject_option_vote_weight = self.reject_option_vote_weight.unwrap_or(0);
 
         let mut best_succeeded_option_weight = 0;
         let mut best_succeeded_option_count = 0;
 
-        for option in self.options.iter_mut().take(option_count) {
+        for option in self.options.iter_mut() {
             // Any positive vote (Yes) must be equal or above the required min_vote_threshold_weight and higher than the reject option vote (No)
             // The same number of positive (Yes) and rejecting (No) votes is a tie and resolved as Defeated
             // In other words  +1 vote as a tie breaker is required to succeed for the positive option vote
             if option.vote_weight >= min_vote_threshold_weight
-                && option.vote_weight > reject_vote_weight
+                && option.vote_weight > reject_option_vote_weight
             {
                 option.vote_result = OptionVoteResult::Succeeded;
 
@@ -337,7 +328,7 @@ impl Proposal {
                     };
 
                     // Coerce options vote results based on the winning score (best_succeeded_vote_weight)
-                    for option in self.options.iter_mut().take(option_count) {
+                    for option in self.options.iter_mut() {
                         option.vote_result = if option.vote_weight == best_succeeded_option_weight {
                             OptionVoteResult::Succeeded
                         } else {
@@ -378,29 +369,15 @@ impl Proposal {
                     .checked_div(MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE as u128)
                     .unwrap() as u64;
 
-                // TODO: Consider removing the reject option from options collection
-                let (reject_vote_weight, option_count) = if self.has_reject_option {
-                    (
-                        // The reject option is always the last option
-                        self.options.last().unwrap().vote_weight,
-                        self.options.len() - 1,
-                    )
-                } else {
-                    (0, self.options.len())
-                };
+                let reject_option_vote_weight = self.reject_option_vote_weight.unwrap_or(0);
 
-                let max_option_vote_weight = self
-                    .options
-                    .iter()
-                    .take(option_count)
-                    .map(|o| o.vote_weight)
-                    .max()
-                    .unwrap();
+                let max_option_vote_weight =
+                    self.options.iter().map(|o| o.vote_weight).max().unwrap();
 
                 // When the fraction is used it's possible we can go over the calculated max_vote_weight
                 // and we have to adjust it in case more votes have been cast
                 let total_vote_weight = max_option_vote_weight
-                    .checked_add(reject_vote_weight)
+                    .checked_add(reject_option_vote_weight)
                     .unwrap();
 
                 Ok(max_vote_weight.max(total_vote_weight))
@@ -449,19 +426,19 @@ impl Proposal {
         //       and I decided to fight it another day
         if self.vote_type != VoteType::SingleChoice
             // Tipping should not be allowed for opinion only proposals (surveys without rejection) to allow everybody's voice to be heard
-            && !self.has_reject_option
+            && self.reject_option_vote_weight.is_none()
             && !self.options.len() != 2
         {
             return None;
         };
 
         let yes_vote_weight = self.options[0].vote_weight;
-        let reject_vote_weight = self.options[1].vote_weight;
+        let reject_option_vote_weight = self.reject_option_vote_weight.unwrap();
 
         if yes_vote_weight == max_vote_weight {
             return Some(ProposalState::Succeeded);
         }
-        if reject_vote_weight == max_vote_weight {
+        if reject_option_vote_weight == max_vote_weight {
             return Some(ProposalState::Defeated);
         }
 
@@ -473,8 +450,8 @@ impl Proposal {
             && yes_vote_weight > (max_vote_weight - yes_vote_weight)
         {
             return Some(ProposalState::Succeeded);
-        } else if reject_vote_weight > (max_vote_weight - min_vote_threshold_weight)
-            || reject_vote_weight >= (max_vote_weight - reject_vote_weight)
+        } else if reject_option_vote_weight > (max_vote_weight - min_vote_threshold_weight)
+            || reject_option_vote_weight >= (max_vote_weight - reject_option_vote_weight)
         {
             return Some(ProposalState::Defeated);
         }
@@ -517,7 +494,7 @@ impl Proposal {
         }
 
         // For security purposes only proposals with the reject option can have executable instructions
-        if !self.has_reject_option {
+        if self.reject_option_vote_weight.is_none() {
             return Err(GovernanceError::ProposalIsNotExecutable.into());
         }
 
@@ -698,26 +675,6 @@ mod test {
 
     use {super::*, proptest::prelude::*};
 
-    // struct YesNoOptions {
-    //     pub yes_weight: u64,
-    //     pub no_weight: u64,
-    // }
-
-    // impl From<YesNoOptions> for Vec<ProposalOption> {
-    //     fn from(yes_no_options: YesNoOptions) -> Self {
-    //         vec![
-    //             ProposalOption {
-    //                 label: "yes".to_string(),
-    //                 vote_weight: yes_no_options.yes_weight,
-    //             },
-    //             ProposalOption {
-    //                 label: "no".to_string(),
-    //                 vote_weight: yes_no_options.no_weight,
-    //             },
-    //         ]
-    //     }
-    // }
-
     fn create_test_proposal() -> Proposal {
         Proposal {
             account_type: GovernanceAccountType::TokenOwnerRecord,
@@ -741,25 +698,15 @@ mod test {
             closed_at: Some(10),
 
             vote_type: VoteType::SingleChoice,
-            options: vec![
-                ProposalOption {
-                    label: "yes".to_string(),
-                    vote_weight: 0,
-                    vote_result: OptionVoteResult::None,
-                    instructions_executed_count: 10,
-                    instructions_count: 10,
-                    instructions_next_index: 10,
-                },
-                ProposalOption {
-                    label: "no".to_string(),
-                    vote_weight: 0,
-                    vote_result: OptionVoteResult::None,
-                    instructions_executed_count: 10,
-                    instructions_count: 10,
-                    instructions_next_index: 10,
-                },
-            ],
-            has_reject_option: true,
+            options: vec![ProposalOption {
+                label: "yes".to_string(),
+                vote_weight: 0,
+                vote_result: OptionVoteResult::None,
+                instructions_executed_count: 10,
+                instructions_count: 10,
+                instructions_next_index: 10,
+            }],
+            reject_option_vote_weight: Some(0),
 
             execution_flags: InstructionExecutionFlags::Ordered,
 
@@ -1219,7 +1166,7 @@ mod test {
             let mut proposal = create_test_proposal();
 
            proposal.options[0].vote_weight = test_case.yes_votes_count;
-           proposal.options[1].vote_weight = test_case.no_votes_count;
+           proposal.reject_option_vote_weight = Some(test_case.no_votes_count);
 
             proposal.state = ProposalState::Voting;
 
@@ -1247,7 +1194,7 @@ mod test {
             let mut proposal = create_test_proposal();
 
             proposal.options[0].vote_weight = test_case.yes_votes_count;
-            proposal.options[1].vote_weight = test_case.no_votes_count;
+            proposal.reject_option_vote_weight = Some(test_case.no_votes_count);
 
             proposal.state = ProposalState::Voting;
 
@@ -1292,7 +1239,7 @@ mod test {
             let mut proposal = create_test_proposal();
 
             proposal.options[0].vote_weight = yes_votes_count;
-            proposal.options[1].vote_weight = no_votes_count.min(governing_token_supply-yes_votes_count);
+            proposal.reject_option_vote_weight = Some(no_votes_count.min(governing_token_supply-yes_votes_count));
 
 
             proposal.state = ProposalState::Voting;
@@ -1312,7 +1259,7 @@ mod test {
             // Assert
             let yes_vote_threshold_count = get_min_vote_threshold_weight(&yes_vote_threshold_percentage,governing_token_supply).unwrap();
 
-            let no_vote_weight = proposal.options[1].vote_weight;
+            let no_vote_weight = proposal.reject_option_vote_weight.unwrap();
 
             if yes_votes_count >= yes_vote_threshold_count && yes_votes_count > (governing_token_supply - yes_votes_count)
             {
@@ -1336,7 +1283,7 @@ mod test {
             let mut proposal = create_test_proposal();
 
             proposal.options[0].vote_weight = yes_votes_count;
-            proposal.options[1].vote_weight = no_votes_count.min(governing_token_supply-yes_votes_count);
+            proposal.reject_option_vote_weight = Some(no_votes_count.min(governing_token_supply-yes_votes_count));
 
             proposal.state = ProposalState::Voting;
 
@@ -1354,7 +1301,7 @@ mod test {
             proposal.finalize_vote(governing_token_supply, &governance_config,&realm,current_timestamp).unwrap();
 
             // Assert
-            let no_vote_weight = proposal.options[1].vote_weight;
+            let no_vote_weight = proposal.reject_option_vote_weight.unwrap();
 
             let yes_vote_threshold_count = get_min_vote_threshold_weight(&yes_vote_threshold_percentage,governing_token_supply).unwrap();
 
@@ -1373,7 +1320,7 @@ mod test {
         let mut proposal = create_test_proposal();
 
         proposal.options[0].vote_weight = 60;
-        proposal.options[1].vote_weight = 10;
+        proposal.reject_option_vote_weight = Some(10);
 
         proposal.state = ProposalState::Voting;
 
@@ -1413,7 +1360,7 @@ mod test {
         let mut proposal = create_test_proposal();
 
         // no vote weight
-        proposal.options[1].vote_weight = 10;
+        proposal.reject_option_vote_weight = Some(10);
 
         proposal.state = ProposalState::Voting;
 
@@ -1457,7 +1404,7 @@ mod test {
         let mut proposal = create_test_proposal();
 
         proposal.options[0].vote_weight = 60;
-        proposal.options[1].vote_weight = 10;
+        proposal.reject_option_vote_weight = Some(10);
 
         proposal.state = ProposalState::Voting;
 
@@ -1495,7 +1442,7 @@ mod test {
         let mut proposal = create_test_proposal();
 
         proposal.options[0].vote_weight = 60;
-        proposal.options[1].vote_weight = 10;
+        proposal.reject_option_vote_weight = Some(10);
 
         proposal.state = ProposalState::Voting;
 
@@ -1534,7 +1481,7 @@ mod test {
         let mut proposal = create_test_proposal();
 
         proposal.options[0].vote_weight = 60;
-        proposal.options[1].vote_weight = 10;
+        proposal.reject_option_vote_weight = Some(10);
 
         proposal.state = ProposalState::Voting;
 

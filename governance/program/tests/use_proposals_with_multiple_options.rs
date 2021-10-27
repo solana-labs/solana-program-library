@@ -48,7 +48,7 @@ async fn test_create_proposal_with_single_choice_options_and_reject_option() {
         .await;
 
     assert_eq!(proposal_account.vote_type, VoteType::SingleChoice);
-    assert!(proposal_account.has_reject_option);
+    assert!(proposal_account.reject_option_vote_weight.is_some());
 
     assert_eq!(proposal_cookie.account, proposal_account);
 }
@@ -94,7 +94,7 @@ async fn test_create_proposal_with_multiple_choice_options_and_without_reject_op
         .await;
 
     assert_eq!(proposal_account.vote_type, VoteType::MultiChoice);
-    assert!(!proposal_account.has_reject_option);
+    assert!(!proposal_account.reject_option_vote_weight.is_some());
 
     assert_eq!(proposal_cookie.account, proposal_account);
 }
