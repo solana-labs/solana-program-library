@@ -17,8 +17,7 @@ use crate::{
         enums::{GovernanceAccountType, InstructionExecutionFlags, ProposalState},
         governance::get_governance_data_for_realm,
         proposal::{
-            get_proposal_address_seeds, OptionVoteResult, Proposal, ProposalOption,
-            ProposalOptionArg, VoteType,
+            get_proposal_address_seeds, OptionVoteResult, Proposal, ProposalOption, VoteType,
         },
         realm::get_realm_data_for_governing_token_mint,
         token_owner_record::get_token_owner_record_data_for_realm,
@@ -33,7 +32,8 @@ pub fn process_create_proposal(
     description_link: String,
     governing_token_mint: Pubkey,
     vote_type: VoteType,
-    options: Vec<ProposalOptionArg>,
+    options: Vec<String>,
+    use_reject_option: bool,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -93,10 +93,10 @@ pub fn process_create_proposal(
         .unwrap();
     proposal_owner_record_data.serialize(&mut *proposal_owner_record_info.data.borrow_mut())?;
 
-    let proposal_options = options
+    let mut proposal_options: Vec<ProposalOption> = options
         .iter()
         .map(|o| ProposalOption {
-            label: o.label.to_string(),
+            label: o.to_string(),
             vote_weight: 0,
             vote_result: OptionVoteResult::None,
             instructions_executed_count: 0,
@@ -104,6 +104,18 @@ pub fn process_create_proposal(
             instructions_next_index: 0,
         })
         .collect();
+
+    // TODO: Use separate option for rejection
+    if use_reject_option {
+        proposal_options.push(ProposalOption {
+            label: "No".to_string(),
+            vote_weight: 0,
+            vote_result: OptionVoteResult::None,
+            instructions_executed_count: 0,
+            instructions_count: 0,
+            instructions_next_index: 0,
+        })
+    }
 
     let proposal_data = Proposal {
         account_type: GovernanceAccountType::Proposal,
@@ -131,8 +143,7 @@ pub fn process_create_proposal(
         vote_type,
         // TODO: validate options for proposal type
         options: proposal_options,
-        // TODO: populate from args
-        has_reject_option: true,
+        has_reject_option: use_reject_option,
 
         max_vote_weight: None,
         vote_threshold_percentage: None,

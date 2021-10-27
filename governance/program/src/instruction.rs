@@ -7,7 +7,7 @@ use crate::{
             get_account_governance_address, get_mint_governance_address,
             get_program_governance_address, get_token_governance_address, GovernanceConfig,
         },
-        proposal::{get_proposal_address, ProposalOptionArg, VoteType},
+        proposal::{get_proposal_address, VoteType},
         proposal_instruction::{get_proposal_instruction_address, InstructionData},
         realm::{get_governing_token_holding_address, get_realm_address, RealmConfigArgs},
         realm_config::get_realm_config_address,
@@ -180,8 +180,13 @@ pub enum GovernanceInstruction {
 
         #[allow(dead_code)]
         /// Proposal options
-        /// TODO: Use ProposalOptionArgs
-        options: Vec<ProposalOptionArg>,
+        options: Vec<String>,
+
+        #[allow(dead_code)]
+        /// Indicates whether the proposal has a reject option
+        /// A proposal without the reject option is a none binding survey
+        /// And only proposals with the reject options can have executable instructions
+        use_reject_option: bool,
     },
 
     /// Adds a signatory to the Proposal which means this Proposal can't leave Draft state until yet another Signatory signs
@@ -827,7 +832,8 @@ pub fn create_proposal(
     description_link: String,
     governing_token_mint: &Pubkey,
     vote_type: VoteType,
-    options: Vec<ProposalOptionArg>,
+    options: Vec<String>,
+    use_reject_option: bool,
     proposal_index: u32,
 ) -> Instruction {
     let proposal_address = get_proposal_address(
@@ -857,6 +863,7 @@ pub fn create_proposal(
         governing_token_mint: *governing_token_mint,
         vote_type,
         options,
+        use_reject_option,
     };
 
     Instruction {

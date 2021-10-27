@@ -25,14 +25,7 @@ use crate::{
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 
-/// Proposal Option
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub struct ProposalOptionArg {
-    /// Option label
-    /// TODO: make label optional or create ProposalOptions with a collection of labels
-    /// add has_reject_option flag
-    pub label: String,
-}
+
 
 /// Proposal option vote status
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]

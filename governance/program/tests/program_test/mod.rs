@@ -36,10 +36,7 @@ use spl_governance::{
             get_program_governance_address, get_token_governance_address, Governance,
             GovernanceConfig,
         },
-        proposal::{
-            get_proposal_address, OptionVoteResult, Proposal, ProposalOption, ProposalOptionArg,
-            VoteType,
-        },
+        proposal::{get_proposal_address, OptionVoteResult, Proposal, ProposalOption, VoteType},
         proposal_instruction::{
             get_proposal_instruction_address, InstructionData, ProposalInstruction,
         },
@@ -1382,6 +1379,26 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
+    pub async fn with_multi_option_proposal(
+        &mut self,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        governance_cookie: &mut GovernanceCookie,
+        options: Vec<String>,
+        use_reject_option: bool,
+        vote_type: VoteType,
+    ) -> Result<ProposalCookie, ProgramError> {
+        self.with_proposal_using_instruction_impl(
+            token_owner_record_cookie,
+            governance_cookie,
+            options,
+            use_reject_option,
+            vote_type,
+            NopOverride,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
     pub async fn with_signed_off_proposal(
         &mut self,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
@@ -1408,6 +1425,29 @@ impl GovernanceProgramTest {
         governance_cookie: &mut GovernanceCookie,
         instruction_override: F,
     ) -> Result<ProposalCookie, ProgramError> {
+        let options = vec!["Yes".to_string()];
+
+        self.with_proposal_using_instruction_impl(
+            token_owner_record_cookie,
+            governance_cookie,
+            options,
+            true,
+            VoteType::SingleChoice,
+            instruction_override,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_proposal_using_instruction_impl<F: Fn(&mut Instruction)>(
+        &mut self,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        governance_cookie: &mut GovernanceCookie,
+        options: Vec<String>,
+        use_reject_option: bool,
+        vote_type: VoteType,
+        instruction_override: F,
+    ) -> Result<ProposalCookie, ProgramError> {
         let proposal_index = governance_cookie.next_proposal_index;
         governance_cookie.next_proposal_index += 1;
 
@@ -1424,15 +1464,6 @@ impl GovernanceProgramTest {
                 None
             };
 
-        let options = vec![
-            ProposalOptionArg {
-                label: "Yes".to_string(),
-            },
-            ProposalOptionArg {
-                label: "No".to_string(),
-            },
-        ];
-
         let mut create_proposal_instruction = create_proposal(
             &self.program_id,
             &governance_cookie.address,
@@ -1444,8 +1475,9 @@ impl GovernanceProgramTest {
             name.clone(),
             description_link.clone(),
             &token_owner_record_cookie.account.governing_token_mint,
-            VoteType::SingleChoice,
-            options,
+            vote_type.clone(),
+            options.clone(),
+            use_reject_option,
             proposal_index,
         );
 
@@ -1459,6 +1491,30 @@ impl GovernanceProgramTest {
             .await?;
 
         let clock = self.bench.get_clock().await;
+
+        let mut proposal_options: Vec<ProposalOption> = options
+            .iter()
+            .map(|o| ProposalOption {
+                label: o.to_string(),
+                vote_weight: 0,
+                vote_result: OptionVoteResult::None,
+                instructions_executed_count: 0,
+                instructions_count: 0,
+                instructions_next_index: 0,
+            })
+            .collect();
+
+        // TODO: Use separate option for rejection
+        if use_reject_option {
+            proposal_options.push(ProposalOption {
+                label: "No".to_string(),
+                vote_weight: 0,
+                vote_result: OptionVoteResult::None,
+                instructions_executed_count: 0,
+                instructions_count: 0,
+                instructions_next_index: 0,
+            })
+        }
 
         let account = Proposal {
             account_type: GovernanceAccountType::Proposal,
@@ -1481,26 +1537,9 @@ impl GovernanceProgramTest {
             token_owner_record: token_owner_record_cookie.address,
             signatories_signed_off_count: 0,
 
-            vote_type: VoteType::SingleChoice,
-            options: vec![
-                ProposalOption {
-                    label: "Yes".to_string(),
-                    vote_weight: 0,
-                    vote_result: OptionVoteResult::None,
-                    instructions_executed_count: 0,
-                    instructions_count: 0,
-                    instructions_next_index: 0,
-                },
-                ProposalOption {
-                    label: "No".to_string(),
-                    vote_weight: 0,
-                    vote_result: OptionVoteResult::None,
-                    instructions_executed_count: 0,
-                    instructions_count: 0,
-                    instructions_next_index: 0,
-                },
-            ],
-            has_reject_option: true,
+            vote_type: vote_type,
+            options: proposal_options,
+            has_reject_option: use_reject_option,
 
             execution_flags: InstructionExecutionFlags::None,
             max_vote_weight: None,

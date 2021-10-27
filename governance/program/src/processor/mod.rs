@@ -132,6 +132,7 @@ pub fn process_instruction(
             governing_token_mint,
             vote_type: proposal_type,
             options,
+            use_reject_option,
         } => process_create_proposal(
             program_id,
             accounts,
@@ -140,6 +141,7 @@ pub fn process_instruction(
             governing_token_mint,
             proposal_type,
             options,
+            use_reject_option,
         ),
         GovernanceInstruction::AddSignatory { signatory } => {
             process_add_signatory(program_id, accounts, signatory)
