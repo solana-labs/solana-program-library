@@ -31,7 +31,7 @@ pub enum GovernanceAccountType {
     VoteRecord,
 
     /// ProposalInstruction account which holds an instruction to execute for Proposal
-    ProposalInstruction,
+    ProposalInstructionV1,
 
     /// Mint Governance account
     MintGovernance,
@@ -45,6 +45,10 @@ pub enum GovernanceAccountType {
     /// Vote record account for a given Proposal.  Proposal can have 0..n voting records
     /// V2 adds support for multi option votes
     VoteRecordV2,
+
+    /// ProposalInstruction account which holds an instruction to execute for Proposal
+    /// V2 adds index for proposal option
+    ProposalInstructionV2,
 }
 
 impl Default for GovernanceAccountType {

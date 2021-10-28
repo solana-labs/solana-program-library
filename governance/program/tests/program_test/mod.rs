@@ -38,7 +38,7 @@ use spl_governance::{
         },
         proposal::{get_proposal_address, OptionVoteResult, Proposal, ProposalOption, VoteType},
         proposal_instruction::{
-            get_proposal_instruction_address, InstructionData, ProposalInstruction,
+            get_proposal_instruction_address, InstructionData, ProposalInstructionV2,
         },
         realm::{
             get_governing_token_holding_address, get_realm_address, Realm, RealmConfig,
@@ -2110,8 +2110,8 @@ impl GovernanceProgramTest {
             &instruction_index.to_le_bytes(),
         );
 
-        let proposal_instruction_data = ProposalInstruction {
-            account_type: GovernanceAccountType::ProposalInstruction,
+        let proposal_instruction_data = ProposalInstructionV2 {
+            account_type: GovernanceAccountType::ProposalInstructionV2,
             option_index,
             instruction_index,
             hold_up_time,
@@ -2255,9 +2255,9 @@ impl GovernanceProgramTest {
     pub async fn get_proposal_instruction_account(
         &mut self,
         proposal_instruction_address: &Pubkey,
-    ) -> ProposalInstruction {
+    ) -> ProposalInstructionV2 {
         self.bench
-            .get_borsh_account::<ProposalInstruction>(proposal_instruction_address)
+            .get_borsh_account::<ProposalInstructionV2>(proposal_instruction_address)
             .await
     }
 

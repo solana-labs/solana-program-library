@@ -95,7 +95,7 @@ impl VoteRecord {
         if self.account_type == GovernanceAccountType::VoteRecordV2 {
             BorshSerialize::serialize(&self, writer)?
         } else if self.account_type == GovernanceAccountType::VoteRecord {
-            // For V1 translate the account back to the original format
+            // V1 account can't be resized and we have to translate it back to the original format
             let vote_weight = match self.vote.clone() {
                 Vote::Approve(_options) => {
                     spl_governance_v1::state::enums::VoteWeight::Yes(self.voter_weight)
@@ -203,7 +203,6 @@ pub fn get_vote_record_address<'a>(
 
 #[cfg(test)]
 mod test {
-    use std::{cell::RefCell, rc::Rc};
 
     use borsh::BorshSerialize;
     use solana_program::clock::Epoch;
@@ -232,7 +231,7 @@ mod test {
         let info_key = Pubkey::new_unique();
         let mut lamports = 10u64;
 
-        let mut vote_record_v1_info = AccountInfo::new(
+        let vote_record_v1_info = AccountInfo::new(
             &info_key,
             false,
             false,
@@ -247,15 +246,11 @@ mod test {
 
         let vote_record_v2 = get_vote_record_data(&program_id, &vote_record_v1_info).unwrap();
 
-        let mut vote_record_v1_target_vec = vec![];
-
         vote_record_v2
-            .serialize(&mut vote_record_v1_target_vec)
+            .serialize(&mut &mut **vote_record_v1_info.data.borrow_mut())
             .unwrap();
 
         // Assert
-
-        vote_record_v1_info.data = Rc::new(RefCell::new(&mut vote_record_v1_target_vec));
 
         let vote_record_v1_target = get_account_data::<
             spl_governance_v1::state::vote_record::VoteRecord,

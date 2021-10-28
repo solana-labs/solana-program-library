@@ -18,7 +18,7 @@ use crate::{
             MintMaxVoteWeightSource, ProposalState, VoteThresholdPercentage,
         },
         governance::GovernanceConfig,
-        proposal_instruction::ProposalInstruction,
+        proposal_instruction::ProposalInstructionV2,
         realm::Realm,
         vote_record::Vote,
     },
@@ -522,7 +522,7 @@ impl Proposal {
     /// Checks if Instructions can be executed for the Proposal in the given state
     pub fn assert_can_execute_instruction(
         &self,
-        proposal_instruction_data: &ProposalInstruction,
+        proposal_instruction_data: &ProposalInstructionV2,
         current_unix_timestamp: UnixTimestamp,
     ) -> Result<(), ProgramError> {
         match self.state {
@@ -565,7 +565,7 @@ impl Proposal {
     /// Checks if the instruction can be flagged with error for the Proposal in the given state
     pub fn assert_can_flag_instruction_error(
         &self,
-        proposal_instruction_data: &ProposalInstruction,
+        proposal_instruction_data: &ProposalInstructionV2,
         current_unix_timestamp: UnixTimestamp,
     ) -> Result<(), ProgramError> {
         // Instruction can be flagged for error only when it's eligible for execution

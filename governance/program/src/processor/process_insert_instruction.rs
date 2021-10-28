@@ -19,7 +19,7 @@ use crate::{
         governance::get_governance_data,
         proposal::get_proposal_data_for_governance,
         proposal_instruction::{
-            get_proposal_instruction_address_seeds, InstructionData, ProposalInstruction,
+            get_proposal_instruction_address_seeds, InstructionData, ProposalInstructionV2,
         },
         token_owner_record::get_token_owner_record_data_for_proposal_owner,
     },
@@ -86,8 +86,8 @@ pub fn process_insert_instruction(
     option.instructions_count = option.instructions_count.checked_add(1).unwrap();
     proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
 
-    let proposal_instruction_data = ProposalInstruction {
-        account_type: GovernanceAccountType::ProposalInstruction,
+    let proposal_instruction_data = ProposalInstructionV2 {
+        account_type: GovernanceAccountType::ProposalInstructionV2,
         option_index,
         instruction_index,
         hold_up_time,
@@ -97,7 +97,7 @@ pub fn process_insert_instruction(
         proposal: *proposal_info.key,
     };
 
-    create_and_serialize_account_signed::<ProposalInstruction>(
+    create_and_serialize_account_signed::<ProposalInstructionV2>(
         payer_info,
         proposal_instruction_info,
         &proposal_instruction_data,
