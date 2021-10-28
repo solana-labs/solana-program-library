@@ -74,7 +74,7 @@ pub enum VoteType {
 
 /// Governance Proposal
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub struct Proposal {
+pub struct ProposalV2 {
     /// Governance account type
     pub account_type: GovernanceAccountType,
 
@@ -153,20 +153,20 @@ pub struct Proposal {
     pub description_link: String,
 }
 
-impl AccountMaxSize for Proposal {
+impl AccountMaxSize for ProposalV2 {
     fn get_max_size(&self) -> Option<usize> {
         let options_size: usize = self.options.iter().map(|o| o.label.len() + 19).sum();
         Some(self.name.len() + self.description_link.len() + options_size + 197)
     }
 }
 
-impl IsInitialized for Proposal {
+impl IsInitialized for ProposalV2 {
     fn is_initialized(&self) -> bool {
-        self.account_type == GovernanceAccountType::Proposal
+        self.account_type == GovernanceAccountType::ProposalV2
     }
 }
 
-impl Proposal {
+impl ProposalV2 {
     /// Checks if Signatories can be edited (added or removed) for the Proposal in the given state
     pub fn assert_can_edit_signatories(&self) -> Result<(), ProgramError> {
         self.assert_is_draft_state()
@@ -656,8 +656,8 @@ fn get_min_vote_threshold_weight(
 pub fn get_proposal_data(
     program_id: &Pubkey,
     proposal_info: &AccountInfo,
-) -> Result<Proposal, ProgramError> {
-    get_account_data::<Proposal>(program_id, proposal_info)
+) -> Result<ProposalV2, ProgramError> {
+    get_account_data::<ProposalV2>(program_id, proposal_info)
 }
 
 /// Deserializes Proposal and validates it belongs to the given Governance and Governing Mint
@@ -666,7 +666,7 @@ pub fn get_proposal_data_for_governance_and_governing_mint(
     proposal_info: &AccountInfo,
     governance: &Pubkey,
     governing_token_mint: &Pubkey,
-) -> Result<Proposal, ProgramError> {
+) -> Result<ProposalV2, ProgramError> {
     let proposal_data = get_proposal_data_for_governance(program_id, proposal_info, governance)?;
 
     if proposal_data.governing_token_mint != *governing_token_mint {
@@ -681,7 +681,7 @@ pub fn get_proposal_data_for_governance(
     program_id: &Pubkey,
     proposal_info: &AccountInfo,
     governance: &Pubkey,
-) -> Result<Proposal, ProgramError> {
+) -> Result<ProposalV2, ProgramError> {
     let proposal_data = get_proposal_data(program_id, proposal_info)?;
 
     if proposal_data.governance != *governance {
@@ -749,8 +749,8 @@ mod test {
 
     use {super::*, proptest::prelude::*};
 
-    fn create_test_proposal() -> Proposal {
-        Proposal {
+    fn create_test_proposal() -> ProposalV2 {
+        ProposalV2 {
             account_type: GovernanceAccountType::TokenOwnerRecord,
             governance: Pubkey::new_unique(),
             governing_token_mint: Pubkey::new_unique(),
@@ -788,7 +788,7 @@ mod test {
         }
     }
 
-    fn create_test_multi_option_proposal() -> Proposal {
+    fn create_test_multi_option_proposal() -> ProposalV2 {
         let mut proposal = create_test_proposal();
         proposal.options = vec![
             ProposalOption {

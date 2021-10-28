@@ -22,7 +22,7 @@ pub enum GovernanceAccountType {
     ProgramGovernance,
 
     /// Proposal account for Governance account. A single Governance account can have multiple Proposal accounts
-    Proposal,
+    ProposalV1,
 
     /// Proposal Signatory account
     SignatoryRecord,
@@ -49,6 +49,10 @@ pub enum GovernanceAccountType {
     /// ProposalInstruction account which holds an instruction to execute for Proposal
     /// V2 adds index for proposal option
     ProposalInstructionV2,
+
+    /// Proposal account for Governance account. A single Governance account can have multiple Proposal accounts
+    /// V2 adds support for multiple vote options
+    ProposalV2,
 }
 
 impl Default for GovernanceAccountType {

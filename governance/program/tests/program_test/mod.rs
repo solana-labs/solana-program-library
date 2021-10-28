@@ -36,7 +36,7 @@ use spl_governance::{
             get_program_governance_address, get_token_governance_address, Governance,
             GovernanceConfig,
         },
-        proposal::{get_proposal_address, OptionVoteResult, Proposal, ProposalOption, VoteType},
+        proposal::{get_proposal_address, OptionVoteResult, ProposalOption, ProposalV2, VoteType},
         proposal_instruction::{
             get_proposal_instruction_address, InstructionData, ProposalInstructionV2,
         },
@@ -1546,8 +1546,8 @@ impl GovernanceProgramTest {
 
         let deny_vote_weight = if use_deny_option { Some(0) } else { None };
 
-        let account = Proposal {
-            account_type: GovernanceAccountType::Proposal,
+        let account = ProposalV2 {
+            account_type: GovernanceAccountType::ProposalV2,
             description_link,
             name: name.clone(),
             governance: governance_cookie.address,
@@ -2238,9 +2238,9 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn get_proposal_account(&mut self, proposal_address: &Pubkey) -> Proposal {
+    pub async fn get_proposal_account(&mut self, proposal_address: &Pubkey) -> ProposalV2 {
         self.bench
-            .get_borsh_account::<Proposal>(proposal_address)
+            .get_borsh_account::<ProposalV2>(proposal_address)
             .await
     }
 

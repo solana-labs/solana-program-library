@@ -17,8 +17,8 @@ use crate::{
         enums::{GovernanceAccountType, InstructionExecutionFlags, ProposalState},
         governance::get_governance_data_for_realm,
         proposal::{
-            assert_valid_proposal_options, get_proposal_address_seeds, OptionVoteResult, Proposal,
-            ProposalOption, VoteType,
+            assert_valid_proposal_options, get_proposal_address_seeds, OptionVoteResult,
+            ProposalOption, ProposalV2, VoteType,
         },
         realm::get_realm_data_for_governing_token_mint,
         token_owner_record::get_token_owner_record_data_for_realm,
@@ -113,8 +113,8 @@ pub fn process_create_proposal(
 
     let deny_vote_weight = if use_deny_option { Some(0) } else { None };
 
-    let proposal_data = Proposal {
-        account_type: GovernanceAccountType::Proposal,
+    let proposal_data = ProposalV2 {
+        account_type: GovernanceAccountType::ProposalV2,
         governance: *governance_info.key,
         governing_token_mint: *governing_token_mint_info.key,
         state: ProposalState::Draft,
@@ -144,7 +144,7 @@ pub fn process_create_proposal(
         vote_threshold_percentage: None,
     };
 
-    create_and_serialize_account_signed::<Proposal>(
+    create_and_serialize_account_signed::<ProposalV2>(
         payer_info,
         proposal_info,
         &proposal_data,
