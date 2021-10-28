@@ -44,7 +44,7 @@ async function main() {
   await routedSwap();
   console.log('Success\n');
   await createAccountsAndRoutedSwapAtomic();
-  
+
   console.log('Run test: createThirdTokenSwap');
   await createThirdTokenSwapForNative();
   console.log('Run test: swapNative');

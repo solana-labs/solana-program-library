@@ -9,7 +9,7 @@ import {
   SystemProgram,
   Transaction,
   TransactionInstruction,
-  SYSVAR_RENT_PUBKEY
+  SYSVAR_RENT_PUBKEY,
 } from '@solana/web3.js';
 
 import * as Layout from './layout';
@@ -20,7 +20,11 @@ export const STEP_SWAP_PROGRAM_ID: PublicKey = new PublicKey(
   'SSwpMgqNDsyV7mAgN9ady4bDVu5ySjmmXejXvy2vLt1',
 );
 
-export const POOL_REGISTRY_SEED: string = "poolregistry";
+export const STEP_SWAP_OWNER: PublicKey = new PublicKey(
+  'GkT2mRSujbydLUmA178ykHe7hZtaUpkmX2sfwS8suWb3',
+);
+
+export const POOL_REGISTRY_SEED: string = 'poolregistry';
 
 /**
  * Some amount of tokens
@@ -57,29 +61,64 @@ export class Numberu64 extends BN {
   }
 }
 
-class PublicKeyLayout extends BufferLayout.Blob {
+class PublicKeyLayout extends BufferLayout.Blob<any> {
   constructor(property: string) {
     super(32, property);
   }
-  decode(b: any, offset: any) {
+  decode(b: Buffer, offset: number) {
     return new PublicKey(super.decode(b, offset));
   }
-  encode(src: any, b: any, offset: any) {
+  encode(src: PublicKey, b: Buffer, offset: number) {
     return super.encode(src.toBuffer(), b, offset);
   }
 }
 
-function publicKeyLayout(property = "") {
+function publicKeyLayout(property = '') {
   return new PublicKeyLayout(property);
 }
 
-export const PoolRegistryLayout = BufferLayout.struct([
+export type PoolRegistry = {
+  isInitialized: boolean;
+  registrySize: number;
+  accounts: PublicKey[];
+};
+
+export const PoolRegistryLayout = BufferLayout.struct<PoolRegistry>([
   BufferLayout.u8('isInitialized'),
   BufferLayout.u32('registrySize'),
-  BufferLayout.seq(publicKeyLayout(), ((2 * 1024 * 1024) / 32) - 1, "accounts"),
+  BufferLayout.seq(publicKeyLayout(), (2 * 1024 * 1024) / 32 - 1, 'accounts'),
 ]);
 
-export const TokenSwapLayout = BufferLayout.struct([
+export enum CurveType {
+  ConstantProduct = 0, // Constant product curve, Uniswap-style
+  ConstantPrice = 1, // Constant price curve, always X amount of A token for 1 B token, where X is defined at init
+  Stable = 2, // Stable, like uniswap, but with wide zone of 1:1 instead of one point
+  ConstantProductWithOffset = 3, // Offset curve, like Uniswap, but with an additional offset on the token B side
+}
+
+export type TokenSwapLayoutInterface = {
+  version: number;
+  isInitialized: number;
+  nonce: number;
+  tokenProgramId: Buffer;
+  tokenAccountA: Buffer;
+  tokenAccountB: Buffer;
+  tokenPool: Buffer;
+  mintA: Buffer;
+  mintB: Buffer;
+  feeAccount: Buffer;
+  tradeFeeNumerator: Buffer;
+  tradeFeeDenominator: Buffer;
+  ownerTradeFeeNumerator: Buffer;
+  ownerTradeFeeDenominator: Buffer;
+  ownerWithdrawFeeNumerator: Buffer;
+  ownerWithdrawFeeDenominator: Buffer;
+  curveType: CurveType;
+  curveParameters: Buffer;
+  poolNonce: number;
+};
+
+export const TokenSwapLayout = BufferLayout.struct<TokenSwapLayoutInterface>([
   BufferLayout.u8('version'),
   BufferLayout.u8('isInitialized'),
   BufferLayout.u8('nonce'),
@@ -100,19 +139,6 @@ export const TokenSwapLayout = BufferLayout.struct([
   BufferLayout.blob(32, 'curveParameters'),
   BufferLayout.u8('poolNonce'),
 ]);
-
-export const CurveType = Object.freeze({
-  ConstantProduct: 0, // Constant product curve, Uniswap-style
-  ConstantPrice: 1, // Constant price curve, always X amount of A token for 1 B token, where X is defined at init
-  Stable: 2, // Stable, like uniswap, but with wide zone of 1:1 instead of one point
-  Offset: 3, // Offset curve, like Uniswap, but with an additional offset on the token B side
-});
-
-export type PoolRegistry = {
-  isInitialized: boolean;
-  registrySize: number;
-  accounts: PublicKey[];
-};
 
 /**
  * A program to exchange tokens against a pool of liquidity
@@ -220,7 +246,11 @@ export class TokenSwap {
     );
     transaction = new Transaction();
 
-    const poolRegistryKey = await PublicKey.createWithSeed(registryOwner, POOL_REGISTRY_SEED, swapProgramId);
+    const poolRegistryKey = await PublicKey.createWithSeed(
+      registryOwner,
+      POOL_REGISTRY_SEED,
+      swapProgramId,
+    );
 
     transaction.add(
       SystemProgram.createAccountWithSeed({
@@ -237,7 +267,7 @@ export class TokenSwap {
     const instruction = TokenSwap.createInitRegistryInstruction(
       registryOwner,
       poolRegistryKey,
-      swapProgramId
+      swapProgramId,
     );
 
     transaction.add(instruction);
@@ -251,23 +281,22 @@ export class TokenSwap {
    * @param payer Pays for the transaction
    * @param swapProgramId The program ID of the token-swap program
    */
-   static async loadPoolRegistry(
+  static async loadPoolRegistry(
     connection: Connection,
     registryOwner: PublicKey,
     swapProgramId: PublicKey,
   ): Promise<PoolRegistry | undefined> {
-    const poolRegistryKey = await PublicKey.createWithSeed(registryOwner, POOL_REGISTRY_SEED, swapProgramId);
+    const poolRegistryKey = await PublicKey.createWithSeed(
+      registryOwner,
+      POOL_REGISTRY_SEED,
+      swapProgramId,
+    );
     const acc = await connection.getAccountInfo(poolRegistryKey);
     if (!acc) {
       return undefined;
     }
 
-    const decoded = PoolRegistryLayout.decode(acc.data);
-    return {
-      isInitialized: decoded.isInitialized,
-      registrySize: decoded.registrySize,
-      accounts: decoded.accounts
-    }
+    return PoolRegistryLayout.decode(acc.data);
   }
 
   static createInitRegistryInstruction(
@@ -279,9 +308,7 @@ export class TokenSwap {
       {pubkey: registryOwner, isSigner: true, isWritable: false},
       {pubkey: poolRegistry, isSigner: false, isWritable: true},
     ];
-    const dataLayout = BufferLayout.struct([
-      BufferLayout.u8('instruction'),
-    ]);
+    const dataLayout = BufferLayout.struct([BufferLayout.u8('instruction')]);
 
     const data = Buffer.alloc(dataLayout.span);
     dataLayout.encode(
@@ -359,7 +386,7 @@ export class TokenSwap {
           ownerWithdrawFeeNumerator,
           ownerWithdrawFeeDenominator,
           curveType,
-          poolNonce
+          poolNonce,
         },
         data,
       );
@@ -385,7 +412,11 @@ export class TokenSwap {
       throw new Error(`Invalid token swap state`);
     }
 
-    const poolRegistry = await PublicKey.createWithSeed(registryOwner, POOL_REGISTRY_SEED, programId);
+    const poolRegistry = await PublicKey.createWithSeed(
+      registryOwner,
+      POOL_REGISTRY_SEED,
+      programId,
+    );
 
     const [authority] = await PublicKey.findProgramAddress(
       [address.toBuffer()],
@@ -442,7 +473,7 @@ export class TokenSwap {
       curveType,
       payer,
       poolRegistry,
-      poolNonce
+      poolNonce,
     );
   }
 
@@ -511,7 +542,7 @@ export class TokenSwap {
       curveType,
       payer,
       poolRegistry,
-      poolNonce
+      poolNonce,
     );
 
     // Allocate memory for the account
@@ -540,7 +571,7 @@ export class TokenSwap {
       ownerWithdrawFeeDenominator,
       curveType,
       poolRegistry,
-      poolNonce
+      poolNonce,
     );
 
     transaction.add(instruction);
@@ -625,22 +656,22 @@ export class TokenSwap {
     minimumAmountOut: number | Numberu64,
   ): TransactionInstruction {
     return TokenSwap.swapInstruction(
-          this.tokenSwap,
-          this.authority,
-          userTransferAuthority.publicKey,
-          userSource,
-          poolSource,
-          poolDestination,
-          userDestination,
-          this.poolToken,
-          this.feeAccount,
-          refundTo,
-          this.swapProgramId,
-          this.tokenProgramId,
-          amountIn,
-          minimumAmountOut,
-        );
-  }  
+      this.tokenSwap,
+      this.authority,
+      userTransferAuthority.publicKey,
+      userSource,
+      poolSource,
+      poolDestination,
+      userDestination,
+      this.poolToken,
+      this.feeAccount,
+      refundTo,
+      this.swapProgramId,
+      this.tokenProgramId,
+      amountIn,
+      minimumAmountOut,
+    );
+  }
 
   static swapInstruction(
     tokenSwap: PublicKey,

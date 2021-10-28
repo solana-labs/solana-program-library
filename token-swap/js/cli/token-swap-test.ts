@@ -6,9 +6,19 @@ import {
   Transaction,
   TransactionInstruction,
 } from '@solana/web3.js';
-import {AccountLayout, Token, TOKEN_PROGRAM_ID, NATIVE_MINT} from '@solana/spl-token';
+import {
+  AccountLayout,
+  Token,
+  TOKEN_PROGRAM_ID,
+  NATIVE_MINT,
+} from '@solana/spl-token';
 
-import {TokenSwap, CurveType, STEP_SWAP_PROGRAM_ID, POOL_REGISTRY_SEED} from '../src';
+import {
+  TokenSwap,
+  CurveType,
+  STEP_SWAP_PROGRAM_ID,
+  POOL_REGISTRY_SEED,
+} from '../src';
 import {sendAndConfirmTransaction} from '../src/util/send-and-confirm-transaction';
 import {newAccountWithLamports} from '../src/util/new-account-with-lamports';
 import {url} from '../src/util/url';
@@ -93,11 +103,15 @@ const SWAP_AMOUNT_OUT = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? 90661 : 90674;
 const SWAP_FEE = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? 22273 : 22277;
 const OWNER_SWAP_FEE = SWAP_FEE;
 
-const ROUTED_SWAP_AMOUNT_OUT1 = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? /*?*/0 : 90677;
-const ROUTED_SWAP_AMOUNT_OUT2 = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? /*?*/0 : 82925;
+const ROUTED_SWAP_AMOUNT_OUT1 = SWAP_PROGRAM_OWNER_FEE_ADDRESS
+  ? /*?*/ 0
+  : 90677;
+const ROUTED_SWAP_AMOUNT_OUT2 = SWAP_PROGRAM_OWNER_FEE_ADDRESS
+  ? /*?*/ 0
+  : 82925;
 
-const OWNER_ROUTED_SWAP_FEE1 = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? /*?*/0 : 13182;
-const OWNER_ROUTED_SWAP_FEE2 = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? /*?*/0 : 11920;
+const OWNER_ROUTED_SWAP_FEE1 = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? /*?*/ 0 : 13182;
+const OWNER_ROUTED_SWAP_FEE2 = SWAP_PROGRAM_OWNER_FEE_ADDRESS ? /*?*/ 0 : 11920;
 
 // Pool token amount minted on init
 const DEFAULT_POOL_TOKEN_AMOUNT = 1000000000;
@@ -123,7 +137,6 @@ async function getConnection(): Promise<Connection> {
 }
 
 export async function initializePoolRegistry(): Promise<void> {
-
   //reset these - to allow for rerun
   currentSwapTokenA = 1000000;
   currentSwapTokenB = 1000000;
@@ -135,13 +148,17 @@ export async function initializePoolRegistry(): Promise<void> {
 
   const connection = await getConnection();
   payer = await newAccountWithLamports(connection, 172981613440);
-  const transaction = await TokenSwap.initializePoolRegistry(connection, payer.publicKey, STEP_SWAP_PROGRAM_ID)
+  const transaction = await TokenSwap.initializePoolRegistry(
+    connection,
+    payer.publicKey,
+    STEP_SWAP_PROGRAM_ID,
+  );
 
   await sendAndConfirmTransaction(
     'initialize pool registry',
     connection,
     transaction,
-    payer
+    payer,
   );
 }
 
@@ -175,11 +192,7 @@ export async function createTokenSwap(): Promise<void> {
   const curveBuffer = Buffer.alloc(1);
   curveBuffer.writeUInt8(CURVE_TYPE, 0);
   let [tokenSwapKey, poolNonce] = await PublicKey.findProgramAddress(
-    [
-      seedKeyVec[0],
-      seedKeyVec[1],
-      curveBuffer
-    ],
+    [seedKeyVec[0], seedKeyVec[1], curveBuffer],
     STEP_SWAP_PROGRAM_ID,
   );
 
@@ -213,7 +226,11 @@ export async function createTokenSwap(): Promise<void> {
   console.log('minting token B to swap');
   await mintB.mintTo(tokenAccountB, owner, [], currentSwapTokenB);
 
-  const poolRegistryKey = await PublicKey.createWithSeed(payer.publicKey, POOL_REGISTRY_SEED, STEP_SWAP_PROGRAM_ID);
+  const poolRegistryKey = await PublicKey.createWithSeed(
+    payer.publicKey,
+    POOL_REGISTRY_SEED,
+    STEP_SWAP_PROGRAM_ID,
+  );
 
   console.log('creating token swap');
   tokenSwap = await TokenSwap.createTokenSwap(
@@ -239,7 +256,7 @@ export async function createTokenSwap(): Promise<void> {
     OWNER_WITHDRAW_FEE_DENOMINATOR,
     CURVE_TYPE,
     poolRegistryKey,
-    poolNonce
+    poolNonce,
   );
 
   console.log('loading token swap');
@@ -251,7 +268,11 @@ export async function createTokenSwap(): Promise<void> {
     payer,
   );
 
-  const poolRegistry = await TokenSwap.loadPoolRegistry(connection, payer.publicKey, STEP_SWAP_PROGRAM_ID);
+  const poolRegistry = await TokenSwap.loadPoolRegistry(
+    connection,
+    payer.publicKey,
+    STEP_SWAP_PROGRAM_ID,
+  );
 
   if (!poolRegistry) {
     assert(poolRegistry !== undefined);
@@ -259,7 +280,9 @@ export async function createTokenSwap(): Promise<void> {
   }
   assert(poolRegistry.isInitialized);
   assert(poolRegistry.registrySize == 1);
-  assert(poolRegistry.accounts[poolRegistry.registrySize - 1].equals(tokenSwapKey));
+  assert(
+    poolRegistry.accounts[poolRegistry.registrySize - 1].equals(tokenSwapKey),
+  );
 
   assert(fetchedTokenSwap.tokenProgramId.equals(TOKEN_PROGRAM_ID));
   assert(fetchedTokenSwap.tokenAccountA.equals(tokenAccountA));
@@ -300,7 +323,7 @@ export async function createTokenSwap(): Promise<void> {
 }
 
 export async function tryCreateTokenSwap(curveType: number): Promise<boolean> {
-  console.log("attempting to create duplicate pool with curve: ", curveType)
+  console.log('attempting to create duplicate pool with curve: ', curveType);
   const connection = await getConnection();
 
   const seedKeyVec = [mintA.publicKey.toBuffer(), mintB.publicKey.toBuffer()];
@@ -309,11 +332,7 @@ export async function tryCreateTokenSwap(curveType: number): Promise<boolean> {
   const curveBuffer = Buffer.alloc(1);
   curveBuffer.writeUInt8(curveType, 0);
   let [tokenSwapKey, poolNonce] = await PublicKey.findProgramAddress(
-    [
-      seedKeyVec[0],
-      seedKeyVec[1],
-      curveBuffer
-    ],
+    [seedKeyVec[0], seedKeyVec[1], curveBuffer],
     STEP_SWAP_PROGRAM_ID,
   );
 
@@ -347,7 +366,11 @@ export async function tryCreateTokenSwap(curveType: number): Promise<boolean> {
   console.log('minting token B to swap');
   await mintB.mintTo(tokenAccountB, owner, [], currentSwapTokenB);
 
-  const poolRegistryKey = await PublicKey.createWithSeed(payer.publicKey, POOL_REGISTRY_SEED, STEP_SWAP_PROGRAM_ID);
+  const poolRegistryKey = await PublicKey.createWithSeed(
+    payer.publicKey,
+    POOL_REGISTRY_SEED,
+    STEP_SWAP_PROGRAM_ID,
+  );
 
   console.log('creating token swap');
   try {
@@ -374,7 +397,7 @@ export async function tryCreateTokenSwap(curveType: number): Promise<boolean> {
       OWNER_WITHDRAW_FEE_DENOMINATOR,
       curveType,
       poolRegistryKey,
-      poolNonce
+      poolNonce,
     );
 
     console.log('loading token swap');
@@ -386,7 +409,11 @@ export async function tryCreateTokenSwap(curveType: number): Promise<boolean> {
       payer,
     );
 
-    const poolRegistry = await TokenSwap.loadPoolRegistry(connection, payer.publicKey, STEP_SWAP_PROGRAM_ID);
+    const poolRegistry = await TokenSwap.loadPoolRegistry(
+      connection,
+      payer.publicKey,
+      STEP_SWAP_PROGRAM_ID,
+    );
 
     if (!poolRegistry) {
       assert(poolRegistry !== undefined);
@@ -395,7 +422,9 @@ export async function tryCreateTokenSwap(curveType: number): Promise<boolean> {
 
     assert(poolRegistry.isInitialized);
     assert(poolRegistry.registrySize > 1);
-    assert(poolRegistry.accounts[poolRegistry.registrySize - 1].equals(tokenSwapKey));
+    assert(
+      poolRegistry.accounts[poolRegistry.registrySize - 1].equals(tokenSwapKey),
+    );
 
     assert(fetchedTokenSwap.tokenProgramId.equals(TOKEN_PROGRAM_ID));
     assert(fetchedTokenSwap.tokenAccountA.equals(tokenAccountA));
@@ -408,7 +437,8 @@ export async function tryCreateTokenSwap(curveType: number): Promise<boolean> {
       TRADING_FEE_NUMERATOR == fetchedTokenSwap.tradeFeeNumerator.toNumber(),
     );
     assert(
-      TRADING_FEE_DENOMINATOR == fetchedTokenSwap.tradeFeeDenominator.toNumber(),
+      TRADING_FEE_DENOMINATOR ==
+        fetchedTokenSwap.tradeFeeDenominator.toNumber(),
     );
     assert(
       OWNER_TRADING_FEE_NUMERATOR ==
@@ -430,8 +460,7 @@ export async function tryCreateTokenSwap(curveType: number): Promise<boolean> {
     assert(poolNonce == fetchedTokenSwap.poolNonce);
 
     return true;
-  } catch {
-  }
+  } catch {}
 
   return false;
 }
@@ -455,11 +484,7 @@ export async function createSecondTokenSwapForRouting(): Promise<void> {
   const curveBuffer = Buffer.alloc(1);
   curveBuffer.writeUInt8(CURVE_TYPE, 0);
   let [tokenSwapKey, poolNonce] = await PublicKey.findProgramAddress(
-    [
-      seedKeyVec[0],
-      seedKeyVec[1],
-      curveBuffer
-    ],
+    [seedKeyVec[0], seedKeyVec[1], curveBuffer],
     STEP_SWAP_PROGRAM_ID,
   );
 
@@ -493,7 +518,11 @@ export async function createSecondTokenSwapForRouting(): Promise<void> {
   console.log('minting token C to swap');
   await mintC.mintTo(tokenAccountC, owner, [], currentSwapTokenC);
 
-  const poolRegistryKey = await PublicKey.createWithSeed(payer.publicKey, POOL_REGISTRY_SEED, STEP_SWAP_PROGRAM_ID);
+  const poolRegistryKey = await PublicKey.createWithSeed(
+    payer.publicKey,
+    POOL_REGISTRY_SEED,
+    STEP_SWAP_PROGRAM_ID,
+  );
 
   console.log('creating token swap');
   tokenSwap2 = await TokenSwap.createTokenSwap(
@@ -519,7 +548,7 @@ export async function createSecondTokenSwapForRouting(): Promise<void> {
     OWNER_WITHDRAW_FEE_DENOMINATOR,
     CURVE_TYPE,
     poolRegistryKey,
-    poolNonce
+    poolNonce,
   );
 }
 
@@ -533,11 +562,7 @@ export async function createThirdTokenSwapForNative(): Promise<void> {
   const curveBuffer = Buffer.alloc(1);
   curveBuffer.writeUInt8(CURVE_TYPE, 0);
   let [tokenSwapKey, poolNonce] = await PublicKey.findProgramAddress(
-    [
-      seedKeyVec[0],
-      seedKeyVec[1],
-      curveBuffer
-    ],
+    [seedKeyVec[0], seedKeyVec[1], curveBuffer],
     STEP_SWAP_PROGRAM_ID,
   );
 
@@ -564,7 +589,12 @@ export async function createThirdTokenSwapForNative(): Promise<void> {
   console.log('creating token B account');
   tokenAccountANativeSwap = await mintB.createAccount(authority3);
   console.log('minting token B to swap');
-  await mintB.mintTo(tokenAccountANativeSwap, owner, [], currentSwapTokenANative);
+  await mintB.mintTo(
+    tokenAccountANativeSwap,
+    owner,
+    [],
+    currentSwapTokenANative,
+  );
 
   console.log('creating token native account');
   tokenAccountBNativeSwap = await Token.createWrappedNativeAccount(
@@ -572,10 +602,14 @@ export async function createThirdTokenSwapForNative(): Promise<void> {
     TOKEN_PROGRAM_ID,
     authority3,
     owner,
-    currentSwapTokenBNative
+    currentSwapTokenBNative,
   );
 
-  const poolRegistryKey = await PublicKey.createWithSeed(payer.publicKey, POOL_REGISTRY_SEED, STEP_SWAP_PROGRAM_ID);
+  const poolRegistryKey = await PublicKey.createWithSeed(
+    payer.publicKey,
+    POOL_REGISTRY_SEED,
+    STEP_SWAP_PROGRAM_ID,
+  );
 
   console.log('creating token swap');
   tokenSwap3 = await TokenSwap.createTokenSwap(
@@ -601,7 +635,7 @@ export async function createThirdTokenSwapForNative(): Promise<void> {
     OWNER_WITHDRAW_FEE_DENOMINATOR,
     CURVE_TYPE,
     poolRegistryKey,
-    poolNonce
+    poolNonce,
   );
 }
 
@@ -883,7 +917,10 @@ export async function routedSwap(): Promise<void> {
   console.log('Creating swap token c account');
   let userAccountC = await mintC.createAccount(owner.publicKey);
 
-  console.log('userTransferAuthority', userTransferAuthority.publicKey.toString());
+  console.log(
+    'userTransferAuthority',
+    userTransferAuthority.publicKey.toString(),
+  );
   console.log('owner.publicKey', owner.publicKey.toString());
   console.log('Swapping');
   await tokenSwap.routedSwap(
@@ -897,7 +934,7 @@ export async function routedSwap(): Promise<void> {
     userTransferAuthority,
     owner.publicKey,
     tokenSwap2,
-    SWAP_AMOUNT_IN, 
+    SWAP_AMOUNT_IN,
     ROUTED_SWAP_AMOUNT_OUT2,
   );
 
@@ -909,11 +946,11 @@ export async function routedSwap(): Promise<void> {
 
   try {
     await mintB.getAccountInfo(userAccountB);
-    assert(false, "user intermediary account should not exist");
-  } catch { }
+    assert(false, 'user intermediary account should not exist');
+  } catch {}
 
   info = await mintC.getAccountInfo(userAccountC);
-  console.log("ROUTED_SWAP_AMOUNT_OUT2",info.amount.toNumber());
+  console.log('ROUTED_SWAP_AMOUNT_OUT2', info.amount.toNumber());
   assert(info.amount.toNumber() == ROUTED_SWAP_AMOUNT_OUT2);
 
   info = await mintA.getAccountInfo(tokenAccountA);
@@ -925,8 +962,13 @@ export async function routedSwap(): Promise<void> {
   currentSwapTokenB -= ROUTED_SWAP_AMOUNT_OUT1;
 
   info = await mintB.getAccountInfo(tokenAccountB2);
-  console.log("ROUTED_SWAP_AMOUNT_OUT1",info.amount.toNumber()-currentSwapTokenB2);
-  assert(info.amount.toNumber() == currentSwapTokenB2 + ROUTED_SWAP_AMOUNT_OUT1);
+  console.log(
+    'ROUTED_SWAP_AMOUNT_OUT1',
+    info.amount.toNumber() - currentSwapTokenB2,
+  );
+  assert(
+    info.amount.toNumber() == currentSwapTokenB2 + ROUTED_SWAP_AMOUNT_OUT1,
+  );
   currentSwapTokenB2 += ROUTED_SWAP_AMOUNT_OUT1;
 
   info = await mintC.getAccountInfo(tokenAccountC);
@@ -951,15 +993,15 @@ export async function createAccountsAndRoutedSwapAtomic(): Promise<void> {
   const balanceNeeded = await Token.getMinBalanceRentForExemptAccount(
     connection,
   );
-  
+
   //use a temp account for the middle(B) token, even if user already has some, this is safest
   const newAccountB = Keypair.generate();
-  
+
   //find ata address for C
   let newAccountC = await Token.getAssociatedTokenAddress(
-    mintC.associatedProgramId, 
-    mintC.programId, 
-    mintC.publicKey, 
+    mintC.associatedProgramId,
+    mintC.programId,
+    mintC.publicKey,
     owner.publicKey,
   );
 
@@ -1036,12 +1078,15 @@ export async function createAccountsAndRoutedSwapAtomic(): Promise<void> {
       tokenSwap.swapProgramId,
       tokenSwap.tokenProgramId,
       SWAP_AMOUNT_IN,
-      0,  //apps should set this for sure, but in this test can't be ROUTED_SWAP_AMOUNT_OUT anymore because we already swapped some
+      0, //apps should set this for sure, but in this test can't be ROUTED_SWAP_AMOUNT_OUT anymore because we already swapped some
     ),
   );
 
-  console.log("before swap");
-  console.log("userAccountA", (await mintA.getAccountInfo(userAccountA)).amount.toNumber());
+  console.log('before swap');
+  console.log(
+    'userAccountA',
+    (await mintA.getAccountInfo(userAccountA)).amount.toNumber(),
+  );
 
   // Send the instructions
   console.log('sending biggest instruction');
@@ -1054,11 +1099,15 @@ export async function createAccountsAndRoutedSwapAtomic(): Promise<void> {
     userTransferAuthority,
   );
 
-  console.log("after swap");
-  console.log("userAccountA", (await mintA.getAccountInfo(userAccountA)).amount.toNumber());
-  console.log("newAccountC", (await mintC.getAccountInfo(newAccountC)).amount.toNumber());
-
-
+  console.log('after swap');
+  console.log(
+    'userAccountA',
+    (await mintA.getAccountInfo(userAccountA)).amount.toNumber(),
+  );
+  console.log(
+    'newAccountC',
+    (await mintC.getAccountInfo(newAccountC)).amount.toNumber(),
+  );
 
   let info;
   info = await mintA.getAccountInfo(tokenAccountA);
@@ -1101,11 +1150,11 @@ export async function swapNative(): Promise<void> {
       TOKEN_PROGRAM_ID,
       owner.publicKey,
       owner,
-      currentSwapTokenC
+      currentSwapTokenC,
     );
 
     let balance = await connection.getBalance(owner.publicKey);
-    console.log("balance", balance)
+    console.log('balance', balance);
 
     console.log('Swapping');
     await tokenSwap3.swap(
@@ -1122,18 +1171,17 @@ export async function swapNative(): Promise<void> {
     await sleep(500);
 
     let newBalance = await connection.getBalance(owner.publicKey);
-    console.log("newBalance", newBalance)
+    console.log('newBalance', newBalance);
     let nativeSwapAmount = newBalance - balance;
-    console.log("nativeSwapAmount", nativeSwapAmount)
+    console.log('nativeSwapAmount', nativeSwapAmount);
     //not testing the math, just the functionality
-    assert(nativeSwapAmount < 0, "lamports of refunder increased")
+    assert(nativeSwapAmount < 0, 'lamports of refunder increased');
 
     //verify native sol account not closed
     let nativeAccount = await connection.getAccountInfo(userAccountNative);
-    assert(nativeAccount != null, "wsol account closed");
+    assert(nativeAccount != null, 'wsol account closed');
   }
-  
-  
+
   //now do it again with the user transfer auth owning the wsol output
 
   {
@@ -1151,11 +1199,11 @@ export async function swapNative(): Promise<void> {
       TOKEN_PROGRAM_ID,
       userTransferAuthority.publicKey,
       owner,
-      currentSwapTokenC
+      currentSwapTokenC,
     );
 
     let balance = await connection.getBalance(owner.publicKey);
-    console.log("balance", balance)
+    console.log('balance', balance);
 
     console.log('Swapping');
     await tokenSwap3.swap(
@@ -1172,143 +1220,144 @@ export async function swapNative(): Promise<void> {
     await sleep(500);
 
     let newBalance = await connection.getBalance(owner.publicKey);
-    console.log("newBalance", newBalance)
+    console.log('newBalance', newBalance);
     let nativeSwapAmount = newBalance - balance;
-    console.log("nativeSwapAmount", nativeSwapAmount)
+    console.log('nativeSwapAmount', nativeSwapAmount);
     //not testing the math, just the functionality
-    assert(nativeSwapAmount > 100, "lamports of refunder did not increase")
+    assert(nativeSwapAmount > 100, 'lamports of refunder did not increase');
 
     //verify native sol account closed
     let nativeAccount = await connection.getAccountInfo(userAccountNative);
-    assert(nativeAccount == null, "wsol account not closed");
+    assert(nativeAccount == null, 'wsol account not closed');
   }
-
 }
 
 export async function swapNativeToNewATALargeBoiTest(): Promise<void> {
+  //create user transfer authority, also use as temp native account
+  const userTransferAuthority = Keypair.generate();
 
-    //create user transfer authority, also use as temp native account
-    const userTransferAuthority = Keypair.generate();
+  const balanceNeeded = await Token.getMinBalanceRentForExemptAccount(
+    connection,
+  );
 
-    const balanceNeeded = await Token.getMinBalanceRentForExemptAccount(
-      connection,
-    );
+  //use a temp account for the middle(B) token, even if user already has some, this is safest
+  const newAccountB = Keypair.generate();
 
-    //use a temp account for the middle(B) token, even if user already has some, this is safest
-    const newAccountB = Keypair.generate();
-    
-    //find ata address for C
-    let newAccountC = await Token.getAssociatedTokenAddress(
-      mintA.associatedProgramId, 
-      mintA.programId, 
-      mintA.publicKey, 
+  //find ata address for C
+  let newAccountC = await Token.getAssociatedTokenAddress(
+    mintA.associatedProgramId,
+    mintA.programId,
+    mintA.publicKey,
+    owner.publicKey,
+  );
+
+  const transaction = new Transaction();
+
+  //create an token account to hold the native sol.
+  //We use our already temporary throwaway authority to be the **account address**
+  //the program will see this is temporary and delete this for us, no cleanup needed.
+  transaction.add(
+    SystemProgram.createAccount({
+      fromPubkey: owner.publicKey,
+      newAccountPubkey: userTransferAuthority.publicKey,
+      lamports: balanceNeeded + SWAP_AMOUNT_IN,
+      space: AccountLayout.span,
+      programId: TOKEN_PROGRAM_ID,
+    }),
+  );
+  //our throwaway authority is both the address AND the owner of this token
+  transaction.add(
+    Token.createInitAccountInstruction(
+      TOKEN_PROGRAM_ID,
+      NATIVE_MINT,
+      userTransferAuthority.publicKey,
+      userTransferAuthority.publicKey,
+    ),
+  );
+
+  //create temp account for token B
+  transaction.add(
+    SystemProgram.createAccount({
+      fromPubkey: owner.publicKey,
+      newAccountPubkey: newAccountB.publicKey,
+      lamports: balanceNeeded,
+      space: AccountLayout.span,
+      programId: mintB.programId,
+    }),
+  );
+  //init B token account, assign ownership to temp authority
+  //because we set the authority to the temp authority
+  //the program will see this is temporary and delete this for us, no cleanup needed.
+  transaction.add(
+    Token.createInitAccountInstruction(
+      mintB.programId,
+      mintB.publicKey,
+      newAccountB.publicKey,
+      userTransferAuthority.publicKey,
+    ),
+  );
+
+  //init ATA for token C
+  transaction.add(
+    Token.createAssociatedTokenAccountInstruction(
+      mintA.associatedProgramId,
+      mintA.programId,
+      mintA.publicKey,
+      newAccountC,
       owner.publicKey,
-    );
-  
-    const transaction = new Transaction();
+      owner.publicKey,
+    ),
+  );
 
-    //create an token account to hold the native sol. 
-    //We use our already temporary throwaway authority to be the **account address**
-    //the program will see this is temporary and delete this for us, no cleanup needed.
-    transaction.add(
-      SystemProgram.createAccount({
-        fromPubkey: owner.publicKey,
-        newAccountPubkey: userTransferAuthority.publicKey,
-        lamports: balanceNeeded + SWAP_AMOUNT_IN,
-        space: AccountLayout.span,
-        programId: TOKEN_PROGRAM_ID,
-      })
-    );
-    //our throwaway authority is both the address AND the owner of this token
-    transaction.add(
-      Token.createInitAccountInstruction(
-        TOKEN_PROGRAM_ID,
-        NATIVE_MINT,
-        userTransferAuthority.publicKey,
-        userTransferAuthority.publicKey,
-      )
-    );
-  
-    //create temp account for token B
-    transaction.add(
-      SystemProgram.createAccount({
-        fromPubkey: owner.publicKey,
-        newAccountPubkey: newAccountB.publicKey,
-        lamports: balanceNeeded,
-        space: AccountLayout.span,
-        programId: mintB.programId,
-      }),
-    );
-    //init B token account, assign ownership to temp authority
-    //because we set the authority to the temp authority
-    //the program will see this is temporary and delete this for us, no cleanup needed.
-    transaction.add(
-      Token.createInitAccountInstruction(
-        mintB.programId,
-        mintB.publicKey,
-        newAccountB.publicKey,
-        userTransferAuthority.publicKey,
-      ),
-    );
-  
-    //init ATA for token C
-    transaction.add(
-      Token.createAssociatedTokenAccountInstruction(
-        mintA.associatedProgramId,
-        mintA.programId,
-        mintA.publicKey,
-        newAccountC,
-        owner.publicKey,
-        owner.publicKey,
-      ),
-    );
-  
-    //swap
-    transaction.add(
-      TokenSwap.routedSwapInstruction(
-        tokenSwap3.tokenSwap,
-        tokenSwap3.authority,
-        userTransferAuthority.publicKey,
-        userTransferAuthority.publicKey,
-        tokenSwap3.tokenAccountB,
-        tokenSwap3.tokenAccountA,
-        newAccountB.publicKey,
-        tokenSwap3.poolToken,
-        tokenSwap3.feeAccount,
-        tokenSwap.tokenSwap,
-        tokenSwap.authority,
-        tokenSwap.tokenAccountB,
-        tokenSwap.tokenAccountA,
-        newAccountC,
-        tokenSwap.poolToken,
-        tokenSwap.feeAccount,
-        owner.publicKey,
-        tokenSwap.swapProgramId,
-        tokenSwap.tokenProgramId,
-        SWAP_AMOUNT_IN,
-        0,  //apps should set this for sure, but in this test can't be ROUTED_SWAP_AMOUNT_OUT anymore because we already swapped some
-      ),
-    );
-  
-    console.log("before swap");
-    let solBalanceBefore = await connection.getBalance(owner.publicKey);
-    console.log("userAccountA (users wallet)", solBalanceBefore);
-  
-    // Send the instructions
-    console.log('sending biggest large boi instruction');
-    await sendAndConfirmTransaction(
-      'create accounts native, swap, cleanup',
-      connection,
-      transaction,
-      owner,
-      userTransferAuthority,
-      newAccountB,
-    );
-  
-    console.log("after swap");
-    let solBalanceAfter = await connection.getBalance(owner.publicKey);
-    console.log("userAccountA (users wallet)", solBalanceAfter);
-    console.log("newAccountC", (await mintA.getAccountInfo(newAccountC)).amount.toNumber());
+  //swap
+  transaction.add(
+    TokenSwap.routedSwapInstruction(
+      tokenSwap3.tokenSwap,
+      tokenSwap3.authority,
+      userTransferAuthority.publicKey,
+      userTransferAuthority.publicKey,
+      tokenSwap3.tokenAccountB,
+      tokenSwap3.tokenAccountA,
+      newAccountB.publicKey,
+      tokenSwap3.poolToken,
+      tokenSwap3.feeAccount,
+      tokenSwap.tokenSwap,
+      tokenSwap.authority,
+      tokenSwap.tokenAccountB,
+      tokenSwap.tokenAccountA,
+      newAccountC,
+      tokenSwap.poolToken,
+      tokenSwap.feeAccount,
+      owner.publicKey,
+      tokenSwap.swapProgramId,
+      tokenSwap.tokenProgramId,
+      SWAP_AMOUNT_IN,
+      0, //apps should set this for sure, but in this test can't be ROUTED_SWAP_AMOUNT_OUT anymore because we already swapped some
+    ),
+  );
+
+  console.log('before swap');
+  let solBalanceBefore = await connection.getBalance(owner.publicKey);
+  console.log('userAccountA (users wallet)', solBalanceBefore);
+
+  // Send the instructions
+  console.log('sending biggest large boi instruction');
+  await sendAndConfirmTransaction(
+    'create accounts native, swap, cleanup',
+    connection,
+    transaction,
+    owner,
+    userTransferAuthority,
+    newAccountB,
+  );
+
+  console.log('after swap');
+  let solBalanceAfter = await connection.getBalance(owner.publicKey);
+  console.log('userAccountA (users wallet)', solBalanceAfter);
+  console.log(
+    'newAccountC',
+    (await mintA.getAccountInfo(newAccountC)).amount.toNumber(),
+  );
 }
 
 export async function depositSingleTokenTypeExactAmountIn(): Promise<void> {
