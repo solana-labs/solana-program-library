@@ -105,7 +105,7 @@ impl VoteRecordV2 {
             };
 
             let vote_record_data_v1 = VoteRecordV1 {
-                account_type: GovernanceAccountType::VoteRecordV1,
+                account_type: self.account_type,
                 proposal: self.proposal,
                 governing_token_owner: self.governing_token_owner,
                 is_relinquished: self.is_relinquished,
@@ -143,7 +143,7 @@ pub fn get_vote_record_data(
         };
 
         return Ok(VoteRecordV2 {
-            account_type: GovernanceAccountType::VoteRecordV1,
+            account_type,
             proposal: vote_record_data_v1.proposal,
             governing_token_owner: vote_record_data_v1.governing_token_owner,
             is_relinquished: vote_record_data_v1.is_relinquished,

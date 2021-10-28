@@ -133,7 +133,7 @@ impl ProposalInstructionV2 {
         } else if self.account_type == GovernanceAccountType::ProposalInstructionV1 {
             // V1 account can't be resized and we have to translate it back to the original format
             let proposal_instruction_data_v1 = ProposalInstructionV1 {
-                account_type: GovernanceAccountType::ProposalInstructionV1,
+                account_type: self.account_type,
                 proposal: self.proposal,
                 instruction_index: self.instruction_index,
                 hold_up_time: self.hold_up_time,
@@ -191,7 +191,7 @@ pub fn get_proposal_instruction_data(
             get_account_data::<ProposalInstructionV1>(program_id, proposal_instruction_info)?;
 
         return Ok(ProposalInstructionV2 {
-            account_type: GovernanceAccountType::ProposalInstructionV1,
+            account_type,
             proposal: proposal_instruction_data_v1.proposal,
             option_index: 0, //
             instruction_index: proposal_instruction_data_v1.instruction_index,

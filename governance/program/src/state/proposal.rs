@@ -1,7 +1,9 @@
 //! Proposal  Account
 
 use std::cmp::Ordering;
+use std::io::Write;
 
+use solana_program::borsh::try_from_slice_unchecked;
 use solana_program::clock::{Slot, UnixTimestamp};
 
 use solana_program::{
@@ -10,6 +12,7 @@ use solana_program::{
 };
 use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 
+use crate::state::legacy::ProposalV1;
 use crate::{
     error::GovernanceError,
     state::{
@@ -622,6 +625,46 @@ impl ProposalV2 {
 
         Ok(())
     }
+
+    /// Serializes account into the target buffer
+    pub fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), ProgramError> {
+        if self.account_type == GovernanceAccountType::ProposalV2 {
+            BorshSerialize::serialize(&self, writer)?
+        } else if self.account_type == GovernanceAccountType::ProposalV1 {
+            // V1 account can't be resized and we have to translate it back to the original format
+
+            let vote_record_data_v1 = ProposalV1 {
+                account_type: self.account_type,
+                governance: self.governance,
+                governing_token_mint: self.governing_token_mint,
+                state: self.state.clone(),
+                token_owner_record: self.token_owner_record,
+                signatories_count: self.signatories_count,
+                signatories_signed_off_count: self.signatories_signed_off_count,
+                yes_votes_count: self.options[0].vote_weight,
+                no_votes_count: self.deny_vote_weight.unwrap(),
+                instructions_executed_count: self.options[0].instructions_executed_count,
+                instructions_count: self.options[0].instructions_count,
+                instructions_next_index: self.options[0].instructions_next_index,
+                draft_at: self.draft_at,
+                signing_off_at: self.signing_off_at,
+                voting_at: self.voting_at,
+                voting_at_slot: self.voting_at_slot,
+                voting_completed_at: self.voting_completed_at,
+                executing_at: self.executing_at,
+                closed_at: self.closed_at,
+                execution_flags: self.execution_flags.clone(),
+                max_vote_weight: self.max_vote_weight,
+                vote_threshold_percentage: self.vote_threshold_percentage.clone(),
+                name: self.name.clone(),
+                description_link: self.description_link.clone(),
+            };
+
+            BorshSerialize::serialize(&vote_record_data_v1, writer)?;
+        }
+
+        Ok(())
+    }
 }
 
 /// Converts threshold in percentages to actual vote weight
@@ -657,6 +700,58 @@ pub fn get_proposal_data(
     program_id: &Pubkey,
     proposal_info: &AccountInfo,
 ) -> Result<ProposalV2, ProgramError> {
+    let account_type: GovernanceAccountType =
+        try_from_slice_unchecked(&proposal_info.data.borrow())?;
+
+    // If the account is V1 version then translate to V2
+    if account_type == GovernanceAccountType::ProposalV1 {
+        let proposal_data_v1 = get_account_data::<ProposalV1>(program_id, proposal_info)?;
+
+        let vote_result = match proposal_data_v1.state {
+            ProposalState::Draft
+            | ProposalState::SigningOff
+            | ProposalState::Voting
+            | ProposalState::Cancelled => OptionVoteResult::None,
+            ProposalState::Succeeded
+            | ProposalState::Executing
+            | ProposalState::ExecutingWithErrors
+            | ProposalState::Completed => OptionVoteResult::Succeeded,
+            ProposalState::Defeated => OptionVoteResult::None,
+        };
+
+        return Ok(ProposalV2 {
+            account_type,
+            governance: proposal_data_v1.governance,
+            governing_token_mint: proposal_data_v1.governing_token_mint,
+            state: proposal_data_v1.state,
+            token_owner_record: proposal_data_v1.token_owner_record,
+            signatories_count: proposal_data_v1.signatories_count,
+            signatories_signed_off_count: proposal_data_v1.signatories_signed_off_count,
+            vote_type: VoteType::SingleChoice,
+            options: vec![ProposalOption {
+                label: "Yes".to_string(),
+                vote_weight: proposal_data_v1.yes_votes_count,
+                vote_result: vote_result,
+                instructions_executed_count: proposal_data_v1.instructions_executed_count,
+                instructions_count: proposal_data_v1.instructions_count,
+                instructions_next_index: proposal_data_v1.instructions_next_index,
+            }],
+            deny_vote_weight: Some(proposal_data_v1.no_votes_count),
+            draft_at: proposal_data_v1.draft_at,
+            signing_off_at: proposal_data_v1.signing_off_at,
+            voting_at: proposal_data_v1.voting_at,
+            voting_at_slot: proposal_data_v1.voting_at_slot,
+            voting_completed_at: proposal_data_v1.voting_completed_at,
+            executing_at: proposal_data_v1.executing_at,
+            closed_at: proposal_data_v1.closed_at,
+            execution_flags: proposal_data_v1.execution_flags,
+            max_vote_weight: proposal_data_v1.max_vote_weight,
+            vote_threshold_percentage: proposal_data_v1.vote_threshold_percentage,
+            name: proposal_data_v1.name,
+            description_link: proposal_data_v1.description_link,
+        });
+    }
+
     get_account_data::<ProposalV2>(program_id, proposal_info)
 }
 
@@ -741,13 +836,17 @@ pub fn assert_valid_proposal_options(
 
 #[cfg(test)]
 mod test {
+    use super::*;
+    use solana_program::clock::Epoch;
+
     use crate::state::{
         enums::{MintMaxVoteWeightSource, VoteThresholdPercentage, VoteWeightSource},
+        legacy::ProposalV1,
         realm::RealmConfig,
         vote_record::VoteChoice,
     };
 
-    use {super::*, proptest::prelude::*};
+    use proptest::prelude::*;
 
     fn create_test_proposal() -> ProposalV2 {
         ProposalV2 {
@@ -1822,5 +1921,70 @@ mod test {
 
         // Assert
         assert_eq!(result, Err(GovernanceError::InvalidVote.into()));
+    }
+
+    #[test]
+    fn test_proposal_v1_to_v2_serialisation_roundtrip() {
+        // Arrange
+
+        let proposal_v1_source = ProposalV1 {
+            account_type: GovernanceAccountType::ProposalV1,
+            governance: Pubkey::new_unique(),
+            governing_token_mint: Pubkey::new_unique(),
+            state: ProposalState::Executing,
+            token_owner_record: Pubkey::new_unique(),
+            signatories_count: 5,
+            signatories_signed_off_count: 4,
+            yes_votes_count: 100,
+            no_votes_count: 80,
+            instructions_executed_count: 7,
+            instructions_count: 8,
+            instructions_next_index: 9,
+            draft_at: 200,
+            signing_off_at: Some(201),
+            voting_at: Some(202),
+            voting_at_slot: Some(203),
+            voting_completed_at: Some(204),
+            executing_at: Some(205),
+            closed_at: Some(206),
+            execution_flags: InstructionExecutionFlags::None,
+            max_vote_weight: Some(250),
+            vote_threshold_percentage: Some(VoteThresholdPercentage::YesVote(65)),
+            name: "proposal".to_string(),
+            description_link: "proposal-description".to_string(),
+        };
+
+        let mut account_data = vec![];
+        proposal_v1_source.serialize(&mut account_data).unwrap();
+
+        let program_id = Pubkey::new_unique();
+
+        let info_key = Pubkey::new_unique();
+        let mut lamports = 10u64;
+
+        let account_info = AccountInfo::new(
+            &info_key,
+            false,
+            false,
+            &mut lamports,
+            &mut account_data[..],
+            &program_id,
+            false,
+            Epoch::default(),
+        );
+
+        // Act
+
+        let proposal_v2 = get_proposal_data(&program_id, &account_info).unwrap();
+
+        proposal_v2
+            .serialize(&mut &mut **account_info.data.borrow_mut())
+            .unwrap();
+
+        // Assert
+        let proposal_v1_target =
+            get_account_data::<ProposalV1>(&program_id, &account_info).unwrap();
+
+        assert_eq!(proposal_v1_source, proposal_v1_target)
     }
 }

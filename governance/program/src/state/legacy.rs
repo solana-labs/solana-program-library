@@ -1,12 +1,18 @@
 //! Legacy Accounts
 
 use crate::state::{
-    enums::MintMaxVoteWeightSource,
-    enums::{GovernanceAccountType, InstructionExecutionStatus},
+    enums::{
+        GovernanceAccountType, InstructionExecutionFlags, InstructionExecutionStatus,
+        MintMaxVoteWeightSource, ProposalState, VoteThresholdPercentage,
+    },
     proposal_instruction::InstructionData,
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
-use solana_program::{clock::UnixTimestamp, program_pack::IsInitialized, pubkey::Pubkey};
+use solana_program::{
+    clock::{Slot, UnixTimestamp},
+    program_pack::IsInitialized,
+    pubkey::Pubkey,
+};
 
 /// Realm Config instruction args
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
@@ -87,6 +93,96 @@ pub struct RealmV1 {
 impl IsInitialized for RealmV1 {
     fn is_initialized(&self) -> bool {
         self.account_type == GovernanceAccountType::Realm
+    }
+}
+
+/// Governance Proposal
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub struct ProposalV1 {
+    /// Governance account type
+    pub account_type: GovernanceAccountType,
+
+    /// Governance account the Proposal belongs to
+    pub governance: Pubkey,
+
+    /// Indicates which Governing Token is used to vote on the Proposal
+    /// Whether the general Community token owners or the Council tokens owners vote on this Proposal
+    pub governing_token_mint: Pubkey,
+
+    /// Current proposal state
+    pub state: ProposalState,
+
+    /// The TokenOwnerRecord representing the user who created and owns this Proposal
+    pub token_owner_record: Pubkey,
+
+    /// The number of signatories assigned to the Proposal
+    pub signatories_count: u8,
+
+    /// The number of signatories who already signed
+    pub signatories_signed_off_count: u8,
+
+    /// The number of Yes votes
+    pub yes_votes_count: u64,
+
+    /// The number of No votes
+    pub no_votes_count: u64,
+
+    /// The number of the instructions already executed
+    pub instructions_executed_count: u16,
+
+    /// The number of instructions included in the proposal
+    pub instructions_count: u16,
+
+    /// The index of the the next instruction to be added
+    pub instructions_next_index: u16,
+
+    /// When the Proposal was created and entered Draft state
+    pub draft_at: UnixTimestamp,
+
+    /// When Signatories started signing off the Proposal
+    pub signing_off_at: Option<UnixTimestamp>,
+
+    /// When the Proposal began voting as UnixTimestamp
+    pub voting_at: Option<UnixTimestamp>,
+
+    /// When the Proposal began voting as Slot
+    /// Note: The slot is not currently used but the exact slot is going to be required to support snapshot based vote weights
+    pub voting_at_slot: Option<Slot>,
+
+    /// When the Proposal ended voting and entered either Succeeded or Defeated
+    pub voting_completed_at: Option<UnixTimestamp>,
+
+    /// When the Proposal entered Executing state
+    pub executing_at: Option<UnixTimestamp>,
+
+    /// When the Proposal entered final state Completed or Cancelled and was closed
+    pub closed_at: Option<UnixTimestamp>,
+
+    /// Instruction execution flag for ordered and transactional instructions
+    /// Note: This field is not used in the current version
+    pub execution_flags: InstructionExecutionFlags,
+
+    /// The max vote weight for the Governing Token mint at the time Proposal was decided
+    /// It's used to show correct vote results for historical proposals in cases when the mint supply or max weight source changed
+    /// after vote was completed.
+    pub max_vote_weight: Option<u64>,
+
+    /// The vote threshold percentage at the time Proposal was decided
+    /// It's used to show correct vote results for historical proposals in cases when the threshold
+    /// was changed for governance config after vote was completed.
+    pub vote_threshold_percentage: Option<VoteThresholdPercentage>,
+
+    /// Proposal name
+    pub name: String,
+
+    /// Link to proposal's description
+    pub description_link: String,
+}
+
+impl IsInitialized for ProposalV1 {
+    fn is_initialized(&self) -> bool {
+        self.account_type == GovernanceAccountType::ProposalV1
     }
 }
 
