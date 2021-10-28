@@ -1,4 +1,14 @@
-# Token Swap Program
+<h1 align="center">
+  <br>
+   <img width="400" src="https://github.com/step-finance/call-option-rewards/blob/main/logo.svg?raw=true" alt="step logo"/>
+  <br>
+</h1>
+
+# Step Token Swap Program
+
+Modified for use as Step Finance AMM. Original docs below.
+
+## Token Swap Program
 
 A Uniswap-like exchange for the Token program on the Solana blockchain, deployed
 to `SSwpMgqNDsyV7mAgN9ady4bDVu5ySjmmXejXvy2vLt1` on all networks.
