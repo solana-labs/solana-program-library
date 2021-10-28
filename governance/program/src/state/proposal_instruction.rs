@@ -133,7 +133,7 @@ impl ProposalInstructionV2 {
         } else if self.account_type == GovernanceAccountType::ProposalInstructionV1 {
             // V1 account can't be resized and we have to translate it back to the original format
             let proposal_instruction_data_v1 = ProposalInstructionV1 {
-                account_type: self.account_type,
+                account_type: self.account_type.clone(),
                 proposal: self.proposal,
                 instruction_index: self.instruction_index,
                 hold_up_time: self.hold_up_time,
@@ -226,7 +226,7 @@ mod test {
 
     use std::str::FromStr;
 
-    use solana_program::bpf_loader_upgradeable;
+    use solana_program::{bpf_loader_upgradeable, clock::Epoch};
 
     use super::*;
 
@@ -326,63 +326,54 @@ mod test {
         assert_eq!(base64,"Aqj2kU6IobDiEBU+92OuKwDCuT0WwSTSwFN6EASAAAAHAAAAchkHXTU9jF+rKpILT6dzsVyNI9NsQy9cab+GGvdwNn0AAfh2HVruy2YibpgcQUmJf5att5YdPXSv1k2pRAKAfpSWAAFDVQuXWos2urmegSPblI813GlTm7CJ/8rv+9yzNE3yfwAB3Gw+apCyfrRNqJ6f1160Htkx+uYZT6FIILQ3WzNA4KwAAQan1RcZLFxRIYzJTD1K8X9Y2u4Im6H9ROPb2YoAAAAAAAAGp9UXGMd0yShWY5hpHV62i164o5tLbVxzVVshAAAAAAAA3Gw+apCyfrRNqJ6f1160Htkx+uYZT6FIILQ3WzNA4KwBAAQAAAADAAAA");
     }
 
-    #[cfg(test)]
-    mod test {
+    #[test]
+    fn test_proposal_instruction_v1_to_v2_serialisation_roundtrip() {
+        // Arrange
 
-        use borsh::BorshSerialize;
-        use solana_program::clock::Epoch;
+        let proposal_instruction_v1_source = ProposalInstructionV1 {
+            account_type: GovernanceAccountType::ProposalInstructionV1,
+            proposal: Pubkey::new_unique(),
+            instruction_index: 1,
+            hold_up_time: 120,
+            instruction: create_test_instruction_data(),
+            executed_at: Some(155),
+            execution_status: InstructionExecutionStatus::Success,
+        };
 
-        use super::*;
+        let mut account_data = vec![];
+        proposal_instruction_v1_source
+            .serialize(&mut account_data)
+            .unwrap();
 
-        #[test]
-        fn test_proposal_instruction_v1_to_v2_serialisation_roundtrip() {
-            // Arrange
+        let program_id = Pubkey::new_unique();
 
-            let proposal_instruction_v1_source = ProposalInstructionV1 {
-                account_type: GovernanceAccountType::ProposalInstructionV1,
-                proposal: Pubkey::new_unique(),
-                instruction_index: 1,
-                hold_up_time: 120,
-                instruction: create_test_instruction_data(),
-                executed_at: Some(155),
-                execution_status: InstructionExecutionStatus::Success,
-            };
+        let info_key = Pubkey::new_unique();
+        let mut lamports = 10u64;
 
-            let mut account_data = vec![];
-            proposal_instruction_v1_source
-                .serialize(&mut account_data)
-                .unwrap();
+        let account_info = AccountInfo::new(
+            &info_key,
+            false,
+            false,
+            &mut lamports,
+            &mut account_data[..],
+            &program_id,
+            false,
+            Epoch::default(),
+        );
 
-            let program_id = Pubkey::new_unique();
+        // Act
 
-            let info_key = Pubkey::new_unique();
-            let mut lamports = 10u64;
+        let proposal_instruction_v2 =
+            get_proposal_instruction_data(&program_id, &account_info).unwrap();
 
-            let account_info = AccountInfo::new(
-                &info_key,
-                false,
-                false,
-                &mut lamports,
-                &mut account_data[..],
-                &program_id,
-                false,
-                Epoch::default(),
-            );
+        proposal_instruction_v2
+            .serialize(&mut &mut **account_info.data.borrow_mut())
+            .unwrap();
 
-            // Act
+        // Assert
+        let vote_record_v1_target =
+            get_account_data::<ProposalInstructionV1>(&program_id, &account_info).unwrap();
 
-            let proposal_instruction_v2 =
-                get_proposal_instruction_data(&program_id, &account_info).unwrap();
-
-            proposal_instruction_v2
-                .serialize(&mut &mut **account_info.data.borrow_mut())
-                .unwrap();
-
-            // Assert
-            let vote_record_v1_target =
-                get_account_data::<ProposalInstructionV1>(&program_id, &account_info).unwrap();
-
-            assert_eq!(proposal_instruction_v1_source, vote_record_v1_target)
-        }
+        assert_eq!(proposal_instruction_v1_source, vote_record_v1_target)
     }
 }

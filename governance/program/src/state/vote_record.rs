@@ -105,7 +105,7 @@ impl VoteRecordV2 {
             };
 
             let vote_record_data_v1 = VoteRecordV1 {
-                account_type: self.account_type,
+                account_type: self.account_type.clone(),
                 proposal: self.proposal,
                 governing_token_owner: self.governing_token_owner,
                 is_relinquished: self.is_relinquished,
