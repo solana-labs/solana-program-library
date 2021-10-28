@@ -8,7 +8,7 @@ use program_test::*;
 use spl_governance::{
     error::GovernanceError,
     state::{
-        enums::VoteThresholdPercentage,
+        enums::{ProposalState, VoteThresholdPercentage},
         proposal::{OptionVoteResult, VoteType},
         vote_record::{Vote, VoteChoice},
     },
@@ -420,7 +420,7 @@ async fn test_vote_on_none_executable_multi_choice_proposal_with_multiple_option
 }
 
 #[tokio::test]
-async fn test_vote_on_multi_choice_proposal_with_multiple_options_and_partial_success() {
+async fn test_vote_on_proposal_with_multiple_options_and_partial_success() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -445,6 +445,7 @@ async fn test_vote_on_multi_choice_proposal_with_multiple_options_and_partial_su
         .await
         .unwrap();
 
+    // 100 tokes approval quorum
     let mut governance_config = governance_test.get_default_governance_config();
     governance_config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(30);
 
@@ -574,4 +575,214 @@ async fn test_vote_on_multi_choice_proposal_with_multiple_options_and_partial_su
         OptionVoteResult::Defeated,
         proposal_account.options[2].vote_result
     );
+}
+
+#[tokio::test]
+async fn test_execute_proposal_with_multiple_options_and_full_success() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_mint_cookie = governance_test.with_governed_mint().await;
+
+    // 100 tokens
+    let token_owner_record_cookie1 = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    // 100 tokens
+    let token_owner_record_cookie2 = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    // 100 tokens
+    let token_owner_record_cookie3 = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    // 100 tokes approval quorum
+    let mut governance_config = governance_test.get_default_governance_config();
+    governance_config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(30);
+
+    let mut account_governance_cookie = governance_test
+        .with_mint_governance_using_config(
+            &realm_cookie,
+            &governed_mint_cookie,
+            &token_owner_record_cookie1,
+            &governance_config,
+        )
+        .await
+        .unwrap();
+
+    let mut proposal_cookie = governance_test
+        .with_multi_option_proposal(
+            &token_owner_record_cookie1,
+            &mut account_governance_cookie,
+            vec![
+                "option 1".to_string(),
+                "option 2".to_string(),
+                "option 3".to_string(),
+            ],
+            true,
+            VoteType::MultiChoice,
+        )
+        .await
+        .unwrap();
+
+    let proposal_instruction_cookie1 = governance_test
+        .with_mint_tokens_instruction(
+            &governed_mint_cookie,
+            &mut proposal_cookie,
+            &token_owner_record_cookie1,
+            0,
+            Some(0),
+        )
+        .await
+        .unwrap();
+
+    let proposal_instruction_cookie2 = governance_test
+        .with_mint_tokens_instruction(
+            &governed_mint_cookie,
+            &mut proposal_cookie,
+            &token_owner_record_cookie1,
+            1,
+            Some(0),
+        )
+        .await
+        .unwrap();
+
+    let proposal_instruction_cookie3 = governance_test
+        .with_mint_tokens_instruction(
+            &governed_mint_cookie,
+            &mut proposal_cookie,
+            &token_owner_record_cookie1,
+            2,
+            Some(0),
+        )
+        .await
+        .unwrap();
+
+    let signatory_record_cookie = governance_test
+        .with_signatory(&proposal_cookie, &token_owner_record_cookie1)
+        .await
+        .unwrap();
+
+    governance_test
+        .sign_off_proposal(&proposal_cookie, &signatory_record_cookie)
+        .await
+        .unwrap();
+
+    // choice 1: 100 -> Success
+    // choice 2: 100 -> Success
+    // choice 3: 100 -> Success
+    // yes threshold: 100
+
+    let vote1 = Vote::Approve(vec![
+        VoteChoice {
+            rank: 0,
+            weight_percentage: 100,
+        },
+        VoteChoice {
+            rank: 0,
+            weight_percentage: 0,
+        },
+        VoteChoice {
+            rank: 0,
+            weight_percentage: 0,
+        },
+    ]);
+
+    governance_test
+        .with_cast_multi_option_vote(&proposal_cookie, &token_owner_record_cookie1, vote1)
+        .await
+        .unwrap();
+
+    let vote2 = Vote::Approve(vec![
+        VoteChoice {
+            rank: 0,
+            weight_percentage: 0,
+        },
+        VoteChoice {
+            rank: 0,
+            weight_percentage: 100,
+        },
+        VoteChoice {
+            rank: 0,
+            weight_percentage: 0,
+        },
+    ]);
+
+    governance_test
+        .with_cast_multi_option_vote(&proposal_cookie, &token_owner_record_cookie2, vote2)
+        .await
+        .unwrap();
+
+    let vote3 = Vote::Approve(vec![
+        VoteChoice {
+            rank: 0,
+            weight_percentage: 0,
+        },
+        VoteChoice {
+            rank: 0,
+            weight_percentage: 0,
+        },
+        VoteChoice {
+            rank: 0,
+            weight_percentage: 100,
+        },
+    ]);
+
+    governance_test
+        .with_cast_multi_option_vote(&proposal_cookie, &token_owner_record_cookie3, vote3)
+        .await
+        .unwrap();
+
+    // Advance timestamp past max_voting_time
+    governance_test
+        .advance_clock_by_min_timespan(
+            account_governance_cookie.account.config.max_voting_time as u64,
+        )
+        .await;
+
+    governance_test
+        .finalize_vote(&realm_cookie, &proposal_cookie)
+        .await
+        .unwrap();
+
+    // Advance timestamp past hold_up_time
+    governance_test
+        .advance_clock_by_min_timespan(proposal_instruction_cookie1.account.hold_up_time as u64)
+        .await;
+
+    let mut proposal_account = governance_test
+        .get_proposal_account(&proposal_cookie.address)
+        .await;
+
+    assert_eq!(ProposalState::Succeeded, proposal_account.state);
+
+    // Act
+    governance_test
+        .execute_instruction(&proposal_cookie, &proposal_instruction_cookie1)
+        .await
+        .unwrap();
+
+    governance_test
+        .execute_instruction(&proposal_cookie, &proposal_instruction_cookie2)
+        .await
+        .unwrap();
+
+    governance_test
+        .execute_instruction(&proposal_cookie, &proposal_instruction_cookie3)
+        .await
+        .unwrap();
+
+    // Assert
+    proposal_account = governance_test
+        .get_proposal_account(&proposal_cookie.address)
+        .await;
+
+    assert_eq!(ProposalState::Completed, proposal_account.state);
 }

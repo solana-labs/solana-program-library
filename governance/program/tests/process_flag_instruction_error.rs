@@ -136,6 +136,7 @@ async fn test_execute_instruction_after_flagged_with_error() {
             &governed_mint_cookie,
             &mut proposal_cookie,
             &token_owner_record_cookie,
+            0,
             None,
         )
         .await
@@ -231,6 +232,7 @@ async fn test_execute_second_instruction_after_first_instruction_flagged_with_er
             &governed_mint_cookie,
             &mut proposal_cookie,
             &token_owner_record_cookie,
+            0,
             None,
         )
         .await
@@ -312,6 +314,7 @@ async fn test_flag_instruction_error_with_instruction_already_executed_error() {
             &governed_mint_cookie,
             &mut proposal_cookie,
             &token_owner_record_cookie,
+            0,
             None,
         )
         .await

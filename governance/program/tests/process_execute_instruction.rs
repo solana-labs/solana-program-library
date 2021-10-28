@@ -52,6 +52,7 @@ async fn test_execute_mint_instruction() {
             &governed_mint_cookie,
             &mut proposal_cookie,
             &token_owner_record_cookie,
+            0,
             None,
         )
         .await
@@ -385,6 +386,7 @@ async fn test_execute_instruction_with_invalid_state_errors() {
             &governed_mint_cookie,
             &mut proposal_cookie,
             &token_owner_record_cookie,
+            0,
             None,
         )
         .await
@@ -543,6 +545,7 @@ async fn test_execute_instruction_for_other_proposal_error() {
             &governed_mint_cookie,
             &mut proposal_cookie,
             &token_owner_record_cookie,
+            0,
             None,
         )
         .await
@@ -627,6 +630,7 @@ async fn test_execute_mint_instruction_twice_error() {
             &governed_mint_cookie,
             &mut proposal_cookie,
             &token_owner_record_cookie,
+            0,
             None,
         )
         .await

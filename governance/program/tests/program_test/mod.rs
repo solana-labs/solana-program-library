@@ -1218,6 +1218,25 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
+    pub async fn with_mint_governance_using_config(
+        &mut self,
+        realm_cookie: &RealmCookie,
+        governed_mint_cookie: &GovernedMintCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        governance_config: &GovernanceConfig,
+    ) -> Result<GovernanceCookie, ProgramError> {
+        self.with_mint_governance_using_config_and_instruction(
+            realm_cookie,
+            governed_mint_cookie,
+            token_owner_record_cookie,
+            governance_config,
+            NopOverride,
+            None,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
     pub async fn with_mint_governance_using_instruction<F: Fn(&mut Instruction)>(
         &mut self,
         realm_cookie: &RealmCookie,
@@ -1226,8 +1245,29 @@ impl GovernanceProgramTest {
         instruction_override: F,
         signers_override: Option<&[&Keypair]>,
     ) -> Result<GovernanceCookie, ProgramError> {
-        let config = self.get_default_governance_config();
+        let governance_config = self.get_default_governance_config();
 
+        self.with_mint_governance_using_config_and_instruction(
+            realm_cookie,
+            governed_mint_cookie,
+            token_owner_record_cookie,
+            &governance_config,
+            instruction_override,
+            signers_override,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_mint_governance_using_config_and_instruction<F: Fn(&mut Instruction)>(
+        &mut self,
+        realm_cookie: &RealmCookie,
+        governed_mint_cookie: &GovernedMintCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        governance_config: &GovernanceConfig,
+        instruction_override: F,
+        signers_override: Option<&[&Keypair]>,
+    ) -> Result<GovernanceCookie, ProgramError> {
         let voter_weight_record =
             if let Some(voter_weight_record) = &token_owner_record_cookie.voter_weight_record {
                 Some(voter_weight_record.address)
@@ -1244,7 +1284,7 @@ impl GovernanceProgramTest {
             &self.bench.payer.pubkey(),
             &token_owner_record_cookie.token_owner.pubkey(),
             voter_weight_record,
-            config.clone(),
+            governance_config.clone(),
             governed_mint_cookie.transfer_mint_authority,
         );
 
@@ -1264,7 +1304,7 @@ impl GovernanceProgramTest {
             account_type: GovernanceAccountType::MintGovernance,
             realm: realm_cookie.address,
             governed_account: governed_mint_cookie.address,
-            config,
+            config: governance_config.clone(),
             proposals_count: 0,
             reserved: [0; 8],
         };
@@ -1860,6 +1900,7 @@ impl GovernanceProgramTest {
         governed_mint_cookie: &GovernedMintCookie,
         proposal_cookie: &mut ProposalCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
+        option_index: u8,
         index: Option<u16>,
     ) -> Result<ProposalInstructionCookie, ProgramError> {
         let token_account_keypair = Keypair::new();
@@ -1884,7 +1925,7 @@ impl GovernanceProgramTest {
         self.with_instruction(
             proposal_cookie,
             token_owner_record_cookie,
-            0,
+            option_index,
             index,
             &mut instruction,
         )
