@@ -1,12 +1,94 @@
 //! Legacy Accounts
 
-use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
-use solana_program::{clock::UnixTimestamp, program_pack::IsInitialized, pubkey::Pubkey};
-
-use super::{
+use crate::state::{
+    enums::MintMaxVoteWeightSource,
     enums::{GovernanceAccountType, InstructionExecutionStatus},
     proposal_instruction::InstructionData,
 };
+use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
+use solana_program::{clock::UnixTimestamp, program_pack::IsInitialized, pubkey::Pubkey};
+
+/// Realm Config instruction args
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub struct RealmConfigArgsV1 {
+    /// Indicates whether council_mint should be used
+    /// If yes then council_mint account must also be passed to the instruction
+    pub use_council_mint: bool,
+
+    /// Min number of community tokens required to create a governance
+    pub min_community_tokens_to_create_governance: u64,
+
+    /// The source used for community mint max vote weight source
+    pub community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
+}
+
+/// Instructions supported by the Governance program
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub enum GovernanceInstructionV1 {
+    /// Creates Governance Realm account which aggregates governances for given Community Mint and optional Council Mint
+    CreateRealm {
+        #[allow(dead_code)]
+        /// UTF-8 encoded Governance Realm name
+        name: String,
+
+        #[allow(dead_code)]
+        /// Realm config args     
+        config_args: RealmConfigArgsV1,
+    },
+
+    /// Deposits governing tokens (Community or Council) to Governance Realm and establishes your voter weight to be used for voting within the Realm
+    DepositGoverningTokens {
+        /// The amount to deposit into the realm
+        #[allow(dead_code)]
+        amount: u64,
+    },
+}
+
+/// Realm Config defining Realm parameters.
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub struct RealmConfigV1 {
+    /// Reserved space for future versions
+    pub reserved: [u8; 8],
+
+    /// Min number of community tokens required to create a governance
+    pub min_community_tokens_to_create_governance: u64,
+
+    /// The source used for community mint max vote weight source
+    pub community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
+
+    /// Optional council mint
+    pub council_mint: Option<Pubkey>,
+}
+
+/// Governance Realm Account
+/// Account PDA seeds" ['governance', name]
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub struct RealmV1 {
+    /// Governance account type
+    pub account_type: GovernanceAccountType,
+
+    /// Community mint
+    pub community_mint: Pubkey,
+
+    /// Configuration of the Realm
+    pub config: RealmConfigV1,
+
+    /// Reserved space for future versions
+    pub reserved: [u8; 8],
+
+    /// Realm authority. The authority must sign transactions which update the realm config
+    /// The authority can be transferer to Realm Governance and hence make the Realm self governed through proposals
+    pub authority: Option<Pubkey>,
+
+    /// Governance Realm name
+    pub name: String,
+}
+
+impl IsInitialized for RealmV1 {
+    fn is_initialized(&self) -> bool {
+        self.account_type == GovernanceAccountType::Realm
+    }
+}
 
 /// Proposal instruction V1
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
