@@ -1252,8 +1252,22 @@ mod test {
             assert_eq!(proposal.state,test_case.expected_tipped_state,"CASE: {:?}",test_case);
 
             if test_case.expected_tipped_state != ProposalState::Voting {
-                assert_eq!(Some(current_timestamp),proposal.voting_completed_at)
+                assert_eq!(Some(current_timestamp),proposal.voting_completed_at);
+
             }
+
+            match proposal.options[0].vote_result {
+                OptionVoteResult::Succeeded => {
+                    assert_eq!(ProposalState::Succeeded,test_case.expected_tipped_state)
+                },
+                OptionVoteResult::Defeated => {
+                    assert_eq!(ProposalState::Defeated,test_case.expected_tipped_state)
+                },
+                OptionVoteResult::None =>  {
+                    assert_eq!(ProposalState::Voting,test_case.expected_tipped_state)
+                },
+            };
+
         }
 
         #[test]
@@ -1279,6 +1293,18 @@ mod test {
             // Assert
             assert_eq!(proposal.state,test_case.expected_finalized_state,"CASE: {:?}",test_case);
             assert_eq!(Some(current_timestamp),proposal.voting_completed_at);
+
+            match proposal.options[0].vote_result {
+                OptionVoteResult::Succeeded => {
+                    assert_eq!(ProposalState::Succeeded,test_case.expected_finalized_state)
+                },
+                OptionVoteResult::Defeated => {
+                    assert_eq!(ProposalState::Defeated,test_case.expected_finalized_state)
+                },
+                OptionVoteResult::None =>  {
+                    panic!("Option result must be resolved for finalized vote")
+                },
+            };
 
         }
     }
