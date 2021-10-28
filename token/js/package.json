@@ -15,27 +15,24 @@
   "publishConfig": {
     "access": "public"
   },
-  "browser": {
-    "./lib/index.cjs.js": "./lib/index.browser.esm.js",
-    "./lib/index.esm.js": "./lib/index.browser.esm.js"
-  },
-  "main": "lib/index.cjs.js",
-  "module": "lib/index.esm.js",
-  "types": "lib/index.d.ts",
+  "browser": "dist.browser/index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "browserslist": [
     "defaults",
     "not IE 11",
     "maintained node versions"
   ],
   "files": [
-    "/lib",
-    "/module.flow.js"
+    "/dist",
+    "/dist.browser"
   ],
   "testnetDefaultChannel": "v1.3.17",
   "scripts": {
-    "build": "rollup -c",
+    "build": "tsc && tsc -p tsconfig.browser.json && npm run generate:flow",
+    "prepare": "npm run build",
+    "start": "ts-node cli/main.ts",
     "build:browser-test": "rollup -c test/rollup.config.js",
-    "start": "babel-node cli/main.js",
     "start-with-test-validator": "start-server-and-test 'solana-test-validator --reset --quiet' http://localhost:8899/health start",
     "lint": "npm run pretty && eslint .",
     "lint:fix": "npm run pretty:fix && eslint . --fix",
@@ -47,7 +44,6 @@
     "cluster:devnet": "cp cluster-devnet.env .env",
     "cluster:testnet": "cp cluster-testnet.env .env",
     "cluster:mainnet-beta": "cp cluster-mainnet-beta.env .env",
-    "defs": "set -ex; flow check-contents < module.flow.js; tsc --esModuleInterop module.d.ts",
     "pretty": "prettier --check '{,cli*/**/}*.[jt]s'",
     "pretty:fix": "prettier --write '{,cli*/**/}*.[jt]s'",
     "test": "mocha './test/**/*.test.js'",
