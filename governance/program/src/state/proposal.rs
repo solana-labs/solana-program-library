@@ -731,7 +731,7 @@ pub fn get_proposal_data(
             options: vec![ProposalOption {
                 label: "Yes".to_string(),
                 vote_weight: proposal_data_v1.yes_votes_count,
-                vote_result: vote_result,
+                vote_result,
                 instructions_executed_count: proposal_data_v1.instructions_executed_count,
                 instructions_count: proposal_data_v1.instructions_count,
                 instructions_next_index: proposal_data_v1.instructions_next_index,
