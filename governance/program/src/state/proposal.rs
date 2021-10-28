@@ -88,7 +88,7 @@ pub struct Proposal {
     /// Current proposal state
     pub state: ProposalState,
 
-    // TODO: add state_at  timestamp
+    // TODO: add state_at timestamp to have single field to filter recent proposals in the UI
     /// The TokenOwnerRecord representing the user who created and owns this Proposal
     pub token_owner_record: Pubkey,
 
@@ -316,9 +316,7 @@ impl Proposal {
             }
         }
 
-        // TODO: Votes without the rejecting vote should transition to Completed
-
-        Ok(if best_succeeded_option_count == 0 {
+        let mut final_state = if best_succeeded_option_count == 0 {
             // If none of the individual options succeeded then the proposal as a whole is defeated
             ProposalState::Defeated
         } else {
@@ -348,7 +346,15 @@ impl Proposal {
                     ProposalState::Succeeded
                 }
             }
-        })
+        };
+
+        // None executable proposal is just a survey and is considered Completed once the vote ends and no more actions are available
+        // There is no overall Success or Failure status for the Proposal however individual options still have their own status
+        if self.deny_vote_weight.is_none() {
+            final_state = ProposalState::Completed;
+        }
+
+        Ok(final_state)
     }
 
     /// Calculates max vote weight for given mint supply and realm config

@@ -313,6 +313,9 @@ async fn test_vote_on_none_executable_single_choice_proposal_with_multiple_optio
         OptionVoteResult::Defeated,
         proposal_account.options[1].vote_result
     );
+
+    // None executable proposal transitions to Completed when vote is finalized
+    assert_eq!(ProposalState::Completed, proposal_account.state);
 }
 
 #[tokio::test]
@@ -417,10 +420,13 @@ async fn test_vote_on_none_executable_multi_choice_proposal_with_multiple_option
         OptionVoteResult::Defeated,
         proposal_account.options[2].vote_result
     );
+
+    // None executable proposal transitions to Completed when vote is finalized
+    assert_eq!(ProposalState::Completed, proposal_account.state);
 }
 
 #[tokio::test]
-async fn test_vote_on_proposal_with_multiple_options_and_partial_success() {
+async fn test_vote_on_executable_proposal_with_multiple_options_and_partial_success() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
