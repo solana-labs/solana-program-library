@@ -1,11 +1,7 @@
-/**
- * @flow
- */
-
 import {Buffer} from 'buffer';
 import assert from 'assert';
 import BN from 'bn.js';
-import * as BufferLayout from 'buffer-layout';
+import * as BufferLayout from '@solana/buffer-layout';
 import {
   Keypair,
   PublicKey,
@@ -40,7 +36,7 @@ const INVALID_ACCOUNT_OWNER = 'Invalid account owner';
  * which fails when using `publicKey.toBuffer()` directly because the bundled `Buffer`
  * class in `@solana/web3.js` is different from the bundled `Buffer` class in this package
  */
-function pubkeyToBuffer(publicKey: PublicKey): typeof Buffer {
+function pubkeyToBuffer(publicKey: PublicKey): Buffer {
   return Buffer.from(publicKey.toBuffer());
 }
 
@@ -51,7 +47,7 @@ export class u64 extends BN {
   /**
    * Convert to Buffer representation
    */
-  toBuffer(): typeof Buffer {
+  toBuffer(): Buffer {
     const a = super.toArray().reverse();
     const b = Buffer.from(a);
     if (b.length === 8) {
@@ -104,7 +100,7 @@ export const NATIVE_MINT: PublicKey = new PublicKey(
 /**
  * Information about the mint
  */
-type MintInfo = {|
+type MintInfo = {
   /**
    * Optional authority used to mint new tokens. The mint authority may only be provided during
    * mint creation. If no mint authority is present then the mint has a fixed supply and no
@@ -131,9 +127,9 @@ type MintInfo = {|
    * Optional authority to freeze token accounts
    */
   freezeAuthority: null | PublicKey,
-|};
+};
 
-export const MintLayout: typeof BufferLayout.Structure = BufferLayout.struct([
+export const MintLayout = BufferLayout.struct([
   BufferLayout.u32('mintAuthorityOption'),
   Layout.publicKey('mintAuthority'),
   Layout.uint64('supply'),
@@ -146,7 +142,7 @@ export const MintLayout: typeof BufferLayout.Structure = BufferLayout.struct([
 /**
  * Information about an account
  */
-type AccountInfo = {|
+type AccountInfo = {
   /**
    * The address of this account
    */
@@ -203,12 +199,12 @@ type AccountInfo = {|
    * Optional authority to close the account
    */
   closeAuthority: null | PublicKey,
-|};
+};
 
 /**
  * @private
  */
-export const AccountLayout: typeof BufferLayout.Structure = BufferLayout.struct(
+export const AccountLayout = BufferLayout.struct(
   [
     Layout.publicKey('mint'),
     Layout.publicKey('owner'),
@@ -227,7 +223,7 @@ export const AccountLayout: typeof BufferLayout.Structure = BufferLayout.struct(
 /**
  * Information about an multisig
  */
-type MultisigInfo = {|
+type MultisigInfo = {
   /**
    * The number of signers required
    */
@@ -242,7 +238,7 @@ type MultisigInfo = {|
   /**
    * Is this mint initialized
    */
-  initialized: boolean,
+  isInitialized: boolean,
 
   /**
    * The signers
@@ -258,7 +254,7 @@ type MultisigInfo = {|
   signer9: PublicKey,
   signer10: PublicKey,
   signer11: PublicKey,
-|};
+};
 
 /**
  * @private
@@ -266,7 +262,7 @@ type MultisigInfo = {|
 const MultisigLayout = BufferLayout.struct([
   BufferLayout.u8('m'),
   BufferLayout.u8('n'),
-  BufferLayout.u8('is_initialized'),
+  BufferLayout.u8('isInitialized'),
   Layout.publicKey('signer1'),
   Layout.publicKey('signer2'),
   Layout.publicKey('signer3'),
@@ -323,14 +319,12 @@ export class Token {
     programId: PublicKey,
     payer: Signer,
   ) {
-    Object.assign(this, {
-      connection,
-      publicKey,
-      programId,
-      payer,
-      // Hard code is ok; Overriding is needed only for tests
-      associatedProgramId: ASSOCIATED_TOKEN_PROGRAM_ID,
-    });
+    this.connection = connection;
+    this.publicKey = publicKey;
+    this.programId = programId;
+    this.payer = payer;
+    // Hard code is ok; Overriding is needed only for tests
+    this.associatedProgramId = ASSOCIATED_TOKEN_PROGRAM_ID;
   }
 
   /**
@@ -728,7 +722,7 @@ export class Token {
       throw new Error('Failed to find mint account');
     }
     if (!info.owner.equals(this.programId)) {
-      throw new Error(`Invalid mint owner: ${JSON.stringify(info.owner)}`);
+      throw new Error(`Invalid mint owner: ${info.owner.toBase58()}`);
     }
     if (info.data.length != MintLayout.span) {
       throw new Error(`Invalid mint size`);
@@ -737,21 +731,17 @@ export class Token {
     const data = Buffer.from(info.data);
     const mintInfo = MintLayout.decode(data);
 
-    if (mintInfo.mintAuthorityOption === 0) {
-      mintInfo.mintAuthority = null;
-    } else {
-      mintInfo.mintAuthority = new PublicKey(mintInfo.mintAuthority);
-    }
-
-    mintInfo.supply = u64.fromBuffer(mintInfo.supply);
-    mintInfo.isInitialized = mintInfo.isInitialized != 0;
-
-    if (mintInfo.freezeAuthorityOption === 0) {
-      mintInfo.freezeAuthority = null;
-    } else {
-      mintInfo.freezeAuthority = new PublicKey(mintInfo.freezeAuthority);
-    }
-    return mintInfo;
+    return {
+      mintAuthority: mintInfo.mintAuthorityOption === 0
+        ? null
+        : new PublicKey(mintInfo.mintAuthority),
+      supply: u64.fromBuffer(mintInfo.supply),
+      decimals: mintInfo.decimals,
+      isInitialized: mintInfo.isInitialized !== 0,
+      freezeAuthority: mintInfo.freezeAuthorityOption === 0
+        ? null
+        : new PublicKey(mintInfo.freezeAuthority), 
+    };
   }
 
   /**
@@ -776,44 +766,48 @@ export class Token {
 
     const data = Buffer.from(info.data);
     const accountInfo = AccountLayout.decode(data);
-    accountInfo.address = account;
-    accountInfo.mint = new PublicKey(accountInfo.mint);
-    accountInfo.owner = new PublicKey(accountInfo.owner);
-    accountInfo.amount = u64.fromBuffer(accountInfo.amount);
+    const mint = new PublicKey(accountInfo.mint);
 
+    let delegate: null | PublicKey;
+    let delegatedAmount: u64;
     if (accountInfo.delegateOption === 0) {
-      accountInfo.delegate = null;
-      accountInfo.delegatedAmount = new u64();
+      delegate = null;
+      delegatedAmount = new u64(0);
     } else {
-      accountInfo.delegate = new PublicKey(accountInfo.delegate);
-      accountInfo.delegatedAmount = u64.fromBuffer(accountInfo.delegatedAmount);
+      delegate = new PublicKey(accountInfo.delegate);
+      delegatedAmount = u64.fromBuffer(accountInfo.delegatedAmount);
     }
 
-    accountInfo.isInitialized = accountInfo.state !== 0;
-    accountInfo.isFrozen = accountInfo.state === 2;
-
+    let rentExemptReserve: null | u64;
+    let isNative: boolean;
     if (accountInfo.isNativeOption === 1) {
-      accountInfo.rentExemptReserve = u64.fromBuffer(accountInfo.isNative);
-      accountInfo.isNative = true;
+      rentExemptReserve = u64.fromBuffer(accountInfo.isNative);
+      isNative = true;
     } else {
-      accountInfo.rentExemptReserve = null;
-      accountInfo.isNative = false;
+      rentExemptReserve = null;
+      isNative = false;
     }
 
-    if (accountInfo.closeAuthorityOption === 0) {
-      accountInfo.closeAuthority = null;
-    } else {
-      accountInfo.closeAuthority = new PublicKey(accountInfo.closeAuthority);
-    }
-
-    if (!accountInfo.mint.equals(this.publicKey)) {
+    if (!mint.equals(this.publicKey)) {
       throw new Error(
-        `Invalid account mint: ${JSON.stringify(
-          accountInfo.mint,
-        )} !== ${JSON.stringify(this.publicKey)}`,
+        `Invalid account mint: ${accountInfo.mint.toBase58()} !== ${this.publicKey.toBase58()}`,
       );
     }
-    return accountInfo;
+    return {
+      address: account,
+      mint,
+      owner: new PublicKey(accountInfo.owner),
+      amount: u64.fromBuffer(accountInfo.amount),
+      delegate,
+      delegatedAmount,
+      isInitialized: accountInfo.state !== 0,
+      isFrozen: accountInfo.state === 2,
+      isNative,
+      rentExemptReserve,
+      closeAuthority: accountInfo.closeAuthorityOption === 0
+        ? null
+        : new PublicKey(accountInfo.closeAuthority),
+    };
   }
 
   /**
@@ -835,19 +829,24 @@ export class Token {
 
     const data = Buffer.from(info.data);
     const multisigInfo = MultisigLayout.decode(data);
-    multisigInfo.signer1 = new PublicKey(multisigInfo.signer1);
-    multisigInfo.signer2 = new PublicKey(multisigInfo.signer2);
-    multisigInfo.signer3 = new PublicKey(multisigInfo.signer3);
-    multisigInfo.signer4 = new PublicKey(multisigInfo.signer4);
-    multisigInfo.signer5 = new PublicKey(multisigInfo.signer5);
-    multisigInfo.signer6 = new PublicKey(multisigInfo.signer6);
-    multisigInfo.signer7 = new PublicKey(multisigInfo.signer7);
-    multisigInfo.signer8 = new PublicKey(multisigInfo.signer8);
-    multisigInfo.signer9 = new PublicKey(multisigInfo.signer9);
-    multisigInfo.signer10 = new PublicKey(multisigInfo.signer10);
-    multisigInfo.signer11 = new PublicKey(multisigInfo.signer11);
 
-    return multisigInfo;
+
+    return {
+      m: multisigInfo.m,
+      n: multisigInfo.n,
+      isInitialized: multisigInfo.isInitialized,
+      signer1: new PublicKey(multisigInfo.signer1);
+      signer2: new PublicKey(multisigInfo.signer2);
+      signer3: new PublicKey(multisigInfo.signer3);
+      signer4: new PublicKey(multisigInfo.signer4);
+      signer5: new PublicKey(multisigInfo.signer5);
+      signer6: new PublicKey(multisigInfo.signer6);
+      signer7: new PublicKey(multisigInfo.signer7);
+      signer8: new PublicKey(multisigInfo.signer8);
+      signer9: new PublicKey(multisigInfo.signer9);
+      signer10: new PublicKey(multisigInfo.signer10);
+      signer11: new PublicKey(multisigInfo.signer11);
+    };
   }
 
   /**

@@ -32,7 +32,6 @@
     "build": "tsc && tsc -p tsconfig.browser.json && npm run generate:flow",
     "prepare": "npm run build",
     "start": "ts-node cli/main.ts",
-    "build:browser-test": "rollup -c test/rollup.config.js",
     "start-with-test-validator": "start-server-and-test 'solana-test-validator --reset --quiet' http://localhost:8899/health start",
     "lint": "npm run pretty && eslint .",
     "lint:fix": "npm run pretty:fix && eslint . --fix",
@@ -47,15 +46,15 @@
     "pretty": "prettier --check '{,cli*/**/}*.[jt]s'",
     "pretty:fix": "prettier --write '{,cli*/**/}*.[jt]s'",
     "test": "mocha './test/**/*.test.js'",
-    "test:browser": "npm run build:browser-test && mocha-headless-chrome -f http://localhost:8080/mocha.html --timeout 180000",
+    "test:browser": "npm run build && mocha-headless-chrome -f http://localhost:8080/mocha.html --timeout 180000",
     "test:browser-with-server": "start-server-and-test 'http-server -p 8080' 8080 test:browser"
   },
   "dependencies": {
     "@babel/runtime": "^7.10.5",
+    "@solana/buffer-layout": "^3.0.0",
     "@solana/web3.js": "^1.21.0",
     "bn.js": "^5.1.0",
     "buffer": "6.0.3",
-    "buffer-layout": "^1.2.0",
     "dotenv": "10.0.0"
   },
   "devDependencies": {
