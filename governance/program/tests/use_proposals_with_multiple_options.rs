@@ -578,7 +578,7 @@ async fn test_vote_on_proposal_with_multiple_options_and_partial_success() {
 }
 
 #[tokio::test]
-async fn test_execute_proposal_with_multiple_options_and_full_success() {
+async fn test_execute_proposal_with_multiple_options_and_partial_success() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -675,19 +675,25 @@ async fn test_execute_proposal_with_multiple_options_and_full_success() {
         .await
         .unwrap();
 
-    // choice 1: 100 -> Success
-    // choice 2: 100 -> Success
-    // choice 3: 100 -> Success
+    // deny: 100
+    // choice 1: 100 -> Defeated
+    // choice 2: 200 -> Success
+    // choice 3: 0 -> Defeated
     // yes threshold: 100
+
+    governance_test
+        .with_cast_multi_option_vote(&proposal_cookie, &token_owner_record_cookie3, Vote::Deny)
+        .await
+        .unwrap();
 
     let vote1 = Vote::Approve(vec![
         VoteChoice {
             rank: 0,
-            weight_percentage: 100,
+            weight_percentage: 0,
         },
         VoteChoice {
             rank: 0,
-            weight_percentage: 0,
+            weight_percentage: 100,
         },
         VoteChoice {
             rank: 0,
@@ -703,7 +709,7 @@ async fn test_execute_proposal_with_multiple_options_and_full_success() {
     let vote2 = Vote::Approve(vec![
         VoteChoice {
             rank: 0,
-            weight_percentage: 0,
+            weight_percentage: 100,
         },
         VoteChoice {
             rank: 0,
@@ -717,26 +723,6 @@ async fn test_execute_proposal_with_multiple_options_and_full_success() {
 
     governance_test
         .with_cast_multi_option_vote(&proposal_cookie, &token_owner_record_cookie2, vote2)
-        .await
-        .unwrap();
-
-    let vote3 = Vote::Approve(vec![
-        VoteChoice {
-            rank: 0,
-            weight_percentage: 0,
-        },
-        VoteChoice {
-            rank: 0,
-            weight_percentage: 0,
-        },
-        VoteChoice {
-            rank: 0,
-            weight_percentage: 100,
-        },
-    ]);
-
-    governance_test
-        .with_cast_multi_option_vote(&proposal_cookie, &token_owner_record_cookie3, vote3)
         .await
         .unwrap();
 
@@ -764,9 +750,11 @@ async fn test_execute_proposal_with_multiple_options_and_full_success() {
     assert_eq!(ProposalState::Succeeded, proposal_account.state);
 
     // Act
-    governance_test
+
+    let instruction1_err = governance_test
         .execute_instruction(&proposal_cookie, &proposal_instruction_cookie1)
         .await
+        .err()
         .unwrap();
 
     governance_test
@@ -774,9 +762,10 @@ async fn test_execute_proposal_with_multiple_options_and_full_success() {
         .await
         .unwrap();
 
-    governance_test
+    let instruction3_err = governance_test
         .execute_instruction(&proposal_cookie, &proposal_instruction_cookie3)
         .await
+        .err()
         .unwrap();
 
     // Assert
@@ -785,4 +774,182 @@ async fn test_execute_proposal_with_multiple_options_and_full_success() {
         .await;
 
     assert_eq!(ProposalState::Completed, proposal_account.state);
+
+    assert_eq!(
+        instruction1_err,
+        GovernanceError::CannotExecuteDefeatedOption.into()
+    );
+
+    assert_eq!(
+        instruction3_err,
+        GovernanceError::InvalidStateCannotExecuteInstruction.into()
+    );
+}
+
+#[tokio::test]
+async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_mint_cookie = governance_test.with_governed_mint().await;
+
+    // 100 tokens
+    let token_owner_record_cookie1 = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    // 100 tokens
+    let token_owner_record_cookie2 = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    // 100 tokes approval quorum
+    let mut governance_config = governance_test.get_default_governance_config();
+    governance_config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(30);
+
+    let mut account_governance_cookie = governance_test
+        .with_mint_governance_using_config(
+            &realm_cookie,
+            &governed_mint_cookie,
+            &token_owner_record_cookie1,
+            &governance_config,
+        )
+        .await
+        .unwrap();
+
+    let mut proposal_cookie = governance_test
+        .with_multi_option_proposal(
+            &token_owner_record_cookie1,
+            &mut account_governance_cookie,
+            vec![
+                "option 1".to_string(),
+                "option 2".to_string(),
+                "option 3".to_string(),
+            ],
+            true,
+            VoteType::MultiChoice,
+        )
+        .await
+        .unwrap();
+
+    let proposal_instruction_cookie1 = governance_test
+        .with_mint_tokens_instruction(
+            &governed_mint_cookie,
+            &mut proposal_cookie,
+            &token_owner_record_cookie1,
+            0,
+            Some(0),
+        )
+        .await
+        .unwrap();
+
+    let proposal_instruction_cookie2 = governance_test
+        .with_mint_tokens_instruction(
+            &governed_mint_cookie,
+            &mut proposal_cookie,
+            &token_owner_record_cookie1,
+            1,
+            Some(0),
+        )
+        .await
+        .unwrap();
+
+    let proposal_instruction_cookie3 = governance_test
+        .with_mint_tokens_instruction(
+            &governed_mint_cookie,
+            &mut proposal_cookie,
+            &token_owner_record_cookie1,
+            2,
+            Some(0),
+        )
+        .await
+        .unwrap();
+
+    let signatory_record_cookie = governance_test
+        .with_signatory(&proposal_cookie, &token_owner_record_cookie1)
+        .await
+        .unwrap();
+
+    governance_test
+        .sign_off_proposal(&proposal_cookie, &signatory_record_cookie)
+        .await
+        .unwrap();
+
+    governance_test
+        .with_cast_multi_option_vote(&proposal_cookie, &token_owner_record_cookie1, Vote::Deny)
+        .await
+        .unwrap();
+
+    governance_test
+        .with_cast_multi_option_vote(&proposal_cookie, &token_owner_record_cookie2, Vote::Deny)
+        .await
+        .unwrap();
+
+    // Advance timestamp past max_voting_time
+    governance_test
+        .advance_clock_by_min_timespan(
+            account_governance_cookie.account.config.max_voting_time as u64,
+        )
+        .await;
+
+    governance_test
+        .finalize_vote(&realm_cookie, &proposal_cookie)
+        .await
+        .unwrap();
+
+    // Advance timestamp past hold_up_time
+    governance_test
+        .advance_clock_by_min_timespan(proposal_instruction_cookie1.account.hold_up_time as u64)
+        .await;
+
+    let proposal_account = governance_test
+        .get_proposal_account(&proposal_cookie.address)
+        .await;
+
+    assert_eq!(ProposalState::Defeated, proposal_account.state);
+
+    // Act
+
+    let mut err = governance_test
+        .execute_instruction(&proposal_cookie, &proposal_instruction_cookie1)
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+    assert_eq!(
+        err,
+        GovernanceError::InvalidStateCannotExecuteInstruction.into()
+    );
+
+    // Act
+
+    err = governance_test
+        .execute_instruction(&proposal_cookie, &proposal_instruction_cookie2)
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+    assert_eq!(
+        err,
+        GovernanceError::InvalidStateCannotExecuteInstruction.into()
+    );
+
+    // Act
+
+    err = governance_test
+        .execute_instruction(&proposal_cookie, &proposal_instruction_cookie3)
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+    assert_eq!(
+        err,
+        GovernanceError::InvalidStateCannotExecuteInstruction.into()
+    );
 }
