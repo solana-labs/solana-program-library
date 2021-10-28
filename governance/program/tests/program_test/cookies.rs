@@ -5,7 +5,7 @@ use spl_governance::{
     state::{
         governance::Governance, proposal::Proposal, proposal_instruction::ProposalInstructionV2,
         realm::Realm, realm_config::RealmConfigAccount, signatory_record::SignatoryRecord,
-        token_owner_record::TokenOwnerRecord, vote_record::VoteRecord,
+        token_owner_record::TokenOwnerRecord, vote_record::VoteRecordV2,
     },
 };
 
@@ -149,7 +149,7 @@ pub struct SignatoryRecordCookie {
 #[derive(Debug)]
 pub struct VoteRecordCookie {
     pub address: Pubkey,
-    pub account: VoteRecord,
+    pub account: VoteRecordV2,
 }
 
 #[derive(Debug)]

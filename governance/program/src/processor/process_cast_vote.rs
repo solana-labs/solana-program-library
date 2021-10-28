@@ -21,7 +21,7 @@ use crate::{
             get_token_owner_record_data_for_proposal_owner,
             get_token_owner_record_data_for_realm_and_governing_mint,
         },
-        vote_record::{get_vote_record_address_seeds, Vote, VoteRecord},
+        vote_record::{get_vote_record_address_seeds, Vote, VoteRecordV2},
     },
     tools::spl_token::get_spl_token_mint_supply,
 };
@@ -155,7 +155,7 @@ pub fn process_cast_vote(
     proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
 
     // Create and serialize VoteRecord
-    let vote_record_data = VoteRecord {
+    let vote_record_data = VoteRecordV2 {
         account_type: GovernanceAccountType::VoteRecordV2,
         proposal: *proposal_info.key,
         governing_token_owner: voter_token_owner_record_data.governing_token_owner,
@@ -164,7 +164,7 @@ pub fn process_cast_vote(
         is_relinquished: false,
     };
 
-    create_and_serialize_account_signed::<VoteRecord>(
+    create_and_serialize_account_signed::<VoteRecordV2>(
         payer_info,
         vote_record_info,
         &vote_record_data,

@@ -47,7 +47,7 @@ use spl_governance::{
         realm_config::{get_realm_config_address, RealmConfigAccount},
         signatory_record::{get_signatory_record_address, SignatoryRecord},
         token_owner_record::{get_token_owner_record_address, TokenOwnerRecord},
-        vote_record::{get_vote_record_address, Vote, VoteChoice, VoteRecord},
+        vote_record::{get_vote_record_address, Vote, VoteChoice, VoteRecordV2},
     },
     tools::bpf_loader_upgradeable::get_program_data_address,
 };
@@ -1850,7 +1850,7 @@ impl GovernanceProgramTest {
             .account
             .governing_token_deposit_amount;
 
-        let account = VoteRecord {
+        let account = VoteRecordV2 {
             account_type: GovernanceAccountType::VoteRecordV2,
             proposal: proposal_cookie.address,
             governing_token_owner: token_owner_record_cookie.token_owner.pubkey(),
@@ -2245,9 +2245,9 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn get_vote_record_account(&mut self, vote_record_address: &Pubkey) -> VoteRecord {
+    pub async fn get_vote_record_account(&mut self, vote_record_address: &Pubkey) -> VoteRecordV2 {
         self.bench
-            .get_borsh_account::<VoteRecord>(vote_record_address)
+            .get_borsh_account::<VoteRecordV2>(vote_record_address)
             .await
     }
 

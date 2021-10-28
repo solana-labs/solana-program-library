@@ -14,7 +14,10 @@ use crate::error::GovernanceError;
 
 use crate::PROGRAM_AUTHORITY_SEED;
 
-use crate::state::enums::GovernanceAccountType;
+use crate::state::{
+    enums::GovernanceAccountType,
+    legacy::{VoteRecordV1, VoteWeightV1},
+};
 
 /// Voter choice for a proposal option
 /// In the current version only 1) Single choice and 2) Multiple choices proposals are supported
@@ -52,7 +55,7 @@ pub enum Vote {
 
 /// Proposal VoteRecord
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub struct VoteRecord {
+pub struct VoteRecordV2 {
     /// Governance account type
     pub account_type: GovernanceAccountType,
 
@@ -73,14 +76,14 @@ pub struct VoteRecord {
     pub vote: Vote,
 }
 
-impl AccountMaxSize for VoteRecord {}
+impl AccountMaxSize for VoteRecordV2 {}
 
-impl IsInitialized for VoteRecord {
+impl IsInitialized for VoteRecordV2 {
     fn is_initialized(&self) -> bool {
         self.account_type == GovernanceAccountType::VoteRecordV2
     }
 }
-impl VoteRecord {
+impl VoteRecordV2 {
     /// Checks the vote can be relinquished
     pub fn assert_can_relinquish_vote(&self) -> Result<(), ProgramError> {
         if self.is_relinquished {
@@ -94,17 +97,15 @@ impl VoteRecord {
     pub fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), ProgramError> {
         if self.account_type == GovernanceAccountType::VoteRecordV2 {
             BorshSerialize::serialize(&self, writer)?
-        } else if self.account_type == GovernanceAccountType::VoteRecord {
+        } else if self.account_type == GovernanceAccountType::VoteRecordV1 {
             // V1 account can't be resized and we have to translate it back to the original format
             let vote_weight = match self.vote.clone() {
-                Vote::Approve(_options) => {
-                    spl_governance_v1::state::enums::VoteWeight::Yes(self.voter_weight)
-                }
-                Vote::Deny => spl_governance_v1::state::enums::VoteWeight::No(self.voter_weight),
+                Vote::Approve(_options) => VoteWeightV1::Yes(self.voter_weight),
+                Vote::Deny => VoteWeightV1::No(self.voter_weight),
             };
 
-            let vote_record_data_v1 = spl_governance_v1::state::vote_record::VoteRecord {
-                account_type: spl_governance_v1::state::enums::GovernanceAccountType::VoteRecord,
+            let vote_record_data_v1 = VoteRecordV1 {
+                account_type: GovernanceAccountType::VoteRecordV1,
                 proposal: self.proposal,
                 governing_token_owner: self.governing_token_owner,
                 is_relinquished: self.is_relinquished,
@@ -122,29 +123,27 @@ impl VoteRecord {
 pub fn get_vote_record_data(
     program_id: &Pubkey,
     vote_record_info: &AccountInfo,
-) -> Result<VoteRecord, ProgramError> {
+) -> Result<VoteRecordV2, ProgramError> {
     let account_type: GovernanceAccountType =
         try_from_slice_unchecked(&vote_record_info.data.borrow())?;
 
     // If the account is V1 version then translate to V2
-    if account_type == GovernanceAccountType::VoteRecord {
-        let vote_record_data_v1 = get_account_data::<
-            spl_governance_v1::state::vote_record::VoteRecord,
-        >(program_id, vote_record_info)?;
+    if account_type == GovernanceAccountType::VoteRecordV1 {
+        let vote_record_data_v1 = get_account_data::<VoteRecordV1>(program_id, vote_record_info)?;
 
         let (vote, voter_weight) = match vote_record_data_v1.vote_weight {
-            spl_governance_v1::state::enums::VoteWeight::Yes(weight) => (
+            VoteWeightV1::Yes(weight) => (
                 Vote::Approve(vec![VoteChoice {
                     rank: 0,
                     weight_percentage: 100,
                 }]),
                 weight,
             ),
-            spl_governance_v1::state::enums::VoteWeight::No(weight) => (Vote::Deny, weight),
+            VoteWeightV1::No(weight) => (Vote::Deny, weight),
         };
 
-        return Ok(VoteRecord {
-            account_type: GovernanceAccountType::VoteRecord,
+        return Ok(VoteRecordV2 {
+            account_type: GovernanceAccountType::VoteRecordV1,
             proposal: vote_record_data_v1.proposal,
             governing_token_owner: vote_record_data_v1.governing_token_owner,
             is_relinquished: vote_record_data_v1.is_relinquished,
@@ -153,7 +152,7 @@ pub fn get_vote_record_data(
         });
     }
 
-    get_account_data::<VoteRecord>(program_id, vote_record_info)
+    get_account_data::<VoteRecordV2>(program_id, vote_record_info)
 }
 
 /// Deserializes VoteRecord and checks it belongs to the provided Proposal and Governing Token Owner
@@ -162,7 +161,7 @@ pub fn get_vote_record_data_for_proposal_and_token_owner(
     vote_record_info: &AccountInfo,
     proposal: &Pubkey,
     governing_token_owner: &Pubkey,
-) -> Result<VoteRecord, ProgramError> {
+) -> Result<VoteRecordV2, ProgramError> {
     let vote_record_data = get_vote_record_data(program_id, vote_record_info)?;
 
     if vote_record_data.proposal != *proposal {
@@ -213,30 +212,28 @@ mod test {
     fn test_vote_record_v1_to_v2_serialisation_roundtrip() {
         // Arrange
 
-        let vote_record_v1_source = spl_governance_v1::state::vote_record::VoteRecord {
-            account_type: spl_governance_v1::state::enums::GovernanceAccountType::VoteRecord,
+        let vote_record_v1_source = VoteRecordV1 {
+            account_type: GovernanceAccountType::VoteRecordV1,
             proposal: Pubkey::new_unique(),
             governing_token_owner: Pubkey::new_unique(),
             is_relinquished: true,
-            vote_weight: spl_governance_v1::state::enums::VoteWeight::Yes(120),
+            vote_weight: VoteWeightV1::Yes(120),
         };
 
-        let mut vote_record_v1_source_vec = vec![];
-        vote_record_v1_source
-            .serialize(&mut vote_record_v1_source_vec)
-            .unwrap();
+        let mut account_data = vec![];
+        vote_record_v1_source.serialize(&mut account_data).unwrap();
 
         let program_id = Pubkey::new_unique();
 
         let info_key = Pubkey::new_unique();
         let mut lamports = 10u64;
 
-        let vote_record_v1_info = AccountInfo::new(
+        let account_info = AccountInfo::new(
             &info_key,
             false,
             false,
             &mut lamports,
-            &mut vote_record_v1_source_vec[..],
+            &mut account_data[..],
             &program_id,
             false,
             Epoch::default(),
@@ -244,18 +241,16 @@ mod test {
 
         // Act
 
-        let vote_record_v2 = get_vote_record_data(&program_id, &vote_record_v1_info).unwrap();
+        let vote_record_v2 = get_vote_record_data(&program_id, &account_info).unwrap();
 
         vote_record_v2
-            .serialize(&mut &mut **vote_record_v1_info.data.borrow_mut())
+            .serialize(&mut &mut **account_info.data.borrow_mut())
             .unwrap();
 
         // Assert
 
-        let vote_record_v1_target = get_account_data::<
-            spl_governance_v1::state::vote_record::VoteRecord,
-        >(&program_id, &vote_record_v1_info)
-        .unwrap();
+        let vote_record_v1_target =
+            get_account_data::<VoteRecordV1>(&program_id, &account_info).unwrap();
 
         assert_eq!(vote_record_v1_source, vote_record_v1_target)
     }
