@@ -1851,7 +1851,7 @@ impl GovernanceProgramTest {
             .governing_token_deposit_amount;
 
         let account = VoteRecord {
-            account_type: GovernanceAccountType::VoteRecord,
+            account_type: GovernanceAccountType::VoteRecordV2,
             proposal: proposal_cookie.address,
             governing_token_owner: token_owner_record_cookie.token_owner.pubkey(),
             vote,

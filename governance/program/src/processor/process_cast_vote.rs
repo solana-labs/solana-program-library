@@ -156,7 +156,7 @@ pub fn process_cast_vote(
 
     // Create and serialize VoteRecord
     let vote_record_data = VoteRecord {
-        account_type: GovernanceAccountType::VoteRecord,
+        account_type: GovernanceAccountType::VoteRecordV2,
         proposal: *proposal_info.key,
         governing_token_owner: voter_token_owner_record_data.governing_token_owner,
         voter_weight,

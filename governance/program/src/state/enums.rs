@@ -41,6 +41,10 @@ pub enum GovernanceAccountType {
 
     /// Realm config account
     RealmConfig,
+
+    /// Vote record account for a given Proposal.  Proposal can have 0..n voting records
+    /// V2 adds support for multi option votes
+    VoteRecordV2,
 }
 
 impl Default for GovernanceAccountType {
