@@ -5,6 +5,7 @@
   "scripts": {
     "lint": "npx prettier src/*.ts -w",
     "build": "tsc",
+    "docs": "rm -rf ../../gh-pages/stake-pool/* && typedoc --entryPoints ./src/index.ts --out  ../../gh-pages/stake-pool",
     "test": "./node_modules/mocha/bin/mocha -p ./dist"
   },
   "keywords": [],
@@ -14,6 +15,7 @@
     "@types/mocha": "^8.2.2",
     "mocha": "^8.4.0",
     "prettier": "^2.2.1",
+    "typedoc": "^0.22.7",
     "typescript": "^4.2.4"
   },
   "dependencies": {

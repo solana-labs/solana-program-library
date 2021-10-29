@@ -30,6 +30,7 @@
   "scripts": {
     "build": "tsc && tsc -p tsconfig.browser.json && npm run generate:flow",
     "prepare": "npm run build",
+    "docs": "rm -rf ../../gh-pages/token-swap/* && typedoc --entryPoints ./src/index.ts --out ../../gh-pages/token-swap",
     "start": "ts-node cli/main.ts",
     "start-with-test-validator": "start-server-and-test 'solana-test-validator --bpf-program SwaPpA9LAaLfeLi3a68M4DjnLqgtticKg6CnyNwgAC8 ../../target/deploy/spl_token_swap.so --reset --quiet' http://localhost:8899/health start",
     "lint": "npm run pretty && eslint .",
@@ -65,6 +66,7 @@
     "prettier": "^2.1.2",
     "start-server-and-test": "^1.11.6",
     "ts-node": "^10.0.0",
+    "typedoc": "^0.22.7",
     "typescript": "^4.2.4",
     "watch": "^1.0.2"
   },
