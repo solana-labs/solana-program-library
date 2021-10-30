@@ -108,7 +108,7 @@ pub fn process_cast_vote(
     proposal_data.assert_valid_vote(&vote)?;
 
     // Calculate Proposal voting weights
-    match vote.clone() {
+    match &vote {
         Vote::Approve(choices) => {
             for (option, choice) in proposal_data.options.iter_mut().zip(choices) {
                 option.vote_weight = option

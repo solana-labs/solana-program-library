@@ -99,7 +99,7 @@ impl VoteRecordV2 {
             BorshSerialize::serialize(&self, writer)?
         } else if self.account_type == GovernanceAccountType::VoteRecordV1 {
             // V1 account can't be resized and we have to translate it back to the original format
-            let vote_weight = match self.vote.clone() {
+            let vote_weight = match &self.vote {
                 Vote::Approve(_options) => VoteWeightV1::Yes(self.voter_weight),
                 Vote::Deny => VoteWeightV1::No(self.voter_weight),
             };
