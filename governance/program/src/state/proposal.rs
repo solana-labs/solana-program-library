@@ -269,7 +269,7 @@ impl ProposalV2 {
 
         let max_vote_weight = self.get_max_vote_weight(realm_data, governing_token_mint_supply)?;
 
-        self.state = self.get_final_vote_state(max_vote_weight, config)?;
+        self.state = self.resolve_final_vote_state(max_vote_weight, config)?;
         // TODO: set voting_completed_at based on the time when the voting ended and not when we finalized the proposal
         self.voting_completed_at = Some(current_unix_timestamp);
 
@@ -280,8 +280,9 @@ impl ProposalV2 {
         Ok(())
     }
 
-    /// Returns final proposal state after vote ends
-    fn get_final_vote_state(
+    /// Resolves final proposal state after vote ends
+    /// It inspects all proposals options and resolves their final vote results
+    fn resolve_final_vote_state(
         &mut self,
         max_vote_weight: u64,
         config: &GovernanceConfig,
