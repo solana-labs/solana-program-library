@@ -661,7 +661,7 @@ impl ProposalV2 {
                 description_link: self.description_link.clone(),
             };
 
-            BorshSerialize::serialize(&vote_record_data_v1, writer)?;
+            BorshSerialize::serialize(&proposal_data_v1, writer)?;
         }
 
         Ok(())
