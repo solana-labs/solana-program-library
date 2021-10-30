@@ -193,7 +193,7 @@ pub fn get_proposal_instruction_data(
         return Ok(ProposalInstructionV2 {
             account_type,
             proposal: proposal_instruction_data_v1.proposal,
-            option_index: 0, //
+            option_index: 0, // V1 has single implied option
             instruction_index: proposal_instruction_data_v1.instruction_index,
             hold_up_time: proposal_instruction_data_v1.hold_up_time,
             instruction: proposal_instruction_data_v1.instruction,
