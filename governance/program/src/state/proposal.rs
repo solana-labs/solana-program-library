@@ -634,7 +634,7 @@ impl ProposalV2 {
         } else if self.account_type == GovernanceAccountType::ProposalV1 {
             // V1 account can't be resized and we have to translate it back to the original format
 
-            let vote_record_data_v1 = ProposalV1 {
+            let proposal_data_v1 = ProposalV1 {
                 account_type: self.account_type.clone(),
                 governance: self.governance,
                 governing_token_mint: self.governing_token_mint,
