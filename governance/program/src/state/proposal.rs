@@ -300,7 +300,7 @@ impl ProposalV2 {
         let deny_vote_weight = self.deny_vote_weight.unwrap_or(0);
 
         let mut best_succeeded_option_weight = 0;
-        let mut best_succeeded_option_count = 0;
+        let mut best_succeeded_option_count = 0u16;
 
         for option in self.options.iter_mut() {
             // Any positive vote (Yes) must be equal or above the required min_vote_threshold_weight and higher than the reject option vote (No)
@@ -316,7 +316,10 @@ impl ProposalV2 {
                         best_succeeded_option_weight = option.vote_weight;
                         best_succeeded_option_count = 1;
                     }
-                    Ordering::Equal => best_succeeded_option_count += 1,
+                    Ordering::Equal => {
+                        best_succeeded_option_count =
+                            best_succeeded_option_count.checked_add(1).unwrap()
+                    }
                     Ordering::Less => {}
                 }
             } else {
@@ -594,7 +597,7 @@ impl ProposalV2 {
                     return Err(GovernanceError::InvalidVote.into());
                 }
 
-                let mut choice_count = 0;
+                let mut choice_count = 0u16;
 
                 for choice in choices {
                     if choice.rank > 0 {
@@ -602,7 +605,7 @@ impl ProposalV2 {
                     }
 
                     if choice.weight_percentage == 100 {
-                        choice_count += 1;
+                        choice_count = choice_count.checked_add(1).unwrap();
                     } else if choice.weight_percentage != 0 {
                         return Err(GovernanceError::InvalidVote.into());
                     }
@@ -693,8 +696,8 @@ fn get_min_vote_threshold_weight(
 
     let mut yes_vote_threshold = numerator.checked_div(100).unwrap();
 
-    if yes_vote_threshold * 100 < numerator {
-        yes_vote_threshold += 1;
+    if yes_vote_threshold.checked_mul(100).unwrap() < numerator {
+        yes_vote_threshold = yes_vote_threshold.checked_add(1).unwrap();
     }
 
     Ok(yes_vote_threshold as u64)
