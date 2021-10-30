@@ -94,7 +94,7 @@ impl VoteRecordV2 {
     }
 
     /// Serializes account into the target buffer
-    pub fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), ProgramError> {
+    pub fn serialize<W: Write>(self, writer: &mut W) -> Result<(), ProgramError> {
         if self.account_type == GovernanceAccountType::VoteRecordV2 {
             BorshSerialize::serialize(&self, writer)?
         } else if self.account_type == GovernanceAccountType::VoteRecordV1 {
@@ -105,7 +105,7 @@ impl VoteRecordV2 {
             };
 
             let vote_record_data_v1 = VoteRecordV1 {
-                account_type: self.account_type.clone(),
+                account_type: self.account_type,
                 proposal: self.proposal,
                 governing_token_owner: self.governing_token_owner,
                 is_relinquished: self.is_relinquished,

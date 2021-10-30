@@ -127,19 +127,19 @@ impl IsInitialized for ProposalInstructionV2 {
 
 impl ProposalInstructionV2 {
     /// Serializes account into the target buffer
-    pub fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), ProgramError> {
+    pub fn serialize<W: Write>(self, writer: &mut W) -> Result<(), ProgramError> {
         if self.account_type == GovernanceAccountType::ProposalInstructionV2 {
             BorshSerialize::serialize(&self, writer)?
         } else if self.account_type == GovernanceAccountType::ProposalInstructionV1 {
             // V1 account can't be resized and we have to translate it back to the original format
             let proposal_instruction_data_v1 = ProposalInstructionV1 {
-                account_type: self.account_type.clone(),
+                account_type: self.account_type,
                 proposal: self.proposal,
                 instruction_index: self.instruction_index,
                 hold_up_time: self.hold_up_time,
-                instruction: self.instruction.clone(),
+                instruction: self.instruction,
                 executed_at: self.executed_at,
-                execution_status: self.execution_status.clone(),
+                execution_status: self.execution_status,
             };
 
             BorshSerialize::serialize(&proposal_instruction_data_v1, writer)?;
