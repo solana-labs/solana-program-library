@@ -28,7 +28,7 @@ use crate::{
 pub fn process_insert_instruction(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    option_index: u8,
+    option_index: u16,
     instruction_index: u16,
     hold_up_time: u32,
     instruction: InstructionData,

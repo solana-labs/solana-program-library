@@ -229,7 +229,7 @@ pub enum GovernanceInstruction {
     InsertInstruction {
         #[allow(dead_code)]
         /// The index of the option the instruction is for
-        option_index: u8,
+        option_index: u16,
         #[allow(dead_code)]
         /// Instruction index to be inserted at.
         index: u16,
@@ -1105,7 +1105,7 @@ pub fn insert_instruction(
     governance_authority: &Pubkey,
     payer: &Pubkey,
     // Args
-    option_index: u8,
+    option_index: u16,
     index: u16,
     hold_up_time: u32,
     instruction: InstructionData,

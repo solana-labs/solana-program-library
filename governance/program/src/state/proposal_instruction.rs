@@ -93,7 +93,7 @@ pub struct ProposalInstructionV2 {
     pub proposal: Pubkey,
 
     /// The option index the instruction belongs to
-    pub option_index: u8,
+    pub option_index: u16,
 
     /// Unique instruction index within it's parent Proposal
     pub instruction_index: u16,
@@ -115,7 +115,7 @@ pub struct ProposalInstructionV2 {
 
 impl AccountMaxSize for ProposalInstructionV2 {
     fn get_max_size(&self) -> Option<usize> {
-        Some(self.instruction.accounts.len() * 34 + self.instruction.data.len() + 90)
+        Some(self.instruction.accounts.len() * 34 + self.instruction.data.len() + 91)
     }
 }
 
@@ -152,7 +152,7 @@ impl ProposalInstructionV2 {
 /// Returns ProposalInstruction PDA seeds
 pub fn get_proposal_instruction_address_seeds<'a>(
     proposal: &'a Pubkey,
-    option_index: &'a [u8; 1],
+    option_index: &'a [u8; 2],               // u16 le bytes
     instruction_index_le_bytes: &'a [u8; 2], // u16 le bytes
 ) -> [&'a [u8]; 4] {
     [
@@ -167,11 +167,15 @@ pub fn get_proposal_instruction_address_seeds<'a>(
 pub fn get_proposal_instruction_address<'a>(
     program_id: &Pubkey,
     proposal: &'a Pubkey,
-    option_index: &'a [u8; 1],
+    option_index_le_bytes: &'a [u8; 2],      // u16 le bytes
     instruction_index_le_bytes: &'a [u8; 2], // u16 le bytes
 ) -> Pubkey {
     Pubkey::find_program_address(
-        &get_proposal_instruction_address_seeds(proposal, option_index, instruction_index_le_bytes),
+        &get_proposal_instruction_address_seeds(
+            proposal,
+            option_index_le_bytes,
+            instruction_index_le_bytes,
+        ),
         program_id,
     )
     .0
@@ -193,7 +197,7 @@ pub fn get_proposal_instruction_data(
         return Ok(ProposalInstructionV2 {
             account_type,
             proposal: proposal_instruction_data_v1.proposal,
-            option_index: 0, // V1 has single implied option
+            option_index: 0, // V1 has a single implied option at index 0
             instruction_index: proposal_instruction_data_v1.instruction_index,
             hold_up_time: proposal_instruction_data_v1.hold_up_time,
             instruction: proposal_instruction_data_v1.instruction,
