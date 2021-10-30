@@ -91,7 +91,7 @@ async fn test_create_proposal_with_multiple_choice_options_and_without_deny_opti
             &mut account_governance_cookie,
             options,
             false,
-            VoteType::MultiChoice,
+            VoteType::MultiChoice(2),
         )
         .await
         .unwrap();
@@ -100,7 +100,7 @@ async fn test_create_proposal_with_multiple_choice_options_and_without_deny_opti
         .get_proposal_account(&proposal_cookie.address)
         .await;
 
-    assert_eq!(proposal_account.vote_type, VoteType::MultiChoice);
+    assert_eq!(proposal_account.vote_type, VoteType::MultiChoice(2));
     assert!(!proposal_account.deny_vote_weight.is_some());
 
     assert_eq!(proposal_cookie.account, proposal_account);
@@ -350,7 +350,7 @@ async fn test_vote_on_none_executable_multi_choice_proposal_with_multiple_option
                 "option 3".to_string(),
             ],
             false,
-            VoteType::MultiChoice,
+            VoteType::MultiChoice(3),
         )
         .await
         .unwrap();
@@ -475,7 +475,7 @@ async fn test_vote_on_executable_proposal_with_multiple_options_and_partial_succ
                 "option 3".to_string(),
             ],
             true,
-            VoteType::MultiChoice,
+            VoteType::MultiChoice(3),
         )
         .await
         .unwrap();
@@ -633,7 +633,7 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
                 "option 3".to_string(),
             ],
             true,
-            VoteType::MultiChoice,
+            VoteType::MultiChoice(3),
         )
         .await
         .unwrap();
@@ -836,7 +836,7 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
                 "option 3".to_string(),
             ],
             true,
-            VoteType::MultiChoice,
+            VoteType::MultiChoice(3),
         )
         .await
         .unwrap();

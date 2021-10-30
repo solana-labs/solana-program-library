@@ -68,11 +68,15 @@ pub struct ProposalOption {
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum VoteType {
     /// Single choice vote with mutually exclusive choices
+    /// In the SingeChoice mode there can ever be a single winner
+    /// If multiple options score the same highest vote then the Proposal is not resolved and considered as Failed
     /// Note: Yes/No vote is a single choice (Yes) vote with the deny option (No)
     SingleChoice,
 
-    /// Multiple options can be selected
-    MultiChoice,
+    /// Multiple options can be selected with up to N choices per voter
+    /// By default N equals to the number of available options
+    /// Note: In the current version the N limit is not supported and not enforced yet
+    MultiChoice(u16),
 }
 
 /// Governance Proposal
@@ -159,7 +163,7 @@ pub struct ProposalV2 {
 impl AccountMaxSize for ProposalV2 {
     fn get_max_size(&self) -> Option<usize> {
         let options_size: usize = self.options.iter().map(|o| o.label.len() + 19).sum();
-        Some(self.name.len() + self.description_link.len() + options_size + 197)
+        Some(self.name.len() + self.description_link.len() + options_size + 199)
     }
 }
 
@@ -345,7 +349,7 @@ impl ProposalV2 {
 
                     proposal_state
                 }
-                VoteType::MultiChoice => {
+                VoteType::MultiChoice(_n) => {
                     // If any option succeeded for multi choice then the proposal as a whole succeeded as well
                     ProposalState::Succeeded
                 }
@@ -610,7 +614,7 @@ impl ProposalV2 {
                             return Err(GovernanceError::InvalidVote.into());
                         }
                     }
-                    VoteType::MultiChoice => {
+                    VoteType::MultiChoice(_n) => {
                         if choice_count == 0 {
                             return Err(GovernanceError::InvalidVote.into());
                         }
@@ -824,8 +828,10 @@ pub fn assert_valid_proposal_options(
         return Err(GovernanceError::InvalidProposalOptions.into());
     }
 
-    if options.len() == 1 && *vote_type == VoteType::MultiChoice {
-        return Err(GovernanceError::InvalidProposalOptions.into());
+    if let VoteType::MultiChoice(n) = *vote_type {
+        if options.len() == 1 || n as usize != options.len() {
+            return Err(GovernanceError::InvalidProposalOptions.into());
+        }
     }
 
     if options.iter().any(|o| o.is_empty()) {
@@ -954,7 +960,9 @@ mod test {
 
     #[test]
     fn test_max_size() {
-        let proposal = create_test_proposal();
+        let mut proposal = create_test_proposal();
+        proposal.vote_type = VoteType::MultiChoice(1);
+
         let size = proposal.try_to_vec().unwrap().len();
 
         assert_eq!(proposal.get_max_size(), Some(size));
@@ -962,7 +970,9 @@ mod test {
 
     #[test]
     fn test_multi_option_proposal_max_size() {
-        let proposal = create_test_multi_option_proposal();
+        let mut proposal = create_test_multi_option_proposal();
+        proposal.vote_type = VoteType::MultiChoice(3);
+
         let size = proposal.try_to_vec().unwrap().len();
 
         assert_eq!(proposal.get_max_size(), Some(size));
@@ -1895,7 +1905,7 @@ mod test {
     pub fn test_assert_valid_vote_with_no_choices_for_multi_choice_error() {
         // Arrange
         let mut proposal = create_test_multi_option_proposal();
-        proposal.vote_type = VoteType::MultiChoice;
+        proposal.vote_type = VoteType::MultiChoice(3);
 
         let choices = vec![
             VoteChoice {
@@ -1922,6 +1932,85 @@ mod test {
 
         // Assert
         assert_eq!(result, Err(GovernanceError::InvalidVote.into()));
+    }
+
+    #[test]
+    pub fn test_assert_valid_proposal_options_with_invalid_choice_number_for_multi_choice_vote_error(
+    ) {
+        // Arrange
+        let vote_type = VoteType::MultiChoice(3);
+
+        let options = vec!["option 1".to_string(), "option 2".to_string()];
+
+        // Act
+        let result = assert_valid_proposal_options(&options, &vote_type);
+
+        // Assert
+        assert_eq!(result, Err(GovernanceError::InvalidProposalOptions.into()));
+    }
+
+    #[test]
+    pub fn test_assert_valid_proposal_options_with_no_options_for_multi_choice_vote_error() {
+        // Arrange
+        let vote_type = VoteType::MultiChoice(3);
+
+        let options = vec![];
+
+        // Act
+        let result = assert_valid_proposal_options(&options, &vote_type);
+
+        // Assert
+        assert_eq!(result, Err(GovernanceError::InvalidProposalOptions.into()));
+    }
+
+    #[test]
+    pub fn test_assert_valid_proposal_options_with_no_options_for_single_choice_vote_error() {
+        // Arrange
+        let vote_type = VoteType::SingleChoice;
+
+        let options = vec![];
+
+        // Act
+        let result = assert_valid_proposal_options(&options, &vote_type);
+
+        // Assert
+        assert_eq!(result, Err(GovernanceError::InvalidProposalOptions.into()));
+    }
+
+    #[test]
+    pub fn test_assert_valid_proposal_options_for_multi_choice_vote() {
+        // Arrange
+        let vote_type = VoteType::MultiChoice(3);
+
+        let options = vec![
+            "option 1".to_string(),
+            "option 2".to_string(),
+            "option 3".to_string(),
+        ];
+
+        // Act
+        let result = assert_valid_proposal_options(&options, &vote_type);
+
+        // Assert
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    pub fn test_assert_valid_proposal_options_for_multi_choice_vote_with_empty_option_error() {
+        // Arrange
+        let vote_type = VoteType::MultiChoice(3);
+
+        let options = vec![
+            "".to_string(),
+            "option 2".to_string(),
+            "option 3".to_string(),
+        ];
+
+        // Act
+        let result = assert_valid_proposal_options(&options, &vote_type);
+
+        // Assert
+        assert_eq!(result, Err(GovernanceError::InvalidProposalOptions.into()));
     }
 
     #[test]
