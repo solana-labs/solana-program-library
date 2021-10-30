@@ -1,6 +1,6 @@
 //! Proposal Vote Record Account
 
-use std::io::Write;
+use borsh::maybestd::io::Write;
 
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::account_info::AccountInfo;

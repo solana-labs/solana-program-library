@@ -1,7 +1,7 @@
 //! Proposal  Account
 
+use borsh::maybestd::io::Write;
 use std::cmp::Ordering;
-use std::io::Write;
 
 use solana_program::borsh::try_from_slice_unchecked;
 use solana_program::clock::{Slot, UnixTimestamp};
@@ -628,17 +628,17 @@ impl ProposalV2 {
     }
 
     /// Serializes account into the target buffer
-    pub fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), ProgramError> {
+    pub fn serialize<W: Write>(self, writer: &mut W) -> Result<(), ProgramError> {
         if self.account_type == GovernanceAccountType::ProposalV2 {
             BorshSerialize::serialize(&self, writer)?
         } else if self.account_type == GovernanceAccountType::ProposalV1 {
             // V1 account can't be resized and we have to translate it back to the original format
 
             let proposal_data_v1 = ProposalV1 {
-                account_type: self.account_type.clone(),
+                account_type: self.account_type,
                 governance: self.governance,
                 governing_token_mint: self.governing_token_mint,
-                state: self.state.clone(),
+                state: self.state,
                 token_owner_record: self.token_owner_record,
                 signatories_count: self.signatories_count,
                 signatories_signed_off_count: self.signatories_signed_off_count,
@@ -654,11 +654,11 @@ impl ProposalV2 {
                 voting_completed_at: self.voting_completed_at,
                 executing_at: self.executing_at,
                 closed_at: self.closed_at,
-                execution_flags: self.execution_flags.clone(),
+                execution_flags: self.execution_flags,
                 max_vote_weight: self.max_vote_weight,
-                vote_threshold_percentage: self.vote_threshold_percentage.clone(),
-                name: self.name.clone(),
-                description_link: self.description_link.clone(),
+                vote_threshold_percentage: self.vote_threshold_percentage,
+                name: self.name,
+                description_link: self.description_link,
             };
 
             BorshSerialize::serialize(&proposal_data_v1, writer)?;

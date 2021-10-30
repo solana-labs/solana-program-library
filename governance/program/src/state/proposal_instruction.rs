@@ -1,6 +1,6 @@
 //! ProposalInstruction Account
 
-use std::io::Write;
+use borsh::maybestd::io::Write;
 
 use crate::{
     error::GovernanceError,
