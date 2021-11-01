@@ -696,8 +696,10 @@ async fn success_with_hijacked_transient_account() {
     assert!(error.is_none());
 
     // warp forward to merge
+    let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
     let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
-    context.warp_to_slot(slots_per_epoch * 2).unwrap();
+    let mut slot = first_normal_slot + slots_per_epoch;
+    context.warp_to_slot(slot).unwrap();
     stake_pool_accounts
         .update_all(
             &mut context.banks_client,
@@ -723,7 +725,8 @@ async fn success_with_hijacked_transient_account() {
     assert!(error.is_none());
 
     // warp forward to merge
-    context.warp_to_slot(slots_per_epoch * 4).unwrap();
+    slot += slots_per_epoch;
+    context.warp_to_slot(slot).unwrap();
 
     // hijack
     let validator_list = stake_pool_accounts

@@ -1097,12 +1097,6 @@ reserve.
 
 In this way, a user's funds are never at risk, and always redeemable.
 
-### Staking Credits Observed on Deposit
-
-A deposited stake account's "credits observed" must match the destination
-account's "credits observed". Typically, this means you must wait an additional
-epoch after activation for your stake account to match up with the stake pool's account.
-
 ### Transaction sizes
 
 The Solana transaction processor has two important limitations:

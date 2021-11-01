@@ -3,7 +3,7 @@
 use spl_token::state::{Account, AccountState};
 use {
     crate::{
-        big_vec::BigVec, error::StakePoolError, stake_program::Lockup, MAX_WITHDRAWAL_FEE_INCREASE,
+        big_vec::BigVec, error::StakePoolError, MAX_WITHDRAWAL_FEE_INCREASE,
         WITHDRAWAL_BASELINE_FEE,
     },
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
@@ -17,6 +17,7 @@ use {
         program_memory::sol_memcmp,
         program_pack::{Pack, Sealed},
         pubkey::{Pubkey, PUBKEY_BYTES},
+        stake::state::Lockup,
     },
     spl_math::checked_ceil_div::CheckedCeilDiv,
     std::{convert::TryFrom, fmt, matches},
