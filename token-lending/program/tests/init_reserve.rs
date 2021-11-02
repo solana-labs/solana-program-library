@@ -13,9 +13,9 @@ use solana_sdk::{
 use spl_token_lending::{
     error::LendingError,
     instruction::{init_reserve, update_reserve_config},
+    math::Decimal,
     processor::process_instruction,
     state::{ReserveConfig, ReserveFees, INITIAL_COLLATERAL_RATIO},
-    math::{Decimal},
 };
 
 #[tokio::test]
@@ -97,10 +97,10 @@ async fn test_init_reserve_null_oracles() {
     let user_accounts_owner = Keypair::new();
     let lending_market = add_lending_market(&mut test);
     let all_null_oracles = TestOracle {
-      pyth_product_pubkey: spl_token_lending::NULL_PUBKEY,
-      pyth_price_pubkey: spl_token_lending::NULL_PUBKEY,
-      switchboard_feed_pubkey: spl_token_lending::NULL_PUBKEY,
-      price: Decimal::from(1u64),
+        pyth_product_pubkey: spl_token_lending::NULL_PUBKEY,
+        pyth_price_pubkey: spl_token_lending::NULL_PUBKEY,
+        switchboard_feed_pubkey: spl_token_lending::NULL_PUBKEY,
+        price: Decimal::from(1u64),
     };
 
     let (mut banks_client, payer, _recent_blockhash) = test.start().await;
@@ -122,26 +122,26 @@ async fn test_init_reserve_null_oracles() {
     config.fee_receiver = fee_receiver_keypair.pubkey();
 
     assert_eq!(
-      TestReserve::init(
-          "sol".to_owned(),
-          &mut banks_client,
-          &lending_market,
-          &all_null_oracles,
-          RESERVE_AMOUNT,
-          config,
-          spl_token::native_mint::id(),
-          sol_user_liquidity_account,
-          &fee_receiver_keypair,
-          &payer,
-          &user_accounts_owner,
-      )
-      .await
-      .unwrap_err(),
-      TransactionError::InstructionError(
-        8,
-        InstructionError::Custom(LendingError::InvalidOracleConfig as u32)
-    )
-  );
+        TestReserve::init(
+            "sol".to_owned(),
+            &mut banks_client,
+            &lending_market,
+            &all_null_oracles,
+            RESERVE_AMOUNT,
+            config,
+            spl_token::native_mint::id(),
+            sol_user_liquidity_account,
+            &fee_receiver_keypair,
+            &payer,
+            &user_accounts_owner,
+        )
+        .await
+        .unwrap_err(),
+        TransactionError::InstructionError(
+            8,
+            InstructionError::Custom(LendingError::InvalidOracleConfig as u32)
+        )
+    );
 }
 
 #[tokio::test]

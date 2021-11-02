@@ -261,7 +261,8 @@ fn process_init_reserve(
         return Err(LendingError::InvalidSigner.into());
     }
     if *switchboard_feed_info.key == spl_token_lending::NULL_PUBKEY
-        && (*pyth_price_info.key == spl_token_lending::NULL_PUBKEY || *pyth_product_info.key == spl_token_lending::NULL_PUBKEY)
+        && (*pyth_price_info.key == spl_token_lending::NULL_PUBKEY
+            || *pyth_product_info.key == spl_token_lending::NULL_PUBKEY)
     {
         msg!("Both price oracles are null. At least one must be non-null");
         return Err(LendingError::InvalidOracleConfig.into());
@@ -2018,7 +2019,8 @@ fn process_update_reserve_config(
         reserve.liquidity.switchboard_oracle_pubkey = *switchboard_feed_info.key;
     }
     if reserve.liquidity.switchboard_oracle_pubkey == spl_token_lending::NULL_PUBKEY
-        && (*pyth_price_info.key == spl_token_lending::NULL_PUBKEY || *pyth_product_info.key == spl_token_lending::NULL_PUBKEY)
+        && (*pyth_price_info.key == spl_token_lending::NULL_PUBKEY
+            || *pyth_product_info.key == spl_token_lending::NULL_PUBKEY)
     {
         msg!("At least one price oracle must have a non-null pubkey");
         return Err(LendingError::InvalidOracleConfig.into());
