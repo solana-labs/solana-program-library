@@ -2010,7 +2010,7 @@ fn process_update_reserve_config(
 
     if *pyth_price_info.key != reserve.liquidity.pyth_oracle_pubkey {
         validate_pyth_keys(&lending_market, pyth_product_info, pyth_price_info)?;
-        reserve.liquidity.pyth_oracle_pubkey = *pyth_product_info.key;
+        reserve.liquidity.pyth_oracle_pubkey = *pyth_price_info.key;
     }
 
     if *switchboard_feed_info.key != reserve.liquidity.switchboard_oracle_pubkey {
