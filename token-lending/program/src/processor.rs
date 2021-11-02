@@ -401,12 +401,12 @@ fn _refresh_reserve<'a>(
         return Err(LendingError::InvalidAccountOwner.into());
     }
     if &reserve.liquidity.pyth_oracle_pubkey != pyth_price_info.key {
-        msg!("Reserve liquidity oracle does not match the reserve liquidity oracle provided");
+        msg!("Reserve liquidity pyth oracle does not match the reserve liquidity pyth oracle provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
 
     if &reserve.liquidity.switchboard_oracle_pubkey != switchboard_feed_info.key {
-        msg!("Lending market quote currency does not match the oracle quote currency");
+        msg!("Reserve liquidity switchboard oracle does not match the reserve liquidity switchboard oracle provided");
         return Err(LendingError::InvalidOracleConfig.into());
     }
 
