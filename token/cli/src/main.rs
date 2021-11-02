@@ -2140,7 +2140,7 @@ fn main() {
                 .arg(owner_keypair_arg())
                 .arg(
                     Arg::with_name("del_associated_accounts")
-                    .long("del_associated_accounts")
+                    .long("close-empty-associated-accounts")
                     .value_name("DEL_ASSOCIATED_ACCOUNTS")
                     .takes_value(false)
                     .help("set to true if all empty associated accounts should be deleted")
