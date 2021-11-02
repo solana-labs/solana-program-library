@@ -6,7 +6,7 @@ homepage = "https://spl.solana.com/stake-pool"
 license = "Apache-2.0"
 name = "spl-stake-pool-cli"
 repository = "https://github.com/solana-labs/solana-program-library"
-version = "0.6.2"
+version = "0.6.3"
 
 [dependencies]
 borsh = "0.9"
