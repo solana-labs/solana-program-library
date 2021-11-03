@@ -1309,8 +1309,13 @@ fn command_gc(config: &Config, owner: Pubkey, close_empty_associated_accounts: b
 
             let mut account_instructions = vec![];
 
-            // Transfer the account balance into the associated token account
-            if amount > 0 {
+            
+            if amount > 0 && address == associated_token_account {
+                // Sanity check!
+                // we shouldn't ever be here, but if we are here, abort!
+                continue;
+            } else if amount > 0 {
+                // Transfer the account balance into the associated token account
                 account_instructions.push(transfer_checked(
                     &spl_token::id(),
                     &address,
