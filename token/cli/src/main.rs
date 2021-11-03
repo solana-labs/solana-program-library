@@ -1295,7 +1295,7 @@ fn command_gc(config: &Config, owner: Pubkey, close_empty_associated_accounts: b
         }
 
         for (address, (amount, decimals, frozen, close_authority)) in accounts {
-            match (address == associated_token_account, close_empty_associated_accounts, amount > 0) {
+            match (address == associated_token_account, close_empty_associated_accounts, total_balance > 0) {
                 (true, _, true) => continue, // don't ever close associated token account with amount
                 (true, false, _) => continue, // don't close associated token account if close_empty_associated_accounts isn't set
                 (true, true, false) => println_display(config, format!("Closing Account {}", associated_token_account)),
