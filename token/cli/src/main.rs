@@ -1214,7 +1214,7 @@ fn command_multisig(config: &Config, address: Pubkey) -> CommandResult {
     Ok(None)
 }
 
-fn command_gc(config: &Config, owner: Pubkey, del_associated_accounts: bool) -> CommandResult {
+fn command_gc(config: &Config, owner: Pubkey, close_empty_associated_accounts: bool) -> CommandResult {
     println_display(config, "Fetching token accounts".to_string());
     let accounts = config
         .rpc_client
@@ -1295,19 +1295,11 @@ fn command_gc(config: &Config, owner: Pubkey, del_associated_accounts: bool) -> 
         }
 
         for (address, (amount, decimals, frozen, close_authority)) in accounts {
-            if address == associated_token_account {
-                if !del_associated_accounts {
-                    // leave the associated token account alone
-                    continue;
-                } else {
-                    // close non empty associated token accounts
-                    if amount > 0 {
-                        println_display(config, format!("Not closing account {}. Balance > 0", associated_token_account));
-                        continue;
-                    } else {
-                        println_display(config, format!("Closing Account {}", associated_token_account));
-                    }
-                }
+            match (address == associated_token_account, close_empty_associated_accounts, amount > 0) {
+                (true, _, true) => continue, // don't ever close associated token account with amount
+                (true, false, _) => continue, // don't close associated token account if close_empty_associated_accounts isn't set
+                (true, true, false) => println_display(config, format!("Closing Account {}", associated_token_account)),
+                _ => {},
             }
 
             if frozen {
@@ -2139,11 +2131,10 @@ fn main() {
                 .about("Cleanup unnecessary token accounts")
                 .arg(owner_keypair_arg())
                 .arg(
-                    Arg::with_name("del_associated_accounts")
+                    Arg::with_name("close_empty_associated_accounts")
                     .long("close-empty-associated-accounts")
-                    .value_name("DEL_ASSOCIATED_ACCOUNTS")
                     .takes_value(false)
-                    .help("set to true if all empty associated accounts should be deleted")
+                    .help("close all empty associated token accounts (to get SOL back)")
                 )
         )
         .subcommand(
@@ -2627,13 +2618,13 @@ fn main() {
                 _ => {}
             }
 
-            let del_associated_accounts = matches.is_present("del_associated_accounts");
+            let close_empty_associated_accounts = matches.is_present("close_empty_associated_accounts");
 
             let (owner_signer, owner_address) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
             bulk_signers.push(owner_signer);
 
-            command_gc(&config, owner_address, del_associated_accounts)
+            command_gc(&config, owner_address, close_empty_associated_accounts)
         }
         ("sync-native", Some(arg_matches)) => {
             let address = config.associated_token_address_for_token_or_override(
