@@ -1214,7 +1214,11 @@ fn command_multisig(config: &Config, address: Pubkey) -> CommandResult {
     Ok(None)
 }
 
-fn command_gc(config: &Config, owner: Pubkey, close_empty_associated_accounts: bool) -> CommandResult {
+fn command_gc(
+    config: &Config,
+    owner: Pubkey,
+    close_empty_associated_accounts: bool,
+) -> CommandResult {
     println_display(config, "Fetching token accounts".to_string());
     let accounts = config
         .rpc_client
@@ -1295,11 +1299,18 @@ fn command_gc(config: &Config, owner: Pubkey, close_empty_associated_accounts: b
         }
 
         for (address, (amount, decimals, frozen, close_authority)) in accounts {
-            match (address == associated_token_account, close_empty_associated_accounts, total_balance > 0) {
+            match (
+                address == associated_token_account,
+                close_empty_associated_accounts,
+                total_balance > 0,
+            ) {
                 (true, _, true) => continue, // don't ever close associated token account with amount
                 (true, false, _) => continue, // don't close associated token account if close_empty_associated_accounts isn't set
-                (true, true, false) => println_display(config, format!("Closing Account {}", associated_token_account)),
-                _ => {},
+                (true, true, false) => println_display(
+                    config,
+                    format!("Closing Account {}", associated_token_account),
+                ),
+                _ => {}
             }
 
             if frozen {
@@ -1309,7 +1320,6 @@ fn command_gc(config: &Config, owner: Pubkey, close_empty_associated_accounts: b
 
             let mut account_instructions = vec![];
 
-            
             if amount > 0 && address == associated_token_account {
                 // Sanity check!
                 // we shouldn't ever be here, but if we are here, abort!
@@ -2623,7 +2633,8 @@ fn main() {
                 _ => {}
             }
 
-            let close_empty_associated_accounts = matches.is_present("close_empty_associated_accounts");
+            let close_empty_associated_accounts =
+                matches.is_present("close_empty_associated_accounts");
 
             let (owner_signer, owner_address) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
