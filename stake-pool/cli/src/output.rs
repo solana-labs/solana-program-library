@@ -3,7 +3,7 @@ use solana_cli_output::{QuietDisplay, VerboseDisplay};
 use solana_sdk::pubkey::Pubkey;
 use solana_sdk::stake::state::Lockup;
 use serde::{Serialize, Deserialize};
-use spl_stake_pool::state::{AccountType, Fee, StakePool, StakeStatus, ValidatorList, ValidatorStakeInfo};
+use spl_stake_pool::state::{Fee, StakePool, StakeStatus, ValidatorList, ValidatorStakeInfo};
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -13,7 +13,17 @@ pub(crate) struct CliStakePools {
 
 impl Display for CliStakePools {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        todo!()
+        for pool in &self.pools {
+            writeln!(f,
+                     "Address: {}\tManager: {}\tLamports: {}\tPool tokens: {}\tValidators: {}",
+                     pool.address.to_string(),
+                     pool.manager.to_string(),
+                     pool.total_lamports.to_string(),
+                     pool.pool_token_supply.to_string(),
+                     pool.validator_list.len().to_string()
+            ).ok();
+        }
+        writeln!(f, "Total number of pools: {}", &self.pools.len().to_string())
     }
 }
 

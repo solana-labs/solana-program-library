@@ -15,9 +15,7 @@ use {
         },
         keypair::{signer_from_path_with_config, SignerFromPathConfig},
     },
-    solana_cli_output::{
-        return_signers_with_config, CliSignature, OutputFormat, ReturnSignersConfig,
-    },
+    solana_cli_output::OutputFormat,
     solana_client::rpc_client::RpcClient,
     solana_program::{
         borsh::{get_instance_packed_len, get_packed_len},
@@ -1632,23 +1630,10 @@ fn command_set_fee(
 
 fn command_list_all_pools(config: &Config) -> CommandResult {
     let all_pools = get_stake_pools(&config.rpc_client)?;
-    let count = all_pools.len();
     let cli_stake_pool_vec: Vec<CliStakePool> = all_pools.into_iter().map(|x| CliStakePool::from(x)).collect();
     let cli_stake_pools = CliStakePools { pools: cli_stake_pool_vec };
     match config.output_format {
-        OutputFormat::Display => {
-            for (address, stake_pool, validator_list) in all_pools {
-                println!(
-                    "Address: {}\tManager: {}\tLamports: {}\tPool tokens: {}\tValidators: {}",
-                    address,
-                    stake_pool.manager,
-                    stake_pool.total_lamports,
-                    stake_pool.pool_token_supply,
-                    validator_list.validators.len()
-                );
-            }
-            println!("Total number of pools: {}", count);
-        }
+        OutputFormat::Display => println!("{}", config.output_format.formatted_string(&cli_stake_pools)),
         OutputFormat::Json => println!("{}", config.output_format.formatted_string(&cli_stake_pools)),
         OutputFormat::JsonCompact => println!("{}", config.output_format.formatted_string(&cli_stake_pools)),
         _ => {}
