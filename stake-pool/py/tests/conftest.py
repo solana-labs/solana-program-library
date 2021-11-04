@@ -5,8 +5,9 @@ import shutil
 import tempfile
 import time
 from typing import Iterator
-from subprocess import Popen
+from subprocess import run, Popen
 
+from solana.publickey import PublicKey
 from solana.rpc.async_api import AsyncClient
 from solana.rpc.commitment import Confirmed
 
@@ -25,14 +26,36 @@ def solana_test_validator():
     shutil.rmtree(newpath)
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
+def validators(async_client):
+    num_validators = 3
+    validators = []
+    for i in range(num_validators):
+        tf = tempfile.NamedTemporaryFile()
+        identity = f"{tf.name}-identity-{i}.json"
+        run(["solana-keygen", "new", "-s", "-o", identity])
+        vote = f"{tf.name}-vote-{i}.json"
+        run(["solana-keygen", "new", "-s", "-o", vote])
+        withdrawer = f"{tf.name}-withdrawer-{i}.json"
+        run(["solana-keygen", "new", "-s", "-o", withdrawer])
+        run(["solana", "create-vote-account",
+             vote, identity, withdrawer,
+             "--commission", "1",
+             "--commitment", "confirmed",
+             "-ul"])
+        output = run(["solana-keygen", "pubkey", vote], capture_output=True)
+        validators.append(PublicKey(output.stdout.decode('utf-8').strip()))
+    return validators
+
+
+@pytest.fixture
 def event_loop():
     loop = asyncio.get_event_loop()
     yield loop
     loop.close()
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture
 def async_client(event_loop, solana_test_validator) -> Iterator[AsyncClient]:
     async_client = AsyncClient(commitment=Confirmed)
     total_attempts = 10

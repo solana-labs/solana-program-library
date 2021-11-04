@@ -13,6 +13,7 @@ check_dirs=(
   "stake"
   "stake_pool"
   "tests"
+  "vote"
 )
 flake8 "${check_dirs[@]}"
 mypy "${check_dirs[@]}"

@@ -1,7 +1,8 @@
 """SPL Stake Pool State."""
 
-from typing import NamedTuple, Optional
-from construct import Array, Container, Struct, Switch, Int8ul, Int32ul, Int64ul, Pass  # type: ignore
+from enum import IntEnum
+from typing import List, NamedTuple, Optional
+from construct import Container, Struct, Switch, Int8ul, Int32ul, Int64ul, Pass  # type: ignore
 
 from solana.publickey import PublicKey
 from solana.utils.helpers import decode_byte_string
@@ -72,7 +73,6 @@ class StakePool(NamedTuple):
     def decode(cls, data: str, encoding: str):
         data_bytes = decode_byte_string(data, encoding)
         parsed = DECODE_STAKE_POOL_LAYOUT.parse(data_bytes)
-        print(parsed)
         return StakePool(
             manager=PublicKey(parsed['manager']),
             staker=PublicKey(parsed['staker']),
@@ -103,6 +103,77 @@ class StakePool(NamedTuple):
             next_sol_withdrawal_fee=Fee.decode_optional_container(parsed['next_sol_withdrawal_fee']),
             last_epoch_pool_token_supply=parsed['last_epoch_pool_token_supply'],
             last_epoch_total_lamports=parsed['last_epoch_total_lamports'],
+        )
+
+
+class StakeStatus(IntEnum):
+    """Specifies the status of a stake on a validator in a stake pool."""
+
+    ACTIVE = 0
+    """Stake is active and normal."""
+    DEACTIVATING_TRANSIENT = 1
+    """Stake has been removed, but a deactivating transient stake still exists."""
+    READY_FOR_REMOVAL = 2
+    """No more validator stake accounts exist, entry ready for removal."""
+
+
+class ValidatorStakeInfo(NamedTuple):
+    active_stake_lamports: int
+    """Amount of active stake delegated to this validator."""
+
+    transient_stake_lamports: int
+    """Amount of transient stake delegated to this validator."""
+
+    last_update_epoch: int
+    """Last epoch the active and transient stake lamports fields were updated."""
+
+    transient_seed_suffix_start: int
+    """Start of the validator transient account seed suffixes."""
+
+    transient_seed_suffix_end: int
+    """End of the validator transient account seed suffixes."""
+
+    status: StakeStatus
+    """Status of the validator stake account."""
+
+    vote_account_address: PublicKey
+    """Validator vote account address."""
+
+    @classmethod
+    def decode_container(cls, container: Container):
+        return ValidatorStakeInfo(
+            active_stake_lamports=container['active_stake_lamports'],
+            transient_stake_lamports=container['transient_stake_lamports'],
+            last_update_epoch=container['last_update_epoch'],
+            transient_seed_suffix_start=container['transient_seed_suffix_start'],
+            transient_seed_suffix_end=container['transient_seed_suffix_end'],
+            status=container['status'],
+            vote_account_address=PublicKey(container['vote_account_address']),
+        )
+
+
+class ValidatorList(NamedTuple):
+    """List of validators and amount staked, associated to a stake pool."""
+
+    max_validators: int
+    """Maximum number of validators possible in the list."""
+
+    validators: List[ValidatorStakeInfo]
+    """Info for each validator in the stake pool."""
+
+    @staticmethod
+    def calculate_validator_list_size(max_validators: int) -> int:
+        layout = VALIDATOR_LIST_LAYOUT + VALIDATOR_INFO_LAYOUT[max_validators]
+        return layout.sizeof()
+
+    @classmethod
+    def decode(cls, data: str, encoding: str):
+        data_bytes = decode_byte_string(data, encoding)
+        parsed = DECODE_VALIDATOR_LIST_LAYOUT.parse(data_bytes)
+        print(parsed)
+        return ValidatorList(
+            max_validators=parsed['max_validators'],
+            validators=[ValidatorStakeInfo.decode_container(container) for container in parsed['validators']],
         )
 
 
@@ -226,12 +297,6 @@ DECODE_STAKE_POOL_LAYOUT = Struct(
     "last_epoch_total_lamports" / Int64ul,
 )
 
-VALIDATOR_LIST_LAYOUT = Struct(
-    "account_type" / Int8ul,
-    "max_validators" / Int32ul,
-    "validators_size" / Int32ul,
-)
-
 VALIDATOR_INFO_LAYOUT = Struct(
     "active_stake_lamports" / Int64ul,
     "transient_stake_lamports" / Int64ul,
@@ -242,7 +307,15 @@ VALIDATOR_INFO_LAYOUT = Struct(
     "vote_account_address" / PUBLIC_KEY_LAYOUT,
 )
 
+VALIDATOR_LIST_LAYOUT = Struct(
+    "account_type" / Int8ul,
+    "max_validators" / Int32ul,
+    "validators_len" / Int32ul,
+)
 
-def calculate_validator_list_size(max_validators: int) -> int:
-    layout = VALIDATOR_LIST_LAYOUT + Array(max_validators, VALIDATOR_INFO_LAYOUT)
-    return layout.sizeof()
+DECODE_VALIDATOR_LIST_LAYOUT = Struct(
+    "account_type" / Int8ul,
+    "max_validators" / Int32ul,
+    "validators_len" / Int32ul,
+    "validators" / VALIDATOR_INFO_LAYOUT[lambda this: this.validators_len],
+)

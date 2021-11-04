@@ -6,8 +6,14 @@ from construct import Struct, Switch, Int8ul, Int32ul, Int64ul, Pass  # type: ig
 
 from solana.publickey import PublicKey
 from solana.transaction import AccountMeta, TransactionInstruction
+from solana.system_program import SYS_PROGRAM_ID
+from solana.sysvar import SYSVAR_CLOCK_PUBKEY, SYSVAR_RENT_PUBKEY, SYSVAR_STAKE_HISTORY_PUBKEY
 from spl.token.constants import TOKEN_PROGRAM_ID
 
+from stake.constants import STAKE_PROGRAM_ID, SYSVAR_STAKE_CONFIG_ID
+from stake_pool.constants import find_stake_program_address, find_transient_stake_program_address
+from stake_pool.constants import find_withdraw_authority_program_address
+from stake_pool.constants import STAKE_POOL_PROGRAM_ID
 from stake_pool.state import Fee, FEE_LAYOUT
 
 
@@ -477,4 +483,116 @@ def initialize(params: InitializeParams) -> TransactionInstruction:
         keys=keys,
         program_id=params.program_id,
         data=data,
+    )
+
+
+def add_validator_to_pool(params: AddValidatorToPoolParams) -> TransactionInstruction:
+    return TransactionInstruction(
+        keys=[
+            AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.staker, is_signer=True, is_writable=False),
+            AccountMeta(pubkey=params.funding_account, is_signer=True, is_writable=True),
+            AccountMeta(pubkey=params.withdraw_authority, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.validator_list, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=params.validator_stake, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=params.validator_vote, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.rent_sysvar, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.clock_sysvar, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.stake_history_sysvar, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.stake_config_sysvar, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.system_program_id, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.stake_program_id, is_signer=False, is_writable=False),
+        ],
+        program_id=params.program_id,
+        data=INSTRUCTIONS_LAYOUT.build(
+            dict(
+                instruction_type=InstructionType.ADD_VALIDATOR_TO_POOL,
+                args=None
+            )
+        )
+    )
+
+
+def add_validator_to_pool_with_vote(
+    program_id: PublicKey,
+    stake_pool: PublicKey,
+    staker: PublicKey,
+    validator_list: PublicKey,
+    funder: PublicKey,
+    validator: PublicKey
+) -> TransactionInstruction:
+    (withdraw_authority, seed) = find_withdraw_authority_program_address(program_id, stake_pool)
+    (validator_stake, seed) = find_stake_program_address(program_id, validator, stake_pool)
+    return add_validator_to_pool(
+        AddValidatorToPoolParams(
+            program_id=STAKE_POOL_PROGRAM_ID,
+            stake_pool=stake_pool,
+            staker=staker,
+            funding_account=funder,
+            withdraw_authority=withdraw_authority,
+            validator_list=validator_list,
+            validator_stake=validator_stake,
+            validator_vote=validator,
+            rent_sysvar=SYSVAR_RENT_PUBKEY,
+            clock_sysvar=SYSVAR_CLOCK_PUBKEY,
+            stake_history_sysvar=SYSVAR_STAKE_HISTORY_PUBKEY,
+            stake_config_sysvar=SYSVAR_STAKE_CONFIG_ID,
+            system_program_id=SYS_PROGRAM_ID,
+            stake_program_id=STAKE_PROGRAM_ID,
+        )
+    )
+
+
+def remove_validator_from_pool(params: RemoveValidatorFromPoolParams) -> TransactionInstruction:
+    return TransactionInstruction(
+        keys=[
+            AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.staker, is_signer=True, is_writable=False),
+            AccountMeta(pubkey=params.withdraw_authority, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.new_stake_authority, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=params.validator_list, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=params.validator_stake, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=params.transient_stake, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.destination_stake, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=params.clock_sysvar, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.stake_program_id, is_signer=False, is_writable=False),
+        ],
+        program_id=params.program_id,
+        data=INSTRUCTIONS_LAYOUT.build(
+            dict(
+                instruction_type=InstructionType.REMOVE_VALIDATOR_FROM_POOL,
+                args=None
+            )
+        )
+    )
+
+
+def remove_validator_from_pool_with_vote(
+    program_id: PublicKey,
+    stake_pool: PublicKey,
+    staker: PublicKey,
+    validator_list: PublicKey,
+    new_stake_authority: PublicKey,
+    validator: PublicKey,
+    transient_stake_seed: int,
+    destination_stake: PublicKey,
+) -> TransactionInstruction:
+    (withdraw_authority, seed) = find_withdraw_authority_program_address(program_id, stake_pool)
+    (validator_stake, seed) = find_stake_program_address(program_id, validator, stake_pool)
+    (transient_stake, seed) = find_transient_stake_program_address(
+        program_id, validator, stake_pool, transient_stake_seed)
+    return remove_validator_from_pool(
+        RemoveValidatorFromPoolParams(
+            program_id=STAKE_POOL_PROGRAM_ID,
+            stake_pool=stake_pool,
+            staker=staker,
+            withdraw_authority=withdraw_authority,
+            new_stake_authority=new_stake_authority,
+            validator_list=validator_list,
+            validator_stake=validator_stake,
+            transient_stake=transient_stake,
+            destination_stake=destination_stake,
+            clock_sysvar=SYSVAR_CLOCK_PUBKEY,
+            stake_program_id=STAKE_PROGRAM_ID,
+        )
     )
