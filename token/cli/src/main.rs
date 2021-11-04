@@ -1320,11 +1320,11 @@ fn command_gc(
 
             let mut account_instructions = vec![];
 
-            if amount > 0 && address == associated_token_account {
-                // Sanity check!
-                // we shouldn't ever be here, but if we are here, abort!
-                continue;
-            } else if amount > 0 {
+            // Sanity check!
+            // we shouldn't ever be here, but if we are here, abort!
+            assert!(amount == 0 || address != associated_token_account);
+
+            if amount > 0 {
                 // Transfer the account balance into the associated token account
                 account_instructions.push(transfer_checked(
                     &spl_token::id(),
