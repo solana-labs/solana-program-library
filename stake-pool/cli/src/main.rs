@@ -1,4 +1,5 @@
 mod client;
+mod output;
 
 use {
     crate::client::*,
@@ -13,6 +14,9 @@ use {
             is_valid_percentage, is_valid_pubkey,
         },
         keypair::{signer_from_path_with_config, SignerFromPathConfig},
+    },
+    solana_cli_output::{
+        return_signers_with_config, CliSignature, OutputFormat, ReturnSignersConfig,
     },
     solana_client::rpc_client::RpcClient,
     solana_program::{
@@ -43,10 +47,12 @@ use {
     std::cmp::Ordering,
     std::{process::exit, sync::Arc},
 };
+use crate::output::{CliStakePool, CliStakePools};
 
 struct Config {
     rpc_client: RpcClient,
     verbose: bool,
+    output_format: OutputFormat,
     manager: Box<dyn Signer>,
     staker: Box<dyn Signer>,
     funding_authority: Option<Box<dyn Signer>>,
@@ -1627,17 +1633,26 @@ fn command_set_fee(
 fn command_list_all_pools(config: &Config) -> CommandResult {
     let all_pools = get_stake_pools(&config.rpc_client)?;
     let count = all_pools.len();
-    for (address, stake_pool, validator_list) in all_pools {
-        println!(
-            "Address: {}\tManager: {}\tLamports: {}\tPool tokens: {}\tValidators: {}",
-            address,
-            stake_pool.manager,
-            stake_pool.total_lamports,
-            stake_pool.pool_token_supply,
-            validator_list.validators.len()
-        );
+    let cli_stake_pool_vec: Vec<CliStakePool> = all_pools.into_iter().map(|x| CliStakePool::from(x)).collect();
+    let cli_stake_pools = CliStakePools { pools: cli_stake_pool_vec };
+    match config.output_format {
+        OutputFormat::Display => {
+            for (address, stake_pool, validator_list) in all_pools {
+                println!(
+                    "Address: {}\tManager: {}\tLamports: {}\tPool tokens: {}\tValidators: {}",
+                    address,
+                    stake_pool.manager,
+                    stake_pool.total_lamports,
+                    stake_pool.pool_token_supply,
+                    validator_list.validators.len()
+                );
+            }
+            println!("Total number of pools: {}", count);
+        }
+        OutputFormat::Json => println!("{}", config.output_format.formatted_string(&cli_stake_pools)),
+        OutputFormat::JsonCompact => println!("{}", config.output_format.formatted_string(&cli_stake_pools)),
+        _ => {}
     }
-    println!("Total number of pools: {}", count);
     Ok(())
 }
 
@@ -1669,6 +1684,16 @@ fn main() {
                 .takes_value(false)
                 .global(true)
                 .help("Show additional information"),
+        )
+        .arg(
+            Arg::with_name("output_format")
+                .long("output")
+                .value_name("FORMAT")
+                .global(true)
+                .default_value("display")
+                .takes_value(true)
+                .possible_values(&["json", "json-compact", "display"])
+                .help("Return information in specified output format"),
         )
         .arg(
             Arg::with_name("dry_run")
@@ -2477,12 +2502,26 @@ fn main() {
             },
         );
         let verbose = matches.is_present("verbose");
+        let output_format = matches
+            .value_of("output_format")
+            .map(|value| match value {
+                "json" => OutputFormat::Json,
+                "json-compact" => OutputFormat::JsonCompact,
+                "display" => OutputFormat::Display,
+                _ => unreachable!(),
+            })
+            .unwrap_or(if verbose {
+                OutputFormat::DisplayVerbose
+            } else {
+                OutputFormat::Display
+            });
         let dry_run = matches.is_present("dry_run");
         let no_update = matches.is_present("no_update");
 
         Config {
             rpc_client: RpcClient::new_with_commitment(json_rpc_url, CommitmentConfig::confirmed()),
             verbose,
+            output_format,
             manager,
             staker,
             funding_authority,
