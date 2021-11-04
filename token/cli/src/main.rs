@@ -1214,7 +1214,11 @@ fn command_multisig(config: &Config, address: Pubkey) -> CommandResult {
     Ok(None)
 }
 
-fn command_gc(config: &Config, owner: Pubkey) -> CommandResult {
+fn command_gc(
+    config: &Config,
+    owner: Pubkey,
+    close_empty_associated_accounts: bool,
+) -> CommandResult {
     println_display(config, "Fetching token accounts".to_string());
     let accounts = config
         .rpc_client
@@ -1295,9 +1299,18 @@ fn command_gc(config: &Config, owner: Pubkey) -> CommandResult {
         }
 
         for (address, (amount, decimals, frozen, close_authority)) in accounts {
-            if address == associated_token_account {
-                // leave the associated token account alone
-                continue;
+            match (
+                address == associated_token_account,
+                close_empty_associated_accounts,
+                total_balance > 0,
+            ) {
+                (true, _, true) => continue, // don't ever close associated token account with amount
+                (true, false, _) => continue, // don't close associated token account if close_empty_associated_accounts isn't set
+                (true, true, false) => println_display(
+                    config,
+                    format!("Closing Account {}", associated_token_account),
+                ),
+                _ => {}
             }
 
             if frozen {
@@ -1307,8 +1320,12 @@ fn command_gc(config: &Config, owner: Pubkey) -> CommandResult {
 
             let mut account_instructions = vec![];
 
-            // Transfer the account balance into the associated token account
+            // Sanity check!
+            // we shouldn't ever be here, but if we are here, abort!
+            assert!(amount == 0 || address != associated_token_account);
+
             if amount > 0 {
+                // Transfer the account balance into the associated token account
                 account_instructions.push(transfer_checked(
                     &spl_token::id(),
                     &address,
@@ -2128,6 +2145,12 @@ fn main() {
             SubCommand::with_name("gc")
                 .about("Cleanup unnecessary token accounts")
                 .arg(owner_keypair_arg())
+                .arg(
+                    Arg::with_name("close_empty_associated_accounts")
+                    .long("close-empty-associated-accounts")
+                    .takes_value(false)
+                    .help("close all empty associated token accounts (to get SOL back)")
+                )
         )
         .subcommand(
             SubCommand::with_name("sync-native")
@@ -2609,11 +2632,15 @@ fn main() {
                 }
                 _ => {}
             }
+
+            let close_empty_associated_accounts =
+                matches.is_present("close_empty_associated_accounts");
+
             let (owner_signer, owner_address) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
             bulk_signers.push(owner_signer);
 
-            command_gc(&config, owner_address)
+            command_gc(&config, owner_address, close_empty_associated_accounts)
         }
         ("sync-native", Some(arg_matches)) => {
             let address = config.associated_token_address_for_token_or_override(
