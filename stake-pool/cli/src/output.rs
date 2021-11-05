@@ -1,9 +1,10 @@
-use std::fmt::{Display, Formatter};
-use solana_cli_output::{QuietDisplay, VerboseDisplay};
-use solana_sdk::pubkey::Pubkey;
-use solana_sdk::stake::state::Lockup;
-use serde::{Serialize, Deserialize};
-use spl_stake_pool::state::{Fee, StakePool, StakeStatus, ValidatorList, ValidatorStakeInfo};
+use {
+    std::fmt::{Display, Formatter},
+    solana_cli_output::{QuietDisplay, VerboseDisplay},
+    solana_sdk::{pubkey::Pubkey, stake::state::Lockup},
+    serde::{Serialize, Deserialize},
+    spl_stake_pool::state::{Fee, StakePool, StakeStatus, ValidatorList, ValidatorStakeInfo},
+};
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -16,14 +17,14 @@ impl Display for CliStakePools {
         for pool in &self.pools {
             writeln!(f,
                      "Address: {}\tManager: {}\tLamports: {}\tPool tokens: {}\tValidators: {}",
-                     pool.address.to_string(),
-                     pool.manager.to_string(),
-                     pool.total_lamports.to_string(),
-                     pool.pool_token_supply.to_string(),
-                     pool.validator_list.len().to_string()
+                     pool.address,
+                     pool.manager,
+                     pool.total_lamports,
+                     pool.pool_token_supply,
+                     pool.validator_list.len()
             ).ok();
         }
-        writeln!(f, "Total number of pools: {}", &self.pools.len().to_string())
+        writeln!(f, "Total number of pools: {}", &self.pools.len())
     }
 }
 
@@ -64,7 +65,6 @@ pub(crate) struct CliStakePool {
     pub next_sol_withdrawal_fee: Option<CliStakePoolFee>,
     pub last_epoch_pool_token_supply: u64,
     pub last_epoch_total_lamports: u64,
-
 }
 
 #[derive(Serialize, Deserialize)]
@@ -75,7 +75,7 @@ pub(crate) struct CliStakePoolValidator {
     pub last_update_epoch: u64,
     pub transient_seed_suffix_start: u64,
     pub transient_seed_suffix_end: u64,
-    pub status: String,
+    pub status: CliStakePoolValidatorStakeStatus,
     pub vote_account_address: String,
 }
 
@@ -87,19 +87,24 @@ impl From<ValidatorStakeInfo> for CliStakePoolValidator {
             last_update_epoch: v.last_update_epoch,
             transient_seed_suffix_start: v.transient_seed_suffix_start,
             transient_seed_suffix_end: v.transient_seed_suffix_end,
-            status: match v.status {
-                StakeStatus::Active => "Active",
-                StakeStatus::DeactivatingTransient => "DeactivatingTransient",
-                StakeStatus::ReadyForRemoval => "ReadyForRemoval",
-            }.to_string(),
+            status: CliStakePoolValidatorStakeStatus::from(v.status),
             vote_account_address: v.vote_account_address.to_string(),
         }
     }
 }
 
+impl From<StakeStatus> for CliStakePoolValidatorStakeStatus {
+    fn from(s: StakeStatus) -> CliStakePoolValidatorStakeStatus {
+        return match s {
+            StakeStatus::Active => CliStakePoolValidatorStakeStatus::Active,
+            StakeStatus::DeactivatingTransient => CliStakePoolValidatorStakeStatus::DeactivatingTransient,
+            StakeStatus::ReadyForRemoval => CliStakePoolValidatorStakeStatus::ReadyForRemoval
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) enum CliStakePoolValidatorStakeStatus{
+pub(crate) enum CliStakePoolValidatorStakeStatus {
     Active,
     DeactivatingTransient,
     ReadyForRemoval,
