@@ -1,5 +1,5 @@
 ---
-title: Stake Pool Command-line Interface
+title: Command-line Interface
 ---
 
 The following explains the instructions available in the Stake Pool Program along

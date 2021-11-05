@@ -1,5 +1,5 @@
 ---
-title: Stake Pool Quick Start Guide
+title: Quick Start Guide
 ---
 
 This quick start guide is meant for managers who want to start running a pool

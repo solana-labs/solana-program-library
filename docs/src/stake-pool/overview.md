@@ -1,5 +1,5 @@
 ---
-title: Stake Pool Overview
+title: Operation
 ---
 
 Stake pools are an alternative method of earning staking rewards. This on-chain
