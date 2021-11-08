@@ -1,5 +1,5 @@
 use {
-    std::fmt::{Display, Formatter},
+    std::fmt,
     solana_cli_output::{QuietDisplay, VerboseDisplay},
     solana_sdk::{pubkey::Pubkey, stake::state::Lockup},
     serde::{Serialize, Deserialize},
@@ -12,8 +12,8 @@ pub(crate) struct CliStakePools {
     pub pools: Vec<CliStakePool>
 }
 
-impl Display for CliStakePools {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for CliStakePools {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for pool in &self.pools {
             writeln!(f,
                      "Address: {}\tManager: {}\tLamports: {}\tPool tokens: {}\tValidators: {}",
@@ -22,9 +22,10 @@ impl Display for CliStakePools {
                      pool.total_lamports,
                      pool.pool_token_supply,
                      pool.validator_list.len()
-            ).ok();
+            )?;
         }
-        writeln!(f, "Total number of pools: {}", &self.pools.len())
+        writeln!(f, "Total number of pools: {}", &self.pools.len())?;
+        Ok(())
     }
 }
 
@@ -35,12 +36,14 @@ impl VerboseDisplay for CliStakePools {}
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CliStakePool {
     pub address: String,
+    pub pool_withdraw_authority: String,
     pub manager: String,
     pub staker: String,
     pub stake_deposit_authority: String,
     pub stake_withdraw_bump_seed: u8,
     pub max_validators: u32,
     pub validator_list: Vec<CliStakePoolValidator>,
+    pub validator_list_storage_account: String,
     pub reserve_stake: String,
     pub pool_mint: String,
     pub manager_fee_account: String,
@@ -65,6 +68,16 @@ pub(crate) struct CliStakePool {
     pub next_sol_withdrawal_fee: Option<CliStakePoolFee>,
     pub last_epoch_pool_token_supply: u64,
     pub last_epoch_total_lamports: u64,
+}
+
+impl QuietDisplay for CliStakePool {}
+
+impl VerboseDisplay for CliStakePool {}
+
+impl fmt::Display for CliStakePool {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        Ok(())
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -135,6 +148,12 @@ pub(crate) struct CliStakePoolFee {
     pub numerator: u64,
 }
 
+impl fmt::Display for CliStakePoolFee {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}/{}", &self.numerator, &self.denominator)
+    }
+}
+
 impl From<Fee> for CliStakePoolFee {
     fn from(f: Fee) -> Self {
         Self {
@@ -144,17 +163,19 @@ impl From<Fee> for CliStakePoolFee {
     }
 }
 
-impl From<(Pubkey, StakePool, ValidatorList)> for CliStakePool {
-    fn from(s: (Pubkey, StakePool, ValidatorList)) -> Self {
-        let (pubkey, stake_pool, validator_list) = s;
+impl From<(Pubkey, StakePool, ValidatorList, Pubkey)> for CliStakePool {
+    fn from(s: (Pubkey, StakePool, ValidatorList, Pubkey)) -> Self {
+        let (address, stake_pool, validator_list, pool_withdraw_authority) = s;
         Self {
-            address: pubkey.to_string(),
+            address: address.to_string(),
+            pool_withdraw_authority: pool_withdraw_authority.to_string(),
             manager: stake_pool.manager.to_string(),
             staker: stake_pool.staker.to_string(),
             stake_deposit_authority: stake_pool.stake_deposit_authority.to_string(),
             stake_withdraw_bump_seed: stake_pool.stake_withdraw_bump_seed,
             max_validators: validator_list.header.max_validators,
             validator_list: validator_list.validators.into_iter().map(|x| CliStakePoolValidator::from(x)).collect(),
+            validator_list_storage_account: stake_pool.validator_list.to_string(),
             reserve_stake: stake_pool.reserve_stake.to_string(),
             pool_mint: stake_pool.pool_mint.to_string(),
             manager_fee_account: stake_pool.manager_fee_account.to_string(),

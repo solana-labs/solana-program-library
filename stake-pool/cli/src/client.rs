@@ -10,6 +10,7 @@ use {
     solana_program::{borsh::try_from_slice_unchecked, program_pack::Pack, pubkey::Pubkey, stake},
     spl_stake_pool::state::{StakePool, ValidatorList},
 };
+use spl_stake_pool::find_withdraw_authority_program_address;
 
 type Error = Box<dyn std::error::Error>;
 
@@ -76,7 +77,7 @@ pub(crate) fn get_stake_state(
 
 pub(crate) fn get_stake_pools(
     rpc_client: &RpcClient,
-) -> Result<Vec<(Pubkey, StakePool, ValidatorList)>, ClientError> {
+) -> Result<Vec<(Pubkey, StakePool, ValidatorList, Pubkey)>, ClientError> {
     rpc_client
         .get_program_accounts_with_config(
             &spl_stake_pool::id(),
@@ -97,10 +98,11 @@ pub(crate) fn get_stake_pools(
             accounts
                 .into_iter()
                 .filter_map(|(address, account)| {
+                    let pool_withdraw_authority = find_withdraw_authority_program_address(&spl_stake_pool::id(), &address).0;
                     match try_from_slice_unchecked::<StakePool>(account.data.as_slice()) {
                         Ok(stake_pool) => {
                             get_validator_list(rpc_client, &stake_pool.validator_list)
-                                .map(|v| (address, stake_pool, v))
+                                .map(|validator_list| (address, stake_pool, validator_list, pool_withdraw_authority))
                                 .ok()
                         }
                         Err(err) => {

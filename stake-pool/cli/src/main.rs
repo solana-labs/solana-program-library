@@ -47,7 +47,7 @@ use {
     std::{process::exit, sync::Arc},
 };
 
-struct Config {
+pub(crate) struct Config {
     rpc_client: RpcClient,
     verbose: bool,
     output_format: OutputFormat,
@@ -867,145 +867,148 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
     let sol_withdraw_authority = stake_pool
         .sol_withdraw_authority
         .map_or("None".into(), |pubkey| pubkey.to_string());
-
-    if config.verbose {
-        println!("Stake Pool Info");
-        println!("===============");
-        println!("Stake Pool: {}", stake_pool_address);
-        println!("Validator List: {}", stake_pool.validator_list);
-        println!("Manager: {}", stake_pool.manager);
-        println!("Staker: {}", stake_pool.staker);
-        println!("Depositor: {}", stake_pool.stake_deposit_authority);
-        println!("SOL Deposit Authority: {}", sol_deposit_authority);
-        println!("SOL Withdraw Authority: {}", sol_withdraw_authority);
-        println!("Withdraw Authority: {}", pool_withdraw_authority);
-        println!("Pool Token Mint: {}", stake_pool.pool_mint);
-        println!("Fee Account: {}", stake_pool.manager_fee_account);
-    } else {
-        println!("Stake Pool: {}", stake_pool_address);
-        println!("Validator List: {}", stake_pool.validator_list);
-        println!("Pool Token Mint: {}", stake_pool.pool_mint);
-    }
-
-    if let Some(preferred_deposit_validator) = stake_pool.preferred_deposit_validator_vote_address {
-        println!(
-            "Preferred Deposit Validator: {}",
-            preferred_deposit_validator
-        );
-    }
-    if let Some(preferred_withdraw_validator) = stake_pool.preferred_withdraw_validator_vote_address
-    {
-        println!(
-            "Preferred Withraw Validator: {}",
-            preferred_withdraw_validator
-        );
-    }
-
-    // Display fees information
-    println!("Epoch Fee: {} of epoch rewards", stake_pool.epoch_fee);
-    println!(
-        "Stake Withdrawal Fee: {} of withdrawal amount",
-        stake_pool.stake_withdrawal_fee
-    );
-    println!(
-        "SOL Withdrawal Fee: {} of withdrawal amount",
-        stake_pool.sol_withdrawal_fee
-    );
-    println!(
-        "Stake Deposit Fee: {} of deposit amount",
-        stake_pool.stake_deposit_fee
-    );
-    println!(
-        "SOL Deposit Fee: {} of deposit amount",
-        stake_pool.sol_deposit_fee
-    );
-    println!(
-        "Stake Deposit Referral Fee: {}% of Stake Deposit Fee",
-        stake_pool.stake_referral_fee
-    );
-    println!(
-        "SOL Deposit Referral Fee: {}% of SOL Deposit Fee",
-        stake_pool.sol_referral_fee
-    );
-
-    if config.verbose {
-        println!();
-        println!("Stake Accounts");
-        println!("--------------");
-    }
-    let reserve_stake = config.rpc_client.get_account(&stake_pool.reserve_stake)?;
-    let minimum_reserve_stake_balance = config
-        .rpc_client
-        .get_minimum_balance_for_rent_exemption(STAKE_STATE_LEN)?
-        + 1;
-    println!(
-        "Reserve Account: {}\tAvailable Balance: {}",
-        stake_pool.reserve_stake,
-        Sol(reserve_stake.lamports - minimum_reserve_stake_balance),
-    );
-
-    for validator in &validator_list.validators {
+    if config.output_format == OutputFormat::Display || config.output_format == OutputFormat::DisplayVerbose {
         if config.verbose {
-            let (stake_account_address, _) = find_stake_program_address(
-                &spl_stake_pool::id(),
-                &validator.vote_account_address,
-                stake_pool_address,
-            );
-            let (transient_stake_account_address, _) = find_transient_stake_program_address(
-                &spl_stake_pool::id(),
-                &validator.vote_account_address,
-                stake_pool_address,
-                validator.transient_seed_suffix_start,
-            );
-            println!(
-                "Vote Account: {}\tStake Account: {}\tActive Balance: {}\tTransient Stake Account: {}\tTransient Balance: {}\tLast Update Epoch: {}{}",
-                validator.vote_account_address,
-                stake_account_address,
-                Sol(validator.active_stake_lamports),
-                transient_stake_account_address,
-                Sol(validator.transient_stake_lamports),
-                validator.last_update_epoch,
-                if validator.last_update_epoch != epoch_info.epoch {
-                    " [UPDATE REQUIRED]"
-                } else {
-                    ""
-                }
-            );
+            println!("Stake Pool Info");
+            println!("===============");
+            println!("Stake Pool: {}", stake_pool_address);
+            println!("Validator List: {}", stake_pool.validator_list);
+            println!("Manager: {}", stake_pool.manager);
+            println!("Staker: {}", stake_pool.staker);
+            println!("Depositor: {}", stake_pool.stake_deposit_authority);
+            println!("SOL Deposit Authority: {}", sol_deposit_authority);
+            println!("SOL Withdraw Authority: {}", sol_withdraw_authority);
+            println!("Withdraw Authority: {}", pool_withdraw_authority);
+            println!("Pool Token Mint: {}", stake_pool.pool_mint);
+            println!("Fee Account: {}", stake_pool.manager_fee_account);
         } else {
+            println!("Stake Pool: {}", stake_pool_address);
+            println!("Validator List: {}", stake_pool.validator_list);
+            println!("Pool Token Mint: {}", stake_pool.pool_mint);
+        }
+
+        if let Some(preferred_deposit_validator) = stake_pool.preferred_deposit_validator_vote_address {
             println!(
-                "Vote Account: {}\tBalance: {}\tLast Update Epoch: {}",
-                validator.vote_account_address,
-                Sol(validator.stake_lamports()),
-                validator.last_update_epoch,
+                "Preferred Deposit Validator: {}",
+                preferred_deposit_validator
             );
         }
-    }
-
-    if config.verbose {
-        println!();
-    }
-    println!(
-        "Total Pool Stake: {}{}",
-        Sol(stake_pool.total_lamports),
-        if stake_pool.last_update_epoch != epoch_info.epoch {
-            " [UPDATE REQUIRED]"
-        } else {
-            ""
+        if let Some(preferred_withdraw_validator) = stake_pool.preferred_withdraw_validator_vote_address
+        {
+            println!(
+                "Preferred Withraw Validator: {}",
+                preferred_withdraw_validator
+            );
         }
-    );
-    println!(
-        "Total Pool Tokens: {}",
-        spl_token::amount_to_ui_amount(stake_pool.pool_token_supply, pool_mint.decimals)
-    );
-    println!(
-        "Current Number of Validators: {}",
-        validator_list.validators.len()
-    );
-    println!(
-        "Max Number of Validators: {}",
-        validator_list.header.max_validators
-    );
 
+        // Display fees information
+        println!("Epoch Fee: {} of epoch rewards", stake_pool.epoch_fee);
+        println!(
+            "Stake Withdrawal Fee: {} of withdrawal amount",
+            stake_pool.stake_withdrawal_fee
+        );
+        println!(
+            "SOL Withdrawal Fee: {} of withdrawal amount",
+            stake_pool.sol_withdrawal_fee
+        );
+        println!(
+            "Stake Deposit Fee: {} of deposit amount",
+            stake_pool.stake_deposit_fee
+        );
+        println!(
+            "SOL Deposit Fee: {} of deposit amount",
+            stake_pool.sol_deposit_fee
+        );
+        println!(
+            "Stake Deposit Referral Fee: {}% of Stake Deposit Fee",
+            stake_pool.stake_referral_fee
+        );
+        println!(
+            "SOL Deposit Referral Fee: {}% of SOL Deposit Fee",
+            stake_pool.sol_referral_fee
+        );
+
+        if config.verbose {
+            println!();
+            println!("Stake Accounts");
+            println!("--------------");
+        }
+        let reserve_stake = config.rpc_client.get_account(&stake_pool.reserve_stake)?;
+        let minimum_reserve_stake_balance = config
+            .rpc_client
+            .get_minimum_balance_for_rent_exemption(STAKE_STATE_LEN)?
+            + 1;
+        println!(
+            "Reserve Account: {}\tAvailable Balance: {}",
+            stake_pool.reserve_stake,
+            Sol(reserve_stake.lamports - minimum_reserve_stake_balance),
+        );
+
+        for validator in &validator_list.validators {
+            if config.verbose {
+                let (stake_account_address, _) = find_stake_program_address(
+                    &spl_stake_pool::id(),
+                    &validator.vote_account_address,
+                    stake_pool_address,
+                );
+                let (transient_stake_account_address, _) = find_transient_stake_program_address(
+                    &spl_stake_pool::id(),
+                    &validator.vote_account_address,
+                    stake_pool_address,
+                    validator.transient_seed_suffix_start,
+                );
+                println!(
+                    "Vote Account: {}\tStake Account: {}\tActive Balance: {}\tTransient Stake Account: {}\tTransient Balance: {}\tLast Update Epoch: {}{}",
+                    validator.vote_account_address,
+                    stake_account_address,
+                    Sol(validator.active_stake_lamports),
+                    transient_stake_account_address,
+                    Sol(validator.transient_stake_lamports),
+                    validator.last_update_epoch,
+                    if validator.last_update_epoch != epoch_info.epoch {
+                        " [UPDATE REQUIRED]"
+                    } else {
+                        ""
+                    }
+                );
+            } else {
+                println!(
+                    "Vote Account: {}\tBalance: {}\tLast Update Epoch: {}",
+                    validator.vote_account_address,
+                    Sol(validator.stake_lamports()),
+                    validator.last_update_epoch,
+                );
+            }
+        }
+
+        if config.verbose {
+            println!();
+        }
+        println!(
+            "Total Pool Stake: {}{}",
+            Sol(stake_pool.total_lamports),
+            if stake_pool.last_update_epoch != epoch_info.epoch {
+                " [UPDATE REQUIRED]"
+            } else {
+                ""
+            }
+        );
+        println!(
+            "Total Pool Tokens: {}",
+            spl_token::amount_to_ui_amount(stake_pool.pool_token_supply, pool_mint.decimals)
+        );
+        println!(
+            "Current Number of Validators: {}",
+            validator_list.validators.len()
+        );
+        println!(
+            "Max Number of Validators: {}",
+            validator_list.header.max_validators
+        );
+    } else {
+        let stake_pool_cli = CliStakePool::from((*stake_pool_address, stake_pool, validator_list, pool_withdraw_authority));
+        println!("{}", config.output_format.formatted_string(&stake_pool_cli));
+    }
     Ok(())
 }
 
@@ -1632,12 +1635,7 @@ fn command_list_all_pools(config: &Config) -> CommandResult {
     let all_pools = get_stake_pools(&config.rpc_client)?;
     let cli_stake_pool_vec: Vec<CliStakePool> = all_pools.into_iter().map(|x| CliStakePool::from(x)).collect();
     let cli_stake_pools = CliStakePools { pools: cli_stake_pool_vec };
-    match config.output_format {
-        OutputFormat::Display => println!("{}", config.output_format.formatted_string(&cli_stake_pools)),
-        OutputFormat::Json => println!("{}", config.output_format.formatted_string(&cli_stake_pools)),
-        OutputFormat::JsonCompact => println!("{}", config.output_format.formatted_string(&cli_stake_pools)),
-        _ => {}
-    }
+    println!("{}", config.output_format.formatted_string(&cli_stake_pools));
     Ok(())
 }
 
@@ -1675,9 +1673,8 @@ fn main() {
                 .long("output")
                 .value_name("FORMAT")
                 .global(true)
-                .default_value("display")
                 .takes_value(true)
-                .possible_values(&["json", "json-compact", "display"])
+                .possible_values(&["json", "json-compact"])
                 .help("Return information in specified output format"),
         )
         .arg(
@@ -2492,10 +2489,10 @@ fn main() {
             .map(|value| match value {
                 "json" => OutputFormat::Json,
                 "json-compact" => OutputFormat::JsonCompact,
-                "display" => OutputFormat::Display,
                 _ => unreachable!(),
             })
             .unwrap_or(if verbose {
+                println!("ZZZ");
                 OutputFormat::DisplayVerbose
             } else {
                 OutputFormat::Display
