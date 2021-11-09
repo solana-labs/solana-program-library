@@ -2,8 +2,9 @@ mod client;
 mod output;
 
 use {
-    crate::client::*,
-    crate::output::{CliStakePool, CliStakePools, CliStakePoolDetails, CliStakePoolStakeAccountInfo},
+    crate::{
+        client::*, output::{CliStakePool, CliStakePools, CliStakePoolDetails, CliStakePoolStakeAccountInfo},
+    },
     clap::{
         crate_description, crate_name, crate_version, value_t, value_t_or_exit, App, AppSettings,
         Arg, ArgGroup, ArgMatches, SubCommand,
