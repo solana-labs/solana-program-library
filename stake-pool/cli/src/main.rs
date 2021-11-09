@@ -922,7 +922,7 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
         max_number_of_validators,
         flag: total_flag.to_string(),
     };
-    cli_stake_pool.details = Option::from(cli_stake_pool_details);
+    cli_stake_pool.details = Some(cli_stake_pool_details);
     println!("{}", config.output_format.formatted_string(&cli_stake_pool));
     Ok(())
 }
