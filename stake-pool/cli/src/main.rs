@@ -3,7 +3,8 @@ mod output;
 
 use {
     crate::{
-        client::*, output::{CliStakePool, CliStakePools, CliStakePoolDetails, CliStakePoolStakeAccountInfo},
+        client::*,
+        output::{CliStakePool, CliStakePoolDetails, CliStakePoolStakeAccountInfo, CliStakePools},
     },
     clap::{
         crate_description, crate_name, crate_version, value_t, value_t_or_exit, App, AppSettings,
@@ -857,12 +858,12 @@ fn command_deposit_sol(
 
 fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
-    let reserve_stake_account_address = stake_pool.reserve_stake.clone().to_string();
-    let total_lamports = stake_pool.total_lamports.clone();
-    let last_update_epoch = stake_pool.last_update_epoch.clone();
+    let reserve_stake_account_address = stake_pool.reserve_stake.to_string();
+    let total_lamports = stake_pool.total_lamports;
+    let last_update_epoch = stake_pool.last_update_epoch;
     let validator_list = get_validator_list(&config.rpc_client, &stake_pool.validator_list)?;
-    let max_number_of_validators = validator_list.header.max_validators.clone();
-    let current_number_of_validators = validator_list.validators.clone().len();
+    let max_number_of_validators = validator_list.header.max_validators;
+    let current_number_of_validators = validator_list.validators.len();
     let pool_mint = get_token_mint(&config.rpc_client, &stake_pool.pool_mint)?;
     let epoch_info = config.rpc_client.get_epoch_info()?;
     let pool_withdraw_authority =
@@ -887,30 +888,29 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
                 stake_pool_address,
                 validator.transient_seed_suffix_start,
             );
-            let flag = if  validator.last_update_epoch != epoch_info.epoch {
-                " [UPDATE REQUIRED]"
-            } else {
-                ""
-            };
+            let update_required = validator.last_update_epoch != epoch_info.epoch;
             CliStakePoolStakeAccountInfo {
                 vote_account_address: stake_pool_address.to_string(),
                 stake_account_address: stake_account_address.to_string(),
                 validator_active_stake_lamports: validator.active_stake_lamports,
                 validator_last_update_epoch: validator.last_update_epoch,
                 validator_lamports: validator.stake_lamports(),
-                validator_transient_stake_account_address: transient_stake_account_address.to_string(),
+                validator_transient_stake_account_address: transient_stake_account_address
+                    .to_string(),
                 validator_transient_stake_lamports: validator.transient_stake_lamports,
-                flag: flag.to_string(),
+                update_required,
             }
         })
         .collect();
-    let total_pool_tokens = spl_token::amount_to_ui_amount(stake_pool.pool_token_supply, pool_mint.decimals);
-    let mut cli_stake_pool = CliStakePool::from((*stake_pool_address, stake_pool, validator_list, pool_withdraw_authority));
-    let total_flag = if last_update_epoch != epoch_info.epoch {
-        " [UPDATE REQUIRED]"
-    } else {
-        ""
-    };
+    let total_pool_tokens =
+        spl_token::amount_to_ui_amount(stake_pool.pool_token_supply, pool_mint.decimals);
+    let mut cli_stake_pool = CliStakePool::from((
+        *stake_pool_address,
+        stake_pool,
+        validator_list,
+        pool_withdraw_authority,
+    ));
+    let update_required = last_update_epoch != epoch_info.epoch;
     let cli_stake_pool_details = CliStakePoolDetails {
         reserve_stake_account_address,
         reserve_stake_lamports: reserve_stake.lamports,
@@ -920,7 +920,7 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
         total_pool_tokens,
         current_number_of_validators: current_number_of_validators as u32,
         max_number_of_validators,
-        flag: total_flag.to_string(),
+        update_required,
     };
     cli_stake_pool.details = Some(cli_stake_pool_details);
     println!("{}", config.output_format.formatted_string(&cli_stake_pool));
@@ -1548,9 +1548,15 @@ fn command_set_fee(
 
 fn command_list_all_pools(config: &Config) -> CommandResult {
     let all_pools = get_stake_pools(&config.rpc_client)?;
-    let cli_stake_pool_vec: Vec<CliStakePool> = all_pools.into_iter().map(|x| CliStakePool::from(x)).collect();
-    let cli_stake_pools = CliStakePools { pools: cli_stake_pool_vec };
-    println!("{}", config.output_format.formatted_string(&cli_stake_pools));
+    let cli_stake_pool_vec: Vec<CliStakePool> =
+        all_pools.into_iter().map(CliStakePool::from).collect();
+    let cli_stake_pools = CliStakePools {
+        pools: cli_stake_pool_vec,
+    };
+    println!(
+        "{}",
+        config.output_format.formatted_string(&cli_stake_pools)
+    );
     Ok(())
 }
 
@@ -2407,7 +2413,6 @@ fn main() {
                 _ => unreachable!(),
             })
             .unwrap_or(if verbose {
-                println!("ZZZ");
                 OutputFormat::DisplayVerbose
             } else {
                 OutputFormat::Display
