@@ -31,6 +31,10 @@ pub enum GovernanceError {
     #[error("Governing Token Owner must sign transaction")]
     GoverningTokenOwnerMustSign,
 
+    /// Governing Token Owner want deposit more the amount in wallet
+    #[error("Impossible to deposit more you have")]
+    GoverningTokenDepositAbove,
+
     /// Governing Token Owner or Delegate  must sign transaction
     #[error("Governing Token Owner or Delegate  must sign transaction")]
     GoverningTokenOwnerOrDelegateMustSign,

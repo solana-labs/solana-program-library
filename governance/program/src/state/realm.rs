@@ -46,6 +46,7 @@ pub struct RealmConfig {
     pub min_community_tokens_to_create_governance: u64,
 
     /// The source used for community mint max vote weight source
+    /// Just used it for wait for change state if certain amount of vote doesn't reached.
     pub community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
 
     /// Optional council mint

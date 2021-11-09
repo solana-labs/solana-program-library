@@ -3,7 +3,7 @@
 use solana_program::clock::{Slot, UnixTimestamp};
 
 use solana_program::{
-    account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
+    account_info::AccountInfo, msg, program_error::ProgramError, program_pack::IsInitialized,
     pubkey::Pubkey,
 };
 use spl_governance_tools::account::{get_account_data, AccountMaxSize};
@@ -218,8 +218,17 @@ impl Proposal {
         self.assert_can_finalize_vote(config, current_unix_timestamp)?;
 
         let max_vote_weight = self.get_max_vote_weight(realm_data, governing_token_mint_supply)?;
+        // approval quorum are setup of the % of the total_supply
+        // more accurated if max_vote_weight are < 100% of the total supply
+        match max_vote_weight {
+            n if n < governing_token_mint_supply => {
+                self.state = self.get_final_vote_state(governing_token_mint_supply, config);
+            },
+            _ => {
+                self.state = self.get_final_vote_state(max_vote_weight, config);
+            }
+        }
 
-        self.state = self.get_final_vote_state(max_vote_weight, config);
         self.voting_completed_at = Some(current_unix_timestamp);
 
         // Capture vote params to correctly display historical results
@@ -279,7 +288,7 @@ impl Proposal {
                     .yes_votes_count
                     .checked_add(self.no_votes_count)
                     .unwrap();
-
+        
                 Ok(max_vote_weight.max(total_vote_count))
             }
             MintMaxVoteWeightSource::Absolute(_) => {
@@ -1253,7 +1262,7 @@ mod test {
                 MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE / 2,
             );
 
-        // Act
+        // Act for Defeated case
         proposal
             .finalize_vote(
                 community_token_supply,
@@ -1263,9 +1272,27 @@ mod test {
             )
             .unwrap();
 
-        // Assert
-        assert_eq!(proposal.state, ProposalState::Succeeded);
+        // Assert case DEFEATED because below 60% of the total_supplu
+        // In this case in need to be Defeated for me because vote are below 60% of the total_supply
+        assert_eq!(proposal.state, ProposalState::Defeated);
         assert_eq!(proposal.max_vote_weight, Some(100));
+
+        /** Assert case SUCCEED
+        In this case in need to be Succeed because yes_vote_count are above the 60% of the TOTAL supply
+        proposal.yes_votes_count = 120;
+        */
+    
+        // proposal
+        //     .finalize_vote(
+        //         community_token_supply,
+        //         &governance_config,
+        //         &realm,
+        //         current_timestamp,
+        //     )
+        //     .unwrap();
+
+        // assert_eq!(proposal.state, ProposalState::Succeeded);
+        // assert_eq!(proposal.max_vote_weight, Some(130));
     }
 
     #[test]
