@@ -1,3 +1,5 @@
+use std::fmt::{Display, Formatter, Write};
+use solana_sdk::native_token::Sol;
 use {
     std::fmt,
     solana_cli_output::{QuietDisplay, VerboseDisplay},
@@ -70,12 +72,236 @@ pub(crate) struct CliStakePool {
     pub last_epoch_total_lamports: u64,
 }
 
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CliStakePoolDetails {
+    pub reserve_stake_account_address: String,
+    pub reserve_stake_lamports: u64,
+    pub minimum_reserve_stake_balance: u64,
+    pub stake_accounts: Vec<CliStakePoolStakeAccountInfo>,
+    pub total_lamports: u64,
+    pub total_pool_tokens: f64,
+    pub current_number_of_validators: u32,
+    pub max_number_of_validators: u32,
+    pub flag: String,
+}
+
+impl Display for CliStakePoolDetails {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        writeln!(
+            f,
+            "Reserve Account: {}\tAvailable Balance: {}",
+            &self.reserve_stake_account_address,
+            Sol(&self.reserve_stake_lamports - &self.minimum_reserve_stake_balance),
+        )?;
+        for stake_account in &self.stake_accounts {
+            writeln!(
+                f,
+                "Vote Account: {}\tBalance: {}\tLast Update Epoch: {}",
+                stake_account.vote_account_address,
+                Sol(stake_account.validator_lamports),
+                stake_account.validator_last_update_epoch,
+            )?;
+        }
+        writeln!(
+            f,
+            "Total Pool Stake: {} {}",
+            Sol(*&self.total_lamports),
+            &self.flag,
+        )?;
+        writeln!(
+            f,
+            "Total Pool Tokens: {}",
+            &self.total_pool_tokens,
+        )?;
+        writeln!(
+            f,
+            "Current Number of Validators: {}",
+            &self.current_number_of_validators,
+        )?;
+        writeln!(
+            f,
+            "Max Number of Validators: {}",
+            &self.max_number_of_validators,
+        )?;
+        Ok(())
+    }
+}
+
+impl QuietDisplay for CliStakePoolDetails {}
+impl VerboseDisplay for CliStakePoolDetails {
+    fn write_str(&self, w: &mut dyn Write) -> fmt::Result {
+        writeln!(w, "")?;
+        writeln!(w, "Stake Accounts")?;
+        writeln!(w, "--------------")?;
+        writeln!(
+            w,
+            "Reserve Account: {}\tAvailable Balance: {}",
+            &self.reserve_stake_account_address,
+            Sol(&self.reserve_stake_lamports - &self.minimum_reserve_stake_balance),
+        )?;
+        for stake_account in &self.stake_accounts {
+            writeln!(
+                w,
+                "Vote Account: {}\tStake Account: {}\tActive Balance: {}\tTransient Stake Account: {}\tTransient Balance: {}\tLast Update Epoch: {}{}",
+                stake_account.vote_account_address,
+                stake_account.stake_account_address,
+                Sol(stake_account.validator_active_stake_lamports),
+                stake_account.validator_transient_stake_account_address,
+                Sol(stake_account.validator_transient_stake_lamports),
+                stake_account.validator_last_update_epoch,
+                stake_account.flag,
+            )?;
+        }
+        writeln!(
+            w,
+            "Total Pool Stake: {} {}",
+            Sol(*&self.total_lamports),
+            &self.flag,
+        )?;
+        writeln!(
+            w,
+            "Total Pool Tokens: {}",
+            &self.total_pool_tokens,
+        )?;
+        writeln!(
+            w,
+            "Current Number of Validators: {}",
+            &self.current_number_of_validators,
+        )?;
+        writeln!(
+            w,
+            "Max Number of Validators: {}",
+            &self.max_number_of_validators,
+        )?;
+        Ok(())
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CliStakePoolStakeAccountInfo {
+    pub vote_account_address: String,
+    pub stake_account_address: String,
+    pub validator_active_stake_lamports: u64,
+    pub validator_last_update_epoch: u64,
+    pub validator_lamports: u64,
+    pub validator_transient_stake_account_address: String,
+    pub validator_transient_stake_lamports: u64,
+    pub flag: String,
+}
+
 impl QuietDisplay for CliStakePool {}
 
-impl VerboseDisplay for CliStakePool {}
+impl VerboseDisplay for CliStakePool {
+    fn write_str(&self, w: &mut dyn Write) -> fmt::Result {
+        writeln!(w, "Stake Pool Info")?;
+        writeln!(w, "===============")?;
+        writeln!(w, "Stake Pool: {}", &self.address)?;
+        writeln!(w, "Validator List: {}", &self.validator_list_storage_account)?;
+        writeln!(w, "Manager: {}", &self.manager)?;
+        writeln!(w, "Staker: {}", &self.staker)?;
+        writeln!(w, "Depositor: {}", &self.stake_deposit_authority)?;
+        writeln!(w, "SOL Deposit Authority: {}", &self.sol_deposit_authority.as_ref().unwrap_or(&"None".to_string()))?;
+        writeln!(w, "SOL Withdraw Authority: {}", &self.sol_withdraw_authority.as_ref().unwrap_or(&"None".to_string()))?;
+        writeln!(w, "Withdraw Authority: {}", &self.pool_withdraw_authority)?;
+        writeln!(w, "Pool Token Mint: {}", &self.pool_mint)?;
+        writeln!(w, "Fee Account: {}", &self.manager_fee_account)?;
+        match &self.preferred_deposit_validator_vote_address {
+            None => {}
+            Some(s) => { writeln!(w, "Preferred Deposit Validator: {}", s)?; }
+        }
+        match &self.preferred_withdraw_validator_vote_address {
+            None => {}
+            Some(s) => { writeln!(w, "Preferred Withraw Validator: {}", s)?; }
+        }
+        writeln!(
+            w,
+            "Epoch Fee: {} of epoch rewards",
+            &self.epoch_fee
+        )?;
+        writeln!(
+            w,
+            "Stake Withdrawal Fee: {} of withdrawal amount",
+            &self.stake_withdrawal_fee
+        )?;
+        writeln!(
+            w,
+            "SOL Withdrawal Fee: {} of withdrawal amount",
+            &self.sol_withdrawal_fee
+        )?;
+        writeln!(
+            w,
+            "Stake Deposit Fee: {} of deposit amount",
+            &self.stake_deposit_fee
+        )?;
+        writeln!(
+            w,
+            "SOL Deposit Fee: {} of deposit amount",
+            &self.sol_deposit_fee
+        )?;
+        writeln!(
+            w,
+            "Stake Deposit Referral Fee: {}% of Stake Deposit Fee",
+            &self.stake_referral_fee
+        )?;
+        writeln!(
+            w,
+            "SOL Deposit Referral Fee: {}% of SOL Deposit Fee",
+            &self.sol_referral_fee
+        )?;
+        writeln!(w, "")?;
+        writeln!(w, "Stake Accounts")?;
+        writeln!(w, "--------------")?;
+
+        Ok(())
+    }
+}
 
 impl fmt::Display for CliStakePool {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "Stake Pool: {}", &self.address)?;
+        writeln!(f, "Validator List: {}", &self.validator_list_storage_account)?;
+        writeln!(f, "Pool Token Mint: {}", &self.pool_mint)?;
+        match &self.preferred_deposit_validator_vote_address {
+            None => {}
+            Some(s) => { writeln!(f, "Preferred Deposit Validator: {}", s)?; }
+        }
+        match &self.preferred_withdraw_validator_vote_address {
+            None => {}
+            Some(s) => { writeln!(f, "Preferred Withraw Validator: {}", s)?; }
+        }
+        writeln!(f, "Epoch Fee: {} of epoch rewards", &self.epoch_fee)?;
+        writeln!(
+            f,
+            "Stake Withdrawal Fee: {} of withdrawal amount",
+            &self.stake_withdrawal_fee
+        )?;
+        writeln!(
+            f,
+            "SOL Withdrawal Fee: {} of withdrawal amount",
+            &self.sol_withdrawal_fee
+        )?;
+        writeln!(
+            f,
+            "Stake Deposit Fee: {} of deposit amount",
+            &self.stake_deposit_fee
+        )?;
+        writeln!(
+            f,
+            "SOL Deposit Fee: {} of deposit amount",
+            &self.sol_deposit_fee
+        )?;
+        writeln!(
+            f,
+            "Stake Deposit Referral Fee: {}% of Stake Deposit Fee",
+            &self.stake_referral_fee
+        )?;
+        writeln!(
+            f,
+            "SOL Deposit Referral Fee: {}% of SOL Deposit Fee",
+            &self.sol_referral_fee
+        )?;
         Ok(())
     }
 }
