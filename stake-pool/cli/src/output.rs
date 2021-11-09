@@ -1,10 +1,9 @@
-use std::fmt::{Display, Formatter, Write};
-use solana_sdk::native_token::Sol;
 use {
-    std::fmt,
+    std::fmt::{Display, Formatter, Result, Write},
+    serde::{Serialize, Deserialize},
+    solana_sdk::native_token::Sol,
     solana_cli_output::{QuietDisplay, VerboseDisplay},
     solana_sdk::{pubkey::Pubkey, stake::state::Lockup},
-    serde::{Serialize, Deserialize},
     spl_stake_pool::state::{Fee, StakePool, StakeStatus, ValidatorList, ValidatorStakeInfo},
 };
 
@@ -14,8 +13,8 @@ pub(crate) struct CliStakePools {
     pub pools: Vec<CliStakePool>
 }
 
-impl fmt::Display for CliStakePools {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Display for CliStakePools {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         for pool in &self.pools {
             writeln!(f,
                      "Address: {}\tManager: {}\tLamports: {}\tPool tokens: {}\tValidators: {}",
@@ -88,7 +87,7 @@ pub(crate) struct CliStakePoolDetails {
 }
 
 impl Display for CliStakePoolDetails {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         writeln!(
             f,
             "Reserve Account: {}\tAvailable Balance: {}",
@@ -131,7 +130,7 @@ impl Display for CliStakePoolDetails {
 
 impl QuietDisplay for CliStakePoolDetails {}
 impl VerboseDisplay for CliStakePoolDetails {
-    fn write_str(&self, w: &mut dyn Write) -> fmt::Result {
+    fn write_str(&self, w: &mut dyn Write) -> Result {
         writeln!(w, "")?;
         writeln!(w, "Stake Accounts")?;
         writeln!(w, "--------------")?;
@@ -195,7 +194,7 @@ pub(crate) struct CliStakePoolStakeAccountInfo {
 impl QuietDisplay for CliStakePool {}
 
 impl VerboseDisplay for CliStakePool {
-    fn write_str(&self, w: &mut dyn Write) -> fmt::Result {
+    fn write_str(&self, w: &mut dyn Write) -> Result {
         writeln!(w, "Stake Pool Info")?;
         writeln!(w, "===============")?;
         writeln!(w, "Stake Pool: {}", &self.address)?;
@@ -262,8 +261,8 @@ impl VerboseDisplay for CliStakePool {
     }
 }
 
-impl fmt::Display for CliStakePool {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Display for CliStakePool {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         writeln!(f, "Stake Pool: {}", &self.address)?;
         writeln!(f, "Validator List: {}", &self.validator_list_storage_account)?;
         writeln!(f, "Pool Token Mint: {}", &self.pool_mint)?;
@@ -378,8 +377,8 @@ pub(crate) struct CliStakePoolFee {
     pub numerator: u64,
 }
 
-impl fmt::Display for CliStakePoolFee {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl Display for CliStakePoolFee {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         write!(f, "{}/{}", &self.numerator, &self.denominator)
     }
 }
