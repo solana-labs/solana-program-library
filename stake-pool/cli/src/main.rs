@@ -857,12 +857,12 @@ fn command_deposit_sol(
 
 fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
     let stake_pool = get_stake_pool(&config.rpc_client, stake_pool_address)?;
-    let reserve_stake_account_address = stake_pool.clone().reserve_stake.to_string();
-    let total_lamports = stake_pool.clone().total_lamports;
-    let last_update_epoch = stake_pool.clone().last_update_epoch;
+    let reserve_stake_account_address = stake_pool.reserve_stake.clone().to_string();
+    let total_lamports = stake_pool.total_lamports.clone();
+    let last_update_epoch = stake_pool.last_update_epoch.clone();
     let validator_list = get_validator_list(&config.rpc_client, &stake_pool.validator_list)?;
-    let max_number_of_validators = validator_list.clone().header.max_validators;
-    let current_number_of_validators = validator_list.clone().validators.len();
+    let max_number_of_validators = validator_list.header.max_validators.clone();
+    let current_number_of_validators = validator_list.validators.clone().len();
     let pool_mint = get_token_mint(&config.rpc_client, &stake_pool.pool_mint)?;
     let epoch_info = config.rpc_client.get_epoch_info()?;
     let pool_withdraw_authority =
@@ -905,8 +905,7 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
         })
         .collect();
     let total_pool_tokens = spl_token::amount_to_ui_amount(stake_pool.pool_token_supply, pool_mint.decimals);
-    let cli_stake_pool = CliStakePool::from((*stake_pool_address, stake_pool, validator_list, pool_withdraw_authority));
-    println!("{}", config.output_format.formatted_string(&cli_stake_pool));
+    let mut cli_stake_pool = CliStakePool::from((*stake_pool_address, stake_pool, validator_list, pool_withdraw_authority));
     let total_flag = if last_update_epoch != epoch_info.epoch {
         " [UPDATE REQUIRED]"
     } else {
@@ -923,7 +922,8 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
         max_number_of_validators,
         flag: total_flag.to_string(),
     };
-    println!("{}", config.output_format.formatted_string(&cli_stake_pool_details));
+    cli_stake_pool.details = Option::from(cli_stake_pool_details);
+    println!("{}", config.output_format.formatted_string(&cli_stake_pool));
     Ok(())
 }
 

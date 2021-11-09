@@ -70,6 +70,7 @@ pub(crate) struct CliStakePool {
     pub next_sol_withdrawal_fee: Option<CliStakePoolFee>,
     pub last_epoch_pool_token_supply: u64,
     pub last_epoch_total_lamports: u64,
+    pub details: Option<CliStakePoolDetails>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -253,7 +254,10 @@ impl VerboseDisplay for CliStakePool {
         writeln!(w, "")?;
         writeln!(w, "Stake Accounts")?;
         writeln!(w, "--------------")?;
-
+        match &self.details {
+            None => {}
+            Some(details) => { VerboseDisplay::write_str(details, w)?; }
+        }
         Ok(())
     }
 }
@@ -426,6 +430,7 @@ impl From<(Pubkey, StakePool, ValidatorList, Pubkey)> for CliStakePool {
             next_sol_withdrawal_fee: stake_pool.next_sol_withdrawal_fee.map(|x| CliStakePoolFee::from(x)),
             last_epoch_pool_token_supply: stake_pool.last_epoch_pool_token_supply,
             last_epoch_total_lamports: stake_pool.last_epoch_total_lamports,
+            details: None,
         }
     }
 }
