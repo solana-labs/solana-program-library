@@ -1886,7 +1886,7 @@ fn main() {
                     Arg::with_name("create_aux_account")
                         .takes_value(false)
                         .long("create-aux-account")
-                        .help("Wrap SOL in an auxillary account instead of associated token account"),
+                        .help("Wrap SOL in an auxiliary account instead of associated token account"),
                 )
                 .nonce_args(true)
                 .offline_args(),
