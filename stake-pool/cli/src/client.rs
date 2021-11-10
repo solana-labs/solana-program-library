@@ -10,7 +10,7 @@ use {
     solana_program::{borsh::try_from_slice_unchecked, program_pack::Pack, pubkey::Pubkey, stake},
     spl_stake_pool::{
         find_withdraw_authority_program_address,
-        state::{StakePool, ValidatorList}
+        state::{StakePool, ValidatorList},
     },
 };
 
