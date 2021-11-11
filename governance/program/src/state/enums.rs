@@ -22,16 +22,16 @@ pub enum GovernanceAccountType {
     ProgramGovernance,
 
     /// Proposal account for Governance account. A single Governance account can have multiple Proposal accounts
-    Proposal,
+    ProposalV1,
 
     /// Proposal Signatory account
     SignatoryRecord,
 
     /// Vote record account for a given Proposal.  Proposal can have 0..n voting records
-    VoteRecord,
+    VoteRecordV1,
 
     /// ProposalInstruction account which holds an instruction to execute for Proposal
-    ProposalInstruction,
+    ProposalInstructionV1,
 
     /// Mint Governance account
     MintGovernance,
@@ -41,23 +41,24 @@ pub enum GovernanceAccountType {
 
     /// Realm config account
     RealmConfig,
+
+    /// Vote record account for a given Proposal.  Proposal can have 0..n voting records
+    /// V2 adds support for multi option votes
+    VoteRecordV2,
+
+    /// ProposalInstruction account which holds an instruction to execute for Proposal
+    /// V2 adds index for proposal option
+    ProposalInstructionV2,
+
+    /// Proposal account for Governance account. A single Governance account can have multiple Proposal accounts
+    /// V2 adds support for multiple vote options
+    ProposalV2,
 }
 
 impl Default for GovernanceAccountType {
     fn default() -> Self {
         GovernanceAccountType::Uninitialized
     }
-}
-
-/// Vote  with number of votes
-#[repr(C)]
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub enum VoteWeight {
-    /// Yes vote
-    Yes(u64),
-
-    /// No vote
-    No(u64),
 }
 
 /// What state a Proposal is in

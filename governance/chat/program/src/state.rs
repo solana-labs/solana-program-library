@@ -53,7 +53,7 @@ pub struct ChatMessage {
 
 impl AccountMaxSize for ChatMessage {
     fn get_max_size(&self) -> Option<usize> {
-        let body_size = match self.body.clone() {
+        let body_size = match &self.body {
             MessageBody::Text(body) => body.len(),
             MessageBody::Reaction(body) => body.len(),
         };

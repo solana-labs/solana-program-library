@@ -58,15 +58,16 @@ pub fn process_finalize_vote(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
         clock.unix_timestamp,
     )?;
 
-    proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
-
     let mut proposal_owner_record_data = get_token_owner_record_data_for_proposal_owner(
         program_id,
         proposal_owner_record_info,
         &proposal_data.token_owner_record,
     )?;
+
     proposal_owner_record_data.decrease_outstanding_proposal_count();
     proposal_owner_record_data.serialize(&mut *proposal_owner_record_info.data.borrow_mut())?;
+
+    proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
 
     Ok(())
 }

@@ -3725,25 +3725,7 @@ dependencies = [
 
 [[package]]
 name = "spl-governance"
-version = "1.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ae3df1aa25c5f5ce7a6595959b1b02c6ae6ea35274379ee64bcf80bae11a767"
-dependencies = [
- "arrayref",
- "bincode",
- "borsh",
- "num-derive",
- "num-traits",
- "serde",
- "serde_derive",
- "solana-program",
- "spl-token 3.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "thiserror",
-]
-
-[[package]]
-name = "spl-governance"
-version = "2.1.3"
+version = "2.1.4"
 dependencies = [
  "arrayref",
  "assert_matches",
@@ -3759,7 +3741,6 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-governance 1.1.1",
  "spl-governance-test-sdk",
  "spl-governance-tools",
  "spl-token 3.2.0",
@@ -3783,7 +3764,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-governance 2.1.3",
+ "spl-governance",
  "spl-governance-test-sdk",
  "spl-governance-tools",
  "spl-token 3.2.0",
@@ -3841,7 +3822,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-governance 2.1.3",
+ "spl-governance",
  "spl-governance-test-sdk",
  "spl-governance-tools",
  "spl-token 3.2.0",
