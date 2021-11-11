@@ -24,6 +24,7 @@ import { Account, getAccountInfo, getAssociatedTokenAddress } from '../state';
  * @param payer                    Payer of the transaction and initialization fees
  * @param mint                     Mint associated with the account to set or verify
  * @param owner                    Owner of the account to set or verify
+ * @param allowOwnerOffCurve       Allow the owner account to be a PDA (Program Derived Address)
  * @param commitment               Desired level of commitment for querying the state
  * @param confirmOptions           Options for confirming the transaction
  * @param programId                SPL Token program account
@@ -36,12 +37,19 @@ export async function getOrCreateAssociatedTokenAccount(
     payer: Signer,
     mint: PublicKey,
     owner: PublicKey,
+    allowOwnerOffCurve = false,
     commitment?: Commitment,
     confirmOptions?: ConfirmOptions,
     programId = TOKEN_PROGRAM_ID,
     associatedTokenProgramId = ASSOCIATED_TOKEN_PROGRAM_ID
 ): Promise<Account> {
-    const associatedToken = await getAssociatedTokenAddress(mint, owner, false, programId, associatedTokenProgramId);
+    const associatedToken = await getAssociatedTokenAddress(
+        mint,
+        owner,
+        allowOwnerOffCurve,
+        programId,
+        associatedTokenProgramId
+    );
 
     // This is the optimal logic, considering TX fee, client-side computation, RPC roundtrips and guaranteed idempotent.
     // Sadly we can't do this atomically.
