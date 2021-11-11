@@ -16,8 +16,8 @@ const dataLayout = struct<{
  * @param account      Account to burn tokens from
  * @param mint         Mint for the account
  * @param owner        Owner of the account
- * @param multiSigners Signing accounts if `owner` is a multisig
  * @param amount       Number of tokens to burn
+ * @param multiSigners Signing accounts if `owner` is a multisig
  * @param programId    SPL Token program account
  *
  * @return Instruction to add to a transaction
@@ -26,8 +26,8 @@ export function createBurnInstruction(
     account: PublicKey,
     mint: PublicKey,
     owner: PublicKey,
-    multiSigners: Signer[],
     amount: number | bigint,
+    multiSigners: Signer[] = [],
     programId = TOKEN_PROGRAM_ID
 ): TransactionInstruction {
     const keys = addSigners(

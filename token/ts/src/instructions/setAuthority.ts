@@ -37,7 +37,7 @@ export function createSetAuthorityInstruction(
     newAuthority: PublicKey | null,
     authorityType: AuthorityType,
     currentAuthority: PublicKey,
-    multiSigners: Signer[],
+    multiSigners: Signer[] = [],
     programId = TOKEN_PROGRAM_ID
 ): TransactionInstruction {
     const keys = addSigners([{ pubkey: account, isSigner: false, isWritable: true }], currentAuthority, multiSigners);

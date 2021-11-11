@@ -19,7 +19,7 @@ const dataLayout = struct<{ instruction: TokenInstruction }>([u8('instruction')]
 export function createRevokeInstruction(
     account: PublicKey,
     owner: PublicKey,
-    multiSigners: Signer[],
+    multiSigners: Signer[] = [],
     programId = TOKEN_PROGRAM_ID
 ): TransactionInstruction {
     const keys = addSigners([{ pubkey: account, isSigner: false, isWritable: true }], owner, multiSigners);

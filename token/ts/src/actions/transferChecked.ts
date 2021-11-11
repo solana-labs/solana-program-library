@@ -20,9 +20,9 @@ import { getSigners } from './internal';
  * @param mint           Mint for the account
  * @param destination    Destination account
  * @param owner          Owner of the source account
- * @param multiSigners   Signing accounts if `owner` is a multisig
  * @param amount         Number of tokens to transfer
  * @param decimals       Number of decimals in transfer amount
+ * @param multiSigners   Signing accounts if `owner` is a multisig
  * @param confirmOptions Options for confirming the transaction
  * @param programId      SPL Token program account
  *
@@ -35,9 +35,9 @@ export async function transferChecked(
     mint: PublicKey,
     destination: PublicKey,
     owner: Signer | PublicKey,
-    multiSigners: Signer[],
     amount: number | bigint,
     decimals: number,
+    multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
     programId = TOKEN_PROGRAM_ID
 ): Promise<TransactionSignature> {
@@ -49,9 +49,9 @@ export async function transferChecked(
             mint,
             destination,
             ownerPublicKey,
-            multiSigners,
             amount,
             decimals,
+            multiSigners,
             programId
         )
     );

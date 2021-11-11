@@ -31,7 +31,7 @@ export async function closeAccount(
     account: PublicKey,
     destination: PublicKey,
     authority: Signer | PublicKey,
-    multiSigners: Signer[],
+    multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
     programId = TOKEN_PROGRAM_ID
 ): Promise<TransactionSignature> {

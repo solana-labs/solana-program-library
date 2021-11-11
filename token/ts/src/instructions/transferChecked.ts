@@ -18,9 +18,9 @@ const dataLayout = struct<{
  * @param mint         Mint account
  * @param destination  Destination account
  * @param owner        Owner of the source account
- * @param multiSigners Signing accounts if `owner` is a multisig
  * @param amount       Number of tokens to transfer
  * @param decimals     Number of decimals in transfer amount
+ * @param multiSigners Signing accounts if `owner` is a multisig
  * @param programId    SPL Token program account
  *
  * @return Instruction to add to a transaction
@@ -30,9 +30,9 @@ export function createTransferCheckedInstruction(
     mint: PublicKey,
     destination: PublicKey,
     owner: PublicKey,
-    multiSigners: Signer[],
     amount: number | bigint,
     decimals: number,
+    multiSigners: Signer[] = [],
     programId = TOKEN_PROGRAM_ID
 ): TransactionInstruction {
     const keys = addSigners(

@@ -18,9 +18,9 @@ const dataLayout = struct<{
  * @param mint         Mint account
  * @param delegate     Account authorized to transfer of tokens from the account
  * @param owner        Owner of the account
- * @param multiSigners Signing accounts if `owner` is a multisig
  * @param amount       Maximum number of tokens the delegate may transfer
  * @param decimals     Number of decimals in approve amount
+ * @param multiSigners Signing accounts if `owner` is a multisig
  * @param programId    SPL Token program account
  *
  * @return Instruction to add to a transaction
@@ -30,9 +30,9 @@ export function createApproveCheckedInstruction(
     mint: PublicKey,
     delegate: PublicKey,
     owner: PublicKey,
-    multiSigners: Signer[],
     amount: number | bigint,
     decimals: number,
+    multiSigners: Signer[] = [],
     programId = TOKEN_PROGRAM_ID
 ): TransactionInstruction {
     const keys = addSigners(

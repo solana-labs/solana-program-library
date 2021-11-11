@@ -19,8 +19,8 @@ import { getSigners } from './internal';
  * @param mint           Mint for the account
  * @param destination    Address of the account to mint to
  * @param authority      Minting authority
- * @param multiSigners   Signing accounts if `authority` is a multisig
  * @param amount         Amount to mint
+ * @param multiSigners   Signing accounts if `authority` is a multisig
  * @param confirmOptions Options for confirming the transaction
  * @param programId      SPL Token program account
  *
@@ -32,15 +32,15 @@ export async function mintTo(
     mint: PublicKey,
     destination: PublicKey,
     authority: Signer | PublicKey,
-    multiSigners: Signer[],
     amount: number | bigint,
+    multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
     programId = TOKEN_PROGRAM_ID
 ): Promise<TransactionSignature> {
     const [authorityPublicKey, signers] = getSigners(authority, multiSigners);
 
     const transaction = new Transaction().add(
-        createMintToInstruction(mint, destination, authorityPublicKey, multiSigners, amount, programId)
+        createMintToInstruction(mint, destination, authorityPublicKey, amount, multiSigners, programId)
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);

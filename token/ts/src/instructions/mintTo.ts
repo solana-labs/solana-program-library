@@ -16,8 +16,8 @@ const dataLayout = struct<{
  * @param mint         Public key of the mint
  * @param destination  Address of the token account to mint to
  * @param authority    The mint authority
- * @param multiSigners Signing accounts if `authority` is a multisig
  * @param amount       Amount to mint
+ * @param multiSigners Signing accounts if `authority` is a multisig
  * @param programId    SPL Token program account
  *
  * @return Instruction to add to a transaction
@@ -26,8 +26,8 @@ export function createMintToInstruction(
     mint: PublicKey,
     destination: PublicKey,
     authority: PublicKey,
-    multiSigners: Signer[],
     amount: number | bigint,
+    multiSigners: Signer[] = [],
     programId = TOKEN_PROGRAM_ID
 ): TransactionInstruction {
     const keys = addSigners(

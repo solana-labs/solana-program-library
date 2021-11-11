@@ -29,7 +29,7 @@ export async function revoke(
     payer: Signer,
     account: PublicKey,
     owner: Signer | PublicKey,
-    multiSigners: Signer[],
+    multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
     programId = TOKEN_PROGRAM_ID
 ): Promise<TransactionSignature> {

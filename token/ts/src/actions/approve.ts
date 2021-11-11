@@ -19,8 +19,8 @@ import { getSigners } from './internal';
  * @param account        Address of the token account
  * @param delegate       Account authorized to transfer tokens from the account
  * @param owner          Owner of the account
- * @param multiSigners   Signing accounts if `owner` is a multisig
  * @param amount         Maximum number of tokens the delegate may transfer
+ * @param multiSigners   Signing accounts if `owner` is a multisig
  * @param confirmOptions Options for confirming the transaction
  * @param programId      SPL Token program account
  *
@@ -32,15 +32,15 @@ export async function approve(
     account: PublicKey,
     delegate: PublicKey,
     owner: Signer | PublicKey,
-    multiSigners: Signer[],
     amount: number | bigint,
+    multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
     programId = TOKEN_PROGRAM_ID
 ): Promise<TransactionSignature> {
     const [ownerPublicKey, signers] = getSigners(owner, multiSigners);
 
     const transaction = new Transaction().add(
-        createApproveInstruction(account, delegate, ownerPublicKey, multiSigners, amount, programId)
+        createApproveInstruction(account, delegate, ownerPublicKey, amount, multiSigners, programId)
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);

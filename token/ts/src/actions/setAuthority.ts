@@ -33,7 +33,7 @@ export async function setAuthority(
     newAuthority: PublicKey | null,
     authorityType: AuthorityType,
     currentAuthority: Signer | PublicKey,
-    multiSigners: Signer[],
+    multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
     programId = TOKEN_PROGRAM_ID
 ): Promise<TransactionSignature> {

@@ -19,9 +19,9 @@ import { getSigners } from './internal';
  * @param account        Account to burn tokens from
  * @param mint           Mint for the account
  * @param owner          Account owner
- * @param multiSigners   Signing accounts if `owner` is a multisig
  * @param amount         Amount to burn
  * @param decimals       Number of decimals in amount to burn
+ * @param multiSigners   Signing accounts if `owner` is a multisig
  * @param confirmOptions Options for confirming the transaction
  * @param programId      SPL Token program account
  *
@@ -33,16 +33,16 @@ export async function burnChecked(
     account: PublicKey,
     mint: PublicKey,
     owner: Signer | PublicKey,
-    multiSigners: Signer[],
     amount: number | bigint,
     decimals: number,
+    multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
     programId = TOKEN_PROGRAM_ID
 ): Promise<TransactionSignature> {
     const [ownerPublicKey, signers] = getSigners(owner, multiSigners);
 
     const transaction = new Transaction().add(
-        createBurnCheckedInstruction(account, mint, ownerPublicKey, multiSigners, amount, decimals, programId)
+        createBurnCheckedInstruction(account, mint, ownerPublicKey, amount, decimals, multiSigners, programId)
     );
 
     return await sendAndConfirmTransaction(connection, transaction, [payer, ...signers], confirmOptions);
