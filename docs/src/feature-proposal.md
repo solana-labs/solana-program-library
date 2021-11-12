@@ -5,7 +5,7 @@ title: Feature Proposal Program
 The Feature Proposal Program provides a workflow for activation of Solana
 network features through community vote based on validator stake weight.
 
-Community voting is accomplished using [SPL Tokens](token.md).  Tokens are
+Community voting is accomplished using [SPL Tokens](token.mdx).  Tokens are
 minted that represent the total active stake on the network, and distributed to
 all validators based on their stake.  Validators vote for feature activation by
 transferring their vote tokens to a predetermined address.  Once the vote
