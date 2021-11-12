@@ -116,7 +116,7 @@ the maximum number of validators (3,950).  Next, run the script:
 ```bash
 $ ./setup-stake-pool.sh
 Creating pool
-+ spl-stake-pool create-pool --epoch-fee-numerator 3 --epoch-fee-denominator 1000 --withdrawal-fee-numerator 3 --withdrawal-fee-denominator 1000 --deposit-fee-numerator 3 --deposit-fee-denominator 1000 --referral-fee 50 --max-validators 3950 --pool-keypair keys/stake-pool.json --validator-list-keypair keys/validator-list.json --mint-keypair keys/mint.json --reserve-keypair keys/reserve.json
++ spl-stake-pool create-pool --epoch-fee-numerator 3 --epoch-fee-denominator 100 --withdrawal-fee-numerator 3 --withdrawal-fee-denominator 100 --deposit-fee-numerator 3 --deposit-fee-denominator 100 --referral-fee 50 --max-validators 3950 --pool-keypair keys/stake-pool.json --validator-list-keypair keys/validator-list.json --mint-keypair keys/mint.json --reserve-keypair keys/reserve.json
 Creating reserve stake 4tvTkLB4X7ahUYZ2NaTohkG3mud4UBBvu9ZEGD4Wk9mt
 Creating mint BoNneHKDrX9BHjjvSpPfnQyRjsnc9WFH71v8wrgCd7LB
 Creating associated token account DgyZrAq88bnG1TNRxpgDQzWXpzEurCvfY2ukKFWBvADQ to receive stake pool tokens of mint BoNneHKDrX9BHjjvSpPfnQyRjsnc9WFH71v8wrgCd7LB, owned by 4SnSuUtJGKvk2GYpBwmEsWG53zTurVM8yXGsoiZQyMJn
