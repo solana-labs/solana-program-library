@@ -49,6 +49,7 @@ pub struct VoterWeightRecord {
     /// As a common pattern Revise instruction to update the weight should be invoked before governance instruction within the same transaction
     /// and the expiry set to the current slot to provide up to date weight
     pub voter_weight_expiry: Option<Slot>,
+
 }
 
 impl AccountMaxSize for VoterWeightRecord {}
@@ -91,6 +92,9 @@ pub fn get_voter_weight_record_data_for_token_owner_record(
     let voter_weight_record_data =
         get_voter_weight_record_data(program_id, voter_weight_record_info)?;
 
+    if !voter_weight_record_data {
+        return Err(GovernanceError::VoterWeightAddinDoesntExistForThisAddress.into());
+    }
     if voter_weight_record_data.realm != token_owner_record.realm {
         return Err(GovernanceError::InvalidVoterWeightRecordForRealm.into());
     }

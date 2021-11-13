@@ -361,6 +361,10 @@ pub enum GovernanceError {
     /// Cannot execute defeated option
     #[error("Cannot execute defeated option")]
     CannotExecuteDefeatedOption,
+
+    /// Voter weight addin are not created
+    #[error("The user doesn't have a voter_weight_addin account")]
+    VoterWeightAddinDoesntExistForThisAddress,
 }
 
 impl PrintProgramError for GovernanceError {
