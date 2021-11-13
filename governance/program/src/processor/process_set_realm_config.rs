@@ -46,7 +46,7 @@ pub fn process_set_realm_config(
         let council_token_mint_info = next_account_info(account_info_iter)?; // 2
         let _council_token_holding_info = next_account_info(account_info_iter)?; // 3
 
-        // Council mint can only be at present set to none (removed) and changing it to other mint is not supported
+        // Council mint can only be at present set to None (removed) and changing it to other mint is not supported
         // It might be implemented in future versions but it needs careful planning
         // It can potentially open a can of warms like what happens with existing deposits or pending proposals
         if let Some(council_token_mint) = realm_data.config.council_mint {

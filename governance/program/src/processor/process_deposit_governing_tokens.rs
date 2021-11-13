@@ -56,12 +56,6 @@ pub fn process_deposit_governing_tokens(
         governing_token_holding_info.key,
     )?;
     
-    let amount_in_wallet = get_spl_token_amount(governing_token_source_info)?;
-
-    if amount > amount_in_wallet {
-        return Err(GovernanceError::GoverningTokenDepositAbove.into());
-    } 
-
     transfer_spl_tokens(
         governing_token_source_info,
         governing_token_holding_info,

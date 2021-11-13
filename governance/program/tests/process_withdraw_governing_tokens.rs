@@ -9,8 +9,7 @@ use program_test::*;
 use solana_sdk::signature::Signer;
 
 use spl_governance::{
-    error::GovernanceError,
-    instruction::{withdraw_governing_tokens, Vote},
+    error::GovernanceError, instruction::withdraw_governing_tokens,
     state::token_owner_record::get_token_owner_record_address,
 };
 
@@ -208,7 +207,7 @@ async fn test_withdraw_governing_tokens_with_unrelinquished_votes_error() {
         .unwrap();
 
     governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::Yes)
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
         .await
         .unwrap();
 
@@ -254,7 +253,7 @@ async fn test_withdraw_governing_tokens_after_relinquishing_vote() {
         .unwrap();
 
     governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::Yes)
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
         .await
         .unwrap();
 

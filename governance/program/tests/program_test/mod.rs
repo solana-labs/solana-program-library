@@ -23,22 +23,22 @@ use spl_governance::{
         execute_instruction, finalize_vote, flag_instruction_error, insert_instruction,
         relinquish_vote, remove_instruction, remove_signatory, set_governance_config,
         set_governance_delegate, set_realm_authority, set_realm_config, sign_off_proposal,
-        withdraw_governing_tokens, Vote,
+        withdraw_governing_tokens,
     },
     processor::process_instruction,
     state::{
         enums::{
             GovernanceAccountType, InstructionExecutionFlags, InstructionExecutionStatus,
-            MintMaxVoteWeightSource, ProposalState, VoteThresholdPercentage, VoteWeight,
+            MintMaxVoteWeightSource, ProposalState, VoteThresholdPercentage,
         },
         governance::{
             get_account_governance_address, get_mint_governance_address,
             get_program_governance_address, get_token_governance_address, Governance,
             GovernanceConfig,
         },
-        proposal::{get_proposal_address, Proposal},
+        proposal::{get_proposal_address, OptionVoteResult, ProposalOption, ProposalV2, VoteType},
         proposal_instruction::{
-            get_proposal_instruction_address, InstructionData, ProposalInstruction,
+            get_proposal_instruction_address, InstructionData, ProposalInstructionV2,
         },
         realm::{
             get_governing_token_holding_address, get_realm_address, Realm, RealmConfig,
@@ -47,7 +47,7 @@ use spl_governance::{
         realm_config::{get_realm_config_address, RealmConfigAccount},
         signatory_record::{get_signatory_record_address, SignatoryRecord},
         token_owner_record::{get_token_owner_record_address, TokenOwnerRecord},
-        vote_record::{get_vote_record_address, VoteRecord},
+        vote_record::{get_vote_record_address, Vote, VoteChoice, VoteRecordV2},
     },
     tools::bpf_loader_upgradeable::get_program_data_address,
 };
@@ -72,6 +72,16 @@ use self::{
         TokenOwnerRecordCookie, VoteRecordCookie,
     },
 };
+
+/// Yes/No Vote
+pub enum YesNoVote {
+    /// Yes vote
+    #[allow(dead_code)]
+    Yes,
+    /// No vote
+    #[allow(dead_code)]
+    No,
+}
 
 pub struct GovernanceProgramTest {
     pub bench: ProgramTestBench,
@@ -1208,6 +1218,25 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
+    pub async fn with_mint_governance_using_config(
+        &mut self,
+        realm_cookie: &RealmCookie,
+        governed_mint_cookie: &GovernedMintCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        governance_config: &GovernanceConfig,
+    ) -> Result<GovernanceCookie, ProgramError> {
+        self.with_mint_governance_using_config_and_instruction(
+            realm_cookie,
+            governed_mint_cookie,
+            token_owner_record_cookie,
+            governance_config,
+            NopOverride,
+            None,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
     pub async fn with_mint_governance_using_instruction<F: Fn(&mut Instruction)>(
         &mut self,
         realm_cookie: &RealmCookie,
@@ -1216,8 +1245,29 @@ impl GovernanceProgramTest {
         instruction_override: F,
         signers_override: Option<&[&Keypair]>,
     ) -> Result<GovernanceCookie, ProgramError> {
-        let config = self.get_default_governance_config();
+        let governance_config = self.get_default_governance_config();
 
+        self.with_mint_governance_using_config_and_instruction(
+            realm_cookie,
+            governed_mint_cookie,
+            token_owner_record_cookie,
+            &governance_config,
+            instruction_override,
+            signers_override,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_mint_governance_using_config_and_instruction<F: Fn(&mut Instruction)>(
+        &mut self,
+        realm_cookie: &RealmCookie,
+        governed_mint_cookie: &GovernedMintCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        governance_config: &GovernanceConfig,
+        instruction_override: F,
+        signers_override: Option<&[&Keypair]>,
+    ) -> Result<GovernanceCookie, ProgramError> {
         let voter_weight_record =
             if let Some(voter_weight_record) = &token_owner_record_cookie.voter_weight_record {
                 Some(voter_weight_record.address)
@@ -1234,7 +1284,7 @@ impl GovernanceProgramTest {
             &self.bench.payer.pubkey(),
             &token_owner_record_cookie.token_owner.pubkey(),
             voter_weight_record,
-            config.clone(),
+            governance_config.clone(),
             governed_mint_cookie.transfer_mint_authority,
         );
 
@@ -1254,7 +1304,7 @@ impl GovernanceProgramTest {
             account_type: GovernanceAccountType::MintGovernance,
             realm: realm_cookie.address,
             governed_account: governed_mint_cookie.address,
-            config,
+            config: governance_config.clone(),
             proposals_count: 0,
             reserved: [0; 8],
         };
@@ -1369,6 +1419,26 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
+    pub async fn with_multi_option_proposal(
+        &mut self,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        governance_cookie: &mut GovernanceCookie,
+        options: Vec<String>,
+        use_deny_option: bool,
+        vote_type: VoteType,
+    ) -> Result<ProposalCookie, ProgramError> {
+        self.with_proposal_using_instruction_impl(
+            token_owner_record_cookie,
+            governance_cookie,
+            options,
+            use_deny_option,
+            vote_type,
+            NopOverride,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
     pub async fn with_signed_off_proposal(
         &mut self,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
@@ -1393,6 +1463,29 @@ impl GovernanceProgramTest {
         &mut self,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         governance_cookie: &mut GovernanceCookie,
+        instruction_override: F,
+    ) -> Result<ProposalCookie, ProgramError> {
+        let options = vec!["Yes".to_string()];
+
+        self.with_proposal_using_instruction_impl(
+            token_owner_record_cookie,
+            governance_cookie,
+            options,
+            true,
+            VoteType::SingleChoice,
+            instruction_override,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_proposal_using_instruction_impl<F: Fn(&mut Instruction)>(
+        &mut self,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        governance_cookie: &mut GovernanceCookie,
+        options: Vec<String>,
+        use_deny_option: bool,
+        vote_type: VoteType,
         instruction_override: F,
     ) -> Result<ProposalCookie, ProgramError> {
         let proposal_index = governance_cookie.next_proposal_index;
@@ -1422,6 +1515,9 @@ impl GovernanceProgramTest {
             name.clone(),
             description_link.clone(),
             &token_owner_record_cookie.account.governing_token_mint,
+            vote_type.clone(),
+            options.clone(),
+            use_deny_option,
             proposal_index,
         );
 
@@ -1436,8 +1532,22 @@ impl GovernanceProgramTest {
 
         let clock = self.bench.get_clock().await;
 
-        let account = Proposal {
-            account_type: GovernanceAccountType::Proposal,
+        let proposal_options: Vec<ProposalOption> = options
+            .iter()
+            .map(|o| ProposalOption {
+                label: o.to_string(),
+                vote_weight: 0,
+                vote_result: OptionVoteResult::None,
+                instructions_executed_count: 0,
+                instructions_count: 0,
+                instructions_next_index: 0,
+            })
+            .collect();
+
+        let deny_vote_weight = if use_deny_option { Some(0) } else { None };
+
+        let account = ProposalV2 {
+            account_type: GovernanceAccountType::ProposalV2,
             description_link,
             name: name.clone(),
             governance: governance_cookie.address,
@@ -1453,13 +1563,13 @@ impl GovernanceProgramTest {
             voting_completed_at: None,
             executing_at: None,
             closed_at: None,
-            instructions_executed_count: 0,
-            instructions_count: 0,
-            instructions_next_index: 0,
+
             token_owner_record: token_owner_record_cookie.address,
             signatories_signed_off_count: 0,
-            yes_votes_count: 0,
-            no_votes_count: 0,
+
+            vote_type: vote_type,
+            options: proposal_options,
+            deny_vote_weight,
 
             execution_flags: InstructionExecutionFlags::None,
             max_vote_weight: None,
@@ -1687,6 +1797,25 @@ impl GovernanceProgramTest {
         &mut self,
         proposal_cookie: &ProposalCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
+        yes_no_vote: YesNoVote,
+    ) -> Result<VoteRecordCookie, ProgramError> {
+        let vote = match yes_no_vote {
+            YesNoVote::Yes => Vote::Approve(vec![VoteChoice {
+                rank: 0,
+                weight_percentage: 100,
+            }]),
+            YesNoVote::No => Vote::Deny,
+        };
+
+        self.with_cast_multi_option_vote(proposal_cookie, token_owner_record_cookie, vote)
+            .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_cast_multi_option_vote(
+        &mut self,
+        proposal_cookie: &ProposalCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
         vote: Vote,
     ) -> Result<VoteRecordCookie, ProgramError> {
         let voter_weight_record =
@@ -1721,16 +1850,12 @@ impl GovernanceProgramTest {
             .account
             .governing_token_deposit_amount;
 
-        let vote_weight = match vote {
-            Vote::Yes => VoteWeight::Yes(vote_amount),
-            Vote::No => VoteWeight::No(vote_amount),
-        };
-
-        let account = VoteRecord {
-            account_type: GovernanceAccountType::VoteRecord,
+        let account = VoteRecordV2 {
+            account_type: GovernanceAccountType::VoteRecordV2,
             proposal: proposal_cookie.address,
             governing_token_owner: token_owner_record_cookie.token_owner.pubkey(),
-            vote_weight,
+            vote,
+            voter_weight: vote_amount,
             is_relinquished: false,
         };
 
@@ -1762,6 +1887,7 @@ impl GovernanceProgramTest {
         self.with_instruction(
             proposal_cookie,
             token_owner_record_cookie,
+            0,
             None,
             &mut set_governance_config_ix,
         )
@@ -1774,6 +1900,7 @@ impl GovernanceProgramTest {
         governed_mint_cookie: &GovernedMintCookie,
         proposal_cookie: &mut ProposalCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
+        option_index: u16,
         index: Option<u16>,
     ) -> Result<ProposalInstructionCookie, ProgramError> {
         let token_account_keypair = Keypair::new();
@@ -1798,6 +1925,7 @@ impl GovernanceProgramTest {
         self.with_instruction(
             proposal_cookie,
             token_owner_record_cookie,
+            option_index,
             index,
             &mut instruction,
         )
@@ -1834,6 +1962,7 @@ impl GovernanceProgramTest {
         self.with_instruction(
             proposal_cookie,
             token_owner_record_cookie,
+            0,
             index,
             &mut instruction,
         )
@@ -1903,6 +2032,7 @@ impl GovernanceProgramTest {
         self.with_instruction(
             proposal_cookie,
             token_owner_record_cookie,
+            0,
             None,
             &mut upgrade_instruction,
         )
@@ -1914,6 +2044,7 @@ impl GovernanceProgramTest {
         &mut self,
         proposal_cookie: &mut ProposalCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
+        option_index: u16,
         index: Option<u16>,
     ) -> Result<ProposalInstructionCookie, ProgramError> {
         // Create NOP instruction as a placeholder
@@ -1927,6 +2058,7 @@ impl GovernanceProgramTest {
         self.with_instruction(
             proposal_cookie,
             token_owner_record_cookie,
+            option_index,
             index,
             &mut instruction,
         )
@@ -1938,16 +2070,18 @@ impl GovernanceProgramTest {
         &mut self,
         proposal_cookie: &mut ProposalCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
+        option_index: u16,
         index: Option<u16>,
         instruction: &mut Instruction,
     ) -> Result<ProposalInstructionCookie, ProgramError> {
         let hold_up_time = 15;
 
         let instruction_data: InstructionData = instruction.clone().into();
+        let mut yes_option = &mut proposal_cookie.account.options[0];
 
-        let instruction_index = index.unwrap_or(proposal_cookie.account.instructions_next_index);
+        let instruction_index = index.unwrap_or(yes_option.instructions_next_index);
 
-        proposal_cookie.account.instructions_next_index += 1;
+        yes_option.instructions_next_index += 1;
 
         let insert_instruction_instruction = insert_instruction(
             &self.program_id,
@@ -1956,6 +2090,7 @@ impl GovernanceProgramTest {
             &token_owner_record_cookie.address,
             &token_owner_record_cookie.token_owner.pubkey(),
             &self.bench.payer.pubkey(),
+            option_index,
             instruction_index,
             hold_up_time,
             instruction_data.clone(),
@@ -1971,11 +2106,13 @@ impl GovernanceProgramTest {
         let proposal_instruction_address = get_proposal_instruction_address(
             &self.program_id,
             &proposal_cookie.address,
+            &option_index.to_le_bytes(),
             &instruction_index.to_le_bytes(),
         );
 
-        let proposal_instruction_data = ProposalInstruction {
-            account_type: GovernanceAccountType::ProposalInstruction,
+        let proposal_instruction_data = ProposalInstructionV2 {
+            account_type: GovernanceAccountType::ProposalInstructionV2,
+            option_index,
             instruction_index,
             hold_up_time,
             instruction: instruction_data,
@@ -2101,16 +2238,16 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn get_proposal_account(&mut self, proposal_address: &Pubkey) -> Proposal {
+    pub async fn get_proposal_account(&mut self, proposal_address: &Pubkey) -> ProposalV2 {
         self.bench
-            .get_borsh_account::<Proposal>(proposal_address)
+            .get_borsh_account::<ProposalV2>(proposal_address)
             .await
     }
 
     #[allow(dead_code)]
-    pub async fn get_vote_record_account(&mut self, vote_record_address: &Pubkey) -> VoteRecord {
+    pub async fn get_vote_record_account(&mut self, vote_record_address: &Pubkey) -> VoteRecordV2 {
         self.bench
-            .get_borsh_account::<VoteRecord>(vote_record_address)
+            .get_borsh_account::<VoteRecordV2>(vote_record_address)
             .await
     }
 
@@ -2118,9 +2255,9 @@ impl GovernanceProgramTest {
     pub async fn get_proposal_instruction_account(
         &mut self,
         proposal_instruction_address: &Pubkey,
-    ) -> ProposalInstruction {
+    ) -> ProposalInstructionV2 {
         self.bench
-            .get_borsh_account::<ProposalInstruction>(proposal_instruction_address)
+            .get_borsh_account::<ProposalInstructionV2>(proposal_instruction_address)
             .await
     }
 
@@ -2218,7 +2355,7 @@ impl GovernanceProgramTest {
         let deposit_ix = Instruction {
             program_id: self.voter_weight_addin_id.unwrap(),
             accounts,
-            data: vec![1, 100, 0, 0, 0, 0, 0, 0, 0], // 1 - Deposit instruction, 100 amount (u64)
+            data: vec![1, 120, 0, 0, 0, 0, 0, 0, 0], // 1 - Deposit instruction, 100 amount (u64)
         };
 
         self.bench

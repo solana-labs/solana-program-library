@@ -12,9 +12,8 @@ use spl_governance_tools::account::create_and_serialize_account_signed;
 
 use crate::{
     error::GovernanceError,
-    instruction::Vote,
     state::{
-        enums::{GovernanceAccountType, VoteWeight},
+        enums::GovernanceAccountType,
         governance::get_governance_data_for_realm,
         proposal::get_proposal_data_for_governance_and_governing_mint,
         realm::get_realm_data_for_governing_token_mint,
@@ -22,7 +21,7 @@ use crate::{
             get_token_owner_record_data_for_proposal_owner,
             get_token_owner_record_data_for_realm_and_governing_mint,
         },
-        vote_record::{get_vote_record_address_seeds, VoteRecord},
+        vote_record::{get_vote_record_address_seeds, Vote, VoteRecordV2},
     },
     tools::spl_token::get_spl_token_mint_supply,
 };
@@ -106,23 +105,28 @@ pub fn process_cast_vote(
         &realm_data,
     )?;
 
+    proposal_data.assert_valid_vote(&vote)?;
+
     // Calculate Proposal voting weights
-    let vote_weight = match vote {
-        Vote::Yes => {
-            proposal_data.yes_votes_count = proposal_data
-                .yes_votes_count
-                .checked_add(voter_weight)
-                .unwrap();
-            VoteWeight::Yes(voter_weight)
+    match &vote {
+        Vote::Approve(choices) => {
+            for (option, choice) in proposal_data.options.iter_mut().zip(choices) {
+                option.vote_weight = option
+                    .vote_weight
+                    .checked_add(choice.get_choice_weight(voter_weight)?)
+                    .unwrap();
+            }
         }
-        Vote::No => {
-            proposal_data.no_votes_count = proposal_data
-                .no_votes_count
-                .checked_add(voter_weight)
-                .unwrap();
-            VoteWeight::No(voter_weight)
+        Vote::Deny => {
+            proposal_data.deny_vote_weight = Some(
+                proposal_data
+                    .deny_vote_weight
+                    .unwrap()
+                    .checked_add(voter_weight)
+                    .unwrap(),
+            )
         }
-    };
+    }
 
     let governing_token_mint_supply = get_spl_token_mint_supply(governing_token_mint_info)?;
     if proposal_data.try_tip_vote(
@@ -151,15 +155,16 @@ pub fn process_cast_vote(
     proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
 
     // Create and serialize VoteRecord
-    let vote_record_data = VoteRecord {
-        account_type: GovernanceAccountType::VoteRecord,
+    let vote_record_data = VoteRecordV2 {
+        account_type: GovernanceAccountType::VoteRecordV2,
         proposal: *proposal_info.key,
         governing_token_owner: voter_token_owner_record_data.governing_token_owner,
-        vote_weight,
+        voter_weight,
+        vote,
         is_relinquished: false,
     };
 
-    create_and_serialize_account_signed::<VoteRecord>(
+    create_and_serialize_account_signed::<VoteRecordV2>(
         payer_info,
         vote_record_info,
         &vote_record_data,

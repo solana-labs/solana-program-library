@@ -5,7 +5,7 @@ mod program_test;
 use solana_program_test::tokio;
 
 use program_test::*;
-use spl_governance::{error::GovernanceError, instruction::Vote, state::enums::ProposalState};
+use spl_governance::{error::GovernanceError, state::enums::ProposalState};
 
 #[tokio::test]
 async fn test_cancel_proposal() {
@@ -85,7 +85,7 @@ async fn test_cancel_proposal_with_already_completed_error() {
         .unwrap();
 
     governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::Yes)
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
         .await
         .unwrap();
 

@@ -1,6 +1,5 @@
 //! Program state processor
 
-use borsh::BorshSerialize;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -9,7 +8,7 @@ use solana_program::{
 use spl_governance_tools::account::dispose_account;
 
 use crate::state::{
-    proposal::get_proposal_data, proposal_instruction::assert_proposal_instruction_for_proposal,
+    proposal::get_proposal_data, proposal_instruction::get_proposal_instruction_data_for_proposal,
     token_owner_record::get_token_owner_record_data_for_proposal_owner,
 };
 
@@ -22,7 +21,6 @@ pub fn process_remove_instruction(program_id: &Pubkey, accounts: &[AccountInfo])
     let governance_authority_info = next_account_info(account_info_iter)?; // 2
 
     let proposal_instruction_info = next_account_info(account_info_iter)?; // 3
-
     let beneficiary_info = next_account_info(account_info_iter)?; // 4
 
     let mut proposal_data = get_proposal_data(program_id, proposal_info)?;
@@ -36,7 +34,7 @@ pub fn process_remove_instruction(program_id: &Pubkey, accounts: &[AccountInfo])
 
     token_owner_record_data.assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
-    assert_proposal_instruction_for_proposal(
+    let proposal_instruction_data = get_proposal_instruction_data_for_proposal(
         program_id,
         proposal_instruction_info,
         proposal_info.key,
@@ -44,7 +42,9 @@ pub fn process_remove_instruction(program_id: &Pubkey, accounts: &[AccountInfo])
 
     dispose_account(proposal_instruction_info, beneficiary_info);
 
-    proposal_data.instructions_count = proposal_data.instructions_count.checked_sub(1).unwrap();
+    let mut option = &mut proposal_data.options[proposal_instruction_data.option_index as usize];
+    option.instructions_count = option.instructions_count.checked_sub(1).unwrap();
+
     proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
 
     Ok(())

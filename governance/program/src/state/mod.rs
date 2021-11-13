@@ -2,6 +2,7 @@
 
 pub mod enums;
 pub mod governance;
+pub mod legacy;
 pub mod proposal;
 pub mod proposal_instruction;
 pub mod realm;
