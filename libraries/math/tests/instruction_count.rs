@@ -78,7 +78,7 @@ async fn test_sqrt_u128() {
 async fn test_sqrt_u128_max() {
     let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
 
-    pc.set_bpf_compute_max_units(6_000);
+    pc.set_bpf_compute_max_units(6_500);
 
     let (mut banks_client, payer, recent_blockhash) = pc.start().await;
 
