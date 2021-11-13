@@ -1,11 +1,3 @@
-//! Program processor
-
-use borsh::BorshDeserialize;
-use spl_governance::{
-    addins::voter_weight::{VoterWeightAccountType, VoterWeightRecord},
-    state::token_owner_record::get_token_owner_record_data_for_realm_and_governing_mint,
-};
-
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -13,34 +5,21 @@ use solana_program::{
     program_error::ProgramError,
     pubkey::Pubkey,
 };
+use error::VoterWeightAddinError;
+use spl_governance::{
+    addins::voter_weight::{VoterWeightAccountType, VoterWeightRecord},
+    state::token_owner_record::get_token_owner_record_data_for_realm_and_governing_mint,
+};
 use spl_governance_tools::account::create_and_serialize_account;
-
-use crate::instruction::VoterWeightAddinInstruction;
-
-/// Processes an instruction
-pub fn process_instruction(
-    program_id: &Pubkey,
-    accounts: &[AccountInfo],
-    input: &[u8],
-) -> ProgramResult {
-    let instruction = VoterWeightAddinInstruction::try_from_slice(input)
-        .map_err(|_| ProgramError::InvalidInstructionData)?;
-
-    msg!("GOVERNANCE-VOTER-WEIGHT-INSTRUCTION: {:?}", instruction);
-
-    match instruction {
-        VoterWeightAddinInstruction::Revise {} => Ok(()),
-        VoterWeightAddinInstruction::Deposit { amount } => {
-            process_deposit(program_id, accounts, amount)
-        }
-        VoterWeightAddinInstruction::Withdraw {} => Ok(()),
-    }
-}
+use spl_governance::state::realm::{
+    get_realm_data,get_realm_data_for_governing_token_mint, get_realm_data_for_authority
+};
 
 /// Processes Deposit instruction
-pub fn process_deposit(
+pub fn process_add_voter(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
+    address:&Pubkey
     amount: u64,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
@@ -53,6 +32,12 @@ pub fn process_deposit(
     let payer_info = next_account_info(account_info_iter)?; // 5
     let system_info = next_account_info(account_info_iter)?; // 6
 
+    // check the realm authority address before create account voterWeightAddin
+    let realm_data = get_realm_data_for_governing_token_mint(program_id, realm_info, governing_token_mint_info.key);
+    if realm_data.unwrap().authority != payer_info.key {
+        return Err(VoterWeightAddinError::CantAddVoterWeight.into());
+    }
+
     let token_owner_record_data = get_token_owner_record_data_for_realm_and_governing_mint(
         governance_program_info.key,
         token_owner_record_info,
@@ -61,12 +46,12 @@ pub fn process_deposit(
     )?;
 
     // TODO: Custom deposit logic and validation goes here
-
     let voter_weight_record_data = VoterWeightRecord {
         account_type: VoterWeightAccountType::VoterWeightRecord,
         realm: *realm_info.key,
         governing_token_mint: *governing_token_mint_info.key,
-        governing_token_owner: token_owner_record_data.governing_token_owner,
+        // changed to the user who cant to add
+        governing_token_owner: address,
         voter_weight: amount,
         voter_weight_expiry: None,
     };
