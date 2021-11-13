@@ -301,3 +301,39 @@ to explain fuzzing, but the specific implementation for the program can be found
 in the [instruction fuzz
 tests](https://github.com/solana-labs/solana-program-library/blob/master/token-swap/program/fuzz/src/instructions.rs)
 of the repo.
+
+## Account Diagram
+
+Below is a diagram showing all the accounts used by the Token Swap program. 
+
+![](../static/img/token-swap.png)
+
+And here's a quick rundown of how things work, using the names in the diagram as references.
+
+### Initialization
+
+- **Swap** is created.
+- **Authority** is verified. There is one **Authority** per **Swap**, and it should be a PDA account that uses the **Swap**'s public key as a seed. Also, it should own **TokenA** and **TokenB**, but not **PoolToken** and **FeeToken**. It needs to own the first two accounts in order to perform transfers.
+- An initial amount of pool tokens are minted into **PoolToken** by **Authority**.
+
+### Swap
+
+Let's say the desired swap is token A ⇾ token B.
+
+First, the user that wants to perform the swap creates two new token accounts for **TokenAMint** and **TokenBMint**. We'll call these accounts **UserTokenA** and **UserTokenB** (not pictured in the diagram). The user deposits the tokens they want to swap into **UserTokenA**.
+
+Then, the user creates a throwaway keypair, and approves that keypair to transfer funds from **UserTokenA**. This is covered above:
+
+> Additionally, the user must allow for tokens to be transferred from their source token account. The best practice is to `spl_token::instruction::approve` a precise amount to a new throwaway Keypair, and then have that new Keypair sign the swap transaction. This limits the amount of tokens that can be taken from the user's account by the program.
+
+Then, the swap instruction does the following:
+
+- Transfers tokens from **UserTokenA** to **TokenA**, using **UserTransferAuthority** (not shown in the diagram). **UserTransferAuthority** should be a throwaway keypair as described above.
+- Transfers tokens from **TokenB** to **UserTokenB**, using **Authority**.
+- Also, some pool tokens are minted to **FeeToken**.
+
+### A note on PDAs and CPIs
+
+The above example should make it clear why **Authority** is a PDA derived from **SwapProgram**'s program ID. Simply put, it's so that the **SwapProgram** can sign transfer instructions with the PDA's seeds. Otherwise, if **Authority** was some random keypair, anyone who wanted to perform a swap would need access to it.
+
+In other words, making **Authority** a PDA of **SwapProgram** lets **SwapProgram** transfer funds from **TokenA** and **TokenB**, instead of the usual scenario where a real life person with a keypair has the ability to transfer funds from their token accounts.
