@@ -10,7 +10,8 @@ use solana_program::{
 };
 
 use crate::state::{
-    enums::ProposalState, proposal::get_proposal_data,
+    enums::ProposalState, governance::get_governance_data,
+    proposal::get_proposal_data_for_governance,
     token_owner_record::get_token_owner_record_data_for_proposal_owner,
 };
 
@@ -25,8 +26,13 @@ pub fn process_cancel_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) ->
     let clock_info = next_account_info(account_info_iter)?; // 3
     let clock = Clock::from_account_info(clock_info)?;
 
-    let mut proposal_data = get_proposal_data(program_id, proposal_info)?;
-    proposal_data.assert_can_cancel()?;
+    let governance_info = next_account_info(account_info_iter)?; // 4
+
+    let governance_data = get_governance_data(program_id, governance_info)?;
+
+    let mut proposal_data =
+        get_proposal_data_for_governance(program_id, proposal_info, governance_info.key)?;
+    proposal_data.assert_can_cancel(&governance_data.config, clock.unix_timestamp)?;
 
     let mut proposal_owner_record_data = get_token_owner_record_data_for_proposal_owner(
         program_id,

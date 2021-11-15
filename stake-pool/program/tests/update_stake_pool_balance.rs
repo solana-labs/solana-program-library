@@ -107,7 +107,11 @@ async fn success() {
     }
 
     // Update epoch
-    context.warp_to_slot(50_000).unwrap();
+    let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
+    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
+    context
+        .warp_to_slot(first_normal_slot + slots_per_epoch)
+        .unwrap();
 
     // Update list and pool
     let error = stake_pool_accounts
@@ -213,7 +217,11 @@ async fn success_ignoring_extra_lamports() {
     }
 
     // Update epoch
-    context.warp_to_slot(50_000).unwrap();
+    let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
+    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
+    context
+        .warp_to_slot(first_normal_slot + slots_per_epoch)
+        .unwrap();
 
     // Update list and pool
     let error = stake_pool_accounts

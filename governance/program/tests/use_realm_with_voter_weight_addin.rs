@@ -5,7 +5,10 @@ use solana_program_test::*;
 mod program_test;
 
 use program_test::*;
-use spl_governance::{error::GovernanceError, instruction::Vote, state::enums::VoteWeight};
+use spl_governance::{
+    error::GovernanceError,
+    state::vote_record::{Vote, VoteChoice},
+};
 
 #[tokio::test]
 async fn test_create_account_governance_with_voter_weight_addin() {
@@ -115,7 +118,7 @@ async fn test_cast_vote_with_voter_weight_addin() {
 
     // Act
     let vote_record_cookie = governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::Yes)
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
         .await
         .unwrap();
 
@@ -125,13 +128,20 @@ async fn test_cast_vote_with_voter_weight_addin() {
         .get_vote_record_account(&vote_record_cookie.address)
         .await;
 
-    assert_eq!(VoteWeight::Yes(100), vote_record_account.vote_weight);
+    assert_eq!(120, vote_record_account.voter_weight);
+    assert_eq!(
+        Vote::Approve(vec![VoteChoice {
+            rank: 0,
+            weight_percentage: 100
+        }]),
+        vote_record_account.vote
+    );
 
     let proposal_account = governance_test
         .get_proposal_account(&proposal_cookie.address)
         .await;
 
-    assert_eq!(100, proposal_account.yes_votes_count);
+    assert_eq!(120, proposal_account.options[0].vote_weight);
 }
 
 #[tokio::test]

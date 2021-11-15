@@ -190,7 +190,11 @@ async fn fail_not_updated() {
     };
 
     // move forward so an update is required
-    context.warp_to_slot(50_000).unwrap();
+    let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
+    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
+    context
+        .warp_to_slot(first_normal_slot + slots_per_epoch)
+        .unwrap();
 
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::set_fee(

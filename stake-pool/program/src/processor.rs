@@ -5,7 +5,7 @@ use {
         error::StakePoolError,
         find_deposit_authority_program_address,
         instruction::{FundingType, PreferredValidatorType, StakePoolInstruction},
-        minimum_reserve_lamports, minimum_stake_lamports, stake_program,
+        minimum_reserve_lamports, minimum_stake_lamports,
         state::{
             AccountType, Fee, FeeType, StakePool, StakeStatus, ValidatorList, ValidatorListHeader,
             ValidatorStakeInfo,
@@ -592,10 +592,17 @@ impl Processor {
             return Err(StakePoolError::WrongAccountMint.into());
         }
 
-        let stake_deposit_authority = match next_account_info(account_info_iter) {
-            Ok(stake_deposit_authority_info) => *stake_deposit_authority_info.key,
-            Err(_) => find_deposit_authority_program_address(program_id, stake_pool_info.key).0,
-        };
+        let (stake_deposit_authority, sol_deposit_authority) =
+            match next_account_info(account_info_iter) {
+                Ok(deposit_authority_info) => (
+                    *deposit_authority_info.key,
+                    Some(*deposit_authority_info.key),
+                ),
+                Err(_) => (
+                    find_deposit_authority_program_address(program_id, stake_pool_info.key).0,
+                    None,
+                ),
+            };
         let (withdraw_authority_key, stake_withdraw_bump_seed) =
             crate::find_withdraw_authority_program_address(program_id, stake_pool_info.key);
 
@@ -667,7 +674,7 @@ impl Processor {
         stake_pool.total_lamports = total_lamports;
         stake_pool.pool_token_supply = 0;
         stake_pool.last_update_epoch = Clock::get()?.epoch;
-        stake_pool.lockup = stake_program::Lockup::default();
+        stake_pool.lockup = stake::state::Lockup::default();
         stake_pool.epoch_fee = epoch_fee;
         stake_pool.next_epoch_fee = None;
         stake_pool.preferred_deposit_validator_vote_address = None;
@@ -676,7 +683,7 @@ impl Processor {
         stake_pool.stake_withdrawal_fee = withdrawal_fee;
         stake_pool.next_stake_withdrawal_fee = None;
         stake_pool.stake_referral_fee = referral_fee;
-        stake_pool.sol_deposit_authority = None;
+        stake_pool.sol_deposit_authority = sol_deposit_authority;
         stake_pool.sol_deposit_fee = deposit_fee;
         stake_pool.sol_referral_fee = referral_fee;
         stake_pool.sol_withdraw_authority = None;
@@ -1523,9 +1530,7 @@ impl Processor {
                             if let Some(stake::state::StakeState::Stake(_, validator_stake)) =
                                 validator_stake_state
                             {
-                                if stake_program::active_stakes_can_merge(&stake, &validator_stake)
-                                    .is_ok()
-                                {
+                                if validator_stake.delegation.activation_epoch < clock.epoch {
                                     let additional_lamports = transient_stake_info
                                         .lamports()
                                         .saturating_sub(stake.delegation.stake);

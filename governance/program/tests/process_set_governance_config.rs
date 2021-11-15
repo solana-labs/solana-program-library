@@ -6,8 +6,7 @@ use program_test::*;
 use solana_program_test::tokio;
 use solana_sdk::{signature::Keypair, signer::Signer};
 use spl_governance::{
-    error::GovernanceError,
-    instruction::{set_governance_config, Vote},
+    error::GovernanceError, instruction::set_governance_config,
     state::enums::VoteThresholdPercentage,
 };
 use spl_governance_test_sdk::tools::ProgramInstructionError;
@@ -66,7 +65,7 @@ async fn test_set_governance_config() {
         .unwrap();
 
     governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::Yes)
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
         .await
         .unwrap();
 
@@ -206,6 +205,7 @@ async fn test_set_governance_config_with_invalid_governance_authority_error() {
         .with_instruction(
             &mut proposal_cookie,
             &token_owner_record_cookie,
+            0,
             None,
             &mut set_governance_config_ix,
         )
@@ -218,7 +218,7 @@ async fn test_set_governance_config_with_invalid_governance_authority_error() {
         .unwrap();
 
     governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::Yes)
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
         .await
         .unwrap();
 

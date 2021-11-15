@@ -92,7 +92,7 @@ async fn setup(
     }
 
     // Warp forward so the stakes properly activate, and deposit
-    slot += 2 * slots_per_epoch;
+    slot += slots_per_epoch;
     context.warp_to_slot(slot).unwrap();
 
     stake_pool_accounts

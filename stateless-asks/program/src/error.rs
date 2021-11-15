@@ -18,6 +18,8 @@ pub enum UtilError {
     StatementFalse,
     #[error("NotRentExempt")]
     NotRentExempt,
+    #[error("NumericalOverflow")]
+    NumericalOverflow,
 }
 
 impl From<UtilError> for ProgramError {

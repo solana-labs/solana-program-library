@@ -7,13 +7,13 @@ use crate::{
             get_account_governance_address, get_mint_governance_address,
             get_program_governance_address, get_token_governance_address, GovernanceConfig,
         },
-        proposal::get_proposal_address,
+        proposal::{get_proposal_address, VoteType},
         proposal_instruction::{get_proposal_instruction_address, InstructionData},
         realm::{get_governing_token_holding_address, get_realm_address, RealmConfigArgs},
         realm_config::get_realm_config_address,
         signatory_record::get_signatory_record_address,
         token_owner_record::get_token_owner_record_address,
-        vote_record::get_vote_record_address,
+        vote_record::{get_vote_record_address, Vote},
     },
     tools::bpf_loader_upgradeable::get_program_data_address,
 };
@@ -24,16 +24,6 @@ use solana_program::{
     pubkey::Pubkey,
     system_program, sysvar,
 };
-
-/// Yes/No Vote
-#[repr(C)]
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub enum Vote {
-    /// Yes vote
-    Yes,
-    /// No vote
-    No,
-}
 
 /// Instructions supported by the Governance program
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
@@ -164,25 +154,36 @@ pub enum GovernanceInstruction {
     ///   1. `[writable]` Proposal account. PDA seeds ['governance',governance, governing_token_mint, proposal_index]
     ///   2. `[writable]` Governance account
     ///   3. `[writable]` TokenOwnerRecord account of the Proposal owner
-    ///   4. `[signer]` Governance Authority (Token Owner or Governance Delegate)
-    ///   5. `[signer]` Payer
-    ///   6. `[]` System program
-    ///   7. `[]` Rent sysvar
-    ///   8. `[]` Clock sysvar
-    ///   9. `[]` Optional Realm Config
-    ///   10. `[]` Optional Voter Weight Record
+    ///   4. `[]` Governing Token Mint the Proposal is created for
+    ///   5. `[signer]` Governance Authority (Token Owner or Governance Delegate)
+    ///   6. `[signer]` Payer
+    ///   7. `[]` System program
+    ///   8. `[]` Rent sysvar
+    ///   9. `[]` Clock sysvar
+    ///   10. `[]` Optional Realm Config
+    ///   11. `[]` Optional Voter Weight Record
     CreateProposal {
         #[allow(dead_code)]
         /// UTF-8 encoded name of the proposal
         name: String,
 
         #[allow(dead_code)]
-        /// Link to gist explaining proposal
+        /// Link to a gist explaining the proposal
         description_link: String,
 
         #[allow(dead_code)]
-        /// Governing Token Mint the Proposal is created for
-        governing_token_mint: Pubkey,
+        /// Proposal vote type
+        vote_type: VoteType,
+
+        #[allow(dead_code)]
+        /// Proposal options
+        options: Vec<String>,
+
+        #[allow(dead_code)]
+        /// Indicates whether the proposal has the deny option
+        /// A proposal without the rejecting option is a non binding survey
+        /// Only proposals with the rejecting option can have executable instructions
+        use_deny_option: bool,
     },
 
     /// Adds a signatory to the Proposal which means this Proposal can't leave Draft state until yet another Signatory signs
@@ -224,8 +225,11 @@ pub enum GovernanceInstruction {
     ///   4. `[writable]` ProposalInstruction account. PDA seeds: ['governance',proposal,index]
     ///   5. `[signer]` Payer
     ///   6. `[]` System program
-    ///   7. `[]` Clock sysvar
+    ///   7. `[]` Rent sysvar
     InsertInstruction {
+        #[allow(dead_code)]
+        /// The index of the option the instruction is for
+        option_index: u16,
         #[allow(dead_code)]
         /// Instruction index to be inserted at.
         index: u16,
@@ -253,6 +257,7 @@ pub enum GovernanceInstruction {
     ///   1. `[writable]`  TokenOwnerRecord account of the  Proposal owner
     ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)
     ///   3. `[]` Clock sysvar
+    ///   4. `[]` Governance account
     CancelProposal,
 
     /// Signs off Proposal indicating the Signatory approves the Proposal
@@ -284,7 +289,7 @@ pub enum GovernanceInstruction {
     ///   12. `[]` Optional Voter Weight Record
     CastVote {
         #[allow(dead_code)]
-        /// Yes/No vote
+        /// User's vote
         vote: Vote,
     },
 
@@ -464,7 +469,7 @@ pub fn create_realm(
         AccountMeta::new_readonly(*realm_authority, false),
         AccountMeta::new_readonly(*community_token_mint, false),
         AccountMeta::new(community_token_holding_address, false),
-        AccountMeta::new_readonly(*payer, true),
+        AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(spl_token::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
@@ -543,7 +548,7 @@ pub fn deposit_governing_tokens(
         AccountMeta::new_readonly(*governing_token_owner, true),
         AccountMeta::new_readonly(*governing_token_transfer_authority, true),
         AccountMeta::new(token_owner_record_address, false),
-        AccountMeta::new_readonly(*payer, true),
+        AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(spl_token::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
@@ -652,7 +657,7 @@ pub fn create_account_governance(
         AccountMeta::new(account_governance_address, false),
         AccountMeta::new_readonly(*governed_account, false),
         AccountMeta::new_readonly(*token_owner_record, false),
-        AccountMeta::new_readonly(*payer, true),
+        AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(*governance_authority, true),
@@ -696,7 +701,7 @@ pub fn create_program_governance(
         AccountMeta::new(governed_program_data_address, false),
         AccountMeta::new_readonly(*governed_program_upgrade_authority, true),
         AccountMeta::new_readonly(*token_owner_record, false),
-        AccountMeta::new_readonly(*payer, true),
+        AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(bpf_loader_upgradeable::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
@@ -741,7 +746,7 @@ pub fn create_mint_governance(
         AccountMeta::new(*governed_mint, false),
         AccountMeta::new_readonly(*governed_mint_authority, true),
         AccountMeta::new_readonly(*token_owner_record, false),
-        AccountMeta::new_readonly(*payer, true),
+        AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(spl_token::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
@@ -786,7 +791,7 @@ pub fn create_token_governance(
         AccountMeta::new(*governed_token, false),
         AccountMeta::new_readonly(*governed_token_owner, true),
         AccountMeta::new_readonly(*token_owner_record, false),
-        AccountMeta::new_readonly(*payer, true),
+        AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(spl_token::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
@@ -822,6 +827,9 @@ pub fn create_proposal(
     name: String,
     description_link: String,
     governing_token_mint: &Pubkey,
+    vote_type: VoteType,
+    options: Vec<String>,
+    use_deny_option: bool,
     proposal_index: u32,
 ) -> Instruction {
     let proposal_address = get_proposal_address(
@@ -836,8 +844,9 @@ pub fn create_proposal(
         AccountMeta::new(proposal_address, false),
         AccountMeta::new(*governance, false),
         AccountMeta::new(*proposal_owner_record, false),
+        AccountMeta::new_readonly(*governing_token_mint, false),
         AccountMeta::new_readonly(*governance_authority, true),
-        AccountMeta::new_readonly(*payer, true),
+        AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
@@ -848,7 +857,9 @@ pub fn create_proposal(
     let instruction = GovernanceInstruction::CreateProposal {
         name,
         description_link,
-        governing_token_mint: *governing_token_mint,
+        vote_type,
+        options,
+        use_deny_option,
     };
 
     Instruction {
@@ -876,7 +887,7 @@ pub fn add_signatory(
         AccountMeta::new_readonly(*token_owner_record, false),
         AccountMeta::new_readonly(*governance_authority, true),
         AccountMeta::new(signatory_record_address, false),
-        AccountMeta::new_readonly(*payer, true),
+        AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
     ];
@@ -977,7 +988,7 @@ pub fn cast_vote(
         AccountMeta::new_readonly(*governance_authority, true),
         AccountMeta::new(vote_record_address, false),
         AccountMeta::new_readonly(*governing_token_mint, false),
-        AccountMeta::new_readonly(*payer, true),
+        AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
@@ -1064,12 +1075,14 @@ pub fn cancel_proposal(
     proposal: &Pubkey,
     proposal_owner_record: &Pubkey,
     governance_authority: &Pubkey,
+    governance: &Pubkey,
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(*proposal, false),
         AccountMeta::new(*proposal_owner_record, false),
         AccountMeta::new_readonly(*governance_authority, true),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
+        AccountMeta::new_readonly(*governance, false),
     ];
 
     let instruction = GovernanceInstruction::CancelProposal {};
@@ -1092,12 +1105,17 @@ pub fn insert_instruction(
     governance_authority: &Pubkey,
     payer: &Pubkey,
     // Args
+    option_index: u16,
     index: u16,
     hold_up_time: u32,
     instruction: InstructionData,
 ) -> Instruction {
-    let proposal_instruction_address =
-        get_proposal_instruction_address(program_id, proposal, &index.to_le_bytes());
+    let proposal_instruction_address = get_proposal_instruction_address(
+        program_id,
+        proposal,
+        &option_index.to_le_bytes(),
+        &index.to_le_bytes(),
+    );
 
     let accounts = vec![
         AccountMeta::new_readonly(*governance, false),
@@ -1105,12 +1123,13 @@ pub fn insert_instruction(
         AccountMeta::new_readonly(*token_owner_record, false),
         AccountMeta::new_readonly(*governance_authority, true),
         AccountMeta::new(proposal_instruction_address, false),
-        AccountMeta::new_readonly(*payer, true),
+        AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
     ];
 
     let instruction = GovernanceInstruction::InsertInstruction {
+        option_index,
         index,
         hold_up_time,
         instruction,
@@ -1349,7 +1368,7 @@ pub fn create_token_owner_record(
         AccountMeta::new_readonly(*governing_token_owner, false),
         AccountMeta::new(token_owner_record_address, false),
         AccountMeta::new_readonly(*governing_token_mint, false),
-        AccountMeta::new_readonly(*payer, true),
+        AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
     ];
 
