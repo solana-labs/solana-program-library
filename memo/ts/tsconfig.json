@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+      "target": "ES6",
+      "module": "ES6",
+      "esModuleInterop": true,
+      "moduleResolution": "Node",
+      "outDir": "lib",
+      "declaration": true,
+      "declarationMap": true,
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules"]
+}
