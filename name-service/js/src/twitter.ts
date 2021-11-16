@@ -103,7 +103,8 @@ export async function changeTwitterRegistryData(
       twitterHandleRegistryKey,
       new Numberu32(offset),
       input_data,
-      verifiedPubkey
+      verifiedPubkey,
+      undefined
     ),
   ];
 
@@ -441,7 +442,8 @@ export async function createReverseTwitterRegistry(
       reverseRegistryKey,
       new Numberu32(0),
       Buffer.from(reverseTwitterRegistryStateBuff),
-      TWITTER_VERIFICATION_AUTHORITY
+      TWITTER_VERIFICATION_AUTHORITY,
+      undefined
     ),
   ];
 }
