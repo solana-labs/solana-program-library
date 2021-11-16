@@ -10,12 +10,13 @@ use {
         transaction::Transaction,
     },
     spl_token_2022::{
-        id,
-        instruction,
+        id, instruction,
         processor::Processor,
         state::{Account, Mint},
     },
 };
+
+const TRANSFER_AMOUNT: u64 = 1_000_000_000_000_000;
 
 #[tokio::test]
 async fn initialize_mint() {
@@ -44,14 +45,10 @@ async fn initialize_mint() {
     banks_client.process_transaction(transaction).await.unwrap();
 
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::initialize_mint(
-            &id(),
-            &mint.pubkey(),
-            &owner_key,
-            None,
-            decimals,
-        )
-        .unwrap()],
+        &[
+            instruction::initialize_mint(&id(), &mint.pubkey(), &owner_key, None, decimals)
+                .unwrap(),
+        ],
         Some(&payer.pubkey()),
         &[&payer],
         recent_blockhash,
@@ -97,14 +94,10 @@ async fn initialize_account() {
     banks_client.process_transaction(transaction).await.unwrap();
 
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::initialize_mint(
-            &id(),
-            &mint.pubkey(),
-            &owner.pubkey(),
-            None,
-            decimals,
-        )
-        .unwrap()],
+        &[
+            instruction::initialize_mint(&id(), &mint.pubkey(), &owner.pubkey(), None, decimals)
+                .unwrap(),
+        ],
         Some(&payer.pubkey()),
         &[&payer],
         recent_blockhash,
@@ -164,14 +157,10 @@ async fn mint_to() {
     banks_client.process_transaction(transaction).await.unwrap();
 
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::initialize_mint(
-            &id(),
-            &mint.pubkey(),
-            &owner.pubkey(),
-            None,
-            decimals,
-        )
-        .unwrap()],
+        &[
+            instruction::initialize_mint(&id(), &mint.pubkey(), &owner.pubkey(), None, decimals)
+                .unwrap(),
+        ],
         Some(&payer.pubkey()),
         &[&payer],
         recent_blockhash,
@@ -198,7 +187,7 @@ async fn mint_to() {
             &account.pubkey(),
             &owner.pubkey(),
             &[],
-            u64::MAX,
+            TRANSFER_AMOUNT,
         )
         .unwrap()],
         Some(&payer.pubkey()),
@@ -254,14 +243,10 @@ async fn transfer() {
     banks_client.process_transaction(transaction).await.unwrap();
 
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::initialize_mint(
-            &id(),
-            &mint.pubkey(),
-            &owner.pubkey(),
-            None,
-            decimals,
-        )
-        .unwrap()],
+        &[
+            instruction::initialize_mint(&id(), &mint.pubkey(), &owner.pubkey(), None, decimals)
+                .unwrap(),
+        ],
         Some(&payer.pubkey()),
         &[&payer],
         recent_blockhash,
@@ -303,7 +288,7 @@ async fn transfer() {
             &source.pubkey(),
             &owner.pubkey(),
             &[],
-            u64::MAX,
+            TRANSFER_AMOUNT,
         )
         .unwrap()],
         Some(&payer.pubkey()),
@@ -319,7 +304,7 @@ async fn transfer() {
             &destination.pubkey(),
             &owner.pubkey(),
             &[],
-            u64::MAX,
+            TRANSFER_AMOUNT,
         )
         .unwrap()],
         Some(&payer.pubkey()),
@@ -367,14 +352,10 @@ async fn burn() {
     banks_client.process_transaction(transaction).await.unwrap();
 
     let transaction = Transaction::new_signed_with_payer(
-        &[instruction::initialize_mint(
-            &id(),
-            &mint.pubkey(),
-            &owner.pubkey(),
-            None,
-            decimals,
-        )
-        .unwrap()],
+        &[
+            instruction::initialize_mint(&id(), &mint.pubkey(), &owner.pubkey(), None, decimals)
+                .unwrap(),
+        ],
         Some(&payer.pubkey()),
         &[&payer],
         recent_blockhash,
@@ -401,7 +382,7 @@ async fn burn() {
             &account.pubkey(),
             &owner.pubkey(),
             &[],
-            u64::MAX,
+            TRANSFER_AMOUNT,
         )
         .unwrap()],
         Some(&payer.pubkey()),
@@ -417,7 +398,7 @@ async fn burn() {
             &mint.pubkey(),
             &owner.pubkey(),
             &[],
-            u64::MAX,
+            TRANSFER_AMOUNT,
         )
         .unwrap()],
         Some(&payer.pubkey()),
