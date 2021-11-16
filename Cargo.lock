@@ -3956,6 +3956,7 @@ dependencies = [
  "num-traits",
  "num_enum",
  "solana-program",
+ "solana-program-test",
  "solana-sdk",
  "thiserror",
 ]
@@ -3983,6 +3984,7 @@ dependencies = [
  "num-traits",
  "num_enum",
  "solana-program",
+ "solana-program-test",
  "solana-sdk",
  "thiserror",
 ]
