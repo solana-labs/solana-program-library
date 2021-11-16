@@ -130,6 +130,7 @@ async fn test_name_service() {
         data,
         name_account_key,
         sol_subdomains_class.pubkey(),
+        Some(name_record_header.parent_name),
     )
     .unwrap();
     sign_send_instruction(&mut ctx, update_instruction, vec![&sol_subdomains_class])
