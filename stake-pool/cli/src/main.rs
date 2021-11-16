@@ -890,7 +890,7 @@ fn command_list(config: &Config, stake_pool_address: &Pubkey) -> CommandResult {
             );
             let update_required = validator.last_update_epoch != epoch_info.epoch;
             CliStakePoolStakeAccountInfo {
-                vote_account_address: stake_pool_address.to_string(),
+                vote_account_address: validator.vote_account_address.to_string(),
                 stake_account_address: stake_account_address.to_string(),
                 validator_active_stake_lamports: validator.active_stake_lamports,
                 validator_last_update_epoch: validator.last_update_epoch,
