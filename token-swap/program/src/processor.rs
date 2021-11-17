@@ -744,6 +744,10 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
+        let calculator = &token_swap.swap_curve().calculator;
+        if !calculator.allows_deposits() {
+            return Err(SwapError::UnsupportedCurveOperation.into());
+        }
         let source_account =
             Self::unpack_token_account(source_info, token_swap.token_program_id())?;
         let swap_token_a =
@@ -793,7 +797,7 @@ impl Processor {
                 )
                 .ok_or(SwapError::ZeroTradingTokens)?
         } else {
-            token_swap.swap_curve().calculator.new_pool_supply()
+            calculator.new_pool_supply()
         };
 
         let pool_token_amount = to_u64(pool_token_amount)?;
@@ -6854,5 +6858,72 @@ mod tests {
                 token_b_amount,
             )
             .unwrap();
+    }
+
+    #[test]
+    fn test_deposits_allowed_single_token() {
+        let trade_fee_numerator = 1;
+        let trade_fee_denominator = 10;
+        let owner_trade_fee_numerator = 1;
+        let owner_trade_fee_denominator = 30;
+        let owner_withdraw_fee_numerator = 0;
+        let owner_withdraw_fee_denominator = 30;
+        let host_fee_numerator = 10;
+        let host_fee_denominator = 100;
+
+        let token_a_amount = 1_000_000;
+        let token_b_amount = 0;
+        let fees = Fees {
+            trade_fee_numerator,
+            trade_fee_denominator,
+            owner_trade_fee_numerator,
+            owner_trade_fee_denominator,
+            owner_withdraw_fee_numerator,
+            owner_withdraw_fee_denominator,
+            host_fee_numerator,
+            host_fee_denominator,
+        };
+
+        let token_b_offset = 2_000_000;
+        let swap_curve = SwapCurve {
+            curve_type: CurveType::Offset,
+            calculator: Box::new(OffsetCurve { token_b_offset }),
+        };
+        let creator_key = Pubkey::new_unique();
+        let depositor_key = Pubkey::new_unique();
+
+        let mut accounts = SwapAccountInfo::new(
+            &creator_key,
+            fees,
+            swap_curve,
+            token_a_amount,
+            token_b_amount,
+        );
+
+        accounts.initialize_swap().unwrap();
+
+        let initial_a = 1_000_000;
+        let initial_b = 2_000_000;
+        let (
+            _depositor_token_a_key,
+            _depositor_token_a_account,
+            depositor_token_b_key,
+            mut depositor_token_b_account,
+            depositor_pool_key,
+            mut depositor_pool_account,
+        ) = accounts.setup_token_accounts(&creator_key, &depositor_key, initial_a, initial_b, 0);
+
+        assert_eq!(
+            Err(SwapError::UnsupportedCurveOperation.into()),
+            accounts.deposit_single_token_type_exact_amount_in(
+                &depositor_key,
+                &depositor_token_b_key,
+                &mut depositor_token_b_account,
+                &depositor_pool_key,
+                &mut depositor_pool_account,
+                initial_b,
+                0,
+            )
+        );
     }
 }
