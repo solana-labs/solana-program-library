@@ -145,7 +145,7 @@ export const TokenSwapLayout = BufferLayout.struct<TokenSwapLayoutInterface>([
  */
 export class TokenSwap {
   /**
-   * Create a Token object attached to the specific token
+   * Create a TokenSwap object attached to the specific token swap account
    *
    * @param connection The connection to use
    * @param tokenSwap The token swap account
@@ -586,6 +586,22 @@ export class TokenSwap {
   }
 
   /**
+   * Swap bitmask flags for the swap instruction
+   */
+  static SwapFlags = {
+    /** No special closing account behavior */
+    None: 0,
+    /** Close the output account if able (empty token account or native account with proper access) */
+    CloseOutput: 1,
+    /** Close the input account if able (empty token account or native account with proper access) */
+    CloseInput: 2,
+    /** Close the FINAL output account of a routed swap if able (empty token account or native account with proper access) */
+    CloseOutput2: 4,
+    /** Close the second input account of a routed swap if able (empty token account or native account with proper access) */
+    CloseInput2: 8,
+  }
+
+  /**
    * Swap token A for token B
    *
    * @param userSource User's source token account
@@ -596,6 +612,7 @@ export class TokenSwap {
    * @param refundTo The account to send intermediate account close funds to, and to unwrap SOL to
    * @param amountIn Amount to transfer from source account
    * @param minimumAmountOut Minimum amount of tokens the user will receive
+   * @param flags A bitmask of flags from TokenSwap.SwapFlags
    */
   async swap(
     userSource: PublicKey,
@@ -606,6 +623,7 @@ export class TokenSwap {
     refundTo: PublicKey,
     amountIn: number | Numberu64,
     minimumAmountOut: number | Numberu64,
+    flags: number = TokenSwap.SwapFlags.CloseOutput | TokenSwap.SwapFlags.CloseInput,
   ): Promise<TransactionSignature> {
     return await sendAndConfirmTransaction(
       'swap',
@@ -626,6 +644,7 @@ export class TokenSwap {
           this.tokenProgramId,
           amountIn,
           minimumAmountOut,
+          flags,
         ),
       ),
       this.payer,
@@ -644,6 +663,7 @@ export class TokenSwap {
    * @param refundTo The account to send intermediate account close funds to, and to unwrap SOL to
    * @param amountIn Amount to transfer from source account
    * @param minimumAmountOut Minimum amount of tokens the user will receive
+   * @param flags A bitmask of flags from TokenSwap.SwapFlags
    */
   createSwapInstruction(
     userSource: PublicKey,
@@ -654,7 +674,8 @@ export class TokenSwap {
     refundTo: PublicKey,
     amountIn: number | Numberu64,
     minimumAmountOut: number | Numberu64,
-  ): TransactionInstruction {
+    flags: number = TokenSwap.SwapFlags.CloseOutput | TokenSwap.SwapFlags.CloseInput,
+    ): TransactionInstruction {
     return TokenSwap.swapInstruction(
       this.tokenSwap,
       this.authority,
@@ -670,6 +691,7 @@ export class TokenSwap {
       this.tokenProgramId,
       amountIn,
       minimumAmountOut,
+      flags,
     );
   }
 
@@ -688,11 +710,13 @@ export class TokenSwap {
     tokenProgramId: PublicKey,
     amountIn: number | Numberu64,
     minimumAmountOut: number | Numberu64,
-  ): TransactionInstruction {
+    flags: number = TokenSwap.SwapFlags.CloseOutput | TokenSwap.SwapFlags.CloseInput,
+    ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
       Layout.uint64('amountIn'),
       Layout.uint64('minimumAmountOut'),
+      BufferLayout.u8('flags'),
     ]);
 
     const data = Buffer.alloc(dataLayout.span);
@@ -701,6 +725,7 @@ export class TokenSwap {
         instruction: 1, // Swap instruction
         amountIn: new Numberu64(amountIn).toBuffer(),
         minimumAmountOut: new Numberu64(minimumAmountOut).toBuffer(),
+        flags,
       },
       data,
     );
@@ -740,6 +765,7 @@ export class TokenSwap {
    * @param tokenSwapForBtoC The second TokenSwap object representing the B to C swap
    * @param amountIn Amount to transfer from source account
    * @param minimumAmountOut Minimum amount of tokens the user will receive
+   * @param flags A bitmask of flags from TokenSwap.SwapFlags
    */
   async routedSwap(
     userSourceA: PublicKey,
@@ -754,6 +780,7 @@ export class TokenSwap {
     tokenSwapForBtoC: TokenSwap,
     amountIn: number | Numberu64,
     minimumAmountOut: number | Numberu64,
+    flags: number = TokenSwap.SwapFlags.CloseInput | TokenSwap.SwapFlags.CloseOutput2 | TokenSwap.SwapFlags.CloseInput2,
   ): Promise<TransactionSignature> {
     return await sendAndConfirmTransaction(
       'swap',
@@ -781,6 +808,7 @@ export class TokenSwap {
           this.tokenProgramId,
           amountIn,
           minimumAmountOut,
+          flags,
         ),
       ),
       this.payer,
@@ -810,11 +838,13 @@ export class TokenSwap {
     tokenProgramId: PublicKey,
     amountIn: number | Numberu64,
     minimumAmountOut: number | Numberu64,
-  ): TransactionInstruction {
+    flags: number = TokenSwap.SwapFlags.CloseInput | TokenSwap.SwapFlags.CloseOutput2 | TokenSwap.SwapFlags.CloseInput2,
+    ): TransactionInstruction {
     const dataLayout = BufferLayout.struct([
       BufferLayout.u8('instruction'),
       Layout.uint64('amountIn'),
       Layout.uint64('minimumAmountOut'),
+      BufferLayout.u8('flags'),
     ]);
 
     const data = Buffer.alloc(dataLayout.span);
@@ -823,6 +853,7 @@ export class TokenSwap {
         instruction: 7, // Routed swap instruction
         amountIn: new Numberu64(amountIn).toBuffer(),
         minimumAmountOut: new Numberu64(minimumAmountOut).toBuffer(),
+        flags,
       },
       data,
     );
