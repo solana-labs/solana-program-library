@@ -41,6 +41,8 @@ pub struct Swap {
     pub amount_in: u64,
     /// Minimum amount of DESTINATION token to output, prevents excessive slippage
     pub minimum_amount_out: u64,
+    /// Flags defining swap behavior; see SwapFlags
+    pub flags: u8,
 }
 
 /// DepositAllTokenTypes instruction data
@@ -101,6 +103,28 @@ pub struct WithdrawSingleTokenTypeExactAmountOut {
 pub struct DeregisterPool {
     /// The pubkey of the pool to deregister
     pub pool_index: u64,
+}
+
+/// Constants defining the bit flags to use for the Swap flags field
+pub mod swap_flags {
+    /// sets no flags
+    pub const NONE: u8 = 0x00;
+    /// sets whether a wsol output will be unwrapped or token account closed (if empty)
+    pub const CLOSE_OUTPUT: u8 = 0x01;
+    /// sets whether a token account input will be closed (if empty)
+    pub const CLOSE_INPUT: u8 = 0x02;
+    /// For routed swaps, swap 2 - sets whether a wsol output will be unwrapped or token account closed (if empty)
+    pub const CLOSE_OUTPUT_2: u8 = 0x04;
+    /// For routed swaps, swap 2 - sets whether a token account input will be closed (if empty)
+    pub const CLOSE_INPUT_2: u8 = 0x08;
+    /// default value produces legacy behavior
+    pub fn default() -> u8 {
+        CLOSE_OUTPUT | CLOSE_INPUT
+    }
+    /// default value produces legacy behavior
+    pub fn default_routed() -> u8 {
+        CLOSE_INPUT | CLOSE_OUTPUT_2 | CLOSE_INPUT_2
+    }
 }
 
 /// Instructions supported by the token swap program.
@@ -264,10 +288,12 @@ impl SwapInstruction {
             }
             1 => {
                 let (amount_in, rest) = Self::unpack_u64(rest)?;
-                let (minimum_amount_out, _rest) = Self::unpack_u64(rest)?;
+                let (minimum_amount_out, rest) = Self::unpack_u64(rest)?;
+                let flags = rest.first().unwrap_or(&swap_flags::default()).clone();
                 Self::Swap(Swap {
                     amount_in,
                     minimum_amount_out,
+                    flags,
                 })
             }
             2 => {
@@ -310,10 +336,12 @@ impl SwapInstruction {
             },
             7 => {
                 let (amount_in, rest) = Self::unpack_u64(rest)?;
-                let (minimum_amount_out, _rest) = Self::unpack_u64(rest)?;
+                let (minimum_amount_out, rest) = Self::unpack_u64(rest)?;
+                let flags = rest.first().unwrap_or(&swap_flags::default_routed()).clone();
                 Self::RoutedSwap(Swap {
                     amount_in,
                     minimum_amount_out,
+                    flags,
                 })
             },
             8 => {
@@ -363,10 +391,12 @@ impl SwapInstruction {
             Self::Swap(Swap {
                 amount_in,
                 minimum_amount_out,
+                flags,
             }) => {
                 buf.push(1);
                 buf.extend_from_slice(&amount_in.to_le_bytes());
                 buf.extend_from_slice(&minimum_amount_out.to_le_bytes());
+                buf.push(*flags);
             }
             Self::DepositAllTokenTypes(DepositAllTokenTypes {
                 pool_token_amount,
@@ -412,10 +442,12 @@ impl SwapInstruction {
             Self::RoutedSwap(Swap {
                 amount_in,
                 minimum_amount_out,
+                flags,
             }) => {
                 buf.push(7);
                 buf.extend_from_slice(&amount_in.to_le_bytes());
                 buf.extend_from_slice(&minimum_amount_out.to_le_bytes());
+                buf.push(*flags);
             }
             Self::DeregisterPool(DeregisterPool {
                 pool_index,

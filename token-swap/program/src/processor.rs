@@ -10,7 +10,7 @@ use crate::{
     error::SwapError,
     instruction::{
         DepositAllTokenTypes, DepositSingleTokenTypeExactAmountIn, Initialize, Swap, DeregisterPool,
-        SwapInstruction, WithdrawAllTokenTypes, WithdrawSingleTokenTypeExactAmountOut,
+        SwapInstruction, WithdrawAllTokenTypes, WithdrawSingleTokenTypeExactAmountOut, swap_flags,
     },
     state::{SwapState, SwapV1, SwapVersion, PoolRegistry},
 };
@@ -399,6 +399,7 @@ impl Processor {
         program_id: &Pubkey,
         amount_in: u64,
         minimum_amount_out: u64,
+        flags: u8,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         //we cut the owner fees when routing through pools 
@@ -445,7 +446,8 @@ impl Processor {
 
         let swap_result1 = Self::process_swap_internal(
             true,
-            false,
+            flags & swap_flags::CLOSE_OUTPUT > 0,
+            flags & swap_flags::CLOSE_INPUT > 0,
             program_id,
             amount_in,
             //we frankly don't care how much this swaps, we'll do the min out check on the second swap
@@ -470,7 +472,8 @@ impl Processor {
         
         let swap_result2 = Self::process_swap_internal(
             true,
-            true,
+            flags & swap_flags::CLOSE_OUTPUT_2 > 0,
+            flags & swap_flags::CLOSE_INPUT_2 > 0,
             program_id,
             //amount of swap1 out becomes swap 2 in
             swap_result1.destination_amount_swapped.try_into().unwrap(),
@@ -501,6 +504,7 @@ impl Processor {
         program_id: &Pubkey,
         amount_in: u64,
         minimum_amount_out: u64,
+        flags: u8,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
@@ -518,7 +522,8 @@ impl Processor {
 
         let _swap_result = Self::process_swap_internal(
             false,
-            true,
+            flags & swap_flags::CLOSE_OUTPUT > 0,
+            flags & swap_flags::CLOSE_INPUT > 0,
             program_id,
             amount_in,
             minimum_amount_out,
@@ -542,6 +547,7 @@ impl Processor {
     fn process_swap_internal<'a> (
         collect_dust: bool,
         output_unwrap: bool,
+        input_unwrap: bool,
         program_id: &Pubkey,
         amount_in: u64,
         minimum_amount_out: u64,
@@ -700,47 +706,49 @@ impl Processor {
         //CHECK FOR INPUT CLOSING CAPABILITY
         //this could be wrapped sol temp account, or second swap of a route
         //in both cases the token would be owned by the xfer auth, which shouldn't be the refundee
-        let token_a = Self::unpack_token_account(source_info, token_program_info.key)?;
-        let owner_is_refundee = match refund_account_info {
-            None => false,
-            Some(r) => *r.key == token_a.owner
-        };
-        //if we have permission to close out this account
-        if token_a.owner == *user_transfer_authority_info.key {
-            //if the owner isn't the refundee then this must be a temp account
-            //A non-native temp account on the input should always be left empty so we can close it
-            //this is stopping a caller from shooting themselves in the foot
-            if !owner_is_refundee && token_a.amount > 0 && !token_a.is_native() {
-                return Err(SwapError::NonRefundeeTransferAuthorityNotEmpty.into());
-            } 
-            
-            //if empty, we close it
-            if token_a.amount == 0 || token_a.is_native() {
-                if refund_account_info.is_none() {
-                    return Err(SwapError::TransferAuthorityOwnsButRefundeeNotProvided.into());
-                }
+        if input_unwrap {
+            let token_a = Self::unpack_token_account(source_info, token_program_info.key)?;
+            let owner_is_refundee = match refund_account_info {
+                None => false,
+                Some(r) => *r.key == token_a.owner
+            };
+            //if we have permission to close out this account
+            if token_a.owner == *user_transfer_authority_info.key {
+                //if the owner isn't the refundee then this must be a temp account
+                //A non-native temp account on the input should always be left empty so we can close it
+                //this is stopping a caller from shooting themselves in the foot
+                if !owner_is_refundee && token_a.amount > 0 && !token_a.is_native() {
+                    return Err(SwapError::NonRefundeeTransferAuthorityNotEmpty.into());
+                } 
+                
+                //if empty, we close it
+                if token_a.amount == 0 || token_a.is_native() {
+                    if refund_account_info.is_none() {
+                        return Err(SwapError::TransferAuthorityOwnsButRefundeeNotProvided.into());
+                    }
 
-                let refund = refund_account_info.unwrap();
-                invoke(
-                    &spl_token::instruction::close_account(
-                        token_program_info.key,
-                        source_info.key,
-                        refund.key,
-                        user_transfer_authority_info.key,
-                        &[],
-                    )?,
-                    &[
-                        source_info.clone(),
-                        refund.clone(),
-                        user_transfer_authority_info.clone(),
-                    ],
-                )?;
+                    let refund = refund_account_info.unwrap();
+                    invoke(
+                        &spl_token::instruction::close_account(
+                            token_program_info.key,
+                            source_info.key,
+                            refund.key,
+                            user_transfer_authority_info.key,
+                            &[],
+                        )?,
+                        &[
+                            source_info.clone(),
+                            refund.clone(),
+                            user_transfer_authority_info.clone(),
+                        ],
+                    )?;
+                }
+            //we could have closed but authority was set wrong, just leave a message
+            } else if token_a.is_native() {
+                msg!("couldn't close input native token account automatically; user transfer authority must own");
+            } else if token_a.amount == 0 {
+                msg!("couldn't close input empty token account automatically; user transfer authority must own");
             }
-        //we could have closed but authority was set wrong, just leave a message
-        } else if token_a.is_native() {
-            msg!("couldn't close input native token account automatically; user transfer authority must own");
-        } else if token_a.amount == 0 {
-            msg!("couldn't close input empty token account automatically; user transfer authority must own");
         }
 
         //CHECK FOR OUTPUT CLOSING CAPABILITY
@@ -1385,9 +1393,10 @@ impl Processor {
             SwapInstruction::Swap(Swap {
                 amount_in,
                 minimum_amount_out,
+                flags,
             }) => {
                 msg!("Instruction: Swap");
-                Self::process_swap(program_id, amount_in, minimum_amount_out, accounts)
+                Self::process_swap(program_id, amount_in, minimum_amount_out, flags, accounts)
             }
             SwapInstruction::DepositAllTokenTypes(DepositAllTokenTypes {
                 pool_token_amount,
@@ -1455,9 +1464,10 @@ impl Processor {
             SwapInstruction::RoutedSwap(Swap {
                 amount_in,
                 minimum_amount_out,
+                flags,
             }) => {
                 msg!("Instruction: RoutedSwap");
-                Self::process_routed_swap(program_id, amount_in, minimum_amount_out, accounts)
+                Self::process_routed_swap(program_id, amount_in, minimum_amount_out, flags, accounts)
             }
             SwapInstruction::DeregisterPool(DeregisterPool {
                 pool_index,
@@ -2003,6 +2013,7 @@ mod tests {
                     Swap {
                         amount_in,
                         minimum_amount_out,
+                        flags: swap_flags::default(),
                     },
                 )
                 .unwrap(),
@@ -6328,6 +6339,7 @@ mod tests {
                         Swap {
                             amount_in: initial_a,
                             minimum_amount_out: minimum_token_b_amount,
+                            flags: swap_flags::default(),
                         },
                     )
                     .unwrap(),
@@ -6405,6 +6417,7 @@ mod tests {
                         Swap {
                             amount_in: initial_a,
                             minimum_amount_out: minimum_token_b_amount,
+                            flags: swap_flags::default(),
                         },
                     )
                     .unwrap(),
@@ -6576,6 +6589,7 @@ mod tests {
                         Swap {
                             amount_in: initial_a,
                             minimum_amount_out: minimum_token_b_amount,
+                            flags: swap_flags::default(),
                         },
                     )
                     .unwrap(),
