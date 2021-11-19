@@ -192,7 +192,11 @@ fn is_multisig_minimum_signers(string: String) -> Result<(), String> {
 }
 
 pub(crate) type Error = Box<dyn std::error::Error>;
-type CommandResult = Result<Option<(u64, Vec<Vec<Instruction>>)>, Error>;
+struct TransactionInfo<T> {
+    transaction_info: (u64, Vec<Vec<Instruction>>),
+    extra_info: T,
+}
+type CommandResult<T> = Result<Option<TransactionInfo<T>>, Error>;
 
 fn new_throwaway_signer() -> (Box<dyn Signer>, Pubkey) {
     let keypair = Keypair::new();
@@ -277,7 +281,7 @@ fn command_create_token(
     authority: Pubkey,
     enable_freeze: bool,
     memo: Option<String>,
-) -> CommandResult {
+) -> CommandResult<CliMint> {
     println_display(config, format!("Creating token {}", token));
 
     let minimum_balance_for_rent_exemption = if !config.sign_only {
@@ -308,10 +312,16 @@ fn command_create_token(
     if let Some(text) = memo {
         instructions.push(spl_memo::build_memo(text.as_bytes(), &[&config.fee_payer]));
     }
-    Ok(Some((
-        minimum_balance_for_rent_exemption,
-        vec![instructions],
-    )))
+
+    let cli_mint = CliMint {
+        address: token.to_string(),
+        decimals,
+    };
+
+    Ok(Some(TransactionInfo {
+        transaction_info: (minimum_balance_for_rent_exemption, vec![instructions]),
+        extra_info: cli_mint,
+    }))
 }
 
 fn command_create_account(
@@ -319,7 +329,7 @@ fn command_create_account(
     token: Pubkey,
     owner: Pubkey,
     maybe_account: Option<Pubkey>,
-) -> CommandResult {
+) -> CommandResult<()> {
     let minimum_balance_for_rent_exemption = if !config.sign_only {
         config
             .rpc_client
@@ -370,10 +380,10 @@ fn command_create_account(
         }
     }
 
-    Ok(Some((
-        minimum_balance_for_rent_exemption,
-        vec![instructions],
-    )))
+    Ok(Some(TransactionInfo {
+        transaction_info: (minimum_balance_for_rent_exemption, vec![instructions]),
+        extra_info: (),
+    }))
 }
 
 fn command_create_multisig(
@@ -381,7 +391,7 @@ fn command_create_multisig(
     multisig: Pubkey,
     minimum_signers: u8,
     multisig_members: Vec<Pubkey>,
-) -> CommandResult {
+) -> CommandResult<()> {
     println_display(
         config,
         format!(
@@ -415,10 +425,10 @@ fn command_create_multisig(
             minimum_signers,
         )?,
     ];
-    Ok(Some((
-        minimum_balance_for_rent_exemption,
-        vec![instructions],
-    )))
+    Ok(Some(TransactionInfo {
+        transaction_info: (minimum_balance_for_rent_exemption, vec![instructions]),
+        extra_info: (),
+    }))
 }
 
 fn command_authorize(
@@ -428,7 +438,7 @@ fn command_authorize(
     authority: Pubkey,
     new_authority: Option<Pubkey>,
     force_authorize: bool,
-) -> CommandResult {
+) -> CommandResult<()> {
     let auth_str = match authority_type {
         AuthorityType::MintTokens => "mint authority",
         AuthorityType::FreezeAccount => "freeze authority",
@@ -510,7 +520,10 @@ fn command_authorize(
         &authority,
         &config.multisigner_pubkeys,
     )?];
-    Ok(Some((0, vec![instructions])))
+    Ok(Some(TransactionInfo {
+        transaction_info: (0, vec![instructions]),
+        extra_info: (),
+    }))
 }
 
 pub(crate) fn resolve_mint_info(
@@ -565,7 +578,7 @@ fn command_transfer(
     recipient_is_ata_owner: bool,
     use_unchecked_instruction: bool,
     memo: Option<String>,
-) -> CommandResult {
+) -> CommandResult<()> {
     let sender = if let Some(sender) = sender {
         sender
     } else {
@@ -727,10 +740,10 @@ fn command_transfer(
     if let Some(text) = memo {
         instructions.push(spl_memo::build_memo(text.as_bytes(), &[&config.fee_payer]));
     }
-    Ok(Some((
-        minimum_balance_for_rent_exemption,
-        vec![instructions],
-    )))
+    Ok(Some(TransactionInfo {
+        transaction_info: (minimum_balance_for_rent_exemption, vec![instructions]),
+        extra_info: (),
+    }))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -743,7 +756,7 @@ fn command_burn(
     mint_decimals: Option<u8>,
     use_unchecked_instruction: bool,
     memo: Option<String>,
-) -> CommandResult {
+) -> CommandResult<()> {
     println_display(
         config,
         format!("Burn {} tokens\n  Source: {}", ui_amount, source),
@@ -775,7 +788,10 @@ fn command_burn(
     if let Some(text) = memo {
         instructions.push(spl_memo::build_memo(text.as_bytes(), &[&config.fee_payer]));
     }
-    Ok(Some((0, vec![instructions])))
+    Ok(Some(TransactionInfo {
+        transaction_info: (0, vec![instructions]),
+        extra_info: (),
+    }))
 }
 
 fn command_mint(
@@ -786,7 +802,7 @@ fn command_mint(
     mint_decimals: Option<u8>,
     mint_authority: Pubkey,
     use_unchecked_instruction: bool,
-) -> CommandResult {
+) -> CommandResult<()> {
     println_display(
         config,
         format!(
@@ -818,7 +834,10 @@ fn command_mint(
             decimals,
         )?]
     };
-    Ok(Some((0, vec![instructions])))
+    Ok(Some(TransactionInfo {
+        transaction_info: (0, vec![instructions]),
+        extra_info: (),
+    }))
 }
 
 fn command_freeze(
@@ -826,7 +845,7 @@ fn command_freeze(
     account: Pubkey,
     mint_address: Option<Pubkey>,
     freeze_authority: Pubkey,
-) -> CommandResult {
+) -> CommandResult<()> {
     let (token, _) = resolve_mint_info(config, &account, mint_address, None)?;
 
     println_display(
@@ -841,7 +860,10 @@ fn command_freeze(
         &freeze_authority,
         &config.multisigner_pubkeys,
     )?];
-    Ok(Some((0, vec![instructions])))
+    Ok(Some(TransactionInfo {
+        transaction_info: (0, vec![instructions]),
+        extra_info: (),
+    }))
 }
 
 fn command_thaw(
@@ -849,7 +871,7 @@ fn command_thaw(
     account: Pubkey,
     mint_address: Option<Pubkey>,
     freeze_authority: Pubkey,
-) -> CommandResult {
+) -> CommandResult<()> {
     let (token, _) = resolve_mint_info(config, &account, mint_address, None)?;
 
     println_display(
@@ -864,7 +886,10 @@ fn command_thaw(
         &freeze_authority,
         &config.multisigner_pubkeys,
     )?];
-    Ok(Some((0, vec![instructions])))
+    Ok(Some(TransactionInfo {
+        transaction_info: (0, vec![instructions]),
+        extra_info: (),
+    }))
 }
 
 fn command_wrap(
@@ -872,7 +897,7 @@ fn command_wrap(
     sol: f64,
     wallet_address: Pubkey,
     wrapped_sol_account: Option<Pubkey>,
-) -> CommandResult {
+) -> CommandResult<()> {
     let lamports = sol_to_lamports(sol);
 
     let instructions = if let Some(wrapped_sol_account) = wrapped_sol_account {
@@ -919,14 +944,17 @@ fn command_wrap(
     if !config.sign_only {
         check_wallet_balance(config, &wallet_address, lamports)?;
     }
-    Ok(Some((0, vec![instructions])))
+    Ok(Some(TransactionInfo {
+        transaction_info: (0, vec![instructions]),
+        extra_info: (),
+    }))
 }
 
 fn command_unwrap(
     config: &Config,
     wallet_address: Pubkey,
     address: Option<Pubkey>,
-) -> CommandResult {
+) -> CommandResult<()> {
     let use_associated_account = address.is_none();
     let address = address
         .unwrap_or_else(|| get_associated_token_address(&wallet_address, &native_mint::id()));
@@ -954,7 +982,10 @@ fn command_unwrap(
         &wallet_address,
         &config.multisigner_pubkeys,
     )?];
-    Ok(Some((0, vec![instructions])))
+    Ok(Some(TransactionInfo {
+        transaction_info: (0, vec![instructions]),
+        extra_info: (),
+    }))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -967,7 +998,7 @@ fn command_approve(
     mint_address: Option<Pubkey>,
     mint_decimals: Option<u8>,
     use_unchecked_instruction: bool,
-) -> CommandResult {
+) -> CommandResult<()> {
     println_display(
         config,
         format!(
@@ -1000,7 +1031,10 @@ fn command_approve(
             decimals,
         )?]
     };
-    Ok(Some((0, vec![instructions])))
+    Ok(Some(TransactionInfo {
+        transaction_info: (0, vec![instructions]),
+        extra_info: (),
+    }))
 }
 
 fn command_revoke(
@@ -1008,7 +1042,7 @@ fn command_revoke(
     account: Pubkey,
     owner: Pubkey,
     delegate: Option<Pubkey>,
-) -> CommandResult {
+) -> CommandResult<()> {
     let delegate = if !config.sign_only {
         let source_account = config
             .rpc_client
@@ -1042,7 +1076,10 @@ fn command_revoke(
         &owner,
         &config.multisigner_pubkeys,
     )?];
-    Ok(Some((0, vec![instructions])))
+    Ok(Some(TransactionInfo {
+        transaction_info: (0, vec![instructions]),
+        extra_info: (),
+    }))
 }
 
 fn command_close(
@@ -1050,7 +1087,7 @@ fn command_close(
     account: Pubkey,
     close_authority: Pubkey,
     recipient: Pubkey,
-) -> CommandResult {
+) -> CommandResult<()> {
     if !config.sign_only {
         let source_account = config
             .rpc_client
@@ -1084,10 +1121,13 @@ fn command_close(
         &close_authority,
         &config.multisigner_pubkeys,
     )?];
-    Ok(Some((0, vec![instructions])))
+    Ok(Some(TransactionInfo {
+        transaction_info: (0, vec![instructions]),
+        extra_info: (),
+    }))
 }
 
-fn command_balance(config: &Config, address: Pubkey) -> CommandResult {
+fn command_balance(config: &Config, address: Pubkey) -> CommandResult<()> {
     let balance = config
         .rpc_client
         .get_token_account_balance(&address)
@@ -1101,7 +1141,7 @@ fn command_balance(config: &Config, address: Pubkey) -> CommandResult {
     Ok(None)
 }
 
-fn command_supply(config: &Config, address: Pubkey) -> CommandResult {
+fn command_supply(config: &Config, address: Pubkey) -> CommandResult<()> {
     let supply = config.rpc_client.get_token_supply(&address)?;
     let cli_token_amount = CliTokenAmount { amount: supply };
     println!(
@@ -1112,7 +1152,7 @@ fn command_supply(config: &Config, address: Pubkey) -> CommandResult {
     Ok(None)
 }
 
-fn command_accounts(config: &Config, token: Option<Pubkey>, owner: Pubkey) -> CommandResult {
+fn command_accounts(config: &Config, token: Option<Pubkey>, owner: Pubkey) -> CommandResult<()> {
     if let Some(token) = token {
         validate_mint(config, token)?;
     }
@@ -1149,7 +1189,7 @@ fn command_accounts(config: &Config, token: Option<Pubkey>, owner: Pubkey) -> Co
     Ok(None)
 }
 
-fn command_address(config: &Config, token: Option<Pubkey>, owner: Pubkey) -> CommandResult {
+fn command_address(config: &Config, token: Option<Pubkey>, owner: Pubkey) -> CommandResult<()> {
     let mut cli_address = CliWalletAddress {
         wallet_address: owner.to_string(),
         ..CliWalletAddress::default()
@@ -1163,7 +1203,7 @@ fn command_address(config: &Config, token: Option<Pubkey>, owner: Pubkey) -> Com
     Ok(None)
 }
 
-fn command_account_info(config: &Config, address: Pubkey) -> CommandResult {
+fn command_account_info(config: &Config, address: Pubkey) -> CommandResult<()> {
     let account = config
         .rpc_client
         .get_token_account(&address)
@@ -1189,7 +1229,7 @@ fn get_multisig(config: &Config, address: &Pubkey) -> Result<Multisig, Error> {
     Multisig::unpack(&account.data).map_err(|e| e.into())
 }
 
-fn command_multisig(config: &Config, address: Pubkey) -> CommandResult {
+fn command_multisig(config: &Config, address: Pubkey) -> CommandResult<()> {
     let multisig = get_multisig(config, &address)?;
     let n = multisig.n as usize;
     assert!(n <= multisig.signers.len());
@@ -1218,7 +1258,7 @@ fn command_gc(
     config: &Config,
     owner: Pubkey,
     close_empty_associated_accounts: bool,
-) -> CommandResult {
+) -> CommandResult<()> {
     println_display(config, "Fetching token accounts".to_string());
     let accounts = config
         .rpc_client
@@ -1354,12 +1394,18 @@ fn command_gc(
         }
     }
 
-    Ok(Some((lamports_needed, instructions)))
+    Ok(Some(TransactionInfo {
+        transaction_info: (lamports_needed, instructions),
+        extra_info: (),
+    }))
 }
 
-fn command_sync_native(native_account_address: Pubkey) -> CommandResult {
+fn command_sync_native(native_account_address: Pubkey) -> CommandResult<()> {
     let instructions = vec![sync_native(&spl_token::id(), &native_account_address)?];
-    Ok(Some((0, vec![instructions])))
+    Ok(Some(TransactionInfo {
+        transaction_info: (0, vec![instructions]),
+        extra_info: (),
+    }))
 }
 
 struct SignOnlyNeedsFullMintSpec {}
@@ -2655,7 +2701,11 @@ fn main() {
         _ => unreachable!(),
     }
     .and_then(|transaction_info| {
-        if let Some((minimum_balance_for_rent_exemption, instruction_batches)) = transaction_info {
+        if let Some(TransactionInfo {
+            transaction_info: (minimum_balance_for_rent_exemption, instruction_batches),
+            extra_info,
+        }) = transaction_info
+        {
             let fee_payer = Some(&config.fee_payer);
             let signer_info = CliSignerInfo {
                 signers: bulk_signers,

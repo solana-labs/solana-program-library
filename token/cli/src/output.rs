@@ -2,7 +2,9 @@ use crate::{config::Config, sort::UnsupportedAccount};
 use console::Emoji;
 use serde::{Deserialize, Serialize, Serializer};
 use solana_account_decoder::parse_token::{UiAccountState, UiTokenAccount, UiTokenAmount};
-use solana_cli_output::{display::writeln_name_value, OutputFormat, QuietDisplay, VerboseDisplay};
+use solana_cli_output::{
+    display::writeln_name_value, CliSignature, OutputFormat, QuietDisplay, VerboseDisplay,
+};
 use std::fmt;
 
 static WARNING: Emoji = Emoji("⚠️", "!");
@@ -14,6 +16,21 @@ pub(crate) fn println_display(config: &Config, message: String) {
         }
         _ => {}
     }
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CliCreateTokenOutput {
+    pub(crate) mint: CliMint,
+    #[serde(flatten)]
+    pub(crate) signature: CliSignature,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CliMint {
+    pub(crate) address: String,
+    pub(crate) decimals: u8,
 }
 
 #[derive(Serialize, Deserialize)]
