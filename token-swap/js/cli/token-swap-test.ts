@@ -1133,7 +1133,7 @@ function tradingTokensToPoolTokens(
 export async function swapNative(): Promise<void> {
   console.log('Creating swap token b account');
   let userAccountA = await mintB.createAccount(owner.publicKey);
-  await mintB.mintTo(userAccountA, owner, [], SWAP_AMOUNT_IN * 2);
+  await mintB.mintTo(userAccountA, owner, [], SWAP_AMOUNT_IN * 3);
 
   {
     const userTransferAuthority = Keypair.generate();
@@ -1183,7 +1183,6 @@ export async function swapNative(): Promise<void> {
   }
 
   //now do it again with the user transfer auth owning the wsol output
-
   {
     const userTransferAuthority = Keypair.generate();
     await mintB.approve(
@@ -1229,6 +1228,55 @@ export async function swapNative(): Promise<void> {
     //verify native sol account closed
     let nativeAccount = await connection.getAccountInfo(userAccountNative);
     assert(nativeAccount == null, 'wsol account not closed');
+  }
+
+  //now do it again with the user transfer auth owning the wsol output
+  //but flags specifying NOT to close
+  {
+    await mintB.approve(
+      userAccountA,
+      owner.publicKey,
+      owner,
+      [],
+      SWAP_AMOUNT_IN,
+    );
+    console.log('Creating swap token native account');
+    let userAccountNative = await Token.createWrappedNativeAccount(
+      connection,
+      TOKEN_PROGRAM_ID,
+      owner.publicKey,
+      owner,
+      currentSwapTokenC,
+    );
+
+    let balance = await connection.getBalance(owner.publicKey);
+    console.log('balance', balance);
+
+    console.log('Swapping');
+    await tokenSwap3.swap(
+      userAccountA,
+      tokenAccountANativeSwap,
+      tokenAccountBNativeSwap,
+      userAccountNative,
+      owner,
+      owner.publicKey,
+      SWAP_AMOUNT_IN,
+      0,
+      0,
+    );
+
+    await sleep(500);
+
+    let newBalance = await connection.getBalance(owner.publicKey);
+    console.log('newBalance', newBalance);
+    let nativeSwapAmount = newBalance - balance;
+    console.log('nativeSwapAmount', nativeSwapAmount);
+    //not testing the math, just the functionality
+    assert(nativeSwapAmount < 0, 'lamports of refunder increased');
+
+    //verify native sol account not closed
+    let nativeAccount = await connection.getAccountInfo(userAccountNative);
+    assert(nativeAccount != null, 'wsol account closed');
   }
 }
 
