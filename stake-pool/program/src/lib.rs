@@ -6,7 +6,6 @@ pub mod big_vec;
 pub mod error;
 pub mod instruction;
 pub mod processor;
-pub mod stake_program;
 pub mod state;
 
 #[cfg(not(feature = "no-entrypoint"))]
@@ -15,8 +14,8 @@ pub mod entrypoint;
 // Export current sdk types for downstream users building with a different sdk version
 pub use solana_program;
 use {
-    crate::{stake_program::Meta, state::Fee},
-    solana_program::{native_token::LAMPORTS_PER_SOL, pubkey::Pubkey},
+    crate::state::Fee,
+    solana_program::{native_token::LAMPORTS_PER_SOL, pubkey::Pubkey, stake::state::Meta},
 };
 
 /// Seed for deposit authority seed
@@ -30,7 +29,7 @@ const TRANSIENT_STAKE_SEED_PREFIX: &[u8] = b"transient";
 
 /// Minimum amount of staked SOL required in a validator stake account to allow
 /// for merges without a mismatch on credits observed
-pub const MINIMUM_ACTIVE_STAKE: u64 = LAMPORTS_PER_SOL;
+pub const MINIMUM_ACTIVE_STAKE: u64 = LAMPORTS_PER_SOL / 1_000;
 
 /// Maximum amount of validator stake accounts to update per
 /// `UpdateValidatorListBalance` instruction, based on compute limits
@@ -123,4 +122,4 @@ pub fn find_transient_stake_program_address(
     )
 }
 
-solana_program::declare_id!("SPoo1xuN9wGpxNjGnPNbRPtpQ7mHgKM8d9BeFC549Jy");
+solana_program::declare_id!("SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy");

@@ -1,6 +1,7 @@
 #![deny(missing_docs)]
 //! A Governance program for the Solana blockchain.
 
+pub mod addins;
 pub mod entrypoint;
 pub mod error;
 pub mod instruction;

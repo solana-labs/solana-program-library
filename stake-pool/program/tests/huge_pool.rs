@@ -3,12 +3,11 @@
 mod helpers;
 
 use {
-    bincode,
     borsh::BorshSerialize,
     helpers::*,
     solana_program::{
         borsh::try_from_slice_unchecked, program_option::COption, program_pack::Pack,
-        pubkey::Pubkey,
+        pubkey::Pubkey, stake,
     },
     solana_program_test::*,
     solana_sdk::{
@@ -25,7 +24,6 @@ use {
         find_stake_program_address, find_transient_stake_program_address,
         find_withdraw_authority_program_address, id,
         instruction::{self, PreferredValidatorType},
-        stake_program,
         state::{AccountType, Fee, StakePool, StakeStatus, ValidatorList, ValidatorStakeInfo},
         MAX_VALIDATORS_TO_UPDATE, MINIMUM_ACTIVE_STAKE,
     },
@@ -70,21 +68,26 @@ async fn setup(
         pool_mint: stake_pool_accounts.pool_mint.pubkey(),
         manager_fee_account: stake_pool_accounts.pool_fee_account.pubkey(),
         token_program_id: spl_token::id(),
-        total_stake_lamports: 0,
+        total_lamports: 0,
         pool_token_supply: 0,
         last_update_epoch: 0,
-        lockup: stake_program::Lockup::default(),
-        fee: stake_pool_accounts.fee,
+        lockup: stake::state::Lockup::default(),
+        epoch_fee: stake_pool_accounts.epoch_fee,
         next_epoch_fee: None,
         preferred_deposit_validator_vote_address: None,
         preferred_withdraw_validator_vote_address: None,
         stake_deposit_fee: Fee::default(),
         sol_deposit_fee: Fee::default(),
-        withdrawal_fee: Fee::default(),
-        next_withdrawal_fee: None,
+        stake_withdrawal_fee: Fee::default(),
+        next_stake_withdrawal_fee: None,
         stake_referral_fee: 0,
         sol_referral_fee: 0,
         sol_deposit_authority: None,
+        sol_withdraw_authority: None,
+        sol_withdrawal_fee: Fee::default(),
+        next_sol_withdrawal_fee: None,
+        last_epoch_pool_token_supply: 0,
+        last_epoch_total_lamports: 0,
     };
 
     let mut validator_list = ValidatorList::new(max_validators);
@@ -94,13 +97,13 @@ async fn setup(
     let authorized_withdrawer = Pubkey::new_unique();
     let commission = 1;
 
-    let meta = stake_program::Meta {
+    let meta = stake::state::Meta {
         rent_exempt_reserve: STAKE_ACCOUNT_RENT_EXEMPTION,
-        authorized: stake_program::Authorized {
+        authorized: stake::state::Authorized {
             staker: stake_pool_accounts.withdraw_authority,
             withdrawer: stake_pool_accounts.withdraw_authority,
         },
-        lockup: stake_program::Lockup::default(),
+        lockup: stake::state::Lockup::default(),
     };
 
     for _ in 0..max_validators {
@@ -127,13 +130,11 @@ async fn setup(
         program_test.add_account(vote_pubkey, vote_account);
     }
 
-    for i in 0..num_validators as usize {
-        let vote_account_address = vote_account_pubkeys[i];
-
+    for vote_account_address in vote_account_pubkeys.iter().take(num_validators as usize) {
         // create validator stake account
-        let stake = stake_program::Stake {
-            delegation: stake_program::Delegation {
-                voter_pubkey: vote_account_address,
+        let stake = stake::state::Stake {
+            delegation: stake::state::Delegation {
+                voter_pubkey: *vote_account_address,
                 stake: stake_amount,
                 activation_epoch: 0,
                 deactivation_epoch: u64::MAX,
@@ -144,23 +145,23 @@ async fn setup(
 
         let stake_account = Account::create(
             stake_amount + STAKE_ACCOUNT_RENT_EXEMPTION,
-            bincode::serialize::<stake_program::StakeState>(&stake_program::StakeState::Stake(
+            bincode::serialize::<stake::state::StakeState>(&stake::state::StakeState::Stake(
                 meta, stake,
             ))
             .unwrap(),
-            stake_program::id(),
+            stake::program::id(),
             false,
             Epoch::default(),
         );
 
         let (stake_address, _) =
-            find_stake_program_address(&id(), &vote_account_address, &stake_pool_pubkey);
+            find_stake_program_address(&id(), vote_account_address, &stake_pool_pubkey);
         program_test.add_account(stake_address, stake_account);
         let active_stake_lamports = stake_amount - MINIMUM_ACTIVE_STAKE;
         // add to validator list
         validator_list.validators.push(ValidatorStakeInfo {
             status: StakeStatus::Active,
-            vote_account_address,
+            vote_account_address: *vote_account_address,
             active_stake_lamports,
             transient_stake_lamports: 0,
             last_update_epoch: 0,
@@ -168,7 +169,7 @@ async fn setup(
             transient_seed_suffix_end: 0,
         });
 
-        stake_pool.total_stake_lamports += active_stake_lamports;
+        stake_pool.total_lamports += active_stake_lamports;
         stake_pool.pool_token_supply += active_stake_lamports;
     }
 
@@ -181,11 +182,11 @@ async fn setup(
 
     let reserve_stake_account = Account::create(
         stake_amount + STAKE_ACCOUNT_RENT_EXEMPTION,
-        bincode::serialize::<stake_program::StakeState>(&stake_program::StakeState::Initialized(
+        bincode::serialize::<stake::state::StakeState>(&stake::state::StakeState::Initialized(
             meta,
         ))
         .unwrap(),
-        stake_program::id(),
+        stake::program::id(),
         false,
         Epoch::default(),
     );
@@ -264,9 +265,9 @@ async fn setup(
     // make stake account
     let user = Keypair::new();
     let deposit_stake = Keypair::new();
-    let lockup = stake_program::Lockup::default();
+    let lockup = stake::state::Lockup::default();
 
-    let authorized = stake_program::Authorized {
+    let authorized = stake::state::Authorized {
         staker: user.pubkey(),
         withdrawer: user.pubkey(),
     };
@@ -404,6 +405,7 @@ async fn remove_validator_from_pool() {
     );
 
     let new_authority = Pubkey::new_unique();
+    let destination_stake = Keypair::new();
     let error = stake_pool_accounts
         .remove_validator_from_pool(
             &mut context.banks_client,
@@ -412,6 +414,7 @@ async fn remove_validator_from_pool() {
             &new_authority,
             &stake_address,
             &transient_stake_address,
+            &destination_stake,
         )
         .await;
     assert!(error.is_none());
@@ -431,6 +434,7 @@ async fn remove_validator_from_pool() {
     );
 
     let new_authority = Pubkey::new_unique();
+    let destination_stake = Keypair::new();
     let error = stake_pool_accounts
         .remove_validator_from_pool(
             &mut context.banks_client,
@@ -439,6 +443,7 @@ async fn remove_validator_from_pool() {
             &new_authority,
             &stake_address,
             &transient_stake_address,
+            &destination_stake,
         )
         .await;
     assert!(error.is_none());
@@ -455,6 +460,7 @@ async fn remove_validator_from_pool() {
     );
 
     let new_authority = Pubkey::new_unique();
+    let destination_stake = Keypair::new();
     let error = stake_pool_accounts
         .remove_validator_from_pool(
             &mut context.banks_client,
@@ -463,6 +469,7 @@ async fn remove_validator_from_pool() {
             &new_authority,
             &stake_address,
             &transient_stake_address,
+            &destination_stake,
         )
         .await;
     assert!(error.is_none());
@@ -558,23 +565,13 @@ async fn add_validator_to_pool() {
     let (stake_address, _) =
         find_stake_program_address(&id(), &test_vote_address, &stake_pool_pubkey);
 
-    create_validator_stake_account(
-        &mut context.banks_client,
-        &context.payer,
-        &context.last_blockhash,
-        &stake_pool_pubkey,
-        &stake_pool_accounts.staker,
-        &stake_address,
-        &test_vote_address,
-    )
-    .await;
-
     let error = stake_pool_accounts
         .add_validator_to_pool(
             &mut context.banks_client,
             &context.payer,
             &context.last_blockhash,
             &stake_address,
+            &test_vote_address,
         )
         .await;
     assert!(error.is_none());
@@ -662,7 +659,7 @@ async fn set_preferred() {
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
 
     assert_eq!(
         stake_pool.preferred_deposit_validator_vote_address,

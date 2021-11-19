@@ -1,6 +1,5 @@
 //! Program state processor
 
-use borsh::BorshSerialize;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     clock::Clock,
@@ -14,7 +13,7 @@ use solana_program::{
 use crate::state::{
     enums::{InstructionExecutionStatus, ProposalState},
     governance::get_governance_data,
-    proposal::get_proposal_data_for_governance,
+    proposal::{get_proposal_data_for_governance, OptionVoteResult},
     proposal_instruction::get_proposal_instruction_data_for_proposal,
 };
 
@@ -65,16 +64,18 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
         proposal_data.state = ProposalState::Executing;
     }
 
-    proposal_data.instructions_executed_count = proposal_data
-        .instructions_executed_count
-        .checked_add(1)
-        .unwrap();
+    let mut option = &mut proposal_data.options[proposal_instruction_data.option_index as usize];
+    option.instructions_executed_count = option.instructions_executed_count.checked_add(1).unwrap();
 
     // Checking for Executing and ExecutingWithErrors states because instruction can still be executed after being flagged with error
     // The check for instructions_executed_count ensures Proposal can't be transitioned to Completed state from ExecutingWithErrors
     if (proposal_data.state == ProposalState::Executing
         || proposal_data.state == ProposalState::ExecutingWithErrors)
-        && proposal_data.instructions_executed_count == proposal_data.instructions_count
+        && proposal_data
+            .options
+            .iter()
+            .filter(|o| o.vote_result == OptionVoteResult::Succeeded)
+            .all(|o| o.instructions_executed_count == o.instructions_count)
     {
         proposal_data.closed_at = Some(clock.unix_timestamp);
         proposal_data.state = ProposalState::Completed;

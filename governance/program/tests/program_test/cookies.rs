@@ -1,12 +1,15 @@
 use solana_program::{instruction::Instruction, pubkey::Pubkey};
 use solana_sdk::signature::Keypair;
-use spl_governance::state::{
-    governance::Governance, proposal::Proposal, proposal_instruction::ProposalInstruction,
-    realm::Realm, signatory_record::SignatoryRecord, token_owner_record::TokenOwnerRecord,
-    vote_record::VoteRecord,
+use spl_governance::{
+    addins::voter_weight::VoterWeightRecord,
+    state::{
+        governance::Governance, proposal::ProposalV2, proposal_instruction::ProposalInstructionV2,
+        realm::Realm, realm_config::RealmConfigAccount, signatory_record::SignatoryRecord,
+        token_owner_record::TokenOwnerRecord, vote_record::VoteRecordV2,
+    },
 };
 
-use crate::tools::clone_keypair;
+use spl_governance_test_sdk::tools::clone_keypair;
 
 pub trait AccountCookie {
     fn get_address(&self) -> Pubkey;
@@ -27,6 +30,14 @@ pub struct RealmCookie {
     pub council_token_holding_account: Option<Pubkey>,
 
     pub realm_authority: Option<Keypair>,
+
+    pub realm_config: Option<RealmConfigCookie>,
+}
+
+#[derive(Debug)]
+pub struct RealmConfigCookie {
+    pub address: Pubkey,
+    pub account: RealmConfigAccount,
 }
 
 #[derive(Debug)]
@@ -44,6 +55,8 @@ pub struct TokenOwnerRecordCookie {
     pub governance_authority: Option<Keypair>,
 
     pub governance_delegate: Keypair,
+
+    pub voter_weight_record: Option<VoterWeightRecordCookie>,
 }
 
 impl TokenOwnerRecordCookie {
@@ -121,7 +134,7 @@ pub struct GovernanceCookie {
 #[derive(Debug)]
 pub struct ProposalCookie {
     pub address: Pubkey,
-    pub account: Proposal,
+    pub account: ProposalV2,
 
     pub proposal_owner: Pubkey,
 }
@@ -136,17 +149,18 @@ pub struct SignatoryRecordCookie {
 #[derive(Debug)]
 pub struct VoteRecordCookie {
     pub address: Pubkey,
-    pub account: VoteRecord,
+    pub account: VoteRecordV2,
 }
 
 #[derive(Debug)]
 pub struct ProposalInstructionCookie {
     pub address: Pubkey,
-    pub account: ProposalInstruction,
+    pub account: ProposalInstructionV2,
     pub instruction: Instruction,
 }
 
-#[derive(Debug)]
-pub struct TokenAccountCookie {
+#[derive(Debug, Clone)]
+pub struct VoterWeightRecordCookie {
     pub address: Pubkey,
+    pub account: VoterWeightRecord,
 }

@@ -82,8 +82,8 @@ async fn success() {
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
-    assert_eq!(pre_balance, stake_pool.total_stake_lamports);
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
+    assert_eq!(pre_balance, stake_pool.total_lamports);
 
     let pre_token_supply = get_token_supply(
         &mut context.banks_client,
@@ -107,7 +107,11 @@ async fn success() {
     }
 
     // Update epoch
-    context.warp_to_slot(50_000).unwrap();
+    let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
+    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
+    context
+        .warp_to_slot(first_normal_slot + slots_per_epoch)
+        .unwrap();
 
     // Update list and pool
     let error = stake_pool_accounts
@@ -137,8 +141,8 @@ async fn success() {
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
-    assert_eq!(post_balance, stake_pool.total_stake_lamports);
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
+    assert_eq!(post_balance, stake_pool.total_lamports);
 
     let post_fee = get_token_balance(
         &mut context.banks_client,
@@ -153,8 +157,8 @@ async fn success() {
     let actual_fee = post_fee - pre_fee;
     assert_eq!(pool_token_supply - pre_token_supply, actual_fee);
 
-    let expected_fee_lamports =
-        (post_balance - pre_balance) * stake_pool.fee.numerator / stake_pool.fee.denominator;
+    let expected_fee_lamports = (post_balance - pre_balance) * stake_pool.epoch_fee.numerator
+        / stake_pool.epoch_fee.denominator;
     let actual_fee_lamports = stake_pool.calc_pool_tokens_for_deposit(actual_fee).unwrap();
     assert_eq!(actual_fee_lamports, expected_fee_lamports);
 
@@ -162,6 +166,8 @@ async fn success() {
     assert_eq!(expected_fee, actual_fee);
 
     assert_eq!(pool_token_supply, stake_pool.pool_token_supply);
+    assert_eq!(pre_token_supply, stake_pool.last_epoch_pool_token_supply);
+    assert_eq!(pre_balance, stake_pool.last_epoch_total_lamports);
 }
 
 #[tokio::test]
@@ -179,8 +185,8 @@ async fn success_ignoring_extra_lamports() {
         &stake_pool_accounts.stake_pool.pubkey(),
     )
     .await;
-    let stake_pool = try_from_slice_unchecked::<StakePool>(&stake_pool.data.as_slice()).unwrap();
-    assert_eq!(pre_balance, stake_pool.total_stake_lamports);
+    let stake_pool = try_from_slice_unchecked::<StakePool>(stake_pool.data.as_slice()).unwrap();
+    assert_eq!(pre_balance, stake_pool.total_lamports);
 
     let pre_token_supply = get_token_supply(
         &mut context.banks_client,
@@ -211,7 +217,11 @@ async fn success_ignoring_extra_lamports() {
     }
 
     // Update epoch
-    context.warp_to_slot(50_000).unwrap();
+    let first_normal_slot = context.genesis_config().epoch_schedule.first_normal_slot;
+    let slots_per_epoch = context.genesis_config().epoch_schedule.slots_per_epoch;
+    context
+        .warp_to_slot(first_normal_slot + slots_per_epoch)
+        .unwrap();
 
     // Update list and pool
     let error = stake_pool_accounts

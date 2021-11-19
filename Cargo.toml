@@ -10,7 +10,11 @@ members = [
   "examples/rust/transfer-lamports",
   "feature-proposal/program",
   "feature-proposal/cli",
+  "governance/voter-weight-addin/program",
   "governance/program",
+  "governance/test-sdk",
+  "governance/tools",
+  "governance/chat/program",
   "libraries/math",
   "memo/program",
   "name-service/program",
@@ -18,12 +22,14 @@ members = [
   "shared-memory/program",
   "stake-pool/cli",
   "stake-pool/program",
+  "stateless-asks/program",
   "token-lending/cli",
   "token-lending/program",
   "token-swap/program",
   "token-swap/program/fuzz",
   "token/cli",
   "token/program",
+  "token/program-2022",
   "token/rust",
   "utils/cgen",
   "utils/test-client",
@@ -32,7 +38,6 @@ members = [
 exclude = [
   "themis/client_ristretto",
   "themis/program_ristretto",
-  "token/perf-monitor", # TODO: Rework perf-monitor to use solana-program-test, avoiding the need to link directly with the BPF VM
 ]
 
 [profile.dev]

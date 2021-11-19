@@ -1,3 +1,4 @@
+#![allow(deprecated)] // TODO: Remove when SPL upgrades to Solana 1.8
 use clap::{
     crate_description, crate_name, crate_version, value_t, value_t_or_exit, App, AppSettings, Arg,
     ArgMatches, SubCommand,
@@ -19,7 +20,9 @@ use solana_clap_utils::{
     offline::{self, *},
     ArgConstant,
 };
-use solana_cli_output::{return_signers, CliSignature, OutputFormat};
+use solana_cli_output::{
+    return_signers_with_config, CliSignature, OutputFormat, ReturnSignersConfig,
+};
 use solana_client::{
     blockhash_query::BlockhashQuery, rpc_client::RpcClient, rpc_request::TokenAccountsFilter,
 };
@@ -53,6 +56,11 @@ use output::*;
 
 mod sort;
 use sort::sort_and_parse_token_accounts;
+
+mod rpc_client_utils;
+
+mod bench;
+use bench::*;
 
 pub const OWNER_ADDRESS_ARG: ArgConstant<'static> = ArgConstant {
     name: "owner",
@@ -183,7 +191,7 @@ fn is_multisig_minimum_signers(string: String) -> Result<(), String> {
     }
 }
 
-type Error = Box<dyn std::error::Error>;
+pub(crate) type Error = Box<dyn std::error::Error>;
 type CommandResult = Result<Option<(u64, Vec<Vec<Instruction>>)>, Error>;
 
 fn new_throwaway_signer() -> (Box<dyn Signer>, Pubkey) {
@@ -208,7 +216,7 @@ fn get_signer(
     })
 }
 
-fn check_fee_payer_balance(config: &Config, required_balance: u64) -> Result<(), Error> {
+pub(crate) fn check_fee_payer_balance(config: &Config, required_balance: u64) -> Result<(), Error> {
     let balance = config.rpc_client.get_balance(&config.fee_payer)?;
     if balance < required_balance {
         Err(format!(
@@ -505,7 +513,7 @@ fn command_authorize(
     Ok(Some((0, vec![instructions])))
 }
 
-fn resolve_mint_info(
+pub(crate) fn resolve_mint_info(
     config: &Config,
     token_account: &Pubkey,
     mint_address: Option<Pubkey>,
@@ -1206,7 +1214,11 @@ fn command_multisig(config: &Config, address: Pubkey) -> CommandResult {
     Ok(None)
 }
 
-fn command_gc(config: &Config, owner: Pubkey) -> CommandResult {
+fn command_gc(
+    config: &Config,
+    owner: Pubkey,
+    close_empty_associated_accounts: bool,
+) -> CommandResult {
     println_display(config, "Fetching token accounts".to_string());
     let accounts = config
         .rpc_client
@@ -1287,9 +1299,18 @@ fn command_gc(config: &Config, owner: Pubkey) -> CommandResult {
         }
 
         for (address, (amount, decimals, frozen, close_authority)) in accounts {
-            if address == associated_token_account {
-                // leave the associated token account alone
-                continue;
+            match (
+                address == associated_token_account,
+                close_empty_associated_accounts,
+                total_balance > 0,
+            ) {
+                (true, _, true) => continue, // don't ever close associated token account with amount
+                (true, false, _) => continue, // don't close associated token account if close_empty_associated_accounts isn't set
+                (true, true, false) => println_display(
+                    config,
+                    format!("Closing Account {}", associated_token_account),
+                ),
+                _ => {}
             }
 
             if frozen {
@@ -1299,8 +1320,12 @@ fn command_gc(config: &Config, owner: Pubkey) -> CommandResult {
 
             let mut account_instructions = vec![];
 
-            // Transfer the account balance into the associated token account
+            // Sanity check!
+            // we shouldn't ever be here, but if we are here, abort!
+            assert!(amount == 0 || address != associated_token_account);
+
             if amount > 0 {
+                // Transfer the account balance into the associated token account
                 account_instructions.push(transfer_checked(
                     &spl_token::id(),
                     &address,
@@ -1426,6 +1451,7 @@ fn main() {
                 .hidden(true)
                 .help("Use unchecked instruction if appropriate. Supports transfer, burn, mint, and approve."),
         )
+        .bench_subcommand()
         .subcommand(SubCommand::with_name("create-token").about("Create a new token")
                 .arg(
                     Arg::with_name("token_keypair")
@@ -1860,7 +1886,7 @@ fn main() {
                     Arg::with_name("create_aux_account")
                         .takes_value(false)
                         .long("create-aux-account")
-                        .help("Wrap SOL in an auxillary account instead of associated token account"),
+                        .help("Wrap SOL in an auxiliary account instead of associated token account"),
                 )
                 .nonce_args(true)
                 .offline_args(),
@@ -2119,6 +2145,12 @@ fn main() {
             SubCommand::with_name("gc")
                 .about("Cleanup unnecessary token accounts")
                 .arg(owner_keypair_arg())
+                .arg(
+                    Arg::with_name("close_empty_associated_accounts")
+                    .long("close-empty-associated-accounts")
+                    .takes_value(false)
+                    .help("close all empty associated token accounts (to get SOL back)")
+                )
         )
         .subcommand(
             SubCommand::with_name("sync-native")
@@ -2161,6 +2193,7 @@ fn main() {
                 .value_of("json_rpc_url")
                 .unwrap_or(&cli_config.json_rpc_url),
         );
+        let websocket_url = solana_cli_config::Config::compute_websocket_url(&json_rpc_url);
 
         let (signer, fee_payer) = signer_from_path(
             matches,
@@ -2225,6 +2258,7 @@ fn main() {
 
         let blockhash_query = BlockhashQuery::new_from_matches(matches);
         let sign_only = matches.is_present(SIGN_ONLY_ARG.name);
+        let dump_transaction_message = matches.is_present(DUMP_TRANSACTION_MESSAGE.name);
 
         let multisig_signers = signers_of(matches, MULTISIG_SIGNER_ARG.name, &mut wallet_manager)
             .unwrap_or_else(|e| {
@@ -2240,7 +2274,11 @@ fn main() {
         let multisigner_pubkeys = multisigner_ids.iter().collect::<Vec<_>>();
 
         Config {
-            rpc_client: RpcClient::new_with_commitment(json_rpc_url, CommitmentConfig::confirmed()),
+            rpc_client: Arc::new(RpcClient::new_with_commitment(
+                json_rpc_url,
+                CommitmentConfig::confirmed(),
+            )),
+            websocket_url,
             output_format,
             fee_payer,
             default_keypair_path: cli_config.keypair_path,
@@ -2248,6 +2286,7 @@ fn main() {
             nonce_authority,
             blockhash_query,
             sign_only,
+            dump_transaction_message,
             multisigner_pubkeys,
         }
     };
@@ -2255,6 +2294,13 @@ fn main() {
     solana_logger::setup_with_default("solana=info");
 
     let _ = match (sub_command, sub_matches) {
+        ("bench", Some(arg_matches)) => bench_process_command(
+            arg_matches,
+            &config,
+            std::mem::take(&mut bulk_signers),
+            &mut wallet_manager,
+        )
+        .map(|_| None),
         ("create-token", Some(arg_matches)) => {
             let decimals = value_t_or_exit!(arg_matches, "decimals", u8);
             let mint_authority =
@@ -2586,11 +2632,15 @@ fn main() {
                 }
                 _ => {}
             }
+
+            let close_empty_associated_accounts =
+                matches.is_present("close_empty_associated_accounts");
+
             let (owner_signer, owner_address) =
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
             bulk_signers.push(owner_signer);
 
-            command_gc(&config, owner_address)
+            command_gc(&config, owner_address, close_empty_associated_accounts)
         }
         ("sync-native", Some(arg_matches)) => {
             let address = config.associated_token_address_for_token_or_override(
@@ -2645,7 +2695,16 @@ fn main() {
 
                 if config.sign_only {
                     transaction.try_partial_sign(&signers, recent_blockhash)?;
-                    println!("{}", return_signers(&transaction, &config.output_format)?);
+                    println!(
+                        "{}",
+                        return_signers_with_config(
+                            &transaction,
+                            &config.output_format,
+                            &ReturnSignersConfig {
+                                dump_transaction_message: config.dump_transaction_message,
+                            }
+                        )?
+                    );
                 } else {
                     transaction.try_sign(&signers, recent_blockhash)?;
                     let signature = if no_wait {

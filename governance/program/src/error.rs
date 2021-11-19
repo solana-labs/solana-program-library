@@ -162,20 +162,6 @@ pub enum GovernanceError {
     #[error("Invalid Signatory Mint")]
     InvalidSignatoryMint,
 
-    /// ---- Account Tools Errors ----
-
-    /// Invalid account owner
-    #[error("Invalid account owner")]
-    InvalidAccountOwner,
-
-    /// Account doesn't exist
-    #[error("Account doesn't exist")]
-    AccountDoesNotExist,
-
-    /// Invalid Account type
-    #[error("Invalid Account type")]
-    InvalidAccountType,
-
     /// Proposal does not belong to the given Governance
     #[error("Proposal does not belong to the given Governance")]
     InvalidGovernanceForProposal,
@@ -323,6 +309,58 @@ pub enum GovernanceError {
     /// All proposals must be finalized to withdraw governing tokens
     #[error("All proposals must be finalized to withdraw governing tokens")]
     AllProposalsMustBeFinalisedToWithdrawGoverningTokens,
+
+    /// Invalid VoterWeightRecord for Realm
+    #[error("Invalid VoterWeightRecord for Realm")]
+    InvalidVoterWeightRecordForRealm,
+
+    /// Invalid VoterWeightRecord for GoverningTokenMint
+    #[error("Invalid VoterWeightRecord for GoverningTokenMint")]
+    InvalidVoterWeightRecordForGoverningTokenMint,
+
+    /// Invalid VoterWeightRecord for TokenOwner
+    #[error("Invalid VoterWeightRecord for TokenOwner")]
+    InvalidVoterWeightRecordForTokenOwner,
+
+    /// VoterWeightRecord expired
+    #[error("VoterWeightRecord expired")]
+    VoterWeightRecordExpired,
+
+    /// Invalid RealmConfig for Realm
+    #[error("Invalid RealmConfig for Realm")]
+    InvalidRealmConfigForRealm,
+
+    /// TokenOwnerRecord already exists
+    #[error("TokenOwnerRecord already exists")]
+    TokenOwnerRecordAlreadyExists,
+
+    /// Governing token deposits not allowed
+    #[error("Governing token deposits not allowed")]
+    GoverningTokenDepositsNotAllowed,
+
+    /// Invalid vote choice weight percentage
+    #[error("Invalid vote choice weight percentage")]
+    InvalidVoteChoiceWeightPercentage,
+
+    /// Vote type not supported
+    #[error("Vote type not supported")]
+    VoteTypeNotSupported,
+
+    /// InvalidProposalOptions
+    #[error("Invalid proposal options")]
+    InvalidProposalOptions,
+
+    /// Proposal is not not executable
+    #[error("Proposal is not not executable")]
+    ProposalIsNotExecutable,
+
+    /// Invalid vote
+    #[error("Invalid vote")]
+    InvalidVote,
+
+    /// Cannot execute defeated option
+    #[error("Cannot execute defeated option")]
+    CannotExecuteDefeatedOption,
 }
 
 impl PrintProgramError for GovernanceError {
