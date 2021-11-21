@@ -2,12 +2,50 @@ use crate::{config::Config, sort::UnsupportedAccount};
 use console::Emoji;
 use serde::{Deserialize, Serialize, Serializer};
 use solana_account_decoder::parse_token::{UiAccountState, UiTokenAccount, UiTokenAmount};
-use solana_cli_output::{
-    display::writeln_name_value, CliSignature, OutputFormat, QuietDisplay, VerboseDisplay,
-};
-use std::fmt;
+use solana_cli_output::{display::writeln_name_value, OutputFormat, QuietDisplay, VerboseDisplay};
+use std::fmt::{self, Display};
+
+pub(crate) trait Output: Serialize + fmt::Display + QuietDisplay + VerboseDisplay {}
 
 static WARNING: Emoji = Emoji("⚠️", "!");
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CommandOutput<T>
+where
+    T: Serialize + Display + QuietDisplay + VerboseDisplay,
+{
+    pub(crate) command_name: String,
+    pub(crate) data: T,
+}
+
+impl<T> Display for CommandOutput<T>
+where
+    T: Serialize + Display + QuietDisplay + VerboseDisplay,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        Display::fmt(&self.data, f)
+    }
+}
+
+impl<T> QuietDisplay for CommandOutput<T>
+where
+    T: Serialize + Display + QuietDisplay + VerboseDisplay,
+{
+    fn write_str(&self, w: &mut dyn std::fmt::Write) -> std::fmt::Result {
+        QuietDisplay::write_str(&self.data, w)
+    }
+}
+
+impl<T> VerboseDisplay for CommandOutput<T>
+where
+    T: Serialize + Display + QuietDisplay + VerboseDisplay,
+{
+    fn write_str(&self, w: &mut dyn std::fmt::Write) -> std::fmt::Result {
+        writeln_name_value(w, "Command: ", &self.command_name)?;
+        VerboseDisplay::write_str(&self.data, w)
+    }
+}
 
 pub(crate) fn println_display(config: &Config, message: String) {
     match config.output_format {
@@ -20,18 +58,28 @@ pub(crate) fn println_display(config: &Config, message: String) {
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct CliCreateTokenOutput {
-    pub(crate) mint: CliMint,
-    #[serde(flatten)]
-    pub(crate) signature: CliSignature,
-}
-
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct CliMint {
+pub(crate) struct CliMint<T>
+where
+    T: Serialize + Display + QuietDisplay + VerboseDisplay,
+{
     pub(crate) address: String,
     pub(crate) decimals: u8,
+    pub(crate) data: T,
 }
+
+impl<T> Display for CliMint<T>
+where
+    T: Serialize + Display + QuietDisplay + VerboseDisplay,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f)?;
+        writeln_name_value(f, "Address: ", &self.address)?;
+        writeln_name_value(f, "Decimals: ", &format!("{}", self.decimals))?;
+        Display::fmt(&self.data, f)
+    }
+}
+impl<T> QuietDisplay for CliMint<T> where T: Serialize + Display + QuietDisplay + VerboseDisplay {}
+impl<T> VerboseDisplay for CliMint<T> where T: Serialize + Display + QuietDisplay + VerboseDisplay {}
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
