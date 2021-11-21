@@ -9,14 +9,14 @@ pub(crate) trait Output: Serialize + fmt::Display + QuietDisplay + VerboseDispla
 
 static WARNING: Emoji = Emoji("⚠️", "!");
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CommandOutput<T>
 where
     T: Serialize + Display + QuietDisplay + VerboseDisplay,
 {
     pub(crate) command_name: String,
-    pub(crate) data: T,
+    pub(crate) command_output: T,
 }
 
 impl<T> Display for CommandOutput<T>
@@ -24,7 +24,7 @@ where
     T: Serialize + Display + QuietDisplay + VerboseDisplay,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        Display::fmt(&self.data, f)
+        Display::fmt(&self.command_output, f)
     }
 }
 
@@ -33,7 +33,7 @@ where
     T: Serialize + Display + QuietDisplay + VerboseDisplay,
 {
     fn write_str(&self, w: &mut dyn std::fmt::Write) -> std::fmt::Result {
-        QuietDisplay::write_str(&self.data, w)
+        QuietDisplay::write_str(&self.command_output, w)
     }
 }
 
@@ -43,7 +43,7 @@ where
 {
     fn write_str(&self, w: &mut dyn std::fmt::Write) -> std::fmt::Result {
         writeln_name_value(w, "Command: ", &self.command_name)?;
-        VerboseDisplay::write_str(&self.data, w)
+        VerboseDisplay::write_str(&self.command_output, w)
     }
 }
 
@@ -64,7 +64,7 @@ where
 {
     pub(crate) address: String,
     pub(crate) decimals: u8,
-    pub(crate) data: T,
+    pub(crate) transaction_data: T,
 }
 
 impl<T> Display for CliMint<T>
@@ -75,11 +75,31 @@ where
         writeln!(f)?;
         writeln_name_value(f, "Address: ", &self.address)?;
         writeln_name_value(f, "Decimals: ", &format!("{}", self.decimals))?;
-        Display::fmt(&self.data, f)
+        Display::fmt(&self.transaction_data, f)
     }
 }
-impl<T> QuietDisplay for CliMint<T> where T: Serialize + Display + QuietDisplay + VerboseDisplay {}
-impl<T> VerboseDisplay for CliMint<T> where T: Serialize + Display + QuietDisplay + VerboseDisplay {}
+impl<T> QuietDisplay for CliMint<T>
+where
+    T: Serialize + Display + QuietDisplay + VerboseDisplay,
+{
+    fn write_str(&self, w: &mut dyn std::fmt::Write) -> std::fmt::Result {
+        writeln!(w)?;
+        writeln_name_value(w, "Address: ", &self.address)?;
+        writeln_name_value(w, "Decimals: ", &format!("{}", self.decimals))?;
+        QuietDisplay::write_str(&self.transaction_data, w)
+    }
+}
+impl<T> VerboseDisplay for CliMint<T>
+where
+    T: Serialize + Display + QuietDisplay + VerboseDisplay,
+{
+    fn write_str(&self, w: &mut dyn std::fmt::Write) -> std::fmt::Result {
+        writeln!(w)?;
+        writeln_name_value(w, "Address: ", &self.address)?;
+        writeln_name_value(w, "Decimals: ", &format!("{}", self.decimals))?;
+        VerboseDisplay::write_str(&self.transaction_data, w)
+    }
+}
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
