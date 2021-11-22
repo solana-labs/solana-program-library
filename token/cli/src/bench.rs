@@ -1,5 +1,3 @@
-use crate::CommandResult;
-
 /// The `bench` subcommand
 use {
     crate::{
@@ -167,7 +165,7 @@ pub(crate) fn bench_process_command(
     config: &Config,
     mut signers: Vec<Box<dyn Signer>>,
     wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
-) -> CommandResult {
+) -> Result<(), Error> {
     assert!(!config.sign_only);
 
     match matches.subcommand() {
