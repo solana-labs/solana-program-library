@@ -330,7 +330,7 @@ fn command_create_token(
     )?;
 
     match tx_return {
-        HandleTxReturn::CliSignature(cli_signature) => {
+        TransactionReturnData::CliSignature(cli_signature) => {
             print_output(
                 CliMint {
                     address: token.to_string(),
@@ -341,7 +341,7 @@ fn command_create_token(
                 config,
             );
         }
-        HandleTxReturn::CliSignOnlyData(cli_sign_only_data) => {
+        TransactionReturnData::CliSignOnlyData(cli_sign_only_data) => {
             print_output(cli_sign_only_data, "create-token", config)
         }
     };
@@ -420,9 +420,9 @@ fn command_create_account(
     println!(
         "{}",
         match tx_return {
-            HandleTxReturn::CliSignature(signature) =>
+            TransactionReturnData::CliSignature(signature) =>
                 config.output_format.formatted_string(&signature),
-            HandleTxReturn::CliSignOnlyData(sign_only_data) =>
+            TransactionReturnData::CliSignOnlyData(sign_only_data) =>
                 config.output_format.formatted_string(&sign_only_data),
         }
     );
@@ -484,9 +484,9 @@ fn command_create_multisig(
     println!(
         "{}",
         match tx_return {
-            HandleTxReturn::CliSignature(signature) =>
+            TransactionReturnData::CliSignature(signature) =>
                 config.output_format.formatted_string(&signature),
-            HandleTxReturn::CliSignOnlyData(sign_only_data) =>
+            TransactionReturnData::CliSignOnlyData(sign_only_data) =>
                 config.output_format.formatted_string(&sign_only_data),
         }
     );
@@ -598,9 +598,9 @@ fn command_authorize(
     println!(
         "{}",
         match tx_return {
-            HandleTxReturn::CliSignature(signature) =>
+            TransactionReturnData::CliSignature(signature) =>
                 config.output_format.formatted_string(&signature),
-            HandleTxReturn::CliSignOnlyData(sign_only_data) =>
+            TransactionReturnData::CliSignOnlyData(sign_only_data) =>
                 config.output_format.formatted_string(&sign_only_data),
         }
     );
@@ -836,9 +836,9 @@ fn command_transfer(
     println!(
         "{}",
         match tx_return {
-            HandleTxReturn::CliSignature(signature) =>
+            TransactionReturnData::CliSignature(signature) =>
                 config.output_format.formatted_string(&signature),
-            HandleTxReturn::CliSignOnlyData(sign_only_data) =>
+            TransactionReturnData::CliSignOnlyData(sign_only_data) =>
                 config.output_format.formatted_string(&sign_only_data),
         }
     );
@@ -901,9 +901,9 @@ fn command_burn(
     println!(
         "{}",
         match tx_return {
-            HandleTxReturn::CliSignature(signature) =>
+            TransactionReturnData::CliSignature(signature) =>
                 config.output_format.formatted_string(&signature),
-            HandleTxReturn::CliSignOnlyData(sign_only_data) =>
+            TransactionReturnData::CliSignOnlyData(sign_only_data) =>
                 config.output_format.formatted_string(&sign_only_data),
         }
     );
@@ -965,9 +965,9 @@ fn command_mint(
     println!(
         "{}",
         match tx_return {
-            HandleTxReturn::CliSignature(signature) =>
+            TransactionReturnData::CliSignature(signature) =>
                 config.output_format.formatted_string(&signature),
-            HandleTxReturn::CliSignOnlyData(sign_only_data) =>
+            TransactionReturnData::CliSignOnlyData(sign_only_data) =>
                 config.output_format.formatted_string(&sign_only_data),
         }
     );
@@ -1008,9 +1008,9 @@ fn command_freeze(
     println!(
         "{}",
         match tx_return {
-            HandleTxReturn::CliSignature(signature) =>
+            TransactionReturnData::CliSignature(signature) =>
                 config.output_format.formatted_string(&signature),
-            HandleTxReturn::CliSignOnlyData(sign_only_data) =>
+            TransactionReturnData::CliSignOnlyData(sign_only_data) =>
                 config.output_format.formatted_string(&sign_only_data),
         }
     );
@@ -1051,9 +1051,9 @@ fn command_thaw(
     println!(
         "{}",
         match tx_return {
-            HandleTxReturn::CliSignature(signature) =>
+            TransactionReturnData::CliSignature(signature) =>
                 config.output_format.formatted_string(&signature),
-            HandleTxReturn::CliSignOnlyData(sign_only_data) =>
+            TransactionReturnData::CliSignOnlyData(sign_only_data) =>
                 config.output_format.formatted_string(&sign_only_data),
         }
     );
@@ -1126,9 +1126,9 @@ fn command_wrap(
     println!(
         "{}",
         match tx_return {
-            HandleTxReturn::CliSignature(signature) =>
+            TransactionReturnData::CliSignature(signature) =>
                 config.output_format.formatted_string(&signature),
-            HandleTxReturn::CliSignOnlyData(sign_only_data) =>
+            TransactionReturnData::CliSignOnlyData(sign_only_data) =>
                 config.output_format.formatted_string(&sign_only_data),
         }
     );
@@ -1181,9 +1181,9 @@ fn command_unwrap(
     println!(
         "{}",
         match tx_return {
-            HandleTxReturn::CliSignature(signature) =>
+            TransactionReturnData::CliSignature(signature) =>
                 config.output_format.formatted_string(&signature),
-            HandleTxReturn::CliSignOnlyData(sign_only_data) =>
+            TransactionReturnData::CliSignOnlyData(sign_only_data) =>
                 config.output_format.formatted_string(&sign_only_data),
         }
     );
@@ -1247,9 +1247,9 @@ fn command_approve(
     println!(
         "{}",
         match tx_return {
-            HandleTxReturn::CliSignature(signature) =>
+            TransactionReturnData::CliSignature(signature) =>
                 config.output_format.formatted_string(&signature),
-            HandleTxReturn::CliSignOnlyData(sign_only_data) =>
+            TransactionReturnData::CliSignOnlyData(sign_only_data) =>
                 config.output_format.formatted_string(&sign_only_data),
         }
     );
@@ -1309,9 +1309,9 @@ fn command_revoke(
     println!(
         "{}",
         match tx_return {
-            HandleTxReturn::CliSignature(signature) =>
+            TransactionReturnData::CliSignature(signature) =>
                 config.output_format.formatted_string(&signature),
-            HandleTxReturn::CliSignOnlyData(sign_only_data) =>
+            TransactionReturnData::CliSignOnlyData(sign_only_data) =>
                 config.output_format.formatted_string(&sign_only_data),
         }
     );
@@ -1371,9 +1371,9 @@ fn command_close(
     println!(
         "{}",
         match tx_return {
-            HandleTxReturn::CliSignature(signature) =>
+            TransactionReturnData::CliSignature(signature) =>
                 config.output_format.formatted_string(&signature),
-            HandleTxReturn::CliSignOnlyData(sign_only_data) =>
+            TransactionReturnData::CliSignOnlyData(sign_only_data) =>
                 config.output_format.formatted_string(&sign_only_data),
         }
     );
@@ -1664,9 +1664,9 @@ fn command_gc(
         println!(
             "{}",
             match tx_return {
-                HandleTxReturn::CliSignature(signature) =>
+                TransactionReturnData::CliSignature(signature) =>
                     config.output_format.formatted_string(&signature),
-                HandleTxReturn::CliSignOnlyData(sign_only_data) =>
+                TransactionReturnData::CliSignOnlyData(sign_only_data) =>
                     config.output_format.formatted_string(&sign_only_data),
             }
         );
@@ -1692,9 +1692,9 @@ fn command_sync_native(
     println!(
         "{}",
         match tx_return {
-            HandleTxReturn::CliSignature(signature) =>
+            TransactionReturnData::CliSignature(signature) =>
                 config.output_format.formatted_string(&signature),
-            HandleTxReturn::CliSignOnlyData(sign_only_data) =>
+            TransactionReturnData::CliSignOnlyData(sign_only_data) =>
                 config.output_format.formatted_string(&sign_only_data),
         }
     );
@@ -3070,7 +3070,7 @@ where
         })
     )
 }
-enum HandleTxReturn {
+enum TransactionReturnData {
     CliSignature(CliSignature),
     CliSignOnlyData(CliSignOnlyData),
 }
@@ -3080,7 +3080,7 @@ fn handle_tx(
     no_wait: bool,
     minimum_balance_for_rent_exemption: u64,
     instructions: Vec<Instruction>,
-) -> Result<HandleTxReturn, Box<dyn std::error::Error>> {
+) -> Result<TransactionReturnData, Box<dyn std::error::Error>> {
     let fee_payer = Some(&config.fee_payer);
 
     let message = if let Some(nonce_account) = config.nonce_account.as_ref() {
@@ -3113,7 +3113,7 @@ fn handle_tx(
 
     if config.sign_only {
         transaction.try_partial_sign(&signers, recent_blockhash)?;
-        Ok(HandleTxReturn::CliSignOnlyData(return_signers_data(
+        Ok(TransactionReturnData::CliSignOnlyData(return_signers_data(
             &transaction,
             &ReturnSignersConfig {
                 dump_transaction_message: config.dump_transaction_message,
@@ -3128,7 +3128,7 @@ fn handle_tx(
                 .rpc_client
                 .send_and_confirm_transaction_with_spinner(&transaction)?
         };
-        Ok(HandleTxReturn::CliSignature(CliSignature {
+        Ok(TransactionReturnData::CliSignature(CliSignature {
             signature: signature.to_string(),
         }))
     }
