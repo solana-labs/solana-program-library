@@ -19,7 +19,7 @@ use solana_clap_utils::{
     memo::memo_arg,
     nonce::*,
     offline::{self, *},
-    ArgConstant,
+    ArgConstant, DisplayError,
 };
 use solana_cli_output::{
     return_signers_data, CliSignOnlyData, CliSignature, OutputFormat, QuietDisplay,
@@ -199,7 +199,7 @@ fn is_multisig_minimum_signers(string: String) -> Result<(), String> {
 pub(crate) type Error = Box<dyn std::error::Error>;
 
 type BulkSigners = Vec<Box<dyn Signer>>;
-pub(crate) type CommandResult = Result<(), Error>;
+pub(crate) type CommandResult = Result<String, Error>;
 
 fn new_throwaway_signer() -> (Box<dyn Signer>, Pubkey) {
     let keypair = Keypair::new();
@@ -329,24 +329,20 @@ fn command_create_token(
         instructions,
     )?;
 
-    match tx_return {
-        TransactionReturnData::CliSignature(cli_signature) => {
-            print_output(
-                CliMint {
-                    address: token.to_string(),
-                    decimals,
-                    transaction_data: cli_signature,
-                },
-                "create-token",
-                config,
-            );
-        }
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(cli_signature) => format_output(
+            CliMint {
+                address: token.to_string(),
+                decimals,
+                transaction_data: cli_signature,
+            },
+            "create-token",
+            config,
+        ),
         TransactionReturnData::CliSignOnlyData(cli_sign_only_data) => {
-            print_output(cli_sign_only_data, "create-token", config)
+            format_output(cli_sign_only_data, "create-token", config)
         }
-    };
-
-    Ok(())
+    })
 }
 
 fn command_create_account(
@@ -417,17 +413,14 @@ fn command_create_account(
         instructions,
     )?;
 
-    println!(
-        "{}",
-        match tx_return {
-            TransactionReturnData::CliSignature(signature) =>
-                config.output_format.formatted_string(&signature),
-            TransactionReturnData::CliSignOnlyData(sign_only_data) =>
-                config.output_format.formatted_string(&sign_only_data),
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
         }
-    );
-
-    Ok(())
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
 }
 
 fn command_create_multisig(
@@ -481,17 +474,14 @@ fn command_create_multisig(
         minimum_balance_for_rent_exemption,
         instructions,
     )?;
-    println!(
-        "{}",
-        match tx_return {
-            TransactionReturnData::CliSignature(signature) =>
-                config.output_format.formatted_string(&signature),
-            TransactionReturnData::CliSignOnlyData(sign_only_data) =>
-                config.output_format.formatted_string(&sign_only_data),
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
         }
-    );
-
-    Ok(())
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -595,17 +585,14 @@ fn command_authorize(
         0,
         instructions,
     )?;
-    println!(
-        "{}",
-        match tx_return {
-            TransactionReturnData::CliSignature(signature) =>
-                config.output_format.formatted_string(&signature),
-            TransactionReturnData::CliSignOnlyData(sign_only_data) =>
-                config.output_format.formatted_string(&sign_only_data),
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
         }
-    );
-
-    Ok(())
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
 }
 
 pub(crate) fn resolve_mint_info(
@@ -833,16 +820,14 @@ fn command_transfer(
         minimum_balance_for_rent_exemption,
         instructions,
     )?;
-    println!(
-        "{}",
-        match tx_return {
-            TransactionReturnData::CliSignature(signature) =>
-                config.output_format.formatted_string(&signature),
-            TransactionReturnData::CliSignOnlyData(sign_only_data) =>
-                config.output_format.formatted_string(&sign_only_data),
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
         }
-    );
-    Ok(())
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -898,16 +883,14 @@ fn command_burn(
         0,
         instructions,
     )?;
-    println!(
-        "{}",
-        match tx_return {
-            TransactionReturnData::CliSignature(signature) =>
-                config.output_format.formatted_string(&signature),
-            TransactionReturnData::CliSignOnlyData(sign_only_data) =>
-                config.output_format.formatted_string(&sign_only_data),
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
         }
-    );
-    Ok(())
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -962,16 +945,14 @@ fn command_mint(
         0,
         instructions,
     )?;
-    println!(
-        "{}",
-        match tx_return {
-            TransactionReturnData::CliSignature(signature) =>
-                config.output_format.formatted_string(&signature),
-            TransactionReturnData::CliSignOnlyData(sign_only_data) =>
-                config.output_format.formatted_string(&sign_only_data),
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
         }
-    );
-    Ok(())
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
 }
 
 fn command_freeze(
@@ -1005,16 +986,14 @@ fn command_freeze(
         0,
         instructions,
     )?;
-    println!(
-        "{}",
-        match tx_return {
-            TransactionReturnData::CliSignature(signature) =>
-                config.output_format.formatted_string(&signature),
-            TransactionReturnData::CliSignOnlyData(sign_only_data) =>
-                config.output_format.formatted_string(&sign_only_data),
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
         }
-    );
-    Ok(())
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
 }
 
 fn command_thaw(
@@ -1048,16 +1027,14 @@ fn command_thaw(
         0,
         instructions,
     )?;
-    println!(
-        "{}",
-        match tx_return {
-            TransactionReturnData::CliSignature(signature) =>
-                config.output_format.formatted_string(&signature),
-            TransactionReturnData::CliSignOnlyData(sign_only_data) =>
-                config.output_format.formatted_string(&sign_only_data),
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
         }
-    );
-    Ok(())
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
 }
 
 fn command_wrap(
@@ -1123,16 +1100,14 @@ fn command_wrap(
         0,
         instructions,
     )?;
-    println!(
-        "{}",
-        match tx_return {
-            TransactionReturnData::CliSignature(signature) =>
-                config.output_format.formatted_string(&signature),
-            TransactionReturnData::CliSignOnlyData(sign_only_data) =>
-                config.output_format.formatted_string(&sign_only_data),
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
         }
-    );
-    Ok(())
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
 }
 
 fn command_unwrap(
@@ -1178,16 +1153,14 @@ fn command_unwrap(
         0,
         instructions,
     )?;
-    println!(
-        "{}",
-        match tx_return {
-            TransactionReturnData::CliSignature(signature) =>
-                config.output_format.formatted_string(&signature),
-            TransactionReturnData::CliSignOnlyData(sign_only_data) =>
-                config.output_format.formatted_string(&sign_only_data),
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
         }
-    );
-    Ok(())
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1244,16 +1217,14 @@ fn command_approve(
         0,
         instructions,
     )?;
-    println!(
-        "{}",
-        match tx_return {
-            TransactionReturnData::CliSignature(signature) =>
-                config.output_format.formatted_string(&signature),
-            TransactionReturnData::CliSignOnlyData(sign_only_data) =>
-                config.output_format.formatted_string(&sign_only_data),
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
         }
-    );
-    Ok(())
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
 }
 
 fn command_revoke(
@@ -1306,16 +1277,14 @@ fn command_revoke(
         0,
         instructions,
     )?;
-    println!(
-        "{}",
-        match tx_return {
-            TransactionReturnData::CliSignature(signature) =>
-                config.output_format.formatted_string(&signature),
-            TransactionReturnData::CliSignOnlyData(sign_only_data) =>
-                config.output_format.formatted_string(&sign_only_data),
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
         }
-    );
-    Ok(())
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
 }
 
 fn command_close(
@@ -1368,16 +1337,14 @@ fn command_close(
         0,
         instructions,
     )?;
-    println!(
-        "{}",
-        match tx_return {
-            TransactionReturnData::CliSignature(signature) =>
-                config.output_format.formatted_string(&signature),
-            TransactionReturnData::CliSignOnlyData(sign_only_data) =>
-                config.output_format.formatted_string(&sign_only_data),
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
         }
-    );
-    Ok(())
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
 }
 
 fn command_balance(config: &Config, address: Pubkey) -> CommandResult {
@@ -1386,23 +1353,13 @@ fn command_balance(config: &Config, address: Pubkey) -> CommandResult {
         .get_token_account_balance(&address)
         .map_err(|_| format!("Could not find token account {}", address))?;
     let cli_token_amount = CliTokenAmount { amount: balance };
-    println!(
-        "{}",
-        config.output_format.formatted_string(&cli_token_amount)
-    );
-
-    Ok(())
+    Ok(config.output_format.formatted_string(&cli_token_amount))
 }
 
 fn command_supply(config: &Config, address: Pubkey) -> CommandResult {
     let supply = config.rpc_client.get_token_supply(&address)?;
     let cli_token_amount = CliTokenAmount { amount: supply };
-    println!(
-        "{}",
-        config.output_format.formatted_string(&cli_token_amount)
-    );
-
-    Ok(())
+    Ok(config.output_format.formatted_string(&cli_token_amount))
 }
 
 fn command_accounts(config: &Config, token: Option<Pubkey>, owner: Pubkey) -> CommandResult {
@@ -1418,7 +1375,7 @@ fn command_accounts(config: &Config, token: Option<Pubkey>, owner: Pubkey) -> Co
     )?;
     if accounts.is_empty() {
         println!("None");
-        return Ok(());
+        return Ok("".to_string());
     }
 
     let (mint_accounts, unsupported_accounts, max_len_balance, includes_aux) =
@@ -1435,11 +1392,7 @@ fn command_accounts(config: &Config, token: Option<Pubkey>, owner: Pubkey) -> Co
         aux_len,
         token_is_some: token.is_some(),
     };
-    println!(
-        "{}",
-        config.output_format.formatted_string(&cli_token_accounts)
-    );
-    Ok(())
+    Ok(config.output_format.formatted_string(&cli_token_accounts))
 }
 
 fn command_address(config: &Config, token: Option<Pubkey>, owner: Pubkey) -> CommandResult {
@@ -1452,8 +1405,7 @@ fn command_address(config: &Config, token: Option<Pubkey>, owner: Pubkey) -> Com
         let associated_token_address = get_associated_token_address(&owner, &token);
         cli_address.associated_token_address = Some(associated_token_address.to_string());
     }
-    println!("{}", config.output_format.formatted_string(&cli_address));
-    Ok(())
+    Ok(config.output_format.formatted_string(&cli_address))
 }
 
 fn command_account_info(config: &Config, address: Pubkey) -> CommandResult {
@@ -1470,11 +1422,7 @@ fn command_account_info(config: &Config, address: Pubkey) -> CommandResult {
         is_associated,
         account,
     };
-    println!(
-        "{}",
-        config.output_format.formatted_string(&cli_token_account)
-    );
-    Ok(())
+    Ok(config.output_format.formatted_string(&cli_token_account))
 }
 
 fn get_multisig(config: &Config, address: &Pubkey) -> Result<Multisig, Error> {
@@ -1503,8 +1451,7 @@ fn command_multisig(config: &Config, address: Pubkey) -> CommandResult {
             })
             .collect(),
     };
-    println!("{}", config.output_format.formatted_string(&cli_multisig));
-    Ok(())
+    Ok(config.output_format.formatted_string(&cli_multisig))
 }
 
 fn command_gc(
@@ -1520,7 +1467,7 @@ fn command_gc(
         .get_token_accounts_by_owner(&owner, TokenAccountsFilter::ProgramId(spl_token::id()))?;
     if accounts.is_empty() {
         println_display(config, "Nothing to do".to_string());
-        return Ok(());
+        return Ok("".to_string());
     }
 
     let minimum_balance_for_rent_exemption = if !config.sign_only {
@@ -1653,6 +1600,7 @@ fn command_gc(
         signers: bulk_signers,
     };
 
+    let mut result = String::from("");
     for tx_instructions in instructions {
         let tx_return = handle_tx(
             &cli_signer_info,
@@ -1661,17 +1609,17 @@ fn command_gc(
             lamports_needed,
             tx_instructions,
         )?;
-        println!(
-            "{}",
-            match tx_return {
-                TransactionReturnData::CliSignature(signature) =>
-                    config.output_format.formatted_string(&signature),
-                TransactionReturnData::CliSignOnlyData(sign_only_data) =>
-                    config.output_format.formatted_string(&sign_only_data),
+        result += &match tx_return {
+            TransactionReturnData::CliSignature(signature) => {
+                config.output_format.formatted_string(&signature)
             }
-        );
+            TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+                config.output_format.formatted_string(&sign_only_data)
+            }
+        };
+        result += "\n";
     }
-    Ok(())
+    Ok(result)
 }
 
 fn command_sync_native(
@@ -1689,16 +1637,14 @@ fn command_sync_native(
         0,
         vec![sync_native(&spl_token::id(), &native_account_address)?],
     )?;
-    println!(
-        "{}",
-        match tx_return {
-            TransactionReturnData::CliSignature(signature) =>
-                config.output_format.formatted_string(&signature),
-            TransactionReturnData::CliSignOnlyData(sign_only_data) =>
-                config.output_format.formatted_string(&sign_only_data),
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
         }
-    );
-    Ok(())
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
 }
 
 struct SignOnlyNeedsFullMintSpec {}
@@ -1729,7 +1675,7 @@ impl offline::ArgsConfig for SignOnlyNeedsDelegateAddress {
     }
 }
 
-fn main() {
+fn main() -> Result<(), Error> {
     let default_decimals = &format!("{}", native_mint::DECIMALS);
     let mut no_wait = false;
     let app_matches = App::new(crate_name!())
@@ -2632,7 +2578,7 @@ fn main() {
 
     solana_logger::setup_with_default("solana=info");
 
-    let _ = match (sub_command, sub_matches) {
+    let result = match (sub_command, sub_matches) {
         ("bench", Some(arg_matches)) => bench_process_command(
             arg_matches,
             &config,
@@ -3052,23 +2998,19 @@ fn main() {
         }
         _ => unreachable!(),
     }
-    .map_err(|err| {
-        eprintln!("{}", err);
-        exit(1);
-    });
+    .map_err::<Error, _>(|err| DisplayError::new_as_boxed(err).into())?;
+    println!("{}", result);
+    Ok(())
 }
 
-fn print_output<T>(command_output: T, command_name: &str, config: &Config)
+fn format_output<T>(command_output: T, command_name: &str, config: &Config) -> String
 where
     T: Serialize + Display + QuietDisplay + VerboseDisplay,
 {
-    println!(
-        "{}",
-        config.output_format.formatted_string(&CommandOutput {
-            command_name: String::from(command_name),
-            command_output
-        })
-    )
+    config.output_format.formatted_string(&CommandOutput {
+        command_name: String::from(command_name),
+        command_output,
+    })
 }
 enum TransactionReturnData {
     CliSignature(CliSignature),
