@@ -64,9 +64,6 @@ mod rpc_client_utils;
 mod bench;
 use bench::*;
 
-//TODO: improve naming
-//TODO: handle output in functions
-
 pub const OWNER_ADDRESS_ARG: ArgConstant<'static> = ArgConstant {
     name: "owner",
     long: "owner",
