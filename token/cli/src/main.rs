@@ -100,6 +100,8 @@ pub const MULTISIG_SIGNER_ARG: ArgConstant<'static> = ArgConstant {
     help: "Member signer of a multisig account",
 };
 
+pub const CREATE_TOKEN: &str = "create-token";
+
 pub fn owner_address_arg<'a, 'b>() -> Arg<'a, 'b> {
     Arg::with_name(OWNER_ADDRESS_ARG.name)
         .long(OWNER_ADDRESS_ARG.long)
@@ -283,7 +285,6 @@ fn command_create_token(
     enable_freeze: bool,
     memo: Option<String>,
     bulk_signers: Vec<Box<dyn Signer>>,
-    no_wait: bool,
 ) -> CommandResult {
     println_display(config, format!("Creating token {}", token));
 
@@ -321,7 +322,7 @@ fn command_create_token(
             signers: bulk_signers,
         },
         config,
-        no_wait,
+        false,
         minimum_balance_for_rent_exemption,
         instructions,
     )?;
@@ -333,11 +334,11 @@ fn command_create_token(
                 decimals,
                 transaction_data: cli_signature,
             },
-            "create-token",
+            CREATE_TOKEN,
             config,
         ),
         TransactionReturnData::CliSignOnlyData(cli_sign_only_data) => {
-            format_output(cli_sign_only_data, "create-token", config)
+            format_output(cli_sign_only_data, CREATE_TOKEN, config)
         }
     })
 }
@@ -348,7 +349,6 @@ fn command_create_account(
     owner: Pubkey,
     maybe_account: Option<Pubkey>,
     bulk_signers: Vec<Box<dyn Signer>>,
-    no_wait: bool,
 ) -> CommandResult {
     let minimum_balance_for_rent_exemption = if !config.sign_only {
         config
@@ -405,7 +405,7 @@ fn command_create_account(
             signers: bulk_signers,
         },
         config,
-        no_wait,
+        false,
         minimum_balance_for_rent_exemption,
         instructions,
     )?;
@@ -426,7 +426,6 @@ fn command_create_multisig(
     minimum_signers: u8,
     multisig_members: Vec<Pubkey>,
     bulk_signers: BulkSigners,
-    no_wait: bool,
 ) -> CommandResult {
     println_display(
         config,
@@ -467,7 +466,7 @@ fn command_create_multisig(
             signers: bulk_signers,
         },
         config,
-        no_wait,
+        false,
         minimum_balance_for_rent_exemption,
         instructions,
     )?;
@@ -490,7 +489,6 @@ fn command_authorize(
     new_authority: Option<Pubkey>,
     force_authorize: bool,
     bulk_signers: BulkSigners,
-    no_wait: bool,
 ) -> CommandResult {
     let auth_str = match authority_type {
         AuthorityType::MintTokens => "mint authority",
@@ -578,7 +576,7 @@ fn command_authorize(
             signers: bulk_signers,
         },
         config,
-        no_wait,
+        false,
         0,
         instructions,
     )?;
@@ -838,7 +836,6 @@ fn command_burn(
     use_unchecked_instruction: bool,
     memo: Option<String>,
     bulk_signers: BulkSigners,
-    no_wait: bool,
 ) -> CommandResult {
     println_display(
         config,
@@ -876,7 +873,7 @@ fn command_burn(
             signers: bulk_signers,
         },
         config,
-        no_wait,
+        false,
         0,
         instructions,
     )?;
@@ -900,7 +897,6 @@ fn command_mint(
     mint_authority: Pubkey,
     use_unchecked_instruction: bool,
     bulk_signers: BulkSigners,
-    no_wait: bool,
 ) -> CommandResult {
     println_display(
         config,
@@ -938,7 +934,7 @@ fn command_mint(
             signers: bulk_signers,
         },
         config,
-        no_wait,
+        false,
         0,
         instructions,
     )?;
@@ -958,7 +954,6 @@ fn command_freeze(
     mint_address: Option<Pubkey>,
     freeze_authority: Pubkey,
     bulk_signers: BulkSigners,
-    no_wait: bool,
 ) -> CommandResult {
     let (token, _) = resolve_mint_info(config, &account, mint_address, None)?;
 
@@ -979,7 +974,7 @@ fn command_freeze(
             signers: bulk_signers,
         },
         config,
-        no_wait,
+        false,
         0,
         instructions,
     )?;
@@ -999,7 +994,6 @@ fn command_thaw(
     mint_address: Option<Pubkey>,
     freeze_authority: Pubkey,
     bulk_signers: BulkSigners,
-    no_wait: bool,
 ) -> CommandResult {
     let (token, _) = resolve_mint_info(config, &account, mint_address, None)?;
 
@@ -1020,7 +1014,7 @@ fn command_thaw(
             signers: bulk_signers,
         },
         config,
-        no_wait,
+        false,
         0,
         instructions,
     )?;
@@ -1040,7 +1034,6 @@ fn command_wrap(
     wallet_address: Pubkey,
     wrapped_sol_account: Option<Pubkey>,
     bulk_signers: BulkSigners,
-    no_wait: bool,
 ) -> CommandResult {
     let lamports = sol_to_lamports(sol);
 
@@ -1093,7 +1086,7 @@ fn command_wrap(
             signers: bulk_signers,
         },
         config,
-        no_wait,
+        false,
         0,
         instructions,
     )?;
@@ -1112,7 +1105,6 @@ fn command_unwrap(
     wallet_address: Pubkey,
     address: Option<Pubkey>,
     bulk_signers: BulkSigners,
-    no_wait: bool,
 ) -> CommandResult {
     let use_associated_account = address.is_none();
     let address = address
@@ -1146,7 +1138,7 @@ fn command_unwrap(
             signers: bulk_signers,
         },
         config,
-        no_wait,
+        false,
         0,
         instructions,
     )?;
@@ -1171,7 +1163,6 @@ fn command_approve(
     mint_decimals: Option<u8>,
     use_unchecked_instruction: bool,
     bulk_signers: BulkSigners,
-    no_wait: bool,
 ) -> CommandResult {
     println_display(
         config,
@@ -1210,7 +1201,7 @@ fn command_approve(
             signers: bulk_signers,
         },
         config,
-        no_wait,
+        false,
         0,
         instructions,
     )?;
@@ -1230,7 +1221,6 @@ fn command_revoke(
     owner: Pubkey,
     delegate: Option<Pubkey>,
     bulk_signers: BulkSigners,
-    no_wait: bool,
 ) -> CommandResult {
     let delegate = if !config.sign_only {
         let source_account = config
@@ -1270,7 +1260,7 @@ fn command_revoke(
             signers: bulk_signers,
         },
         config,
-        no_wait,
+        false,
         0,
         instructions,
     )?;
@@ -1290,7 +1280,6 @@ fn command_close(
     close_authority: Pubkey,
     recipient: Pubkey,
     bulk_signers: BulkSigners,
-    no_wait: bool,
 ) -> CommandResult {
     if !config.sign_only {
         let source_account = config
@@ -1330,7 +1319,7 @@ fn command_close(
             signers: bulk_signers,
         },
         config,
-        no_wait,
+        false,
         0,
         instructions,
     )?;
@@ -1456,7 +1445,6 @@ fn command_gc(
     owner: Pubkey,
     close_empty_associated_accounts: bool,
     bulk_signers: BulkSigners,
-    no_wait: bool,
 ) -> CommandResult {
     println_display(config, "Fetching token accounts".to_string());
     let accounts = config
@@ -1602,7 +1590,7 @@ fn command_gc(
         let tx_return = handle_tx(
             &cli_signer_info,
             config,
-            no_wait,
+            false,
             lamports_needed,
             tx_instructions,
         )?;
@@ -1621,7 +1609,6 @@ fn command_gc(
 
 fn command_sync_native(
     native_account_address: Pubkey,
-    no_wait: bool,
     bulk_signers: Vec<Box<dyn Signer>>,
     config: &Config,
 ) -> CommandResult {
@@ -1630,7 +1617,7 @@ fn command_sync_native(
             signers: bulk_signers,
         },
         config,
-        no_wait,
+        false,
         0,
         vec![sync_native(&spl_token::id(), &native_account_address)?],
     )?;
@@ -1674,7 +1661,6 @@ impl offline::ArgsConfig for SignOnlyNeedsDelegateAddress {
 
 fn main() -> Result<(), Error> {
     let default_decimals = &format!("{}", native_mint::DECIMALS);
-    let mut no_wait = false;
     let app_matches = App::new(crate_name!())
         .about(crate_description!())
         .version(crate_version!())
@@ -1734,7 +1720,7 @@ fn main() -> Result<(), Error> {
                 .help("Use unchecked instruction if appropriate. Supports transfer, burn, mint, and approve."),
         )
         .bench_subcommand()
-        .subcommand(SubCommand::with_name("create-token").about("Create a new token")
+        .subcommand(SubCommand::with_name(CREATE_TOKEN).about("Create a new token")
                 .arg(
                     Arg::with_name("token_keypair")
                         .value_name("TOKEN_KEYPAIR")
@@ -2582,7 +2568,7 @@ fn main() -> Result<(), Error> {
             std::mem::take(&mut bulk_signers),
             &mut wallet_manager,
         ),
-        ("create-token", Some(arg_matches)) => {
+        (CREATE_TOKEN, Some(arg_matches)) => {
             let decimals = value_t_or_exit!(arg_matches, "decimals", u8);
             let mint_authority =
                 config.pubkey_or_default(arg_matches, "mint_authority", &mut wallet_manager);
@@ -2601,7 +2587,6 @@ fn main() -> Result<(), Error> {
                 arg_matches.is_present("enable_freeze"),
                 memo,
                 bulk_signers,
-                no_wait,
             )
         }
         ("create-account", Some(arg_matches)) => {
@@ -2618,7 +2603,7 @@ fn main() -> Result<(), Error> {
             );
 
             let owner = config.pubkey_or_default(arg_matches, "owner", &mut wallet_manager);
-            command_create_account(&config, token, owner, account, bulk_signers, no_wait)
+            command_create_account(&config, token, owner, account, bulk_signers)
         }
         ("create-multisig", Some(arg_matches)) => {
             let minimum_signers = value_of::<u8>(arg_matches, "minimum_signers").unwrap();
@@ -2647,7 +2632,6 @@ fn main() -> Result<(), Error> {
                 minimum_signers,
                 multisig_members,
                 bulk_signers,
-                no_wait,
             )
         }
         ("authorize", Some(arg_matches)) => {
@@ -2678,7 +2662,6 @@ fn main() -> Result<(), Error> {
                 new_authority,
                 force_authorize,
                 bulk_signers,
-                no_wait,
             )
         }
         ("transfer", Some(arg_matches)) => {
@@ -2702,7 +2685,7 @@ fn main() -> Result<(), Error> {
             let fund_recipient = matches.is_present("fund_recipient");
             let allow_unfunded_recipient = matches.is_present("allow_empty_recipient")
                 || matches.is_present("allow_unfunded_recipient");
-            no_wait = matches.is_present("no_wait");
+
             let recipient_is_ata_owner = matches.is_present("recipient_is_ata_owner");
             let use_unchecked_instruction = matches.is_present("use_unchecked_instruction");
             let memo = value_t!(arg_matches, "memo", String).ok();
@@ -2721,7 +2704,7 @@ fn main() -> Result<(), Error> {
                 use_unchecked_instruction,
                 memo,
                 bulk_signers,
-                no_wait,
+                matches.is_present("no_wait"),
             )
         }
         ("burn", Some(arg_matches)) => {
@@ -2749,7 +2732,6 @@ fn main() -> Result<(), Error> {
                 use_unchecked_instruction,
                 memo,
                 bulk_signers,
-                no_wait,
             )
         }
         ("mint", Some(arg_matches)) => {
@@ -2777,7 +2759,6 @@ fn main() -> Result<(), Error> {
                 mint_authority,
                 use_unchecked_instruction,
                 bulk_signers,
-                no_wait,
             )
         }
         ("freeze", Some(arg_matches)) => {
@@ -2796,7 +2777,6 @@ fn main() -> Result<(), Error> {
                 mint_address,
                 freeze_authority,
                 bulk_signers,
-                no_wait,
             )
         }
         ("thaw", Some(arg_matches)) => {
@@ -2815,7 +2795,6 @@ fn main() -> Result<(), Error> {
                 mint_address,
                 freeze_authority,
                 bulk_signers,
-                no_wait,
             )
         }
         ("wrap", Some(arg_matches)) => {
@@ -2833,14 +2812,7 @@ fn main() -> Result<(), Error> {
                 config.signer_or_default(arg_matches, "wallet_keypair", &mut wallet_manager);
             bulk_signers.push(wallet_signer);
 
-            command_wrap(
-                &config,
-                amount,
-                wallet_address,
-                account,
-                bulk_signers,
-                no_wait,
-            )
+            command_wrap(&config, amount, wallet_address, account, bulk_signers)
         }
         ("unwrap", Some(arg_matches)) => {
             let (wallet_signer, wallet_address) =
@@ -2848,7 +2820,7 @@ fn main() -> Result<(), Error> {
             bulk_signers.push(wallet_signer);
 
             let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager).unwrap();
-            command_unwrap(&config, wallet_address, address, bulk_signers, no_wait)
+            command_unwrap(&config, wallet_address, address, bulk_signers)
         }
         ("approve", Some(arg_matches)) => {
             let (owner_signer, owner_address) =
@@ -2876,7 +2848,6 @@ fn main() -> Result<(), Error> {
                 mint_decimals,
                 use_unchecked_instruction,
                 bulk_signers,
-                no_wait,
             )
         }
         ("revoke", Some(arg_matches)) => {
@@ -2896,7 +2867,6 @@ fn main() -> Result<(), Error> {
                 owner_address,
                 delegate_address,
                 bulk_signers,
-                no_wait,
             )
         }
         ("close", Some(arg_matches)) => {
@@ -2910,14 +2880,7 @@ fn main() -> Result<(), Error> {
                 &mut wallet_manager,
             );
             let recipient = config.pubkey_or_default(arg_matches, "recipient", &mut wallet_manager);
-            command_close(
-                &config,
-                address,
-                close_authority,
-                recipient,
-                bulk_signers,
-                no_wait,
-            )
+            command_close(&config, address, close_authority, recipient, bulk_signers)
         }
         ("balance", Some(arg_matches)) => {
             let address = config.associated_token_address_or_override(
@@ -2980,7 +2943,6 @@ fn main() -> Result<(), Error> {
                 owner_address,
                 close_empty_associated_accounts,
                 bulk_signers,
-                no_wait,
             )
         }
         ("sync-native", Some(arg_matches)) => {
@@ -2991,7 +2953,7 @@ fn main() -> Result<(), Error> {
                 Some(native_mint::id()),
             );
 
-            command_sync_native(address, no_wait, bulk_signers, &config)
+            command_sync_native(address, bulk_signers, &config)
         }
         _ => unreachable!(),
     }
