@@ -100,7 +100,10 @@ pub const MULTISIG_SIGNER_ARG: ArgConstant<'static> = ArgConstant {
     help: "Member signer of a multisig account",
 };
 
-pub const CREATE_TOKEN: &str = "create-token";
+mod command_name {
+    pub const CREATE_TOKEN: &str = "create-token";
+    pub const GC: &str = "gc";
+}
 
 pub fn owner_address_arg<'a, 'b>() -> Arg<'a, 'b> {
     Arg::with_name(OWNER_ADDRESS_ARG.name)
@@ -334,11 +337,11 @@ fn command_create_token(
                 decimals,
                 transaction_data: cli_signature,
             },
-            CREATE_TOKEN,
+            command_name::CREATE_TOKEN,
             config,
         ),
         TransactionReturnData::CliSignOnlyData(cli_sign_only_data) => {
-            format_output(cli_sign_only_data, CREATE_TOKEN, config)
+            format_output(cli_sign_only_data, command_name::CREATE_TOKEN, config)
         }
     })
 }
@@ -1585,7 +1588,8 @@ fn command_gc(
         signers: bulk_signers,
     };
 
-    let mut result = String::from("");
+    let mut cli_sign_only_data_multiple = vec![];
+    let mut cli_signatures = vec![];
     for tx_instructions in instructions {
         let tx_return = handle_tx(
             &cli_signer_info,
@@ -1594,16 +1598,28 @@ fn command_gc(
             lamports_needed,
             tx_instructions,
         )?;
-        result += &match tx_return {
+        match tx_return {
             TransactionReturnData::CliSignature(signature) => {
-                config.output_format.formatted_string(&signature)
+                cli_signatures.push(signature);
             }
             TransactionReturnData::CliSignOnlyData(sign_only_data) => {
-                config.output_format.formatted_string(&sign_only_data)
+                cli_sign_only_data_multiple.push(sign_only_data);
             }
         };
-        result += "\n";
     }
+
+    let result = if config.sign_only {
+        format_output(
+            CliSignOnlyDataMultiple {
+                cli_sign_only_data_multiple,
+            },
+            command_name::GC,
+            config,
+        )
+    } else {
+        format_output(CliSignatures { cli_signatures }, command_name::GC, config)
+    };
+
     Ok(result)
 }
 
@@ -1720,7 +1736,7 @@ fn main() -> Result<(), Error> {
                 .help("Use unchecked instruction if appropriate. Supports transfer, burn, mint, and approve."),
         )
         .bench_subcommand()
-        .subcommand(SubCommand::with_name(CREATE_TOKEN).about("Create a new token")
+        .subcommand(SubCommand::with_name(command_name::CREATE_TOKEN).about("Create a new token")
                 .arg(
                     Arg::with_name("token_keypair")
                         .value_name("TOKEN_KEYPAIR")
@@ -2410,7 +2426,7 @@ fn main() -> Result<(), Error> {
                 ),
         )
         .subcommand(
-            SubCommand::with_name("gc")
+            SubCommand::with_name(command_name::GC)
                 .about("Cleanup unnecessary token accounts")
                 .arg(owner_keypair_arg())
                 .arg(
@@ -2568,7 +2584,7 @@ fn main() -> Result<(), Error> {
             std::mem::take(&mut bulk_signers),
             &mut wallet_manager,
         ),
-        (CREATE_TOKEN, Some(arg_matches)) => {
+        (command_name::CREATE_TOKEN, Some(arg_matches)) => {
             let decimals = value_t_or_exit!(arg_matches, "decimals", u8);
             let mint_authority =
                 config.pubkey_or_default(arg_matches, "mint_authority", &mut wallet_manager);
@@ -2920,17 +2936,7 @@ fn main() -> Result<(), Error> {
                 .unwrap();
             command_multisig(&config, address)
         }
-        ("gc", Some(arg_matches)) => {
-            match config.output_format {
-                OutputFormat::Json | OutputFormat::JsonCompact => {
-                    eprintln!(
-                        "`spl-token gc` does not support the `--ouput` parameter at this time"
-                    );
-                    exit(1);
-                }
-                _ => {}
-            }
-
+        (command_name::GC, Some(arg_matches)) => {
             let close_empty_associated_accounts =
                 matches.is_present("close_empty_associated_accounts");
 

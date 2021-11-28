@@ -2,7 +2,10 @@ use crate::{config::Config, sort::UnsupportedAccount};
 use console::Emoji;
 use serde::{Deserialize, Serialize, Serializer};
 use solana_account_decoder::parse_token::{UiAccountState, UiTokenAccount, UiTokenAmount};
-use solana_cli_output::{display::writeln_name_value, OutputFormat, QuietDisplay, VerboseDisplay};
+use solana_cli_output::{
+    display::writeln_name_value, CliSignOnlyData, CliSignature, OutputFormat, QuietDisplay,
+    VerboseDisplay,
+};
 use std::fmt::{self, Display};
 
 pub(crate) trait Output: Serialize + fmt::Display + QuietDisplay + VerboseDisplay {}
@@ -58,6 +61,78 @@ pub(crate) fn println_display(config: &Config, message: String) {
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub(crate) struct CliSignatures {
+    pub(crate) cli_signatures: Vec<CliSignature>,
+}
+
+impl Display for CliSignatures {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f)?;
+        for signature in &self.cli_signatures {
+            Display::fmt(signature, f)?;
+        }
+        Ok(())
+    }
+}
+
+impl QuietDisplay for CliSignatures {
+    fn write_str(&self, w: &mut dyn std::fmt::Write) -> std::fmt::Result {
+        writeln!(w)?;
+        for signature in &self.cli_signatures {
+            QuietDisplay::write_str(signature, w)?;
+        }
+        Ok(())
+    }
+}
+
+impl VerboseDisplay for CliSignatures {
+    fn write_str(&self, w: &mut dyn std::fmt::Write) -> std::fmt::Result {
+        writeln!(w)?;
+        for signature in &self.cli_signatures {
+            VerboseDisplay::write_str(signature, w)?;
+        }
+        Ok(())
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CliSignOnlyDataMultiple {
+    pub(crate) cli_sign_only_data_multiple: Vec<CliSignOnlyData>,
+}
+
+impl Display for CliSignOnlyDataMultiple {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f)?;
+        for data in &self.cli_sign_only_data_multiple {
+            Display::fmt(data, f)?;
+        }
+        Ok(())
+    }
+}
+
+impl QuietDisplay for CliSignOnlyDataMultiple {
+    fn write_str(&self, w: &mut dyn std::fmt::Write) -> std::fmt::Result {
+        writeln!(w)?;
+        for data in &self.cli_sign_only_data_multiple {
+            QuietDisplay::write_str(data, w)?;
+        }
+        Ok(())
+    }
+}
+
+impl VerboseDisplay for CliSignOnlyDataMultiple {
+    fn write_str(&self, w: &mut dyn std::fmt::Write) -> std::fmt::Result {
+        writeln!(w)?;
+        for data in &self.cli_sign_only_data_multiple {
+            VerboseDisplay::write_str(data, w)?;
+        }
+        Ok(())
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub(crate) struct CliMint<T>
 where
     T: Serialize + Display + QuietDisplay + VerboseDisplay,
@@ -78,6 +153,7 @@ where
         Display::fmt(&self.transaction_data, f)
     }
 }
+
 impl<T> QuietDisplay for CliMint<T>
 where
     T: Serialize + Display + QuietDisplay + VerboseDisplay,
