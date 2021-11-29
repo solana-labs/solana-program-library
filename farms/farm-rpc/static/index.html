@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="description" content="Solana Farms RPC Service">
+    <meta name="google" content="nositelinkssearchbox">
+    <meta name="google" content="notranslate">
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <link rel="icon" type="image/x-icon" sizes="32x32" href="favicon.ico" />
+    <link rel="apple-touch-icon" type="image/png" href="rainbow192.png">
+    <link rel="manifest" href="manifest.json" />
+    <title>Solana Farms RPC Service</title>
+    <style>
+      p.header {
+        margin-left: 10px; 
+        color:white; 
+        font-size: 20px;
+      }
+      p.request_type {
+        margin-left: 10px; 
+        color:white; 
+        font-size: 18px;
+      }
+      p.description {
+        margin: 3px;
+        margin-top: 15px;
+        margin-left: 10px;
+        color:rgb(80, 153, 80); 
+        font-size: 16px;
+      }
+      p.link {
+        margin: 3px;
+        margin-left: 10px; 
+        color:#86b8b6; 
+        font-size: 16px;
+      }
+      a.link {
+        margin-left: 10px; 
+        color:#86b8b6; 
+        font-size: 16px;
+      }
+    </style>
+  </head>
+  <body style="background-color:rgb(22, 22, 22);">
+    <div id="root">
+      <p class="header">Solana Farms RPC Service</p>
+      <p class="request_type">Get:</p>
+      <p class="description">/// Returns Token metadata from Github</p>
+      <a class="link" href="/api/v1/git_token?name=[name]">/api/v1/git_token?name=[name]</a>
+      <p class="description">/// Returns all Tokens from Github</p>
+      <a class="link" href="/api/v1/git_tokens">/api/v1/git_tokens</a>
+      <p class="description">/// Returns the Vault struct for the given name</p>
+      <a class="link" href="/api/v1/vault?name=[name]">/api/v1/vault?name=[name]</a>
+      <p class="description">/// Returns all Vaults available</p>
+      <a class="link" href="/api/v1/vaults">/api/v1/vaults</a>
+      <p class="description">/// Returns the Vault metadata address for the given name</p>
+      <a class="link" href="/api/v1/vault_ref?name=[name]">/api/v1/vault_ref?name=[name]</a>
+      <p class="description">/// Returns Vault refs: a map of Vault name to account address with metadata</p>
+      <a class="link" href="/api/v1/vault_refs">/api/v1/vault_refs</a>
+      <p class="description">/// Loads the Vault struct data from the specified metadata address</p>
+      <a class="link" href="/api/v1/vault_by_ref?vault_ref=[vault_ref]">/api/v1/vault_by_ref?vault_ref=[vault_ref]</a>
+      <p class="description">/// Returns the Vault name for the given metadata address</p>
+      <a class="link" href="/api/v1/vault_name?vault_ref=[vault_ref]">/api/v1/vault_name?vault_ref=[vault_ref]</a>
+      <p class="description">/// Returns all Vaults with tokens A and B sorted by version</p>
+      <a class="link"
+        href="/api/v1/find_vaults?token_a=[token_a]&amp;token_b=[token_b]">/api/v1/find_vaults?token_a=[token_a]&amp;token_b=[token_b]</a>
+      <p class="description">/// Returns the Pool struct for the given name</p>
+      <a class="link" href="/api/v1/pool?name=[name]">/api/v1/pool?name=[name]</a>
+      <p class="description">/// Returns all Pools available</p>
+      <a class="link" href="/api/v1/pools">/api/v1/pools</a>
+      <p class="description">/// Returns the Pool metadata address for the given name</p>
+      <a class="link" href="/api/v1/pool_ref?name=[name]">/api/v1/pool_ref?name=[name]</a>
+      <p class="description">/// Returns Pool refs: a map of Pool name to account address with metadata</p>
+      <a class="link" href="/api/v1/pool_refs">/api/v1/pool_refs</a>
+      <p class="description">/// Loads the Pool struct data from the specified metadata address</p>
+      <a class="link" href="/api/v1/pool_by_ref?pool_ref=[pool_ref]">/api/v1/pool_by_ref?pool_ref=[pool_ref]</a>
+      <p class="description">/// Returns the Pool name for the given metadata address</p>
+      <a class="link" href="/api/v1/pool_name?pool_ref=[pool_ref]">/api/v1/pool_name?pool_ref=[pool_ref]</a>
+      <p class="description">/// Returns all Pools with tokens A and B sorted by version for the given protocol</p>
+      <a class="link"
+        href="/api/v1/find_pools?protocol=[protocol]&amp;token_a=[token_a]&amp;token_b=[token_b]">/api/v1/find_pools?protocol=[protocol]&amp;token_a=[token_a]&amp;token_b=[token_b]</a>
+      <p class="description">/// Returns all Pools sorted by version for the given LP token</p>
+      <a class="link"
+        href="/api/v1/find_pools_with_lp?lp_token=[lp_token]">/api/v1/find_pools_with_lp?lp_token=[lp_token]</a>
+      <p class="description">/// Returns pair's price based on the ratio of tokens in the pool</p>
+      <a class="link" href="/api/v1/pool_price?name=[name]">/api/v1/pool_price?name=[name]</a>
+      <p class="description">/// Returns the Farm struct for the given name</p>
+      <a class="link" href="/api/v1/farm?name=[name]">/api/v1/farm?name=[name]</a>
+      <p class="description">/// Returns all Farms available</p>
+      <a class="link" href="/api/v1/farms">/api/v1/farms</a>
+      <p class="description">/// Returns the Farm metadata address for the given name</p>
+      <a class="link" href="/api/v1/farm_ref?name=[name]">/api/v1/farm_ref?name=[name]</a>
+      <p class="description">/// Returns Farm refs: a map of Farm name to account address with metadata</p>
+      <a class="link" href="/api/v1/farm_refs">/api/v1/farm_refs</a>
+      <p class="description">/// Loads the Farm struct data from the specified metadata address</p>
+      <a class="link" href="/api/v1/farm_by_ref?farm_ref=[farm_ref]">/api/v1/farm_by_ref?farm_ref=[farm_ref]</a>
+      <p class="description">/// Returns the Farm name for the given metadata address</p>
+      <a class="link" href="/api/v1/farm_name?farm_ref=[farm_ref]">/api/v1/farm_name?farm_ref=[farm_ref]</a>
+      <p class="description">/// Returns all Farms sorted by version for the given LP token</p>
+      <a class="link" href="/api/v1/find_farms_with_lp?lp_token=[lp_token]">/api/v1/find_farms_with_lp?lp_token=[lp_token]</a>
+      <p class="description">/// Returns the Token struct for the given name</p>
+      <a class="link" href="/api/v1/token?name=[name]">/api/v1/token?name=[name]</a>
+      <p class="description">/// Returns all Tokens available</p>
+      <a class="link" href="/api/v1/tokens">/api/v1/tokens</a>
+      <p class="description">/// Returns the Token metadata address for the given name</p>
+      <a class="link" href="/api/v1/token_ref?name=[name]">/api/v1/token_ref?name=[name]</a>
+      <p class="description">/// Returns Token refs: a map of Token name to account address with metadata</p>
+      <a class="link" href="/api/v1/token_refs">/api/v1/token_refs</a>
+      <p class="description">/// Loads the Token struct data from the specified metadata address</p>
+      <a class="link" href="/api/v1/token_by_ref?token_ref=[token_ref]">/api/v1/token_by_ref?token_ref=[token_ref]</a>
+      <p class="description">/// Returns the Token name for the given metadata address</p>
+      <a class="link" href="/api/v1/token_name?token_ref=[token_ref]">/api/v1/token_name?token_ref=[token_ref]</a>
+      <p class="description">/// Returns the Token metadata for the specified mint</p>
+      <a class="link" href="/api/v1/token_with_mint?token_mint=[token_mint]">/api/v1/token_with_mint?token_mint=[token_mint]</a>
+      <p class="description">/// Returns the official Program ID for the given name</p>
+      <a class="link" href="/api/v1/program_id?name=[name]">/api/v1/program_id?name=[name]</a>
+      <p class="description">/// Returns all official Program IDs available</p>
+      <a class="link" href="/api/v1/program_ids">/api/v1/program_ids</a>
+      <p class="description">/// Returns the official program name for the given Program ID</p>
+      <a class="link" href="/api/v1/program_name?prog_id=[prog_id]">/api/v1/program_name?prog_id=[prog_id]</a>
+      <p class="description">/// Checks if the given address is the official Program ID</p>
+      <a class="link" href="/api/v1/is_official_id?prog_id=[prog_id]">/api/v1/is_official_id?prog_id=[prog_id]</a>
+      <p class="description">/// Closes existing system account</p>
+      <a class="link"
+        href="/api/v1/close_system_account?wallet_keypair=[wallet_keypair]&amp;target_account_keypair=[target_account_keypair]">/api/v1/close_system_account?wallet_keypair=[wallet_keypair]&amp;target_account_keypair=[target_account_keypair]</a>
+      <p class="description">/// Returns the associated token account address for the given token name</p>
+      <a class="link"
+        href="/api/v1/associated_token_address?wallet_address=[wallet_address]&amp;token_name=[token_name]">/api/v1/associated_token_address?wallet_address=[wallet_address]&amp;token_name=[token_name]</a>
+      <p class="description">/// Returns all tokens with active account in the wallet</p>
+      <a class="link"
+        href="/api/v1/wallet_tokens?wallet_address=[wallet_address]">/api/v1/wallet_tokens?wallet_address=[wallet_address]</a>
+      <p class="description">/// Returns UiTokenAccount struct data for the associated token account address</p>
+      <a class="link"
+        href="/api/v1/token_account_data?wallet_address=[wallet_address]&amp;token_name=[token_name]">/api/v1/token_account_data?wallet_address=[wallet_address]&amp;token_name=[token_name]</a>
+      <p class="description">/// Returns native SOL balance</p>
+      <a class="link"
+        href="/api/v1/account_balance?wallet_address=[wallet_address]">/api/v1/account_balance?wallet_address=[wallet_address]</a>
+      <p class="description">/// Returns token balance for the associated token account address</p>
+      <a class="link"
+        href="/api/v1/token_account_balance?wallet_address=[wallet_address]&amp;token_name=[token_name]">/api/v1/token_account_balance?wallet_address=[wallet_address]&amp;token_name=[token_name]</a>
+      <p class="description">/// Returns true if the associated token account exists and is initialized</p>
+      <a class="link"
+        href="/api/v1/has_active_token_account?wallet_address=[wallet_address]&amp;token_name=[token_name]">/api/v1/has_active_token_account?wallet_address=[wallet_address]&amp;token_name=[token_name]</a>
+      <p class="description">/// Returns User's stacked balance</p>
+      <a class="link"
+        href="/api/v1/user_stake_balance?wallet_address=[wallet_address]&amp;farm_name=[farm_name]">/api/v1/user_stake_balance?wallet_address=[wallet_address]&amp;farm_name=[farm_name]</a>
+      <p class="description">/// Returns Vault's stacked balance</p>
+      <a class="link"
+        href="/api/v1/vault_stake_balance?vault_name=[vault_name]">/api/v1/vault_stake_balance?vault_name=[vault_name]</a>
+      <p class="description">/// Returns user stats for specific Vault</p>
+      <a class="link"
+        href="/api/v1/vault_user_info?wallet_address=[wallet_address]&amp;vault_name=[vault_name]">/api/v1/vault_user_info?wallet_address=[wallet_address]&amp;vault_name=[vault_name]</a>
+      <p class="description">/// Returns Vault stats</p>
+      <a class="link" href="/api/v1/vault_info?vault_name=[vault_name]">/api/v1/vault_info?vault_name=[vault_name]</a>
+      <p class="description">/// Returns a new Instruction for creating system account</p>
+      <a class="link"
+        href="/api/v1/new_instruction_create_system_account?wallet_address=[wallet_address]&amp;new_address=[new_address]&amp;lamports=[lamports]&amp;space=[space]&amp;owner=[owner]">/api/v1/new_instruction_create_system_account?wallet_address=[wallet_address]&amp;new_address=[new_address]&amp;lamports=[lamports]&amp;space=[space]&amp;owner=[owner]</a>
+      <p class="description">/// Returns a new Instruction for closing system account</p>
+      <a class="link"
+        href="/api/v1/new_instruction_close_system_account?wallet_address=[wallet_address]&amp;target_address=[target_address]">/api/v1/new_instruction_close_system_account?wallet_address=[wallet_address]&amp;target_address=[target_address]</a>
+      <p class="description">/// Creates the native SOL transfer instruction</p>
+      <a class="link"
+        href="/api/v1/new_instruction_transfer?wallet_address=[wallet_address]&amp;destination_wallet=[destination_wallet]&amp;sol_ui_amount=[sol_ui_amount]">/api/v1/new_instruction_transfer?wallet_address=[wallet_address]&amp;destination_wallet=[destination_wallet]&amp;sol_ui_amount=[sol_ui_amount]</a>
+      <p class="description">/// Creates a tokens transfer instruction</p>
+      <a class="link"
+        href="/api/v1/new_instruction_token_transfer?wallet_address=[wallet_address]&amp;token_name=[token_name]&amp;destination_wallet=[destination_wallet]&amp;ui_amount=[ui_amount]">/api/v1/new_instruction_token_transfer?wallet_address=[wallet_address]&amp;token_name=[token_name]&amp;destination_wallet=[destination_wallet]&amp;ui_amount=[ui_amount]</a>
+      <p class="description">/// Creates a new Instruction for syncing token balance for the specified account</p>
+      <a class="link"
+        href="/api/v1/new_instruction_sync_token_balance?wallet_address=[wallet_address]&amp;token_name=[token_name]">/api/v1/new_instruction_sync_token_balance?wallet_address=[wallet_address]&amp;token_name=[token_name]</a>
+      <p class="description">/// Returns a new Instruction for creating associated token account</p>
+      <a class="link"
+        href="/api/v1/new_instruction_create_token_account?wallet_address=[wallet_address]&amp;token_name=[token_name]">/api/v1/new_instruction_create_token_account?wallet_address=[wallet_address]&amp;token_name=[token_name]</a>
+      <p class="description">/// Returns a new Instruction for closing associated token account</p>
+      <a class="link"
+        href="/api/v1/new_instruction_close_token_account?wallet_address=[wallet_address]&amp;token_name=[token_name]">/api/v1/new_instruction_close_token_account?wallet_address=[wallet_address]&amp;token_name=[token_name]</a>
+      <p class="description">/// Creates a new Instruction for initializing a new User for the Vault</p>
+      <a class="link"
+        href="/api/v1/new_instruction_user_init_vault?wallet_address=[wallet_address]&amp;vault_name=[vault_name]">/api/v1/new_instruction_add_liquidity_vault?wallet_address=[wallet_address]&amp;vault_name=[vault_name]</a>
+      <p class="description">/// Creates a new Instruction for adding liquidity to the Vault</p>
+      <a class="link"
+        href="/api/v1/new_instruction_add_liquidity_vault?wallet_address=[wallet_address]&amp;vault_name=[vault_name]&amp;max_token_a_ui_amount=[max_token_a_ui_amount]&amp;max_token_b_ui_amount=[max_token_b_ui_amount]">/api/v1/new_instruction_add_liquidity_vault?wallet_address=[wallet_address]&amp;vault_name=[vault_name]&amp;max_token_a_ui_amount=[max_token_a_ui_amount]&amp;max_token_b_ui_amount=[max_token_b_ui_amount]</a>
+      <p class="description">/// Creates a new Instruction for unlocking liquidity from the Vault</p>
+      <a class="link"
+        href="/api/v1/new_instruction_unlock_liquidity_vault?wallet_address=[wallet_address]&amp;vault_name=[vault_name]&amp;ui_amount=[ui_amount]">/api/v1/new_instruction_unlock_liquidity_vault?wallet_address=[wallet_address]&amp;vault_name=[vault_name]&amp;ui_amount=[ui_amount]</a>
+      <p class="description">/// Creates a new Instruction for removing liquidity from the Vault</p>
+      <a class="link"
+        href="/api/v1/new_instruction_remove_liquidity_vault?wallet_address=[wallet_address]&amp;vault_name=[vault_name]&amp;ui_amount=[ui_amount]">/api/v1/new_instruction_remove_liquidity_vault?wallet_address=[wallet_address]&amp;vault_name=[vault_name]&amp;ui_amount=[ui_amount]</a>
+      <p class="description">/// Creates a new Instruction for adding liquidity to the Pool</p>
+      <a class="link"
+        href="/api/v1/new_instruction_add_liquidity_pool?wallet_address=[wallet_address]&amp;pool_name=[pool_name]&amp;max_token_a_ui_amount=[max_token_a_ui_amount]&amp;max_token_b_ui_amount=[max_token_b_ui_amount]">/api/v1/new_instruction_add_liquidity_pool?wallet_address=[wallet_address]&amp;pool_name=[pool_name]&amp;max_token_a_ui_amount=[max_token_a_ui_amount]&amp;max_token_b_ui_amount=[max_token_b_ui_amount]</a>
+      <p class="description">/// Creates a new Instruction for removing liquidity from the Pool</p>
+      <a class="link"
+        href="/api/v1/new_instruction_remove_liquidity_pool?wallet_address=[wallet_address]&amp;pool_name=[pool_name]&amp;ui_amount=[ui_amount]">/api/v1/new_instruction_remove_liquidity_pool?wallet_address=[wallet_address]&amp;pool_name=[pool_name]&amp;ui_amount=[ui_amount]</a>
+      <p class="description">/// Creates a new Instruction for tokens swap</p>
+      <a class="link"
+        href="/api/v1/new_instruction_swap?wallet_address=[wallet_address]&amp;protocol=[protocol]&amp;from_token=[from_token]&amp;to_token=[to_token]&amp;ui_amount_in=[ui_amount_in]">/api/v1/new_instruction_swap?wallet_address=[wallet_address]&amp;protocol=[protocol]&amp;from_token=[from_token]&amp;to_token=[to_token]&amp;ui_amount_in=[ui_amount_in]&amp;min_ui_amount_out=[min_ui_amount_out]</a>
+      <p class="description">/// Creates a new Instruction for tokens staking</p>
+      <a class="link"
+        href="/api/v1/new_instruction_stake?wallet_address=[wallet_address]&amp;farm_name=[farm_name]&amp;ui_amount=[ui_amount]">/api/v1/new_instruction_stake?wallet_address=[wallet_address]&amp;farm_name=[farm_name]&amp;ui_amount=[ui_amount]</a>
+      <p class="description">/// Creates a new Instruction for tokens unstaking</p>
+      <a class="link"
+        href="/api/v1/new_instruction_unstake?wallet_address=[wallet_address]&amp;farm_name=[farm_name]&amp;ui_amount=[ui_amount]">/api/v1/new_instruction_unstake?wallet_address=[wallet_address]&amp;farm_name=[farm_name]&amp;ui_amount=[ui_amount]</a>
+      <p class="description">/// Creates a new Instruction for rewards harvesting</p>
+      <a class="link"
+        href="/api/v1/new_instruction_harvest?wallet_address=[wallet_address]&amp;farm_name=[farm_name]">/api/v1/new_instruction_harvest?wallet_address=[wallet_address]&amp;farm_name=[farm_name]</a>
+      <p class="description">/// Creates a new Vault Crank Instruction</p>
+      <a class="link"
+        href="/api/v1/new_instruction_crank_vault?wallet_address=[wallet_address]&amp;vault_name=[vault_name]&amp;step=[step]">/api/v1/new_instruction_crank_vault?wallet_address=[wallet_address]&amp;vault_name=[vault_name]&amp;step=[step]</a>
+      <p class="request_type">Post:</p>
+      <p class="description">/// Creates a new system account</p>
+      <p class="link">
+        /api/v1/create_system_account?wallet_keypair=[wallet_keypair]&amp;new_account_keypair=[new_account_keypair]&amp;lamports=[lamports]&amp;space=[space]&amp;owner=[owner]</a>
+      <p class="description">/// Transfers native SOL from the wallet to the destination</p>
+      <p class="link">
+        /api/v1/transfer?wallet_keypair=[wallet_keypair]&amp;destination_wallet=[destination_wallet]&amp;sol_ui_amount=[sol_ui_amount]</a>
+      <p class="description">/// Transfers native SOL from the wallet to the associated Wrapped SOL account.</p>
+      <p class="link">/api/v1/transfer_sol_to_wsol?wallet_keypair=[wallet_keypair]&amp;sol_ui_amount=[sol_ui_amount]</a>
+      <p class="description">/// Transfers tokens from the wallet to the destination</p>
+      <p class="link">
+        /api/v1/token_transfer?wallet_keypair=[wallet_keypair]&amp;token_name=[token_name]&amp;destination_wallet=[destination_wallet]&amp;ui_amount=[ui_amount]</a>
+      <p class="description">/// Updates token balance of the account, usefull after transfer SOL to WSOL account</p>
+      <p class="link">/api/v1/sync_token_balance?wallet_keypair=[wallet_keypair]&amp;token_name=[token_name]</a>
+      <p class="description">/// Returns the associated token account or creates one if it doesn't exist</p>
+      <p class="link">/api/v1/create_token_account?wallet_keypair=[wallet_keypair]&amp;token_name=[token_name]</a>
+      <p class="description">/// Closes existing token account associated with the given user's main account</p>
+      <p class="link">/api/v1/close_token_account?wallet_keypair=[wallet_keypair]&amp;token_name=[token_name]</a>
+      <p class="description">/// Initializes a new User for the Vault</p>
+      <p class="link">
+        /api/v1/user_init_vault?wallet_keypair=[wallet_keypair]&amp;vault_name=[vault_name]</a>
+      <p class="description">/// Adds liquidity to the Vault</p>
+      <p class="link">
+        /api/v1/add_liquidity_vault?wallet_keypair=[wallet_keypair]&amp;vault_name=[vault_name]&amp;max_token_a_ui_amount=[max_token_a_ui_amount]&amp;max_token_b_ui_amount=[max_token_b_ui_amount]</a>
+      <p class="description">/// Removes liquidity from the Vault</p>
+      <p class="link">
+        /api/v1/remove_liquidity_vault?wallet_keypair=[wallet_keypair]&amp;vault_name=[vault_name]&amp;ui_amount=[ui_amount]</a>
+      <p class="description">/// Removes unlocked liquidity from the Vault</p>
+      <p class="link">
+        /api/v1/remove_unlocked_liquidity_vault?wallet_keypair=[wallet_keypair]&amp;vault_name=[vault_name]&amp;ui_amount=[ui_amount]</a>
+      <p class="description">/// Adds liquidity to the Pool</p>
+      <p class="link">
+        /api/v1/add_liquidity_pool?wallet_keypair=[wallet_keypair]&amp;pool_name=[pool_name]&amp;max_token_a_ui_amount=[max_token_a_ui_amount]&amp;max_token_b_ui_amount=[max_token_b_ui_amount]</a>
+      <p class="description">/// Removes liquidity from the Pool</p>
+      <p class="link">
+        /api/v1/remove_liquidity_pool?wallet_keypair=[wallet_keypair]&amp;pool_name=[pool_name]&amp;ui_amount=[ui_amount]</a>
+      <p class="description">/// Swaps tokens</p>
+      <p class="link">
+        /api/v1/swap?wallet_keypair=[wallet_keypair]&amp;protocol=[protocol]&amp;from_token=[from_token]&amp;to_token=[to_token]&amp;ui_amount_in=[ui_amount_in]&amp;min_ui_amount_out=[min_ui_amount_out]</a>
+      <p class="description">/// Stakes tokens to the Farm</p>
+      <p class="link">/api/v1/stake?wallet_keypair=[wallet_keypair]&amp;farm_name=[farm_name]&amp;ui_amount=[ui_amount]</a>
+      <p class="description">/// Unstakes tokens from the Farm</p>
+      <p class="link">/api/v1/unstake?wallet_keypair=[wallet_keypair]&amp;farm_name=[farm_name]&amp;ui_amount=[ui_amount]</a>
+      <p class="description">/// Harvests rewards from the Pool</p>
+      <p class="link">/api/v1/harvest?wallet_keypair=[wallet_keypair]&amp;farm_name=[farm_name]</a>
+      <p class="description">/// Cranks single Vault</p>
+      <p class="link">/api/v1/crank_vault?wallet_keypair=[wallet_keypair]&amp;vault_name=[vault_name]&amp;step=[step]</a>
+      <p class="description">/// Cranks all Vaults</p>
+      <p class="link">/api/v1/crank_vaults?wallet_keypair=[wallet_keypair]&amp;step=[step]</a>
+    </div>
+  </body>
+</html>
