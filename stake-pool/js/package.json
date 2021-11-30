@@ -1,11 +1,12 @@
 {
   "name": "@solana/spl-stake-pool",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "SPL Stake Pool Program JS API",
   "scripts": {
     "lint": "npx prettier src/*.ts -w",
-    "compile": "tsc",
-    "test": "mocha -r ts-node/register './test/**/*.test.ts'"
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage"
   },
   "keywords": [],
   "authors": [
@@ -22,17 +23,12 @@
     "process": "^0.11.10"
   },
   "devDependencies": {
+    "@babel/preset-env": "^7.16.4",
+    "@babel/preset-typescript": "^7.16.0",
     "@babel/register": "^7.12.13",
     "@types/bn.js": "^5.1.0",
-    "@types/chai": "^4.2.21",
-    "@types/mocha": "^8.2.2",
-    "chai": "^4.3.4",
-    "esm": "^3.2.25",
-    "mocha": "^8.4.0",
-    "npm-force-resolutions": "^0.0.10",
-    "prettier": "^2.2.1",
-    "ts-node": "^10.2.1",
-    "tsconfig-paths": "^3.11.0",
-    "typescript": "^4.2.4"
+    "@types/jest": "^27.0.3",
+    "jest": "^27.3.1",
+    "prettier": "^2.2.1"
   }
 }

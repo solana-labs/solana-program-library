@@ -1,5 +1,5 @@
-import {publicKey, struct, u32, u64, u8, option, vec} from '@project-serum/borsh';
-import {PublicKey} from '@solana/web3.js';
+import { publicKey, struct, u32, u64, u8, option, vec } from '@project-serum/borsh';
+import { PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
 
 export interface Fee {
@@ -7,14 +7,11 @@ export interface Fee {
   numerator: BN;
 }
 
-const feeFields = [
-  u64('denominator'),
-  u64('numerator'),
-];
+const feeFields = [u64('denominator'), u64('numerator')];
 
 export interface Lockup {
-  unixTimestamp: number;
-  epoch: number;
+  unixTimestamp: BN;
+  epoch: BN;
   custodian: PublicKey;
 }
 
@@ -78,7 +75,7 @@ export interface StakePool {
   solWithdrawalFee: Fee;
   nextSolWithdrawalFee?: Fee | undefined;
   lastEpochPoolTokenSupply: BN;
-  lastEpochTotalLamports: BN
+  lastEpochTotalLamports: BN;
 }
 
 export const STAKE_POOL_LAYOUT = struct<StakePool>([
@@ -96,11 +93,7 @@ export const STAKE_POOL_LAYOUT = struct<StakePool>([
   u64('totalLamports'),
   u64('poolTokenSupply'),
   u64('lastUpdateEpoch'),
-  struct([
-    u64('unixTimestamp'),
-    u64('epoch'),
-    publicKey('custodian'),
-  ], 'lockup'),
+  struct([u64('unixTimestamp'), u64('epoch'), publicKey('custodian')], 'lockup'),
   struct(feeFields, 'epochFee'),
   option(struct(feeFields), 'nextEpochFee'),
   option(publicKey(), 'preferredDepositValidatorVoteAddress'),
@@ -115,12 +108,18 @@ export const STAKE_POOL_LAYOUT = struct<StakePool>([
   option(publicKey(), 'solWithdrawAuthority'),
   struct(feeFields, 'solWithdrawalFee'),
   option(struct(feeFields), 'nextSolWithdrawalFee'),
-  u8('lastEpochPoolTokenSupply'),
-  u8('lastEpochTotalLamports'),
+  u64('lastEpochPoolTokenSupply'),
+  u64('lastEpochTotalLamports'),
 ]);
 
+export enum ValidatorStakeInfoStatus {
+  Active,
+  DeactivatingTransient,
+  ReadyForRemoval,
+}
+
 export interface ValidatorStakeInfo {
-  status: number;
+  status: ValidatorStakeInfoStatus;
   voteAccountAddress: PublicKey;
   activeStakeLamports: BN;
   transientStakeLamports?: BN;
@@ -165,11 +164,6 @@ export interface ValidatorList {
 }
 
 export const VALIDATOR_LIST_LAYOUT = struct<ValidatorList>([
-  // rustEnum([
-  //   struct([], 'Uninitialized'),
-  //   struct([], 'StakePool'),
-  //   struct([], 'ValidatorList'),
-  // ]).replicate('accountType'),
   u8('accountType'),
   u32('maxValidators'),
   vec(VALIDATOR_STAKE_INFO_LAYOUT, 'validators'),

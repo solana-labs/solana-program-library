@@ -1,12 +1,6 @@
-# !!! IN PROGRESS !!!
-
-That is an alpha public preview of web3 bindings for solana stake pool program.
-We are still working on it.
-
-
 # TypeScript bindings for stake-pool program
 
-
+For use with both node.js and in-browser.
 
 ## Installation
 
@@ -18,11 +12,16 @@ npm install
 
 In the `js` folder:
 
-
+```
+npm run compile
+npm run lint
+node dist/index.js
+```
 
 ## Test
 
-
-
-Sample output:
+```
+npm run compile
+npm test
+```
 

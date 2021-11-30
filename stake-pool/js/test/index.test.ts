@@ -1,11 +1,10 @@
 import BN from 'bn.js';
-import {assert} from 'chai';
-import {PublicKey} from '@solana/web3.js';
-import * as index from '../src/index';
+import { PublicKey } from '@solana/web3.js';
+import * as index from '../src';
 
 describe('index', () => {
   it('should successfully pretty print a pubkey', () => {
-    assert.equal(
+    expect(
       index.prettyPrintPubKey(
         new PublicKey(
           new BN(
@@ -13,7 +12,6 @@ describe('index', () => {
           ),
         ),
       ),
-      '6MfzrQUzB2mozveRWU9a77zMoQzSrYa4Gq46KswjupQB',
-    );
+    ).toEqual('6MfzrQUzB2mozveRWU9a77zMoQzSrYa4Gq46KswjupQB');
   });
 });

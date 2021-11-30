@@ -7,18 +7,12 @@ import {
   StakeProgram,
   SystemProgram,
 } from '@solana/web3.js';
-import {MintInfo, Token, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID} from '@solana/spl-token';
-import {Buffer} from 'buffer';
+import { MintInfo, Token, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { Buffer } from 'buffer';
 import BN from 'bn.js';
-import {WithdrawAccount, STAKE_STATE_LEN} from './index';
-import {
-  ACCOUNT_LAYOUT,
-  VALIDATOR_LIST_LAYOUT,
-  ValidatorList,
-  StakePool,
-} from './layouts';
+import { ACCOUNT_LAYOUT, VALIDATOR_LIST_LAYOUT, ValidatorList, StakePool } from './layouts';
 
-import {StakePoolProgram} from './stakepool-program';
+import { STAKE_STATE_LEN, StakePoolProgram, WithdrawAccount } from './stakepool-program';
 
 const TRANSIENT_STAKE_SEED_PREFIX = Buffer.from('transient');
 const FAILED_TO_FIND_ACCOUNT = 'Failed to find account';
@@ -42,20 +36,21 @@ export function lamportsToSol(lamports: number | BN): number {
   const absLamports = lamports.abs();
   const lamportsString = absLamports.toString(10).padStart(10, '0');
   const splitIndex = lamportsString.length - 9;
-  const solString =
-    lamportsString.slice(0, splitIndex) +
-    '.' +
-    lamportsString.slice(splitIndex);
+  const solString = lamportsString.slice(0, splitIndex) + '.' + lamportsString.slice(splitIndex);
   return signMultiplier * parseFloat(solString);
 }
 
-/// Convert the UI representation of a token amount (using the decimals field defined in its mint)
-/// to the raw amount
+/**
+ * Convert the UI representation of a token amount (using the decimals field defined in its mint)
+ * to the raw amount
+ */
 export function uiAmountToAmount(amount: number, decimals: number) {
   return getTokenMultiplierFromDecimals(decimals).toNumber() * amount;
 }
 
-/// Convert a raw amount to its UI representation (using the decimals field defined in its mint)
+/**
+ * Convert a raw amount to its UI representation (using the decimals field defined in its mint)
+ */
 export function amountToUiAmount(amount: BN | number, decimals: number) {
   return divideBnToNumber(new BN(amount), getTokenMultiplierFromDecimals(decimals));
 }
@@ -64,6 +59,16 @@ export function getTokenMultiplierFromDecimals(decimals: number): BN {
   return new BN(10).pow(new BN(decimals));
 }
 
+export const toBuffer = (arr: Buffer | Uint8Array | Array<number>): Buffer => {
+  if (Buffer.isBuffer(arr)) {
+    return arr;
+  } else if (arr instanceof Uint8Array) {
+    return Buffer.from(arr.buffer, arr.byteOffset, arr.byteLength);
+  } else {
+    return Buffer.from(arr);
+  }
+};
+
 /**
  * Generates the withdraw authority program address for the stake pool
  */
@@ -71,10 +76,8 @@ export async function findWithdrawAuthorityProgramAddress(
   programId: PublicKey,
   stakePoolAddress: PublicKey,
 ) {
-  const [publicKey] = await PublicKey.findProgramAddress([
-      stakePoolAddress.toBuffer(),
-      Buffer.from('withdraw'),
-    ],
+  const [publicKey] = await PublicKey.findProgramAddress(
+    [stakePoolAddress.toBuffer(), Buffer.from('withdraw')],
     programId,
   );
   return publicKey;
@@ -88,10 +91,8 @@ export async function findStakeProgramAddress(
   voteAccountAddress: PublicKey,
   stakePoolAddress: PublicKey,
 ) {
-  const [publicKey] = await PublicKey.findProgramAddress([
-      voteAccountAddress.toBuffer(),
-      stakePoolAddress.toBuffer(),
-    ],
+  const [publicKey] = await PublicKey.findProgramAddress(
+    [voteAccountAddress.toBuffer(), stakePoolAddress.toBuffer()],
     programId,
   );
   return publicKey;
@@ -106,12 +107,12 @@ export async function findTransientStakeProgramAddress(
   stakePoolAddress: PublicKey,
   seed: BN,
 ) {
-  const [publicKey] = await PublicKey.findProgramAddress([
+  const [publicKey] = await PublicKey.findProgramAddress(
+    [
       TRANSIENT_STAKE_SEED_PREFIX,
       voteAccountAddress.toBuffer(),
       stakePoolAddress.toBuffer(),
       new Uint8Array(seed.toArray('le', 8)),
-      //seed.toBuffer('le', 8),
     ],
     programId,
   );
@@ -122,13 +123,9 @@ export async function getTokenMint(
   connection: Connection,
   tokenMintPubkey: PublicKey,
 ): Promise<MintInfo | undefined> {
-  // try {
   // @ts-ignore
   const token = new Token(connection, tokenMintPubkey, TOKEN_PROGRAM_ID, null);
   return token.getMintInfo();
-  // } catch (error) {
-  //   console.log(error);
-  // }
 }
 
 /**
@@ -162,10 +159,7 @@ export async function addAssociatedTokenAccount(
     // already been received some lamports (= became system accounts).
     // Assuming program derived addressing is safe, this is the only case
     // for the INVALID_ACCOUNT_OWNER in this code-path
-    if (
-      err.message === FAILED_TO_FIND_ACCOUNT ||
-      err.message === INVALID_ACCOUNT_OWNER
-    ) {
+    if (err.message === FAILED_TO_FIND_ACCOUNT || err.message === INVALID_ACCOUNT_OWNER) {
       // as this isn't atomic, it's possible others can create associated
       // accounts meanwhile
       try {
@@ -185,8 +179,6 @@ export async function addAssociatedTokenAccount(
         // selectively ignore the expected instruction error if the
         // associated account is existing already.
       }
-      // Now this should always succeed
-      // await connection.getAccountInfo(associatedAddress);
     } else {
       throw err;
     }
@@ -211,10 +203,11 @@ export async function getTokenAccount(
     const tokenAccount = ACCOUNT_LAYOUT.decode(account.data);
     if (tokenAccount.mint?.toBase58() != expectedTokenMint.toBase58()) {
       // noinspection ExceptionCaughtLocallyJS
-      throw new Error(`Invalid token mint for ${tokenAccountAddress}, expected mint is ${expectedTokenMint}`);
+      throw new Error(
+        `Invalid token mint for ${tokenAccountAddress}, expected mint is ${expectedTokenMint}`,
+      );
     }
     return tokenAccount;
-
   } catch (error) {
     console.log(error);
   }
@@ -226,12 +219,8 @@ export async function getStakeAccountsByWithdrawAuthority(
 ) {
   return await connection.getParsedProgramAccounts(StakeProgram.programId, {
     filters: [
-      // {
-      //   // only delegated
-      //   memcmp: { bytes: bs58.encode(new Uint8Array([2, 0, 0, 0])), offset: 0 },
-      // },
       // 44 is Withdrawer authority offset in stake account stake
-      {memcmp: {offset: 44, bytes: withdrawAuthority.toBase58()}},
+      { memcmp: { offset: 44, bytes: withdrawAuthority.toBase58() } },
     ],
   });
 }
@@ -240,10 +229,8 @@ export async function prepareWithdrawAccounts(
   connection: Connection,
   stakePool: StakePool,
   stakePoolAddress: PublicKey,
-  // poolWithdrawAuthority: PublicKey,
   amount: number,
 ): Promise<WithdrawAccount[]> {
-
   const validatorListAcc = await connection.getAccountInfo(stakePool.validatorList);
   const validatorList = VALIDATOR_LIST_LAYOUT.decode(validatorListAcc!.data) as ValidatorList;
 
@@ -258,11 +245,8 @@ export async function prepareWithdrawAccounts(
     lamports: number;
   }>;
 
-  // console.log('preferredWithdrawValidatorVoteAddress:',  stakePool.preferredWithdrawValidatorVoteAddress?.toBase58());
-
   // Prepare accounts
   for (const validator of validatorList.validators) {
-    // console.log('|- ', validator.voteAccountAddress?.toBase58(), 'status:', validator.status);
 
     if (validator.status !== 0) {
       // is not active status
@@ -276,8 +260,10 @@ export async function prepareWithdrawAccounts(
     );
 
     if (!validator.activeStakeLamports.isZero()) {
-      const isPreferred = stakePool.preferredWithdrawValidatorVoteAddress
-        && stakePool.preferredWithdrawValidatorVoteAddress!.toBase58() == validator.voteAccountAddress.toBase58();
+      const isPreferred =
+        stakePool.preferredWithdrawValidatorVoteAddress &&
+        stakePool.preferredWithdrawValidatorVoteAddress!.toBase58() ==
+        validator.voteAccountAddress.toBase58();
       accounts.push({
         type: isPreferred ? 'preferred' : 'active',
         voteAddress: validator.voteAccountAddress,
@@ -304,16 +290,6 @@ export async function prepareWithdrawAccounts(
   // Sort from highest to lowest balance
   accounts = accounts.sort((a, b) => b.lamports - a.lamports);
 
-  // Just print accounts
-  // for (const account of accounts) {
-  //   console.log({
-  //     type: account.type,
-  //     voteAddress: account.voteAddress.toBase58(),
-  //     stakeAddress: account.stakeAddress.toBase58(),
-  //     lamports: account.lamports,
-  //   });
-  // }
-
   if (stakePool.reserveStake) {
     const reserveStake = await connection.getAccountInfo(stakePool.reserveStake);
     if (reserveStake && reserveStake.lamports > 0) {
@@ -330,51 +306,32 @@ export async function prepareWithdrawAccounts(
   const withdrawFrom: WithdrawAccount[] = [];
   let remainingAmount = amount;
 
-  // const minBalance = (await connection.getMinimumBalanceForRentExemption(STAKE_STATE_LEN)) + MINIMUM_ACTIVE_STAKE;
-  // console.log('Min Balance: ', minBalance);
-
   for (const type of ['preferred', 'active', 'transient', 'reserve']) {
     const filteredAccounts = accounts.filter(a => a.type == type);
-    // console.log('|- type', type);
     // Max 5 accounts for type to prevent an error: "Transaction too large"
     // TODO: fix
     const maxAccountsByType = 5;
     let i = 0;
-    for (const {stakeAddress, voteAddress, lamports} of filteredAccounts) {
-      // if (lamports <= minBalance) {
-      //   console.log('Skip min balance', { stakeAddress, voteAddress, lamports });
-      //   continue;
-      // }
+    for (const { stakeAddress, voteAddress, lamports } of filteredAccounts) {
       if (i >= maxAccountsByType) {
         break;
       }
       // TODO: check
-      const availableForWithdrawal_1 =
-        Math.floor(calcPoolTokensForDeposit(stakePool, lamports));
-      // const fee = divideBnToNumber(stakePool.stakeWithdrawalFee.numerator, stakePool.stakeWithdrawalFee.denominator);
-      // const reverseFee = 1 - fee
-      const availableForWithdrawal = divideBnToNumber(
-        new BN(availableForWithdrawal_1).mul(stakePool.stakeWithdrawalFee.denominator),
-        stakePool.stakeWithdrawalFee.denominator.sub(stakePool.stakeWithdrawalFee.numerator),
-      );
+      let availableForWithdrawal = Math.floor(calcPoolTokensForDeposit(stakePool, lamports));
+      if (!stakePool.stakeWithdrawalFee.denominator.isZero()) {
+        availableForWithdrawal = divideBnToNumber(
+          new BN(availableForWithdrawal).mul(stakePool.stakeWithdrawalFee.denominator),
+          stakePool.stakeWithdrawalFee.denominator.sub(stakePool.stakeWithdrawalFee.numerator),
+        );
+      }
 
       const poolAmount = Math.min(availableForWithdrawal, remainingAmount);
       if (poolAmount <= 0) {
         continue;
       }
 
-      // console.log('|-- fee', fee);
-      // console.log('|-- reverseFee', reverseFee);
-      // console.log('|-- remainingAmount', remainingAmount);
-      // console.log('|-- availableForWithdrawal_1', availableForWithdrawal_1);
-      // console.log('|-- availableForWithdrawal', availableForWithdrawal);
-      // console.log('|-- stakeAddress', stakeAddress.toBase58());
-      // console.log('|-- voteAddress', voteAddress?.toBase58());
-      // console.log('|-- poolAmount', poolAmount);
-      // console.log('|-- lamports', lamports);
-
       // Those accounts will be withdrawn completely with `claim` instruction
-      withdrawFrom.push({stakeAddress, voteAddress, poolAmount});
+      withdrawFrom.push({ stakeAddress, voteAddress, poolAmount });
       remainingAmount -= poolAmount;
       if (remainingAmount == 0) {
         break;
@@ -406,10 +363,6 @@ export function calcPoolTokensForDeposit(stakePool: StakePool, stakeLamports: nu
     new BN(stakeLamports).mul(stakePool.poolTokenSupply),
     stakePool.totalLamports,
   );
-  // return new BN(stakeLamports)
-  //   .mul(stakePool.poolTokenSupply)
-  //   .div(stakePool.totalLamports)
-  //   .toNumber();
 }
 
 /**

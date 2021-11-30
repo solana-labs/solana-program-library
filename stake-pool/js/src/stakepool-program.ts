@@ -1,26 +1,33 @@
-/*
- based on https://github.com/solana-labs/solana-web3.js/blob/master/src/stake-program.ts
+/**
+ * Based on https://github.com/solana-labs/solana-web3.js/blob/master/src/stake-program.ts
  */
-import {encodeData, decodeData, InstructionType} from './copied-from-solana-web3/instruction';
+import { encodeData, decodeData, InstructionType } from './copied-from-solana-web3/instruction';
 import {
   PublicKey,
   Transaction,
   TransactionInstruction,
   StakeProgram,
+  SystemProgram,
   StakeAuthorizationLayout,
   SYSVAR_CLOCK_PUBKEY,
   SYSVAR_STAKE_HISTORY_PUBKEY,
-  SystemProgram,
 } from '@solana/web3.js';
 import * as BufferLayout from '@solana/buffer-layout';
-import {TOKEN_PROGRAM_ID} from '@solana/spl-token';
-import {Buffer} from 'buffer';
+import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { solToLamports } from './utils';
+
+export const MIN_STAKE_BALANCE = solToLamports(1.0);
+export const STAKE_STATE_LEN = 200;
+
+/// Minimum amount of staked SOL required in a validator stake account to allow
+/// for merges without a mismatch on credits observed
+// export const MINIMUM_ACTIVE_STAKE = LAMPORTS_PER_SOL / 1_000;
 
 /**
  * An enumeration of valid StakePoolInstructionType's
  */
 export type StakePoolInstructionType =
-  'Initialize'
+  | 'Initialize'
   | 'Deposit'
   | 'DepositSol'
   | 'WithdrawStake'
@@ -57,9 +64,7 @@ export const STAKE_POOL_INSTRUCTION_LAYOUTS: {
   },
   Deposit: {
     index: 9,
-    layout: BufferLayout.struct([
-      BufferLayout.u8('instruction'),
-    ]),
+    layout: BufferLayout.struct([BufferLayout.u8('instruction')]),
   },
   ///   Withdraw the token from the pool at the current ratio.
   ///
@@ -95,10 +100,7 @@ export const STAKE_POOL_INSTRUCTION_LAYOUTS: {
   ///  userdata: amount of pool tokens to withdraw
   WithdrawStake: {
     index: 10,
-    layout: BufferLayout.struct([
-      BufferLayout.u8('instruction'),
-      BufferLayout.ns64('lamports'),
-    ]),
+    layout: BufferLayout.struct([BufferLayout.u8('instruction'), BufferLayout.ns64('lamports')]),
   },
   ///   Deposit SOL directly into the pool's reserve account. The output is a "pool" token
   ///   representing ownership into the pool. Inputs are converted to the current ratio.
@@ -116,10 +118,7 @@ export const STAKE_POOL_INSTRUCTION_LAYOUTS: {
   ///  10. `[s]` (Optional) Stake pool sol deposit authority.
   DepositSol: {
     index: 14,
-    layout: BufferLayout.struct([
-      BufferLayout.u8('instruction'),
-      BufferLayout.ns64('lamports'),
-    ]),
+    layout: BufferLayout.struct([BufferLayout.u8('instruction'), BufferLayout.ns64('lamports')]),
   },
   ///  (Manager only) Update SOL deposit authority
   ///
@@ -128,10 +127,7 @@ export const STAKE_POOL_INSTRUCTION_LAYOUTS: {
   ///  2. '[]` New authority pubkey or none
   SetFundingAuthority: {
     index: 15,
-    layout: BufferLayout.struct([
-      BufferLayout.u8('instruction'),
-      BufferLayout.u32('fundingType'),
-    ]),
+    layout: BufferLayout.struct([BufferLayout.u8('instruction'), BufferLayout.u32('fundingType')]),
   },
   ///   Withdraw SOL directly from the pool's reserve account. Fails if the
   ///   reserve does not have enough SOL.
@@ -151,10 +147,7 @@ export const STAKE_POOL_INSTRUCTION_LAYOUTS: {
   ///  12. `[s]` (Optional) Stake pool sol withdraw authority
   WithdrawSol: {
     index: 16,
-    layout: BufferLayout.struct([
-      BufferLayout.u8('instruction'),
-      BufferLayout.ns64('poolTokens'),
-    ]),
+    layout: BufferLayout.struct([BufferLayout.u8('instruction'), BufferLayout.ns64('poolTokens')]),
   },
 });
 
@@ -162,89 +155,92 @@ export const STAKE_POOL_INSTRUCTION_LAYOUTS: {
  * Initialize stake instruction params
  */
 export type InitializeStakePoolParams = {
-  feeDenominator: number,
-  feeNumerator: number,
-  withdrawalDenominator: number,
-  withdrawalNumerator: number,
-  maxValidators: number
+  feeDenominator: number;
+  feeNumerator: number;
+  withdrawalDenominator: number;
+  withdrawalNumerator: number;
+  maxValidators: number;
 };
 
 /**
  * Deposit stake pool instruction params
  */
 export type DepositStakePoolParams = {
-  stakePoolPubkey: PublicKey,
-  validatorListStorage: PublicKey,
-  stakePoolDepositAuthority: PublicKey,
-  stakePoolWithdrawAuthority: PublicKey,
-  depositStakeAddress: PublicKey,
-  depositStakeWithdrawAuthority: PublicKey,
-  validatorStakeAccount: PublicKey,
-  reserveStakeAccount: PublicKey,
-  poolTokensTo: PublicKey,
-  poolMint: PublicKey
+  stakePoolPubkey: PublicKey;
+  validatorListStorage: PublicKey;
+  stakePoolDepositAuthority: PublicKey;
+  stakePoolWithdrawAuthority: PublicKey;
+  depositStakeAddress: PublicKey;
+  depositStakeWithdrawAuthority: PublicKey;
+  validatorStakeAccount: PublicKey;
+  reserveStakeAccount: PublicKey;
+  poolTokensTo: PublicKey;
+  poolMint: PublicKey;
 };
 
 /**
  * Withdraw stake pool instruction params
  */
 export type WithdrawStakePoolParams = {
-  stakePoolPubkey: PublicKey,
-  validatorListStorage: PublicKey,
-  stakePoolWithdrawAuthority: PublicKey,
-  stakeToSplit: PublicKey,
-  stakeToReceive: PublicKey,
-  userStakeAuthority: PublicKey,
-  userTransferAuthority: PublicKey,
-  userPoolTokenAccount: PublicKey,
-  managerFeeAccount: PublicKey,
-  poolMint: PublicKey,
-  lamports: number
-}
+  stakePoolPubkey: PublicKey;
+  validatorListStorage: PublicKey;
+  stakePoolWithdrawAuthority: PublicKey;
+  stakeToSplit: PublicKey;
+  stakeToReceive: PublicKey;
+  userStakeAuthority: PublicKey;
+  userTransferAuthority: PublicKey;
+  userPoolTokenAccount: PublicKey;
+  managerFeeAccount: PublicKey;
+  poolMint: PublicKey;
+  lamports: number;
+};
 
 /**
  * Withdraw sol instruction params
  */
 export type WithdrawSolParams = {
-  stakePoolPubkey: PublicKey,
-  solWithdrawAuthority: PublicKey | undefined,
-  stakePoolWithdrawAuthority: PublicKey,
-  userTransferAuthority: PublicKey,
-  poolTokensFrom: PublicKey,
-  reserveStakeAccount: PublicKey,
-  lamportsTo: PublicKey,
-  managerFeeAccount: PublicKey,
-  poolMint: PublicKey,
-  poolTokens: number
-}
+  stakePoolPubkey: PublicKey;
+  solWithdrawAuthority: PublicKey | undefined;
+  stakePoolWithdrawAuthority: PublicKey;
+  userTransferAuthority: PublicKey;
+  poolTokensFrom: PublicKey;
+  reserveStakeAccount: PublicKey;
+  lamportsTo: PublicKey;
+  managerFeeAccount: PublicKey;
+  poolMint: PublicKey;
+  poolTokens: number;
+};
 
 /**
  * Deposit sol instruction params
  */
 export type DepositSolParams = {
-  stakePoolPubkey: PublicKey,
-  depositAuthority?: PublicKey,
-  withdrawAuthority: PublicKey,
-  reserveStakeAccount: PublicKey,
-  lamportsFrom: PublicKey,
-  poolTokensTo: PublicKey,
-  managerFeeAccount: PublicKey,
-  referrerPoolTokensAccount: PublicKey,
-  poolMint: PublicKey,
-  lamports: number
+  stakePoolPubkey: PublicKey;
+  depositAuthority?: PublicKey;
+  withdrawAuthority: PublicKey;
+  reserveStakeAccount: PublicKey;
+  lamportsFrom: PublicKey;
+  poolTokensTo: PublicKey;
+  managerFeeAccount: PublicKey;
+  referrerPoolTokensAccount: PublicKey;
+  poolMint: PublicKey;
+  lamports: number;
 };
+
+export interface WithdrawAccount {
+  stakeAddress: PublicKey;
+  voteAddress?: PublicKey;
+  poolAmount: number;
+}
 
 /**
  * Stake Pool Instruction class
  */
 export class StakePoolInstruction {
-
   /**
    * Decode a initialize stake pool instruction and retrieve the instruction params.
    */
-  static decodeInitialize(
-    instruction: TransactionInstruction,
-  ): InitializeStakePoolParams {
+  static decodeInitialize(instruction: TransactionInstruction): InitializeStakePoolParams {
     this.checkProgramId(instruction.programId);
     this.checkKeyLength(instruction.keys, 6);
     const {
@@ -267,9 +263,7 @@ export class StakePoolInstruction {
   /**
    * Decode a deposit stake pool instruction and retrieve the instruction params.
    */
-  static decodeDeposit(
-    instruction: TransactionInstruction,
-  ): DepositStakePoolParams {
+  static decodeDeposit(instruction: TransactionInstruction): DepositStakePoolParams {
     this.checkProgramId(instruction.programId);
     this.checkKeyLength(instruction.keys, 6);
     decodeData(STAKE_POOL_INSTRUCTION_LAYOUTS.Deposit, instruction.data);
@@ -291,16 +285,11 @@ export class StakePoolInstruction {
   /**
    * Decode a deposit sol instruction and retrieve the instruction params.
    */
-  static decodeDepositSol(
-    instruction: TransactionInstruction,
-  ): DepositSolParams {
+  static decodeDepositSol(instruction: TransactionInstruction): DepositSolParams {
     this.checkProgramId(instruction.programId);
     this.checkKeyLength(instruction.keys, 9);
 
-    const {amount} = decodeData(
-      STAKE_POOL_INSTRUCTION_LAYOUTS.DepositSol,
-      instruction.data,
-    );
+    const { amount } = decodeData(STAKE_POOL_INSTRUCTION_LAYOUTS.DepositSol, instruction.data);
 
     return {
       stakePoolPubkey: instruction.keys[0].pubkey,
@@ -337,27 +326,14 @@ export class StakePoolInstruction {
   }
 }
 
-export const toBuffer = (arr: Buffer | Uint8Array | Array<number>): Buffer => {
-  if (Buffer.isBuffer(arr)) {
-    return arr;
-  } else if (arr instanceof Uint8Array) {
-    return Buffer.from(arr.buffer, arr.byteOffset, arr.byteLength);
-  } else {
-    return Buffer.from(arr);
-  }
-};
-
 /**
  * Factory class for transactions to interact with the Stake program
  */
 export class StakePoolProgram {
-
   /**
    * Public key that identifies the Stake Pool program
    */
-  static programId: PublicKey = new PublicKey(
-    'SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy',
-  );
+  static programId: PublicKey = new PublicKey('SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy');
 
   static tokenProgramId: PublicKey = TOKEN_PROGRAM_ID;
 
@@ -419,19 +395,19 @@ export class StakePoolProgram {
       }),
       {
         keys: [
-          {pubkey: stakePoolPubkey, isSigner: false, isWritable: true},
-          {pubkey: validatorListStorage, isSigner: false, isWritable: true},
-          {pubkey: stakePoolDepositAuthority, isSigner: false, isWritable: false},
-          {pubkey: stakePoolWithdrawAuthority, isSigner: false, isWritable: false},
-          {pubkey: depositStakeAddress, isSigner: false, isWritable: true},
-          {pubkey: validatorStakeAccount, isSigner: false, isWritable: true},
-          {pubkey: reserveStakeAccount, isSigner: false, isWritable: true},
-          {pubkey: poolTokensTo, isSigner: false, isWritable: true},
-          {pubkey: poolMint, isSigner: false, isWritable: true},
-          {pubkey: SYSVAR_CLOCK_PUBKEY, isSigner: false, isWritable: false},
-          {pubkey: SYSVAR_STAKE_HISTORY_PUBKEY, isSigner: false, isWritable: false},
-          {pubkey: this.tokenProgramId, isSigner: false, isWritable: false},
-          {pubkey: this.stakeProgramId, isSigner: false, isWritable: false},
+          { pubkey: stakePoolPubkey, isSigner: false, isWritable: true },
+          { pubkey: validatorListStorage, isSigner: false, isWritable: true },
+          { pubkey: stakePoolDepositAuthority, isSigner: false, isWritable: false },
+          { pubkey: stakePoolWithdrawAuthority, isSigner: false, isWritable: false },
+          { pubkey: depositStakeAddress, isSigner: false, isWritable: true },
+          { pubkey: validatorStakeAccount, isSigner: false, isWritable: true },
+          { pubkey: reserveStakeAccount, isSigner: false, isWritable: true },
+          { pubkey: poolTokensTo, isSigner: false, isWritable: true },
+          { pubkey: poolMint, isSigner: false, isWritable: true },
+          { pubkey: SYSVAR_CLOCK_PUBKEY, isSigner: false, isWritable: false },
+          { pubkey: SYSVAR_STAKE_HISTORY_PUBKEY, isSigner: false, isWritable: false },
+          { pubkey: this.tokenProgramId, isSigner: false, isWritable: false },
+          { pubkey: this.stakeProgramId, isSigner: false, isWritable: false },
         ],
         programId: this.programId,
         data,
@@ -454,20 +430,19 @@ export class StakePoolProgram {
     } = params;
 
     const type = STAKE_POOL_INSTRUCTION_LAYOUTS.DepositSol;
-    const data = encodeData(type, {lamports});
+    const data = encodeData(type, { lamports });
 
     const keys = [
-      {pubkey: stakePoolPubkey, isSigner: false, isWritable: true},
-      {pubkey: withdrawAuthority, isSigner: false, isWritable: false},
-      {pubkey: reserveStakeAccount, isSigner: false, isWritable: true},
-      {pubkey: lamportsFrom, isSigner: true, isWritable: false},
-      {pubkey: poolTokensTo, isSigner: false, isWritable: true},
-      {pubkey: managerFeeAccount, isSigner: false, isWritable: true},
-      {pubkey: referrerPoolTokensAccount, isSigner: false, isWritable: true},
-      {pubkey: poolMint, isSigner: false, isWritable: true},
-      // { pubkey: SYSVAR_CLOCK_PUBKEY, isSigner: false, isWritable: false },
-      {pubkey: SystemProgram.programId, isSigner: false, isWritable: false},
-      {pubkey: this.tokenProgramId, isSigner: false, isWritable: false},
+      { pubkey: stakePoolPubkey, isSigner: false, isWritable: true },
+      { pubkey: withdrawAuthority, isSigner: false, isWritable: false },
+      { pubkey: reserveStakeAccount, isSigner: false, isWritable: true },
+      { pubkey: lamportsFrom, isSigner: true, isWritable: false },
+      { pubkey: poolTokensTo, isSigner: false, isWritable: true },
+      { pubkey: managerFeeAccount, isSigner: false, isWritable: true },
+      { pubkey: referrerPoolTokensAccount, isSigner: false, isWritable: true },
+      { pubkey: poolMint, isSigner: false, isWritable: true },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      { pubkey: this.tokenProgramId, isSigner: false, isWritable: false },
     ];
 
     if (depositAuthority) {
@@ -501,22 +476,22 @@ export class StakePoolProgram {
     } = params;
 
     const type = STAKE_POOL_INSTRUCTION_LAYOUTS.WithdrawStake;
-    const data = encodeData(type, {lamports});
+    const data = encodeData(type, { lamports });
 
     const keys = [
-      {pubkey: stakePoolPubkey, isSigner: false, isWritable: true},
-      {pubkey: validatorListStorage, isSigner: false, isWritable: true},
-      {pubkey: stakePoolWithdrawAuthority, isSigner: false, isWritable: false},
-      {pubkey: stakeToSplit, isSigner: false, isWritable: true},
-      {pubkey: stakeToReceive, isSigner: false, isWritable: true},
-      {pubkey: userStakeAuthority, isSigner: false, isWritable: false},
-      {pubkey: userTransferAuthority, isSigner: true, isWritable: false},
-      {pubkey: userPoolTokenAccount, isSigner: false, isWritable: true},
-      {pubkey: managerFeeAccount, isSigner: false, isWritable: true},
-      {pubkey: poolMint, isSigner: false, isWritable: true},
-      {pubkey: SYSVAR_CLOCK_PUBKEY, isSigner: false, isWritable: false},
-      {pubkey: this.tokenProgramId, isSigner: false, isWritable: false},
-      {pubkey: this.stakeProgramId, isSigner: false, isWritable: false},
+      { pubkey: stakePoolPubkey, isSigner: false, isWritable: true },
+      { pubkey: validatorListStorage, isSigner: false, isWritable: true },
+      { pubkey: stakePoolWithdrawAuthority, isSigner: false, isWritable: false },
+      { pubkey: stakeToSplit, isSigner: false, isWritable: true },
+      { pubkey: stakeToReceive, isSigner: false, isWritable: true },
+      { pubkey: userStakeAuthority, isSigner: false, isWritable: false },
+      { pubkey: userTransferAuthority, isSigner: true, isWritable: false },
+      { pubkey: userPoolTokenAccount, isSigner: false, isWritable: true },
+      { pubkey: managerFeeAccount, isSigner: false, isWritable: true },
+      { pubkey: poolMint, isSigner: false, isWritable: true },
+      { pubkey: SYSVAR_CLOCK_PUBKEY, isSigner: false, isWritable: false },
+      { pubkey: this.tokenProgramId, isSigner: false, isWritable: false },
+      { pubkey: this.stakeProgramId, isSigner: false, isWritable: false },
     ];
 
     return new TransactionInstruction({
@@ -541,21 +516,21 @@ export class StakePoolProgram {
     } = params;
 
     const type = STAKE_POOL_INSTRUCTION_LAYOUTS.WithdrawSol;
-    const data = encodeData(type, {poolTokens});
+    const data = encodeData(type, { poolTokens });
 
     const keys = [
-      {pubkey: stakePoolPubkey, isSigner: false, isWritable: true},
-      {pubkey: stakePoolWithdrawAuthority, isSigner: false, isWritable: false},
-      {pubkey: userTransferAuthority, isSigner: true, isWritable: false},
-      {pubkey: poolTokensFrom, isSigner: false, isWritable: true},
-      {pubkey: reserveStakeAccount, isSigner: false, isWritable: true},
-      {pubkey: lamportsTo, isSigner: false, isWritable: true},
-      {pubkey: managerFeeAccount, isSigner: false, isWritable: true},
-      {pubkey: poolMint, isSigner: false, isWritable: true},
-      {pubkey: SYSVAR_CLOCK_PUBKEY, isSigner: false, isWritable: false},
-      {pubkey: SYSVAR_STAKE_HISTORY_PUBKEY, isSigner: false, isWritable: false},
-      {pubkey: this.stakeProgramId, isSigner: false, isWritable: false},
-      {pubkey: this.tokenProgramId, isSigner: false, isWritable: false},
+      { pubkey: stakePoolPubkey, isSigner: false, isWritable: true },
+      { pubkey: stakePoolWithdrawAuthority, isSigner: false, isWritable: false },
+      { pubkey: userTransferAuthority, isSigner: true, isWritable: false },
+      { pubkey: poolTokensFrom, isSigner: false, isWritable: true },
+      { pubkey: reserveStakeAccount, isSigner: false, isWritable: true },
+      { pubkey: lamportsTo, isSigner: false, isWritable: true },
+      { pubkey: managerFeeAccount, isSigner: false, isWritable: true },
+      { pubkey: poolMint, isSigner: false, isWritable: true },
+      { pubkey: SYSVAR_CLOCK_PUBKEY, isSigner: false, isWritable: false },
+      { pubkey: SYSVAR_STAKE_HISTORY_PUBKEY, isSigner: false, isWritable: false },
+      { pubkey: this.stakeProgramId, isSigner: false, isWritable: false },
+      { pubkey: this.tokenProgramId, isSigner: false, isWritable: false },
     ];
 
     if (solWithdrawAuthority) {

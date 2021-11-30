@@ -1,9 +1,8 @@
-import {assert} from 'chai';
-import {Connection, PublicKey} from "@solana/web3.js";
-import * as index from "../src";
+import { Connection, PublicKey } from "@solana/web3.js";
 import BN from "bn.js";
+import { StakePoolAccount, getStakePoolAccounts } from "../src";
 
-export function isStakePoolAccount(account: any): account is index.StakePoolAccount {
+export function isStakePoolAccount(account: any): account is StakePoolAccount {
   return (account !== undefined) &&
     (account.account !== undefined) &&
     (account.account.data !== undefined) &&
@@ -13,54 +12,43 @@ export function isStakePoolAccount(account: any): account is index.StakePoolAcco
 export async function getFirstStakePoolAccount(
   connection: Connection,
   stakePoolProgramAddress: PublicKey,
-): Promise<index.StakePoolAccount | undefined> {
-  const accounts = await index.getStakePoolAccounts(connection, stakePoolProgramAddress);
+): Promise<StakePoolAccount | undefined> {
+  const accounts = await getStakePoolAccounts(connection, stakePoolProgramAddress);
 
   return accounts!
-    // .filter(accounts => accounts !== undefined)
     .filter(account => isStakePoolAccount(account))
-    .pop() as index.StakePoolAccount;
+    .pop() as StakePoolAccount;
 }
 
 /**
  * Helper function to do deep equality check because BNs are not equal.
  * TODO: write this function recursively. For now, sufficient.
  */
-export function deepStrictEqualBN(decodedData: any, expectedData: any) {
-  for (const key in decodedData) {
-    if (expectedData[key] instanceof BN) {
-      assert.ok(expectedData[key].eq(decodedData[key]));
+export function deepStrictEqualBN(a: any, b: any) {
+  for (const key in a) {
+    if (b[key] instanceof BN) {
+      expect(b[key].toString()).toEqual(a[key].toString());
     } else {
-      if (decodedData[key] instanceof Object) {
-        for (const subkey in decodedData[key]) {
-          if (decodedData[key][subkey] instanceof Object) {
-            if (decodedData[key][subkey] instanceof BN) {
-              assert.ok(decodedData[key][subkey].eq(expectedData[key][subkey]));
+      if (a[key] instanceof Object) {
+        for (const subkey in a[key]) {
+          if (a[key][subkey] instanceof Object) {
+            if (a[key][subkey] instanceof BN) {
+              expect(b[key][subkey].toString()).toEqual(a[key][subkey].toString());
             } else {
-              for (const subsubkey in decodedData[key][subkey]) {
-                if (decodedData[key][subkey][subsubkey] instanceof BN) {
-                  assert.ok(
-                    decodedData[key][subkey][subsubkey].eq(
-                      expectedData[key][subkey][subsubkey],
-                    ),
-                  );
+              for (const subsubkey in a[key][subkey]) {
+                if (a[key][subkey][subsubkey] instanceof BN) {
+                  expect(b[key][subkey][subsubkey].toString()).toEqual(a[key][subkey][subsubkey].toString());
                 } else {
-                  assert.deepStrictEqual(
-                    expectedData[key][subkey][subsubkey],
-                    decodedData[key][subkey][subsubkey],
-                  );
+                  expect(b[key][subkey][subsubkey]).toStrictEqual(a[key][subkey][subsubkey]);
                 }
               }
             }
           } else {
-            assert.strictEqual(
-              decodedData[key][subkey],
-              expectedData[key][subkey],
-            );
+            expect(b[key][subkey]).toStrictEqual(a[key][subkey]);
           }
         }
       } else {
-        assert.strictEqual(decodedData[key], expectedData[key]);
+        expect(b[key]).toStrictEqual(a[key]);
       }
     }
   }

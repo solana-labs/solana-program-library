@@ -1,9 +1,10 @@
-import {PublicKey, Connection, clusterApiUrl} from '@solana/web3.js';
-import * as index from '../src/index';
-import {getFirstStakePoolAccount} from "./utils";
+import { PublicKey, Connection, clusterApiUrl } from '@solana/web3.js';
+import { getFirstStakePoolAccount } from "./utils";
+import { getStakePoolAccounts, prettyPrintAccount, prettyPrintPubKey } from "../src";
 
 describe('Integration test', () => {
-  it.skip('should successfully decode all validators from devnet', async () => {
+
+  it.skip('should successfully decode all validators from devnet', (done) => {
     /**
      * Full integration test:
      * Makes a connection to devnet, gets all stake pool accounts there,
@@ -18,20 +19,21 @@ describe('Integration test', () => {
       'SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy',
     );
 
-    const accounts = await index.getStakePoolAccounts(
+    getStakePoolAccounts(
       connection,
       STAKE_POOL_PROGRAM_ADDR,
-    );
-
-    console.log('Number of stake pool accounts in devnet: ', accounts!.length);
-
-    accounts!.map(account => {
-      index.prettyPrintAccount(account);
-      console.log('\n');
+    ).then((accounts) => {
+      console.log('Number of stake pool accounts in devnet: ', accounts!.length);
+      accounts!.map(account => {
+        prettyPrintAccount(account);
+        console.log('\n');
+      });
+      done();
     });
+
   });
 
-  it.skip('should successfully decode all validators from testnet', async () => {
+  it.skip('should successfully decode all validators from testnet', (done) => {
     /**
      * Full integration test:
      * Makes a connection to testnet, gets all stake pool accounts there,
@@ -47,20 +49,21 @@ describe('Integration test', () => {
       'poo1B9L9nR3CrcaziKVYVpRX6A9Y1LAXYasjjfCbApj',
     );
 
-    const accounts = await index.getStakePoolAccounts(
+    getStakePoolAccounts(
       connection,
       STAKE_POOL_PROGRAM_ADDR,
-    );
-
-    console.log('Number of stake pool accounts in testnet: ', accounts!.length);
-
-    accounts!.map(account => {
-      index.prettyPrintAccount(account);
-      console.log('\n');
+    ).then((accounts) => {
+      console.log('Number of stake pool accounts in testnet: ', accounts!.length);
+      accounts!.map(account => {
+        prettyPrintAccount(account);
+        console.log('\n');
+      });
+      done();
     });
+
   });
 
-  it('should successfully get pool info from first pool in devnet', async () => {
+  it('should successfully get pool info from first pool in devnet', (done) => {
 
     const connection = new Connection(
       clusterApiUrl('devnet'),
@@ -73,16 +76,15 @@ describe('Integration test', () => {
       // 'poo1B9L9nR3CrcaziKVYVpRX6A9Y1LAXYasjjfCbApj',
     );
 
-    const first = await getFirstStakePoolAccount(connection, STAKE_POOL_PROGRAM_ADDR);
-
-    console.log('\n');
-    console.log('\n');
-    console.log('\n');
-    console.log('\n');
-
-    index.prettyPrintAccount(first!);
-
-    console.log('first: ' + index.prettyPrintPubKey(first!.pubkey));
+    getFirstStakePoolAccount(connection, STAKE_POOL_PROGRAM_ADDR).then((first) => {
+      console.log('\n');
+      console.log('\n');
+      console.log('\n');
+      console.log('\n');
+      prettyPrintAccount(first!);
+      console.log('first: ' + prettyPrintPubKey(first!.pubkey));
+      done();
+    })
 
   });
 
