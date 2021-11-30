@@ -3,6 +3,7 @@ use clap::{
     crate_description, crate_name, crate_version, value_t, value_t_or_exit, App, AppSettings, Arg,
     ArgMatches, SubCommand,
 };
+use serde::Serialize;
 use solana_account_decoder::{
     parse_token::{TokenAccountType, UiAccountState},
     UiAccountData,
@@ -18,10 +19,11 @@ use solana_clap_utils::{
     memo::memo_arg,
     nonce::*,
     offline::{self, *},
-    ArgConstant,
+    ArgConstant, DisplayError,
 };
 use solana_cli_output::{
-    return_signers_with_config, CliSignature, OutputFormat, ReturnSignersConfig,
+    return_signers_data, CliSignOnlyData, CliSignature, OutputFormat, QuietDisplay,
+    ReturnSignersConfig, VerboseDisplay,
 };
 use solana_client::{
     blockhash_query::BlockhashQuery, rpc_client::RpcClient, rpc_request::TokenAccountsFilter,
@@ -46,7 +48,7 @@ use spl_token::{
     native_mint,
     state::{Account, Mint, Multisig},
 };
-use std::{collections::HashMap, process::exit, str::FromStr, sync::Arc};
+use std::{collections::HashMap, fmt::Display, process::exit, str::FromStr, sync::Arc};
 
 mod config;
 use config::Config;
@@ -97,6 +99,8 @@ pub const MULTISIG_SIGNER_ARG: ArgConstant<'static> = ArgConstant {
     long: "multisig-signer",
     help: "Member signer of a multisig account",
 };
+
+pub const CREATE_TOKEN: &str = "create-token";
 
 pub fn owner_address_arg<'a, 'b>() -> Arg<'a, 'b> {
     Arg::with_name(OWNER_ADDRESS_ARG.name)
@@ -192,7 +196,9 @@ fn is_multisig_minimum_signers(string: String) -> Result<(), String> {
 }
 
 pub(crate) type Error = Box<dyn std::error::Error>;
-type CommandResult = Result<Option<(u64, Vec<Vec<Instruction>>)>, Error>;
+
+type BulkSigners = Vec<Box<dyn Signer>>;
+pub(crate) type CommandResult = Result<String, Error>;
 
 fn new_throwaway_signer() -> (Box<dyn Signer>, Pubkey) {
     let keypair = Keypair::new();
@@ -270,6 +276,7 @@ pub fn signers_of(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn command_create_token(
     config: &Config,
     decimals: u8,
@@ -277,6 +284,7 @@ fn command_create_token(
     authority: Pubkey,
     enable_freeze: bool,
     memo: Option<String>,
+    bulk_signers: Vec<Box<dyn Signer>>,
 ) -> CommandResult {
     println_display(config, format!("Creating token {}", token));
 
@@ -308,10 +316,31 @@ fn command_create_token(
     if let Some(text) = memo {
         instructions.push(spl_memo::build_memo(text.as_bytes(), &[&config.fee_payer]));
     }
-    Ok(Some((
+
+    let tx_return = handle_tx(
+        &CliSignerInfo {
+            signers: bulk_signers,
+        },
+        config,
+        false,
         minimum_balance_for_rent_exemption,
-        vec![instructions],
-    )))
+        instructions,
+    )?;
+
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(cli_signature) => format_output(
+            CliMint {
+                address: token.to_string(),
+                decimals,
+                transaction_data: cli_signature,
+            },
+            CREATE_TOKEN,
+            config,
+        ),
+        TransactionReturnData::CliSignOnlyData(cli_sign_only_data) => {
+            format_output(cli_sign_only_data, CREATE_TOKEN, config)
+        }
+    })
 }
 
 fn command_create_account(
@@ -319,6 +348,7 @@ fn command_create_account(
     token: Pubkey,
     owner: Pubkey,
     maybe_account: Option<Pubkey>,
+    bulk_signers: Vec<Box<dyn Signer>>,
 ) -> CommandResult {
     let minimum_balance_for_rent_exemption = if !config.sign_only {
         config
@@ -370,10 +400,24 @@ fn command_create_account(
         }
     }
 
-    Ok(Some((
+    let tx_return = handle_tx(
+        &CliSignerInfo {
+            signers: bulk_signers,
+        },
+        config,
+        false,
         minimum_balance_for_rent_exemption,
-        vec![instructions],
-    )))
+        instructions,
+    )?;
+
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
 }
 
 fn command_create_multisig(
@@ -381,6 +425,7 @@ fn command_create_multisig(
     multisig: Pubkey,
     minimum_signers: u8,
     multisig_members: Vec<Pubkey>,
+    bulk_signers: BulkSigners,
 ) -> CommandResult {
     println_display(
         config,
@@ -415,12 +460,27 @@ fn command_create_multisig(
             minimum_signers,
         )?,
     ];
-    Ok(Some((
+
+    let tx_return = handle_tx(
+        &CliSignerInfo {
+            signers: bulk_signers,
+        },
+        config,
+        false,
         minimum_balance_for_rent_exemption,
-        vec![instructions],
-    )))
+        instructions,
+    )?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn command_authorize(
     config: &Config,
     account: Pubkey,
@@ -428,6 +488,7 @@ fn command_authorize(
     authority: Pubkey,
     new_authority: Option<Pubkey>,
     force_authorize: bool,
+    bulk_signers: BulkSigners,
 ) -> CommandResult {
     let auth_str = match authority_type {
         AuthorityType::MintTokens => "mint authority",
@@ -510,7 +571,23 @@ fn command_authorize(
         &authority,
         &config.multisigner_pubkeys,
     )?];
-    Ok(Some((0, vec![instructions])))
+    let tx_return = handle_tx(
+        &CliSignerInfo {
+            signers: bulk_signers,
+        },
+        config,
+        false,
+        0,
+        instructions,
+    )?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
 }
 
 pub(crate) fn resolve_mint_info(
@@ -565,6 +642,8 @@ fn command_transfer(
     recipient_is_ata_owner: bool,
     use_unchecked_instruction: bool,
     memo: Option<String>,
+    bulk_signers: BulkSigners,
+    no_wait: bool,
 ) -> CommandResult {
     let sender = if let Some(sender) = sender {
         sender
@@ -727,10 +806,23 @@ fn command_transfer(
     if let Some(text) = memo {
         instructions.push(spl_memo::build_memo(text.as_bytes(), &[&config.fee_payer]));
     }
-    Ok(Some((
+    let tx_return = handle_tx(
+        &CliSignerInfo {
+            signers: bulk_signers,
+        },
+        config,
+        no_wait,
         minimum_balance_for_rent_exemption,
-        vec![instructions],
-    )))
+        instructions,
+    )?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -743,6 +835,7 @@ fn command_burn(
     mint_decimals: Option<u8>,
     use_unchecked_instruction: bool,
     memo: Option<String>,
+    bulk_signers: BulkSigners,
 ) -> CommandResult {
     println_display(
         config,
@@ -775,9 +868,26 @@ fn command_burn(
     if let Some(text) = memo {
         instructions.push(spl_memo::build_memo(text.as_bytes(), &[&config.fee_payer]));
     }
-    Ok(Some((0, vec![instructions])))
+    let tx_return = handle_tx(
+        &CliSignerInfo {
+            signers: bulk_signers,
+        },
+        config,
+        false,
+        0,
+        instructions,
+    )?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn command_mint(
     config: &Config,
     token: Pubkey,
@@ -786,6 +896,7 @@ fn command_mint(
     mint_decimals: Option<u8>,
     mint_authority: Pubkey,
     use_unchecked_instruction: bool,
+    bulk_signers: BulkSigners,
 ) -> CommandResult {
     println_display(
         config,
@@ -818,7 +929,23 @@ fn command_mint(
             decimals,
         )?]
     };
-    Ok(Some((0, vec![instructions])))
+    let tx_return = handle_tx(
+        &CliSignerInfo {
+            signers: bulk_signers,
+        },
+        config,
+        false,
+        0,
+        instructions,
+    )?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
 }
 
 fn command_freeze(
@@ -826,6 +953,7 @@ fn command_freeze(
     account: Pubkey,
     mint_address: Option<Pubkey>,
     freeze_authority: Pubkey,
+    bulk_signers: BulkSigners,
 ) -> CommandResult {
     let (token, _) = resolve_mint_info(config, &account, mint_address, None)?;
 
@@ -841,7 +969,23 @@ fn command_freeze(
         &freeze_authority,
         &config.multisigner_pubkeys,
     )?];
-    Ok(Some((0, vec![instructions])))
+    let tx_return = handle_tx(
+        &CliSignerInfo {
+            signers: bulk_signers,
+        },
+        config,
+        false,
+        0,
+        instructions,
+    )?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
 }
 
 fn command_thaw(
@@ -849,6 +993,7 @@ fn command_thaw(
     account: Pubkey,
     mint_address: Option<Pubkey>,
     freeze_authority: Pubkey,
+    bulk_signers: BulkSigners,
 ) -> CommandResult {
     let (token, _) = resolve_mint_info(config, &account, mint_address, None)?;
 
@@ -864,7 +1009,23 @@ fn command_thaw(
         &freeze_authority,
         &config.multisigner_pubkeys,
     )?];
-    Ok(Some((0, vec![instructions])))
+    let tx_return = handle_tx(
+        &CliSignerInfo {
+            signers: bulk_signers,
+        },
+        config,
+        false,
+        0,
+        instructions,
+    )?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
 }
 
 fn command_wrap(
@@ -872,6 +1033,7 @@ fn command_wrap(
     sol: f64,
     wallet_address: Pubkey,
     wrapped_sol_account: Option<Pubkey>,
+    bulk_signers: BulkSigners,
 ) -> CommandResult {
     let lamports = sol_to_lamports(sol);
 
@@ -919,13 +1081,30 @@ fn command_wrap(
     if !config.sign_only {
         check_wallet_balance(config, &wallet_address, lamports)?;
     }
-    Ok(Some((0, vec![instructions])))
+    let tx_return = handle_tx(
+        &CliSignerInfo {
+            signers: bulk_signers,
+        },
+        config,
+        false,
+        0,
+        instructions,
+    )?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
 }
 
 fn command_unwrap(
     config: &Config,
     wallet_address: Pubkey,
     address: Option<Pubkey>,
+    bulk_signers: BulkSigners,
 ) -> CommandResult {
     let use_associated_account = address.is_none();
     let address = address
@@ -954,7 +1133,23 @@ fn command_unwrap(
         &wallet_address,
         &config.multisigner_pubkeys,
     )?];
-    Ok(Some((0, vec![instructions])))
+    let tx_return = handle_tx(
+        &CliSignerInfo {
+            signers: bulk_signers,
+        },
+        config,
+        false,
+        0,
+        instructions,
+    )?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -967,6 +1162,7 @@ fn command_approve(
     mint_address: Option<Pubkey>,
     mint_decimals: Option<u8>,
     use_unchecked_instruction: bool,
+    bulk_signers: BulkSigners,
 ) -> CommandResult {
     println_display(
         config,
@@ -1000,7 +1196,23 @@ fn command_approve(
             decimals,
         )?]
     };
-    Ok(Some((0, vec![instructions])))
+    let tx_return = handle_tx(
+        &CliSignerInfo {
+            signers: bulk_signers,
+        },
+        config,
+        false,
+        0,
+        instructions,
+    )?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
 }
 
 fn command_revoke(
@@ -1008,6 +1220,7 @@ fn command_revoke(
     account: Pubkey,
     owner: Pubkey,
     delegate: Option<Pubkey>,
+    bulk_signers: BulkSigners,
 ) -> CommandResult {
     let delegate = if !config.sign_only {
         let source_account = config
@@ -1042,7 +1255,23 @@ fn command_revoke(
         &owner,
         &config.multisigner_pubkeys,
     )?];
-    Ok(Some((0, vec![instructions])))
+    let tx_return = handle_tx(
+        &CliSignerInfo {
+            signers: bulk_signers,
+        },
+        config,
+        false,
+        0,
+        instructions,
+    )?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
 }
 
 fn command_close(
@@ -1050,6 +1279,7 @@ fn command_close(
     account: Pubkey,
     close_authority: Pubkey,
     recipient: Pubkey,
+    bulk_signers: BulkSigners,
 ) -> CommandResult {
     if !config.sign_only {
         let source_account = config
@@ -1084,7 +1314,23 @@ fn command_close(
         &close_authority,
         &config.multisigner_pubkeys,
     )?];
-    Ok(Some((0, vec![instructions])))
+    let tx_return = handle_tx(
+        &CliSignerInfo {
+            signers: bulk_signers,
+        },
+        config,
+        false,
+        0,
+        instructions,
+    )?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
 }
 
 fn command_balance(config: &Config, address: Pubkey) -> CommandResult {
@@ -1093,23 +1339,13 @@ fn command_balance(config: &Config, address: Pubkey) -> CommandResult {
         .get_token_account_balance(&address)
         .map_err(|_| format!("Could not find token account {}", address))?;
     let cli_token_amount = CliTokenAmount { amount: balance };
-    println!(
-        "{}",
-        config.output_format.formatted_string(&cli_token_amount)
-    );
-
-    Ok(None)
+    Ok(config.output_format.formatted_string(&cli_token_amount))
 }
 
 fn command_supply(config: &Config, address: Pubkey) -> CommandResult {
     let supply = config.rpc_client.get_token_supply(&address)?;
     let cli_token_amount = CliTokenAmount { amount: supply };
-    println!(
-        "{}",
-        config.output_format.formatted_string(&cli_token_amount)
-    );
-
-    Ok(None)
+    Ok(config.output_format.formatted_string(&cli_token_amount))
 }
 
 fn command_accounts(config: &Config, token: Option<Pubkey>, owner: Pubkey) -> CommandResult {
@@ -1125,7 +1361,7 @@ fn command_accounts(config: &Config, token: Option<Pubkey>, owner: Pubkey) -> Co
     )?;
     if accounts.is_empty() {
         println!("None");
-        return Ok(None);
+        return Ok("".to_string());
     }
 
     let (mint_accounts, unsupported_accounts, max_len_balance, includes_aux) =
@@ -1142,11 +1378,7 @@ fn command_accounts(config: &Config, token: Option<Pubkey>, owner: Pubkey) -> Co
         aux_len,
         token_is_some: token.is_some(),
     };
-    println!(
-        "{}",
-        config.output_format.formatted_string(&cli_token_accounts)
-    );
-    Ok(None)
+    Ok(config.output_format.formatted_string(&cli_token_accounts))
 }
 
 fn command_address(config: &Config, token: Option<Pubkey>, owner: Pubkey) -> CommandResult {
@@ -1159,8 +1391,7 @@ fn command_address(config: &Config, token: Option<Pubkey>, owner: Pubkey) -> Com
         let associated_token_address = get_associated_token_address(&owner, &token);
         cli_address.associated_token_address = Some(associated_token_address.to_string());
     }
-    println!("{}", config.output_format.formatted_string(&cli_address));
-    Ok(None)
+    Ok(config.output_format.formatted_string(&cli_address))
 }
 
 fn command_account_info(config: &Config, address: Pubkey) -> CommandResult {
@@ -1177,11 +1408,7 @@ fn command_account_info(config: &Config, address: Pubkey) -> CommandResult {
         is_associated,
         account,
     };
-    println!(
-        "{}",
-        config.output_format.formatted_string(&cli_token_account)
-    );
-    Ok(None)
+    Ok(config.output_format.formatted_string(&cli_token_account))
 }
 
 fn get_multisig(config: &Config, address: &Pubkey) -> Result<Multisig, Error> {
@@ -1210,14 +1437,14 @@ fn command_multisig(config: &Config, address: Pubkey) -> CommandResult {
             })
             .collect(),
     };
-    println!("{}", config.output_format.formatted_string(&cli_multisig));
-    Ok(None)
+    Ok(config.output_format.formatted_string(&cli_multisig))
 }
 
 fn command_gc(
     config: &Config,
     owner: Pubkey,
     close_empty_associated_accounts: bool,
+    bulk_signers: BulkSigners,
 ) -> CommandResult {
     println_display(config, "Fetching token accounts".to_string());
     let accounts = config
@@ -1225,7 +1452,7 @@ fn command_gc(
         .get_token_accounts_by_owner(&owner, TokenAccountsFilter::ProgramId(spl_token::id()))?;
     if accounts.is_empty() {
         println_display(config, "Nothing to do".to_string());
-        return Ok(None);
+        return Ok("".to_string());
     }
 
     let minimum_balance_for_rent_exemption = if !config.sign_only {
@@ -1354,12 +1581,54 @@ fn command_gc(
         }
     }
 
-    Ok(Some((lamports_needed, instructions)))
+    let cli_signer_info = CliSignerInfo {
+        signers: bulk_signers,
+    };
+
+    let mut result = String::from("");
+    for tx_instructions in instructions {
+        let tx_return = handle_tx(
+            &cli_signer_info,
+            config,
+            false,
+            lamports_needed,
+            tx_instructions,
+        )?;
+        result += &match tx_return {
+            TransactionReturnData::CliSignature(signature) => {
+                config.output_format.formatted_string(&signature)
+            }
+            TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+                config.output_format.formatted_string(&sign_only_data)
+            }
+        };
+        result += "\n";
+    }
+    Ok(result)
 }
 
-fn command_sync_native(native_account_address: Pubkey) -> CommandResult {
-    let instructions = vec![sync_native(&spl_token::id(), &native_account_address)?];
-    Ok(Some((0, vec![instructions])))
+fn command_sync_native(
+    native_account_address: Pubkey,
+    bulk_signers: Vec<Box<dyn Signer>>,
+    config: &Config,
+) -> CommandResult {
+    let tx_return = handle_tx(
+        &CliSignerInfo {
+            signers: bulk_signers,
+        },
+        config,
+        false,
+        0,
+        vec![sync_native(&spl_token::id(), &native_account_address)?],
+    )?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
 }
 
 struct SignOnlyNeedsFullMintSpec {}
@@ -1390,9 +1659,8 @@ impl offline::ArgsConfig for SignOnlyNeedsDelegateAddress {
     }
 }
 
-fn main() {
+fn main() -> Result<(), Error> {
     let default_decimals = &format!("{}", native_mint::DECIMALS);
-    let mut no_wait = false;
     let app_matches = App::new(crate_name!())
         .about(crate_description!())
         .version(crate_version!())
@@ -1452,7 +1720,7 @@ fn main() {
                 .help("Use unchecked instruction if appropriate. Supports transfer, burn, mint, and approve."),
         )
         .bench_subcommand()
-        .subcommand(SubCommand::with_name("create-token").about("Create a new token")
+        .subcommand(SubCommand::with_name(CREATE_TOKEN).about("Create a new token")
                 .arg(
                     Arg::with_name("token_keypair")
                         .value_name("TOKEN_KEYPAIR")
@@ -2293,15 +2561,14 @@ fn main() {
 
     solana_logger::setup_with_default("solana=info");
 
-    let _ = match (sub_command, sub_matches) {
+    let result = match (sub_command, sub_matches) {
         ("bench", Some(arg_matches)) => bench_process_command(
             arg_matches,
             &config,
             std::mem::take(&mut bulk_signers),
             &mut wallet_manager,
-        )
-        .map(|_| None),
-        ("create-token", Some(arg_matches)) => {
+        ),
+        (CREATE_TOKEN, Some(arg_matches)) => {
             let decimals = value_t_or_exit!(arg_matches, "decimals", u8);
             let mint_authority =
                 config.pubkey_or_default(arg_matches, "mint_authority", &mut wallet_manager);
@@ -2319,6 +2586,7 @@ fn main() {
                 mint_authority,
                 arg_matches.is_present("enable_freeze"),
                 memo,
+                bulk_signers,
             )
         }
         ("create-account", Some(arg_matches)) => {
@@ -2335,7 +2603,7 @@ fn main() {
             );
 
             let owner = config.pubkey_or_default(arg_matches, "owner", &mut wallet_manager);
-            command_create_account(&config, token, owner, account)
+            command_create_account(&config, token, owner, account, bulk_signers)
         }
         ("create-multisig", Some(arg_matches)) => {
             let minimum_signers = value_of::<u8>(arg_matches, "minimum_signers").unwrap();
@@ -2358,7 +2626,13 @@ fn main() {
                 .unwrap_or_else(new_throwaway_signer);
             bulk_signers.push(signer);
 
-            command_create_multisig(&config, account, minimum_signers, multisig_members)
+            command_create_multisig(
+                &config,
+                account,
+                minimum_signers,
+                multisig_members,
+                bulk_signers,
+            )
         }
         ("authorize", Some(arg_matches)) => {
             let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager)
@@ -2387,6 +2661,7 @@ fn main() {
                 authority,
                 new_authority,
                 force_authorize,
+                bulk_signers,
             )
         }
         ("transfer", Some(arg_matches)) => {
@@ -2410,7 +2685,7 @@ fn main() {
             let fund_recipient = matches.is_present("fund_recipient");
             let allow_unfunded_recipient = matches.is_present("allow_empty_recipient")
                 || matches.is_present("allow_unfunded_recipient");
-            no_wait = matches.is_present("no_wait");
+
             let recipient_is_ata_owner = matches.is_present("recipient_is_ata_owner");
             let use_unchecked_instruction = matches.is_present("use_unchecked_instruction");
             let memo = value_t!(arg_matches, "memo", String).ok();
@@ -2428,6 +2703,8 @@ fn main() {
                 recipient_is_ata_owner,
                 use_unchecked_instruction,
                 memo,
+                bulk_signers,
+                matches.is_present("no_wait"),
             )
         }
         ("burn", Some(arg_matches)) => {
@@ -2454,6 +2731,7 @@ fn main() {
                 mint_decimals,
                 use_unchecked_instruction,
                 memo,
+                bulk_signers,
             )
         }
         ("mint", Some(arg_matches)) => {
@@ -2480,6 +2758,7 @@ fn main() {
                 mint_decimals,
                 mint_authority,
                 use_unchecked_instruction,
+                bulk_signers,
             )
         }
         ("freeze", Some(arg_matches)) => {
@@ -2492,7 +2771,13 @@ fn main() {
                 .unwrap();
             let mint_address =
                 pubkey_of_signer(arg_matches, MINT_ADDRESS_ARG.name, &mut wallet_manager).unwrap();
-            command_freeze(&config, account, mint_address, freeze_authority)
+            command_freeze(
+                &config,
+                account,
+                mint_address,
+                freeze_authority,
+                bulk_signers,
+            )
         }
         ("thaw", Some(arg_matches)) => {
             let (freeze_authority_signer, freeze_authority) =
@@ -2504,7 +2789,13 @@ fn main() {
                 .unwrap();
             let mint_address =
                 pubkey_of_signer(arg_matches, MINT_ADDRESS_ARG.name, &mut wallet_manager).unwrap();
-            command_thaw(&config, account, mint_address, freeze_authority)
+            command_thaw(
+                &config,
+                account,
+                mint_address,
+                freeze_authority,
+                bulk_signers,
+            )
         }
         ("wrap", Some(arg_matches)) => {
             let amount = value_t_or_exit!(arg_matches, "amount", f64);
@@ -2521,7 +2812,7 @@ fn main() {
                 config.signer_or_default(arg_matches, "wallet_keypair", &mut wallet_manager);
             bulk_signers.push(wallet_signer);
 
-            command_wrap(&config, amount, wallet_address, account)
+            command_wrap(&config, amount, wallet_address, account, bulk_signers)
         }
         ("unwrap", Some(arg_matches)) => {
             let (wallet_signer, wallet_address) =
@@ -2529,7 +2820,7 @@ fn main() {
             bulk_signers.push(wallet_signer);
 
             let address = pubkey_of_signer(arg_matches, "address", &mut wallet_manager).unwrap();
-            command_unwrap(&config, wallet_address, address)
+            command_unwrap(&config, wallet_address, address, bulk_signers)
         }
         ("approve", Some(arg_matches)) => {
             let (owner_signer, owner_address) =
@@ -2556,6 +2847,7 @@ fn main() {
                 mint_address,
                 mint_decimals,
                 use_unchecked_instruction,
+                bulk_signers,
             )
         }
         ("revoke", Some(arg_matches)) => {
@@ -2569,7 +2861,13 @@ fn main() {
             let delegate_address =
                 pubkey_of_signer(arg_matches, DELEGATE_ADDRESS_ARG.name, &mut wallet_manager)
                     .unwrap();
-            command_revoke(&config, account, owner_address, delegate_address)
+            command_revoke(
+                &config,
+                account,
+                owner_address,
+                delegate_address,
+                bulk_signers,
+            )
         }
         ("close", Some(arg_matches)) => {
             let (close_authority_signer, close_authority) =
@@ -2582,7 +2880,7 @@ fn main() {
                 &mut wallet_manager,
             );
             let recipient = config.pubkey_or_default(arg_matches, "recipient", &mut wallet_manager);
-            command_close(&config, address, close_authority, recipient)
+            command_close(&config, address, close_authority, recipient, bulk_signers)
         }
         ("balance", Some(arg_matches)) => {
             let address = config.associated_token_address_or_override(
@@ -2640,7 +2938,12 @@ fn main() {
                 config.signer_or_default(arg_matches, "owner", &mut wallet_manager);
             bulk_signers.push(owner_signer);
 
-            command_gc(&config, owner_address, close_empty_associated_accounts)
+            command_gc(
+                &config,
+                owner_address,
+                close_empty_associated_accounts,
+                bulk_signers,
+            )
         }
         ("sync-native", Some(arg_matches)) => {
             let address = config.associated_token_address_for_token_or_override(
@@ -2650,81 +2953,84 @@ fn main() {
                 Some(native_mint::id()),
             );
 
-            command_sync_native(address)
+            command_sync_native(address, bulk_signers, &config)
         }
         _ => unreachable!(),
     }
-    .and_then(|transaction_info| {
-        if let Some((minimum_balance_for_rent_exemption, instruction_batches)) = transaction_info {
-            let fee_payer = Some(&config.fee_payer);
-            let signer_info = CliSignerInfo {
-                signers: bulk_signers,
-            };
+    .map_err::<Error, _>(|err| DisplayError::new_as_boxed(err).into())?;
+    println!("{}", result);
+    Ok(())
+}
 
-            for instructions in instruction_batches {
-                let message = if let Some(nonce_account) = config.nonce_account.as_ref() {
-                    Message::new_with_nonce(
-                        instructions,
-                        fee_payer,
-                        nonce_account,
-                        config.nonce_authority.as_ref().unwrap(),
-                    )
-                } else {
-                    Message::new(&instructions, fee_payer)
-                };
-                let (recent_blockhash, fee_calculator) = config
-                    .blockhash_query
-                    .get_blockhash_and_fee_calculator(
-                        &config.rpc_client,
-                        config.rpc_client.commitment(),
-                    )
-                    .unwrap_or_else(|e| {
-                        eprintln!("error: {}", e);
-                        exit(1);
-                    });
-
-                if !config.sign_only {
-                    check_fee_payer_balance(
-                        &config,
-                        minimum_balance_for_rent_exemption + fee_calculator.calculate_fee(&message),
-                    )?;
-                }
-
-                let signers = signer_info.signers_for_message(&message);
-                let mut transaction = Transaction::new_unsigned(message);
-
-                if config.sign_only {
-                    transaction.try_partial_sign(&signers, recent_blockhash)?;
-                    println!(
-                        "{}",
-                        return_signers_with_config(
-                            &transaction,
-                            &config.output_format,
-                            &ReturnSignersConfig {
-                                dump_transaction_message: config.dump_transaction_message,
-                            }
-                        )?
-                    );
-                } else {
-                    transaction.try_sign(&signers, recent_blockhash)?;
-                    let signature = if no_wait {
-                        config.rpc_client.send_transaction(&transaction)?
-                    } else {
-                        config
-                            .rpc_client
-                            .send_and_confirm_transaction_with_spinner(&transaction)?
-                    };
-                    let signature = CliSignature {
-                        signature: signature.to_string(),
-                    };
-                    println!("{}", config.output_format.formatted_string(&signature));
-                }
-            }
-        }
-        Ok(())
+fn format_output<T>(command_output: T, command_name: &str, config: &Config) -> String
+where
+    T: Serialize + Display + QuietDisplay + VerboseDisplay,
+{
+    config.output_format.formatted_string(&CommandOutput {
+        command_name: String::from(command_name),
+        command_output,
     })
-    .map_err(|err| {
-        eprintln!("{}", err);
-        exit(1);
-    });
+}
+enum TransactionReturnData {
+    CliSignature(CliSignature),
+    CliSignOnlyData(CliSignOnlyData),
+}
+fn handle_tx(
+    signer_info: &CliSignerInfo,
+    config: &Config,
+    no_wait: bool,
+    minimum_balance_for_rent_exemption: u64,
+    instructions: Vec<Instruction>,
+) -> Result<TransactionReturnData, Box<dyn std::error::Error>> {
+    let fee_payer = Some(&config.fee_payer);
+
+    let message = if let Some(nonce_account) = config.nonce_account.as_ref() {
+        Message::new_with_nonce(
+            instructions,
+            fee_payer,
+            nonce_account,
+            config.nonce_authority.as_ref().unwrap(),
+        )
+    } else {
+        Message::new(&instructions, fee_payer)
+    };
+    let (recent_blockhash, fee_calculator) = config
+        .blockhash_query
+        .get_blockhash_and_fee_calculator(&config.rpc_client, config.rpc_client.commitment())
+        .unwrap_or_else(|e| {
+            eprintln!("error: {}", e);
+            exit(1);
+        });
+
+    if !config.sign_only {
+        check_fee_payer_balance(
+            config,
+            minimum_balance_for_rent_exemption + fee_calculator.calculate_fee(&message),
+        )?;
+    }
+
+    let signers = signer_info.signers_for_message(&message);
+    let mut transaction = Transaction::new_unsigned(message);
+
+    if config.sign_only {
+        transaction.try_partial_sign(&signers, recent_blockhash)?;
+        Ok(TransactionReturnData::CliSignOnlyData(return_signers_data(
+            &transaction,
+            &ReturnSignersConfig {
+                dump_transaction_message: config.dump_transaction_message,
+            },
+        )))
+    } else {
+        transaction.try_sign(&signers, recent_blockhash)?;
+        let signature = if no_wait {
+            config.rpc_client.send_transaction(&transaction)?
+        } else {
+            config
+                .rpc_client
+                .send_and_confirm_transaction_with_spinner(&transaction)?
+        };
+        Ok(TransactionReturnData::CliSignature(CliSignature {
+            signature: signature.to_string(),
+        }))
+    }
 }

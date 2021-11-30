@@ -1,0 +1,431 @@
+{
+  "addresses": {
+    "landlord": "B38L5x5EszUK4iqcNMAZRyaJx8ie8cgGvxxbYmkWkjZe",
+    "landlordBase": "GHxgjDJgpUkugb2cPvaKQSbkdoHYHCHo2ZZsRFiFt4YL",
+    "rewarder": "rXhAofQCT7NN9TUqigyEAUzV1uLL4boeD8CRkNBSkYk",
+    "mintWrapper": "EVVDA3ZiAjTizemLGXNUN3gb6cffQFEYkFjFZokPmUPz",
+    "iouMint": "iouQcQBAiEXe6cKLS85zmZxUqaCqBdeHFpqKoSz615u",
+    "redeemer": "CL9wkGFT3SZRRNa9dgaovuRV7jrVVigBUZ6DjcgySsCU",
+    "sbr": "Saber2gLauYim4Mvftnrasomsv6NvAuncvMEZwcLpD1"
+  },
+  "pools": [
+    {
+      "id": "usdc_usdt",
+      "name": "USDC-USDT",
+      "tokens": [
+        {
+          "symbol": "USDC",
+          "name": "USD Coin",
+          "logoURI": "/tokens/usdc.svg",
+          "address": "2tWC4JAdL4AxEFJySziYJfsAnW2MHKRo98vbAPiRDSk8",
+          "decimals": 6,
+          "chainId": 103,
+          "tags": ["saber-market-usd"],
+          "extensions": {}
+        },
+        {
+          "symbol": "USDT",
+          "name": "Tether USD",
+          "logoURI": "/tokens/usdt.svg",
+          "address": "EJwZgeZrdC8TXTQbQBoL6bfuAnFUUy1PVCMB4DYPzVaS",
+          "decimals": 6,
+          "chainId": 103,
+          "tags": ["saber-market-usd"],
+          "extensions": {}
+        }
+      ],
+      "tokenIcons": [
+        {
+          "symbol": "USDC",
+          "name": "USD Coin",
+          "logoURI": "/tokens/usdc.svg",
+          "address": "2tWC4JAdL4AxEFJySziYJfsAnW2MHKRo98vbAPiRDSk8",
+          "decimals": 6,
+          "chainId": 103,
+          "tags": ["saber-market-usd"],
+          "extensions": {}
+        },
+        {
+          "symbol": "USDT",
+          "name": "Tether USD",
+          "logoURI": "/tokens/usdt.svg",
+          "address": "EJwZgeZrdC8TXTQbQBoL6bfuAnFUUy1PVCMB4DYPzVaS",
+          "decimals": 6,
+          "chainId": 103,
+          "tags": ["saber-market-usd"],
+          "extensions": {}
+        }
+      ],
+      "underlyingIcons": [
+        {
+          "symbol": "USDC",
+          "name": "USD Coin",
+          "logoURI": "/tokens/usdc.svg",
+          "address": "2tWC4JAdL4AxEFJySziYJfsAnW2MHKRo98vbAPiRDSk8",
+          "decimals": 6,
+          "chainId": 103,
+          "tags": ["saber-market-usd"],
+          "extensions": {}
+        },
+        {
+          "symbol": "USDT",
+          "name": "Tether USD",
+          "logoURI": "/tokens/usdt.svg",
+          "address": "EJwZgeZrdC8TXTQbQBoL6bfuAnFUUy1PVCMB4DYPzVaS",
+          "decimals": 6,
+          "chainId": 103,
+          "tags": ["saber-market-usd"],
+          "extensions": {}
+        }
+      ],
+      "currency": "USD",
+      "lpToken": {
+        "symbol": "SLP",
+        "name": "USDC-USDT Saber LP",
+        "logoURI": "https://registry.saber.so/token-icons/slp.png",
+        "decimals": 6,
+        "address": "YakofBo4X3zMxa823THQJwZ8QeoU8pxPdFdxJs7JW57",
+        "chainId": 103,
+        "tags": ["saber-stableswap-lp"],
+        "extensions": {
+          "website": "https://app.saber.so/#/pools/usdc_usdt",
+          "underlyingTokens": [
+            "2tWC4JAdL4AxEFJySziYJfsAnW2MHKRo98vbAPiRDSk8",
+            "EJwZgeZrdC8TXTQbQBoL6bfuAnFUUy1PVCMB4DYPzVaS"
+          ],
+          "source": "saber"
+        }
+      },
+      "plotKey": "99CaY6yjPLJzAJU3y2qhuLMFcfoCof4tnbR21FrtiGJd",
+      "swap": {
+        "config": {
+          "swapAccount": "VeNkoB1HvSP6bSeGybQDnx9wTWFsQb2NBCemeCDSuKL",
+          "swapProgramID": "SSwpkEEcbUqx4vtoEByFjSkhKdCT862DNVb52nZg1UZ",
+          "tokenProgramID": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "authority": "72E8LfHqoxQCxnxmBbDG6WSHnDx1rWPUHNKwYvoL5qDm"
+        },
+        "state": {
+          "adminAccount": "GSmjrpT8zNtp6Ke8y2xS5P1kREEjqZCjwxF8VbxDJAV8",
+          "tokenA": {
+            "adminFeeAccount": "6RPzht581g8QLdKaT8CSuCnj9yBhR2u6mxKFFK6Dbhgx",
+            "reserve": "6aFutFMWR7PbWdBQhdfrcKrAor9WYa2twtSinTMb9tXv",
+            "mint": "2tWC4JAdL4AxEFJySziYJfsAnW2MHKRo98vbAPiRDSk8"
+          },
+          "tokenB": {
+            "adminFeeAccount": "5Z4M2yHn6LUWaK9Ka8QqByM1NimGGRMdEk7roHoQbDb9",
+            "reserve": "HXbhpnLTxSDDkTg6deDpsXzJRBf8j7T6Dc3GidwrLWeo",
+            "mint": "EJwZgeZrdC8TXTQbQBoL6bfuAnFUUy1PVCMB4DYPzVaS"
+          },
+          "poolTokenMint": "YakofBo4X3zMxa823THQJwZ8QeoU8pxPdFdxJs7JW57",
+          "initialAmpFactor": "64",
+          "targetAmpFactor": "64",
+          "startRampTimestamp": 0,
+          "stopRampTimestamp": 0,
+          "fees": {
+            "adminTrade": {
+              "formatted": "50.0000000000",
+              "numerator": "50",
+              "denominator": "100"
+            },
+            "adminWithdraw": {
+              "formatted": "50.0000000000",
+              "numerator": "50",
+              "denominator": "100"
+            },
+            "trade": {
+              "formatted": "0.2000000000",
+              "numerator": "20",
+              "denominator": "10000"
+            },
+            "withdraw": {
+              "formatted": "0.5000000000",
+              "numerator": "50",
+              "denominator": "10000"
+            }
+          }
+        }
+      },
+      "quarry": "8QfbpS8fBNcqee9qHjYG5pgBWTKyM193E7zjwzxeUZ3X"
+    },
+    {
+      "id": "usdc_pai",
+      "name": "USDC-PAI",
+      "tokens": [
+        {
+          "symbol": "USDC",
+          "name": "USD Coin",
+          "logoURI": "/tokens/usdc.svg",
+          "address": "2tWC4JAdL4AxEFJySziYJfsAnW2MHKRo98vbAPiRDSk8",
+          "decimals": 6,
+          "chainId": 103,
+          "tags": ["saber-market-usd"],
+          "extensions": {}
+        },
+        {
+          "symbol": "PAI",
+          "name": "PAI",
+          "logoURI": "/tokens/pai.svg",
+          "address": "4ry1pMstKzMJvMZSms62HduTyCbbqkUyrz17x1dajBmL",
+          "decimals": 6,
+          "chainId": 103,
+          "tags": ["saber-market-usd"],
+          "extensions": {}
+        }
+      ],
+      "tokenIcons": [
+        {
+          "symbol": "USDC",
+          "name": "USD Coin",
+          "logoURI": "/tokens/usdc.svg",
+          "address": "2tWC4JAdL4AxEFJySziYJfsAnW2MHKRo98vbAPiRDSk8",
+          "decimals": 6,
+          "chainId": 103,
+          "tags": ["saber-market-usd"],
+          "extensions": {}
+        },
+        {
+          "symbol": "PAI",
+          "name": "PAI",
+          "logoURI": "/tokens/pai.svg",
+          "address": "4ry1pMstKzMJvMZSms62HduTyCbbqkUyrz17x1dajBmL",
+          "decimals": 6,
+          "chainId": 103,
+          "tags": ["saber-market-usd"],
+          "extensions": {}
+        }
+      ],
+      "underlyingIcons": [
+        {
+          "symbol": "USDC",
+          "name": "USD Coin",
+          "logoURI": "/tokens/usdc.svg",
+          "address": "2tWC4JAdL4AxEFJySziYJfsAnW2MHKRo98vbAPiRDSk8",
+          "decimals": 6,
+          "chainId": 103,
+          "tags": ["saber-market-usd"],
+          "extensions": {}
+        },
+        {
+          "symbol": "PAI",
+          "name": "PAI",
+          "logoURI": "/tokens/pai.svg",
+          "address": "4ry1pMstKzMJvMZSms62HduTyCbbqkUyrz17x1dajBmL",
+          "decimals": 6,
+          "chainId": 103,
+          "tags": ["saber-market-usd"],
+          "extensions": {}
+        }
+      ],
+      "currency": "USD",
+      "lpToken": {
+        "symbol": "SLP",
+        "name": "USDC-PAI Saber LP",
+        "logoURI": "https://registry.saber.so/token-icons/slp.png",
+        "decimals": 6,
+        "address": "J8fDLz5bfef14jDNC32nJLbVzpS9Rj1LBHwaSGfYn83J",
+        "chainId": 103,
+        "tags": ["saber-stableswap-lp"],
+        "extensions": {
+          "website": "https://app.saber.so/#/pools/usdc_pai",
+          "underlyingTokens": [
+            "2tWC4JAdL4AxEFJySziYJfsAnW2MHKRo98vbAPiRDSk8",
+            "4ry1pMstKzMJvMZSms62HduTyCbbqkUyrz17x1dajBmL"
+          ],
+          "source": "saber"
+        }
+      },
+      "plotKey": "ByDbnkzqj3QmaTmjAfgDgK4YofpQZ7cNSgkLUm8i26TS",
+      "swap": {
+        "config": {
+          "swapAccount": "DoycojcYVwc42yCpGb4CvkbuKJkQ6KBTugLdJXv3U8ZE",
+          "swapProgramID": "SSwpkEEcbUqx4vtoEByFjSkhKdCT862DNVb52nZg1UZ",
+          "tokenProgramID": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "authority": "8BC6eAF59beKMctxpH7jkx8faR6jdyKc5doHB7Tiffig"
+        },
+        "state": {
+          "adminAccount": "H9XuKqszWYirDmXDQ12TZXGtxqUYYn4oi7FKzAm7RHGc",
+          "tokenA": {
+            "adminFeeAccount": "7uBM28mn7tfussHxAUeAiuUP2K1aSF2P2npzxRXhP8uS",
+            "reserve": "3hqDsGEp4Zp8PhXhx37ub94bHYfkjjHvZG5YJKyJ17no",
+            "mint": "2tWC4JAdL4AxEFJySziYJfsAnW2MHKRo98vbAPiRDSk8"
+          },
+          "tokenB": {
+            "adminFeeAccount": "8dzJETPZkwX43cCFBgzWmpdLL9aZ6Ed1fsMDZ3Ujk7rf",
+            "reserve": "FLX3nBuu77Ld4KG9nTLgNnaqfT8BFnTRGtkwaBYWSXLQ",
+            "mint": "4ry1pMstKzMJvMZSms62HduTyCbbqkUyrz17x1dajBmL"
+          },
+          "poolTokenMint": "J8fDLz5bfef14jDNC32nJLbVzpS9Rj1LBHwaSGfYn83J",
+          "initialAmpFactor": "64",
+          "targetAmpFactor": "64",
+          "startRampTimestamp": 0,
+          "stopRampTimestamp": 0,
+          "fees": {
+            "adminTrade": {
+              "formatted": "50.0000000000",
+              "numerator": "50",
+              "denominator": "100"
+            },
+            "adminWithdraw": {
+              "formatted": "50.0000000000",
+              "numerator": "50",
+              "denominator": "100"
+            },
+            "trade": {
+              "formatted": "0.2000000000",
+              "numerator": "20",
+              "denominator": "10000"
+            },
+            "withdraw": {
+              "formatted": "0.5000000000",
+              "numerator": "50",
+              "denominator": "10000"
+            }
+          }
+        }
+      },
+      "quarry": "Cae9hW42nD1G89LCheaSczN6CzngYYWQ6KbZMQXhMwyq"
+    },
+    {
+      "id": "btc",
+      "name": "renBTC-WBTC",
+      "tokens": [
+        {
+          "name": "Test RenBTC",
+          "address": "Ren3RLPCG6hpKay86d2fQccQLuGG331UNxwn2VTw3GJ",
+          "decimals": 8,
+          "chainId": 103,
+          "symbol": "renBTC",
+          "logoURI": "https://cdn.jsdelivr.net/gh/trustwallet/assets@master/blockchains/ethereum/assets/0xEB4C2781e4ebA804CE9a9803C67d0893436bB27D/logo.png",
+          "tags": ["saber-market-btc"],
+          "extensions": {}
+        },
+        {
+          "symbol": "sWBTC-8",
+          "name": "Saber Test WBTC (8 decimals)",
+          "address": "BtceyXMo5kwg8u6es4NoukBWQuMwtcBCZpFWUfZgVuZs",
+          "decimals": 8,
+          "logoURI": "https://cdn.jsdelivr.net/gh/trustwallet/assets@master/blockchains/bitcoin/info/logo.png",
+          "chainId": 103,
+          "tags": ["saber-decimal-wrapped", "saber-market-btc"],
+          "extensions": {
+            "assetContract": "Wbt2CgkkD3eVckD5XxWJmT8pTnFTyWrwvGM7bUMLvsM"
+          }
+        }
+      ],
+      "tokenIcons": [
+        {
+          "name": "Test RenBTC",
+          "address": "Ren3RLPCG6hpKay86d2fQccQLuGG331UNxwn2VTw3GJ",
+          "decimals": 8,
+          "chainId": 103,
+          "symbol": "renBTC",
+          "logoURI": "https://cdn.jsdelivr.net/gh/trustwallet/assets@master/blockchains/ethereum/assets/0xEB4C2781e4ebA804CE9a9803C67d0893436bB27D/logo.png",
+          "tags": ["saber-market-btc"],
+          "extensions": {}
+        },
+        {
+          "symbol": "sWBTC-8",
+          "name": "Saber Test WBTC (8 decimals)",
+          "address": "BtceyXMo5kwg8u6es4NoukBWQuMwtcBCZpFWUfZgVuZs",
+          "decimals": 8,
+          "logoURI": "https://cdn.jsdelivr.net/gh/trustwallet/assets@master/blockchains/bitcoin/info/logo.png",
+          "chainId": 103,
+          "tags": ["saber-decimal-wrapped", "saber-market-btc"],
+          "extensions": {
+            "assetContract": "Wbt2CgkkD3eVckD5XxWJmT8pTnFTyWrwvGM7bUMLvsM"
+          }
+        }
+      ],
+      "underlyingIcons": [
+        {
+          "name": "Test RenBTC",
+          "address": "Ren3RLPCG6hpKay86d2fQccQLuGG331UNxwn2VTw3GJ",
+          "decimals": 8,
+          "chainId": 103,
+          "symbol": "renBTC",
+          "logoURI": "https://cdn.jsdelivr.net/gh/trustwallet/assets@master/blockchains/ethereum/assets/0xEB4C2781e4ebA804CE9a9803C67d0893436bB27D/logo.png",
+          "tags": ["saber-market-btc"],
+          "extensions": {}
+        },
+        {
+          "name": "Test WBTC",
+          "address": "Wbt2CgkkD3eVckD5XxWJmT8pTnFTyWrwvGM7bUMLvsM",
+          "decimals": 6,
+          "chainId": 103,
+          "symbol": "WBTC",
+          "logoURI": "https://cdn.jsdelivr.net/gh/trustwallet/assets@master/blockchains/bitcoin/info/logo.png",
+          "tags": ["saber-market-btc"],
+          "extensions": {}
+        }
+      ],
+      "currency": "BTC",
+      "lpToken": {
+        "symbol": "SLP",
+        "name": "renBTC-WBTC Saber LP",
+        "logoURI": "https://registry.saber.so/token-icons/slp.png",
+        "decimals": 8,
+        "address": "bLpASoWNdsz5DsjCaxpbM2FrkMowTJCydpwiDP4Vdzm",
+        "chainId": 103,
+        "tags": ["saber-stableswap-lp"],
+        "extensions": {
+          "website": "https://app.saber.so/#/pools/btc",
+          "underlyingTokens": [
+            "Ren3RLPCG6hpKay86d2fQccQLuGG331UNxwn2VTw3GJ",
+            "BtceyXMo5kwg8u6es4NoukBWQuMwtcBCZpFWUfZgVuZs"
+          ],
+          "source": "saber"
+        }
+      },
+      "plotKey": "8c6AgGFMUT6cuU23FJuyfBtug98axAwPNXaHp6pbrqG2",
+      "swap": {
+        "config": {
+          "swapAccount": "AQsYrKkFLuv9Jw7kCcPH7SkeMQ2aZkP1KcBs4RYegHbv",
+          "swapProgramID": "SSwpkEEcbUqx4vtoEByFjSkhKdCT862DNVb52nZg1UZ",
+          "tokenProgramID": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "authority": "ChFJZQK4gNpmcrbF71e5Wo2HzF8qePYGnqsgZ6u7anFA"
+        },
+        "state": {
+          "adminAccount": "H9XuKqszWYirDmXDQ12TZXGtxqUYYn4oi7FKzAm7RHGc",
+          "tokenA": {
+            "adminFeeAccount": "HcedJ6dU7sYBkXPqZteZcuroZmnbaKRkjZnzzfbGgba9",
+            "reserve": "GT9JcsFPaeDJRCeysNHWT76nvN9EWDj7z7psaADSn8QS",
+            "mint": "Ren3RLPCG6hpKay86d2fQccQLuGG331UNxwn2VTw3GJ"
+          },
+          "tokenB": {
+            "adminFeeAccount": "6ni4cs8vqcTbLDjGDeXSSs7Gs9upCWsYqNoJRMmmFQk7",
+            "reserve": "6jRUeyuRyaG1BfV5Y7fRCRhUk8P9CJwS1s5qybG6HPti",
+            "mint": "BtceyXMo5kwg8u6es4NoukBWQuMwtcBCZpFWUfZgVuZs"
+          },
+          "poolTokenMint": "bLpASoWNdsz5DsjCaxpbM2FrkMowTJCydpwiDP4Vdzm",
+          "initialAmpFactor": "32",
+          "targetAmpFactor": "32",
+          "startRampTimestamp": 0,
+          "stopRampTimestamp": 0,
+          "fees": {
+            "adminTrade": {
+              "formatted": "0.0000000000",
+              "numerator": "0",
+              "denominator": "10000"
+            },
+            "adminWithdraw": {
+              "formatted": "0.0000000000",
+              "numerator": "0",
+              "denominator": "10000"
+            },
+            "trade": {
+              "formatted": "0.0400000000",
+              "numerator": "4",
+              "denominator": "10000"
+            },
+            "withdraw": {
+              "formatted": "0.0000000000",
+              "numerator": "0",
+              "denominator": "10000"
+            }
+          }
+        }
+      },
+      "quarry": "CeE8rNxCFx2RAgpS7trsmcTz7ydyun33wbNY7r2nEvPi"
+    }
+  ]
+}
