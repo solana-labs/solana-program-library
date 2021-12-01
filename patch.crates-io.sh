@@ -11,7 +11,6 @@ fi
 
 workspace_crates=(
   Cargo.toml
-  themis/client_ristretto/Cargo.toml
 )
 
 if [[ ! -r "$solana_dir"/scripts/read-cargo-variable.sh ]]; then

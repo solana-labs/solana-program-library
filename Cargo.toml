@@ -44,8 +44,6 @@ exclude = [
   "farms/router-saber",
   "farms/router-orca",
   "farms/vaults",
-  "themis/client_ristretto",
-  "themis/program_ristretto",
 ]
 
 [profile.dev]
