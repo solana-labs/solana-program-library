@@ -90,6 +90,9 @@ pub enum TokenInstruction {
     /// amounts of SOL and Tokens will be transferred to the destination
     /// account.
     ///
+    /// If the accounts are `AccountWithTransferFee`s, this will fail.  The mint
+    /// is required in order to assess the fee.
+    ///
     /// Accounts expected by this instruction:
     ///
     ///   * Single owner/delegate
@@ -196,6 +199,8 @@ pub enum TokenInstruction {
     },
     /// Close an account by transferring all its SOL to the destination account.
     /// Non-native accounts may only be closed if its token amount is zero.
+    /// Accounts with transfer fees may only be closed if its withheld amount is
+    /// also zero.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -250,6 +255,10 @@ pub enum TokenInstruction {
     /// This instruction differs from Transfer in that the token mint and
     /// decimals value is checked by the caller.  This may be useful when
     /// creating transactions offline or within a hardware wallet.
+    ///
+    /// If the accounts are `AccountWithTransferFee`s, the fee is withheld in the
+    /// source account. If either account is owned by the `fee_account_owner`,
+    /// the fee is ignored.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -408,6 +417,102 @@ pub enum TokenInstruction {
         mint_authority: Pubkey,
         /// The freeze authority/multisignature of the mint.
         freeze_authority: COption<Pubkey>,
+    },
+
+    /// Initialize a new mint with a transfer fee
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]` The mint to initialize.
+    ///
+    InitializeMintWithTransferFee {
+        /// Number of base 10 digits to the right of the decimal place.
+        decimals: u8,
+        /// The authority/multisignature to mint tokens.
+        mint_authority: Pubkey,
+        /// The freeze authority/multisignature of the mint.
+        freeze_authority: COption<Pubkey>,
+        /// Pubkey that must own any provided fee account
+        fee_account_owner: Pubkey,
+        /// Amount of transfer collected as fees, expressed as basis points of the
+        /// transfer amount
+        transfer_fee_basis_points: u16,
+        /// Maximum fee assessed on transfers
+        maximum_fee: u64,
+    },
+    /// Transfer, providing an explicit fee receiver
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   * Single owner/delegate
+    ///   0. `[writable]` The source account. Must be an AccountWithTransferFee.
+    ///   1. `[]` The token mint. Must be a MintWithTransferFee.
+    ///   2. `[writable]` The destination account. Must be an AccountWithTransferFee.
+    ///   3. `[writable]` The fee receiver account. Must be owned by the mint's
+    ///      `fee_account_owner`.
+    ///   4. `[signer]` The source account's owner/delegate.
+    ///
+    ///   * Multisignature owner/delegate
+    ///   0. `[writable]` The source account.
+    ///   1. `[]` The token mint.
+    ///   2. `[writable]` The destination account.
+    ///   3. `[writable]` The fee receiver account. Must be owned by the mint's
+    ///      `fee_account_owner`.
+    ///   4. `[]` The source account's multisignature owner/delegate.
+    ///   5. ..5+M `[signer]` M signer accounts.
+    TransferWithFee {
+        /// The amount of tokens to transfer.
+        amount: u64,
+        /// Expected number of base 10 digits to the right of the decimal place.
+        decimals: u8,
+    },
+    /// Transfer withheld tokens to a fee account. Signed by either the source
+    /// account owner or the fee account owner.
+    ///
+    /// Succeeds for frozen accounts. <-- Does this make sense?
+    ///
+    /// Note: this could be made permissionless, but that may open up attack
+    /// opportunities.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   * Single owner/delegate
+    ///   0. `[writable]` The source account. Must be an AccountWithTransferFee.
+    ///   1. `[]` The token mint. Must be a MintWithTransferFee.
+    ///   2. `[writable]` The fee receiver account. Must be owned by the mint's
+    ///      `fee_account_owner`.
+    ///   3. `[signer]` The source account's owner or the mint's `fee_account_owner`
+    ///
+    ///   * Multisignature owner/delegate
+    ///   0. `[writable]` The source account.
+    ///   1. `[]` The token mint.
+    ///   2. `[writable]` The destination account.
+    ///   3. `[]` The source or destination account's multisignature owner/delegate.
+    ///   4. ..4+M `[signer]` M signer accounts.
+    TransferWithheld {
+        /// The amount of tokens to transfer.
+        amount: u64,
+        /// Expected number of base 10 digits to the right of the decimal place.
+        decimals: u8,
+    },
+    /// Set transfer fee. Only supported for `MintWithTransferFee`s.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   * Single authority
+    ///   0. `[writable]` The mint.
+    ///   1. `[signer]` The mint's fee account owner.
+    ///
+    ///   * Multisignature authority
+    ///   0. `[writable]` The mint.
+    ///   1. `[]` The mint's multisignature fee account owner.
+    ///   2. ..2+M `[signer]` M signer accounts.
+    SetTransferFee {
+        /// Amount of transfer collected as fees, expressed as basis points of the
+        /// transfer amount
+        transfer_fee_basis_points: u16,
+        /// Maximum fee assessed on transfers
+        maximum_fee: u64,
     },
 }
 impl TokenInstruction {
@@ -625,6 +730,34 @@ impl TokenInstruction {
                 buf.extend_from_slice(mint_authority.as_ref());
                 Self::pack_pubkey_option(freeze_authority, &mut buf);
             }
+            &Self::InitializeMintWithTransferFee {
+                decimals: _,
+                mint_authority: _,
+                freeze_authority: _,
+                fee_account_owner: _,
+                transfer_fee_basis_points: _,
+                maximum_fee: _,
+            } => {
+                panic!();
+            }
+            &Self::TransferWithFee {
+                amount: _,
+                decimals: _,
+            } => {
+                panic!();
+            }
+            &Self::TransferWithheld {
+                amount: _,
+                decimals: _,
+            } => {
+                panic!();
+            }
+            &Self::SetTransferFee {
+                transfer_fee_basis_points: _,
+                maximum_fee: _,
+            } => {
+                panic!();
+            }
         };
         buf
     }
@@ -674,6 +807,9 @@ pub enum AuthorityType {
     AccountOwner,
     /// Authority to close a token account
     CloseAccount,
+    /// Authority to set the fee and fee owner. Can only be set by the current
+    /// fee owner. <-- does this make sense? Also, how's the name?
+    FeeOwner,
 }
 
 impl AuthorityType {
@@ -683,6 +819,7 @@ impl AuthorityType {
             AuthorityType::FreezeAccount => 1,
             AuthorityType::AccountOwner => 2,
             AuthorityType::CloseAccount => 3,
+            AuthorityType::FeeOwner => 4,
         }
     }
 
@@ -692,6 +829,7 @@ impl AuthorityType {
             1 => Ok(AuthorityType::FreezeAccount),
             2 => Ok(AuthorityType::AccountOwner),
             3 => Ok(AuthorityType::CloseAccount),
+            4 => Ok(AuthorityType::FeeOwner),
             _ => Err(TokenError::InvalidInstruction.into()),
         }
     }

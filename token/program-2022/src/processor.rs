@@ -826,6 +826,34 @@ impl Processor {
                 msg!("Instruction: SyncNative");
                 Self::process_sync_native(program_id, accounts)
             }
+            TokenInstruction::InitializeMintWithTransferFee {
+                decimals: _,
+                mint_authority: _,
+                freeze_authority: _,
+                fee_account_owner: _,
+                transfer_fee_basis_points: _,
+                maximum_fee: _,
+            } => {
+                panic!();
+            }
+            TokenInstruction::TransferWithFee {
+                amount: _,
+                decimals: _,
+            } => {
+                panic!();
+            }
+            TokenInstruction::TransferWithheld {
+                amount: _,
+                decimals: _,
+            } => {
+                panic!();
+            }
+            TokenInstruction::SetTransferFee {
+                transfer_fee_basis_points: _,
+                maximum_fee: _,
+            } => {
+                panic!();
+            }
         }
     }
 
