@@ -92,7 +92,7 @@ A Vault contract implementation. Individual yield farming strategies are stored 
 - User deposits tokens into a Vault with add_liquidity transaction. For example, Vault `RDM.STC.RAY-SRM` takes RAY and SRM tokens. To get a list of available Vaults, one can use the `client.get_vaults()` function or `api/v1/vaults` RPC call. Vault tokens are minted back to the user to represent his share in the Vault.
 - Vault sends user tokens to the corresponding Raydium Pool, receives LP tokens, and stakes them to the Raydium Farm.
 - Vaults should be cranked on a periodic basis. Crank operation is permissionless and can be done by anyone. And it is executed for the entire Vault, not per individual user. Crank consists of three steps: 1. Harvest Farm rewards (in one or both tokens); 2. Rebalance rewards to get proper amounts of each token; 3. Place rewards back into the Pool and stake received LP tokens. A small Vault fee is taken from rewards, and it can be used to incentivize Crank operations.
-- Upon liquidity removal, the user gets original tokens back in amounts proportional to Vault tokens he holds. Vault tokens are then burned.
+- Upon liquidity removal, the user gets original tokens back in amounts proportional to Vault tokens they hold. Vault tokens are then burned.
 
 `SBR-STAKE-LP-COMPOUND` is a similar strategy, but it uses Saber Pools and Farms.
 
