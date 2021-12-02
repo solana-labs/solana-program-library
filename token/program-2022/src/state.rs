@@ -21,10 +21,10 @@ pub enum AccountType {
     Mint,
     /// Base token account
     Account,
-    /// Mints that assess a transfer fee
-    MintWithTransferFee,
-    /// Accounts that require transfer fees
-    AccountWithTransferFee,
+    /// Mints with payment system features
+    PaymentMint,
+    /// Accounts with payment system features
+    PaymentAccount,
 }
 
 impl Default for AccountType {
@@ -103,53 +103,28 @@ impl Pack for Mint {
     }
 }
 
-/// MintWithTransferFee data.
+/// PaymentMint data.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct MintWithTransferFee {
+pub struct PaymentMint {
     /// Base mint data, done as composition
     pub base_mint: Mint,
 
     /// ALL NEW DATA MUST START FROM HERE
-    /// account type, always set to "MintWithTransferFee"
+    /// account type, always set to "PaymentMint"
     pub account_type: AccountType,
-    /// Any provided fee account must be owned by this key. If set to `None`, then
+    /// Optional authority to set the fee
+    pub fee_config_authority: COption<Pubkey>,
+    /// Any harvest instruction must be signed by this key. If set to `None`, then
     /// this mint behaves like a normal `Mint`.
-    pub fee_account_owner: COption<Pubkey>,
+    pub fee_withdraw_authority: COption<Pubkey>,
     /// Amount of transfer collected as fees, expressed as basis points of the
     /// transfer amount, ie.  increments of 0.01%
     pub transfer_fee_basis_points: u16,
     /// Maximum fee assessed on transfers, expressed as an amount of tokens
     pub maximum_fee: u64,
-}
-
-/// `UberMint` contains all of the possible data in any Mint, to be used instead
-/// of `Mint` in programs.  Instead of using `Mint::unpack`, use
-/// `UberMint::unpack`, and the unpack works for any Mint type, filling in
-/// the appropriate type.
-/// When writing data back to the buffer, `UberMint::pack` respects the type contained,
-/// and errors if unusable fields have been populated or changed.  For example,
-/// if the fee is set on a normal Mint, it will error.
-///
-/// Name TBD. Other options: MetaMint, AllMint, OverMint, MegaMint.
-/// OR we rename Mint to BaseMint, and then call this Mint.
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct UberMint {
-    /// Base mint data, done as composition
-    pub base_mint: Mint,
-
-    /// Account type, can be either Mint or MintWithTransferFee
-    pub account_type: AccountType,
-    /// Fee account must be owned by this key. If set to `None`, then this mint
-    /// behaves like a normal `Mint`.
-    pub fee_account_owner: COption<Pubkey>,
-    /// Amount of transfer collected as fees, expressed as basis points of the
-    /// transfer amount, ie.  increments of 0.01%
-    pub transfer_fee_basis_points: u16,
-    /// Maximum fee assessed on transfers, expressed
-    pub maximum_fee: u64,
-    // ADD ANY NEW MINT FIELDS HERE
+    /// Withheld transfer fee tokens that have been moved to the mint for harvesting
+    pub withheld_amount: u64,
 }
 
 /// Account data.
@@ -263,32 +238,18 @@ impl Default for AccountState {
     }
 }
 
-/// AccountWithTransferFee data.
+/// PaymentAccount data.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct AccountWithTransferFee {
+pub struct PaymentAccount {
     /// All base account data, done through composition
     pub base_account: Account,
 
     /// ALL NEW DATA STARTS HERE
-    /// Account type, must always be AccountType::AccountWithTransferFee
+    /// Account type, must always be AccountType::PaymentAccount
     pub account_type: AccountType,
-    /// Amount withheld during transfers, to be claimed by the fee recipient
+    /// Amount withheld during transfers, to be harvested by the fee withdraw authority
     pub withheld_amount: u64,
-}
-
-/// See the discussion at `UberMint` about the concept of this type.
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct UberAccount {
-    /// All base account data, done through composition
-    pub base_account: Account,
-
-    /// Account type, can be either Account or AccountWithTransferFee
-    pub account_type: AccountType,
-    /// Amount withheld during transfers, to be claimed by the fee recipient
-    pub withheld_amount: u64,
-    // ADD ANY NEW ACCOUNT FIELDS HERE
 }
 
 /// Multisignature data.
