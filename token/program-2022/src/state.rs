@@ -21,16 +21,32 @@ pub enum AccountType {
     Mint,
     /// Base token account
     Account,
-    /// Mints with payment system features
-    PaymentMint,
-    /// Accounts with payment system features
-    PaymentAccount,
 }
 
 impl Default for AccountType {
     fn default() -> Self {
         Self::Uninitialized
     }
+}
+
+/// Mixins that can be applied to a mint
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum MintMixin {
+    /// Reserved as 0, or for padding
+    None,
+    /// Includes a transfer fee and accompanying authorities to harvest and set the fee
+    TransferFee,
+}
+
+/// Mixins that can be applied to an account
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum AccountMixin {
+    /// Reserved as 0, or for padding
+    None,
+    /// Includes withheld transfer fees
+    TransferFee,
 }
 
 /// Mint data.
@@ -103,16 +119,12 @@ impl Pack for Mint {
     }
 }
 
-/// PaymentMint data.
+/// Transfer fee mixin data for mints.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct PaymentMint {
-    /// Base mint data, done as composition
-    pub base_mint: Mint,
-
-    /// ALL NEW DATA MUST START FROM HERE
-    /// account type, always set to "PaymentMint"
-    pub account_type: AccountType,
+pub struct MintTransferFeeMixin {
+    /// mixin type, always set to "TransferFee"
+    pub mixin_type: MintMixin,
     /// Optional authority to set the fee
     pub fee_config_authority: COption<Pubkey>,
     /// Any harvest instruction must be signed by this key. If set to `None`, then
@@ -238,16 +250,12 @@ impl Default for AccountState {
     }
 }
 
-/// PaymentAccount data.
+/// Transfer fee mixin data for accounts.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct PaymentAccount {
-    /// All base account data, done through composition
-    pub base_account: Account,
-
-    /// ALL NEW DATA STARTS HERE
-    /// Account type, must always be AccountType::PaymentAccount
-    pub account_type: AccountType,
+pub struct AccountTransferFeeMixin {
+    /// mixin type, always set to "TransferFee"
+    pub mixin_type: AccountMixin,
     /// Amount withheld during transfers, to be harvested by the fee withdraw authority
     pub withheld_amount: u64,
 }

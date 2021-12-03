@@ -54,7 +54,7 @@ pub enum TokenInstruction {
     /// Otherwise another party can acquire ownership of the uninitialized
     /// account.
     ///
-    /// The mint provided must be a `Mint` instance.
+    /// The mint provided must be a `Mint` instance without any mixins.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -95,8 +95,8 @@ pub enum TokenInstruction {
     /// amounts of SOL and Tokens will be transferred to the destination
     /// account.
     ///
-    /// If the accounts are `PaymentAccount`s, this will fail.  The mint
-    /// is required in order to assess the fee.
+    /// If the accounts contain `AccountTransferFeeMixin`s, this will fail.  Mints with
+    /// the `MintTransferFeeMixin` are required in order to assess the fee.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -205,8 +205,8 @@ pub enum TokenInstruction {
     /// Close an account by transferring all its SOL to the destination account.
     /// Non-native accounts may only be closed if its token amount is zero.
     ///
-    /// Accounts with transfer fees may only be closed if its withheld amount is
-    /// also zero.
+    /// Accounts with the `AccountTransferFeeMixin` may only be closed if the withheld
+    /// amount is zero.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -262,7 +262,7 @@ pub enum TokenInstruction {
     /// decimals value is checked by the caller.  This may be useful when
     /// creating transactions offline or within a hardware wallet.
     ///
-    /// If the accounts are `PaymentAccount`s, the fee is withheld in the
+    /// If the accounts contain `AccountTransferFeeMixin`s, the fee is withheld in the
     /// destination account.
     ///
     /// Accounts expected by this instruction:
@@ -368,7 +368,7 @@ pub enum TokenInstruction {
     /// Cross Program Invocation from an instruction that does not need the owner's
     /// `AccountInfo` otherwise.
     ///
-    /// The mint provided must be a `Mint` instance.
+    /// The mint provided must be a `Mint` instance without any mixins.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -391,7 +391,7 @@ pub enum TokenInstruction {
     SyncNative,
     /// Like InitializeAccount2, but does not require the Rent sysvar to be provided
     ///
-    /// The mint provided must be a `Mint` instance.
+    /// The mint provided must be a `Mint` instance without any mixins.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -427,48 +427,48 @@ pub enum TokenInstruction {
         /// The freeze authority/multisignature of the mint.
         freeze_authority: COption<Pubkey>,
     },
-    /// Initialize a new mint for payment systems.
+    /// Initialize a new mint with all provided mixins.
+    ///
+    /// The mint must have exactly enough space allocated for the base mint (82
+    /// bytes). If any mixins are provided, there must be 83 bytes of padding,
+    /// 1 byte reserved for the account type, then space required by each mixin.
     ///
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` The mint to initialize.
-    InitializePaymentMint {
+    ///   1. ..1+N `[]` (Optional) Accounts required to initialize the mixins
+    InitializeMintWithMixins {
         /// Number of base 10 digits to the right of the decimal place.
         decimals: u8,
         /// The authority/multisignature to mint tokens.
         mint_authority: Pubkey,
         /// The freeze authority/multisignature of the mint.
         freeze_authority: COption<Pubkey>,
-        /// Pubkey that may update the fees
-        fee_config_authority: COption<Pubkey>,
-        /// Harvest instructions must be signed by this key
-        fee_withdraw_authority: COption<Pubkey>,
-        /// Amount of transfer collected as fees, expressed as basis points of the
-        /// transfer amount
-        transfer_fee_basis_points: u16,
-        /// Maximum fee assessed on transfers
-        maximum_fee: u64,
+        /// Initialization parameters for all mint mixins
+        mint_mixins: Vec<InitializeMintMixinParameters>,
     },
-    /// Initializes a new `PaymentAccount` to hold tokens.  The mint provided must
-    /// be a `PaymentMint`, and the account must have enough data allocated for
-    /// a `PaymentAccount` instance.
+    /// Initializes a new `Account` to hold tokens with all expected mixins.
+    /// The account must have enough data allocated for all mixins included in
+    /// the mint.
     ///
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]`  The account to initialize.
-    ///   1. `[]` The mint this account will be associated with. Must be a `PaymentMint`.
-    InitializePaymentAccount {
+    ///   1. `[]` The mint this account will be associated with.
+    InitializeAccountWithMixins {
         /// The new account's owner/multisignature.
         owner: Pubkey,
+        /// Initialization parameters for all account mixins
+        account_mixins: Vec<InitializeAccountMixinParameters>,
     },
     /// Transfer, providing expected mint information and fees
     ///
     /// Accounts expected by this instruction:
     ///
     ///   * Single owner/delegate
-    ///   0. `[writable]` The source account. Must be a PaymentAccount.
-    ///   1. `[]` The token mint. Must be a PaymentMint.
-    ///   2. `[writable]` The destination account. Must be a PaymentAccount.
+    ///   0. `[writable]` The source account. Must include the `AccountTransferFeeMixin`.
+    ///   1. `[]` The token mint. Must include the `AccountMintFeeMixin`.
+    ///   2. `[writable]` The destination account. Must include the `AccountTransferFeeMixin`.
     ///   3. `[signer]` The source account's owner/delegate.
     ///
     ///   * Multisignature owner/delegate
@@ -494,18 +494,19 @@ pub enum TokenInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   * Single owner/delegate
-    ///   0. `[writable]` The token mint. Must be a PaymentMint.
-    ///   1. `[writable]` The fee receiver account. Must be a PaymentAccount
-    ///      associated with the provided PaymentMint.
+    ///   0. `[writable]` The token mint. Must include the `MintTransferFeeMixin`.
+    ///   1. `[writable]` The fee receiver account. Must include the `AccountTransferFeeMixin`.
+    ///      associated with the provided mint.
     ///   2. `[signer]` The mint's `fee_withdraw_authority`
-    ///   3. ..3+N `[writable]` (Optional) The source accounts to harvest from. Must be PaymentAccounts.
+    ///   3. ..3+N `[writable]` (Optional) The source accounts to harvest from.
+    ///      Must include the `AccountTransferFeeMixin`.
     ///
     ///   * Multisignature owner/delegate
-    ///   0. `[writable]` The token mint. Must be a PaymentMint.
+    ///   0. `[writable]` The token mint.
     ///   1. `[writable]` The destination account.
     ///   2. `[]` The source or destination account's multisignature owner/delegate.
     ///   3. ..3+M `[signer]` M signer accounts.
-    ///   3+M+1. ..3+M+N`[writable]` (Optional) The source accounts to harvest from. Must be PaymentAccounts.
+    ///   3+M+1. ..3+M+N`[writable]` (Optional) The source accounts to harvest from.
     HarvestFee,
     /// Close an account by transferring all its SOL to the destination account.
     ///
@@ -526,8 +527,8 @@ pub enum TokenInstruction {
     ///   2. `[writable]` The mint.
     ///   3. `[]` The account's multisignature owner.
     ///   4. ..4+M `[signer]` M signer accounts.
-    ClosePaymentAccount,
-    /// Set transfer fee. Only supported for `PaymentMint`s.
+    CloseAccountWithTransferFee,
+    /// Set transfer fee. Only supported for mints that include the `MintTransferFeeMixin`.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -762,39 +763,6 @@ impl TokenInstruction {
                 buf.extend_from_slice(mint_authority.as_ref());
                 Self::pack_pubkey_option(freeze_authority, &mut buf);
             }
-            &Self::InitializePaymentMint {
-                decimals: _,
-                mint_authority: _,
-                freeze_authority: _,
-                fee_account_owner: _,
-                transfer_fee_basis_points: _,
-                maximum_fee: _,
-            } => {
-                panic!();
-            }
-            &Self::InitializePaymentAccount { owner: _ } => {
-                panic!();
-            }
-            &Self::TransferCheckedWithFee {
-                amount: _,
-                decimals: _,
-                transfer_fee_basis_points: _,
-                maximum_fee: _,
-            } => {
-                panic!();
-            }
-            &Self::HarvestFee => {
-                panic!();
-            }
-            &Self::ClosePaymentAccount => {
-                panic!();
-            }
-            &Self::SetTransferFee {
-                transfer_fee_basis_points: _,
-                maximum_fee: _,
-            } => {
-                panic!();
-            }
         };
         buf
     }
@@ -873,6 +841,38 @@ impl AuthorityType {
             _ => Err(TokenError::InvalidInstruction.into()),
         }
     }
+}
+
+/// Specifies the authority type for SetAuthority instructions
+#[derive(Clone, Debug, PartialEq)]
+pub enum InitializeMintMixinParameters {
+    /// Additional padding required, in case the size of the account is the same
+    /// as a multisig
+    None {
+        padding: u64,
+    },
+    /// Initializes a mint with the `MintTransferFeeMixin`
+    TransferFee {
+        /// Pubkey that may update the fees
+        fee_config_authority: COption<Pubkey>,
+        /// Harvest instructions must be signed by this key
+        fee_withdraw_authority: COption<Pubkey>,
+        /// Amount of transfer collected as fees, expressed as basis points of the
+        /// transfer amount
+        transfer_fee_basis_points: u16,
+        /// Maximum fee assessed on transfers
+        maximum_fee: u64,
+    },
+}
+
+/// Specifies the authority type for SetAuthority instructions
+#[derive(Clone, Debug, PartialEq)]
+pub enum InitializeAccountMixinParameters {
+    /// Additional padding required, in case the size of the account is the same
+    /// as a multisig
+    None,
+    /// Initializes an account with the `AccountTransferFeeMixin`
+    TransferFee,
 }
 
 /// Creates a `InitializeMint` instruction.
