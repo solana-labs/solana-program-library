@@ -14,7 +14,7 @@ use {
         input_parsers::{keypair_of, pubkey_of},
         input_validators::{
             is_amount, is_keypair_or_ask_keyword, is_parsable, is_pubkey, is_url,
-            is_valid_percentage, is_valid_pubkey,
+            is_valid_percentage, is_valid_pubkey, is_valid_signer,
         },
         keypair::{signer_from_path_with_config, SignerFromPathConfig},
     },
@@ -1624,60 +1624,41 @@ fn main() {
             Arg::with_name("staker")
                 .long("staker")
                 .value_name("KEYPAIR")
-                .validator(is_keypair_or_ask_keyword)
+                .validator(is_valid_signer)
                 .takes_value(true)
-                .help(
-                    "Specify the stake pool staker. \
-                     This may be a keypair file, the ASK keyword. \
-                     Defaults to the client keypair.",
-                ),
+                .help("Stake pool staker. [default: cli config keypair]"),
         )
         .arg(
             Arg::with_name("manager")
                 .long("manager")
                 .value_name("KEYPAIR")
-                .validator(is_keypair_or_ask_keyword)
+                .validator(is_valid_signer)
                 .takes_value(true)
-                .help(
-                    "Specify the stake pool manager. \
-                     This may be a keypair file, the ASK keyword. \
-                     Defaults to the client keypair.",
-                ),
+                .help("Stake pool manager. [default: cli config keypair]"),
         )
         .arg(
             Arg::with_name("funding_authority")
                 .long("funding-authority")
                 .value_name("KEYPAIR")
-                .validator(is_keypair_or_ask_keyword)
+                .validator(is_valid_signer)
                 .takes_value(true)
-                .help(
-                    "Specify the stake pool funding authority, for deposits or withdrawals. \
-                     This may be a keypair file, the ASK keyword.",
-                ),
+                .help("Stake pool funding authority for deposits or withdrawals. [default: cli config keypair]"),
         )
         .arg(
             Arg::with_name("token_owner")
                 .long("token-owner")
                 .value_name("KEYPAIR")
-                .validator(is_keypair_or_ask_keyword)
+                .validator(is_valid_signer)
                 .takes_value(true)
-                .help(
-                    "Specify the owner of the pool token account. \
-                     This may be a keypair file, the ASK keyword. \
-                     Defaults to the client keypair.",
-                ),
+                .help("Owner of pool token account [default: cli config keypair]"),
         )
         .arg(
             Arg::with_name("fee_payer")
                 .long("fee-payer")
                 .value_name("KEYPAIR")
-                .validator(is_keypair_or_ask_keyword)
+                .validator(is_valid_signer)
                 .takes_value(true)
-                .help(
-                    "Specify the fee-payer account. \
-                     This may be a keypair file, the ASK keyword. \
-                     Defaults to the client keypair.",
-                ),
+                .help("Transaction fee payer account [default: cli config keypair]"),
         )
         .subcommand(SubCommand::with_name("create-pool")
             .about("Create a new stake pool")
@@ -1757,7 +1738,7 @@ fn main() {
                 Arg::with_name("deposit_authority")
                     .long("deposit-authority")
                     .short("a")
-                    .validator(is_keypair_or_ask_keyword)
+                    .validator(is_valid_signer)
                     .value_name("DEPOSIT_AUTHORITY_KEYPAIR")
                     .takes_value(true)
                     .help("Deposit authority required to sign all deposits into the stake pool"),
@@ -1976,11 +1957,10 @@ fn main() {
             .arg(
                 Arg::with_name("withdraw_authority")
                     .long("withdraw-authority")
-                    .validator(is_keypair_or_ask_keyword)
+                    .validator(is_valid_signer)
                     .value_name("KEYPAIR")
                     .takes_value(true)
-                    .help("Withdraw authority for the stake account to be deposited. \
-                          Defaults to the fee payer."),
+                    .help("Withdraw authority for the stake account to be deposited. [default: cli config keypair]"),
             )
             .arg(
                 Arg::with_name("token_receiver")
@@ -2022,11 +2002,10 @@ fn main() {
             .arg(
                 Arg::with_name("from")
                     .long("from")
-                    .validator(is_keypair_or_ask_keyword)
+                    .validator(is_valid_signer)
                     .value_name("KEYPAIR")
                     .takes_value(true)
-                    .help("Source account of funds. \
-                          Defaults to the fee payer."),
+                    .help("Source account of funds. [default: cli config keypair]"),
             )
             .arg(
                 Arg::with_name("token_receiver")
@@ -2192,7 +2171,7 @@ fn main() {
             .arg(
                 Arg::with_name("new_manager")
                     .long("new-manager")
-                    .validator(is_keypair_or_ask_keyword)
+                    .validator(is_valid_signer)
                     .value_name("KEYPAIR")
                     .takes_value(true)
                     .help("Keypair for the new stake pool manager."),
@@ -2667,9 +2646,11 @@ fn main() {
         ("set-referral-fee", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
             let fee = value_t_or_exit!(arg_matches, "fee", u8);
-            if fee > 100u8 {
-                panic!("Invalid fee {}%. Fee needs to be in range [0-100]", fee);
-            }
+            assert!(
+                fee <= 100u8,
+                "Invalid fee {}%. Fee needs to be in range [0-100]",
+                fee
+            );
             let fee_type = match arg_matches.value_of("fee_type").unwrap() {
                 "sol" => FeeType::SolReferral(fee),
                 "stake" => FeeType::StakeReferral(fee),
