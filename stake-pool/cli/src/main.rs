@@ -2646,7 +2646,11 @@ fn main() {
         ("set-referral-fee", Some(arg_matches)) => {
             let stake_pool_address = pubkey_of(arg_matches, "pool").unwrap();
             let fee = value_t_or_exit!(arg_matches, "fee", u8);
-            assert!(fee <= 100u8, "Invalid fee {}%. Fee needs to be in range [0-100]", fee);
+            assert!(
+                fee <= 100u8,
+                "Invalid fee {}%. Fee needs to be in range [0-100]",
+                fee
+            );
             let fee_type = match arg_matches.value_of("fee_type").unwrap() {
                 "sol" => FeeType::SolReferral(fee),
                 "stake" => FeeType::StakeReferral(fee),
