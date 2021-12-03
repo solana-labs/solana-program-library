@@ -439,8 +439,10 @@ pub enum TokenInstruction {
         mint_authority: Pubkey,
         /// The freeze authority/multisignature of the mint.
         freeze_authority: COption<Pubkey>,
-        /// Pubkey that must own any provided fee account
-        fee_account_owner: Pubkey,
+        /// Pubkey that may update the fees
+        fee_config_authority: COption<Pubkey>,
+        /// Harvest instructions must be signed by this key
+        fee_withdraw_authority: COption<Pubkey>,
         /// Amount of transfer collected as fees, expressed as basis points of the
         /// transfer amount
         transfer_fee_basis_points: u16,
@@ -480,11 +482,9 @@ pub enum TokenInstruction {
         amount: u64,
         /// Expected number of base 10 digits to the right of the decimal place.
         decimals: u8,
-        /// Amount of transfer collected as fees, expressed as basis points of the
-        /// transfer amount
-        transfer_fee_basis_points: u16,
-        /// Maximum fee assessed on transfers
-        maximum_fee: u64,
+        /// Expected fee assessed on this transfer, calculated off-chain based on
+        /// the transfer_fee_basis_points and maximum_fee of the mint.
+        fee: u64,
     },
     /// Transfer all withheld tokens to a fee account. Signed by the mint's
     /// fee withdraw authority.
@@ -498,14 +498,14 @@ pub enum TokenInstruction {
     ///   1. `[writable]` The fee receiver account. Must be a PaymentAccount
     ///      associated with the provided PaymentMint.
     ///   2. `[signer]` The mint's `fee_withdraw_authority`
-    ///   3. ..3+N `[writable]` The source accounts to harvest from. Must be PaymentAccounts.
+    ///   3. ..3+N `[writable]` (Optional) The source accounts to harvest from. Must be PaymentAccounts.
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The token mint. Must be a PaymentMint.
     ///   1. `[writable]` The destination account.
     ///   2. `[]` The source or destination account's multisignature owner/delegate.
     ///   3. ..3+M `[signer]` M signer accounts.
-    ///   3+M+1. ..3+M+N`[writable]` The source accounts to harvest from. Must be PaymentAccounts.
+    ///   3+M+1. ..3+M+N`[writable]` (Optional) The source accounts to harvest from. Must be PaymentAccounts.
     HarvestFee,
     /// Close an account by transferring all its SOL to the destination account.
     ///
