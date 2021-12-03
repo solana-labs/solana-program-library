@@ -11,6 +11,8 @@ fi
 
 cd "$(dirname "$0")"
 
+sed -i'' -e "s#solana_version=v.*#solana_version=v${solana_ver}#" ./ci/solana-version.sh
+
 declare tomls=()
 while IFS='' read -r line; do tomls+=("$line"); done < <(find . -name Cargo.toml)
 
@@ -34,6 +36,7 @@ crates=(
   solana-stake-program
   solana-transaction-status
   solana-vote-program
+  solana-version
 )
 
 set -x

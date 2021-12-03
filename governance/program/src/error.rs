@@ -13,7 +13,7 @@ use thiserror::Error;
 pub enum GovernanceError {
     /// Invalid instruction passed to program
     #[error("Invalid instruction passed to program")]
-    InvalidInstruction,
+    InvalidInstruction = 500, // Start Governance custom errors from 500 to avoid conflicts with programs invoked via CPI
 
     /// Realm with the given name and governing mints already exists
     #[error("Realm with the given name and governing mints already exists")]
@@ -79,9 +79,9 @@ pub enum GovernanceError {
     #[error("Invalid GoverningTokenOwner for VoteRecord")]
     InvalidGoverningTokenOwnerForVoteRecord,
 
-    /// Invalid Governance config
-    #[error("Invalid Governance config")]
-    InvalidGovernanceConfig,
+    /// Invalid Governance config: Vote threshold percentage out of range"
+    #[error("Invalid Governance config: Vote threshold percentage out of range")]
+    InvalidVoteThresholdPercentage,
 
     /// Proposal for the given Governance, Governing Token Mint and index already exists
     #[error("Proposal for the given Governance, Governing Token Mint and index already exists")]
@@ -162,16 +162,6 @@ pub enum GovernanceError {
     #[error("Invalid Signatory Mint")]
     InvalidSignatoryMint,
 
-    /// ---- Account Tools Errors ----
-
-    /// Invalid account owner
-    #[error("Invalid account owner")]
-    InvalidAccountOwner,
-
-    /// Invalid Account type
-    #[error("Invalid Account type")]
-    InvalidAccountType,
-
     /// Proposal does not belong to the given Governance
     #[error("Proposal does not belong to the given Governance")]
     InvalidGovernanceForProposal,
@@ -179,6 +169,18 @@ pub enum GovernanceError {
     /// Proposal does not belong to given Governing Mint"
     #[error("Proposal does not belong to given Governing Mint")]
     InvalidGoverningMintForProposal,
+
+    /// Current mint authority must sign transaction
+    #[error("Current mint authority must sign transaction")]
+    MintAuthorityMustSign,
+
+    /// Invalid mint authority
+    #[error("Invalid mint authority")]
+    InvalidMintAuthority,
+
+    /// Mint has no authority
+    #[error("Mint has no authority")]
+    MintHasNoAuthority,
 
     /// ---- SPL Token Tools Errors ----
 
@@ -194,6 +196,10 @@ pub enum GovernanceError {
     #[error("Token Account is not initialized")]
     SplTokenAccountNotInitialized,
 
+    /// Token Account doesn't exist
+    #[error("Token Account doesn't exist")]
+    SplTokenAccountDoesNotExist,
+
     /// Token account data is invalid
     #[error("Token account data is invalid")]
     SplTokenInvalidTokenAccountData,
@@ -205,6 +211,10 @@ pub enum GovernanceError {
     /// Token Mint is not initialized
     #[error("Token Mint account is not initialized")]
     SplTokenMintNotInitialized,
+
+    /// Token Mint account doesn't exist
+    #[error("Token Mint account doesn't exist")]
+    SplTokenMintDoesNotExist,
 
     /// ---- Bpf Upgradable Loader Tools Errors ----
 
@@ -227,6 +237,130 @@ pub enum GovernanceError {
     /// Given program is not upgradable
     #[error("Given program is not upgradable")]
     ProgramNotUpgradable,
+
+    /// Invalid token owner
+    #[error("Invalid token owner")]
+    InvalidTokenOwner,
+
+    /// Current token owner must sign transaction
+    #[error("Current token owner must sign transaction")]
+    TokenOwnerMustSign,
+
+    /// Given VoteThresholdPercentageType is not supported
+    #[error("Given VoteThresholdPercentageType is not supported")]
+    VoteThresholdPercentageTypeNotSupported,
+
+    /// Given VoteWeightSource is not supported
+    #[error("Given VoteWeightSource is not supported")]
+    VoteWeightSourceNotSupported,
+
+    /// Proposal cool off time is not supported
+    #[error("Proposal cool off time is not supported")]
+    ProposalCoolOffTimeNotSupported,
+
+    /// Governance PDA must sign
+    #[error("Governance PDA must sign")]
+    GovernancePdaMustSign,
+
+    /// Instruction already flagged with error
+    #[error("Instruction already flagged with error")]
+    InstructionAlreadyFlaggedWithError,
+
+    /// Invalid Realm for Governance
+    #[error("Invalid Realm for Governance")]
+    InvalidRealmForGovernance,
+
+    /// Invalid Authority for Realm
+    #[error("Invalid Authority for Realm")]
+    InvalidAuthorityForRealm,
+
+    /// Realm has no authority
+    #[error("Realm has no authority")]
+    RealmHasNoAuthority,
+
+    /// Realm authority must sign
+    #[error("Realm authority must sign")]
+    RealmAuthorityMustSign,
+
+    /// Invalid governing token holding account
+    #[error("Invalid governing token holding account")]
+    InvalidGoverningTokenHoldingAccount,
+
+    /// Realm council mint change is not supported
+    #[error("Realm council mint change is not supported")]
+    RealmCouncilMintChangeIsNotSupported,
+
+    /// Not supported mint max vote weight source
+    #[error("Not supported mint max vote weight source")]
+    MintMaxVoteWeightSourceNotSupported,
+
+    /// Invalid max vote weight supply fraction
+    #[error("Invalid max vote weight supply fraction")]
+    InvalidMaxVoteWeightSupplyFraction,
+
+    /// Owner doesn't have enough governing tokens to create Governance
+    #[error("Owner doesn't have enough governing tokens to create Governance")]
+    NotEnoughTokensToCreateGovernance,
+
+    /// Too many outstanding proposals
+    #[error("Too many outstanding proposals")]
+    TooManyOutstandingProposals,
+
+    /// All proposals must be finalized to withdraw governing tokens
+    #[error("All proposals must be finalized to withdraw governing tokens")]
+    AllProposalsMustBeFinalisedToWithdrawGoverningTokens,
+
+    /// Invalid VoterWeightRecord for Realm
+    #[error("Invalid VoterWeightRecord for Realm")]
+    InvalidVoterWeightRecordForRealm,
+
+    /// Invalid VoterWeightRecord for GoverningTokenMint
+    #[error("Invalid VoterWeightRecord for GoverningTokenMint")]
+    InvalidVoterWeightRecordForGoverningTokenMint,
+
+    /// Invalid VoterWeightRecord for TokenOwner
+    #[error("Invalid VoterWeightRecord for TokenOwner")]
+    InvalidVoterWeightRecordForTokenOwner,
+
+    /// VoterWeightRecord expired
+    #[error("VoterWeightRecord expired")]
+    VoterWeightRecordExpired,
+
+    /// Invalid RealmConfig for Realm
+    #[error("Invalid RealmConfig for Realm")]
+    InvalidRealmConfigForRealm,
+
+    /// TokenOwnerRecord already exists
+    #[error("TokenOwnerRecord already exists")]
+    TokenOwnerRecordAlreadyExists,
+
+    /// Governing token deposits not allowed
+    #[error("Governing token deposits not allowed")]
+    GoverningTokenDepositsNotAllowed,
+
+    /// Invalid vote choice weight percentage
+    #[error("Invalid vote choice weight percentage")]
+    InvalidVoteChoiceWeightPercentage,
+
+    /// Vote type not supported
+    #[error("Vote type not supported")]
+    VoteTypeNotSupported,
+
+    /// InvalidProposalOptions
+    #[error("Invalid proposal options")]
+    InvalidProposalOptions,
+
+    /// Proposal is not not executable
+    #[error("Proposal is not not executable")]
+    ProposalIsNotExecutable,
+
+    /// Invalid vote
+    #[error("Invalid vote")]
+    InvalidVote,
+
+    /// Cannot execute defeated option
+    #[error("Cannot execute defeated option")]
+    CannotExecuteDefeatedOption,
 }
 
 impl PrintProgramError for GovernanceError {

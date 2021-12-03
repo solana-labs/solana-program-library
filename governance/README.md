@@ -1,12 +1,22 @@
 # Governance
 
-Governance is a program the chief purpose of which is to control the upgrade of other programs through democratic means.
-It can also be used as an authority provider for mints and other forms of access control as well where we may want
-a voting population to vote on disbursement of access or funds collectively.
+Governance is a program the chief purpose of which is to create Decentralized Autonomous Organizations (DAOs).
+It can be used as an authority provider for mints, token accounts and other forms of access control where for example
+we may want a voting population to vote on disbursement of funds collectively.
+It can also control upgrades of itself and other programs through democratic means.
+
+## Governance UI
+
+UI for the governance program is work in progress and there are currently two versions available:
+
+- [MVP UI](https://github.com/solana-labs/oyster) project which provides basic UI to create and manage DAOs: [mvp-governance-ui](https://solana-labs.github.io/oyster-gov/#/)
+
+- [Governance UI](https://github.com/blockworks-foundation/governance-ui) project build together
+  with the [MNGO](https://mango.markets/) team: [governance-ui](https://dao-beta.mango.markets/realms)
 
 ## Architecture
 
-### Accounts diagram
+### Accounts diagram (Program Governance use case)
 
 ![Accounts diagram](./resources/governance-accounts.jpg)
 
@@ -31,9 +41,25 @@ The governance program validates at creation time of the Governance account that
 taken under governance signed the transaction. Optionally `CreateProgramGovernance` instruction can also transfer `upgrade_authority`
 of the governed program to the Governance PDA at the creation time of the Governance account.
 
+### Mint Governance account
+
+A mint governance account allows a mint authority to setup governance over an SPL Mint account.
+The Governance program validates at creation time that the current mint authority signed the transaction to
+create the governance and optionally can transfer the authority to the Governance account.
+Once setup the Mint Governance allows governance participants to create Proposals which execute mint instructions for
+the governed Mint.
+
+### Token Governance account
+
+A token governance account allows a token account owner to setup governance over an SPL Token account.
+The Governance program validates at creation time the current owner signed the transaction to
+create the governance and optionally can transfer the owner to the Governance account.
+Once setup the Token Governance allows participants to create Proposals to execute transfer instructions
+from the governed token account.
+
 ### How does the authority work?
 
-Governance can handle arbitrary executions of code, but it's real power lies in the power to upgrade programs.
+Governance can handle arbitrary executions of code. In the program governance case it can execute program upgrades.
 It does this through executing instructions to the bpf-upgradable-loader program.
 Bpf-upgradable-loader allows any signer who has Upgrade authority over a Buffer account and the Program account itself
 to upgrade it using its Upgrade command.
@@ -42,9 +68,14 @@ the new program data and overwriting of the existing Program account's data with
 by the Solana program deploy cli command.
 However, in order for Governance to be useful, Governance now needs this authority.
 
+In similar fashion for Mint and Token governances the relevant authorities to mint and transfer tokens
+are transferred to the Governance account. It in turn allows participants to create and vote on Proposals
+which can then execute
+mint and transfer instructions for the governed accounts.
+
 ### Proposal accounts
 
-A Proposal is an instance of a Governance created to vote on and execute given set of changes.
+A Proposal is an instance of a Governance created to vote on and execute given set of instructions.
 It is created by someone (Proposal Owner) and tied to a given Governance account
 and has a set of executable instructions to it, a name and a description.
 It goes through various states (draft, voting, executing, ...) and users can vote on it
@@ -80,16 +111,30 @@ When a Proposal is created and signed by its Signatories voters can start voting
 equal to deposited governing tokens into the realm. A vote is tipped once it passes the defined `vote_threshold` of votes
 and enters Succeeded or Defeated state. If Succeeded then Proposal instructions can be executed after they hold_up_time passes.
 
-Users can relinquish their vote any time during Proposal lifetime, but once Proposal it decided their vote can't be changed.
+Users can relinquish their vote any time during Proposal lifetime, but once Proposal is decided their vote can't be changed.
 
 ### Community and Councils governing tokens
 
 Each Governance Realm that gets created has the option to also have a Council mint.
 A council mint is simply a separate mint from the Community mint.
 What this means is that users can submit Proposals that have a different voting population from a different mint
-that can affect the same program. A practical application of this policy may be to have a very large population control
+that can affect the same DAO. A practical application of this policy may be to have a very large population control
 major version bumps of Solana via normal SOL, for instance, but hot fixes be controlled via Council tokens,
 of which there may be only 30, and which may be themselves minted and distributed via proposals by the governing population.
+
+Another important use case is to use the Council for DAO inception. At the beginning of a DAO life
+there are lots of risks and unknowns.
+For example it's not known whether the community of token holders would engage and participate in DAO votes.
+And if it would engage then to what extent. It means it can be difficult for example to decide how many votes are
+required for a proposal to be successfully voted on.
+This is why in order to avoid traps and potentially irreversible actions the Council can be used as a safety net
+in a similar way to Multisig to moderate and supervise the voting process at the DAO inception.
+Once the newly born DAO goes through several successful proposal votes and everything is going smoothly
+the council can be removed from the DAO through a community vote.
+
+The Council can also be used for protocols and communities which haven't launched their token yet.
+In such cases the DAO can be setup with the yet to launch token and the Council which would governed
+the DAO until the token is distributed.
 
 ### Proposal Workflow
 

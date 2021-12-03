@@ -96,6 +96,40 @@ pub enum StakePoolError {
     /// The provided withdraw stake account is not the preferred deposit vote account
     #[error("IncorrectWithdrawVoteAddress")]
     IncorrectWithdrawVoteAddress,
+    /// The mint has an invalid freeze authority
+    #[error("InvalidMintFreezeAuthority")]
+    InvalidMintFreezeAuthority,
+    /// Proposed fee increase exceeds stipulated ratio
+    #[error("FeeIncreaseTooHigh")]
+    FeeIncreaseTooHigh,
+    /// Not enough pool tokens provided to withdraw stake with one lamport
+    #[error("WithdrawalTooSmall")]
+    WithdrawalTooSmall,
+    /// Not enough lamports provided for deposit to result in one pool token
+    #[error("DepositTooSmall")]
+    DepositTooSmall,
+
+    // 30.
+    /// Provided stake deposit authority does not match the program's
+    #[error("InvalidStakeDepositAuthority")]
+    InvalidStakeDepositAuthority,
+    /// Provided sol deposit authority does not match the program's
+    #[error("InvalidSolDepositAuthority")]
+    InvalidSolDepositAuthority,
+    /// Provided preferred validator is invalid
+    #[error("InvalidPreferredValidator")]
+    InvalidPreferredValidator,
+    /// Provided validator stake account already has a transient stake account in use
+    #[error("TransientAccountInUse")]
+    TransientAccountInUse,
+    /// Provided sol withdraw authority does not match the program's
+    #[error("InvalidSolWithdrawAuthority")]
+    InvalidSolWithdrawAuthority,
+
+    // 35.
+    /// Too much SOL withdrawn from the stake pool's reserve account
+    #[error("SolWithdrawalTooLarge")]
+    SolWithdrawalTooLarge,
 }
 impl From<StakePoolError> for ProgramError {
     fn from(e: StakePoolError) -> Self {

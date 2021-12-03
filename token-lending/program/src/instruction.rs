@@ -24,11 +24,12 @@ pub enum LendingInstruction {
     ///   0. `[writable]` Lending market account - uninitialized.
     ///   1. `[]` Rent sysvar.
     ///   2. `[]` Token program id.
+    ///   3. `[]` Oracle program id.
     InitLendingMarket {
         /// Owner authority which can add new reserves
         owner: Pubkey,
         /// Currency market prices are quoted in
-        /// e.g. "USD" null padded (`*b"USD\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"`) or a SPL token mint pubkey
+        /// e.g. "USD" null padded (`*b"USD\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"`) or SPL token mint pubkey
         quote_currency: [u8; 32],
     },
 
@@ -56,11 +57,11 @@ pub enum LendingInstruction {
     ///   3. `[]` Reserve liquidity SPL Token mint.
     ///   4. `[writable]` Reserve liquidity supply SPL Token account - uninitialized.
     ///   5. `[writable]` Reserve liquidity fee receiver - uninitialized.
-    ///   6. `[]` Pyth product account.
-    ///   7. `[]` Pyth price account.
+    ///   6. `[writable]` Reserve collateral SPL Token mint - uninitialized.
+    ///   7. `[writable]` Reserve collateral token supply - uninitialized.
+    ///   8. `[]` Pyth product account.
+    ///   9. `[]` Pyth price account.
     ///             This will be used as the reserve liquidity oracle account.
-    ///   8. `[writable]` Reserve collateral SPL Token mint - uninitialized.
-    ///   9. `[writable]` Reserve collateral token supply - uninitialized.
     ///   10 `[]` Lending market account.
     ///   11 `[]` Derived lending market authority.
     ///   12 `[signer]` Lending market owner.
@@ -81,9 +82,9 @@ pub enum LendingInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` Reserve account.
-    ///   1. `[]` Clock sysvar.
-    ///   2. `[]` Reserve liquidity oracle account.
+    ///   1. `[]` Reserve liquidity oracle account.
     ///             Must be the Pyth price account specified at InitReserve.
+    ///   2. `[]` Clock sysvar.
     RefreshReserve,
 
     // 4
@@ -167,11 +168,10 @@ pub enum LendingInstruction {
     ///   2. `[]` Deposit reserve account - refreshed.
     ///   3. `[writable]` Obligation account.
     ///   4. `[]` Lending market account.
-    ///   5. `[]` Derived lending market authority.
-    ///   6. `[signer]` Obligation owner.
-    ///   7. `[signer]` User transfer authority ($authority).
-    ///   8. `[]` Clock sysvar.
-    ///   9. `[]` Token program id.
+    ///   5. `[signer]` Obligation owner.
+    ///   6. `[signer]` User transfer authority ($authority).
+    ///   7. `[]` Clock sysvar.
+    ///   8. `[]` Token program id.
     DepositObligationCollateral {
         /// Amount of collateral tokens to deposit
         collateral_amount: u64,
@@ -197,7 +197,6 @@ pub enum LendingInstruction {
         collateral_amount: u64,
     },
 
-    // @TODO: rename cf. https://git.io/JOOE6
     // 10
     /// Borrow liquidity from a reserve by depositing collateral tokens. Requires a refreshed
     /// obligation and reserve.
@@ -789,10 +788,6 @@ pub fn deposit_obligation_collateral(
     obligation_owner_pubkey: Pubkey,
     user_transfer_authority_pubkey: Pubkey,
 ) -> Instruction {
-    let (lending_market_authority_pubkey, _bump_seed) = Pubkey::find_program_address(
-        &[&lending_market_pubkey.to_bytes()[..PUBKEY_BYTES]],
-        &program_id,
-    );
     Instruction {
         program_id,
         accounts: vec![
@@ -801,7 +796,6 @@ pub fn deposit_obligation_collateral(
             AccountMeta::new_readonly(deposit_reserve_pubkey, false),
             AccountMeta::new(obligation_pubkey, false),
             AccountMeta::new_readonly(lending_market_pubkey, false),
-            AccountMeta::new_readonly(lending_market_authority_pubkey, false),
             AccountMeta::new_readonly(obligation_owner_pubkey, true),
             AccountMeta::new_readonly(user_transfer_authority_pubkey, true),
             AccountMeta::new_readonly(sysvar::clock::id(), false),

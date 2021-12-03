@@ -1,12 +1,19 @@
 use solana_program::{instruction::Instruction, pubkey::Pubkey};
 use solana_sdk::signature::Keypair;
-use spl_governance::state::{
-    governance::Governance, proposal::Proposal, proposal_instruction::ProposalInstruction,
-    realm::Realm, signatory_record::SignatoryRecord, token_owner_record::TokenOwnerRecord,
-    vote_record::VoteRecord,
+use spl_governance::{
+    addins::voter_weight::VoterWeightRecord,
+    state::{
+        governance::Governance, proposal::ProposalV2, proposal_instruction::ProposalInstructionV2,
+        realm::Realm, realm_config::RealmConfigAccount, signatory_record::SignatoryRecord,
+        token_owner_record::TokenOwnerRecord, vote_record::VoteRecordV2,
+    },
 };
 
-use crate::tools::clone_keypair;
+use spl_governance_test_sdk::tools::clone_keypair;
+
+pub trait AccountCookie {
+    fn get_address(&self) -> Pubkey;
+}
 
 #[derive(Debug)]
 pub struct RealmCookie {
@@ -21,10 +28,20 @@ pub struct RealmCookie {
     pub council_mint_authority: Option<Keypair>,
 
     pub council_token_holding_account: Option<Pubkey>,
+
+    pub realm_authority: Option<Keypair>,
+
+    pub realm_config: Option<RealmConfigCookie>,
 }
 
 #[derive(Debug)]
-pub struct TokeOwnerRecordCookie {
+pub struct RealmConfigCookie {
+    pub address: Pubkey,
+    pub account: RealmConfigAccount,
+}
+
+#[derive(Debug)]
+pub struct TokenOwnerRecordCookie {
     pub address: Pubkey,
 
     pub account: TokenOwnerRecord,
@@ -38,9 +55,11 @@ pub struct TokeOwnerRecordCookie {
     pub governance_authority: Option<Keypair>,
 
     pub governance_delegate: Keypair,
+
+    pub voter_weight_record: Option<VoterWeightRecordCookie>,
 }
 
-impl TokeOwnerRecordCookie {
+impl TokenOwnerRecordCookie {
     pub fn get_governance_authority(&self) -> &Keypair {
         self.governance_authority
             .as_ref()
@@ -61,9 +80,48 @@ pub struct GovernedProgramCookie {
     pub transfer_upgrade_authority: bool,
 }
 
+impl AccountCookie for GovernedProgramCookie {
+    fn get_address(&self) -> Pubkey {
+        self.address
+    }
+}
+
+#[derive(Debug)]
+pub struct GovernedMintCookie {
+    pub address: Pubkey,
+    pub mint_authority: Keypair,
+    pub transfer_mint_authority: bool,
+}
+
+impl AccountCookie for GovernedMintCookie {
+    fn get_address(&self) -> Pubkey {
+        self.address
+    }
+}
+
+#[derive(Debug)]
+pub struct GovernedTokenCookie {
+    pub address: Pubkey,
+    pub token_owner: Keypair,
+    pub transfer_token_owner: bool,
+    pub token_mint: Pubkey,
+}
+
+impl AccountCookie for GovernedTokenCookie {
+    fn get_address(&self) -> Pubkey {
+        self.address
+    }
+}
+
 #[derive(Debug)]
 pub struct GovernedAccountCookie {
     pub address: Pubkey,
+}
+
+impl AccountCookie for GovernedAccountCookie {
+    fn get_address(&self) -> Pubkey {
+        self.address
+    }
 }
 
 #[derive(Debug)]
@@ -76,7 +134,7 @@ pub struct GovernanceCookie {
 #[derive(Debug)]
 pub struct ProposalCookie {
     pub address: Pubkey,
-    pub account: Proposal,
+    pub account: ProposalV2,
 
     pub proposal_owner: Pubkey,
 }
@@ -91,12 +149,18 @@ pub struct SignatoryRecordCookie {
 #[derive(Debug)]
 pub struct VoteRecordCookie {
     pub address: Pubkey,
-    pub account: VoteRecord,
+    pub account: VoteRecordV2,
 }
 
 #[derive(Debug)]
 pub struct ProposalInstructionCookie {
     pub address: Pubkey,
-    pub account: ProposalInstruction,
+    pub account: ProposalInstructionV2,
     pub instruction: Instruction,
+}
+
+#[derive(Debug, Clone)]
+pub struct VoterWeightRecordCookie {
+    pub address: Pubkey,
+    pub account: VoterWeightRecord,
 }

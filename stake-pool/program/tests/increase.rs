@@ -6,15 +6,17 @@ use {
     bincode::deserialize,
     helpers::*,
     solana_program::{
-        clock::Epoch, hash::Hash, instruction::InstructionError, pubkey::Pubkey,
-        system_instruction::SystemError,
+        clock::Epoch, hash::Hash, instruction::InstructionError, pubkey::Pubkey, stake,
     },
     solana_program_test::*,
     solana_sdk::{
         signature::{Keypair, Signer},
         transaction::{Transaction, TransactionError},
     },
-    spl_stake_pool::{error::StakePoolError, id, instruction, stake_program},
+    spl_stake_pool::{
+        error::StakePoolError, find_transient_stake_program_address, id, instruction,
+        MINIMUM_ACTIVE_STAKE,
+    },
 };
 
 async fn setup() -> (
@@ -46,7 +48,7 @@ async fn setup() -> (
     )
     .await;
 
-    let _deposit_info = simple_deposit(
+    let _deposit_info = simple_deposit_stake(
         &mut banks_client,
         &payer,
         &recent_blockhash,
@@ -93,8 +95,8 @@ async fn success() {
     assert!(transient_account.is_none());
 
     let rent = banks_client.get_rent().await.unwrap();
-    let lamports = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
-    let reserve_lamports = reserve_lamports - lamports;
+    let stake_rent = rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+    let increase_amount = reserve_lamports - stake_rent - 1;
     let error = stake_pool_accounts
         .increase_validator_stake(
             &mut banks_client,
@@ -102,7 +104,8 @@ async fn success() {
             &recent_blockhash,
             &validator_stake.transient_stake_account,
             &validator_stake.vote.pubkey(),
-            reserve_lamports,
+            increase_amount,
+            validator_stake.transient_stake_seed,
         )
         .await;
     assert!(error.is_none());
@@ -114,9 +117,9 @@ async fn success() {
     )
     .await;
     let reserve_stake_state =
-        deserialize::<stake_program::StakeState>(&reserve_stake_account.data).unwrap();
+        deserialize::<stake::state::StakeState>(&reserve_stake_account.data).unwrap();
     assert_eq!(
-        pre_reserve_stake_account.lamports - reserve_lamports,
+        pre_reserve_stake_account.lamports - increase_amount - stake_rent,
         reserve_stake_account.lamports
     );
     assert!(reserve_stake_state.delegation().is_none());
@@ -125,8 +128,11 @@ async fn success() {
     let transient_stake_account =
         get_account(&mut banks_client, &validator_stake.transient_stake_account).await;
     let transient_stake_state =
-        deserialize::<stake_program::StakeState>(&transient_stake_account.data).unwrap();
-    assert_eq!(transient_stake_account.lamports, reserve_lamports);
+        deserialize::<stake::state::StakeState>(&transient_stake_account.data).unwrap();
+    assert_eq!(
+        transient_stake_account.lamports,
+        increase_amount + stake_rent
+    );
     assert_ne!(
         transient_stake_state.delegation().unwrap().activation_epoch,
         Epoch::MAX
@@ -157,6 +163,7 @@ async fn fail_with_wrong_withdraw_authority() {
             &validator_stake.transient_stake_account,
             &validator_stake.vote.pubkey(),
             reserve_lamports / 2,
+            validator_stake.transient_stake_seed,
         )],
         Some(&payer.pubkey()),
         &[&payer, &stake_pool_accounts.staker],
@@ -202,6 +209,7 @@ async fn fail_with_wrong_validator_list() {
             &validator_stake.transient_stake_account,
             &validator_stake.vote.pubkey(),
             reserve_lamports / 2,
+            validator_stake.transient_stake_seed,
         )],
         Some(&payer.pubkey()),
         &[&payer, &stake_pool_accounts.staker],
@@ -234,15 +242,13 @@ async fn fail_with_unknown_validator() {
         reserve_lamports,
     ) = setup().await;
 
-    let unknown_stake = ValidatorStakeAccount::new(&stake_pool_accounts.stake_pool.pubkey());
-    unknown_stake
-        .create_and_delegate(
-            &mut banks_client,
-            &payer,
-            &recent_blockhash,
-            &stake_pool_accounts.staker,
-        )
-        .await;
+    let unknown_stake = create_unknown_validator_stake(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts.stake_pool.pubkey(),
+    )
+    .await;
 
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::increase_validator_stake(
@@ -255,6 +261,7 @@ async fn fail_with_unknown_validator() {
             &unknown_stake.transient_stake_account,
             &unknown_stake.vote.pubkey(),
             reserve_lamports / 2,
+            unknown_stake.transient_stake_seed,
         )],
         Some(&payer.pubkey()),
         &[&payer, &stake_pool_accounts.staker],
@@ -267,13 +274,13 @@ async fn fail_with_unknown_validator() {
         .unwrap()
         .unwrap();
 
-    match error {
-        TransactionError::InstructionError(_, InstructionError::Custom(error_index)) => {
-            let program_error = StakePoolError::ValidatorNotFound as u32;
-            assert_eq!(error_index, program_error);
-        }
-        _ => panic!("Wrong error"),
-    }
+    assert_eq!(
+        error,
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(StakePoolError::ValidatorNotFound as u32)
+        )
+    );
 }
 
 #[tokio::test]
@@ -295,25 +302,35 @@ async fn fail_increase_twice() {
             &validator_stake.transient_stake_account,
             &validator_stake.vote.pubkey(),
             reserve_lamports / 3,
+            validator_stake.transient_stake_seed,
         )
         .await;
     assert!(error.is_none());
 
+    let transient_stake_seed = validator_stake.transient_stake_seed * 100;
+    let transient_stake_address = find_transient_stake_program_address(
+        &id(),
+        &validator_stake.vote.pubkey(),
+        &stake_pool_accounts.stake_pool.pubkey(),
+        transient_stake_seed,
+    )
+    .0;
     let error = stake_pool_accounts
         .increase_validator_stake(
             &mut banks_client,
             &payer,
             &recent_blockhash,
-            &validator_stake.transient_stake_account,
-            &validator_stake.vote.pubkey(),
+            &validator_stake.stake_account,
+            &transient_stake_address,
             reserve_lamports / 4,
+            transient_stake_seed,
         )
         .await
         .unwrap()
         .unwrap();
     match error {
         TransactionError::InstructionError(_, InstructionError::Custom(error_index)) => {
-            let program_error = SystemError::AccountAlreadyInUse as u32;
+            let program_error = StakePoolError::ValidatorNotFound as u32;
             assert_eq!(error_index, program_error);
         }
         _ => panic!("Wrong error"),
@@ -331,9 +348,6 @@ async fn fail_with_small_lamport_amount() {
         _reserve_lamports,
     ) = setup().await;
 
-    let rent = banks_client.get_rent().await.unwrap();
-    let lamports = rent.minimum_balance(std::mem::size_of::<stake_program::StakeState>());
-
     let error = stake_pool_accounts
         .increase_validator_stake(
             &mut banks_client,
@@ -341,14 +355,15 @@ async fn fail_with_small_lamport_amount() {
             &recent_blockhash,
             &validator_stake.transient_stake_account,
             &validator_stake.vote.pubkey(),
-            lamports,
+            MINIMUM_ACTIVE_STAKE - 1,
+            validator_stake.transient_stake_seed,
         )
         .await
         .unwrap()
         .unwrap();
 
     match error {
-        TransactionError::InstructionError(_, InstructionError::InvalidError) => {}
+        TransactionError::InstructionError(_, InstructionError::AccountNotRentExempt) => {}
         _ => panic!("Wrong error"),
     }
 }
@@ -372,6 +387,7 @@ async fn fail_overdraw_reserve() {
             &validator_stake.transient_stake_account,
             &validator_stake.vote.pubkey(),
             reserve_lamports,
+            validator_stake.transient_stake_seed,
         )
         .await
         .unwrap()

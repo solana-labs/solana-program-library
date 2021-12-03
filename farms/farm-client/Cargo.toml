@@ -1,0 +1,47 @@
+[package]
+name = "solana-farm-client"
+version = "0.0.1"
+description = "Solana Farm Client"
+authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+repository = "https://github.com/solana-labs/solana-program-library"
+license = "Apache-2.0"
+homepage = "https://solana.com/"
+edition = "2018"
+
+[features]
+debug = []
+
+[dependencies]
+log = "0.4.14"
+arrayvec = "0.7.2"
+arrayref = "0.3.6"
+serde = "1.0.130"
+clap = "2.33.3"
+thiserror = "1.0.30"
+bs58 = "0.4.0"
+solana-sdk = "1.8.1"
+solana-client = "1.8.1"
+solana-cli-config = "1.8.1"
+solana-account-decoder = "1.8.1"
+solana-logger = "1.8.1"
+solana-version = "1.8.1"
+solana-farm-sdk = { path = "../farm-sdk" }
+solana-clap-utils = "1.8.1"
+spl-token = { version = "3.2.0", features = ["no-entrypoint"] }
+spl-associated-token-account = { version = "1.0.3", features = ["no-entrypoint"] }
+spl-governance = { version = "2.1.4", features = ["no-entrypoint"] }
+quarry-mine = { version = "1.10.0", features = ["no-entrypoint"] }
+stable-swap-client = "1.5.2"
+stable-swap-math = "1.5.3"
+chrono = "0.4.19"
+base64 = "0.13.0"
+bincode = "1.3.3"
+
+
+[lib]
+name = "solana_farm_client"
+path = "src/lib.rs"
+
+[[bin]]
+name = "solana-farm-client"
+path = "src/cli/main.rs"

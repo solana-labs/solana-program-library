@@ -6,11 +6,11 @@
 solana config set --url https://api.devnet.solana.com
 
 # Pyth product: SOL/USD
-solana account 8yrQMUyJRnCJ72NWwMiPV9dNGw465Z8bKUvnUC8P5L6F --output-file 8yrQMUyJRnCJ72NWwMiPV9dNGw465Z8bKUvnUC8P5L6F.bin
+solana account 3Mnn2fX6rQyUsyELYms1sBJyChWofzSNRoqYzvgMVz5E --output-file 3Mnn2fX6rQyUsyELYms1sBJyChWofzSNRoqYzvgMVz5E.bin
 # Pyth price: SOL/USD
-solana account BdgHsXrH1mXqhdosXavYxZgX6bGqTdj5mh2sxDhF8bJy --output-file BdgHsXrH1mXqhdosXavYxZgX6bGqTdj5mh2sxDhF8bJy.bin
+solana account J83w4HKfqxwcq3BEMMkPFSppX3gqekLyLJBexebFVkix --output-file J83w4HKfqxwcq3BEMMkPFSppX3gqekLyLJBexebFVkix.bin
 # Pyth product: SRM/USD
-solana account 5agdsn3jogTt8F537GW3g8BuLaBGrg9Q2gPKUNqBV6Dh --output-file 5agdsn3jogTt8F537GW3g8BuLaBGrg9Q2gPKUNqBV6Dh.bin
+solana account 6MEwdxe4g1NeAF9u6KDG14anJpFsVEa2cvr5H6iriFZ8 --output-file 6MEwdxe4g1NeAF9u6KDG14anJpFsVEa2cvr5H6iriFZ8.bin
 # Pyth price: SRM/USD
-solana account 2Mt2wcRXpCAbTRp2VjFqGa8SbJVzjJvyK4Tx7aqbRtBJ --output-file 2Mt2wcRXpCAbTRp2VjFqGa8SbJVzjJvyK4Tx7aqbRtBJ.bin
+solana account 992moaMQKs32GKZ9dxi8keyM2bUmbrwBZpK4p2K6X5Vs --output-file 992moaMQKs32GKZ9dxi8keyM2bUmbrwBZpK4p2K6X5Vs.bin
 ```

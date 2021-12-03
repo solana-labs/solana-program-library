@@ -1,0 +1,13 @@
+{
+  "name": "Raydium LP Tokens",
+  "tokens": {
+    "COIN-PC-V4": {
+      "symbol": "COIN-PC",
+      "name": "COIN-PC LP",
+      "coin": "COIN",
+      "pc": "PC",
+      "mintAddress": "14Wp3dxYTQpRMMz3AW7f2XGBTdaBrf1qb2NKjAN3Tb13",
+      "decimals": 6
+    }
+  }
+}

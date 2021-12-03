@@ -19,7 +19,7 @@ use solana_program::{bpf_loader, entrypoint::ProgramResult, pubkey::Pubkey, syst
 
 pub struct NativeTokenSwap {
     pub user_account: NativeAccountData,
-    pub nonce: u8,
+    pub bump_seed: u8,
     pub authority_account: NativeAccountData,
     pub fees: Fees,
     pub swap_curve: SwapCurve,
@@ -51,7 +51,7 @@ impl NativeTokenSwap {
         user_account.is_signer = true;
         let mut swap_account =
             NativeAccountData::new(SwapVersion::LATEST_LEN, spl_token_swap::id());
-        let (authority_key, nonce) = Pubkey::find_program_address(
+        let (authority_key, bump_seed) = Pubkey::find_program_address(
             &[&swap_account.key.to_bytes()[..]],
             &spl_token_swap::id(),
         );
@@ -86,7 +86,6 @@ impl NativeTokenSwap {
             &pool_mint_account.key,
             &pool_fee_account.key,
             &pool_token_account.key,
-            nonce,
             fees.clone(),
             swap_curve.clone(),
         )
@@ -109,7 +108,7 @@ impl NativeTokenSwap {
 
         Self {
             user_account,
-            nonce,
+            bump_seed,
             authority_account,
             fees,
             swap_curve,
@@ -359,7 +358,7 @@ impl NativeTokenSwap {
     ) -> ProgramResult {
         let mut user_transfer_account = NativeAccountData::new(0, system_program::id());
         user_transfer_account.is_signer = true;
-        let pool_token_amount = native_token::get_token_balance(&pool_account);
+        let pool_token_amount = native_token::get_token_balance(pool_account);
         // special logic to avoid withdrawing down to 1 pool token, which
         // eventually causes an error on withdrawing all
         if pool_token_amount.saturating_sub(instruction.pool_token_amount) == 1 {
@@ -489,7 +488,7 @@ impl NativeTokenSwap {
     ) -> ProgramResult {
         let mut user_transfer_account = NativeAccountData::new(0, system_program::id());
         user_transfer_account.is_signer = true;
-        let pool_token_amount = native_token::get_token_balance(&pool_account);
+        let pool_token_amount = native_token::get_token_balance(pool_account);
         // special logic to avoid withdrawing down to 1 pool token, which
         // eventually causes an error on withdrawing all
         if pool_token_amount.saturating_sub(instruction.maximum_pool_token_amount) == 1 {
@@ -552,7 +551,7 @@ impl NativeTokenSwap {
         mut token_a_account: &mut NativeAccountData,
         mut token_b_account: &mut NativeAccountData,
     ) -> ProgramResult {
-        let pool_token_amount = native_token::get_token_balance(&pool_account);
+        let pool_token_amount = native_token::get_token_balance(pool_account);
         if pool_token_amount > 0 {
             let instruction = WithdrawAllTokenTypes {
                 pool_token_amount,
