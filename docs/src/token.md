@@ -915,6 +915,7 @@ Unlocking works by pushing a permissionless crank on the contract that moves the
 
 #### StreamFlow Timelock
 Enables creation, withdrawal, cancelation and transfer of token vesting contracts using time-based lock and escrow accounts.
+Contracts are by default cancelable by the creator and transferable by the recipient.
 
 Vesting contract creator chooses various options upon creation, such as:
 - SPL token and amount to be vested
@@ -922,11 +923,10 @@ Vesting contract creator chooses various options upon creation, such as:
 - exact start and end date
 - (optional) cliff date and amount
 - (optional) release frequency 
-<!---
-- is contract transferable by creator/recipient
-- is contract cancelable by creator/recipient
+Coming soon:
+- whether or not a contract is transferable by creator/recipient
+- whether or not a contract is cancelable by creator/recipient
 - subject/memo
--->
 
 Timelock features can be integrated on different levels:
 - Program code: https://github.com/streamflow-finance/timelock
