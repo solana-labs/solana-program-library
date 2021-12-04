@@ -39,6 +39,13 @@ pub fn process_withdraw_governing_tokens(
     let realm_data = get_realm_data(program_id, realm_info)?;
     let governing_token_mint = get_spl_token_mint(governing_token_holding_info)?;
 
+    realm_data.assert_is_valid_governing_token_mint_and_holding(
+        program_id,
+        realm_info.key,
+        &governing_token_mint,
+        governing_token_holding_info.key,
+    )?;
+
     let token_owner_record_address_seeds = get_token_owner_record_address_seeds(
         realm_info.key,
         &governing_token_mint,
@@ -51,9 +58,7 @@ pub fn process_withdraw_governing_tokens(
         &token_owner_record_address_seeds,
     )?;
 
-    if token_owner_record_data.unrelinquished_votes_count > 0 {
-        return Err(GovernanceError::AllVotesMustBeRelinquishedToWithdrawGoverningTokens.into());
-    }
+    token_owner_record_data.assert_can_withdraw_governing_tokens()?;
 
     transfer_spl_tokens_signed(
         governing_token_holding_info,

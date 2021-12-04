@@ -1,0 +1,677 @@
+{
+  "name": "Raydium LP Tokens",
+  "tokens": {
+    "RAY-WUSDT": {
+      "symbol": "RAY-WUSDT",
+      "name": "RAY-WUSDT V2 LP",
+      "coin": "RAY",
+      "pc": "WUSDT",
+      "mintAddress": "CzPDyvotTcxNqtPne32yUiEVQ6jk42HZi1Y3hUu7qf7f",
+      "decimals": 6
+    },
+    "RAY-SOL": {
+      "symbol": "RAY-SOL",
+      "name": "RAY-SOL LP",
+      "coin": "RAY",
+      "pc": "SOL",
+      "mintAddress": "134Cct3CSdRCbYgq5SkwmHgfwjJ7EM5cG9PzqffWqECx",
+      "decimals": 6
+    },
+    "LINK-WUSDT": {
+      "symbol": "LINK-WUSDT",
+      "name": "LINK-WUSDT LP",
+      "coin": "LINK",
+      "pc": "WUSDT",
+      "mintAddress": "EVDmwajM5U73PD34bYPugwiA4Eqqbrej4mLXXv15Z5qR",
+      "decimals": 6
+    },
+    "ETH-WUSDT": {
+      "symbol": "ETH-WUSDT",
+      "name": "ETH-WUSDT LP",
+      "coin": "ETH",
+      "pc": "WUSDT",
+      "mintAddress": "KY4XvwHy7JPzbWYAbk23jQvEb4qWJ8aCqYWREmk1Q7K",
+      "decimals": 6
+    },
+    "RAY-USDC": {
+      "symbol": "RAY-USDC",
+      "name": "RAY-USDC V2 LP",
+      "coin": "RAY",
+      "pc": "USDC",
+      "mintAddress": "FgmBnsF5Qrnv8X9bomQfEtQTQjNNiBCWRKGpzPnE5BDg",
+      "decimals": 6
+    },
+    "RAY-SRM": {
+      "symbol": "RAY-SRM",
+      "name": "RAY-SRM V2 LP",
+      "coin": "RAY",
+      "pc": "SRM",
+      "mintAddress": "5QXBMXuCL7zfAk39jEVVEvcrz1AvBGgT9wAhLLHLyyUJ",
+      "decimals": 6
+    },
+    "RAY-WUSDT-V3": {
+      "symbol": "RAY-WUSDT",
+      "name": "RAY-WUSDT V3 LP",
+      "coin": "RAY",
+      "pc": "WUSDT",
+      "mintAddress": "FdhKXYjCou2jQfgKWcNY7jb8F2DPLU1teTTTRfLBD2v1",
+      "decimals": 6
+    },
+    "RAY-USDC-V3": {
+      "symbol": "RAY-USDC",
+      "name": "RAY-USDC V3 LP",
+      "coin": "RAY",
+      "pc": "USDC",
+      "mintAddress": "BZFGfXMrjG2sS7QT2eiCDEevPFnkYYF7kzJpWfYxPbcx",
+      "decimals": 6
+    },
+    "RAY-SRM-V3": {
+      "symbol": "RAY-SRM",
+      "name": "RAY-SRM V3 LP",
+      "coin": "RAY",
+      "pc": "SRM",
+      "mintAddress": "DSX5E21RE9FB9hM8Nh8xcXQfPK6SzRaJiywemHBSsfup",
+      "decimals": 6
+    },
+    "RAY-SOL-V3": {
+      "symbol": "RAY-SOL",
+      "name": "RAY-SOL V3 LP",
+      "coin": "RAY",
+      "pc": "SOL",
+      "mintAddress": "F5PPQHGcznZ2FxD9JaxJMXaf7XkaFFJ6zzTBcW8osQjw",
+      "decimals": 6
+    },
+    "RAY-ETH-V3": {
+      "symbol": "RAY-ETH",
+      "name": "RAY-ETH V3 LP",
+      "coin": "RAY",
+      "pc": "ETH",
+      "mintAddress": "8Q6MKy5Yxb9vG1mWzppMtMb2nrhNuCRNUkJTeiE3fuwD",
+      "decimals": 6
+    },
+    "FIDA-RAY-V4": {
+      "symbol": "FIDA-RAY",
+      "name": "FIDA-RAY LP",
+      "coin": "FIDA",
+      "pc": "RAY",
+      "mintAddress": "DsBuznXRTmzvEdb36Dx3aVLVo1XmH7r1PRZUFugLPTFv",
+      "decimals": 6
+    },
+    "OXY-RAY-V4": {
+      "symbol": "OXY-RAY",
+      "name": "OXY-RAY LP",
+      "coin": "OXY",
+      "pc": "RAY",
+      "mintAddress": "FwaX9W7iThTZH5MFeasxdLpxTVxRcM7ZHieTCnYog8Yb",
+      "decimals": 6
+    },
+    "MAPS-RAY-V4": {
+      "symbol": "MAPS-RAY",
+      "name": "MAPS-RAY LP",
+      "coin": "MAPS",
+      "pc": "RAY",
+      "mintAddress": "CcKK8srfVdTSsFGV3VLBb2YDbzF4T4NM2C3UEjC39RLP",
+      "decimals": 6
+    },
+    "KIN-RAY-V4": {
+      "symbol": "KIN-RAY",
+      "name": "KIN-RAY LP",
+      "coin": "KIN",
+      "pc": "RAY",
+      "mintAddress": "CHT8sft3h3gpLYbCcZ9o27mT5s3Z6VifBVbUiDvprHPW",
+      "decimals": 6
+    },
+    "RAY-USDT-V4": {
+      "symbol": "RAY-USDT",
+      "name": "RAY-USDT LP",
+      "coin": "RAY",
+      "pc": "USDT",
+      "mintAddress": "C3sT1R3nsw4AVdepvLTLKr5Gvszr7jufyBWUCvy4TUvT",
+      "decimals": 6
+    },
+    "SOL-USDC-V4": {
+      "symbol": "SOL-USDC",
+      "name": "SOL-USDC LP",
+      "coin": "SOL",
+      "pc": "USDC",
+      "mintAddress": "8HoQnePLqPj4M7PUDzfw8e3Ymdwgc7NLGnaTUapubyvu",
+      "decimals": 9
+    },
+    "YFI-USDC-V4": {
+      "symbol": "YFI-USDC",
+      "name": "YFI-USDC LP",
+      "coin": "YFI",
+      "pc": "USDC",
+      "mintAddress": "865j7iMmRRycSYUXzJ33ZcvLiX9JHvaLidasCyUyKaRE",
+      "decimals": 6
+    },
+    "SRM-USDC-V4": {
+      "symbol": "SRM-USDC",
+      "name": "SRM-USDC LP",
+      "coin": "SRM",
+      "pc": "USDC",
+      "mintAddress": "9XnZd82j34KxNLgQfz29jGbYdxsYznTWRpvZE3SRE7JG",
+      "decimals": 6
+    },
+    "FTT-USDC-V4": {
+      "symbol": "FTT-USDC",
+      "name": "FTT-USDC LP",
+      "coin": "FTT",
+      "pc": "USDC",
+      "mintAddress": "75dCoKfUHLUuZ4qEh46ovsxfgWhB4icc3SintzWRedT9",
+      "decimals": 6
+    },
+    "BTC-USDC-V4": {
+      "symbol": "BTC-USDC",
+      "name": "BTC-USDC LP",
+      "coin": "BTC",
+      "pc": "USDC",
+      "mintAddress": "2hMdRdVWZqetQsaHG8kQjdZinEMBz75vsoWTCob1ijXu",
+      "decimals": 6
+    },
+    "SUSHI-USDC-V4": {
+      "symbol": "SUSHI-USDC",
+      "name": "SUSHI-USDC LP",
+      "coin": "SUSHI",
+      "pc": "USDC",
+      "mintAddress": "2QVjeR9d2PbSf8em8NE8zWd8RYHjFtucDUdDgdbDD2h2",
+      "decimals": 6
+    },
+    "TOMO-USDC-V4": {
+      "symbol": "TOMO-USDC",
+      "name": "TOMO-USDC LP",
+      "coin": "TOMO",
+      "pc": "USDC",
+      "mintAddress": "CHyUpQFeW456zcr5XEh4RZiibH8Dzocs6Wbgz9aWpXnQ",
+      "decimals": 6
+    },
+    "LINK-USDC-V4": {
+      "symbol": "LINK-USDC",
+      "name": "LINK-USDC LP",
+      "coin": "LINK",
+      "pc": "USDC",
+      "mintAddress": "BqjoYjqKrXtfBKXeaWeAT5sYCy7wsAYf3XjgDWsHSBRs",
+      "decimals": 6
+    },
+    "ETH-USDC-V4": {
+      "symbol": "ETH-USDC",
+      "name": "ETH-USDC LP",
+      "coin": "ETH",
+      "pc": "USDC",
+      "mintAddress": "13PoKid6cZop4sj2GfoBeujnGfthUbTERdE5tpLCDLEY",
+      "decimals": 6
+    },
+    "xCOPE-USDC-V4": {
+      "symbol": "xCOPE-USDC",
+      "name": "xCOPE-USDC LP",
+      "coin": "xCOPE",
+      "pc": "USDC",
+      "mintAddress": "2Vyyeuyd15Gp8aH6uKE72c4hxc8TVSLibxDP9vzspQWG",
+      "decimals": 0
+    },
+    "SOL-USDT-V4": {
+      "symbol": "SOL-USDT",
+      "name": "SOL-USDT LP",
+      "coin": "SOL",
+      "pc": "USDT",
+      "mintAddress": "Epm4KfTj4DMrvqn6Bwg2Tr2N8vhQuNbuK8bESFp4k33K",
+      "decimals": 9
+    },
+    "YFI-USDT-V4": {
+      "symbol": "YFI-USDT",
+      "name": "YFI-USDT LP",
+      "coin": "YFI",
+      "pc": "USDT",
+      "mintAddress": "FA1i7fej1pAbQbnY8NbyYUsTrWcasTyipKreDgy1Mgku",
+      "decimals": 6
+    },
+    "SRM-USDT-V4": {
+      "symbol": "SRM-USDT",
+      "name": "SRM-USDT LP",
+      "coin": "SRM",
+      "pc": "USDT",
+      "mintAddress": "HYSAu42BFejBS77jZAZdNAWa3iVcbSRJSzp3wtqCbWwv",
+      "decimals": 6
+    },
+    "FTT-USDT-V4": {
+      "symbol": "FTT-USDT",
+      "name": "FTT-USDT LP",
+      "coin": "FTT",
+      "pc": "USDT",
+      "mintAddress": "2cTCiUnect5Lap2sk19xLby7aajNDYseFhC9Pigou11z",
+      "decimals": 6
+    },
+    "BTC-USDT-V4": {
+      "symbol": "BTC-USDT",
+      "name": "BTC-USDT LP",
+      "coin": "BTC",
+      "pc": "USDT",
+      "mintAddress": "DgGuvR9GSHimopo3Gc7gfkbKamLKrdyzWkq5yqA6LqYS",
+      "decimals": 6
+    },
+    "SUSHI-USDT-V4": {
+      "symbol": "SUSHI-USDT",
+      "name": "SUSHI-USDT LP",
+      "coin": "SUSHI",
+      "pc": "USDT",
+      "mintAddress": "Ba26poEYDy6P2o95AJUsewXgZ8DM9BCsmnU9hmC9i4Ki",
+      "decimals": 6
+    },
+    "TOMO-USDT-V4": {
+      "symbol": "TOMO-USDT",
+      "name": "TOMO-USDT LP",
+      "coin": "TOMO",
+      "pc": "USDT",
+      "mintAddress": "D3iGro1vn6PWJXo9QAPj3dfta6dKkHHnmiiym2EfsAmi",
+      "decimals": 6
+    },
+    "LINK-USDT-V4": {
+      "symbol": "LINK-USDT",
+      "name": "LINK-USDT LP",
+      "coin": "LINK",
+      "pc": "USDT",
+      "mintAddress": "Dr12Sgt9gkY8WU5tRkgZf1TkVWJbvjYuPAhR3aDCwiiX",
+      "decimals": 6
+    },
+    "ETH-USDT-V4": {
+      "symbol": "ETH-USDT",
+      "name": "ETH-USDT LP",
+      "coin": "ETH",
+      "pc": "USDT",
+      "mintAddress": "nPrB78ETY8661fUgohpuVusNCZnedYCgghzRJzxWnVb",
+      "decimals": 6
+    },
+    "YFI-SRM-V4": {
+      "symbol": "YFI-SRM",
+      "name": "YFI-SRM LP",
+      "coin": "YFI",
+      "pc": "SRM",
+      "mintAddress": "EGJht91R7dKpCj8wzALkjmNdUUUcQgodqWCYweyKcRcV",
+      "decimals": 6
+    },
+    "FTT-SRM-V4": {
+      "symbol": "FTT-SRM",
+      "name": "FTT-SRM LP",
+      "coin": "FTT",
+      "pc": "SRM",
+      "mintAddress": "AsDuPg9MgPtt3jfoyctUCUgsvwqAN6RZPftqoeiPDefM",
+      "decimals": 6
+    },
+    "BTC-SRM-V4": {
+      "symbol": "BTC-SRM",
+      "name": "BTC-SRM LP",
+      "coin": "BTC",
+      "pc": "SRM",
+      "mintAddress": "AGHQxXb3GSzeiLTcLtXMS2D5GGDZxsB2fZYZxSB5weqB",
+      "decimals": 6
+    },
+    "SUSHI-SRM-V4": {
+      "symbol": "SUSHI-SRM",
+      "name": "SUSHI-SRM LP",
+      "coin": "SUSHI",
+      "pc": "SRM",
+      "mintAddress": "3HYhUnUdV67j1vn8fu7ExuVGy5dJozHEyWvqEstDbWwE",
+      "decimals": 6
+    },
+    "TOMO-SRM-V4": {
+      "symbol": "TOMO-SRM",
+      "name": "TOMO-SRM LP",
+      "coin": "TOMO",
+      "pc": "SRM",
+      "mintAddress": "GgH9RnKrQpaMQeqmdbMvs5oo1A24hERQ9wuY2pSkeG7x",
+      "decimals": 6
+    },
+    "LINK-SRM-V4": {
+      "symbol": "LINK-SRM",
+      "name": "LINK-SRM LP",
+      "coin": "LINK",
+      "pc": "SRM",
+      "mintAddress": "GXN6yJv12o18skTmJXaeFXZVY1iqR18CHsmCT8VVCmDD",
+      "decimals": 6
+    },
+    "ETH-SRM-V4": {
+      "symbol": "ETH-SRM",
+      "name": "ETH-SRM LP",
+      "coin": "ETH",
+      "pc": "SRM",
+      "mintAddress": "9VoY3VERETuc2FoadMSYYizF26mJinY514ZpEzkHMtwG",
+      "decimals": 6
+    },
+    "SRM-SOL-V4": {
+      "symbol": "SRM-SOL",
+      "name": "SRM-SOL LP",
+      "coin": "SRM",
+      "pc": "SOL",
+      "mintAddress": "AKJHspCwDhABucCxNLXUSfEzb7Ny62RqFtC9uNjJi4fq",
+      "decimals": 6
+    },
+    "STEP-USDC-V4": {
+      "symbol": "STEP-USDC",
+      "name": "STEP-USDC LP",
+      "coin": "STEP",
+      "pc": "USDC",
+      "mintAddress": "3k8BDobgihmk72jVmXYLE168bxxQUhqqyESW4dQVktqC",
+      "decimals": 9
+    },
+    "MEDIA-USDC-V4": {
+      "symbol": "MEDIA-USDC",
+      "name": "MEDIA-USDC LP",
+      "coin": "MEDIA",
+      "pc": "USDC",
+      "mintAddress": "A5zanvgtioZGiJMdEyaKN4XQmJsp1p7uVxaq2696REvQ",
+      "decimals": 6
+    },
+    "ROPE-USDC-V4": {
+      "symbol": "ROPE-USDC",
+      "name": "ROPE-USDC LP",
+      "coin": "ROPE",
+      "pc": "USDC",
+      "mintAddress": "Cq4HyW5xia37tKejPF2XfZeXQoPYW6KfbPvxvw5eRoUE",
+      "decimals": 9
+    },
+    "MER-USDC-V4": {
+      "symbol": "MER-USDC",
+      "name": "MER-USDC LP",
+      "coin": "MER",
+      "pc": "USDC",
+      "mintAddress": "3H9NxvaZoxMZZDZcbBDdWMKbrfNj7PCF5sbRwDr7SdDW",
+      "decimals": 6
+    },
+    "COPE-USDC-V4": {
+      "symbol": "COPE-USDC",
+      "name": "COPE-USDC LP",
+      "coin": "COPE",
+      "pc": "USDC",
+      "mintAddress": "Cz1kUvHw98imKkrqqu95GQB9h1frY8RikxPojMwWKGXf",
+      "decimals": 6
+    },
+    "ALEPH-USDC-V4": {
+      "symbol": "ALEPH-USDC",
+      "name": "ALEPH-USDC LP",
+      "coin": "ALEPH",
+      "pc": "USDC",
+      "mintAddress": "iUDasAP2nXm5wvTukAHEKSdSXn8vQkRtaiShs9ceGB7",
+      "decimals": 6
+    },
+    "TULIP-USDC-V4": {
+      "symbol": "TULIP-USDC",
+      "name": "TULIP-USDC LP",
+      "coin": "TULIP",
+      "pc": "USDC",
+      "mintAddress": "2doeZGLJyACtaG9DCUyqMLtswesfje1hjNA11hMdj6YU",
+      "decimals": 6
+    },
+    "WOO-USDC-V4": {
+      "symbol": "WOO-USDC",
+      "name": "WOO-USDC LP",
+      "coin": "WOO",
+      "pc": "USDC",
+      "mintAddress": "7cu42ao8Jgrd5A3y3bNQsCxq5poyGZNmTydkGfJYQfzh",
+      "decimals": 6
+    },
+    "SNY-USDC-V4": {
+      "symbol": "SNY-USDC",
+      "name": "SNY-USDC LP",
+      "coin": "SNY",
+      "pc": "USDC",
+      "mintAddress": "G8qcfeFqxwbCqpxv5LpLWxUCd1PyMB5nWb5e5YyxLMKg",
+      "decimals": 6
+    },
+    "BOP-RAY-V4": {
+      "symbol": "BOP-RAY",
+      "name": "BOP-RAY LP",
+      "coin": "BOP",
+      "pc": "RAY",
+      "mintAddress": "9nQPYJvysyfnXhQ6nkK5V7sZG26hmDgusfdNQijRk5LD",
+      "decimals": 8
+    },
+    "SLRS-USDC-V4": {
+      "symbol": "SLRS-USDC",
+      "name": "SLRS-USDC LP",
+      "coin": "SLRS",
+      "pc": "USDC",
+      "mintAddress": "2Xxbm1hdv5wPeen5ponDSMT3VqhGMTQ7mH9stNXm9shU",
+      "decimals": 6
+    },
+    "SAMO-RAY-V4": {
+      "symbol": "SAMO-RAY",
+      "name": "SAMO-RAY LP",
+      "coin": "SAMO",
+      "pc": "RAY",
+      "mintAddress": "HwzkXyX8B45LsaHXwY8su92NoRBS5GQC32HzjQRDqPnr",
+      "decimals": 9
+    },
+    "renBTC-USDC-V4": {
+      "symbol": "renBTC-USDC",
+      "name": "renBTC-USDC LP",
+      "coin": "renBTC",
+      "pc": "USDC",
+      "mintAddress": "CTEpsih91ZLo5gunvryLpJ3pzMjmt5jbS6AnSQrzYw7V",
+      "decimals": 8
+    },
+    "renDOGE-USDC-V4": {
+      "symbol": "renDOGE-USDC",
+      "name": "renDOGE-USDC LP",
+      "coin": "renDOGE",
+      "pc": "USDC",
+      "mintAddress": "Hb8KnZNKvRxu7pgMRWJgoMSMcepfvNiBFFDDrdf9o3wA",
+      "decimals": 8
+    },
+    "RAY-USDC-V4": {
+      "symbol": "RAY-USDC",
+      "name": "RAY-USDC LP",
+      "coin": "RAY",
+      "pc": "USDC",
+      "mintAddress": "FbC6K13MzHvN42bXrtGaWsvZY9fxrackRSZcBGfjPc7m",
+      "decimals": 6
+    },
+    "RAY-SRM-V4": {
+      "symbol": "RAY-SRM",
+      "name": "RAY-SRM LP",
+      "coin": "RAY",
+      "pc": "SRM",
+      "mintAddress": "7P5Thr9Egi2rvMmEuQkLn8x8e8Qro7u2U7yLD2tU2Hbe",
+      "decimals": 6
+    },
+    "RAY-ETH-V4": {
+      "symbol": "RAY-ETH",
+      "name": "RAY-ETH LP",
+      "coin": "RAY",
+      "pc": "ETH",
+      "mintAddress": "mjQH33MqZv5aKAbKHi8dG3g3qXeRQqq1GFcXceZkNSr",
+      "decimals": 6
+    },
+    "RAY-SOL-V4": {
+      "symbol": "RAY-SOL",
+      "name": "RAY-SOL LP",
+      "coin": "RAY",
+      "pc": "SOL",
+      "mintAddress": "89ZKE4aoyfLBe2RuV6jM3JGNhaV18Nxh8eNtjRcndBip",
+      "decimals": 6
+    },
+    "DXL-USDC-V4": {
+      "symbol": "DXL-USDC",
+      "name": "DXL-USDC LP",
+      "coin": "DXL",
+      "pc": "USDC",
+      "mintAddress": "4HFaSvfgskipvrzT1exoVKsUZ174JyExEsA8bDfsAdY5",
+      "decimals": 6
+    },
+    "LIKE-USDC-V4": {
+      "symbol": "LIKE-USDC",
+      "name": "LIKE-USDC LP",
+      "coin": "LIKE",
+      "pc": "USDC",
+      "mintAddress": "cjZmbt8sJgaoyWYUttomAu5LJYU44ZrcKTbzTSEPDVw",
+      "decimals": 9
+    },
+    "mSOL-USDC-V4": {
+      "symbol": "mSOL-USDC",
+      "name": "mSOL-USDC LP",
+      "coin": "mSOL",
+      "pc": "USDC",
+      "mintAddress": "4xTpJ4p76bAeggXoYywpCCNKfJspbuRzZ79R7pRhbqSf",
+      "decimals": 9
+    },
+    "mSOL-SOL-V4": {
+      "symbol": "mSOL-SOL",
+      "name": "mSOL-SOL LP",
+      "coin": "mSOL",
+      "pc": "SOL",
+      "mintAddress": "5ijRoAHVgd5T5CNtK5KDRUBZ7Bffb69nktMj5n6ks6m4",
+      "decimals": 9
+    },
+    "MER-PAI-V4": {
+      "symbol": "MER-PAI",
+      "name": "MER-PAI LP",
+      "coin": "MER",
+      "pc": "PAI",
+      "mintAddress": "DU5RT2D9EviaSmX6Ta8MZwMm85HwSEqGMRdqUiuCGfmD",
+      "decimals": 6
+    },
+    "PORT-USDC-V4": {
+      "symbol": "PORT-USDC",
+      "name": "PORT-USDC LP",
+      "coin": "PORT",
+      "pc": "USDC",
+      "mintAddress": "9tmNtbUCrLS15qC4tEfr5NNeqcqpZ4uiGgi2vS5CLQBS",
+      "decimals": 6
+    },
+    "MNGO-USDC-V4": {
+      "symbol": "MNGO-USDC",
+      "name": "MNGO-USDC LP",
+      "coin": "MNGO",
+      "pc": "USDC",
+      "mintAddress": "DkiqCQ792n743xjWQVCbBUaVtkdiuvQeYndM53ReWnCC",
+      "decimals": 6
+    },
+    "ATLAS-USDC-V4": {
+      "symbol": "ATLAS-USDC",
+      "name": "ATLAS-USDC LP",
+      "coin": "ATLAS",
+      "pc": "USDC",
+      "mintAddress": "9shGU9f1EsxAbiR567MYZ78WUiS6ZNCYbHe53WUULQ7n",
+      "decimals": 8
+    },
+    "POLIS-USDC-V4": {
+      "symbol": "POLIS-USDC",
+      "name": "POLIS-USDC LP",
+      "coin": "POLIS",
+      "pc": "USDC",
+      "mintAddress": "8MbKSBpyXs8fVneKgt71jfHrn5SWtX8n4wMLpiVfF9So",
+      "decimals": 8
+    },
+    "ATLAS-RAY-V4": {
+      "symbol": "ATLAS-RAY",
+      "name": "ATLAS-RAY LP",
+      "coin": "ATLAS",
+      "pc": "RAY",
+      "mintAddress": "418MFhkaYQtbn529wmjLLqL6uKxDz7j4eZBaV1cobkyd",
+      "decimals": 8
+    },
+    "POLIS-RAY-V4": {
+      "symbol": "POLIS-RAY",
+      "name": "POLIS-RAY LP",
+      "coin": "POLIS",
+      "pc": "RAY",
+      "mintAddress": "9ysGKUH6WqzjQEUT4dxqYCUaFNVK9QFEa24pGzjFq8xg",
+      "decimals": 8
+    },
+    "ALEPH-RAY-V4": {
+      "symbol": "ALEPH-RAY",
+      "name": "ALEPH-RAY LP",
+      "coin": "ALEPH",
+      "pc": "RAY",
+      "mintAddress": "n76skjqv4LirhdLok2zJELXNLdRpYDgVJQuQFbamscy",
+      "decimals": 6
+    },
+    "TULIP-RAY-V4": {
+      "symbol": "TULIP-RAY",
+      "name": "TULIP-RAY LP",
+      "coin": "TULIP",
+      "pc": "RAY",
+      "mintAddress": "3AZTviji5qduMG2s4FfWGR3SSQmNUCyx8ao6UKCPg3oJ",
+      "decimals": 6
+    },
+    "SLRS-RAY-V4": {
+      "symbol": "SLRS-RAY",
+      "name": "SLRS-RAY LP",
+      "coin": "SLRS",
+      "pc": "RAY",
+      "mintAddress": "2pk78vsKT3jfJAcN2zbpMUnrR57SZrxHqaZYyFgp92mM",
+      "decimals": 6
+    },
+    "MER-RAY-V4": {
+      "symbol": "MER-RAY",
+      "name": "MER-RAY LP",
+      "coin": "MER",
+      "pc": "RAY",
+      "mintAddress": "214hxy3AbKoaEKgqcg2aC1cP5R67cGGAyDEg5GDwC7Ub",
+      "decimals": 6
+    },
+    "MEDIA-RAY-V4": {
+      "symbol": "MEDIA-RAY",
+      "name": "MEDIA-RAY LP",
+      "coin": "MEDIA",
+      "pc": "RAY",
+      "mintAddress": "9Aseg5A1JD1yCiFFdDaNNxCiJ7XzrpZFmcEmLjXFdPaH",
+      "decimals": 6
+    },
+    "SNY-RAY-V4": {
+      "symbol": "SNY-RAY",
+      "name": "SNY-RAY LP",
+      "coin": "SNY",
+      "pc": "RAY",
+      "mintAddress": "2k4quTuuLUxrSEhFH99qcoZzvgvVEc3b5sz3xz3qstfS",
+      "decimals": 6
+    },
+    "LIKE-RAY-V4": {
+      "symbol": "LIKE-RAY",
+      "name": "LIKE-RAY LP",
+      "coin": "LIKE",
+      "pc": "RAY",
+      "mintAddress": "7xqDycbFSCpUpzkYapFeyPJWPwEpV7zdWbYf2MVHTNjv",
+      "decimals": 9
+    },
+    "COPE-RAY-V4": {
+      "symbol": "COPE-RAY",
+      "name": "COPE-RAY LP",
+      "coin": "COPE",
+      "pc": "RAY",
+      "mintAddress": "A7GCVHA8NSsbdFscHdoNU41tL1TRKNmCH4K94CgcLK9F",
+      "decimals": 6
+    },
+    "ETH-SOL-V4": {
+      "symbol": "ETH-SOL",
+      "name": "ETH-SOL LP",
+      "coin": "ETH",
+      "pc": "SOL",
+      "mintAddress": "GKfgC86iJoMjwAtcyiLu6nWnjggqUXsDQihXkP14fDez",
+      "decimals": 6
+    },
+    "stSOL-USDC-V4": {
+      "symbol": "stSOL-USDC",
+      "name": "stSOL-USDC LP",
+      "coin": "stSOL",
+      "pc": "USDC",
+      "mintAddress": "HDUJMwYZkjUZre63xUeDhdCi8c6LgUDiBqxmP3QC3VPX",
+      "decimals": 9
+    },
+    "GRAPE-USDC-V4": {
+      "symbol": "GRAPE-USDC",
+      "name": "GRAPE-USDC LP",
+      "coin": "GRAPE",
+      "pc": "USDC",
+      "mintAddress": "A8ZYmnZ1vwxUa4wpJVUaJgegsuTEz5TKy5CiJXffvmpt",
+      "decimals": 6
+    },
+    "SBR-USDC-V4": {
+      "symbol": "SBR-USDC",
+      "name": "SBR-USDC LP",
+      "coin": "SBR",
+      "pc": "USDC",
+      "mintAddress": "9FC8xTFRbgTpuZZYAYnZLxgnQ8r7FwfSBM1SWvGwgF7s",
+      "decimals": 6
+    }
+  }
+}

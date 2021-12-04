@@ -20,8 +20,6 @@ use arbitrary::Arbitrary;
 #[repr(C)]
 #[derive(Debug, PartialEq)]
 pub struct Initialize {
-    /// nonce used to create valid program address
-    pub nonce: u8,
     /// all swap fees
     pub fees: Fees,
     /// swap curve info for pool, including CurveType and anything
@@ -195,16 +193,11 @@ impl SwapInstruction {
         let (&tag, rest) = input.split_first().ok_or(SwapError::InvalidInstruction)?;
         Ok(match tag {
             0 => {
-                let (&nonce, rest) = rest.split_first().ok_or(SwapError::InvalidInstruction)?;
                 if rest.len() >= Fees::LEN {
                     let (fees, rest) = rest.split_at(Fees::LEN);
                     let fees = Fees::unpack_unchecked(fees)?;
                     let swap_curve = SwapCurve::unpack_unchecked(rest)?;
-                    Self::Initialize(Initialize {
-                        nonce,
-                        fees,
-                        swap_curve,
-                    })
+                    Self::Initialize(Initialize { fees, swap_curve })
                 } else {
                     return Err(SwapError::InvalidInstruction.into());
                 }
@@ -275,13 +268,8 @@ impl SwapInstruction {
     pub fn pack(&self) -> Vec<u8> {
         let mut buf = Vec::with_capacity(size_of::<Self>());
         match &*self {
-            Self::Initialize(Initialize {
-                nonce,
-                fees,
-                swap_curve,
-            }) => {
+            Self::Initialize(Initialize { fees, swap_curve }) => {
                 buf.push(0);
-                buf.push(*nonce);
                 let mut fees_slice = [0u8; Fees::LEN];
                 Pack::pack_into_slice(fees, &mut fees_slice[..]);
                 buf.extend_from_slice(&fees_slice);
@@ -351,15 +339,10 @@ pub fn initialize(
     pool_pubkey: &Pubkey,
     fee_pubkey: &Pubkey,
     destination_pubkey: &Pubkey,
-    nonce: u8,
     fees: Fees,
     swap_curve: SwapCurve,
 ) -> Result<Instruction, ProgramError> {
-    let init_data = SwapInstruction::Initialize(Initialize {
-        nonce,
-        fees,
-        swap_curve,
-    });
+    let init_data = SwapInstruction::Initialize(Initialize { fees, swap_curve });
     let data = init_data.pack();
 
     let accounts = vec![
@@ -606,7 +589,6 @@ mod tests {
             host_fee_numerator,
             host_fee_denominator,
         };
-        let nonce: u8 = 255;
         let amp: u64 = 1;
         let curve_type = CurveType::Stable;
         let calculator = Box::new(StableCurve { amp });
@@ -614,13 +596,9 @@ mod tests {
             curve_type,
             calculator,
         };
-        let check = SwapInstruction::Initialize(Initialize {
-            nonce,
-            fees,
-            swap_curve,
-        });
+        let check = SwapInstruction::Initialize(Initialize { fees, swap_curve });
         let packed = check.pack();
-        let mut expect = vec![0u8, nonce];
+        let mut expect = vec![0u8];
         expect.extend_from_slice(&trade_fee_numerator.to_le_bytes());
         expect.extend_from_slice(&trade_fee_denominator.to_le_bytes());
         expect.extend_from_slice(&owner_trade_fee_numerator.to_le_bytes());

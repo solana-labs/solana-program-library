@@ -1,0 +1,26 @@
+# dist: bionic
+# sudo: required
+
+
+# branches:
+#   only:
+#     - master
+
+# notifications:
+#   email: false
+
+# jobs:
+#   include:
+#     # docs pull request or commit to master
+#     - name: "Build Docs"
+#       if: type IN (push, pull_request) AND branch = master
+#       language: node_js
+#       node_js:
+#         - "node"
+
+#       before_install:
+#         - .travis/affects.sh docs/ .travis || travis_terminate 0
+#         - cd docs/
+#         - source .travis/before_install.sh
+#       script:
+#         - source .travis/script.sh

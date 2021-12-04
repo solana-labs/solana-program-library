@@ -1,0 +1,2850 @@
+{
+"name": "Orca Pools",
+"pools":
+ [
+  {
+    "name": "SOL_USDC",
+    "address": "EGZ7tiLeH62TPV1gL8WwbXGzEPa9zmcpVnnkPKKnrE2U",
+    "nonce": 252,
+    "authority": "JU8kmKzDHF9sXWsnoznaFDFezLsE5uomX2JkRMbmsQP",
+    "poolTokenMint": "APDFRM3HMr8CAGXwKHiu2f5ePSpaiEJhaURwhsRrUUt9",
+    "poolTokenDecimals": 6,
+    "feeAccount": "8JnSiuvQq3BVuCU3n4DrSTw9chBSPvEMswrhtifVkr1o",
+    "tokenIds": [
+      "So11111111111111111111111111111111111111112",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "So11111111111111111111111111111111111111112": {
+        "tag": "SOL",
+        "name": "Solana",
+        "mint": "So11111111111111111111111111111111111111112",
+        "scale": 9,
+        "addr": "ANP74VNsHwSrq9uUSjiSNyNWvf6ZPrKTmE4gHoNd13Lg"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "75HgnSvXbWKZBpZHveX68ZzAhDqMzNDS29X6BGLtxMo1"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "SOL_USDT",
+    "address": "Dqk7mHQBx2ZWExmyrR2S8X6UG75CrbbpK2FSBZsNYsw6",
+    "nonce": 255,
+    "authority": "2sxKY7hxVFrY5oNE2DgaPAJFamMzsmFLM2DgVcjK5yTy",
+    "poolTokenMint": "FZthQCuYHhcfiDma7QrX7buDHwrZEd7vL8SjS6LQa3Tx",
+    "poolTokenDecimals": 6,
+    "feeAccount": "BBKgw75FivTYXj85D2AWyVdaTdTWuSuHVXRm1Xu7fipb",
+    "tokenIds": [
+      "So11111111111111111111111111111111111111112",
+      "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"
+    ],
+    "tokens": {
+      "So11111111111111111111111111111111111111112": {
+        "tag": "SOL",
+        "name": "Solana",
+        "mint": "So11111111111111111111111111111111111111112",
+        "scale": 9,
+        "addr": "DTb8NKsfhEJGY1TrA7RXN6MBiTrjnkdMAfjPEjtmTT3M"
+      },
+      "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB": {
+        "tag": "USDT",
+        "name": "Tether USD",
+        "mint": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+        "scale": 6,
+        "addr": "E8erPjPEorykpPjFV9yUYMYigEWKQUxuGfL2rJKLJ3KU"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "ETH_SOL",
+    "address": "EuK3xDa4rWuHeMQCBsHf1ETZNiEQb5C476oE9u9kp8Ji",
+    "nonce": 255,
+    "authority": "DffrDbzPiswDJaiicBBo9CjqztKgFLrqXGwNJH4XQefZ",
+    "poolTokenMint": "71FymgN2ZUf7VvVTLE8jYEnjP3jSK1Frp2XT1nHs8Hob",
+    "poolTokenDecimals": 6,
+    "feeAccount": "unxKgWEc71ZiHwMqZs3VLqjcjmZhfTZEg94ZLGvjdMP",
+    "tokenIds": [
+      "2FPyTwcZLUg1MDrwsyoP4D6s1tM7hAkHYRjkNb5w6Pxk",
+      "So11111111111111111111111111111111111111112"
+    ],
+    "tokens": {
+      "2FPyTwcZLUg1MDrwsyoP4D6s1tM7hAkHYRjkNb5w6Pxk": {
+        "tag": "ETH",
+        "name": "Ethereum",
+        "mint": "2FPyTwcZLUg1MDrwsyoP4D6s1tM7hAkHYRjkNb5w6Pxk",
+        "scale": 6,
+        "addr": "7F2cLdio3i6CCJaypj9VfNDPW2DwT3vkDmZJDEfmxu6A"
+      },
+      "So11111111111111111111111111111111111111112": {
+        "tag": "SOL",
+        "name": "Solana",
+        "mint": "So11111111111111111111111111111111111111112",
+        "scale": 9,
+        "addr": "5pUTGvN2AA2BEzBDU4CNDh3LHER15WS6J8oJf5XeZFD8"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "ETH_USDC",
+    "address": "FgZut2qVQEyPBibaTJbbX2PxaMZvT1vjDebiVaDp5BWP",
+    "nonce": 253,
+    "authority": "4dfCZR32xXhoTgMRhnViNaTFwiKP9A34TDjHCR3xM5rg",
+    "poolTokenMint": "3e1W6Aqcbuk2DfHUwRiRcyzpyYRRjg6yhZZcyEARydUX",
+    "poolTokenDecimals": 6,
+    "feeAccount": "DLWewB12jzGn4wXJmFCddWDeof1Ma4cZYNRv9CP5hTvX",
+    "tokenIds": [
+      "2FPyTwcZLUg1MDrwsyoP4D6s1tM7hAkHYRjkNb5w6Pxk",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "2FPyTwcZLUg1MDrwsyoP4D6s1tM7hAkHYRjkNb5w6Pxk": {
+        "tag": "ETH",
+        "name": "Ethereum",
+        "mint": "2FPyTwcZLUg1MDrwsyoP4D6s1tM7hAkHYRjkNb5w6Pxk",
+        "scale": 6,
+        "addr": "H9h5yTBfCHcb4eRP87fXczzXgNaMzKihr7bf1sjw7iuZ"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "JA98RXv2VdxQD8pRQq4dzJ1Bp4nH8nokCGmxvPWKJ3hx"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "RAY_SOL",
+    "address": "3THMPkPmcHJ54JtHRyazhs7UN7HbV5KiNJVLJs6hSPSC",
+    "nonce": 255,
+    "authority": "EUc3MtHPLL956pTDfM5q25jp5Fk9zW7omEzh1uyDY7s6",
+    "poolTokenMint": "5kimD5W6yJpHRHCyPtnEyDsQRdiiJKivu5AqN3si82Jc",
+    "poolTokenDecimals": 6,
+    "feeAccount": "65XNtnUsP1TMzKMGhMoD3GUFMNbmnZQwDaxDLE3jncUC",
+    "tokenIds": [
+      "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R",
+      "So11111111111111111111111111111111111111112"
+    ],
+    "tokens": {
+      "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R": {
+        "tag": "RAY",
+        "name": "Raydium",
+        "mint": "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R",
+        "scale": 6,
+        "addr": "GZaUNWf4ov6VZaD5MqZtc5pHB3mWTqczNUB4sstt8CSR"
+      },
+      "So11111111111111111111111111111111111111112": {
+        "tag": "SOL",
+        "name": "Solana",
+        "mint": "So11111111111111111111111111111111111111112",
+        "scale": 9,
+        "addr": "GNSZ1rr57QQ6qLcmZnhMcoBymenVezhNpzcFSfJP37h9"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "ROPE_SOL",
+    "address": "DCENobjFZK59nLeMCVRkQtnkAWrJkWAVpmVnwVNc8gqH",
+    "nonce": 251,
+    "authority": "C2DDX95TK3uC9MQXhHp3LWRv9kWtFTp36Ub9VPCKKiCV",
+    "poolTokenMint": "ADrvfPBsRcJfGsN6Bs385zYddH52nuM5FA8UaAkX9o2V",
+    "poolTokenDecimals": 6,
+    "feeAccount": "88rKjeeDQYJxGVCG39znDvbxzjPc5H37XqHRQCSNJvED",
+    "tokenIds": [
+      "8PMHT4swUMtBzgHnh5U564N5sjPSiUz2cjEQzFnnP1Fo",
+      "So11111111111111111111111111111111111111112"
+    ],
+    "tokens": {
+      "8PMHT4swUMtBzgHnh5U564N5sjPSiUz2cjEQzFnnP1Fo": {
+        "tag": "ROPE",
+        "name": "Rope",
+        "mint": "8PMHT4swUMtBzgHnh5U564N5sjPSiUz2cjEQzFnnP1Fo",
+        "scale": 9,
+        "addr": "HLHPVwgzYjTHmu1fmV9eZzdE8H3fZwhuCBRNNN2Z5miA"
+      },
+      "So11111111111111111111111111111111111111112": {
+        "tag": "SOL",
+        "name": "Solana",
+        "mint": "So11111111111111111111111111111111111111112",
+        "scale": 9,
+        "addr": "7Be3aStQmKgeXC1xqfJnA8qaGzw6keQTLqHYAJprZK2H"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "STEP_SOL",
+    "address": "2sNtf8wLZMR7XJm2pzvvVUNPTNRFsGTiC5vgDSGv5QGD",
+    "nonce": 255,
+    "authority": "HzAJLVqZ7fnmc2LfRPtz2GHu93RpAPQsdDTg6DRoTTmf",
+    "poolTokenMint": "8nTzqDXHriG2CXKbybeuEh1EqDQMtrbYMFWcP7AkiDaP",
+    "poolTokenDecimals": 6,
+    "feeAccount": "5FEmPmAk72NycwzMXLD3hc2f47zRXocv4mvd3HEUZ5io",
+    "tokenIds": [
+      "StepAscQoEioFxxWGnh2sLBDFp9d8rvKz2Yp39iDpyT",
+      "So11111111111111111111111111111111111111112"
+    ],
+    "tokens": {
+      "StepAscQoEioFxxWGnh2sLBDFp9d8rvKz2Yp39iDpyT": {
+        "tag": "STEP",
+        "name": "Step",
+        "mint": "StepAscQoEioFxxWGnh2sLBDFp9d8rvKz2Yp39iDpyT",
+        "scale": 9,
+        "addr": "35opuEpVvggzfV361hQVNXiC7KAKS1HCeDoVpfVybo8k"
+      },
+      "So11111111111111111111111111111111111111112": {
+        "tag": "SOL",
+        "name": "Solana",
+        "mint": "So11111111111111111111111111111111111111112",
+        "scale": 9,
+        "addr": "A3DSsYZJWHiwXSQb7P2AbEoaWhpauJLU1PVdTPnzV5s9"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "SRM_SOL",
+    "address": "EJRXAkKyDhDgzdZz1Ss5CpWKWSK9xTR5S6GDLAer8mdh",
+    "nonce": 255,
+    "authority": "2pQbngWBSWUjBHWVWQ3tppKxW3Y5NzUcye1822itKyzZ",
+    "poolTokenMint": "9tf8rBSEQYG7AqL896fN2nZi1iYPqpWaLEdpbeQaC1Vy",
+    "poolTokenDecimals": 6,
+    "feeAccount": "APyc1s8wES4Q2FTqHN8jXZtRuWQyRWZ82u7EFfras2iZ",
+    "tokenIds": [
+      "SRMuApVNdxXokk5GT7XD5cUUgXMBCoAz2LHeuAoKWRt",
+      "So11111111111111111111111111111111111111112"
+    ],
+    "tokens": {
+      "SRMuApVNdxXokk5GT7XD5cUUgXMBCoAz2LHeuAoKWRt": {
+        "tag": "SRM",
+        "name": "Serum",
+        "mint": "SRMuApVNdxXokk5GT7XD5cUUgXMBCoAz2LHeuAoKWRt",
+        "scale": 6,
+        "addr": "2JCxZv6LaFjtWqBXSC2brsWE9WryS4Cp3VwwDeNGvLyv"
+      },
+      "So11111111111111111111111111111111111111112": {
+        "tag": "SOL",
+        "name": "Solana",
+        "mint": "So11111111111111111111111111111111111111112",
+        "scale": 9,
+        "addr": "EdhG3vQbTVVAARZB4AbhU2HsVbvfFqX2yhBAfFV22nzA"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "FTT_SOL",
+    "address": "68Bg6yQxWm3mrUYk3XzMiF5ycE41HwPhyEdaB1cp6wuo",
+    "nonce": 255,
+    "authority": "BpshqwEmPXmJwJfFgTFafmXoHN8Lc7SouvFsh6jyYQAm",
+    "poolTokenMint": "EsYaDKJCmcJtJHFuJYwQZwqohvVMCrFzcg8yo3i328No",
+    "poolTokenDecimals": 6,
+    "feeAccount": "FWBCbjZnypLKz7uHGJXpBAEez2FurQXi9J3js7ZT1xDe",
+    "tokenIds": [
+      "AGFEad2et2ZJif9jaGpdMixQqvW5i81aBdvKe7PHNfz3",
+      "So11111111111111111111111111111111111111112"
+    ],
+    "tokens": {
+      "AGFEad2et2ZJif9jaGpdMixQqvW5i81aBdvKe7PHNfz3": {
+        "tag": "FTT",
+        "name": "FTX Token",
+        "mint": "AGFEad2et2ZJif9jaGpdMixQqvW5i81aBdvKe7PHNfz3",
+        "scale": 6,
+        "addr": "3eVE92aEAsLYcBACXNu1yxoHVfTM8e8vmQC2zSApGRJX"
+      },
+      "So11111111111111111111111111111111111111112": {
+        "tag": "SOL",
+        "name": "Solana",
+        "mint": "So11111111111111111111111111111111111111112",
+        "scale": 9,
+        "addr": "BbsiNbFfJsRDwqF4JaiJ6sKecNuY4eWmEaDHcY6h6HuD"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "COPE_SOL",
+    "address": "BRx4dJecxzeGYc1BskCWonfGCeMyv9G7tk66cf2QGhK6",
+    "nonce": 254,
+    "authority": "JAJr1D6BQHFj9qJ8pfXhvJgLfn9vTcviU9sTA8MhKzN4",
+    "poolTokenMint": "CzieDbGRdN1QGaGDNpSqzEA18bi881ccvkkGZi51pe1k",
+    "poolTokenDecimals": 6,
+    "feeAccount": "9X8VRnxk6EVKGA7TErdSZYFC8oLUM569pDbZTtycjvXw",
+    "tokenIds": [
+      "8HGyAAB1yoM1ttS7pXjHMa3dukTFGQggnFFH3hJZgzQh",
+      "So11111111111111111111111111111111111111112"
+    ],
+    "tokens": {
+      "8HGyAAB1yoM1ttS7pXjHMa3dukTFGQggnFFH3hJZgzQh": {
+        "tag": "COPE",
+        "name": "Cope",
+        "mint": "8HGyAAB1yoM1ttS7pXjHMa3dukTFGQggnFFH3hJZgzQh",
+        "scale": 6,
+        "addr": "7v5GCdHH439SztxcqL4wpfWdPvv9EfMm8GYTHSUQoGoY"
+      },
+      "So11111111111111111111111111111111111111112": {
+        "tag": "SOL",
+        "name": "Solana",
+        "mint": "So11111111111111111111111111111111111111112",
+        "scale": 9,
+        "addr": "5tSgRUK6f2x1nAXA4gdcHNXiWdToqni9pr5xvq2Fq82u"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "OXY_SOL",
+    "address": "Cq4EZrvuFQpsCz8L3gS6t7iQ7VWzTtqDgSxD4AgVAAfd",
+    "nonce": 255,
+    "authority": "FxxcJPunf6Vj9Ve5zyM9yatMbmkrzTQ1QSk4NqKW9DvK",
+    "poolTokenMint": "7tYCdLN84EnTMkxM7HNamWJx7F4xgKe9KiiWvLyWjbgT",
+    "poolTokenDecimals": 6,
+    "feeAccount": "Ch8i2A1GAspivXYfdme7vSxh1mhRjmRgeiKN8KpWhVqo",
+    "tokenIds": [
+      "z3dn17yLaGMKffVogeFHQ9zWVcXgqgf3PQnDsNs2g6M",
+      "So11111111111111111111111111111111111111112"
+    ],
+    "tokens": {
+      "z3dn17yLaGMKffVogeFHQ9zWVcXgqgf3PQnDsNs2g6M": {
+        "tag": "OXY",
+        "name": "Oxygen",
+        "mint": "z3dn17yLaGMKffVogeFHQ9zWVcXgqgf3PQnDsNs2g6M",
+        "scale": 6,
+        "addr": "BoZQMfTLTPcXnevJxNFkECVbKesfhXnTUg4kxLgzV9BX"
+      },
+      "So11111111111111111111111111111111111111112": {
+        "tag": "SOL",
+        "name": "Solana",
+        "mint": "So11111111111111111111111111111111111111112",
+        "scale": 9,
+        "addr": "8ZrEcJbgg7BdoBga5RYDR8aMujLf5cAQp8zdPZqk7nNC"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "BTC_SOL",
+    "address": "7N2AEJ98qBs4PwEwZ6k5pj8uZBKMkZrKZeiC7A64B47u",
+    "nonce": 255,
+    "authority": "GqnLhu3bPQ46nTZYNFDnzhwm31iFoqhi3ntXMtc5DPiT",
+    "poolTokenMint": "Acxs19v6eUMTEfdvkvWkRB4bwFCHm3XV9jABCy7c1mXe",
+    "poolTokenDecimals": 6,
+    "feeAccount": "4yPG4A9jB3ibDMVXEN2aZW4oA1e1xzzA3z5VWjkZd18B",
+    "tokenIds": [
+      "9n4nbM75f5Ui33ZbPYXn59EwSgE8CGsHtAeTH5YFeJ9E",
+      "So11111111111111111111111111111111111111112"
+    ],
+    "tokens": {
+      "9n4nbM75f5Ui33ZbPYXn59EwSgE8CGsHtAeTH5YFeJ9E": {
+        "tag": "BTC",
+        "name": "Bitcoin",
+        "mint": "9n4nbM75f5Ui33ZbPYXn59EwSgE8CGsHtAeTH5YFeJ9E",
+        "scale": 6,
+        "addr": "9G5TBPbEUg2iaFxJ29uVAT8ZzxY77esRshyHiLYZKRh8"
+      },
+      "So11111111111111111111111111111111111111112": {
+        "tag": "SOL",
+        "name": "Solana",
+        "mint": "So11111111111111111111111111111111111111112",
+        "scale": 9,
+        "addr": "5eqcnUasgU2NRrEAeWxvFVRTTYWJWfAJhsdffvc6nJc2"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "MER_SOL",
+    "address": "UJBm2tHwDbQZpjQvaHozg5qkjh6prSKhnWheqR5T76Q",
+    "nonce": 255,
+    "authority": "C8HcMrC9WRqqXVbHRhZWjuZPbbWmszDobKFxevCtGhpT",
+    "poolTokenMint": "HiwRobjfHZ4zsPtqCC4oBS24pSmy4t8GGkXRbQj4yU6L",
+    "poolTokenDecimals": 6,
+    "feeAccount": "3Fdj69449GhiDmqyvWWTSafjRphGdiDhZ5i5rqfHBdio",
+    "tokenIds": [
+      "MERt85fc5boKw3BW1eYdxonEuJNvXbiMbs6hvheau5K",
+      "So11111111111111111111111111111111111111112"
+    ],
+    "tokens": {
+      "MERt85fc5boKw3BW1eYdxonEuJNvXbiMbs6hvheau5K": {
+        "tag": "MER",
+        "name": "Mercurial",
+        "mint": "MERt85fc5boKw3BW1eYdxonEuJNvXbiMbs6hvheau5K",
+        "scale": 6,
+        "addr": "DHdkRWTa9SRJNMtWZQYvNNbjrDP3n92EWLHezjFGPipb"
+      },
+      "So11111111111111111111111111111111111111112": {
+        "tag": "SOL",
+        "name": "Solana",
+        "mint": "So11111111111111111111111111111111111111112",
+        "scale": 9,
+        "addr": "DC5RwjB3VkXdt2PoWKTA4Ub9KbtcY8xXpmPNKsFjALwq"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "FIDA_SOL",
+    "address": "4SUBbivGMvMhem3ajVtkmuPvL4GuQ8kfYTJFuQfG4F8t",
+    "nonce": 255,
+    "authority": "owuNLod7H14GpQCUodcdBBeD4LiZ2T5U9KpS2sAbTp6",
+    "poolTokenMint": "EYsNdtyu4gGTaGz8N5m5iQ3G1N6rDyMbR72B3CqbWW4W",
+    "poolTokenDecimals": 6,
+    "feeAccount": "J2s1GpduscTTvMYt3os8LdvT24uhr9bPnTbxSKZZhEma",
+    "tokenIds": [
+      "EchesyfXePKdLtoiZSL8pBe8Myagyy8ZRqsACNCFGnvp",
+      "So11111111111111111111111111111111111111112"
+    ],
+    "tokens": {
+      "EchesyfXePKdLtoiZSL8pBe8Myagyy8ZRqsACNCFGnvp": {
+        "tag": "FIDA",
+        "name": "Bonfida",
+        "mint": "EchesyfXePKdLtoiZSL8pBe8Myagyy8ZRqsACNCFGnvp",
+        "scale": 6,
+        "addr": "9ofyx5yFzjH1XWmJzfiGCDfhq6ho8yFbszGQrrJXe54"
+      },
+      "So11111111111111111111111111111111111111112": {
+        "tag": "SOL",
+        "name": "Solana",
+        "mint": "So11111111111111111111111111111111111111112",
+        "scale": 9,
+        "addr": "55moYcq91pXbSRpL2DR8P3BehqSNWiJrdTn5SZFc2STn"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "MAPS_SOL",
+    "address": "4rkgbbCPKk5zx3KiwcCNiSpNSSLgAkswKGfX7CJjGgtC",
+    "nonce": 255,
+    "authority": "8uuBxVsGf2bqH5t8mct5NfpgcTDb7czXuWVEm6Boia4x",
+    "poolTokenMint": "99pfC8fWymXgbq3CvrExhx3UxQDC1fMWEWLbNT83F45e",
+    "poolTokenDecimals": 6,
+    "feeAccount": "8w3gx1GQ1UN5sodEVP14qUwzCcgopHWUeWbT26hgK3xh",
+    "tokenIds": [
+      "MAPS41MDahZ9QdKXhVa4dWB9RuyfV4XqhyAZ8XcYepb",
+      "So11111111111111111111111111111111111111112"
+    ],
+    "tokens": {
+      "MAPS41MDahZ9QdKXhVa4dWB9RuyfV4XqhyAZ8XcYepb": {
+        "tag": "MAPS",
+        "name": "MAPS",
+        "mint": "MAPS41MDahZ9QdKXhVa4dWB9RuyfV4XqhyAZ8XcYepb",
+        "scale": 6,
+        "addr": "BqExNTYk7YdeiaREHqnqN2q1F3dBCTPhkwrrWBFD4F1m"
+      },
+      "So11111111111111111111111111111111111111112": {
+        "tag": "SOL",
+        "name": "Solana",
+        "mint": "So11111111111111111111111111111111111111112",
+        "scale": 9,
+        "addr": "HdEQ99E979aXn2xTcg5UXEfLynwFkqpPTxLaNkH7Nz7P"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "USDC_USDT",
+    "address": "F13xvvx45jVGd84ynK3c8T89UejQVxjCLtmHfPmAXAHP",
+    "nonce": 255,
+    "authority": "3cGHDS8uWhdxQj14vTmFtYHX3NMouPpE4o9MjQ43Bbf4",
+    "poolTokenMint": "H2uzgruPvonVpCRhwwdukcpXK8TG17swFNzYFr2rtPxy",
+    "poolTokenDecimals": 6,
+    "feeAccount": "B4RNxMJGRzKFQyTq2Uwkmpyjtew13n7KtdqZy6qgENTu",
+    "tokenIds": [
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"
+    ],
+    "tokens": {
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "6uUn2okWk5v4x9Gc4n2LLGHtWoa9tmizHq1363dW7t9W"
+      },
+      "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB": {
+        "tag": "USDT",
+        "name": "Tether USD",
+        "mint": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+        "scale": 6,
+        "addr": "AiwmnLy7xPT28dqZpkRm6i1ZGwELUCzCsuN92v4JkSeU"
+      }
+    },
+    "curveType": 2,
+    "amp": 100,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "06",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "01",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "ORCA_SOL",
+    "address": "2ZnVuidTHpi5WWKUwFXauYGhvdT9jRKYv5MDahtbwtYr",
+    "nonce": 255,
+    "authority": "2PH1quJj9MHQXATCmNZ6qQ2gZqM8R236DpKaz99ggVpm",
+    "poolTokenMint": "2uVjAuRXavpM6h1scGQaxqb6HVaNRn6T2X7HHXTabz25",
+    "poolTokenDecimals": 6,
+    "feeAccount": "4Zc4kQZhRQeGztihvcGSWezJE1k44kKEgPCAkdeBfras",
+    "tokenIds": [
+      "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+      "So11111111111111111111111111111111111111112"
+    ],
+    "tokens": {
+      "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE": {
+        "tag": "ORCA",
+        "name": "Orca",
+        "mint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+        "scale": 6,
+        "addr": "AioST8HKQJRqjE1mknk4Rydc8wVADhdQwRJmAAYX1T6Z"
+      },
+      "So11111111111111111111111111111111111111112": {
+        "tag": "SOL",
+        "name": "Solana",
+        "mint": "So11111111111111111111111111111111111111112",
+        "scale": 9,
+        "addr": "73zdy95DynZP4exdpuXTDsexcrWbDJX9TFi2E6CDzXh4"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "ORCA_USDC",
+    "address": "2p7nYbtPBgtmY69NsE8DAW6szpRJn7tQvDnqvoEWQvjY",
+    "nonce": 254,
+    "authority": "3fr1AhdiAmWLeNrS24CMoAu9pPgbzVhwLtJ6QUPmw2ob",
+    "poolTokenMint": "n8Mpu28RjeYD7oUX3LG1tPxzhRZh3YYLRSHcHRdS3Zx",
+    "poolTokenDecimals": 6,
+    "feeAccount": "7CXZED4jfRp3qdHB9Py3up6v1C4UhHofFvfT6RXbJLRN",
+    "tokenIds": [
+      "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE": {
+        "tag": "ORCA",
+        "name": "Orca",
+        "mint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+        "scale": 6,
+        "addr": "9vYWHBPz817wJdQpE8u3h8UoY3sZ16ZXdCcvLB7jY4Dj"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "6UczejMUv1tzdvUzKpULKHxrK9sqLm8edR1v9jinVWm9"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "KIN_SOL",
+    "address": "Ez52BLSoZw3MxWxMK4ADsJXqzUiYW9sUnwcrrQwQGdLT",
+    "nonce": 253,
+    "authority": "C6WisvFQzqxTBF3DV6RFbPMPBiVHE816CZHoctB3WzrW",
+    "poolTokenMint": "HEvnD66WcBfTajS9adUYnGRBMDehFtLySiFHSD6kEBWs",
+    "poolTokenDecimals": 6,
+    "feeAccount": "5bLeJU66qTopjZBa48BUd7EXWcj4UeCMfHjjrvt8Zcgs",
+    "tokenIds": [
+      "kinXdEcpDQeHPEuQnqmUgtYykqKGVFq6CeVX5iAHJq6",
+      "So11111111111111111111111111111111111111112"
+    ],
+    "tokens": {
+      "kinXdEcpDQeHPEuQnqmUgtYykqKGVFq6CeVX5iAHJq6": {
+        "tag": "KIN",
+        "name": "Kin",
+        "mint": "kinXdEcpDQeHPEuQnqmUgtYykqKGVFq6CeVX5iAHJq6",
+        "scale": 5,
+        "addr": "2Ssm5Dd1Zc5QpGSZzuqt3Ef4bADteuBbCGiEZJ5n48rV"
+      },
+      "So11111111111111111111111111111111111111112": {
+        "tag": "SOL",
+        "name": "Solana",
+        "mint": "So11111111111111111111111111111111111111112",
+        "scale": 9,
+        "addr": "HCS9EpKRxWDS9GCRFStNbPWgRQpvV6EyBWChJja2UbCm"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "SAMO_SOL",
+    "address": "DiAP9qmp5foN7fLTWfBWjo9KBS1jgvKUJLWi1ZhqKaja",
+    "nonce": 255,
+    "authority": "3uZcofBKVBYFrQ7jVjTFLEMWAQiZcih4AES5tKBqdo7m",
+    "poolTokenMint": "D6N9j8F2DhtzDtrdpT74y3u2YmYAzcggiLc3nTjqux9M",
+    "poolTokenDecimals": 6,
+    "feeAccount": "BYAjG645fRRHZ5JFnZKnXc4dzK9WppcoVWDMYj3zm3KF",
+    "tokenIds": [
+      "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
+      "So11111111111111111111111111111111111111112"
+    ],
+    "tokens": {
+      "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU": {
+        "tag": "SAMO",
+        "name": "Samoyedcoin",
+        "mint": "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
+        "scale": 9,
+        "addr": "AFcbD7UTzk9d1njRxyDHNbQ5Q6miPNAE1GctjD96JYAi"
+      },
+      "So11111111111111111111111111111111111111112": {
+        "tag": "SOL",
+        "name": "Solana",
+        "mint": "So11111111111111111111111111111111111111112",
+        "scale": 9,
+        "addr": "6kYbPDsYLQUwptV7ZvQKG3gjNreEEgaWh2CM4DQPYTpq"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "LIQ_USDC",
+    "address": "AXSeEafwPUGSamiZWH8m2PJtvpDVtrofxvycNwxiysdh",
+    "nonce": 254,
+    "authority": "6Y5TnCwgifc8Z7QYo672nT9uNd2hcivVR1NT6oDkJx6P",
+    "poolTokenMint": "3PD9SZFwXKkXr4akLf4ofo37ZUMycwML89R2P3qxcbZG",
+    "poolTokenDecimals": 6,
+    "feeAccount": "FSVPcprrTkQLRtDACFEpa2rhEVx4kBvjPuQaxj572SaC",
+    "tokenIds": [
+      "4wjPQJ6PrkC4dHhYghwJzGBVP78DkBzA2U3kHoFNBuhj",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "4wjPQJ6PrkC4dHhYghwJzGBVP78DkBzA2U3kHoFNBuhj": {
+        "tag": "LIQ",
+        "name": "LIQ Protocol",
+        "mint": "4wjPQJ6PrkC4dHhYghwJzGBVP78DkBzA2U3kHoFNBuhj",
+        "scale": 6,
+        "addr": "CVspL8Tj5YdqntXJegNeDXHiBn3648QDNB7gex6D9MgY"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "8YzLsZ1FtsruswkBogEaXwmRTf5PMuyVcfSZXRAdi8qA"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "SNY_USDC",
+    "address": "BDn3Fj9UXVi2mRVMR2jzpCrAZZphnwfkvFhs192yhCTu",
+    "nonce": 255,
+    "authority": "FvjsfbbzZAcrVdfrGtZUjGWAjWHXrfMG8Bjwc17vVSK3",
+    "poolTokenMint": "AZpo4BJHHRetF96v6SGinFZBMXM4yWMo4RA8C4PriDLk",
+    "poolTokenDecimals": 6,
+    "feeAccount": "DiULDJAYXdbtX8CfFsU2jCgHvQWT7u3gwRwpvQxfEMvr",
+    "tokenIds": [
+      "4dmKkXNHdgYsXqBHCuMikNQWwVomZURhYvkkX5c4pQ7y",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "4dmKkXNHdgYsXqBHCuMikNQWwVomZURhYvkkX5c4pQ7y": {
+        "tag": "SNY",
+        "name": "SNY",
+        "mint": "4dmKkXNHdgYsXqBHCuMikNQWwVomZURhYvkkX5c4pQ7y",
+        "scale": 6,
+        "addr": "14RHMRzwx9Y4Z41qpr9sTwJZ58wXqV1R9WTkUA7ybmKG"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "Dw9D9T4bBC3oGdMqxE1xWfPSCJ27SYwWD8rFfUxU99QG"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "mSOL_USDC",
+    "address": "Hme4Jnqhdz2jAPUMnS7jGE5zv6Y1ynqrUEhmUAWkXmzn",
+    "nonce": 255,
+    "authority": "9Z7E42k46kxnBjAh8YGXDw3rRGwwxQUBYM7Ccrmwg6ZP",
+    "poolTokenMint": "8PSfyiTVwPb6Rr2iZ8F3kNpbg65BCfJM9v8LfB916r44",
+    "poolTokenDecimals": 6,
+    "feeAccount": "3W3Skj2vQsNEMhGRQprFXQy3Q8ZbM6ojdgiDCokVPWno",
+    "tokenIds": [
+      "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So": {
+        "tag": "mSOL",
+        "name": "Marinade.finance",
+        "mint": "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So",
+        "scale": 9,
+        "addr": "GBa7G5f1FqAXEgByuHXsqsEdpyMjRgT9SNxZwmmnEJAY"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "7hFgNawzzmpDM8TTVCKm8jykBrym8C3TQdb8TDAfAVkD"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "SLRS_USDC",
+    "address": "87Xz6RK1uzP5NEhSjMewZtDAZyg4V1tYAa1KHnvge17b",
+    "nonce": 254,
+    "authority": "5D9v9y6Kbswe6k1wnVceuqRXHMsRQJ8xzx8hadSH6EAM",
+    "poolTokenMint": "AtB4nUmdyQfuWWJ9xAHw9xyVnJFfSjSuVWkiYan8y86w",
+    "poolTokenDecimals": 6,
+    "feeAccount": "CLxeBxNq42AtmD43F5BTqCHTnkVHX8sP9cVPdtRkTL7D",
+    "tokenIds": [
+      "SLRSSpSLUTP7okbCUBYStWCo1vUgyt775faPqz8HUMr",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "SLRSSpSLUTP7okbCUBYStWCo1vUgyt775faPqz8HUMr": {
+        "tag": "SLRS",
+        "name": "Solrise Finance",
+        "mint": "SLRSSpSLUTP7okbCUBYStWCo1vUgyt775faPqz8HUMr",
+        "scale": 6,
+        "addr": "CM7oGYHy1oxzHoum8Cxv4pwnndm6Jbs3NkBZkc6v9S9d"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "3QqPbMcUMZu3Rz762g7JgvpUxhRHPtE9HFk2MSDRmPqa"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "PORT_USDC",
+    "address": "4if9Gy7dvjU7XwunKxdnCcPsaT3yAHPXdz2XS1eo19LG",
+    "nonce": 254,
+    "authority": "BshtCZRCHj2RZYC7u5sW3ioRJo9ZiYA4T5p8muFwrKnb",
+    "poolTokenMint": "F8gPSpwVHj8FdAJAYULDuZBxFEJut87hUbARYYx3471w",
+    "poolTokenDecimals": 6,
+    "feeAccount": "5JZXUbCfaSo3y9PYq47Hj5Yc6hVFa4j7MkDzBJfMSRSN",
+    "tokenIds": [
+      "PoRTjZMPXb9T7dyU7tpLEZRQj7e6ssfAE62j2oQuc6y",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "PoRTjZMPXb9T7dyU7tpLEZRQj7e6ssfAE62j2oQuc6y": {
+        "tag": "PORT",
+        "name": "Port Finance",
+        "mint": "PoRTjZMPXb9T7dyU7tpLEZRQj7e6ssfAE62j2oQuc6y",
+        "scale": 6,
+        "addr": "2wuSqR5z2Guft2yt57Hx7K6i1AYNoUi8fjxHUeAgaKXo"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "AvP1Db3SyUxLGMSc4nSXjJkjm1kAjiLjog7cup19eWa3"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "SBR_USDC",
+    "address": "HiYggjP2fN53Jw46e5UuskqNP3HH98jceRxEgVoeRwNw",
+    "nonce": 255,
+    "authority": "ATkEV1nEkdp7zgaGpzFCsJ5WAyejcJbxqzGhQpfcDW4S",
+    "poolTokenMint": "CS7fA5n4c2D82dUoHrYzS3gAqgqaoVSfgsr18kitp2xo",
+    "poolTokenDecimals": 6,
+    "feeAccount": "7S3KKuvcHfcKWBGLDwmoTgtB97JE8LHruP8jbmQkGfH",
+    "tokenIds": [
+      "Saber2gLauYim4Mvftnrasomsv6NvAuncvMEZwcLpD1",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "Saber2gLauYim4Mvftnrasomsv6NvAuncvMEZwcLpD1": {
+        "tag": "SBR",
+        "name": "Saber",
+        "mint": "Saber2gLauYim4Mvftnrasomsv6NvAuncvMEZwcLpD1",
+        "scale": 6,
+        "addr": "DrJTQqNZqNCf2HDLpYg9zRCMRwnhZEVQuGjeaWtX6CA7"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "DEVLUv1uiUSukQoBdy9fDQyehi4N2Boojy8J2LQ8bK2E"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "scnSOL_USDC",
+    "address": "6Gh36sNXrGWYiWr999d9iZtqgnipJbWuBohyHBN1cJpS",
+    "nonce": 255,
+    "authority": "GXWEpRURaQZ9E62Q23EreTUfBy4hfemXgWFUWcg7YFgv",
+    "poolTokenMint": "Dkr8B675PGnNwEr9vTKXznjjHke5454EQdz3iaSbparB",
+    "poolTokenDecimals": 6,
+    "feeAccount": "HsC1Jo38jK3EpoNAkxfoUJhQVPa28anewZpLfeouUNk7",
+    "tokenIds": [
+      "5oVNBeEEQvYi1cX3ir8Dx5n1P7pdxydbGF2X4TxVusJm",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "5oVNBeEEQvYi1cX3ir8Dx5n1P7pdxydbGF2X4TxVusJm": {
+        "tag": "scnSOL",
+        "name": "Socean Staked Sol",
+        "mint": "5oVNBeEEQvYi1cX3ir8Dx5n1P7pdxydbGF2X4TxVusJm",
+        "scale": 9,
+        "addr": "7xs9QsrxQDVoWQ8LQ8VsVjfPKBrPGjvg8ZhaLnU1i2VR"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "FZFJK64Fk1t619zmVPqCx8Uy29zJ3WuvjWitCQuxXRo3"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "SOCN_USDC",
+    "address": "6Gh36sNXrGWYiWr999d9iZtqgnipJbWuBohyHBN1cJpS",
+    "nonce": 255,
+    "authority": "GXWEpRURaQZ9E62Q23EreTUfBy4hfemXgWFUWcg7YFgv",
+    "poolTokenMint": "Dkr8B675PGnNwEr9vTKXznjjHke5454EQdz3iaSbparB",
+    "poolTokenDecimals": 6,
+    "feeAccount": "HsC1Jo38jK3EpoNAkxfoUJhQVPa28anewZpLfeouUNk7",
+    "tokenIds": [
+      "5oVNBeEEQvYi1cX3ir8Dx5n1P7pdxydbGF2X4TxVusJm",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "5oVNBeEEQvYi1cX3ir8Dx5n1P7pdxydbGF2X4TxVusJm": {
+        "tag": "scnSOL",
+        "name": "Socean Staked Sol",
+        "mint": "5oVNBeEEQvYi1cX3ir8Dx5n1P7pdxydbGF2X4TxVusJm",
+        "scale": 9,
+        "addr": "7xs9QsrxQDVoWQ8LQ8VsVjfPKBrPGjvg8ZhaLnU1i2VR"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "FZFJK64Fk1t619zmVPqCx8Uy29zJ3WuvjWitCQuxXRo3"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "pSOL_USDC",
+    "address": "GW1Xt9HHtvcnky8X7aBA3BoTgiirJKP5XwC5REFcZSsc",
+    "nonce": 254,
+    "authority": "GXueH9K1MzRncoTYbpLiXXC3WrKkmHUFxV5JEu8oADbw",
+    "poolTokenMint": "C2YzN6MymD5HM2kPaH7bzcbqciyjfmpqyVaR3KA5V6z1",
+    "poolTokenDecimals": 6,
+    "feeAccount": "BhHd49JYH3Hk6TV5kCjmUgf7fQSQKDjaWTokMmBhTx9o",
+    "tokenIds": [
+      "9EaLkQrbjmbbuZG9Wdpo8qfNUEjHATJFSycEmw6f1rGX",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "9EaLkQrbjmbbuZG9Wdpo8qfNUEjHATJFSycEmw6f1rGX": {
+        "tag": "pSOL",
+        "name": "pSOL",
+        "mint": "9EaLkQrbjmbbuZG9Wdpo8qfNUEjHATJFSycEmw6f1rGX",
+        "scale": 9,
+        "addr": "F7XioZaGe99nosYJQCahx25TKgdUGufYf6sudm1JSgu"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "BT14DfFyNS7qcBGc8TY4HAzDev4vvqsoFBJgjtQpdM2Z"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "mSOL_SOL",
+    "address": "9EQMEzJdE2LDAY1hw1RytpufdwAXzatYfQ3M2UuT9b88",
+    "nonce": 250,
+    "authority": "6cwehd4xhKkJ2s7iGh4CaDb7KhMgqczSBnyNJieUYbHn",
+    "poolTokenMint": "29cdoMgu6MS2VXpcMo1sqRdWEzdUR9tjvoh8fcK8Z87R",
+    "poolTokenDecimals": 6,
+    "feeAccount": "6j2tt2UVYMQwqG3hRtyydW3odzBFwy3pN33tyB3xCKQ6",
+    "tokenIds": [
+      "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So",
+      "So11111111111111111111111111111111111111112"
+    ],
+    "tokens": {
+      "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So": {
+        "tag": "mSOL",
+        "name": "Marinade.finance",
+        "mint": "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So",
+        "scale": 9,
+        "addr": "6xmki5RtGNHrfhTiHFfp9k3RQ9t8qgL1cYP2YCG2h179"
+      },
+      "So11111111111111111111111111111111111111112": {
+        "tag": "SOL",
+        "name": "Solana",
+        "mint": "So11111111111111111111111111111111111111112",
+        "scale": 9,
+        "addr": "Ew2coQtVGLeca31vqB2ssHntjzZgUy1ad9VuuAX8yw7p"
+      }
+    },
+    "curveType": 2,
+    "amp": 100,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "06",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "01",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "ORCA_PAI",
+    "address": "7LfLiCnoLPefaCVuh6z92TK2tPZUa9bPjW7gHT4jqrec",
+    "nonce": 254,
+    "authority": "AwUWHxHyQHomqCGJJvagiSDhb2xMqJUiE25qDytdMw49",
+    "poolTokenMint": "C7TH2jEJJaxVwwuvkbcDGfHUiZvEkkeYjyAcdTMi5ujb",
+    "poolTokenDecimals": 6,
+    "feeAccount": "DrC2aGWrUmsnK6yAphSXEs8GW5nKUCkityaG8Bikn5Ne",
+    "tokenIds": [
+      "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+      "Ea5SjE2Y6yvCeW5dYTn7PYMuW5ikXkvbGdcmSnXeaLjS"
+    ],
+    "tokens": {
+      "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE": {
+        "tag": "ORCA",
+        "name": "Orca",
+        "mint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+        "scale": 6,
+        "addr": "HSUFpGyNXEogXQLgEMQ7aMTxE4HZneRaBovbi9btXepM"
+      },
+      "Ea5SjE2Y6yvCeW5dYTn7PYMuW5ikXkvbGdcmSnXeaLjS": {
+        "tag": "PAI",
+        "name": "Parrot Stable",
+        "mint": "Ea5SjE2Y6yvCeW5dYTn7PYMuW5ikXkvbGdcmSnXeaLjS",
+        "scale": 6,
+        "addr": "4c9rkBiqAY6fXpVvCbDwpDD44AGQ3MXSaCLcpmLUFtrX"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "ORCA_mSOL",
+    "address": "49tTgthTYLMPEqozZNyEQifqkGYxHqqDie9YxVczS3iB",
+    "nonce": 255,
+    "authority": "9FQ9gDtS6uNr5SMPafuzkDit2rMftHfQuz5mg2X3TqHT",
+    "poolTokenMint": "CVapmQn7HaU1yMDW3q6oUV4hx6XoYv54T4zfGXkuJqkA",
+    "poolTokenDecimals": 6,
+    "feeAccount": "Hq9xxKdMavJd4teMZusF4PiGNGV3hxdcMZwAdngkHCg7",
+    "tokenIds": [
+      "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+      "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So"
+    ],
+    "tokens": {
+      "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE": {
+        "tag": "ORCA",
+        "name": "Orca",
+        "mint": "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE",
+        "scale": 6,
+        "addr": "7hoYJc4aqttctANrNe75gscdmQD9HcXZED6AjdDdZMQ9"
+      },
+      "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So": {
+        "tag": "mSOL",
+        "name": "Marinade.finance",
+        "mint": "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So",
+        "scale": 9,
+        "addr": "7MuvRUFT1wWiL7uJKdZqNwk9Fmz2HJ36bEArhDTnyFij"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "scnSOL_SOL",
+    "address": "2q6UMko5kTnv866W9MTeAFau94pLpsdeNjDdSYSgZUXr",
+    "nonce": 255,
+    "authority": "Gyd77CwV23qq937x9UDa4TDkxEeQF9tp8ifotYxqW3Kd",
+    "poolTokenMint": "APNpzQvR91v1THbsAyG3HHrUEwvexWYeNCFLQuVnxgMc",
+    "poolTokenDecimals": 6,
+    "feeAccount": "42Xzazs9EvjtidvEDrj3JXbDtf6fpTq5XHh96mPctvBV",
+    "tokenIds": [
+      "5oVNBeEEQvYi1cX3ir8Dx5n1P7pdxydbGF2X4TxVusJm",
+      "So11111111111111111111111111111111111111112"
+    ],
+    "tokens": {
+      "5oVNBeEEQvYi1cX3ir8Dx5n1P7pdxydbGF2X4TxVusJm": {
+        "tag": "scnSOL",
+        "name": "Socean Staked Sol",
+        "mint": "5oVNBeEEQvYi1cX3ir8Dx5n1P7pdxydbGF2X4TxVusJm",
+        "scale": 9,
+        "addr": "C8DRXUqxXtUgvgBR7BPAmy6tnRJYgVjG27VU44wWDMNV"
+      },
+      "So11111111111111111111111111111111111111112": {
+        "tag": "SOL",
+        "name": "Solana",
+        "mint": "So11111111111111111111111111111111111111112",
+        "scale": 9,
+        "addr": "DzdxH5qJ68PiM1p5o6PbPLPpDj8m1ZshcaMFATcxDZix"
+      }
+    },
+    "curveType": 2,
+    "amp": 100,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "06",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "01",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "SOCN_SOL",
+    "address": "2q6UMko5kTnv866W9MTeAFau94pLpsdeNjDdSYSgZUXr",
+    "nonce": 255,
+    "authority": "Gyd77CwV23qq937x9UDa4TDkxEeQF9tp8ifotYxqW3Kd",
+    "poolTokenMint": "APNpzQvR91v1THbsAyG3HHrUEwvexWYeNCFLQuVnxgMc",
+    "poolTokenDecimals": 6,
+    "feeAccount": "42Xzazs9EvjtidvEDrj3JXbDtf6fpTq5XHh96mPctvBV",
+    "tokenIds": [
+      "5oVNBeEEQvYi1cX3ir8Dx5n1P7pdxydbGF2X4TxVusJm",
+      "So11111111111111111111111111111111111111112"
+    ],
+    "tokens": {
+      "5oVNBeEEQvYi1cX3ir8Dx5n1P7pdxydbGF2X4TxVusJm": {
+        "tag": "scnSOL",
+        "name": "Socean Staked Sol",
+        "mint": "5oVNBeEEQvYi1cX3ir8Dx5n1P7pdxydbGF2X4TxVusJm",
+        "scale": 9,
+        "addr": "C8DRXUqxXtUgvgBR7BPAmy6tnRJYgVjG27VU44wWDMNV"
+      },
+      "So11111111111111111111111111111111111111112": {
+        "tag": "SOL",
+        "name": "Solana",
+        "mint": "So11111111111111111111111111111111111111112",
+        "scale": 9,
+        "addr": "DzdxH5qJ68PiM1p5o6PbPLPpDj8m1ZshcaMFATcxDZix"
+      }
+    },
+    "curveType": 2,
+    "amp": 100,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "06",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "01",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "ATLAS_USDC",
+    "address": "3V5sjXj1mrWjjB1Xt6Xwp554QwHE5fppGSxbk4GzAtEW",
+    "nonce": 254,
+    "authority": "8UYN675AJn5htWydDs724xqintBZ4XzsCWqMozUSDU8m",
+    "poolTokenMint": "FZ8x1LCRSPDeHBDoAc3Gc6Y7ETCynuHEr5q5YWV7uRCJ",
+    "poolTokenDecimals": 6,
+    "feeAccount": "CFN4DQ2p3qroX92pPNy3mov3Dw1aCNGLrU5AXHpHxbko",
+    "tokenIds": [
+      "ATLASXmbPQxBUYbxPsV97usA3fPQYEqzQBUHgiFCUsXx",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "ATLASXmbPQxBUYbxPsV97usA3fPQYEqzQBUHgiFCUsXx": {
+        "tag": "ATLAS",
+        "name": "Star Atlas",
+        "mint": "ATLASXmbPQxBUYbxPsV97usA3fPQYEqzQBUHgiFCUsXx",
+        "scale": 8,
+        "addr": "xotXsNCx4tBhnwhrajGTaVgKq1sfuMkeYHc77ZegCqE"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "8YswVYsTi66umBF2Bnkh4LB2VWMKPssDpe54VAgiuJZQ"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "POLIS_USDC",
+    "address": "CdKPtCb5fBRaGFS4bJgytfReeHuFyhpe9YUyWHPnEWZG",
+    "nonce": 251,
+    "authority": "8XB9V3VuHtPBzHqvxzcmpkpaoXNXjZMD8VBHC79SxcEL",
+    "poolTokenMint": "GteBdo9sqE7T41G8AJsaG9WHW48uXBwsLLznmu2TBdgy",
+    "poolTokenDecimals": 6,
+    "feeAccount": "3gZQ2YnrXbnRwJj5poffLirF7CwacatvtfGCNRFrbJdr",
+    "tokenIds": [
+      "poLisWXnNRwC6oBu1vHiuKQzFjGL4XDSu4g9qjz9qVk",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "poLisWXnNRwC6oBu1vHiuKQzFjGL4XDSu4g9qjz9qVk": {
+        "tag": "POLIS",
+        "name": "Star Atlas DAO",
+        "mint": "poLisWXnNRwC6oBu1vHiuKQzFjGL4XDSu4g9qjz9qVk",
+        "scale": 8,
+        "addr": "EbXNEUiKxSU1vwwhrbVNVk3qX4o1yU3p75SQUUMfc1zH"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "CLCj9b1vdPutrkvZS8ACTM5q42SXB2Q7khnMLVxDMGEK"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "BOP_USDC",
+    "address": "9pheQ8EX2wDKHZYm75G9haEbTyAcg8F2gFWybw2w6Vyc",
+    "nonce": 253,
+    "authority": "3rxJPYuiRijipJbciewUDacab2Wo3yAe1yWBGzmqn5f1",
+    "poolTokenMint": "2gXDJZ7XAtQEtf4PRSQZKoq1WMuu1H44tQanbMA3YVpu",
+    "poolTokenDecimals": 6,
+    "feeAccount": "2bei4349W8FUcu5gvP5Zt8yhkpwqcCngZxUkb3xRMJZJ",
+    "tokenIds": [
+      "BLwTnYKqf7u4qjgZrrsKeNs2EzWkMLqVCu6j8iHyrNA3",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "BLwTnYKqf7u4qjgZrrsKeNs2EzWkMLqVCu6j8iHyrNA3": {
+        "tag": "BOP",
+        "name": "Boring Protocol",
+        "mint": "BLwTnYKqf7u4qjgZrrsKeNs2EzWkMLqVCu6j8iHyrNA3",
+        "scale": 8,
+        "addr": "HkHjLSaP9yyWTzMGD1DKyoc1Dfvhvw4vakRhyjcVUCKs"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "CqRoKMF4kh2o568nFdDNHs7cszBjrkQME4RtCuTqcjCe"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "SAMO_USDC",
+    "address": "Epvp7qMYAF21VVjacdB3VfKn6nnXQSF4rGYu8sD6Bkow",
+    "nonce": 252,
+    "authority": "AB4rTE2JiKFhnfynUQCovbW75CUxT9LxcJX2SDTbY9gy",
+    "poolTokenMint": "6VK1ksrmYGMBWUUZfygGF8tHRGpNxQEWv8pfvzQHdyyc",
+    "poolTokenDecimals": 6,
+    "feeAccount": "9U8UF7d8kBvsS25XoZnjmVQ9vGkP4BUnHJgfc615BvG1",
+    "tokenIds": [
+      "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU": {
+        "tag": "SAMO",
+        "name": "Samoyedcoin",
+        "mint": "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
+        "scale": 9,
+        "addr": "7jwHW4Lw3nVaSJXskN5pUoKU6YB9RBVfZtGBp3VbR43U"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "G7Gqjxk9EaJMeFfoFTSy9WfH8uurgQkbNQCREWAc56DZ"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "NINJA_SOL",
+    "address": "3ECUtPokme1nimJfuAkMtcm7QYjDEfXRQzmGC16LuYnz",
+    "nonce": 255,
+    "authority": "H8f9n2PfehUc73gRWSRTPXvqUhUHVywdAxcfEtYmmyAo",
+    "poolTokenMint": "4X1oYoFWYtLebk51zuh889r1WFLe8Z9qWApj87hQMfML",
+    "poolTokenDecimals": 6,
+    "feeAccount": "43ViAbUVujnYtJyzGP4AhabMYCbLsExenT3WKsZjqJ7N",
+    "tokenIds": [
+      "FgX1WD9WzMU3yLwXaFSarPfkgzjLb2DZCqmkx9ExpuvJ",
+      "So11111111111111111111111111111111111111112"
+    ],
+    "tokens": {
+      "FgX1WD9WzMU3yLwXaFSarPfkgzjLb2DZCqmkx9ExpuvJ": {
+        "tag": "NINJA",
+        "name": "NINJA",
+        "mint": "FgX1WD9WzMU3yLwXaFSarPfkgzjLb2DZCqmkx9ExpuvJ",
+        "scale": 6,
+        "addr": "6Y9VyEYHgxVahiixzphNh4HAywpab9zVoD4S8q1sfuL8"
+      },
+      "So11111111111111111111111111111111111111112": {
+        "tag": "SOL",
+        "name": "Solana",
+        "mint": "So11111111111111111111111111111111111111112",
+        "scale": 9,
+        "addr": "9SxzphwrrDVDkwkyvmtag9NLgpjSkTw35cRwg9rLMYWk"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "SLIM_USDC",
+    "address": "8JPid6GtND2tU3A7x7GDfPPEWwS36rMtzF7YoHU44UoA",
+    "nonce": 255,
+    "authority": "749y4fXb9SzqmrLEetQdui5iDucnNiMgCJ2uzc3y7cou",
+    "poolTokenMint": "BVWwyiHVHZQMPHsiW7dZH7bnBVKmbxdeEjWqVRciHCyo",
+    "poolTokenDecimals": 6,
+    "feeAccount": "E6aTzkZKdCECgpDtBZtVpqiGjxRDSAFh1SC9CdSoVK7a",
+    "tokenIds": [
+      "xxxxa1sKNGwFtw2kFn8XauW9xq8hBZ5kVtcSesTT9fW",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "xxxxa1sKNGwFtw2kFn8XauW9xq8hBZ5kVtcSesTT9fW": {
+        "tag": "SLIM",
+        "name": "Solanium",
+        "mint": "xxxxa1sKNGwFtw2kFn8XauW9xq8hBZ5kVtcSesTT9fW",
+        "scale": 6,
+        "addr": "ErcxwkPgLdyoVL6j2SsekZ5iysPZEDRGfAggh282kQb8"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "EFYW6YEiCGpavuMPS1zoXhgfNkPisWkQ3bQz1b4UfKek"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "wHAPI_USDC",
+    "address": "2Y1Jmpkf5wt1X5zcFHNBDoHxqjTXbMJfj1UFtrYQwUbG",
+    "nonce": 254,
+    "authority": "8K4eRHeyPhBGB9zCjKtyBHoPPZ75zLN64oxBF6GyF4Qg",
+    "poolTokenMint": "ELfBngAgvLEHVBuJQhhE7AW6eqLX7id2sfrBngVNVAUW",
+    "poolTokenDecimals": 6,
+    "feeAccount": "Bx3ZhEBFedDqCBzuzKVS4eMKTtW1MmHkcMGU45FcyxRT",
+    "tokenIds": [
+      "6VNKqgz9hk7zRShTFdg5AnkfKwZUcojzwAkzxSH3bnUm",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "6VNKqgz9hk7zRShTFdg5AnkfKwZUcojzwAkzxSH3bnUm": {
+        "tag": "wHAPI",
+        "name": "HAPI",
+        "mint": "6VNKqgz9hk7zRShTFdg5AnkfKwZUcojzwAkzxSH3bnUm",
+        "scale": 9,
+        "addr": "DRYADMQevoJHDFCYbDQeS4p551MpsDN2d7CJU3LxfNHa"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "HzsECCX6RZ2ccbR3FarRSEfc5rkuETfywXJnRZut5JzU"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "COPE_USDC",
+    "address": "DhGTKyT6RVkpvPxXAJodi4Z41RSvQZxV1f5eRvJ5bE4r",
+    "nonce": 254,
+    "authority": "Hu8AWoRBa7ZaYQFdHQyRHeEZGB16Me86fA5vAZzjVUmv",
+    "poolTokenMint": "HsauTv9s52Zv12eaDuSp6y7BEm4e4BHEyAsbdjyyWzPK",
+    "poolTokenDecimals": 6,
+    "feeAccount": "JEGcxfGxWJpRkGtvA6J6kEgTBebDz6kxURoeB3SX8vaW",
+    "tokenIds": [
+      "8HGyAAB1yoM1ttS7pXjHMa3dukTFGQggnFFH3hJZgzQh",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "8HGyAAB1yoM1ttS7pXjHMa3dukTFGQggnFFH3hJZgzQh": {
+        "tag": "COPE",
+        "name": "Cope",
+        "mint": "8HGyAAB1yoM1ttS7pXjHMa3dukTFGQggnFFH3hJZgzQh",
+        "scale": 6,
+        "addr": "6N3P3etaUYGeBs2C67ZQTDRqHsExNsfj85dDWPwHtQBS"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "36VVz3eY8YmWBGskQVjvGGBfyUKHHCEDBgkFtzMpFqeU"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "SUNNY_USDC",
+    "address": "3Ukqqshh3kZ8UPbcYYFSRaeJcsgttcmShtNNn12F1rj2",
+    "nonce": 255,
+    "authority": "7NP8DTzPdpbQofhNyhLW3j2khutmfy1kuFp2AjaD8rrp",
+    "poolTokenMint": "GHuoeq9UnFBsBhMwH43eL3RWX5XVXbSRYJymmyMYpT7n",
+    "poolTokenDecimals": 6,
+    "feeAccount": "CCuSVbnnq8SUj7cpPe7BbHLuKanyxfvfrwypzCBnaDdf",
+    "tokenIds": [
+      "SUNNYWgPQmFxe9wTZzNK7iPnJ3vYDrkgnxJRJm1s3ag",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "SUNNYWgPQmFxe9wTZzNK7iPnJ3vYDrkgnxJRJm1s3ag": {
+        "tag": "SUNNY",
+        "name": "Sunny Aggregator",
+        "mint": "SUNNYWgPQmFxe9wTZzNK7iPnJ3vYDrkgnxJRJm1s3ag",
+        "scale": 6,
+        "addr": "F6nCAMYEFxsyRDVonQXLNufXgAHsgAa1Br8DhBoX3KAV"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "HWCTHmQppFSsKQEk1bHUqPC2WLaidgnfTG9MQGD4XKEt"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "GRAPE_USDC",
+    "address": "6MxUhBLXHCqpdYaFPTmw1D9fQ7zYnm9grZyJvpGiqr15",
+    "nonce": 255,
+    "authority": "SvWmpVVUkv8cwoRnBQ5Gqt2FFYjdpWLS665gE2ZLNQp",
+    "poolTokenMint": "EorFh8siFyLF1QTZ7cCXQaPGqyo7eb4SAgKtRH8Jcxjd",
+    "poolTokenDecimals": 6,
+    "feeAccount": "6vWYnRDEHu7kRLbA2dnBgEfbdba72iDMDD9k3munyPaP",
+    "tokenIds": [
+      "8upjSpvjcdpuzhfR1zriwg5NXkwDruejqNE9WNbPRtyA",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "8upjSpvjcdpuzhfR1zriwg5NXkwDruejqNE9WNbPRtyA": {
+        "tag": "GRAPE",
+        "name": "Grape",
+        "mint": "8upjSpvjcdpuzhfR1zriwg5NXkwDruejqNE9WNbPRtyA",
+        "scale": 6,
+        "addr": "686KiYDMMkbredNoWx8yqvAdKSiHuWSG3dnbL6yWYmZp"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "9i14ZKzaDmzKCAQb8hCv4h5GCo2Xiq83JcL7bofk4Ddj"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "ABR_USDC",
+    "address": "rxwsjytcEBvXpXrXBL1rpsjhoh78imBn8WbxjKmLRge",
+    "nonce": 252,
+    "authority": "AcaxutE6Rh9vRxipTLdqinEdRK6R4ayUAAv2bZPh6UU9",
+    "poolTokenMint": "GMzPbaCuQmeMUm1opH3oSCgKUjVgJUW14myq99RVPGX5",
+    "poolTokenDecimals": 6,
+    "feeAccount": "7pPJGwd8Vq7aYmHaocQpQSfTn3UWYGKUgFkFhpMmRdDF",
+    "tokenIds": [
+      "a11bdAAuV8iB2fu7X6AxAvDTo1QZ8FXB3kk5eecdasp",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "a11bdAAuV8iB2fu7X6AxAvDTo1QZ8FXB3kk5eecdasp": {
+        "tag": "ABR",
+        "name": "Allbridge",
+        "mint": "a11bdAAuV8iB2fu7X6AxAvDTo1QZ8FXB3kk5eecdasp",
+        "scale": 9,
+        "addr": "6FRxhbY7bvSiDojPiqoidjTyDjxaUyCoPQk3ifEdfFbm"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "8aTapFecZRZmC2bTeKr2voHFW2twNvbrh8nWYdXYQWkZ"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "KURO_USDC",
+    "address": "HdeYs4bpJKN2oTb7PHxbqq4kzKiLr772A5N2gWjY57ZT",
+    "nonce": 250,
+    "authority": "2KRcBDQJWEPygxcMMFMvR6dMTVtMkJV6kbxr5e9Kdj5Q",
+    "poolTokenMint": "DRknxb4ZFxXUTG6UJ5HupNHG1SmvBSCPzsZ1o9gAhyBi",
+    "poolTokenDecimals": 6,
+    "feeAccount": "5XuLrZqpX9gW3pJw7274EYwAft1ciTXndU4on96ERi9J",
+    "tokenIds": [
+      "2Kc38rfQ49DFaKHQaWbijkE7fcymUMLY5guUiUsDmFfn",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "2Kc38rfQ49DFaKHQaWbijkE7fcymUMLY5guUiUsDmFfn": {
+        "tag": "KURO",
+        "name": "Kurobi",
+        "mint": "2Kc38rfQ49DFaKHQaWbijkE7fcymUMLY5guUiUsDmFfn",
+        "scale": 6,
+        "addr": "DBckbD9CoRBFE8WdbbnFLDz6WdDDSZ7ReEeqdjL62fpG"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "B252w7ZkUX4WyLUJKLEymEpRkYMqJhgv2PSj2Z2LWH34"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "MEDIA_USDC",
+    "address": "5L2aVMnNsmrnkxU4B25ajb2pR5AJWBRfUa73wjasjyaB",
+    "nonce": 255,
+    "authority": "HX3JKg5HtboRw9nQRWm47rSJkBHczdcXwBgWASyHi3Wk",
+    "poolTokenMint": "2toFgkQDoPrTJYGDEVoCasPXuL9uQnjvXJaDwa9LHyTx",
+    "poolTokenDecimals": 6,
+    "feeAccount": "5BkyYnBWnzBWQKnU9AcUaDrmyhjLpAcFxCvVTTnRGyYk",
+    "tokenIds": [
+      "ETAtLmCmsoiEEKfNrHKJ2kYy3MoABhU6NQvpSfij5tDs",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "ETAtLmCmsoiEEKfNrHKJ2kYy3MoABhU6NQvpSfij5tDs": {
+        "tag": "MEDIA",
+        "name": "Media Network",
+        "mint": "ETAtLmCmsoiEEKfNrHKJ2kYy3MoABhU6NQvpSfij5tDs",
+        "scale": 6,
+        "addr": "BFAyLvCbMhgF7CQ9fsWWK46jD9mPXfBMDWvXgk5LTgsT"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "7CvBsWsfEif4sAo9dnsf1JKVAfBGcZUVTktqtxBSkgwB"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "TULIP_USDC",
+    "address": "BNwrRN23RCoq5MAneJ6Cot7iN2FLtyt9rtcjaVfAXTLt",
+    "nonce": 253,
+    "authority": "EFZs7veYVdWBHt7RcAPvXQc46gDzccpZTxAcEm6NyXFg",
+    "poolTokenMint": "4SBx8GXu8HhcVHWydQv1vsDdZs3G93XSL9CtMBny6hS5",
+    "poolTokenDecimals": 6,
+    "feeAccount": "8BiqDTCBQ77qjGpED2was7C4iHJrQx9bXhzRt3Wz9xJG",
+    "tokenIds": [
+      "TuLipcqtGVXP9XR62wM8WWCm6a9vhLs7T1uoWBk6FDs",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "TuLipcqtGVXP9XR62wM8WWCm6a9vhLs7T1uoWBk6FDs": {
+        "tag": "TULIP",
+        "name": "Tulip Protocol",
+        "mint": "TuLipcqtGVXP9XR62wM8WWCm6a9vhLs7T1uoWBk6FDs",
+        "scale": 6,
+        "addr": "5CKd5M2nXdPM1TMXxqK6Up6GZehKL5uU9Z9Ytm2sFCiz"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "HjMQnuxjVRodoaAg9WcNXb9TAssDaFNpgwcUUKNjWdh5"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "MNGO_USDC",
+    "address": "Hk9ZCvmqVT1FHNkWJMrtMkkVnH1WqssWPAvmio5Vs3se",
+    "nonce": 254,
+    "authority": "5RyiYaHFDVupwnwxzKCRk7JY1CKhsczZXefMs3UUmx4Z",
+    "poolTokenMint": "H9yC7jDng974WwcU4kTGs7BKf7nBNswpdsP5bzbdXjib",
+    "poolTokenDecimals": 6,
+    "feeAccount": "FWKcKaMfaVezLRFr946MdgmpTZHG4A2GgqehAxjTyDAB",
+    "tokenIds": [
+      "MangoCzJ36AjZyKwVj3VnYU4GTonjfVEnJmvvWaxLac",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "MangoCzJ36AjZyKwVj3VnYU4GTonjfVEnJmvvWaxLac": {
+        "tag": "MNGO",
+        "name": "Mango Markets",
+        "mint": "MangoCzJ36AjZyKwVj3VnYU4GTonjfVEnJmvvWaxLac",
+        "scale": 6,
+        "addr": "J8bQnhcNyixFGBskQoJ2aSPXPWjvSzaaxF4YPs96XHDJ"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "5yMoAhjfFaCPwEwKM2VeFFh2iBs5mHWLTJ4LuqZifsgN"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "stSOL_wstETH",
+    "address": "B32UuhPSp6srSBbRTh4qZNjkegsehY9qXTwQgnPWYMZy",
+    "nonce": 255,
+    "authority": "EtwQJxu8wih29vMpdTa74K9W9tgtL4LT6hbWBkhHwvU5",
+    "poolTokenMint": "Eswigpwm3xsipkTqahGi2PEJsJcULQBwZgxhQpr6yBEa",
+    "poolTokenDecimals": 6,
+    "feeAccount": "74b9j23njRpt3PYPxoze2XS29ZgGmucziLB7WrsDpBdD",
+    "tokenIds": [
+      "7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7ARj",
+      "ZScHuTtqZukUrtZS43teTKGs2VqkKL8k4QCouR2n6Uo"
+    ],
+    "tokens": {
+      "7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7ARj": {
+        "tag": "stSOL",
+        "name": "Lido Staked SOL",
+        "mint": "7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7ARj",
+        "scale": 9,
+        "addr": "CeSEpgqc3zV8xDr7Q6PiwJju6a6e92wpAv7Kg6QyFfQB"
+      },
+      "ZScHuTtqZukUrtZS43teTKGs2VqkKL8k4QCouR2n6Uo": {
+        "tag": "wstETH",
+        "name": "Lido Staked Ether",
+        "mint": "ZScHuTtqZukUrtZS43teTKGs2VqkKL8k4QCouR2n6Uo",
+        "scale": 8,
+        "addr": "Fb3XpEJgghTURUGd1wphWr93ruX5egnesfdZtjWCxJFy"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "SYP_USDC",
+    "address": "5DnwMqYAGEKekYXJdN8Bue6vN1p5zrEnBpmd53jEK61S",
+    "nonce": 255,
+    "authority": "4NfadURWeSDPJBGcKQRt39mPhbG9M7EJx6FZDwwcFB9f",
+    "poolTokenMint": "qJxKN9BhxbYvRNbjfK2uAVWboto6sonj8XC1ZEW5XTB",
+    "poolTokenDecimals": 6,
+    "feeAccount": "57L2bEFecsAv4jnaM2PBaeAVyPZEYtTmXBi7eaG2xWXw",
+    "tokenIds": [
+      "FnKE9n6aGjQoNWRBZXy4RW6LZVao7qwBonUbiD7edUmZ",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "FnKE9n6aGjQoNWRBZXy4RW6LZVao7qwBonUbiD7edUmZ": {
+        "tag": "SYP",
+        "name": "Sypool",
+        "mint": "FnKE9n6aGjQoNWRBZXy4RW6LZVao7qwBonUbiD7edUmZ",
+        "scale": 9,
+        "addr": "6d19CQA1FP2MLLAzA7XoZEc9Agc32FaKUS175UVWLGtv"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "HpPnUHyo19VjmXbP6FbbKXu7WQCUEn6h7be76fZdHVmf"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "stSOL_wLDO",
+    "address": "CqwyVxWeaiikQ3VhvEZSEmupmG1Wmc2FeaUjsCV492Sx",
+    "nonce": 255,
+    "authority": "213QoNt5dR56Ye2sx9cwPwpR3NpJUEStQXn8EbbWKkfJ",
+    "poolTokenMint": "74B9aMS7SA832xKngt5VLKmWAP3pa3qkUzWncTmQSsGF",
+    "poolTokenDecimals": 6,
+    "feeAccount": "D4kH4fcwwDtGMj4LpcynB977YVnmvDUcuDQoo5sqAgRz",
+    "tokenIds": [
+      "7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7ARj",
+      "HZRCwxP2Vq9PCpPXooayhJ2bxTpo5xfpQrwB1svh332p"
+    ],
+    "tokens": {
+      "7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7ARj": {
+        "tag": "stSOL",
+        "name": "Lido Staked SOL",
+        "mint": "7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7ARj",
+        "scale": 9,
+        "addr": "GDprNAcXeR5GVGnCtkS5UqyPGMm2Sy5Lk15qqN36faMT"
+      },
+      "HZRCwxP2Vq9PCpPXooayhJ2bxTpo5xfpQrwB1svh332p": {
+        "tag": "wLDO",
+        "name": "Lido DAO",
+        "mint": "HZRCwxP2Vq9PCpPXooayhJ2bxTpo5xfpQrwB1svh332p",
+        "scale": 8,
+        "addr": "VCgdcsExfmxUDQwusLP2xqZ3ap7VuYyQMMHDPSva2hx"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "whETH_SOL",
+    "address": "FcEro2uFpHcb7Z785CBs6q12KMJqUJKa8VTXPi4TTBMf",
+    "nonce": 252,
+    "authority": "HMxZz8fv2uR9suzAPRbJGNB3wZL1eT3eKL3cpYWUbM8K",
+    "poolTokenMint": "7aYnrdmdCRodDy2Czn6keUquUhjF1jPEmfwZPh488z8U",
+    "poolTokenDecimals": 6,
+    "feeAccount": "YCVJDKdHNi1mhJtWz7QGbBRreMmw1soeipz7wZbQKEK",
+    "tokenIds": [
+      "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs",
+      "So11111111111111111111111111111111111111112"
+    ],
+    "tokens": {
+      "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs": {
+        "tag": "whETH",
+        "name": "Ethereum",
+        "mint": "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs",
+        "scale": 8,
+        "addr": "3uQytDKNd5H6XK8FhTei4wCUmj2eTbLTbiLAtWk2SmbA"
+      },
+      "So11111111111111111111111111111111111111112": {
+        "tag": "SOL",
+        "name": "Solana",
+        "mint": "So11111111111111111111111111111111111111112",
+        "scale": 9,
+        "addr": "GR3g8Wej3jmv92hYM1t22kaXog2xjkGjQ7V1XzLd1efT"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "whETH_USDC",
+    "address": "4reGGLbesqpAeAZdAJv9hhgA2tgj45oGcyRuEvhATdMm",
+    "nonce": 252,
+    "authority": "8uLtzZ1iTLTCPsm3b4QttRmDXcFjhVHRuMS9VTVEwo7E",
+    "poolTokenMint": "7NPtjjAP7vhp4t5NCLyY4DY5rurvyc8cgZ2a2rYabRia",
+    "poolTokenDecimals": 6,
+    "feeAccount": "AVw52spXtzFh4bb5ghhpJaDbLx3XWuY85eQNDEo3X1yN",
+    "tokenIds": [
+      "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs": {
+        "tag": "whETH",
+        "name": "Ethereum",
+        "mint": "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs",
+        "scale": 8,
+        "addr": "9KpjcpKwhoFPbixvKDfcAhBQcVXk1CSBTGsJdzojDPRv"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "5HaG31FQS4McBVcHxVfwaKaWXE3VCGqvJ1ZDkTxs94cQ"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "MNDE_mSOL",
+    "address": "vjHagYsgZwG9icyFLHu2xWHWdtiS5gfeNzRhDcPt5xq",
+    "nonce": 255,
+    "authority": "3HWcojnC1ruEMmsE92Ez1BoebdDXzYQa4USaeWX7eTuM",
+    "poolTokenMint": "5PHS5w6hQwFNnLz1jJFe7TVTxSQ98cDYC3akmiAoFMXs",
+    "poolTokenDecimals": 6,
+    "feeAccount": "46mdANZ2DCA2sTFchvD7WwbffbLQa4jCFkkRL23WuYG8",
+    "tokenIds": [
+      "MNDEFzGvMt87ueuHvVU9VcTqsAP5b3fTGPsHuuPA5ey",
+      "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So"
+    ],
+    "tokens": {
+      "MNDEFzGvMt87ueuHvVU9VcTqsAP5b3fTGPsHuuPA5ey": {
+        "tag": "MNDE",
+        "name": "Marinade Governance",
+        "mint": "MNDEFzGvMt87ueuHvVU9VcTqsAP5b3fTGPsHuuPA5ey",
+        "scale": 9,
+        "addr": "2LferrWvYWtHFfdkmixzt9g3aKa3yBNfgbRrP1CcWMMp"
+      },
+      "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So": {
+        "tag": "mSOL",
+        "name": "Marinade.finance",
+        "mint": "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So",
+        "scale": 9,
+        "addr": "GimsuZjYqMXM6xK6S3e9JpGvX6jaMPuNeR6s2piDESmy"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "WAG_USDC",
+    "address": "B76e3wtCDTKBgKQjvx87EBkDLPGcCY9w1SGiwjD5kaK7",
+    "nonce": 254,
+    "authority": "FRUmMZDiZrDrwioiUYi3tdqF7SEBeT219bBu54PGxoCo",
+    "poolTokenMint": "Df6XNHMF3uRVZnz7LCEGiZVax6rXgz76owtVkBHEjSb6",
+    "poolTokenDecimals": 6,
+    "feeAccount": "BCuRKfsM99LJFCchKUBLBZ26UuziDewJDRkkKMwx2qnd",
+    "tokenIds": [
+      "5tN42n9vMi6ubp67Uy4NnmM5DMZYN8aS8GeB3bEDHr6E",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "5tN42n9vMi6ubp67Uy4NnmM5DMZYN8aS8GeB3bEDHr6E": {
+        "tag": "WAG",
+        "name": "Waggle",
+        "mint": "5tN42n9vMi6ubp67Uy4NnmM5DMZYN8aS8GeB3bEDHr6E",
+        "scale": 9,
+        "addr": "8voSogytL9jLgE73GS3WuujBinKFRQJjvUFsVGYexWZd"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "HEP7mACuN13cT95eDAYTNjgwriqJnMQVhnyRctqnBRe4"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "mSOL_USDT",
+    "address": "Afofkb7JTc32rdpqiyc3RDmGF5s9N6W1ujcdYVfGZ5Je",
+    "nonce": 251,
+    "authority": "8vrC1FAnW6hQMwJuU5waZdRrBbDJTULqjpdc4GjDtKR6",
+    "poolTokenMint": "9cMWe4UYRPGAUUsTkjShJWVM7bk8DUBgxtwwH8asFJoV",
+    "poolTokenDecimals": 6,
+    "feeAccount": "7GPvi21QbwMyBoXU5Zqf8VhnuEh7VH4A1SRPgHJ36eE7",
+    "tokenIds": [
+      "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So",
+      "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"
+    ],
+    "tokens": {
+      "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So": {
+        "tag": "mSOL",
+        "name": "Marinade.finance",
+        "mint": "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So",
+        "scale": 9,
+        "addr": "RTXKRxghfWJpE344UG7UhKnCwN2Gyv6KnNSTFDnaASF"
+      },
+      "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB": {
+        "tag": "USDT",
+        "name": "Tether USD",
+        "mint": "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+        "scale": 6,
+        "addr": "J15KntYr6iout4ce2kcD2QEdkVbLN4EHHFLfCtke3f6Y"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "mSOL_whETH",
+    "address": "A71DQffTzgxBSzXjPL3tmf8XXTNtS5mR2D78Y8rmV2hk",
+    "nonce": 250,
+    "authority": "FPWpe7QEQnDMivnHksQW2uvcw9tvX1oxejKBX136WRkr",
+    "poolTokenMint": "5qoTq3qC4U7vFxo3iCzbXcaD1UEmDeCD63Dsuoct71oV",
+    "poolTokenDecimals": 6,
+    "feeAccount": "FSqUYVzF3XZzLcnj132eT6ed3bK95G1yG4MazcHZi99Q",
+    "tokenIds": [
+      "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So",
+      "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs"
+    ],
+    "tokens": {
+      "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So": {
+        "tag": "mSOL",
+        "name": "Marinade.finance",
+        "mint": "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So",
+        "scale": 9,
+        "addr": "Fcp5u8bL3V24MXjA4noSfMpcEAP2vSj1WTaA1ZNxACZL"
+      },
+      "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs": {
+        "tag": "whETH",
+        "name": "Ethereum",
+        "mint": "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs",
+        "scale": 8,
+        "addr": "DuBCBX3y2FjDWUn2ncK5EKQh229JiJ7HTCjYJhNC87K8"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "BTC_mSOL",
+    "address": "8DRw5wQE1pyg6RB1UwypGNFgb2Pzp2hpyDDNwo76Lcc8",
+    "nonce": 255,
+    "authority": "3X1aLdyvcQNc8TvBMPiucMsRCnGMBnGsjJHpZEyCf3pn",
+    "poolTokenMint": "8nKJ4z9FSw6wrVZKASqBiS9DS1CiNsRnqwCCKVQjqdkB",
+    "poolTokenDecimals": 6,
+    "feeAccount": "AqiLHbUAy4UWWKGVVgbHsaUVCMg1zemNkgsYBPSirT92",
+    "tokenIds": [
+      "9n4nbM75f5Ui33ZbPYXn59EwSgE8CGsHtAeTH5YFeJ9E",
+      "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So"
+    ],
+    "tokens": {
+      "9n4nbM75f5Ui33ZbPYXn59EwSgE8CGsHtAeTH5YFeJ9E": {
+        "tag": "BTC",
+        "name": "Bitcoin",
+        "mint": "9n4nbM75f5Ui33ZbPYXn59EwSgE8CGsHtAeTH5YFeJ9E",
+        "scale": 6,
+        "addr": "6D3sxC6yEe84FUnF5Kpbgx6gN57N9poJCKAtrCeCWdJo"
+      },
+      "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So": {
+        "tag": "mSOL",
+        "name": "Marinade.finance",
+        "mint": "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So",
+        "scale": 9,
+        "addr": "EPoVJLhi9QtVPVo8n31M5k5Knvb48j8zbYyRrUbrHwC5"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "IVN_SOL",
+    "address": "CFCivUWXBuULVNfJezj1fAhX6hdwVFi2BsCtpu6m96bR",
+    "nonce": 255,
+    "authority": "JGhNs5r7YNnJokzzXZWE3REKV8x4GiUvn2xSg7XGg59",
+    "poolTokenMint": "DfgCnzaiTXfPkAH1C1Z441b5MzjjTCEh134ioxqRZxYf",
+    "poolTokenDecimals": 6,
+    "feeAccount": "HwwgrSjJGFBtRN8h2daWnVLBciwoo79wNeKi6b5SZmE2",
+    "tokenIds": [
+      "iVNcrNE9BRZBC9Aqf753iZiZfbszeAVUoikgT9yvr2a",
+      "So11111111111111111111111111111111111111112"
+    ],
+    "tokens": {
+      "iVNcrNE9BRZBC9Aqf753iZiZfbszeAVUoikgT9yvr2a": {
+        "tag": "IVN",
+        "name": "Investin",
+        "mint": "iVNcrNE9BRZBC9Aqf753iZiZfbszeAVUoikgT9yvr2a",
+        "scale": 6,
+        "addr": "C5yDeB3jBz5yZPa6FgP6b7HNoFxLP63Pyzpaosnkikis"
+      },
+      "So11111111111111111111111111111111111111112": {
+        "tag": "SOL",
+        "name": "Solana",
+        "mint": "So11111111111111111111111111111111111111112",
+        "scale": 9,
+        "addr": "CCm846T6xj9VAhSAifuUJAXYCR3kaGp5KqhXFHCaeWUh"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "LARIX_USDC",
+    "address": "DaNULZAv2VyLk75pW3QD5szVzx5dT6iNvoih94Bttqf5",
+    "nonce": 255,
+    "authority": "FUVkG7fM3i8T49qV7WsJd68rBaYKvqTkAQCdftqTWWNj",
+    "poolTokenMint": "8sfThep3io4gvcGeuoAg1Rs8GDwKJjtcdAFHqQSSNAVE",
+    "poolTokenDecimals": 6,
+    "feeAccount": "AVb9Bvu4rjFYNCHygEnAYCjwnkgtC8C6UmJ7at3dsfdz",
+    "tokenIds": [
+      "Lrxqnh6ZHKbGy3dcrCED43nsoLkM1LTzU2jRfWe8qUC",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "Lrxqnh6ZHKbGy3dcrCED43nsoLkM1LTzU2jRfWe8qUC": {
+        "tag": "LARIX",
+        "name": "Larix",
+        "mint": "Lrxqnh6ZHKbGy3dcrCED43nsoLkM1LTzU2jRfWe8qUC",
+        "scale": 6,
+        "addr": "AAjjSJsZM3AKK4h9cbGTHkquEZ2fWjgo9A9Pmrj2ynTH"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "82Fs8dSpMxPPfN1ULsXGFREHWz3JizREpTxwz2MaZ1n1"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "PRT_USDC",
+    "address": "CRm5uRBsVmUVHVqKfCCvCUX1RLUkjfcBWAeMQ5D9VuCM",
+    "nonce": 255,
+    "authority": "A9eqdCXYys7jeoroMFEnkGLoYLa2q5gGbg8RSKHkR2ne",
+    "poolTokenMint": "6jCERp5hKj37PCXP3VTjCDJeoPuSpnMDMz5A6jWQv3yS",
+    "poolTokenDecimals": 6,
+    "feeAccount": "FHVidN2ZdGnVaCjYwLjLXrimPbVsaqsUEEiGcVZ6WAPq",
+    "tokenIds": [
+      "PRT88RkA4Kg5z7pKnezeNH4mafTvtQdfFgpQTGRjz44",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "PRT88RkA4Kg5z7pKnezeNH4mafTvtQdfFgpQTGRjz44": {
+        "tag": "PRT",
+        "name": "Parrot Protocol",
+        "mint": "PRT88RkA4Kg5z7pKnezeNH4mafTvtQdfFgpQTGRjz44",
+        "scale": 6,
+        "addr": "3oL2GjsUnQLjHw77p78CsRr7t94AVrtsCnW5uf6NYQ3g"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "2EiVwvsH5cvyk4W243zKoywkaEQb9Bwe9WGphRgBSqaP"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "JET_USDC",
+    "address": "ErWwp9HKjk5ZPLDt8SrHKH5PvSKTwFDdFo5E3zDuE5Be",
+    "nonce": 253,
+    "authority": "GYY1t5d4pZnJC4rMXGY9yKMyCzLqxRqbtSguD2KkxghH",
+    "poolTokenMint": "GBijunwxa4Ni3JmYC6q6zgaVhSUJU6hVX5qTyJDRpNTc",
+    "poolTokenDecimals": 6,
+    "feeAccount": "6NhybmW42rdWj5TcobNKQT6JaZispgngcfTDrCsgVq4Q",
+    "tokenIds": [
+      "JET6zMJWkCN9tpRT2v2jfAmm5VnQFDpUBCyaKojmGtz",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "JET6zMJWkCN9tpRT2v2jfAmm5VnQFDpUBCyaKojmGtz": {
+        "tag": "JET",
+        "name": "JET",
+        "mint": "JET6zMJWkCN9tpRT2v2jfAmm5VnQFDpUBCyaKojmGtz",
+        "scale": 9,
+        "addr": "GEtZSc8188t2cCAv21UGCyjvxCeyU5Co99GtRtyTkpdh"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "Bi95f8H7o7zHWuYysxDHEubPv4c3NhsHWhaesXJu91NC"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "stSOL_USDC",
+    "address": "EfK84vYEKT1PoTJr6fBVKFbyA7ZoftfPo2LQPAJG1exL",
+    "nonce": 252,
+    "authority": "8PSN1CQxfyZ7T4sM3HM3RAgF2Y6VCf4tKSc8xY73Tnq5",
+    "poolTokenMint": "GtQ1NT7R5aaTiST7K6ZWdMhwDdFxsSFvVFhBo8vyHGAq",
+    "poolTokenDecimals": 6,
+    "feeAccount": "CJhL3UGesECFt6fvLB3csrGMuHf3M3G78pUzTopUiV8T",
+    "tokenIds": [
+      "7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7ARj",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7ARj": {
+        "tag": "stSOL",
+        "name": "Lido Staked SOL",
+        "mint": "7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7ARj",
+        "scale": 9,
+        "addr": "9SEBxqhP8sTAzmfiQfCPim1MqQXuDPb6fkGzJF7Z339i"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "G45yhM5mZ5RXZpLxGWLk3PVzdAp33z8aH6F9mLW8fQj3"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "wstETH_USDC",
+    "address": "v51xWrRwmFVH6EKe8eZTjgK5E4uC2tzY5sVt5cHbrkG",
+    "nonce": 254,
+    "authority": "3Kk8rpjxpc9qv2pJPr1CbmyQqrTDPntpryXActLogQeD",
+    "poolTokenMint": "5a6Y1ephcbKSoyLMQyD1JWbtqawCy8p2FtRL9v3zhaG5",
+    "poolTokenDecimals": 6,
+    "feeAccount": "ACKiRmbiMaPEc73pz4dVMuJGPaa74Vx9sfYADjnHuzvo",
+    "tokenIds": [
+      "ZScHuTtqZukUrtZS43teTKGs2VqkKL8k4QCouR2n6Uo",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "ZScHuTtqZukUrtZS43teTKGs2VqkKL8k4QCouR2n6Uo": {
+        "tag": "wstETH",
+        "name": "Lido Staked Ether",
+        "mint": "ZScHuTtqZukUrtZS43teTKGs2VqkKL8k4QCouR2n6Uo",
+        "scale": 8,
+        "addr": "5c4tzhRVaCxpmu8o3HrEZ8PWBDKSR6QNkBdQrUo9oe3e"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "AFNaWHH7ZGFjB7y7jmPM7jVs7QBAciffu7Z5tZidRHPR"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "AURY_USDC",
+    "address": "6HSguUukDH9zqJBm6oAAmFkg1WK9dJ5iLgnppTCM6jHm",
+    "nonce": 255,
+    "authority": "9T1koZp2PNJgspcx3G22yLiChBUfYzAjs2dhj2kgw2LZ",
+    "poolTokenMint": "6mJqqT5TMgveDvxzBt3hrjGkPV5VAj7tacxFCT3GebXh",
+    "poolTokenDecimals": 6,
+    "feeAccount": "JCqbv7r3mtYhzruNFjc21X14fndDVBLMiaNQrsHVpWui",
+    "tokenIds": [
+      "AURYydfxJib1ZkTir1Jn1J9ECYUtjb6rKQVmtYaixWPP",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "AURYydfxJib1ZkTir1Jn1J9ECYUtjb6rKQVmtYaixWPP": {
+        "tag": "AURY",
+        "name": "Aurory",
+        "mint": "AURYydfxJib1ZkTir1Jn1J9ECYUtjb6rKQVmtYaixWPP",
+        "scale": 9,
+        "addr": "413s6jiRbayD9didA4VnY8kQVgVBgkYNpYB2tyNf8sbh"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "GdPeogNxRWAZtUj7ZHc7fUpBuGHJosdbukiT2krFtXm8"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "AVAX_USDC",
+    "address": "7c2CLgatf2TU36PgpS65WLmvWk94rmaHVf1Z1peZ7mcA",
+    "nonce": 251,
+    "authority": "Mq46N9EknnxHL9fRkJhS4Eg9YXRifHiWzFJTD11ePWC",
+    "poolTokenMint": "Hmfrtmo93DpSDmVNLQKcBS5D1ia5JatiRSok9ososubz",
+    "poolTokenDecimals": 6,
+    "feeAccount": "7JH76Kw4dHyC5szRXkx6MFkJ3BEViodfNy15uFJst1cX",
+    "tokenIds": [
+      "AUrMpCDYYcPuHhyNX8gEEqbmDPFUpBpHrNW3vPeCFn5Z",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "AUrMpCDYYcPuHhyNX8gEEqbmDPFUpBpHrNW3vPeCFn5Z": {
+        "tag": "AVAX",
+        "name": "Avalanche",
+        "mint": "AUrMpCDYYcPuHhyNX8gEEqbmDPFUpBpHrNW3vPeCFn5Z",
+        "scale": 9,
+        "addr": "5rU6M2jAXQMSmgrsn14BPoVVhoBdCU6y5cP7XMjN4ZYy"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "D28rzq246bcXBrYiCeALY86y8NwvCUmuJGNggvKsh4WR"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "FTT_USDC",
+    "address": "8npdwWX2BR39kcFLtTJABbcjNq7NWQvipfqxgsfk9mTX",
+    "nonce": 255,
+    "authority": "8zU13KiLb1e87skt4rf8q1LhamEKKecyu6Xxb4Hqnm7e",
+    "poolTokenMint": "FwCombynV2fTVizxPCNA2oZKoWXLZgdJThjE4Xv9sjxc",
+    "poolTokenDecimals": 6,
+    "feeAccount": "C8D52rGuZcsBENhWtR9aqJVRU62cL7jyyEhxesKwc1k8",
+    "tokenIds": [
+      "AGFEad2et2ZJif9jaGpdMixQqvW5i81aBdvKe7PHNfz3",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "AGFEad2et2ZJif9jaGpdMixQqvW5i81aBdvKe7PHNfz3": {
+        "tag": "FTT",
+        "name": "FTX Token",
+        "mint": "AGFEad2et2ZJif9jaGpdMixQqvW5i81aBdvKe7PHNfz3",
+        "scale": 6,
+        "addr": "SasuKsATA2ATrMfFfSJr86wAGVgdS69PkQT3jFASBB8"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "3wADiuUqoakdoYYYxKqwoA4VN3uWZy5UwvLePox1mEsK"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "RAY_USDC",
+    "address": "2R2VhohRc5WoNHtRdwnjovAQaZRAmr1DE3QFW5jfgb6v",
+    "nonce": 252,
+    "authority": "9B9ZcYT8jDQ6XLe6gRLDCFv1zz3uHVKdbZT9DFhsYSQW",
+    "poolTokenMint": "4cXw2MYj94TFBXLL73fEpMCr8DPrW68JvrV8mzWgktbD",
+    "poolTokenDecimals": 6,
+    "feeAccount": "HURhvCRsrwwR5TiG75Hn274WwL76kaKgjgC6n9h4FEHj",
+    "tokenIds": [
+      "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R": {
+        "tag": "RAY",
+        "name": "Raydium",
+        "mint": "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R",
+        "scale": 6,
+        "addr": "9ASj9zDg7cT6wtvn4euSUiZte8yN2U3Tn6cTVZvMHbU7"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "HGTxSWbb62nxk4oGkLkHUvrEzR5D4GKYRb8ZDcA2dpki"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "SLND_USDC",
+    "address": "GhosXH9yZPxqSyTHqJtXQt6w65YfiGjKXcEXciX1P3z8",
+    "nonce": 255,
+    "authority": "ChmSHndtXRsYnFjYA2F7yRRsnyZ8kCpxSogTsCUgCEsh",
+    "poolTokenMint": "F59gkD7NnsdJbFKrRZsiBC8PAooN4c56T8QmahfW1iXN",
+    "poolTokenDecimals": 6,
+    "feeAccount": "GMipxN5pu6F6wwUrq6RhpqgcMjcKLTsnDTeNFCuUm5n7",
+    "tokenIds": [
+      "SLNDpmoWTVADgEdndyvWzroNL7zSi1dF9PC3xHGtPwp",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "SLNDpmoWTVADgEdndyvWzroNL7zSi1dF9PC3xHGtPwp": {
+        "tag": "SLND",
+        "name": "Solend",
+        "mint": "SLNDpmoWTVADgEdndyvWzroNL7zSi1dF9PC3xHGtPwp",
+        "scale": 6,
+        "addr": "9RcdfprKxbTzp3erTJMwXKznNCLmbCUaKhibaTMXhToi"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "6wEh8r3Czc3nKkN6JXobShnLG7ZqA5Y5DREGzkirYR36"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  },
+  {
+    "name": "GOFX_USDC",
+    "address": "C3b5AWQJiyar5g8EWu75zgDE26F55ZJWpqtFVCCVDQQQ",
+    "nonce": 253,
+    "authority": "3SphkwoHx3d13Eu9RehVVg4gGMZv7FEaDXvPqWbQF9bm",
+    "poolTokenMint": "7vnps4VE5RTGAr5fmPZu7fSrk2VnM4Up838grZfqmxqE",
+    "poolTokenDecimals": 6,
+    "feeAccount": "CT95CSNqi4nttNW84dDuA8Um7FLAC52PVUvuVRKeCHVK",
+    "tokenIds": [
+      "GFX1ZjR2P15tmrSwow6FjyDYcEkoFb4p4gJCpLBjaxHD",
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    ],
+    "tokens": {
+      "GFX1ZjR2P15tmrSwow6FjyDYcEkoFb4p4gJCpLBjaxHD": {
+        "tag": "GOFX",
+        "name": "GooseFX",
+        "mint": "GFX1ZjR2P15tmrSwow6FjyDYcEkoFb4p4gJCpLBjaxHD",
+        "scale": 9,
+        "addr": "5AhPVbtyiTV3SiNRJuq5z9xeaqqwoHQWqohR9HvjJkKS"
+      },
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": {
+        "tag": "USDC",
+        "name": "USD Coin",
+        "mint": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+        "scale": 6,
+        "addr": "6mtcbtTAadVEdnWJZmsq8woqLea7ef7k5WumVXSHr5KQ"
+      }
+    },
+    "curveType": 0,
+    "feeStructure": {
+      "traderFee": {
+        "numerator": "19",
+        "denominator": "2710"
+      },
+      "ownerFee": {
+        "numerator": "05",
+        "denominator": "2710"
+      }
+    }
+  }
+] 
+}

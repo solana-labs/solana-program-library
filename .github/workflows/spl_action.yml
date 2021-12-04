@@ -1,0 +1,29 @@
+on:
+
+  push:
+    branches:  [master]
+  pull_request_target:
+    branches:  [master]
+
+jobs:
+  build: 
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        name: "importing all the document"
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '16'
+        name: "installing the node.js with version 16"
+      - run: .travis/affects.sh docs/ .travis || exit 0
+        if: ${{ github.event_name == ('push' || 'pull_request')}} && ${{github.ref == 'master'}}
+        name: "Build Docs"
+      - run: |
+         cd docs/
+         source .travis/before_install.sh
+         npm ci
+         source .travis/script.sh
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+ 
+

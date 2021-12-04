@@ -36,6 +36,7 @@ crates=(
   solana-stake-program
   solana-transaction-status
   solana-vote-program
+  solana-version
 )
 
 set -x

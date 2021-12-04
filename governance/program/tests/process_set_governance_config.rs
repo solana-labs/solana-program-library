@@ -2,14 +2,16 @@
 
 mod program_test;
 
-use program_test::{tools::ProgramInstructionError, *};
+use program_test::*;
 use solana_program_test::tokio;
 use solana_sdk::{signature::Keypair, signer::Signer};
 use spl_governance::{
-    error::GovernanceError,
-    instruction::{set_governance_config, Vote},
+    error::GovernanceError, instruction::set_governance_config,
     state::enums::VoteThresholdPercentage,
 };
+use spl_governance_test_sdk::tools::ProgramInstructionError;
+
+use spl_governance_tools::error::GovernanceToolsError;
 
 #[tokio::test]
 async fn test_set_governance_config() {
@@ -19,14 +21,19 @@ async fn test_set_governance_config() {
     let realm_cookie = governance_test.with_realm().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(&realm_cookie, &governed_account_cookie)
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
         .await
         .unwrap();
 
-    let token_owner_record_cookie = governance_test
-        .with_community_token_deposit(&realm_cookie)
-        .await;
+    let mut account_governance_cookie = governance_test
+        .with_account_governance(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+        )
+        .await
+        .unwrap();
 
     let mut proposal_cookie = governance_test
         .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
@@ -58,7 +65,7 @@ async fn test_set_governance_config() {
         .unwrap();
 
     governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::Yes)
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
         .await
         .unwrap();
 
@@ -101,6 +108,7 @@ async fn test_set_governance_config_with_governance_must_sign_error() {
 
     // Act
     let err = governance_test
+        .bench
         .process_transaction(&[set_governance_config_ix], None)
         .await
         .err()
@@ -131,13 +139,14 @@ async fn test_set_governance_config_with_fake_governance_signer_error() {
 
     // Act
     let err = governance_test
+        .bench
         .process_transaction(&[set_governance_config_ix], Some(&[&governance_signer]))
         .await
         .err()
         .unwrap();
 
     // Assert
-    assert_eq!(err, GovernanceError::AccountDoesNotExist.into());
+    assert_eq!(err, GovernanceToolsError::AccountDoesNotExist.into());
 }
 
 #[tokio::test]
@@ -148,14 +157,19 @@ async fn test_set_governance_config_with_invalid_governance_authority_error() {
     let realm_cookie = governance_test.with_realm().await;
     let governed_account_cookie = governance_test.with_governed_account().await;
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(&realm_cookie, &governed_account_cookie)
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
         .await
         .unwrap();
 
-    let token_owner_record_cookie = governance_test
-        .with_community_token_deposit(&realm_cookie)
-        .await;
+    let mut account_governance_cookie = governance_test
+        .with_account_governance(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+        )
+        .await
+        .unwrap();
 
     let mut proposal_cookie = governance_test
         .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
@@ -171,7 +185,11 @@ async fn test_set_governance_config_with_invalid_governance_authority_error() {
     let governed_account_cookie2 = governance_test.with_governed_account().await;
 
     let account_governance_cookie2 = governance_test
-        .with_account_governance(&realm_cookie, &governed_account_cookie2)
+        .with_account_governance(
+            &realm_cookie,
+            &governed_account_cookie2,
+            &token_owner_record_cookie,
+        )
         .await
         .unwrap();
 
@@ -187,6 +205,7 @@ async fn test_set_governance_config_with_invalid_governance_authority_error() {
         .with_instruction(
             &mut proposal_cookie,
             &token_owner_record_cookie,
+            0,
             None,
             &mut set_governance_config_ix,
         )
@@ -199,7 +218,7 @@ async fn test_set_governance_config_with_invalid_governance_authority_error() {
         .unwrap();
 
     governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::Yes)
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
         .await
         .unwrap();
 

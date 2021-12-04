@@ -7,6 +7,8 @@ import {
   BpfLoader,
   PublicKey,
   Signer,
+  SystemProgram,
+  Transaction,
   BPF_LOADER_PROGRAM_ID,
 } from '@solana/web3.js';
 
@@ -18,6 +20,7 @@ import {
 } from '../client/token';
 import {url} from '../url';
 import {newAccountWithLamports} from '../client/util/new-account-with-lamports';
+import {sendAndConfirmTransaction} from '../client/util/send-and-confirm-transaction';
 import {sleep} from '../client/util/sleep';
 import {Store} from './store';
 
@@ -425,6 +428,16 @@ export async function setAuthority(): Promise<void> {
   );
 }
 
+export async function disableMintAuthority(): Promise<void> {
+  await testToken.setAuthority(
+    testToken.publicKey,
+    null,
+    'MintTokens',
+    testMintAuthority,
+    [],
+  );
+}
+
 export async function burn(): Promise<void> {
   let accountInfo = await testToken.getAccountInfo(testAccount);
   const amount = accountInfo.amount.toNumber();
@@ -628,6 +641,36 @@ export async function nativeToken(): Promise<void> {
     balance = info.lamports;
   } else {
     throw new Error('Account not found');
+  }
+
+  const programVersion = process.env.PROGRAM_VERSION;
+  if (!programVersion) {
+    // transfer lamports into the native account
+    const additionalLamports = 100;
+    await sendAndConfirmTransaction(
+      'TransferLamports',
+      connection,
+      new Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: payer.publicKey,
+          toPubkey: native,
+          lamports: additionalLamports,
+        }),
+      ),
+      payer,
+    );
+
+    // no change in the amount
+    accountInfo = await token.getAccountInfo(native);
+    assert(accountInfo.amount.toNumber() === lamportsToWrap);
+
+    // sync, amount changes
+    await token.syncNative(native);
+    accountInfo = await token.getAccountInfo(native);
+    assert(
+      accountInfo.amount.toNumber() === lamportsToWrap + additionalLamports,
+    );
+    balance += additionalLamports;
   }
 
   const balanceNeeded = await connection.getMinimumBalanceForRentExemption(0);

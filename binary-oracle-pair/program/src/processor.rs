@@ -405,6 +405,12 @@ impl Processor {
 
         let pool = Pool::try_from_slice(&pool_account_info.data.borrow())?;
 
+        if pool.token_pass_mint != *token_pass_mint_info.key {
+            return Err(PoolError::InvalidTokenMint.into());
+        }
+        if pool.token_fail_mint != *token_fail_mint_info.key {
+            return Err(PoolError::InvalidTokenMint.into());
+        }
         let authority_pub_key =
             Self::authority_id(program_id, pool_account_info.key, pool.bump_seed)?;
         if *authority_account_info.key != authority_pub_key {

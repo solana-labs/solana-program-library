@@ -14,7 +14,7 @@
 if [[ -n $SOLANA_VERSION ]]; then
   solana_version="$SOLANA_VERSION"
 else
-  solana_version=v1.7.3
+  solana_version=v1.8.1
 fi
 
 export solana_version="$solana_version"
@@ -27,7 +27,7 @@ if [[ -n $1 ]]; then
     solana --version
     ;;
   *)
-    echo "$0: Note: ignoring unknown argument: $1" >&2
+    echo "solana-version.sh: Note: ignoring unknown argument: $1" >&2
     ;;
   esac
 fi
