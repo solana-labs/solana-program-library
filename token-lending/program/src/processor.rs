@@ -1775,6 +1775,11 @@ fn get_pyth_price(pyth_price_info: &AccountInfo, clock: &Clock) -> Result<Decima
         return Err(LendingError::InvalidOracleConfig.into());
     }
 
+    if pyth_price.agg.status != pyth::PriceStatus::Trading {
+        msg!("Oracle price status is invalid");
+        return Err(LendingError::InvalidOracleConfig.into());
+    }
+
     let slots_elapsed = clock
         .slot
         .checked_sub(pyth_price.valid_slot)
