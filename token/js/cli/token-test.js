@@ -428,6 +428,16 @@ export async function setAuthority(): Promise<void> {
   );
 }
 
+export async function disableMintAuthority(): Promise<void> {
+  await testToken.setAuthority(
+    testToken.publicKey,
+    null,
+    'MintTokens',
+    testMintAuthority,
+    [],
+  );
+}
+
 export async function burn(): Promise<void> {
   let accountInfo = await testToken.getAccountInfo(testAccount);
   const amount = accountInfo.amount.toNumber();

@@ -900,7 +900,11 @@ They can be cleaned up during the next send operation.
 The `spl-token gc` command provides an example implementation of this cleanup process.
 
 
-### Token Vesting Contract:
+### Token Vesting
+
+There are two solutions available for vesting SPL tokens:
+
+#### Bonfida token-vesting
 This program allows you to lock arbitrary SPL tokens and release the locked tokens with a determined unlock schedule. An `unlock schedule` is made of a `unix timestamp` and a token `amount`, when initializing a vesting contract, the creator can pass an array of `unlock schedule` with an arbitrary size giving the creator of the contract complete control of how the tokens unlock over time.
 
 Unlocking works by pushing a permissionless crank on the contract that moves the tokens to the pre-specified address. The recipient address of a vesting contract can be modified by the owner of the current recipient key, meaning that vesting contract locked tokens can be traded.
@@ -908,3 +912,25 @@ Unlocking works by pushing a permissionless crank on the contract that moves the
 - Code: [https://github.com/Bonfida/token-vesting](https://github.com/Bonfida/token-vesting)
 - UI: [https://vesting.bonfida.com/#/](https://vesting.bonfida.com/#/)
 - Audit: The audit was conducted by Kudelski, the report can be found [here](https://github.com/Bonfida/token-vesting/blob/master/audit/Bonfida_SecurityAssessment_Vesting_Final050521.pdf)
+
+#### StreamFlow Timelock
+Enables creation, withdrawal, cancelation and transfer of token vesting contracts using time-based lock and escrow accounts.
+Contracts are by default cancelable by the creator and transferable by the recipient.
+
+Vesting contract creator chooses various options upon creation, such as:
+- SPL token and amount to be vested
+- recipient
+- exact start and end date
+- (optional) cliff date and amount
+- (optional) release frequency 
+Coming soon:
+- whether or not a contract is transferable by creator/recipient
+- whether or not a contract is cancelable by creator/recipient
+- subject/memo
+
+Timelock features can be integrated on different levels:
+- Program code: https://github.com/streamflow-finance/timelock
+- Rust SDK: https://crates.io/crates/streamflow-timelock ([source](https://github.com/streamflow-finance/timelock-crate))
+- JS SDK: https://npmjs.com/@streamflow/timelock ([source](https://github.com/StreamFlow-Finance/timelock/tree/master/packages/timelock))
+- Complete application with the UI: https://app.streamflow.finance/vesting
+- Audit: **Audit is undergoing!**

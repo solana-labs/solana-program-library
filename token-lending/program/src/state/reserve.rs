@@ -553,9 +553,8 @@ pub struct CollateralExchangeRate(Rate);
 impl CollateralExchangeRate {
     /// Convert reserve collateral to liquidity
     pub fn collateral_to_liquidity(&self, collateral_amount: u64) -> Result<u64, ProgramError> {
-        Decimal::from(collateral_amount)
-            .try_div(self.0)?
-            .try_round_u64()
+        self.decimal_collateral_to_liquidity(collateral_amount.into())?
+            .try_floor_u64()
     }
 
     /// Convert reserve collateral to liquidity
@@ -568,7 +567,8 @@ impl CollateralExchangeRate {
 
     /// Convert reserve liquidity to collateral
     pub fn liquidity_to_collateral(&self, liquidity_amount: u64) -> Result<u64, ProgramError> {
-        self.0.try_mul(liquidity_amount)?.try_round_u64()
+        self.decimal_liquidity_to_collateral(liquidity_amount.into())?
+            .try_floor_u64()
     }
 
     /// Convert reserve liquidity to collateral
@@ -662,9 +662,9 @@ impl ReserveFees {
         if borrow_fee_rate > Rate::zero() && amount > Decimal::zero() {
             let need_to_assess_host_fee = host_fee_rate > Rate::zero();
             let minimum_fee = if need_to_assess_host_fee {
-                2 // 1 token to owner, 1 to host
+                2u64 // 1 token to owner, 1 to host
             } else {
-                1 // 1 token to owner, nothing else
+                1u64 // 1 token to owner, nothing else
             };
 
             let borrow_fee_amount = match fee_calculation {
@@ -678,14 +678,18 @@ impl ReserveFees {
                 }
             };
 
-            let borrow_fee = borrow_fee_amount.try_round_u64()?.max(minimum_fee);
-            if Decimal::from(borrow_fee) >= amount {
+            let borrow_fee_decimal = borrow_fee_amount.max(minimum_fee.into());
+            if borrow_fee_decimal >= amount {
                 msg!("Borrow amount is too small to receive liquidity after fees");
                 return Err(LendingError::BorrowTooSmall.into());
             }
 
+            let borrow_fee = borrow_fee_decimal.try_round_u64()?;
             let host_fee = if need_to_assess_host_fee {
-                host_fee_rate.try_mul(borrow_fee)?.try_round_u64()?.max(1)
+                borrow_fee_decimal
+                    .try_mul(host_fee_rate)?
+                    .try_round_u64()?
+                    .max(1u64)
             } else {
                 0
             };

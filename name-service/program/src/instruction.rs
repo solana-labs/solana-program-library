@@ -53,6 +53,10 @@ pub enum NameRegistryInstruction {
     ///   0. `[writeable]` Name record to be updated
     ///   1. `[signer]` Account class
     ///
+    ///   * If the signer is the parent name account owner
+    ///   0. `[writeable]` Name record to be updated
+    ///   1. `[signer]` Parent name account owner
+    ///   2. `[]` Parent name record
     Update { offset: u32, data: Vec<u8> },
 
     /// Transfer ownership of a name record
@@ -127,13 +131,18 @@ pub fn update(
     data: Vec<u8>,
     name_account_key: Pubkey,
     name_update_signer: Pubkey,
+    name_parent: Option<Pubkey>,
 ) -> Result<Instruction, ProgramError> {
     let instruction_data = NameRegistryInstruction::Update { offset, data };
     let data = instruction_data.try_to_vec().unwrap();
-    let accounts = vec![
+    let mut accounts = vec![
         AccountMeta::new(name_account_key, false),
         AccountMeta::new_readonly(name_update_signer, true),
     ];
+
+    if let Some(name_parent_key) = name_parent {
+        accounts.push(AccountMeta::new(name_parent_key, false))
+    }
 
     Ok(Instruction {
         program_id: name_service_program_id,

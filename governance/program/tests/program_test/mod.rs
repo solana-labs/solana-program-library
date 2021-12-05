@@ -61,7 +61,7 @@ use crate::program_test::cookies::{
 
 use spl_governance_test_sdk::{
     tools::{clone_keypair, NopOverride},
-    ProgramTestBench, TestBenchProgram,
+    ProgramTestBench,
 };
 
 use self::{
@@ -105,35 +105,29 @@ impl GovernanceProgramTest {
 
     #[allow(dead_code)]
     async fn start_impl(use_voter_weight_addin: bool) -> Self {
-        let mut programs = vec![];
+        let mut program_test = ProgramTest::default();
 
         let program_id = Pubkey::from_str("Governance111111111111111111111111111111111").unwrap();
-
-        let program = TestBenchProgram {
-            program_name: "spl_governance",
+        program_test.add_program(
+            "spl_governance",
             program_id,
-            process_instruction: processor!(process_instruction),
-        };
-
-        programs.push(program);
+            processor!(process_instruction),
+        );
 
         let voter_weight_addin_id = if use_voter_weight_addin {
             let voter_weight_addin_id =
                 Pubkey::from_str("VoterWeight11111111111111111111111111111111").unwrap();
-
-            let vote_weight_addin = TestBenchProgram {
-                program_name: "spl_governance_voter_weight_addin",
-                program_id: voter_weight_addin_id,
-                process_instruction: None,
-            };
-
-            programs.push(vote_weight_addin);
+            program_test.add_program(
+                "spl_governance_voter_weight_addin",
+                voter_weight_addin_id,
+                None,
+            );
             Some(voter_weight_addin_id)
         } else {
             None
         };
 
-        let bench = ProgramTestBench::start_new(&programs).await;
+        let bench = ProgramTestBench::start_new(program_test).await;
 
         Self {
             bench,

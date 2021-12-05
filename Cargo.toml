@@ -35,9 +35,15 @@ members = [
   "token-lending/flash_loan_receiver",
 ]
 exclude = [
-  "themis/client_ristretto",
-  "themis/program_ristretto",
-  "token/perf-monitor", # TODO: Rework perf-monitor to use solana-program-test, avoiding the need to link directly with the BPF VM
+  "farms/farm-client",
+  "farms/farm-ctrl",
+  "farms/farm-rpc",
+  "farms/farm-sdk",
+  "farms/router-main",
+  "farms/router-raydium",
+  "farms/router-saber",
+  "farms/router-orca",
+  "farms/vaults",
 ]
 
 [profile.dev]

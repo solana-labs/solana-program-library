@@ -8,10 +8,7 @@ use solana_program::{
     system_instruction, sysvar,
 };
 use solana_program_test::{ProgramTest, ProgramTestContext};
-use solana_sdk::{
-    account::Account, process_instruction::ProcessInstructionWithContext, signature::Keypair,
-    signer::Signer, transaction::Transaction,
-};
+use solana_sdk::{account::Account, signature::Keypair, signer::Signer, transaction::Transaction};
 
 use bincode::deserialize;
 
@@ -22,14 +19,6 @@ use crate::tools::map_transaction_error;
 pub mod cookies;
 pub mod tools;
 
-/// Specification of a program which is loaded into the test bench
-#[derive(Clone)]
-pub struct TestBenchProgram<'a> {
-    pub program_name: &'a str,
-    pub program_id: Pubkey,
-    pub process_instruction: Option<ProcessInstructionWithContext>,
-}
-
 /// Program's test bench which captures test context, rent and payer and common utility functions
 pub struct ProgramTestBench {
     pub context: ProgramTestContext,
@@ -39,17 +28,9 @@ pub struct ProgramTestBench {
 }
 
 impl ProgramTestBench {
-    pub async fn start_new(programs: &[TestBenchProgram<'_>]) -> Self {
-        let mut program_test = ProgramTest::default();
-
-        for program in programs {
-            program_test.add_program(
-                program.program_name,
-                program.program_id,
-                program.process_instruction,
-            )
-        }
-
+    /// Create new bench given a ProgramTest instance populated with all of the
+    /// desired programs.
+    pub async fn start_new(program_test: ProgramTest) -> Self {
         let mut context = program_test.start_with_context().await;
         let rent = context.banks_client.get_rent().await.unwrap();
 
