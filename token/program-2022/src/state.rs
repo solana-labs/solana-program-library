@@ -4,14 +4,16 @@ use crate::instruction::MAX_SIGNERS;
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
 use num_enum::TryFromPrimitive;
 use solana_program::{
+    clock::Epoch,
     program_error::ProgramError,
     program_option::COption,
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
 };
 
-/// Different kinds of accounts. Note that `Mint` and `Account` types are determined
-/// exclusively by the size of the account, and are not included in the account data.
+/// Different kinds of accounts. Note that `Mint`, `Account`, and `Multisig` types
+/// are determined exclusively by the size of the account, and are not included in
+/// the account data.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum AccountType {
@@ -33,18 +35,24 @@ impl Default for AccountType {
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum MintMixin {
-    /// Reserved as 0, or for padding
-    None,
+    /// Reserved as 0
+    Uninitialized,
+    /// Used as padding if the account size would otherwise be 355, same as a multisig
+    Empty,
     /// Includes a transfer fee and accompanying authorities to harvest and set the fee
     TransferFee,
+    /// Includes a mint close authority
+    CloseAuthority,
 }
 
 /// Mixins that can be applied to an account
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum AccountMixin {
-    /// Reserved as 0, or for padding
-    None,
+    /// Reserved as 0
+    Uninitialized,
+    /// Used as padding if the account size would otherwise be 355, same as a multisig
+    Empty,
     /// Includes withheld transfer fees
     TransferFee,
 }
@@ -119,24 +127,51 @@ impl Pack for Mint {
     }
 }
 
-/// Transfer fee mixin data for mints.
+/// Type-Length-Value Entry, used to encapsulate all mixins contained within an account
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct MintTransferFeeMixin {
-    /// mixin type, always set to "TransferFee"
-    pub mixin_type: MintMixin,
-    /// Optional authority to set the fee
-    pub fee_config_authority: COption<Pubkey>,
-    /// Any harvest instruction must be signed by this key. If set to `None`, then
-    /// this mint behaves like a normal `Mint`.
-    pub fee_withdraw_authority: COption<Pubkey>,
+pub struct TlvEntry<T, V> {
+    pub account_type: T,
+    pub length: u64, // usize? or u32?
+    pub value: V,
+}
+
+/// Close account mixin data for mints.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct MintCloseMixin {
+    /// Optional authority to close the mint
+    pub close_authority: COption<Pubkey>,
+}
+
+/// Transfer fee information
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct TransferFee {
+    /// First epoch where the transfer fee takes effect
+    pub epoch: Epoch,
     /// Amount of transfer collected as fees, expressed as basis points of the
     /// transfer amount, ie.  increments of 0.01%
     pub transfer_fee_basis_points: u16,
     /// Maximum fee assessed on transfers, expressed as an amount of tokens
     pub maximum_fee: u64,
+}
+
+/// Transfer fee mixin data for mints.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct MintTransferFeeMixin {
+    /// Optional authority to set the fee
+    pub fee_config_authority: COption<Pubkey>,
+    /// Any harvest instruction must be signed by this key. If set to `None`, then
+    /// this mint behaves like a normal `Mint`.
+    pub fee_withdraw_authority: COption<Pubkey>,
     /// Withheld transfer fee tokens that have been moved to the mint for harvesting
     pub withheld_amount: u64,
+    /// Old transfer fee, used if the current epoch < new_transfer_fee.epoch
+    pub old_transfer_fee: TransferFee,
+    /// New transfer fee, used if the current epoch >= new_transfer_fee.epoch
+    pub new_transfer_fee: TransferFee,
 }
 
 /// Account data.

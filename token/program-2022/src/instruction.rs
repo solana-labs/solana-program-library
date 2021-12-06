@@ -29,6 +29,8 @@ pub enum TokenInstruction {
     /// Otherwise another party can acquire ownership of the uninitialized
     /// account.
     ///
+    /// Any mixins must be initialized before this instruction.
+    ///
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` The mint to initialize.
@@ -54,7 +56,7 @@ pub enum TokenInstruction {
     /// Otherwise another party can acquire ownership of the uninitialized
     /// account.
     ///
-    /// The mint provided must be a `Mint` instance without any mixins.
+    /// Any mixins must be initialized before this instruction.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -368,13 +370,13 @@ pub enum TokenInstruction {
     /// Cross Program Invocation from an instruction that does not need the owner's
     /// `AccountInfo` otherwise.
     ///
-    /// The mint provided must be a `Mint` instance without any mixins.
+    /// Any mixins must be initialized before this instruction.
     ///
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]`  The account to initialize.
     ///   1. `[]` The mint this account will be associated with.
-    ///   3. `[]` Rent sysvar
+    ///   2. `[]` Rent sysvar
     InitializeAccount2 {
         /// The new account's owner/multisignature.
         owner: Pubkey,
@@ -391,7 +393,7 @@ pub enum TokenInstruction {
     SyncNative,
     /// Like InitializeAccount2, but does not require the Rent sysvar to be provided
     ///
-    /// The mint provided must be a `Mint` instance without any mixins.
+    /// Any mixins must be initialized before this instruction.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -415,6 +417,8 @@ pub enum TokenInstruction {
     },
     /// Like InitializeMint, but does not require the Rent sysvar to be provided
     ///
+    /// Any mixins must be initialized before this instruction.
+    ///
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` The mint to initialize.
@@ -427,40 +431,77 @@ pub enum TokenInstruction {
         /// The freeze authority/multisignature of the mint.
         freeze_authority: COption<Pubkey>,
     },
-    /// Initialize a new mint with all provided mixins.
+    /// Gets the required size of an account for the given mint as a little-endian
+    /// `u64`.
+    ///
+    /// Return data can be fetched using `sol_get_return_data` and deserializing
+    /// the return data as a little-endian `u64`.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[]` The mint to calculate for
+    GetAccountLength,
+    /// Initializes the empty mixin on a new account.
+    ///
+    /// The account must have a size 356, which requires it to use this mixin.
+    /// The size of 356 comes from the size of a multisig (355) plus 1 byte of
+    /// padding.
+    ///
+    /// Fails if the account has already been initialized, so must be called before
+    /// `InitializeAccount`. The account must have enough data allocated for all
+    /// mixins included in the mint.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]`  The account to initialize.
+    InitializeEmptyMixin,
+    /// Initialize the close account mixin on a new mint.
+    ///
+    /// Fails if the mint has already been initialized, so must be called before
+    /// `InitializeMint`.
     ///
     /// The mint must have exactly enough space allocated for the base mint (82
-    /// bytes). If any mixins are provided, there must be 83 bytes of padding,
-    /// 1 byte reserved for the account type, then space required by each mixin.
+    /// bytes), plus 83 bytes of padding, 1 byte reserved for the account type,
+    /// then space required for the mixin.
     ///
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` The mint to initialize.
-    ///   1. ..1+N `[]` (Optional) Accounts required to initialize the mixins
-    InitializeMintWithMixins {
-        /// Number of base 10 digits to the right of the decimal place.
-        decimals: u8,
-        /// The authority/multisignature to mint tokens.
-        mint_authority: Pubkey,
-        /// The freeze authority/multisignature of the mint.
-        freeze_authority: COption<Pubkey>,
-        /// Initialization parameters for all mint mixins
-        mint_mixins: Vec<InitializeMintMixinParameters>,
+    InitializeMintCloseMixin,
+    /// Initialize the transfer fee mixin on a new mint.
+    ///
+    /// Fails if the mint has already been initialized, so must be called before
+    /// `InitializeMint`.
+    ///
+    /// The mint must have exactly enough space allocated for the base mint (82
+    /// bytes), plus 83 bytes of padding, 1 byte reserved for the account type,
+    /// then space required for the mixin.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]` The mint to initialize.
+    InitializeMintTransferFeeMixin {
+        /// Pubkey that may update the fees
+        fee_config_authority: COption<Pubkey>,
+        /// Harvest instructions must be signed by this key
+        fee_withdraw_authority: COption<Pubkey>,
+        /// Amount of transfer collected as fees, expressed as basis points of the
+        /// transfer amount
+        transfer_fee_basis_points: u16,
+        /// Maximum fee assessed on transfers
+        maximum_fee: u64,
     },
-    /// Initializes a new `Account` to hold tokens with all expected mixins.
-    /// The account must have enough data allocated for all mixins included in
-    /// the mint.
+    /// Initializes the transfer fee mixin on a new account.
+    ///
+    /// Fails if the account has already been initialized, so must be called before
+    /// `InitializeAccount`. The account must have enough data allocated for all
+    /// mixins included in the mint.
     ///
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]`  The account to initialize.
     ///   1. `[]` The mint this account will be associated with.
-    InitializeAccountWithMixins {
-        /// The new account's owner/multisignature.
-        owner: Pubkey,
-        /// Initialization parameters for all account mixins
-        account_mixins: Vec<InitializeAccountMixinParameters>,
-    },
+    InitializeAccountTransferFeeMixin,
     /// Transfer, providing expected mint information and fees
     ///
     /// Accounts expected by this instruction:
@@ -489,8 +530,6 @@ pub enum TokenInstruction {
     /// Transfer all withheld tokens to a fee account. Signed by the mint's
     /// fee withdraw authority.
     ///
-    /// Succeeds for frozen accounts.
-    ///
     /// Accounts expected by this instruction:
     ///
     ///   * Single owner/delegate
@@ -498,36 +537,23 @@ pub enum TokenInstruction {
     ///   1. `[writable]` The fee receiver account. Must include the `AccountTransferFeeMixin`.
     ///      associated with the provided mint.
     ///   2. `[signer]` The mint's `fee_withdraw_authority`
-    ///   3. ..3+N `[writable]` (Optional) The source accounts to harvest from.
-    ///      Must include the `AccountTransferFeeMixin`.
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The token mint.
     ///   1. `[writable]` The destination account.
-    ///   2. `[]` The source or destination account's multisignature owner/delegate.
+    ///   2. `[]` The mint's `fee_withdraw_authority`'s multisignature owner/delegate.
     ///   3. ..3+M `[signer]` M signer accounts.
-    ///   3+M+1. ..3+M+N`[writable]` (Optional) The source accounts to harvest from.
-    HarvestFee,
-    /// Close an account by transferring all its SOL to the destination account.
+    HarvestFeeFromMint,
+    /// Permissionless instruction to transfer all withheld tokens to the mint.
     ///
-    /// Accounts with withheld transfer fees are transferred into the mint on
-    /// closing.
+    /// Succeeds for frozen accounts.
     ///
     /// Accounts expected by this instruction:
     ///
-    ///   * Single owner
-    ///   0. `[writable]` The account to close.
-    ///   1. `[writable]` The destination account.
-    ///   2. `[writable]` The mint.
-    ///   3. `[signer]` The account's owner.
-    ///
-    ///   * Multisignature owner
-    ///   0. `[writable]` The account to close.
-    ///   1. `[writable]` The destination account.
-    ///   2. `[writable]` The mint.
-    ///   3. `[]` The account's multisignature owner.
-    ///   4. ..4+M `[signer]` M signer accounts.
-    CloseAccountWithTransferFee,
+    ///   0. `[writable]` The mint.
+    ///   1. ..1+N `[writable]` The source accounts to harvest from.
+    ///      Must include the `AccountTransferFeeMixin`.
+    HarvestFeeToMint,
     /// Set transfer fee. Only supported for mints that include the `MintTransferFeeMixin`.
     ///
     /// Accounts expected by this instruction:
@@ -841,38 +867,6 @@ impl AuthorityType {
             _ => Err(TokenError::InvalidInstruction.into()),
         }
     }
-}
-
-/// Specifies the authority type for SetAuthority instructions
-#[derive(Clone, Debug, PartialEq)]
-pub enum InitializeMintMixinParameters {
-    /// Additional padding required, in case the size of the account is the same
-    /// as a multisig
-    None {
-        padding: u64,
-    },
-    /// Initializes a mint with the `MintTransferFeeMixin`
-    TransferFee {
-        /// Pubkey that may update the fees
-        fee_config_authority: COption<Pubkey>,
-        /// Harvest instructions must be signed by this key
-        fee_withdraw_authority: COption<Pubkey>,
-        /// Amount of transfer collected as fees, expressed as basis points of the
-        /// transfer amount
-        transfer_fee_basis_points: u16,
-        /// Maximum fee assessed on transfers
-        maximum_fee: u64,
-    },
-}
-
-/// Specifies the authority type for SetAuthority instructions
-#[derive(Clone, Debug, PartialEq)]
-pub enum InitializeAccountMixinParameters {
-    /// Additional padding required, in case the size of the account is the same
-    /// as a multisig
-    None,
-    /// Initializes an account with the `AccountTransferFeeMixin`
-    TransferFee,
 }
 
 /// Creates a `InitializeMint` instruction.
