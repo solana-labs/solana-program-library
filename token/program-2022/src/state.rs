@@ -13,15 +13,16 @@ use solana_program::{
 
 /// Different kinds of accounts. Note that `Mint`, `Account`, and `Multisig` types
 /// are determined exclusively by the size of the account, and are not included in
-/// the account data.
+/// the account data. These `AccountType`s are only included if mixins have been
+/// initialized.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum AccountType {
-    /// Nothing, uninitialized
+    /// Marker for 0 data
     Uninitialized,
-    /// Base mint
+    /// Mint account with additional mixins
     Mint,
-    /// Base token account
+    /// Token holding account with additional mixins
     Account,
 }
 
@@ -31,30 +32,20 @@ impl Default for AccountType {
     }
 }
 
-/// Mixins that can be applied to a mint
+/// Mixins that can be applied to mints or accounts.  Mint mixins must only be
+/// applied to mint accounts, and account mixins must only be applied to holding
+/// accounts.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum MintMixin {
-    /// Reserved as 0
-    Uninitialized,
+pub enum Mixin {
     /// Used as padding if the account size would otherwise be 355, same as a multisig
-    Empty,
+    Uninitialized,
     /// Includes a transfer fee and accompanying authorities to harvest and set the fee
-    TransferFee,
-    /// Includes a mint close authority
-    CloseAuthority,
-}
-
-/// Mixins that can be applied to an account
-#[repr(C)]
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum AccountMixin {
-    /// Reserved as 0
-    Uninitialized,
-    /// Used as padding if the account size would otherwise be 355, same as a multisig
-    Empty,
+    MintTransferFee,
     /// Includes withheld transfer fees
-    TransferFee,
+    AccountTransferFee,
+    /// Includes an optional mint close authority
+    MintCloseAuthority,
 }
 
 /// Mint data.
@@ -132,14 +123,14 @@ impl Pack for Mint {
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct TlvEntry<T, V> {
     pub account_type: T,
-    pub length: u64, // usize? or u32?
+    pub length: u32,
     pub value: V,
 }
 
 /// Close account mixin data for mints.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct MintCloseMixin {
+pub struct MintCloseAuthorityMixin {
     /// Optional authority to close the mint
     pub close_authority: COption<Pubkey>,
 }

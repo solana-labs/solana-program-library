@@ -56,7 +56,7 @@ pub enum TokenInstruction {
     /// Otherwise another party can acquire ownership of the uninitialized
     /// account.
     ///
-    /// Any mixins must be initialized before this instruction.
+    /// All required mixins will be initialized at the same time.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -209,6 +209,9 @@ pub enum TokenInstruction {
     ///
     /// Accounts with the `AccountTransferFeeMixin` may only be closed if the withheld
     /// amount is zero.
+    ///
+    /// Mints may be closed if they have the `MintCloseAuthority` mixin and their token
+    /// supply is zero
     ///
     /// Accounts expected by this instruction:
     ///
@@ -370,7 +373,7 @@ pub enum TokenInstruction {
     /// Cross Program Invocation from an instruction that does not need the owner's
     /// `AccountInfo` otherwise.
     ///
-    /// Any mixins must be initialized before this instruction.
+    /// All required mixins will be initialized at the same time.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -393,7 +396,7 @@ pub enum TokenInstruction {
     SyncNative,
     /// Like InitializeAccount2, but does not require the Rent sysvar to be provided
     ///
-    /// Any mixins must be initialized before this instruction.
+    /// All required mixins will be initialized at the same time.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -440,21 +443,7 @@ pub enum TokenInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   0. `[]` The mint to calculate for
-    GetAccountLength,
-    /// Initializes the empty mixin on a new account.
-    ///
-    /// The account must have a size 356, which requires it to use this mixin.
-    /// The size of 356 comes from the size of a multisig (355) plus 1 byte of
-    /// padding.
-    ///
-    /// Fails if the account has already been initialized, so must be called before
-    /// `InitializeAccount`. The account must have enough data allocated for all
-    /// mixins included in the mint.
-    ///
-    /// Accounts expected by this instruction:
-    ///
-    ///   0. `[writable]`  The account to initialize.
-    InitializeEmptyMixin,
+    GetAccountDataSize,
     /// Initialize the close account mixin on a new mint.
     ///
     /// Fails if the mint has already been initialized, so must be called before
@@ -467,7 +456,9 @@ pub enum TokenInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` The mint to initialize.
-    InitializeMintCloseMixin,
+    InitializeMintCloseAuthority {
+        close_authority: COption<Pubkey>,
+    },
     /// Initialize the transfer fee mixin on a new mint.
     ///
     /// Fails if the mint has already been initialized, so must be called before
@@ -480,7 +471,7 @@ pub enum TokenInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` The mint to initialize.
-    InitializeMintTransferFeeMixin {
+    InitializeMintTransferFee {
         /// Pubkey that may update the fees
         fee_config_authority: COption<Pubkey>,
         /// Harvest instructions must be signed by this key
@@ -491,17 +482,6 @@ pub enum TokenInstruction {
         /// Maximum fee assessed on transfers
         maximum_fee: u64,
     },
-    /// Initializes the transfer fee mixin on a new account.
-    ///
-    /// Fails if the account has already been initialized, so must be called before
-    /// `InitializeAccount`. The account must have enough data allocated for all
-    /// mixins included in the mint.
-    ///
-    /// Accounts expected by this instruction:
-    ///
-    ///   0. `[writable]`  The account to initialize.
-    ///   1. `[]` The mint this account will be associated with.
-    InitializeAccountTransferFeeMixin,
     /// Transfer, providing expected mint information and fees
     ///
     /// Accounts expected by this instruction:
