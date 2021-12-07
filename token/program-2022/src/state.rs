@@ -13,16 +13,16 @@ use solana_program::{
 
 /// Different kinds of accounts. Note that `Mint`, `Account`, and `Multisig` types
 /// are determined exclusively by the size of the account, and are not included in
-/// the account data. These `AccountType`s are only included if mixins have been
+/// the account data. These `AccountType`s are only included if extensions have been
 /// initialized.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum AccountType {
     /// Marker for 0 data
     Uninitialized,
-    /// Mint account with additional mixins
+    /// Mint account with additional extensions
     Mint,
-    /// Token holding account with additional mixins
+    /// Token holding account with additional extensions
     Account,
 }
 
@@ -32,12 +32,12 @@ impl Default for AccountType {
     }
 }
 
-/// Mixins that can be applied to mints or accounts.  Mint mixins must only be
-/// applied to mint accounts, and account mixins must only be applied to holding
+/// Extensions that can be applied to mints or accounts.  Mint extensions must only be
+/// applied to mint accounts, and account extensions must only be applied to holding
 /// accounts.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum Mixin {
+pub enum Extension {
     /// Used as padding if the account size would otherwise be 355, same as a multisig
     Uninitialized,
     /// Includes a transfer fee and accompanying authorities to harvest and set the fee
@@ -118,19 +118,19 @@ impl Pack for Mint {
     }
 }
 
-/// Type-Length-Value Entry, used to encapsulate all mixins contained within an account
+/// Type-Length-Value Entry, used to encapsulate all extensions contained within an account
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct TlvEntry<T, V> {
-    pub account_type: T,
+pub struct TlvEntry<V> {
+    pub extension: Extension,
     pub length: u32,
     pub value: V,
 }
 
-/// Close account mixin data for mints.
+/// Close authority extension data for mints.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct MintCloseAuthorityMixin {
+pub struct MintCloseAuthorityExtension {
     /// Optional authority to close the mint
     pub close_authority: COption<Pubkey>,
 }
@@ -148,21 +148,20 @@ pub struct TransferFee {
     pub maximum_fee: u64,
 }
 
-/// Transfer fee mixin data for mints.
+/// Transfer fee extension data for mints.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct MintTransferFeeMixin {
+pub struct MintTransferFeeExtension {
     /// Optional authority to set the fee
-    pub fee_config_authority: COption<Pubkey>,
-    /// Any harvest instruction must be signed by this key. If set to `None`, then
-    /// this mint behaves like a normal `Mint`.
-    pub fee_withdraw_authority: COption<Pubkey>,
-    /// Withheld transfer fee tokens that have been moved to the mint for harvesting
+    pub transfer_fee_config_authority: COption<Pubkey>,
+    /// Harvest from mint instructions must be signed by this key
+    pub withheld_withdraw_authority: COption<Pubkey>,
+    /// Withheld transfer fee tokens that have been moved to the mint for withdrawal
     pub withheld_amount: u64,
-    /// Old transfer fee, used if the current epoch < new_transfer_fee.epoch
-    pub old_transfer_fee: TransferFee,
-    /// New transfer fee, used if the current epoch >= new_transfer_fee.epoch
-    pub new_transfer_fee: TransferFee,
+    /// Older transfer fee, used if the current epoch < new_transfer_fee.epoch
+    pub older_transfer_fee: TransferFee,
+    /// Newer transfer fee, used if the current epoch >= new_transfer_fee.epoch
+    pub newer_transfer_fee: TransferFee,
 }
 
 /// Account data.
@@ -276,12 +275,10 @@ impl Default for AccountState {
     }
 }
 
-/// Transfer fee mixin data for accounts.
+/// Transfer fee extension data for accounts.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-pub struct AccountTransferFeeMixin {
-    /// mixin type, always set to "TransferFee"
-    pub mixin_type: AccountMixin,
+pub struct AccountTransferFeeExtension {
     /// Amount withheld during transfers, to be harvested by the fee withdraw authority
     pub withheld_amount: u64,
 }

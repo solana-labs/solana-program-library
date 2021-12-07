@@ -29,7 +29,7 @@ pub enum TokenInstruction {
     /// Otherwise another party can acquire ownership of the uninitialized
     /// account.
     ///
-    /// Any mixins must be initialized before this instruction.
+    /// Any extensions must be initialized before this instruction.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -56,7 +56,7 @@ pub enum TokenInstruction {
     /// Otherwise another party can acquire ownership of the uninitialized
     /// account.
     ///
-    /// All required mixins will be initialized at the same time.
+    /// All required extensions will be initialized at the same time.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -97,8 +97,8 @@ pub enum TokenInstruction {
     /// amounts of SOL and Tokens will be transferred to the destination
     /// account.
     ///
-    /// If the accounts contain `AccountTransferFeeMixin`s, this will fail.  Mints with
-    /// the `MintTransferFeeMixin` are required in order to assess the fee.
+    /// If the accounts contain `AccountTransferFeeExtension`s, this will fail.  Mints with
+    /// the `MintTransferFeeExtension` are required in order to assess the fee.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -207,10 +207,10 @@ pub enum TokenInstruction {
     /// Close an account by transferring all its SOL to the destination account.
     /// Non-native accounts may only be closed if its token amount is zero.
     ///
-    /// Accounts with the `AccountTransferFeeMixin` may only be closed if the withheld
+    /// Accounts with the `AccountTransferFeeExtension` may only be closed if the withheld
     /// amount is zero.
     ///
-    /// Mints may be closed if they have the `MintCloseAuthority` mixin and their token
+    /// Mints may be closed if they have the `MintCloseAuthority` extension and their token
     /// supply is zero
     ///
     /// Accounts expected by this instruction:
@@ -267,7 +267,7 @@ pub enum TokenInstruction {
     /// decimals value is checked by the caller.  This may be useful when
     /// creating transactions offline or within a hardware wallet.
     ///
-    /// If the accounts contain `AccountTransferFeeMixin`s, the fee is withheld in the
+    /// If the accounts contain `AccountTransferFeeExtension`s, the fee is withheld in the
     /// destination account.
     ///
     /// Accounts expected by this instruction:
@@ -373,7 +373,7 @@ pub enum TokenInstruction {
     /// Cross Program Invocation from an instruction that does not need the owner's
     /// `AccountInfo` otherwise.
     ///
-    /// All required mixins will be initialized at the same time.
+    /// All required extensions will be initialized at the same time.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -396,7 +396,7 @@ pub enum TokenInstruction {
     SyncNative,
     /// Like InitializeAccount2, but does not require the Rent sysvar to be provided
     ///
-    /// All required mixins will be initialized at the same time.
+    /// All required extensions will be initialized at the same time.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -420,7 +420,7 @@ pub enum TokenInstruction {
     },
     /// Like InitializeMint, but does not require the Rent sysvar to be provided
     ///
-    /// Any mixins must be initialized before this instruction.
+    /// Any extensions must be initialized before this instruction.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -444,14 +444,14 @@ pub enum TokenInstruction {
     ///
     ///   0. `[]` The mint to calculate for
     GetAccountDataSize,
-    /// Initialize the close account mixin on a new mint.
+    /// Initialize the close account authority on a new mint.
     ///
     /// Fails if the mint has already been initialized, so must be called before
     /// `InitializeMint`.
     ///
     /// The mint must have exactly enough space allocated for the base mint (82
     /// bytes), plus 83 bytes of padding, 1 byte reserved for the account type,
-    /// then space required for the mixin.
+    /// then space required for the extension.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -459,14 +459,14 @@ pub enum TokenInstruction {
     InitializeMintCloseAuthority {
         close_authority: COption<Pubkey>,
     },
-    /// Initialize the transfer fee mixin on a new mint.
+    /// Initialize the transfer fee on a new mint.
     ///
     /// Fails if the mint has already been initialized, so must be called before
     /// `InitializeMint`.
     ///
     /// The mint must have exactly enough space allocated for the base mint (82
     /// bytes), plus 83 bytes of padding, 1 byte reserved for the account type,
-    /// then space required for the mixin.
+    /// then space required for the extension.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -487,9 +487,9 @@ pub enum TokenInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   * Single owner/delegate
-    ///   0. `[writable]` The source account. Must include the `AccountTransferFeeMixin`.
-    ///   1. `[]` The token mint. Must include the `AccountMintFeeMixin`.
-    ///   2. `[writable]` The destination account. Must include the `AccountTransferFeeMixin`.
+    ///   0. `[writable]` The source account. Must include the `AccountTransferFeeExtension`.
+    ///   1. `[]` The token mint. Must include the `AccountMintFeeExtension`.
+    ///   2. `[writable]` The destination account. Must include the `AccountTransferFeeExtension`.
     ///   3. `[signer]` The source account's owner/delegate.
     ///
     ///   * Multisignature owner/delegate
@@ -507,14 +507,14 @@ pub enum TokenInstruction {
         /// the transfer_fee_basis_points and maximum_fee of the mint.
         fee: u64,
     },
-    /// Transfer all withheld tokens to a fee account. Signed by the mint's
+    /// Transfer all withheld tokens to an account. Signed by the mint's
     /// fee withdraw authority.
     ///
     /// Accounts expected by this instruction:
     ///
     ///   * Single owner/delegate
-    ///   0. `[writable]` The token mint. Must include the `MintTransferFeeMixin`.
-    ///   1. `[writable]` The fee receiver account. Must include the `AccountTransferFeeMixin`.
+    ///   0. `[writable]` The token mint. Must include the `MintTransferFeeExtension`.
+    ///   1. `[writable]` The fee receiver account. Must include the `AccountTransferFeeExtension`.
     ///      associated with the provided mint.
     ///   2. `[signer]` The mint's `fee_withdraw_authority`
     ///
@@ -523,18 +523,20 @@ pub enum TokenInstruction {
     ///   1. `[writable]` The destination account.
     ///   2. `[]` The mint's `fee_withdraw_authority`'s multisignature owner/delegate.
     ///   3. ..3+M `[signer]` M signer accounts.
-    HarvestFeeFromMint,
+    HarvestWithheldTokensFromMint,
     /// Permissionless instruction to transfer all withheld tokens to the mint.
     ///
     /// Succeeds for frozen accounts.
+    ///
+    /// Accounts provided should include the `AccountTransferFeeExtension`. If not,
+    /// the account is skipped.
     ///
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` The mint.
     ///   1. ..1+N `[writable]` The source accounts to harvest from.
-    ///      Must include the `AccountTransferFeeMixin`.
-    HarvestFeeToMint,
-    /// Set transfer fee. Only supported for mints that include the `MintTransferFeeMixin`.
+    HarvestWithheldTokensToMint,
+    /// Set transfer fee. Only supported for mints that include the `MintTransferFeeExtension`.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -818,10 +820,10 @@ pub enum AuthorityType {
     AccountOwner,
     /// Authority to close a token account
     CloseAccount,
-    /// Authority to set the fee
-    FeeConfig,
-    /// Authority to withdraw fees from accounts and mint
-    FeeWithdraw,
+    /// Authority to set the transfer fee
+    TransferFeeConfig,
+    /// Authority to withdraw withheld tokens from a mint
+    WithheldWithdraw,
 }
 
 impl AuthorityType {
