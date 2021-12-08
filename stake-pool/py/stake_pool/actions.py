@@ -15,8 +15,8 @@ from stake_pool.constants import STAKE_POOL_PROGRAM_ID, find_withdraw_authority_
 from stake_pool.state import STAKE_POOL_LAYOUT, ValidatorList, Fee, StakePool
 import stake_pool.instructions as sp
 
-import actions.stake
-import actions.token
+from stake.actions import create_stake
+from spl_token.actions import create_mint, create_associated_token_account
 
 
 async def create(client: AsyncClient, manager: Keypair,
@@ -87,12 +87,12 @@ async def create_all(client: AsyncClient, manager: Keypair, fee: Fee, referral_f
         STAKE_POOL_PROGRAM_ID, stake_pool.public_key)
 
     reserve_stake = Keypair()
-    await actions.stake.create_stake(client, manager, reserve_stake, pool_withdraw_authority)
+    await create_stake(client, manager, reserve_stake, pool_withdraw_authority)
 
     pool_mint = Keypair()
-    await actions.token.create_mint(client, manager, pool_mint, pool_withdraw_authority)
+    await create_mint(client, manager, pool_mint, pool_withdraw_authority)
 
-    manager_fee_account = await actions.token.create_associated_token_account(
+    manager_fee_account = await create_associated_token_account(
         client,
         manager,
         manager.public_key,

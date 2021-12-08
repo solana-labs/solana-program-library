@@ -4,12 +4,16 @@ import os
 import shutil
 import tempfile
 import time
-from typing import Iterator
-from subprocess import run, Popen
+from typing import Iterator, List
+from subprocess import Popen
 
+from solana.keypair import Keypair
 from solana.publickey import PublicKey
 from solana.rpc.async_api import AsyncClient
 from solana.rpc.commitment import Confirmed
+
+from vote.actions import create_vote
+from system.actions import airdrop
 
 
 @pytest.fixture(scope="session")
@@ -27,24 +31,16 @@ def solana_test_validator():
 
 
 @pytest.fixture
-def validators(async_client):
+def validators(event_loop, async_client, payer) -> List[PublicKey]:
     num_validators = 3
     validators = []
+    futures = []
     for i in range(num_validators):
-        tf = tempfile.NamedTemporaryFile()
-        identity = f"{tf.name}-identity-{i}.json"
-        run(["solana-keygen", "new", "-s", "-o", identity])
-        vote = f"{tf.name}-vote-{i}.json"
-        run(["solana-keygen", "new", "-s", "-o", vote])
-        withdrawer = f"{tf.name}-withdrawer-{i}.json"
-        run(["solana-keygen", "new", "-s", "-o", withdrawer])
-        run(["solana", "create-vote-account",
-             vote, identity, withdrawer,
-             "--commission", "1",
-             "--commitment", "confirmed",
-             "-ul"])
-        output = run(["solana-keygen", "pubkey", vote], capture_output=True)
-        validators.append(PublicKey(output.stdout.decode('utf-8').strip()))
+        vote = Keypair()
+        node = Keypair()
+        futures.append(create_vote(async_client, payer, vote, node, payer.public_key, payer.public_key, 10))
+        validators.append(vote.public_key)
+    event_loop.run_until_complete(asyncio.gather(*futures))
     return validators
 
 
@@ -68,3 +64,11 @@ def async_client(event_loop, solana_test_validator) -> Iterator[AsyncClient]:
         time.sleep(1)
     yield async_client
     event_loop.run_until_complete(async_client.close())
+
+
+@pytest.fixture
+def payer(event_loop, async_client) -> Keypair:
+    payer = Keypair()
+    airdrop_lamports = 10_000_000_000
+    event_loop.run_until_complete(airdrop(async_client, payer.public_key, airdrop_lamports))
+    return payer
