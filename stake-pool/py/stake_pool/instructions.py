@@ -346,7 +346,7 @@ class WithdrawSolParams(NamedTuple):
     """SPL Stake Pool program account."""
     stake_pool: PublicKey
     """`[w]` Stake pool."""
-    stake_pool_withdraw_authority: PublicKey
+    withdraw_authority: PublicKey
     """`[]` Stake pool withdraw authority."""
     user_transfer_authority: PublicKey
     """`[s]` Transfer authority for user pool token account."""
@@ -374,7 +374,7 @@ class WithdrawSolParams(NamedTuple):
     """Amount of pool tokens to burn"""
 
     # Optional
-    withdraw_authority: Optional[PublicKey] = None
+    sol_withdraw_authority: Optional[PublicKey] = None
     """`[s]` (Optional) Stake pool sol withdraw authority."""
 
 
@@ -594,5 +594,65 @@ def remove_validator_from_pool_with_vote(
             destination_stake=destination_stake,
             clock_sysvar=SYSVAR_CLOCK_PUBKEY,
             stake_program_id=STAKE_PROGRAM_ID,
+        )
+    )
+
+
+def deposit_sol(params: DepositSolParams) -> TransactionInstruction:
+    """Creates a transaction instruction to deposit SOL into a stake pool."""
+    keys = [
+        AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=True),
+        AccountMeta(pubkey=params.withdraw_authority, is_signer=False, is_writable=False),
+        AccountMeta(pubkey=params.reserve_stake, is_signer=False, is_writable=True),
+        AccountMeta(pubkey=params.funding_account, is_signer=True, is_writable=True),
+        AccountMeta(pubkey=params.destination_pool_account, is_signer=False, is_writable=True),
+        AccountMeta(pubkey=params.manager_fee_account, is_signer=False, is_writable=True),
+        AccountMeta(pubkey=params.referral_pool_account, is_signer=False, is_writable=True),
+        AccountMeta(pubkey=params.pool_mint, is_signer=False, is_writable=True),
+        AccountMeta(pubkey=params.system_program_id, is_signer=False, is_writable=False),
+        AccountMeta(pubkey=params.token_program_id, is_signer=False, is_writable=False),
+    ]
+    if params.deposit_authority:
+        keys.append(AccountMeta(pubkey=params.deposit_authority, is_signer=True, is_writable=False))
+    return TransactionInstruction(
+        keys=keys,
+        program_id=params.program_id,
+        data=INSTRUCTIONS_LAYOUT.build(
+            dict(
+                instruction_type=InstructionType.DEPOSIT_SOL,
+                args={'amount': params.amount}
+            )
+        )
+    )
+
+
+def withdraw_sol(params: WithdrawSolParams) -> TransactionInstruction:
+    """Creates a transaction instruction to withdraw SOL from a stake pool."""
+    keys = [
+        AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=True),
+        AccountMeta(pubkey=params.withdraw_authority, is_signer=False, is_writable=False),
+        AccountMeta(pubkey=params.user_transfer_authority, is_signer=True, is_writable=False),
+        AccountMeta(pubkey=params.source_pool_account, is_signer=False, is_writable=True),
+        AccountMeta(pubkey=params.reserve_stake, is_signer=False, is_writable=True),
+        AccountMeta(pubkey=params.destination_system_account, is_signer=False, is_writable=True),
+        AccountMeta(pubkey=params.manager_fee_account, is_signer=False, is_writable=True),
+        AccountMeta(pubkey=params.pool_mint, is_signer=False, is_writable=True),
+        AccountMeta(pubkey=params.clock_sysvar, is_signer=False, is_writable=False),
+        AccountMeta(pubkey=params.stake_history_sysvar, is_signer=False, is_writable=False),
+        AccountMeta(pubkey=params.stake_program_id, is_signer=False, is_writable=False),
+        AccountMeta(pubkey=params.token_program_id, is_signer=False, is_writable=False),
+    ]
+
+    if params.sol_withdraw_authority:
+        AccountMeta(pubkey=params.sol_withdraw_authority, is_signer=True, is_writable=False)
+
+    return TransactionInstruction(
+        keys=keys,
+        program_id=params.program_id,
+        data=INSTRUCTIONS_LAYOUT.build(
+            dict(
+                instruction_type=InstructionType.WITHDRAW_SOL,
+                args={'amount': params.amount}
+            )
         )
     )

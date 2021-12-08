@@ -5,6 +5,7 @@ from solana.publickey import PublicKey
 from solana.rpc.async_api import AsyncClient
 from solana.rpc.commitment import Confirmed
 from solana.rpc.types import TxOpts
+from solana.sysvar import SYSVAR_CLOCK_PUBKEY, SYSVAR_STAKE_HISTORY_PUBKEY
 from solana.transaction import Transaction
 import solana.system_program as sys
 
@@ -168,3 +169,73 @@ async def remove_validator_from_pool(
     await client.send_transaction(
         txn, staker, destination_stake,
         opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))
+
+
+async def deposit_sol(
+    client: AsyncClient, funder: Keypair, stake_pool_address: PublicKey,
+    amount: int, destination_token_account: PublicKey
+):
+    resp = await client.get_account_info(stake_pool_address, commitment=Confirmed)
+    data = resp['result']['value']['data']
+    stake_pool = StakePool.decode(data[0], data[1])
+
+    (withdraw_authority, seed) = find_withdraw_authority_program_address(STAKE_POOL_PROGRAM_ID, stake_pool_address)
+
+    txn = Transaction()
+    txn.add(
+        sp.deposit_sol(
+            sp.DepositSolParams(
+                program_id=STAKE_POOL_PROGRAM_ID,
+                stake_pool=stake_pool_address,
+                withdraw_authority=withdraw_authority,
+                reserve_stake=stake_pool.reserve_stake,
+                funding_account=funder.public_key,
+                destination_pool_account=destination_token_account,
+                manager_fee_account=stake_pool.manager_fee_account,
+                referral_pool_account=destination_token_account,
+                pool_mint=stake_pool.pool_mint,
+                system_program_id=sys.SYS_PROGRAM_ID,
+                token_program_id=stake_pool.token_program_id,
+                amount=amount,
+                deposit_authority=None,
+            )
+        )
+    )
+    await client.send_transaction(
+        txn, funder, opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))
+
+
+async def withdraw_sol(
+    client: AsyncClient, owner: Keypair, source_token_account: PublicKey,
+    stake_pool_address: PublicKey, destination_system_account: PublicKey, amount: int,
+):
+    resp = await client.get_account_info(stake_pool_address, commitment=Confirmed)
+    data = resp['result']['value']['data']
+    stake_pool = StakePool.decode(data[0], data[1])
+
+    (withdraw_authority, seed) = find_withdraw_authority_program_address(STAKE_POOL_PROGRAM_ID, stake_pool_address)
+
+    txn = Transaction()
+    txn.add(
+        sp.withdraw_sol(
+            sp.WithdrawSolParams(
+                program_id=STAKE_POOL_PROGRAM_ID,
+                stake_pool=stake_pool_address,
+                withdraw_authority=withdraw_authority,
+                user_transfer_authority=owner.public_key,
+                source_pool_account=source_token_account,
+                reserve_stake=stake_pool.reserve_stake,
+                destination_system_account=destination_system_account,
+                manager_fee_account=stake_pool.manager_fee_account,
+                pool_mint=stake_pool.pool_mint,
+                clock_sysvar=SYSVAR_CLOCK_PUBKEY,
+                stake_history_sysvar=SYSVAR_STAKE_HISTORY_PUBKEY,
+                stake_program_id=STAKE_PROGRAM_ID,
+                token_program_id=stake_pool.token_program_id,
+                amount=amount,
+                sol_withdraw_authority=None,
+            )
+        )
+    )
+    await client.send_transaction(
+        txn, owner, opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))

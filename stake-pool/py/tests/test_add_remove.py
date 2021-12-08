@@ -8,7 +8,7 @@ from stake_pool.actions import create_all, add_validator_to_pool, remove_validat
 
 
 @pytest.mark.asyncio
-async def test_add_validator(async_client, validators, payer):
+async def test_add_remove_validators(async_client, validators, payer):
     fee = Fee(numerator=1, denominator=1000)
     referral_fee = 20
     (stake_pool, validator_list_address) = await create_all(async_client, payer, fee, referral_fee)
