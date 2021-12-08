@@ -88,8 +88,8 @@ def initialize(params: InitializeParams) -> TransactionInstruction:
     return TransactionInstruction(
         keys=[
             AccountMeta(pubkey=params.vote, is_signer=False, is_writable=True),
-            AccountMeta(pubkey=params.rent_sysvar, is_signer=False, is_writable=False),
-            AccountMeta(pubkey=params.clock_sysvar, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.rent_sysvar or SYSVAR_RENT_PUBKEY, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.clock_sysvar or SYSVAR_CLOCK_PUBKEY, is_signer=False, is_writable=False),
             AccountMeta(pubkey=params.node, is_signer=True, is_writable=False),
         ],
         program_id=VOTE_PROGRAM_ID,

@@ -9,9 +9,10 @@ python3 -m venv venv
 source ./venv/bin/activate
 pip3 install -r requirements.txt
 check_dirs=(
-  "actions"
+  "spl_token"
   "stake"
   "stake_pool"
+  "system"
   "tests"
   "vote"
 )
