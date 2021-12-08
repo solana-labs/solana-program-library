@@ -467,7 +467,7 @@ pub enum TokenInstruction {
         /// Pubkey that may update the fees
         fee_config_authority: COption<Pubkey>,
         /// Withdraw instructions must be signed by this key
-        fee_withdraw_authority: COption<Pubkey>,
+        withdraw_withheld_authority: COption<Pubkey>,
         /// Amount of transfer collected as fees, expressed as basis points of the
         /// transfer amount
         transfer_fee_basis_points: u16,
@@ -499,8 +499,8 @@ pub enum TokenInstruction {
         /// the transfer_fee_basis_points and maximum_fee of the mint.
         fee: u64,
     },
-    /// Transfer all withheld tokens to an account. Signed by the mint's
-    /// fee withdraw authority.
+    /// Transfer all withheld tokens in the mint to an account. Signed by the mint's
+    /// withdraw withheld tokens authority.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -508,14 +508,33 @@ pub enum TokenInstruction {
     ///   0. `[writable]` The token mint. Must include the `MintTransferFee` extension.
     ///   1. `[writable]` The fee receiver account. Must include the `AccountTransferFee` extension
     ///      associated with the provided mint.
-    ///   2. `[signer]` The mint's `fee_withdraw_authority`
+    ///   2. `[signer]` The mint's `withdraw_withheld_authority`.
     ///
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The token mint.
     ///   1. `[writable]` The destination account.
-    ///   2. `[]` The mint's `fee_withdraw_authority`'s multisignature owner/delegate.
+    ///   2. `[]` The mint's `withdraw_withheld_authority`'s multisignature owner/delegate.
     ///   3. ..3+M `[signer]` M signer accounts.
     WithdrawWithheldTokensFromMint,
+    /// Transfer all withheld tokens to an account. Signed by the mint's
+    /// withdraw withheld tokens authority.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   * Single owner/delegate
+    ///   0. `[]` The token mint. Must include the `MintTransferFee` extension.
+    ///   1. `[writable]` The fee receiver account. Must include the `AccountTransferFee`
+    ///      extension and be associated with the provided mint.
+    ///   2. `[signer]` The mint's `withdraw_withheld_authority`.
+    ///   3. ..3+N `[writable]` The source accounts to withdraw from.
+    ///
+    ///   * Multisignature owner/delegate
+    ///   0. `[]` The token mint.
+    ///   1. `[writable]` The destination account.
+    ///   2. `[]` The mint's `withdraw_withheld_authority`'s multisignature owner/delegate.
+    ///   3. ..3+M `[signer]` M signer accounts.
+    ///   3+M+1. ..3+M+N `[writable]` The source accounts to withdraw from.
+    WithdrawWithheldTokensFromAccounts,
     /// Permissionless instruction to transfer all withheld tokens to the mint.
     ///
     /// Succeeds for frozen accounts.
