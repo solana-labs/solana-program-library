@@ -133,19 +133,20 @@ pub mod swap_flags {
 pub enum SwapInstruction {
     ///   Initializes a new swap
     ///
-    ///   0. `[writable, signer]` New Token-swap to create.
-    ///   1. `[]` swap authority derived from `create_program_address(&[Token-swap account])`
-    ///   2. `[]` token_a Account. Must be non zero, owned by swap authority.
-    ///   3. `[]` token_b Account. Must be non zero, owned by swap authority.
-    ///   4. `[writable]` Pool Token Mint. Must be empty, owned by swap authority.
-    ///   5. `[]` Pool Token Account to deposit trading and withdraw fees.
+    ///   0. `[signer]` Payer for token swap account creation.
+    ///   1. `[writable]` New Token-swap to create PDA - [sorted(mintA, mintB), curve].
+    ///   2. `[]` swap authority derived from `create_program_address(&[Token-swap account])`
+    ///   3. `[]` token_a Account. Must be non zero, owned by swap authority.
+    ///   4. `[]` token_b Account. Must be non zero, owned by swap authority.
+    ///   5. `[writable]` Pool Token Mint. Must be empty, owned by swap authority.
+    ///   6. `[]` Pool Token Account to deposit trading and withdraw fees.
     ///   Must be empty, not owned by swap authority
-    ///   6. `[writable]` Pool Token Account to deposit the initial pool token
+    ///   7. `[writable]` Pool Token Account to deposit the initial pool token
     ///   supply.  Must be empty, not owned by swap authority.
-    ///   7. '[]` Token program id
-    ///   8. '[writable]` Pool registry
-    ///   9. '[]` System Program
-    ///   10. '[]` Rent
+    ///   8. '[]` Token program id
+    ///   9. '[writable]` Pool registry
+    ///   10. '[]` System Program
+    ///   11. '[]` Rent
     Initialize(Initialize),
 
     ///   Swap the tokens in the pool.
@@ -158,8 +159,9 @@ pub enum SwapInstruction {
     ///   5. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the DESTINATION token.
     ///   6. `[writable]` token_(A|B) DESTINATION Account assigned to USER as the owner.
     ///   7. `[writable]` Pool token mint, to generate trading fees
-    ///   8. `[writable]` refund account to unwrap WSOL to
-    ///   9. '[]` Token program id
+    ///   8. `[writable]` Pool fee account
+    ///   9. `[writable]` refund account to unwrap WSOL to
+    ///   10. '[]` Token program id
     Swap(Swap),
 
     ///   Deposit both types of tokens into the pool.  The output is a "pool"
@@ -243,15 +245,17 @@ pub enum SwapInstruction {
     ///   5. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the MIDDLE token.
     ///   6. `[writable]` token_(A|B) MIDDLE Account assigned to USER as the owner.
     ///   7. `[writable]` Pool token mint, to generate trading fees
-    ///   8. '[]` Token program id
+    ///   8. `[]` Swap 1 fee account
+    ///   9. '[]` Token program id
     /// 
-    ///   9. `[]` Token-swap 2
-    ///   10. `[]` swap authority 2
-    ///   11. `[writable]` token_(A|B) Base Account to swap INTO.  Must be the MIDDLE token.
-    ///   12. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the DESTINATION token.
-    ///   13. `[writable]` token_(A|B) DESTINATION Account assigned to USER as the owner.
-    ///   14. `[writable]` Pool token mint, to generate trading fees
-    ///   15. `[writable]` refund account to unwrap WSOL to
+    ///   10. `[]` Token-swap 2
+    ///   11. `[]` swap authority 2
+    ///   12. `[writable]` token_(A|B) Base Account to swap INTO.  Must be the MIDDLE token.
+    ///   13. `[writable]` token_(A|B) Base Account to swap FROM.  Must be the DESTINATION token.
+    ///   14. `[writable]` token_(A|B) DESTINATION Account assigned to USER as the owner.
+    ///   15. `[writable]` Pool token mint, to generate trading fees
+    ///   16. `[]` Swap 2 fee account
+    ///   17. `[writable]` refund account to unwrap WSOL to
     RoutedSwap(Swap),
 
     ///   Deregisters a pool from the pool registry
