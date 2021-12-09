@@ -5,13 +5,13 @@ from solana.publickey import PublicKey
 from solana.rpc.async_api import AsyncClient
 from solana.rpc.commitment import Confirmed
 from solana.rpc.types import TxOpts
-from solana.sysvar import SYSVAR_CLOCK_PUBKEY, SYSVAR_STAKE_HISTORY_PUBKEY
+from solana.sysvar import SYSVAR_CLOCK_PUBKEY, SYSVAR_RENT_PUBKEY, SYSVAR_STAKE_HISTORY_PUBKEY
 from solana.transaction import Transaction
 import solana.system_program as sys
 
 from spl.token.constants import TOKEN_PROGRAM_ID
 
-from stake.constants import STAKE_PROGRAM_ID, STAKE_LEN
+from stake.constants import STAKE_PROGRAM_ID, STAKE_LEN, SYSVAR_STAKE_CONFIG_ID
 from stake_pool.constants import \
     MAX_VALIDATORS_TO_UPDATE, \
     STAKE_POOL_PROGRAM_ID, \
@@ -178,7 +178,7 @@ async def remove_validator_from_pool(
 
 async def deposit_sol(
     client: AsyncClient, funder: Keypair, stake_pool_address: PublicKey,
-    amount: int, destination_token_account: PublicKey
+    destination_token_account: PublicKey, amount: int,
 ):
     resp = await client.get_account_info(stake_pool_address, commitment=Confirmed)
     data = resp['result']['value']['data']
@@ -332,3 +332,107 @@ async def update_stake_pool(client: AsyncClient, payer: Keypair, stake_pool_addr
     )
     await client.send_transaction(
         txn, payer, opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))
+
+
+async def increase_validator_stake(
+    client: AsyncClient, payer: Keypair, staker: Keypair, stake_pool_address: PublicKey,
+    validator_vote: PublicKey, lamports: int
+):
+    resp = await client.get_account_info(stake_pool_address, commitment=Confirmed)
+    data = resp['result']['value']['data']
+    stake_pool = StakePool.decode(data[0], data[1])
+
+    resp = await client.get_account_info(stake_pool.validator_list, commitment=Confirmed)
+    data = resp['result']['value']['data']
+    validator_list = ValidatorList.decode(data[0], data[1])
+    (withdraw_authority, seed) = find_withdraw_authority_program_address(STAKE_POOL_PROGRAM_ID, stake_pool_address)
+
+    validator_info = next(x for x in validator_list.validators if x.vote_account_address == validator_vote)
+    transient_stake_seed = validator_info.transient_seed_suffix_start + 1  # bump up by one to avoid reuse
+    (transient_stake, _) = find_transient_stake_program_address(
+        STAKE_POOL_PROGRAM_ID,
+        validator_info.vote_account_address,
+        stake_pool_address,
+        transient_stake_seed,
+    )
+
+    txn = Transaction()
+    txn.add(
+        sp.increase_validator_stake(
+            sp.IncreaseValidatorStakeParams(
+                program_id=STAKE_POOL_PROGRAM_ID,
+                stake_pool=stake_pool_address,
+                staker=staker.public_key,
+                withdraw_authority=withdraw_authority,
+                validator_list=stake_pool.validator_list,
+                reserve_stake=stake_pool.reserve_stake,
+                transient_stake=transient_stake,
+                validator_vote=validator_vote,
+                clock_sysvar=SYSVAR_CLOCK_PUBKEY,
+                rent_sysvar=SYSVAR_RENT_PUBKEY,
+                stake_history_sysvar=SYSVAR_STAKE_HISTORY_PUBKEY,
+                stake_config_sysvar=SYSVAR_STAKE_CONFIG_ID,
+                system_program_id=sys.SYS_PROGRAM_ID,
+                stake_program_id=STAKE_PROGRAM_ID,
+                lamports=lamports,
+                transient_stake_seed=transient_stake_seed,
+            )
+        )
+    )
+
+    signers = [payer, staker] if payer != staker else [payer]
+    await client.send_transaction(
+        txn, *signers, opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))
+
+
+async def decrease_validator_stake(
+    client: AsyncClient, payer: Keypair, staker: Keypair, stake_pool_address: PublicKey,
+    validator_vote: PublicKey, lamports: int
+):
+    resp = await client.get_account_info(stake_pool_address, commitment=Confirmed)
+    data = resp['result']['value']['data']
+    stake_pool = StakePool.decode(data[0], data[1])
+
+    resp = await client.get_account_info(stake_pool.validator_list, commitment=Confirmed)
+    data = resp['result']['value']['data']
+    validator_list = ValidatorList.decode(data[0], data[1])
+    (withdraw_authority, seed) = find_withdraw_authority_program_address(STAKE_POOL_PROGRAM_ID, stake_pool_address)
+
+    validator_info = next(x for x in validator_list.validators if x.vote_account_address == validator_vote)
+    (validator_stake, _) = find_stake_program_address(
+        STAKE_POOL_PROGRAM_ID,
+        validator_info.vote_account_address,
+        stake_pool_address,
+    )
+    transient_stake_seed = validator_info.transient_seed_suffix_start + 1  # bump up by one to avoid reuse
+    (transient_stake, _) = find_transient_stake_program_address(
+        STAKE_POOL_PROGRAM_ID,
+        validator_info.vote_account_address,
+        stake_pool_address,
+        transient_stake_seed,
+    )
+
+    txn = Transaction()
+    txn.add(
+        sp.decrease_validator_stake(
+            sp.DecreaseValidatorStakeParams(
+                program_id=STAKE_POOL_PROGRAM_ID,
+                stake_pool=stake_pool_address,
+                staker=staker.public_key,
+                withdraw_authority=withdraw_authority,
+                validator_list=stake_pool.validator_list,
+                validator_stake=validator_stake,
+                transient_stake=transient_stake,
+                clock_sysvar=SYSVAR_CLOCK_PUBKEY,
+                rent_sysvar=SYSVAR_RENT_PUBKEY,
+                system_program_id=sys.SYS_PROGRAM_ID,
+                stake_program_id=STAKE_PROGRAM_ID,
+                lamports=lamports,
+                transient_stake_seed=transient_stake_seed,
+            )
+        )
+    )
+
+    signers = [payer, staker] if payer != staker else [payer]
+    await client.send_transaction(
+        txn, *signers, opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))

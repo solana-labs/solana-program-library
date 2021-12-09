@@ -4,7 +4,7 @@ import os
 import shutil
 import tempfile
 import time
-from typing import Iterator, List
+from typing import Iterator, List, Tuple
 from subprocess import Popen
 
 from solana.keypair import Keypair
@@ -14,6 +14,8 @@ from solana.rpc.commitment import Confirmed
 
 from vote.actions import create_vote
 from system.actions import airdrop
+from stake_pool.actions import create_all, add_validator_to_pool
+from stake_pool.state import Fee
 
 
 @pytest.fixture(scope="session")
@@ -21,11 +23,13 @@ def solana_test_validator():
     old_cwd = os.getcwd()
     newpath = tempfile.mkdtemp()
     os.chdir(newpath)
-    validator = Popen(["solana-test-validator", "--reset", "--quiet",
-                       "--bpf-program", "SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy",
-                       f"{old_cwd}/../../target/deploy/spl_stake_pool.so",
-                       "--slots-per-epoch", "32",
-                       ],)
+    validator = Popen([
+        "solana-test-validator",
+        "--reset", "--quiet",
+        "--bpf-program", "SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy",
+        f"{old_cwd}/../../target/deploy/spl_stake_pool.so",
+        "--slots-per-epoch", "32",
+    ],)
     yield
     validator.kill()
     os.chdir(old_cwd)
@@ -44,6 +48,21 @@ def validators(event_loop, async_client, payer) -> List[PublicKey]:
         validators.append(vote.public_key)
     event_loop.run_until_complete(asyncio.gather(*futures))
     return validators
+
+
+@pytest.fixture
+def stake_pool_addresses(event_loop, async_client, payer, validators) -> Tuple[PublicKey, PublicKey]:
+    fee = Fee(numerator=1, denominator=1000)
+    referral_fee = 20
+    stake_pool_addresses = event_loop.run_until_complete(
+        create_all(async_client, payer, fee, referral_fee)
+    )
+    futures = [
+        add_validator_to_pool(async_client, payer, stake_pool_addresses[0], validator)
+        for validator in validators
+    ]
+    event_loop.run_until_complete(asyncio.gather(*futures))
+    return stake_pool_addresses
 
 
 @pytest.fixture

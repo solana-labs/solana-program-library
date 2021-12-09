@@ -1,10 +1,10 @@
 import pytest
 from solana.rpc.commitment import Confirmed
 from solana.keypair import Keypair
+from spl.token.instructions import get_associated_token_address
 
 from stake_pool.state import Fee, StakePool
 from stake_pool.actions import create_all, deposit_sol, withdraw_sol
-from spl.token.instructions import get_associated_token_address
 
 
 @pytest.mark.asyncio
@@ -17,7 +17,7 @@ async def test_deposit_withdraw_sol(async_client, payer):
     stake_pool = StakePool.decode(data[0], data[1])
     token_account = get_associated_token_address(payer.public_key, stake_pool.pool_mint)
     deposit_amount = 100_000_000
-    await deposit_sol(async_client, payer, stake_pool_address, deposit_amount, token_account)
+    await deposit_sol(async_client, payer, stake_pool_address, token_account, deposit_amount)
     pool_token_balance = await async_client.get_token_account_balance(token_account, Confirmed)
     assert pool_token_balance['result']['value']['amount'] == str(deposit_amount)
     recipient = Keypair()
