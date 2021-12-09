@@ -28,7 +28,7 @@ def solana_test_validator():
         "--reset", "--quiet",
         "--bpf-program", "SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy",
         f"{old_cwd}/../../target/deploy/spl_stake_pool.so",
-        "--slots-per-epoch", "32",
+        "--slots-per-epoch", "64",
     ],)
     yield
     validator.kill()

@@ -1,5 +1,6 @@
 """Stake State."""
 
+from enum import IntEnum
 from typing import NamedTuple, Dict
 from construct import Container, Struct, Int64ul  # type: ignore
 
@@ -37,6 +38,12 @@ class Authorized(NamedTuple):
             'staker': bytes(self.staker),
             'withdrawer': bytes(self.withdrawer),
         }
+
+
+class StakeAuthorize(IntEnum):
+    """Stake Authorization Types."""
+    STAKER = 0
+    WITHDRAWER = 1
 
 
 LOCKUP_LAYOUT = Struct(

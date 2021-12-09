@@ -19,7 +19,7 @@ async def test_create_stake_pool(async_client, payer):
         STAKE_POOL_PROGRAM_ID, stake_pool.public_key)
 
     reserve_stake = Keypair()
-    await create_stake(async_client, payer, reserve_stake, pool_withdraw_authority)
+    await create_stake(async_client, payer, reserve_stake, pool_withdraw_authority, 1)
 
     pool_mint = Keypair()
     await create_mint(async_client, payer, pool_mint, pool_withdraw_authority)

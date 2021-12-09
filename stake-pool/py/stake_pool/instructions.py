@@ -278,11 +278,77 @@ class CleanupRemovedValidatorEntriesParams(NamedTuple):
 
 
 class DepositStakeParams(NamedTuple):
-    pass
+    """Deposits a stake account into the pool in exchange for pool tokens"""
+
+    program_id: PublicKey
+    """SPL Stake Pool program account."""
+    stake_pool: PublicKey
+    """`[w]` Stake pool"""
+    validator_list: PublicKey
+    """`[w]` Validator stake list storage account"""
+    deposit_authority: PublicKey
+    """`[s]/[]` Stake pool deposit authority"""
+    withdraw_authority: PublicKey
+    """`[]` Stake pool withdraw authority"""
+    deposit_stake: PublicKey
+    """`[w]` Stake account to join the pool (stake's withdraw authority set to the stake pool deposit authority)"""
+    validator_stake: PublicKey
+    """`[w]` Validator stake account for the stake account to be merged with"""
+    reserve_stake: PublicKey
+    """`[w]` Reserve stake account, to withdraw rent exempt reserve"""
+    destination_pool_account: PublicKey
+    """`[w]` User account to receive pool tokens"""
+    manager_fee_account: PublicKey
+    """`[w]` Account to receive pool fee tokens"""
+    referral_pool_account: PublicKey
+    """`[w]` Account to receive a portion of pool fee tokens as referral fees"""
+    pool_mint: PublicKey
+    """`[w]` Pool token mint account"""
+    clock_sysvar: PublicKey
+    """`[]` Sysvar clock account"""
+    stake_history_sysvar: PublicKey
+    """`[]` Sysvar stake history account"""
+    token_program_id: PublicKey
+    """`[]` Pool token program id"""
+    stake_program_id: PublicKey
+    """`[]` Stake program id"""
 
 
 class WithdrawStakeParams(NamedTuple):
-    pass
+    """Withdraws a stake account from the pool in exchange for pool tokens"""
+
+    program_id: PublicKey
+    """SPL Stake Pool program account."""
+    stake_pool: PublicKey
+    """`[w]` Stake pool"""
+    validator_list: PublicKey
+    """`[w]` Validator stake list storage account"""
+    withdraw_authority: PublicKey
+    """`[]` Stake pool withdraw authority"""
+    validator_stake: PublicKey
+    """`[w]` Validator or reserve stake account to split"""
+    destination_stake: PublicKey
+    """`[w]` Unitialized stake account to receive withdrawal"""
+    destination_stake_authority: PublicKey
+    """`[]` User account to set as a new withdraw authority"""
+    source_transfer_authority: PublicKey
+    """`[s]` User transfer authority, for pool token account"""
+    source_pool_account: PublicKey
+    """`[w]` User account with pool tokens to burn from"""
+    manager_fee_account: PublicKey
+    """`[w]` Account to receive pool fee tokens"""
+    pool_mint: PublicKey
+    """`[w]` Pool token mint account"""
+    clock_sysvar: PublicKey
+    """`[]` Sysvar clock account"""
+    token_program_id: PublicKey
+    """`[]` Pool token program id"""
+    stake_program_id: PublicKey
+    """`[]` Stake program id"""
+
+    # Params
+    amount: int
+    """Amount of pool tokens to burn in exchange for stake"""
 
 
 class SetManagerParams(NamedTuple):
@@ -348,7 +414,7 @@ class WithdrawSolParams(NamedTuple):
     """`[w]` Stake pool."""
     withdraw_authority: PublicKey
     """`[]` Stake pool withdraw authority."""
-    user_transfer_authority: PublicKey
+    source_transfer_authority: PublicKey
     """`[s]` Transfer authority for user pool token account."""
     source_pool_account: PublicKey
     """`[w]` User's pool token account to burn pool tokens."""
@@ -602,6 +668,65 @@ def remove_validator_from_pool_with_vote(
     )
 
 
+def deposit_stake(params: DepositStakeParams) -> TransactionInstruction:
+    """Creates a transaction instruction to deposit SOL into a stake pool."""
+    keys = [
+        AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=True),
+        AccountMeta(pubkey=params.validator_list, is_signer=False, is_writable=True),
+        AccountMeta(pubkey=params.deposit_authority, is_signer=False, is_writable=False),
+        AccountMeta(pubkey=params.withdraw_authority, is_signer=False, is_writable=False),
+        AccountMeta(pubkey=params.deposit_stake, is_signer=False, is_writable=True),
+        AccountMeta(pubkey=params.validator_stake, is_signer=False, is_writable=True),
+        AccountMeta(pubkey=params.reserve_stake, is_signer=False, is_writable=True),
+        AccountMeta(pubkey=params.destination_pool_account, is_signer=False, is_writable=True),
+        AccountMeta(pubkey=params.manager_fee_account, is_signer=False, is_writable=True),
+        AccountMeta(pubkey=params.referral_pool_account, is_signer=False, is_writable=True),
+        AccountMeta(pubkey=params.pool_mint, is_signer=False, is_writable=True),
+        AccountMeta(pubkey=params.clock_sysvar, is_signer=False, is_writable=False),
+        AccountMeta(pubkey=params.stake_history_sysvar, is_signer=False, is_writable=False),
+        AccountMeta(pubkey=params.token_program_id, is_signer=False, is_writable=False),
+        AccountMeta(pubkey=params.stake_program_id, is_signer=False, is_writable=False),
+    ]
+    return TransactionInstruction(
+        keys=keys,
+        program_id=params.program_id,
+        data=INSTRUCTIONS_LAYOUT.build(
+            dict(
+                instruction_type=InstructionType.DEPOSIT_STAKE,
+                args=None,
+            )
+        )
+    )
+
+
+def withdraw_stake(params: WithdrawStakeParams) -> TransactionInstruction:
+    """Creates a transaction instruction to withdraw SOL from a stake pool."""
+    return TransactionInstruction(
+        keys=[
+            AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=params.validator_list, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=params.withdraw_authority, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.validator_stake, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=params.destination_stake, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=params.destination_stake_authority, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.source_transfer_authority, is_signer=True, is_writable=False),
+            AccountMeta(pubkey=params.source_pool_account, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=params.manager_fee_account, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=params.pool_mint, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=params.clock_sysvar, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.token_program_id, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.stake_program_id, is_signer=False, is_writable=False),
+        ],
+        program_id=params.program_id,
+        data=INSTRUCTIONS_LAYOUT.build(
+            dict(
+                instruction_type=InstructionType.WITHDRAW_STAKE,
+                args={'amount': params.amount}
+            )
+        )
+    )
+
+
 def deposit_sol(params: DepositSolParams) -> TransactionInstruction:
     """Creates a transaction instruction to deposit SOL into a stake pool."""
     keys = [
@@ -635,7 +760,7 @@ def withdraw_sol(params: WithdrawSolParams) -> TransactionInstruction:
     keys = [
         AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=True),
         AccountMeta(pubkey=params.withdraw_authority, is_signer=False, is_writable=False),
-        AccountMeta(pubkey=params.user_transfer_authority, is_signer=True, is_writable=False),
+        AccountMeta(pubkey=params.source_transfer_authority, is_signer=True, is_writable=False),
         AccountMeta(pubkey=params.source_pool_account, is_signer=False, is_writable=True),
         AccountMeta(pubkey=params.reserve_stake, is_signer=False, is_writable=True),
         AccountMeta(pubkey=params.destination_system_account, is_signer=False, is_writable=True),

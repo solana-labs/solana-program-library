@@ -1,3 +1,4 @@
+"""Time sensitive test, so run it first out of the bunch."""
 import asyncio
 import pytest
 from solana.rpc.commitment import Confirmed
@@ -37,14 +38,15 @@ async def test_increase_decrease_this_is_very_slow(async_client, validators, pay
         assert validator.transient_stake_lamports == increase_amount + stake_rent_exemption
         assert validator.active_stake_lamports == 0
 
-    print("Waiting for epoch to roll over, roughly 12 seconds")
-    await asyncio.sleep(12.0)
+    print("Waiting for epoch to roll over, roughly 24 seconds")
+    await asyncio.sleep(24.0)
     await update_stake_pool(async_client, payer, stake_pool_address)
 
     resp = await async_client.get_account_info(validator_list_address, commitment=Confirmed)
     data = resp['result']['value']['data']
     validator_list = ValidatorList.decode(data[0], data[1])
     for validator in validator_list.validators:
+        assert validator.last_update_epoch != 0
         assert validator.transient_stake_lamports == 0
         assert validator.active_stake_lamports == increase_amount  # rent exemption brought back to reserve
 
@@ -62,8 +64,8 @@ async def test_increase_decrease_this_is_very_slow(async_client, validators, pay
         assert validator.transient_stake_lamports == decrease_amount
         assert validator.active_stake_lamports == increase_amount - decrease_amount
 
-    print("Waiting for epoch to roll over, roughly 12 seconds")
-    await asyncio.sleep(12.0)
+    print("Waiting for epoch to roll over, roughly 24 seconds")
+    await asyncio.sleep(24.0)
     await update_stake_pool(async_client, payer, stake_pool_address)
 
     resp = await async_client.get_account_info(validator_list_address, commitment=Confirmed)
