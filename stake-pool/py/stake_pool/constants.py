@@ -7,6 +7,9 @@ from solana.publickey import PublicKey
 STAKE_POOL_PROGRAM_ID: PublicKey = PublicKey("SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy")
 """Public key that identifies the SPL Stake Pool program."""
 
+MAX_VALIDATORS_TO_UPDATE: int = 5
+"""Maximum number of validators to update during UpdateValidatorListBalance."""
+
 
 def find_deposit_authority_program_address(
     program_id: PublicKey,
@@ -64,5 +67,8 @@ def find_transient_stake_program_address(
 
 
 AUTHORITY_DEPOSIT = b"deposit"
+"""Seed used to derive the default stake pool deposit authority."""
 AUTHORITY_WITHDRAW = b"withdraw"
+"""Seed used to derive the stake pool withdraw authority."""
 TRANSIENT_STAKE_SEED_PREFIX = b"transient"
+"""Seed used to derive transient stake accounts."""

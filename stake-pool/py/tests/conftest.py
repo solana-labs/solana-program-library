@@ -23,7 +23,9 @@ def solana_test_validator():
     os.chdir(newpath)
     validator = Popen(["solana-test-validator", "--reset", "--quiet",
                        "--bpf-program", "SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy",
-                       f"{old_cwd}/../../target/deploy/spl_stake_pool.so"],)
+                       f"{old_cwd}/../../target/deploy/spl_stake_pool.so",
+                       "--slots-per-epoch", "32",
+                       ],)
     yield
     validator.kill()
     os.chdir(old_cwd)

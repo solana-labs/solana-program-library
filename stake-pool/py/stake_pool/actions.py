@@ -12,7 +12,12 @@ import solana.system_program as sys
 from spl.token.constants import TOKEN_PROGRAM_ID
 
 from stake.constants import STAKE_PROGRAM_ID, STAKE_LEN
-from stake_pool.constants import STAKE_POOL_PROGRAM_ID, find_withdraw_authority_program_address
+from stake_pool.constants import \
+    MAX_VALIDATORS_TO_UPDATE, \
+    STAKE_POOL_PROGRAM_ID, \
+    find_stake_program_address, \
+    find_transient_stake_program_address, \
+    find_withdraw_authority_program_address
 from stake_pool.state import STAKE_POOL_LAYOUT, ValidatorList, Fee, StakePool
 import stake_pool.instructions as sp
 
@@ -239,3 +244,91 @@ async def withdraw_sol(
     )
     await client.send_transaction(
         txn, owner, opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))
+
+
+async def update_stake_pool(client: AsyncClient, payer: Keypair, stake_pool_address: PublicKey):
+    """Create and send all instructions to completely update a stake pool after epoch change."""
+    resp = await client.get_account_info(stake_pool_address, commitment=Confirmed)
+    data = resp['result']['value']['data']
+    stake_pool = StakePool.decode(data[0], data[1])
+    resp = await client.get_account_info(stake_pool.validator_list, commitment=Confirmed)
+    data = resp['result']['value']['data']
+    validator_list = ValidatorList.decode(data[0], data[1])
+    (withdraw_authority, seed) = find_withdraw_authority_program_address(STAKE_POOL_PROGRAM_ID, stake_pool_address)
+    update_list_instructions = []
+    validator_chunks = [
+        validator_list.validators[i:i+MAX_VALIDATORS_TO_UPDATE]
+        for i in range(0, len(validator_list.validators), MAX_VALIDATORS_TO_UPDATE)
+    ]
+    start_index = 0
+    for validator_chunk in validator_chunks:
+        validator_and_transient_stake_pairs = []
+        for validator in validator_chunk:
+            (validator_stake_address, _) = find_stake_program_address(
+                STAKE_POOL_PROGRAM_ID,
+                validator.vote_account_address,
+                stake_pool_address,
+            )
+            validator_and_transient_stake_pairs.append(validator_stake_address)
+            (transient_stake_address, _) = find_transient_stake_program_address(
+                STAKE_POOL_PROGRAM_ID,
+                validator.vote_account_address,
+                stake_pool_address,
+                validator.transient_seed_suffix_start,
+            )
+            validator_and_transient_stake_pairs.append(transient_stake_address)
+        update_list_instructions.append(
+            sp.update_validator_list_balance(
+                sp.UpdateValidatorListBalanceParams(
+                    program_id=STAKE_POOL_PROGRAM_ID,
+                    stake_pool=stake_pool_address,
+                    withdraw_authority=withdraw_authority,
+                    validator_list=stake_pool.validator_list,
+                    reserve_stake=stake_pool.reserve_stake,
+                    clock_sysvar=SYSVAR_CLOCK_PUBKEY,
+                    stake_history_sysvar=SYSVAR_STAKE_HISTORY_PUBKEY,
+                    stake_program_id=STAKE_PROGRAM_ID,
+                    validator_and_transient_stake_pairs=validator_and_transient_stake_pairs,
+                    start_index=start_index,
+                    no_merge=False,
+                )
+            )
+        )
+        start_index += MAX_VALIDATORS_TO_UPDATE
+    if update_list_instructions:
+        last_instruction = update_list_instructions.pop()
+        for update_list_instruction in update_list_instructions:
+            txn = Transaction()
+            txn.add(update_list_instruction)
+            await client.send_transaction(
+                txn, payer, opts=TxOpts(skip_confirmation=True, preflight_commitment=Confirmed))
+        txn = Transaction()
+        txn.add(last_instruction)
+        await client.send_transaction(
+            txn, payer, opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))
+    txn = Transaction()
+    txn.add(
+        sp.update_stake_pool_balance(
+            sp.UpdateStakePoolBalanceParams(
+                program_id=STAKE_POOL_PROGRAM_ID,
+                stake_pool=stake_pool_address,
+                withdraw_authority=withdraw_authority,
+                validator_list=stake_pool.validator_list,
+                reserve_stake=stake_pool.reserve_stake,
+                manager_fee_account=stake_pool.manager_fee_account,
+                pool_mint=stake_pool.pool_mint,
+                token_program_id=stake_pool.token_program_id,
+            )
+        )
+    )
+    txn.add(
+        sp.cleanup_removed_validator_entries(
+            sp.CleanupRemovedValidatorEntriesParams(
+                program_id=STAKE_POOL_PROGRAM_ID,
+                stake_pool=stake_pool_address,
+                validator_list=stake_pool.validator_list,
+            )
+        )
+    )
+    await client.send_transaction(
+        txn, payer, opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))

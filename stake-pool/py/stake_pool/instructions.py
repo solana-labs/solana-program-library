@@ -487,6 +487,7 @@ def initialize(params: InitializeParams) -> TransactionInstruction:
 
 
 def add_validator_to_pool(params: AddValidatorToPoolParams) -> TransactionInstruction:
+    """Creates instruction to add a validator to the pool."""
     return TransactionInstruction(
         keys=[
             AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=False),
@@ -521,6 +522,7 @@ def add_validator_to_pool_with_vote(
     funder: PublicKey,
     validator: PublicKey
 ) -> TransactionInstruction:
+    """Creates instruction to add a validator based on their vote account address."""
     (withdraw_authority, seed) = find_withdraw_authority_program_address(program_id, stake_pool)
     (validator_stake, seed) = find_stake_program_address(program_id, validator, stake_pool)
     return add_validator_to_pool(
@@ -544,6 +546,7 @@ def add_validator_to_pool_with_vote(
 
 
 def remove_validator_from_pool(params: RemoveValidatorFromPoolParams) -> TransactionInstruction:
+    """Creates instruction to remove a validator from the pool."""
     return TransactionInstruction(
         keys=[
             AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=False),
@@ -577,6 +580,7 @@ def remove_validator_from_pool_with_vote(
     transient_stake_seed: int,
     destination_stake: PublicKey,
 ) -> TransactionInstruction:
+    """Creates instruction to remove a validator based on their vote account address."""
     (withdraw_authority, seed) = find_withdraw_authority_program_address(program_id, stake_pool)
     (validator_stake, seed) = find_stake_program_address(program_id, validator, stake_pool)
     (transient_stake, seed) = find_transient_stake_program_address(
@@ -653,6 +657,72 @@ def withdraw_sol(params: WithdrawSolParams) -> TransactionInstruction:
             dict(
                 instruction_type=InstructionType.WITHDRAW_SOL,
                 args={'amount': params.amount}
+            )
+        )
+    )
+
+
+def update_validator_list_balance(params: UpdateValidatorListBalanceParams) -> TransactionInstruction:
+    """Creates instruction to update a set of validators in the stake pool."""
+    keys = [
+        AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=False),
+        AccountMeta(pubkey=params.withdraw_authority, is_signer=False, is_writable=False),
+        AccountMeta(pubkey=params.validator_list, is_signer=False, is_writable=True),
+        AccountMeta(pubkey=params.reserve_stake, is_signer=False, is_writable=True),
+        AccountMeta(pubkey=params.clock_sysvar, is_signer=False, is_writable=False),
+        AccountMeta(pubkey=params.stake_history_sysvar, is_signer=False, is_writable=False),
+        AccountMeta(pubkey=params.stake_program_id, is_signer=False, is_writable=False),
+    ]
+    keys.extend([
+        AccountMeta(pubkey=pubkey, is_signer=False, is_writable=True)
+        for pubkey in params.validator_and_transient_stake_pairs
+    ])
+    return TransactionInstruction(
+        keys=keys,
+        program_id=params.program_id,
+        data=INSTRUCTIONS_LAYOUT.build(
+            dict(
+                instruction_type=InstructionType.UPDATE_VALIDATOR_LIST_BALANCE,
+                args={'start_index': params.start_index, 'no_merge': params.no_merge}
+            )
+        )
+    )
+
+
+def update_stake_pool_balance(params: UpdateStakePoolBalanceParams) -> TransactionInstruction:
+    """Creates instruction to update the overall stake pool balance."""
+    return TransactionInstruction(
+        keys=[
+            AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=params.withdraw_authority, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.validator_list, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=params.reserve_stake, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.manager_fee_account, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=params.pool_mint, is_signer=False, is_writable=True),
+            AccountMeta(pubkey=params.token_program_id, is_signer=False, is_writable=False),
+        ],
+        program_id=params.program_id,
+        data=INSTRUCTIONS_LAYOUT.build(
+            dict(
+                instruction_type=InstructionType.UPDATE_STAKE_POOL_BALANCE,
+                args=None,
+            )
+        )
+    )
+
+
+def cleanup_removed_validator_entries(params: CleanupRemovedValidatorEntriesParams) -> TransactionInstruction:
+    """Creates instruction to cleanup removed validator entries."""
+    return TransactionInstruction(
+        keys=[
+            AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=False),
+            AccountMeta(pubkey=params.validator_list, is_signer=False, is_writable=True),
+        ],
+        program_id=params.program_id,
+        data=INSTRUCTIONS_LAYOUT.build(
+            dict(
+                instruction_type=InstructionType.CLEANUP_REMOVED_VALIDATOR_ENTRIES,
+                args=None,
             )
         )
     )
