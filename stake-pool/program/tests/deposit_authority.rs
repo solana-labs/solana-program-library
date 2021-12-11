@@ -60,6 +60,15 @@ async fn success_deposit() {
         staker: user.pubkey(),
         withdrawer: user.pubkey(),
     };
+    create_vote(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &validator_stake_account.validator,
+        &validator_stake_account.vote,
+    )
+    .await;
+
     let _stake_lamports = create_independent_stake_account(
         &mut banks_client,
         &payer,
@@ -71,14 +80,6 @@ async fn success_deposit() {
     )
     .await;
 
-    create_vote(
-        &mut banks_client,
-        &payer,
-        &recent_blockhash,
-        &validator_stake_account.validator,
-        &validator_stake_account.vote,
-    )
-    .await;
     delegate_stake_account(
         &mut banks_client,
         &payer,
@@ -142,6 +143,15 @@ async fn fail_deposit_without_authority_signature() {
         staker: user.pubkey(),
         withdrawer: user.pubkey(),
     };
+    create_vote(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &validator_stake_account.validator,
+        &validator_stake_account.vote,
+    )
+    .await;
+
     let _stake_lamports = create_independent_stake_account(
         &mut banks_client,
         &payer,
@@ -153,14 +163,6 @@ async fn fail_deposit_without_authority_signature() {
     )
     .await;
 
-    create_vote(
-        &mut banks_client,
-        &payer,
-        &recent_blockhash,
-        &validator_stake_account.validator,
-        &validator_stake_account.vote,
-    )
-    .await;
     delegate_stake_account(
         &mut banks_client,
         &payer,
