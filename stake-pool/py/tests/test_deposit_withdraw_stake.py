@@ -1,5 +1,6 @@
 import asyncio
 import pytest
+from typing import Tuple
 from solana.rpc.async_api import AsyncClient
 from solana.rpc.commitment import Confirmed
 from solana.keypair import Keypair
@@ -12,14 +13,14 @@ from stake_pool.actions import deposit_stake, withdraw_stake, update_stake_pool
 from stake_pool.state import StakePool
 
 
-async def simple_deposit(
+async def prepare_stake(
     async_client: AsyncClient, payer: Keypair, stake_pool_address: PublicKey,
     validator: PublicKey, token_account: PublicKey, stake_amount: int
-):
+) -> Tuple[PublicKey, PublicKey]:
     stake = Keypair()
     await create_stake(async_client, payer, stake, payer.public_key, stake_amount)
     await delegate_stake(async_client, payer, payer, stake.public_key, validator)
-    await deposit_stake(async_client, payer, stake_pool_address, validator, stake.public_key, token_account)
+    return (stake.public_key, validator)
 
 
 @pytest.mark.asyncio
@@ -37,21 +38,30 @@ async def test_deposit_withdraw_stake(async_client, validators, payer, stake_poo
 
     stake_amount = 1_000_000
     futures = [
-        simple_deposit(async_client, payer, stake_pool_address, validator, token_account, stake_amount)
+        prepare_stake(async_client, payer, stake_pool_address, validator, token_account, stake_amount)
         for validator in validators
     ]
-    await asyncio.gather(*futures)
+    stakes = await asyncio.gather(*futures)
+    await waiter.wait_for_next_epoch(async_client)
+    await update_stake_pool(async_client, payer, stake_pool_address)
+    futures = [
+        deposit_stake(async_client, payer, stake_pool_address, validator, stake, token_account)
+        for (stake, validator) in stakes
+    ]
+    stakes = await asyncio.gather(*futures)
 
     pool_token_balance = await async_client.get_token_account_balance(token_account, Confirmed)
     pool_token_balance = pool_token_balance['result']['value']['amount']
     assert pool_token_balance == str((stake_amount + stake_rent_exemption) * len(validators))
 
+    futures = []
     for validator in validators:
         destination_stake = Keypair()
-        await withdraw_stake(
+        futures.append(withdraw_stake(
             async_client, payer, payer, destination_stake, stake_pool_address, validator,
             payer.public_key, token_account, stake_amount
-        )
+        ))
+    await asyncio.gather(*futures)
 
     pool_token_balance = await async_client.get_token_account_balance(token_account, Confirmed)
     pool_token_balance = pool_token_balance['result']['value']['amount']
