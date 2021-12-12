@@ -99,6 +99,10 @@ pub fn process_instruction(
             msg!("Instruction: Flash Loan");
             process_flash_loan(program_id, amount, accounts)
         }
+        LendingInstruction::CloseObligationAccount => {
+            msg!("Instruction: Refresh Obligation");
+            process_refresh_obligation(program_id, accounts)
+        }
     }
 }
 

@@ -308,6 +308,9 @@ pub enum LendingInstruction {
         /// The amount that is to be borrowed - u64::MAX for up to 100% of available liquidity
         amount: u64,
     },
+    ///14
+    /// Closes obligation account to retrieve SOL rent
+    CloseObligationAccount,
 }
 
 impl LendingInstruction {
@@ -394,6 +397,7 @@ impl LendingInstruction {
                 let (amount, _rest) = Self::unpack_u64(rest)?;
                 Self::FlashLoan { amount }
             }
+            14 => Self::CloseObligationAccount,
             _ => {
                 msg!("Instruction cannot be unpacked");
                 return Err(LendingError::InstructionUnpackError.into());
@@ -541,6 +545,9 @@ impl LendingInstruction {
             Self::FlashLoan { amount } => {
                 buf.push(13);
                 buf.extend_from_slice(&amount.to_le_bytes());
+            }
+            Self::CloseObligationAccount => {
+                buf.push(14);
             }
         }
         buf
@@ -979,5 +986,21 @@ pub fn flash_loan(
         program_id,
         accounts,
         data: LendingInstruction::FlashLoan { amount }.pack(),
+    }
+}
+    
+    /// Creates a 'CloseObligationAccount' instruction
+    pub fn close_obligation_account(
+        program_id: Pubkey,
+        obligation_pubkey: Pubkey,
+        repay_reserve_pubkey: Pubkey
+    ) -> Instruction {
+        Instruction {
+            program_id,
+            accounts: vec![
+                AccountMeta::new(obligation_pubkey, false),
+                AccountMeta::new(repay_reserve_pubkey, false)
+            ],
+            data: LendingInstruction::CloseObligationAccount.pack(),
     }
 }
