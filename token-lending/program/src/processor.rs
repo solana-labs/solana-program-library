@@ -100,7 +100,7 @@ pub fn process_instruction(
             process_flash_loan(program_id, amount, accounts)
         }
         LendingInstruction::CloseObligationAccount => {
-            msg!("Instruction: Refresh Obligation");
+            msg!("Instruction: Close Obligation Account");
             process_refresh_obligation(program_id, accounts)
         }
     }
@@ -1698,6 +1698,16 @@ fn process_flash_loan(
     }
 
     Ok(())
+}
+
+#[inline(never)] // avoid stack frame limit
+fn process_close_obligation_account(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+    let obligation_account = next_account_info(account_info_iter)?;
+    let reserve_
 }
 
 fn assert_rent_exempt(rent: &Rent, account_info: &AccountInfo) -> ProgramResult {
