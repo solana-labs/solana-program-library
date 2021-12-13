@@ -1,12 +1,12 @@
 import { AccountInfo, PublicKey } from '@solana/web3.js';
-import { blob, struct, u8 } from 'buffer-layout';
+import { blob, struct, u8 } from '@solana/buffer-layout';
 import { Parser, publicKey } from '../util';
 
 export interface LendingMarket {
     version: number;
     bumpSeed: number;
     owner: PublicKey;
-    quoteCurrency: Buffer;
+    quoteCurrency: Uint8Array;
     tokenProgramId: PublicKey;
     oracleProgramId: PublicKey;
 }

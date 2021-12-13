@@ -1,24 +1,24 @@
 import { AccountInfo, PublicKey } from '@solana/web3.js';
 import BigNumber from 'bignumber.js';
-import { blob, Layout, u8 } from 'buffer-layout';
+import { blob, Layout, u8 } from '@solana/buffer-layout';
 import { toBigIntLE, toBufferLE } from 'bigint-buffer';
 import { WAD } from '../constants';
 
 export type Parser<T> = (
     pubkey: PublicKey,
-    info: AccountInfo<Buffer>
+    info: AccountInfo<Uint8Array>
 ) =>
     | {
           pubkey: PublicKey;
-          info: AccountInfo<Buffer>;
+          info: AccountInfo<Uint8Array>;
           data: T;
       }
     | undefined;
 
 /** @internal */
 export interface EncodeDecode<T> {
-    decode: (buffer: Buffer, offset?: number) => T;
-    encode: (src: T, buffer: Buffer, offset?: number) => number;
+    decode: (buffer: Uint8Array, offset?: number) => T;
+    encode: (src: T, buffer: Uint8Array, offset?: number) => number;
 }
 
 /** @internal */
@@ -35,12 +35,12 @@ export const bool = (property = 'bool'): Layout<boolean> => {
 
     const boolLayout = layout as Layout<unknown> as Layout<boolean>;
 
-    boolLayout.decode = (buffer: Buffer, offset: number) => {
+    boolLayout.decode = (buffer: Uint8Array, offset: number) => {
         const src = decode(buffer, offset);
         return !!src;
     };
 
-    boolLayout.encode = (bool: boolean, buffer: Buffer, offset: number) => {
+    boolLayout.encode = (bool: boolean, buffer: Uint8Array, offset: number) => {
         const src = Number(bool);
         return encode(src, buffer, offset);
     };
@@ -55,12 +55,12 @@ export const publicKey = (property = 'publicKey'): Layout<PublicKey> => {
 
     const publicKeyLayout = layout as Layout<unknown> as Layout<PublicKey>;
 
-    publicKeyLayout.decode = (buffer: Buffer, offset: number) => {
+    publicKeyLayout.decode = (buffer: Uint8Array, offset: number) => {
         const src = decode(buffer, offset);
         return new PublicKey(src);
     };
 
-    publicKeyLayout.encode = (publicKey: PublicKey, buffer: Buffer, offset: number) => {
+    publicKeyLayout.encode = (publicKey: PublicKey, buffer: Uint8Array, offset: number) => {
         const src = publicKey.toBuffer();
         return encode(src, buffer, offset);
     };
@@ -77,12 +77,12 @@ export const bigInt =
 
         const bigIntLayout = layout as Layout<unknown> as Layout<bigint>;
 
-        bigIntLayout.decode = (buffer: Buffer, offset: number) => {
+        bigIntLayout.decode = (buffer: Uint8Array, offset: number) => {
             const src = decode(buffer, offset);
             return toBigIntLE(src as Buffer);
         };
 
-        bigIntLayout.encode = (bigInt: bigint, buffer: Buffer, offset: number) => {
+        bigIntLayout.encode = (bigInt: bigint, buffer: Uint8Array, offset: number) => {
             const src = toBufferLE(bigInt, length);
             return encode(src, buffer, offset);
         };
@@ -103,12 +103,12 @@ export const decimal = (property = 'decimal'): Layout<BigNumber> => {
 
     const decimalLayout = layout as Layout<unknown> as Layout<BigNumber>;
 
-    decimalLayout.decode = (buffer: Buffer, offset: number) => {
+    decimalLayout.decode = (buffer: Uint8Array, offset: number) => {
         const src = decode(buffer, offset).toString();
         return new BigNumber(src).div(WAD);
     };
 
-    decimalLayout.encode = (decimal: BigNumber, buffer: Buffer, offset: number) => {
+    decimalLayout.encode = (decimal: BigNumber, buffer: Uint8Array, offset: number) => {
         const src = BigInt(decimal.times(WAD).integerValue().toString());
         return encode(src, buffer, offset);
     };

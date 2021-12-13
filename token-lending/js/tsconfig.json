@@ -13,7 +13,7 @@
         "stripInternal": true
     },
     "files": ["rollup.config.ts"],
-    "include": ["src", "types"],
+    "include": ["src"],
     "exclude": ["lib", "node_modules"],
     "typedocOptions": {
         "entryPoints": ["src/index.ts"],

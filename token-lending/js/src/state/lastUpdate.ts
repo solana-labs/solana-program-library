@@ -1,4 +1,4 @@
-import { struct } from 'buffer-layout';
+import { struct } from '@solana/buffer-layout';
 import { bool, u64 } from '../util';
 
 export interface LastUpdate {
