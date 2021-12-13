@@ -17,6 +17,8 @@ from system.actions import airdrop
 from stake_pool.actions import create_all, add_validator_to_pool
 from stake_pool.state import Fee
 
+NUM_SLOTS_PER_EPOCH: int = 32
+
 
 @pytest.fixture(scope="session")
 def solana_test_validator():
@@ -28,7 +30,7 @@ def solana_test_validator():
         "--reset", "--quiet",
         "--bpf-program", "SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy",
         f"{old_cwd}/../../target/deploy/spl_stake_pool.so",
-        "--slots-per-epoch", "64",
+        "--slots-per-epoch", str(NUM_SLOTS_PER_EPOCH),
     ],)
     yield
     validator.kill()
@@ -93,3 +95,26 @@ def payer(event_loop, async_client) -> Keypair:
     airdrop_lamports = 10_000_000_000
     event_loop.run_until_complete(airdrop(async_client, payer.public_key, airdrop_lamports))
     return payer
+
+
+class Waiter:
+    @staticmethod
+    async def wait_for_next_epoch(async_client: AsyncClient):
+        resp = await async_client.get_epoch_info(commitment=Confirmed)
+        current_epoch = resp['result']['epoch']
+        next_epoch = current_epoch
+        while current_epoch == next_epoch:
+            await asyncio.sleep(1.0)
+            resp = await async_client.get_epoch_info(commitment=Confirmed)
+            next_epoch = resp['result']['epoch']
+
+    @staticmethod
+    async def wait_for_next_epoch_if_soon(async_client: AsyncClient):
+        resp = await async_client.get_epoch_info(commitment=Confirmed)
+        if resp['result']['slotsInEpoch'] - resp['result']['slotIndex'] < 10:
+            await Waiter.wait_for_next_epoch(async_client)
+
+
+@pytest.fixture
+def waiter() -> Waiter:
+    return Waiter()
