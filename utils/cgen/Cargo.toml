@@ -1,0 +1,9 @@
+[package]
+name = "cgen"
+version = "0.1.0"
+authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+publish = false
+edition = "2018"
+
+[dependencies]
+cbindgen = "=0.16.0"

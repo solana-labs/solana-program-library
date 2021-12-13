@@ -1,0 +1,16 @@
+[ignore]
+<PROJECT_ROOT>/node_modules/*
+
+[include]
+
+[libs]
+node_modules/@solana/web3.js/module.flow.js
+flow-typed/
+
+[options]
+
+emoji=true
+module.system.node.resolve_dirname=./src
+module.use_strict=true
+experimental.const_params=true
+include_warnings=true

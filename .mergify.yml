@@ -1,0 +1,54 @@
+# Validate your changes with:
+#
+#   $ curl -F 'data=@.mergify.yml' https://gh.mergify.io/validate/
+#
+# https://doc.mergify.io/
+pull_request_rules:
+  - name: label changes from community
+    conditions:
+      - author≠@core-contributors
+      - author≠mergify[bot]
+      - author≠dependabot[bot]
+    actions:
+      label:
+        add:
+          - community
+  - name: automatic merge (squash) on CI success
+    conditions:
+      - check-success=Travis CI - Pull Request
+      - check-success=all_github_action_checks
+      - "#status-failure=0"
+      - "#status-neutral=0"
+      - label=automerge
+      - author≠@dont-squash-my-commits
+    actions:
+      merge:
+        method: squash
+  # Join the dont-squash-my-commits group if you won't like your commits squashed
+  - name: automatic merge (rebase) on CI success
+    conditions:
+      - check-success=Travis CI - Pull Request
+      - check-success=all_github_action_checks
+      - "#status-failure=0"
+      - "#status-neutral=0"
+      - label=automerge
+      - author=@dont-squash-my-commits
+    actions:
+      merge:
+        method: rebase
+  - name: remove automerge label on CI failure
+    conditions:
+      - label=automerge
+      - "#status-failure!=0"
+    actions:
+      label:
+        remove:
+          - automerge
+      comment:
+        message: automerge label removed due to a CI failure
+  - name: remove outdated reviews
+    conditions:
+      - base=master
+    actions:
+      dismiss_reviews:
+        changes_requested: true

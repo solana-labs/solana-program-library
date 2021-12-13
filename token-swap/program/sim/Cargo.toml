@@ -1,0 +1,10 @@
+[package]
+name = "sim"
+version = "0.1.0"
+authors = ["michaelhly <michaelhly@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+pyo3 = "0.12.3"

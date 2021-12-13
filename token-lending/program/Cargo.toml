@@ -1,0 +1,35 @@
+[package]
+name = "spl-token-lending"
+version = "0.1.0"
+description = "Solana Program Library Token Lending"
+authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+repository = "https://github.com/solana-labs/solana-program-library"
+license = "Apache-2.0"
+edition = "2018"
+
+[features]
+no-entrypoint = []
+test-bpf = []
+
+[dependencies]
+arrayref = "0.3.6"
+bytemuck = "1.7.2"
+num-derive = "0.3"
+num-traits = "0.2"
+solana-program = "1.8.1"
+spl-token = { path = "../../token/program", features = [ "no-entrypoint" ] }
+thiserror = "1.0"
+uint = "0.9"
+
+[dev-dependencies]
+assert_matches = "1.5.0"
+base64 = "0.13"
+log = "0.4.14"
+proptest = "1.0"
+solana-program-test = "1.8.1"
+solana-sdk = "1.8.1"
+serde = "1.0"
+serde_yaml = "0.8"
+
+[lib]
+crate-type = ["cdylib", "lib"]
