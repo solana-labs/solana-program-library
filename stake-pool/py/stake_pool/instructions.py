@@ -505,9 +505,9 @@ INSTRUCTIONS_LAYOUT = Struct(
             InstructionType.CLEANUP_REMOVED_VALIDATOR_ENTRIES: Pass,
             InstructionType.DEPOSIT_STAKE: Pass,
             InstructionType.WITHDRAW_STAKE: AMOUNT_LAYOUT,
-            InstructionType.SET_MANAGER: Pass,
+            InstructionType.SET_MANAGER: Pass,  # TODO
             InstructionType.SET_FEE: Pass,  # TODO
-            InstructionType.SET_STAKER: Pass,
+            InstructionType.SET_STAKER: Pass,  # TODO
             InstructionType.DEPOSIT_SOL: AMOUNT_LAYOUT,
             InstructionType.SET_FUNDING_AUTHORITY: Pass,  # TODO
             InstructionType.WITHDRAW_SOL: AMOUNT_LAYOUT,
