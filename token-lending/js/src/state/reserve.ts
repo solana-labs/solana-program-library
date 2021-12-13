@@ -1,6 +1,6 @@
 import { AccountInfo, PublicKey } from '@solana/web3.js';
 import BigNumber from 'bignumber.js';
-import { blob, struct, u8 } from 'buffer-layout';
+import { blob, struct, u8 } from '@solana/buffer-layout';
 import { decimal, Parser, publicKey, u64 } from '../util';
 import { LastUpdate, LastUpdateLayout } from './lastUpdate';
 
@@ -49,7 +49,7 @@ export interface ReserveFees {
 }
 
 /** @internal */
-export const ReserveLiquidityLayout = struct<ReserveLiquidity>(
+export const ReserveLiquidityLayout = struct(
     [
         publicKey('mintPubkey'),
         u8('mintDecimals'),
@@ -65,19 +65,16 @@ export const ReserveLiquidityLayout = struct<ReserveLiquidity>(
 );
 
 /** @internal */
-export const ReserveCollateralLayout = struct<ReserveCollateral>(
+export const ReserveCollateralLayout = struct(
     [publicKey('mintPubkey'), u64('mintTotalSupply'), publicKey('supplyPubkey')],
     'collateral'
 );
 
 /** @internal */
-export const ReserveFeesLayout = struct<ReserveFees>(
-    [u64('borrowFeeWad'), u64('flashLoanFeeWad'), u8('hostFeePercentage')],
-    'fees'
-);
+export const ReserveFeesLayout = struct([u64('borrowFeeWad'), u64('flashLoanFeeWad'), u8('hostFeePercentage')], 'fees');
 
 /** @internal */
-export const ReserveConfigLayout = struct<ReserveConfig>(
+export const ReserveConfigLayout = struct(
     [
         u8('optimalUtilizationRate'),
         u8('loanToValueRatio'),
@@ -92,7 +89,7 @@ export const ReserveConfigLayout = struct<ReserveConfig>(
 );
 
 /** @internal */
-export const ReserveLayout = struct<Reserve>([
+export const ReserveLayout = struct([
     u8('version'),
     LastUpdateLayout,
     publicKey('lendingMarket'),
@@ -112,7 +109,7 @@ export const parseReserve: Parser<Reserve> = (pubkey: PublicKey, info: AccountIn
     if (!isReserve(info)) return;
 
     const buffer = Buffer.from(info.data);
-    const reserve = ReserveLayout.decode(buffer);
+    const reserve = ReserveLayout.decode(buffer) as Reserve;
 
     if (!reserve.version) return;
 

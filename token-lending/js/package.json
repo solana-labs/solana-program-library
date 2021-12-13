@@ -31,7 +31,7 @@
     "dependencies": {
         "bigint-buffer": "^1.1.5",
         "bignumber.js": "^9.0.1",
-        "buffer-layout": "^1.2.1"
+        "@solana/buffer-layout": "^3.0.0"
     },
     "peerDependencies": {
         "@solana/spl-token": "^0.1.6",

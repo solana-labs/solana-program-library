@@ -1,5 +1,5 @@
 import { AccountInfo, PublicKey } from '@solana/web3.js';
-import { blob, struct, u8 } from 'buffer-layout';
+import { blob, struct, u8 } from '@solana/buffer-layout';
 import { Parser, publicKey } from '../util';
 
 export interface LendingMarket {
@@ -12,7 +12,7 @@ export interface LendingMarket {
 }
 
 /** @internal */
-export const LendingMarketLayout = struct<LendingMarket>(
+export const LendingMarketLayout = struct(
     [
         u8('version'),
         u8('bumpSeed'),
@@ -35,7 +35,7 @@ export const parseLendingMarket: Parser<LendingMarket> = (pubkey: PublicKey, inf
     if (!isLendingMarket(info)) return;
 
     const buffer = Buffer.from(info.data);
-    const lendingMarket = LendingMarketLayout.decode(buffer);
+    const lendingMarket = LendingMarketLayout.decode(buffer) as LendingMarket;
 
     if (!lendingMarket.version) return;
 

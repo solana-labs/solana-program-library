@@ -1,6 +1,6 @@
 import { AccountInfo, PublicKey } from '@solana/web3.js';
 import BigNumber from 'bignumber.js';
-import { blob, seq, struct, u8 } from 'buffer-layout';
+import { blob, seq, struct, u8 } from '@solana/buffer-layout';
 import { decimal, Parser, publicKey, u64 } from '../util';
 import { LastUpdate, LastUpdateLayout } from './lastUpdate';
 
@@ -46,13 +46,13 @@ export interface ObligationDataFlat {
 }
 
 /** @internal */
-export const ObligationCollateralLayout = struct<ObligationCollateral>(
+export const ObligationCollateralLayout = struct(
     [publicKey('depositReserve'), u64('depositedAmount'), decimal('marketValue')],
     'collateral'
 );
 
 /** @internal */
-export const ObligationLiquidityLayout = struct<ObligationLiquidity>(
+export const ObligationLiquidityLayout = struct(
     [
         publicKey('borrowReserve'),
         decimal('cumulativeBorrowRateWads'),
@@ -63,7 +63,7 @@ export const ObligationLiquidityLayout = struct<ObligationLiquidity>(
 );
 
 /** @internal */
-export const ObligationLayout = struct<ObligationDataFlat>(
+export const ObligationLayout = struct(
     [
         u8('version'),
         LastUpdateLayout,

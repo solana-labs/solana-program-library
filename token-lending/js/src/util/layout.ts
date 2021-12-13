@@ -1,6 +1,7 @@
 import { AccountInfo, PublicKey } from '@solana/web3.js';
 import BigNumber from 'bignumber.js';
-import { blob, Layout, u8 } from 'buffer-layout';
+import { blob, Layout, u8 } from '@solana/buffer-layout';
+import { Buffer } from 'buffer';
 import { toBigIntLE, toBufferLE } from 'bigint-buffer';
 import { WAD } from '../constants';
 
@@ -22,18 +23,18 @@ export interface EncodeDecode<T> {
 }
 
 /** @internal */
-export const encodeDecode = <T>(layout: Layout<T>): EncodeDecode<T> => {
+export const encodeDecode = <T>(layout: Layout): EncodeDecode<T> => {
     const decode = layout.decode.bind(layout);
     const encode = layout.encode.bind(layout);
     return { decode, encode };
 };
 
 /** @internal */
-export const bool = (property = 'bool'): Layout<boolean> => {
+export const bool = (property = 'bool'): Layout => {
     const layout = u8(property);
-    const { encode, decode } = encodeDecode(layout);
+    const { encode, decode } = encodeDecode<number>(layout);
 
-    const boolLayout = layout as Layout<unknown> as Layout<boolean>;
+    const boolLayout = layout as Layout;
 
     boolLayout.decode = (buffer: Buffer, offset: number) => {
         const src = decode(buffer, offset);
@@ -49,11 +50,11 @@ export const bool = (property = 'bool'): Layout<boolean> => {
 };
 
 /** @internal */
-export const publicKey = (property = 'publicKey'): Layout<PublicKey> => {
+export const publicKey = (property = 'publicKey'): Layout => {
     const layout = blob(32, property);
-    const { encode, decode } = encodeDecode(layout);
+    const { encode, decode } = encodeDecode<Buffer>(layout);
 
-    const publicKeyLayout = layout as Layout<unknown> as Layout<PublicKey>;
+    const publicKeyLayout = layout as Layout;
 
     publicKeyLayout.decode = (buffer: Buffer, offset: number) => {
         const src = decode(buffer, offset);
@@ -71,11 +72,11 @@ export const publicKey = (property = 'publicKey'): Layout<PublicKey> => {
 /** @internal */
 export const bigInt =
     (length: number) =>
-    (property = 'bigInt'): Layout<bigint> => {
+    (property = 'bigInt'): Layout => {
         const layout = blob(length, property);
-        const { encode, decode } = encodeDecode(layout);
+        const { encode, decode } = encodeDecode<Buffer>(layout);
 
-        const bigIntLayout = layout as Layout<unknown> as Layout<bigint>;
+        const bigIntLayout = layout as Layout;
 
         bigIntLayout.decode = (buffer: Buffer, offset: number) => {
             const src = decode(buffer, offset);
@@ -97,11 +98,11 @@ export const u64 = bigInt(8);
 export const u128 = bigInt(16);
 
 /** @internal */
-export const decimal = (property = 'decimal'): Layout<BigNumber> => {
+export const decimal = (property = 'decimal'): Layout => {
     const layout = u128(property);
-    const { encode, decode } = encodeDecode(layout);
+    const { encode, decode } = encodeDecode<bigint>(layout);
 
-    const decimalLayout = layout as Layout<unknown> as Layout<BigNumber>;
+    const decimalLayout = layout as Layout;
 
     decimalLayout.decode = (buffer: Buffer, offset: number) => {
         const src = decode(buffer, offset).toString();

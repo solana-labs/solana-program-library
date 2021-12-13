@@ -1,4 +1,4 @@
-import { struct } from 'buffer-layout';
+import { struct } from '@solana/buffer-layout';
 import { bool, u64 } from '../util';
 
 export interface LastUpdate {
@@ -7,4 +7,4 @@ export interface LastUpdate {
 }
 
 /** @internal */
-export const LastUpdateLayout = struct<LastUpdate>([u64('slot'), bool('stale')], 'lastUpdate');
+export const LastUpdateLayout = struct([u64('slot'), bool('stale')], 'lastUpdate');
