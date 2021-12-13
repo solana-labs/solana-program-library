@@ -879,7 +879,7 @@ impl RefDB {
         }
         data[offset..data_end].fill(0);
 
-        Ok(data_end - offset)
+        Ok(record.get_size())
     }
 
     /// Deletes the record from the storage using the name only.

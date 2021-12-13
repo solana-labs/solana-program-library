@@ -5,7 +5,10 @@ use {
     log::info,
     solana_farm_client::client::FarmClient,
     solana_farm_sdk::{
-        id::{main_router_admin, ProgramIDType, DAO_MINT_NAME, DAO_PROGRAM_NAME, DAO_TOKEN_NAME},
+        id::{
+            main_router_admin, ProgramIDType, DAO_CUSTODY_NAME, DAO_MINT_NAME, DAO_PROGRAM_NAME,
+            DAO_TOKEN_NAME,
+        },
         refdb::StorageType,
         string::str_to_as64,
         token::{Token, TokenType},
@@ -15,7 +18,7 @@ use {
     spl_governance::instruction as dao_instruction,
     spl_governance::state::{
         enums::{MintMaxVoteWeightSource, VoteThresholdPercentage, VoteWeightSource},
-        governance::GovernanceConfig,
+        governance::{get_account_governance_address, GovernanceConfig},
         realm::get_realm_address,
         token_owner_record::get_token_owner_record_address,
     },
@@ -37,7 +40,7 @@ pub fn init(client: &FarmClient, config: &Config, dao_program: &Pubkey, mint_ui_
 
     let mut inst = vec![];
 
-    info!("Writing Program \"{}\" to on-chain RefDB...", dao_program);
+    info!("  Writing Program \"{}\" to on-chain RefDB...", dao_program);
     client
         .add_program_id(
             config.keypair.as_ref(),
@@ -135,7 +138,7 @@ pub fn init(client: &FarmClient, config: &Config, dao_program: &Pubkey, mint_ui_
         );
 
         info!(
-            "    Signature: {}",
+            "  Signature: {}",
             client
                 .sign_and_send_instructions(&[config.keypair.as_ref()], inst.as_slice())
                 .unwrap()
@@ -175,7 +178,7 @@ pub fn init(client: &FarmClient, config: &Config, dao_program: &Pubkey, mint_ui_
     ));
 
     info!(
-        "    Signature: {}",
+        "  Signature: {}",
         client
             .sign_and_send_instructions(&[config.keypair.as_ref()], inst.as_slice())
             .unwrap()
@@ -222,7 +225,7 @@ pub fn init(client: &FarmClient, config: &Config, dao_program: &Pubkey, mint_ui_
     }
 
     info!(
-        "    Signature: {}",
+        "  Signature: {}",
         client
             .sign_and_send_instructions(&[config.keypair.as_ref()], inst.as_slice())
             .unwrap()
@@ -248,7 +251,7 @@ pub fn init(client: &FarmClient, config: &Config, dao_program: &Pubkey, mint_ui_
     }
 
     info!(
-        "    Signature: {}",
+        "  Signature: {}",
         client
             .sign_and_send_instructions(&[config.keypair.as_ref()], inst.as_slice())
             .unwrap()
@@ -266,16 +269,59 @@ pub fn init(client: &FarmClient, config: &Config, dao_program: &Pubkey, mint_ui_
         &wallet,
         &wallet,
         None,
-        dao_config,
+        dao_config.clone(),
         true,
     ));
 
     info!(
-        "    Signature: {}",
+        "  Signature: {}",
         client
             .sign_and_send_instructions(&[config.keypair.as_ref()], inst.as_slice())
             .unwrap()
     );
+
+    // create token custody governance
+    info!("  Creating token custody governance...");
+    inst.clear();
+    let governed_account =
+        Pubkey::find_program_address(&[DAO_CUSTODY_NAME.as_bytes()], dao_program).0;
+    let custody_authority =
+        get_account_governance_address(dao_program, &realm_address, &governed_account);
+
+    // create wsol account for custody authority
+    if !client.has_active_token_account(&custody_authority, "SOL") {
+        let wsol_token = client.get_token("SOL").unwrap();
+        inst.push(create_associated_token_account(
+            &wallet,
+            &custody_authority,
+            &wsol_token.mint,
+        ));
+    }
+
+    inst.push(dao_instruction::create_account_governance(
+        dao_program,
+        &realm_address,
+        &governed_account,
+        &token_owner,
+        &wallet,
+        &wallet,
+        None,
+        dao_config,
+    ));
+
+    inst.push(
+        client
+            .new_instruction_transfer(&wallet, &custody_authority, 0.1)
+            .unwrap(),
+    );
+
+    info!(
+        "  Signature: {}",
+        client
+            .sign_and_send_instructions(&[config.keypair.as_ref()], inst.as_slice())
+            .unwrap()
+    );
+
     // remove realm authority
     info!("  Removing realm authority...");
     inst.clear();
@@ -287,7 +333,7 @@ pub fn init(client: &FarmClient, config: &Config, dao_program: &Pubkey, mint_ui_
     ));
 
     info!(
-        "    Signature: {}",
+        "  Signature: {}",
         client
             .sign_and_send_instructions(&[config.keypair.as_ref()], inst.as_slice())
             .unwrap()

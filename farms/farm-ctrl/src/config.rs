@@ -53,8 +53,7 @@ impl Config {
         Self {
             farm_client_url: farm_client_url.to_string(),
             commitment: CommitmentConfig::from_str(commitment).unwrap(),
-            keypair: signer_from_path(matches, keypair_path, "this transaction", &mut None)
-                .unwrap(),
+            keypair: signer_from_path(matches, keypair_path, "signer", &mut None).unwrap(),
             max_instructions,
             no_pretty_print: matches.is_present("no_pretty_print"),
             skip_existing: matches.is_present("skip_existing"),
@@ -74,15 +73,6 @@ pub fn get_target(matches: &ArgMatches) -> refdb::StorageType {
 }
 
 pub fn get_objectname(matches: &ArgMatches) -> String {
-    matches
-        .value_of("objectname")
-        .unwrap()
-        .parse::<String>()
-        .unwrap()
-        .to_uppercase()
-}
-
-pub fn get_objectname_raw(matches: &ArgMatches) -> String {
     matches.value_of("objectname").unwrap().parse().unwrap()
 }
 
@@ -283,6 +273,12 @@ pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
                 .arg(objectname.clone()),
         )
         .subcommand(
+            SubCommand::with_name("remove-ref")
+                .about("Remove specified reference from blockchain")
+                .arg(target.clone())
+                .arg(objectname.clone()),
+        )
+        .subcommand(
             SubCommand::with_name("remove-all")
                 .about("Remove all objects of the given type from blockchain")
                 .arg(target.clone()),
@@ -325,6 +321,42 @@ pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
             SubCommand::with_name("vault-shutdown")
                 .about("Shutdown the Vault")
                 .arg(vaultname.clone()),
+        )
+        .subcommand(
+            SubCommand::with_name("vault-withdraw-fees")
+                .about("Withdraw collected fees from the Vault")
+                .arg(vaultname.clone())
+                .arg(
+                    Arg::with_name("fee_token")
+                    .value_name("FEE_TOKEN")
+                    .required(true)
+                    .takes_value(true)
+                    .help("Fees token account to withdraw from - 0 or 1"),
+                )
+                .arg(
+                    Arg::with_name("amount")
+                    .value_name("AMOUNT")
+                    .required(true)
+                    .takes_value(true)
+                    .validator(|p| match p.parse::<f64>() {
+                        Err(_) => Err(String::from("Must be unsigned decimal")),
+                        Ok(val) => {
+                            if val >= 0.0 {
+                                Ok(())
+                            } else {
+                                Err(String::from("Must be unsigned decimal"))
+                            }
+                        }
+                    })
+                    .help("Fees amount or zero for all"),
+                )
+                .arg(
+                    Arg::with_name("receiver")
+                        .value_name("PUBKEY")
+                        .required(true)
+                        .takes_value(true)
+                        .help("Fees receiver"),
+                )
         )
         .subcommand(
             SubCommand::with_name("vault-crank")

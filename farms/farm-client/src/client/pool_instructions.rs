@@ -2,7 +2,9 @@
 
 use {
     crate::error::FarmClientError,
-    solana_farm_sdk::{instruction::amm::AmmInstruction, pool::PoolRoute, program::account},
+    solana_farm_sdk::{
+        instruction::amm::AmmInstruction, pool::PoolRoute, program::account, token::TokenSelector,
+    },
     solana_sdk::{instruction::Instruction, program_error::ProgramError, pubkey::Pubkey},
 };
 
@@ -231,14 +233,14 @@ impl FarmClient {
         &self,
         wallet_address: &Pubkey,
         pool_name: &str,
-        wrap_token_a: bool,
+        token_to_wrap: TokenSelector,
         ui_amount: f64,
     ) -> Result<Instruction, FarmClientError> {
         // get pool info
         let pool = self.get_pool(pool_name)?;
 
         // get underlying token info
-        let token = if wrap_token_a {
+        let token = if token_to_wrap == TokenSelector::TokenA {
             self.get_token_by_ref_from_cache(&pool.token_a_ref)?
         } else {
             self.get_token_by_ref_from_cache(&pool.token_b_ref)?
@@ -252,7 +254,7 @@ impl FarmClient {
 
         let accounts = match pool.route {
             PoolRoute::Saber { .. } => {
-                self.get_wrap_token_accounts_saber(wallet_address, pool_name, wrap_token_a)?
+                self.get_wrap_token_accounts_saber(wallet_address, pool_name, token_to_wrap)?
             }
             _ => {
                 panic!("WrapToken instruction is not supported for this route type");
@@ -270,7 +272,7 @@ impl FarmClient {
         &self,
         wallet_address: &Pubkey,
         pool_name: &str,
-        unwrap_token_a: bool,
+        token_to_unwrap: TokenSelector,
         ui_amount: f64,
     ) -> Result<Instruction, FarmClientError> {
         // get pool info
@@ -282,13 +284,13 @@ impl FarmClient {
                 wrapped_token_b_ref,
                 ..
             } => {
-                let token = if unwrap_token_a {
+                let token = if token_to_unwrap == TokenSelector::TokenA {
                     self.get_token_by_ref_from_cache(&wrapped_token_a_ref)?
                 } else {
                     self.get_token_by_ref_from_cache(&wrapped_token_b_ref)?
                 };
                 (
-                    self.get_wrap_token_accounts_saber(wallet_address, pool_name, unwrap_token_a)?,
+                    self.get_wrap_token_accounts_saber(wallet_address, pool_name, token_to_unwrap)?,
                     token.ok_or(ProgramError::UninitializedAccount)?.decimals,
                 )
             }

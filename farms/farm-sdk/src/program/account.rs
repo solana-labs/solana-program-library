@@ -67,6 +67,7 @@ pub fn get_balance_increase(
 ) -> Result<u64, ProgramError> {
     let balance = get_token_balance(account)?;
     if balance >= previous_balance {
+        // safe to use unchecked sub
         Ok(balance - previous_balance)
     } else {
         msg!(
@@ -83,6 +84,7 @@ pub fn get_balance_decrease(
 ) -> Result<u64, ProgramError> {
     let balance = get_token_balance(account)?;
     if balance <= previous_balance {
+        // safe to use unchecked sub
         Ok(previous_balance - balance)
     } else {
         msg!(
@@ -224,6 +226,7 @@ pub fn to_amount_with_new_decimals(
     match new_decimals.cmp(&original_decimals) {
         Ordering::Greater => {
             let mut new_amount = amount as f64;
+            // safe to use unchecked sub
             for _ in 0..(new_decimals - original_decimals) {
                 new_amount *= 10.0;
             }
@@ -231,6 +234,7 @@ pub fn to_amount_with_new_decimals(
         }
         Ordering::Less => {
             let mut new_amount = amount;
+            // safe to use unchecked sub
             for _ in 0..(original_decimals - new_decimals) {
                 new_amount /= 10;
             }
@@ -296,8 +300,14 @@ pub fn close_system_account<'a, 'b>(
         return Err(ProgramError::IllegalOwner);
     }
     let cur_balance = target_account.try_lamports()?;
-    **receiving_account.try_borrow_mut_lamports()? += cur_balance;
-    **target_account.try_borrow_mut_lamports()? -= cur_balance;
+    **receiving_account.try_borrow_mut_lamports()? = receiving_account
+        .try_lamports()?
+        .checked_add(cur_balance)
+        .ok_or(ProgramError::InsufficientFunds)?;
+    **target_account.try_borrow_mut_lamports()? = target_account
+        .try_lamports()?
+        .checked_sub(cur_balance)
+        .ok_or(ProgramError::InsufficientFunds)?;
 
     if target_account.data_len() > 1000 {
         target_account.try_borrow_mut_data()?[..1000].fill(0);

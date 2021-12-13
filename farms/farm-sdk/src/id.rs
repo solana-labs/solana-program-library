@@ -19,7 +19,8 @@ pub mod zero {
 
 pub const DAO_TOKEN_NAME: &str = "FARM_DAO";
 pub const DAO_PROGRAM_NAME: &str = "FarmGovernance";
-pub const DAO_MINT_NAME: &str = "FarmGovernanceMint";
+pub const DAO_MINT_NAME: &str = "FarmMintGovernance";
+pub const DAO_CUSTODY_NAME: &str = "FarmCustodyGovernance";
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ProgramIDType {
