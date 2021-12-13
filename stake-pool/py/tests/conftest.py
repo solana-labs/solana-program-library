@@ -113,6 +113,9 @@ class Waiter:
         resp = await async_client.get_epoch_info(commitment=Confirmed)
         if resp['result']['slotsInEpoch'] - resp['result']['slotIndex'] < 10:
             await Waiter.wait_for_next_epoch(async_client)
+            return True
+        else:
+            return False
 
 
 @pytest.fixture
