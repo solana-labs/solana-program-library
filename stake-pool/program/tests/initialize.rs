@@ -246,6 +246,7 @@ async fn fail_with_wrong_max_validators() {
                 &stake_pool_accounts.stake_pool.pubkey(),
                 &stake_pool_accounts.manager.pubkey(),
                 &stake_pool_accounts.staker.pubkey(),
+                &stake_pool_accounts.withdraw_authority,
                 &stake_pool_accounts.validator_list.pubkey(),
                 &stake_pool_accounts.reserve_stake.pubkey(),
                 &stake_pool_accounts.pool_mint.pubkey(),
@@ -324,6 +325,7 @@ async fn fail_with_wrong_mint_authority() {
         &stake_pool_accounts.pool_fee_account.pubkey(),
         &stake_pool_accounts.manager,
         &stake_pool_accounts.staker.pubkey(),
+        &stake_pool_accounts.withdraw_authority,
         &None,
         &stake_pool_accounts.epoch_fee,
         &stake_pool_accounts.withdrawal_fee,
@@ -414,6 +416,7 @@ async fn fail_with_freeze_authority() {
         &pool_fee_account.pubkey(),
         &stake_pool_accounts.manager,
         &stake_pool_accounts.staker.pubkey(),
+        &stake_pool_accounts.withdraw_authority,
         &None,
         &stake_pool_accounts.epoch_fee,
         &stake_pool_accounts.withdrawal_fee,
@@ -494,6 +497,7 @@ async fn fail_with_wrong_token_program_id() {
                 &stake_pool_accounts.stake_pool.pubkey(),
                 &stake_pool_accounts.manager.pubkey(),
                 &stake_pool_accounts.staker.pubkey(),
+                &stake_pool_accounts.withdraw_authority,
                 &stake_pool_accounts.validator_list.pubkey(),
                 &stake_pool_accounts.reserve_stake.pubkey(),
                 &stake_pool_accounts.pool_mint.pubkey(),
@@ -596,6 +600,7 @@ async fn fail_with_fee_owned_by_wrong_token_program_id() {
                 &stake_pool_accounts.stake_pool.pubkey(),
                 &stake_pool_accounts.manager.pubkey(),
                 &stake_pool_accounts.staker.pubkey(),
+                &stake_pool_accounts.withdraw_authority,
                 &stake_pool_accounts.validator_list.pubkey(),
                 &stake_pool_accounts.reserve_stake.pubkey(),
                 &stake_pool_accounts.pool_mint.pubkey(),
@@ -680,6 +685,7 @@ async fn fail_with_wrong_fee_account() {
         &stake_pool_accounts.pool_fee_account.pubkey(),
         &stake_pool_accounts.manager,
         &stake_pool_accounts.staker.pubkey(),
+        &stake_pool_accounts.withdraw_authority,
         &None,
         &stake_pool_accounts.epoch_fee,
         &stake_pool_accounts.withdrawal_fee,
@@ -718,7 +724,7 @@ async fn fail_with_wrong_withdraw_authority() {
             _,
             InstructionError::Custom(error_index),
         )) => {
-            let program_error = error::StakePoolError::WrongMintingAuthority as u32;
+            let program_error = error::StakePoolError::InvalidProgramAddress as u32;
             assert_eq!(error_index, program_error);
         }
         _ => panic!(
@@ -768,6 +774,7 @@ async fn fail_with_not_rent_exempt_pool() {
                 &stake_pool_accounts.stake_pool.pubkey(),
                 &stake_pool_accounts.manager.pubkey(),
                 &stake_pool_accounts.staker.pubkey(),
+                &stake_pool_accounts.withdraw_authority,
                 &stake_pool_accounts.validator_list.pubkey(),
                 &stake_pool_accounts.reserve_stake.pubkey(),
                 &stake_pool_accounts.pool_mint.pubkey(),
@@ -845,6 +852,7 @@ async fn fail_with_not_rent_exempt_validator_list() {
                 &stake_pool_accounts.stake_pool.pubkey(),
                 &stake_pool_accounts.manager.pubkey(),
                 &stake_pool_accounts.staker.pubkey(),
+                &stake_pool_accounts.withdraw_authority,
                 &stake_pool_accounts.validator_list.pubkey(),
                 &stake_pool_accounts.reserve_stake.pubkey(),
                 &stake_pool_accounts.pool_mint.pubkey(),
@@ -1028,6 +1036,7 @@ async fn fail_with_pre_minted_pool_tokens() {
         &stake_pool_accounts.pool_fee_account.pubkey(),
         &stake_pool_accounts.manager,
         &stake_pool_accounts.staker.pubkey(),
+        &stake_pool_accounts.withdraw_authority,
         &None,
         &stake_pool_accounts.epoch_fee,
         &stake_pool_accounts.withdrawal_fee,
@@ -1094,6 +1103,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.pool_fee_account.pubkey(),
             &stake_pool_accounts.manager,
             &stake_pool_accounts.staker.pubkey(),
+            &stake_pool_accounts.withdraw_authority,
             &None,
             &stake_pool_accounts.epoch_fee,
             &stake_pool_accounts.withdrawal_fee,
@@ -1144,6 +1154,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.pool_fee_account.pubkey(),
             &stake_pool_accounts.manager,
             &stake_pool_accounts.staker.pubkey(),
+            &stake_pool_accounts.withdraw_authority,
             &None,
             &stake_pool_accounts.epoch_fee,
             &stake_pool_accounts.withdrawal_fee,
@@ -1197,6 +1208,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.pool_fee_account.pubkey(),
             &stake_pool_accounts.manager,
             &stake_pool_accounts.staker.pubkey(),
+            &stake_pool_accounts.withdraw_authority,
             &None,
             &stake_pool_accounts.epoch_fee,
             &stake_pool_accounts.withdrawal_fee,
@@ -1250,6 +1262,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.pool_fee_account.pubkey(),
             &stake_pool_accounts.manager,
             &stake_pool_accounts.staker.pubkey(),
+            &stake_pool_accounts.withdraw_authority,
             &None,
             &stake_pool_accounts.epoch_fee,
             &stake_pool_accounts.withdrawal_fee,
@@ -1272,4 +1285,27 @@ async fn fail_with_bad_reserve() {
             )
         );
     }
+}
+
+#[tokio::test]
+async fn success_with_extra_reserve_lamports() {
+    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
+    let stake_pool_accounts = StakePoolAccounts::new();
+    let init_lamports = 1_000_000_000_000;
+    stake_pool_accounts
+        .initialize_stake_pool(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            1 + init_lamports,
+        )
+        .await
+        .unwrap();
+
+    let init_pool_tokens = get_token_balance(
+        &mut banks_client,
+        &stake_pool_accounts.pool_fee_account.pubkey(),
+    )
+    .await;
+    assert_eq!(init_pool_tokens, init_lamports);
 }

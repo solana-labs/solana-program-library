@@ -63,6 +63,8 @@ async def create(client: AsyncClient, manager: Keypair,
     await client.send_transaction(
         txn, manager, stake_pool, validator_list, opts=TxOpts(skip_confirmation=False, preflight_commitment=Confirmed))
 
+    (withdraw_authority, seed) = find_withdraw_authority_program_address(
+        STAKE_POOL_PROGRAM_ID, stake_pool.public_key)
     txn = Transaction()
     txn.add(
         sp.initialize(
@@ -71,6 +73,7 @@ async def create(client: AsyncClient, manager: Keypair,
                 stake_pool=stake_pool.public_key,
                 manager=manager.public_key,
                 staker=manager.public_key,
+                withdraw_authority=withdraw_authority,
                 validator_list=validator_list.public_key,
                 reserve_stake=reserve_stake,
                 pool_mint=pool_mint,
