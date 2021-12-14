@@ -21,7 +21,6 @@ describe('instructions', () => {
             Keypair.generate().publicKey,
             Keypair.generate().publicKey,
             Keypair.generate().publicKey,
-            [],
             1,
             9
         );
