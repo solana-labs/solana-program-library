@@ -1,0 +1,11 @@
+anchor_version = "0.14.0"
+
+[workspace]
+members = ["program"]
+
+[provider]
+cluster = "devnet"
+wallet = "~/.config/solana/id.json"
+
+[programs.devnet]
+spl-token-lending = "LendZqTs7gn5CTSJU1jWKhKuVpjJGom45nnwPb2AMTi"
