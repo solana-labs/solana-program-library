@@ -767,6 +767,7 @@ impl Processor {
                 msg!("Instruction: InitializeMultisig2");
                 Self::process_initialize_multisig2(accounts, m)
             }
+            #[allow(deprecated)]
             TokenInstruction::Transfer { amount } => {
                 msg!("Instruction: Transfer");
                 Self::process_transfer(program_id, accounts, amount, None)
@@ -825,6 +826,30 @@ impl Processor {
             TokenInstruction::SyncNative => {
                 msg!("Instruction: SyncNative");
                 Self::process_sync_native(program_id, accounts)
+            }
+            TokenInstruction::GetAccountDataSize => {
+                unimplemented!();
+            }
+            TokenInstruction::InitializeMintCloseAuthority { .. } => {
+                unimplemented!();
+            }
+            TokenInstruction::InitializeMintTransferFee { .. } => {
+                unimplemented!();
+            }
+            TokenInstruction::TransferCheckedWithFee { .. } => {
+                unimplemented!();
+            }
+            TokenInstruction::WithdrawWithheldTokensFromMint => {
+                unimplemented!();
+            }
+            TokenInstruction::WithdrawWithheldTokensFromAccounts => {
+                unimplemented!();
+            }
+            TokenInstruction::HarvestWithheldTokensToMint => {
+                unimplemented!();
+            }
+            TokenInstruction::SetTransferFee { .. } => {
+                unimplemented!();
             }
         }
     }
@@ -1028,111 +1053,6 @@ mod tests {
         assert_ne!(Account::get_packed_len(), 0);
         assert_ne!(Account::get_packed_len(), Multisig::get_packed_len());
         assert_ne!(Multisig::get_packed_len(), 0);
-    }
-
-    #[test]
-    fn test_pack_unpack() {
-        // Mint
-        let check = Mint {
-            mint_authority: COption::Some(Pubkey::new(&[1; 32])),
-            supply: 42,
-            decimals: 7,
-            is_initialized: true,
-            freeze_authority: COption::Some(Pubkey::new(&[2; 32])),
-        };
-        let mut packed = vec![0; Mint::get_packed_len() + 1];
-        assert_eq!(
-            Err(ProgramError::InvalidAccountData),
-            Mint::pack(check, &mut packed)
-        );
-        let mut packed = vec![0; Mint::get_packed_len() - 1];
-        assert_eq!(
-            Err(ProgramError::InvalidAccountData),
-            Mint::pack(check, &mut packed)
-        );
-        let mut packed = vec![0; Mint::get_packed_len()];
-        Mint::pack(check, &mut packed).unwrap();
-        let expect = vec![
-            1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1, 1, 1, 42, 0, 0, 0, 0, 0, 0, 0, 7, 1, 1, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2,
-            2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-        ];
-        assert_eq!(packed, expect);
-        let unpacked = Mint::unpack(&packed).unwrap();
-        assert_eq!(unpacked, check);
-
-        // Account
-        let check = Account {
-            mint: Pubkey::new(&[1; 32]),
-            owner: Pubkey::new(&[2; 32]),
-            amount: 3,
-            delegate: COption::Some(Pubkey::new(&[4; 32])),
-            state: AccountState::Frozen,
-            is_native: COption::Some(5),
-            delegated_amount: 6,
-            close_authority: COption::Some(Pubkey::new(&[7; 32])),
-        };
-        let mut packed = vec![0; Account::get_packed_len() + 1];
-        assert_eq!(
-            Err(ProgramError::InvalidAccountData),
-            Account::pack(check, &mut packed)
-        );
-        let mut packed = vec![0; Account::get_packed_len() - 1];
-        assert_eq!(
-            Err(ProgramError::InvalidAccountData),
-            Account::pack(check, &mut packed)
-        );
-        let mut packed = vec![0; Account::get_packed_len()];
-        Account::pack(check, &mut packed).unwrap();
-        let expect = vec![
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-            2, 2, 2, 2, 2, 2, 3, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
-            4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 2, 1, 0, 0, 0, 5, 0, 0,
-            0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-            7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-        ];
-        assert_eq!(packed, expect);
-        let unpacked = Account::unpack(&packed).unwrap();
-        assert_eq!(unpacked, check);
-
-        // Multisig
-        let check = Multisig {
-            m: 1,
-            n: 2,
-            is_initialized: true,
-            signers: [Pubkey::new(&[3; 32]); MAX_SIGNERS],
-        };
-        let mut packed = vec![0; Multisig::get_packed_len() + 1];
-        assert_eq!(
-            Err(ProgramError::InvalidAccountData),
-            Multisig::pack(check, &mut packed)
-        );
-        let mut packed = vec![0; Multisig::get_packed_len() - 1];
-        assert_eq!(
-            Err(ProgramError::InvalidAccountData),
-            Multisig::pack(check, &mut packed)
-        );
-        let mut packed = vec![0; Multisig::get_packed_len()];
-        Multisig::pack(check, &mut packed).unwrap();
-        let expect = vec![
-            1, 2, 1, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-            3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-            3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-            3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-            3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-            3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-            3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-            3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-            3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-            3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-            3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-            3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-            3, 3, 3, 3, 3, 3, 3,
-        ];
-        assert_eq!(packed, expect);
-        let unpacked = Multisig::unpack(&packed).unwrap();
-        assert_eq!(unpacked, check);
     }
 
     #[test]
@@ -1395,6 +1315,7 @@ mod tests {
 
         // source-owner transfer
         do_process_instruction_dups(
+            #[allow(deprecated)]
             transfer(
                 &program_id,
                 &account1_key,
@@ -1443,6 +1364,7 @@ mod tests {
         Account::pack(account, &mut account1_info.data.borrow_mut()).unwrap();
 
         do_process_instruction_dups(
+            #[allow(deprecated)]
             transfer(
                 &program_id,
                 &account1_key,
@@ -1502,6 +1424,7 @@ mod tests {
         account1_info.is_signer = false;
         account2_info.is_signer = true;
         do_process_instruction_dups(
+            #[allow(deprecated)]
             transfer(
                 &program_id,
                 &account3_key,
@@ -1571,6 +1494,7 @@ mod tests {
 
         // source-multisig-signer transfer
         do_process_instruction_dups(
+            #[allow(deprecated)]
             transfer(
                 &program_id,
                 &account4_key,
@@ -1718,6 +1642,7 @@ mod tests {
         .unwrap();
 
         // missing signer
+        #[allow(deprecated)]
         let mut instruction = transfer(
             &program_id,
             &account_key,
@@ -1744,6 +1669,7 @@ mod tests {
         assert_eq!(
             Err(TokenError::MintMismatch.into()),
             do_process_instruction(
+                #[allow(deprecated)]
                 transfer(
                     &program_id,
                     &account_key,
@@ -1765,6 +1691,7 @@ mod tests {
         assert_eq!(
             Err(TokenError::OwnerMismatch.into()),
             do_process_instruction(
+                #[allow(deprecated)]
                 transfer(
                     &program_id,
                     &account_key,
@@ -1784,6 +1711,7 @@ mod tests {
 
         // transfer
         do_process_instruction(
+            #[allow(deprecated)]
             transfer(
                 &program_id,
                 &account_key,
@@ -1805,6 +1733,7 @@ mod tests {
         assert_eq!(
             Err(TokenError::InsufficientFunds.into()),
             do_process_instruction(
+                #[allow(deprecated)]
                 transfer(&program_id, &account_key, &account2_key, &owner_key, &[], 1).unwrap(),
                 vec![
                     &mut account_account,
@@ -1816,6 +1745,7 @@ mod tests {
 
         // transfer half back
         do_process_instruction(
+            #[allow(deprecated)]
             transfer(
                 &program_id,
                 &account2_key,
@@ -1906,6 +1836,7 @@ mod tests {
         assert_eq!(
             Err(TokenError::InsufficientFunds.into()),
             do_process_instruction(
+                #[allow(deprecated)]
                 transfer(&program_id, &account2_key, &account_key, &owner_key, &[], 1).unwrap(),
                 vec![
                     &mut account2_account,
@@ -1936,6 +1867,7 @@ mod tests {
 
         // transfer via delegate
         do_process_instruction(
+            #[allow(deprecated)]
             transfer(
                 &program_id,
                 &account_key,
@@ -1957,6 +1889,7 @@ mod tests {
         assert_eq!(
             Err(TokenError::OwnerMismatch.into()),
             do_process_instruction(
+                #[allow(deprecated)]
                 transfer(
                     &program_id,
                     &account_key,
@@ -1976,6 +1909,7 @@ mod tests {
 
         // transfer rest
         do_process_instruction(
+            #[allow(deprecated)]
             transfer(
                 &program_id,
                 &account_key,
@@ -2016,6 +1950,7 @@ mod tests {
         assert_eq!(
             Err(TokenError::InsufficientFunds.into()),
             do_process_instruction(
+                #[allow(deprecated)]
                 transfer(
                     &program_id,
                     &account_key,
@@ -2124,6 +2059,7 @@ mod tests {
         let mint_info = (&mint_key, false, &mut mint_account).into_account_info();
 
         // transfer
+        #[allow(deprecated)]
         let instruction = transfer(
             &program_id,
             account_info.key,
@@ -2180,6 +2116,7 @@ mod tests {
 
         // missing signer
         let mut owner_no_sign_info = owner_info.clone();
+        #[allow(deprecated)]
         let mut instruction = transfer(
             &program_id,
             account_info.key,
@@ -2232,6 +2169,7 @@ mod tests {
         );
 
         // missing owner
+        #[allow(deprecated)]
         let instruction = transfer(
             &program_id,
             account_info.key,
@@ -2281,6 +2219,7 @@ mod tests {
         );
 
         // insufficient funds
+        #[allow(deprecated)]
         let instruction = transfer(
             &program_id,
             account_info.key,
@@ -2403,6 +2342,7 @@ mod tests {
         .unwrap();
 
         // delegate transfer
+        #[allow(deprecated)]
         let instruction = transfer(
             &program_id,
             account_info.key,
@@ -2460,6 +2400,7 @@ mod tests {
         assert_eq!(account.delegated_amount, 100);
 
         // delegate insufficient funds
+        #[allow(deprecated)]
         let instruction = transfer(
             &program_id,
             account_info.key,
@@ -2509,6 +2450,7 @@ mod tests {
         );
 
         // owner transfer with delegate assigned
+        #[allow(deprecated)]
         let instruction = transfer(
             &program_id,
             account_info.key,
@@ -4508,6 +4450,7 @@ mod tests {
         // transfer
         let account_info_iter = &mut signer_accounts.iter_mut();
         do_process_instruction(
+            #[allow(deprecated)]
             transfer(
                 &program_id,
                 &account_key,
@@ -4529,6 +4472,7 @@ mod tests {
         // transfer via delegate
         let account_info_iter = &mut signer_accounts.iter_mut();
         do_process_instruction(
+            #[allow(deprecated)]
             transfer(
                 &program_id,
                 &account_key,
@@ -5335,6 +5279,7 @@ mod tests {
         assert_eq!(
             Err(TokenError::InsufficientFunds.into()),
             do_process_instruction(
+                #[allow(deprecated)]
                 transfer(
                     &program_id,
                     &account_key,
@@ -5354,6 +5299,7 @@ mod tests {
 
         // transfer between native accounts
         do_process_instruction(
+            #[allow(deprecated)]
             transfer(
                 &program_id,
                 &account_key,
@@ -5591,6 +5537,7 @@ mod tests {
         assert_eq!(
             Err(TokenError::Overflow.into()),
             do_process_instruction(
+                #[allow(deprecated)]
                 transfer(
                     &program_id,
                     &account2_key,
@@ -5676,6 +5623,7 @@ mod tests {
         assert_eq!(
             Err(TokenError::AccountFrozen.into()),
             do_process_instruction(
+                #[allow(deprecated)]
                 transfer(
                     &program_id,
                     &account_key,
@@ -5702,6 +5650,7 @@ mod tests {
         assert_eq!(
             Err(TokenError::AccountFrozen.into()),
             do_process_instruction(
+                #[allow(deprecated)]
                 transfer(
                     &program_id,
                     &account_key,
