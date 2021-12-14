@@ -1,4 +1,27 @@
+//! Extensions available to token mints and accounts
+
 use solana_program::{clock::Epoch, program_option::COption, pubkey::Pubkey};
+
+/// Different kinds of accounts. Note that `Mint`, `Account`, and `Multisig` types
+/// are determined exclusively by the size of the account, and are not included in
+/// the account data. `AccountType` is only included if extensions have been
+/// initialized.
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum AccountType {
+    /// Marker for 0 data
+    Uninitialized,
+    /// Mint account with additional extensions
+    Mint,
+    /// Token holding account with additional extensions
+    Account,
+}
+
+impl Default for AccountType {
+    fn default() -> Self {
+        Self::Uninitialized
+    }
+}
 
 /// Extensions that can be applied to mints or accounts.  Mint extensions must only be
 /// applied to mint accounts, and account extensions must only be applied to token holding
@@ -18,10 +41,13 @@ pub enum Extension {
 
 /// Type-Length-Value Entry, used to encapsulate all extensions contained within an account
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TlvEntry<V> {
+    /// Extension type encoded in the rest of the entry
     pub extension: Extension,
+    /// Length of the entry, in bytes
     pub length: u32,
+    /// Deserialized value
     pub value: V,
 }
 

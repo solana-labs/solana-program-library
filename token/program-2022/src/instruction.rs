@@ -450,7 +450,10 @@ pub enum TokenInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` The mint to initialize.
-    InitializeMintCloseAuthority { close_authority: COption<Pubkey> },
+    InitializeMintCloseAuthority {
+        /// Authority that must sign the `CloseAccount` instruction on a mint
+        close_authority: COption<Pubkey>,
+    },
     /// Initialize the transfer fee on a new mint.
     ///
     /// Fails if the mint has already been initialized, so must be called before
@@ -596,6 +599,7 @@ impl TokenInstruction {
                     .map(u64::from_le_bytes)
                     .ok_or(InvalidInstruction)?;
                 match tag {
+                    #[allow(deprecated)]
                     3 => Self::Transfer { amount },
                     4 => Self::Approve { amount },
                     7 => Self::MintTo { amount },
@@ -686,6 +690,71 @@ impl TokenInstruction {
                     decimals,
                 }
             }
+            21 => Self::GetAccountDataSize,
+            22 => {
+                let (close_authority, _rest) = Self::unpack_pubkey_option(rest)?;
+                Self::InitializeMintCloseAuthority { close_authority }
+            }
+            23 => {
+                let (fee_config_authority, rest) = Self::unpack_pubkey_option(rest)?;
+                let (withdraw_withheld_authority, rest) = Self::unpack_pubkey_option(rest)?;
+                let (transfer_fee_basis_points, maximum_fee) = rest.split_at(2);
+                let transfer_fee_basis_points = transfer_fee_basis_points
+                    .try_into()
+                    .ok()
+                    .map(u16::from_le_bytes)
+                    .ok_or(InvalidInstruction)?;
+                let maximum_fee = maximum_fee
+                    .try_into()
+                    .ok()
+                    .map(u64::from_le_bytes)
+                    .ok_or(InvalidInstruction)?;
+                Self::InitializeMintTransferFee {
+                    fee_config_authority,
+                    withdraw_withheld_authority,
+                    transfer_fee_basis_points,
+                    maximum_fee,
+                }
+            }
+            24 => {
+                let (amount, rest) = rest.split_at(8);
+                let amount = amount
+                    .try_into()
+                    .ok()
+                    .map(u64::from_le_bytes)
+                    .ok_or(InvalidInstruction)?;
+                let (&decimals, fee) = rest.split_first().ok_or(InvalidInstruction)?;
+                let fee = fee
+                    .try_into()
+                    .ok()
+                    .map(u64::from_le_bytes)
+                    .ok_or(InvalidInstruction)?;
+                Self::TransferCheckedWithFee {
+                    amount,
+                    decimals,
+                    fee,
+                }
+            }
+            25 => Self::WithdrawWithheldTokensFromMint,
+            26 => Self::WithdrawWithheldTokensFromAccounts,
+            27 => Self::HarvestWithheldTokensToMint,
+            28 => {
+                let (transfer_fee_basis_points, maximum_fee) = rest.split_at(2);
+                let transfer_fee_basis_points = transfer_fee_basis_points
+                    .try_into()
+                    .ok()
+                    .map(u16::from_le_bytes)
+                    .ok_or(InvalidInstruction)?;
+                let maximum_fee = maximum_fee
+                    .try_into()
+                    .ok()
+                    .map(u64::from_le_bytes)
+                    .ok_or(InvalidInstruction)?;
+                Self::SetTransferFee {
+                    transfer_fee_basis_points,
+                    maximum_fee,
+                }
+            }
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -709,6 +778,7 @@ impl TokenInstruction {
                 buf.push(2);
                 buf.push(m);
             }
+            #[allow(deprecated)]
             &Self::Transfer { amount } => {
                 buf.push(3);
                 buf.extend_from_slice(&amount.to_le_bytes());
@@ -782,6 +852,54 @@ impl TokenInstruction {
                 buf.extend_from_slice(mint_authority.as_ref());
                 Self::pack_pubkey_option(freeze_authority, &mut buf);
             }
+            &Self::GetAccountDataSize => {
+                buf.push(21);
+            }
+            &Self::InitializeMintCloseAuthority {
+                ref close_authority,
+            } => {
+                buf.push(22);
+                Self::pack_pubkey_option(close_authority, &mut buf);
+            }
+            &Self::InitializeMintTransferFee {
+                ref fee_config_authority,
+                ref withdraw_withheld_authority,
+                transfer_fee_basis_points,
+                maximum_fee,
+            } => {
+                buf.push(23);
+                Self::pack_pubkey_option(fee_config_authority, &mut buf);
+                Self::pack_pubkey_option(withdraw_withheld_authority, &mut buf);
+                buf.extend_from_slice(&transfer_fee_basis_points.to_le_bytes());
+                buf.extend_from_slice(&maximum_fee.to_le_bytes());
+            }
+            &Self::TransferCheckedWithFee {
+                amount,
+                decimals,
+                fee,
+            } => {
+                buf.push(24);
+                buf.extend_from_slice(&amount.to_le_bytes());
+                buf.extend_from_slice(&decimals.to_le_bytes());
+                buf.extend_from_slice(&fee.to_le_bytes());
+            }
+            &Self::WithdrawWithheldTokensFromMint => {
+                buf.push(25);
+            }
+            &Self::WithdrawWithheldTokensFromAccounts => {
+                buf.push(26);
+            }
+            &Self::HarvestWithheldTokensToMint => {
+                buf.push(27);
+            }
+            &Self::SetTransferFee {
+                transfer_fee_basis_points,
+                maximum_fee,
+            } => {
+                buf.push(28);
+                buf.extend_from_slice(&transfer_fee_basis_points.to_le_bytes());
+                buf.extend_from_slice(&maximum_fee.to_le_bytes());
+            }
         };
         buf
     }
@@ -844,8 +962,8 @@ impl AuthorityType {
             AuthorityType::FreezeAccount => 1,
             AuthorityType::AccountOwner => 2,
             AuthorityType::CloseAccount => 3,
-            AuthorityType::FeeConfig => 4,
-            AuthorityType::FeeWithdraw => 5,
+            AuthorityType::TransferFeeConfig => 4,
+            AuthorityType::WithheldWithdraw => 5,
         }
     }
 
@@ -855,8 +973,8 @@ impl AuthorityType {
             1 => Ok(AuthorityType::FreezeAccount),
             2 => Ok(AuthorityType::AccountOwner),
             3 => Ok(AuthorityType::CloseAccount),
-            4 => Ok(AuthorityType::FeeConfig),
-            5 => Ok(AuthorityType::FeeWithdraw),
+            4 => Ok(AuthorityType::TransferFeeConfig),
+            5 => Ok(AuthorityType::WithheldWithdraw),
             _ => Err(TokenError::InvalidInstruction.into()),
         }
     }
@@ -1065,6 +1183,7 @@ pub fn transfer(
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
+    #[allow(deprecated)]
     let data = TokenInstruction::Transfer { amount }.pack();
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
@@ -1519,6 +1638,7 @@ mod test {
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
 
+        #[allow(deprecated)]
         let check = TokenInstruction::Transfer { amount: 1 };
         let packed = check.pack();
         let expect = Vec::from([3u8, 1, 0, 0, 0, 0, 0, 0, 0]);
@@ -1684,6 +1804,86 @@ mod test {
         expect.extend_from_slice(&[2u8; 32]);
         expect.extend_from_slice(&[1]);
         expect.extend_from_slice(&[3u8; 32]);
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::GetAccountDataSize;
+        let packed = check.pack();
+        let expect = [21u8];
+        assert_eq!(packed, &[21u8]);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::InitializeMintCloseAuthority {
+            close_authority: COption::Some(Pubkey::new(&[10u8; 32])),
+        };
+        let packed = check.pack();
+        let mut expect = vec![22u8, 1];
+        expect.extend_from_slice(&[10u8; 32]);
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::InitializeMintTransferFee {
+            fee_config_authority: COption::Some(Pubkey::new(&[11u8; 32])),
+            withdraw_withheld_authority: COption::None,
+            transfer_fee_basis_points: 111,
+            maximum_fee: u64::MAX,
+        };
+        let packed = check.pack();
+        let mut expect = vec![23u8, 1];
+        expect.extend_from_slice(&[11u8; 32]);
+        expect.extend_from_slice(&[0]);
+        expect.extend_from_slice(&111u16.to_le_bytes());
+        expect.extend_from_slice(&u64::MAX.to_le_bytes());
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::TransferCheckedWithFee {
+            amount: 24,
+            decimals: 24,
+            fee: 23,
+        };
+        let packed = check.pack();
+        let mut expect = vec![24u8];
+        expect.extend_from_slice(&24u64.to_le_bytes());
+        expect.extend_from_slice(&[24u8]);
+        expect.extend_from_slice(&23u64.to_le_bytes());
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::WithdrawWithheldTokensFromMint;
+        let packed = check.pack();
+        let expect = [25u8];
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::WithdrawWithheldTokensFromAccounts;
+        let packed = check.pack();
+        let expect = [26u8];
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::HarvestWithheldTokensToMint;
+        let packed = check.pack();
+        let expect = [27u8];
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::SetTransferFee {
+            transfer_fee_basis_points: u16::MAX,
+            maximum_fee: u64::MAX,
+        };
+        let packed = check.pack();
+        let mut expect = vec![28u8];
+        expect.extend_from_slice(&u16::MAX.to_le_bytes());
+        expect.extend_from_slice(&u64::MAX.to_le_bytes());
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
