@@ -59,7 +59,7 @@
     "@solana/web3.js": "^1.21.0",
     "bn.js": "^5.1.0",
     "buffer": "6.0.3",
-    "buffer-layout": "^1.2.0",
+    "@solana/buffer-layout": "^3.0.0",
     "dotenv": "10.0.0"
   },
   "devDependencies": {

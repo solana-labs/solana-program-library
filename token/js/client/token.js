@@ -5,7 +5,7 @@
 import {Buffer} from 'buffer';
 import assert from 'assert';
 import BN from 'bn.js';
-import * as BufferLayout from 'buffer-layout';
+import * as BufferLayout from '@solana/buffer-layout';
 import {
   Keypair,
   PublicKey,

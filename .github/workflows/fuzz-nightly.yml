@@ -44,8 +44,7 @@ jobs:
 
       - uses: actions/cache@v2
         with:
-          path: |
-            ~/.cache
+          path: ~/.cache/solana
           key: solana-${{ env.SOLANA_VERSION }}
           restore-keys: |
             solana-

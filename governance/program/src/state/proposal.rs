@@ -1131,6 +1131,7 @@ mod test {
 
     #[derive(Clone, Debug)]
     pub struct VoteCastTestCase {
+        #[allow(dead_code)]
         name: &'static str,
         governing_token_supply: u64,
         vote_threshold_percentage: u8,

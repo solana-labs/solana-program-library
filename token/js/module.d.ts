@@ -1,6 +1,6 @@
 declare module '@solana/spl-token' {
   import {Buffer} from 'buffer';
-  import {Layout} from 'buffer-layout';
+  import {Layout} from '@solana/buffer-layout';
   import {
     PublicKey,
     Signer,
