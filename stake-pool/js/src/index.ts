@@ -27,7 +27,7 @@ import {
   StakePoolProgram,
   WithdrawAccount,
 } from './stakepool-program';
-import { STAKE_POOL_LAYOUT, VALIDATOR_LIST_LAYOUT, ValidatorList, StakePool } from './layouts';
+import { StakePoolLayout, ValidatorListLayout, ValidatorList, StakePool } from './layouts';
 
 export type { StakePool, AccountType, ValidatorList, ValidatorStakeInfo } from './layouts';
 
@@ -93,7 +93,7 @@ export async function getStakePoolAccount(
   return {
     pubkey: stakePoolPubKey,
     account: {
-      data: STAKE_POOL_LAYOUT.decode(account.data),
+      data: StakePoolLayout.decode(account.data),
       executable: account.executable,
       lamports: account.lamports,
       owner: account.owner,
@@ -119,7 +119,7 @@ export async function getValidatorListAccount(
   return {
     pubkey: validatorListPubKey,
     account: {
-      data: VALIDATOR_LIST_LAYOUT.decode(account.data),
+      data: ValidatorListLayout.decode(account.data),
       executable: account.executable,
       lamports: account.lamports,
       owner: account.owner,
@@ -143,14 +143,14 @@ export async function getStakePoolAccounts(
 
     if (a.account.data.readUInt8() === 1) {
       try {
-        decodedData = STAKE_POOL_LAYOUT.decode(a.account.data);
+        decodedData = StakePoolLayout.decode(a.account.data);
       } catch (error) {
         console.log('Could not decode StakeAccount. Error:', error);
         decodedData = undefined;
       }
     } else if (a.account.data.readUInt8() === 2) {
       try {
-        decodedData = VALIDATOR_LIST_LAYOUT.decode(a.account.data);
+        decodedData = ValidatorListLayout.decode(a.account.data);
       } catch (error) {
         console.log('Could not decode ValidatorList. Error:', error);
         decodedData = undefined;

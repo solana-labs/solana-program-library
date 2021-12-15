@@ -2,6 +2,12 @@ import { PublicKey, Connection, clusterApiUrl } from '@solana/web3.js';
 import { getFirstStakePoolAccount } from "./utils";
 import { getStakePoolAccounts, prettyPrintAccount, prettyPrintPubKey } from "../src";
 
+/**
+ * @joncinque:
+ *  These tests could be extremely flaky because of the devnet connection, so we could probably just remove them.
+ *  It doesn't need to be done in this PR, but eventually we should have tests that create a stake pool / deposit / withdraw,
+ *  all only accessing a local test validator. Same as with the token and token-swap js tests.
+ */
 describe('Integration test', () => {
 
   it.skip('should successfully decode all validators from devnet', (done) => {

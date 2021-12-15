@@ -23,12 +23,15 @@
     "process": "^0.11.10"
   },
   "devDependencies": {
-    "@babel/preset-env": "^7.16.4",
-    "@babel/preset-typescript": "^7.16.0",
-    "@babel/register": "^7.12.13",
+    "@babel/preset-env": "^7.16.5",
+    "@babel/preset-typescript": "^7.16.5",
     "@types/bn.js": "^5.1.0",
     "@types/jest": "^27.0.3",
     "jest": "^27.3.1",
     "prettier": "^2.2.1"
+  },
+  "jest": {
+    "testRegex": ".*\\.test\\.ts$",
+    "testEnvironment": "node"
   }
 }

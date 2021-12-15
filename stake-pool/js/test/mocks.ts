@@ -1,63 +1,19 @@
-import { AccountInfo, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
+import { AccountInfo,  LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 import BN from "bn.js";
 import { ValidatorStakeInfo } from "../src";
-import { ACCOUNT_LAYOUT, VALIDATOR_LIST_LAYOUT, ValidatorStakeInfoStatus } from "../src/layouts";
+import { ValidatorStakeInfoStatus, AccountLayout, ValidatorListLayout } from "../src/layouts";
 
 export const stakePoolMock = {
   accountType: 1,
-  manager: new PublicKey(
-    new BN(
-      'dc23cda2ad09ddec126f89ed7f67d06a4d167cca996503f1a1b3b5a13625964f',
-      'hex',
-    ),
-  ),
-  staker: new PublicKey(
-    new BN(
-      'dc23cda2ad09ddec126f89ed7f67d06a4d167cca996503f1a1b3b5a13625964f',
-      'hex',
-    ),
-  ),
-  stakeDepositAuthority: new PublicKey(
-    new BN(
-      new Buffer(
-        '5911e7451a1a854fdc9e495081790f293eba623f8ec7e2b9d34a5fd25c7009bb',
-        'hex',
-      ),
-    ),
-  ),
+  manager: new PublicKey(11),
+  staker: new PublicKey(12),
+  stakeDepositAuthority: new PublicKey(13),
   stakeWithdrawBumpSeed: 255,
-  validatorList: new PublicKey(
-    new BN(
-      '7103ba4895b8804263197364da9e791db96ec8f0c8ca184dd666e69013838610',
-      'hex',
-    ),
-  ),
-  reserveStake: new PublicKey(
-    new BN(
-      '74a5b1ab8442103baa8bd39ab8494eb034e96035ac664e1693bb3eef458761ee',
-      'hex',
-    ),
-  ),
-  poolMint: new PublicKey(
-    new BN(
-      '8722bf107b95d2620008d256b18c13fa3a46ab7f643c24cf7656f57267563e00',
-      'hex',
-    ),
-  ),
-  managerFeeAccount: new PublicKey(
-    new BN(
-      new Buffer(
-        'b783b4dcd341cbca22e781bbd49b2d16908a844a21b98e26b69d44fc50e1db0f',
-        'hex',
-      ),
-    ),
-  ),
-  tokenProgramId: new PublicKey(
-    new BN(
-      'a900ff7e85f58c3a91375b5fed85b41cac79ebce46e1cbd993a165d7e1f6dd06',
-      'hex',
-    ),
-  ),
+  validatorList: new PublicKey(14),
+  reserveStake: new PublicKey(15),
+  poolMint: new PublicKey(16),
+  managerFeeAccount: new PublicKey(17),
+  tokenProgramId: new PublicKey(18),
   totalLamports: new BN(LAMPORTS_PER_SOL * 999),
   poolTokenSupply: new BN(LAMPORTS_PER_SOL * 100),
   lastUpdateEpoch: new BN('7c', 'hex'),
@@ -159,12 +115,21 @@ export const validatorListMock = {
 
 export function mockTokenAccount(amount = 0) {
   const data = Buffer.alloc(1024);
-  ACCOUNT_LAYOUT.encode({
+  AccountLayout.encode({
     state: 0,
     mint: stakePoolMock.poolMint,
     owner: new PublicKey(0),
     amount: new BN(amount),
+    // address: new PublicKey(0),
+    // delegate: null,
+    // delegatedAmount: new BN(0),
+    // isInitialized: true,
+    // isFrozen: false,
+    // isNative: false,
+    // rentExemptReserve: null,
+    // closeAuthority: null,
   }, data)
+
   return <AccountInfo<any>>{
     executable: true,
     owner: new PublicKey(0),
@@ -175,7 +140,7 @@ export function mockTokenAccount(amount = 0) {
 
 export function mockValidatorList() {
   const data = Buffer.alloc(1024);
-  VALIDATOR_LIST_LAYOUT.encode(validatorListMock, data)
+  ValidatorListLayout.encode(validatorListMock, data)
   return <AccountInfo<any>>{
     executable: true,
     owner: new PublicKey(0),

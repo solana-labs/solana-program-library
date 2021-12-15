@@ -7,10 +7,16 @@ import {
   StakeProgram,
   SystemProgram,
 } from '@solana/web3.js';
-import { MintInfo, Token, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import {
+  MintInfo,
+  Token,
+  TOKEN_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  AccountInfo
+} from '@solana/spl-token';
 import { Buffer } from 'buffer';
 import BN from 'bn.js';
-import { ACCOUNT_LAYOUT, VALIDATOR_LIST_LAYOUT, ValidatorList, StakePool } from './layouts';
+import { ValidatorListLayout, AccountLayout, ValidatorList, StakePool } from './layouts';
 
 import { STAKE_STATE_LEN, StakePoolProgram, WithdrawAccount } from './stakepool-program';
 
@@ -192,15 +198,14 @@ export async function getTokenAccount(
   connection: Connection,
   tokenAccountAddress: PublicKey,
   expectedTokenMint: PublicKey,
-) {
+): Promise<AccountInfo | void> {
   try {
     const account = await connection.getAccountInfo(tokenAccountAddress);
     if (!account) {
       // noinspection ExceptionCaughtLocallyJS
       throw new Error(`Invalid account ${tokenAccountAddress.toBase58()}`);
     }
-
-    const tokenAccount = ACCOUNT_LAYOUT.decode(account.data);
+    const tokenAccount = AccountLayout.decode(account.data) as AccountInfo;
     if (tokenAccount.mint?.toBase58() != expectedTokenMint.toBase58()) {
       // noinspection ExceptionCaughtLocallyJS
       throw new Error(
@@ -232,7 +237,7 @@ export async function prepareWithdrawAccounts(
   amount: number,
 ): Promise<WithdrawAccount[]> {
   const validatorListAcc = await connection.getAccountInfo(stakePool.validatorList);
-  const validatorList = VALIDATOR_LIST_LAYOUT.decode(validatorListAcc!.data) as ValidatorList;
+  const validatorList = ValidatorListLayout.decode(validatorListAcc!.data) as ValidatorList;
 
   if (!validatorList?.validators || validatorList?.validators.length == 0) {
     throw new Error('No accounts found');

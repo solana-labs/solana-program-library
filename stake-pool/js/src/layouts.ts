@@ -1,6 +1,7 @@
 import { publicKey, struct, u32, u64, u8, option, vec } from '@project-serum/borsh';
-import { PublicKey } from '@solana/web3.js';
+import { Lockup, PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
+import { AccountInfo } from "@solana/spl-token";
 
 export interface Fee {
   denominator: BN;
@@ -9,23 +10,10 @@ export interface Fee {
 
 const feeFields = [u64('denominator'), u64('numerator')];
 
-export interface Lockup {
-  unixTimestamp: BN;
-  epoch: BN;
-  custodian: PublicKey;
-}
-
-export interface TokenAccount {
-  mint: PublicKey;
-  owner: PublicKey;
-  amount: BN;
-  delegate?: PublicKey | undefined;
-  state: number;
-  delegatedAmount?: BN | undefined;
-  closeAuthority?: PublicKey | undefined;
-}
-
-export const ACCOUNT_LAYOUT = struct<TokenAccount>([
+/**
+ * AccountLayout.encode from "@solana/spl-token" doesn't work
+ */
+export const AccountLayout = struct<AccountInfo>([
   publicKey('mint'),
   publicKey('owner'),
   u64('amount'),
@@ -78,8 +66,7 @@ export interface StakePool {
   lastEpochTotalLamports: BN;
 }
 
-export const STAKE_POOL_LAYOUT = struct<StakePool>([
-  // rustEnum(AccountTypeKind, 'accountType'),
+export const StakePoolLayout = struct<StakePool>([
   u8('accountType'),
   publicKey('manager'),
   publicKey('staker'),
@@ -122,13 +109,13 @@ export interface ValidatorStakeInfo {
   status: ValidatorStakeInfoStatus;
   voteAccountAddress: PublicKey;
   activeStakeLamports: BN;
-  transientStakeLamports?: BN;
-  transientSeedSuffixStart?: BN;
-  transientSeedSuffixEnd?: BN;
+  transientStakeLamports: BN;
+  transientSeedSuffixStart: BN;
+  transientSeedSuffixEnd: BN;
   lastUpdateEpoch: BN;
 }
 
-export const VALIDATOR_STAKE_INFO_LAYOUT = struct<ValidatorStakeInfo>([
+export const ValidatorStakeInfoLayout = struct<ValidatorStakeInfo>([
   /// Amount of active stake delegated to this validator
   /// Note that if `last_update_epoch` does not match the current epoch then
   /// this field may not be accurate
@@ -144,11 +131,6 @@ export const VALIDATOR_STAKE_INFO_LAYOUT = struct<ValidatorStakeInfo>([
   /// End of the validator transient account seed suffixes
   u64('transientSeedSuffixEnd'),
   /// Status of the validator stake account
-  // rustEnum([
-  //   struct([], 'Active'),
-  //   struct([], 'DeactivatingTransient'),
-  //   struct([], 'ReadyForRemoval'),
-  // ]).replicate('status'),
   u8('status'),
   /// Validator vote account address
   publicKey('voteAccountAddress'),
@@ -163,8 +145,8 @@ export interface ValidatorList {
   validators: ValidatorStakeInfo[];
 }
 
-export const VALIDATOR_LIST_LAYOUT = struct<ValidatorList>([
+export const ValidatorListLayout = struct<ValidatorList>([
   u8('accountType'),
   u32('maxValidators'),
-  vec(VALIDATOR_STAKE_INFO_LAYOUT, 'validators'),
+  vec(ValidatorStakeInfoLayout, 'validators'),
 ]);
