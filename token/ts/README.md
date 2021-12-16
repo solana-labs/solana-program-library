@@ -29,17 +29,22 @@ yarn add @solana/spl-token
 git clone https://github.com/solana-labs/solana-program-library.git
 ```
 
-2. Install dependencies:
+2. Navigate to the library:
+```shell
+cd solana-program-library/token/ts
+```
+
+3. Install the dependencies:
 ```shell
 yarn install
 ```
 
-3. Build all packages:
+4. Build the library:
 ```shell
 yarn build
 ```
 
-4. Run locally:
+5. Run the tests:
 ```shell
 yarn test
 ```
