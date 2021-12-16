@@ -1,6 +1,7 @@
 import { AccountInfo, PublicKey } from '@solana/web3.js';
 import { blob, struct, u8 } from '@solana/buffer-layout';
-import { Parser, publicKey } from '../util';
+import { publicKey } from '@solana/buffer-layout-utils';
+import { Parser } from '../util';
 
 export interface LendingMarket {
     version: number;

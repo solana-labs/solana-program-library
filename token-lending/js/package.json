@@ -29,9 +29,10 @@
         "lint:fix": "eslint . --ext .ts --fix && prettier --write '**/*.{ts,js,json}'"
     },
     "dependencies": {
+        "@solana/buffer-layout": "^4.0.0",
+        "@solana/buffer-layout-utils": "^0.1.0",
         "bigint-buffer": "^1.1.5",
-        "bignumber.js": "^9.0.1",
-        "@solana/buffer-layout": "https://github.com/jordansexton/buffer-layout#generics"
+        "bignumber.js": "^9.0.1"
     },
     "peerDependencies": {
         "@solana/spl-token": "^0.1.6",
