@@ -119,16 +119,33 @@ impl VerboseDisplay for CliStakePool {
             }
         }
         writeln!(w, "Epoch Fee: {} of epoch rewards", &self.epoch_fee)?;
+        if let Some(next_epoch_fee) = &self.next_epoch_fee {
+            writeln!(w, "Next Epoch Fee: {} of epoch rewards", next_epoch_fee)?;
+        }
         writeln!(
             w,
             "Stake Withdrawal Fee: {} of withdrawal amount",
             &self.stake_withdrawal_fee
         )?;
+        if let Some(next_stake_withdrawal_fee) = &self.next_stake_withdrawal_fee {
+            writeln!(
+                w,
+                "Next Stake Withdrawal Fee: {} of withdrawal amount",
+                next_stake_withdrawal_fee
+            )?;
+        }
         writeln!(
             w,
             "SOL Withdrawal Fee: {} of withdrawal amount",
             &self.sol_withdrawal_fee
         )?;
+        if let Some(next_sol_withdrawal_fee) = &self.next_sol_withdrawal_fee {
+            writeln!(
+                w,
+                "Next SOL Withdrawal Fee: {} of withdrawal amount",
+                next_sol_withdrawal_fee
+            )?;
+        }
         writeln!(
             w,
             "Stake Deposit Fee: {} of deposit amount",
@@ -462,7 +479,7 @@ impl From<(Pubkey, StakePool, ValidatorList, Pubkey)> for CliStakePool {
             stake_deposit_fee: CliStakePoolFee::from(stake_pool.stake_deposit_fee),
             stake_withdrawal_fee: CliStakePoolFee::from(stake_pool.stake_withdrawal_fee),
             next_stake_withdrawal_fee: stake_pool
-                .next_sol_withdrawal_fee
+                .next_stake_withdrawal_fee
                 .map(CliStakePoolFee::from),
             stake_referral_fee: stake_pool.stake_referral_fee,
             sol_deposit_authority: stake_pool.sol_deposit_authority.map(|x| x.to_string()),
