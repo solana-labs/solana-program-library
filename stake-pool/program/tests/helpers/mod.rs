@@ -20,8 +20,9 @@ use {
         vote_state::{VoteInit, VoteState},
     },
     spl_stake_pool::{
-        find_stake_program_address, find_transient_stake_program_address, id, instruction,
-        processor,
+        find_deposit_authority_program_address, find_stake_program_address,
+        find_transient_stake_program_address, find_withdraw_authority_program_address, id,
+        instruction, processor,
         state::{self, FeeType, ValidatorList},
         MINIMUM_ACTIVE_STAKE,
     },
@@ -317,6 +318,7 @@ pub async fn create_stake_pool(
     pool_token_account: &Pubkey,
     manager: &Keypair,
     staker: &Pubkey,
+    withdraw_authority: &Pubkey,
     stake_deposit_authority: &Option<Keypair>,
     epoch_fee: &state::Fee,
     withdrawal_fee: &state::Fee,
@@ -353,6 +355,7 @@ pub async fn create_stake_pool(
                 &stake_pool.pubkey(),
                 &manager.pubkey(),
                 staker,
+                withdraw_authority,
                 &validator_list.pubkey(),
                 reserve_stake,
                 pool_mint,
@@ -624,14 +627,10 @@ impl StakePoolAccounts {
         let stake_pool = Keypair::new();
         let validator_list = Keypair::new();
         let stake_pool_address = &stake_pool.pubkey();
-        let (withdraw_authority, _) = Pubkey::find_program_address(
-            &[&stake_pool_address.to_bytes()[..32], b"withdraw"],
-            &id(),
-        );
-        let (stake_deposit_authority, _) = Pubkey::find_program_address(
-            &[&stake_pool_address.to_bytes()[..32], b"deposit"],
-            &id(),
-        );
+        let (stake_deposit_authority, _) =
+            find_deposit_authority_program_address(&id(), stake_pool_address);
+        let (withdraw_authority, _) =
+            find_withdraw_authority_program_address(&id(), stake_pool_address);
         let reserve_stake = Keypair::new();
         let pool_mint = Keypair::new();
         let pool_fee_account = Keypair::new();
@@ -700,13 +699,13 @@ impl StakePoolAccounts {
 
     pub async fn initialize_stake_pool(
         &self,
-        mut banks_client: &mut BanksClient,
+        banks_client: &mut BanksClient,
         payer: &Keypair,
         recent_blockhash: &Hash,
         reserve_lamports: u64,
     ) -> Result<(), TransportError> {
         create_mint(
-            &mut banks_client,
+            banks_client,
             payer,
             recent_blockhash,
             &self.pool_mint,
@@ -714,7 +713,7 @@ impl StakePoolAccounts {
         )
         .await?;
         create_token_account(
-            &mut banks_client,
+            banks_client,
             payer,
             recent_blockhash,
             &self.pool_fee_account,
@@ -723,7 +722,7 @@ impl StakePoolAccounts {
         )
         .await?;
         create_independent_stake_account(
-            &mut banks_client,
+            banks_client,
             payer,
             recent_blockhash,
             &self.reserve_stake,
@@ -736,7 +735,7 @@ impl StakePoolAccounts {
         )
         .await;
         create_stake_pool(
-            &mut banks_client,
+            banks_client,
             payer,
             recent_blockhash,
             &self.stake_pool,
@@ -746,6 +745,7 @@ impl StakePoolAccounts {
             &self.pool_fee_account.pubkey(),
             &self.manager,
             &self.staker.pubkey(),
+            &self.withdraw_authority,
             &self.stake_deposit_authority_keypair,
             &self.epoch_fee,
             &self.withdrawal_fee,

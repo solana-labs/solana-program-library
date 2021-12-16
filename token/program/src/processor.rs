@@ -4370,7 +4370,7 @@ mod tests {
                 vec![
                     &mut multisig_account,
                     &mut rent_sysvar,
-                    &mut account_info_iter.next().unwrap(),
+                    account_info_iter.next().unwrap(),
                 ],
             )
         );
@@ -4385,7 +4385,7 @@ mod tests {
             vec![
                 &mut multisig_account,
                 &mut rent_sysvar,
-                &mut account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
             ],
         )
         .unwrap();
@@ -4394,10 +4394,7 @@ mod tests {
         let account_info_iter = &mut signer_accounts.iter_mut();
         do_process_instruction(
             initialize_multisig2(&program_id, &multisig_key, &[&signer_keys[0]], 1).unwrap(),
-            vec![
-                &mut multisig_account2,
-                &mut account_info_iter.next().unwrap(),
-            ],
+            vec![&mut multisig_account2, account_info_iter.next().unwrap()],
         )
         .unwrap();
 
@@ -4414,17 +4411,17 @@ mod tests {
             vec![
                 &mut multisig_delegate_account,
                 &mut rent_sysvar,
-                &mut account_info_iter.next().unwrap(),
-                &mut account_info_iter.next().unwrap(),
-                &mut account_info_iter.next().unwrap(),
-                &mut account_info_iter.next().unwrap(),
-                &mut account_info_iter.next().unwrap(),
-                &mut account_info_iter.next().unwrap(),
-                &mut account_info_iter.next().unwrap(),
-                &mut account_info_iter.next().unwrap(),
-                &mut account_info_iter.next().unwrap(),
-                &mut account_info_iter.next().unwrap(),
-                &mut account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
             ],
         )
         .unwrap();
@@ -4482,7 +4479,7 @@ mod tests {
                 &mut mint_account,
                 &mut account,
                 &mut multisig_account,
-                &mut account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
             ],
         )
         .unwrap();
@@ -4503,7 +4500,7 @@ mod tests {
                 &mut account,
                 &mut multisig_delegate_account,
                 &mut multisig_account,
-                &mut account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
             ],
         )
         .unwrap();
@@ -4524,7 +4521,7 @@ mod tests {
                 &mut account,
                 &mut account2_account,
                 &mut multisig_account,
-                &mut account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
             ],
         )
         .unwrap();
@@ -4545,17 +4542,17 @@ mod tests {
                 &mut account,
                 &mut account2_account,
                 &mut multisig_delegate_account,
-                &mut account_info_iter.next().unwrap(),
-                &mut account_info_iter.next().unwrap(),
-                &mut account_info_iter.next().unwrap(),
-                &mut account_info_iter.next().unwrap(),
-                &mut account_info_iter.next().unwrap(),
-                &mut account_info_iter.next().unwrap(),
-                &mut account_info_iter.next().unwrap(),
-                &mut account_info_iter.next().unwrap(),
-                &mut account_info_iter.next().unwrap(),
-                &mut account_info_iter.next().unwrap(),
-                &mut account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
             ],
         )
         .unwrap();
@@ -4576,7 +4573,7 @@ mod tests {
                 &mut mint_account,
                 &mut account2_account,
                 &mut multisig_account,
-                &mut account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
             ],
         )
         .unwrap();
@@ -4597,7 +4594,7 @@ mod tests {
                 &mut account,
                 &mut mint_account,
                 &mut multisig_account,
-                &mut account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
             ],
         )
         .unwrap();
@@ -4618,17 +4615,17 @@ mod tests {
                 &mut account,
                 &mut mint_account,
                 &mut multisig_delegate_account,
-                &mut account_info_iter.next().unwrap(),
-                &mut account_info_iter.next().unwrap(),
-                &mut account_info_iter.next().unwrap(),
-                &mut account_info_iter.next().unwrap(),
-                &mut account_info_iter.next().unwrap(),
-                &mut account_info_iter.next().unwrap(),
-                &mut account_info_iter.next().unwrap(),
-                &mut account_info_iter.next().unwrap(),
-                &mut account_info_iter.next().unwrap(),
-                &mut account_info_iter.next().unwrap(),
-                &mut account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
             ],
         )
         .unwrap();
@@ -4680,7 +4677,7 @@ mod tests {
                 &mut mint2_account,
                 &mut account3_account,
                 &mut multisig_account,
-                &mut account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
             ],
         )
         .unwrap();
@@ -4698,7 +4695,7 @@ mod tests {
                 &mut account3_account,
                 &mut mint2_account,
                 &mut multisig_account,
-                &mut account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
             ],
         )
         .unwrap();
@@ -4718,7 +4715,7 @@ mod tests {
             vec![
                 &mut mint_account,
                 &mut multisig_account,
-                &mut account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
             ],
         )
         .unwrap();
@@ -4738,7 +4735,7 @@ mod tests {
             vec![
                 &mut account,
                 &mut multisig_account,
-                &mut account_info_iter.next().unwrap(),
+                account_info_iter.next().unwrap(),
             ],
         )
         .unwrap();

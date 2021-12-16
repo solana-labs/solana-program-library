@@ -1,0 +1,102 @@
+{
+  "name": "Solana Token List",
+  "logoURI": "https://cdn.jsdelivr.net/gh/trustwallet/assets@master/blockchains/solana/info/logo.png",
+  "keywords": ["solana", "spl"],
+  "tags": {
+    "stablecoin": {
+      "name": "stablecoin",
+      "description": "Tokens that are fixed to an external asset, e.g. the US dollar"
+    },
+    "ethereum": {
+      "name": "ethereum",
+      "description": "Asset bridged from ethereum"
+    },
+    "lp-token": {
+      "name": "lp-token",
+      "description": "Asset representing liquidity provider token"
+    },
+    "wrapped-sollet": {
+      "name": "wrapped-sollet",
+      "description": "Asset wrapped using sollet bridge"
+    },
+    "wrapped": {
+      "name": "wrapped",
+      "description": "Asset wrapped using wormhole bridge"
+    },
+    "leveraged": {
+      "name": "leveraged",
+      "description": "Leveraged asset"
+    },
+    "bull": {
+      "name": "bull",
+      "description": "Leveraged Bull asset"
+    },
+    "bear": {
+      "name": "bear",
+      "description": "Leveraged Bear asset"
+    },
+    "nft": {
+      "name": "nft",
+      "description": "Non-fungible token"
+    },
+    "security-token": {
+      "name": "security-token",
+      "description": "Tokens that are used to gain access to an electronically restricted resource"
+    },
+    "utility-token": {
+      "name": "utility-token",
+      "description": "Tokens that are designed to be spent within a certain blockchain ecosystem e.g. most of the SPL-Tokens"
+    },
+    "tokenized-stock": {
+      "name": "tokenized-stock",
+      "description": "Tokenized stocks are tokenized derivatives that represent traditional securities, particularly shares in publicly firms traded on regulated exchanges"
+    }
+  },
+  "timestamp": "2021-03-03T19:57:21+0000",
+  "tokens": [
+    {
+      "chainId": 101,
+      "address": "So11111111111111111111111111111111111111112",
+      "symbol": "SOL",
+      "name": "Wrapped SOL",
+      "decimals": 9,
+      "logoURI": "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png",
+      "tags": [],
+      "extensions": {
+        "website": "https://solana.com/",
+        "serumV3Usdc": "9wFFyRfZBsuAha4YcuxcXLKwMxJR43S7fPfQLusDBzvT",
+        "serumV3Usdt": "HWHvQhFmJB3NUcu1aihKmrKegfVxBEHzwVX6yZCKEsi1",
+        "coingeckoId": "solana"
+      }
+    },
+    {
+      "chainId": 101,
+      "address": "BEcGFQK1T1tSu3kvHC17cyCkQ5dvXqAJ7ExB2bb5Do7a",
+      "symbol": "COIN",
+      "name": "Wrapped COIN",
+      "decimals": 6,
+      "logoURI": "",
+      "tags": [],
+      "extensions": {
+        "website": "https://solana.com/"
+      }
+    },
+    {
+      "chainId": 101,
+      "address": "FSRvxBNrQWX2Fy2qvKMLL3ryEdRtE3PUTZBcdKwASZTU",
+      "symbol": "PC",
+      "name": "Wrapped PC",
+      "decimals": 6,
+      "logoURI": "",
+      "tags": [],
+      "extensions": {
+        "website": "https://solana.com/"
+      }
+    }
+  ],
+  "version": {
+    "major": 0,
+    "minor": 2,
+    "patch": 2
+  }
+}

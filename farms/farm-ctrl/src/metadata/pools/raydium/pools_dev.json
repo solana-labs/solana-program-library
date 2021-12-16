@@ -1,0 +1,31 @@
+{
+  "name": "Raydium Pools",
+  "pools": [
+    {
+      "name": "COIN-PC",
+      "coin": "COIN",
+      "pc": "PC",
+      "lp": "LP.RDM.COIN-PC-V4",
+      "version": 4,
+      "programId": "LIQUIDITY_POOL_PROGRAM_ID_V4",
+      "ammId": "HeD1cekRWUNR25dcvW8c9bAHeKbr1r7qKEhv7pEegr4f",
+      "ammAuthority": "DhVpojXMTbZMuTaCgiiaFU7U8GvEEhnYo4G9BUdiEYGh",
+      "ammOpenOrders": "HboQAt9BXyejnh6SzdDNTx4WELMtRRPCr7pRSLpAW7Eq",
+      "ammTargetOrders": "6TzAjFPVZVMjbET8vUSk35J9U2dEWFCrnbHogsejRE5h",
+      "ammQuantities": "11111111111111111111111111111111",
+      "poolCoinTokenAccount": "3qbeXHwh9Sz4zabJxbxvYGJc57DZHrFgYMCWnaeNJENT",
+      "poolPcTokenAccount": "FrGPG5D4JZVF5ger7xSChFVFL8M9kACJckzyCz8tVowz",
+      "poolWithdrawQueue": "DD9nUbJoUbuE3FampcJeLfDPb5zKGvR7Ho7HE5rpcBGx",
+      "poolTempLpTokenAccount": "249BW2tWhsvwEFtWabpTXXX17Vh7NQSeHS4W7Ku6b27R",
+      "serumProgramId": "SERUM_PROGRAM_ID_V3",
+      "serumMarket": "3tsrPhKrWHWMB8RiPaqNxJ8GnBhZnDqL4wcu5EAMFeBe",
+      "serumBids": "ANHHchetdZVZBuwKWgz8RSfVgCDsRpW9i2BNWrmG9Jh9",
+      "serumAsks": "ESSri17GNbVttqrp7hrjuXtxuTcCqytnrMkEqr29gMGr",
+      "serumEventQueue": "FGAW7QqNJGFyhakh5jPzGowSb8UqcSJ95ZmySeBgmVwt",
+      "serumCoinVaultAccount": "E1E5kQqWXkXbaqVzpY5P2EQUSi8PNAHdCnqsj3mPWSjG",
+      "serumPcVaultAccount": "3sj6Dsw8fr8MseXpCnvuCSczR8mQjCWNyWDC5cAfEuTq",
+      "serumVaultSigner": "C2fDkZJqHH5PXyQ7UWBNZsmu6vDXxrEbb9Ex9KF7XsAE",
+      "official": true
+    }
+  ]
+}

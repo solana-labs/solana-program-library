@@ -1,0 +1,22 @@
+{
+  "name": "Raydium Farms",
+  "farms": [
+    {
+      "name": "COIN-PC",
+      "lp": "LP.RDM.COIN-PC-V4",
+      "reward": "COIN",
+      "rewardB": "PC",
+      "isStake": false,
+      "fusion": true,
+      "legacy": false,
+      "dual": true,
+      "version": 5,
+      "programId": "STAKE_PROGRAM_ID_V5",
+      "poolId": "2Bsexc5j6vk4r9RhBYz2ufPrRWhumXQk6efXucqUKsyr",
+      "poolAuthority": "BxAtWJ4g6xguPsR9xNvXTK7EjuzwiKNbmKbhoXDZ3EsY",
+      "poolLpTokenAccount": "83BEhzv7eV4HeJuuPtYmHkhTjZEpNpK83mHnHfX5Krwj",
+      "poolRewardTokenAccount": "HVtAJ1uRiWJ7tNU9uqAzpPv14B3fN9SVEW9G4PtM77Ci",
+      "poolRewardTokenAccountB": "39Ea6rMGGrsNmEsYToqQfEyNSqv7hcUJa646qBYLY4yq"
+    }
+  ]
+}

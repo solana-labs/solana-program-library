@@ -4,6 +4,7 @@
 //! An ERC20-like Token program for the Solana blockchain
 
 pub mod error;
+pub mod extension;
 pub mod instruction;
 pub mod native_mint;
 pub mod processor;

@@ -20,7 +20,7 @@ pub struct AccKey {
     pub val: [u8; 32],
 }
 
-#[derive(Copy, Clone)]
+#[derive(PartialEq, Copy, Clone)]
 #[repr(C)]
 pub enum AccountType {
     Unknown,
@@ -29,7 +29,7 @@ pub enum AccountType {
     Price,
 }
 
-#[derive(Copy, Clone)]
+#[derive(PartialEq, Copy, Clone)]
 #[repr(C)]
 pub enum PriceStatus {
     Unknown,
@@ -38,7 +38,7 @@ pub enum PriceStatus {
     Auction,
 }
 
-#[derive(Copy, Clone)]
+#[derive(PartialEq, Copy, Clone)]
 #[repr(C)]
 pub enum CorpAction {
     NoCorpAct,
