@@ -94,7 +94,7 @@ export async function getAccountInfo(
     if (!info.owner.equals(programId)) throw new TokenInvalidAccountOwnerError();
     if (info.data.length != ACCOUNT_SIZE) throw new TokenInvalidAccountSizeError();
 
-    const rawAccount = AccountLayout.decode(Buffer.from(info.data));
+    const rawAccount = AccountLayout.decode(info.data);
 
     return {
         address,
