@@ -288,19 +288,26 @@ fn unpack_coption_u64(src: &[u8; 12]) -> Result<COption<u64>, ProgramError> {
 }
 
 #[cfg(test)]
-mod test {
+pub(crate) mod test {
     use super::*;
+
+    pub const TEST_MINT: Mint = Mint {
+        mint_authority: COption::Some(Pubkey::new_from_array([1; 32])),
+        supply: 42,
+        decimals: 7,
+        is_initialized: true,
+        freeze_authority: COption::Some(Pubkey::new_from_array([2; 32])),
+    };
+    pub const TEST_MINT_SLICE: &[u8] = &[
+        1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 42, 0, 0, 0, 0, 0, 0, 0, 7, 1, 1, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+        2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    ];
 
     #[test]
     fn test_pack_unpack() {
         // Mint
-        let check = Mint {
-            mint_authority: COption::Some(Pubkey::new(&[1; 32])),
-            supply: 42,
-            decimals: 7,
-            is_initialized: true,
-            freeze_authority: COption::Some(Pubkey::new(&[2; 32])),
-        };
+        let check = TEST_MINT;
         let mut packed = vec![0; Mint::get_packed_len() + 1];
         assert_eq!(
             Err(ProgramError::InvalidAccountData),
@@ -313,12 +320,7 @@ mod test {
         );
         let mut packed = vec![0; Mint::get_packed_len()];
         Mint::pack(check, &mut packed).unwrap();
-        let expect = vec![
-            1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1, 1, 1, 42, 0, 0, 0, 0, 0, 0, 0, 7, 1, 1, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2,
-            2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-        ];
-        assert_eq!(packed, expect);
+        assert_eq!(packed, TEST_MINT_SLICE);
         let unpacked = Mint::unpack(&packed).unwrap();
         assert_eq!(unpacked, check);
 
