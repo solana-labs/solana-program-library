@@ -1,8 +1,8 @@
 import { struct, u8 } from '@solana/buffer-layout';
 import { PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants';
-import { TokenInstruction } from './types';
 import { addSigners } from './internal';
+import { TokenInstruction } from './types';
 
 const dataLayout = struct<{ instruction: TokenInstruction }>([u8('instruction')]);
 
