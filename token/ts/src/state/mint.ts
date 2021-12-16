@@ -74,7 +74,7 @@ export async function getMintInfo(
     if (!info.owner.equals(programId)) throw new TokenInvalidAccountOwnerError();
     if (info.data.length != MINT_SIZE) throw new TokenInvalidAccountSizeError();
 
-    const rawMint = MintLayout.decode(Buffer.from(info.data));
+    const rawMint = MintLayout.decode(info.data);
 
     return {
         address,
