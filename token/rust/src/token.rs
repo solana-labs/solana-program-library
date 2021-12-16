@@ -52,29 +52,6 @@ where
     T: SendTransaction,
     S: Signer,
 {
-    async fn process_ixs<S2: Signers>(
-        client: &Arc<dyn TokenClient<T>>,
-        payer: &S,
-        instructions: &[Instruction],
-        signing_keypairs: &S2,
-    ) -> TokenResult<T::Output> {
-        let recent_blockhash = client
-            .get_recent_blockhash()
-            .await
-            .map_err(TokenError::Client)?;
-
-        let mut tx = Transaction::new_with_payer(instructions, Some(&payer.pubkey()));
-        tx.try_partial_sign(&[payer], recent_blockhash)
-            .map_err(|error| TokenError::Client(error.into()))?;
-        tx.try_sign(signing_keypairs, recent_blockhash)
-            .map_err(|error| TokenError::Client(error.into()))?;
-
-        client
-            .send_transaction(tx)
-            .await
-            .map_err(TokenError::Client)
-    }
-
     pub fn new(client: Arc<dyn TokenClient<T>>, address: Pubkey, payer: S) -> Self {
         Token {
             client,
@@ -88,6 +65,29 @@ where
         &self.pubkey
     }
 
+    async fn process_ixs<S2: Signers>(
+        &self,
+        instructions: &[Instruction],
+        signing_keypairs: &S2,
+    ) -> TokenResult<T::Output> {
+        let recent_blockhash = self
+            .client
+            .get_recent_blockhash()
+            .await
+            .map_err(TokenError::Client)?;
+
+        let mut tx = Transaction::new_with_payer(instructions, Some(&self.payer.pubkey()));
+        tx.try_partial_sign(&[&self.payer], recent_blockhash)
+            .map_err(|error| TokenError::Client(error.into()))?;
+        tx.try_sign(signing_keypairs, recent_blockhash)
+            .map_err(|error| TokenError::Client(error.into()))?;
+
+        self.client
+            .send_transaction(tx)
+            .await
+            .map_err(TokenError::Client)
+    }
+
     /// Create and initialize a token.
     pub async fn create_mint<'a, S2: Signer>(
         client: Arc<dyn TokenClient<T>>,
@@ -97,33 +97,34 @@ where
         freeze_authority: Option<&'a Pubkey>,
         decimals: u8,
     ) -> TokenResult<Self> {
-        Self::process_ixs(
-            &client,
-            &payer,
-            &[
-                system_instruction::create_account(
-                    &payer.pubkey(),
-                    &mint_account.pubkey(),
-                    client
-                        .get_minimum_balance_for_rent_exemption(state::Mint::LEN)
-                        .await
-                        .map_err(TokenError::Client)?,
-                    state::Mint::LEN as u64,
-                    &spl_token::id(),
-                ),
-                instruction::initialize_mint(
-                    &spl_token::id(),
-                    &mint_account.pubkey(),
-                    mint_authority,
-                    freeze_authority,
-                    decimals,
-                )?,
-            ],
-            &[mint_account],
-        )
-        .await?;
+        let token = Self::new(client, mint_account.pubkey(), payer);
+        token
+            .process_ixs(
+                &[
+                    system_instruction::create_account(
+                        &token.payer.pubkey(),
+                        &mint_account.pubkey(),
+                        token
+                            .client
+                            .get_minimum_balance_for_rent_exemption(state::Mint::LEN)
+                            .await
+                            .map_err(TokenError::Client)?,
+                        state::Mint::LEN as u64,
+                        &spl_token::id(),
+                    ),
+                    instruction::initialize_mint(
+                        &spl_token::id(),
+                        &mint_account.pubkey(),
+                        mint_authority,
+                        freeze_authority,
+                        decimals,
+                    )?,
+                ],
+                &[mint_account],
+            )
+            .await?;
 
-        Ok(Self::new(client, mint_account.pubkey(), payer))
+        Ok(token)
     }
 
     /// Get the address for the associated token account.
@@ -133,9 +134,7 @@ where
 
     /// Create and initialize the associated account.
     pub async fn create_associated_token_account(&self, owner: &Pubkey) -> TokenResult<Pubkey> {
-        Self::process_ixs(
-            &self.client,
-            &self.payer,
+        self.process_ixs(
             &[create_associated_token_account(
                 &self.payer.pubkey(),
                 owner,
@@ -193,9 +192,7 @@ where
         authority_type: instruction::AuthorityType,
         owner: &S2,
     ) -> TokenResult<()> {
-        Self::process_ixs(
-            &self.client,
-            &self.payer,
+        self.process_ixs(
             &[instruction::set_authority(
                 &spl_token::id(),
                 account,
@@ -217,9 +214,7 @@ where
         authority: &S2,
         amount: u64,
     ) -> TokenResult<()> {
-        Self::process_ixs(
-            &self.client,
-            &self.payer,
+        self.process_ixs(
             &[instruction::mint_to(
                 &spl_token::id(),
                 &self.pubkey,
@@ -242,9 +237,7 @@ where
         authority: &S2,
         amount: u64,
     ) -> TokenResult<T::Output> {
-        Self::process_ixs(
-            &self.client,
-            &self.payer,
+        self.process_ixs(
             &[instruction::transfer(
                 &spl_token::id(),
                 source,
