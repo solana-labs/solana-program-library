@@ -11,6 +11,11 @@
     "publishConfig": {
         "access": "public"
     },
+    "files": [
+        "lib",
+        "src",
+        "README.md"
+    ],
     "type": "module",
     "sideEffects": false,
     "main": "lib/index.js",
