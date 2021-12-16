@@ -152,6 +152,12 @@ async fn set_authority() {
         .await
         .expect("failed to set authority");
 
+    let mint = token
+        .get_mint_info()
+        .await
+        .expect("failed to get mint info");
+    assert!(mint.mint_authority.is_none());
+
     // TODO: compare
     // Err(Client(TransactionError(InstructionError(0, Custom(5)))))
     assert!(token

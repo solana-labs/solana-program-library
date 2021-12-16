@@ -147,6 +147,21 @@ where
         .map_err(Into::into)
     }
 
+    /// Retrive mint information.
+    pub async fn get_mint_info(&self) -> TokenResult<state::Mint> {
+        let account = self
+            .client
+            .get_account(self.pubkey)
+            .await
+            .map_err(TokenError::Client)?
+            .ok_or(TokenError::AccountNotFound)?;
+        if account.owner != spl_token::id() {
+            return Err(TokenError::AccountInvalidOwner);
+        }
+
+        state::Mint::unpack_from_slice(&account.data).map_err(Into::into)
+    }
+
     /// Retrieve account information.
     pub async fn get_account_info(&self, account: Pubkey) -> TokenResult<state::Account> {
         let account = self
