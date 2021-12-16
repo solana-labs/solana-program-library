@@ -409,6 +409,12 @@ AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM  1
 
 ### Example: Wrapping SOL in a Token
 
+When you want to wrap SOL, you can send SOL to an associated token account
+on the native mint and call `syncNative`. `syncNative` updates the `amount`
+field on the token account to match the amount of wrapped SOL available.
+That SOL is only retrievable by closing the token account and choosing
+the desired address to send the token account's lamports.
+
 <Tabs className="unique-tabs" groupId="language-selection">
   <TabItem value="cli" label="CLI" default>
 
