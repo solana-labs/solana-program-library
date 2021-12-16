@@ -29,15 +29,15 @@ pub enum TokenError {
 
 pub type TokenResult<T> = Result<T, TokenError>;
 
-pub struct Token<ST, TS> {
-    client: Arc<dyn TokenClient<ST>>,
+pub struct Token<T, S> {
+    client: Arc<dyn TokenClient<T>>,
     pubkey: Pubkey,
-    payer: TS,
+    payer: S,
 }
 
-impl<ST, TS> fmt::Debug for Token<ST, TS>
+impl<T, S> fmt::Debug for Token<T, S>
 where
-    TS: Signer,
+    S: Signer,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Token")
@@ -47,17 +47,17 @@ where
     }
 }
 
-impl<ST, TS> Token<ST, TS>
+impl<T, S> Token<T, S>
 where
-    ST: SendTransaction,
-    TS: Signer,
+    T: SendTransaction,
+    S: Signer,
 {
-    async fn process_ixs<T: Signers>(
-        client: &Arc<dyn TokenClient<ST>>,
-        payer: &TS,
+    async fn process_ixs<S2: Signers>(
+        client: &Arc<dyn TokenClient<T>>,
+        payer: &S,
         instructions: &[Instruction],
-        signing_keypairs: &T,
-    ) -> TokenResult<ST::Output> {
+        signing_keypairs: &S2,
+    ) -> TokenResult<T::Output> {
         let recent_blockhash = client
             .get_recent_blockhash()
             .await
@@ -75,7 +75,7 @@ where
             .map_err(TokenError::Client)
     }
 
-    pub fn new(client: Arc<dyn TokenClient<ST>>, address: Pubkey, payer: TS) -> Self {
+    pub fn new(client: Arc<dyn TokenClient<T>>, address: Pubkey, payer: S) -> Self {
         Token {
             client,
             pubkey: address,
@@ -89,10 +89,10 @@ where
     }
 
     /// Create and initialize a token.
-    pub async fn create_mint<'a, S: Signer>(
-        client: Arc<dyn TokenClient<ST>>,
-        payer: TS,
-        mint_account: &'a S,
+    pub async fn create_mint<'a, S2: Signer>(
+        client: Arc<dyn TokenClient<T>>,
+        payer: S,
+        mint_account: &'a S2,
         mint_authority: &'a Pubkey,
         freeze_authority: Option<&'a Pubkey>,
         decimals: u8,
@@ -186,12 +186,12 @@ where
     }
 
     /// Assign a new authority to the account.
-    pub async fn set_authority<S: Signer>(
+    pub async fn set_authority<S2: Signer>(
         &self,
         account: &Pubkey,
         new_authority: Option<&Pubkey>,
         authority_type: instruction::AuthorityType,
-        owner: &S,
+        owner: &S2,
     ) -> TokenResult<()> {
         Self::process_ixs(
             &self.client,
@@ -211,10 +211,10 @@ where
     }
 
     /// Mint new tokens
-    pub async fn mint_to<S: Signer>(
+    pub async fn mint_to<S2: Signer>(
         &self,
         dest: &Pubkey,
-        authority: &S,
+        authority: &S2,
         amount: u64,
     ) -> TokenResult<()> {
         Self::process_ixs(
@@ -235,13 +235,13 @@ where
     }
 
     /// Transfer tokens to another account
-    pub async fn transfer<S: Signer>(
+    pub async fn transfer<S2: Signer>(
         &self,
         source: &Pubkey,
         destination: &Pubkey,
-        authority: &S,
+        authority: &S2,
         amount: u64,
-    ) -> TokenResult<ST::Output> {
+    ) -> TokenResult<T::Output> {
         Self::process_ixs(
             &self.client,
             &self.payer,
