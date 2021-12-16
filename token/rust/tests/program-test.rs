@@ -14,9 +14,6 @@ use spl_token_client::{
 use std::sync::Arc;
 
 struct TestContext {
-    // pub ctx: Arc<Mutex<ProgramTestContext>>,
-    // pub client: Arc<dyn TokenClient<TokenBanksClientProcessTransaction>>,
-    // pub payer: Keypair,
     pub decimals: u8,
     pub mint_authority: Keypair,
     pub token: Token<TokenBanksClientProcessTransaction, Keypair>,
@@ -57,9 +54,6 @@ impl TestContext {
         .expect("failed to create mint");
 
         Self {
-            // ctx,
-            // client,
-            // payer,
             decimals,
             mint_authority,
             token,
