@@ -40,16 +40,25 @@ struct PodOptionPubkey {
 // Doesn't work like an enum though
 //
 // 3.
+/// Optional type that works with internal pod types, so it can be cast to and
+/// from bytes.
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[repr(C, u8)]
-enum PodOption<T: Pod> {
+pub enum PodOption<T: Pod> {
+    /// No data, but its size will still be 1 + size_of::<T>()
     None,
+    /// Contains data value
     Some(T),
 }
 #[allow(unsafe_code)]
 unsafe impl<T: Pod> Pod for PodOption<T> {}
 #[allow(unsafe_code)]
 unsafe impl<T: Pod> Zeroable for PodOption<T> {}
+impl<T: Pod> Default for PodOption<T> {
+    fn default() -> Self {
+        Self::None
+    }
+}
 // This maintains the size, may be unclear to use.  We'll also have to reimplement
 // all of the Option helpers, same as COption has to.
 //
@@ -166,13 +175,12 @@ mod tests {
             PodOption::Some(Pubkey::new_from_array([1; 32])),
             *pod_from_bytes::<PodOption<Pubkey>>(&[1; 33]).unwrap()
         );
+        // This is really sweet -- by simply setting the option to None, the whole rest of the slice is also set to 0!
         assert_eq!(
             PodOption::None,
             *pod_from_bytes::<PodOption<Pubkey>>(&[0; 33]).unwrap()
         );
-        assert!(pod_from_bytes::<PodOption<Pubkey>>(&[0; 32]).is_err());
-        assert!(pod_from_bytes::<PodOption<Pubkey>>(&[1; 32]).is_err());
-        assert!(pod_from_bytes::<PodOption<Pubkey>>(&[0; 34]).is_err());
-        assert!(pod_from_bytes::<PodOption<Pubkey>>(&[1; 34]).is_err());
+        assert!(pod_from_bytes::<PodOption<Pubkey>>(&[0; 1]).is_err());
+        assert!(pod_from_bytes::<PodOption<Pubkey>>(&[1; 1]).is_err());
     }
 }
