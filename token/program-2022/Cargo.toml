@@ -14,6 +14,7 @@ test-bpf = []
 
 [dependencies]
 arrayref = "0.3.6"
+bytemuck = { version = "1.7.2", features = ["derive"] }
 num-derive = "0.3"
 num-traits = "0.2"
 num_enum = "0.5.4"
