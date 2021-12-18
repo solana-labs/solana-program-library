@@ -5,10 +5,14 @@ import { TOKEN_PROGRAM_ID } from '../constants';
 import { addSigners } from './internal';
 import { TokenInstruction } from './types';
 
-const dataLayout = struct<{
-    instruction: TokenInstruction;
+// TODO: docs
+export interface MintToInstructionData {
+    instruction: TokenInstruction.MintTo;
     amount: bigint;
-}>([u8('instruction'), u64('amount')]);
+}
+
+// TODO: docs
+export const mintToInstructionDataLayout = struct<MintToInstructionData>([u8('instruction'), u64('amount')]);
 
 /**
  * Construct a MintTo instruction
@@ -39,8 +43,8 @@ export function createMintToInstruction(
         multiSigners
     );
 
-    const data = Buffer.alloc(dataLayout.span);
-    dataLayout.encode(
+    const data = Buffer.alloc(mintToInstructionDataLayout.span);
+    mintToInstructionDataLayout.encode(
         {
             instruction: TokenInstruction.MintTo,
             amount: BigInt(amount),

@@ -3,7 +3,13 @@ import { PublicKey, SYSVAR_RENT_PUBKEY, TransactionInstruction } from '@solana/w
 import { TOKEN_PROGRAM_ID } from '../constants';
 import { TokenInstruction } from './types';
 
-const dataLayout = struct<{ instruction: TokenInstruction }>([u8('instruction')]);
+// TODO: docs
+export interface InitializeAccountInstructionData {
+    instruction: TokenInstruction.InitializeAccount;
+}
+
+// TODO: docs
+export const initializeAccountInstructionDataLayout = struct<InitializeAccountInstructionData>([u8('instruction')]);
 
 /**
  * Construct an InitializeAccount instruction
@@ -28,8 +34,8 @@ export function createInitializeAccountInstruction(
         { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
     ];
 
-    const data = Buffer.alloc(dataLayout.span);
-    dataLayout.encode({ instruction: TokenInstruction.InitializeAccount }, data);
+    const data = Buffer.alloc(initializeAccountInstructionDataLayout.span);
+    initializeAccountInstructionDataLayout.encode({ instruction: TokenInstruction.InitializeAccount }, data);
 
     return new TransactionInstruction({ keys, programId, data });
 }

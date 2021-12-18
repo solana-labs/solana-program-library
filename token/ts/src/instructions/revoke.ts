@@ -4,7 +4,13 @@ import { TOKEN_PROGRAM_ID } from '../constants';
 import { addSigners } from './internal';
 import { TokenInstruction } from './types';
 
-const dataLayout = struct<{ instruction: TokenInstruction }>([u8('instruction')]);
+// TODO: docs
+export interface RevokeInstructionData {
+    instruction: TokenInstruction.Revoke;
+}
+
+// TODO: docs
+export const revokeInstructionDataLayout = struct<RevokeInstructionData>([u8('instruction')]);
 
 /**
  * Construct a Revoke instruction
@@ -24,8 +30,8 @@ export function createRevokeInstruction(
 ): TransactionInstruction {
     const keys = addSigners([{ pubkey: account, isSigner: false, isWritable: true }], owner, multiSigners);
 
-    const data = Buffer.alloc(dataLayout.span);
-    dataLayout.encode({ instruction: TokenInstruction.Revoke }, data);
+    const data = Buffer.alloc(revokeInstructionDataLayout.span);
+    revokeInstructionDataLayout.encode({ instruction: TokenInstruction.Revoke }, data);
 
     return new TransactionInstruction({ keys, programId, data });
 }

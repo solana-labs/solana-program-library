@@ -5,10 +5,14 @@ import { TOKEN_PROGRAM_ID } from '../constants';
 import { addSigners } from './internal';
 import { TokenInstruction } from './types';
 
-const dataLayout = struct<{
-    instruction: TokenInstruction;
+// TODO: docs
+export interface BurnInstructionData {
+    instruction: TokenInstruction.Burn;
     amount: bigint;
-}>([u8('instruction'), u64('amount')]);
+}
+
+// TODO: docs
+export const burnInstructionDataLayout = struct<BurnInstructionData>([u8('instruction'), u64('amount')]);
 
 /**
  * Construct a Burn instruction
@@ -39,8 +43,8 @@ export function createBurnInstruction(
         multiSigners
     );
 
-    const data = Buffer.alloc(dataLayout.span);
-    dataLayout.encode(
+    const data = Buffer.alloc(burnInstructionDataLayout.span);
+    burnInstructionDataLayout.encode(
         {
             instruction: TokenInstruction.Burn,
             amount: BigInt(amount),

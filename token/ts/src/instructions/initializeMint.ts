@@ -4,13 +4,17 @@ import { PublicKey, SYSVAR_RENT_PUBKEY, TransactionInstruction } from '@solana/w
 import { TOKEN_PROGRAM_ID } from '../constants';
 import { TokenInstruction } from './types';
 
-const dataLayout = struct<{
-    instruction: TokenInstruction;
+// TODO: docs
+export interface InitializeMintInstructionData {
+    instruction: TokenInstruction.InitializeMint;
     decimals: number;
     mintAuthority: PublicKey;
     freezeAuthorityOption: 1 | 0;
     freezeAuthority: PublicKey;
-}>([
+}
+
+// TODO: docs
+export const initializeMintInstructionDataLayout = struct<InitializeMintInstructionData>([
     u8('instruction'),
     u8('decimals'),
     publicKey('mintAuthority'),
@@ -41,8 +45,8 @@ export function createInitializeMintInstruction(
         { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
     ];
 
-    const data = Buffer.alloc(dataLayout.span);
-    dataLayout.encode(
+    const data = Buffer.alloc(initializeMintInstructionDataLayout.span);
+    initializeMintInstructionDataLayout.encode(
         {
             instruction: TokenInstruction.InitializeMint,
             decimals,

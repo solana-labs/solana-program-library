@@ -5,11 +5,19 @@ import { TOKEN_PROGRAM_ID } from '../constants';
 import { addSigners } from './internal';
 import { TokenInstruction } from './types';
 
-const dataLayout = struct<{
-    instruction: TokenInstruction;
+// TODO: docs
+export interface ApproveCheckedInstructionData {
+    instruction: TokenInstruction.ApproveChecked;
     amount: bigint;
     decimals: number;
-}>([u8('instruction'), u64('amount'), u8('decimals')]);
+}
+
+// TODO: docs
+export const approveCheckedInstructionDataLayout = struct<ApproveCheckedInstructionData>([
+    u8('instruction'),
+    u64('amount'),
+    u8('decimals'),
+]);
 
 /**
  * Construct an ApproveChecked instruction
@@ -45,8 +53,8 @@ export function createApproveCheckedInstruction(
         multiSigners
     );
 
-    const data = Buffer.alloc(dataLayout.span);
-    dataLayout.encode(
+    const data = Buffer.alloc(approveCheckedInstructionDataLayout.span);
+    approveCheckedInstructionDataLayout.encode(
         {
             instruction: TokenInstruction.ApproveChecked,
             amount: BigInt(amount),

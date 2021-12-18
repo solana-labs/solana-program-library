@@ -5,10 +5,14 @@ import { TOKEN_PROGRAM_ID } from '../constants';
 import { addSigners } from './internal';
 import { TokenInstruction } from './types';
 
-const dataLayout = struct<{
-    instruction: TokenInstruction;
+// TODO: docs
+export interface ApproveInstructionData {
+    instruction: TokenInstruction.Approve;
     amount: bigint;
-}>([u8('instruction'), u64('amount')]);
+}
+
+// TODO: docs
+export const approveInstructionDataLayout = struct<ApproveInstructionData>([u8('instruction'), u64('amount')]);
 
 /**
  * Construct an Approve instruction
@@ -39,8 +43,8 @@ export function createApproveInstruction(
         multiSigners
     );
 
-    const data = Buffer.alloc(dataLayout.span);
-    dataLayout.encode(
+    const data = Buffer.alloc(approveInstructionDataLayout.span);
+    approveInstructionDataLayout.encode(
         {
             instruction: TokenInstruction.Approve,
             amount: BigInt(amount),
