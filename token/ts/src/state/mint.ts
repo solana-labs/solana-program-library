@@ -63,7 +63,7 @@ export const MINT_SIZE = MintLayout.span;
  *
  * @return Mint information
  */
-export async function getMintInfo(
+export async function getMint(
     connection: Connection,
     address: PublicKey,
     commitment?: Commitment,

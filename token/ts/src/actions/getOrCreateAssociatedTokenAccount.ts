@@ -15,7 +15,7 @@ import {
     TokenInvalidOwnerError,
 } from '../errors';
 import { createAssociatedTokenAccountInstruction } from '../instructions';
-import { Account, getAccountInfo, getAssociatedTokenAddress } from '../state';
+import { Account, getAccount, getAssociatedTokenAddress } from '../state';
 
 /**
  * Retrieve the associated token account, or create it if it doesn't exist
@@ -55,7 +55,7 @@ export async function getOrCreateAssociatedTokenAccount(
     // Sadly we can't do this atomically.
     let account: Account;
     try {
-        account = await getAccountInfo(connection, associatedToken, commitment, programId);
+        account = await getAccount(connection, associatedToken, commitment, programId);
     } catch (error: unknown) {
         // TokenAccountNotFoundError can be possible if the associated address has already received some lamports,
         // becoming a system account. Assuming program derived addressing is safe, this is the only case for the
@@ -81,7 +81,7 @@ export async function getOrCreateAssociatedTokenAccount(
             }
 
             // Now this should always succeed
-            account = await getAccountInfo(connection, associatedToken, commitment, programId);
+            account = await getAccount(connection, associatedToken, commitment, programId);
         } else {
             throw error;
         }

@@ -83,7 +83,7 @@ export const ACCOUNT_SIZE = AccountLayout.span;
  *
  * @return Token account information
  */
-export async function getAccountInfo(
+export async function getAccount(
     connection: Connection,
     address: PublicKey,
     commitment?: Commitment,
