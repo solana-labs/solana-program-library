@@ -158,7 +158,7 @@ pub fn get_token_ratio<'a, 'b>(
     )
 }
 
-/// Returns token pair ratio, uses decimals insted of mints, optimized for on-chain.
+/// Returns token pair ratio, uses decimals instead of mints, optimized for on-chain.
 pub fn get_token_ratio_with_decimals(
     token_a_balance: u64,
     token_b_balance: u64,
