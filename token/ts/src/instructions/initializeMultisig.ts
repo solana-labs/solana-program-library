@@ -3,10 +3,17 @@ import { PublicKey, SYSVAR_RENT_PUBKEY, TransactionInstruction } from '@solana/w
 import { TOKEN_PROGRAM_ID } from '../constants';
 import { TokenInstruction } from './types';
 
-const dataLayout = struct<{
-    instruction: TokenInstruction;
+// TODO: docs
+export interface InitializeMultisigInstructionData {
+    instruction: TokenInstruction.InitializeMultisig;
     m: number;
-}>([u8('instruction'), u8('m')]);
+}
+
+// TODO: docs
+export const initializeMultisigInstructionDataLayout = struct<InitializeMultisigInstructionData>([
+    u8('instruction'),
+    u8('m'),
+]);
 
 /**
  * Construct an InitializeMultisig instruction
@@ -32,8 +39,8 @@ export function createInitializeMultisigInstruction(
         keys.push({ pubkey: signer, isSigner: false, isWritable: false });
     }
 
-    const data = Buffer.alloc(dataLayout.span);
-    dataLayout.encode(
+    const data = Buffer.alloc(initializeMultisigInstructionDataLayout.span);
+    initializeMultisigInstructionDataLayout.encode(
         {
             instruction: TokenInstruction.InitializeMultisig,
             m,

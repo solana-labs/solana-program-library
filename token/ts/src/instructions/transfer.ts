@@ -5,10 +5,14 @@ import { TOKEN_PROGRAM_ID } from '../constants';
 import { addSigners } from './internal';
 import { TokenInstruction } from './types';
 
-const dataLayout = struct<{
-    instruction: TokenInstruction;
+// TODO: docs
+export interface TransferInstructionData {
+    instruction: TokenInstruction.Transfer;
     amount: bigint;
-}>([u8('instruction'), u64('amount')]);
+}
+
+// TODO: docs
+export const transferInstructionDataLayout = struct<TransferInstructionData>([u8('instruction'), u64('amount')]);
 
 /**
  * Construct a Transfer instruction
@@ -39,8 +43,8 @@ export function createTransferInstruction(
         multiSigners
     );
 
-    const data = Buffer.alloc(dataLayout.span);
-    dataLayout.encode(
+    const data = Buffer.alloc(transferInstructionDataLayout.span);
+    transferInstructionDataLayout.encode(
         {
             instruction: TokenInstruction.Transfer,
             amount: BigInt(amount),

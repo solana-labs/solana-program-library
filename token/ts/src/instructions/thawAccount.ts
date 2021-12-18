@@ -4,7 +4,13 @@ import { TOKEN_PROGRAM_ID } from '../constants';
 import { addSigners } from './internal';
 import { TokenInstruction } from './types';
 
-const dataLayout = struct<{ instruction: TokenInstruction }>([u8('instruction')]);
+// TODO: docs
+export interface ThawAccountInstructionData {
+    instruction: TokenInstruction.ThawAccount;
+}
+
+// TODO: docs
+export const thawAccountInstructionDataLayout = struct<ThawAccountInstructionData>([u8('instruction')]);
 
 /**
  * Construct a ThawAccount instruction
@@ -33,8 +39,8 @@ export function createThawAccountInstruction(
         multiSigners
     );
 
-    const data = Buffer.alloc(dataLayout.span);
-    dataLayout.encode({ instruction: TokenInstruction.ThawAccount }, data);
+    const data = Buffer.alloc(thawAccountInstructionDataLayout.span);
+    thawAccountInstructionDataLayout.encode({ instruction: TokenInstruction.ThawAccount }, data);
 
     return new TransactionInstruction({ keys, programId, data });
 }

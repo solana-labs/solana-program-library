@@ -13,12 +13,21 @@ export enum AuthorityType {
     CloseAccount = 3,
 }
 
-const dataLayout = struct<{
-    instruction: TokenInstruction;
+// TODO: docs
+export interface SetAuthorityInstructionData {
+    instruction: TokenInstruction.SetAuthority;
     authorityType: AuthorityType;
     newAuthorityOption: 1 | 0;
     newAuthority: PublicKey;
-}>([u8('instruction'), u8('authorityType'), u8('newAuthorityOption'), publicKey('newAuthority')]);
+}
+
+// TODO: docs
+export const setAuthorityInstructionDataStructure = struct<SetAuthorityInstructionData>([
+    u8('instruction'),
+    u8('authorityType'),
+    u8('newAuthorityOption'),
+    publicKey('newAuthority'),
+]);
 
 /**
  * Construct a SetAuthority instruction
@@ -42,8 +51,8 @@ export function createSetAuthorityInstruction(
 ): TransactionInstruction {
     const keys = addSigners([{ pubkey: account, isSigner: false, isWritable: true }], currentAuthority, multiSigners);
 
-    const data = Buffer.alloc(dataLayout.span);
-    dataLayout.encode(
+    const data = Buffer.alloc(setAuthorityInstructionDataStructure.span);
+    setAuthorityInstructionDataStructure.encode(
         {
             instruction: TokenInstruction.SetAuthority,
             authorityType,

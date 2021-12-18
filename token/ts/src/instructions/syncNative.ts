@@ -3,7 +3,13 @@ import { PublicKey, TransactionInstruction } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants';
 import { TokenInstruction } from './types';
 
-const dataLayout = struct<{ instruction: TokenInstruction }>([u8('instruction')]);
+// TODO: docs
+export interface SyncNativeInstructionData {
+    instruction: TokenInstruction.SyncNative;
+}
+
+// TODO: docs
+export const syncNativeInstructionDataLayout = struct<SyncNativeInstructionData>([u8('instruction')]);
 
 /**
  * Construct a SyncNative instruction
@@ -16,8 +22,8 @@ const dataLayout = struct<{ instruction: TokenInstruction }>([u8('instruction')]
 export function createSyncNativeInstruction(account: PublicKey, programId = TOKEN_PROGRAM_ID): TransactionInstruction {
     const keys = [{ pubkey: account, isSigner: false, isWritable: true }];
 
-    const data = Buffer.alloc(dataLayout.span);
-    dataLayout.encode({ instruction: TokenInstruction.SyncNative }, data);
+    const data = Buffer.alloc(syncNativeInstructionDataLayout.span);
+    syncNativeInstructionDataLayout.encode({ instruction: TokenInstruction.SyncNative }, data);
 
     return new TransactionInstruction({ keys, programId, data });
 }

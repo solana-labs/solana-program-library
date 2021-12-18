@@ -5,11 +5,19 @@ import { TOKEN_PROGRAM_ID } from '../constants';
 import { addSigners } from './internal';
 import { TokenInstruction } from './types';
 
-const dataLayout = struct<{
-    instruction: TokenInstruction;
+// TODO: docs
+export interface MintToCheckedInstructionData {
+    instruction: TokenInstruction.MintToChecked;
     amount: bigint;
     decimals: number;
-}>([u8('instruction'), u64('amount'), u8('decimals')]);
+}
+
+// TODO: docs
+export const mintToCheckedInstructionDataLayout = struct<MintToCheckedInstructionData>([
+    u8('instruction'),
+    u64('amount'),
+    u8('decimals'),
+]);
 
 /**
  * Construct a MintToChecked instruction
@@ -42,8 +50,8 @@ export function createMintToCheckedInstruction(
         multiSigners
     );
 
-    const data = Buffer.alloc(dataLayout.span);
-    dataLayout.encode(
+    const data = Buffer.alloc(mintToCheckedInstructionDataLayout.span);
+    mintToCheckedInstructionDataLayout.encode(
         {
             instruction: TokenInstruction.MintToChecked,
             amount: BigInt(amount),

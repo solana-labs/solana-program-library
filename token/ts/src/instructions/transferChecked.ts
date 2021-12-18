@@ -5,11 +5,19 @@ import { TOKEN_PROGRAM_ID } from '../constants';
 import { addSigners } from './internal';
 import { TokenInstruction } from './types';
 
-const dataLayout = struct<{
-    instruction: TokenInstruction;
+// TODO: docs
+export interface TransferCheckedInstructionData {
+    instruction: TokenInstruction.TransferChecked;
     amount: bigint;
     decimals: number;
-}>([u8('instruction'), u64('amount'), u8('decimals')]);
+}
+
+// TODO: docs
+export const transferCheckedInstructionDataLayout = struct<TransferCheckedInstructionData>([
+    u8('instruction'),
+    u64('amount'),
+    u8('decimals'),
+]);
 
 /**
  * Construct a TransferChecked instruction
@@ -45,8 +53,8 @@ export function createTransferCheckedInstruction(
         multiSigners
     );
 
-    const data = Buffer.alloc(dataLayout.span);
-    dataLayout.encode(
+    const data = Buffer.alloc(transferCheckedInstructionDataLayout.span);
+    transferCheckedInstructionDataLayout.encode(
         {
             instruction: TokenInstruction.TransferChecked,
             amount: BigInt(amount),
