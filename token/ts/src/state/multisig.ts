@@ -62,7 +62,7 @@ export const MULTISIG_SIZE = MultisigLayout.span;
  *
  * @return Multisig information
  */
-export async function getMultisigInfo(
+export async function getMultisig(
     connection: Connection,
     address: PublicKey,
     commitment?: Commitment,
