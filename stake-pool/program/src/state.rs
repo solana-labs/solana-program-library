@@ -19,7 +19,6 @@ use {
         pubkey::{Pubkey, PUBKEY_BYTES},
         stake::state::Lockup,
     },
-    spl_math::checked_ceil_div::CheckedCeilDiv,
     std::{convert::TryFrom, fmt, matches},
 };
 
@@ -158,9 +157,9 @@ pub struct StakePool {
     pub rate_of_exchange: Option<RateOfExchange>
 }
 impl StakePool {
-    /// calculate the pool tokens that should be minted for a deposit of `stake_lamports`
+    /// calculate the pool tokens that should be minted from lamports
     #[inline]
-    pub fn calc_pool_tokens_for_deposit(&self, stake_lamports: u64) -> Option<u64> {
+    pub fn convert_amount_of_lamports_to_amount_of_pool_tokens(&self, stake_lamports: u64) -> Option<u64> {
         match self.rate_of_exchange {
             Some(ref rate_of_exchange) => {
                 u64::try_from(
@@ -178,7 +177,7 @@ impl StakePool {
 
     /// calculate lamports amount on withdrawal
     #[inline]
-    pub fn calc_lamports_withdraw_amount(&self, pool_tokens: u64) -> Option<u64> {
+    pub fn convert_amount_of_pool_tokens_to_amount_of_lamports(&self, pool_tokens: u64) -> Option<u64> {
         match self.rate_of_exchange {
             Some(ref rate_of_exchange) => {
                 u64::try_from(
@@ -192,18 +191,6 @@ impl StakePool {
                 Some(pool_tokens)
             }
         }
-
-        // // `checked_ceil_div` returns `None` for a 0 quotient result, but in this
-        // // case, a return of 0 is valid for small amounts of pool tokens. So
-        // // we check for that separately
-        // let numerator = (pool_tokens as u128).checked_mul(self.total_lamports as u128)?;
-        // let denominator = self.pool_token_supply as u128;
-        // if numerator < denominator || denominator == 0 {
-        //     Some(0)
-        // } else {
-        //     let (quotient, _) = numerator.checked_ceil_div(denominator)?;
-        //     u64::try_from(quotient).ok()
-        // }
     }
 
     /// calculate pool tokens to be deducted as withdrawal fees
@@ -253,26 +240,11 @@ impl StakePool {
     }
 
     /// Calculate the fee in pool tokens that goes to the manager
-    ///
-    /// This function assumes that `reward_lamports` has not already been added
-    /// to the stake pool's `total_lamports`
     #[inline]
-    pub fn calc_epoch_fee_amount(&self, reward_lamports: u64) -> Option<u64> {
-        if reward_lamports == 0 {
-            return Some(0);
-        }
-        let total_lamports = (self.total_lamports as u128).checked_add(reward_lamports as u128)?;
+    pub fn calc_pool_tokens_epoch_fee(&self, reward_lamports: u64) -> Option<u64> {
         let fee_lamports = self.epoch_fee.apply(reward_lamports)?;
-        if total_lamports == fee_lamports || self.pool_token_supply == 0 {
-            Some(reward_lamports)
-        } else {
-            u64::try_from(
-                (self.pool_token_supply as u128)
-                    .checked_mul(fee_lamports)?
-                    .checked_div(total_lamports.checked_sub(fee_lamports)?)?,
-            )
-            .ok()
-        }
+
+        self.convert_amount_of_lamports_to_amount_of_pool_tokens(u64::try_from(fee_lamports).ok()?)
     }
 
     /// Checks that the withdraw or deposit authority is valid
@@ -1068,13 +1040,13 @@ mod test {
             ..StakePool::default()
         };
         let reward_lamports = 10 * LAMPORTS_PER_SOL;
-        let pool_token_fee = stake_pool.calc_epoch_fee_amount(reward_lamports).unwrap();
+        let pool_token_fee = stake_pool.calc_pool_tokens_epoch_fee(reward_lamports).unwrap();
 
         stake_pool.total_lamports += reward_lamports;
         stake_pool.pool_token_supply += pool_token_fee;
 
         let fee_lamports = stake_pool
-            .calc_lamports_withdraw_amount(pool_token_fee)
+            .convert_amount_of_pool_tokens_to_amount_of_lamports(pool_token_fee)
             .unwrap();
         assert_eq!(fee_lamports, LAMPORTS_PER_SOL);
     }
@@ -1089,23 +1061,8 @@ mod test {
             epoch_fee,
             ..StakePool::default()
         };
-        let fee_lamports = stake_pool.calc_lamports_withdraw_amount(0).unwrap();
+        let fee_lamports = stake_pool.convert_amount_of_pool_tokens_to_amount_of_lamports(0).unwrap();
         assert_eq!(fee_lamports, 0);
-    }
-
-    #[test]
-    fn divide_by_zero_fee() {
-        let stake_pool = StakePool {
-            total_lamports: 0,
-            epoch_fee: Fee {
-                numerator: 1,
-                denominator: 10,
-            },
-            ..StakePool::default()
-        };
-        let rewards = 10;
-        let fee = stake_pool.calc_epoch_fee_amount(rewards).unwrap();
-        assert_eq!(fee, rewards);
     }
 
     #[test]
@@ -1143,12 +1100,12 @@ mod test {
                 epoch_fee,
                 ..StakePool::default()
             };
-            let pool_token_fee = stake_pool.calc_epoch_fee_amount(reward_lamports).unwrap();
+            let pool_token_fee = stake_pool.calc_pool_tokens_epoch_fee(reward_lamports).unwrap();
 
             stake_pool.total_lamports += reward_lamports;
             stake_pool.pool_token_supply += pool_token_fee;
 
-            let fee_lamports = stake_pool.calc_lamports_withdraw_amount(pool_token_fee).unwrap();
+            let fee_lamports = stake_pool.convert_amount_of_pool_tokens_to_amount_of_lamports(pool_token_fee).unwrap();
             let max_fee_lamports = u64::try_from((reward_lamports as u128) * (epoch_fee.numerator as u128) / (epoch_fee.denominator as u128)).unwrap();
             assert!(max_fee_lamports >= fee_lamports,
                 "Max possible fee must always be greater than or equal to what is actually withdrawn, max {} actual {}",
@@ -1185,11 +1142,11 @@ mod test {
                 pool_token_supply,
                 ..StakePool::default()
             };
-            let deposit_result = stake_pool.calc_pool_tokens_for_deposit(deposit_stake).unwrap();
+            let deposit_result = stake_pool.convert_amount_of_lamports_to_amount_of_pool_tokens(deposit_stake).unwrap();
             prop_assume!(deposit_result > 0);
             stake_pool.total_lamports += deposit_stake;
             stake_pool.pool_token_supply += deposit_result;
-            let withdraw_result = stake_pool.calc_lamports_withdraw_amount(deposit_result).unwrap();
+            let withdraw_result = stake_pool.convert_amount_of_pool_tokens_to_amount_of_lamports(deposit_result).unwrap();
             assert!(withdraw_result <= deposit_stake);
         }
     }

@@ -1714,7 +1714,7 @@ impl Processor {
             // If the manager fee info is invalid, they don't deserve to receive the fee.
             let fee = if stake_pool.check_manager_fee_info(manager_fee_info).is_ok() {
                 stake_pool
-                    .calc_epoch_fee_amount(reward_lamports)
+                    .calc_pool_tokens_epoch_fee(reward_lamports)
                     .ok_or(StakePoolError::CalculationFailure)?
             } else {
                 0
@@ -1948,10 +1948,10 @@ impl Processor {
             .ok_or(StakePoolError::CalculationFailure)?;
 
         let new_pool_tokens = stake_pool
-            .calc_pool_tokens_for_deposit(total_deposit_lamports)
+            .convert_amount_of_lamports_to_amount_of_pool_tokens(total_deposit_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
         let new_pool_tokens_from_stake = stake_pool
-            .calc_pool_tokens_for_deposit(stake_deposit_lamports)
+            .convert_amount_of_lamports_to_amount_of_pool_tokens(stake_deposit_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
         let new_pool_tokens_from_sol = new_pool_tokens
             .checked_sub(new_pool_tokens_from_stake)
@@ -2112,7 +2112,7 @@ impl Processor {
         }
 
         let new_pool_tokens = stake_pool
-            .calc_pool_tokens_for_deposit(deposit_lamports)
+            .convert_amount_of_lamports_to_amount_of_pool_tokens(deposit_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
 
         let pool_tokens_sol_deposit_fee = stake_pool
@@ -2271,7 +2271,7 @@ impl Processor {
             .ok_or(StakePoolError::CalculationFailure)?;
 
         let withdraw_lamports = stake_pool
-            .calc_lamports_withdraw_amount(pool_tokens_burnt)
+            .convert_amount_of_pool_tokens_to_amount_of_lamports(pool_tokens_burnt)
             .ok_or(StakePoolError::CalculationFailure)?;
 
         if withdraw_lamports == 0 {
@@ -2504,7 +2504,7 @@ impl Processor {
             .ok_or(StakePoolError::CalculationFailure)?;
 
         let withdraw_lamports = stake_pool
-            .calc_lamports_withdraw_amount(pool_tokens_burnt)
+            .convert_amount_of_pool_tokens_to_amount_of_lamports(pool_tokens_burnt)
             .ok_or(StakePoolError::CalculationFailure)?;
 
         if withdraw_lamports == 0 {
