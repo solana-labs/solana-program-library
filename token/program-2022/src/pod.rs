@@ -2,67 +2,38 @@
 use {
     bytemuck::{Pod, Zeroable},
     solana_program::{program_error::ProgramError, pubkey::Pubkey},
+    std::convert::TryFrom,
 };
 
-// TODO Generic `PodOption` is tricky, since we need to be sure that it'll
-// always take up the same amount of space.  A few ideas, since all of these are
-// pubkeys at the moment:
-//
-//#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
-//#[repr(transparent)]
-//struct NonZeroPubkey(Pubkey);
-//impl NonZeroPubkey {
-//    fn new(pubkey: Pubkey) -> Option<Self> {
-//        if pubkey == Pubkey::default() {
-//            None
-//        else {
-//            Some(Self(pubkey))
-//        }
-//    }
-//}
-//type OptionNonZeroPubkey = Option<NonZeroPubkey>;
-//#[allow(unsafe_code)]
-//unsafe impl Pod for Option<NonZeroPubkey> {}
-//#[allow(unsafe_code)]
-//unsafe impl Zeroable for Option<NonZeroPubkey> {}
-// fails because you can't impl a foreign trait on a foreign type, option
-
-// Looks just like a pubkey and works like a Pod.
-// Might be confusing?
-//
-// 2.
+/// A Pubkey that encodes `None` as all `0`, meant to be usable as a Pod type,
+/// similar to all NonZero* number types from the bytemuck library.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
-#[repr(C)]
-struct PodOptionPubkey {
-    option: u8,
-    pubkey: Pubkey,
-}
-// Doesn't work like an enum though
-//
-// 3.
-/// Optional type that works with internal pod types, so it can be cast to and
-/// from bytes.
-#[derive(Clone, Copy, Debug, PartialEq)]
-#[repr(C, u8)]
-pub enum PodOption<T: Pod> {
-    /// No data, but its size will still be 1 + size_of::<T>()
-    None,
-    /// Contains data value
-    Some(T),
-}
-#[allow(unsafe_code)]
-unsafe impl<T: Pod> Pod for PodOption<T> {}
-#[allow(unsafe_code)]
-unsafe impl<T: Pod> Zeroable for PodOption<T> {}
-impl<T: Pod> Default for PodOption<T> {
-    fn default() -> Self {
-        Self::None
+#[repr(transparent)]
+pub struct OptionalNonZeroPubkey(Pubkey);
+impl TryFrom<Option<Pubkey>> for OptionalNonZeroPubkey {
+    type Error = ProgramError;
+    fn try_from(p: Option<Pubkey>) -> Result<Self, Self::Error> {
+        match p {
+            None => Ok(Self(Pubkey::default())),
+            Some(pubkey) => {
+                if pubkey == Pubkey::default() {
+                    Err(ProgramError::InvalidArgument)
+                } else {
+                    Ok(Self(pubkey))
+                }
+            }
+        }
     }
 }
-// This maintains the size, may be unclear to use.  We'll also have to reimplement
-// all of the Option helpers, same as COption has to.
-//
-// I'm leaning towards number 3, and eventually adding the support to COption.
+impl From<OptionalNonZeroPubkey> for Option<Pubkey> {
+    fn from(p: OptionalNonZeroPubkey) -> Option<Pubkey> {
+        if p.0 == Pubkey::default() {
+            None
+        } else {
+            Some(p.0)
+        }
+    }
+}
 
 /// The standard `bool` is not a `Pod`, define a replacement that is
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
@@ -170,17 +141,16 @@ mod tests {
 
     #[test]
     fn test_pod_option() {
-        assert!(pod_from_bytes::<PodOption<Pubkey>>(&[]).is_err());
         assert_eq!(
-            PodOption::Some(Pubkey::new_from_array([1; 32])),
-            *pod_from_bytes::<PodOption<Pubkey>>(&[1; 33]).unwrap()
+            Some(Pubkey::new_from_array([1; 32])),
+            Option::<Pubkey>::from(*pod_from_bytes::<OptionalNonZeroPubkey>(&[1; 32]).unwrap())
         );
-        // This is really sweet -- by simply setting the option to None, the whole rest of the slice is also set to 0!
         assert_eq!(
-            PodOption::None,
-            *pod_from_bytes::<PodOption<Pubkey>>(&[0; 33]).unwrap()
+            None,
+            Option::<Pubkey>::from(*pod_from_bytes::<OptionalNonZeroPubkey>(&[0; 32]).unwrap())
         );
-        assert!(pod_from_bytes::<PodOption<Pubkey>>(&[0; 1]).is_err());
-        assert!(pod_from_bytes::<PodOption<Pubkey>>(&[1; 1]).is_err());
+        assert!(pod_from_bytes::<OptionalNonZeroPubkey>(&[]).is_err());
+        assert!(pod_from_bytes::<OptionalNonZeroPubkey>(&[0; 1]).is_err());
+        assert!(pod_from_bytes::<OptionalNonZeroPubkey>(&[1; 1]).is_err());
     }
 }

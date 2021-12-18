@@ -9,10 +9,12 @@ use {
     num_enum::{IntoPrimitive, TryFromPrimitive},
     solana_program::{
         program_error::ProgramError,
-        program_pack::{IsInitialized, Pack, Sealed},
-        pubkey::Pubkey,
+        program_pack::{IsInitialized, Pack},
     },
-    std::convert::TryFrom,
+    std::{
+        convert::{TryFrom, TryInto},
+        mem::size_of,
+    },
 };
 
 /// Length in TLV structure
@@ -40,17 +42,16 @@ fn get_extension_indices<V: Extension>(
     tlv_data: &[u8],
     init: bool,
 ) -> Result<TlvIndices, ProgramError> {
-    let mut start_index = pod_get_packed_len::<AccountType>(); // start one byte in to skip the account type
+    let mut start_index = 0;
     while start_index < tlv_data.len() {
-        let type_end_index = start_index.saturating_add(pod_get_packed_len::<ExtensionType>());
+        let type_end_index = start_index.saturating_add(size_of::<ExtensionType>());
         let length_start_index = type_end_index;
         let length_end_index = length_start_index.saturating_add(pod_get_packed_len::<Length>());
         let value_start_index = length_end_index;
 
-        let extension_type =
-            pod_from_bytes::<ExtensionType>(&tlv_data[start_index..type_end_index])?;
+        let extension_type = ExtensionType::try_from(&tlv_data[start_index..type_end_index])?;
         // got to an empty spot, can init here, or move forward if not initing
-        if *extension_type == ExtensionType::Uninitialized {
+        if extension_type == ExtensionType::Uninitialized {
             if init {
                 return Ok(TlvIndices(
                     start_index,
@@ -60,7 +61,7 @@ fn get_extension_indices<V: Extension>(
             } else {
                 start_index = length_start_index;
             }
-        } else if *extension_type == V::TYPE {
+        } else if extension_type == V::TYPE {
             // found an instance of the extension that we're initializing, abort!
             if init {
                 return Err(ProgramError::InvalidArgument);
@@ -88,26 +89,33 @@ fn check_not_multisig(input: &[u8]) -> Result<(), ProgramError> {
     }
 }
 
-fn tlv_index_unchecked<S: BaseState>(rest_input: &[u8]) -> Result<usize, ProgramError> {
-    if rest_input.is_empty() {
-        Ok(0)
+fn check_account_type<S: BaseState>(account_type: AccountType) -> Result<(), ProgramError> {
+    if account_type != S::ACCOUNT_TYPE {
+        Err(ProgramError::InvalidAccountData)
     } else {
-        Ok(Account::LEN.saturating_sub(S::LEN))
+        Ok(())
     }
 }
 
-fn tlv_index<S: BaseState>(rest_input: &[u8]) -> Result<usize, ProgramError> {
+fn type_and_tlv_indices_unchecked<S: BaseState>(
+    rest_input: &[u8],
+) -> Result<(usize, usize), ProgramError> {
     if rest_input.is_empty() {
-        Ok(0)
+        Ok((0, 0))
     } else {
-        let tlv_start_index = Account::LEN.saturating_sub(S::LEN);
-        let account_type = AccountType::try_from(rest_input[tlv_start_index])
-            .map_err(|_| ProgramError::InvalidAccountData)?;
-        if account_type != S::ACCOUNT_TYPE {
-            Err(ProgramError::InvalidAccountData)
-        } else {
-            Ok(tlv_start_index)
-        }
+        let account_type_index = Account::LEN.saturating_sub(S::LEN);
+        let tlv_start_index = account_type_index.saturating_add(size_of::<AccountType>());
+        Ok((account_type_index, tlv_start_index))
+    }
+}
+
+fn type_and_tlv_indices<S: BaseState>(rest_input: &[u8]) -> Result<(usize, usize), ProgramError> {
+    if rest_input.is_empty() {
+        Ok((0, 0))
+    } else {
+        let type_index = Account::LEN.saturating_sub(S::LEN);
+        let tlv_start_index = type_index.saturating_add(size_of::<AccountType>());
+        Ok((type_index, tlv_start_index))
     }
 }
 
@@ -116,6 +124,8 @@ fn tlv_index<S: BaseState>(rest_input: &[u8]) -> Result<usize, ProgramError> {
 pub struct StateWithExtensions<'data, S: BaseState> {
     /// Unpacked base data
     pub base: S,
+    /// Unpacked base data
+    pub account_type: AccountType,
     /// Slice of data containing all TLV data, deserialized on demand
     tlv_data: &'data [u8],
 }
@@ -125,9 +135,13 @@ impl<'data, S: BaseState> StateWithExtensions<'data, S> {
         check_not_multisig(input)?;
         let (base_data, rest) = input.split_at(S::LEN);
         let base = S::unpack(base_data)?;
-        let tlv_start_index = tlv_index::<S>(rest)?;
+        let (type_index, tlv_start_index) = type_and_tlv_indices::<S>(rest)?;
+        let account_type = AccountType::try_from(rest[type_index])
+            .map_err(|_| ProgramError::InvalidAccountData)?;
+        check_account_type::<S>(account_type)?;
         Ok(Self {
             base,
+            account_type,
             tlv_data: &rest[tlv_start_index..],
         })
     }
@@ -153,6 +167,8 @@ pub struct StateWithExtensionsMut<'data, S: BaseState> {
     pub base: S,
     /// Raw base data
     base_data: &'data mut [u8],
+    /// Writable account type
+    account_type: &'data mut [u8],
     /// Slice of data containing all TLV data, deserialized on demand
     tlv_data: &'data mut [u8],
 }
@@ -163,11 +179,16 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         check_not_multisig(input)?;
         let (base_data, rest) = input.split_at_mut(S::LEN);
         let base = S::unpack(base_data)?;
-        let tlv_start_index = tlv_index::<S>(rest)?;
+        let (account_type_index, tlv_start_index) = type_and_tlv_indices::<S>(rest)?;
+        let account_type = AccountType::try_from(rest[account_type_index])
+            .map_err(|_| ProgramError::InvalidAccountData)?;
+        check_account_type::<S>(account_type)?;
+        let (account_type, tlv_data) = rest.split_at_mut(tlv_start_index);
         Ok(Self {
             base,
             base_data,
-            tlv_data: &mut rest[tlv_start_index..],
+            account_type: &mut account_type[account_type_index..tlv_start_index],
+            tlv_data,
         })
     }
 
@@ -179,11 +200,13 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         check_not_multisig(input)?;
         let (base_data, rest) = input.split_at_mut(S::LEN);
         let base = S::unpack_unchecked(base_data)?;
-        let tlv_start_index = tlv_index_unchecked::<S>(rest)?;
+        let (account_type_index, tlv_start_index) = type_and_tlv_indices_unchecked::<S>(rest)?;
+        let (account_type, tlv_data) = rest.split_at_mut(tlv_start_index);
         Ok(Self {
             base,
             base_data,
-            tlv_data: &mut rest[tlv_start_index..],
+            account_type: &mut account_type[account_type_index..tlv_start_index],
+            tlv_data,
         })
     }
 
@@ -195,10 +218,9 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
             get_extension_indices::<V>(self.tlv_data, init)?;
         if init {
             // write extension type
-            let extension_type = pod_from_bytes_mut::<ExtensionType>(
-                &mut self.tlv_data[type_start_index..length_start_index],
-            )?;
-            *extension_type = V::TYPE;
+            let extension_type_array: [u8; 2] = V::TYPE.into();
+            let extension_type_ref = &mut self.tlv_data[type_start_index..length_start_index];
+            extension_type_ref.copy_from_slice(&extension_type_array);
             // write length
             let length_ref = pod_from_bytes_mut::<Length>(
                 &mut self.tlv_data[length_start_index..value_start_index],
@@ -240,8 +262,8 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
     pub fn init_account_type(&mut self) {
         // TODO maybe we can do this on `pack_base`, but that means writing this
         // every time there's a change to the base mint / account.
-        if !self.tlv_data.is_empty() {
-            self.tlv_data[0] = S::ACCOUNT_TYPE as u8;
+        if !self.account_type.is_empty() {
+            self.account_type[0] = S::ACCOUNT_TYPE.into();
         }
     }
 }
@@ -265,13 +287,6 @@ impl Default for AccountType {
         Self::Uninitialized
     }
 }
-// TODO This kind of stinks, but there's no way to automatically implement Pod
-// on an enum, which almost defeats the purpose of in-place serde!
-// Happy to try something else here though.
-#[allow(unsafe_code)]
-unsafe impl Zeroable for AccountType {}
-#[allow(unsafe_code)]
-unsafe impl Pod for AccountType {}
 
 /// Extensions that can be applied to mints or accounts.  Mint extensions must only be
 /// applied to mint accounts, and account extensions must only be applied to token holding
@@ -288,6 +303,20 @@ pub enum ExtensionType {
     /// Includes an optional mint close authority
     MintCloseAuthority,
 }
+impl TryFrom<&[u8]> for ExtensionType {
+    type Error = ProgramError;
+    fn try_from(a: &[u8]) -> Result<Self, Self::Error> {
+        Self::try_from(u16::from_le_bytes(
+            a.try_into().map_err(|_| ProgramError::InvalidAccountData)?,
+        ))
+        .map_err(|_| ProgramError::InvalidAccountData)
+    }
+}
+impl From<ExtensionType> for [u8; 2] {
+    fn from(a: ExtensionType) -> Self {
+        u16::from(a).to_le_bytes()
+    }
+}
 impl ExtensionType {
     /// Get the data length of the type associated with the enum
     pub fn get_associated_type_len(&self) -> usize {
@@ -299,10 +328,6 @@ impl ExtensionType {
         }
     }
 }
-#[allow(unsafe_code)]
-unsafe impl Zeroable for ExtensionType {}
-#[allow(unsafe_code)]
-unsafe impl Pod for ExtensionType {}
 
 /// Get the required account data length for the given ExtensionTypes
 pub fn get_account_len(extension_types: &[ExtensionType]) -> usize {
@@ -310,7 +335,7 @@ pub fn get_account_len(extension_types: &[ExtensionType]) -> usize {
         .iter()
         .map(|e| {
             e.get_associated_type_len()
-                .saturating_add(pod_get_packed_len::<ExtensionType>())
+                .saturating_add(size_of::<ExtensionType>())
                 .saturating_add(pod_get_packed_len::<Length>())
         })
         .sum();
@@ -321,7 +346,7 @@ pub fn get_account_len(extension_types: &[ExtensionType]) -> usize {
     };
     total_extension_size
         .saturating_add(Account::LEN)
-        .saturating_add(pod_get_packed_len::<AccountType>())
+        .saturating_add(size_of::<AccountType>())
 }
 
 /// Trait for base states, specifying the associated enum
@@ -351,7 +376,7 @@ pub trait Extension: Pod {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct MintCloseAuthority {
     /// Optional authority to close the mint
-    pub close_authority: PodOption<Pubkey>,
+    pub close_authority: OptionalNonZeroPubkey,
 }
 impl Extension for MintCloseAuthority {
     const TYPE: ExtensionType = ExtensionType::MintCloseAuthority;
@@ -376,25 +401,15 @@ pub struct TransferFee {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct MintTransferFee {
     /// Optional authority to set the fee
-    pub transfer_fee_config_authority: PodOption<Pubkey>,
+    pub transfer_fee_config_authority: OptionalNonZeroPubkey,
     /// Withdraw from mint instructions must be signed by this key
-    pub withheld_withdraw_authority: PodOption<Pubkey>,
+    pub withheld_withdraw_authority: OptionalNonZeroPubkey,
     /// Withheld transfer fee tokens that have been moved to the mint for withdrawal
     pub withheld_amount: PodU64,
     /// Older transfer fee, used if the current epoch < new_transfer_fee.epoch
     pub older_transfer_fee: TransferFee,
     /// Newer transfer fee, used if the current epoch >= new_transfer_fee.epoch
     pub newer_transfer_fee: TransferFee,
-}
-impl Sealed for MintTransferFee {}
-impl Pack for MintTransferFee {
-    const LEN: usize = 36 + 36 + 8 + 18 + 18;
-    fn unpack_from_slice(_src: &[u8]) -> Result<Self, ProgramError> {
-        unimplemented!();
-    }
-    fn pack_into_slice(&self, _dst: &mut [u8]) {
-        unimplemented!();
-    }
 }
 impl Extension for MintTransferFee {
     const TYPE: ExtensionType = ExtensionType::MintTransferFee;
@@ -408,16 +423,6 @@ pub struct AccountTransferFee {
     /// Amount withheld during transfers, to be harvested to the mint
     pub withheld_amount: u64,
 }
-impl Sealed for AccountTransferFee {}
-impl Pack for AccountTransferFee {
-    const LEN: usize = 8;
-    fn unpack_from_slice(_src: &[u8]) -> Result<Self, ProgramError> {
-        unimplemented!();
-    }
-    fn pack_into_slice(&self, _dst: &mut [u8]) {
-        unimplemented!();
-    }
-}
 impl Extension for AccountTransferFee {
     const TYPE: ExtensionType = ExtensionType::AccountTransferFee;
     const ACCOUNT_TYPE: AccountType = AccountType::Account;
@@ -425,8 +430,11 @@ impl Extension for AccountTransferFee {
 
 #[cfg(test)]
 mod test {
-    use super::*;
-    use crate::state::test::{TEST_MINT, TEST_MINT_SLICE};
+    use {
+        super::*,
+        crate::state::test::{TEST_MINT, TEST_MINT_SLICE},
+        solana_program::pubkey::Pubkey,
+    };
 
     #[test]
     fn mint_with_extensions_pack_unpack() {
@@ -441,7 +449,7 @@ mod test {
 
         let mut state = StateWithExtensionsMut::<Mint>::unpack_unchecked(&mut buffer).unwrap();
         // success write extension
-        let close_authority = PodOption::Some(Pubkey::new(&[1; 32]));
+        let close_authority = OptionalNonZeroPubkey::try_from(Some(Pubkey::new(&[1; 32]))).unwrap();
         let extension = state.init_extension::<MintCloseAuthority>().unwrap();
         extension.close_authority = close_authority;
 
@@ -461,11 +469,10 @@ mod test {
         // check raw buffer
         let mut expect = TEST_MINT_SLICE.to_vec();
         expect.extend_from_slice(&[0; Account::LEN - Mint::LEN]); // padding
-        expect.push(AccountType::Mint as u8);
+        expect.push(AccountType::Mint.into());
         expect.extend_from_slice(&(ExtensionType::MintCloseAuthority as u16).to_le_bytes());
         expect
             .extend_from_slice(&(pod_get_packed_len::<MintCloseAuthority>() as u16).to_le_bytes());
-        expect.extend_from_slice(&[1]);
         expect.extend_from_slice(&[1; 32]);
         assert_eq!(expect, buffer);
 
@@ -484,7 +491,7 @@ mod test {
         assert_eq!(*unpacked_extension, MintCloseAuthority { close_authority });
 
         // update extension
-        let close_authority = PodOption::None;
+        let close_authority = OptionalNonZeroPubkey::try_from(None).unwrap();
         unpacked_extension.close_authority = close_authority;
 
         // check updates are propagated
@@ -497,11 +504,10 @@ mod test {
         let mut expect = vec![0; Mint::LEN];
         Mint::pack_into_slice(&new_base, &mut expect);
         expect.extend_from_slice(&[0; Account::LEN - Mint::LEN]); // padding
-        expect.push(AccountType::Mint as u8);
+        expect.push(AccountType::Mint.into());
         expect.extend_from_slice(&(ExtensionType::MintCloseAuthority as u16).to_le_bytes());
         expect
             .extend_from_slice(&(pod_get_packed_len::<MintCloseAuthority>() as u16).to_le_bytes());
-        expect.extend_from_slice(&[0]);
         expect.extend_from_slice(&[0; 32]);
         assert_eq!(expect, buffer);
 
