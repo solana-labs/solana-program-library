@@ -153,36 +153,57 @@ pub struct StakePool {
 
     /// Last epoch's total lamports, used only for APR estimation
     pub last_epoch_total_lamports: u64,
+
+    /// Last epoch's exchange rate for SOL deposit and withdraw
+    pub rate_of_exchange: Option<RateOfExchange>
 }
 impl StakePool {
     /// calculate the pool tokens that should be minted for a deposit of `stake_lamports`
     #[inline]
     pub fn calc_pool_tokens_for_deposit(&self, stake_lamports: u64) -> Option<u64> {
-        if self.total_lamports == 0 || self.pool_token_supply == 0 {
-            return Some(stake_lamports);
+        match self.rate_of_exchange {
+            Some(ref rate_of_exchange) => {
+                u64::try_from(
+                    (stake_lamports as u128)
+                        .checked_mul(rate_of_exchange.denominator as u128)?
+                        .checked_div(rate_of_exchange.numerator as u128)?                                       // TODOTODO проверить это метод. Как эти методы окргляют числа
+                )
+                .ok()                                                                       // TODOTODO Если 1 лэмпорт, то будет 0 солов
+            },
+            None => {
+                Some(stake_lamports)
+            }
         }
-        u64::try_from(
-            (stake_lamports as u128)
-                .checked_mul(self.pool_token_supply as u128)?
-                .checked_div(self.total_lamports as u128)?,
-        )
-        .ok()
     }
 
     /// calculate lamports amount on withdrawal
     #[inline]
     pub fn calc_lamports_withdraw_amount(&self, pool_tokens: u64) -> Option<u64> {
-        // `checked_ceil_div` returns `None` for a 0 quotient result, but in this
-        // case, a return of 0 is valid for small amounts of pool tokens. So
-        // we check for that separately
-        let numerator = (pool_tokens as u128).checked_mul(self.total_lamports as u128)?;
-        let denominator = self.pool_token_supply as u128;
-        if numerator < denominator || denominator == 0 {
-            Some(0)
-        } else {
-            let (quotient, _) = numerator.checked_ceil_div(denominator)?;
-            u64::try_from(quotient).ok()
+        match self.rate_of_exchange {
+            Some(ref rate_of_exchange) => {
+                u64::try_from(
+                    (pool_tokens as u128)
+                        .checked_mul(rate_of_exchange.numerator as u128)?
+                        .checked_div(rate_of_exchange.denominator as u128)?                                       // TODOTODO проверить это метод, нужно ли использовать checked_ceil_div.  let numerator = (pool_tokens as u128).checked_mul(self.total_lamports as u128)?; numerator.checked_ceil_div(denominator)?;
+                )
+                .ok()
+            },
+            None => {
+                Some(pool_tokens)
+            }
         }
+
+        // // `checked_ceil_div` returns `None` for a 0 quotient result, but in this
+        // // case, a return of 0 is valid for small amounts of pool tokens. So
+        // // we check for that separately
+        // let numerator = (pool_tokens as u128).checked_mul(self.total_lamports as u128)?;
+        // let denominator = self.pool_token_supply as u128;
+        // if numerator < denominator || denominator == 0 {
+        //     Some(0)
+        // } else {
+        //     let (quotient, _) = numerator.checked_ceil_div(denominator)?;
+        //     u64::try_from(quotient).ok()
+        // }
     }
 
     /// calculate pool tokens to be deducted as withdrawal fees
@@ -815,6 +836,26 @@ impl FeeType {
             self,
             Self::StakeWithdrawal(_) | Self::SolWithdrawal(_) | Self::Epoch(_)
         )
+    }
+}
+
+/// Exchange rate for SOL deposit and withdraw
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, BorshSerialize, BorshDeserialize, BorshSchema)]
+pub struct RateOfExchange {
+    /// denominator of the fee ratio, total supply of pool tokens
+    pub denominator: u64,
+    /// numerator of the fee ratio, total lamports under management.
+    pub numerator: u64
+}
+
+impl fmt::Display for RateOfExchange {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.numerator > 0 && self.denominator > 0 {
+            write!(f, "{}/{}", self.numerator, self.denominator)
+        } else {
+            write!(f, "none")
+        }
     }
 }
 

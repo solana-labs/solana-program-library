@@ -1,1 +1,2 @@
 cc 41ce1c46341336993e5e5d5aa94c30865e63f9e00d31d397aef88ec79fc312ca
+cc 22d75999474e33f09f215bf1ed6d8d4c5dbd2dcf09dd6accc9ffdbe2865fed87 # shrinks to (numerator, denominator) = (1, 2), (total_lamports, reward_lamports) = (8421193783659075, 259603019)
