@@ -1662,29 +1662,29 @@ impl Processor {
             return Err(StakePoolError::InvalidState.into());
         }
 
+        stake_pool.check_mint(pool_mint_info)?;
+        stake_pool.check_authority_withdraw(withdraw_info.key, program_id, stake_pool_info.key)?;
+        stake_pool.check_reserve_stake(reserve_stake_info)?;
+        if stake_pool.manager_fee_account != *manager_fee_info.key {
+            return Err(StakePoolError::InvalidFeeAccount.into());
+        }
+
+        if *validator_list_info.key != stake_pool.validator_list {
+            return Err(StakePoolError::InvalidValidatorStakeList.into());
+        }
+        if stake_pool.token_program_id != *token_program_info.key {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+
+        check_account_owner(validator_list_info, program_id)?;
+        let mut validator_list_data = validator_list_info.data.borrow_mut();
+        let (header, validator_list) =
+            ValidatorListHeader::deserialize_vec(&mut validator_list_data)?;
+        if !header.is_valid() {
+            return Err(StakePoolError::InvalidState.into());
+        }
+
         if stake_pool.last_update_epoch < clock.epoch {
-            stake_pool.check_mint(pool_mint_info)?;
-            stake_pool.check_authority_withdraw(withdraw_info.key, program_id, stake_pool_info.key)?;
-            stake_pool.check_reserve_stake(reserve_stake_info)?;
-            if stake_pool.manager_fee_account != *manager_fee_info.key {
-                return Err(StakePoolError::InvalidFeeAccount.into());
-            }
-
-            if *validator_list_info.key != stake_pool.validator_list {
-                return Err(StakePoolError::InvalidValidatorStakeList.into());
-            }
-            if stake_pool.token_program_id != *token_program_info.key {
-                return Err(ProgramError::IncorrectProgramId);
-            }
-
-            check_account_owner(validator_list_info, program_id)?;
-            let mut validator_list_data = validator_list_info.data.borrow_mut();
-            let (header, validator_list) =
-                ValidatorListHeader::deserialize_vec(&mut validator_list_data)?;
-            if !header.is_valid() {
-                return Err(StakePoolError::InvalidState.into());
-            }
-        
             let previous_lamports = stake_pool.total_lamports;
             let previous_pool_token_supply = stake_pool.pool_token_supply;
             let reserve_stake = try_from_slice_unchecked::<stake::state::StakeState>(
