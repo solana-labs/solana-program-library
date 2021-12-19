@@ -1238,7 +1238,7 @@ fn prepare_withdraw_accounts(
         }
 
         let available_for_withdrawal_wo_fee =
-            stake_pool.calc_pool_tokens_for_deposit(lamports).unwrap();
+            stake_pool.convert_amount_of_lamports_to_amount_of_pool_tokens(lamports).unwrap();
 
         let available_for_withdrawal = if skip_fee {
             available_for_withdrawal_wo_fee
@@ -1331,7 +1331,7 @@ fn command_withdraw_stake(
         let stake_account = config.rpc_client.get_account(&stake_account_address)?;
 
         let available_for_withdrawal = stake_pool
-            .calc_lamports_withdraw_amount(
+            .convert_amount_of_pool_tokens_to_amount_of_lamports(
                 stake_account
                     .lamports
                     .saturating_sub(MINIMUM_ACTIVE_STAKE)
@@ -1390,7 +1390,7 @@ fn command_withdraw_stake(
     for withdraw_account in withdraw_accounts {
         // Convert pool tokens amount to lamports
         let sol_withdraw_amount = stake_pool
-            .calc_lamports_withdraw_amount(withdraw_account.pool_amount)
+            .convert_amount_of_pool_tokens_to_amount_of_lamports(withdraw_account.pool_amount)
             .unwrap();
 
         if let Some(vote_address) = withdraw_account.vote_address {

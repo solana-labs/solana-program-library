@@ -88,6 +88,7 @@ async fn setup(
         next_sol_withdrawal_fee: None,
         last_epoch_pool_token_supply: 0,
         last_epoch_total_lamports: 0,
+        rate_of_exchange: None
     };
 
     let mut validator_list = ValidatorList::new(max_validators);

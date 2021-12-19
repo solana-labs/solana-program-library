@@ -165,9 +165,9 @@ impl StakePool {
                 u64::try_from(
                     (stake_lamports as u128)
                         .checked_mul(rate_of_exchange.denominator as u128)?
-                        .checked_div(rate_of_exchange.numerator as u128)?                                       // TODOTODO проверить это метод. Как эти методы окргляют числа
+                        .checked_div(rate_of_exchange.numerator as u128)?
                 )
-                .ok()                                                                       // TODOTODO Если 1 лэмпорт, то будет 0 солов
+                .ok()
             },
             None => {
                 Some(stake_lamports)
@@ -183,7 +183,7 @@ impl StakePool {
                 u64::try_from(
                     (pool_tokens as u128)
                         .checked_mul(rate_of_exchange.numerator as u128)?
-                        .checked_div(rate_of_exchange.denominator as u128)?                                       // TODOTODO проверить это метод, нужно ли использовать checked_ceil_div.  let numerator = (pool_tokens as u128).checked_mul(self.total_lamports as u128)?; numerator.checked_ceil_div(denominator)?;
+                        .checked_div(rate_of_exchange.denominator as u128)?
                 )
                 .ok()
             },
@@ -840,7 +840,6 @@ mod test {
             get_instance_packed_len, get_packed_len, try_from_slice_unchecked,
         },
         solana_program::{
-            clock::{DEFAULT_SLOTS_PER_EPOCH, DEFAULT_S_PER_SLOT, SECONDS_PER_DAY},
             native_token::LAMPORTS_PER_SOL,
         },
     };
@@ -1017,15 +1016,6 @@ mod test {
         }
     }
 
-    prop_compose! {
-        fn total_stake_and_rewards()(total_lamports in 1..u64::MAX)(
-            total_lamports in Just(total_lamports),
-            rewards in 0..=total_lamports,
-        ) -> (u64, u64) {
-            (total_lamports - rewards, rewards)
-        }
-    }
-
     #[test]
     fn specific_fee_calculation() {
         // 10% of 10 SOL in rewards should be 1 SOL in fees
@@ -1061,93 +1051,109 @@ mod test {
             epoch_fee,
             ..StakePool::default()
         };
-        let fee_lamports = stake_pool.convert_amount_of_pool_tokens_to_amount_of_lamports(0).unwrap();
-        assert_eq!(fee_lamports, 0);
+        let lamports = stake_pool.convert_amount_of_pool_tokens_to_amount_of_lamports(0).unwrap();
+        assert_eq!(lamports, 0);
     }
 
-    #[test]
-    fn approximate_apr_calculation() {
-        // 8% / year means roughly .044% / epoch
-        let stake_pool = StakePool {
-            last_epoch_total_lamports: 100_000,
-            last_epoch_pool_token_supply: 100_000,
-            total_lamports: 100_044,
-            pool_token_supply: 100_000,
-            ..StakePool::default()
-        };
-        let pool_token_value =
-            stake_pool.total_lamports as f64 / stake_pool.pool_token_supply as f64;
-        let last_epoch_pool_token_value = stake_pool.last_epoch_total_lamports as f64
-            / stake_pool.last_epoch_pool_token_supply as f64;
-        let epoch_rate = pool_token_value / last_epoch_pool_token_value - 1.0;
-        const SECONDS_PER_EPOCH: f64 = DEFAULT_SLOTS_PER_EPOCH as f64 * DEFAULT_S_PER_SLOT;
-        const EPOCHS_PER_YEAR: f64 = SECONDS_PER_DAY as f64 * 365.25 / SECONDS_PER_EPOCH;
-        const EPSILON: f64 = 0.00001;
-        let yearly_rate = epoch_rate * EPOCHS_PER_YEAR;
-        assert!((yearly_rate - 0.080355).abs() < EPSILON);
-    }
+    // #[test]
+    // fn approximate_apr_calculation() {
+    //     // 8% / year means roughly .044% / epoch
+    //     let stake_pool = StakePool {
+    //         last_epoch_total_lamports: 100_000,
+    //         last_epoch_pool_token_supply: 100_000,
+    //         total_lamports: 100_044,
+    //         pool_token_supply: 100_000,
+    //         ..StakePool::default()
+    //     };
+    //     let pool_token_value =
+    //         stake_pool.total_lamports as f64 / stake_pool.pool_token_supply as f64;
+    //     let last_epoch_pool_token_value = stake_pool.last_epoch_total_lamports as f64
+    //         / stake_pool.last_epoch_pool_token_supply as f64;
+    //     let epoch_rate = pool_token_value / last_epoch_pool_token_value - 1.0;
+    //     const SECONDS_PER_EPOCH: f64 = DEFAULT_SLOTS_PER_EPOCH as f64 * DEFAULT_S_PER_SLOT;
+    //     const EPOCHS_PER_YEAR: f64 = SECONDS_PER_DAY as f64 * 365.25 / SECONDS_PER_EPOCH;
+    //     const EPSILON: f64 = 0.00001;
+    //     let yearly_rate = epoch_rate * EPOCHS_PER_YEAR;
+    //     assert!((yearly_rate - 0.080355).abs() < EPSILON);
+    // }
 
     proptest! {
         #[test]
         fn fee_calculation(
-            (numerator, denominator) in fee(),
-            (total_lamports, reward_lamports) in total_stake_and_rewards(),
+            (numerator_fee, denominator_fee) in fee(),
+            amount in 1..u64::MAX,
+            (numerator, denominator) in rate_of_exchange()
         ) {
-            let epoch_fee = Fee { denominator, numerator };
-            let mut stake_pool = StakePool {
-                total_lamports,
-                pool_token_supply: total_lamports,
+            let epsilon = 2;
+            let epoch_fee = Fee { denominator: denominator_fee, numerator: numerator_fee };
+
+            let stake_pool_with_simple_roe = StakePool {
                 epoch_fee,
                 ..StakePool::default()
             };
-            let pool_token_fee = stake_pool.calc_pool_tokens_epoch_fee(reward_lamports).unwrap();
+            let pool_token_fee = stake_pool_with_simple_roe.calc_pool_tokens_epoch_fee(amount).unwrap();
+            let fee_lamports = stake_pool_with_simple_roe.convert_amount_of_pool_tokens_to_amount_of_lamports(pool_token_fee).unwrap();
+            let max_fee_lamports = u64::try_from((amount as u128) * (epoch_fee.numerator as u128) / (epoch_fee.denominator as u128)).unwrap();
+            assert!(max_fee_lamports >= fee_lamports);
+            assert!(max_fee_lamports <= epsilon + fee_lamports);
 
-            stake_pool.total_lamports += reward_lamports;
-            stake_pool.pool_token_supply += pool_token_fee;
-
-            let fee_lamports = stake_pool.convert_amount_of_pool_tokens_to_amount_of_lamports(pool_token_fee).unwrap();
-            let max_fee_lamports = u64::try_from((reward_lamports as u128) * (epoch_fee.numerator as u128) / (epoch_fee.denominator as u128)).unwrap();
-            assert!(max_fee_lamports >= fee_lamports,
-                "Max possible fee must always be greater than or equal to what is actually withdrawn, max {} actual {}",
-                max_fee_lamports,
-                fee_lamports);
-
-            // since we do two "flooring" conversions, the max epsilon should be
-            // correct up to 2 lamports (one for each floor division), plus a
-            // correction for huge discrepancies between rewards and total stake
-            let epsilon = 2 + reward_lamports / total_lamports;
-            assert!(max_fee_lamports - fee_lamports <= epsilon,
-                "Max expected fee in lamports {}, actually receive {}, epsilon {}",
-                max_fee_lamports, fee_lamports, epsilon);
+            let stake_pool_with_hard_roe = StakePool {
+                epoch_fee,
+                rate_of_exchange: Some(
+                    RateOfExchange {
+                        denominator: denominator as u64,
+                        numerator: denominator as u64 + numerator as u64
+                    }
+                ),
+                ..StakePool::default()
+            };
+            let pool_token_fee = stake_pool_with_hard_roe.calc_pool_tokens_epoch_fee(amount).unwrap();
+            let fee_lamports = stake_pool_with_hard_roe.convert_amount_of_pool_tokens_to_amount_of_lamports(pool_token_fee).unwrap();
+            let max_fee_lamports = u64::try_from((amount as u128) * (epoch_fee.numerator as u128) / (epoch_fee.denominator as u128)).unwrap();
+            assert!(max_fee_lamports >= fee_lamports);
+            assert!(max_fee_lamports <= epsilon + fee_lamports);
         }
     }
 
     prop_compose! {
-        fn total_tokens_and_deposit()(total_lamports in 1..u64::MAX)(
-            total_lamports in Just(total_lamports),
-            pool_token_supply in 1..=total_lamports,
-            deposit_lamports in 1..total_lamports,
-        ) -> (u64, u64, u64) {
-            (total_lamports - deposit_lamports, pool_token_supply.saturating_sub(deposit_lamports).max(1), deposit_lamports)
+        fn rate_of_exchange()
+        (denominator in 2..u32::MAX)
+        (
+            denominator in Just(denominator),
+            numerator in 1..(denominator - 1)
+        ) -> (u32, u32) {
+            (numerator, denominator)
         }
     }
 
     proptest! {
         #[test]
-        fn deposit_and_withdraw(
-            (total_lamports, pool_token_supply, deposit_stake) in total_tokens_and_deposit()
+        fn convertation(
+            amount in 1..u64::MAX,
+            (numerator, denominator) in rate_of_exchange()
         ) {
-            let mut stake_pool = StakePool {
-                total_lamports,
-                pool_token_supply,
+            let stake_pool_with_simple_roe = StakePool::default();
+            assert!(
+                amount == stake_pool_with_simple_roe.convert_amount_of_pool_tokens_to_amount_of_lamports(
+                    stake_pool_with_simple_roe.convert_amount_of_lamports_to_amount_of_pool_tokens(amount).unwrap()
+                ).unwrap()
+            );
+
+            let stake_pool_with_hard_roe = StakePool {
+                rate_of_exchange: Some(
+                    RateOfExchange {
+                        denominator: denominator as u64,
+                        numerator: denominator as u64 + numerator as u64
+                    }
+                ),
                 ..StakePool::default()
             };
-            let deposit_result = stake_pool.convert_amount_of_lamports_to_amount_of_pool_tokens(deposit_stake).unwrap();
-            prop_assume!(deposit_result > 0);
-            stake_pool.total_lamports += deposit_stake;
-            stake_pool.pool_token_supply += deposit_result;
-            let withdraw_result = stake_pool.convert_amount_of_pool_tokens_to_amount_of_lamports(deposit_result).unwrap();
-            assert!(withdraw_result <= deposit_stake);
+            let epsilon = 2;
+            assert!(
+                amount <= epsilon + stake_pool_with_hard_roe.convert_amount_of_pool_tokens_to_amount_of_lamports(
+                    stake_pool_with_hard_roe.convert_amount_of_lamports_to_amount_of_pool_tokens(amount).unwrap()
+                ).unwrap()
+            );
         }
     }
 }

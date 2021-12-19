@@ -2115,6 +2115,10 @@ impl Processor {
             .convert_amount_of_lamports_to_amount_of_pool_tokens(deposit_lamports)
             .ok_or(StakePoolError::CalculationFailure)?;
 
+        if new_pool_tokens == 0 {
+            return Err(StakePoolError::DepositTooSmall.into());
+        }
+
         let pool_tokens_sol_deposit_fee = stake_pool
             .calc_pool_tokens_sol_deposit_fee(new_pool_tokens)
             .ok_or(StakePoolError::CalculationFailure)?;

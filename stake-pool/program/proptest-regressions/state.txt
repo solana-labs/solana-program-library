@@ -1,2 +1,4 @@
 cc 41ce1c46341336993e5e5d5aa94c30865e63f9e00d31d397aef88ec79fc312ca
 cc 22d75999474e33f09f215bf1ed6d8d4c5dbd2dcf09dd6accc9ffdbe2865fed87 # shrinks to (numerator, denominator) = (1, 2), (total_lamports, reward_lamports) = (8421193783659075, 259603019)
+cc cf27ee4c1c70c97ebb3bc8abe81d2793a6e77f3907476cd968f3825a1b9e7ff0 # shrinks to amount = 3540106253751676339
+cc 06b1cc4cc73c2cea6f2f9acc8eaad27842d951ab237b83b7967d53dd408b54c7 # shrinks to amount = 465616710589203734, (denominator, numerator) = (10, 6)
