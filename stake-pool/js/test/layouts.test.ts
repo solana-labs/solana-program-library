@@ -3,7 +3,7 @@ import {
   ValidatorListLayout,
   ValidatorList,
 } from '../src/layouts';
-import { deepStrictEqualBN } from "./utils";
+import { deepStrictEqualBN } from "./equal";
 import { stakePoolMock, validatorListMock } from "./mocks";
 
 describe('layouts', () => {

@@ -4,14 +4,18 @@ import {
   Keypair,
   SystemProgram, AccountInfo, LAMPORTS_PER_SOL
 } from '@solana/web3.js';
+import { StakePoolLayout } from '../src/layouts';
+import { STAKE_POOL_PROGRAM_ID } from '../src/constants';
+import { decodeData } from '../src/copied-from-solana-web3/instruction';
 import {
   STAKE_POOL_INSTRUCTION_LAYOUTS,
   DepositSolParams,
-  StakePoolProgram,
-} from '../src/stakepool-program';
-import { decodeData } from '../src/copied-from-solana-web3/instruction';
-import { depositSol, withdrawSol, withdrawStake } from "../src";
-import { StakePoolLayout } from "../src/layouts";
+  StakePoolInstruction,
+  depositSol,
+  withdrawSol,
+  withdrawStake
+} from "../src";
+
 import { mockTokenAccount, mockValidatorList, stakePoolMock } from "./mocks";
 
 describe('StakePoolProgram', () => {
@@ -34,31 +38,31 @@ describe('StakePoolProgram', () => {
     data,
   };
 
-  it('depositSolInstruction', () => {
+  it('StakePoolInstruction.depositSol', () => {
 
     const payload: DepositSolParams = {
-      stakePoolPubkey,
+      stakePool: stakePoolPubkey,
       withdrawAuthority: Keypair.generate().publicKey,
-      reserveStakeAccount: Keypair.generate().publicKey,
-      lamportsFrom: Keypair.generate().publicKey,
-      poolTokensTo: Keypair.generate().publicKey,
+      reserveStake: Keypair.generate().publicKey,
+      fundingAccount: Keypair.generate().publicKey,
+      destinationPoolAccount: Keypair.generate().publicKey,
       managerFeeAccount: Keypair.generate().publicKey,
-      referrerPoolTokensAccount: Keypair.generate().publicKey,
+      referralPoolAccount: Keypair.generate().publicKey,
       poolMint: Keypair.generate().publicKey,
       lamports: 99999,
     };
 
-    const instruction = StakePoolProgram.depositSolInstruction(payload);
+    const instruction = StakePoolInstruction.depositSol(payload);
 
     expect(instruction.keys).toHaveLength(10);
-    expect(instruction.keys[0].pubkey.toBase58()).toEqual(payload.stakePoolPubkey.toBase58());
+    expect(instruction.keys[0].pubkey.toBase58()).toEqual(payload.stakePool.toBase58());
     expect(instruction.keys[1].pubkey.toBase58()).toEqual(payload.withdrawAuthority.toBase58());
-    expect(instruction.keys[3].pubkey.toBase58()).toEqual(payload.lamportsFrom.toBase58());
-    expect(instruction.keys[4].pubkey.toBase58()).toEqual(payload.poolTokensTo.toBase58());
+    expect(instruction.keys[3].pubkey.toBase58()).toEqual(payload.fundingAccount.toBase58());
+    expect(instruction.keys[4].pubkey.toBase58()).toEqual(payload.destinationPoolAccount.toBase58());
     expect(instruction.keys[5].pubkey.toBase58()).toEqual(payload.managerFeeAccount.toBase58());
-    expect(instruction.keys[6].pubkey.toBase58()).toEqual(payload.referrerPoolTokensAccount.toBase58());
+    expect(instruction.keys[6].pubkey.toBase58()).toEqual(payload.referralPoolAccount.toBase58());
     expect(instruction.keys[8].pubkey.toBase58()).toEqual(SystemProgram.programId.toBase58());
-    expect(instruction.keys[9].pubkey.toBase58()).toEqual(StakePoolProgram.tokenProgramId.toBase58());
+    expect(instruction.keys[9].pubkey.toBase58()).toEqual(STAKE_POOL_PROGRAM_ID.toBase58());
 
     const decodedData = decodeData(STAKE_POOL_INSTRUCTION_LAYOUTS.DepositSol, instruction.data);
 
@@ -67,7 +71,7 @@ describe('StakePoolProgram', () => {
 
     payload.depositAuthority = Keypair.generate().publicKey;
 
-    const instruction2 = StakePoolProgram.depositSolInstruction(payload);
+    const instruction2 = StakePoolInstruction.depositSol(payload);
 
     expect(instruction2.keys).toHaveLength(11);
     expect(instruction2.keys[10].pubkey.toBase58()).toEqual(payload.depositAuthority.toBase58());
@@ -220,7 +224,7 @@ describe('StakePoolProgram', () => {
       await expect(
         withdrawStake(connection, stakePoolPubkey, tokenOwner, 1)
       ).rejects.toThrow(Error('Not enough token balance to withdraw 1 pool tokens.\n' +
-        '          Maximum withdraw amount is 0 pool tokens.'));
+        '        Maximum withdraw amount is 0 pool tokens.'));
     });
 
     it.only('should call successfully', async () => {

@@ -1,7 +1,7 @@
 import { publicKey, struct, u32, u64, u8, option, vec } from '@project-serum/borsh';
 import { Lockup, PublicKey } from '@solana/web3.js';
-import BN from 'bn.js';
 import { AccountInfo } from "@solana/spl-token";
+import BN from 'bn.js';
 
 export interface Fee {
   denominator: BN;
