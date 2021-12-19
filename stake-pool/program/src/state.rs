@@ -1023,7 +1023,7 @@ mod test {
             numerator: 1,
             denominator: 10,
         };
-        let mut stake_pool = StakePool {
+        let stake_pool = StakePool {
             total_lamports: 100 * LAMPORTS_PER_SOL,
             pool_token_supply: 100 * LAMPORTS_PER_SOL,
             epoch_fee,
@@ -1031,9 +1031,6 @@ mod test {
         };
         let reward_lamports = 10 * LAMPORTS_PER_SOL;
         let pool_token_fee = stake_pool.calc_pool_tokens_epoch_fee(reward_lamports).unwrap();
-
-        stake_pool.total_lamports += reward_lamports;
-        stake_pool.pool_token_supply += pool_token_fee;
 
         let fee_lamports = stake_pool
             .convert_amount_of_pool_tokens_to_amount_of_lamports(pool_token_fee)
@@ -1043,16 +1040,8 @@ mod test {
 
     #[test]
     fn zero_withdraw_calculation() {
-        let epoch_fee = Fee {
-            numerator: 0,
-            denominator: 1,
-        };
-        let stake_pool = StakePool {
-            epoch_fee,
-            ..StakePool::default()
-        };
-        let lamports = stake_pool.convert_amount_of_pool_tokens_to_amount_of_lamports(0).unwrap();
-        assert_eq!(lamports, 0);
+        let stake_pool = StakePool::default();
+        assert_eq!(stake_pool.convert_amount_of_pool_tokens_to_amount_of_lamports(0).unwrap(), 0);
     }
 
     // #[test]
