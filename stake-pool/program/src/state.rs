@@ -154,7 +154,19 @@ pub struct StakePool {
     pub last_epoch_total_lamports: u64,
 
     /// Last epoch's exchange rate for SOL deposit and withdraw
-    pub rate_of_exchange: Option<RateOfExchange>
+    pub rate_of_exchange: Option<RateOfExchange>,
+
+    /// Treasury fee account
+    // pub treasury_fee_account: Pubkey,
+
+    /// Fee assessed on taking rewards for treasury
+    pub treasury_fee: Fee,
+
+    /// Validator`s fee account
+    // pub validator_fee_account: Pubkey,
+
+    /// Fee assessed on taking rewards for validators
+    pub validator_fee: Fee
 }
 impl StakePool {
     /// calculate the pool tokens that should be minted from lamports

@@ -190,18 +190,28 @@ fn command_create_pool(
     epoch_fee: Fee,
     stake_withdrawal_fee: Fee,
     stake_deposit_fee: Fee,
+    treasury_fee: Fee,
+    validator_fee: Fee,
     stake_referral_fee: u8,
     max_validators: u32,
     stake_pool_keypair: Option<Keypair>,
     validator_list_keypair: Option<Keypair>,
     mint_keypair: Option<Keypair>,
     reserve_keypair: Option<Keypair>,
+    treasury_keypair: Option<Keypair>,
+    validator_fee_keypair: Option<Keypair>
 ) -> CommandResult {
     let reserve_keypair = reserve_keypair.unwrap_or_else(Keypair::new);
     println!("Creating reserve stake {}", reserve_keypair.pubkey());
 
     let mint_keypair = mint_keypair.unwrap_or_else(Keypair::new);
     println!("Creating mint {}", mint_keypair.pubkey());
+
+    let treasury_keypair = treasury_keypair.unwrap_or_else(Keypair::new);
+    println!("Creating treasury {}", treasury_keypair.pubkey());
+
+    let validator_fee_keypair = validator_fee_keypair.unwrap_or_else(Keypair::new);
+    println!("Creating validator`s fee {}", validator_fee_keypair.pubkey());
 
     let stake_pool_keypair = stake_pool_keypair.unwrap_or_else(Keypair::new);
 
@@ -243,6 +253,8 @@ fn command_create_pool(
         println!("Stake pool withdraw authority {}", withdraw_authority);
     }
 
+    let token_account_rent_exempt = config.rpc_client.get_minimum_balance_for_rent_exemption(spl_token::state::Account::LEN)?;
+
     let mut instructions = vec![
         // Account for the stake pool reserve
         system_instruction::create_account(
@@ -275,6 +287,36 @@ fn command_create_pool(
             &withdraw_authority,
             None,
             default_decimals,
+        )?,
+        // Create treasury account
+        system_instruction::create_account(
+            &config.fee_payer.pubkey(),
+            &treasury_keypair.pubkey(),
+            token_account_rent_exempt,
+            spl_token::state::Account::LEN as u64,
+            &spl_token::id(),
+        ),
+        // Initialize treasury account as token account
+        spl_token::instruction::initialize_account(
+            &spl_token::id(),
+            &treasury_keypair.pubkey(),
+            &mint_keypair.pubkey(),
+            &spl_stake_pool::id()
+        )?,
+        // Create validator fee account
+        system_instruction::create_account(
+            &config.fee_payer.pubkey(),
+            &validator_fee_keypair.pubkey(),
+            token_account_rent_exempt,
+            spl_token::state::Account::LEN as u64,
+            &spl_token::id(),
+        ),
+        // Initialize validator fee account as token account
+        spl_token::instruction::initialize_account(
+            &spl_token::id(),
+            &validator_fee_keypair.pubkey(),
+            &mint_keypair.pubkey(),
+            &spl_stake_pool::id()
         )?,
     ];
 
@@ -319,12 +361,16 @@ fn command_create_pool(
                 &reserve_keypair.pubkey(),
                 &mint_keypair.pubkey(),
                 &pool_fee_account,
+                // &treasury_keypair.pubkey(),
+                // &validator_fee_keypair.pubkey(),
                 &spl_token::id(),
                 deposit_authority.as_ref().map(|x| x.pubkey()),
                 epoch_fee,
                 stake_withdrawal_fee,
                 stake_deposit_fee,
                 stake_referral_fee,
+                treasury_fee,
+                validator_fee,
                 max_validators,
             ),
         ],
@@ -338,7 +384,7 @@ fn command_create_pool(
             + fee_calculator.calculate_fee(setup_transaction.message())
             + fee_calculator.calculate_fee(initialize_transaction.message()),
     )?;
-    let mut setup_signers = vec![config.fee_payer.as_ref(), &mint_keypair, &reserve_keypair];
+    let mut setup_signers = vec![config.fee_payer.as_ref(), &mint_keypair, &reserve_keypair, &treasury_keypair, &validator_fee_keypair];
     unique_signers!(setup_signers);
     setup_transaction.sign(&setup_signers, recent_blockhash);
     send_transaction(config, setup_transaction)?;
@@ -1869,6 +1915,40 @@ fn main() {
                     .help("Deposit fee denominator, fee amount is numerator divided by denominator [default: 0]"),
             )
             .arg(
+                Arg::with_name("treasury_fee_numerator")
+                    .long("treasury-fee-numerator")
+                    .validator(is_parsable::<u64>)
+                    .value_name("NUMERATOR")
+                    .takes_value(true)
+                    .requires("treasury_fee_denominator")
+                    .help("Fee numerator assessed on taking rewards for treasury, fee amount is numerator divided by denominator [default: 0]"),
+            ).arg(
+                Arg::with_name("treasury_fee_denominator")
+                    .long("treasury-fee-denominator")
+                    .validator(is_parsable::<u64>)
+                    .value_name("DENOMINATOR")
+                    .takes_value(true)
+                    .requires("treasury_fee_numerator")
+                    .help("Fee denominator assessed on taking rewards for treasury, fee amount is numerator divided by denominator [default: 0]"),
+            )
+            .arg(
+                Arg::with_name("validator_fee_numerator")
+                    .long("validator-fee-numerator")
+                    .validator(is_parsable::<u64>)
+                    .value_name("NUMERATOR")
+                    .takes_value(true)
+                    .requires("validator_fee_denominator")
+                    .help("Fee numerator assessed on taking rewards for validators, fee amount is numerator divided by denominator [default: 0]"),
+            ).arg(
+                Arg::with_name("validator_fee_denominator")
+                    .long("validator-fee-denominator")
+                    .validator(is_parsable::<u64>)
+                    .value_name("DENOMINATOR")
+                    .takes_value(true)
+                    .requires("validator_fee_numerator")
+                    .help("Fee denominator assessed on taking rewards for validators, fee amount is numerator divided by denominator [default: 0]"),
+            )
+            .arg(
                 Arg::with_name("referral_fee")
                     .long("referral-fee")
                     .validator(is_valid_percentage)
@@ -1927,6 +2007,22 @@ fn main() {
                     .value_name("PATH")
                     .takes_value(true)
                     .help("Stake pool reserve keypair [default: new keypair]"),
+            )
+            .arg(
+                Arg::with_name("treasury_keypair")
+                    .long("treasury-keypair")
+                    .validator(is_keypair_or_ask_keyword)
+                    .value_name("PATH")
+                    .takes_value(true)
+                    .help("Treasury keypair [default: new keypair]"),
+            )
+            .arg(
+                Arg::with_name("validator_fee_keypair")
+                    .long("validator-fee-keypair")
+                    .validator(is_keypair_or_ask_keyword)
+                    .value_name("PATH")
+                    .takes_value(true)
+                    .help("Validator fee keypair [default: new keypair]"),
             )
         )
         .subcommand(SubCommand::with_name("add-validator")
@@ -2619,6 +2715,10 @@ fn main() {
             let e_denominator = value_t_or_exit!(arg_matches, "epoch_fee_denominator", u64);
             let w_numerator = value_t!(arg_matches, "withdrawal_fee_numerator", u64);
             let w_denominator = value_t!(arg_matches, "withdrawal_fee_denominator", u64);
+            let t_numerator = value_t!(arg_matches, "treasury_fee_numerator", u64);
+            let t_denominator = value_t!(arg_matches, "treasury_fee_denominator", u64);
+            let v_numerator = value_t!(arg_matches, "validator_fee_numerator", u64);
+            let v_denominator = value_t!(arg_matches, "validator_fee_denominator", u64);
             let d_numerator = value_t!(arg_matches, "deposit_fee_numerator", u64);
             let d_denominator = value_t!(arg_matches, "deposit_fee_denominator", u64);
             let referral_fee = value_t!(arg_matches, "referral_fee", u8);
@@ -2627,6 +2727,8 @@ fn main() {
             let validator_list_keypair = keypair_of(arg_matches, "validator_list_keypair");
             let mint_keypair = keypair_of(arg_matches, "mint_keypair");
             let reserve_keypair = keypair_of(arg_matches, "reserve_keypair");
+            let treasury_keypair = keypair_of(arg_matches, "treasury_keypair");
+            let validator_fee_keypair = keypair_of(arg_matches, "validator_fee_keypair");
             command_create_pool(
                 &config,
                 deposit_authority,
@@ -2642,12 +2744,22 @@ fn main() {
                     numerator: d_numerator.unwrap_or(0),
                     denominator: d_denominator.unwrap_or(0),
                 },
+                Fee {
+                    numerator: t_numerator.unwrap_or(0),
+                    denominator: t_denominator.unwrap_or(0),
+                },
+                Fee {
+                    numerator: v_numerator.unwrap_or(0),
+                    denominator: v_denominator.unwrap_or(0),
+                },
                 referral_fee.unwrap_or(0),
                 max_validators,
                 pool_keypair,
                 validator_list_keypair,
                 mint_keypair,
                 reserve_keypair,
+                treasury_keypair,
+                validator_fee_keypair
             )
         }
         ("add-validator", Some(arg_matches)) => {

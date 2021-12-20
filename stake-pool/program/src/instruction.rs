@@ -55,8 +55,10 @@ pub enum StakePoolInstruction {
     ///       and staker / withdrawer authority set to pool withdraw authority.
     ///   6. `[]` Pool token mint. Must have zero supply, owned by withdraw authority.
     ///   7. `[]` Pool account to deposit the generated fee for manager.
-    ///   8. `[]` Token program id
-    ///   9. `[]` (Optional) Deposit authority that must sign all deposits.
+    ///   8. '[]' Account for Treasury
+    ///   9. '[]' Account for validator
+    ///   10. `[]` Token program id
+    ///   11. `[]` (Optional) Deposit authority that must sign all deposits.
     ///      Defaults to the program address generated using
     ///      `find_deposit_authority_program_address`, making deposits permissionless.
     Initialize {
@@ -69,6 +71,12 @@ pub enum StakePoolInstruction {
         /// Fee charged per deposit as percentage of deposit
         #[allow(dead_code)] // but it's not
         deposit_fee: Fee,
+        /// Fee assessed on taking rewards for treasury
+        #[allow(dead_code)] // but it's not
+        treasury_fee: Fee,
+        /// Fee assessed on taking rewards for validators
+        #[allow(dead_code)] // but it's not
+        validator_fee: Fee,
         /// Percentage [0-100] of deposit_fee that goes to referrer
         #[allow(dead_code)] // but it's not
         referral_fee: u8,
@@ -386,18 +394,24 @@ pub fn initialize(
     reserve_stake: &Pubkey,
     pool_mint: &Pubkey,
     manager_pool_account: &Pubkey,
+    // treasury_keypair: &Pubkey,
+    // validator_fee_keypair: &Pubkey,
     token_program_id: &Pubkey,
     deposit_authority: Option<Pubkey>,
     fee: Fee,
     withdrawal_fee: Fee,
     deposit_fee: Fee,
     referral_fee: u8,
+    treasury_fee: Fee,
+    validator_fee: Fee,
     max_validators: u32,
 ) -> Instruction {
     let init_data = StakePoolInstruction::Initialize {
         fee,
         withdrawal_fee,
         deposit_fee,
+        treasury_fee,
+        validator_fee,
         referral_fee,
         max_validators,
     };
@@ -411,6 +425,8 @@ pub fn initialize(
         AccountMeta::new_readonly(*reserve_stake, false),
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new(*manager_pool_account, false),
+        // AccountMeta::new_readonly(*treasury_keypair, false),
+        // AccountMeta::new_readonly(*validator_fee_keypair, false),    // TODO возможно, тут true
         AccountMeta::new_readonly(*token_program_id, false),
     ];
     if let Some(deposit_authority) = deposit_authority {

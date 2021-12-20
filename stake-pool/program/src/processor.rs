@@ -493,6 +493,8 @@ impl Processor {
         epoch_fee: Fee,
         withdrawal_fee: Fee,
         deposit_fee: Fee,
+        treasury_fee: Fee,
+        validator_fee: Fee,
         referral_fee: u8,
         max_validators: u32,
     ) -> ProgramResult {
@@ -505,6 +507,8 @@ impl Processor {
         let reserve_stake_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
         let manager_fee_info = next_account_info(account_info_iter)?;
+        // let treasury_fee_info = next_account_info(account_info_iter)?;
+        // let validator_fee_info = next_account_info(account_info_iter)?;
         let token_program_info = next_account_info(account_info_iter)?;
 
         let rent = Rent::get()?;
@@ -582,6 +586,16 @@ impl Processor {
         if manager_fee_info.owner != token_program_info.key {
             return Err(ProgramError::IncorrectProgramId);
         }
+
+        // if *treasury_fee_info.owner != crate::id() {
+        //     msg!("Treasury account not owned by stake pool program");
+        //     return Err(ProgramError::IncorrectProgramId);
+        // }
+
+        // if *validator_fee_info.owner != crate::id() {
+        //     msg!("Validator fee account not owned by stake pool program");
+        //     return Err(ProgramError::IncorrectProgramId);
+        // }
 
         if pool_mint_info.owner != token_program_info.key {
             return Err(ProgramError::IncorrectProgramId);
@@ -668,19 +682,6 @@ impl Processor {
             return Err(StakePoolError::WrongStakeState.into());
         };
 
-        if total_lamports > 0 {
-            Self::token_mint_to(
-                stake_pool_info.key,
-                token_program_info.clone(),
-                pool_mint_info.clone(),
-                manager_fee_info.clone(),
-                withdraw_authority_info.clone(),
-                AUTHORITY_WITHDRAW,
-                stake_withdraw_bump_seed,
-                total_lamports,
-            )?;
-        }
-
         validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
 
         stake_pool.account_type = AccountType::StakePool;
@@ -694,7 +695,6 @@ impl Processor {
         stake_pool.manager_fee_account = *manager_fee_info.key;
         stake_pool.token_program_id = *token_program_info.key;
         stake_pool.total_lamports = total_lamports;
-        stake_pool.pool_token_supply = 0;
         stake_pool.last_update_epoch = Clock::get()?.epoch;
         stake_pool.lockup = stake::state::Lockup::default();
         stake_pool.epoch_fee = epoch_fee;
@@ -714,6 +714,28 @@ impl Processor {
         stake_pool.last_epoch_pool_token_supply = 0;
         stake_pool.last_epoch_total_lamports = 0;
         stake_pool.rate_of_exchange = None;
+        // stake_pool.treasury_fee_account = *treasury_fee_info.key;
+        stake_pool.treasury_fee = treasury_fee;
+        // stake_pool.validator_fee_account = *validator_fee_info.key;
+        stake_pool.validator_fee = validator_fee;
+
+        let pool_tokens_minted = stake_pool
+            .convert_amount_of_lamports_to_amount_of_pool_tokens(total_lamports)
+            .ok_or(StakePoolError::CalculationFailure)?;
+        if pool_tokens_minted > 0 {
+            Self::token_mint_to(
+                stake_pool_info.key,
+                token_program_info.clone(),
+                pool_mint_info.clone(),
+                manager_fee_info.clone(),
+                withdraw_authority_info.clone(),
+                AUTHORITY_WITHDRAW,
+                stake_withdraw_bump_seed,
+                pool_tokens_minted,
+            )?;
+        }
+
+        stake_pool.pool_token_supply = pool_tokens_minted;
 
         stake_pool
             .serialize(&mut *stake_pool_info.data.borrow_mut())
@@ -2709,6 +2731,8 @@ impl Processor {
                 fee,
                 withdrawal_fee,
                 deposit_fee,
+                treasury_fee,
+                validator_fee,
                 referral_fee,
                 max_validators,
             } => {
@@ -2719,6 +2743,8 @@ impl Processor {
                     fee,
                     withdrawal_fee,
                     deposit_fee,
+                    treasury_fee,
+                    validator_fee,
                     referral_fee,
                     max_validators,
                 )
