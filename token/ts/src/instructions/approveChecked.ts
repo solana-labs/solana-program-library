@@ -1,7 +1,13 @@
 import { struct, u8 } from '@solana/buffer-layout';
 import { u64 } from '@solana/buffer-layout-utils';
-import { PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
+import { AccountMeta, PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants';
+import {
+    TokenInvalidInstructionDataError,
+    TokenInvalidInstructionKeysError,
+    TokenInvalidInstructionProgramError,
+    TokenInvalidInstructionTypeError,
+} from '../errors';
 import { addSigners } from './internal';
 import { TokenInstruction } from './types';
 
@@ -13,7 +19,7 @@ export interface ApproveCheckedInstructionData {
 }
 
 /** TODO: docs */
-export const approveCheckedInstructionDataLayout = struct<ApproveCheckedInstructionData>([
+export const approveCheckedInstructionData = struct<ApproveCheckedInstructionData>([
     u8('instruction'),
     u64('amount'),
     u8('decimals'),
@@ -53,8 +59,8 @@ export function createApproveCheckedInstruction(
         multiSigners
     );
 
-    const data = Buffer.alloc(approveCheckedInstructionDataLayout.span);
-    approveCheckedInstructionDataLayout.encode(
+    const data = Buffer.alloc(approveCheckedInstructionData.span);
+    approveCheckedInstructionData.encode(
         {
             instruction: TokenInstruction.ApproveChecked,
             amount: BigInt(amount),
@@ -64,4 +70,49 @@ export function createApproveCheckedInstruction(
     );
 
     return new TransactionInstruction({ keys, programId, data });
+}
+
+/** TODO: docs */
+export interface DecodedApproveCheckedInstruction {
+    instruction: TokenInstruction.ApproveChecked;
+    account: AccountMeta;
+    mint: AccountMeta;
+    delegate: AccountMeta;
+    owner: AccountMeta;
+    multiSigners: AccountMeta[];
+    amount: bigint;
+    decimals: number;
+}
+
+/**
+ * Decode a ApproveChecked instruction
+ *
+ * @param instruction Transaction instruction to decode
+ * @param programId   SPL Token program account
+ *
+ * @return Decoded instruction
+ */
+export function decodeApproveCheckedInstruction(
+    instruction: TransactionInstruction,
+    programId = TOKEN_PROGRAM_ID
+): DecodedApproveCheckedInstruction {
+    if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
+
+    const [account, mint, delegate, owner, ...multiSigners] = instruction.keys;
+    if (!account || !mint || !delegate || !owner) throw new TokenInvalidInstructionKeysError();
+
+    if (instruction.data.length !== approveCheckedInstructionData.span) throw new TokenInvalidInstructionTypeError();
+    const data = approveCheckedInstructionData.decode(instruction.data);
+    if (data.instruction !== TokenInstruction.ApproveChecked) throw new TokenInvalidInstructionDataError();
+
+    return {
+        instruction: data.instruction,
+        account,
+        mint,
+        delegate,
+        owner,
+        multiSigners,
+        amount: data.amount,
+        decimals: data.decimals,
+    };
 }

@@ -18,7 +18,7 @@ export interface TransferInstructionData {
 }
 
 /** TODO: docs */
-export const transferInstructionDataLayout = struct<TransferInstructionData>([u8('instruction'), u64('amount')]);
+export const transferInstructionData = struct<TransferInstructionData>([u8('instruction'), u64('amount')]);
 
 /**
  * Construct a Transfer instruction
@@ -49,8 +49,8 @@ export function createTransferInstruction(
         multiSigners
     );
 
-    const data = Buffer.alloc(transferInstructionDataLayout.span);
-    transferInstructionDataLayout.encode(
+    const data = Buffer.alloc(transferInstructionData.span);
+    transferInstructionData.encode(
         {
             instruction: TokenInstruction.Transfer,
             amount: BigInt(amount),
@@ -76,6 +76,8 @@ export interface DecodedTransferInstruction {
  *
  * @param instruction Transaction instruction to decode
  * @param programId   SPL Token program account
+ *
+ * @return Decoded instruction
  */
 export function decodeTransferInstruction(
     instruction: TransactionInstruction,
@@ -86,8 +88,8 @@ export function decodeTransferInstruction(
     const [source, destination, owner, ...multiSigners] = instruction.keys;
     if (!source || !destination || !owner) throw new TokenInvalidInstructionKeysError();
 
-    if (instruction.data.length !== transferInstructionDataLayout.span) throw new TokenInvalidInstructionTypeError();
-    const data = transferInstructionDataLayout.decode(instruction.data);
+    if (instruction.data.length !== transferInstructionData.span) throw new TokenInvalidInstructionTypeError();
+    const data = transferInstructionData.decode(instruction.data);
     if (data.instruction !== TokenInstruction.Transfer) throw new TokenInvalidInstructionDataError();
 
     return {

@@ -1,7 +1,13 @@
 import { struct, u8 } from '@solana/buffer-layout';
 import { u64 } from '@solana/buffer-layout-utils';
-import { PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
+import { AccountMeta, PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants';
+import {
+    TokenInvalidInstructionDataError,
+    TokenInvalidInstructionKeysError,
+    TokenInvalidInstructionProgramError,
+    TokenInvalidInstructionTypeError,
+} from '../errors';
 import { addSigners } from './internal';
 import { TokenInstruction } from './types';
 
@@ -12,7 +18,7 @@ export interface BurnInstructionData {
 }
 
 /** TODO: docs */
-export const burnInstructionDataLayout = struct<BurnInstructionData>([u8('instruction'), u64('amount')]);
+export const burnInstructionData = struct<BurnInstructionData>([u8('instruction'), u64('amount')]);
 
 /**
  * Construct a Burn instruction
@@ -43,8 +49,8 @@ export function createBurnInstruction(
         multiSigners
     );
 
-    const data = Buffer.alloc(burnInstructionDataLayout.span);
-    burnInstructionDataLayout.encode(
+    const data = Buffer.alloc(burnInstructionData.span);
+    burnInstructionData.encode(
         {
             instruction: TokenInstruction.Burn,
             amount: BigInt(amount),
@@ -53,4 +59,45 @@ export function createBurnInstruction(
     );
 
     return new TransactionInstruction({ keys, programId, data });
+}
+
+/** TODO: docs */
+export interface DecodedBurnInstruction {
+    instruction: TokenInstruction.Burn;
+    account: AccountMeta;
+    mint: AccountMeta;
+    owner: AccountMeta;
+    multiSigners: AccountMeta[];
+    amount: bigint;
+}
+
+/**
+ * Decode a Burn instruction
+ *
+ * @param instruction Transaction instruction to decode
+ * @param programId   SPL Token program account
+ *
+ * @return Decoded instruction
+ */
+export function decodeBurnInstruction(
+    instruction: TransactionInstruction,
+    programId = TOKEN_PROGRAM_ID
+): DecodedBurnInstruction {
+    if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
+
+    const [account, mint, owner, ...multiSigners] = instruction.keys;
+    if (!account || !mint || !owner) throw new TokenInvalidInstructionKeysError();
+
+    if (instruction.data.length !== burnInstructionData.span) throw new TokenInvalidInstructionTypeError();
+    const data = burnInstructionData.decode(instruction.data);
+    if (data.instruction !== TokenInstruction.Burn) throw new TokenInvalidInstructionDataError();
+
+    return {
+        instruction: data.instruction,
+        account,
+        mint,
+        owner,
+        multiSigners,
+        amount: data.amount,
+    };
 }
