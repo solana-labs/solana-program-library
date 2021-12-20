@@ -74,6 +74,7 @@ export function createTransferCheckedInstruction(
 
 /** TODO: docs */
 export interface DecodedTransferCheckedInstruction {
+    instruction: TokenInstruction.TransferChecked;
     source: AccountMeta;
     mint: AccountMeta;
     destination: AccountMeta;
@@ -105,6 +106,7 @@ export function decodeTransferCheckedInstruction(
     if (data.instruction !== TokenInstruction.TransferChecked) throw new TokenInvalidInstructionDataError();
 
     return {
+        instruction: data.instruction,
         source,
         mint,
         destination,
