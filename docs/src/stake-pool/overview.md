@@ -116,7 +116,11 @@ of fees:
   inflation rewards, so the stake pool mints pool tokens into the manager's fee
   account as a proportion of the earned rewards. For example, if the pool earns
   10 SOL in rewards, and the fee is set to 2%, the manager will earn pool tokens
-  worth 0.2 SOL.
+  worth 0.2 SOL. Note that the epoch fee is charged after normal validator
+  commissions are assessed. For example, if a validator charges 8% commission,
+  and the stake pool charges 2%, and a stake in the pool earns 100 SOL pre-commission,
+  then that stake will actually enrich the pool by 90.16 SOL. The total rewards
+  on that validator will be reduced by ~9.84%.
 * SOL withdraw: sends a proportion of the desired withdrawal amount to the manager
   For example, if a user wishes to withdraw 100 pool tokens, and the fee is set
   to 3%, 3 pool tokens go to the manager, and the remaining 97 tokens go to the
