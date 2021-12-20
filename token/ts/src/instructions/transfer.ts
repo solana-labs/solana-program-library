@@ -1,17 +1,23 @@
 import { struct, u8 } from '@solana/buffer-layout';
 import { u64 } from '@solana/buffer-layout-utils';
-import { PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
+import { AccountMeta, PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants';
+import {
+    TokenInvalidInstructionDataError,
+    TokenInvalidInstructionKeysError,
+    TokenInvalidInstructionProgramError,
+    TokenInvalidInstructionTypeError,
+} from '../errors';
 import { addSigners } from './internal';
 import { TokenInstruction } from './types';
 
-// TODO: docs
+/** TODO: docs */
 export interface TransferInstructionData {
     instruction: TokenInstruction.Transfer;
     amount: bigint;
 }
 
-// TODO: docs
+/** TODO: docs */
 export const transferInstructionDataLayout = struct<TransferInstructionData>([u8('instruction'), u64('amount')]);
 
 /**

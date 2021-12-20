@@ -5,14 +5,14 @@ import { TOKEN_PROGRAM_ID } from '../constants';
 import { addSigners } from './internal';
 import { TokenInstruction } from './types';
 
-// TODO: docs
+/** TODO: docs */
 export interface BurnCheckedInstructionData {
     instruction: TokenInstruction.BurnChecked;
     amount: bigint;
     decimals: number;
 }
 
-// TODO: docs
+/** TODO: docs */
 export const burnCheckedInstructionDataLayout = struct<BurnCheckedInstructionData>([
     u8('instruction'),
     u64('amount'),

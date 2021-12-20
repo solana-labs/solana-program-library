@@ -3,12 +3,12 @@ import { PublicKey, TransactionInstruction } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants';
 import { TokenInstruction } from './types';
 
-// TODO: docs
+/** TODO: docs */
 export interface SyncNativeInstructionData {
     instruction: TokenInstruction.SyncNative;
 }
 
-// TODO: docs
+/** TODO: docs */
 export const syncNativeInstructionDataLayout = struct<SyncNativeInstructionData>([u8('instruction')]);
 
 /**

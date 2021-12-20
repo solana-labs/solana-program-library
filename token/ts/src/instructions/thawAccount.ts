@@ -4,12 +4,12 @@ import { TOKEN_PROGRAM_ID } from '../constants';
 import { addSigners } from './internal';
 import { TokenInstruction } from './types';
 
-// TODO: docs
+/** TODO: docs */
 export interface ThawAccountInstructionData {
     instruction: TokenInstruction.ThawAccount;
 }
 
-// TODO: docs
+/** TODO: docs */
 export const thawAccountInstructionDataLayout = struct<ThawAccountInstructionData>([u8('instruction')]);
 
 /**

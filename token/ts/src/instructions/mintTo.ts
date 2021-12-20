@@ -5,13 +5,13 @@ import { TOKEN_PROGRAM_ID } from '../constants';
 import { addSigners } from './internal';
 import { TokenInstruction } from './types';
 
-// TODO: docs
+/** TODO: docs */
 export interface MintToInstructionData {
     instruction: TokenInstruction.MintTo;
     amount: bigint;
 }
 
-// TODO: docs
+/** TODO: docs */
 export const mintToInstructionDataLayout = struct<MintToInstructionData>([u8('instruction'), u64('amount')]);
 
 /**

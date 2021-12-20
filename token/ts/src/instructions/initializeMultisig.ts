@@ -3,13 +3,13 @@ import { PublicKey, SYSVAR_RENT_PUBKEY, TransactionInstruction } from '@solana/w
 import { TOKEN_PROGRAM_ID } from '../constants';
 import { TokenInstruction } from './types';
 
-// TODO: docs
+/** TODO: docs */
 export interface InitializeMultisigInstructionData {
     instruction: TokenInstruction.InitializeMultisig;
     m: number;
 }
 
-// TODO: docs
+/** TODO: docs */
 export const initializeMultisigInstructionDataLayout = struct<InitializeMultisigInstructionData>([
     u8('instruction'),
     u8('m'),

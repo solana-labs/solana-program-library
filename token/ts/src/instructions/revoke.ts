@@ -4,12 +4,12 @@ import { TOKEN_PROGRAM_ID } from '../constants';
 import { addSigners } from './internal';
 import { TokenInstruction } from './types';
 
-// TODO: docs
+/** TODO: docs */
 export interface RevokeInstructionData {
     instruction: TokenInstruction.Revoke;
 }
 
-// TODO: docs
+/** TODO: docs */
 export const revokeInstructionDataLayout = struct<RevokeInstructionData>([u8('instruction')]);
 
 /**
