@@ -1,6 +1,12 @@
 import { struct, u8 } from '@solana/buffer-layout';
-import { PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
+import { AccountMeta, PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants';
+import {
+    TokenInvalidInstructionDataError,
+    TokenInvalidInstructionKeysError,
+    TokenInvalidInstructionProgramError,
+    TokenInvalidInstructionTypeError,
+} from '../errors';
 import { addSigners } from './internal';
 import { TokenInstruction } from './types';
 
@@ -10,7 +16,7 @@ export interface FreezeAccountInstructionData {
 }
 
 /** TODO: docs */
-export const freezeAccountInstructionDataLayout = struct<FreezeAccountInstructionData>([u8('instruction')]);
+export const freezeAccountInstructionData = struct<FreezeAccountInstructionData>([u8('instruction')]);
 
 /**
  * Construct a FreezeAccount instruction
@@ -39,8 +45,47 @@ export function createFreezeAccountInstruction(
         multiSigners
     );
 
-    const data = Buffer.alloc(freezeAccountInstructionDataLayout.span);
-    freezeAccountInstructionDataLayout.encode({ instruction: TokenInstruction.FreezeAccount }, data);
+    const data = Buffer.alloc(freezeAccountInstructionData.span);
+    freezeAccountInstructionData.encode({ instruction: TokenInstruction.FreezeAccount }, data);
 
     return new TransactionInstruction({ keys, programId, data });
+}
+
+/** TODO: docs */
+export interface DecodedFreezeAccountInstruction {
+    instruction: TokenInstruction.FreezeAccount;
+    account: AccountMeta;
+    mint: AccountMeta;
+    authority: AccountMeta;
+    multiSigners: AccountMeta[];
+}
+
+/**
+ * Decode a FreezeAccount instruction
+ *
+ * @param instruction Transaction instruction to decode
+ * @param programId   SPL Token program account
+ *
+ * @return Decoded instruction
+ */
+export function decodeFreezeAccountInstruction(
+    instruction: TransactionInstruction,
+    programId = TOKEN_PROGRAM_ID
+): DecodedFreezeAccountInstruction {
+    if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
+
+    const [account, mint, authority, ...multiSigners] = instruction.keys;
+    if (!account || !mint || !authority) throw new TokenInvalidInstructionKeysError();
+
+    if (instruction.data.length !== freezeAccountInstructionData.span) throw new TokenInvalidInstructionTypeError();
+    const data = freezeAccountInstructionData.decode(instruction.data);
+    if (data.instruction !== TokenInstruction.FreezeAccount) throw new TokenInvalidInstructionDataError();
+
+    return {
+        instruction: data.instruction,
+        account,
+        mint,
+        authority,
+        multiSigners,
+    };
 }

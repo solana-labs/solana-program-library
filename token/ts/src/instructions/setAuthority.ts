@@ -1,7 +1,13 @@
 import { struct, u8 } from '@solana/buffer-layout';
 import { publicKey } from '@solana/buffer-layout-utils';
-import { PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
+import { AccountMeta, PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants';
+import {
+    TokenInvalidInstructionDataError,
+    TokenInvalidInstructionKeysError,
+    TokenInvalidInstructionProgramError,
+    TokenInvalidInstructionTypeError,
+} from '../errors';
 import { addSigners } from './internal';
 import { TokenInstruction } from './types';
 
@@ -22,7 +28,7 @@ export interface SetAuthorityInstructionData {
 }
 
 /** TODO: docs */
-export const setAuthorityInstructionDataStructure = struct<SetAuthorityInstructionData>([
+export const setAuthorityInstructionData = struct<SetAuthorityInstructionData>([
     u8('instruction'),
     u8('authorityType'),
     u8('newAuthorityOption'),
@@ -33,9 +39,9 @@ export const setAuthorityInstructionDataStructure = struct<SetAuthorityInstructi
  * Construct a SetAuthority instruction
  *
  * @param account          Address of the token account
- * @param newAuthority     New authority of the account
- * @param authorityType    Type of authority to set
  * @param currentAuthority Current authority of the specified type
+ * @param authorityType    Type of authority to set
+ * @param newAuthority     New authority of the account
  * @param multiSigners     Signing accounts if `currentAuthority` is a multisig
  * @param programId        SPL Token program account
  *
@@ -43,16 +49,16 @@ export const setAuthorityInstructionDataStructure = struct<SetAuthorityInstructi
  */
 export function createSetAuthorityInstruction(
     account: PublicKey,
-    newAuthority: PublicKey | null,
-    authorityType: AuthorityType,
     currentAuthority: PublicKey,
+    authorityType: AuthorityType,
+    newAuthority: PublicKey | null,
     multiSigners: Signer[] = [],
     programId = TOKEN_PROGRAM_ID
 ): TransactionInstruction {
     const keys = addSigners([{ pubkey: account, isSigner: false, isWritable: true }], currentAuthority, multiSigners);
 
-    const data = Buffer.alloc(setAuthorityInstructionDataStructure.span);
-    setAuthorityInstructionDataStructure.encode(
+    const data = Buffer.alloc(setAuthorityInstructionData.span);
+    setAuthorityInstructionData.encode(
         {
             instruction: TokenInstruction.SetAuthority,
             authorityType,
@@ -63,4 +69,45 @@ export function createSetAuthorityInstruction(
     );
 
     return new TransactionInstruction({ keys, programId, data });
+}
+
+/** TODO: docs */
+export interface DecodedSetAuthorityInstruction {
+    instruction: TokenInstruction.SetAuthority;
+    account: AccountMeta;
+    currentAuthority: AccountMeta;
+    multiSigners: AccountMeta[];
+    authorityType: AuthorityType;
+    newAuthority: PublicKey | null;
+}
+
+/**
+ * Decode a SetAuthority instruction
+ *
+ * @param instruction Transaction instruction to decode
+ * @param programId   SPL Token program account
+ *
+ * @return Decoded instruction
+ */
+export function decodeSetAuthorityInstruction(
+    instruction: TransactionInstruction,
+    programId = TOKEN_PROGRAM_ID
+): DecodedSetAuthorityInstruction {
+    if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
+
+    const [account, currentAuthority, ...multiSigners] = instruction.keys;
+    if (!account || !currentAuthority) throw new TokenInvalidInstructionKeysError();
+
+    if (instruction.data.length !== setAuthorityInstructionData.span) throw new TokenInvalidInstructionTypeError();
+    const data = setAuthorityInstructionData.decode(instruction.data);
+    if (data.instruction !== TokenInstruction.SetAuthority) throw new TokenInvalidInstructionDataError();
+
+    return {
+        instruction: data.instruction,
+        account,
+        currentAuthority,
+        multiSigners,
+        authorityType: data.authorityType,
+        newAuthority: data.newAuthorityOption ? data.newAuthority : null,
+    };
 }

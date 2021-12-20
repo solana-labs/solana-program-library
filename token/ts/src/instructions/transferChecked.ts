@@ -19,7 +19,7 @@ export interface TransferCheckedInstructionData {
 }
 
 /** TODO: docs */
-export const transferCheckedInstructionDataLayout = struct<TransferCheckedInstructionData>([
+export const transferCheckedInstructionData = struct<TransferCheckedInstructionData>([
     u8('instruction'),
     u64('amount'),
     u8('decimals'),
@@ -59,8 +59,8 @@ export function createTransferCheckedInstruction(
         multiSigners
     );
 
-    const data = Buffer.alloc(transferCheckedInstructionDataLayout.span);
-    transferCheckedInstructionDataLayout.encode(
+    const data = Buffer.alloc(transferCheckedInstructionData.span);
+    transferCheckedInstructionData.encode(
         {
             instruction: TokenInstruction.TransferChecked,
             amount: BigInt(amount),
@@ -88,6 +88,8 @@ export interface DecodedTransferCheckedInstruction {
  *
  * @param instruction Transaction instruction to decode
  * @param programId   SPL Token program account
+ *
+ * @return Decoded instruction
  */
 export function decodeTransferCheckedInstruction(
     instruction: TransactionInstruction,
@@ -98,9 +100,8 @@ export function decodeTransferCheckedInstruction(
     const [source, mint, destination, owner, ...multiSigners] = instruction.keys;
     if (!source || !mint || !destination || !owner) throw new TokenInvalidInstructionKeysError();
 
-    if (instruction.data.length !== transferCheckedInstructionDataLayout.span)
-        throw new TokenInvalidInstructionTypeError();
-    const data = transferCheckedInstructionDataLayout.decode(instruction.data);
+    if (instruction.data.length !== transferCheckedInstructionData.span) throw new TokenInvalidInstructionTypeError();
+    const data = transferCheckedInstructionData.decode(instruction.data);
     if (data.instruction !== TokenInstruction.TransferChecked) throw new TokenInvalidInstructionDataError();
 
     return {

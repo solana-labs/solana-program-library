@@ -1,7 +1,13 @@
 import { struct, u8 } from '@solana/buffer-layout';
 import { u64 } from '@solana/buffer-layout-utils';
-import { PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
+import { AccountMeta, PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants';
+import {
+    TokenInvalidInstructionDataError,
+    TokenInvalidInstructionKeysError,
+    TokenInvalidInstructionProgramError,
+    TokenInvalidInstructionTypeError,
+} from '../errors';
 import { addSigners } from './internal';
 import { TokenInstruction } from './types';
 
@@ -12,7 +18,7 @@ export interface MintToInstructionData {
 }
 
 /** TODO: docs */
-export const mintToInstructionDataLayout = struct<MintToInstructionData>([u8('instruction'), u64('amount')]);
+export const mintToInstructionData = struct<MintToInstructionData>([u8('instruction'), u64('amount')]);
 
 /**
  * Construct a MintTo instruction
@@ -43,8 +49,8 @@ export function createMintToInstruction(
         multiSigners
     );
 
-    const data = Buffer.alloc(mintToInstructionDataLayout.span);
-    mintToInstructionDataLayout.encode(
+    const data = Buffer.alloc(mintToInstructionData.span);
+    mintToInstructionData.encode(
         {
             instruction: TokenInstruction.MintTo,
             amount: BigInt(amount),
@@ -53,4 +59,45 @@ export function createMintToInstruction(
     );
 
     return new TransactionInstruction({ keys, programId, data });
+}
+
+/** TODO: docs */
+export interface DecodedMintToInstruction {
+    instruction: TokenInstruction.MintTo;
+    mint: AccountMeta;
+    destination: AccountMeta;
+    authority: AccountMeta;
+    multiSigners: AccountMeta[];
+    amount: bigint;
+}
+
+/**
+ * Decode a MintTo instruction
+ *
+ * @param instruction Transaction instruction to decode
+ * @param programId   SPL Token program account
+ *
+ * @return Decoded instruction
+ */
+export function decodeMintToInstruction(
+    instruction: TransactionInstruction,
+    programId = TOKEN_PROGRAM_ID
+): DecodedMintToInstruction {
+    if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
+
+    const [mint, destination, authority, ...multiSigners] = instruction.keys;
+    if (!mint || !destination || !authority) throw new TokenInvalidInstructionKeysError();
+
+    if (instruction.data.length !== mintToInstructionData.span) throw new TokenInvalidInstructionTypeError();
+    const data = mintToInstructionData.decode(instruction.data);
+    if (data.instruction !== TokenInstruction.MintTo) throw new TokenInvalidInstructionDataError();
+
+    return {
+        instruction: data.instruction,
+        mint,
+        destination,
+        authority,
+        multiSigners,
+        amount: data.amount,
+    };
 }
