@@ -5,14 +5,14 @@ import { TOKEN_PROGRAM_ID } from '../constants';
 import { addSigners } from './internal';
 import { TokenInstruction } from './types';
 
-// TODO: docs
+/** TODO: docs */
 export interface MintToCheckedInstructionData {
     instruction: TokenInstruction.MintToChecked;
     amount: bigint;
     decimals: number;
 }
 
-// TODO: docs
+/** TODO: docs */
 export const mintToCheckedInstructionDataLayout = struct<MintToCheckedInstructionData>([
     u8('instruction'),
     u64('amount'),

@@ -4,12 +4,12 @@ import { TOKEN_PROGRAM_ID } from '../constants';
 import { addSigners } from './internal';
 import { TokenInstruction } from './types';
 
-// TODO: docs
+/** TODO: docs */
 export interface FreezeAccountInstructionData {
     instruction: TokenInstruction.FreezeAccount;
 }
 
-// TODO: docs
+/** TODO: docs */
 export const freezeAccountInstructionDataLayout = struct<FreezeAccountInstructionData>([u8('instruction')]);
 
 /**

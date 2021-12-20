@@ -4,7 +4,7 @@ import { PublicKey, SYSVAR_RENT_PUBKEY, TransactionInstruction } from '@solana/w
 import { TOKEN_PROGRAM_ID } from '../constants';
 import { TokenInstruction } from './types';
 
-// TODO: docs
+/** TODO: docs */
 export interface InitializeMintInstructionData {
     instruction: TokenInstruction.InitializeMint;
     decimals: number;
@@ -13,7 +13,7 @@ export interface InitializeMintInstructionData {
     freezeAuthority: PublicKey;
 }
 
-// TODO: docs
+/** TODO: docs */
 export const initializeMintInstructionDataLayout = struct<InitializeMintInstructionData>([
     u8('instruction'),
     u8('decimals'),

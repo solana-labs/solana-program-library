@@ -5,13 +5,13 @@ import { TOKEN_PROGRAM_ID } from '../constants';
 import { addSigners } from './internal';
 import { TokenInstruction } from './types';
 
-// TODO: docs
+/** TODO: docs */
 export interface ApproveInstructionData {
     instruction: TokenInstruction.Approve;
     amount: bigint;
 }
 
-// TODO: docs
+/** TODO: docs */
 export const approveInstructionDataLayout = struct<ApproveInstructionData>([u8('instruction'), u64('amount')]);
 
 /**

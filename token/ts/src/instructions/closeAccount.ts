@@ -4,12 +4,12 @@ import { TOKEN_PROGRAM_ID } from '../constants';
 import { addSigners } from './internal';
 import { TokenInstruction } from './types';
 
-// TODO: docs
+/** TODO: docs */
 export interface CloseAccountInstructionData {
     instruction: TokenInstruction.CloseAccount;
 }
 
-// TODO: docs
+/** TODO: docs */
 export const closeAccountInstructionDataLayout = struct<CloseAccountInstructionData>([u8('instruction')]);
 
 /**

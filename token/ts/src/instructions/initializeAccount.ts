@@ -3,12 +3,12 @@ import { PublicKey, SYSVAR_RENT_PUBKEY, TransactionInstruction } from '@solana/w
 import { TOKEN_PROGRAM_ID } from '../constants';
 import { TokenInstruction } from './types';
 
-// TODO: docs
+/** TODO: docs */
 export interface InitializeAccountInstructionData {
     instruction: TokenInstruction.InitializeAccount;
 }
 
-// TODO: docs
+/** TODO: docs */
 export const initializeAccountInstructionDataLayout = struct<InitializeAccountInstructionData>([u8('instruction')]);
 
 /**

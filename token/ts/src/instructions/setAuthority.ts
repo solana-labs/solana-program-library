@@ -13,7 +13,7 @@ export enum AuthorityType {
     CloseAccount = 3,
 }
 
-// TODO: docs
+/** TODO: docs */
 export interface SetAuthorityInstructionData {
     instruction: TokenInstruction.SetAuthority;
     authorityType: AuthorityType;
@@ -21,7 +21,7 @@ export interface SetAuthorityInstructionData {
     newAuthority: PublicKey;
 }
 
-// TODO: docs
+/** TODO: docs */
 export const setAuthorityInstructionDataStructure = struct<SetAuthorityInstructionData>([
     u8('instruction'),
     u8('authorityType'),
