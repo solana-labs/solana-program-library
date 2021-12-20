@@ -60,3 +60,42 @@ export function createTransferInstruction(
 
     return new TransactionInstruction({ keys, programId, data });
 }
+
+/** TODO: docs */
+export interface DecodedTransferInstruction {
+    instruction: TokenInstruction.Transfer;
+    source: AccountMeta;
+    destination: AccountMeta;
+    owner: AccountMeta;
+    multiSigners: AccountMeta[];
+    amount: bigint;
+}
+
+/**
+ * Decode a Transfer instruction
+ *
+ * @param instruction Transaction instruction to decode
+ * @param programId   SPL Token program account
+ */
+export function decodeTransferInstruction(
+    instruction: TransactionInstruction,
+    programId = TOKEN_PROGRAM_ID
+): DecodedTransferInstruction {
+    if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
+
+    const [source, destination, owner, ...multiSigners] = instruction.keys;
+    if (!source || !destination || !owner) throw new TokenInvalidInstructionKeysError();
+
+    if (instruction.data.length !== transferInstructionDataLayout.span) throw new TokenInvalidInstructionTypeError();
+    const data = transferInstructionDataLayout.decode(instruction.data);
+    if (data.instruction !== TokenInstruction.Transfer) throw new TokenInvalidInstructionDataError();
+
+    return {
+        instruction: data.instruction,
+        source,
+        destination,
+        owner,
+        multiSigners,
+        amount: data.amount,
+    };
+}
