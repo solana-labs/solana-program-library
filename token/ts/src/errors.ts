@@ -34,3 +34,23 @@ export class TokenInvalidOwnerError extends TokenError {
 export class TokenOwnerOffCurveError extends TokenError {
     name = 'TokenOwnerOffCurveError';
 }
+
+/** Thrown if an instruction's program is invalid */
+export class TokenInvalidInstructionProgramError extends TokenError {
+    name = 'TokenInvalidInstructionProgramError';
+}
+
+/** Thrown if an instruction's keys are invalid */
+export class TokenInvalidInstructionKeysError extends TokenError {
+    name = 'TokenInvalidInstructionKeysError';
+}
+
+/** Thrown if an instruction's data is invalid */
+export class TokenInvalidInstructionDataError extends TokenError {
+    name = 'TokenInvalidInstructionDataError';
+}
+
+/** Thrown if an instruction's type is invalid */
+export class TokenInvalidInstructionTypeError extends TokenError {
+    name = 'TokenInvalidInstructionTypeError';
+}
