@@ -1,7 +1,13 @@
 import { struct, u8 } from '@solana/buffer-layout';
 import { u64 } from '@solana/buffer-layout-utils';
-import { PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
+import { AccountMeta, PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants';
+import {
+    TokenInvalidInstructionDataError,
+    TokenInvalidInstructionKeysError,
+    TokenInvalidInstructionProgramError,
+    TokenInvalidInstructionTypeError,
+} from '../errors';
 import { addSigners } from './internal';
 import { TokenInstruction } from './types';
 
@@ -64,4 +70,46 @@ export function createTransferCheckedInstruction(
     );
 
     return new TransactionInstruction({ keys, programId, data });
+}
+
+/** TODO: docs */
+export interface DecodedTransferCheckedInstruction {
+    source: AccountMeta;
+    mint: AccountMeta;
+    destination: AccountMeta;
+    owner: AccountMeta;
+    multiSigners: AccountMeta[];
+    amount: bigint;
+    decimals: number;
+}
+
+/**
+ * Decode a TransferChecked instruction
+ *
+ * @param instruction Transaction instruction to decode
+ * @param programId   SPL Token program account
+ */
+export function decodeTransferCheckedInstruction(
+    instruction: TransactionInstruction,
+    programId = TOKEN_PROGRAM_ID
+): DecodedTransferCheckedInstruction {
+    if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
+
+    const [source, mint, destination, owner, ...multiSigners] = instruction.keys;
+    if (!source || !mint || !destination || !owner) throw new TokenInvalidInstructionKeysError();
+
+    if (instruction.data.length !== transferCheckedInstructionDataLayout.span)
+        throw new TokenInvalidInstructionTypeError();
+    const data = transferCheckedInstructionDataLayout.decode(instruction.data);
+    if (data.instruction !== TokenInstruction.TransferChecked) throw new TokenInvalidInstructionDataError();
+
+    return {
+        source,
+        mint,
+        destination,
+        owner,
+        multiSigners,
+        amount: data.amount,
+        decimals: data.decimals,
+    };
 }
