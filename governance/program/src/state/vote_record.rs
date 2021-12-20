@@ -51,6 +51,9 @@ pub enum Vote {
 
     /// Vote rejecting proposal
     Deny,
+
+    /// Declare indifference to proposal
+    Abstain,
 }
 
 /// Proposal VoteRecord
@@ -102,6 +105,7 @@ impl VoteRecordV2 {
             let vote_weight = match &self.vote {
                 Vote::Approve(_options) => VoteWeightV1::Yes(self.voter_weight),
                 Vote::Deny => VoteWeightV1::No(self.voter_weight),
+                Vote::Abstain => panic!("Cannot serialize new vote record as old vote record (it contains an abstain vote)"),
             };
 
             let vote_record_data_v1 = VoteRecordV1 {

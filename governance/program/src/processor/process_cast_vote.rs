@@ -126,6 +126,13 @@ pub fn process_cast_vote(
                     .unwrap(),
             )
         }
+        Vote::Abstain => {
+            proposal_data.abstain_vote_weight =
+                proposal_data
+                    .abstain_vote_weight
+                    .checked_add(voter_weight)
+                    .unwrap()
+        }
     }
 
     let governing_token_mint_supply = get_spl_token_mint_supply(governing_token_mint_info)?;

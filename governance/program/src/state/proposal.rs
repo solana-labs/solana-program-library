@@ -117,6 +117,9 @@ pub struct ProposalV2 {
     /// Without the deny option a proposal is only non executable survey
     pub deny_vote_weight: Option<u64>,
 
+    /// The weight of the Proposal abstain votes
+    pub abstain_vote_weight: u64,
+
     /// When the Proposal was created and entered Draft state
     pub draft_at: UnixTimestamp,
 
@@ -400,6 +403,8 @@ impl ProposalV2 {
                 // and we have to adjust it in case more votes have been cast
                 let total_vote_weight = max_option_vote_weight
                     .checked_add(deny_vote_weight)
+                    .unwrap()
+                    .checked_add(self.abstain_vote_weight)
                     .unwrap();
 
                 Ok(max_vote_weight.max(total_vote_weight))
@@ -458,13 +463,16 @@ impl ProposalV2 {
 
         let yes_vote_weight = yes_option.vote_weight;
         let deny_vote_weight = self.deny_vote_weight.unwrap();
+        let non_yes_vote_weight = self.abstain_vote_weight
+            .checked_add(deny_vote_weight)
+            .unwrap();
 
         if yes_vote_weight == max_vote_weight {
             yes_option.vote_result = OptionVoteResult::Succeeded;
             return Some(ProposalState::Succeeded);
         }
 
-        if deny_vote_weight == max_vote_weight {
+        if non_yes_vote_weight == max_vote_weight {
             yes_option.vote_result = OptionVoteResult::Defeated;
             return Some(ProposalState::Defeated);
         }
@@ -478,7 +486,7 @@ impl ProposalV2 {
         {
             yes_option.vote_result = OptionVoteResult::Succeeded;
             return Some(ProposalState::Succeeded);
-        } else if deny_vote_weight > (max_vote_weight - min_vote_threshold_weight)
+        } else if non_yes_vote_weight > (max_vote_weight - min_vote_threshold_weight)
             || deny_vote_weight >= (max_vote_weight - deny_vote_weight)
         {
             yes_option.vote_result = OptionVoteResult::Defeated;
@@ -629,6 +637,7 @@ impl ProposalV2 {
                     return Err(GovernanceError::InvalidVote.into());
                 }
             }
+            Vote::Abstain => {}
         }
 
         Ok(())
@@ -745,6 +754,7 @@ pub fn get_proposal_data(
                 instructions_next_index: proposal_data_v1.instructions_next_index,
             }],
             deny_vote_weight: Some(proposal_data_v1.no_votes_count),
+            abstain_vote_weight: 0,
             draft_at: proposal_data_v1.draft_at,
             signing_off_at: proposal_data_v1.signing_off_at,
             voting_at: proposal_data_v1.voting_at,
@@ -890,6 +900,7 @@ mod test {
                 instructions_next_index: 10,
             }],
             deny_vote_weight: Some(0),
+            abstain_vote_weight: 0,
 
             execution_flags: InstructionExecutionFlags::Ordered,
 
