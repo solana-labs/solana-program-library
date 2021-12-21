@@ -264,7 +264,7 @@ export class StakePoolInstruction {
   /**
    * Creates a transaction instruction to withdraw SOL from a stake pool.
    */
-  static withdrawSol(params: WithdrawSolParams) {
+  static withdrawSol(params: WithdrawSolParams): TransactionInstruction {
     const {
       stakePool,
       withdrawAuthority,
