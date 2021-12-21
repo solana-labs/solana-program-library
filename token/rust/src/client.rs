@@ -52,7 +52,7 @@ pub trait SendTransactionRpc: SendTransaction {
     fn send<'a>(
         &self,
         client: &'a RpcClient,
-        transaction: Transaction,
+        transaction: &'a Transaction,
     ) -> BoxFuture<'a, TokenClientResult<Self::Output>>;
 }
 
@@ -67,9 +67,9 @@ impl SendTransactionRpc for TokenRpcClientSendTransaction {
     fn send<'a>(
         &self,
         client: &'a RpcClient,
-        transaction: Transaction,
+        transaction: &'a Transaction,
     ) -> BoxFuture<'a, TokenClientResult<Self::Output>> {
-        Box::pin(async move { client.send_transaction(&transaction).map_err(Into::into) })
+        Box::pin(async move { client.send_transaction(transaction).map_err(Into::into) })
     }
 }
 
@@ -90,7 +90,7 @@ where
 
     async fn get_recent_blockhash(&self) -> TokenClientResult<Hash>;
 
-    async fn send_transaction(&self, transaction: Transaction) -> TokenClientResult<ST::Output>;
+    async fn send_transaction(&self, transaction: &Transaction) -> TokenClientResult<ST::Output>;
 
     async fn get_account(&self, address: Pubkey) -> TokenClientResult<Option<Account>>;
 }
@@ -167,9 +167,9 @@ where
         .await
     }
 
-    async fn send_transaction(&self, transaction: Transaction) -> TokenClientResult<ST::Output> {
+    async fn send_transaction(&self, transaction: &Transaction) -> TokenClientResult<ST::Output> {
         self.run_in_lock(|client| {
-            let transaction = transaction.clone(); // How to remove extra clone?
+            let transaction = transaction.clone();
             self.send.send(client, transaction)
         })
         .await
@@ -222,7 +222,7 @@ where
             .map_err(Into::into)
     }
 
-    async fn send_transaction(&self, transaction: Transaction) -> TokenClientResult<ST::Output> {
+    async fn send_transaction(&self, transaction: &Transaction) -> TokenClientResult<ST::Output> {
         self.send.send(self.client, transaction).await
     }
 

@@ -91,7 +91,7 @@ where
             .map_err(|error| TokenError::Client(error.into()))?;
 
         self.client
-            .send_transaction(tx)
+            .send_transaction(&tx)
             .await
             .map_err(TokenError::Client)
     }
