@@ -66,7 +66,11 @@ where
     }
 
     pub fn with_payer<S2: Signer>(&self, payer: S2) -> Token<T, S2> {
-        Token { client: Arc::clone(&self.client), pubkey: self.pubkey, payer }
+        Token {
+            client: Arc::clone(&self.client),
+            pubkey: self.pubkey,
+            payer,
+        }
     }
 
     async fn process_ixs<S2: Signers>(
