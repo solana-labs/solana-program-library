@@ -4014,6 +4014,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "spl-token-client"
+version = "0.0.1"
+dependencies = [
+ "async-trait",
+ "solana-client",
+ "solana-program-test",
+ "solana-sdk",
+ "spl-associated-token-account 1.0.3",
+ "spl-token 3.2.0",
+ "thiserror",
+]
+
+[[package]]
 name = "spl-token-lending"
 version = "0.1.0"
 dependencies = [
