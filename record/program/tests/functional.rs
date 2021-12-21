@@ -13,7 +13,6 @@ use {
     solana_sdk::{
         signature::{Keypair, Signer},
         transaction::{Transaction, TransactionError},
-        transport,
     },
     spl_record::{
         error::RecordError,
