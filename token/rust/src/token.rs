@@ -1,4 +1,4 @@
-use super::client::{SendTransaction, TokenClient, TokenClientError};
+use super::client::{ProgramClient, ProgramClientError, SendTransaction};
 use solana_sdk::{
     instruction::Instruction,
     program_error::ProgramError,
@@ -16,7 +16,7 @@ use thiserror::Error;
 #[derive(Error, Debug)]
 pub enum TokenError {
     #[error("client error: {0}")]
-    Client(TokenClientError),
+    Client(ProgramClientError),
     #[error("program error: {0}")]
     Program(#[from] ProgramError),
     #[error("account not found")]
@@ -30,7 +30,7 @@ pub enum TokenError {
 pub type TokenResult<T> = Result<T, TokenError>;
 
 pub struct Token<T, S> {
-    client: Arc<dyn TokenClient<T>>,
+    client: Arc<dyn ProgramClient<T>>,
     pubkey: Pubkey,
     payer: S,
 }
@@ -52,7 +52,7 @@ where
     T: SendTransaction,
     S: Signer,
 {
-    pub fn new(client: Arc<dyn TokenClient<T>>, address: Pubkey, payer: S) -> Self {
+    pub fn new(client: Arc<dyn ProgramClient<T>>, address: Pubkey, payer: S) -> Self {
         Token {
             client,
             pubkey: address,
@@ -98,7 +98,7 @@ where
 
     /// Create and initialize a token.
     pub async fn create_mint<'a, S2: Signer>(
-        client: Arc<dyn TokenClient<T>>,
+        client: Arc<dyn ProgramClient<T>>,
         payer: S,
         mint_account: &'a S2,
         mint_authority: &'a Pubkey,

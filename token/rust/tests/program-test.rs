@@ -8,7 +8,7 @@ use solana_sdk::{
 };
 use spl_token::{instruction, state};
 use spl_token_client::{
-    client::{TokenBanksClient, TokenBanksClientProcessTransaction, TokenClient},
+    client::{ProgramBanksClient, ProgramBanksClientProcessTransaction, ProgramClient},
     token::Token,
 };
 use std::sync::Arc;
@@ -16,7 +16,7 @@ use std::sync::Arc;
 struct TestContext {
     pub decimals: u8,
     pub mint_authority: Keypair,
-    pub token: Token<TokenBanksClientProcessTransaction, Keypair>,
+    pub token: Token<ProgramBanksClientProcessTransaction, Keypair>,
 
     pub alice: Keypair,
     pub bob: Keypair,
@@ -30,10 +30,10 @@ impl TestContext {
 
         let payer = keypair_clone(&ctx.lock().await.payer);
 
-        let client: Arc<dyn TokenClient<TokenBanksClientProcessTransaction>> =
-            Arc::new(TokenBanksClient::new_from_context(
+        let client: Arc<dyn ProgramClient<ProgramBanksClientProcessTransaction>> =
+            Arc::new(ProgramBanksClient::new_from_context(
                 Arc::clone(&ctx),
-                TokenBanksClientProcessTransaction,
+                ProgramBanksClientProcessTransaction,
             ));
 
         let decimals: u8 = 6;
