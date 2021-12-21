@@ -253,7 +253,9 @@ pub enum StakePoolInstruction {
     ///   3. `[]` Reserve stake account
     ///   4. `[w]` Account to receive pool fee tokens
     ///   5. `[w]` Pool mint account
-    ///   6. `[]` Pool token program
+    ///   6. `[w]` Treasury account
+    ///   7. `[w]` Validator`s fee account
+    ///   8. `[]` Pool token program
     UpdateStakePoolBalance,
 
     ///   Cleans up validator stake account entries marked as `ReadyForRemoval`
@@ -394,8 +396,8 @@ pub fn initialize(
     reserve_stake: &Pubkey,
     pool_mint: &Pubkey,
     manager_pool_account: &Pubkey,
-    // treasury_keypair: &Pubkey,
-    // validator_fee_keypair: &Pubkey,
+    treasury_keypair: &Pubkey,
+    validator_fee_keypair: &Pubkey,
     token_program_id: &Pubkey,
     deposit_authority: Option<Pubkey>,
     fee: Fee,
@@ -425,8 +427,8 @@ pub fn initialize(
         AccountMeta::new_readonly(*reserve_stake, false),
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new(*manager_pool_account, false),
-        // AccountMeta::new_readonly(*treasury_keypair, false),
-        // AccountMeta::new_readonly(*validator_fee_keypair, false),    // TODO возможно, тут true
+        AccountMeta::new_readonly(*treasury_keypair, false),
+        AccountMeta::new_readonly(*validator_fee_keypair, false),
         AccountMeta::new_readonly(*token_program_id, false),
     ];
     if let Some(deposit_authority) = deposit_authority {
@@ -801,6 +803,8 @@ pub fn update_stake_pool_balance(
     reserve_stake: &Pubkey,
     manager_fee_account: &Pubkey,
     stake_pool_mint: &Pubkey,
+    treasury_fee_account: &Pubkey,
+    validator_fee_account: &Pubkey,
     token_program_id: &Pubkey,
 ) -> Instruction {
     let accounts = vec![
@@ -810,6 +814,8 @@ pub fn update_stake_pool_balance(
         AccountMeta::new_readonly(*reserve_stake, false),
         AccountMeta::new(*manager_fee_account, false),
         AccountMeta::new(*stake_pool_mint, false),
+        AccountMeta::new(*treasury_fee_account, false),
+        AccountMeta::new(*validator_fee_account, false),
         AccountMeta::new_readonly(*token_program_id, false),
     ];
     Instruction {
@@ -884,6 +890,8 @@ pub fn update_stake_pool(
             &stake_pool.reserve_stake,
             &stake_pool.manager_fee_account,
             &stake_pool.pool_mint,
+            &stake_pool.treasury_fee_account,
+            &stake_pool.validator_fee_account,
             &stake_pool.token_program_id,
         ),
         cleanup_removed_validator_entries(

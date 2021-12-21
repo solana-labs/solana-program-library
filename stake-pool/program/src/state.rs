@@ -157,13 +157,13 @@ pub struct StakePool {
     pub rate_of_exchange: Option<RateOfExchange>,
 
     /// Treasury fee account
-    // pub treasury_fee_account: Pubkey,
+    pub treasury_fee_account: Pubkey,
 
     /// Fee assessed on taking rewards for treasury
     pub treasury_fee: Fee,
 
     /// Validator`s fee account
-    // pub validator_fee_account: Pubkey,
+    pub validator_fee_account: Pubkey,
 
     /// Fee assessed on taking rewards for validators
     pub validator_fee: Fee
@@ -255,6 +255,22 @@ impl StakePool {
     #[inline]
     pub fn calc_pool_tokens_epoch_fee(&self, reward_lamports: u64) -> Option<u64> {
         let fee_lamports = self.epoch_fee.apply(reward_lamports)?;
+
+        self.convert_amount_of_lamports_to_amount_of_pool_tokens(u64::try_from(fee_lamports).ok()?)
+    }
+
+    /// Calculate the fee in pool tokens that goes to the treasury
+    #[inline]
+    pub fn calc_pool_tokens_treasury_fee(&self, reward_lamports: u64) -> Option<u64> {
+        let fee_lamports = self.treasury_fee.apply(reward_lamports)?;
+
+        self.convert_amount_of_lamports_to_amount_of_pool_tokens(u64::try_from(fee_lamports).ok()?)
+    }
+
+    /// Calculate the fee in pool tokens that goes to the validators
+    #[inline]
+    pub fn calc_pool_tokens_validator_fee(&self, reward_lamports: u64) -> Option<u64> {
+        let fee_lamports = self.validator_fee.apply(reward_lamports)?;
 
         self.convert_amount_of_lamports_to_amount_of_pool_tokens(u64::try_from(fee_lamports).ok()?)
     }
