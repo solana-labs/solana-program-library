@@ -1164,7 +1164,7 @@ fn command_update_reserve(
         reserve.config.fee_receiver = reserve_config.fee_receiver.unwrap();
     }
 
-    let mut new_pyth_product_pubkey = spl_token_lending::null_pubkey();
+    let mut new_pyth_product_pubkey = spl_token_lending::NULL_PUBKEY;
     if pyth_price_pubkey.is_some() {
         println!(
             "Updating pyth oracle pubkey from {} to {}",

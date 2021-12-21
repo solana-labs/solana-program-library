@@ -1,6 +1,7 @@
 //! Program state processor
 
 use crate::{
+    self as spl_token_lending,
     error::LendingError,
     instruction::LendingInstruction,
     math::{Decimal, Rate, TryAdd, TryDiv, TryMul, TrySub, WAD},
@@ -259,7 +260,13 @@ fn process_init_reserve(
         msg!("Lending market owner provided must be a signer");
         return Err(LendingError::InvalidSigner.into());
     }
-
+    if *switchboard_feed_info.key == spl_token_lending::NULL_PUBKEY
+        && (*pyth_price_info.key == spl_token_lending::NULL_PUBKEY
+            || *pyth_product_info.key == spl_token_lending::NULL_PUBKEY)
+    {
+        msg!("Both price oracles are null. At least one must be non-null");
+        return Err(LendingError::InvalidOracleConfig.into());
+    }
     validate_pyth_keys(&lending_market, pyth_product_info, pyth_price_info)?;
     validate_switchboard_keys(&lending_market, switchboard_feed_info)?;
 
@@ -394,12 +401,12 @@ fn _refresh_reserve<'a>(
         return Err(LendingError::InvalidAccountOwner.into());
     }
     if &reserve.liquidity.pyth_oracle_pubkey != pyth_price_info.key {
-        msg!("Reserve liquidity oracle does not match the reserve liquidity oracle provided");
+        msg!("Reserve liquidity pyth oracle does not match the reserve liquidity pyth oracle provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
 
     if &reserve.liquidity.switchboard_oracle_pubkey != switchboard_feed_info.key {
-        msg!("Lending market quote currency does not match the oracle quote currency");
+        msg!("Reserve liquidity switchboard oracle does not match the reserve liquidity switchboard oracle provided");
         return Err(LendingError::InvalidOracleConfig.into());
     }
 
@@ -2004,12 +2011,19 @@ fn process_update_reserve_config(
 
     if *pyth_price_info.key != reserve.liquidity.pyth_oracle_pubkey {
         validate_pyth_keys(&lending_market, pyth_product_info, pyth_price_info)?;
-        reserve.liquidity.pyth_oracle_pubkey = *pyth_product_info.key;
+        reserve.liquidity.pyth_oracle_pubkey = *pyth_price_info.key;
     }
 
     if *switchboard_feed_info.key != reserve.liquidity.switchboard_oracle_pubkey {
         validate_switchboard_keys(&lending_market, switchboard_feed_info)?;
         reserve.liquidity.switchboard_oracle_pubkey = *switchboard_feed_info.key;
+    }
+    if reserve.liquidity.switchboard_oracle_pubkey == spl_token_lending::NULL_PUBKEY
+        && (*pyth_price_info.key == spl_token_lending::NULL_PUBKEY
+            || *pyth_product_info.key == spl_token_lending::NULL_PUBKEY)
+    {
+        msg!("At least one price oracle must have a non-null pubkey");
+        return Err(LendingError::InvalidOracleConfig.into());
     }
 
     reserve.config = config;
@@ -2103,6 +2117,10 @@ fn get_price(
 fn get_pyth_price(pyth_price_info: &AccountInfo, clock: &Clock) -> Result<Decimal, ProgramError> {
     const STALE_AFTER_SLOTS_ELAPSED: u64 = 20;
 
+    if *pyth_price_info.key == spl_token_lending::NULL_PUBKEY {
+        return Err(LendingError::NullOracleConfig.into());
+    }
+
     let pyth_price_data = pyth_price_info.try_borrow_data()?;
     let pyth_price = pyth::load::<pyth::Price>(&pyth_price_data)
         .map_err(|_| ProgramError::InvalidAccountData)?;
@@ -2179,6 +2197,10 @@ fn get_switchboard_price(
     clock: &Clock,
 ) -> Result<Decimal, ProgramError> {
     const STALE_AFTER_SLOTS_ELAPSED: u64 = 100;
+
+    if *switchboard_feed_info.key == spl_token_lending::NULL_PUBKEY {
+        return Err(LendingError::NullOracleConfig.into());
+    }
 
     let account_buf = switchboard_feed_info.try_borrow_data()?;
     // first byte type discriminator
@@ -2392,6 +2414,9 @@ fn validate_pyth_keys(
     pyth_product_info: &AccountInfo,
     pyth_price_info: &AccountInfo,
 ) -> ProgramResult {
+    if *pyth_price_info.key == spl_token_lending::NULL_PUBKEY {
+        return Ok(());
+    }
     if &lending_market.oracle_program_id != pyth_product_info.owner {
         msg!("Pyth product account provided is not owned by the lending market oracle program");
         return Err(LendingError::InvalidOracleConfig.into());
@@ -2440,6 +2465,9 @@ fn validate_switchboard_keys(
     lending_market: &LendingMarket,
     switchboard_feed_info: &AccountInfo,
 ) -> ProgramResult {
+    if *switchboard_feed_info.key == spl_token_lending::NULL_PUBKEY {
+        return Ok(());
+    }
     if &lending_market.switchboard_oracle_program_id != switchboard_feed_info.owner {
         msg!("Switchboard account provided is not owned by the switchboard oracle program");
         return Err(LendingError::InvalidOracleConfig.into());
