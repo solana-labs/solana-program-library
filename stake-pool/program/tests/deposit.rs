@@ -503,12 +503,14 @@ async fn fail_with_wrong_stake_program_id() {
     let mut transaction =
         Transaction::new_with_payer(&[instruction], Some(&context.payer.pubkey()));
     transaction.sign(&[&context.payer], context.last_blockhash);
+    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = context
         .banks_client
         .process_transaction(transaction)
         .await
         .err()
-        .unwrap();
+        .unwrap()
+        .into();
 
     match transaction_error {
         TransportError::TransactionError(TransactionError::InstructionError(_, error)) => {
@@ -551,12 +553,14 @@ async fn fail_with_wrong_token_program_id() {
         Some(&context.payer.pubkey()),
     );
     transaction.sign(&[&context.payer, &user], context.last_blockhash);
+    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = context
         .banks_client
         .process_transaction(transaction)
         .await
         .err()
-        .unwrap();
+        .unwrap()
+        .into();
 
     match transaction_error {
         TransportError::TransactionError(TransactionError::InstructionError(_, error)) => {

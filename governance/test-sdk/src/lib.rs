@@ -72,11 +72,12 @@ impl ProgramTestBench {
 
         transaction.sign(&all_signers, recent_blockhash);
 
+        #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
         self.context
             .banks_client
             .process_transaction(transaction)
             .await
-            .map_err(map_transaction_error)?;
+            .map_err(|e| map_transaction_error(e.into()))?;
 
         Ok(())
     }
