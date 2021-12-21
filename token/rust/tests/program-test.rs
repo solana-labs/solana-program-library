@@ -161,7 +161,7 @@ async fn set_authority() {
     // TODO: compare
     // Err(Client(TransactionError(InstructionError(0, Custom(5)))))
     assert!(token
-        .mint_to(&alice_vault, &mint_authority, 1)
+        .mint_to(&alice_vault, &mint_authority, 2)
         .await
         .is_err());
 
