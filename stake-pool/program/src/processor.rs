@@ -1746,37 +1746,37 @@ impl Processor {
                 )?;
             }
 
-            // let treasury_fee = stake_pool
-            //     .calc_pool_tokens_treasury_fee(reward_lamports)
-            //     .ok_or(StakePoolError::CalculationFailure)?;
-            // if treasury_fee > 0 {
-            //     Self::token_mint_to(
-            //         stake_pool_info.key,
-            //         token_program_info.clone(),
-            //         pool_mint_info.clone(),
-            //         treasury_info.clone(),
-            //         withdraw_info.clone(),
-            //         AUTHORITY_WITHDRAW,
-            //         stake_pool.stake_withdraw_bump_seed,
-            //         treasury_fee,
-            //     )?;
-            // }
+            let treasury_fee = stake_pool
+                .calc_pool_tokens_treasury_fee(reward_lamports)
+                .ok_or(StakePoolError::CalculationFailure)?;
+            if treasury_fee > 0 {
+                Self::token_mint_to(
+                    stake_pool_info.key,
+                    token_program_info.clone(),
+                    pool_mint_info.clone(),
+                    treasury_info.clone(),
+                    withdraw_info.clone(),
+                    AUTHORITY_WITHDRAW,
+                    stake_pool.stake_withdraw_bump_seed,
+                    treasury_fee,
+                )?;
+            }
 
-            // let validator_fee = stake_pool
-            //     .calc_pool_tokens_validator_fee(reward_lamports)
-            //     .ok_or(StakePoolError::CalculationFailure)?;
-            // if validator_fee > 0 {
-            //     Self::token_mint_to(
-            //         stake_pool_info.key,
-            //         token_program_info.clone(),
-            //         pool_mint_info.clone(),
-            //         validator_fee_info.clone(),
-            //         withdraw_info.clone(),
-            //         AUTHORITY_WITHDRAW,
-            //         stake_pool.stake_withdraw_bump_seed,
-            //         validator_fee,
-            //     )?;
-            // }
+            let validator_fee = stake_pool
+                .calc_pool_tokens_validator_fee(reward_lamports)
+                .ok_or(StakePoolError::CalculationFailure)?;
+            if validator_fee > 0 {
+                Self::token_mint_to(
+                    stake_pool_info.key,
+                    token_program_info.clone(),
+                    pool_mint_info.clone(),
+                    validator_fee_info.clone(),
+                    withdraw_info.clone(),
+                    AUTHORITY_WITHDRAW,
+                    stake_pool.stake_withdraw_bump_seed,
+                    validator_fee,
+                )?;
+            }
 
             if let Some(fee) = stake_pool.next_epoch_fee {
                 stake_pool.epoch_fee = fee;
@@ -1800,7 +1800,7 @@ impl Processor {
             stake_pool.pool_token_supply = pool_mint.supply;
 
             stake_pool.rate_of_exchange = 
-            if stake_pool.total_lamports == stake_pool.pool_token_supply                        // TODO Если 1 лампорт и 2 токена
+            if stake_pool.total_lamports == stake_pool.pool_token_supply                        // TODO  TODO TODO TODO TODO Если 1 лампорт и 2 токена !!!!!!!!!!!!!!!!!
             || stake_pool.pool_token_supply == 0
             || stake_pool.total_lamports == 0 {
                 None
