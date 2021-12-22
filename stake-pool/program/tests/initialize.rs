@@ -318,6 +318,28 @@ async fn fail_with_wrong_mint_authority() {
     .await
     .unwrap();
 
+    create_token_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts.treasury_fee_account,
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &stake_pool_accounts.withdraw_authority,
+    )
+    .await
+    .unwrap();
+
+    create_token_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts.validator_fee_account,
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &stake_pool_accounts.withdraw_authority,
+    )
+    .await
+    .unwrap();
+
     let transaction_error = create_stake_pool(
         &mut banks_client,
         &payer,
@@ -413,6 +435,28 @@ async fn fail_with_freeze_authority() {
     .await
     .unwrap();
 
+    create_token_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts.treasury_fee_account,
+        &wrong_mint.pubkey(),
+        &stake_pool_accounts.withdraw_authority,
+    )
+    .await
+    .unwrap();
+
+    create_token_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts.validator_fee_account,
+        &wrong_mint.pubkey(),
+        &stake_pool_accounts.withdraw_authority,
+    )
+    .await
+    .unwrap();
+
     let error = create_stake_pool(
         &mut banks_client,
         &payer,
@@ -464,6 +508,28 @@ async fn fail_with_wrong_token_program_id() {
         &payer,
         &recent_blockhash,
         &stake_pool_accounts.pool_mint,
+        &stake_pool_accounts.withdraw_authority,
+    )
+    .await
+    .unwrap();
+
+    create_token_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts.treasury_fee_account,
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &stake_pool_accounts.withdraw_authority,
+    )
+    .await
+    .unwrap();
+
+    create_token_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts.validator_fee_account,
+        &stake_pool_accounts.pool_mint.pubkey(),
         &stake_pool_accounts.withdraw_authority,
     )
     .await
@@ -566,6 +632,28 @@ async fn fail_with_fee_owned_by_wrong_token_program_id() {
         &payer,
         &recent_blockhash,
         &stake_pool_accounts.pool_mint,
+        &stake_pool_accounts.withdraw_authority,
+    )
+    .await
+    .unwrap();
+
+    create_token_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts.treasury_fee_account,
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &stake_pool_accounts.withdraw_authority,
+    )
+    .await
+    .unwrap();
+
+    create_token_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts.validator_fee_account,
+        &stake_pool_accounts.pool_mint.pubkey(),
         &stake_pool_accounts.withdraw_authority,
     )
     .await
@@ -675,6 +763,29 @@ async fn fail_with_wrong_fee_account() {
     )
     .await
     .unwrap();
+
+    create_token_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts.treasury_fee_account,
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &stake_pool_accounts.withdraw_authority,
+    )
+    .await
+    .unwrap();
+
+    create_token_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts.validator_fee_account,
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &stake_pool_accounts.withdraw_authority,
+    )
+    .await
+    .unwrap();
+
     let rent = banks_client.get_rent().await.unwrap();
     let account_rent = rent.minimum_balance(spl_token::state::Account::LEN);
 
@@ -1042,6 +1153,28 @@ async fn fail_with_pre_minted_pool_tokens() {
         &mut banks_client,
         &payer,
         &recent_blockhash,
+        &stake_pool_accounts.treasury_fee_account,
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &stake_pool_accounts.withdraw_authority,
+    )
+    .await
+    .unwrap();
+
+    create_token_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts.validator_fee_account,
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &stake_pool_accounts.withdraw_authority,
+    )
+    .await
+    .unwrap();
+
+    create_token_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
         &stake_pool_accounts.pool_fee_account,
         &stake_pool_accounts.pool_mint.pubkey(),
         &stake_pool_accounts.manager.pubkey(),
@@ -1115,6 +1248,28 @@ async fn fail_with_bad_reserve() {
         &stake_pool_accounts,
     )
     .await;
+
+    create_token_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts.treasury_fee_account,
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &stake_pool_accounts.withdraw_authority,
+    )
+    .await
+    .unwrap();
+
+    create_token_account(
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &stake_pool_accounts.validator_fee_account,
+        &stake_pool_accounts.pool_mint.pubkey(),
+        &stake_pool_accounts.withdraw_authority,
+    )
+    .await
+    .unwrap();
 
     {
         let bad_stake = Keypair::new();
