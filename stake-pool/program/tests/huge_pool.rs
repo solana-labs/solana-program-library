@@ -88,7 +88,11 @@ async fn setup(
         next_sol_withdrawal_fee: None,
         last_epoch_pool_token_supply: 0,
         last_epoch_total_lamports: 0,
-        rate_of_exchange: None
+        rate_of_exchange: None,
+        treasury_fee_account: stake_pool_accounts.treasury_account.pubkey(),
+        treasury_fee: Fee::default(),
+        validator_fee_account: stake_pool_accounts.validator_fee_account.pubkey(),
+        validator_fee: Fee::default()
     };
 
     let mut validator_list = ValidatorList::new(max_validators);
@@ -358,6 +362,8 @@ async fn update() {
             &stake_pool_accounts.reserve_stake.pubkey(),
             &stake_pool_accounts.pool_fee_account.pubkey(),
             &stake_pool_accounts.pool_mint.pubkey(),
+            &stake_pool_accounts.treasury_account.pubkey(),
+            &stake_pool_accounts.validator_fee_account.pubkey(),
             &spl_token::id(),
         )],
         Some(&context.payer.pubkey()),

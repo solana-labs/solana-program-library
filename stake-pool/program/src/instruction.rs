@@ -55,8 +55,8 @@ pub enum StakePoolInstruction {
     ///       and staker / withdrawer authority set to pool withdraw authority.
     ///   6. `[]` Pool token mint. Must have zero supply, owned by withdraw authority.
     ///   7. `[]` Pool account to deposit the generated fee for manager.
-    ///   8. '[]' Account for Treasury
-    ///   9. '[]' Account for validator
+    ///   8. `[]` Account for Treasury
+    ///   9. `[]` Account for validator fee
     ///   10. `[]` Token program id
     ///   11. `[]` (Optional) Deposit authority that must sign all deposits.
     ///      Defaults to the program address generated using
@@ -396,8 +396,8 @@ pub fn initialize(
     reserve_stake: &Pubkey,
     pool_mint: &Pubkey,
     manager_pool_account: &Pubkey,
-    treasury_keypair: &Pubkey,
-    validator_fee_keypair: &Pubkey,
+    treasury_account: &Pubkey,
+    validator_fee_account: &Pubkey,
     token_program_id: &Pubkey,
     deposit_authority: Option<Pubkey>,
     fee: Fee,
@@ -427,8 +427,8 @@ pub fn initialize(
         AccountMeta::new_readonly(*reserve_stake, false),
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new(*manager_pool_account, false),
-        AccountMeta::new_readonly(*treasury_keypair, false),
-        AccountMeta::new_readonly(*validator_fee_keypair, false),
+        AccountMeta::new_readonly(*treasury_account, false),
+        AccountMeta::new_readonly(*validator_fee_account, false),
         AccountMeta::new_readonly(*token_program_id, false),
     ];
     if let Some(deposit_authority) = deposit_authority {

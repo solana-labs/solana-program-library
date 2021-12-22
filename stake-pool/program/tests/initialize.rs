@@ -251,12 +251,16 @@ async fn fail_with_wrong_max_validators() {
                 &stake_pool_accounts.reserve_stake.pubkey(),
                 &stake_pool_accounts.pool_mint.pubkey(),
                 &stake_pool_accounts.pool_fee_account.pubkey(),
+                &stake_pool_accounts.treasury_account.pubkey(),
+                &stake_pool_accounts.validator_fee_account.pubkey(),
                 &spl_token::id(),
                 None,
                 stake_pool_accounts.epoch_fee,
                 stake_pool_accounts.withdrawal_fee,
                 stake_pool_accounts.deposit_fee,
                 stake_pool_accounts.referral_fee,
+                stake_pool_accounts.treasury_fee,
+                stake_pool_accounts.validator_fee,
                 stake_pool_accounts.max_validators,
             ),
         ],
@@ -334,6 +338,10 @@ async fn fail_with_wrong_mint_authority() {
         &stake_pool_accounts.sol_deposit_fee,
         stake_pool_accounts.sol_referral_fee,
         stake_pool_accounts.max_validators,
+        &stake_pool_accounts.treasury_account.pubkey(),
+        &stake_pool_accounts.validator_fee_account.pubkey(),
+        &stake_pool_accounts.treasury_fee,
+        &stake_pool_accounts.validator_fee
     )
     .await
     .err()
@@ -425,6 +433,10 @@ async fn fail_with_freeze_authority() {
         &stake_pool_accounts.sol_deposit_fee,
         stake_pool_accounts.sol_referral_fee,
         stake_pool_accounts.max_validators,
+        &stake_pool_accounts.treasury_account.pubkey(),
+        &stake_pool_accounts.validator_fee_account.pubkey(),
+        &stake_pool_accounts.treasury_fee,
+        &stake_pool_accounts.validator_fee
     )
     .await
     .err()
@@ -502,12 +514,16 @@ async fn fail_with_wrong_token_program_id() {
                 &stake_pool_accounts.reserve_stake.pubkey(),
                 &stake_pool_accounts.pool_mint.pubkey(),
                 &stake_pool_accounts.pool_fee_account.pubkey(),
+                &stake_pool_accounts.treasury_account.pubkey(),
+                &stake_pool_accounts.validator_fee_account.pubkey(),
                 &wrong_token_program.pubkey(),
                 None,
                 stake_pool_accounts.epoch_fee,
                 stake_pool_accounts.withdrawal_fee,
                 stake_pool_accounts.deposit_fee,
                 stake_pool_accounts.referral_fee,
+                stake_pool_accounts.treasury_fee,
+                stake_pool_accounts.validator_fee,
                 stake_pool_accounts.max_validators,
             ),
         ],
@@ -605,12 +621,16 @@ async fn fail_with_fee_owned_by_wrong_token_program_id() {
                 &stake_pool_accounts.reserve_stake.pubkey(),
                 &stake_pool_accounts.pool_mint.pubkey(),
                 &stake_pool_accounts.pool_fee_account.pubkey(),
+                &stake_pool_accounts.treasury_account.pubkey(),
+                &stake_pool_accounts.validator_fee_account.pubkey(),
                 &wrong_token_program.pubkey(),
                 None,
                 stake_pool_accounts.epoch_fee,
                 stake_pool_accounts.withdrawal_fee,
                 stake_pool_accounts.deposit_fee,
                 stake_pool_accounts.referral_fee,
+                stake_pool_accounts.treasury_fee,
+                stake_pool_accounts.validator_fee,
                 stake_pool_accounts.max_validators,
             ),
         ],
@@ -694,6 +714,10 @@ async fn fail_with_wrong_fee_account() {
         &stake_pool_accounts.sol_deposit_fee,
         stake_pool_accounts.sol_referral_fee,
         stake_pool_accounts.max_validators,
+        &stake_pool_accounts.treasury_account.pubkey(),
+        &stake_pool_accounts.validator_fee_account.pubkey(),
+        &stake_pool_accounts.treasury_fee,
+        &stake_pool_accounts.validator_fee
     )
     .await
     .err()
@@ -779,12 +803,16 @@ async fn fail_with_not_rent_exempt_pool() {
                 &stake_pool_accounts.reserve_stake.pubkey(),
                 &stake_pool_accounts.pool_mint.pubkey(),
                 &stake_pool_accounts.pool_fee_account.pubkey(),
+                &stake_pool_accounts.treasury_account.pubkey(),
+                &stake_pool_accounts.validator_fee_account.pubkey(),
                 &spl_token::id(),
                 None,
                 stake_pool_accounts.epoch_fee,
                 stake_pool_accounts.withdrawal_fee,
                 stake_pool_accounts.deposit_fee,
                 stake_pool_accounts.referral_fee,
+                stake_pool_accounts.treasury_fee,
+                stake_pool_accounts.validator_fee,
                 stake_pool_accounts.max_validators,
             ),
         ],
@@ -857,12 +885,16 @@ async fn fail_with_not_rent_exempt_validator_list() {
                 &stake_pool_accounts.reserve_stake.pubkey(),
                 &stake_pool_accounts.pool_mint.pubkey(),
                 &stake_pool_accounts.pool_fee_account.pubkey(),
+                &stake_pool_accounts.treasury_account.pubkey(),
+                &stake_pool_accounts.validator_fee_account.pubkey(),
                 &spl_token::id(),
                 None,
                 stake_pool_accounts.epoch_fee,
                 stake_pool_accounts.withdrawal_fee,
                 stake_pool_accounts.deposit_fee,
                 stake_pool_accounts.referral_fee,
+                stake_pool_accounts.treasury_fee,
+                stake_pool_accounts.validator_fee,
                 stake_pool_accounts.max_validators,
             ),
         ],
@@ -916,6 +948,8 @@ async fn fail_without_manager_signature() {
         fee: stake_pool_accounts.epoch_fee,
         withdrawal_fee: stake_pool_accounts.withdrawal_fee,
         deposit_fee: stake_pool_accounts.deposit_fee,
+        treasury_fee: stake_pool_accounts.treasury_fee,
+        validator_fee: stake_pool_accounts.validator_fee,
         referral_fee: stake_pool_accounts.referral_fee,
         max_validators: stake_pool_accounts.max_validators,
     };
@@ -928,6 +962,8 @@ async fn fail_without_manager_signature() {
         AccountMeta::new_readonly(stake_pool_accounts.reserve_stake.pubkey(), false),
         AccountMeta::new_readonly(stake_pool_accounts.pool_mint.pubkey(), false),
         AccountMeta::new_readonly(stake_pool_accounts.pool_fee_account.pubkey(), false),
+        AccountMeta::new_readonly(stake_pool_accounts.treasury_account.pubkey(), false),
+        AccountMeta::new_readonly(stake_pool_accounts.validator_fee_account.pubkey(), false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(spl_token::id(), false),
@@ -1045,6 +1081,10 @@ async fn fail_with_pre_minted_pool_tokens() {
         &stake_pool_accounts.sol_deposit_fee,
         stake_pool_accounts.sol_referral_fee,
         stake_pool_accounts.max_validators,
+        &stake_pool_accounts.treasury_account.pubkey(),
+        &stake_pool_accounts.validator_fee_account.pubkey(),
+        &stake_pool_accounts.treasury_fee,
+        &stake_pool_accounts.validator_fee
     )
     .await
     .err()
@@ -1112,6 +1152,10 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.sol_deposit_fee,
             stake_pool_accounts.sol_referral_fee,
             stake_pool_accounts.max_validators,
+            &stake_pool_accounts.treasury_account.pubkey(),
+            &stake_pool_accounts.validator_fee_account.pubkey(),
+            &stake_pool_accounts.treasury_fee,
+            &stake_pool_accounts.validator_fee
         )
         .await
         .err()
@@ -1163,6 +1207,10 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.sol_deposit_fee,
             stake_pool_accounts.sol_referral_fee,
             stake_pool_accounts.max_validators,
+            &stake_pool_accounts.treasury_account.pubkey(),
+            &stake_pool_accounts.validator_fee_account.pubkey(),
+            &stake_pool_accounts.treasury_fee,
+            &stake_pool_accounts.validator_fee
         )
         .await
         .err()
@@ -1217,6 +1265,10 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.sol_deposit_fee,
             stake_pool_accounts.sol_referral_fee,
             stake_pool_accounts.max_validators,
+            &stake_pool_accounts.treasury_account.pubkey(),
+            &stake_pool_accounts.validator_fee_account.pubkey(),
+            &stake_pool_accounts.treasury_fee,
+            &stake_pool_accounts.validator_fee
         )
         .await
         .err()
@@ -1271,6 +1323,10 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.sol_deposit_fee,
             stake_pool_accounts.sol_referral_fee,
             stake_pool_accounts.max_validators,
+            &stake_pool_accounts.treasury_account.pubkey(),
+            &stake_pool_accounts.validator_fee_account.pubkey(),
+            &stake_pool_accounts.treasury_fee,
+            &stake_pool_accounts.validator_fee
         )
         .await
         .err()

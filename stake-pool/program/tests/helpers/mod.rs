@@ -327,6 +327,10 @@ pub async fn create_stake_pool(
     sol_deposit_fee: &state::Fee,
     sol_referral_fee: u8,
     max_validators: u32,
+    treasury_account: &Pubkey,
+    validator_fee_account: &Pubkey,
+    treasury_fee: &state::Fee,
+    validator_fee: &state::Fee,
 ) -> Result<(), TransportError> {
     let rent = banks_client.get_rent().await.unwrap();
     let rent_stake_pool = rent.minimum_balance(get_packed_len::<state::StakePool>());
@@ -360,12 +364,16 @@ pub async fn create_stake_pool(
                 reserve_stake,
                 pool_mint,
                 pool_token_account,
+                treasury_account,
+                validator_fee_account,
                 &spl_token::id(),
                 stake_deposit_authority.as_ref().map(|k| k.pubkey()),
                 *epoch_fee,
                 *withdrawal_fee,
                 *deposit_fee,
                 referral_fee,
+                *treasury_fee,
+                *validator_fee,
                 max_validators,
             ),
             instruction::set_fee(
@@ -620,6 +628,10 @@ pub struct StakePoolAccounts {
     pub sol_deposit_fee: state::Fee,
     pub sol_referral_fee: u8,
     pub max_validators: u32,
+    pub treasury_account: Keypair,
+    pub validator_fee_account: Keypair,
+    pub treasury_fee: state::Fee,
+    pub validator_fee: state::Fee
 }
 
 impl StakePoolAccounts {
@@ -636,6 +648,8 @@ impl StakePoolAccounts {
         let pool_fee_account = Keypair::new();
         let manager = Keypair::new();
         let staker = Keypair::new();
+        let treasury_fee_account = Keypair::new();
+        let validator_fee_account = Keypair::new();
 
         Self {
             stake_pool,
@@ -667,6 +681,16 @@ impl StakePoolAccounts {
             },
             sol_referral_fee: 50,
             max_validators: MAX_TEST_VALIDATORS,
+            treasury_account: treasury_fee_account,
+            validator_fee_account,
+            treasury_fee: state::Fee {
+                numerator: 1,
+                denominator: 100,
+            },
+            validator_fee: state::Fee {
+                numerator: 5,
+                denominator: 100,
+            },
         }
     }
 
@@ -721,6 +745,24 @@ impl StakePoolAccounts {
             &self.manager.pubkey(),
         )
         .await?;
+        create_token_account(
+            banks_client,
+            payer,
+            recent_blockhash,
+            &self.treasury_account,
+            &self.pool_mint.pubkey(),
+            &spl_stake_pool::id()
+        )
+        .await?;
+        create_token_account(
+            banks_client,
+            payer,
+            recent_blockhash,
+            &self.validator_fee_account,
+            &self.pool_mint.pubkey(),
+            &spl_stake_pool::id()
+        )
+        .await?;
         create_independent_stake_account(
             banks_client,
             payer,
@@ -754,6 +796,10 @@ impl StakePoolAccounts {
             &self.sol_deposit_fee,
             self.sol_referral_fee,
             self.max_validators,
+            &self.treasury_account.pubkey(),
+            &self.validator_fee_account.pubkey(),
+            &self.treasury_fee,
+            &self.validator_fee,
         )
         .await?;
 
@@ -1029,6 +1075,8 @@ impl StakePoolAccounts {
                 &self.reserve_stake.pubkey(),
                 &self.pool_fee_account.pubkey(),
                 &self.pool_mint.pubkey(),
+                &self.treasury_account.pubkey(),
+                &self.validator_fee_account.pubkey(),
                 &spl_token::id(),
             )],
             Some(&payer.pubkey()),
@@ -1087,6 +1135,8 @@ impl StakePoolAccounts {
                     &self.reserve_stake.pubkey(),
                     &self.pool_fee_account.pubkey(),
                     &self.pool_mint.pubkey(),
+                    &self.treasury_account.pubkey(),
+                    &self.validator_fee_account.pubkey(),
                     &spl_token::id(),
                 ),
                 instruction::cleanup_removed_validator_entries(

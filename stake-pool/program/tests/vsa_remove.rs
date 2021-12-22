@@ -774,6 +774,8 @@ async fn success_with_hijacked_transient_account() {
                 &stake_pool_accounts.reserve_stake.pubkey(),
                 &stake_pool_accounts.pool_fee_account.pubkey(),
                 &stake_pool_accounts.pool_mint.pubkey(),
+                &stake_pool_accounts.treasury_account.pubkey(),
+                &stake_pool_accounts.validator_fee_account.pubkey(),
                 &spl_token::id(),
             ),
             instruction::cleanup_removed_validator_entries(
