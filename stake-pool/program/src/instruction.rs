@@ -396,7 +396,7 @@ pub fn initialize(
     reserve_stake: &Pubkey,
     pool_mint: &Pubkey,
     manager_pool_account: &Pubkey,
-    treasury_account: &Pubkey,
+    treasury_fee_account: &Pubkey,
     validator_fee_account: &Pubkey,
     token_program_id: &Pubkey,
     deposit_authority: Option<Pubkey>,
@@ -427,7 +427,7 @@ pub fn initialize(
         AccountMeta::new_readonly(*reserve_stake, false),
         AccountMeta::new(*pool_mint, false),
         AccountMeta::new(*manager_pool_account, false),
-        AccountMeta::new_readonly(*treasury_account, false),
+        AccountMeta::new_readonly(*treasury_fee_account, false),
         AccountMeta::new_readonly(*validator_fee_account, false),
         AccountMeta::new_readonly(*token_program_id, false),
     ];
