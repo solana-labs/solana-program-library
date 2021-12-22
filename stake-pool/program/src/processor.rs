@@ -553,7 +553,9 @@ impl Processor {
         validator_list.header.max_validators = max_validators;
         validator_list.validators.clear();
 
-        if !rent.is_exempt(stake_pool_info.lamports(), stake_pool_info.data_len()) {
+        if !rent.is_exempt(
+            stake_pool_info.lamports(),
+            stake_pool_info.data_len()) {
             msg!("Stake pool not rent-exempt");
             return Err(ProgramError::AccountNotRentExempt);
         }
@@ -566,10 +568,28 @@ impl Processor {
             return Err(ProgramError::AccountNotRentExempt);
         }
 
+        if !rent.is_exempt(
+            treasury_fee_info.lamports(),
+            treasury_fee_info.data_len(),
+        ) {
+            msg!("Treasury not rent-exempt");
+            return Err(ProgramError::AccountNotRentExempt);
+        }
+
+        if !rent.is_exempt(
+            validator_fee_info.lamports(),
+            validator_fee_info.data_len(),
+        ) {
+            msg!("Validator`fee account not rent-exempt");
+            return Err(ProgramError::AccountNotRentExempt);
+        }
+
         // Numerator should be smaller than or equal to denominator (fee <= 1)
         if epoch_fee.numerator > epoch_fee.denominator
             || withdrawal_fee.numerator > withdrawal_fee.denominator
             || deposit_fee.numerator > deposit_fee.denominator
+            || treasury_fee.numerator > treasury_fee.denominator
+            || validator_fee.numerator > validator_fee.denominator
             || referral_fee > 100u8
         {
             return Err(StakePoolError::FeeTooHigh.into());
@@ -592,8 +612,17 @@ impl Processor {
             return Err(ProgramError::IncorrectProgramId);
         }
 
-        if *pool_mint_info.key
-            != spl_token::state::Account::unpack_from_slice(&manager_fee_info.data.borrow())?.mint
+        if treasury_fee_info.owner != token_program_info.key {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+
+        if validator_fee_info.owner != token_program_info.key {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+
+        if *pool_mint_info.key != spl_token::state::Account::unpack_from_slice(&manager_fee_info.data.borrow())?.mint 
+            || *pool_mint_info.key != spl_token::state::Account::unpack_from_slice(&treasury_fee_info.data.borrow())?.mint 
+            || *pool_mint_info.key != spl_token::state::Account::unpack_from_slice(&validator_fee_info.data.borrow())?.mint 
         {
             return Err(StakePoolError::WrongAccountMint.into());
         }
