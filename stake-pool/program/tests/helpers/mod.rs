@@ -631,7 +631,7 @@ pub struct StakePoolAccounts {
     pub treasury_fee_account: Keypair,
     pub validator_fee_account: Keypair,
     pub treasury_fee: state::Fee,
-    pub validator_fee: state::Fee
+    pub validator_fee: state::Fee,
 }
 
 impl StakePoolAccounts {
@@ -751,7 +751,7 @@ impl StakePoolAccounts {
             recent_blockhash,
             &self.treasury_fee_account,
             &self.pool_mint.pubkey(),
-            &spl_stake_pool::id()
+            &spl_stake_pool::id(),
         )
         .await?;
         create_token_account(
@@ -760,7 +760,7 @@ impl StakePoolAccounts {
             recent_blockhash,
             &self.validator_fee_account,
             &self.pool_mint.pubkey(),
-            &spl_stake_pool::id()
+            &spl_stake_pool::id(),
         )
         .await?;
         create_independent_stake_account(

@@ -7,8 +7,8 @@ use {
         instruction::{FundingType, PreferredValidatorType, StakePoolInstruction},
         minimum_reserve_lamports, minimum_stake_lamports,
         state::{
-            AccountType, Fee, FeeType, StakePool, StakeStatus, ValidatorList, ValidatorListHeader,
-            ValidatorStakeInfo, RateOfExchange
+            AccountType, Fee, FeeType, RateOfExchange, StakePool, StakeStatus, ValidatorList,
+            ValidatorListHeader, ValidatorStakeInfo,
         },
         AUTHORITY_DEPOSIT, AUTHORITY_WITHDRAW, MINIMUM_ACTIVE_STAKE, TRANSIENT_STAKE_SEED_PREFIX,
     },
@@ -486,6 +486,7 @@ impl Processor {
     }
 
     /// Processes `Initialize` instruction.
+    #[allow(clippy::too_many_arguments)]
     #[inline(never)] // needed due to stack size violation
     fn process_initialize(
         program_id: &Pubkey,
@@ -1704,16 +1705,16 @@ impl Processor {
             let reserve_stake = try_from_slice_unchecked::<stake::state::StakeState>(
                 &reserve_stake_info.data.borrow(),
             )?;
-            let mut total_lamports = if let stake::state::StakeState::Initialized(meta) = reserve_stake
-            {
-                reserve_stake_info
-                    .lamports()
-                    .checked_sub(minimum_reserve_lamports(&meta))
-                    .ok_or(StakePoolError::CalculationFailure)?
-            } else {
-                msg!("Reserve stake account in unknown state, aborting");
-                return Err(StakePoolError::WrongStakeState.into());
-            };
+            let mut total_lamports =
+                if let stake::state::StakeState::Initialized(meta) = reserve_stake {
+                    reserve_stake_info
+                        .lamports()
+                        .checked_sub(minimum_reserve_lamports(&meta))
+                        .ok_or(StakePoolError::CalculationFailure)?
+                } else {
+                    msg!("Reserve stake account in unknown state, aborting");
+                    return Err(StakePoolError::WrongStakeState.into());
+                };
             for validator_stake_record in validator_list.iter::<ValidatorStakeInfo>() {
                 if validator_stake_record.last_update_epoch < clock.epoch {
                     return Err(StakePoolError::StakeListOutOfDate.into());
@@ -1799,18 +1800,16 @@ impl Processor {
             let pool_mint = Mint::unpack_from_slice(&pool_mint_info.data.borrow())?;
             stake_pool.pool_token_supply = pool_mint.supply;
 
-            stake_pool.rate_of_exchange = 
-            if stake_pool.total_lamports == stake_pool.pool_token_supply                        // TODO  TODO TODO TODO TODO Если 1 лампорт и 2 токена !!!!!!!!!!!!!!!!!
+            stake_pool.rate_of_exchange = if stake_pool.total_lamports == stake_pool.pool_token_supply                        // TODO  TODO TODO TODO TODO Если 1 лампорт и 2 токена !!!!!!!!!!!!!!!!!
             || stake_pool.pool_token_supply == 0
-            || stake_pool.total_lamports == 0 {
+            || stake_pool.total_lamports == 0
+            {
                 None
             } else {
-                Some(
-                    RateOfExchange {
-                        denominator: stake_pool.pool_token_supply,
-                        numerator: stake_pool.total_lamports
-                    }
-                )
+                Some(RateOfExchange {
+                    denominator: stake_pool.pool_token_supply,
+                    numerator: stake_pool.total_lamports,
+                })
             };
 
             stake_pool.serialize(&mut *stake_pool_info.data.borrow_mut())?;

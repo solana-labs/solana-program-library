@@ -92,7 +92,7 @@ async fn setup(
         treasury_fee_account: stake_pool_accounts.treasury_fee_account.pubkey(),
         treasury_fee: Fee::default(),
         validator_fee_account: stake_pool_accounts.validator_fee_account.pubkey(),
-        validator_fee: Fee::default()
+        validator_fee: Fee::default(),
     };
 
     let mut validator_list = ValidatorList::new(max_validators);

@@ -341,7 +341,7 @@ async fn fail_with_wrong_mint_authority() {
         &stake_pool_accounts.treasury_fee_account.pubkey(),
         &stake_pool_accounts.validator_fee_account.pubkey(),
         &stake_pool_accounts.treasury_fee,
-        &stake_pool_accounts.validator_fee
+        &stake_pool_accounts.validator_fee,
     )
     .await
     .err()
@@ -436,7 +436,7 @@ async fn fail_with_freeze_authority() {
         &stake_pool_accounts.treasury_fee_account.pubkey(),
         &stake_pool_accounts.validator_fee_account.pubkey(),
         &stake_pool_accounts.treasury_fee,
-        &stake_pool_accounts.validator_fee
+        &stake_pool_accounts.validator_fee,
     )
     .await
     .err()
@@ -717,7 +717,7 @@ async fn fail_with_wrong_fee_account() {
         &stake_pool_accounts.treasury_fee_account.pubkey(),
         &stake_pool_accounts.validator_fee_account.pubkey(),
         &stake_pool_accounts.treasury_fee,
-        &stake_pool_accounts.validator_fee
+        &stake_pool_accounts.validator_fee,
     )
     .await
     .err()
@@ -1084,7 +1084,7 @@ async fn fail_with_pre_minted_pool_tokens() {
         &stake_pool_accounts.treasury_fee_account.pubkey(),
         &stake_pool_accounts.validator_fee_account.pubkey(),
         &stake_pool_accounts.treasury_fee,
-        &stake_pool_accounts.validator_fee
+        &stake_pool_accounts.validator_fee,
     )
     .await
     .err()
@@ -1155,7 +1155,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.treasury_fee_account.pubkey(),
             &stake_pool_accounts.validator_fee_account.pubkey(),
             &stake_pool_accounts.treasury_fee,
-            &stake_pool_accounts.validator_fee
+            &stake_pool_accounts.validator_fee,
         )
         .await
         .err()
@@ -1210,7 +1210,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.treasury_fee_account.pubkey(),
             &stake_pool_accounts.validator_fee_account.pubkey(),
             &stake_pool_accounts.treasury_fee,
-            &stake_pool_accounts.validator_fee
+            &stake_pool_accounts.validator_fee,
         )
         .await
         .err()
@@ -1268,7 +1268,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.treasury_fee_account.pubkey(),
             &stake_pool_accounts.validator_fee_account.pubkey(),
             &stake_pool_accounts.treasury_fee,
-            &stake_pool_accounts.validator_fee
+            &stake_pool_accounts.validator_fee,
         )
         .await
         .err()
@@ -1326,7 +1326,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.treasury_fee_account.pubkey(),
             &stake_pool_accounts.validator_fee_account.pubkey(),
             &stake_pool_accounts.treasury_fee,
-            &stake_pool_accounts.validator_fee
+            &stake_pool_accounts.validator_fee,
         )
         .await
         .err()

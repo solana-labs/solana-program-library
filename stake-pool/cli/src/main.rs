@@ -199,7 +199,7 @@ fn command_create_pool(
     mint_keypair: Option<Keypair>,
     reserve_keypair: Option<Keypair>,
     treasury_keypair: Option<Keypair>,
-    validator_fee_keypair: Option<Keypair>
+    validator_fee_keypair: Option<Keypair>,
 ) -> CommandResult {
     let reserve_keypair = reserve_keypair.unwrap_or_else(Keypair::new);
     println!("Creating reserve stake {}", reserve_keypair.pubkey());
@@ -211,7 +211,10 @@ fn command_create_pool(
     println!("Creating treasury {}", treasury_keypair.pubkey());
 
     let validator_fee_keypair = validator_fee_keypair.unwrap_or_else(Keypair::new);
-    println!("Creating validator`s fee {}", validator_fee_keypair.pubkey());
+    println!(
+        "Creating validator`s fee {}",
+        validator_fee_keypair.pubkey()
+    );
 
     let stake_pool_keypair = stake_pool_keypair.unwrap_or_else(Keypair::new);
 
@@ -253,7 +256,9 @@ fn command_create_pool(
         println!("Stake pool withdraw authority {}", withdraw_authority);
     }
 
-    let token_account_rent_exempt = config.rpc_client.get_minimum_balance_for_rent_exemption(spl_token::state::Account::LEN)?;
+    let token_account_rent_exempt = config
+        .rpc_client
+        .get_minimum_balance_for_rent_exemption(spl_token::state::Account::LEN)?;
 
     let mut instructions = vec![
         // Account for the stake pool reserve
@@ -301,7 +306,7 @@ fn command_create_pool(
             &spl_token::id(),
             &treasury_keypair.pubkey(),
             &mint_keypair.pubkey(),
-            &spl_stake_pool::id()
+            &spl_stake_pool::id(),
         )?,
         // Create validator fee account
         system_instruction::create_account(
@@ -316,7 +321,7 @@ fn command_create_pool(
             &spl_token::id(),
             &validator_fee_keypair.pubkey(),
             &mint_keypair.pubkey(),
-            &spl_stake_pool::id()
+            &spl_stake_pool::id(),
         )?,
     ];
 
@@ -384,7 +389,13 @@ fn command_create_pool(
             + fee_calculator.calculate_fee(setup_transaction.message())
             + fee_calculator.calculate_fee(initialize_transaction.message()),
     )?;
-    let mut setup_signers = vec![config.fee_payer.as_ref(), &mint_keypair, &reserve_keypair, &treasury_keypair, &validator_fee_keypair];
+    let mut setup_signers = vec![
+        config.fee_payer.as_ref(),
+        &mint_keypair,
+        &reserve_keypair,
+        &treasury_keypair,
+        &validator_fee_keypair,
+    ];
     unique_signers!(setup_signers);
     setup_transaction.sign(&setup_signers, recent_blockhash);
     send_transaction(config, setup_transaction)?;
@@ -1283,8 +1294,9 @@ fn prepare_withdraw_accounts(
             continue;
         }
 
-        let available_for_withdrawal_wo_fee =
-            stake_pool.convert_amount_of_lamports_to_amount_of_pool_tokens(lamports).unwrap();
+        let available_for_withdrawal_wo_fee = stake_pool
+            .convert_amount_of_lamports_to_amount_of_pool_tokens(lamports)
+            .unwrap();
 
         let available_for_withdrawal = if skip_fee {
             available_for_withdrawal_wo_fee
@@ -2759,7 +2771,7 @@ fn main() {
                 mint_keypair,
                 reserve_keypair,
                 treasury_keypair,
-                validator_fee_keypair
+                validator_fee_keypair,
             )
         }
         ("add-validator", Some(arg_matches)) => {

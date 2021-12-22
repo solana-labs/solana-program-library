@@ -166,42 +166,40 @@ pub struct StakePool {
     pub validator_fee_account: Pubkey,
 
     /// Fee assessed on taking rewards for validators
-    pub validator_fee: Fee
+    pub validator_fee: Fee,
 }
 impl StakePool {
     /// calculate the pool tokens that should be minted from lamports
     #[inline]
-    pub fn convert_amount_of_lamports_to_amount_of_pool_tokens(&self, stake_lamports: u64) -> Option<u64> {
+    pub fn convert_amount_of_lamports_to_amount_of_pool_tokens(
+        &self,
+        stake_lamports: u64,
+    ) -> Option<u64> {
         match self.rate_of_exchange {
-            Some(ref rate_of_exchange) => {
-                u64::try_from(
-                    (stake_lamports as u128)
-                        .checked_mul(rate_of_exchange.denominator as u128)?
-                        .checked_div(rate_of_exchange.numerator as u128)?
-                )
-                .ok()
-            },
-            None => {
-                Some(stake_lamports)
-            }
+            Some(ref rate_of_exchange) => u64::try_from(
+                (stake_lamports as u128)
+                    .checked_mul(rate_of_exchange.denominator as u128)?
+                    .checked_div(rate_of_exchange.numerator as u128)?,
+            )
+            .ok(),
+            None => Some(stake_lamports),
         }
     }
 
     /// calculate lamports amount on withdrawal
     #[inline]
-    pub fn convert_amount_of_pool_tokens_to_amount_of_lamports(&self, pool_tokens: u64) -> Option<u64> {
+    pub fn convert_amount_of_pool_tokens_to_amount_of_lamports(
+        &self,
+        pool_tokens: u64,
+    ) -> Option<u64> {
         match self.rate_of_exchange {
-            Some(ref rate_of_exchange) => {
-                u64::try_from(
-                    (pool_tokens as u128)
-                        .checked_mul(rate_of_exchange.numerator as u128)?
-                        .checked_div(rate_of_exchange.denominator as u128)?
-                )
-                .ok()
-            },
-            None => {
-                Some(pool_tokens)
-            }
+            Some(ref rate_of_exchange) => u64::try_from(
+                (pool_tokens as u128)
+                    .checked_mul(rate_of_exchange.numerator as u128)?
+                    .checked_div(rate_of_exchange.denominator as u128)?,
+            )
+            .ok(),
+            None => Some(pool_tokens),
         }
     }
 
@@ -846,7 +844,7 @@ pub struct RateOfExchange {
     /// denominator of the fee ratio, total supply of pool tokens
     pub denominator: u64,
     /// numerator of the fee ratio, total lamports under management.
-    pub numerator: u64
+    pub numerator: u64,
 }
 
 impl fmt::Display for RateOfExchange {
@@ -867,9 +865,7 @@ mod test {
         solana_program::borsh::{
             get_instance_packed_len, get_packed_len, try_from_slice_unchecked,
         },
-        solana_program::{
-            native_token::LAMPORTS_PER_SOL,
-        },
+        solana_program::native_token::LAMPORTS_PER_SOL,
     };
 
     fn uninitialized_validator_list() -> ValidatorList {
@@ -1058,7 +1054,9 @@ mod test {
             ..StakePool::default()
         };
         let reward_lamports = 10 * LAMPORTS_PER_SOL;
-        let pool_token_fee = stake_pool.calc_pool_tokens_epoch_fee(reward_lamports).unwrap();
+        let pool_token_fee = stake_pool
+            .calc_pool_tokens_epoch_fee(reward_lamports)
+            .unwrap();
 
         let fee_lamports = stake_pool
             .convert_amount_of_pool_tokens_to_amount_of_lamports(pool_token_fee)
@@ -1069,7 +1067,12 @@ mod test {
     #[test]
     fn zero_withdraw_calculation() {
         let stake_pool = StakePool::default();
-        assert_eq!(stake_pool.convert_amount_of_pool_tokens_to_amount_of_lamports(0).unwrap(), 0);
+        assert_eq!(
+            stake_pool
+                .convert_amount_of_pool_tokens_to_amount_of_lamports(0)
+                .unwrap(),
+            0
+        );
     }
 
     // #[test]
