@@ -302,6 +302,9 @@ pub enum ExtensionType {
     AccountTransferFee,
     /// Includes an optional mint close authority
     MintCloseAuthority,
+    /// Padding extension used to make an account exactly Multisig::LEN, used for testing
+    #[cfg(test)]
+    MintPaddingTest = u16::MAX,
 }
 impl TryFrom<&[u8]> for ExtensionType {
     type Error = ProgramError;
@@ -325,6 +328,8 @@ impl ExtensionType {
             ExtensionType::MintTransferFee => pod_get_packed_len::<MintTransferFee>(),
             ExtensionType::AccountTransferFee => pod_get_packed_len::<AccountTransferFee>(),
             ExtensionType::MintCloseAuthority => pod_get_packed_len::<MintCloseAuthority>(),
+            #[cfg(test)]
+            ExtensionType::MintPaddingTest => pod_get_packed_len::<MintPaddingTest>(),
         }
     }
 }
@@ -339,14 +344,14 @@ pub fn get_account_len(extension_types: &[ExtensionType]) -> usize {
                 .saturating_add(pod_get_packed_len::<Length>())
         })
         .sum();
-    let total_extension_size = if extension_size == Multisig::LEN {
-        extension_size.saturating_add(size_of::<ExtensionType>())
-    } else {
-        extension_size
-    };
-    total_extension_size
+    let account_size = extension_size
         .saturating_add(Account::LEN)
-        .saturating_add(size_of::<AccountType>())
+        .saturating_add(size_of::<AccountType>());
+    if account_size == Multisig::LEN {
+        account_size.saturating_add(size_of::<ExtensionType>())
+    } else {
+        account_size
+    }
 }
 
 /// Trait for base states, specifying the associated enum
@@ -428,6 +433,27 @@ impl Extension for AccountTransferFee {
     const ACCOUNT_TYPE: AccountType = AccountType::Account;
 }
 
+/// Padding a mint account to be exactly Multisig::LEN.
+/// We need to pad 185 bytes, since Multisig::LEN = 355, Account::LEN = 165,
+/// size_of AccountType = 1, size_of ExtensionType = 2, size_of Length = 2.
+/// 355 - 165 - 1 - 2 - 2 = 185
+#[cfg(test)]
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
+pub struct MintPaddingTest {
+    /// Largest value under 185 that implements Pod
+    pub padding1: [u8; 128],
+    /// Largest value under 57 that implements Pod
+    pub padding2: [u8; 48],
+    /// Exact value needed to finish the padding
+    pub padding3: [u8; 9],
+}
+#[cfg(test)]
+impl Extension for MintPaddingTest {
+    const TYPE: ExtensionType = ExtensionType::MintPaddingTest;
+    const ACCOUNT_TYPE: AccountType = AccountType::Mint;
+}
+
 #[cfg(test)]
 mod test {
     use {
@@ -437,7 +463,7 @@ mod test {
     };
 
     #[test]
-    fn mint_with_extensions_pack_unpack() {
+    fn mint_with_extension_pack_unpack() {
         let mint_size = get_account_len(&[ExtensionType::MintCloseAuthority]);
         let mut buffer = vec![0; mint_size];
 
@@ -516,5 +542,34 @@ mod test {
             StateWithExtensions::<Account>::unpack(&buffer),
             Err(ProgramError::InvalidAccountData),
         );
+    }
+
+    #[test]
+    fn mint_with_multisig_len() {
+        let mint_size = get_account_len(&[ExtensionType::MintPaddingTest]);
+        assert_eq!(mint_size, Multisig::LEN + size_of::<ExtensionType>());
+        let mut buffer = vec![0; mint_size];
+
+        // write base mint
+        let mut state = StateWithExtensionsMut::<Mint>::unpack_unchecked(&mut buffer).unwrap();
+        let base = TEST_MINT;
+        state.pack_base(base);
+        assert_eq!(state.base, base);
+        state.init_account_type();
+
+        // write padding
+        let extension = state.init_extension::<MintPaddingTest>().unwrap();
+        extension.padding1 = [1; 128];
+        extension.padding2 = [1; 48];
+        extension.padding3 = [1; 9];
+
+        // check raw buffer
+        let mut expect = TEST_MINT_SLICE.to_vec();
+        expect.extend_from_slice(&[0; Account::LEN - Mint::LEN]); // padding
+        expect.push(AccountType::Mint.into());
+        expect.extend_from_slice(&(ExtensionType::MintPaddingTest as u16).to_le_bytes());
+        expect.extend_from_slice(&(pod_get_packed_len::<MintPaddingTest>() as u16).to_le_bytes());
+        expect.extend_from_slice(&vec![1; pod_get_packed_len::<MintPaddingTest>()]);
+        expect.extend_from_slice(&(ExtensionType::Uninitialized as u16).to_le_bytes());
     }
 }
