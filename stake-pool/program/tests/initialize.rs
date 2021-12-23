@@ -153,53 +153,123 @@ async fn fail_with_already_initialized_validator_list() {
 #[tokio::test]
 async fn fail_with_high_fee() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let mut stake_pool_accounts = StakePoolAccounts::new();
-    stake_pool_accounts.epoch_fee = state::Fee {
-        numerator: 100001,
-        denominator: 100000,
-    };
 
-    let transaction_error = stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
-        .await
-        .err()
-        .unwrap();
-    match transaction_error {
-        TransportError::TransactionError(TransactionError::InstructionError(
-            _,
-            InstructionError::Custom(error_index),
-        )) => {
-            let program_error = error::StakePoolError::FeeTooHigh as u32;
-            assert_eq!(error_index, program_error);
+    let denominator: u64 = 10;
+    let numerator: u64 = 11;
+
+    {
+        let mut stake_pool_accounts = StakePoolAccounts::new();
+        stake_pool_accounts.deposit_fee = state::Fee {
+            numerator,
+            denominator,
+        };
+
+        let transaction_error = stake_pool_accounts
+            .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
+            .await
+            .err()
+            .unwrap();
+        match transaction_error {
+            TransportError::TransactionError(TransactionError::InstructionError(
+                _,
+                InstructionError::Custom(error_index),
+            )) => {
+                let program_error = error::StakePoolError::FeeTooHigh as u32;
+                assert_eq!(error_index, program_error);
+            }
+            _ => panic!("Wrong error occurs while try to initialize stake pool with high fee"),
         }
-        _ => panic!("Wrong error occurs while try to initialize stake pool with high fee"),
     }
-}
+    {
+        let mut stake_pool_accounts = StakePoolAccounts::new();
+        stake_pool_accounts.epoch_fee = state::Fee {
+            numerator,
+            denominator,
+        };
 
-#[tokio::test]
-async fn fail_with_high_withdrawal_fee() {
-    let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let mut stake_pool_accounts = StakePoolAccounts::new();
-    stake_pool_accounts.withdrawal_fee = state::Fee {
-        numerator: 100_001,
-        denominator: 100_000,
-    };
-
-    let transaction_error = stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
-        .await
-        .err()
-        .unwrap();
-    match transaction_error {
-        TransportError::TransactionError(TransactionError::InstructionError(
-            _,
-            InstructionError::Custom(error_index),
-        )) => {
-            let program_error = error::StakePoolError::FeeTooHigh as u32;
-            assert_eq!(error_index, program_error);
+        let transaction_error = stake_pool_accounts
+            .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
+            .await
+            .err()
+            .unwrap();
+        match transaction_error {
+            TransportError::TransactionError(TransactionError::InstructionError(
+                _,
+                InstructionError::Custom(error_index),
+            )) => {
+                let program_error = error::StakePoolError::FeeTooHigh as u32;
+                assert_eq!(error_index, program_error);
+            }
+            _ => panic!("Wrong error occurs while try to initialize stake pool with high fee"),
         }
-        _ => {
-            panic!("Wrong error occurs while try to initialize stake pool with high withdrawal fee")
+    }
+    {
+        let mut stake_pool_accounts = StakePoolAccounts::new();
+        stake_pool_accounts.withdrawal_fee = state::Fee {
+            numerator,
+            denominator,
+        };
+
+        let transaction_error = stake_pool_accounts
+            .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
+            .await
+            .err()
+            .unwrap();
+        match transaction_error {
+            TransportError::TransactionError(TransactionError::InstructionError(
+                _,
+                InstructionError::Custom(error_index),
+            )) => {
+                let program_error = error::StakePoolError::FeeTooHigh as u32;
+                assert_eq!(error_index, program_error);
+            }
+            _ => panic!("Wrong error occurs while try to initialize stake pool with high fee"),
+        }
+    }
+    {
+        let mut stake_pool_accounts = StakePoolAccounts::new();
+        stake_pool_accounts.treasury_fee = state::Fee {
+            numerator,
+            denominator,
+        };
+
+        let transaction_error = stake_pool_accounts
+            .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
+            .await
+            .err()
+            .unwrap();
+        match transaction_error {
+            TransportError::TransactionError(TransactionError::InstructionError(
+                _,
+                InstructionError::Custom(error_index),
+            )) => {
+                let program_error = error::StakePoolError::FeeTooHigh as u32;
+                assert_eq!(error_index, program_error);
+            }
+            _ => panic!("Wrong error occurs while try to initialize stake pool with high fee"),
+        }
+    }
+    {
+        let mut stake_pool_accounts = StakePoolAccounts::new();
+        stake_pool_accounts.validator_fee = state::Fee {
+            numerator,
+            denominator,
+        };
+
+        let transaction_error = stake_pool_accounts
+            .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
+            .await
+            .err()
+            .unwrap();
+        match transaction_error {
+            TransportError::TransactionError(TransactionError::InstructionError(
+                _,
+                InstructionError::Custom(error_index),
+            )) => {
+                let program_error = error::StakePoolError::FeeTooHigh as u32;
+                assert_eq!(error_index, program_error);
+            }
+            _ => panic!("Wrong error occurs while try to initialize stake pool with high fee"),
         }
     }
 }

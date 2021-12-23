@@ -553,9 +553,7 @@ impl Processor {
         validator_list.header.max_validators = max_validators;
         validator_list.validators.clear();
 
-        if !rent.is_exempt(
-            stake_pool_info.lamports(),
-            stake_pool_info.data_len()) {
+        if !rent.is_exempt(stake_pool_info.lamports(), stake_pool_info.data_len()) {
             msg!("Stake pool not rent-exempt");
             return Err(ProgramError::AccountNotRentExempt);
         }
@@ -568,18 +566,12 @@ impl Processor {
             return Err(ProgramError::AccountNotRentExempt);
         }
 
-        if !rent.is_exempt(
-            treasury_fee_info.lamports(),
-            treasury_fee_info.data_len(),
-        ) {
+        if !rent.is_exempt(treasury_fee_info.lamports(), treasury_fee_info.data_len()) {
             msg!("Treasury not rent-exempt");
             return Err(ProgramError::AccountNotRentExempt);
         }
 
-        if !rent.is_exempt(
-            validator_fee_info.lamports(),
-            validator_fee_info.data_len(),
-        ) {
+        if !rent.is_exempt(validator_fee_info.lamports(), validator_fee_info.data_len()) {
             msg!("Validator`fee account not rent-exempt");
             return Err(ProgramError::AccountNotRentExempt);
         }
@@ -620,9 +612,14 @@ impl Processor {
             return Err(ProgramError::IncorrectProgramId);
         }
 
-        if *pool_mint_info.key != spl_token::state::Account::unpack_from_slice(&manager_fee_info.data.borrow())?.mint 
-            || *pool_mint_info.key != spl_token::state::Account::unpack_from_slice(&treasury_fee_info.data.borrow())?.mint 
-            || *pool_mint_info.key != spl_token::state::Account::unpack_from_slice(&validator_fee_info.data.borrow())?.mint 
+        if *pool_mint_info.key
+            != spl_token::state::Account::unpack_from_slice(&manager_fee_info.data.borrow())?.mint
+            || *pool_mint_info.key
+                != spl_token::state::Account::unpack_from_slice(&treasury_fee_info.data.borrow())?
+                    .mint
+            || *pool_mint_info.key
+                != spl_token::state::Account::unpack_from_slice(&validator_fee_info.data.borrow())?
+                    .mint
         {
             return Err(StakePoolError::WrongAccountMint.into());
         }
@@ -1829,7 +1826,7 @@ impl Processor {
             let pool_mint = Mint::unpack_from_slice(&pool_mint_info.data.borrow())?;
             stake_pool.pool_token_supply = pool_mint.supply;
 
-            stake_pool.rate_of_exchange = if stake_pool.total_lamports == stake_pool.pool_token_supply                        // TODO  TODO TODO TODO TODO Если 1 лампорт и 2 токена !!!!!!!!!!!!!!!!!
+            stake_pool.rate_of_exchange = if stake_pool.total_lamports == stake_pool.pool_token_supply    // TODO  TODO TODO TODO TODO Если 1 лампорт и 2 токена !!!!!!!!!!!!!!!!!
             || stake_pool.pool_token_supply == 0
             || stake_pool.total_lamports == 0
             {

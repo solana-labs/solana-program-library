@@ -32,9 +32,20 @@ async fn setup(fee: Option<Fee>) -> (ProgramTestContext, StakePoolAccounts, Fee)
         )
         .await
         .unwrap();
+
+    let mut new_withdrawal_fee_numerator: u64 = stake_pool_accounts
+        .withdrawal_fee
+        .numerator
+        .checked_mul(spl_stake_pool::MAX_WITHDRAWAL_FEE_INCREASE.numerator)
+        .unwrap()
+        .checked_div(spl_stake_pool::MAX_WITHDRAWAL_FEE_INCREASE.denominator)
+        .unwrap();
+    if new_withdrawal_fee_numerator != 0 {
+        new_withdrawal_fee_numerator = new_withdrawal_fee_numerator - 1;
+    }
     let new_withdrawal_fee = Fee {
-        numerator: 4,
-        denominator: 1000,
+        numerator: new_withdrawal_fee_numerator,
+        denominator: stake_pool_accounts.withdrawal_fee.denominator,
     };
 
     (context, stake_pool_accounts, new_withdrawal_fee)
@@ -431,7 +442,7 @@ async fn fail_wrong_manager() {
 
 #[tokio::test]
 async fn fail_high_withdrawal_fee() {
-    let (mut context, stake_pool_accounts, _new_stake_withdrawal_fee) = setup(None).await;
+    let (mut context, stake_pool_accounts, _) = setup(None).await;
 
     let new_stake_withdrawal_fee = Fee {
         numerator: 11,
@@ -467,11 +478,21 @@ async fn fail_high_withdrawal_fee() {
 
 #[tokio::test]
 async fn fail_high_stake_fee_increase() {
-    let (mut context, stake_pool_accounts, _new_stake_withdrawal_fee) = setup(None).await;
+    let (mut context, stake_pool_accounts, _) = setup(None).await;
+
+    let new_withdrawal_fee_numerator: u64 = stake_pool_accounts
+        .withdrawal_fee
+        .numerator
+        .checked_mul(spl_stake_pool::MAX_WITHDRAWAL_FEE_INCREASE.numerator)
+        .unwrap()
+        .checked_div(spl_stake_pool::MAX_WITHDRAWAL_FEE_INCREASE.denominator)
+        .unwrap()
+        + 1;
     let new_withdrawal_fee = Fee {
-        numerator: 46,
-        denominator: 10_000,
+        numerator: new_withdrawal_fee_numerator,
+        denominator: stake_pool_accounts.withdrawal_fee.denominator,
     };
+
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::set_fee(
             &id(),
@@ -502,7 +523,7 @@ async fn fail_high_stake_fee_increase() {
 
 #[tokio::test]
 async fn fail_high_sol_fee_increase() {
-    let (mut context, stake_pool_accounts, _new_stake_withdrawal_fee) = setup(None).await;
+    let (mut context, stake_pool_accounts, _) = setup(None).await;
     let new_withdrawal_fee = Fee {
         numerator: 46,
         denominator: 10_000,
@@ -538,7 +559,7 @@ async fn fail_high_sol_fee_increase() {
 
 #[tokio::test]
 async fn fail_high_stake_fee_increase_from_0() {
-    let (mut context, stake_pool_accounts, _new_stake_withdrawal_fee) = setup(Some(Fee {
+    let (mut context, stake_pool_accounts, _) = setup(Some(Fee {
         numerator: 0,
         denominator: 1,
     }))
@@ -577,7 +598,7 @@ async fn fail_high_stake_fee_increase_from_0() {
 
 #[tokio::test]
 async fn fail_high_sol_fee_increase_from_0() {
-    let (mut context, stake_pool_accounts, _new_stake_withdrawal_fee) = setup(Some(Fee {
+    let (mut context, stake_pool_accounts, _) = setup(Some(Fee {
         numerator: 0,
         denominator: 1,
     }))

@@ -651,6 +651,11 @@ impl StakePoolAccounts {
         let treasury_fee_account = Keypair::new();
         let validator_fee_account = Keypair::new();
 
+        let fee = state::Fee {
+            numerator: 1,
+            denominator: 1000,
+        };
+
         Self {
             stake_pool,
             validator_list,
@@ -662,35 +667,17 @@ impl StakePoolAccounts {
             withdraw_authority,
             stake_deposit_authority,
             stake_deposit_authority_keypair: None,
-            epoch_fee: state::Fee {
-                numerator: 1,
-                denominator: 100,
-            },
-            withdrawal_fee: state::Fee {
-                numerator: 3,
-                denominator: 1000,
-            },
-            deposit_fee: state::Fee {
-                numerator: 1,
-                denominator: 1000,
-            },
+            epoch_fee: fee,
+            withdrawal_fee: fee,
+            deposit_fee: fee,
             referral_fee: 25,
-            sol_deposit_fee: state::Fee {
-                numerator: 3,
-                denominator: 100,
-            },
+            sol_deposit_fee: fee,
             sol_referral_fee: 50,
             max_validators: MAX_TEST_VALIDATORS,
             treasury_fee_account: treasury_fee_account,
             validator_fee_account,
-            treasury_fee: state::Fee {
-                numerator: 1,
-                denominator: 100,
-            },
-            validator_fee: state::Fee {
-                numerator: 5,
-                denominator: 100,
-            },
+            treasury_fee: fee,
+            validator_fee: fee,
         }
     }
 

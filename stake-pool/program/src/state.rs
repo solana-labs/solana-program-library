@@ -493,6 +493,8 @@ impl StakePool {
             }
             FeeType::SolDeposit(new_fee) => self.sol_deposit_fee = *new_fee,
             FeeType::StakeDeposit(new_fee) => self.stake_deposit_fee = *new_fee,
+            FeeType::Treasury(new_fee) => self.treasury_fee = *new_fee,
+            FeeType::Validator(new_fee) => self.validator_fee = *new_fee,
         };
         Ok(())
     }
@@ -806,6 +808,10 @@ pub enum FeeType {
     StakeDeposit(Fee),
     /// SOL withdrawal fee
     SolWithdrawal(Fee),
+    /// Fee for treasury from reward
+    Treasury(Fee),
+    /// Fee for validators from reward
+    Validator(Fee),
 }
 
 impl FeeType {
@@ -819,6 +825,8 @@ impl FeeType {
             Self::SolWithdrawal(fee) => fee.numerator > fee.denominator,
             Self::SolDeposit(fee) => fee.numerator > fee.denominator,
             Self::StakeDeposit(fee) => fee.numerator > fee.denominator,
+            Self::Treasury(fee) => fee.numerator > fee.denominator,
+            Self::Validator(fee) => fee.numerator > fee.denominator,
         };
         if too_high {
             msg!("Fee greater than 100%: {:?}", self);
@@ -832,7 +840,11 @@ impl FeeType {
     pub fn can_only_change_next_epoch(&self) -> bool {
         matches!(
             self,
-            Self::StakeWithdrawal(_) | Self::SolWithdrawal(_) | Self::Epoch(_)
+            Self::StakeWithdrawal(_)
+                | Self::SolWithdrawal(_)
+                | Self::Epoch(_)
+                | Self::Treasury(_)
+                | Self::Validator(_)
         )
     }
 }

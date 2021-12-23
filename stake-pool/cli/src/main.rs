@@ -2572,7 +2572,7 @@ fn main() {
             .arg(Arg::with_name("fee_type")
                 .index(2)
                 .value_name("FEE_TYPE")
-                .possible_values(&["epoch", "stake-deposit", "sol-deposit", "stake-withdrawal", "sol-withdrawal"]) // FeeType enum
+                .possible_values(&["epoch", "stake-deposit", "sol-deposit", "stake-withdrawal", "sol-withdrawal", "treasury", "validator"]) // FeeType enum
                 .takes_value(true)
                 .required(true)
                 .help("Fee type to be updated."),
@@ -2963,6 +2963,12 @@ fn main() {
                     &stake_pool_address,
                     FeeType::SolWithdrawal(new_fee),
                 ),
+                "treasury" => {
+                    command_set_fee(&config, &stake_pool_address, FeeType::Treasury(new_fee))
+                }
+                "validator" => {
+                    command_set_fee(&config, &stake_pool_address, FeeType::Validator(new_fee))
+                }
                 _ => unreachable!(),
             }
         }
