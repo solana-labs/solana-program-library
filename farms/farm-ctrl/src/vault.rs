@@ -1,8 +1,12 @@
 //! Handlers for feature toggling commands
 
 use {
-    crate::config::Config, log::info, solana_farm_client::client::FarmClient,
-    solana_farm_sdk::string::to_pretty_json,
+    crate::config::Config,
+    log::info,
+    solana_farm_client::client::FarmClient,
+    solana_farm_sdk::{string::to_pretty_json, token::TokenSelector},
+    solana_sdk::pubkey::Pubkey,
+    std::str::FromStr,
 };
 
 pub fn init(client: &FarmClient, config: &Config, vault_names: &str, step: u64) {
@@ -27,6 +31,34 @@ pub fn shutdown(client: &FarmClient, config: &Config, vault_names: &str) {
             "Signature: {}",
             client
                 .shutdown_vault(config.keypair.as_ref(), vault)
+                .unwrap()
+        );
+    }
+    info!("Done.")
+}
+
+pub fn withdraw_fees(
+    client: &FarmClient,
+    config: &Config,
+    vault_names: &str,
+    fee_token: TokenSelector,
+    amount: f64,
+    receiver: &str,
+) {
+    let receiver_key = Pubkey::from_str(receiver).unwrap();
+    let vaults = vault_names.split(',').collect::<Vec<_>>();
+    for vault in vaults {
+        info!("Withdrawing fees from the Vault {}...", vault);
+        info!(
+            "Signature: {}",
+            client
+                .withdraw_fees_vault(
+                    config.keypair.as_ref(),
+                    vault,
+                    fee_token,
+                    amount,
+                    &receiver_key
+                )
                 .unwrap()
         );
     }

@@ -18,29 +18,29 @@ pub fn print(client: &FarmClient, config: &Config, target: &str, object: &str) {
         "vault" => {
             print_object(
                 config,
-                &client.get_vault_ref(object).unwrap(),
-                &client.get_vault(object).unwrap(),
+                &client.get_vault_ref(&object.to_uppercase()).unwrap(),
+                &client.get_vault(&object.to_uppercase()).unwrap(),
             );
         }
         "farm" => {
             print_object(
                 config,
-                &client.get_farm_ref(object).unwrap(),
-                &client.get_farm(object).unwrap(),
+                &client.get_farm_ref(&object.to_uppercase()).unwrap(),
+                &client.get_farm(&object.to_uppercase()).unwrap(),
             );
         }
         "pool" => {
             print_object(
                 config,
-                &client.get_pool_ref(object).unwrap(),
-                &client.get_pool(object).unwrap(),
+                &client.get_pool_ref(&object.to_uppercase()).unwrap(),
+                &client.get_pool(&object.to_uppercase()).unwrap(),
             );
         }
         "token" => {
             print_object(
                 config,
-                &client.get_token_ref(object).unwrap(),
-                &client.get_token(object).unwrap(),
+                &client.get_token_ref(&object.to_uppercase()).unwrap(),
+                &client.get_token(&object.to_uppercase()).unwrap(),
             );
         }
         _ => {

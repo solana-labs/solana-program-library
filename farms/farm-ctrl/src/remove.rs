@@ -11,29 +11,44 @@ pub fn remove(client: &FarmClient, config: &Config, target: StorageType, object:
     match target {
         StorageType::Program => {
             client
-                .remove_program_id(config.keypair.as_ref(), object)
+                .remove_program_id(config.keypair.as_ref(), object, None)
                 .unwrap();
         }
         StorageType::Vault => {
             client
-                .remove_vault(config.keypair.as_ref(), object)
+                .remove_vault(config.keypair.as_ref(), &object.to_uppercase())
                 .unwrap();
         }
         StorageType::Farm => {
-            client.remove_farm(config.keypair.as_ref(), object).unwrap();
+            client
+                .remove_farm(config.keypair.as_ref(), &object.to_uppercase())
+                .unwrap();
         }
         StorageType::Pool => {
-            client.remove_pool(config.keypair.as_ref(), object).unwrap();
+            client
+                .remove_pool(config.keypair.as_ref(), &object.to_uppercase())
+                .unwrap();
         }
         StorageType::Token => {
             client
-                .remove_token(config.keypair.as_ref(), object)
+                .remove_token(config.keypair.as_ref(), &object.to_uppercase())
                 .unwrap();
         }
         _ => {
             unreachable!();
         }
     }
+
+    info!("Done.")
+}
+
+pub fn remove_ref(client: &FarmClient, config: &Config, target: StorageType, object: &str) {
+    info!("Removing {} reference {}...", target, object);
+
+    let refdb_index = client.get_refdb_index(&target.to_string(), object).unwrap();
+    client
+        .remove_reference(config.keypair.as_ref(), target, object, refdb_index)
+        .unwrap();
 
     info!("Done.")
 }
@@ -46,7 +61,7 @@ pub fn remove_all(client: &FarmClient, config: &Config, target: StorageType) {
             let storage = client.get_program_ids().unwrap();
             for (name, _) in storage.iter() {
                 client
-                    .remove_program_id(config.keypair.as_ref(), name)
+                    .remove_program_id(config.keypair.as_ref(), name, None)
                     .unwrap();
             }
         }

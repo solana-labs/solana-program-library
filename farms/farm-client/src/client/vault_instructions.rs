@@ -3,10 +3,12 @@
 use {
     crate::error::FarmClientError,
     solana_farm_sdk::{
-        instruction::vault::VaultInstruction, pool::PoolRoute, vault::VaultStrategy,
+        instruction::vault::VaultInstruction, pool::PoolRoute, token::TokenSelector,
+        vault::VaultStrategy,
     },
     solana_sdk::{
         instruction::{AccountMeta, Instruction},
+        program_error::ProgramError,
         pubkey::Pubkey,
     },
 };
@@ -279,6 +281,74 @@ impl FarmClient {
             data,
             accounts,
         })
+    }
+
+    /// Creates a new instruction for withdrawal collected fees from the Vault
+    pub fn new_instruction_withdraw_fees_vault(
+        &self,
+        admin_address: &Pubkey,
+        vault_name: &str,
+        fee_token: TokenSelector,
+        ui_amount: f64,
+        receiver: &Pubkey,
+    ) -> Result<Instruction, FarmClientError> {
+        // get vault info
+        let vault = self.get_vault(vault_name)?;
+        let vault_ref = self.get_vault_ref(vault_name)?;
+
+        // fill in accounts and instruction data
+        let mut inst = Instruction {
+            program_id: vault.vault_program_id,
+            data: Vec::<u8>::new(),
+            accounts: vec![
+                AccountMeta::new_readonly(*admin_address, true),
+                AccountMeta::new_readonly(vault_ref, false),
+                AccountMeta::new(vault.info_account, false),
+                AccountMeta::new(vault.vault_authority, false),
+                AccountMeta::new_readonly(spl_token::id(), false),
+                if fee_token == TokenSelector::TokenA {
+                    AccountMeta::new(
+                        vault
+                            .fees_account_a
+                            .ok_or(ProgramError::UninitializedAccount)?,
+                        false,
+                    )
+                } else {
+                    AccountMeta::new(
+                        vault
+                            .fees_account_b
+                            .ok_or(ProgramError::UninitializedAccount)?,
+                        false,
+                    )
+                },
+                AccountMeta::new(*receiver, false),
+            ],
+        };
+
+        let fee_decimals =
+            if let VaultStrategy::StakeLpCompoundRewards { farm_id_ref, .. } = vault.strategy {
+                let farm = self.get_farm_by_ref(&farm_id_ref)?;
+                if fee_token == TokenSelector::TokenA {
+                    let token_a_reward = self
+                        .get_token_by_ref_from_cache(&farm.reward_token_a_ref)?
+                        .unwrap();
+                    token_a_reward.decimals
+                } else {
+                    let token_b_reward = self
+                        .get_token_by_ref_from_cache(&farm.reward_token_b_ref)?
+                        .unwrap();
+                    token_b_reward.decimals
+                }
+            } else {
+                unreachable!();
+            };
+
+        inst.data = VaultInstruction::WithdrawFees {
+            amount: self.ui_amount_to_tokens_with_decimals(ui_amount, fee_decimals),
+        }
+        .to_vec()?;
+
+        Ok(inst)
     }
 
     /// Creates a new Vault Crank Instruction

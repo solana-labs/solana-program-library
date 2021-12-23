@@ -6,7 +6,7 @@ use {
     crate::{
         traits::{
             AddLiquidity, Crank, Features, Init, LockLiquidity, RemoveLiquidity, Shutdown,
-            UnlockLiquidity, UserInit,
+            UnlockLiquidity, UserInit, WithdrawFees,
         },
         vault_info::VaultInfo,
     },
@@ -205,6 +205,11 @@ pub fn process_instruction(
             log_start("Shutdown", &vault.name);
             check_authority(user_account, &vault)?;
             VaultInstruction::shutdown(&vault, accounts)?
+        }
+        VaultInstruction::WithdrawFees { amount } => {
+            log_start("WithdrawFees", &vault.name);
+            check_authority(user_account, &vault)?;
+            VaultInstruction::withdraw_fees(&vault, accounts, amount)?
         }
     }
 

@@ -13,3 +13,4 @@ pub mod remove_liquidity;
 pub mod shutdown;
 pub mod unlock_liquidity;
 pub mod user_init;
+pub mod withdraw_fees;
