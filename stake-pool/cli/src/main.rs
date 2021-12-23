@@ -306,7 +306,7 @@ fn command_create_pool(
             &spl_token::id(),
             &treasury_keypair.pubkey(),
             &mint_keypair.pubkey(),
-            &spl_stake_pool::id(),
+            &config.manager.pubkey(),
         )?,
         // Create validator fee account
         system_instruction::create_account(
@@ -321,7 +321,7 @@ fn command_create_pool(
             &spl_token::id(),
             &validator_fee_keypair.pubkey(),
             &mint_keypair.pubkey(),
-            &spl_stake_pool::id(),
+            &config.manager.pubkey(),
         )?,
     ];
 
