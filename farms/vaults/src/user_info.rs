@@ -212,6 +212,7 @@ impl<'a, 'b> UserInfo<'a, 'b> {
                 token_debt_total = data;
             }
         }
+        // safe to use unchecked sub
         if token_debt_total <= token_removed {
             token_debt_total = 0;
         } else {

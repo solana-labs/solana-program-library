@@ -21,6 +21,13 @@ pub enum TokenType {
     VtToken,
 }
 
+#[repr(u8)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq, TryFromPrimitive)]
+pub enum TokenSelector {
+    TokenA,
+    TokenB,
+}
+
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, PartialEq)]
 pub struct Token {
     #[serde(

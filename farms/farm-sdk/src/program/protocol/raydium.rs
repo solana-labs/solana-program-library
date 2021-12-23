@@ -347,11 +347,13 @@ pub fn get_pool_token_balances<'a, 'b>(
         let need_take_pnl_coin = u64::from_le_bytes(*array_ref![amm_id_data, pnl_coin_offset, 8]);
         let need_take_pnl_pc = u64::from_le_bytes(*array_ref![amm_id_data, pnl_pc_offset, 8]);
 
+        // safe to use unchecked sub
         token_a_balance -= if need_take_pnl_coin < token_a_balance {
             need_take_pnl_coin
         } else {
             token_a_balance
         };
+        // safe to use unchecked sub
         token_b_balance -= if need_take_pnl_pc < token_b_balance {
             need_take_pnl_pc
         } else {
