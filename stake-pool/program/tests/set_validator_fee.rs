@@ -30,10 +30,10 @@ async fn setup() -> (ProgramTestContext, StakePoolAccounts, Fee) {
         .await
         .unwrap();
 
-        let validator_fee = Fee {
-            numerator: 1,
-            denominator: 100
-        };
+    let validator_fee = Fee {
+        numerator: 1,
+        denominator: 100,
+    };
 
     (context, stake_pool_accounts, validator_fee)
 }
