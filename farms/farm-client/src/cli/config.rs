@@ -45,8 +45,7 @@ impl Config {
         Self {
             farm_client_url: farm_client_url.to_string(),
             commitment: CommitmentConfig::from_str(commitment).unwrap(),
-            keypair: signer_from_path(matches, keypair_path, "this transaction", &mut None)
-                .unwrap(),
+            keypair: signer_from_path(matches, keypair_path, "signer", &mut None).unwrap(),
             no_pretty_print: matches.is_present("no_pretty_print"),
         }
     }
@@ -125,15 +124,9 @@ fn get_integer_arg(name: &str) -> Arg {
     Arg::with_name(name)
         .takes_value(true)
         .required(true)
-        .validator(|p| match p.parse::<f64>() {
-            Err(_) => Err(String::from("Must be unsigned decimal")),
-            Ok(val) => {
-                if val >= 0.0 {
-                    Ok(())
-                } else {
-                    Err(String::from("Must be unsigned decimal"))
-                }
-            }
+        .validator(|p| match p.parse::<u64>() {
+            Err(_) => Err(String::from("Must be unsigned integer")),
+            Ok(_) => Ok(()),
         })
 }
 
@@ -443,6 +436,28 @@ pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
                 .about("Governance commands. See `solana-farm-client governance help`")
                 .setting(AppSettings::SubcommandRequiredElseHelp)
                 .subcommand(
+                    SubCommand::with_name("get-config")
+                    .about("Get governance config")
+                    .arg(get_arg("governance_name"))
+                )
+                .subcommand(
+                    SubCommand::with_name("get-address")
+                    .about("Get governance account address")
+                    .arg(get_arg("governance_name"))
+                )
+                .subcommand(
+                    SubCommand::with_name("get-instruction")
+                    .about("Print stored instruction in the proposal")
+                    .arg(get_arg("governance_name"))
+                    .arg(get_integer_arg("proposal_index"))
+                    .arg(get_integer_arg("instruction_index"))
+                )
+                .subcommand(
+                    SubCommand::with_name("custody-new")
+                    .about("Create new token custody account")
+                    .arg(get_arg("token_name"))
+                )
+                .subcommand(
                     SubCommand::with_name("tokens-deposit")
                     .about("Deposit governing tokens")
                     .arg(amount.clone()),
@@ -454,7 +469,7 @@ pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
                 .subcommand(
                     SubCommand::with_name("proposal-new")
                     .about("Create a new proposal")
-                    .arg(get_arg("governed_account_name"))
+                    .arg(get_arg("governance_name"))
                     .arg(get_arg("proposal_name"))
                     .arg(get_arg("proposal_link"))
                     .arg(get_integer_arg("proposal_index"))
@@ -462,76 +477,300 @@ pub fn get_clap_app<'a, 'b>(version: &'b str) -> App<'a, 'b> {
                 .subcommand(
                     SubCommand::with_name("proposal-cancel")
                     .about("Cancel the proposal")
-                    .arg(get_arg("governed_account_name"))
+                    .arg(get_arg("governance_name"))
+                    .arg(get_integer_arg("proposal_index"))
+                )
+                .subcommand(
+                    SubCommand::with_name("proposal-state")
+                    .about("Get proposal state")
+                    .arg(get_arg("governance_name"))
                     .arg(get_integer_arg("proposal_index"))
                 )
                 .subcommand(
                     SubCommand::with_name("signatory-add")
                     .about("Add a signatory to the proposal")
-                    .arg(get_arg("governed_account_name"))
+                    .arg(get_arg("governance_name"))
                     .arg(get_integer_arg("proposal_index"))
                     .arg(get_arg("signatory"))
                 )
                 .subcommand(
                     SubCommand::with_name("signatory-remove")
                     .about("Remove the signatory from the proposal")
-                    .arg(get_arg("governed_account_name"))
+                    .arg(get_arg("governance_name"))
                     .arg(get_integer_arg("proposal_index"))
                     .arg(get_arg("signatory"))
                 )
                 .subcommand(
                     SubCommand::with_name("sign-off")
                     .about("Sign off the proposal")
-                    .arg(get_arg("governed_account_name"))
+                    .arg(get_arg("governance_name"))
                     .arg(get_integer_arg("proposal_index"))
                 )
                 .subcommand(
                     SubCommand::with_name("vote-cast")
                     .about("Cast a vote on the proposal")
-                    .arg(get_arg("governed_account_name"))
+                    .arg(get_arg("governance_name"))
                     .arg(get_integer_arg("proposal_index"))
                     .arg(get_integer_arg("vote"))
                 )
                 .subcommand(
                     SubCommand::with_name("vote-relinquish")
                     .about("Remove the vote from the proposal")
-                    .arg(get_arg("governed_account_name"))
+                    .arg(get_arg("governance_name"))
                     .arg(get_integer_arg("proposal_index"))
                 )
                 .subcommand(
                     SubCommand::with_name("vote-finalize")
                     .about("Finalize the vote on the proposal")
-                    .arg(get_arg("governed_account_name"))
+                    .arg(get_arg("governance_name"))
                     .arg(get_integer_arg("proposal_index"))
-                )
-                .subcommand(
-                    SubCommand::with_name("instruction-insert")
-                    .about("Add a new instruction to the proposal. Must be serialized with base64::encode(bincode::serialize(&inst).unwrap().as_slice())")
-                    .arg(get_arg("governed_account_name"))
-                    .arg(get_integer_arg("proposal_index"))
-                    .arg(get_integer_arg("instruction_index"))
-                    .arg(get_arg("base64_instruction"))
-                )
-                .subcommand(
-                    SubCommand::with_name("instruction-remove")
-                    .about("Remove the instruction from the proposal")
-                    .arg(get_arg("governed_account_name"))
-                    .arg(get_integer_arg("proposal_index"))
-                    .arg(get_integer_arg("instruction_index"))
                 )
                 .subcommand(
                     SubCommand::with_name("instruction-execute")
                     .about("Execute the instruction in the proposal")
-                    .arg(get_arg("governed_account_name"))
+                    .arg(get_arg("governance_name"))
                     .arg(get_integer_arg("proposal_index"))
                     .arg(get_integer_arg("instruction_index"))
                 )
                 .subcommand(
                     SubCommand::with_name("instruction-flag-error")
                     .about("Mark the instruction as failed")
-                    .arg(get_arg("governed_account_name"))
+                    .arg(get_arg("governance_name"))
                     .arg(get_integer_arg("proposal_index"))
                     .arg(get_integer_arg("instruction_index"))
+                )
+                .subcommand(
+                    SubCommand::with_name("instruction-remove")
+                    .about("Remove the instruction from the proposal")
+                    .arg(get_arg("governance_name"))
+                    .arg(get_integer_arg("proposal_index"))
+                    .arg(get_integer_arg("instruction_index"))
+                )
+                .subcommand(
+                    SubCommand::with_name("instruction-insert")
+                    .about("Add a new custom instruction to the proposal. Must be serialized with base64::encode(bincode::serialize(&inst).unwrap().as_slice())")
+                    .arg(get_arg("governance_name"))
+                    .arg(get_integer_arg("proposal_index"))
+                    .arg(get_integer_arg("instruction_index"))
+                    .arg(get_arg("base64_instruction"))
+                )
+                .subcommand(
+                    SubCommand::with_name("instruction-verify")
+                    .about("Verify custom instruction in the proposal. Must be serialized with base64::encode(bincode::serialize(&inst).unwrap().as_slice())")
+                    .arg(get_arg("governance_name"))
+                    .arg(get_integer_arg("proposal_index"))
+                    .arg(get_integer_arg("instruction_index"))
+                    .arg(get_arg("base64_instruction"))
+                )
+                .subcommand(
+                    SubCommand::with_name("instruction-insert-token-transfer")
+                    .about("Add a new token transfer instruction to the proposal")
+                    .arg(get_arg("governance_name"))
+                    .arg(get_integer_arg("proposal_index"))
+                    .arg(get_integer_arg("instruction_index"))
+                    .arg(tokenname.clone())
+                    .arg(wallet.clone())
+                    .arg(amount.clone()),
+                )
+                .subcommand(
+                    SubCommand::with_name("instruction-verify-token-transfer")
+                    .about("Verify that instruction in the proposal is a token transfer")
+                    .arg(get_arg("governance_name"))
+                    .arg(get_integer_arg("proposal_index"))
+                    .arg(get_integer_arg("instruction_index"))
+                    .arg(tokenname.clone())
+                    .arg(wallet.clone())
+                    .arg(amount.clone()),
+                )
+                .subcommand(
+                    SubCommand::with_name("instruction-insert-swap")
+                    .about("Add a new swap instruction to the proposal")
+                    .arg(get_arg("governance_name"))
+                    .arg(get_integer_arg("proposal_index"))
+                    .arg(get_integer_arg("instruction_index"))
+                    .arg(get_arg("protocol"))
+                    .arg(tokenname.clone())
+                    .arg(tokenname2.clone())
+                    .arg(amount.clone())
+                    .arg(amount2.clone()),
+                )
+                .subcommand(
+                    SubCommand::with_name("instruction-verify-swap")
+                    .about("Verify that instruction in the proposal is a swap")
+                    .arg(get_arg("governance_name"))
+                    .arg(get_integer_arg("proposal_index"))
+                    .arg(get_integer_arg("instruction_index"))
+                    .arg(get_arg("protocol"))
+                    .arg(tokenname.clone())
+                    .arg(tokenname2.clone())
+                    .arg(amount.clone())
+                    .arg(amount2.clone()),
+                )
+                .subcommand(
+                    SubCommand::with_name("instruction-insert-deposit-pool")
+                    .about("Add a new add liquidity to the pool instruction to the proposal")
+                    .arg(get_arg("governance_name"))
+                    .arg(get_integer_arg("proposal_index"))
+                    .arg(get_integer_arg("instruction_index"))
+                    .arg(get_arg("pool_name"))
+                    .arg(amount.clone())
+                    .arg(amount2.clone()),
+                )
+                .subcommand(
+                    SubCommand::with_name("instruction-verify-deposit-pool")
+                    .about("Verify that instruction in the proposal is an add liquidity to the pool")
+                    .arg(get_arg("governance_name"))
+                    .arg(get_integer_arg("proposal_index"))
+                    .arg(get_integer_arg("instruction_index"))
+                    .arg(get_arg("pool_name"))
+                    .arg(amount.clone())
+                    .arg(amount2.clone()),
+                )
+                .subcommand(
+                    SubCommand::with_name("instruction-insert-withdraw-pool")
+                    .about("Add a new remove liquidity from the pool instruction to the proposal")
+                    .arg(get_arg("governance_name"))
+                    .arg(get_integer_arg("proposal_index"))
+                    .arg(get_integer_arg("instruction_index"))
+                    .arg(get_arg("pool_name"))
+                    .arg(amount.clone()),
+                )
+                .subcommand(
+                    SubCommand::with_name("instruction-verify-withdraw-pool")
+                    .about("Verify that instruction in the proposal is a remove liquidity from the pool")
+                    .arg(get_arg("governance_name"))
+                    .arg(get_integer_arg("proposal_index"))
+                    .arg(get_integer_arg("instruction_index"))
+                    .arg(get_arg("pool_name"))
+                    .arg(amount.clone()),
+                )
+                .subcommand(
+                    SubCommand::with_name("instruction-insert-stake")
+                    .about("Add a new stake instruction to the proposal")
+                    .arg(get_arg("governance_name"))
+                    .arg(get_integer_arg("proposal_index"))
+                    .arg(get_integer_arg("instruction_index"))
+                    .arg(get_arg("farm_name"))
+                    .arg(amount.clone()),
+                )
+                .subcommand(
+                    SubCommand::with_name("instruction-verify-stake")
+                    .about("Verify that instruction in the proposal is a stake")
+                    .arg(get_arg("governance_name"))
+                    .arg(get_integer_arg("proposal_index"))
+                    .arg(get_integer_arg("instruction_index"))
+                    .arg(get_arg("farm_name"))
+                    .arg(amount.clone()),
+                )
+                .subcommand(
+                    SubCommand::with_name("instruction-insert-harvest")
+                    .about("Add a new harvest instruction to the proposal")
+                    .arg(get_arg("governance_name"))
+                    .arg(get_integer_arg("proposal_index"))
+                    .arg(get_integer_arg("instruction_index"))
+                    .arg(get_arg("farm_name")),
+                )
+                .subcommand(
+                    SubCommand::with_name("instruction-verify-harvest")
+                    .about("Verify that instruction in the proposal is a harvest")
+                    .arg(get_arg("governance_name"))
+                    .arg(get_integer_arg("proposal_index"))
+                    .arg(get_integer_arg("instruction_index"))
+                    .arg(get_arg("farm_name")),
+                )
+                .subcommand(
+                    SubCommand::with_name("instruction-insert-unstake")
+                    .about("Add a new unstake instruction to the proposal")
+                    .arg(get_arg("governance_name"))
+                    .arg(get_integer_arg("proposal_index"))
+                    .arg(get_integer_arg("instruction_index"))
+                    .arg(get_arg("farm_name"))
+                    .arg(amount.clone()),
+                )
+                .subcommand(
+                    SubCommand::with_name("instruction-verify-unstake")
+                    .about("Verify that instruction in the proposal is an unstake")
+                    .arg(get_arg("governance_name"))
+                    .arg(get_integer_arg("proposal_index"))
+                    .arg(get_integer_arg("instruction_index"))
+                    .arg(get_arg("farm_name"))
+                    .arg(amount.clone()),
+                )
+                .subcommand(
+                    SubCommand::with_name("instruction-insert-deposit-vault")
+                    .about("Add a new add liquidity to the vault instruction to the proposal")
+                    .arg(get_arg("governance_name"))
+                    .arg(get_integer_arg("proposal_index"))
+                    .arg(get_integer_arg("instruction_index"))
+                    .arg(get_arg("vault_name"))
+                    .arg(amount.clone())
+                    .arg(amount2.clone()),
+                )
+                .subcommand(
+                    SubCommand::with_name("instruction-verify-deposit-vault")
+                    .about("Verify that instruction in the proposal is an add liquidity to the vault")
+                    .arg(get_arg("governance_name"))
+                    .arg(get_integer_arg("proposal_index"))
+                    .arg(get_integer_arg("instruction_index"))
+                    .arg(get_arg("vault_name"))
+                    .arg(amount.clone())
+                    .arg(amount2.clone()),
+                )
+                .subcommand(
+                    SubCommand::with_name("instruction-insert-withdraw-vault")
+                    .about("Add a new remove liquidity from the vault instruction to the proposal")
+                    .arg(get_arg("governance_name"))
+                    .arg(get_integer_arg("proposal_index"))
+                    .arg(get_integer_arg("instruction_index"))
+                    .arg(get_arg("vault_name"))
+                    .arg(amount.clone()),
+                )
+                .subcommand(
+                    SubCommand::with_name("instruction-verify-withdraw-vault")
+                    .about("Verify that instruction in the proposal is a remove liquidity from the vault")
+                    .arg(get_arg("governance_name"))
+                    .arg(get_integer_arg("proposal_index"))
+                    .arg(get_integer_arg("instruction_index"))
+                    .arg(get_arg("vault_name"))
+                    .arg(amount.clone()),
+                )
+                .subcommand(
+                    SubCommand::with_name("instruction-insert-withdraw-fees-vault")
+                    .about("Add a new withdraw fees from the vault instruction to the proposal")
+                    .arg(get_arg("governance_name"))
+                    .arg(get_integer_arg("proposal_index"))
+                    .arg(get_integer_arg("instruction_index"))
+                    .arg(get_arg("vault_name"))
+                    .arg(get_integer_arg("fee_token"))
+                    .arg(amount.clone())
+                    .arg(get_arg("receiver"))
+                )
+                .subcommand(
+                    SubCommand::with_name("instruction-verify-withdraw-fees-vault")
+                    .about("Verify that instruction in the proposal is a withdraw fees from the vault")
+                    .arg(get_arg("governance_name"))
+                    .arg(get_integer_arg("proposal_index"))
+                    .arg(get_integer_arg("instruction_index"))
+                    .arg(get_arg("vault_name"))
+                    .arg(get_integer_arg("fee_token"))
+                    .arg(amount.clone())
+                    .arg(get_arg("receiver"))
+                )
+                .subcommand(
+                    SubCommand::with_name("instruction-insert-program-upgrade")
+                    .about("Add a new program upgrade instruction to the proposal")
+                    .arg(get_arg("governance_name"))
+                    .arg(get_integer_arg("proposal_index"))
+                    .arg(get_integer_arg("instruction_index"))
+                    .arg(get_arg("buffer_address"))
+                )
+                .subcommand(
+                    SubCommand::with_name("instruction-verify-program-upgrade")
+                    .about("Verify that instruction in the proposal is a program upgrade")
+                    .arg(get_arg("governance_name"))
+                    .arg(get_integer_arg("proposal_index"))
+                    .arg(get_integer_arg("instruction_index"))
+                    .arg(get_arg("buffer_address"))
                 )
         )
 }

@@ -3,13 +3,13 @@
 use {
     crate::error::FarmClientError,
     solana_farm_sdk::{
-        id::{DAO_MINT_NAME, DAO_PROGRAM_NAME, DAO_TOKEN_NAME},
+        id::{DAO_PROGRAM_NAME, DAO_TOKEN_NAME},
         token::Token,
     },
     solana_sdk::{borsh::try_from_slice_unchecked, instruction::Instruction, pubkey::Pubkey},
     spl_governance::instruction as dao_instruction,
     spl_governance::state::{
-        governance::{get_mint_governance_address, get_program_governance_address},
+        governance::GovernanceConfig,
         proposal::{get_proposal_address, VoteType},
         proposal_instruction::{
             get_proposal_instruction_address, InstructionData, ProposalInstructionV2,
@@ -73,13 +73,13 @@ impl FarmClient {
     pub fn new_instruction_governance_proposal_new(
         &self,
         wallet_address: &Pubkey,
-        governed_account_name: &str,
+        governance_name: &str,
         proposal_name: &str,
         proposal_link: &str,
         proposal_index: u32,
     ) -> Result<Instruction, FarmClientError> {
         let (dao_program, realm_address, dao_token, governance, token_owner, _proposal_address) =
-            self.get_dao_accounts(wallet_address, governed_account_name, proposal_index)?;
+            self.get_dao_accounts(wallet_address, governance_name, proposal_index)?;
 
         let inst = dao_instruction::create_proposal(
             &dao_program,
@@ -105,11 +105,11 @@ impl FarmClient {
     pub fn new_instruction_governance_proposal_cancel(
         &self,
         wallet_address: &Pubkey,
-        governed_account_name: &str,
+        governance_name: &str,
         proposal_index: u32,
     ) -> Result<Instruction, FarmClientError> {
         let (dao_program, _realm_address, _dao_token, governance, token_owner, proposal_address) =
-            self.get_dao_accounts(wallet_address, governed_account_name, proposal_index)?;
+            self.get_dao_accounts(wallet_address, governance_name, proposal_index)?;
 
         let inst = dao_instruction::cancel_proposal(
             &dao_program,
@@ -126,12 +126,12 @@ impl FarmClient {
     pub fn new_instruction_governance_signatory_add(
         &self,
         wallet_address: &Pubkey,
-        governed_account_name: &str,
+        governance_name: &str,
         proposal_index: u32,
         signatory: &Pubkey,
     ) -> Result<Instruction, FarmClientError> {
         let (dao_program, _realm_address, _dao_token, _governance, token_owner, proposal_address) =
-            self.get_dao_accounts(wallet_address, governed_account_name, proposal_index)?;
+            self.get_dao_accounts(wallet_address, governance_name, proposal_index)?;
 
         let inst = dao_instruction::add_signatory(
             &dao_program,
@@ -149,12 +149,12 @@ impl FarmClient {
     pub fn new_instruction_governance_signatory_remove(
         &self,
         wallet_address: &Pubkey,
-        governed_account_name: &str,
+        governance_name: &str,
         proposal_index: u32,
         signatory: &Pubkey,
     ) -> Result<Instruction, FarmClientError> {
         let (dao_program, _realm_address, _dao_token, _governance, token_owner, proposal_address) =
-            self.get_dao_accounts(wallet_address, governed_account_name, proposal_index)?;
+            self.get_dao_accounts(wallet_address, governance_name, proposal_index)?;
 
         let inst = dao_instruction::remove_signatory(
             &dao_program,
@@ -172,11 +172,11 @@ impl FarmClient {
     pub fn new_instruction_governance_sign_off(
         &self,
         wallet_address: &Pubkey,
-        governed_account_name: &str,
+        governance_name: &str,
         proposal_index: u32,
     ) -> Result<Instruction, FarmClientError> {
         let (dao_program, _realm_address, _dao_token, _governance, _token_owner, proposal_address) =
-            self.get_dao_accounts(wallet_address, governed_account_name, proposal_index)?;
+            self.get_dao_accounts(wallet_address, governance_name, proposal_index)?;
 
         let inst =
             dao_instruction::sign_off_proposal(&dao_program, &proposal_address, wallet_address);
@@ -188,12 +188,12 @@ impl FarmClient {
     pub fn new_instruction_governance_vote_cast(
         &self,
         wallet_address: &Pubkey,
-        governed_account_name: &str,
+        governance_name: &str,
         proposal_index: u32,
         vote: u8,
     ) -> Result<Instruction, FarmClientError> {
         let (dao_program, realm_address, dao_token, governance, token_owner, proposal_address) =
-            self.get_dao_accounts(wallet_address, governed_account_name, proposal_index)?;
+            self.get_dao_accounts(wallet_address, governance_name, proposal_index)?;
 
         let voter_token_owner = get_token_owner_record_address(
             &dao_program,
@@ -230,11 +230,11 @@ impl FarmClient {
     pub fn new_instruction_governance_vote_relinquish(
         &self,
         wallet_address: &Pubkey,
-        governed_account_name: &str,
+        governance_name: &str,
         proposal_index: u32,
     ) -> Result<Instruction, FarmClientError> {
         let (dao_program, _realm_address, dao_token, governance, token_owner, proposal_address) =
-            self.get_dao_accounts(wallet_address, governed_account_name, proposal_index)?;
+            self.get_dao_accounts(wallet_address, governance_name, proposal_index)?;
 
         let inst = dao_instruction::relinquish_vote(
             &dao_program,
@@ -253,11 +253,11 @@ impl FarmClient {
     pub fn new_instruction_governance_vote_finalize(
         &self,
         wallet_address: &Pubkey,
-        governed_account_name: &str,
+        governance_name: &str,
         proposal_index: u32,
     ) -> Result<Instruction, FarmClientError> {
         let (dao_program, realm_address, dao_token, governance, token_owner, proposal_address) =
-            self.get_dao_accounts(wallet_address, governed_account_name, proposal_index)?;
+            self.get_dao_accounts(wallet_address, governance_name, proposal_index)?;
 
         let inst = dao_instruction::finalize_vote(
             &dao_program,
@@ -275,13 +275,13 @@ impl FarmClient {
     pub fn new_instruction_governance_instruction_insert(
         &self,
         wallet_address: &Pubkey,
-        governed_account_name: &str,
+        governance_name: &str,
         proposal_index: u32,
         instruction_index: u16,
         instruction: &Instruction,
     ) -> Result<Instruction, FarmClientError> {
         let (dao_program, _realm_address, _dao_token, governance, token_owner, proposal_address) =
-            self.get_dao_accounts(wallet_address, governed_account_name, proposal_index)?;
+            self.get_dao_accounts(wallet_address, governance_name, proposal_index)?;
 
         let instruction_data: InstructionData = instruction.clone().into();
 
@@ -305,12 +305,12 @@ impl FarmClient {
     pub fn new_instruction_governance_instruction_remove(
         &self,
         wallet_address: &Pubkey,
-        governed_account_name: &str,
+        governance_name: &str,
         proposal_index: u32,
         instruction_index: u16,
     ) -> Result<Instruction, FarmClientError> {
         let (dao_program, _realm_address, _dao_token, _governance, token_owner, proposal_address) =
-            self.get_dao_accounts(wallet_address, governed_account_name, proposal_index)?;
+            self.get_dao_accounts(wallet_address, governance_name, proposal_index)?;
 
         let instruction_address = get_proposal_instruction_address(
             &dao_program,
@@ -335,12 +335,12 @@ impl FarmClient {
     pub fn new_instruction_governance_instruction_execute(
         &self,
         wallet_address: &Pubkey,
-        governed_account_name: &str,
+        governance_name: &str,
         proposal_index: u32,
         instruction_index: u16,
     ) -> Result<Instruction, FarmClientError> {
         let (dao_program, _realm_address, _dao_token, governance, _token_owner, proposal_address) =
-            self.get_dao_accounts(wallet_address, governed_account_name, proposal_index)?;
+            self.get_dao_accounts(wallet_address, governance_name, proposal_index)?;
 
         let instruction_address = get_proposal_instruction_address(
             &dao_program,
@@ -352,9 +352,15 @@ impl FarmClient {
         let data = self.rpc_client.get_account_data(&instruction_address)?;
         let ins_data: InstructionData =
             try_from_slice_unchecked::<ProposalInstructionV2>(data.as_slice())
-                .unwrap()
+                .map_err(|e| FarmClientError::IOError(e.to_string()))?
                 .instruction;
-        let instruction: Instruction = (&ins_data).into();
+        let mut instruction: Instruction = (&ins_data).into();
+
+        for account in &mut instruction.accounts {
+            if account.pubkey == governance {
+                account.is_signer = false;
+            }
+        }
 
         let inst = dao_instruction::execute_instruction(
             &dao_program,
@@ -372,12 +378,12 @@ impl FarmClient {
     pub fn new_instruction_governance_instruction_flag_error(
         &self,
         wallet_address: &Pubkey,
-        governed_account_name: &str,
+        governance_name: &str,
         proposal_index: u32,
         instruction_index: u16,
     ) -> Result<Instruction, FarmClientError> {
         let (dao_program, _realm_address, _dao_token, _governance, token_owner, proposal_address) =
-            self.get_dao_accounts(wallet_address, governed_account_name, proposal_index)?;
+            self.get_dao_accounts(wallet_address, governance_name, proposal_index)?;
 
         let instruction_address = get_proposal_instruction_address(
             &dao_program,
@@ -397,21 +403,33 @@ impl FarmClient {
         Ok(inst)
     }
 
+    /// Creates a new instruction for changing the governance config
+    pub fn new_instruction_governance_set_config(
+        &self,
+        wallet_address: &Pubkey,
+        governance_name: &str,
+        config: &GovernanceConfig,
+    ) -> Result<Instruction, FarmClientError> {
+        let (dao_program, _realm_address, _dao_token, governance, _token_owner, _proposal_address) =
+            self.get_dao_accounts(wallet_address, governance_name, 0)?;
+
+        let inst =
+            dao_instruction::set_governance_config(&dao_program, &governance, config.clone());
+
+        Ok(inst)
+    }
+
+    /////////////// helpers
     fn get_dao_accounts(
         &self,
         wallet_address: &Pubkey,
-        governed_account_name: &str,
+        governance_name: &str,
         proposal_index: u32,
     ) -> Result<(Pubkey, Pubkey, Token, Pubkey, Pubkey, Pubkey), FarmClientError> {
         let dao_program = self.get_program_id(DAO_PROGRAM_NAME)?;
         let realm_address = get_realm_address(&dao_program, DAO_PROGRAM_NAME);
         let dao_token = self.get_token(DAO_TOKEN_NAME)?;
-        let governance = if governed_account_name == DAO_MINT_NAME {
-            get_mint_governance_address(&dao_program, &realm_address, &dao_token.mint)
-        } else {
-            let governed_program = self.get_program_id(governed_account_name)?;
-            get_program_governance_address(&dao_program, &realm_address, &governed_program)
-        };
+        let governance = self.governance_get_address(governance_name)?;
         let token_owner = get_token_owner_record_address(
             &dao_program,
             &realm_address,

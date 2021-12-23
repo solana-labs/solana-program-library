@@ -148,8 +148,10 @@ use {
     },
     solana_farm_sdk::{
         farm::{Farm, FarmRoute},
-        id::zero,
-        id::{main_router, main_router_admin, ProgramIDType},
+        id::{
+            main_router, main_router_admin, zero, ProgramIDType, DAO_CUSTODY_NAME, DAO_MINT_NAME,
+            DAO_PROGRAM_NAME, DAO_TOKEN_NAME,
+        },
         instruction::orca::OrcaUserInit,
         pool::{Pool, PoolRoute},
         program::pda::find_refdb_pda,
@@ -159,10 +161,12 @@ use {
         },
         refdb,
         refdb::RefDB,
-        token::{Token, TokenType},
+        string::str_to_as64,
+        token::{Token, TokenSelector, TokenType},
         vault::{UserInfo, Vault, VaultInfo, VaultStrategy},
     },
     solana_sdk::{
+        borsh::try_from_slice_unchecked,
         clock::UnixTimestamp,
         commitment_config::CommitmentConfig,
         hash::Hasher,
@@ -176,6 +180,18 @@ use {
         transaction::Transaction,
     },
     spl_associated_token_account::{create_associated_token_account, get_associated_token_address},
+    spl_governance::state::{
+        enums::GovernanceAccountType,
+        governance::{
+            get_account_governance_address, get_mint_governance_address,
+            get_program_governance_address, Governance, GovernanceConfig,
+        },
+        proposal::{get_proposal_address, ProposalV2},
+        proposal_instruction::{
+            get_proposal_instruction_address, InstructionData, ProposalInstructionV2,
+        },
+        realm::get_realm_address,
+    },
     spl_token::state::Mint,
     stable_swap_client::state::SwapInfo,
     stable_swap_math::price::SaberSwap,
@@ -1448,7 +1464,7 @@ impl FarmClient {
                 inst.push(self.new_instruction_wrap_token(
                     &signer.pubkey(),
                     &pool_name,
-                    true,
+                    TokenSelector::TokenA,
                     max_token_a_ui_amount,
                 )?);
             }
@@ -1456,7 +1472,7 @@ impl FarmClient {
                 inst.push(self.new_instruction_wrap_token(
                     &signer.pubkey(),
                     &pool_name,
-                    false,
+                    TokenSelector::TokenB,
                     max_token_b_ui_amount,
                 )?);
             }
@@ -1607,7 +1623,7 @@ impl FarmClient {
             inst.push(self.new_instruction_unwrap_token(
                 &signer.pubkey(),
                 &pool_name,
-                true,
+                TokenSelector::TokenA,
                 0.0,
             )?);
         }
@@ -1615,7 +1631,7 @@ impl FarmClient {
             inst.push(self.new_instruction_unwrap_token(
                 &signer.pubkey(),
                 &pool_name,
-                false,
+                TokenSelector::TokenB,
                 0.0,
             )?);
         }
@@ -1671,7 +1687,7 @@ impl FarmClient {
             inst.push(self.new_instruction_unwrap_token(
                 &signer.pubkey(),
                 &pool_name,
-                true,
+                TokenSelector::TokenA,
                 0.0,
             )?);
         }
@@ -1679,7 +1695,7 @@ impl FarmClient {
             inst.push(self.new_instruction_unwrap_token(
                 &signer.pubkey(),
                 &pool_name,
-                false,
+                TokenSelector::TokenB,
                 0.0,
             )?);
         }
@@ -1750,7 +1766,7 @@ impl FarmClient {
                 inst.push(self.new_instruction_wrap_token(
                     &signer.pubkey(),
                     pool_name,
-                    true,
+                    TokenSelector::TokenA,
                     max_token_a_ui_amount,
                 )?);
             }
@@ -1758,7 +1774,7 @@ impl FarmClient {
                 inst.push(self.new_instruction_wrap_token(
                     &signer.pubkey(),
                     pool_name,
-                    false,
+                    TokenSelector::TokenB,
                     max_token_b_ui_amount,
                 )?);
             }
@@ -1801,13 +1817,18 @@ impl FarmClient {
             self.pool_has_saber_wrapped_tokens(pool_name)?;
 
         if is_token_a_wrapped {
-            inst.push(self.new_instruction_unwrap_token(&signer.pubkey(), pool_name, true, 0.0)?);
+            inst.push(self.new_instruction_unwrap_token(
+                &signer.pubkey(),
+                pool_name,
+                TokenSelector::TokenA,
+                0.0,
+            )?);
         }
         if is_token_b_wrapped {
             inst.push(self.new_instruction_unwrap_token(
                 &signer.pubkey(),
                 pool_name,
-                false,
+                TokenSelector::TokenB,
                 0.0,
             )?);
         }
@@ -1890,7 +1911,7 @@ impl FarmClient {
             inst.push(self.new_instruction_wrap_token(
                 &signer.pubkey(),
                 &pool.name,
-                true,
+                TokenSelector::TokenA,
                 ui_amount_in,
             )?);
         }
@@ -1898,7 +1919,7 @@ impl FarmClient {
             inst.push(self.new_instruction_wrap_token(
                 &signer.pubkey(),
                 &pool.name,
-                false,
+                TokenSelector::TokenB,
                 ui_amount_in,
             )?);
         }
@@ -1916,7 +1937,7 @@ impl FarmClient {
             inst.push(self.new_instruction_unwrap_token(
                 &signer.pubkey(),
                 &pool.name,
-                false,
+                TokenSelector::TokenB,
                 0.0,
             )?);
         }
@@ -1924,7 +1945,7 @@ impl FarmClient {
             inst.push(self.new_instruction_unwrap_token(
                 &signer.pubkey(),
                 &pool.name,
-                true,
+                TokenSelector::TokenA,
                 0.0,
             )?);
         }
@@ -2025,19 +2046,28 @@ impl FarmClient {
             .map_err(Into::into)
     }
 
+    /// Returns the index of the record with the specified name
+    pub fn get_refdb_index(
+        &self,
+        refdb_name: &str,
+        object_name: &str,
+    ) -> Result<Option<usize>, FarmClientError> {
+        RefDB::find_index(
+            self.get_refdb_data(refdb_name)?.as_slice(),
+            &str_to_as64(object_name)?,
+        )
+        .map_err(Into::into)
+    }
+
     /// Returns the index of the first empty record at the back of the RefDB storage,
     /// i.e. there will be no active records after the index
     pub fn get_refdb_last_index(&self, refdb_name: &str) -> Result<u32, FarmClientError> {
-        let refdb_address = find_refdb_pda(refdb_name).0;
-        RefDB::find_last_index(self.rpc_client.get_account_data(&refdb_address)?.as_slice())
-            .map_err(Into::into)
+        RefDB::find_last_index(self.get_refdb_data(refdb_name)?.as_slice()).map_err(Into::into)
     }
 
     /// Returns the index of the next available record to write to in the RefDB storage
     pub fn get_refdb_next_index(&self, refdb_name: &str) -> Result<u32, FarmClientError> {
-        let refdb_address = find_refdb_pda(refdb_name).0;
-        RefDB::find_next_index(self.rpc_client.get_account_data(&refdb_address)?.as_slice())
-            .map_err(Into::into)
+        RefDB::find_next_index(self.get_refdb_data(refdb_name)?.as_slice()).map_err(Into::into)
     }
 
     /// Checks if RefDB is initialized
@@ -2097,6 +2127,23 @@ impl FarmClient {
         self.sign_and_send_instructions(&[admin_signer], &[inst])
     }
 
+    /// Removes the Program ID metadata from chain
+    pub fn remove_reference(
+        &self,
+        admin_signer: &dyn Signer,
+        storage_type: refdb::StorageType,
+        object_name: &str,
+        refdb_index: Option<usize>,
+    ) -> Result<Signature, FarmClientError> {
+        let inst = self.new_instruction_remove_reference(
+            &admin_signer.pubkey(),
+            storage_type,
+            object_name,
+            refdb_index,
+        )?;
+        self.sign_and_send_instructions(&[admin_signer], &[inst])
+    }
+
     /// Records the Program ID metadata on-chain
     pub fn add_program_id(
         &self,
@@ -2104,7 +2151,7 @@ impl FarmClient {
         name: &str,
         program_id: &Pubkey,
         program_id_type: ProgramIDType,
-        refdb_index: Option<u32>,
+        refdb_index: Option<usize>,
     ) -> Result<Signature, FarmClientError> {
         let inst = self.new_instruction_add_program_id(
             &admin_signer.pubkey(),
@@ -2121,8 +2168,10 @@ impl FarmClient {
         &self,
         admin_signer: &dyn Signer,
         name: &str,
+        refdb_index: Option<usize>,
     ) -> Result<Signature, FarmClientError> {
-        let inst = self.new_instruction_remove_program_id(&admin_signer.pubkey(), name)?;
+        let inst =
+            self.new_instruction_remove_program_id(&admin_signer.pubkey(), name, refdb_index)?;
         self.sign_and_send_instructions(&[admin_signer], &[inst])
     }
 
@@ -2275,6 +2324,25 @@ impl FarmClient {
         Ok(vaults.len())
     }
 
+    /// Withdraw collected fees from the Vault
+    pub fn withdraw_fees_vault(
+        &self,
+        signer: &dyn Signer,
+        vault_name: &str,
+        fee_token: TokenSelector,
+        ui_amount: f64,
+        receiver: &Pubkey,
+    ) -> Result<Signature, FarmClientError> {
+        let inst = self.new_instruction_withdraw_fees_vault(
+            &signer.pubkey(),
+            vault_name,
+            fee_token,
+            ui_amount,
+            receiver,
+        )?;
+        self.sign_and_send_instructions(&[signer], &[inst])
+    }
+
     /// Sets the Vault's min crank interval
     pub fn set_min_crank_interval_vault(
         &self,
@@ -2385,14 +2453,14 @@ impl FarmClient {
     pub fn governance_proposal_new(
         &self,
         signer: &dyn Signer,
-        governed_account_name: &str,
+        governance_name: &str,
         proposal_name: &str,
         proposal_link: &str,
         proposal_index: u32,
     ) -> Result<Signature, FarmClientError> {
         let inst = self.new_instruction_governance_proposal_new(
             &signer.pubkey(),
-            governed_account_name,
+            governance_name,
             proposal_name,
             proposal_link,
             proposal_index,
@@ -2405,12 +2473,12 @@ impl FarmClient {
     pub fn governance_proposal_cancel(
         &self,
         signer: &dyn Signer,
-        governed_account_name: &str,
+        governance_name: &str,
         proposal_index: u32,
     ) -> Result<Signature, FarmClientError> {
         let inst = self.new_instruction_governance_proposal_cancel(
             &signer.pubkey(),
-            governed_account_name,
+            governance_name,
             proposal_index,
         )?;
 
@@ -2421,13 +2489,13 @@ impl FarmClient {
     pub fn governance_signatory_add(
         &self,
         signer: &dyn Signer,
-        governed_account_name: &str,
+        governance_name: &str,
         proposal_index: u32,
         signatory: &Pubkey,
     ) -> Result<Signature, FarmClientError> {
         let inst = self.new_instruction_governance_signatory_add(
             &signer.pubkey(),
-            governed_account_name,
+            governance_name,
             proposal_index,
             signatory,
         )?;
@@ -2439,13 +2507,13 @@ impl FarmClient {
     pub fn governance_signatory_remove(
         &self,
         signer: &dyn Signer,
-        governed_account_name: &str,
+        governance_name: &str,
         proposal_index: u32,
         signatory: &Pubkey,
     ) -> Result<Signature, FarmClientError> {
         let inst = self.new_instruction_governance_signatory_remove(
             &signer.pubkey(),
-            governed_account_name,
+            governance_name,
             proposal_index,
             signatory,
         )?;
@@ -2457,12 +2525,12 @@ impl FarmClient {
     pub fn governance_sign_off(
         &self,
         signer: &dyn Signer,
-        governed_account_name: &str,
+        governance_name: &str,
         proposal_index: u32,
     ) -> Result<Signature, FarmClientError> {
         let inst = self.new_instruction_governance_sign_off(
             &signer.pubkey(),
-            governed_account_name,
+            governance_name,
             proposal_index,
         )?;
 
@@ -2473,13 +2541,13 @@ impl FarmClient {
     pub fn governance_vote_cast(
         &self,
         signer: &dyn Signer,
-        governed_account_name: &str,
+        governance_name: &str,
         proposal_index: u32,
         vote: u8,
     ) -> Result<Signature, FarmClientError> {
         let inst = self.new_instruction_governance_vote_cast(
             &signer.pubkey(),
-            governed_account_name,
+            governance_name,
             proposal_index,
             vote,
         )?;
@@ -2491,12 +2559,12 @@ impl FarmClient {
     pub fn governance_vote_relinquish(
         &self,
         signer: &dyn Signer,
-        governed_account_name: &str,
+        governance_name: &str,
         proposal_index: u32,
     ) -> Result<Signature, FarmClientError> {
         let inst = self.new_instruction_governance_vote_relinquish(
             &signer.pubkey(),
-            governed_account_name,
+            governance_name,
             proposal_index,
         )?;
 
@@ -2507,12 +2575,12 @@ impl FarmClient {
     pub fn governance_vote_finalize(
         &self,
         signer: &dyn Signer,
-        governed_account_name: &str,
+        governance_name: &str,
         proposal_index: u32,
     ) -> Result<Signature, FarmClientError> {
         let inst = self.new_instruction_governance_vote_finalize(
             &signer.pubkey(),
-            governed_account_name,
+            governance_name,
             proposal_index,
         )?;
 
@@ -2523,14 +2591,14 @@ impl FarmClient {
     pub fn governance_instruction_insert(
         &self,
         signer: &dyn Signer,
-        governed_account_name: &str,
+        governance_name: &str,
         proposal_index: u32,
         instruction_index: u16,
         instruction: &Instruction,
     ) -> Result<Signature, FarmClientError> {
         let inst = self.new_instruction_governance_instruction_insert(
             &signer.pubkey(),
-            governed_account_name,
+            governance_name,
             proposal_index,
             instruction_index,
             instruction,
@@ -2543,13 +2611,13 @@ impl FarmClient {
     pub fn governance_instruction_remove(
         &self,
         signer: &dyn Signer,
-        governed_account_name: &str,
+        governance_name: &str,
         proposal_index: u32,
         instruction_index: u16,
     ) -> Result<Signature, FarmClientError> {
         let inst = self.new_instruction_governance_instruction_remove(
             &signer.pubkey(),
-            governed_account_name,
+            governance_name,
             proposal_index,
             instruction_index,
         )?;
@@ -2561,13 +2629,13 @@ impl FarmClient {
     pub fn governance_instruction_execute(
         &self,
         signer: &dyn Signer,
-        governed_account_name: &str,
+        governance_name: &str,
         proposal_index: u32,
         instruction_index: u16,
     ) -> Result<Signature, FarmClientError> {
         let inst = self.new_instruction_governance_instruction_execute(
             &signer.pubkey(),
-            governed_account_name,
+            governance_name,
             proposal_index,
             instruction_index,
         )?;
@@ -2579,18 +2647,127 @@ impl FarmClient {
     pub fn governance_instruction_flag_error(
         &self,
         signer: &dyn Signer,
-        governed_account_name: &str,
+        governance_name: &str,
         proposal_index: u32,
         instruction_index: u16,
     ) -> Result<Signature, FarmClientError> {
         let inst = self.new_instruction_governance_instruction_flag_error(
             &signer.pubkey(),
-            governed_account_name,
+            governance_name,
             proposal_index,
             instruction_index,
         )?;
 
         self.sign_and_send_instructions(&[signer], &[inst])
+    }
+
+    /// Returns current governance config
+    pub fn governance_get_config(
+        &self,
+        governance_name: &str,
+    ) -> Result<GovernanceConfig, FarmClientError> {
+        let governance = self.governance_get_address(governance_name)?;
+        let governance_data = self.rpc_client.get_account_data(&governance)?;
+
+        let account: Governance = try_from_slice_unchecked(&governance_data)
+            .map_err(|e| FarmClientError::IOError(e.to_string()))?;
+        if account.account_type == GovernanceAccountType::AccountGovernance
+            || account.account_type == GovernanceAccountType::ProgramGovernance
+            || account.account_type == GovernanceAccountType::MintGovernance
+            || account.account_type == GovernanceAccountType::TokenGovernance
+        {
+            Ok(account.config)
+        } else {
+            Err(ProgramError::UninitializedAccount.into())
+        }
+    }
+
+    // Returns account address of the governance
+    pub fn governance_get_address(&self, governance_name: &str) -> Result<Pubkey, FarmClientError> {
+        let dao_program = self.get_program_id(DAO_PROGRAM_NAME)?;
+        let realm_address = get_realm_address(&dao_program, DAO_PROGRAM_NAME);
+        match governance_name {
+            DAO_MINT_NAME => {
+                let dao_token = self.get_token(DAO_TOKEN_NAME)?;
+                Ok(get_mint_governance_address(
+                    &dao_program,
+                    &realm_address,
+                    &dao_token.mint,
+                ))
+            }
+            DAO_CUSTODY_NAME => {
+                let governed_account =
+                    Pubkey::find_program_address(&[DAO_CUSTODY_NAME.as_bytes()], &dao_program).0;
+                Ok(get_account_governance_address(
+                    &dao_program,
+                    &realm_address,
+                    &governed_account,
+                ))
+            }
+            _ => {
+                let governed_program = self.get_program_id(governance_name)?;
+                Ok(get_program_governance_address(
+                    &dao_program,
+                    &realm_address,
+                    &governed_program,
+                ))
+            }
+        }
+    }
+
+    // Returns stored instruction in the proposal
+    pub fn governance_get_instruction(
+        &self,
+        governance_name: &str,
+        proposal_index: u32,
+        instruction_index: u16,
+    ) -> Result<Instruction, FarmClientError> {
+        let dao_program = self.get_program_id(DAO_PROGRAM_NAME)?;
+        let dao_token = self.get_token(DAO_TOKEN_NAME)?;
+        let governance = self.governance_get_address(governance_name)?;
+        let proposal_address = get_proposal_address(
+            &dao_program,
+            &governance,
+            &dao_token.mint,
+            &proposal_index.to_le_bytes(),
+        );
+
+        let instruction_address = get_proposal_instruction_address(
+            &dao_program,
+            &proposal_address,
+            &0u16.to_le_bytes(),
+            &instruction_index.to_le_bytes(),
+        );
+
+        let data = self.rpc_client.get_account_data(&instruction_address)?;
+        let ins_data: InstructionData =
+            try_from_slice_unchecked::<ProposalInstructionV2>(data.as_slice())
+                .map_err(|e| FarmClientError::IOError(e.to_string()))?
+                .instruction;
+        Ok((&ins_data).into())
+    }
+
+    /// Returns the state of the proposal
+    pub fn governance_get_proposal_state(
+        &self,
+        governance_name: &str,
+        proposal_index: u32,
+    ) -> Result<ProposalV2, FarmClientError> {
+        let dao_program = self.get_program_id(DAO_PROGRAM_NAME)?;
+        let dao_token = self.get_token(DAO_TOKEN_NAME)?;
+        let governance = self.governance_get_address(governance_name)?;
+        let proposal_address = get_proposal_address(
+            &dao_program,
+            &governance,
+            &dao_token.mint,
+            &proposal_index.to_le_bytes(),
+        );
+
+        let proposal_data = self.rpc_client.get_account_data(&proposal_address)?;
+        let proposal_state: ProposalV2 = try_from_slice_unchecked(&proposal_data)
+            .map_err(|e| FarmClientError::IOError(e.to_string()))?;
+
+        Ok(proposal_state)
     }
 
     /////////////// helpers
@@ -2776,13 +2953,18 @@ impl FarmClient {
             self.pool_has_saber_wrapped_tokens(pool_name)?;
 
         if is_token_a_wrapped {
-            inst.push(self.new_instruction_unwrap_token(&signer.pubkey(), pool_name, true, 0.0)?);
+            inst.push(self.new_instruction_unwrap_token(
+                &signer.pubkey(),
+                pool_name,
+                TokenSelector::TokenA,
+                0.0,
+            )?);
         }
         if is_token_b_wrapped {
             inst.push(self.new_instruction_unwrap_token(
                 &signer.pubkey(),
                 pool_name,
-                false,
+                TokenSelector::TokenB,
                 0.0,
             )?);
         }
@@ -2890,15 +3072,17 @@ impl FarmClient {
         if self.vaults.borrow().is_stale() {
             let refs_map = &self.vault_refs.borrow().data;
             let refs: Vec<Pubkey> = refs_map.values().copied().collect();
+            if refs.is_empty() {
+                return Ok(false);
+            }
             let mut vault_map = VaultMap::new();
 
             let mut idx = 0;
             while idx < refs.len() - 1 {
-                let accounts = self.rpc_client.get_multiple_accounts(
-                    &refs.as_slice()[idx..std::cmp::min(idx + 100, refs.len())],
-                )?;
+                let refs_slice = &refs.as_slice()[idx..std::cmp::min(idx + 100, refs.len())];
+                let accounts = self.rpc_client.get_multiple_accounts(refs_slice)?;
 
-                for (account_option, account_ref) in accounts.iter().zip(refs.iter()) {
+                for (account_option, account_ref) in accounts.iter().zip(refs_slice.iter()) {
                     if let Some(account) = account_option {
                         let vault = Vault::unpack(account.data.as_slice())?;
                         vault_map.insert(vault.name.as_str().to_string(), vault);
@@ -2934,15 +3118,17 @@ impl FarmClient {
         if self.pools.borrow().is_stale() {
             let refs_map = &self.pool_refs.borrow().data;
             let refs: Vec<Pubkey> = refs_map.values().copied().collect();
+            if refs.is_empty() {
+                return Ok(false);
+            }
             let mut pool_map = PoolMap::new();
 
             let mut idx = 0;
             while idx < refs.len() - 1 {
-                let accounts = self.rpc_client.get_multiple_accounts(
-                    &refs.as_slice()[idx..std::cmp::min(idx + 100, refs.len())],
-                )?;
+                let refs_slice = &refs.as_slice()[idx..std::cmp::min(idx + 100, refs.len())];
+                let accounts = self.rpc_client.get_multiple_accounts(refs_slice)?;
 
-                for (account_option, account_ref) in accounts.iter().zip(refs.iter()) {
+                for (account_option, account_ref) in accounts.iter().zip(refs_slice.iter()) {
                     if let Some(account) = account_option {
                         let pool = Pool::unpack(account.data.as_slice())?;
                         pool_map.insert(pool.name.as_str().to_string(), pool);
@@ -2978,15 +3164,17 @@ impl FarmClient {
         if self.farms.borrow().is_stale() {
             let refs_map = &self.farm_refs.borrow().data;
             let refs: Vec<Pubkey> = refs_map.values().copied().collect();
+            if refs.is_empty() {
+                return Ok(false);
+            }
             let mut farm_map = FarmMap::new();
 
             let mut idx = 0;
             while idx < refs.len() - 1 {
-                let accounts = self.rpc_client.get_multiple_accounts(
-                    &refs.as_slice()[idx..std::cmp::min(idx + 100, refs.len())],
-                )?;
+                let refs_slice = &refs.as_slice()[idx..std::cmp::min(idx + 100, refs.len())];
+                let accounts = self.rpc_client.get_multiple_accounts(refs_slice)?;
 
-                for (account_option, account_ref) in accounts.iter().zip(refs.iter()) {
+                for (account_option, account_ref) in accounts.iter().zip(refs_slice.iter()) {
                     if let Some(account) = account_option {
                         let farm = Farm::unpack(account.data.as_slice())?;
                         farm_map.insert(farm.name.as_str().to_string(), farm);
@@ -3021,15 +3209,17 @@ impl FarmClient {
         if self.tokens.borrow().is_stale() {
             let refs_map = &self.token_refs.borrow().data;
             let refs: Vec<Pubkey> = refs_map.values().copied().collect();
+            if refs.is_empty() {
+                return Ok(false);
+            }
             let mut token_map = TokenMap::new();
 
             let mut idx = 0;
             while idx < refs.len() - 1 {
-                let accounts = self.rpc_client.get_multiple_accounts(
-                    &refs.as_slice()[idx..std::cmp::min(idx + 100, refs.len())],
-                )?;
+                let refs_slice = &refs.as_slice()[idx..std::cmp::min(idx + 100, refs.len())];
+                let accounts = self.rpc_client.get_multiple_accounts(refs_slice)?;
 
-                for (account_option, account_ref) in accounts.iter().zip(refs.iter()) {
+                for (account_option, account_ref) in accounts.iter().zip(refs_slice.iter()) {
                     if let Some(account) = account_option {
                         let token = Token::unpack(account.data.as_slice())?;
                         token_map.insert(token.name.as_str().to_string(), token);

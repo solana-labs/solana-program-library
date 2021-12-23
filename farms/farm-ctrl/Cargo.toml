@@ -31,3 +31,4 @@ spl-governance = { version = "2.1.4", features = ["no-entrypoint"] }
 solana-cli-config = "1.8.1"
 quarry-mine = { version = "1.10.0", features = ["no-entrypoint"] }
 url = "2.2.2"
+num_enum = "0.5.4"
