@@ -100,7 +100,7 @@ pub fn pod_from_bytes<T: Pod>(bytes: &[u8]) -> Result<&T, ProgramError> {
 /// Maybe convert a slice into a `Pod` (zero copy)
 ///
 /// Returns `None` if the slice is empty, but `Err` if all other lengths but `get_packed_len()`
-/// This function exists primary because `Option<T>` is not a `Pod`.
+/// This function exists primarily because `Option<T>` is not a `Pod`.
 pub fn pod_maybe_from_bytes<T: Pod>(bytes: &[u8]) -> Result<Option<&T>, ProgramError> {
     if bytes.is_empty() {
         Ok(None)

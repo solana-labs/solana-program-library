@@ -124,7 +124,7 @@ fn type_and_tlv_indices<S: BaseState>(rest_input: &[u8]) -> Result<(usize, usize
 pub struct StateWithExtensions<'data, S: BaseState> {
     /// Unpacked base data
     pub base: S,
-    /// Unpacked base data
+    /// Unpacked account type
     pub account_type: AccountType,
     /// Slice of data containing all TLV data, deserialized on demand
     tlv_data: &'data [u8],
@@ -340,7 +340,7 @@ pub fn get_account_len(extension_types: &[ExtensionType]) -> usize {
         })
         .sum();
     let total_extension_size = if extension_size == Multisig::LEN {
-        extension_size + 1
+        extension_size.saturating_add(size_of::<ExtensionType>())
     } else {
         extension_size
     };
