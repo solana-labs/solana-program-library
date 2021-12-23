@@ -139,6 +139,7 @@ export async function depositSol(
   lamports: number,
   destinationTokenAccount?: PublicKey,
   referrerTokenAccount?: PublicKey,
+  depositAuthority?: PublicKey
 ) {
   const fromBalance = await connection.getBalance(from, 'confirmed');
   if (fromBalance < lamports) {
@@ -190,9 +191,9 @@ export async function depositSol(
       managerFeeAccount: stakePool.managerFeeAccount,
       referralPoolAccount: referrerTokenAccount ?? destinationTokenAccount,
       poolMint: stakePool.poolMint,
-      lamports,
-      withdrawAuthority,
-      depositAuthority: undefined,
+      lamports: lamports,
+      withdrawAuthority: withdrawAuthority,
+      depositAuthority: depositAuthority,
     }),
   );
 
