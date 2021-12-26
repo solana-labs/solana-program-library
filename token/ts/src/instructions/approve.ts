@@ -72,7 +72,7 @@ export interface DecodedApproveInstruction {
 }
 
 /**
- * Decode a Approve instruction
+ * Decode an Approve instruction
  *
  * @param instruction Transaction instruction to decode
  * @param programId   SPL Token program account

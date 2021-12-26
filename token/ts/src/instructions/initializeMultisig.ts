@@ -67,7 +67,7 @@ export interface DecodedInitializeMultisigInstruction {
 }
 
 /**
- * Decode a InitializeMultisig instruction
+ * Decode an InitializeMultisig instruction
  *
  * @param instruction Transaction instruction to decode
  * @param programId   SPL Token program multisig
