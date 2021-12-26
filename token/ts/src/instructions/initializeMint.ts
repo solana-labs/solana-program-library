@@ -77,7 +77,7 @@ export interface DecodedInitializeMintInstruction {
 }
 
 /**
- * Decode a InitializeMint instruction
+ * Decode an InitializeMint instruction
  *
  * @param instruction Transaction instruction to decode
  * @param programId   SPL Token program account

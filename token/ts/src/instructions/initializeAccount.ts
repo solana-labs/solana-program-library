@@ -57,7 +57,7 @@ export interface DecodedInitializeAccountInstruction {
 }
 
 /**
- * Decode a InitializeAccount instruction
+ * Decode an InitializeAccount instruction
  *
  * @param instruction Transaction instruction to decode
  * @param programId   SPL Token program account
