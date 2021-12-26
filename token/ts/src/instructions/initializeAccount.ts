@@ -53,7 +53,6 @@ export interface DecodedInitializeAccountInstruction {
     mint: AccountMeta;
     owner: AccountMeta;
     rent: AccountMeta;
-    multiSigners: AccountMeta[];
 }
 
 /**
@@ -70,7 +69,7 @@ export function decodeInitializeAccountInstruction(
 ): DecodedInitializeAccountInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
 
-    const [account, mint, owner, rent, ...multiSigners] = instruction.keys;
+    const [account, mint, owner, rent] = instruction.keys;
     if (!account || !mint || !owner || !rent) throw new TokenInvalidInstructionKeysError();
 
     if (instruction.data.length !== initializeAccountInstructionData.span) throw new TokenInvalidInstructionTypeError();
@@ -83,6 +82,5 @@ export function decodeInitializeAccountInstruction(
         mint,
         owner,
         rent,
-        multiSigners,
     };
 }
