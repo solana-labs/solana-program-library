@@ -1,4 +1,6 @@
 {
+    "include": ["src", "types"],
+    "exclude": ["node_modules"],
     "compilerOptions": {
         "outDir": "lib/esm",
         "noEmit": false,
@@ -6,8 +8,8 @@
         "sourceMap": true,
         "noEmitOnError": true,
         "stripInternal": true,
-        "target": "es6",
         "module": "esnext",
+        "target": "esnext",
         "moduleResolution": "node",
         "strict": true,
         "esModuleInterop": true,
@@ -15,8 +17,6 @@
         "isolatedModules": true,
         "typeRoots": ["node_modules/@types", "types"]
     },
-    "include": ["src", "types"],
-    "exclude": ["node_modules"],
     "typedocOptions": {
         "entryPoints": "src/index.ts",
         "out": "docs",
