@@ -1,6 +1,6 @@
 {
     "compilerOptions": {
-        "outDir": "lib",
+        "outDir": "lib/esm",
         "noEmit": false,
         "declaration": true,
         "sourceMap": true,
