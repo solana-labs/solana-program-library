@@ -27,6 +27,7 @@ solana-transaction-status = "=1.8.1"
 spl-token = { version = "3.2", path="../program", features = [ "no-entrypoint" ] }
 spl-associated-token-account = { version = "1.0", path="../../associated-token-account/program", features = [ "no-entrypoint" ] }
 spl-memo = { version = "3.0.1", path="../../memo/program", features = ["no-entrypoint"] }
+reqwest = { version = "0.11", features = ["rustls-tls-native-roots"] }
 
 [[bin]]
 name = "spl-token"
