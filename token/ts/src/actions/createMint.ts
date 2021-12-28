@@ -32,12 +32,10 @@ export async function createMint(
     mintAuthority: PublicKey,
     freezeAuthority: PublicKey | null,
     decimals: number,
-    keypair?: Keypair,
+    keypair = Keypair.generate(),
     confirmOptions?: ConfirmOptions,
     programId = TOKEN_PROGRAM_ID
 ): Promise<PublicKey> {
-    keypair ||= Keypair.generate();
-
     const lamports = await getMinimumBalanceForRentExemptMint(connection);
 
     const transaction = new Transaction().add(
