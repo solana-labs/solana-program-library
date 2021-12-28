@@ -258,10 +258,9 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
 
     /// Write the account type into the buffer, done during the base
     /// state initialization
-    /// Noop if no extensions are present
+    /// Noops if there is no room for an extension in the account, needed for
+    /// pure base mints / accounts.
     pub fn init_account_type(&mut self) {
-        // TODO maybe we can do this on `pack_base`, but that means writing this
-        // every time there's a change to the base mint / account.
         if !self.account_type.is_empty() {
             self.account_type[0] = S::ACCOUNT_TYPE.into();
         }
