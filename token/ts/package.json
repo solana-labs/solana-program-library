@@ -1,7 +1,6 @@
 {
-    "private": true,
     "name": "@solana/spl-token",
-    "version": "0.2.0@next",
+    "version": "0.2.0-alpha.0@next",
     "author": "Solana Maintainers <maintainers@solana.foundation>",
     "repository": "https://github.com/solana-labs/solana-program-library",
     "license": "Apache-2.0",
