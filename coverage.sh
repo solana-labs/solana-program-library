@@ -11,7 +11,7 @@ if ! which grcov; then
   exit 1
 fi
 
-if [[ ! "$(grcov --version)" =~ "0.6.1" ]] && [[ ! "$(grcov --version)" =~ "0."[7-9] ]]; then
+if [[ ! "$(grcov --version)" =~ 0.[678].[0124] ]]; then
   echo Error: Required grcov version not installed
   exit 1
 fi
