@@ -72,47 +72,98 @@ export function createTransferCheckedInstruction(
     return new TransactionInstruction({ keys, programId, data });
 }
 
-/** TODO: docs */
+/** A decoded, valid TransferChecked instruction */
 export interface DecodedTransferCheckedInstruction {
-    instruction: TokenInstruction.TransferChecked;
-    source: AccountMeta;
-    mint: AccountMeta;
-    destination: AccountMeta;
-    owner: AccountMeta;
-    multiSigners: AccountMeta[];
-    amount: bigint;
-    decimals: number;
+    programId: PublicKey;
+    keys: {
+        source: AccountMeta;
+        mint: AccountMeta;
+        destination: AccountMeta;
+        owner: AccountMeta;
+        multiSigners: AccountMeta[];
+    };
+    data: {
+        instruction: TokenInstruction.TransferChecked;
+        amount: bigint;
+        decimals: number;
+    };
 }
 
 /**
- * Decode a TransferChecked instruction
+ * Decode a TransferChecked instruction and validate it
  *
  * @param instruction Transaction instruction to decode
  * @param programId   SPL Token program account
  *
- * @return Decoded instruction
+ * @return Decoded, valid instruction
  */
 export function decodeTransferCheckedInstruction(
     instruction: TransactionInstruction,
     programId = TOKEN_PROGRAM_ID
 ): DecodedTransferCheckedInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
+    if (instruction.data.length !== transferCheckedInstructionData.span) throw new TokenInvalidInstructionDataError();
 
-    const [source, mint, destination, owner, ...multiSigners] = instruction.keys;
+    const {
+        keys: { source, mint, destination, owner, multiSigners },
+        data,
+    } = decodeTransferCheckedInstructionUnchecked(instruction);
+    if (data.instruction !== TokenInstruction.TransferChecked) throw new TokenInvalidInstructionTypeError();
     if (!source || !mint || !destination || !owner) throw new TokenInvalidInstructionKeysError();
 
-    if (instruction.data.length !== transferCheckedInstructionData.span) throw new TokenInvalidInstructionTypeError();
-    const data = transferCheckedInstructionData.decode(instruction.data);
-    if (data.instruction !== TokenInstruction.TransferChecked) throw new TokenInvalidInstructionDataError();
+    // TODO: key checks?
 
     return {
-        instruction: data.instruction,
-        source,
-        mint,
-        destination,
-        owner,
-        multiSigners,
-        amount: data.amount,
-        decimals: data.decimals,
+        programId,
+        keys: {
+            source,
+            mint,
+            destination,
+            owner,
+            multiSigners,
+        },
+        data,
+    };
+}
+
+/** A decoded, non-validated TransferChecked instruction */
+export interface DecodedTransferCheckedInstructionUnchecked {
+    programId: PublicKey;
+    keys: {
+        source: AccountMeta | undefined;
+        mint: AccountMeta | undefined;
+        destination: AccountMeta | undefined;
+        owner: AccountMeta | undefined;
+        multiSigners: AccountMeta[];
+    };
+    data: {
+        instruction: number;
+        amount: bigint;
+        decimals: number;
+    };
+}
+
+/**
+ * Decode a TransferChecked instruction without validating it
+ *
+ * @param instruction Transaction instruction to decode
+ *
+ * @return Decoded, non-validated instruction
+ */
+export function decodeTransferCheckedInstructionUnchecked({
+    programId,
+    keys: [source, mint, destination, owner, ...multiSigners],
+    data,
+}: TransactionInstruction): DecodedTransferCheckedInstructionUnchecked {
+    return {
+        programId,
+        keys: {
+            source,
+            mint,
+            destination,
+            owner,
+            multiSigners,
+        },
+        data: transferCheckedInstructionData.decode(data),
     };
 }

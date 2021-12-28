@@ -46,41 +46,90 @@ export function createInitializeAccountInstruction(
     return new TransactionInstruction({ keys, programId, data });
 }
 
-/** TODO: docs */
+/** A decoded, valid InitializeAccount instruction */
 export interface DecodedInitializeAccountInstruction {
-    instruction: TokenInstruction.InitializeAccount;
-    account: AccountMeta;
-    mint: AccountMeta;
-    owner: AccountMeta;
-    rent: AccountMeta;
+    programId: PublicKey;
+    keys: {
+        account: AccountMeta;
+        mint: AccountMeta;
+        owner: AccountMeta;
+        rent: AccountMeta;
+    };
+    data: {
+        instruction: TokenInstruction.InitializeAccount;
+    };
 }
 
 /**
- * Decode an InitializeAccount instruction
+ * Decode an InitializeAccount instruction and validate it
  *
  * @param instruction Transaction instruction to decode
  * @param programId   SPL Token program account
  *
- * @return Decoded instruction
+ * @return Decoded, valid instruction
  */
 export function decodeInitializeAccountInstruction(
     instruction: TransactionInstruction,
     programId = TOKEN_PROGRAM_ID
 ): DecodedInitializeAccountInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
+    if (instruction.data.length !== initializeAccountInstructionData.span) throw new TokenInvalidInstructionDataError();
 
-    const [account, mint, owner, rent] = instruction.keys;
+    const {
+        keys: { account, mint, owner, rent },
+        data,
+    } = decodeInitializeAccountInstructionUnchecked(instruction);
+    if (data.instruction !== TokenInstruction.InitializeAccount) throw new TokenInvalidInstructionTypeError();
     if (!account || !mint || !owner || !rent) throw new TokenInvalidInstructionKeysError();
 
-    if (instruction.data.length !== initializeAccountInstructionData.span) throw new TokenInvalidInstructionTypeError();
-    const data = initializeAccountInstructionData.decode(instruction.data);
-    if (data.instruction !== TokenInstruction.InitializeAccount) throw new TokenInvalidInstructionDataError();
+    // TODO: key checks?
 
     return {
-        instruction: data.instruction,
-        account,
-        mint,
-        owner,
-        rent,
+        programId,
+        keys: {
+            account,
+            mint,
+            owner,
+            rent,
+        },
+        data,
+    };
+}
+
+/** A decoded, non-validated InitializeAccount instruction */
+export interface DecodedInitializeAccountInstructionUnchecked {
+    programId: PublicKey;
+    keys: {
+        account: AccountMeta | undefined;
+        mint: AccountMeta | undefined;
+        owner: AccountMeta | undefined;
+        rent: AccountMeta | undefined;
+    };
+    data: {
+        instruction: number;
+    };
+}
+
+/**
+ * Decode an InitializeAccount instruction without validating it
+ *
+ * @param instruction Transaction instruction to decode
+ *
+ * @return Decoded, non-validated instruction
+ */
+export function decodeInitializeAccountInstructionUnchecked({
+    programId,
+    keys: [account, mint, owner, rent],
+    data,
+}: TransactionInstruction): DecodedInitializeAccountInstructionUnchecked {
+    return {
+        programId,
+        keys: {
+            account,
+            mint,
+            owner,
+            rent,
+        },
+        data: initializeAccountInstructionData.decode(data),
     };
 }

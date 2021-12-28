@@ -66,43 +66,96 @@ export function createInitializeMintInstruction(
     return new TransactionInstruction({ keys, programId, data });
 }
 
-/** TODO: docs */
+/** A decoded, valid InitializeMint instruction */
 export interface DecodedInitializeMintInstruction {
-    instruction: TokenInstruction.InitializeMint;
-    mint: AccountMeta;
-    rent: AccountMeta;
-    decimals: number;
-    mintAuthority: PublicKey;
-    freezeAuthority: PublicKey | null;
+    programId: PublicKey;
+    keys: {
+        mint: AccountMeta;
+        rent: AccountMeta;
+    };
+    data: {
+        instruction: TokenInstruction.InitializeMint;
+        decimals: number;
+        mintAuthority: PublicKey;
+        freezeAuthority: PublicKey | null;
+    };
 }
 
 /**
- * Decode an InitializeMint instruction
+ * Decode an InitializeMint instruction and validate it
  *
  * @param instruction Transaction instruction to decode
  * @param programId   SPL Token program account
  *
- * @return Decoded instruction
+ * @return Decoded, valid instruction
  */
 export function decodeInitializeMintInstruction(
     instruction: TransactionInstruction,
     programId = TOKEN_PROGRAM_ID
 ): DecodedInitializeMintInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
+    if (instruction.data.length !== initializeMintInstructionData.span) throw new TokenInvalidInstructionDataError();
 
-    const [mint, rent] = instruction.keys;
+    const {
+        keys: { mint, rent },
+        data,
+    } = decodeInitializeMintInstructionUnchecked(instruction);
+    if (data.instruction !== TokenInstruction.InitializeMint) throw new TokenInvalidInstructionTypeError();
     if (!mint || !rent) throw new TokenInvalidInstructionKeysError();
 
-    if (instruction.data.length !== initializeMintInstructionData.span) throw new TokenInvalidInstructionTypeError();
-    const data = initializeMintInstructionData.decode(instruction.data);
-    if (data.instruction !== TokenInstruction.InitializeMint) throw new TokenInvalidInstructionDataError();
+    // TODO: key checks?
 
     return {
-        instruction: data.instruction,
-        mint,
-        rent,
-        decimals: data.decimals,
-        mintAuthority: data.mintAuthority,
-        freezeAuthority: data.freezeAuthorityOption ? data.freezeAuthority : null,
+        programId,
+        keys: {
+            mint,
+            rent,
+        },
+        data,
+    };
+}
+
+/** A decoded, non-validated InitializeMint instruction */
+export interface DecodedInitializeMintInstructionUnchecked {
+    programId: PublicKey;
+    keys: {
+        mint: AccountMeta | undefined;
+        rent: AccountMeta | undefined;
+    };
+    data: {
+        instruction: number;
+        decimals: number;
+        mintAuthority: PublicKey;
+        freezeAuthority: PublicKey | null;
+    };
+}
+
+/**
+ * Decode an InitializeMint instruction without validating it
+ *
+ * @param instruction Transaction instruction to decode
+ *
+ * @return Decoded, non-validated instruction
+ */
+export function decodeInitializeMintInstructionUnchecked({
+    programId,
+    keys: [mint, rent],
+    data,
+}: TransactionInstruction): DecodedInitializeMintInstructionUnchecked {
+    const { instruction, decimals, mintAuthority, freezeAuthorityOption, freezeAuthority } =
+        initializeMintInstructionData.decode(data);
+
+    return {
+        programId,
+        keys: {
+            mint,
+            rent,
+        },
+        data: {
+            instruction,
+            decimals,
+            mintAuthority,
+            freezeAuthority: freezeAuthorityOption ? freezeAuthority : null,
+        },
     };
 }

@@ -61,43 +61,92 @@ export function createBurnInstruction(
     return new TransactionInstruction({ keys, programId, data });
 }
 
-/** TODO: docs */
+/** A decoded, valid Burn instruction */
 export interface DecodedBurnInstruction {
-    instruction: TokenInstruction.Burn;
-    account: AccountMeta;
-    mint: AccountMeta;
-    owner: AccountMeta;
-    multiSigners: AccountMeta[];
-    amount: bigint;
+    programId: PublicKey;
+    keys: {
+        account: AccountMeta;
+        mint: AccountMeta;
+        owner: AccountMeta;
+        multiSigners: AccountMeta[];
+    };
+    data: {
+        instruction: TokenInstruction.Burn;
+        amount: bigint;
+    };
 }
 
 /**
- * Decode a Burn instruction
+ * Decode a Burn instruction and validate it
  *
  * @param instruction Transaction instruction to decode
  * @param programId   SPL Token program account
  *
- * @return Decoded instruction
+ * @return Decoded, valid instruction
  */
 export function decodeBurnInstruction(
     instruction: TransactionInstruction,
     programId = TOKEN_PROGRAM_ID
 ): DecodedBurnInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
+    if (instruction.data.length !== burnInstructionData.span) throw new TokenInvalidInstructionDataError();
 
-    const [account, mint, owner, ...multiSigners] = instruction.keys;
+    const {
+        keys: { account, mint, owner, multiSigners },
+        data,
+    } = decodeBurnInstructionUnchecked(instruction);
+    if (data.instruction !== TokenInstruction.Burn) throw new TokenInvalidInstructionTypeError();
     if (!account || !mint || !owner) throw new TokenInvalidInstructionKeysError();
 
-    if (instruction.data.length !== burnInstructionData.span) throw new TokenInvalidInstructionTypeError();
-    const data = burnInstructionData.decode(instruction.data);
-    if (data.instruction !== TokenInstruction.Burn) throw new TokenInvalidInstructionDataError();
+    // TODO: key checks?
 
     return {
-        instruction: data.instruction,
-        account,
-        mint,
-        owner,
-        multiSigners,
-        amount: data.amount,
+        programId,
+        keys: {
+            account,
+            mint,
+            owner,
+            multiSigners,
+        },
+        data,
+    };
+}
+
+/** A decoded, non-validated Burn instruction */
+export interface DecodedBurnInstructionUnchecked {
+    programId: PublicKey;
+    keys: {
+        account: AccountMeta | undefined;
+        mint: AccountMeta | undefined;
+        owner: AccountMeta | undefined;
+        multiSigners: AccountMeta[];
+    };
+    data: {
+        instruction: number;
+        amount: bigint;
+    };
+}
+
+/**
+ * Decode a Burn instruction without validating it
+ *
+ * @param instruction Transaction instruction to decode
+ *
+ * @return Decoded, non-validated instruction
+ */
+export function decodeBurnInstructionUnchecked({
+    programId,
+    keys: [account, mint, owner, ...multiSigners],
+    data,
+}: TransactionInstruction): DecodedBurnInstructionUnchecked {
+    return {
+        programId,
+        keys: {
+            account,
+            mint,
+            owner,
+            multiSigners,
+        },
+        data: burnInstructionData.decode(data),
     };
 }

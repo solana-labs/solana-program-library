@@ -72,47 +72,98 @@ export function createApproveCheckedInstruction(
     return new TransactionInstruction({ keys, programId, data });
 }
 
-/** TODO: docs */
+/** A decoded, valid ApproveChecked instruction */
 export interface DecodedApproveCheckedInstruction {
-    instruction: TokenInstruction.ApproveChecked;
-    account: AccountMeta;
-    mint: AccountMeta;
-    delegate: AccountMeta;
-    owner: AccountMeta;
-    multiSigners: AccountMeta[];
-    amount: bigint;
-    decimals: number;
+    programId: PublicKey;
+    keys: {
+        account: AccountMeta;
+        mint: AccountMeta;
+        delegate: AccountMeta;
+        owner: AccountMeta;
+        multiSigners: AccountMeta[];
+    };
+    data: {
+        instruction: TokenInstruction.ApproveChecked;
+        amount: bigint;
+        decimals: number;
+    };
 }
 
 /**
- * Decode an ApproveChecked instruction
+ * Decode an ApproveChecked instruction and validate it
  *
  * @param instruction Transaction instruction to decode
  * @param programId   SPL Token program account
  *
- * @return Decoded instruction
+ * @return Decoded, valid instruction
  */
 export function decodeApproveCheckedInstruction(
     instruction: TransactionInstruction,
     programId = TOKEN_PROGRAM_ID
 ): DecodedApproveCheckedInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
+    if (instruction.data.length !== approveCheckedInstructionData.span) throw new TokenInvalidInstructionDataError();
 
-    const [account, mint, delegate, owner, ...multiSigners] = instruction.keys;
+    const {
+        keys: { account, mint, delegate, owner, multiSigners },
+        data,
+    } = decodeApproveCheckedInstructionUnchecked(instruction);
+    if (data.instruction !== TokenInstruction.ApproveChecked) throw new TokenInvalidInstructionTypeError();
     if (!account || !mint || !delegate || !owner) throw new TokenInvalidInstructionKeysError();
 
-    if (instruction.data.length !== approveCheckedInstructionData.span) throw new TokenInvalidInstructionTypeError();
-    const data = approveCheckedInstructionData.decode(instruction.data);
-    if (data.instruction !== TokenInstruction.ApproveChecked) throw new TokenInvalidInstructionDataError();
+    // TODO: key checks?
 
     return {
-        instruction: data.instruction,
-        account,
-        mint,
-        delegate,
-        owner,
-        multiSigners,
-        amount: data.amount,
-        decimals: data.decimals,
+        programId,
+        keys: {
+            account,
+            mint,
+            delegate,
+            owner,
+            multiSigners,
+        },
+        data,
+    };
+}
+
+/** A decoded, non-validated ApproveChecked instruction */
+export interface DecodedApproveCheckedInstructionUnchecked {
+    programId: PublicKey;
+    keys: {
+        account: AccountMeta | undefined;
+        mint: AccountMeta | undefined;
+        delegate: AccountMeta | undefined;
+        owner: AccountMeta | undefined;
+        multiSigners: AccountMeta[];
+    };
+    data: {
+        instruction: number;
+        amount: bigint;
+        decimals: number;
+    };
+}
+
+/**
+ * Decode an ApproveChecked instruction without validating it
+ *
+ * @param instruction Transaction instruction to decode
+ *
+ * @return Decoded, non-validated instruction
+ */
+export function decodeApproveCheckedInstructionUnchecked({
+    programId,
+    keys: [account, mint, delegate, owner, ...multiSigners],
+    data,
+}: TransactionInstruction): DecodedApproveCheckedInstructionUnchecked {
+    return {
+        programId,
+        keys: {
+            account,
+            mint,
+            delegate,
+            owner,
+            multiSigners,
+        },
+        data: approveCheckedInstructionData.decode(data),
     };
 }

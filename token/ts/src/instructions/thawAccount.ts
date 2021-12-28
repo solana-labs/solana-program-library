@@ -51,41 +51,90 @@ export function createThawAccountInstruction(
     return new TransactionInstruction({ keys, programId, data });
 }
 
-/** TODO: docs */
+/** A decoded, valid ThawAccount instruction */
 export interface DecodedThawAccountInstruction {
-    instruction: TokenInstruction.ThawAccount;
-    account: AccountMeta;
-    mint: AccountMeta;
-    authority: AccountMeta;
-    multiSigners: AccountMeta[];
+    programId: PublicKey;
+    keys: {
+        account: AccountMeta;
+        mint: AccountMeta;
+        authority: AccountMeta;
+        multiSigners: AccountMeta[];
+    };
+    data: {
+        instruction: TokenInstruction.ThawAccount;
+    };
 }
 
 /**
- * Decode a ThawAccount instruction
+ * Decode a ThawAccount instruction and validate it
  *
  * @param instruction Transaction instruction to decode
  * @param programId   SPL Token program account
  *
- * @return Decoded instruction
+ * @return Decoded, valid instruction
  */
 export function decodeThawAccountInstruction(
     instruction: TransactionInstruction,
     programId = TOKEN_PROGRAM_ID
 ): DecodedThawAccountInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
+    if (instruction.data.length !== thawAccountInstructionData.span) throw new TokenInvalidInstructionDataError();
 
-    const [account, mint, authority, ...multiSigners] = instruction.keys;
+    const {
+        keys: { account, mint, authority, multiSigners },
+        data,
+    } = decodeThawAccountInstructionUnchecked(instruction);
+    if (data.instruction !== TokenInstruction.ThawAccount) throw new TokenInvalidInstructionTypeError();
     if (!account || !mint || !authority) throw new TokenInvalidInstructionKeysError();
 
-    if (instruction.data.length !== thawAccountInstructionData.span) throw new TokenInvalidInstructionTypeError();
-    const data = thawAccountInstructionData.decode(instruction.data);
-    if (data.instruction !== TokenInstruction.ThawAccount) throw new TokenInvalidInstructionDataError();
+    // TODO: key checks?
 
     return {
-        instruction: data.instruction,
-        account,
-        mint,
-        authority,
-        multiSigners,
+        programId,
+        keys: {
+            account,
+            mint,
+            authority,
+            multiSigners,
+        },
+        data,
+    };
+}
+
+/** A decoded, non-validated ThawAccount instruction */
+export interface DecodedThawAccountInstructionUnchecked {
+    programId: PublicKey;
+    keys: {
+        account: AccountMeta | undefined;
+        mint: AccountMeta | undefined;
+        authority: AccountMeta | undefined;
+        multiSigners: AccountMeta[];
+    };
+    data: {
+        instruction: number;
+    };
+}
+
+/**
+ * Decode a ThawAccount instruction without validating it
+ *
+ * @param instruction Transaction instruction to decode
+ *
+ * @return Decoded, non-validated instruction
+ */
+export function decodeThawAccountInstructionUnchecked({
+    programId,
+    keys: [account, mint, authority, ...multiSigners],
+    data,
+}: TransactionInstruction): DecodedThawAccountInstructionUnchecked {
+    return {
+        programId,
+        keys: {
+            account,
+            mint,
+            authority,
+            multiSigners,
+        },
+        data: thawAccountInstructionData.decode(data),
     };
 }
