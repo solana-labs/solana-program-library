@@ -106,6 +106,8 @@ Although fees may seem uninteresting or scammy at this point, consider the costs
 of running your stake pool, and potential malicious actors that may abuse your pool
 if it has no fees.
 
+See [Fees](fees.md) for more information about fees and best practices.
+
 Each of these parameters is modifiable after pool creation, so there's no need
 to worry about being locked in to any choices.
 
