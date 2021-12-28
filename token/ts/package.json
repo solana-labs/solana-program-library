@@ -29,7 +29,6 @@
         "clean": "shx rm -rf lib",
         "build": "yarn clean && tsc -p tsconfig.json && tsc -p tsconfig-cjs.json",
         "postbuild": "echo '{\"type\":\"commonjs\"}' > lib/cjs/package.json && echo '{\"type\":\"module\"}' > lib/esm/package.json",
-        "watch": "yarn build -w",
         "deploy": "yarn docs && gh-pages --dist docs --dotfiles",
         "example": "node --experimental-specifier-resolution=node --loader ts-node/esm examples/create_mint_and_transfer_tokens.ts",
         "test": "mocha",
