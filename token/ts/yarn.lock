@@ -92,11 +92,13 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
-"@solana/buffer-layout-utils@^0.1.0":
-  version "0.1.0"
-  resolved "https://registry.yarnpkg.com/@solana/buffer-layout-utils/-/buffer-layout-utils-0.1.0.tgz#0f8a598c89c4068033e8dcbe34ddecdb400eba48"
-  integrity sha512-3rE78DhwWLqLYWHXt8MUOggCf3eICP7T4KOnZAgKOPDrIk6u78GXIdRR009FOQKkLAUZ2CJv/k0si/Mlvn0kcg==
+"@solana/buffer-layout-utils@^0.1.1":
+  version "0.1.1"
+  resolved "https://registry.yarnpkg.com/@solana/buffer-layout-utils/-/buffer-layout-utils-0.1.1.tgz#760ca4c5b3a4e18122a769dac4b1c0bbf30436b6"
+  integrity sha512-pdxnjKmCyGM6e45su+E789IyQ82DC7zgWCY6ZlMszGLxdfJNCau4N75DtSlN7qnPaqlPs7CC6yBFs2Drkc0uHw==
   dependencies:
+    "@solana/buffer-layout" "^4.0.0"
+    "@solana/web3.js" "^1.20.0"
     bigint-buffer "^1.1.5"
     bignumber.js "^9.0.1"
 
@@ -114,7 +116,7 @@
   dependencies:
     buffer "~6.0.3"
 
-"@solana/web3.js@^1.31.0":
+"@solana/web3.js@^1.20.0":
   version "1.31.0"
   resolved "https://registry.yarnpkg.com/@solana/web3.js/-/web3.js-1.31.0.tgz#7a313d4c1a90b77f27ddbfe845a10d6883e06452"
   integrity sha512-7nHHx1JNFnrt15e9y8m38I/EJCbaB+bFC3KZVM1+QhybCikFxGMtGA5r7PDC3GEL1R2RZA8yKoLkDKo3vzzqnw==
