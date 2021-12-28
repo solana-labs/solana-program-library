@@ -139,8 +139,8 @@ impl StableSwapModel {
     fn call0(&self, py: Python, method_name: &str) -> Result<PyObject, PyErr> {
         let sim = PyModule::from_code(py, &self.py_src, FILE_NAME, MODULE_NAME).unwrap();
         let model = sim
+            .getattr("Curve")?
             .call1(
-                "Curve",
                 (
                     self.amp_factor,
                     self.balances.to_vec(),
@@ -164,8 +164,8 @@ impl StableSwapModel {
     ) -> Result<PyObject, PyErr> {
         let sim = PyModule::from_code(py, &self.py_src, FILE_NAME, MODULE_NAME).unwrap();
         let model = sim
+            .getattr("Curve")?
             .call1(
-                "Curve",
                 (
                     self.amp_factor,
                     self.balances.to_vec(),
