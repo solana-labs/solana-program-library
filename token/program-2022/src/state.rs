@@ -304,6 +304,25 @@ pub(crate) mod test {
         2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
     ];
 
+    pub const TEST_ACCOUNT: Account = Account {
+        mint: Pubkey::new_from_array([1; 32]),
+        owner: Pubkey::new_from_array([2; 32]),
+        amount: 3,
+        delegate: COption::Some(Pubkey::new_from_array([4; 32])),
+        state: AccountState::Frozen,
+        is_native: COption::Some(5),
+        delegated_amount: 6,
+        close_authority: COption::Some(Pubkey::new_from_array([7; 32])),
+    };
+    pub const TEST_ACCOUNT_SLICE: &[u8] = &[
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+        2, 2, 2, 2, 3, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+        4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 2, 1, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0,
+        0, 6, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+        7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+    ];
+
     #[test]
     fn test_pack_unpack() {
         // Mint
@@ -325,16 +344,7 @@ pub(crate) mod test {
         assert_eq!(unpacked, check);
 
         // Account
-        let check = Account {
-            mint: Pubkey::new(&[1; 32]),
-            owner: Pubkey::new(&[2; 32]),
-            amount: 3,
-            delegate: COption::Some(Pubkey::new(&[4; 32])),
-            state: AccountState::Frozen,
-            is_native: COption::Some(5),
-            delegated_amount: 6,
-            close_authority: COption::Some(Pubkey::new(&[7; 32])),
-        };
+        let check = TEST_ACCOUNT;
         let mut packed = vec![0; Account::get_packed_len() + 1];
         assert_eq!(
             Err(ProgramError::InvalidAccountData),
@@ -347,14 +357,7 @@ pub(crate) mod test {
         );
         let mut packed = vec![0; Account::get_packed_len()];
         Account::pack(check, &mut packed).unwrap();
-        let expect = vec![
-            1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-            1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-            2, 2, 2, 2, 2, 2, 3, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
-            4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 2, 1, 0, 0, 0, 5, 0, 0,
-            0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-            7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
-        ];
+        let expect = TEST_ACCOUNT_SLICE;
         assert_eq!(packed, expect);
         let unpacked = Account::unpack(&packed).unwrap();
         assert_eq!(unpacked, check);

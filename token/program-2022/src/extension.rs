@@ -304,6 +304,9 @@ pub enum ExtensionType {
     MintCloseAuthority,
     /// Padding extension used to make an account exactly Multisig::LEN, used for testing
     #[cfg(test)]
+    AccountPaddingTest = u16::MAX - 1,
+    /// Padding extension used to make a mint exactly Multisig::LEN, used for testing
+    #[cfg(test)]
     MintPaddingTest = u16::MAX,
 }
 impl TryFrom<&[u8]> for ExtensionType {
@@ -328,6 +331,8 @@ impl ExtensionType {
             ExtensionType::MintTransferFee => pod_get_packed_len::<MintTransferFee>(),
             ExtensionType::AccountTransferFee => pod_get_packed_len::<AccountTransferFee>(),
             ExtensionType::MintCloseAuthority => pod_get_packed_len::<MintCloseAuthority>(),
+            #[cfg(test)]
+            ExtensionType::AccountPaddingTest => pod_get_packed_len::<AccountPaddingTest>(),
             #[cfg(test)]
             ExtensionType::MintPaddingTest => pod_get_packed_len::<MintPaddingTest>(),
         }
@@ -426,7 +431,7 @@ impl Extension for MintTransferFee {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct AccountTransferFee {
     /// Amount withheld during transfers, to be harvested to the mint
-    pub withheld_amount: u64,
+    pub withheld_amount: PodU64,
 }
 impl Extension for AccountTransferFee {
     const TYPE: ExtensionType = ExtensionType::AccountTransferFee;
@@ -453,18 +458,31 @@ impl Extension for MintPaddingTest {
     const TYPE: ExtensionType = ExtensionType::MintPaddingTest;
     const ACCOUNT_TYPE: AccountType = AccountType::Mint;
 }
+/// Account version of the MintPadding
+#[cfg(test)]
+#[repr(C)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
+pub struct AccountPaddingTest(MintPaddingTest);
+#[cfg(test)]
+impl Extension for AccountPaddingTest {
+    const TYPE: ExtensionType = ExtensionType::AccountPaddingTest;
+    const ACCOUNT_TYPE: AccountType = AccountType::Account;
+}
 
 #[cfg(test)]
 mod test {
     use {
         super::*,
-        crate::state::test::{TEST_MINT, TEST_MINT_SLICE},
+        crate::state::test::{TEST_ACCOUNT, TEST_ACCOUNT_SLICE, TEST_MINT, TEST_MINT_SLICE},
         solana_program::pubkey::Pubkey,
     };
 
     #[test]
     fn mint_with_extension_pack_unpack() {
-        let mint_size = get_account_len(&[ExtensionType::MintCloseAuthority]);
+        let mint_size = get_account_len(&[
+            ExtensionType::MintCloseAuthority,
+            ExtensionType::MintTransferFee,
+        ]);
         let mut buffer = vec![0; mint_size];
 
         // fail unpack
@@ -474,6 +492,12 @@ mod test {
         );
 
         let mut state = StateWithExtensionsMut::<Mint>::unpack_unchecked(&mut buffer).unwrap();
+        // fail init account extension
+        assert_eq!(
+            state.init_extension::<AccountTransferFee>(),
+            Err(ProgramError::InvalidAccountData),
+        );
+
         // success write extension
         let close_authority = OptionalNonZeroPubkey::try_from(Some(Pubkey::new(&[1; 32]))).unwrap();
         let extension = state.init_extension::<MintCloseAuthority>().unwrap();
@@ -499,7 +523,10 @@ mod test {
         expect.extend_from_slice(&(ExtensionType::MintCloseAuthority as u16).to_le_bytes());
         expect
             .extend_from_slice(&(pod_get_packed_len::<MintCloseAuthority>() as u16).to_le_bytes());
-        expect.extend_from_slice(&[1; 32]);
+        expect.extend_from_slice(&[1; 32]); // data
+        expect.extend_from_slice(&[0; size_of::<ExtensionType>()]);
+        expect.extend_from_slice(&[0; size_of::<Length>()]);
+        expect.extend_from_slice(&[0; size_of::<MintTransferFee>()]);
         assert_eq!(expect, buffer);
 
         // check unpacking
@@ -535,6 +562,9 @@ mod test {
         expect
             .extend_from_slice(&(pod_get_packed_len::<MintCloseAuthority>() as u16).to_le_bytes());
         expect.extend_from_slice(&[0; 32]);
+        expect.extend_from_slice(&[0; size_of::<ExtensionType>()]);
+        expect.extend_from_slice(&[0; size_of::<Length>()]);
+        expect.extend_from_slice(&[0; size_of::<MintTransferFee>()]);
         assert_eq!(expect, buffer);
 
         // fail unpack as an account
@@ -542,10 +572,64 @@ mod test {
             StateWithExtensions::<Account>::unpack(&buffer),
             Err(ProgramError::InvalidAccountData),
         );
+
+        let mut state = StateWithExtensionsMut::<Mint>::unpack(&mut buffer).unwrap();
+        // init one more extension
+        let new_extension = state.init_extension::<MintTransferFee>().unwrap();
+        let transfer_fee_config_authority =
+            OptionalNonZeroPubkey::try_from(Some(Pubkey::new(&[10; 32]))).unwrap();
+        new_extension.transfer_fee_config_authority = transfer_fee_config_authority;
+        let withheld_withdraw_authority =
+            OptionalNonZeroPubkey::try_from(Some(Pubkey::new(&[11; 32]))).unwrap();
+        new_extension.withheld_withdraw_authority = withheld_withdraw_authority;
+        let withheld_amount = PodU64::from(u64::MAX);
+        new_extension.withheld_amount = withheld_amount;
+        let older_transfer_fee = TransferFee {
+            epoch: PodU64::from(1),
+            maximum_fee: PodU64::from(10),
+            transfer_fee_basis_points: PodU16::from(100),
+        };
+        new_extension.older_transfer_fee = older_transfer_fee;
+        let newer_transfer_fee = TransferFee {
+            epoch: PodU64::from(100),
+            maximum_fee: PodU64::from(5_000),
+            transfer_fee_basis_points: PodU16::from(1),
+        };
+        new_extension.newer_transfer_fee = newer_transfer_fee;
+
+        // check raw buffer
+        let mut expect = vec![0; Mint::LEN];
+        Mint::pack_into_slice(&new_base, &mut expect);
+        expect.extend_from_slice(&[0; Account::LEN - Mint::LEN]); // padding
+        expect.push(AccountType::Mint.into());
+        expect.extend_from_slice(&(ExtensionType::MintCloseAuthority as u16).to_le_bytes());
+        expect
+            .extend_from_slice(&(pod_get_packed_len::<MintCloseAuthority>() as u16).to_le_bytes());
+        expect.extend_from_slice(&[0; 32]); // data
+        expect.extend_from_slice(&(ExtensionType::MintTransferFee as u16).to_le_bytes());
+        expect.extend_from_slice(&(pod_get_packed_len::<MintTransferFee>() as u16).to_le_bytes());
+        expect.extend_from_slice(pod_bytes_of(&transfer_fee_config_authority));
+        expect.extend_from_slice(pod_bytes_of(&withheld_withdraw_authority));
+        expect.extend_from_slice(pod_bytes_of(&withheld_amount));
+        expect.extend_from_slice(pod_bytes_of(&older_transfer_fee));
+        expect.extend_from_slice(pod_bytes_of(&newer_transfer_fee));
+        assert_eq!(expect, buffer);
+
+        // fail to init one more extension that does not fit
+        let mut state = StateWithExtensionsMut::<Mint>::unpack(&mut buffer).unwrap();
+        assert_eq!(
+            state.init_extension::<MintPaddingTest>(),
+            Err(ProgramError::InvalidAccountData),
+        );
     }
 
     #[test]
     fn mint_with_multisig_len() {
+        let mut buffer = vec![0; Multisig::LEN];
+        assert_eq!(
+            StateWithExtensionsMut::<Mint>::unpack_unchecked(&mut buffer),
+            Err(ProgramError::InvalidAccountData),
+        );
         let mint_size = get_account_len(&[ExtensionType::MintPaddingTest]);
         assert_eq!(mint_size, Multisig::LEN + size_of::<ExtensionType>());
         let mut buffer = vec![0; mint_size];
@@ -570,6 +654,126 @@ mod test {
         expect.extend_from_slice(&(ExtensionType::MintPaddingTest as u16).to_le_bytes());
         expect.extend_from_slice(&(pod_get_packed_len::<MintPaddingTest>() as u16).to_le_bytes());
         expect.extend_from_slice(&vec![1; pod_get_packed_len::<MintPaddingTest>()]);
+        expect.extend_from_slice(&(ExtensionType::Uninitialized as u16).to_le_bytes());
+    }
+
+    #[test]
+    fn account_with_extension_pack_unpack() {
+        let account_size = get_account_len(&[ExtensionType::AccountTransferFee]);
+        let mut buffer = vec![0; account_size];
+
+        // fail unpack
+        assert_eq!(
+            StateWithExtensionsMut::<Account>::unpack(&mut buffer),
+            Err(ProgramError::UninitializedAccount),
+        );
+
+        let mut state = StateWithExtensionsMut::<Account>::unpack_unchecked(&mut buffer).unwrap();
+        // fail init mint extension
+        assert_eq!(
+            state.init_extension::<MintTransferFee>(),
+            Err(ProgramError::InvalidAccountData),
+        );
+        // success write extension
+        let withheld_amount = PodU64::from(u64::MAX);
+        let extension = state.init_extension::<AccountTransferFee>().unwrap();
+        extension.withheld_amount = withheld_amount;
+
+        // fail unpack again, still no base data
+        assert_eq!(
+            StateWithExtensionsMut::<Account>::unpack(&mut buffer.clone()),
+            Err(ProgramError::UninitializedAccount),
+        );
+
+        // write base account
+        let mut state = StateWithExtensionsMut::<Account>::unpack_unchecked(&mut buffer).unwrap();
+        let base = TEST_ACCOUNT;
+        state.pack_base(base);
+        assert_eq!(state.base, base);
+        state.init_account_type();
+
+        // check raw buffer
+        let mut expect = TEST_ACCOUNT_SLICE.to_vec();
+        expect.push(AccountType::Account.into());
+        expect.extend_from_slice(&(ExtensionType::AccountTransferFee as u16).to_le_bytes());
+        expect
+            .extend_from_slice(&(pod_get_packed_len::<AccountTransferFee>() as u16).to_le_bytes());
+        expect.extend_from_slice(&u64::from(withheld_amount).to_le_bytes());
+        assert_eq!(expect, buffer);
+
+        // check unpacking
+        let mut state = StateWithExtensionsMut::<Account>::unpack(&mut buffer).unwrap();
+        assert_eq!(state.base, base);
+
+        // update base
+        let mut new_base = TEST_ACCOUNT;
+        new_base.amount += 100;
+        state.pack_base(new_base);
+        assert_eq!(state.base, new_base);
+
+        // check unpacking
+        let mut unpacked_extension = state.get_extension_mut::<AccountTransferFee>().unwrap();
+        assert_eq!(*unpacked_extension, AccountTransferFee { withheld_amount });
+
+        // update extension
+        let withheld_amount = PodU64::from(u32::MAX as u64);
+        unpacked_extension.withheld_amount = withheld_amount;
+
+        // check updates are propagated
+        let state = StateWithExtensions::<Account>::unpack(&buffer).unwrap();
+        assert_eq!(state.base, new_base);
+        let unpacked_extension = state.get_extension::<AccountTransferFee>().unwrap();
+        assert_eq!(*unpacked_extension, AccountTransferFee { withheld_amount });
+
+        // check raw buffer
+        let mut expect = vec![0; Account::LEN];
+        Account::pack_into_slice(&new_base, &mut expect);
+        expect.push(AccountType::Account.into());
+        expect.extend_from_slice(&(ExtensionType::AccountTransferFee as u16).to_le_bytes());
+        expect
+            .extend_from_slice(&(pod_get_packed_len::<AccountTransferFee>() as u16).to_le_bytes());
+        expect.extend_from_slice(&u64::from(withheld_amount).to_le_bytes());
+        assert_eq!(expect, buffer);
+
+        // fail unpack as a mint
+        assert_eq!(
+            StateWithExtensions::<Mint>::unpack(&buffer),
+            Err(ProgramError::InvalidAccountData),
+        );
+    }
+
+    #[test]
+    fn account_with_multisig_len() {
+        let mut buffer = vec![0; Multisig::LEN];
+        assert_eq!(
+            StateWithExtensionsMut::<Account>::unpack_unchecked(&mut buffer),
+            Err(ProgramError::InvalidAccountData),
+        );
+        let account_size = get_account_len(&[ExtensionType::AccountPaddingTest]);
+        assert_eq!(account_size, Multisig::LEN + size_of::<ExtensionType>());
+        let mut buffer = vec![0; account_size];
+
+        // write base account
+        let mut state = StateWithExtensionsMut::<Account>::unpack_unchecked(&mut buffer).unwrap();
+        let base = TEST_ACCOUNT;
+        state.pack_base(base);
+        assert_eq!(state.base, base);
+        state.init_account_type();
+
+        // write padding
+        let extension = state.init_extension::<AccountPaddingTest>().unwrap();
+        extension.0.padding1 = [2; 128];
+        extension.0.padding2 = [2; 48];
+        extension.0.padding3 = [2; 9];
+
+        // check raw buffer
+        let mut expect = TEST_ACCOUNT_SLICE.to_vec();
+        expect.extend_from_slice(&[0; Account::LEN - Mint::LEN]); // padding
+        expect.push(AccountType::Account.into());
+        expect.extend_from_slice(&(ExtensionType::AccountPaddingTest as u16).to_le_bytes());
+        expect
+            .extend_from_slice(&(pod_get_packed_len::<AccountPaddingTest>() as u16).to_le_bytes());
+        expect.extend_from_slice(&vec![2; pod_get_packed_len::<AccountPaddingTest>()]);
         expect.extend_from_slice(&(ExtensionType::Uninitialized as u16).to_le_bytes());
     }
 }
