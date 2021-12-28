@@ -69,45 +69,94 @@ export function createMintToCheckedInstruction(
     return new TransactionInstruction({ keys, programId, data });
 }
 
-/** TODO: docs */
+/** A decoded, valid MintToChecked instruction */
 export interface DecodedMintToCheckedInstruction {
-    instruction: TokenInstruction.MintToChecked;
-    mint: AccountMeta;
-    destination: AccountMeta;
-    authority: AccountMeta;
-    multiSigners: AccountMeta[];
-    amount: bigint;
-    decimals: number;
+    programId: PublicKey;
+    keys: {
+        mint: AccountMeta;
+        destination: AccountMeta;
+        authority: AccountMeta;
+        multiSigners: AccountMeta[];
+    };
+    data: {
+        instruction: TokenInstruction.MintToChecked;
+        amount: bigint;
+        decimals: number;
+    };
 }
 
 /**
- * Decode a MintToChecked instruction
+ * Decode a MintToChecked instruction and validate it
  *
  * @param instruction Transaction instruction to decode
  * @param programId   SPL Token program account
  *
- * @return Decoded instruction
+ * @return Decoded, valid instruction
  */
 export function decodeMintToCheckedInstruction(
     instruction: TransactionInstruction,
     programId = TOKEN_PROGRAM_ID
 ): DecodedMintToCheckedInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
+    if (instruction.data.length !== mintToCheckedInstructionData.span) throw new TokenInvalidInstructionDataError();
 
-    const [mint, destination, authority, ...multiSigners] = instruction.keys;
+    const {
+        keys: { mint, destination, authority, multiSigners },
+        data,
+    } = decodeMintToCheckedInstructionUnchecked(instruction);
+    if (data.instruction !== TokenInstruction.MintToChecked) throw new TokenInvalidInstructionTypeError();
     if (!mint || !destination || !authority) throw new TokenInvalidInstructionKeysError();
 
-    if (instruction.data.length !== mintToCheckedInstructionData.span) throw new TokenInvalidInstructionTypeError();
-    const data = mintToCheckedInstructionData.decode(instruction.data);
-    if (data.instruction !== TokenInstruction.MintToChecked) throw new TokenInvalidInstructionDataError();
+    // TODO: key checks?
 
     return {
-        instruction: data.instruction,
-        mint,
-        destination,
-        authority,
-        multiSigners,
-        amount: data.amount,
-        decimals: data.decimals,
+        programId,
+        keys: {
+            mint,
+            destination,
+            authority,
+            multiSigners,
+        },
+        data,
+    };
+}
+
+/** A decoded, non-validated MintToChecked instruction */
+export interface DecodedMintToCheckedInstructionUnchecked {
+    programId: PublicKey;
+    keys: {
+        mint: AccountMeta | undefined;
+        destination: AccountMeta | undefined;
+        authority: AccountMeta | undefined;
+        multiSigners: AccountMeta[];
+    };
+    data: {
+        instruction: number;
+        amount: bigint;
+        decimals: number;
+    };
+}
+
+/**
+ * Decode a MintToChecked instruction without validating it
+ *
+ * @param instruction Transaction instruction to decode
+ *
+ * @return Decoded, non-validated instruction
+ */
+export function decodeMintToCheckedInstructionUnchecked({
+    programId,
+    keys: [mint, destination, authority, ...multiSigners],
+    data,
+}: TransactionInstruction): DecodedMintToCheckedInstructionUnchecked {
+    return {
+        programId,
+        keys: {
+            mint,
+            destination,
+            authority,
+            multiSigners,
+        },
+        data: mintToCheckedInstructionData.decode(data),
     };
 }

@@ -71,43 +71,96 @@ export function createSetAuthorityInstruction(
     return new TransactionInstruction({ keys, programId, data });
 }
 
-/** TODO: docs */
+/** A decoded, valid SetAuthority instruction */
 export interface DecodedSetAuthorityInstruction {
-    instruction: TokenInstruction.SetAuthority;
-    account: AccountMeta;
-    currentAuthority: AccountMeta;
-    multiSigners: AccountMeta[];
-    authorityType: AuthorityType;
-    newAuthority: PublicKey | null;
+    programId: PublicKey;
+    keys: {
+        account: AccountMeta;
+        currentAuthority: AccountMeta;
+        multiSigners: AccountMeta[];
+    };
+    data: {
+        instruction: TokenInstruction.SetAuthority;
+        authorityType: AuthorityType;
+        newAuthority: PublicKey | null;
+    };
 }
 
 /**
- * Decode a SetAuthority instruction
+ * Decode a SetAuthority instruction and validate it
  *
  * @param instruction Transaction instruction to decode
  * @param programId   SPL Token program account
  *
- * @return Decoded instruction
+ * @return Decoded, valid instruction
  */
 export function decodeSetAuthorityInstruction(
     instruction: TransactionInstruction,
     programId = TOKEN_PROGRAM_ID
 ): DecodedSetAuthorityInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
+    if (instruction.data.length !== setAuthorityInstructionData.span) throw new TokenInvalidInstructionDataError();
 
-    const [account, currentAuthority, ...multiSigners] = instruction.keys;
+    const {
+        keys: { account, currentAuthority, multiSigners },
+        data,
+    } = decodeSetAuthorityInstructionUnchecked(instruction);
+    if (data.instruction !== TokenInstruction.SetAuthority) throw new TokenInvalidInstructionTypeError();
     if (!account || !currentAuthority) throw new TokenInvalidInstructionKeysError();
 
-    if (instruction.data.length !== setAuthorityInstructionData.span) throw new TokenInvalidInstructionTypeError();
-    const data = setAuthorityInstructionData.decode(instruction.data);
-    if (data.instruction !== TokenInstruction.SetAuthority) throw new TokenInvalidInstructionDataError();
+    // TODO: key checks?
 
     return {
-        instruction: data.instruction,
-        account,
-        currentAuthority,
-        multiSigners,
-        authorityType: data.authorityType,
-        newAuthority: data.newAuthorityOption ? data.newAuthority : null,
+        programId,
+        keys: {
+            account,
+            currentAuthority,
+            multiSigners,
+        },
+        data,
+    };
+}
+
+/** A decoded, non-validated SetAuthority instruction */
+export interface DecodedSetAuthorityInstructionUnchecked {
+    programId: PublicKey;
+    keys: {
+        account: AccountMeta | undefined;
+        currentAuthority: AccountMeta | undefined;
+        multiSigners: AccountMeta[];
+    };
+    data: {
+        instruction: number;
+        authorityType: AuthorityType;
+        newAuthority: PublicKey | null;
+    };
+}
+
+/**
+ * Decode a SetAuthority instruction without validating it
+ *
+ * @param instruction Transaction instruction to decode
+ *
+ * @return Decoded, non-validated instruction
+ */
+export function decodeSetAuthorityInstructionUnchecked({
+    programId,
+    keys: [account, currentAuthority, ...multiSigners],
+    data,
+}: TransactionInstruction): DecodedSetAuthorityInstructionUnchecked {
+    const { instruction, authorityType, newAuthorityOption, newAuthority } = setAuthorityInstructionData.decode(data);
+
+    return {
+        programId,
+        keys: {
+            account,
+            currentAuthority,
+            multiSigners,
+        },
+        data: {
+            instruction,
+            authorityType,
+            newAuthority: newAuthorityOption ? newAuthority : null,
+        },
     };
 }

@@ -42,39 +42,86 @@ export function createRevokeInstruction(
     return new TransactionInstruction({ keys, programId, data });
 }
 
-/** TODO: docs */
+/** A decoded, valid Revoke instruction */
 export interface DecodedRevokeInstruction {
-    instruction: TokenInstruction.Revoke;
-    account: AccountMeta;
-    owner: AccountMeta;
-    multiSigners: AccountMeta[];
+    programId: PublicKey;
+    keys: {
+        account: AccountMeta;
+        owner: AccountMeta;
+        multiSigners: AccountMeta[];
+    };
+    data: {
+        instruction: TokenInstruction.Revoke;
+    };
 }
 
 /**
- * Decode a Revoke instruction
+ * Decode a Revoke instruction and validate it
  *
  * @param instruction Transaction instruction to decode
  * @param programId   SPL Token program account
  *
- * @return Decoded instruction
+ * @return Decoded, valid instruction
  */
 export function decodeRevokeInstruction(
     instruction: TransactionInstruction,
     programId = TOKEN_PROGRAM_ID
 ): DecodedRevokeInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
+    if (instruction.data.length !== revokeInstructionData.span) throw new TokenInvalidInstructionDataError();
 
-    const [account, owner, ...multiSigners] = instruction.keys;
+    const {
+        keys: { account, owner, multiSigners },
+        data,
+    } = decodeRevokeInstructionUnchecked(instruction);
+    if (data.instruction !== TokenInstruction.Revoke) throw new TokenInvalidInstructionTypeError();
     if (!account || !owner) throw new TokenInvalidInstructionKeysError();
 
-    if (instruction.data.length !== revokeInstructionData.span) throw new TokenInvalidInstructionTypeError();
-    const data = revokeInstructionData.decode(instruction.data);
-    if (data.instruction !== TokenInstruction.Revoke) throw new TokenInvalidInstructionDataError();
+    // TODO: key checks?
 
     return {
-        instruction: data.instruction,
-        account,
-        owner,
-        multiSigners,
+        programId,
+        keys: {
+            account,
+            owner,
+            multiSigners,
+        },
+        data,
+    };
+}
+
+/** A decoded, non-validated Revoke instruction */
+export interface DecodedRevokeInstructionUnchecked {
+    programId: PublicKey;
+    keys: {
+        account: AccountMeta | undefined;
+        owner: AccountMeta | undefined;
+        multiSigners: AccountMeta[];
+    };
+    data: {
+        instruction: number;
+    };
+}
+
+/**
+ * Decode a Revoke instruction without validating it
+ *
+ * @param instruction Transaction instruction to decode
+ *
+ * @return Decoded, non-validated instruction
+ */
+export function decodeRevokeInstructionUnchecked({
+    programId,
+    keys: [account, owner, ...multiSigners],
+    data,
+}: TransactionInstruction): DecodedRevokeInstructionUnchecked {
+    return {
+        programId,
+        keys: {
+            account,
+            owner,
+            multiSigners,
+        },
+        data: revokeInstructionData.decode(data),
     };
 }

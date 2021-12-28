@@ -61,43 +61,92 @@ export function createMintToInstruction(
     return new TransactionInstruction({ keys, programId, data });
 }
 
-/** TODO: docs */
+/** A decoded, valid MintTo instruction */
 export interface DecodedMintToInstruction {
-    instruction: TokenInstruction.MintTo;
-    mint: AccountMeta;
-    destination: AccountMeta;
-    authority: AccountMeta;
-    multiSigners: AccountMeta[];
-    amount: bigint;
+    programId: PublicKey;
+    keys: {
+        mint: AccountMeta;
+        destination: AccountMeta;
+        authority: AccountMeta;
+        multiSigners: AccountMeta[];
+    };
+    data: {
+        instruction: TokenInstruction.MintTo;
+        amount: bigint;
+    };
 }
 
 /**
- * Decode a MintTo instruction
+ * Decode a MintTo instruction and validate it
  *
  * @param instruction Transaction instruction to decode
  * @param programId   SPL Token program account
  *
- * @return Decoded instruction
+ * @return Decoded, valid instruction
  */
 export function decodeMintToInstruction(
     instruction: TransactionInstruction,
     programId = TOKEN_PROGRAM_ID
 ): DecodedMintToInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
+    if (instruction.data.length !== mintToInstructionData.span) throw new TokenInvalidInstructionDataError();
 
-    const [mint, destination, authority, ...multiSigners] = instruction.keys;
+    const {
+        keys: { mint, destination, authority, multiSigners },
+        data,
+    } = decodeMintToInstructionUnchecked(instruction);
+    if (data.instruction !== TokenInstruction.MintTo) throw new TokenInvalidInstructionTypeError();
     if (!mint || !destination || !authority) throw new TokenInvalidInstructionKeysError();
 
-    if (instruction.data.length !== mintToInstructionData.span) throw new TokenInvalidInstructionTypeError();
-    const data = mintToInstructionData.decode(instruction.data);
-    if (data.instruction !== TokenInstruction.MintTo) throw new TokenInvalidInstructionDataError();
+    // TODO: key checks?
 
     return {
-        instruction: data.instruction,
-        mint,
-        destination,
-        authority,
-        multiSigners,
-        amount: data.amount,
+        programId,
+        keys: {
+            mint,
+            destination,
+            authority,
+            multiSigners,
+        },
+        data,
+    };
+}
+
+/** A decoded, non-validated MintTo instruction */
+export interface DecodedMintToInstructionUnchecked {
+    programId: PublicKey;
+    keys: {
+        mint: AccountMeta | undefined;
+        destination: AccountMeta | undefined;
+        authority: AccountMeta | undefined;
+        multiSigners: AccountMeta[];
+    };
+    data: {
+        instruction: number;
+        amount: bigint;
+    };
+}
+
+/**
+ * Decode a MintTo instruction without validating it
+ *
+ * @param instruction Transaction instruction to decode
+ *
+ * @return Decoded, non-validated instruction
+ */
+export function decodeMintToInstructionUnchecked({
+    programId,
+    keys: [mint, destination, authority, ...multiSigners],
+    data,
+}: TransactionInstruction): DecodedMintToInstructionUnchecked {
+    return {
+        programId,
+        keys: {
+            mint,
+            destination,
+            authority,
+            multiSigners,
+        },
+        data: mintToInstructionData.decode(data),
     };
 }

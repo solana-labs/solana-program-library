@@ -69,45 +69,94 @@ export function createBurnCheckedInstruction(
     return new TransactionInstruction({ keys, programId, data });
 }
 
-/** TODO: docs */
+/** A decoded, valid BurnChecked instruction */
 export interface DecodedBurnCheckedInstruction {
-    instruction: TokenInstruction.BurnChecked;
-    account: AccountMeta;
-    mint: AccountMeta;
-    owner: AccountMeta;
-    multiSigners: AccountMeta[];
-    amount: bigint;
-    decimals: number;
+    programId: PublicKey;
+    keys: {
+        account: AccountMeta;
+        mint: AccountMeta;
+        owner: AccountMeta;
+        multiSigners: AccountMeta[];
+    };
+    data: {
+        instruction: TokenInstruction.BurnChecked;
+        amount: bigint;
+        decimals: number;
+    };
 }
 
 /**
- * Decode a BurnChecked instruction
+ * Decode a BurnChecked instruction and validate it
  *
  * @param instruction Transaction instruction to decode
  * @param programId   SPL Token program account
  *
- * @return Decoded instruction
+ * @return Decoded, valid instruction
  */
 export function decodeBurnCheckedInstruction(
     instruction: TransactionInstruction,
     programId = TOKEN_PROGRAM_ID
 ): DecodedBurnCheckedInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
+    if (instruction.data.length !== burnCheckedInstructionData.span) throw new TokenInvalidInstructionDataError();
 
-    const [account, mint, owner, ...multiSigners] = instruction.keys;
+    const {
+        keys: { account, mint, owner, multiSigners },
+        data,
+    } = decodeBurnCheckedInstructionUnchecked(instruction);
+    if (data.instruction !== TokenInstruction.BurnChecked) throw new TokenInvalidInstructionTypeError();
     if (!account || !mint || !owner) throw new TokenInvalidInstructionKeysError();
 
-    if (instruction.data.length !== burnCheckedInstructionData.span) throw new TokenInvalidInstructionTypeError();
-    const data = burnCheckedInstructionData.decode(instruction.data);
-    if (data.instruction !== TokenInstruction.BurnChecked) throw new TokenInvalidInstructionDataError();
+    // TODO: key checks?
 
     return {
-        instruction: data.instruction,
-        account,
-        mint,
-        owner,
-        multiSigners,
-        amount: data.amount,
-        decimals: data.decimals,
+        programId,
+        keys: {
+            account,
+            mint,
+            owner,
+            multiSigners,
+        },
+        data,
+    };
+}
+
+/** A decoded, non-validated BurnChecked instruction */
+export interface DecodedBurnCheckedInstructionUnchecked {
+    programId: PublicKey;
+    keys: {
+        account: AccountMeta | undefined;
+        mint: AccountMeta | undefined;
+        owner: AccountMeta | undefined;
+        multiSigners: AccountMeta[];
+    };
+    data: {
+        instruction: number;
+        amount: bigint;
+        decimals: number;
+    };
+}
+
+/**
+ * Decode a BurnChecked instruction without validating it
+ *
+ * @param instruction Transaction instruction to decode
+ *
+ * @return Decoded, non-validated instruction
+ */
+export function decodeBurnCheckedInstructionUnchecked({
+    programId,
+    keys: [account, mint, owner, ...multiSigners],
+    data,
+}: TransactionInstruction): DecodedBurnCheckedInstructionUnchecked {
+    return {
+        programId,
+        keys: {
+            account,
+            mint,
+            owner,
+            multiSigners,
+        },
+        data: burnCheckedInstructionData.decode(data),
     };
 }

@@ -61,43 +61,92 @@ export function createApproveInstruction(
     return new TransactionInstruction({ keys, programId, data });
 }
 
-/** TODO: docs */
+/** A decoded, valid Approve instruction */
 export interface DecodedApproveInstruction {
-    instruction: TokenInstruction.Approve;
-    account: AccountMeta;
-    delegate: AccountMeta;
-    owner: AccountMeta;
-    multiSigners: AccountMeta[];
-    amount: bigint;
+    programId: PublicKey;
+    keys: {
+        account: AccountMeta;
+        delegate: AccountMeta;
+        owner: AccountMeta;
+        multiSigners: AccountMeta[];
+    };
+    data: {
+        instruction: TokenInstruction.Approve;
+        amount: bigint;
+    };
 }
 
 /**
- * Decode an Approve instruction
+ * Decode an Approve instruction and validate it
  *
  * @param instruction Transaction instruction to decode
  * @param programId   SPL Token program account
  *
- * @return Decoded instruction
+ * @return Decoded, valid instruction
  */
 export function decodeApproveInstruction(
     instruction: TransactionInstruction,
     programId = TOKEN_PROGRAM_ID
 ): DecodedApproveInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
+    if (instruction.data.length !== approveInstructionData.span) throw new TokenInvalidInstructionDataError();
 
-    const [account, delegate, owner, ...multiSigners] = instruction.keys;
+    const {
+        keys: { account, delegate, owner, multiSigners },
+        data,
+    } = decodeApproveInstructionUnchecked(instruction);
+    if (data.instruction !== TokenInstruction.Approve) throw new TokenInvalidInstructionTypeError();
     if (!account || !delegate || !owner) throw new TokenInvalidInstructionKeysError();
 
-    if (instruction.data.length !== approveInstructionData.span) throw new TokenInvalidInstructionTypeError();
-    const data = approveInstructionData.decode(instruction.data);
-    if (data.instruction !== TokenInstruction.Approve) throw new TokenInvalidInstructionDataError();
+    // TODO: key checks?
 
     return {
-        instruction: data.instruction,
-        account,
-        delegate,
-        owner,
-        multiSigners,
-        amount: data.amount,
+        programId,
+        keys: {
+            account,
+            delegate,
+            owner,
+            multiSigners,
+        },
+        data,
+    };
+}
+
+/** A decoded, non-validated Approve instruction */
+export interface DecodedApproveInstructionUnchecked {
+    programId: PublicKey;
+    keys: {
+        account: AccountMeta | undefined;
+        delegate: AccountMeta | undefined;
+        owner: AccountMeta | undefined;
+        multiSigners: AccountMeta[];
+    };
+    data: {
+        instruction: number;
+        amount: bigint;
+    };
+}
+
+/**
+ * Decode an Approve instruction without validating it
+ *
+ * @param instruction Transaction instruction to decode
+ *
+ * @return Decoded, non-validated instruction
+ */
+export function decodeApproveInstructionUnchecked({
+    programId,
+    keys: [account, delegate, owner, ...multiSigners],
+    data,
+}: TransactionInstruction): DecodedApproveInstructionUnchecked {
+    return {
+        programId,
+        keys: {
+            account,
+            delegate,
+            owner,
+            multiSigners,
+        },
+        data: approveInstructionData.decode(data),
     };
 }

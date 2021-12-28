@@ -57,42 +57,89 @@ export function createInitializeMultisigInstruction(
     return new TransactionInstruction({ keys, programId, data });
 }
 
-/** TODO: docs */
+/** A decoded, valid InitializeMultisig instruction */
 export interface DecodedInitializeMultisigInstruction {
-    instruction: TokenInstruction.InitializeMultisig;
-    account: AccountMeta;
-    rent: AccountMeta;
-    signers: AccountMeta[];
-    m: number;
+    programId: PublicKey;
+    keys: {
+        account: AccountMeta;
+        rent: AccountMeta;
+        signers: AccountMeta[];
+    };
+    data: {
+        instruction: TokenInstruction.InitializeMultisig;
+        m: number;
+    };
 }
 
 /**
- * Decode an InitializeMultisig instruction
+ * Decode an InitializeMultisig instruction and validate it
  *
  * @param instruction Transaction instruction to decode
- * @param programId   SPL Token program multisig
+ * @param programId   SPL Token program account
  *
- * @return Decoded instruction
+ * @return Decoded, valid instruction
  */
 export function decodeInitializeMultisigInstruction(
     instruction: TransactionInstruction,
     programId = TOKEN_PROGRAM_ID
 ): DecodedInitializeMultisigInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
+    if (instruction.data.length !== initializeMultisigInstructionData.span)
+        throw new TokenInvalidInstructionDataError();
 
-    const [account, rent, ...signers] = instruction.keys;
+    const {
+        keys: { account, rent, signers },
+        data,
+    } = decodeInitializeMultisigInstructionUnchecked(instruction);
+    if (data.instruction !== TokenInstruction.InitializeMultisig) throw new TokenInvalidInstructionTypeError();
     if (!account || !rent || !signers.length) throw new TokenInvalidInstructionKeysError();
 
-    if (instruction.data.length !== initializeMultisigInstructionData.span)
-        throw new TokenInvalidInstructionTypeError();
-    const data = initializeMultisigInstructionData.decode(instruction.data);
-    if (data.instruction !== TokenInstruction.InitializeMultisig) throw new TokenInvalidInstructionDataError();
+    // TODO: key checks?
 
     return {
-        instruction: data.instruction,
-        account,
-        rent,
-        signers,
-        m: data.m,
+        programId,
+        keys: {
+            account,
+            rent,
+            signers,
+        },
+        data,
+    };
+}
+
+/** A decoded, non-validated InitializeMultisig instruction */
+export interface DecodedInitializeMultisigInstructionUnchecked {
+    programId: PublicKey;
+    keys: {
+        account: AccountMeta | undefined;
+        rent: AccountMeta | undefined;
+        signers: AccountMeta[];
+    };
+    data: {
+        instruction: number;
+        m: number;
+    };
+}
+
+/**
+ * Decode an InitializeMultisig instruction without validating it
+ *
+ * @param instruction Transaction instruction to decode
+ *
+ * @return Decoded, non-validated instruction
+ */
+export function decodeInitializeMultisigInstructionUnchecked({
+    programId,
+    keys: [account, rent, ...signers],
+    data,
+}: TransactionInstruction): DecodedInitializeMultisigInstructionUnchecked {
+    return {
+        programId,
+        keys: {
+            account,
+            rent,
+            signers,
+        },
+        data: initializeMultisigInstructionData.decode(data),
     };
 }

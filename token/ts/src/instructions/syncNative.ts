@@ -34,35 +34,78 @@ export function createSyncNativeInstruction(account: PublicKey, programId = TOKE
     return new TransactionInstruction({ keys, programId, data });
 }
 
-/** TODO: docs */
+/** A decoded, valid SyncNative instruction */
 export interface DecodedSyncNativeInstruction {
-    instruction: TokenInstruction.SyncNative;
-    account: AccountMeta;
+    programId: PublicKey;
+    keys: {
+        account: AccountMeta;
+    };
+    data: {
+        instruction: TokenInstruction.SyncNative;
+    };
 }
 
 /**
- * Decode a SyncNative instruction
+ * Decode a SyncNative instruction and validate it
  *
  * @param instruction Transaction instruction to decode
  * @param programId   SPL Token program account
  *
- * @return Decoded instruction
+ * @return Decoded, valid instruction
  */
 export function decodeSyncNativeInstruction(
     instruction: TransactionInstruction,
     programId = TOKEN_PROGRAM_ID
 ): DecodedSyncNativeInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
+    if (instruction.data.length !== syncNativeInstructionData.span) throw new TokenInvalidInstructionDataError();
 
-    const [account] = instruction.keys;
+    const {
+        keys: { account },
+        data,
+    } = decodeSyncNativeInstructionUnchecked(instruction);
+    if (data.instruction !== TokenInstruction.SyncNative) throw new TokenInvalidInstructionTypeError();
     if (!account) throw new TokenInvalidInstructionKeysError();
 
-    if (instruction.data.length !== syncNativeInstructionData.span) throw new TokenInvalidInstructionTypeError();
-    const data = syncNativeInstructionData.decode(instruction.data);
-    if (data.instruction !== TokenInstruction.SyncNative) throw new TokenInvalidInstructionDataError();
+    // TODO: key checks?
 
     return {
-        instruction: data.instruction,
-        account,
+        programId,
+        keys: {
+            account,
+        },
+        data,
+    };
+}
+
+/** A decoded, non-validated SyncNative instruction */
+export interface DecodedSyncNativeInstructionUnchecked {
+    programId: PublicKey;
+    keys: {
+        account: AccountMeta | undefined;
+    };
+    data: {
+        instruction: number;
+    };
+}
+
+/**
+ * Decode a SyncNative instruction without validating it
+ *
+ * @param instruction Transaction instruction to decode
+ *
+ * @return Decoded, non-validated instruction
+ */
+export function decodeSyncNativeInstructionUnchecked({
+    programId,
+    keys: [account],
+    data,
+}: TransactionInstruction): DecodedSyncNativeInstructionUnchecked {
+    return {
+        programId,
+        keys: {
+            account,
+        },
+        data: syncNativeInstructionData.decode(data),
     };
 }

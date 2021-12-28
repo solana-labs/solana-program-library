@@ -61,43 +61,92 @@ export function createTransferInstruction(
     return new TransactionInstruction({ keys, programId, data });
 }
 
-/** TODO: docs */
+/** A decoded, valid Transfer instruction */
 export interface DecodedTransferInstruction {
-    instruction: TokenInstruction.Transfer;
-    source: AccountMeta;
-    destination: AccountMeta;
-    owner: AccountMeta;
-    multiSigners: AccountMeta[];
-    amount: bigint;
+    programId: PublicKey;
+    keys: {
+        source: AccountMeta;
+        destination: AccountMeta;
+        owner: AccountMeta;
+        multiSigners: AccountMeta[];
+    };
+    data: {
+        instruction: TokenInstruction.Transfer;
+        amount: bigint;
+    };
 }
 
 /**
- * Decode a Transfer instruction
+ * Decode a Transfer instruction and validate it
  *
  * @param instruction Transaction instruction to decode
  * @param programId   SPL Token program account
  *
- * @return Decoded instruction
+ * @return Decoded, valid instruction
  */
 export function decodeTransferInstruction(
     instruction: TransactionInstruction,
     programId = TOKEN_PROGRAM_ID
 ): DecodedTransferInstruction {
     if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
+    if (instruction.data.length !== transferInstructionData.span) throw new TokenInvalidInstructionDataError();
 
-    const [source, destination, owner, ...multiSigners] = instruction.keys;
+    const {
+        keys: { source, destination, owner, multiSigners },
+        data,
+    } = decodeTransferInstructionUnchecked(instruction);
+    if (data.instruction !== TokenInstruction.Transfer) throw new TokenInvalidInstructionTypeError();
     if (!source || !destination || !owner) throw new TokenInvalidInstructionKeysError();
 
-    if (instruction.data.length !== transferInstructionData.span) throw new TokenInvalidInstructionTypeError();
-    const data = transferInstructionData.decode(instruction.data);
-    if (data.instruction !== TokenInstruction.Transfer) throw new TokenInvalidInstructionDataError();
+    // TODO: key checks?
 
     return {
-        instruction: data.instruction,
-        source,
-        destination,
-        owner,
-        multiSigners,
-        amount: data.amount,
+        programId,
+        keys: {
+            source,
+            destination,
+            owner,
+            multiSigners,
+        },
+        data,
+    };
+}
+
+/** A decoded, non-validated Transfer instruction */
+export interface DecodedTransferInstructionUnchecked {
+    programId: PublicKey;
+    keys: {
+        source: AccountMeta | undefined;
+        destination: AccountMeta | undefined;
+        owner: AccountMeta | undefined;
+        multiSigners: AccountMeta[];
+    };
+    data: {
+        instruction: number;
+        amount: bigint;
+    };
+}
+
+/**
+ * Decode a Transfer instruction without validating it
+ *
+ * @param instruction Transaction instruction to decode
+ *
+ * @return Decoded, non-validated instruction
+ */
+export function decodeTransferInstructionUnchecked({
+    programId,
+    keys: [source, destination, owner, ...multiSigners],
+    data,
+}: TransactionInstruction): DecodedTransferInstructionUnchecked {
+    return {
+        programId,
+        keys: {
+            source,
+            destination,
+            owner,
+            multiSigners,
+        },
+        data: transferInstructionData.decode(data),
     };
 }
