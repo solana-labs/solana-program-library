@@ -23,6 +23,7 @@ mod process_set_governance_delegate;
 mod process_set_realm_authority;
 mod process_set_realm_config;
 mod process_sign_off_proposal;
+mod process_update_program_metadata;
 mod process_withdraw_governing_tokens;
 
 use crate::instruction::GovernanceInstruction;
@@ -50,6 +51,7 @@ use process_set_governance_delegate::*;
 use process_set_realm_authority::*;
 use process_set_realm_config::*;
 use process_sign_off_proposal::*;
+use process_update_program_metadata::*;
 use process_withdraw_governing_tokens::*;
 
 use solana_program::{
@@ -194,6 +196,9 @@ pub fn process_instruction(
         }
         GovernanceInstruction::CreateTokenOwnerRecord {} => {
             process_create_token_owner_record(program_id, accounts)
+        }
+        GovernanceInstruction::UpdateProgramMetadata {} => {
+            process_update_program_metadata(program_id, accounts)
         }
     }
 }

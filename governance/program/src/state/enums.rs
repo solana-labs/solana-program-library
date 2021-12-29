@@ -53,6 +53,9 @@ pub enum GovernanceAccountType {
     /// Proposal account for Governance account. A single Governance account can have multiple Proposal accounts
     /// V2 adds support for multiple vote options
     ProposalV2,
+
+    /// Program metadata account. It stores information about the particular SPL-Governance program instance
+    ProgramMetadata,
 }
 
 impl Default for GovernanceAccountType {
