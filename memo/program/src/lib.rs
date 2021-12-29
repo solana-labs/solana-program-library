@@ -37,3 +37,19 @@ pub fn build_memo(memo: &[u8], signer_pubkeys: &[&Pubkey]) -> Instruction {
         data: memo.to_vec(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_build_memo() {
+        let program_id = Pubkey::new(&[0; 32]);
+        let memo = "🐆".as_bytes();
+        let instruction = build_memo(&memo, &[&program_id]);
+        assert_eq!(memo, instruction.data);
+        for account in instruction.accounts.iter() {
+            assert_eq!(program_id, account.pubkey);
+        }
+    }
+}
