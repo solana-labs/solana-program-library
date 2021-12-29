@@ -456,7 +456,7 @@ fn command_create_lending_market(
         Some(&config.fee_payer.pubkey()),
     );
 
-    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+    let (recent_blockhash, fee_calculator) = config.rpc_client.get_latest_blockhash()?;
     check_fee_payer_balance(
         config,
         lending_market_balance + fee_calculator.calculate_fee(transaction.message()),
@@ -640,7 +640,7 @@ fn command_add_reserve(
         Some(&config.fee_payer.pubkey()),
     );
 
-    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+    let (recent_blockhash, fee_calculator) = config.rpc_client.get_latest_blockhash()?;
     check_fee_payer_balance(
         config,
         total_balance

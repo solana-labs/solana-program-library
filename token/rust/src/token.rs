@@ -80,7 +80,7 @@ where
     ) -> TokenResult<T::Output> {
         let recent_blockhash = self
             .client
-            .get_recent_blockhash()
+            .get_latest_blockhash()
             .await
             .map_err(TokenError::Client)?;
 

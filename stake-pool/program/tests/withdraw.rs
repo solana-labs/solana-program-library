@@ -595,7 +595,7 @@ async fn fail_double_withdraw_to_the_same_account() {
         .await;
     assert!(error.is_none());
 
-    let latest_blockhash = banks_client.get_recent_blockhash().await.unwrap();
+    let latest_blockhash = banks_client.get_latest_blockhash().await.unwrap();
 
     // Delegate tokens for burning
     delegate_tokens(

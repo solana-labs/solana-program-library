@@ -97,7 +97,7 @@ async fn fail_double_initialize() {
         .await
         .unwrap();
 
-    let latest_blockhash = banks_client.get_recent_blockhash().await.unwrap();
+    let latest_blockhash = banks_client.get_latest_blockhash().await.unwrap();
 
     let mut second_stake_pool_accounts = StakePoolAccounts::new();
     second_stake_pool_accounts.stake_pool = stake_pool_accounts.stake_pool;
@@ -128,7 +128,7 @@ async fn fail_with_already_initialized_validator_list() {
         .await
         .unwrap();
 
-    let latest_blockhash = banks_client.get_recent_blockhash().await.unwrap();
+    let latest_blockhash = banks_client.get_latest_blockhash().await.unwrap();
 
     let mut second_stake_pool_accounts = StakePoolAccounts::new();
     second_stake_pool_accounts.validator_list = stake_pool_accounts.validator_list;

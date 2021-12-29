@@ -144,7 +144,7 @@ fn checked_transaction_with_signers<T: Signers>(
     instructions: &[Instruction],
     signers: &T,
 ) -> Result<Transaction, Error> {
-    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+    let (recent_blockhash, fee_calculator) = config.rpc_client.get_latest_blockhash()?;
     let transaction = Transaction::new_signed_with_payer(
         instructions,
         Some(&config.fee_payer.pubkey()),
@@ -331,7 +331,7 @@ fn command_create_pool(
         Some(&config.fee_payer.pubkey()),
     );
 
-    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+    let (recent_blockhash, fee_calculator) = config.rpc_client.get_latest_blockhash()?;
     check_fee_payer_balance(
         config,
         total_rent_free_balances
@@ -723,7 +723,7 @@ fn command_deposit_stake(
     let mut transaction =
         Transaction::new_with_payer(&instructions, Some(&config.fee_payer.pubkey()));
 
-    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+    let (recent_blockhash, fee_calculator) = config.rpc_client.get_latest_blockhash()?;
     check_fee_payer_balance(
         config,
         total_rent_free_balances + fee_calculator.calculate_fee(transaction.message()),
@@ -761,7 +761,7 @@ fn command_deposit_all_stake(
             &mut total_rent_free_balances,
         ));
     if !create_token_account_instructions.is_empty() {
-        let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+        let (recent_blockhash, fee_calculator) = config.rpc_client.get_latest_blockhash()?;
         let transaction = Transaction::new_signed_with_payer(
             &create_token_account_instructions,
             Some(&config.fee_payer.pubkey()),
@@ -859,7 +859,7 @@ fn command_deposit_all_stake(
             )
         };
 
-        let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+        let (recent_blockhash, fee_calculator) = config.rpc_client.get_latest_blockhash()?;
         let transaction = Transaction::new_signed_with_payer(
             &instructions,
             Some(&config.fee_payer.pubkey()),
@@ -985,7 +985,7 @@ fn command_deposit_sol(
     let mut transaction =
         Transaction::new_with_payer(&instructions, Some(&config.fee_payer.pubkey()));
 
-    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+    let (recent_blockhash, fee_calculator) = config.rpc_client.get_latest_blockhash()?;
     check_fee_payer_balance(
         config,
         total_rent_free_balances + fee_calculator.calculate_fee(transaction.message()),
@@ -1443,7 +1443,7 @@ fn command_withdraw_stake(
     let mut transaction =
         Transaction::new_with_payer(&instructions, Some(&config.fee_payer.pubkey()));
 
-    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+    let (recent_blockhash, fee_calculator) = config.rpc_client.get_latest_blockhash()?;
     check_fee_payer_balance(
         config,
         total_rent_free_balances + fee_calculator.calculate_fee(transaction.message()),
@@ -1565,7 +1565,7 @@ fn command_withdraw_sol(
     let mut transaction =
         Transaction::new_with_payer(&instructions, Some(&config.fee_payer.pubkey()));
 
-    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
+    let (recent_blockhash, fee_calculator) = config.rpc_client.get_latest_blockhash()?;
     check_fee_payer_balance(config, fee_calculator.calculate_fee(transaction.message()))?;
     unique_signers!(signers);
     transaction.sign(&signers, recent_blockhash);
