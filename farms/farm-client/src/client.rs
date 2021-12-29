@@ -862,7 +862,7 @@ impl FarmClient {
             Transaction::new_with_payer(instructions, Some(&signers.pubkeys()[0]));
 
         for i in 0..20 {
-            let (recent_blockhash, _) = self.rpc_client.get_latest_blockhash()?;
+            let recent_blockhash = self.rpc_client.get_latest_blockhash()?;
             transaction.sign(signers, recent_blockhash);
 
             let result = self
@@ -903,7 +903,7 @@ impl FarmClient {
 
     /// Wait for the transaction to become finalized
     pub fn confirm_async_transaction(&self, signature: &Signature) -> Result<(), FarmClientError> {
-        let recent_blockhash = self.rpc_client.get_latest_blockhash()?.0;
+        let recent_blockhash = self.rpc_client.get_latest_blockhash()?;
         self.rpc_client
             .confirm_transaction_with_spinner(
                 signature,

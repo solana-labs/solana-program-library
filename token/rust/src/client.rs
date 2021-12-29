@@ -216,10 +216,7 @@ where
     }
 
     async fn get_latest_blockhash(&self) -> ProgramClientResult<Hash> {
-        self.client
-            .get_latest_blockhash()
-            .map(|(hash, _fee_calculator)| hash)
-            .map_err(Into::into)
+        self.client.get_latest_blockhash().map_err(Into::into)
     }
 
     async fn send_transaction(&self, transaction: &Transaction) -> ProgramClientResult<ST::Output> {
