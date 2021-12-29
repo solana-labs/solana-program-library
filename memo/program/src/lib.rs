@@ -44,12 +44,11 @@ mod tests {
 
     #[test]
     fn test_build_memo() {
-        let program_id = Pubkey::new(&[0; 32]);
+        let signer_pubkey = Pubkey::new_unique();
         let memo = "🐆".as_bytes();
-        let instruction = build_memo(memo, &[&program_id]);
+        let instruction = build_memo(memo, &[&signer_pubkey]);
         assert_eq!(memo, instruction.data);
-        for account in instruction.accounts.iter() {
-            assert_eq!(program_id, account.pubkey);
-        }
+        assert_eq!(instruction.accounts.len(), 1);
+        assert_eq!(instruction.accounts[0].pubkey, signer_pubkey);
     }
 }
