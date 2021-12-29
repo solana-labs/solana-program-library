@@ -172,7 +172,7 @@ async fn fail_double_add() {
         )
         .await;
 
-    let latest_blockhash = banks_client.get_recent_blockhash().await.unwrap();
+    let latest_blockhash = banks_client.get_latest_blockhash().await.unwrap();
 
     let transaction_error = stake_pool_accounts
         .add_validator_to_pool(

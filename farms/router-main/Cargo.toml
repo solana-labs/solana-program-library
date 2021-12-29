@@ -15,12 +15,12 @@ debug = []
 [dependencies]
 solana-farm-sdk = { path = "../farm-sdk" }
 spl-token = { version = "3.2.0", features = ["no-entrypoint"] }
-solana-program = "1.8.1"
+solana-program = "1.9.2"
 arrayref = "0.3.6"
 arrayvec = "0.7.2"
 
 [dev-dependencies]
-solana-program-test = "1.8.1"
+solana-program-test = "1.9.2"
 
 [lib]
 crate-type = ["cdylib", "lib"]

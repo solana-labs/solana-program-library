@@ -19,14 +19,14 @@ serde = "1.0.130"
 clap = "2.33.3"
 thiserror = "1.0.30"
 bs58 = "0.4.0"
-solana-sdk = "1.8.1"
-solana-client = "1.8.1"
-solana-cli-config = "1.8.1"
-solana-account-decoder = "1.8.1"
-solana-logger = "1.8.1"
-solana-version = "1.8.1"
+solana-sdk = "1.9.2"
+solana-client = "1.9.2"
+solana-cli-config = "1.9.2"
+solana-account-decoder = "1.9.2"
+solana-logger = "1.9.2"
+solana-version = "1.9.2"
 solana-farm-sdk = { path = "../farm-sdk" }
-solana-clap-utils = "1.8.1"
+solana-clap-utils = "1.9.2"
 spl-token = { version = "3.2.0", features = ["no-entrypoint"] }
 spl-associated-token-account = { version = "1.0.3", features = ["no-entrypoint"] }
 spl-governance = { version = "2.1.4", features = ["no-entrypoint"] }

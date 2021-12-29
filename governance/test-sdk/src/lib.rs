@@ -66,7 +66,7 @@ impl ProgramTestBench {
         let recent_blockhash = self
             .context
             .banks_client
-            .get_recent_blockhash()
+            .get_latest_blockhash()
             .await
             .unwrap();
 

@@ -88,7 +88,7 @@ where
         data_len: usize,
     ) -> ProgramClientResult<u64>;
 
-    async fn get_recent_blockhash(&self) -> ProgramClientResult<Hash>;
+    async fn get_latest_blockhash(&self) -> ProgramClientResult<Hash>;
 
     async fn send_transaction(&self, transaction: &Transaction) -> ProgramClientResult<ST::Output>;
 
@@ -160,9 +160,9 @@ where
         .await
     }
 
-    async fn get_recent_blockhash(&self) -> ProgramClientResult<Hash> {
+    async fn get_latest_blockhash(&self) -> ProgramClientResult<Hash> {
         self.run_in_lock(|client| {
-            Box::pin(async move { client.get_recent_blockhash().await.map_err(Into::into) })
+            Box::pin(async move { client.get_latest_blockhash().await.map_err(Into::into) })
         })
         .await
     }
@@ -215,11 +215,8 @@ where
             .map_err(Into::into)
     }
 
-    async fn get_recent_blockhash(&self) -> ProgramClientResult<Hash> {
-        self.client
-            .get_recent_blockhash()
-            .map(|(hash, _fee_calculator)| hash)
-            .map_err(Into::into)
+    async fn get_latest_blockhash(&self) -> ProgramClientResult<Hash> {
+        self.client.get_latest_blockhash().map_err(Into::into)
     }
 
     async fn send_transaction(&self, transaction: &Transaction) -> ProgramClientResult<ST::Output> {

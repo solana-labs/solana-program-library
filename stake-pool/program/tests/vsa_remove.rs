@@ -302,7 +302,7 @@ async fn fail_double_remove() {
         .await;
     assert!(error.is_none());
 
-    let _latest_blockhash = context.banks_client.get_recent_blockhash().await.unwrap();
+    let _latest_blockhash = context.banks_client.get_latest_blockhash().await.unwrap();
 
     let destination_stake = Keypair::new();
     let error = stake_pool_accounts

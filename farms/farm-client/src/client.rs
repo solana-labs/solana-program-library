@@ -9,7 +9,7 @@
 //! addresses, decimals, etc. is stored on-chain.
 //!
 //! Under the hood it leverages the official Solana RPC Client which can be accessed with
-//! client.rpc_client, for example: client.rpc_client.get_recent_blockhash().
+//! client.rpc_client, for example: client.rpc_client.get_latest_blockhash().
 //!
 //! Naming convention for Pools and Farms is [PROTOCOL].[TOKEN_A]-[TOKEN_B]-[VERSION]
 //! Naming convention for Vaults is [PROTOCOL].[STRATEGY].[TOKEN_A]-[TOKEN_B]-[VERSION]
@@ -862,7 +862,7 @@ impl FarmClient {
             Transaction::new_with_payer(instructions, Some(&signers.pubkeys()[0]));
 
         for i in 0..20 {
-            let (recent_blockhash, _) = self.rpc_client.get_recent_blockhash()?;
+            let recent_blockhash = self.rpc_client.get_latest_blockhash()?;
             transaction.sign(signers, recent_blockhash);
 
             let result = self
@@ -903,7 +903,7 @@ impl FarmClient {
 
     /// Wait for the transaction to become finalized
     pub fn confirm_async_transaction(&self, signature: &Signature) -> Result<(), FarmClientError> {
-        let recent_blockhash = self.rpc_client.get_recent_blockhash()?.0;
+        let recent_blockhash = self.rpc_client.get_latest_blockhash()?;
         self.rpc_client
             .confirm_transaction_with_spinner(
                 signature,

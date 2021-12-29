@@ -17,12 +17,12 @@ arrayref = "0.3.6"
 num-derive = "0.3"
 num-traits = "0.2"
 num_enum = "0.5.4"
-solana-program = "1.8.1"
+solana-program = "1.9.2"
 thiserror = "1.0"
 
 [dev-dependencies]
-solana-program-test = "1.8.1"
-solana-sdk = "1.8.1"
+solana-program-test = "1.9.2"
+solana-sdk = "1.9.2"
 
 [lib]
 crate-type = ["cdylib", "lib"]
