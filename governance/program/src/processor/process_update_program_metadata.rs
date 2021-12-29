@@ -4,6 +4,7 @@ use borsh::BorshSerialize;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
+    msg,
     pubkey::Pubkey,
     rent::Rent,
     sysvar::Sysvar,
@@ -28,6 +29,9 @@ pub fn process_update_program_metadata(
     let rent = Rent::get().unwrap();
 
     let version = 210; // 2.1
+
+    // Put the metadata info into the logs to make it possible to extract it using Tx simulation
+    msg!("PROGRAM-METADATA:VERSION={:?}", version);
 
     if program_metadata_info.data_is_empty() {
         let program_metadata_data = ProgramMetadata {
