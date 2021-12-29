@@ -46,7 +46,7 @@ mod tests {
     fn test_build_memo() {
         let program_id = Pubkey::new(&[0; 32]);
         let memo = "🐆".as_bytes();
-        let instruction = build_memo(&memo, &[&program_id]);
+        let instruction = build_memo(memo, &[&program_id]);
         assert_eq!(memo, instruction.data);
         for account in instruction.accounts.iter() {
             assert_eq!(program_id, account.pubkey);
