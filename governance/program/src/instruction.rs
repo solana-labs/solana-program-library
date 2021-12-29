@@ -446,9 +446,11 @@ pub enum GovernanceInstruction {
     CreateTokenOwnerRecord {},
 
     /// Updates ProgramMetadata account
-    /// The instruction dumps information implied by the program code into a persistent account
+    /// The instruction dumps information implied by the program's code into a persistent account
     ///
-    ///   0. `[writable]` ProgramMetadata account. PDA seeds: ['metadata']
+    ///  0. `[writable]` ProgramMetadata account. PDA seeds: ['metadata']
+    ///  1. `[signer]` Payer
+    ///  2. `[]` System
     UpdateProgramMetadata {},
 }
 
