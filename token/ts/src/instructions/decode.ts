@@ -22,10 +22,7 @@ import { DecodedTransferCheckedInstruction, decodeTransferCheckedInstruction } f
 import { TokenInstruction } from './types';
 
 /** TODO: docs */
-export function decodeInstruction(
-    instruction: TransactionInstruction,
-    programId = TOKEN_PROGRAM_ID
-):
+export type DecodedInstruction =
     | DecodedInitializeMintInstruction
     | DecodedInitializeAccountInstruction
     | DecodedInitializeMultisigInstruction
@@ -43,11 +40,18 @@ export function decodeInstruction(
     | DecodedMintToCheckedInstruction
     | DecodedBurnCheckedInstruction
     // | DecodedInitializeAccount2Instruction
-    | DecodedSyncNativeInstruction {
+    | DecodedSyncNativeInstruction
     // | DecodedInitializeAccount3Instruction
     // | DecodedInitializeMultisig2Instruction
     // | DecodedInitializeMint2Instruction
-    // TODO: implement ^
+    // TODO: implement ^ and remove `never`
+    | never;
+
+/** TODO: docs */
+export function decodeInstruction(
+    instruction: TransactionInstruction,
+    programId = TOKEN_PROGRAM_ID
+): DecodedInstruction {
     if (!instruction.data.length) throw new TokenInvalidInstructionDataError();
 
     const type = u8().decode(instruction.data);
