@@ -437,9 +437,11 @@ impl GovernanceProgramTest {
             .unwrap();
 
         const VERSION: &str = env!("CARGO_PKG_VERSION");
+        let clock = self.bench.get_clock().await;
 
         let account = ProgramMetadata {
             account_type: GovernanceAccountType::ProgramMetadata,
+            updated_at: clock.slot,
             version: VERSION.to_string(),
             reserved: [0; 64],
         };

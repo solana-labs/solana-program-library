@@ -3,6 +3,7 @@
 use borsh::BorshSerialize;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
+    clock::Clock,
     entrypoint::ProgramResult,
     msg,
     pubkey::Pubkey,
@@ -26,7 +27,9 @@ pub fn process_update_program_metadata(
     let program_metadata_info = next_account_info(account_info_iter)?; // 0
     let payer_info = next_account_info(account_info_iter)?; // 1
     let system_info = next_account_info(account_info_iter)?; // 2
+
     let rent = Rent::get().unwrap();
+    let updated_at = Clock::get().unwrap().slot;
 
     const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -36,6 +39,7 @@ pub fn process_update_program_metadata(
     if program_metadata_info.data_is_empty() {
         let program_metadata_data = ProgramMetadata {
             account_type: GovernanceAccountType::ProgramMetadata,
+            updated_at,
             version: VERSION.to_string(),
             reserved: [0; 64],
         };
@@ -52,7 +56,9 @@ pub fn process_update_program_metadata(
     } else {
         let mut program_metadata_data =
             get_program_metadata_data(program_id, program_metadata_info)?;
+
         program_metadata_data.version = VERSION.to_string();
+        program_metadata_data.updated_at = updated_at;
 
         program_metadata_data.serialize(&mut *program_metadata_info.data.borrow_mut())?;
     }

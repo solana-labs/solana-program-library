@@ -27,15 +27,21 @@ async fn test_update_existing_program_metadata() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
-    governance_test.with_program_metadata().await;
+    let program_metadata_cookie1 = governance_test.with_program_metadata().await;
 
     // Act
-    let program_metadata_cookie = governance_test.with_program_metadata().await;
+    governance_test.advance_clock().await;
+
+    let program_metadata_cookie2 = governance_test.with_program_metadata().await;
 
     // Assert
     let program_metadata_account = governance_test
-        .get_program_metadata_account(&program_metadata_cookie.address)
+        .get_program_metadata_account(&program_metadata_cookie2.address)
         .await;
 
-    assert_eq!(program_metadata_cookie.account, program_metadata_account);
+    assert_eq!(program_metadata_cookie2.account, program_metadata_account);
+
+    assert!(
+        program_metadata_cookie2.account.updated_at > program_metadata_cookie1.account.updated_at
+    )
 }

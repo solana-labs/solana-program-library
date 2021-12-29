@@ -2,8 +2,8 @@
 
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
-    account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
-    pubkey::Pubkey,
+    account_info::AccountInfo, clock::Slot, program_error::ProgramError,
+    program_pack::IsInitialized, pubkey::Pubkey,
 };
 use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 
@@ -16,6 +16,9 @@ pub struct ProgramMetadata {
     /// Governance account type
     pub account_type: GovernanceAccountType,
 
+    /// The slot when the metadata was captured
+    pub updated_at: Slot,
+
     /// The version of the program
     pub version: String,
 
@@ -25,7 +28,7 @@ pub struct ProgramMetadata {
 
 impl AccountMaxSize for ProgramMetadata {
     fn get_max_size(&self) -> Option<usize> {
-        Some(77)
+        Some(85)
     }
 }
 
@@ -62,6 +65,7 @@ mod test {
     fn test_max_size() {
         let program_metadata_data = ProgramMetadata {
             account_type: GovernanceAccountType::TokenOwnerRecord,
+            updated_at: 10,
             reserved: [0; 64],
             version: "11.12.15".to_string(),
         };
