@@ -436,10 +436,12 @@ impl GovernanceProgramTest {
             .await
             .unwrap();
 
+        const VERSION: &str = env!("CARGO_PKG_VERSION");
+
         let account = ProgramMetadata {
             account_type: GovernanceAccountType::ProgramMetadata,
-            version: 210,
-            reserved: [0; 128],
+            version: VERSION.to_string(),
+            reserved: [0; 64],
         };
 
         let program_metadata_address = get_program_metadata_address(&self.program_id);

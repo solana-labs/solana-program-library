@@ -28,16 +28,16 @@ pub fn process_update_program_metadata(
     let system_info = next_account_info(account_info_iter)?; // 2
     let rent = Rent::get().unwrap();
 
-    let version = 210; // 2.1
+    const VERSION: &str = env!("CARGO_PKG_VERSION");
 
     // Put the metadata info into the logs to make it possible to extract it using Tx simulation
-    msg!("PROGRAM-METADATA:VERSION={:?}", version);
+    msg!("PROGRAM-VERSION:{:?}", VERSION);
 
     if program_metadata_info.data_is_empty() {
         let program_metadata_data = ProgramMetadata {
             account_type: GovernanceAccountType::ProgramMetadata,
-            version,
-            reserved: [0; 128],
+            version: VERSION.to_string(),
+            reserved: [0; 64],
         };
 
         create_and_serialize_account_signed(
@@ -52,7 +52,7 @@ pub fn process_update_program_metadata(
     } else {
         let mut program_metadata_data =
             get_program_metadata_data(program_id, program_metadata_info)?;
-        program_metadata_data.version = version;
+        program_metadata_data.version = VERSION.to_string();
 
         program_metadata_data.serialize(&mut *program_metadata_info.data.borrow_mut())?;
     }

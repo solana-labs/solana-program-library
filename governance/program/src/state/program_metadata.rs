@@ -10,19 +10,24 @@ use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 use crate::state::enums::GovernanceAccountType;
 
 /// Program metadata account. It stores information about the particular SPL-Governance program instance
+#[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ProgramMetadata {
     /// Governance account type
     pub account_type: GovernanceAccountType,
 
-    /// The version of the program in  major.minor format with 2 decimal places used for the minor part
-    pub version: u16,
+    /// The version of the program
+    pub version: String,
 
     /// Reserved
-    pub reserved: [u8; 128],
+    pub reserved: [u8; 64],
 }
 
-impl AccountMaxSize for ProgramMetadata {}
+impl AccountMaxSize for ProgramMetadata {
+    fn get_max_size(&self) -> Option<usize> {
+        Some(77)
+    }
+}
 
 impl IsInitialized for ProgramMetadata {
     fn is_initialized(&self) -> bool {
@@ -46,4 +51,23 @@ pub fn get_program_metadata_data(
     program_metadata_info: &AccountInfo,
 ) -> Result<ProgramMetadata, ProgramError> {
     get_account_data::<ProgramMetadata>(program_id, program_metadata_info)
+}
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+
+    #[test]
+    fn test_max_size() {
+        let program_metadata_data = ProgramMetadata {
+            account_type: GovernanceAccountType::TokenOwnerRecord,
+            reserved: [0; 64],
+            version: "11.12.15".to_string(),
+        };
+
+        let size = program_metadata_data.try_to_vec().unwrap().len();
+
+        assert_eq!(program_metadata_data.get_max_size(), Some(size));
+    }
 }
