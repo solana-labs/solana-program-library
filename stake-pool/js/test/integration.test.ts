@@ -8,9 +8,5 @@
 
 // @ts-ignore
 describe('Integration test', () => {
-
-    it('should be implemented', () => {
-
-    })
-
+  it('should be implemented', () => {});
 });

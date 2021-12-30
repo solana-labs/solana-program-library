@@ -1,19 +1,24 @@
-import { Connection, PublicKey } from "@solana/web3.js";
-import BN from "bn.js";
-import { StakePoolAccount, getStakePoolAccounts } from "../src";
+import {Connection, PublicKey} from '@solana/web3.js';
+import BN from 'bn.js';
+import {StakePoolAccount, getStakePoolAccounts} from '../src';
 
 export function isStakePoolAccount(account: any): account is StakePoolAccount {
-  return (account !== undefined) &&
-    (account.account !== undefined) &&
-    (account.account.data !== undefined) &&
-    ('manager' in account.account.data);
+  return (
+    account !== undefined &&
+    account.account !== undefined &&
+    account.account.data !== undefined &&
+    'manager' in account.account.data
+  );
 }
 
 export async function getFirstStakePoolAccount(
   connection: Connection,
   stakePoolProgramAddress: PublicKey,
 ): Promise<StakePoolAccount | undefined> {
-  const accounts = await getStakePoolAccounts(connection, stakePoolProgramAddress);
+  const accounts = await getStakePoolAccounts(
+    connection,
+    stakePoolProgramAddress,
+  );
 
   return accounts!
     .filter(account => isStakePoolAccount(account))
@@ -33,13 +38,19 @@ export function deepStrictEqualBN(a: any, b: any) {
         for (const subkey in a[key]) {
           if (a[key][subkey] instanceof Object) {
             if (a[key][subkey] instanceof BN) {
-              expect(b[key][subkey].toString()).toEqual(a[key][subkey].toString());
+              expect(b[key][subkey].toString()).toEqual(
+                a[key][subkey].toString(),
+              );
             } else {
               for (const subsubkey in a[key][subkey]) {
                 if (a[key][subkey][subsubkey] instanceof BN) {
-                  expect(b[key][subkey][subsubkey].toString()).toEqual(a[key][subkey][subsubkey].toString());
+                  expect(b[key][subkey][subsubkey].toString()).toEqual(
+                    a[key][subkey][subsubkey].toString(),
+                  );
                 } else {
-                  expect(b[key][subkey][subsubkey]).toStrictEqual(a[key][subkey][subsubkey]);
+                  expect(b[key][subkey][subsubkey]).toStrictEqual(
+                    a[key][subkey][subsubkey],
+                  );
                 }
               }
             }

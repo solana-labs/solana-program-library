@@ -3,7 +3,8 @@ import {
   Connection,
   Keypair,
   PublicKey,
-  Signer, StakeProgram,
+  Signer,
+  StakeProgram,
   SystemProgram,
   TransactionInstruction,
 } from '@solana/web3.js';
@@ -23,12 +24,22 @@ import {
   lamportsToSol,
   solToLamports,
 } from './utils';
-import { StakePoolInstruction } from './instructions';
-import { StakePoolLayout, ValidatorListLayout, ValidatorList, StakePool } from './layouts';
-import { MIN_STAKE_BALANCE, STAKE_POOL_PROGRAM_ID } from "./constants";
+import {StakePoolInstruction} from './instructions';
+import {
+  StakePoolLayout,
+  ValidatorListLayout,
+  ValidatorList,
+  StakePool,
+} from './layouts';
+import {MIN_STAKE_BALANCE, STAKE_POOL_PROGRAM_ID} from './constants';
 
-export type { StakePool, AccountType, ValidatorList, ValidatorStakeInfo } from './layouts';
-export { STAKE_POOL_PROGRAM_ID } from './constants';
+export type {
+  StakePool,
+  AccountType,
+  ValidatorList,
+  ValidatorStakeInfo,
+} from './layouts';
+export {STAKE_POOL_PROGRAM_ID} from './constants';
 export * from './instructions';
 
 export interface ValidatorListAccount {
@@ -139,7 +150,7 @@ export async function depositSol(
   lamports: number,
   destinationTokenAccount?: PublicKey,
   referrerTokenAccount?: PublicKey,
-  depositAuthority?: PublicKey
+  depositAuthority?: PublicKey,
 ) {
   const fromBalance = await connection.getBalance(from, 'confirmed');
   if (fromBalance < lamports) {
@@ -150,7 +161,10 @@ export async function depositSol(
     );
   }
 
-  const stakePoolAccount = await getStakePoolAccount(connection, stakePoolAddress);
+  const stakePoolAccount = await getStakePoolAccount(
+    connection,
+    stakePoolAddress,
+  );
   const stakePool = stakePoolAccount.account.data;
 
   // Ephemeral SOL account just to do the transfer
@@ -240,8 +254,12 @@ export async function withdrawStake(
   // Check withdrawFrom balance
   if (tokenAccount.amount.toNumber() < poolAmount) {
     throw new Error(
-      `Not enough token balance to withdraw ${lamportsToSol(poolAmount)} pool tokens.
-        Maximum withdraw amount is ${lamportsToSol(tokenAccount.amount.toNumber())} pool tokens.`,
+      `Not enough token balance to withdraw ${lamportsToSol(
+        poolAmount,
+      )} pool tokens.
+        Maximum withdraw amount is ${lamportsToSol(
+          tokenAccount.amount.toNumber(),
+        )} pool tokens.`,
     );
   }
 
@@ -328,7 +346,10 @@ export async function withdrawStake(
     }
     // Convert pool tokens amount to lamports
     const solWithdrawAmount = Math.ceil(
-      calcLamportsWithdrawAmount(stakePool.account.data, withdrawAccount.poolAmount),
+      calcLamportsWithdrawAmount(
+        stakePool.account.data,
+        withdrawAccount.poolAmount,
+      ),
     );
 
     let infoMsg = `Withdrawing ◎${solWithdrawAmount},
@@ -344,10 +365,13 @@ export async function withdrawStake(
 
     // Use separate mutable variable because withdraw might create a new account
     if (!stakeReceiver) {
-      const stakeReceiverAccountBalance = await connection.getMinimumBalanceForRentExemption(
-        StakeProgram.space,
+      const stakeReceiverAccountBalance =
+        await connection.getMinimumBalanceForRentExemption(StakeProgram.space);
+      const stakeKeypair = newStakeAccount(
+        tokenOwner,
+        instructions,
+        stakeReceiverAccountBalance,
       );
-      const stakeKeypair = newStakeAccount(tokenOwner, instructions, stakeReceiverAccountBalance);
       signers.push(stakeKeypair);
       totalRentFreeBalances += stakeReceiverAccountBalance;
       stakeToReceive = stakeKeypair.publicKey;
@@ -368,7 +392,7 @@ export async function withdrawStake(
         poolMint: stakePool.account.data.poolMint,
         poolTokens: withdrawAccount.poolAmount,
         withdrawAuthority,
-      })
+      }),
     );
     i++;
   }
@@ -414,8 +438,12 @@ export async function withdrawSol(
   // Check withdrawFrom balance
   if (tokenAccount.amount.toNumber() < poolAmount) {
     throw new Error(
-      `Not enough token balance to withdraw ${lamportsToSol(poolAmount)} pool tokens.
-          Maximum withdraw amount is ${lamportsToSol(tokenAccount.amount.toNumber())} pool tokens.`,
+      `Not enough token balance to withdraw ${lamportsToSol(
+        poolAmount,
+      )} pool tokens.
+          Maximum withdraw amount is ${lamportsToSol(
+            tokenAccount.amount.toNumber(),
+          )} pool tokens.`,
     );
   }
 
@@ -441,11 +469,16 @@ export async function withdrawSol(
   );
 
   if (solWithdrawAuthority) {
-    const expectedSolWithdrawAuthority = stakePool.account.data.solWithdrawAuthority;
+    const expectedSolWithdrawAuthority =
+      stakePool.account.data.solWithdrawAuthority;
     if (!expectedSolWithdrawAuthority) {
-      throw new Error('SOL withdraw authority specified in arguments but stake pool has none');
+      throw new Error(
+        'SOL withdraw authority specified in arguments but stake pool has none',
+      );
     }
-    if (solWithdrawAuthority.toBase58() != expectedSolWithdrawAuthority.toBase58()) {
+    if (
+      solWithdrawAuthority.toBase58() != expectedSolWithdrawAuthority.toBase58()
+    ) {
       throw new Error(
         `Invalid deposit withdraw specified, expected ${expectedSolWithdrawAuthority.toBase58()}, received ${solWithdrawAuthority.toBase58()}`,
       );
