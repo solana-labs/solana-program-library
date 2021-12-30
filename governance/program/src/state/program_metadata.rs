@@ -20,6 +20,7 @@ pub struct ProgramMetadata {
     pub updated_at: Slot,
 
     /// The version of the program
+    /// Max 11 characters XXX.YYY.ZZZ
     pub version: String,
 
     /// Reserved
@@ -28,7 +29,7 @@ pub struct ProgramMetadata {
 
 impl AccountMaxSize for ProgramMetadata {
     fn get_max_size(&self) -> Option<usize> {
-        Some(85)
+        Some(88)
     }
 }
 
@@ -67,7 +68,7 @@ mod test {
             account_type: GovernanceAccountType::TokenOwnerRecord,
             updated_at: 10,
             reserved: [0; 64],
-            version: "11.12.15".to_string(),
+            version: "111.122.155".to_string(),
         };
 
         let size = program_metadata_data.try_to_vec().unwrap().len();
