@@ -28,8 +28,8 @@ pub fn process_update_program_metadata(
     let payer_info = next_account_info(account_info_iter)?; // 1
     let system_info = next_account_info(account_info_iter)?; // 2
 
-    let rent = Rent::get().unwrap();
-    let updated_at = Clock::get().unwrap().slot;
+    let rent = Rent::get()?;
+    let updated_at = Clock::get()?.slot;
 
     const VERSION: &str = env!("CARGO_PKG_VERSION");
 
