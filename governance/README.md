@@ -1,22 +1,76 @@
-# Governance
+# SPL Governance
 
-Governance is a program the chief purpose of which is to create Decentralized Autonomous Organizations (DAOs).
-It can be used as an authority provider for mints, token accounts and other forms of access control where for example
+SPL Governance is a program the chief purpose of which is to provide core building blocks and primitives to create
+Decentralized Autonomous Organizations (DAOs) on Solana blockchain.
+
+The program is DAO type and asset type agnostic and can be used to build any type of DAOs
+which can own and manage any type of assets.
+
+For example it can be used as an authority provider for mints, token accounts and other forms of access control where
 we may want a voting population to vote on disbursement of funds collectively.
 It can also control upgrades of itself and other programs through democratic means.
 
-## Governance UI
-
-UI for the governance program is work in progress and there are currently two versions available:
-
-- [MVP UI](https://github.com/solana-labs/oyster) project which provides basic UI to create and manage DAOs: [mvp-governance-ui](https://solana-labs.github.io/oyster-gov/#/)
-
-- [Governance UI](https://github.com/blockworks-foundation/governance-ui) project build together
-  with the [MNGO](https://mango.markets/) team: [governance-ui](https://dao-beta.mango.markets/realms)
+In the simplest form the program can be used for Multisig control over a shared wallet (treasury account) or as
+a Mutlisig upgrade authority for Solana programs
 
 ## Architecture
 
-### Accounts diagram (Program Governance use case)
+The program is modular and uses open/close architecture where individual parts of the program's
+behavior can be customized through external plugins.
+
+For example the default implementation of the program takes deposits of the governance tokens in exchange for
+voting power but it can be swapped with a custom program implementation which can implement any custom requirements
+like token locking, token escrows, NFT voting or multi token governance structures.
+
+The plugins are ordinary Solana programs and can be written using any supporting technology like Anchor framework
+for example.
+
+## Deployment
+
+The program supports two deployment models 1) DAO owned instance and 2) shared instance
+
+### 1) DAO owned instance
+
+When a DAO needs full control over the governance program then it's recommended to deploy and use its own instance
+and put it under the DAO governance.
+This way only the DAO can ever change and upgrade the most important program it uses.
+
+Note: Using your own instance is not the same as forking the source code. It simply means deploying the program's code
+and transferring its upgrade authority to the DAO.
+
+### 2) Shared instance
+
+In cases where deploying the owned instance is not practical a shared instances of the program can be used.
+There are two instances available for anybody to use on mainnet
+
+`GovER5Lthms3bLBqWub97yVrMmEogzX7xNjdXpPPCVZw` - default `spl-governance` instance
+
+`GTesTBiEWE32WHXXE2S4XbZvA5CrEc4xs6ZgRe895dP` - test instance which can be used to setup test DAOs
+
+## Governance UI
+
+There are two UIs available which showcase the programs capabilities:
+
+- [Realms Explorer](https://github.com/solana-labs/oyster) project (part of Oyster monorepo) provides basic and data
+  oriented UI to create and manage DAOs: [realms-explorer](https://realms-explorer.com/)
+
+  It's a good starting point for developers to learn about the program and interact with it
+
+- [Governance UI](https://github.com/solana-labs/governance-ui) project build together
+  with the [MNGO](https://mango.markets/) team: [governance-ui](https://realms.today)
+
+  This is advanced, user friendly and tasks oriented UI used by most of the existing DAOs on Solana
+
+## Documentation and Help
+
+Program and UI documentation: [spl-governance-docs](https://docs.realms.today)
+
+Discord server: [spl-governance-discord](https://discord.gg/VsPbrK2hJk)
+
+## Program Accounts
+
+The diagram belows shows an illustrative configuration of the program accounts when used to control upgrades
+of multiple programs through proposals
 
 ![Accounts diagram](./resources/governance-accounts.jpg)
 
