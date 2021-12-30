@@ -1,6 +1,7 @@
 declare module 'buffer-layout' {
   export class Layout {}
   export class UInt {}
+  /* eslint-disable  @typescript-eslint/no-unused-vars */
   export function struct<T>(
     fields: any,
     property?: string,

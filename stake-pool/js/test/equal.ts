@@ -1,6 +1,5 @@
-import {Connection, PublicKey} from '@solana/web3.js';
 import BN from 'bn.js';
-import {StakePoolAccount, getStakePoolAccounts} from '../src';
+import {StakePoolAccount} from '../src';
 
 export function isStakePoolAccount(account: any): account is StakePoolAccount {
   return (
@@ -9,20 +8,6 @@ export function isStakePoolAccount(account: any): account is StakePoolAccount {
     account.account.data !== undefined &&
     'manager' in account.account.data
   );
-}
-
-export async function getFirstStakePoolAccount(
-  connection: Connection,
-  stakePoolProgramAddress: PublicKey,
-): Promise<StakePoolAccount | undefined> {
-  const accounts = await getStakePoolAccounts(
-    connection,
-    stakePoolProgramAddress,
-  );
-
-  return accounts!
-    .filter(account => isStakePoolAccount(account))
-    .pop() as StakePoolAccount;
 }
 
 /**

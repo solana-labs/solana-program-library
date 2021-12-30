@@ -16,8 +16,7 @@ export type InstructionType = {
  * @internal
  */
 export function encodeData(type: InstructionType, fields?: any): Buffer {
-  const allocLength =
-    type.layout.span >= 0 ? type.layout.span : getAlloc(type, fields);
+  const allocLength = type.layout.span;
   const data = Buffer.alloc(allocLength);
   const layoutFields = Object.assign({instruction: type.index}, fields);
   type.layout.encode(layoutFields, data);
@@ -44,16 +43,4 @@ export function decodeData(type: InstructionType, buffer: Buffer): any {
   }
 
   return data;
-}
-
-function getAlloc(type: any, fields: any): number {
-  let alloc = 0;
-  type.layout.fields.forEach((item: any) => {
-    if (item.span >= 0) {
-      alloc += item.span;
-    } else if (typeof item.alloc === 'function') {
-      alloc += item.alloc(fields[item.property]);
-    }
-  });
-  return alloc;
 }
