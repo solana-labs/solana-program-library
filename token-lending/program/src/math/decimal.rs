@@ -77,8 +77,9 @@ impl Decimal {
 
     /// Ceiling scaled decimal to u64
     pub fn try_ceil_u64(&self) -> Result<u64, ProgramError> {
+        const ONE: U192 = U192([1, 0, 0]);
         let ceil_val = Self::wad()
-            .checked_sub(U192::from(1u64))
+            .checked_sub(ONE)
             .ok_or(LendingError::MathOverflow)?
             .checked_add(self.0)
             .ok_or(LendingError::MathOverflow)?
@@ -216,5 +217,8 @@ mod test {
     fn test_wad_half_wad() {
         assert_eq!(Decimal::wad(), U192::from(WAD));
         assert_eq!(Decimal::half_wad(), U192::from(HALF_WAD));
+        const ONE: U192 = U192([1, 0, 0]);
+        assert_eq!(ONE, U192::from(1u64));
+        
     }
 }
