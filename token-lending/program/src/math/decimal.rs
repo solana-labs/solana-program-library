@@ -41,13 +41,14 @@ impl Decimal {
     }
 
     fn wad() -> U192 {
-        const DWAD: U192 = U192([1000000000000000000, 0, 0]);
+        const DWAD: U192 = U192([1_000_000_000_000_000_000, 0, 0]);
         DWAD
     }
     fn half_wad() -> U192 {
-        const HALF_DWAD: U192 = U192([500000000000000000, 0, 0]);
+        const HALF_DWAD: U192 = U192([500_000_000_000_000_000, 0, 0]);
         HALF_DWAD
     }
+
 
     /// Create scaled decimal from percent value
     pub fn from_percent(percent: u8) -> Self {
