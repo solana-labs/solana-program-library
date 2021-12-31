@@ -7,6 +7,7 @@ use crate::{
             get_account_governance_address, get_mint_governance_address,
             get_program_governance_address, get_token_governance_address, GovernanceConfig,
         },
+        program_metadata::get_program_metadata_address,
         proposal::{get_proposal_address, VoteType},
         proposal_instruction::{get_proposal_instruction_address, InstructionData},
         realm::{get_governing_token_holding_address, get_realm_address, RealmConfigArgs},
@@ -443,6 +444,14 @@ pub enum GovernanceInstruction {
     ///   4. `[signer]` Payer
     ///   5. `[]` System
     CreateTokenOwnerRecord {},
+
+    /// Updates ProgramMetadata account
+    /// The instruction dumps information implied by the program's code into a persistent account
+    ///
+    ///  0. `[writable]` ProgramMetadata account. PDA seeds: ['metadata']
+    ///  1. `[signer]` Payer
+    ///  2. `[]` System
+    UpdateProgramMetadata {},
 }
 
 /// Creates CreateRealm instruction
@@ -1373,6 +1382,29 @@ pub fn create_token_owner_record(
     ];
 
     let instruction = GovernanceInstruction::CreateTokenOwnerRecord {};
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates UpdateProgramMetadata instruction
+pub fn upgrade_program_metadata(
+    program_id: &Pubkey,
+    // Accounts
+    payer: &Pubkey,
+) -> Instruction {
+    let program_metadata_address = get_program_metadata_address(program_id);
+
+    let accounts = vec![
+        AccountMeta::new(program_metadata_address, false),
+        AccountMeta::new(*payer, true),
+        AccountMeta::new_readonly(system_program::id(), false),
+    ];
+
+    let instruction = GovernanceInstruction::UpdateProgramMetadata {};
 
     Instruction {
         program_id: *program_id,

@@ -23,7 +23,7 @@ use spl_governance::{
         execute_instruction, finalize_vote, flag_instruction_error, insert_instruction,
         relinquish_vote, remove_instruction, remove_signatory, set_governance_config,
         set_governance_delegate, set_realm_authority, set_realm_config, sign_off_proposal,
-        withdraw_governing_tokens,
+        upgrade_program_metadata, withdraw_governing_tokens,
     },
     processor::process_instruction,
     state::{
@@ -36,6 +36,7 @@ use spl_governance::{
             get_program_governance_address, get_token_governance_address, Governance,
             GovernanceConfig,
         },
+        program_metadata::{get_program_metadata_address, ProgramMetadata},
         proposal::{get_proposal_address, OptionVoteResult, ProposalOption, ProposalV2, VoteType},
         proposal_instruction::{
             get_proposal_instruction_address, InstructionData, ProposalInstructionV2,
@@ -68,8 +69,8 @@ use self::{
     addins::ensure_voter_weight_addin_is_built,
     cookies::{
         GovernanceCookie, GovernedAccountCookie, GovernedMintCookie, GovernedProgramCookie,
-        GovernedTokenCookie, ProposalCookie, ProposalInstructionCookie, RealmCookie,
-        TokenOwnerRecordCookie, VoteRecordCookie,
+        GovernedTokenCookie, ProgramMetadataCookie, ProposalCookie, ProposalInstructionCookie,
+        RealmCookie, TokenOwnerRecordCookie, VoteRecordCookie,
     },
 };
 
@@ -422,6 +423,34 @@ impl GovernanceProgramTest {
             governance_authority: None,
             governance_delegate: Keypair::new(),
             voter_weight_record: None,
+        }
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_program_metadata(&mut self) -> ProgramMetadataCookie {
+        let update_program_metadata_ix =
+            upgrade_program_metadata(&self.program_id, &self.bench.payer.pubkey());
+
+        self.bench
+            .process_transaction(&[update_program_metadata_ix], None)
+            .await
+            .unwrap();
+
+        const VERSION: &str = env!("CARGO_PKG_VERSION");
+        let clock = self.bench.get_clock().await;
+
+        let account = ProgramMetadata {
+            account_type: GovernanceAccountType::ProgramMetadata,
+            updated_at: clock.slot,
+            version: VERSION.to_string(),
+            reserved: [0; 64],
+        };
+
+        let program_metadata_address = get_program_metadata_address(&self.program_id);
+
+        ProgramMetadataCookie {
+            address: program_metadata_address,
+            account,
         }
     }
 
@@ -2206,6 +2235,13 @@ impl GovernanceProgramTest {
     pub async fn get_token_owner_record_account(&mut self, address: &Pubkey) -> TokenOwnerRecord {
         self.bench
             .get_borsh_account::<TokenOwnerRecord>(address)
+            .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn get_program_metadata_account(&mut self, address: &Pubkey) -> ProgramMetadata {
+        self.bench
+            .get_borsh_account::<ProgramMetadata>(address)
             .await
     }
 

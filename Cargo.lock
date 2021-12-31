@@ -3477,7 +3477,7 @@ dependencies = [
 
 [[package]]
 name = "spl-governance"
-version = "2.1.4"
+version = "2.1.5"
 dependencies = [
  "arrayref",
  "assert_matches",
