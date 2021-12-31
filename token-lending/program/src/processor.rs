@@ -101,7 +101,7 @@ pub fn process_instruction(
         }
         LendingInstruction::CloseObligationAccount => {
             msg!("Instruction: Close Obligation Account");
-            process_refresh_obligation(program_id, accounts)
+            process_close_obligation_account(program_id, accounts)
         }
     }
 }
@@ -1706,8 +1706,40 @@ fn process_close_obligation_account(
     accounts: &[AccountInfo],
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
-    let obligation_account = next_account_info(account_info_iter)?;
-    let reserve_
+    let obligation_info = next_account_info(account_info_iter)?;
+    let obligation_owner_info = next_account_info(account_info_iter)?;
+    let authority_info = next_account_info(account_info_iter)?;
+    let lending_market_info = next_account_info(account_info_iter)?;
+    let mint_info = next_account_info(account_info_iter)?;
+    let token_program_id = next_account_info(account_info_iter)?;
+
+    let obligation = Obligation::unpack(&obligation_info.data.borrow())?;
+    if obligation_info.owner != program_id {
+        msg!("Obligation provided is not owned by the lending program");
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
+    if &obligation.lending_market != lending_market_info.key {
+        msg!("Obligation lending market does not match the lending market provided");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
+    if &obligation.owner != obligation_owner_info.key {
+        msg!("Obligation owner does not match the obligation owner provided");
+        return Err(LendingError::InvalidObligationOwner.into());
+    }
+
+    if !obligation_owner_info.is_signer {
+        msg!("Obligation owner provided must be a signer");
+        return Err(LendingError::InvalidSigner.into());
+    }
+
+    spl_close_account(TokenCloseAccountParams{
+        token_program: token_program_id.clone(),
+        source: obligation_owner_info.clone(),
+        mint: mint_info.clone(),
+        authority: authority_info.clone(),
+        authority_signer_seeds: &[],
+    })?;
+    Ok(())
 }
 
 fn assert_rent_exempt(rent: &Rent, account_info: &AccountInfo) -> ProgramResult {
@@ -1965,6 +1997,29 @@ fn spl_token_burn(params: TokenBurnParams<'_, '_>) -> ProgramResult {
     result.map_err(|_| LendingError::TokenBurnFailed.into())
 }
 
+#[inline(always)]
+fn spl_close_account(params: TokenCloseAccountParams<'_, '_>) -> ProgramResult {
+    let TokenCloseAccountParams {
+        mint,
+        source,
+        authority,
+        token_program,
+        authority_signer_seeds,
+    } = params;
+    let result = invoke_optionally_signed(
+        &spl_token::instruction::close_account(
+            token_program.key,
+            source.key,
+            mint.key,
+            authority.key,
+            &[],
+        )?,
+        &[source, mint, authority, token_program],
+        authority_signer_seeds,
+    );
+    result.map_err(|_| LendingError::CloseAccountFailed.into())
+}
+
 struct TokenInitializeMintParams<'a: 'b, 'b> {
     mint: AccountInfo<'a>,
     rent: AccountInfo<'a>,
@@ -2003,6 +2058,14 @@ struct TokenBurnParams<'a: 'b, 'b> {
     mint: AccountInfo<'a>,
     source: AccountInfo<'a>,
     amount: u64,
+    authority: AccountInfo<'a>,
+    authority_signer_seeds: &'b [&'b [u8]],
+    token_program: AccountInfo<'a>,
+}
+
+struct TokenCloseAccountParams<'a: 'b, 'b> {
+    mint: AccountInfo<'a>,
+    source: AccountInfo<'a>,
     authority: AccountInfo<'a>,
     authority_signer_seeds: &'b [&'b [u8]],
     token_program: AccountInfo<'a>,

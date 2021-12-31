@@ -160,6 +160,9 @@ pub enum LendingError {
     #[error("Not enough liquidity after flash loan")]
     NotEnoughLiquidityAfterFlashLoan,
     // 45
+    ///Closing obligation account failed
+    #[error("Closing obligation account failed")]
+    CloseAccountFailed,
 }
 
 impl From<LendingError> for ProgramError {
