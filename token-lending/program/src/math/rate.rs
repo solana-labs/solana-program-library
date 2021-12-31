@@ -46,9 +46,9 @@ impl Rate {
         Self(U128::from(0))
     }
 
-    // OPTIMIZE: use const slice when fixed in BPF toolchain
     fn wad() -> U128 {
-        U128::from(WAD)
+        const RWAD: U128 = U128([1000000000000000000, 0]);
+        RWAD
     }
 
     /// Create scaled decimal from percent value
@@ -180,5 +180,9 @@ mod test {
     #[test]
     fn checked_pow() {
         assert_eq!(Rate::one(), Rate::one().try_pow(u64::MAX).unwrap());
+    }
+    #[test]
+    fn test_wad() {
+        assert_eq!(Rate::wad(), U128::from(WAD));
     }
 }

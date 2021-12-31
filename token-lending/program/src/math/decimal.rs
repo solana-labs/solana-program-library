@@ -40,14 +40,13 @@ impl Decimal {
         Self(U192::zero())
     }
 
-    // OPTIMIZE: use const slice when fixed in BPF toolchain
     fn wad() -> U192 {
-        U192::from(WAD)
+        const DWAD: U192 = U192([1000000000000000000, 0, 0]);
+        DWAD
     }
-
-    // OPTIMIZE: use const slice when fixed in BPF toolchain
     fn half_wad() -> U192 {
-        U192::from(HALF_WAD)
+        const HALF_DWAD: U192 = U192([500000000000000000, 0, 0]);
+        HALF_DWAD
     }
 
     /// Create scaled decimal from percent value
@@ -212,5 +211,10 @@ mod test {
     #[test]
     fn test_scaler() {
         assert_eq!(U192::exp10(SCALE), Decimal::wad());
+    }
+    #[test]
+    fn test_wad_half_wad() {
+        assert_eq!(Decimal::wad(), U192::from(WAD));
+        assert_eq!(Decimal::half_wad(), U192::from(HALF_WAD));
     }
 }
