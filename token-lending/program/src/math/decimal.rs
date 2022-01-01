@@ -49,7 +49,6 @@ impl Decimal {
         HALF_DWAD
     }
 
-
     /// Create scaled decimal from percent value
     pub fn from_percent(percent: u8) -> Self {
         Self(U192::from(percent as u64 * PERCENT_SCALER))
@@ -220,6 +219,5 @@ mod test {
         assert_eq!(Decimal::half_wad(), U192::from(HALF_WAD));
         const ONE: U192 = U192([1, 0, 0]);
         assert_eq!(ONE, U192::from(1u64));
-        
     }
 }
