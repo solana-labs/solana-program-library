@@ -7,7 +7,7 @@ use solana_program::{
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack},
     pubkey::Pubkey,
-    system_program,
+    system_instruction, system_program,
 };
 
 use solana_program_test::*;
@@ -62,6 +62,7 @@ use crate::program_test::cookies::{
 };
 
 use spl_governance_test_sdk::{
+    cookies::WalletCookie,
     tools::{clone_keypair, NopOverride},
     ProgramTestBench,
 };
@@ -466,13 +467,19 @@ impl GovernanceProgramTest {
             &self.bench.payer.pubkey(),
         );
 
-        self.bench
-            .process_transaction(&[create_treasury_ix], None)
-            .await
-            .unwrap();
-
         let treasury_address =
             get_native_treasury_address(&self.program_id, &governance_cookie.address);
+
+        let transfer_ix = system_instruction::transfer(
+            &self.bench.payer.pubkey(),
+            &treasury_address,
+            1_000_000_000,
+        );
+
+        self.bench
+            .process_transaction(&[create_treasury_ix, transfer_ix], None)
+            .await
+            .unwrap();
 
         NativeTreasuryCookie {
             address: treasury_address,
@@ -2014,6 +2021,31 @@ impl GovernanceProgramTest {
             0,
             index,
             &mut instruction,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_native_transfer_instruction(
+        &mut self,
+        governance_cookie: &GovernanceCookie,
+        proposal_cookie: &mut ProposalCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        to_wallet_cookie: &WalletCookie,
+        lamports: u64,
+    ) -> Result<ProposalInstructionCookie, ProgramError> {
+        let treasury_address =
+            get_native_treasury_address(&self.program_id, &governance_cookie.address);
+
+        let mut transfer_ix =
+            system_instruction::transfer(&treasury_address, &to_wallet_cookie.address, lamports);
+
+        self.with_instruction(
+            proposal_cookie,
+            token_owner_record_cookie,
+            0,
+            None,
+            &mut transfer_ix,
         )
         .await
     }

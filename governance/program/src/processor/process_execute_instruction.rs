@@ -13,6 +13,7 @@ use solana_program::{
 use crate::state::{
     enums::{InstructionExecutionStatus, ProposalState},
     governance::get_governance_data,
+    native_treasury::get_native_treasury_address_seeds,
     proposal::{get_proposal_data_for_governance, OptionVoteResult},
     proposal_instruction::get_proposal_instruction_data_for_proposal,
 };
@@ -52,10 +53,16 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
     let bump = &[bump_seed];
     governance_seeds.push(bump);
 
+    // TODO: Add treasury seeds only if the treasury account is present instruction_account_infos
+    let mut treasury_seeds = get_native_treasury_address_seeds(governance_info.key).to_vec();
+    let (_, treasury_bump_seed) = Pubkey::find_program_address(&treasury_seeds, program_id);
+    let treasury_bump = &[treasury_bump_seed];
+    treasury_seeds.push(treasury_bump);
+
     invoke_signed(
         &instruction,
         instruction_account_infos,
-        &[&governance_seeds[..]],
+        &[&governance_seeds[..], &treasury_seeds[..]],
     )?;
 
     // Update proposal and instruction accounts

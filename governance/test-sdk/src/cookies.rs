@@ -4,3 +4,8 @@ use solana_program::pubkey::Pubkey;
 pub struct TokenAccountCookie {
     pub address: Pubkey,
 }
+
+#[derive(Debug)]
+pub struct WalletCookie {
+    pub address: Pubkey,
+}
