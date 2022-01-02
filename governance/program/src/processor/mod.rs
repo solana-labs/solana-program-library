@@ -5,6 +5,7 @@ mod process_cancel_proposal;
 mod process_cast_vote;
 mod process_create_account_governance;
 mod process_create_mint_governance;
+mod process_create_native_treasury;
 mod process_create_program_governance;
 mod process_create_proposal;
 mod process_create_realm;
@@ -33,6 +34,7 @@ use process_cancel_proposal::*;
 use process_cast_vote::*;
 use process_create_account_governance::*;
 use process_create_mint_governance::*;
+use process_create_native_treasury::*;
 use process_create_program_governance::*;
 use process_create_proposal::*;
 use process_create_realm::*;
@@ -199,6 +201,9 @@ pub fn process_instruction(
         }
         GovernanceInstruction::UpdateProgramMetadata {} => {
             process_update_program_metadata(program_id, accounts)
+        }
+        GovernanceInstruction::CreateNativeTreasury {} => {
+            process_create_native_treasury(program_id, accounts)
         }
     }
 }

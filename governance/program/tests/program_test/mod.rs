@@ -18,8 +18,8 @@ use spl_governance::{
     addins::voter_weight::{VoterWeightAccountType, VoterWeightRecord},
     instruction::{
         add_signatory, cancel_proposal, cast_vote, create_account_governance,
-        create_mint_governance, create_program_governance, create_proposal, create_realm,
-        create_token_governance, create_token_owner_record, deposit_governing_tokens,
+        create_mint_governance, create_native_treasury, create_program_governance, create_proposal,
+        create_realm, create_token_governance, create_token_owner_record, deposit_governing_tokens,
         execute_instruction, finalize_vote, flag_instruction_error, insert_instruction,
         relinquish_vote, remove_instruction, remove_signatory, set_governance_config,
         set_governance_delegate, set_realm_authority, set_realm_config, sign_off_proposal,
@@ -36,6 +36,7 @@ use spl_governance::{
             get_program_governance_address, get_token_governance_address, Governance,
             GovernanceConfig,
         },
+        native_treasury::{get_native_treasury_address, NativeTreasury},
         program_metadata::{get_program_metadata_address, ProgramMetadata},
         proposal::{get_proposal_address, OptionVoteResult, ProposalOption, ProposalV2, VoteType},
         proposal_instruction::{
@@ -69,8 +70,8 @@ use self::{
     addins::ensure_voter_weight_addin_is_built,
     cookies::{
         GovernanceCookie, GovernedAccountCookie, GovernedMintCookie, GovernedProgramCookie,
-        GovernedTokenCookie, ProgramMetadataCookie, ProposalCookie, ProposalInstructionCookie,
-        RealmCookie, TokenOwnerRecordCookie, VoteRecordCookie,
+        GovernedTokenCookie, NativeTreasuryCookie, ProgramMetadataCookie, ProposalCookie,
+        ProposalInstructionCookie, RealmCookie, TokenOwnerRecordCookie, VoteRecordCookie,
     },
 };
 
@@ -451,6 +452,31 @@ impl GovernanceProgramTest {
         ProgramMetadataCookie {
             address: program_metadata_address,
             account,
+        }
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_native_treasury(
+        &mut self,
+        governance_cookie: &GovernanceCookie,
+    ) -> NativeTreasuryCookie {
+        let create_treasury_ix = create_native_treasury(
+            &self.program_id,
+            &governance_cookie.address,
+            &self.bench.payer.pubkey(),
+        );
+
+        self.bench
+            .process_transaction(&[create_treasury_ix], None)
+            .await
+            .unwrap();
+
+        let treasury_address =
+            get_native_treasury_address(&self.program_id, &governance_cookie.address);
+
+        NativeTreasuryCookie {
+            address: treasury_address,
+            account: NativeTreasury {},
         }
     }
 
@@ -2242,6 +2268,13 @@ impl GovernanceProgramTest {
     pub async fn get_program_metadata_account(&mut self, address: &Pubkey) -> ProgramMetadata {
         self.bench
             .get_borsh_account::<ProgramMetadata>(address)
+            .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn get_native_treasury_account(&mut self, address: &Pubkey) -> NativeTreasury {
+        self.bench
+            .get_borsh_account::<NativeTreasury>(address)
             .await
     }
 
