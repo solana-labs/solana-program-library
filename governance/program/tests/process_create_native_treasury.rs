@@ -40,10 +40,4 @@ async fn test_create_native_treasury() {
         .await;
 
     assert_eq!(native_treasury_cookie.account, native_treasury_account);
-
-    let acc = governance_test
-        .bench
-        .get_account(&native_treasury_cookie.address)
-        .await
-        .unwrap();
 }
