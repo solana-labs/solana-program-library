@@ -163,6 +163,9 @@ pub enum LendingError {
     ///Closing obligation account failed
     #[error("Closing obligation account failed")]
     CloseAccountFailed,
+    ///Closing obligation account failed for nonzero borrow amounts
+    #[error("Obligation account borrows must be zero")]
+    NonZeroObligationBorrow,
 }
 
 impl From<LendingError> for ProgramError {

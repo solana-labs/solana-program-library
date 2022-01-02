@@ -1726,6 +1726,10 @@ fn process_close_obligation_account(
         msg!("Obligation owner does not match the obligation owner provided");
         return Err(LendingError::InvalidObligationOwner.into());
     }
+    if !&obligation.borrows.is_empty() {
+        msg!("Obligation borrows must be zero");
+        return Err(LendingError::NonZeroObligationBorrow.into());
+    }
 
     if !obligation_owner_info.is_signer {
         msg!("Obligation owner provided must be a signer");
