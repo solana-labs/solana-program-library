@@ -1,8 +1,8 @@
-# token-compressed program
+# token-omnibus program
 
-Compress token mint and accounts into merklelized roots.
+Store token account owners and balances in a merkle tree.
 
-Full documentation is available at https://spl.solana.com/token-compressed
+Full documentation is available at https://spl.solana.com/token-omnibus
 
 The command-line interface tool is available in the `./cli` directory.
 
