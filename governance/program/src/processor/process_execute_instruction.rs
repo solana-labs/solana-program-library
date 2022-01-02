@@ -59,6 +59,20 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
     let treasury_bump = &[treasury_bump_seed];
     treasury_seeds.push(treasury_bump);
 
+    //let address = get_native_treasury_address(program_id, governance_info.key);
+
+    // // if instruction_account_infos.len() == 3 {
+    // //     panic!("INVALID NO")
+    // // }
+
+    // for acc in instruction_account_infos {
+    //     if *acc.key == address {
+    //         if acc.owner == program_id {
+    //             // return Ok(());
+    //         }
+    //     }
+    // }
+
     invoke_signed(
         &instruction,
         instruction_account_infos,
