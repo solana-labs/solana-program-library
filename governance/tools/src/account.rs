@@ -81,7 +81,7 @@ pub fn create_and_serialize_account_signed<'a, T: BorshSerialize + AccountMaxSiz
     system_info: &AccountInfo<'a>,
     rent: &Rent,
 ) -> Result<(), ProgramError> {
-    create_and_serialize_account_signed2(
+    create_and_serialize_account_with_owner_signed(
         payer_info,
         account_info,
         account_data,
@@ -96,7 +96,7 @@ pub fn create_and_serialize_account_signed<'a, T: BorshSerialize + AccountMaxSiz
 /// Creates a new account and serializes data into it using the provided seeds to invoke signed CPI call
 /// Note: This functions also checks the provided account PDA matches the supplied seeds
 #[allow(clippy::too_many_arguments)]
-pub fn create_and_serialize_account_signed_with_owner<'a, T: BorshSerialize + AccountMaxSize>(
+pub fn create_and_serialize_account_with_owner_signed<'a, T: BorshSerialize + AccountMaxSize>(
     payer_info: &AccountInfo<'a>,
     account_info: &AccountInfo<'a>,
     account_data: &T,

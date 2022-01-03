@@ -8,7 +8,7 @@ use solana_program::{
     system_program,
     sysvar::Sysvar,
 };
-use spl_governance_tools::account::create_and_serialize_account_signed2;
+use spl_governance_tools::account::create_and_serialize_account_with_owner_signed;
 
 use crate::state::{
     governance::assert_is_valid_governance,
@@ -33,7 +33,7 @@ pub fn process_create_native_treasury(
 
     let native_treasury_data = NativeTreasury {};
 
-    create_and_serialize_account_signed2(
+    create_and_serialize_account_with_owner_signed(
         payer_info,
         native_treasury_info,
         &native_treasury_data,
