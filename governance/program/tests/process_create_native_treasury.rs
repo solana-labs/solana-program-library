@@ -64,7 +64,7 @@ async fn test_execute_transfer_from_native_treasury() {
         .await
         .unwrap();
 
-    let _native_treasury_cookie = governance_test
+    governance_test
         .with_native_treasury(&account_governance_cookie)
         .await;
 
@@ -79,6 +79,7 @@ async fn test_execute_transfer_from_native_treasury() {
         .unwrap();
 
     let wallet_cookie = governance_test.bench.with_wallet().await;
+    let transfer_amount = 100;
 
     let proposal_instruction_cookie = governance_test
         .with_native_transfer_instruction(
@@ -86,7 +87,7 @@ async fn test_execute_transfer_from_native_treasury() {
             &mut proposal_cookie,
             &token_owner_record_cookie,
             &wallet_cookie,
-            100,
+            transfer_amount,
         )
         .await
         .unwrap();
@@ -121,6 +122,6 @@ async fn test_execute_transfer_from_native_treasury() {
 
     assert_eq!(
         wallet_account.lamports,
-        wallet_cookie.account.lamports + 100
+        wallet_cookie.account.lamports + transfer_amount
     )
 }

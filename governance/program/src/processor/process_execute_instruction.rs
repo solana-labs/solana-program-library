@@ -48,7 +48,7 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
 
     let instruction_account_infos = account_info_iter.as_slice();
 
-    let mut signer_seeds: Vec<&[&[u8]]> = vec![];
+    let mut signers_seeds: Vec<&[&[u8]]> = vec![];
 
     // Sign the transaction using the governance PDA
     let mut governance_seeds = governance_data.get_governance_address_seeds()?.to_vec();
@@ -56,7 +56,7 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
     let bump = &[bump_seed];
     governance_seeds.push(bump);
 
-    signer_seeds.push(&governance_seeds[..]);
+    signers_seeds.push(&governance_seeds[..]);
 
     // Sign the transaction using the governance treasury PDA if required by the instruction
     let mut treasury_seeds = get_native_treasury_address_seeds(governance_info.key).to_vec();
@@ -69,10 +69,10 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
         .any(|a| a.key == &treasury_address)
     {
         treasury_seeds.push(treasury_bump);
-        signer_seeds.push(&treasury_seeds[..]);
+        signers_seeds.push(&treasury_seeds[..]);
     }
 
-    invoke_signed(&instruction, instruction_account_infos, &signer_seeds[..])?;
+    invoke_signed(&instruction, instruction_account_infos, &signers_seeds[..])?;
 
     // Update proposal and instruction accounts
     if proposal_data.state == ProposalState::Succeeded {

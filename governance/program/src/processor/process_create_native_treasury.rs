@@ -39,7 +39,7 @@ pub fn process_create_native_treasury(
         &native_treasury_data,
         &get_native_treasury_address_seeds(governance_info.key),
         program_id,
-        &system_program::id(),
+        &system_program::id(), // System program as the PDA owner
         system_info,
         &rent,
     )?;
