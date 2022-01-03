@@ -9,7 +9,10 @@ use solana_program::{
 };
 use spl_governance_tools::account::create_and_serialize_account_signed2;
 
-use crate::state::native_treasury::{get_native_treasury_address_seeds, NativeTreasury};
+use crate::state::{
+    governance::assert_is_valid_governance,
+    native_treasury::{get_native_treasury_address_seeds, NativeTreasury},
+};
 
 /// Processes CreateNativeTreasury instruction
 pub fn process_create_native_treasury(
@@ -25,7 +28,7 @@ pub fn process_create_native_treasury(
 
     let rent = Rent::get()?;
 
-    // TODO: Assert is valid Governance
+    assert_is_valid_governance(program_id, governance_info)?;
 
     let native_treasury_data = NativeTreasury {};
 

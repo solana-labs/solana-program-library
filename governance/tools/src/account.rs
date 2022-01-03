@@ -187,6 +187,15 @@ pub fn assert_is_valid_account<T: BorshDeserialize + PartialEq>(
     expected_account_type: T,
     owner_program_id: &Pubkey,
 ) -> Result<(), ProgramError> {
+    assert_is_valid_account2(account_info, &[expected_account_type], owner_program_id)
+}
+/// Asserts the given account is not empty, owned by the given program and one of the expected types
+/// Note: The function assumes the account type T is stored as the first element in the account data
+pub fn assert_is_valid_account2<T: BorshDeserialize + PartialEq>(
+    account_info: &AccountInfo,
+    expected_account_types: &[T],
+    owner_program_id: &Pubkey,
+) -> Result<(), ProgramError> {
     if account_info.owner != owner_program_id {
         return Err(GovernanceToolsError::InvalidAccountOwner.into());
     }
@@ -197,7 +206,7 @@ pub fn assert_is_valid_account<T: BorshDeserialize + PartialEq>(
 
     let account_type: T = try_from_slice_unchecked(&account_info.data.borrow())?;
 
-    if account_type != expected_account_type {
+    if expected_account_types.iter().all(|a| a != &account_type) {
         return Err(GovernanceToolsError::InvalidAccountType.into());
     };
 
