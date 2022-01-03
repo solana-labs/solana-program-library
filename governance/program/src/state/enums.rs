@@ -56,10 +56,6 @@ pub enum GovernanceAccountType {
 
     /// Program metadata account. It stores information about the particular SPL-Governance program instance
     ProgramMetadata,
-
-    /// NativeTreasury account
-    /// The account has no data and can be used as payer for instructions signed by Governance PDAs or as native SOL treasury
-    NativeTreasury,
 }
 
 impl Default for GovernanceAccountType {
