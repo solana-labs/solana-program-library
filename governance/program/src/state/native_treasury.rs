@@ -17,7 +17,7 @@ impl AccountMaxSize for NativeTreasury {
 
 /// Returns NativeTreasury PDA seeds
 pub fn get_native_treasury_address_seeds(governance: &Pubkey) -> [&[u8]; 2] {
-    [b"treasury", governance.as_ref()]
+    [b"native-treasury", governance.as_ref()]
 }
 
 /// Returns NativeTreasury PDA address
