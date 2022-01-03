@@ -114,9 +114,9 @@ pub fn process_instruction(
 
 #[cfg(test)]
 mod tests {
-    use borsh::BorshSerialize;
-    use crate::instruction::MathInstruction;
     use super::*;
+    use crate::instruction::MathInstruction;
+    use borsh::BorshSerialize;
     use solana_program::account_info::AccountInfo;
 
     #[test]
@@ -158,22 +158,31 @@ mod tests {
             &mut data,
             &program_id,
             true,
-            rent_epoch
+            rent_epoch,
         );
 
-        let math_instruction = MathInstruction::PreciseSquareRoot { radicand: 18446744073709551615 };
+        let math_instruction = MathInstruction::PreciseSquareRoot {
+            radicand: 18446744073709551615,
+        };
         let input = math_instruction.try_to_vec().unwrap();
-        let instruction = process_instruction(&program_id, &[account_info.clone()], &input).unwrap();
+        let instruction =
+            process_instruction(&program_id, &[account_info.clone()], &input).unwrap();
         assert_eq!((), instruction);
 
-        let math_instruction = MathInstruction::SquareRootU64 { radicand: 18446744073709551615 };
+        let math_instruction = MathInstruction::SquareRootU64 {
+            radicand: 18446744073709551615,
+        };
         let input = math_instruction.try_to_vec().unwrap();
-        let instruction = process_instruction(&program_id, &[account_info.clone()], &input).unwrap();
+        let instruction =
+            process_instruction(&program_id, &[account_info.clone()], &input).unwrap();
         assert_eq!((), instruction);
 
-        let math_instruction = MathInstruction::SquareRootU128 { radicand: 340282366920938463463374607431768211455 };
+        let math_instruction = MathInstruction::SquareRootU128 {
+            radicand: 340282366920938463463374607431768211455,
+        };
         let input = math_instruction.try_to_vec().unwrap();
-        let instruction = process_instruction(&program_id, &[account_info.clone()], &input).unwrap();
+        let instruction =
+            process_instruction(&program_id, &[account_info.clone()], &input).unwrap();
         assert_eq!((), instruction);
 
         let math_instruction = MathInstruction::U64Multiply {
@@ -181,7 +190,8 @@ mod tests {
             multiplier: 4,
         };
         let input = math_instruction.try_to_vec().unwrap();
-        let instruction = process_instruction(&program_id, &[account_info.clone()], &input).unwrap();
+        let instruction =
+            process_instruction(&program_id, &[account_info.clone()], &input).unwrap();
         assert_eq!((), instruction);
 
         let math_instruction = MathInstruction::U64Divide {
@@ -189,7 +199,8 @@ mod tests {
             divisor: 2,
         };
         let input = math_instruction.try_to_vec().unwrap();
-        let instruction = process_instruction(&program_id, &[account_info.clone()], &input).unwrap();
+        let instruction =
+            process_instruction(&program_id, &[account_info.clone()], &input).unwrap();
         assert_eq!((), instruction);
 
         let math_instruction = MathInstruction::F32Multiply {
@@ -197,7 +208,8 @@ mod tests {
             multiplier: 4.0,
         };
         let input = math_instruction.try_to_vec().unwrap();
-        let instruction = process_instruction(&program_id, &[account_info.clone()], &input).unwrap();
+        let instruction =
+            process_instruction(&program_id, &[account_info.clone()], &input).unwrap();
         assert_eq!((), instruction);
 
         let math_instruction = MathInstruction::F32Divide {
@@ -205,12 +217,14 @@ mod tests {
             divisor: 2.0,
         };
         let input = math_instruction.try_to_vec().unwrap();
-        let instruction = process_instruction(&program_id, &[account_info.clone()], &input).unwrap();
+        let instruction =
+            process_instruction(&program_id, &[account_info.clone()], &input).unwrap();
         assert_eq!((), instruction);
 
         let math_instruction = MathInstruction::Noop;
         let input = math_instruction.try_to_vec().unwrap();
-        let instruction = process_instruction(&program_id, &[account_info.clone()], &input).unwrap();
+        let instruction =
+            process_instruction(&program_id, &[account_info.clone()], &input).unwrap();
         assert_eq!((), instruction);
     }
 }

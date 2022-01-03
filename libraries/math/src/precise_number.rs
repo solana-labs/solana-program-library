@@ -514,7 +514,12 @@ mod tests {
         let number_one = PreciseNumber::new(0).unwrap();
         let number_two = PreciseNumber::new(0).unwrap();
         let result = number_one.checked_mul(&number_two);
-        assert_eq!(result, Option::Some(PreciseNumber { value: U256::from(0) }));
+        assert_eq!(
+            result,
+            Option::Some(PreciseNumber {
+                value: U256::from(0)
+            })
+        );
 
         let number_one = PreciseNumber::new(2).unwrap();
         let number_two = PreciseNumber::new(2).unwrap();
