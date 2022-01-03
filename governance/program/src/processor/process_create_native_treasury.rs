@@ -5,6 +5,7 @@ use solana_program::{
     entrypoint::ProgramResult,
     pubkey::Pubkey,
     rent::Rent,
+    system_program,
     sysvar::Sysvar,
 };
 use spl_governance_tools::account::create_and_serialize_account_signed2;
@@ -38,7 +39,7 @@ pub fn process_create_native_treasury(
         &native_treasury_data,
         &get_native_treasury_address_seeds(governance_info.key),
         program_id,
-        system_info.key,
+        &system_program::id(),
         system_info,
         &rent,
     )?;
