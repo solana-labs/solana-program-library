@@ -3,8 +3,8 @@ use solana_sdk::signature::Keypair;
 use spl_governance::{
     addins::voter_weight::VoterWeightRecord,
     state::{
-        governance::Governance, program_metadata::ProgramMetadata, proposal::ProposalV2,
-        proposal_instruction::ProposalInstructionV2, realm::Realm,
+        governance::Governance, native_treasury::NativeTreasury, program_metadata::ProgramMetadata,
+        proposal::ProposalV2, proposal_instruction::ProposalInstructionV2, realm::Realm,
         realm_config::RealmConfigAccount, signatory_record::SignatoryRecord,
         token_owner_record::TokenOwnerRecord, vote_record::VoteRecordV2,
     },
@@ -170,4 +170,10 @@ pub struct VoterWeightRecordCookie {
 pub struct ProgramMetadataCookie {
     pub address: Pubkey,
     pub account: ProgramMetadata,
+}
+
+#[derive(Debug, Clone)]
+pub struct NativeTreasuryCookie {
+    pub address: Pubkey,
+    pub account: NativeTreasury,
 }
