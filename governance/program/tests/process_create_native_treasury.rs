@@ -86,7 +86,7 @@ async fn test_execute_transfer_from_native_treasury() {
             &mut proposal_cookie,
             &token_owner_record_cookie,
             &wallet_cookie,
-            1,
+            100,
         )
         .await
         .unwrap();
@@ -107,10 +107,20 @@ async fn test_execute_transfer_from_native_treasury() {
         .await;
 
     // Act
-    // governance_test
-    //     .execute_instruction(&proposal_cookie, &proposal_instruction_cookie)
-    //     .await
-    //     .unwrap();
+    governance_test
+        .execute_instruction(&proposal_cookie, &proposal_instruction_cookie)
+        .await
+        .unwrap();
 
     // Assert
+    let wallet_account = governance_test
+        .bench
+        .get_account(&wallet_cookie.address)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        wallet_account.lamports,
+        wallet_cookie.account.lamports + 100
+    )
 }

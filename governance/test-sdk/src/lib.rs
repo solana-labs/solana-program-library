@@ -98,8 +98,17 @@ impl ProgramTestBench {
             .await
             .unwrap();
 
+        let account = Account {
+            lamports: account_rent,
+            data: vec![],
+            owner: system_program::id(),
+            executable: false,
+            rent_epoch: 0,
+        };
+
         WalletCookie {
             address: account_keypair.pubkey(),
+            account,
         }
     }
 

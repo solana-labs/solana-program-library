@@ -7,7 +7,7 @@ use solana_program::{
     rent::Rent,
     sysvar::Sysvar,
 };
-use spl_governance_tools::account::create_and_serialize_account_signed;
+use spl_governance_tools::account::create_and_serialize_account_signed2;
 
 use crate::state::native_treasury::{get_native_treasury_address_seeds, NativeTreasury};
 
@@ -29,12 +29,13 @@ pub fn process_create_native_treasury(
 
     let native_treasury_data = NativeTreasury {};
 
-    create_and_serialize_account_signed(
+    create_and_serialize_account_signed2(
         payer_info,
         native_treasury_info,
         &native_treasury_data,
         &get_native_treasury_address_seeds(governance_info.key),
         program_id,
+        system_info.key,
         system_info,
         &rent,
     )?;
