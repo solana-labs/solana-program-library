@@ -111,3 +111,106 @@ pub fn process_instruction(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use borsh::BorshSerialize;
+    use crate::instruction::MathInstruction;
+    use super::*;
+    use solana_program::account_info::AccountInfo;
+
+    #[test]
+    fn test_u64_multiply() {
+        assert_eq!(4, u64_multiply(2, 2));
+        assert_eq!(12, u64_multiply(4, 3));
+    }
+
+    #[test]
+    fn test_u64_divide() {
+        assert_eq!(1, u64_divide(2, 2));
+        assert_eq!(2, u64_divide(2, 1));
+    }
+
+    #[test]
+    fn test_f32_multiply() {
+        assert_eq!(4.0, f32_multiply(2.0, 2.0));
+        assert_eq!(12.0, f32_multiply(4.0, 3.0));
+    }
+
+    #[test]
+    fn test_f32_divide() {
+        assert_eq!(1.0, f32_divide(2.0, 2.0));
+        assert_eq!(2.0, f32_divide(2.0, 1.0));
+    }
+
+    #[allow(clippy::unit_cmp)]
+    #[test]
+    fn test_process_instruction() {
+        let program_id = Pubkey::new_unique();
+        let mut data = vec![];
+        let mut lamports = 1000;
+        let rent_epoch = 1;
+        let account_info = AccountInfo::new(
+            &program_id,
+            true,
+            true,
+            &mut lamports,
+            &mut data,
+            &program_id,
+            true,
+            rent_epoch
+        );
+
+        let math_instruction = MathInstruction::PreciseSquareRoot { radicand: 18446744073709551615 };
+        let input = math_instruction.try_to_vec().unwrap();
+        let instruction = process_instruction(&program_id, &[account_info.clone()], &input).unwrap();
+        assert_eq!((), instruction);
+
+        let math_instruction = MathInstruction::SquareRootU64 { radicand: 18446744073709551615 };
+        let input = math_instruction.try_to_vec().unwrap();
+        let instruction = process_instruction(&program_id, &[account_info.clone()], &input).unwrap();
+        assert_eq!((), instruction);
+
+        let math_instruction = MathInstruction::SquareRootU128 { radicand: 340282366920938463463374607431768211455 };
+        let input = math_instruction.try_to_vec().unwrap();
+        let instruction = process_instruction(&program_id, &[account_info.clone()], &input).unwrap();
+        assert_eq!((), instruction);
+
+        let math_instruction = MathInstruction::U64Multiply {
+            multiplicand: 3,
+            multiplier: 4,
+        };
+        let input = math_instruction.try_to_vec().unwrap();
+        let instruction = process_instruction(&program_id, &[account_info.clone()], &input).unwrap();
+        assert_eq!((), instruction);
+
+        let math_instruction = MathInstruction::U64Divide {
+            dividend: 2,
+            divisor: 2,
+        };
+        let input = math_instruction.try_to_vec().unwrap();
+        let instruction = process_instruction(&program_id, &[account_info.clone()], &input).unwrap();
+        assert_eq!((), instruction);
+
+        let math_instruction = MathInstruction::F32Multiply {
+            multiplicand: 3.0,
+            multiplier: 4.0,
+        };
+        let input = math_instruction.try_to_vec().unwrap();
+        let instruction = process_instruction(&program_id, &[account_info.clone()], &input).unwrap();
+        assert_eq!((), instruction);
+
+        let math_instruction = MathInstruction::F32Divide {
+            dividend: 2.0,
+            divisor: 2.0,
+        };
+        let input = math_instruction.try_to_vec().unwrap();
+        let instruction = process_instruction(&program_id, &[account_info.clone()], &input).unwrap();
+        assert_eq!((), instruction);
+
+        let math_instruction = MathInstruction::Noop;
+        let input = math_instruction.try_to_vec().unwrap();
+        let instruction = process_instruction(&program_id, &[account_info.clone()], &input).unwrap();
+        assert_eq!((), instruction);
+    }
+}
