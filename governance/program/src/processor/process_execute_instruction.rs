@@ -65,7 +65,7 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
     let treasury_bump = &[treasury_bump_seed];
 
     if instruction_account_infos
-        .into_iter()
+        .iter()
         .any(|a| a.key == &treasury_address)
     {
         treasury_seeds.push(treasury_bump);
