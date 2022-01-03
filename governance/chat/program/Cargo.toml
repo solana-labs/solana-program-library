@@ -18,7 +18,7 @@ borsh = "0.9.1"
 num-derive = "0.3"
 num-traits = "0.2"
 serde = "1.0.127"
-serde_derive = "1.0.103"
+serde_derive = "1.0.133"
 solana-program = "1.9.2"
 spl-token = { version = "3.2", path = "../../../token/program", features = [ "no-entrypoint" ] }
 spl-governance= { version = "2.1.3", path ="../../program", features = [ "no-entrypoint" ]}
