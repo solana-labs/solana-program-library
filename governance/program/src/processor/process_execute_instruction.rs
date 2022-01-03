@@ -48,36 +48,31 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
 
     let instruction_account_infos = account_info_iter.as_slice();
 
+    let mut signer_seeds: Vec<&[&[u8]]> = vec![];
+
+    // Sign the transaction using the governance PDA
     let mut governance_seeds = governance_data.get_governance_address_seeds()?.to_vec();
     let (_, bump_seed) = Pubkey::find_program_address(&governance_seeds, program_id);
     let bump = &[bump_seed];
     governance_seeds.push(bump);
 
-    // TODO: Add treasury seeds only if the treasury account is present instruction_account_infos
+    signer_seeds.push(&governance_seeds[..]);
+
+    // Sign the transaction using the governance treasury PDA if required by the instruction
     let mut treasury_seeds = get_native_treasury_address_seeds(governance_info.key).to_vec();
-    let (_, treasury_bump_seed) = Pubkey::find_program_address(&treasury_seeds, program_id);
+    let (treasury_address, treasury_bump_seed) =
+        Pubkey::find_program_address(&treasury_seeds, program_id);
     let treasury_bump = &[treasury_bump_seed];
-    treasury_seeds.push(treasury_bump);
 
-    //let address = get_native_treasury_address(program_id, governance_info.key);
+    if instruction_account_infos
+        .into_iter()
+        .any(|a| a.key == &treasury_address)
+    {
+        treasury_seeds.push(treasury_bump);
+        signer_seeds.push(&treasury_seeds[..]);
+    }
 
-    // // if instruction_account_infos.len() == 3 {
-    // //     panic!("INVALID NO")
-    // // }
-
-    // for acc in instruction_account_infos {
-    //     if *acc.key == address {
-    //         if acc.owner == program_id {
-    //             // return Ok(());
-    //         }
-    //     }
-    // }
-
-    invoke_signed(
-        &instruction,
-        instruction_account_infos,
-        &[&governance_seeds[..], &treasury_seeds[..]],
-    )?;
+    invoke_signed(&instruction, instruction_account_infos, &signer_seeds[..])?;
 
     // Update proposal and instruction accounts
     if proposal_data.state == ProposalState::Succeeded {
