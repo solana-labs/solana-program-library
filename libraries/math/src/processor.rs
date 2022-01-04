@@ -161,17 +161,13 @@ mod tests {
             rent_epoch,
         );
 
-        let math_instruction = MathInstruction::PreciseSquareRoot {
-            radicand: u64::MAX,
-        };
+        let math_instruction = MathInstruction::PreciseSquareRoot { radicand: u64::MAX };
         let input = math_instruction.try_to_vec().unwrap();
         let instruction =
             process_instruction(&program_id, &[account_info.clone()], &input).unwrap();
         assert_eq!((), instruction);
 
-        let math_instruction = MathInstruction::SquareRootU64 {
-            radicand: u64::MAX,
-        };
+        let math_instruction = MathInstruction::SquareRootU64 { radicand: u64::MAX };
         let input = math_instruction.try_to_vec().unwrap();
         let instruction =
             process_instruction(&program_id, &[account_info.clone()], &input).unwrap();
