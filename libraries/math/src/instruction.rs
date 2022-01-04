@@ -167,3 +167,72 @@ pub fn noop() -> Instruction {
         data: MathInstruction::Noop.try_to_vec().unwrap(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_precise_sqrt() {
+        let instruction = precise_sqrt(u64::MAX);
+        assert_eq!(0, instruction.accounts.len());
+        assert!(!instruction.data.is_empty());
+        assert!(!instruction.program_id.to_string().is_empty());
+    }
+
+    #[test]
+    fn test_sqrt_u64() {
+        let instruction = sqrt_u64(u64::MAX);
+        assert_eq!(0, instruction.accounts.len());
+        assert!(!instruction.data.is_empty());
+        assert!(!instruction.program_id.to_string().is_empty());
+    }
+
+    #[test]
+    fn test_sqrt_u128() {
+        let instruction = sqrt_u128(u128::MAX);
+        assert_eq!(0, instruction.accounts.len());
+        assert!(!instruction.data.is_empty());
+        assert!(!instruction.program_id.to_string().is_empty());
+    }
+
+    #[test]
+    fn test_u64_multiply() {
+        let instruction = u64_multiply(u64::MAX, u64::MAX);
+        assert_eq!(0, instruction.accounts.len());
+        assert!(!instruction.data.is_empty());
+        assert!(!instruction.program_id.to_string().is_empty());
+    }
+
+    #[test]
+    fn test_u64_divide() {
+        let instruction = u64_divide(u64::MAX, u64::MAX);
+        assert_eq!(0, instruction.accounts.len());
+        assert!(!instruction.data.is_empty());
+        assert!(!instruction.program_id.to_string().is_empty());
+    }
+
+    #[test]
+    fn test_f32_multiply() {
+        let instruction = f32_multiply(f32::MAX, f32::MAX);
+        assert_eq!(0, instruction.accounts.len());
+        assert!(!instruction.data.is_empty());
+        assert!(!instruction.program_id.to_string().is_empty());
+    }
+
+    #[test]
+    fn test_f32_divide() {
+        let instruction = f32_divide(f32::MAX, f32::MAX);
+        assert_eq!(0, instruction.accounts.len());
+        assert!(!instruction.data.is_empty());
+        assert!(!instruction.program_id.to_string().is_empty());
+    }
+
+    #[test]
+    fn test_noop() {
+        let instruction = noop();
+        assert_eq!(0, instruction.accounts.len());
+        assert!(!instruction.data.is_empty());
+        assert!(!instruction.program_id.to_string().is_empty());
+    }
+}

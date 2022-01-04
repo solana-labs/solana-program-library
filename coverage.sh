@@ -21,6 +21,7 @@ reportName="lcov-${CI_COMMIT:0:9}"
 
 if [[ -z $1 ]]; then
   programs=(
+    libraries/math
     memo/program
     token/program
     token-lending/program
