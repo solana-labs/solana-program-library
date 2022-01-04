@@ -121,26 +121,26 @@ mod tests {
 
     #[test]
     fn test_u64_multiply() {
-        assert_eq!(4, u64_multiply(2, 2));
-        assert_eq!(12, u64_multiply(4, 3));
+        assert_eq!(2 * 2, u64_multiply(2, 2));
+        assert_eq!(4 * 3, u64_multiply(4, 3));
     }
 
     #[test]
     fn test_u64_divide() {
-        assert_eq!(1, u64_divide(2, 2));
-        assert_eq!(2, u64_divide(2, 1));
+        assert_eq!(2 / 2, u64_divide(2, 2));
+        assert_eq!(2 / 1, u64_divide(2, 1));
     }
 
     #[test]
     fn test_f32_multiply() {
-        assert_eq!(4.0, f32_multiply(2.0, 2.0));
-        assert_eq!(12.0, f32_multiply(4.0, 3.0));
+        assert_eq!(2.0 * 2.0, f32_multiply(2.0, 2.0));
+        assert_eq!(4.0 * 3.0, f32_multiply(4.0, 3.0));
     }
 
     #[test]
     fn test_f32_divide() {
-        assert_eq!(1.0, f32_divide(2.0, 2.0));
-        assert_eq!(2.0, f32_divide(2.0, 1.0));
+        assert_eq!(2.0 / 2.0, f32_divide(2.0, 2.0));
+        assert_eq!(2.0 / 1.0, f32_divide(2.0, 1.0));
     }
 
     #[allow(clippy::unit_cmp)]
@@ -162,7 +162,7 @@ mod tests {
         );
 
         let math_instruction = MathInstruction::PreciseSquareRoot {
-            radicand: 18446744073709551615,
+            radicand: u64::MAX,
         };
         let input = math_instruction.try_to_vec().unwrap();
         let instruction =
@@ -170,7 +170,7 @@ mod tests {
         assert_eq!((), instruction);
 
         let math_instruction = MathInstruction::SquareRootU64 {
-            radicand: 18446744073709551615,
+            radicand: u64::MAX,
         };
         let input = math_instruction.try_to_vec().unwrap();
         let instruction =
@@ -178,7 +178,7 @@ mod tests {
         assert_eq!((), instruction);
 
         let math_instruction = MathInstruction::SquareRootU128 {
-            radicand: 340282366920938463463374607431768211455,
+            radicand: u128::MAX,
         };
         let input = math_instruction.try_to_vec().unwrap();
         let instruction =

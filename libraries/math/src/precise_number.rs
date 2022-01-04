@@ -524,15 +524,15 @@ mod tests {
         let number_one = PreciseNumber::new(2).unwrap();
         let number_two = PreciseNumber::new(2).unwrap();
         let result = number_one.checked_mul(&number_two).unwrap();
-        assert_eq!(result, PreciseNumber::new(4).unwrap());
+        assert_eq!(result, PreciseNumber::new(2 * 2).unwrap());
 
-        let number_one = PreciseNumber::new(340282366920938463463374607431768211455).unwrap();
-        let number_two = PreciseNumber::new(340282366920938463463374607431768211455).unwrap();
+        let number_one = PreciseNumber::new(u128::MAX).unwrap();
+        let number_two = PreciseNumber::new(u128::MAX).unwrap();
         let result = number_one.checked_mul(&number_two);
         assert_eq!(result, Option::None);
 
-        let number_one = PreciseNumber::new(340282366920938463463374607431768211454).unwrap();
-        let number_two = PreciseNumber::new(340282366920938463463374607431768211455).unwrap();
+        let number_one = PreciseNumber::new(u128::MAX - 1).unwrap();
+        let number_two = PreciseNumber::new(u128::MAX).unwrap();
         let result = number_one.checked_mul(&number_two);
         assert_eq!(result, Option::None);
     }
