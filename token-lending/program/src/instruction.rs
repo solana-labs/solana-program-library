@@ -993,13 +993,21 @@ pub fn flash_loan(
     pub fn close_obligation_account(
         program_id: Pubkey,
         obligation_pubkey: Pubkey,
-        repay_reserve_pubkey: Pubkey
+        obligation_owner_pubkey: Pubkey,
+        user_transfer_authority_pubkey: Pubkey,
+        lending_market_pubkey: Pubkey,
+        reserve_collateral_mint_pubkey: Pubkey,
     ) -> Instruction {
         Instruction {
             program_id,
             accounts: vec![
                 AccountMeta::new(obligation_pubkey, false),
-                AccountMeta::new(repay_reserve_pubkey, false)
+                AccountMeta::new(obligation_owner_pubkey, false),
+                AccountMeta::new(user_transfer_authority_pubkey, false),
+                AccountMeta::new_readonly(lending_market_pubkey, false),
+                AccountMeta::new(reserve_collateral_mint_pubkey, false),
+                AccountMeta::new(spl_token::id(), false),
+
             ],
             data: LendingInstruction::CloseObligationAccount.pack(),
     }

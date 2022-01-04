@@ -1743,6 +1743,7 @@ fn process_close_obligation_account(
         authority: authority_info.clone(),
         authority_signer_seeds: &[],
     })?;
+    
     Ok(())
 }
 
