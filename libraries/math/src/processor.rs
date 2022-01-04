@@ -127,8 +127,8 @@ mod tests {
 
     #[test]
     fn test_u64_divide() {
-        assert_eq!(2 / 2, u64_divide(2, 2));
-        assert_eq!(2 / 1, u64_divide(2, 1));
+        assert_eq!(1, u64_divide(2, 2));
+        assert_eq!(2, u64_divide(2, 1));
     }
 
     #[test]
@@ -139,8 +139,8 @@ mod tests {
 
     #[test]
     fn test_f32_divide() {
-        assert_eq!(2.0 / 2.0, f32_divide(2.0, 2.0));
-        assert_eq!(2.0 / 1.0, f32_divide(2.0, 1.0));
+        assert_eq!(1.0, f32_divide(2.0, 2.0));
+        assert_eq!(2.0, f32_divide(2.0, 1.0));
     }
 
     #[allow(clippy::unit_cmp)]
