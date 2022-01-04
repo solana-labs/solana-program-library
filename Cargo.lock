@@ -3699,6 +3699,7 @@ name = "spl-token-2022"
 version = "0.1.0"
 dependencies = [
  "arrayref",
+ "bytemuck",
  "num-derive",
  "num-traits",
  "num_enum",

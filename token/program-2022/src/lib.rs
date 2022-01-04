@@ -7,6 +7,7 @@ pub mod error;
 pub mod extension;
 pub mod instruction;
 pub mod native_mint;
+pub mod pod;
 pub mod processor;
 pub mod state;
 
