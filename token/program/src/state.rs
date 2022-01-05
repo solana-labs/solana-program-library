@@ -300,10 +300,7 @@ mod tests {
         let mut src: [u8; 82] = [0; 82];
         src[45] = 2;
         let mint = Mint::unpack_from_slice(&src).unwrap_err();
-        assert_eq!(
-            mint,
-            ProgramError::InvalidAccountData
-        );
+        assert_eq!(mint, ProgramError::InvalidAccountData);
     }
 
     #[test]
@@ -332,10 +329,7 @@ mod tests {
         let mut src: [u8; 355] = [0; 355];
         src[2] = 2;
         let multisig = Multisig::unpack_from_slice(&src).unwrap_err();
-        assert_eq!(
-            multisig,
-            ProgramError::InvalidAccountData
-        );
+        assert_eq!(multisig, ProgramError::InvalidAccountData);
     }
 
     #[test]
@@ -347,10 +341,7 @@ mod tests {
         let mut src: [u8; 36] = [0; 36];
         src[1] = 1;
         let result = unpack_coption_key(&src).unwrap_err();
-        assert_eq!(
-            result,
-            ProgramError::InvalidAccountData
-        );
+        assert_eq!(result, ProgramError::InvalidAccountData);
     }
 
     #[test]
@@ -367,9 +358,6 @@ mod tests {
         let mut src: [u8; 12] = [0; 12];
         src[1] = 1;
         let result = unpack_coption_u64(&src).unwrap_err();
-        assert_eq!(
-            result,
-            ProgramError::InvalidAccountData
-        );
+        assert_eq!(result, ProgramError::InvalidAccountData);
     }
 }
