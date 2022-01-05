@@ -19,7 +19,7 @@ num-traits = "0.2"
 num_enum = "0.5.4"
 serde = "1.0.130"
 serde_derive = "1.0.103"
-solana-program = "1.8.1"
+solana-program = "1.9.2"
 spl-math = { version = "0.1", path = "../../libraries/math", features = [ "no-entrypoint" ] }
 spl-token = { version = "3.2", path = "../../token/program", features = [ "no-entrypoint" ] }
 thiserror = "1.0"
@@ -27,9 +27,9 @@ bincode = "1.3.1"
 
 [dev-dependencies]
 proptest = "1.0"
-solana-program-test = "1.8.1"
-solana-sdk = "1.8.1"
-solana-vote-program = "1.8.1"
+solana-program-test = "1.9.2"
+solana-sdk = "1.9.2"
+solana-vote-program = "1.9.2"
 
 [lib]
 crate-type = ["cdylib", "lib"]

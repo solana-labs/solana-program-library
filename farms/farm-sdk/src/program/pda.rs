@@ -347,7 +347,8 @@ pub fn check_pda_rent_exempt<'a, 'b>(
         let signer_min_balance = rent.minimum_balance(signer_account.data_len());
         if !fix
             || signer_balance <= signer_min_balance
-            || min_balance - cur_balance > signer_balance - signer_min_balance
+            || min_balance.checked_sub(cur_balance).unwrap()
+                > signer_balance.checked_sub(signer_min_balance).unwrap()
         {
             return Err(ProgramError::InsufficientFunds);
         }
@@ -355,7 +356,7 @@ pub fn check_pda_rent_exempt<'a, 'b>(
             &system_instruction::transfer(
                 signer_account.key,
                 target_account.key,
-                min_balance - cur_balance,
+                min_balance.checked_sub(cur_balance).unwrap(),
             ),
             &[signer_account.clone(), target_account.clone()],
             &[seeds],

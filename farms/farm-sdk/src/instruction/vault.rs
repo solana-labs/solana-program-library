@@ -86,6 +86,11 @@ pub enum VaultInstruction {
     /// # Account references are protocol specific,
     ///   see particular Router instructions handlers for more info
     Shutdown,
+
+    /// Withdraw collected fees
+    /// # Account references are protocol specific,
+    ///   see particular Router instructions handlers for more info
+    WithdrawFees { amount: u64 },
 }
 
 #[repr(u8)]
@@ -106,6 +111,7 @@ pub enum VaultInstructionType {
     Crank,
     Init,
     Shutdown,
+    WithdrawFees,
 }
 
 impl VaultInstruction {
@@ -125,6 +131,7 @@ impl VaultInstruction {
     pub const CRANK_LEN: usize = 9;
     pub const INIT_LEN: usize = 9;
     pub const SHUTDOWN_LEN: usize = 1;
+    pub const WITHDRAW_FEES_LEN: usize = 9;
 
     pub fn pack(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
         match self {
@@ -143,6 +150,7 @@ impl VaultInstruction {
             Self::Crank { .. } => self.pack_crank(output),
             Self::Init { .. } => self.pack_init(output),
             Self::Shutdown { .. } => self.pack_shutdown(output),
+            Self::WithdrawFees { .. } => self.pack_withdraw_fees(output),
         }
     }
 
@@ -187,6 +195,7 @@ impl VaultInstruction {
             VaultInstructionType::Crank => VaultInstruction::unpack_crank(input),
             VaultInstructionType::Init => VaultInstruction::unpack_init(input),
             VaultInstructionType::Shutdown => VaultInstruction::unpack_shutdown(input),
+            VaultInstructionType::WithdrawFees => VaultInstruction::unpack_withdraw_fees(input),
         }
     }
 
@@ -433,6 +442,23 @@ impl VaultInstruction {
         }
     }
 
+    fn pack_withdraw_fees(&self, output: &mut [u8]) -> Result<usize, ProgramError> {
+        check_data_len(output, VaultInstruction::WITHDRAW_FEES_LEN)?;
+
+        if let VaultInstruction::WithdrawFees { amount } = self {
+            let output = array_mut_ref![output, 0, VaultInstruction::WITHDRAW_FEES_LEN];
+            let (instruction_type_out, amount_out) = mut_array_refs![output, 1, 8];
+
+            instruction_type_out[0] = VaultInstructionType::WithdrawFees as u8;
+
+            *amount_out = amount.to_le_bytes();
+
+            Ok(VaultInstruction::WITHDRAW_FEES_LEN)
+        } else {
+            Err(ProgramError::InvalidInstructionData)
+        }
+    }
+
     fn unpack_user_init(input: &[u8]) -> Result<VaultInstruction, ProgramError> {
         check_data_len(input, VaultInstruction::USER_INIT_LEN)?;
         Ok(Self::UserInit)
@@ -531,6 +557,13 @@ impl VaultInstruction {
         check_data_len(input, VaultInstruction::SHUTDOWN_LEN)?;
         Ok(Self::Shutdown)
     }
+
+    fn unpack_withdraw_fees(input: &[u8]) -> Result<VaultInstruction, ProgramError> {
+        check_data_len(input, VaultInstruction::WITHDRAW_FEES_LEN)?;
+        Ok(Self::WithdrawFees {
+            amount: u64::from_le_bytes(*array_ref![input, 1, 8]),
+        })
+    }
 }
 
 impl std::fmt::Display for VaultInstructionType {
@@ -551,6 +584,7 @@ impl std::fmt::Display for VaultInstructionType {
             VaultInstructionType::Crank => write!(f, "Crank"),
             VaultInstructionType::Init => write!(f, "Init"),
             VaultInstructionType::Shutdown => write!(f, "Shutdown"),
+            VaultInstructionType::WithdrawFees => write!(f, "WithdrawFees"),
         }
     }
 }

@@ -35,7 +35,7 @@ pub fn load(client: &FarmClient, config: &Config, data: &str, remove_mode: bool)
                 program.name
             );
             client
-                .remove_program_id(config.keypair.as_ref(), &program.name)
+                .remove_program_id(config.keypair.as_ref(), &program.name, None)
                 .unwrap();
         } else {
             if config.skip_existing && client.get_program_id(&program.name).is_ok() {

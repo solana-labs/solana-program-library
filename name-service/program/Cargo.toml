@@ -17,15 +17,15 @@ no-entrypoint = []
 test-bpf = []
 
 [dependencies]
-solana-program = "1.8.1"
+solana-program = "1.9.2"
 num-traits = "0.2"
 borsh = "0.9.1"
 num-derive = "0.3.3"
 thiserror = "1.0.29"
 
 [dev-dependencies]
-solana-program-test = "1.8.1"
-solana-sdk = "1.8.1"
+solana-program-test = "1.9.2"
+solana-sdk = "1.9.2"
 
 [lib]
 crate-type = ["cdylib", "lib"]

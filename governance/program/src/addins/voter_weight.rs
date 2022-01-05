@@ -63,7 +63,7 @@ impl VoterWeightRecord {
     /// Asserts the VoterWeightRecord hasn't expired
     pub fn assert_is_up_to_date(&self) -> Result<(), ProgramError> {
         if let Some(voter_weight_expiry) = self.voter_weight_expiry {
-            let slot = Clock::get().unwrap().slot;
+            let slot = Clock::get()?.slot;
 
             if slot > voter_weight_expiry {
                 return Err(GovernanceError::VoterWeightRecordExpired.into());

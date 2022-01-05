@@ -12,3 +12,4 @@ hfuzz_workspace
 test-ledger
 docker-target
 .idea
+.coderrect

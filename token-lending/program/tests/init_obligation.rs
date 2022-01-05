@@ -6,7 +6,6 @@ use helpers::*;
 use solana_program_test::*;
 use solana_sdk::{
     instruction::InstructionError,
-    pubkey::Pubkey,
     signature::{Keypair, Signer},
     transaction::{Transaction, TransactionError},
 };
@@ -23,7 +22,7 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(8_000);
+    test.set_compute_max_units(8_000);
 
     let user_accounts_owner = Keypair::new();
     let lending_market = add_lending_market(&mut test);
@@ -50,7 +49,7 @@ async fn test_already_initialized() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(13_000);
+    test.set_compute_max_units(13_000);
 
     let user_accounts_owner = Keypair::new();
     let lending_market = add_lending_market(&mut test);

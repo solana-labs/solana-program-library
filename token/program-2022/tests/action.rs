@@ -98,6 +98,7 @@ pub async fn mint_to(
     Ok(())
 }
 
+#[allow(deprecated)]
 pub async fn transfer(
     banks_client: &mut BanksClient,
     payer: &Keypair,

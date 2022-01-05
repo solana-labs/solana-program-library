@@ -49,14 +49,16 @@ class InitializeParams(NamedTuple):
     """[s] Manager for new stake pool."""
     staker: PublicKey
     """[] Staker for the new stake pool."""
+    withdraw_authority: PublicKey
+    """[] Withdraw authority for the new stake pool."""
     validator_list: PublicKey
     """[w] Uninitialized validator list account for the new stake pool."""
     reserve_stake: PublicKey
     """[] Reserve stake account."""
     pool_mint: PublicKey
-    """[] Pool token mint account."""
+    """[w] Pool token mint account."""
     manager_fee_account: PublicKey
-    """[] Manager's fee account"""
+    """[w] Manager's fee account"""
     token_program_id: PublicKey
     """[] SPL Token program id."""
 
@@ -535,10 +537,11 @@ def initialize(params: InitializeParams) -> TransactionInstruction:
         AccountMeta(pubkey=params.stake_pool, is_signer=False, is_writable=True),
         AccountMeta(pubkey=params.manager, is_signer=True, is_writable=False),
         AccountMeta(pubkey=params.staker, is_signer=False, is_writable=False),
+        AccountMeta(pubkey=params.withdraw_authority, is_signer=False, is_writable=False),
         AccountMeta(pubkey=params.validator_list, is_signer=False, is_writable=True),
         AccountMeta(pubkey=params.reserve_stake, is_signer=False, is_writable=False),
-        AccountMeta(pubkey=params.pool_mint, is_signer=False, is_writable=False),
-        AccountMeta(pubkey=params.manager_fee_account, is_signer=False, is_writable=False),
+        AccountMeta(pubkey=params.pool_mint, is_signer=False, is_writable=True),
+        AccountMeta(pubkey=params.manager_fee_account, is_signer=False, is_writable=True),
         AccountMeta(pubkey=TOKEN_PROGRAM_ID, is_signer=False, is_writable=False),
     ]
     if params.deposit_authority:

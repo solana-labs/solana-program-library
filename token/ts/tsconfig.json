@@ -1,0 +1,25 @@
+{
+    "include": ["src", "types"],
+    "exclude": ["node_modules"],
+    "compilerOptions": {
+        "module": "esnext",
+        "target": "esnext",
+        "outDir": "lib/esm",
+        "noEmit": false,
+        "declaration": true,
+        "sourceMap": true,
+        "noEmitOnError": true,
+        "stripInternal": true,
+        "moduleResolution": "node",
+        "strict": true,
+        "esModuleInterop": true,
+        "resolveJsonModule": true,
+        "isolatedModules": true,
+        "typeRoots": ["node_modules/@types", "types"]
+    },
+    "typedocOptions": {
+        "entryPoints": "src/index.ts",
+        "out": "docs",
+        "readme": "README.md"
+    }
+}

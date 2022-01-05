@@ -500,6 +500,7 @@ impl Processor {
         let stake_pool_info = next_account_info(account_info_iter)?;
         let manager_info = next_account_info(account_info_iter)?;
         let staker_info = next_account_info(account_info_iter)?;
+        let withdraw_authority_info = next_account_info(account_info_iter)?;
         let validator_list_info = next_account_info(account_info_iter)?;
         let reserve_stake_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
@@ -605,6 +606,14 @@ impl Processor {
             };
         let (withdraw_authority_key, stake_withdraw_bump_seed) =
             crate::find_withdraw_authority_program_address(program_id, stake_pool_info.key);
+        if withdraw_authority_key != *withdraw_authority_info.key {
+            msg!(
+                "Incorrect withdraw authority provided, expected {}, received {}",
+                withdraw_authority_key,
+                withdraw_authority_info.key
+            );
+            return Err(StakePoolError::InvalidProgramAddress.into());
+        }
 
         let pool_mint = Mint::unpack_from_slice(&pool_mint_info.data.borrow())?;
 
@@ -658,6 +667,19 @@ impl Processor {
             msg!("Reserve stake account not in intialized state");
             return Err(StakePoolError::WrongStakeState.into());
         };
+
+        if total_lamports > 0 {
+            Self::token_mint_to(
+                stake_pool_info.key,
+                token_program_info.clone(),
+                pool_mint_info.clone(),
+                manager_fee_info.clone(),
+                withdraw_authority_info.clone(),
+                AUTHORITY_WITHDRAW,
+                stake_withdraw_bump_seed,
+                total_lamports,
+            )?;
+        }
 
         validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
 

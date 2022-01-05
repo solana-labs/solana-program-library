@@ -12,8 +12,8 @@ mod remove;
 mod vault;
 
 use {
-    log::error, solana_farm_client::client::FarmClient, solana_sdk::pubkey::Pubkey,
-    std::str::FromStr,
+    log::error, num_enum::TryFromPrimitive, solana_farm_client::client::FarmClient,
+    solana_farm_sdk::token::TokenSelector, solana_sdk::pubkey::Pubkey, std::str::FromStr,
 };
 
 fn main() {
@@ -67,6 +67,14 @@ fn main() {
                 &config::get_objectname(subcommand_matches),
             );
         }
+        ("remove-ref", Some(subcommand_matches)) => {
+            remove::remove_ref(
+                &client,
+                &config,
+                config::get_target(subcommand_matches),
+                &config::get_objectname(subcommand_matches),
+            );
+        }
         ("remove-all", Some(subcommand_matches)) => {
             remove::remove_all(&client, &config, config::get_target(subcommand_matches));
         }
@@ -92,7 +100,7 @@ fn main() {
                 &client,
                 &config,
                 config::get_target(subcommand_matches),
-                &config::get_objectname_raw(subcommand_matches),
+                &config::get_objectname(subcommand_matches),
             );
         }
         ("get-all", Some(subcommand_matches)) => {
@@ -111,6 +119,31 @@ fn main() {
         }
         ("vault-shutdown", Some(subcommand_matches)) => {
             vault::shutdown(&client, &config, &config::get_vaultname(subcommand_matches));
+        }
+        ("vault-withdraw-fees", Some(subcommand_matches)) => {
+            vault::withdraw_fees(
+                &client,
+                &config,
+                &config::get_vaultname(subcommand_matches),
+                TokenSelector::try_from_primitive(
+                    subcommand_matches
+                        .value_of("fee_token")
+                        .unwrap()
+                        .parse::<u8>()
+                        .unwrap(),
+                )
+                .unwrap(),
+                subcommand_matches
+                    .value_of("amount")
+                    .unwrap()
+                    .parse::<f64>()
+                    .unwrap(),
+                &subcommand_matches
+                    .value_of("receiver")
+                    .unwrap()
+                    .parse::<String>()
+                    .unwrap(),
+            );
         }
         ("vault-crank", Some(subcommand_matches)) => {
             vault::crank(
@@ -179,7 +212,7 @@ fn main() {
                 &client,
                 &config,
                 config::get_target(subcommand_matches),
-                &config::get_objectname_raw(subcommand_matches),
+                &config::get_objectname(subcommand_matches),
                 &subcommand_matches
                     .value_of("param1")
                     .unwrap()
