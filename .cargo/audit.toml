@@ -1,0 +1,33 @@
+# All of the options which can be passed via CLI arguments can also be
+# specified in this file.
+
+[advisories]
+ignore = [] # advisory IDs to ignore e.g. ["RUSTSEC-2019-0001", ...]
+informational_warnings = ["unmaintained"] # warn for categories of informational advisories
+severity_threshold = "medium" # CVSS severity ("none", "low", "medium", "high", "critical")
+
+# Advisory Database Configuration
+[database]
+path = "~/.cargo/advisory-db" # Path where advisory git repo will be cloned
+url = "https://github.com/RustSec/advisory-db.git" # URL to git repo
+fetch = true # Perform a `git fetch` before auditing (default: true)
+stale = false # Allow stale advisory DB (i.e. no commits for 90 days, default: false)
+
+# Output Configuration
+[output]
+deny = [] # exit on error if unmaintained dependencies are found
+format = "terminal" # "terminal" (human readable report) or "json"
+quiet = false # Only print information on error
+show_tree = true # Show inverse dependency trees along with advisories (default: true)
+
+# Target Configuration
+[target]
+arch = "x86_64" # Ignore advisories for CPU architectures other than this one
+os = "linux" # Ignore advisories for operating systems other than this one
+
+[packages]
+source = "all" # "all", "public" or "local"
+
+[yanked]
+enabled = false # Warn for yanked crates in Cargo.lock (default: true)
+update_index = true # Auto-update the crates.io index (default: true)
