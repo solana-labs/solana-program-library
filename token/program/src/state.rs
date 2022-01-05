@@ -302,15 +302,12 @@ mod tests {
         let mint = Mint::unpack_from_slice(&src).unwrap_err();
         assert_eq!(
             mint,
-            solana_program::program_error::ProgramError::InvalidAccountData
+            ProgramError::InvalidAccountData
         );
     }
 
     #[test]
     fn test_account_state() {
-        let account_state = AccountState::Initialized;
-        assert_eq!(account_state, AccountState::Initialized);
-
         let account_state = AccountState::default();
         assert_eq!(account_state, AccountState::Uninitialized);
     }
@@ -337,7 +334,7 @@ mod tests {
         let multisig = Multisig::unpack_from_slice(&src).unwrap_err();
         assert_eq!(
             multisig,
-            solana_program::program_error::ProgramError::InvalidAccountData
+            ProgramError::InvalidAccountData
         );
     }
 
@@ -345,14 +342,14 @@ mod tests {
     fn test_unpack_coption_key() {
         let src: [u8; 36] = [0; 36];
         let result = unpack_coption_key(&src).unwrap();
-        assert_eq!(result, solana_program::program_option::COption::None);
+        assert_eq!(result, COption::None);
 
         let mut src: [u8; 36] = [0; 36];
         src[1] = 1;
         let result = unpack_coption_key(&src).unwrap_err();
         assert_eq!(
             result,
-            solana_program::program_error::ProgramError::InvalidAccountData
+            ProgramError::InvalidAccountData
         );
     }
 
@@ -360,19 +357,19 @@ mod tests {
     fn test_unpack_coption_u64() {
         let src: [u8; 12] = [0; 12];
         let result = unpack_coption_u64(&src).unwrap();
-        assert_eq!(result, solana_program::program_option::COption::None);
+        assert_eq!(result, COption::None);
 
         let mut src: [u8; 12] = [0; 12];
         src[0] = 1;
         let result = unpack_coption_u64(&src).unwrap();
-        assert_eq!(result, solana_program::program_option::COption::Some(0));
+        assert_eq!(result, COption::Some(0));
 
         let mut src: [u8; 12] = [0; 12];
         src[1] = 1;
         let result = unpack_coption_u64(&src).unwrap_err();
         assert_eq!(
             result,
-            solana_program::program_error::ProgramError::InvalidAccountData
+            ProgramError::InvalidAccountData
         );
     }
 }
