@@ -1708,10 +1708,31 @@ fn process_close_obligation_account(
     let account_info_iter = &mut accounts.iter();
     let obligation_info = next_account_info(account_info_iter)?;
     let obligation_owner_info = next_account_info(account_info_iter)?;
-    let authority_info = next_account_info(account_info_iter)?;
+    let destination_info = next_account_info(account_info_iter)?;
+    let reserve_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
-    let mint_info = next_account_info(account_info_iter)?;
+    let lending_market_authority_info = next_account_info(account_info_iter)?;
     let token_program_id = next_account_info(account_info_iter)?;
+
+    let lending_market = LendingMarket::unpack(&lending_market_info.data.borrow())?;
+    if lending_market_info.owner != program_id {
+        msg!("Lending market provided is not owned by the lending program");
+        return Err(LendingError::InvalidAccountOwner.into());    
+    }
+    if &lending_market.token_program_id != token_program_id.key {
+        msg!("Lending market token program does not match the token program provided");
+        return Err(LendingError::InvalidTokenProgram.into());    
+    }
+    if &lending_market.owner != lending_market_authority_info.key {
+        msg!("Lending market owner does not match the lending market owner provided");
+        return Err(LendingError::InvalidMarketOwner.into());
+    }
+
+    let reserve = Reserve::unpack(&reserve_info.data.borrow())?;
+    if &reserve.liquidity.supply_pubkey == destination_info.key {
+        msg!("Reserve liquidity supply cannot be used as the destination liquidity provided");
+        return Err(LendingError::InvalidAccountInput.into());
+    }
 
     let obligation = Obligation::unpack(&obligation_info.data.borrow())?;
     if obligation_info.owner != program_id {
@@ -1735,13 +1756,26 @@ fn process_close_obligation_account(
         msg!("Obligation owner provided must be a signer");
         return Err(LendingError::InvalidSigner.into());
     }
+    
+    let authority_signer_seeds = &[
+        lending_market_info.key.as_ref(),
+        &[lending_market.bump_seed],
+    ];
+
+    let lending_market_authority_pubkey = Pubkey::create_program_address(authority_signer_seeds, program_id)?;
+    if &lending_market_authority_pubkey != lending_market_authority_info.key{
+        msg!(
+            "Derived lending market authority does not match the lending market authority provided"
+        );
+        return Err(LendingError::InvalidMarketAuthority.into());    
+    }
 
     spl_close_account(TokenCloseAccountParams{
         token_program: token_program_id.clone(),
+        authority: lending_market_authority_info.clone(),
         source: obligation_owner_info.clone(),
-        mint: mint_info.clone(),
-        authority: authority_info.clone(),
-        authority_signer_seeds: &[],
+        destination: destination_info.clone(),
+        authority_signer_seeds,
     })?;
     
     Ok(())
@@ -2005,9 +2039,9 @@ fn spl_token_burn(params: TokenBurnParams<'_, '_>) -> ProgramResult {
 #[inline(always)]
 fn spl_close_account(params: TokenCloseAccountParams<'_, '_>) -> ProgramResult {
     let TokenCloseAccountParams {
-        mint,
-        source,
         authority,
+        source,
+        destination,
         token_program,
         authority_signer_seeds,
     } = params;
@@ -2015,11 +2049,11 @@ fn spl_close_account(params: TokenCloseAccountParams<'_, '_>) -> ProgramResult {
         &spl_token::instruction::close_account(
             token_program.key,
             source.key,
-            mint.key,
+            destination.key,
             authority.key,
             &[],
         )?,
-        &[source, mint, authority, token_program],
+        &[source, destination, authority, token_program],
         authority_signer_seeds,
     );
     result.map_err(|_| LendingError::CloseAccountFailed.into())
@@ -2069,7 +2103,7 @@ struct TokenBurnParams<'a: 'b, 'b> {
 }
 
 struct TokenCloseAccountParams<'a: 'b, 'b> {
-    mint: AccountInfo<'a>,
+    destination: AccountInfo<'a>,
     source: AccountInfo<'a>,
     authority: AccountInfo<'a>,
     authority_signer_seeds: &'b [&'b [u8]],

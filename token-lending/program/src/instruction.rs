@@ -994,18 +994,23 @@ pub fn flash_loan(
         program_id: Pubkey,
         obligation_pubkey: Pubkey,
         obligation_owner_pubkey: Pubkey,
-        user_transfer_authority_pubkey: Pubkey,
+        destination_pubkey: Pubkey,
+        reserve_pubkey: Pubkey,
         lending_market_pubkey: Pubkey,
-        reserve_collateral_mint_pubkey: Pubkey,
     ) -> Instruction {
+        let (lending_market_authority_pubkey, _bump_seed) = Pubkey::find_program_address(
+            &[&lending_market_pubkey.to_bytes()[..PUBKEY_BYTES]],
+            &program_id,
+        );
         Instruction {
             program_id,
             accounts: vec![
                 AccountMeta::new(obligation_pubkey, false),
                 AccountMeta::new(obligation_owner_pubkey, false),
-                AccountMeta::new(user_transfer_authority_pubkey, false),
+                AccountMeta::new(destination_pubkey, false),
+                AccountMeta::new(reserve_pubkey, false),
                 AccountMeta::new_readonly(lending_market_pubkey, false),
-                AccountMeta::new(reserve_collateral_mint_pubkey, false),
+                AccountMeta::new_readonly(lending_market_authority_pubkey, false),
                 AccountMeta::new(spl_token::id(), false),
 
             ],

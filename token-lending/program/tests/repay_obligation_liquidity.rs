@@ -249,11 +249,11 @@ async fn test_repay_close_obligation() {
             close_obligation_account(
                 spl_token_lending::id(),
                 test_obligation.pubkey,
+                test_obligation.owner,
                 user_accounts_owner.pubkey,
-                user_transfer_authority.pubkey(),
+                sol_test_reserve.pubkey,
                 lending_market.pubkey,
-                sol_test_reserve.liquidity_mint_pubkey,
-            )
+            ),
 
         ],
         Some(&payer.pubkey()),
