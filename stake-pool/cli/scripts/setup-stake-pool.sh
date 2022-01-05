@@ -25,7 +25,7 @@ command_args+=( --deposit-fee-denominator 0 )
 
 command_args+=( --referral-fee 0 ) # Percentage of deposit fee that goes towards the referrer (a number between 0 and 100, inclusive)
 
-command_args+=( --max-validators 3825 ) # Maximum number of validators in the stake pool, 3825 is the current maximum possible
+command_args+=( --max-validators 2950 ) # Maximum number of validators in the stake pool, 2950 is the current maximum possible
 
 # (Optional) Deposit authority, required to sign all deposits into the pool.
 # Setting this variable makes the pool "private" or "restricted".
