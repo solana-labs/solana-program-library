@@ -309,7 +309,18 @@ pub enum LendingInstruction {
         amount: u64,
     },
     ///14
-    /// Closes obligation account to retrieve SOL rent
+    /// Closes obligation account to retrieve SOL rent from the obligation account to loanee
+    /// Only supports non-native accounts if balances are zero
+    /// 
+    /// Accounts expected by this instruction: 
+    /// 
+    /// 0. `[writeable]` Obligation account
+    /// 1. `[writeable]` Obigation owner
+    /// 2. `[writeable]` Destination account
+    /// 3. `[writeable]` Collateral reserve (source) account
+    /// 4. `[]` Lending market account
+    /// 5. `[signer]` Transfer (lending market) authority account
+    /// 6. `[]` Token program id
     CloseObligationAccount,
 }
 

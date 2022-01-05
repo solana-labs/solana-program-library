@@ -251,7 +251,7 @@ async fn test_repay_close_obligation() {
                 test_obligation.pubkey,
                 test_obligation.owner,
                 user_accounts_owner.pubkey,
-                sol_test_reserve.pubkey,
+                sol_test_reserve.user_collateral_pubkey,
                 lending_market.pubkey,
             ),
 
