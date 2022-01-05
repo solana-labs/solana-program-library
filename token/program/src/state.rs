@@ -286,3 +286,78 @@ fn unpack_coption_u64(src: &[u8; 12]) -> Result<COption<u64>, ProgramError> {
         _ => Err(ProgramError::InvalidAccountData),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_mint_unpack_from_slice() {
+        let src: [u8; 82] = [0; 82];
+        let mint = Mint::unpack_from_slice(&src).unwrap();
+        assert!(!mint.is_initialized);
+
+        let mut src: [u8; 82] = [0; 82];
+        src[45] = 2;
+        let mint = Mint::unpack_from_slice(&src).unwrap_err();
+        assert_eq!(mint, ProgramError::InvalidAccountData);
+    }
+
+    #[test]
+    fn test_account_state() {
+        let account_state = AccountState::default();
+        assert_eq!(account_state, AccountState::Uninitialized);
+    }
+
+    #[test]
+    fn test_multisig_unpack_from_slice() {
+        let src: [u8; 355] = [0; 355];
+        let multisig = Multisig::unpack_from_slice(&src).unwrap();
+        assert_eq!(multisig.m, 0);
+        assert_eq!(multisig.n, 0);
+        assert!(!multisig.is_initialized);
+
+        let mut src: [u8; 355] = [0; 355];
+        src[0] = 1;
+        src[1] = 1;
+        src[2] = 1;
+        let multisig = Multisig::unpack_from_slice(&src).unwrap();
+        assert_eq!(multisig.m, 1);
+        assert_eq!(multisig.n, 1);
+        assert!(multisig.is_initialized);
+
+        let mut src: [u8; 355] = [0; 355];
+        src[2] = 2;
+        let multisig = Multisig::unpack_from_slice(&src).unwrap_err();
+        assert_eq!(multisig, ProgramError::InvalidAccountData);
+    }
+
+    #[test]
+    fn test_unpack_coption_key() {
+        let src: [u8; 36] = [0; 36];
+        let result = unpack_coption_key(&src).unwrap();
+        assert_eq!(result, COption::None);
+
+        let mut src: [u8; 36] = [0; 36];
+        src[1] = 1;
+        let result = unpack_coption_key(&src).unwrap_err();
+        assert_eq!(result, ProgramError::InvalidAccountData);
+    }
+
+    #[test]
+    fn test_unpack_coption_u64() {
+        let src: [u8; 12] = [0; 12];
+        let result = unpack_coption_u64(&src).unwrap();
+        assert_eq!(result, COption::None);
+
+        let mut src: [u8; 12] = [0; 12];
+        src[0] = 1;
+        let result = unpack_coption_u64(&src).unwrap();
+        assert_eq!(result, COption::Some(0));
+
+        let mut src: [u8; 12] = [0; 12];
+        src[1] = 1;
+        let result = unpack_coption_u64(&src).unwrap_err();
+        assert_eq!(result, ProgramError::InvalidAccountData);
+    }
+}
