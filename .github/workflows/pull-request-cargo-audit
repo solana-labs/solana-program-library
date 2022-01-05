@@ -1,0 +1,47 @@
+# CI job for scanning Cargo dependencies for vulnerabilities and report/fail job based on criticality.
+# Critically vulnerable dependencies with fix available will mark the run as failed (X)
+
+name: Rust Cargo Audit
+
+on:
+  push:
+    branches: master
+  pull_request:
+    branches: master
+
+  # Allow manual runs with ability to choose branch
+  # workflow_dispatch:
+
+# Optimisation option by targeting direct paths to only scan when there are changes to dependencies in the push/PR
+#  push:
+#    paths: 
+#      - 'Cargo.toml'
+#      - 'Cargo.lock'
+#  pull_request:
+#    paths: 
+#      - 'Cargo.toml'
+#      - 'Cargo.lock'
+      
+# Example of running scheduled scans at 6AM UTC every Monday to regularly check for vulnerable dependencies
+#  schedule:
+#  - cron: '0 6 * * 1'
+  
+# Run the job
+jobs:
+  Cargo-audit:
+    name: Cargo Vulnerability Scanner
+    runs-on: ubuntu-latest
+    steps:
+      # Check out GitHub repo
+      - uses: actions/checkout@v2
+      
+      # Install cargo audit
+      - name: Install Cargo Audit
+        uses: actions-rs/install@v0.1
+        with:
+          crate: cargo-audit
+          version: latest
+          
+      # Run cargo audit using args from .cargo/audit.toml (ignores, etc.)
+      - name: Run Cargo Audit
+        run: cargo audit -c always
