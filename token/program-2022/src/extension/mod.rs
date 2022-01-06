@@ -2,6 +2,10 @@
 
 use {
     crate::{
+        extension::{
+            mint_close_authority::MintCloseAuthority,
+            transfer_fee::{AccountTransferFee, MintTransferFee},
+        },
         pod::*,
         state::{Account, Mint, Multisig},
     },
@@ -16,6 +20,9 @@ use {
         mem::size_of,
     },
 };
+
+mod mint_close_authority;
+mod transfer_fee;
 
 /// Length in TLV structure
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
@@ -404,63 +411,6 @@ pub trait Extension: Pod {
     const ACCOUNT_TYPE: AccountType;
 }
 
-/// Close authority extension data for mints.
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
-pub struct MintCloseAuthority {
-    /// Optional authority to close the mint
-    pub close_authority: OptionalNonZeroPubkey,
-}
-impl Extension for MintCloseAuthority {
-    const TYPE: ExtensionType = ExtensionType::MintCloseAuthority;
-    const ACCOUNT_TYPE: AccountType = AccountType::Mint;
-}
-
-/// Transfer fee information
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
-pub struct TransferFee {
-    /// First epoch where the transfer fee takes effect
-    pub epoch: PodU64, // Epoch,
-    /// Maximum fee assessed on transfers, expressed as an amount of tokens
-    pub maximum_fee: PodU64,
-    /// Amount of transfer collected as fees, expressed as basis points of the
-    /// transfer amount, ie. increments of 0.01%
-    pub transfer_fee_basis_points: PodU16,
-}
-
-/// Transfer fee extension data for mints.
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
-pub struct MintTransferFee {
-    /// Optional authority to set the fee
-    pub transfer_fee_config_authority: OptionalNonZeroPubkey,
-    /// Withdraw from mint instructions must be signed by this key
-    pub withheld_withdraw_authority: OptionalNonZeroPubkey,
-    /// Withheld transfer fee tokens that have been moved to the mint for withdrawal
-    pub withheld_amount: PodU64,
-    /// Older transfer fee, used if the current epoch < new_transfer_fee.epoch
-    pub older_transfer_fee: TransferFee,
-    /// Newer transfer fee, used if the current epoch >= new_transfer_fee.epoch
-    pub newer_transfer_fee: TransferFee,
-}
-impl Extension for MintTransferFee {
-    const TYPE: ExtensionType = ExtensionType::MintTransferFee;
-    const ACCOUNT_TYPE: AccountType = AccountType::Mint;
-}
-
-/// Transfer fee extension data for accounts.
-#[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
-pub struct AccountTransferFee {
-    /// Amount withheld during transfers, to be harvested to the mint
-    pub withheld_amount: PodU64,
-}
-impl Extension for AccountTransferFee {
-    const TYPE: ExtensionType = ExtensionType::AccountTransferFee;
-    const ACCOUNT_TYPE: AccountType = AccountType::Account;
-}
-
 /// Padding a mint account to be exactly Multisig::LEN.
 /// We need to pad 185 bytes, since Multisig::LEN = 355, Account::LEN = 165,
 /// size_of AccountType = 1, size_of ExtensionType = 2, size_of Length = 2.
@@ -498,31 +448,8 @@ mod test {
         super::*,
         crate::state::test::{TEST_ACCOUNT, TEST_ACCOUNT_SLICE, TEST_MINT, TEST_MINT_SLICE},
         solana_program::pubkey::Pubkey,
+        transfer_fee::test::test_mint_transfer_fee,
     };
-
-    fn test_mint_transfer_fee() -> MintTransferFee {
-        MintTransferFee {
-            transfer_fee_config_authority: OptionalNonZeroPubkey::try_from(Some(Pubkey::new(
-                &[10; 32],
-            )))
-            .unwrap(),
-            withheld_withdraw_authority: OptionalNonZeroPubkey::try_from(Some(Pubkey::new(
-                &[11; 32],
-            )))
-            .unwrap(),
-            withheld_amount: PodU64::from(u64::MAX),
-            older_transfer_fee: TransferFee {
-                epoch: PodU64::from(1),
-                maximum_fee: PodU64::from(10),
-                transfer_fee_basis_points: PodU16::from(100),
-            },
-            newer_transfer_fee: TransferFee {
-                epoch: PodU64::from(100),
-                maximum_fee: PodU64::from(5_000),
-                transfer_fee_basis_points: PodU16::from(1),
-            },
-        }
-    }
 
     const MINT_WITH_EXTENSION: &[u8] = &[
         // base mint
