@@ -45,16 +45,48 @@ impl Extension for ConfidentialTransferAuditor {
 
 /// Confidential account state
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
 pub struct ConfidentialTransferState {
     /// `true` if this account has been approved for use. All confidential transfer operations for
     /// the account will fail until approval is granted.
     pub approved: PodBool,
-    // TODO: inline `zk_token_program::state::ZkAccount` here
+
+    /// The public key associated with ElGamal encryption
+    pub elgamal_pk: pod::ElGamalPubkey,
+
+    /// The pending balance (encrypted by `elgamal_pk`)
+    pub pending_balance: pod::ElGamalCiphertext,
+
+    /// The available balance (encrypted by `elgamal_pk`)
+    pub available_balance: pod::ElGamalCiphertext,
+
+    /// The decryptable available balance
+    pub decryptable_available_balance: pod::AeCiphertext,
+
+    /// `pending_balance` may only be credited by `Deposit` or `Transfer` instructions if `true`
+    pub allow_balance_credits: PodBool,
+
+    /// The total number of `Deposit` and `Transfer` instructions that have credited `pending_balance`
+    pub pending_balance_credit_counter: PodU64,
+
+    /// The `expected_pending_balance_credit_counter` value that was included in the last
+    /// `ApplyPendingBalance` instruction
+    pub expected_pending_balance_credit_counter: PodU64,
+
+    /// The actual `pending_balance_credit_counter` when the last `ApplyPendingBalance` instruction was executed
+    pub actual_pending_balance_credit_counter: PodU64,
 }
 
 impl Extension for ConfidentialTransferState {
     const TYPE: ExtensionType = ExtensionType::ConfidentialTransferState;
+}
+
+impl ConfidentialTransferState {
+    /// Check if a `ConfidentialTransferState` is in a closable state
+    pub fn closable(&self) -> bool {
+        self.pending_balance == pod::ElGamalCiphertext::zeroed()
+            && self.available_balance == pod::ElGamalCiphertext::zeroed()
+    }
 }
 
 pub(crate) fn get_omnibus_token_address_with_seed(token_mint: &Pubkey) -> (Pubkey, u8) {

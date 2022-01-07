@@ -85,6 +85,9 @@ pub enum TokenError {
     /// Extension already initialized on this account
     #[error("Extension already initialized on this account")]
     ExtensionAlreadyInitialized,
+    /// An account can only be closed if its confidential balance is zero"
+    #[error("An account can only be closed if its confidential balance is zero")]
+    ConfidentialTransferStateHasBalance,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
