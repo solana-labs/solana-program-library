@@ -22,7 +22,7 @@ pub struct TransferFee {
 /// Transfer fee extension data for mints.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
-pub struct MintTransferFee {
+pub struct TransferFeeConfig {
     /// Optional authority to set the fee
     pub transfer_fee_config_authority: OptionalNonZeroPubkey,
     /// Withdraw from mint instructions must be signed by this key
@@ -34,20 +34,20 @@ pub struct MintTransferFee {
     /// Newer transfer fee, used if the current epoch >= new_transfer_fee.epoch
     pub newer_transfer_fee: TransferFee,
 }
-impl Extension for MintTransferFee {
-    const TYPE: ExtensionType = ExtensionType::MintTransferFee;
+impl Extension for TransferFeeConfig {
+    const TYPE: ExtensionType = ExtensionType::TransferFeeConfig;
     const ACCOUNT_TYPE: AccountType = AccountType::Mint;
 }
 
 /// Transfer fee extension data for accounts.
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
-pub struct AccountTransferFee {
+pub struct TransferFeeAmount {
     /// Amount withheld during transfers, to be harvested to the mint
     pub withheld_amount: PodU64,
 }
-impl Extension for AccountTransferFee {
-    const TYPE: ExtensionType = ExtensionType::AccountTransferFee;
+impl Extension for TransferFeeAmount {
+    const TYPE: ExtensionType = ExtensionType::TransferFeeAmount;
     const ACCOUNT_TYPE: AccountType = AccountType::Account;
 }
 
@@ -55,8 +55,8 @@ impl Extension for AccountTransferFee {
 pub(crate) mod test {
     use {super::*, solana_program::pubkey::Pubkey, std::convert::TryFrom};
 
-    pub(crate) fn test_mint_transfer_fee() -> MintTransferFee {
-        MintTransferFee {
+    pub(crate) fn test_transfer_fee_config() -> TransferFeeConfig {
+        TransferFeeConfig {
             transfer_fee_config_authority: OptionalNonZeroPubkey::try_from(Some(Pubkey::new(
                 &[10; 32],
             )))
