@@ -569,6 +569,12 @@ pub enum TokenInstruction {
         /// Maximum fee assessed on transfers
         maximum_fee: u64,
     },
+
+    /// The common instruction prefix for Confidential Transfer extension instructions.
+    ///
+    /// See `extension::confidential_transfer::instruction::ConfidentialTransferInstruction` for
+    /// further details about the extended instructions that share this instruction prefix
+    ConfidentialTransferExtension,
 }
 impl TokenInstruction {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -755,6 +761,7 @@ impl TokenInstruction {
                     maximum_fee,
                 }
             }
+            29 => Self::ConfidentialTransferExtension,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -899,6 +906,9 @@ impl TokenInstruction {
                 buf.push(28);
                 buf.extend_from_slice(&transfer_fee_basis_points.to_le_bytes());
                 buf.extend_from_slice(&maximum_fee.to_le_bytes());
+            }
+            &Self::ConfidentialTransferExtension => {
+                buf.push(29);
             }
         };
         buf

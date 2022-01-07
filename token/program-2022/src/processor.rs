@@ -851,6 +851,13 @@ impl Processor {
             TokenInstruction::SetTransferFee { .. } => {
                 unimplemented!();
             }
+            TokenInstruction::ConfidentialTransferExtension => {
+                crate::extension::confidential_transfer::processor::process_instruction(
+                    program_id,
+                    accounts,
+                    &input[1..],
+                )
+            }
         }
     }
 
