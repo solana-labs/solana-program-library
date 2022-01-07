@@ -3,6 +3,7 @@
 use {
     crate::{
         extension::{
+            confidential_transfer::{AccountConfidentialState, MintConfidentialTransferAuditor},
             mint_close_authority::MintCloseAuthority,
             transfer_fee::{AccountTransferFee, MintTransferFee},
         },
@@ -21,8 +22,12 @@ use {
     },
 };
 
-mod mint_close_authority;
-mod transfer_fee;
+/// Confidential Transfer extension
+pub mod confidential_transfer;
+/// Mint Close Authority extension
+pub mod mint_close_authority;
+/// Transfer Fee extension
+pub mod transfer_fee;
 
 /// Length in TLV structure
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
@@ -332,6 +337,10 @@ pub enum ExtensionType {
     AccountTransferFee,
     /// Includes an optional mint close authority
     MintCloseAuthority,
+    /// Auditor configuration for confidential transfers
+    MintConfidentialTransferAuditor,
+    /// Confidential Account state
+    AccountConfidentialState,
     /// Padding extension used to make an account exactly Multisig::LEN, used for testing
     #[cfg(test)]
     AccountPaddingTest = u16::MAX - 1,
@@ -361,6 +370,12 @@ impl ExtensionType {
             ExtensionType::MintTransferFee => pod_get_packed_len::<MintTransferFee>(),
             ExtensionType::AccountTransferFee => pod_get_packed_len::<AccountTransferFee>(),
             ExtensionType::MintCloseAuthority => pod_get_packed_len::<MintCloseAuthority>(),
+            ExtensionType::MintConfidentialTransferAuditor => {
+                pod_get_packed_len::<MintConfidentialTransferAuditor>()
+            }
+            ExtensionType::AccountConfidentialState => {
+                pod_get_packed_len::<AccountConfidentialState>()
+            }
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => pod_get_packed_len::<AccountPaddingTest>(),
             #[cfg(test)]
