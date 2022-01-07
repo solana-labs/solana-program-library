@@ -10,6 +10,7 @@ pub mod native_mint;
 pub mod pod;
 pub mod processor;
 pub mod state;
+mod tools;
 
 #[cfg(not(feature = "no-entrypoint"))]
 mod entrypoint;
