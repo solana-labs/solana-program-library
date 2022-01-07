@@ -526,13 +526,14 @@ mod tests {
         let result = number_one.checked_mul(&number_two).unwrap();
         assert_eq!(result, PreciseNumber::new(2 * 2).unwrap());
 
-        let number_one = PreciseNumber::new(u128::MAX).unwrap();
-        let number_two = PreciseNumber::new(u128::MAX).unwrap();
-        let result = number_one.checked_mul(&number_two);
-        assert_eq!(result, Option::None);
+        let number_one = PreciseNumber { value: U256::MAX };
+        let number_two = PreciseNumber::new(1).unwrap();
+        let result = number_one.checked_mul(&number_two).unwrap();
+        assert_eq!(result.value, U256::MAX / one() * one());
 
-        let number_one = PreciseNumber::new(u128::MAX - 1).unwrap();
-        let number_two = PreciseNumber::new(u128::MAX).unwrap();
+        let number_one = PreciseNumber { value: U256::MAX };
+        let mut number_two = PreciseNumber::new(1).unwrap();
+        number_two.value += U256::from(1);
         let result = number_one.checked_mul(&number_two);
         assert_eq!(result, Option::None);
     }
