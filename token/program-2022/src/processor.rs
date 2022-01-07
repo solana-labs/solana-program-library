@@ -833,7 +833,7 @@ impl Processor {
             TokenInstruction::InitializeMintCloseAuthority { .. } => {
                 unimplemented!();
             }
-            TokenInstruction::InitializeMintTransferFee { .. } => {
+            TokenInstruction::InitializeTransferFeeConfig { .. } => {
                 unimplemented!();
             }
             TokenInstruction::TransferCheckedWithFee { .. } => {

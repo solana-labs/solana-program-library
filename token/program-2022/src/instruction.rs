@@ -93,8 +93,8 @@ pub enum TokenInstruction {
     /// amounts of SOL and Tokens will be transferred to the destination
     /// account.
     ///
-    /// If either account contains an `AccountTransferFee` extension, this will fail.
-    /// Mints with the `MintTransferFee` extension are required in order to assess the fee.
+    /// If either account contains an `TransferFeeAmount` extension, this will fail.
+    /// Mints with the `TransferFeeConfig` extension are required in order to assess the fee.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -207,7 +207,7 @@ pub enum TokenInstruction {
     /// Close an account by transferring all its SOL to the destination account.
     /// Non-native accounts may only be closed if its token amount is zero.
     ///
-    /// Accounts with the `AccountTransferFee` extension may only be closed if the withheld
+    /// Accounts with the `TransferFeeAmount` extension may only be closed if the withheld
     /// amount is zero.
     ///
     /// Mints may be closed if they have the `MintCloseAuthority` extension and their token
@@ -267,7 +267,7 @@ pub enum TokenInstruction {
     /// decimals value is checked by the caller.  This may be useful when
     /// creating transactions offline or within a hardware wallet.
     ///
-    /// If either account contains an `AccountTransferFee` extension, the fee is
+    /// If either account contains an `TransferFeeAmount` extension, the fee is
     /// withheld in the destination account.
     ///
     /// Accounts expected by this instruction:
@@ -466,7 +466,7 @@ pub enum TokenInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` The mint to initialize.
-    InitializeMintTransferFee {
+    InitializeTransferFeeConfig {
         /// Pubkey that may update the fees
         fee_config_authority: COption<Pubkey>,
         /// Withdraw instructions must be signed by this key
@@ -482,9 +482,9 @@ pub enum TokenInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   * Single owner/delegate
-    ///   0. `[writable]` The source account. Must include the `AccountTransferFee` extension.
-    ///   1. `[]` The token mint. Must include the `MintTransferFee` extension.
-    ///   2. `[writable]` The destination account. Must include the `AccountTransferFee` extension.
+    ///   0. `[writable]` The source account. Must include the `TransferFeeAmount` extension.
+    ///   1. `[]` The token mint. Must include the `TransferFeeConfig` extension.
+    ///   2. `[writable]` The destination account. Must include the `TransferFeeAmount` extension.
     ///   3. `[signer]` The source account's owner/delegate.
     ///
     ///   * Multisignature owner/delegate
@@ -508,8 +508,8 @@ pub enum TokenInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   * Single owner/delegate
-    ///   0. `[writable]` The token mint. Must include the `MintTransferFee` extension.
-    ///   1. `[writable]` The fee receiver account. Must include the `AccountTransferFee` extension
+    ///   0. `[writable]` The token mint. Must include the `TransferFeeConfig` extension.
+    ///   1. `[writable]` The fee receiver account. Must include the `TransferFeeAmount` extension
     ///      associated with the provided mint.
     ///   2. `[signer]` The mint's `withdraw_withheld_authority`.
     ///
@@ -525,8 +525,8 @@ pub enum TokenInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   * Single owner/delegate
-    ///   0. `[]` The token mint. Must include the `MintTransferFee` extension.
-    ///   1. `[writable]` The fee receiver account. Must include the `AccountTransferFee`
+    ///   0. `[]` The token mint. Must include the `TransferFeeConfig` extension.
+    ///   1. `[writable]` The fee receiver account. Must include the `TransferFeeAmount`
     ///      extension and be associated with the provided mint.
     ///   2. `[signer]` The mint's `withdraw_withheld_authority`.
     ///   3. ..3+N `[writable]` The source accounts to withdraw from.
@@ -542,7 +542,7 @@ pub enum TokenInstruction {
     ///
     /// Succeeds for frozen accounts.
     ///
-    /// Accounts provided should include the `AccountTransferFee` extension. If not,
+    /// Accounts provided should include the `TransferFeeAmount` extension. If not,
     /// the account is skipped.
     ///
     /// Accounts expected by this instruction:
@@ -550,7 +550,7 @@ pub enum TokenInstruction {
     ///   0. `[writable]` The mint.
     ///   1. ..1+N `[writable]` The source accounts to harvest from.
     HarvestWithheldTokensToMint,
-    /// Set transfer fee. Only supported for mints that include the `MintTransferFee` extension.
+    /// Set transfer fee. Only supported for mints that include the `TransferFeeConfig` extension.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -715,7 +715,7 @@ impl TokenInstruction {
                     .ok()
                     .map(u64::from_le_bytes)
                     .ok_or(InvalidInstruction)?;
-                Self::InitializeMintTransferFee {
+                Self::InitializeTransferFeeConfig {
                     fee_config_authority,
                     withdraw_withheld_authority,
                     transfer_fee_basis_points,
@@ -868,7 +868,7 @@ impl TokenInstruction {
                 buf.push(22);
                 Self::pack_pubkey_option(close_authority, &mut buf);
             }
-            &Self::InitializeMintTransferFee {
+            &Self::InitializeTransferFeeConfig {
                 ref fee_config_authority,
                 ref withdraw_withheld_authority,
                 transfer_fee_basis_points,
@@ -1835,7 +1835,7 @@ mod test {
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
 
-        let check = TokenInstruction::InitializeMintTransferFee {
+        let check = TokenInstruction::InitializeTransferFeeConfig {
             fee_config_authority: COption::Some(Pubkey::new(&[11u8; 32])),
             withdraw_withheld_authority: COption::None,
             transfer_fee_basis_points: 111,
