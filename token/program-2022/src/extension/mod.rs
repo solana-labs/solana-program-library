@@ -326,7 +326,7 @@ impl Default for AccountType {
 pub enum ExtensionType {
     /// Used as padding if the account size would otherwise be 355, same as a multisig
     Uninitialized,
-    /// Includes a transfer fee and accompanying authorities to withdraw and set the fee
+    /// Includes transfer fee rate info and accompanying authorities to withdraw and set the fee
     TransferFeeConfig,
     /// Includes withheld transfer fees
     TransferFeeAmount,
