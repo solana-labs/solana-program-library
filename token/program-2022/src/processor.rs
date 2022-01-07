@@ -2,6 +2,10 @@
 
 use crate::{
     error::TokenError,
+    extension::{
+        confidential_transfer::{self, ConfidentialTransferState},
+        StateWithExtensionsMut,
+    },
     instruction::{is_valid_signer_index, AuthorityType, TokenInstruction, MAX_SIGNERS},
     state::{Account, AccountState, Mint, Multisig},
 };
@@ -637,14 +641,18 @@ impl Processor {
         let dest_account_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
 
-        let mut source_account = Account::unpack(&source_account_info.data.borrow())?;
-        if !source_account.is_native() && source_account.amount != 0 {
+        let mut source_account_data = source_account_info.data.borrow_mut();
+        let mut source_account =
+            StateWithExtensionsMut::<Account>::unpack(&mut source_account_data)?;
+        if !source_account.base.is_native() && source_account.base.amount != 0 {
             return Err(TokenError::NonNativeHasBalance.into());
         }
 
         let authority = source_account
+            .base
             .close_authority
-            .unwrap_or(source_account.owner);
+            .unwrap_or(source_account.base.owner);
+
         Self::validate_owner(
             program_id,
             source_account_info.key,
@@ -653,15 +661,23 @@ impl Processor {
             account_info_iter.as_slice(),
         )?;
 
+        if let Ok(confidential_transfer_state) =
+            source_account.get_extension_mut::<ConfidentialTransferState>()
+        {
+            if !confidential_transfer_state.closable() {
+                return Err(TokenError::ConfidentialTransferStateHasBalance.into());
+            }
+        }
+
         let dest_starting_lamports = dest_account_info.lamports();
         **dest_account_info.lamports.borrow_mut() = dest_starting_lamports
             .checked_add(source_account_info.lamports())
             .ok_or(TokenError::Overflow)?;
 
         **source_account_info.lamports.borrow_mut() = 0;
-        source_account.amount = 0;
+        source_account.base.amount = 0;
 
-        Account::pack(source_account, &mut source_account_info.data.borrow_mut())?;
+        source_account.pack_base();
 
         Ok(())
     }
@@ -874,7 +890,7 @@ impl Processor {
                 unimplemented!();
             }
             TokenInstruction::ConfidentialTransferExtension => {
-                crate::extension::confidential_transfer::processor::process_instruction(
+                confidential_transfer::processor::process_instruction(
                     program_id,
                     accounts,
                     &input[1..],
@@ -977,6 +993,9 @@ impl PrintProgramError for TokenError {
             }
             TokenError::ExtensionAlreadyInitialized => {
                 msg!("Error: Extension already initialized on this account")
+            }
+            TokenError::ConfidentialTransferStateHasBalance => {
+                msg!("Error: An account can only be closed if its confidential balance is zero")
             }
         }
     }
