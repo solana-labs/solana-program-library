@@ -135,6 +135,27 @@ impl FarmClient {
         Ok(inst)
     }
 
+    /// Creates a new Instruction for removing the object reference from chain
+    pub fn new_instruction_remove_reference(
+        &self,
+        admin_address: &Pubkey,
+        storage_type: refdb::StorageType,
+        object_name: &str,
+        refdb_index: Option<usize>,
+    ) -> Result<Instruction, FarmClientError> {
+        self.new_instruction_refdb_delete(
+            admin_address,
+            &storage_type.to_string(),
+            refdb::Record {
+                index: refdb_index.map(|idx| idx as u32),
+                counter: 0,
+                tag: 0,
+                name: str_to_as64(object_name)?,
+                reference: refdb::Reference::Empty,
+            },
+        )
+    }
+
     /// Creates a new Instruction for recording the Program ID metadata on-chain
     pub fn new_instruction_add_program_id(
         &self,
@@ -142,13 +163,13 @@ impl FarmClient {
         name: &str,
         program_id: &Pubkey,
         program_id_type: ProgramIDType,
-        refdb_index: Option<u32>,
+        refdb_index: Option<usize>,
     ) -> Result<Instruction, FarmClientError> {
         self.new_instruction_refdb_write(
             admin_address,
             &refdb::StorageType::Program.to_string(),
             refdb::Record {
-                index: refdb_index,
+                index: refdb_index.map(|idx| idx as u32),
                 counter: 0,
                 tag: program_id_type as u16,
                 name: str_to_as64(name)?,
@@ -162,12 +183,13 @@ impl FarmClient {
         &self,
         admin_address: &Pubkey,
         name: &str,
+        refdb_index: Option<usize>,
     ) -> Result<Instruction, FarmClientError> {
         self.new_instruction_refdb_delete(
             admin_address,
             &refdb::StorageType::Program.to_string(),
             refdb::Record {
-                index: None,
+                index: refdb_index.map(|idx| idx as u32),
                 counter: 0,
                 tag: 0,
                 name: str_to_as64(name)?,

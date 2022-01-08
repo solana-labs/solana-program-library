@@ -1,15 +1,29 @@
 import { struct, u8 } from '@solana/buffer-layout';
 import { u64 } from '@solana/buffer-layout-utils';
-import { PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
+import { AccountMeta, PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants';
-import { TokenInstruction } from './types';
+import {
+    TokenInvalidInstructionDataError,
+    TokenInvalidInstructionKeysError,
+    TokenInvalidInstructionProgramError,
+    TokenInvalidInstructionTypeError,
+} from '../errors';
 import { addSigners } from './internal';
+import { TokenInstruction } from './types';
 
-const dataLayout = struct<{
-    instruction: TokenInstruction;
+/** TODO: docs */
+export interface BurnCheckedInstructionData {
+    instruction: TokenInstruction.BurnChecked;
     amount: bigint;
     decimals: number;
-}>([u8('instruction'), u64('amount'), u8('decimals')]);
+}
+
+/** TODO: docs */
+export const burnCheckedInstructionData = struct<BurnCheckedInstructionData>([
+    u8('instruction'),
+    u64('amount'),
+    u8('decimals'),
+]);
 
 /**
  * Construct a BurnChecked instruction
@@ -42,8 +56,8 @@ export function createBurnCheckedInstruction(
         multiSigners
     );
 
-    const data = Buffer.alloc(dataLayout.span);
-    dataLayout.encode(
+    const data = Buffer.alloc(burnCheckedInstructionData.span);
+    burnCheckedInstructionData.encode(
         {
             instruction: TokenInstruction.BurnChecked,
             amount: BigInt(amount),
@@ -53,4 +67,96 @@ export function createBurnCheckedInstruction(
     );
 
     return new TransactionInstruction({ keys, programId, data });
+}
+
+/** A decoded, valid BurnChecked instruction */
+export interface DecodedBurnCheckedInstruction {
+    programId: PublicKey;
+    keys: {
+        account: AccountMeta;
+        mint: AccountMeta;
+        owner: AccountMeta;
+        multiSigners: AccountMeta[];
+    };
+    data: {
+        instruction: TokenInstruction.BurnChecked;
+        amount: bigint;
+        decimals: number;
+    };
+}
+
+/**
+ * Decode a BurnChecked instruction and validate it
+ *
+ * @param instruction Transaction instruction to decode
+ * @param programId   SPL Token program account
+ *
+ * @return Decoded, valid instruction
+ */
+export function decodeBurnCheckedInstruction(
+    instruction: TransactionInstruction,
+    programId = TOKEN_PROGRAM_ID
+): DecodedBurnCheckedInstruction {
+    if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
+    if (instruction.data.length !== burnCheckedInstructionData.span) throw new TokenInvalidInstructionDataError();
+
+    const {
+        keys: { account, mint, owner, multiSigners },
+        data,
+    } = decodeBurnCheckedInstructionUnchecked(instruction);
+    if (data.instruction !== TokenInstruction.BurnChecked) throw new TokenInvalidInstructionTypeError();
+    if (!account || !mint || !owner) throw new TokenInvalidInstructionKeysError();
+
+    // TODO: key checks?
+
+    return {
+        programId,
+        keys: {
+            account,
+            mint,
+            owner,
+            multiSigners,
+        },
+        data,
+    };
+}
+
+/** A decoded, non-validated BurnChecked instruction */
+export interface DecodedBurnCheckedInstructionUnchecked {
+    programId: PublicKey;
+    keys: {
+        account: AccountMeta | undefined;
+        mint: AccountMeta | undefined;
+        owner: AccountMeta | undefined;
+        multiSigners: AccountMeta[];
+    };
+    data: {
+        instruction: number;
+        amount: bigint;
+        decimals: number;
+    };
+}
+
+/**
+ * Decode a BurnChecked instruction without validating it
+ *
+ * @param instruction Transaction instruction to decode
+ *
+ * @return Decoded, non-validated instruction
+ */
+export function decodeBurnCheckedInstructionUnchecked({
+    programId,
+    keys: [account, mint, owner, ...multiSigners],
+    data,
+}: TransactionInstruction): DecodedBurnCheckedInstructionUnchecked {
+    return {
+        programId,
+        keys: {
+            account,
+            mint,
+            owner,
+            multiSigners,
+        },
+        data: burnCheckedInstructionData.decode(data),
+    };
 }

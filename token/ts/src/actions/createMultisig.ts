@@ -30,12 +30,10 @@ export async function createMultisig(
     payer: Signer,
     signers: PublicKey[],
     m: number,
-    keypair?: Keypair,
+    keypair = Keypair.generate(),
     confirmOptions?: ConfirmOptions,
     programId = TOKEN_PROGRAM_ID
 ): Promise<PublicKey> {
-    keypair ||= Keypair.generate();
-
     const lamports = await getMinimumBalanceForRentExemptMultisig(connection);
 
     const transaction = new Transaction().add(

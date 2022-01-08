@@ -1,10 +1,22 @@
 import { struct, u8 } from '@solana/buffer-layout';
-import { PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
+import { AccountMeta, PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants';
-import { TokenInstruction } from './types';
+import {
+    TokenInvalidInstructionDataError,
+    TokenInvalidInstructionKeysError,
+    TokenInvalidInstructionProgramError,
+    TokenInvalidInstructionTypeError,
+} from '../errors';
 import { addSigners } from './internal';
+import { TokenInstruction } from './types';
 
-const dataLayout = struct<{ instruction: TokenInstruction }>([u8('instruction')]);
+/** TODO: docs */
+export interface ThawAccountInstructionData {
+    instruction: TokenInstruction.ThawAccount;
+}
+
+/** TODO: docs */
+export const thawAccountInstructionData = struct<ThawAccountInstructionData>([u8('instruction')]);
 
 /**
  * Construct a ThawAccount instruction
@@ -33,8 +45,96 @@ export function createThawAccountInstruction(
         multiSigners
     );
 
-    const data = Buffer.alloc(dataLayout.span);
-    dataLayout.encode({ instruction: TokenInstruction.ThawAccount }, data);
+    const data = Buffer.alloc(thawAccountInstructionData.span);
+    thawAccountInstructionData.encode({ instruction: TokenInstruction.ThawAccount }, data);
 
     return new TransactionInstruction({ keys, programId, data });
+}
+
+/** A decoded, valid ThawAccount instruction */
+export interface DecodedThawAccountInstruction {
+    programId: PublicKey;
+    keys: {
+        account: AccountMeta;
+        mint: AccountMeta;
+        authority: AccountMeta;
+        multiSigners: AccountMeta[];
+    };
+    data: {
+        instruction: TokenInstruction.ThawAccount;
+    };
+}
+
+/**
+ * Decode a ThawAccount instruction and validate it
+ *
+ * @param instruction Transaction instruction to decode
+ * @param programId   SPL Token program account
+ *
+ * @return Decoded, valid instruction
+ */
+export function decodeThawAccountInstruction(
+    instruction: TransactionInstruction,
+    programId = TOKEN_PROGRAM_ID
+): DecodedThawAccountInstruction {
+    if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
+    if (instruction.data.length !== thawAccountInstructionData.span) throw new TokenInvalidInstructionDataError();
+
+    const {
+        keys: { account, mint, authority, multiSigners },
+        data,
+    } = decodeThawAccountInstructionUnchecked(instruction);
+    if (data.instruction !== TokenInstruction.ThawAccount) throw new TokenInvalidInstructionTypeError();
+    if (!account || !mint || !authority) throw new TokenInvalidInstructionKeysError();
+
+    // TODO: key checks?
+
+    return {
+        programId,
+        keys: {
+            account,
+            mint,
+            authority,
+            multiSigners,
+        },
+        data,
+    };
+}
+
+/** A decoded, non-validated ThawAccount instruction */
+export interface DecodedThawAccountInstructionUnchecked {
+    programId: PublicKey;
+    keys: {
+        account: AccountMeta | undefined;
+        mint: AccountMeta | undefined;
+        authority: AccountMeta | undefined;
+        multiSigners: AccountMeta[];
+    };
+    data: {
+        instruction: number;
+    };
+}
+
+/**
+ * Decode a ThawAccount instruction without validating it
+ *
+ * @param instruction Transaction instruction to decode
+ *
+ * @return Decoded, non-validated instruction
+ */
+export function decodeThawAccountInstructionUnchecked({
+    programId,
+    keys: [account, mint, authority, ...multiSigners],
+    data,
+}: TransactionInstruction): DecodedThawAccountInstructionUnchecked {
+    return {
+        programId,
+        keys: {
+            account,
+            mint,
+            authority,
+            multiSigners,
+        },
+        data: thawAccountInstructionData.decode(data),
+    };
 }

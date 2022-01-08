@@ -5,7 +5,7 @@ mod program_test;
 use solana_program::{
     instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
-    sysvar::{clock, fees},
+    sysvar::clock,
 };
 use solana_program_test::tokio;
 
@@ -274,11 +274,7 @@ async fn test_execute_upgrade_program_instruction() {
     let governed_program_instruction = Instruction::new_with_bytes(
         governed_program_cookie.address,
         &[0],
-        vec![
-            AccountMeta::new(governed_program_cookie.address, false),
-            AccountMeta::new(clock::id(), false),
-            AccountMeta::new(fees::id(), false),
-        ],
+        vec![AccountMeta::new(clock::id(), false)],
     );
 
     let err = governance_test

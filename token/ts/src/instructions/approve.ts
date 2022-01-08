@@ -1,14 +1,24 @@
 import { struct, u8 } from '@solana/buffer-layout';
 import { u64 } from '@solana/buffer-layout-utils';
-import { PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
+import { AccountMeta, PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants';
-import { TokenInstruction } from './types';
+import {
+    TokenInvalidInstructionDataError,
+    TokenInvalidInstructionKeysError,
+    TokenInvalidInstructionProgramError,
+    TokenInvalidInstructionTypeError,
+} from '../errors';
 import { addSigners } from './internal';
+import { TokenInstruction } from './types';
 
-const dataLayout = struct<{
-    instruction: TokenInstruction;
+/** TODO: docs */
+export interface ApproveInstructionData {
+    instruction: TokenInstruction.Approve;
     amount: bigint;
-}>([u8('instruction'), u64('amount')]);
+}
+
+/** TODO: docs */
+export const approveInstructionData = struct<ApproveInstructionData>([u8('instruction'), u64('amount')]);
 
 /**
  * Construct an Approve instruction
@@ -39,8 +49,8 @@ export function createApproveInstruction(
         multiSigners
     );
 
-    const data = Buffer.alloc(dataLayout.span);
-    dataLayout.encode(
+    const data = Buffer.alloc(approveInstructionData.span);
+    approveInstructionData.encode(
         {
             instruction: TokenInstruction.Approve,
             amount: BigInt(amount),
@@ -49,4 +59,94 @@ export function createApproveInstruction(
     );
 
     return new TransactionInstruction({ keys, programId, data });
+}
+
+/** A decoded, valid Approve instruction */
+export interface DecodedApproveInstruction {
+    programId: PublicKey;
+    keys: {
+        account: AccountMeta;
+        delegate: AccountMeta;
+        owner: AccountMeta;
+        multiSigners: AccountMeta[];
+    };
+    data: {
+        instruction: TokenInstruction.Approve;
+        amount: bigint;
+    };
+}
+
+/**
+ * Decode an Approve instruction and validate it
+ *
+ * @param instruction Transaction instruction to decode
+ * @param programId   SPL Token program account
+ *
+ * @return Decoded, valid instruction
+ */
+export function decodeApproveInstruction(
+    instruction: TransactionInstruction,
+    programId = TOKEN_PROGRAM_ID
+): DecodedApproveInstruction {
+    if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
+    if (instruction.data.length !== approveInstructionData.span) throw new TokenInvalidInstructionDataError();
+
+    const {
+        keys: { account, delegate, owner, multiSigners },
+        data,
+    } = decodeApproveInstructionUnchecked(instruction);
+    if (data.instruction !== TokenInstruction.Approve) throw new TokenInvalidInstructionTypeError();
+    if (!account || !delegate || !owner) throw new TokenInvalidInstructionKeysError();
+
+    // TODO: key checks?
+
+    return {
+        programId,
+        keys: {
+            account,
+            delegate,
+            owner,
+            multiSigners,
+        },
+        data,
+    };
+}
+
+/** A decoded, non-validated Approve instruction */
+export interface DecodedApproveInstructionUnchecked {
+    programId: PublicKey;
+    keys: {
+        account: AccountMeta | undefined;
+        delegate: AccountMeta | undefined;
+        owner: AccountMeta | undefined;
+        multiSigners: AccountMeta[];
+    };
+    data: {
+        instruction: number;
+        amount: bigint;
+    };
+}
+
+/**
+ * Decode an Approve instruction without validating it
+ *
+ * @param instruction Transaction instruction to decode
+ *
+ * @return Decoded, non-validated instruction
+ */
+export function decodeApproveInstructionUnchecked({
+    programId,
+    keys: [account, delegate, owner, ...multiSigners],
+    data,
+}: TransactionInstruction): DecodedApproveInstructionUnchecked {
+    return {
+        programId,
+        keys: {
+            account,
+            delegate,
+            owner,
+            multiSigners,
+        },
+        data: approveInstructionData.decode(data),
+    };
 }

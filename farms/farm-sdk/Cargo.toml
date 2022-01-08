@@ -12,7 +12,7 @@ edition = "2018"
 debug = []
 
 [dependencies]
-solana-program = "1.8.1"
+solana-program = "1.9.2"
 arrayref = "0.3.6"
 arraystring = "0.3.0"
 serde = "1.0.130"
@@ -28,5 +28,5 @@ quarry-redeemer = { version = "1.10.0", features = ["no-entrypoint"] }
 stable-swap-client = "1.5.2"
 
 [dev-dependencies]
-solana-program-test = "1.8.1"
+solana-program-test = "1.9.2"
 

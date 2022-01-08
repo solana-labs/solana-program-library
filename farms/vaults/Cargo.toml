@@ -18,12 +18,12 @@ default = ["RDM-STAKE-LP-COMPOUND"]
 
 [dependencies]
 solana-farm-sdk = { path = "../farm-sdk" }
-solana-program = "1.8.1"
+solana-program = "1.9.2"
 spl-token = { version = "3.2.0", features = ["no-entrypoint"] }
 arrayref = "0.3.6"
 
 [dev-dependencies]
-solana-program-test = "1.8.1"
+solana-program-test = "1.9.2"
 
 [lib]
 crate-type = ["cdylib", "lib"]

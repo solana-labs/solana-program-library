@@ -2,7 +2,6 @@
 #![cfg(feature = "test-bpf")]
 
 use {
-    solana_program::pubkey::Pubkey,
     solana_program_test::*,
     solana_sdk::{signature::Signer, transaction::Transaction},
     spl_math::{id, instruction, processor::process_instruction},
@@ -14,7 +13,7 @@ async fn test_precise_sqrt_u64_max() {
 
     // This is way too big!  It's possible to dial down the numbers to get to
     // something reasonable, but the better option is to do everything in u64
-    pc.set_bpf_compute_max_units(350_000);
+    pc.set_compute_max_units(350_000);
 
     let (mut banks_client, payer, recent_blockhash) = pc.start().await;
 
@@ -30,7 +29,7 @@ async fn test_precise_sqrt_u64_max() {
 async fn test_precise_sqrt_u32_max() {
     let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
 
-    pc.set_bpf_compute_max_units(170_000);
+    pc.set_compute_max_units(170_000);
 
     let (mut banks_client, payer, recent_blockhash) = pc.start().await;
 
@@ -47,7 +46,7 @@ async fn test_sqrt_u64() {
     let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
 
     // Dial down the BPF compute budget to detect if the operation gets bloated in the future
-    pc.set_bpf_compute_max_units(2_500);
+    pc.set_compute_max_units(2_500);
 
     let (mut banks_client, payer, recent_blockhash) = pc.start().await;
 
@@ -62,7 +61,7 @@ async fn test_sqrt_u128() {
     let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
 
     // Dial down the BPF compute budget to detect if the operation gets bloated in the future
-    pc.set_bpf_compute_max_units(4_100);
+    pc.set_compute_max_units(4_100);
 
     let (mut banks_client, payer, recent_blockhash) = pc.start().await;
 
@@ -78,7 +77,7 @@ async fn test_sqrt_u128() {
 async fn test_sqrt_u128_max() {
     let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
 
-    pc.set_bpf_compute_max_units(7_000);
+    pc.set_compute_max_units(7_000);
 
     let (mut banks_client, payer, recent_blockhash) = pc.start().await;
 
@@ -92,7 +91,7 @@ async fn test_sqrt_u128_max() {
 async fn test_u64_multiply() {
     let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
 
-    pc.set_bpf_compute_max_units(1350);
+    pc.set_compute_max_units(1350);
 
     let (mut banks_client, payer, recent_blockhash) = pc.start().await;
 
@@ -106,7 +105,7 @@ async fn test_u64_multiply() {
 async fn test_u64_divide() {
     let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
 
-    pc.set_bpf_compute_max_units(1650);
+    pc.set_compute_max_units(1650);
 
     let (mut banks_client, payer, recent_blockhash) = pc.start().await;
 
@@ -120,7 +119,7 @@ async fn test_u64_divide() {
 async fn test_f32_multiply() {
     let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
 
-    pc.set_bpf_compute_max_units(1600);
+    pc.set_compute_max_units(1600);
 
     let (mut banks_client, payer, recent_blockhash) = pc.start().await;
 
@@ -136,7 +135,7 @@ async fn test_f32_multiply() {
 async fn test_f32_divide() {
     let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
 
-    pc.set_bpf_compute_max_units(1650);
+    pc.set_compute_max_units(1650);
 
     let (mut banks_client, payer, recent_blockhash) = pc.start().await;
 
@@ -152,7 +151,7 @@ async fn test_f32_divide() {
 async fn test_noop() {
     let mut pc = ProgramTest::new("spl_math", id(), processor!(process_instruction));
 
-    pc.set_bpf_compute_max_units(1200);
+    pc.set_compute_max_units(1200);
 
     let (mut banks_client, payer, recent_blockhash) = pc.start().await;
 

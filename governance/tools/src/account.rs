@@ -70,6 +70,7 @@ pub fn create_and_serialize_account<'a, T: BorshSerialize + AccountMaxSize>(
 }
 
 /// Creates a new account and serializes data into it using the provided seeds to invoke signed CPI call
+/// The owner of the account is set to the PDA program
 /// Note: This functions also checks the provided account PDA matches the supplied seeds
 pub fn create_and_serialize_account_signed<'a, T: BorshSerialize + AccountMaxSize>(
     payer_info: &AccountInfo<'a>,
@@ -77,6 +78,31 @@ pub fn create_and_serialize_account_signed<'a, T: BorshSerialize + AccountMaxSiz
     account_data: &T,
     account_address_seeds: &[&[u8]],
     program_id: &Pubkey,
+    system_info: &AccountInfo<'a>,
+    rent: &Rent,
+) -> Result<(), ProgramError> {
+    create_and_serialize_account_with_owner_signed(
+        payer_info,
+        account_info,
+        account_data,
+        account_address_seeds,
+        program_id,
+        program_id, // By default use PDA program_id as the owner of the account
+        system_info,
+        rent,
+    )
+}
+
+/// Creates a new account and serializes data into it using the provided seeds to invoke signed CPI call
+/// Note: This functions also checks the provided account PDA matches the supplied seeds
+#[allow(clippy::too_many_arguments)]
+pub fn create_and_serialize_account_with_owner_signed<'a, T: BorshSerialize + AccountMaxSize>(
+    payer_info: &AccountInfo<'a>,
+    account_info: &AccountInfo<'a>,
+    account_data: &T,
+    account_address_seeds: &[&[u8]],
+    program_id: &Pubkey,
+    owner_program_id: &Pubkey,
     system_info: &AccountInfo<'a>,
     rent: &Rent,
 ) -> Result<(), ProgramError> {
@@ -106,7 +132,7 @@ pub fn create_and_serialize_account_signed<'a, T: BorshSerialize + AccountMaxSiz
         account_info.key,
         rent.minimum_balance(account_size),
         account_size as u64,
-        program_id,
+        owner_program_id,
     );
 
     let mut signers_seeds = account_address_seeds.to_vec();
@@ -128,7 +154,7 @@ pub fn create_and_serialize_account_signed<'a, T: BorshSerialize + AccountMaxSiz
             .data
             .borrow_mut()
             .copy_from_slice(&serialized_data);
-    } else {
+    } else if account_size > 0 {
         account_data.serialize(&mut *account_info.data.borrow_mut())?;
     }
 
@@ -162,6 +188,15 @@ pub fn assert_is_valid_account<T: BorshDeserialize + PartialEq>(
     expected_account_type: T,
     owner_program_id: &Pubkey,
 ) -> Result<(), ProgramError> {
+    assert_is_valid_account2(account_info, &[expected_account_type], owner_program_id)
+}
+/// Asserts the given account is not empty, owned by the given program and one of the expected types
+/// Note: The function assumes the account type T is stored as the first element in the account data
+pub fn assert_is_valid_account2<T: BorshDeserialize + PartialEq>(
+    account_info: &AccountInfo,
+    expected_account_types: &[T],
+    owner_program_id: &Pubkey,
+) -> Result<(), ProgramError> {
     if account_info.owner != owner_program_id {
         return Err(GovernanceToolsError::InvalidAccountOwner.into());
     }
@@ -172,7 +207,7 @@ pub fn assert_is_valid_account<T: BorshDeserialize + PartialEq>(
 
     let account_type: T = try_from_slice_unchecked(&account_info.data.borrow())?;
 
-    if account_type != expected_account_type {
+    if expected_account_types.iter().all(|a| a != &account_type) {
         return Err(GovernanceToolsError::InvalidAccountType.into());
     };
 

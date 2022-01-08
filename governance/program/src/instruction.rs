@@ -7,6 +7,8 @@ use crate::{
             get_account_governance_address, get_mint_governance_address,
             get_program_governance_address, get_token_governance_address, GovernanceConfig,
         },
+        native_treasury::get_native_treasury_address,
+        program_metadata::get_program_metadata_address,
         proposal::{get_proposal_address, VoteType},
         proposal_instruction::{get_proposal_instruction_address, InstructionData},
         realm::{get_governing_token_holding_address, get_realm_address, RealmConfigArgs},
@@ -443,6 +445,23 @@ pub enum GovernanceInstruction {
     ///   4. `[signer]` Payer
     ///   5. `[]` System
     CreateTokenOwnerRecord {},
+
+    /// Updates ProgramMetadata account
+    /// The instruction dumps information implied by the program's code into a persistent account
+    ///
+    ///  0. `[writable]` ProgramMetadata account. PDA seeds: ['metadata']
+    ///  1. `[signer]` Payer
+    ///  2. `[]` System
+    UpdateProgramMetadata {},
+
+    /// Creates native SOL treasury account for a Governance account
+    /// The account has no data and can be used as a payer for instructions signed by Governance PDAs or as a native SOL treasury
+    ///
+    ///  0. `[]` Governance account the treasury account is for
+    ///  1. `[writable]` NativeTreasury account. PDA seeds: ['treasury', governance]
+    ///  2. `[signer]` Payer
+    ///  3. `[]` System
+    CreateNativeTreasury,
 }
 
 /// Creates CreateRealm instruction
@@ -1373,6 +1392,54 @@ pub fn create_token_owner_record(
     ];
 
     let instruction = GovernanceInstruction::CreateTokenOwnerRecord {};
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates UpdateProgramMetadata instruction
+pub fn upgrade_program_metadata(
+    program_id: &Pubkey,
+    // Accounts
+    payer: &Pubkey,
+) -> Instruction {
+    let program_metadata_address = get_program_metadata_address(program_id);
+
+    let accounts = vec![
+        AccountMeta::new(program_metadata_address, false),
+        AccountMeta::new(*payer, true),
+        AccountMeta::new_readonly(system_program::id(), false),
+    ];
+
+    let instruction = GovernanceInstruction::UpdateProgramMetadata {};
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates CreateNativeTreasury instruction
+pub fn create_native_treasury(
+    program_id: &Pubkey,
+    // Accounts
+    governance: &Pubkey,
+    payer: &Pubkey,
+) -> Instruction {
+    let native_treasury_address = get_native_treasury_address(program_id, governance);
+
+    let accounts = vec![
+        AccountMeta::new_readonly(*governance, false),
+        AccountMeta::new(native_treasury_address, false),
+        AccountMeta::new(*payer, true),
+        AccountMeta::new_readonly(system_program::id(), false),
+    ];
+
+    let instruction = GovernanceInstruction::CreateNativeTreasury {};
 
     Instruction {
         program_id: *program_id,

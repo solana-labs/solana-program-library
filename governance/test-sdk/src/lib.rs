@@ -1,11 +1,11 @@
 use std::borrow::Borrow;
 
 use borsh::BorshDeserialize;
-use cookies::TokenAccountCookie;
+use cookies::{TokenAccountCookie, WalletCookie};
 use solana_program::{
     borsh::try_from_slice_unchecked, clock::Clock, instruction::Instruction,
     program_error::ProgramError, program_pack::Pack, pubkey::Pubkey, rent::Rent,
-    system_instruction, sysvar,
+    system_instruction, system_program, sysvar,
 };
 use solana_program_test::{ProgramTest, ProgramTestContext};
 use solana_sdk::{account::Account, signature::Keypair, signer::Signer, transaction::Transaction};
@@ -66,19 +66,50 @@ impl ProgramTestBench {
         let recent_blockhash = self
             .context
             .banks_client
-            .get_recent_blockhash()
+            .get_latest_blockhash()
             .await
             .unwrap();
 
         transaction.sign(&all_signers, recent_blockhash);
 
+        #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
         self.context
             .banks_client
             .process_transaction(transaction)
             .await
-            .map_err(map_transaction_error)?;
+            .map_err(|e| map_transaction_error(e.into()))?;
 
         Ok(())
+    }
+
+    pub async fn with_wallet(&mut self) -> WalletCookie {
+        let account_rent = self.rent.minimum_balance(0);
+        let account_keypair = Keypair::new();
+
+        let create_account_ix = system_instruction::create_account(
+            &self.context.payer.pubkey(),
+            &account_keypair.pubkey(),
+            account_rent,
+            0,
+            &system_program::id(),
+        );
+
+        self.process_transaction(&[create_account_ix], Some(&[&account_keypair]))
+            .await
+            .unwrap();
+
+        let account = Account {
+            lamports: account_rent,
+            data: vec![],
+            owner: system_program::id(),
+            executable: false,
+            rent_epoch: 0,
+        };
+
+        WalletCookie {
+            address: account_keypair.pubkey(),
+            account,
+        }
     }
 
     pub async fn create_mint(&mut self, mint_keypair: &Keypair, mint_authority: &Pubkey) {

@@ -243,6 +243,19 @@ Farm client can be used to perform all DAO operations: create proposals, deposit
 solana-farm-client governance help
 ```
 
+As part of DAO initialization, SOL token custody will be created (and more tokens can be added permissionless). Custody can be used to govern all interactions with pools, farms, or vaults. It is useful if a third party manages funds, and every operation must be voted on first. Farm client simplifies instruction creation and verification process, here is a workflow example for already initialized DAO:
+
+```sh
+solana-farm-client governance proposal-new FarmCustodyGovernance SwapTokens http://description.com 0
+solana-farm-client governance signatory-add FarmCustodyGovernance 0 J7paVZ8axBfUaGFDNknc7XF3GHjVLZzvL57FaCuxjJo7
+solana-farm-client governance instruction-insert-swap FarmCustodyGovernance 0 0 RDM RAY SRM 1.0 0.0
+solana-farm-client -k signer.json governance sign-off FarmCustodyGovernance 0
+solana-farm-client -k voter.json governance instruction-verify-swap FarmCustodyGovernance 0 0 RDM RAY SRM 1.0 0.0
+solana-farm-client -k voter.json governance vote-cast FarmCustodyGovernance 0 1
+solana-farm-client governance vote-finalize FarmCustodyGovernance 0
+solana-farm-client -k anyone.json governance instruction-execute FarmCustodyGovernance 0 0
+```
+
 ## Disclaimer
 
 All claims, content, designs, algorithms, estimates, roadmaps, specifications, and performance measurements described in this project are done with the good faith efforts Solana Labs, Inc. and its affiliates ("SL"). It is up to the reader to check and validate their accuracy and truthfulness. Furthermore nothing in this project constitutes a solicitation for investment.

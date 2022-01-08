@@ -17,9 +17,9 @@ import { getSigners } from './internal';
  * @param connection       Connection to use
  * @param payer            Payer of the transaction fees
  * @param account          Address of the account
- * @param newAuthority     New authority of the account
+ * @param currentAuthority Current authority of the specified type
  * @param authorityType    Type of authority to set
- * @param currentAuthority Current authority of the account
+ * @param newAuthority     New authority of the account
  * @param multiSigners     Signing accounts if `currentAuthority` is a multisig
  * @param confirmOptions   Options for confirming the transaction
  * @param programId        SPL Token program account
@@ -30,9 +30,9 @@ export async function setAuthority(
     connection: Connection,
     payer: Signer,
     account: PublicKey,
-    newAuthority: PublicKey | null,
-    authorityType: AuthorityType,
     currentAuthority: Signer | PublicKey,
+    authorityType: AuthorityType,
+    newAuthority: PublicKey | null,
     multiSigners: Signer[] = [],
     confirmOptions?: ConfirmOptions,
     programId = TOKEN_PROGRAM_ID
@@ -42,9 +42,9 @@ export async function setAuthority(
     const transaction = new Transaction().add(
         createSetAuthorityInstruction(
             account,
-            newAuthority,
-            authorityType,
             currentAuthorityPublicKey,
+            authorityType,
+            newAuthority,
             multiSigners,
             programId
         )

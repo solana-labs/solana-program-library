@@ -95,3 +95,7 @@ pub trait Init {
 pub trait Shutdown {
     fn shutdown(vault: &Vault, accounts: &[AccountInfo]) -> ProgramResult;
 }
+
+pub trait WithdrawFees {
+    fn withdraw_fees(vault: &Vault, accounts: &[AccountInfo], amount: u64) -> ProgramResult;
+}

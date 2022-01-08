@@ -5,6 +5,7 @@ mod process_cancel_proposal;
 mod process_cast_vote;
 mod process_create_account_governance;
 mod process_create_mint_governance;
+mod process_create_native_treasury;
 mod process_create_program_governance;
 mod process_create_proposal;
 mod process_create_realm;
@@ -23,6 +24,7 @@ mod process_set_governance_delegate;
 mod process_set_realm_authority;
 mod process_set_realm_config;
 mod process_sign_off_proposal;
+mod process_update_program_metadata;
 mod process_withdraw_governing_tokens;
 
 use crate::instruction::GovernanceInstruction;
@@ -32,6 +34,7 @@ use process_cancel_proposal::*;
 use process_cast_vote::*;
 use process_create_account_governance::*;
 use process_create_mint_governance::*;
+use process_create_native_treasury::*;
 use process_create_program_governance::*;
 use process_create_proposal::*;
 use process_create_realm::*;
@@ -50,6 +53,7 @@ use process_set_governance_delegate::*;
 use process_set_realm_authority::*;
 use process_set_realm_config::*;
 use process_sign_off_proposal::*;
+use process_update_program_metadata::*;
 use process_withdraw_governing_tokens::*;
 
 use solana_program::{
@@ -194,6 +198,12 @@ pub fn process_instruction(
         }
         GovernanceInstruction::CreateTokenOwnerRecord {} => {
             process_create_token_owner_record(program_id, accounts)
+        }
+        GovernanceInstruction::UpdateProgramMetadata {} => {
+            process_update_program_metadata(program_id, accounts)
+        }
+        GovernanceInstruction::CreateNativeTreasury {} => {
+            process_create_native_treasury(program_id, accounts)
         }
     }
 }

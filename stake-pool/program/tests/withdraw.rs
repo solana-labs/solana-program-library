@@ -358,11 +358,13 @@ async fn fail_with_wrong_stake_program() {
         &[&payer, &user_transfer_authority],
         recent_blockhash,
     );
+    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = banks_client
         .process_transaction(transaction)
         .await
         .err()
-        .unwrap();
+        .unwrap()
+        .into();
 
     match transaction_error {
         TransportError::TransactionError(TransactionError::InstructionError(_, error)) => {
@@ -453,11 +455,13 @@ async fn fail_with_wrong_token_program_id() {
         &[&payer, &user_transfer_authority],
         recent_blockhash,
     );
+    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = banks_client
         .process_transaction(transaction)
         .await
         .err()
-        .unwrap();
+        .unwrap()
+        .into();
 
     match transaction_error {
         TransportError::TransactionError(TransactionError::InstructionError(_, error)) => {
@@ -591,7 +595,7 @@ async fn fail_double_withdraw_to_the_same_account() {
         .await;
     assert!(error.is_none());
 
-    let latest_blockhash = banks_client.get_recent_blockhash().await.unwrap();
+    let latest_blockhash = banks_client.get_latest_blockhash().await.unwrap();
 
     // Delegate tokens for burning
     delegate_tokens(

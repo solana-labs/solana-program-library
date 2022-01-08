@@ -105,7 +105,7 @@ pub enum SwapInstruction {
     ///   Must be empty, not owned by swap authority
     ///   6. `[writable]` Pool Token Account to deposit the initial pool token
     ///   supply.  Must be empty, not owned by swap authority.
-    ///   7. '[]` Token program id
+    ///   7. `[]` Token program id
     Initialize(Initialize),
 
     ///   Swap the tokens in the pool.
@@ -119,8 +119,8 @@ pub enum SwapInstruction {
     ///   6. `[writable]` token_(A|B) DESTINATION Account assigned to USER as the owner.
     ///   7. `[writable]` Pool token mint, to generate trading fees
     ///   8. `[writable]` Fee account, to receive trading fees
-    ///   9. '[]` Token program id
-    ///   10 `[optional, writable]` Host fee account to receive additional trading fees
+    ///   9. `[]` Token program id
+    ///   10. `[optional, writable]` Host fee account to receive additional trading fees
     Swap(Swap),
 
     ///   Deposit both types of tokens into the pool.  The output is a "pool"
@@ -136,7 +136,7 @@ pub enum SwapInstruction {
     ///   6. `[writable]` token_b Base Account to deposit into.
     ///   7. `[writable]` Pool MINT account, swap authority is the owner.
     ///   8. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
-    ///   9. '[]` Token program id
+    ///   9. `[]` Token program id
     DepositAllTokenTypes(DepositAllTokenTypes),
 
     ///   Withdraw both types of tokens from the pool at the current ratio, given
@@ -153,7 +153,7 @@ pub enum SwapInstruction {
     ///   7. `[writable]` token_a user Account to credit.
     ///   8. `[writable]` token_b user Account to credit.
     ///   9. `[writable]` Fee account, to receive withdrawal fees
-    ///   10 '[]` Token program id
+    ///   10. `[]` Token program id
     WithdrawAllTokenTypes(WithdrawAllTokenTypes),
 
     ///   Deposit one type of tokens into the pool.  The output is a "pool" token
@@ -168,7 +168,7 @@ pub enum SwapInstruction {
     ///   5. `[writable]` token_b Swap Account, may deposit INTO.
     ///   6. `[writable]` Pool MINT account, swap authority is the owner.
     ///   7. `[writable]` Pool Account to deposit the generated tokens, user is the owner.
-    ///   8. '[]` Token program id
+    ///   8. `[]` Token program id
     DepositSingleTokenTypeExactAmountIn(DepositSingleTokenTypeExactAmountIn),
 
     ///   Withdraw one token type from the pool at the current ratio given the
@@ -183,7 +183,7 @@ pub enum SwapInstruction {
     ///   6. `[writable]` token_b Swap Account to potentially withdraw from.
     ///   7. `[writable]` token_(A|B) User Account to credit
     ///   8. `[writable]` Fee account, to receive withdrawal fees
-    ///   9. '[]` Token program id
+    ///   9. `[]` Token program id
     WithdrawSingleTokenTypeExactAmountOut(WithdrawSingleTokenTypeExactAmountOut),
 }
 

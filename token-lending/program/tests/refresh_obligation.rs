@@ -5,7 +5,6 @@ mod helpers;
 use helpers::*;
 use solana_program_test::*;
 use solana_sdk::{
-    pubkey::Pubkey,
     signature::{Keypair, Signer},
     transaction::Transaction,
 };
@@ -27,7 +26,7 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(45_000);
+    test.set_compute_max_units(45_000);
 
     const SOL_DEPOSIT_AMOUNT: u64 = 100;
     const USDC_BORROW_AMOUNT: u64 = 1_000;

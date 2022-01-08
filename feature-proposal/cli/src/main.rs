@@ -328,7 +328,7 @@ fn process_propose(
         )],
         Some(&config.keypair.pubkey()),
     );
-    let blockhash = rpc_client.get_recent_blockhash()?.0;
+    let blockhash = rpc_client.get_latest_blockhash()?;
     transaction.try_sign(&[&config.keypair, feature_proposal_keypair], blockhash)?;
 
     println!("JSON RPC URL: {}", config.json_rpc_url);
@@ -462,7 +462,7 @@ fn process_tally(
         )],
         Some(&config.keypair.pubkey()),
     );
-    let blockhash = rpc_client.get_recent_blockhash()?.0;
+    let blockhash = rpc_client.get_latest_blockhash()?;
     transaction.try_sign(&[&config.keypair], blockhash)?;
 
     rpc_client.send_and_confirm_transaction_with_spinner(&transaction)?;

@@ -1,7 +1,6 @@
 import { struct, u8 } from '@solana/buffer-layout';
 import { bool, publicKey } from '@solana/buffer-layout-utils';
 import { Commitment, Connection, PublicKey } from '@solana/web3.js';
-import { Buffer } from 'buffer';
 import { TOKEN_PROGRAM_ID } from '../constants';
 import { TokenAccountNotFoundError, TokenInvalidAccountOwnerError, TokenInvalidAccountSizeError } from '../errors';
 
@@ -63,7 +62,7 @@ export const MULTISIG_SIZE = MultisigLayout.span;
  *
  * @return Multisig information
  */
-export async function getMultisigInfo(
+export async function getMultisig(
     connection: Connection,
     address: PublicKey,
     commitment?: Commitment,
@@ -74,7 +73,7 @@ export async function getMultisigInfo(
     if (!info.owner.equals(programId)) throw new TokenInvalidAccountOwnerError();
     if (info.data.length != MULTISIG_SIZE) throw new TokenInvalidAccountSizeError();
 
-    return { address, ...MultisigLayout.decode(Buffer.from(info.data)) };
+    return { address, ...MultisigLayout.decode(info.data) };
 }
 
 /** Get the minimum lamport balance for a multisig to be rent exempt

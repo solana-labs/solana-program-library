@@ -2,7 +2,7 @@
 
 use {
     crate::error::FarmClientError,
-    solana_farm_sdk::pool::PoolRoute,
+    solana_farm_sdk::{pool::PoolRoute, token::TokenSelector},
     solana_sdk::{instruction::AccountMeta, program_error::ProgramError, pubkey::Pubkey, sysvar},
     std::vec::Vec,
 };
@@ -233,13 +233,13 @@ impl FarmClient {
         &self,
         wallet_address: &Pubkey,
         pool_name: &str,
-        wrap_token_a: bool,
+        token_to_wrap: TokenSelector,
     ) -> Result<Vec<AccountMeta>, FarmClientError> {
         // get pool info
         let pool = self.get_pool(pool_name)?;
 
         // get underlying token info
-        let token = if wrap_token_a {
+        let token = if token_to_wrap == TokenSelector::TokenA {
             self.get_token_by_ref_from_cache(&pool.token_a_ref)?
         } else {
             self.get_token_by_ref_from_cache(&pool.token_b_ref)?
@@ -265,7 +265,7 @@ impl FarmClient {
         } = pool.route
         {
             let (user_wrapped_token_account, wrapped_token, wrapped_token_vault, decimal_wrapper) =
-                if wrap_token_a {
+                if token_to_wrap == TokenSelector::TokenA {
                     let wrapped_token_a = self.get_token_by_ref_from_cache(&wrapped_token_a_ref)?;
                     (
                         self.get_token_account(wallet_address, &wrapped_token_a),

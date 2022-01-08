@@ -63,7 +63,7 @@ export const MINT_SIZE = MintLayout.span;
  *
  * @return Mint information
  */
-export async function getMintInfo(
+export async function getMint(
     connection: Connection,
     address: PublicKey,
     commitment?: Commitment,
@@ -74,7 +74,7 @@ export async function getMintInfo(
     if (!info.owner.equals(programId)) throw new TokenInvalidAccountOwnerError();
     if (info.data.length != MINT_SIZE) throw new TokenInvalidAccountSizeError();
 
-    const rawMint = MintLayout.decode(Buffer.from(info.data));
+    const rawMint = MintLayout.decode(info.data);
 
     return {
         address,

@@ -1,14 +1,24 @@
 import { struct, u8 } from '@solana/buffer-layout';
 import { u64 } from '@solana/buffer-layout-utils';
-import { PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
+import { AccountMeta, PublicKey, Signer, TransactionInstruction } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants';
-import { TokenInstruction } from './types';
+import {
+    TokenInvalidInstructionDataError,
+    TokenInvalidInstructionKeysError,
+    TokenInvalidInstructionProgramError,
+    TokenInvalidInstructionTypeError,
+} from '../errors';
 import { addSigners } from './internal';
+import { TokenInstruction } from './types';
 
-const dataLayout = struct<{
-    instruction: TokenInstruction;
+/** TODO: docs */
+export interface TransferInstructionData {
+    instruction: TokenInstruction.Transfer;
     amount: bigint;
-}>([u8('instruction'), u64('amount')]);
+}
+
+/** TODO: docs */
+export const transferInstructionData = struct<TransferInstructionData>([u8('instruction'), u64('amount')]);
 
 /**
  * Construct a Transfer instruction
@@ -39,8 +49,8 @@ export function createTransferInstruction(
         multiSigners
     );
 
-    const data = Buffer.alloc(dataLayout.span);
-    dataLayout.encode(
+    const data = Buffer.alloc(transferInstructionData.span);
+    transferInstructionData.encode(
         {
             instruction: TokenInstruction.Transfer,
             amount: BigInt(amount),
@@ -49,4 +59,94 @@ export function createTransferInstruction(
     );
 
     return new TransactionInstruction({ keys, programId, data });
+}
+
+/** A decoded, valid Transfer instruction */
+export interface DecodedTransferInstruction {
+    programId: PublicKey;
+    keys: {
+        source: AccountMeta;
+        destination: AccountMeta;
+        owner: AccountMeta;
+        multiSigners: AccountMeta[];
+    };
+    data: {
+        instruction: TokenInstruction.Transfer;
+        amount: bigint;
+    };
+}
+
+/**
+ * Decode a Transfer instruction and validate it
+ *
+ * @param instruction Transaction instruction to decode
+ * @param programId   SPL Token program account
+ *
+ * @return Decoded, valid instruction
+ */
+export function decodeTransferInstruction(
+    instruction: TransactionInstruction,
+    programId = TOKEN_PROGRAM_ID
+): DecodedTransferInstruction {
+    if (!instruction.programId.equals(programId)) throw new TokenInvalidInstructionProgramError();
+    if (instruction.data.length !== transferInstructionData.span) throw new TokenInvalidInstructionDataError();
+
+    const {
+        keys: { source, destination, owner, multiSigners },
+        data,
+    } = decodeTransferInstructionUnchecked(instruction);
+    if (data.instruction !== TokenInstruction.Transfer) throw new TokenInvalidInstructionTypeError();
+    if (!source || !destination || !owner) throw new TokenInvalidInstructionKeysError();
+
+    // TODO: key checks?
+
+    return {
+        programId,
+        keys: {
+            source,
+            destination,
+            owner,
+            multiSigners,
+        },
+        data,
+    };
+}
+
+/** A decoded, non-validated Transfer instruction */
+export interface DecodedTransferInstructionUnchecked {
+    programId: PublicKey;
+    keys: {
+        source: AccountMeta | undefined;
+        destination: AccountMeta | undefined;
+        owner: AccountMeta | undefined;
+        multiSigners: AccountMeta[];
+    };
+    data: {
+        instruction: number;
+        amount: bigint;
+    };
+}
+
+/**
+ * Decode a Transfer instruction without validating it
+ *
+ * @param instruction Transaction instruction to decode
+ *
+ * @return Decoded, non-validated instruction
+ */
+export function decodeTransferInstructionUnchecked({
+    programId,
+    keys: [source, destination, owner, ...multiSigners],
+    data,
+}: TransactionInstruction): DecodedTransferInstructionUnchecked {
+    return {
+        programId,
+        keys: {
+            source,
+            destination,
+            owner,
+            multiSigners,
+        },
+        data: transferInstructionData.decode(data),
+    };
 }
