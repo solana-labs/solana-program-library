@@ -67,7 +67,7 @@ async fn test_associated_token_address() {
 }
 
 #[tokio::test]
-async fn test_create_with_a_lamport() {
+async fn test_create_with_fewer_lamports() {
     let wallet_address = Pubkey::new_unique();
     let token_mint_address = Pubkey::new_unique();
     let associated_token_address =
@@ -78,12 +78,13 @@ async fn test_create_with_a_lamport() {
     let rent = banks_client.get_rent().await.unwrap();
     let expected_token_account_balance = rent.minimum_balance(spl_token::state::Account::LEN);
 
-    // Transfer 1 lamport into `associated_token_address` before creating it
+    // Transfer lamports into `associated_token_address` before creating it - enough to be
+    // rent-exempt for 0 data, but not for an initialized token account
     let mut transaction = Transaction::new_with_payer(
         &[system_instruction::transfer(
             &payer.pubkey(),
             &associated_token_address,
-            1,
+            rent.minimum_balance(0),
         )],
         Some(&payer.pubkey()),
     );
@@ -95,7 +96,7 @@ async fn test_create_with_a_lamport() {
             .get_balance(associated_token_address)
             .await
             .unwrap(),
-        1
+        rent.minimum_balance(0)
     );
 
     // Check that the program adds the extra lamports
