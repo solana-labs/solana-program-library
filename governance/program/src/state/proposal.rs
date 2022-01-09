@@ -166,7 +166,7 @@ pub struct ProposalV2 {
 impl AccountMaxSize for ProposalV2 {
     fn get_max_size(&self) -> Option<usize> {
         let options_size: usize = self.options.iter().map(|o| o.label.len() + 19).sum();
-        Some(self.name.len() + self.description_link.len() + options_size + 199)
+        Some(self.name.len() + self.description_link.len() + options_size + 207)
     }
 }
 

@@ -1626,6 +1626,7 @@ impl GovernanceProgramTest {
             vote_type: vote_type,
             options: proposal_options,
             deny_vote_weight,
+            abstain_vote_weight: 0,
 
             execution_flags: InstructionExecutionFlags::None,
             max_vote_weight: None,
