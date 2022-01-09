@@ -463,9 +463,8 @@ impl ProposalV2 {
 
         let yes_vote_weight = yes_option.vote_weight;
         let deny_vote_weight = self.deny_vote_weight.unwrap();
-        let non_yes_vote_weight = self.abstain_vote_weight
-            .checked_add(deny_vote_weight)
-            .unwrap();
+        let non_yes_vote_weight = self.abstain_vote_weight + deny_vote_weight;
+        let max_non_abstain = max_vote_weight - self.abstain_vote_weight;
 
         if yes_vote_weight == max_vote_weight {
             yes_option.vote_result = OptionVoteResult::Succeeded;
@@ -482,12 +481,12 @@ impl ProposalV2 {
                 .unwrap();
 
         if yes_vote_weight >= min_vote_threshold_weight
-            && yes_vote_weight > (max_vote_weight - yes_vote_weight)
+            && yes_vote_weight > max_non_abstain - yes_vote_weight
         {
             yes_option.vote_result = OptionVoteResult::Succeeded;
             return Some(ProposalState::Succeeded);
-        } else if non_yes_vote_weight > (max_vote_weight - min_vote_threshold_weight)
-            || deny_vote_weight >= (max_vote_weight - deny_vote_weight)
+        } else if non_yes_vote_weight > max_vote_weight - min_vote_threshold_weight
+            || deny_vote_weight >= max_non_abstain - deny_vote_weight
         {
             yes_option.vote_result = OptionVoteResult::Defeated;
             return Some(ProposalState::Defeated);
@@ -1148,6 +1147,7 @@ mod test {
         vote_threshold_percentage: u8,
         yes_votes_count: u64,
         no_votes_count: u64,
+        abstain_votes_count: u64,
         expected_tipped_state: ProposalState,
         expected_finalized_state: ProposalState,
     }
@@ -1156,202 +1156,334 @@ mod test {
         prop_oneof![
             //  threshold < 50%
             Just(VoteCastTestCase {
-                name: "45:10 @40 -- Nays can still outvote Yeahs",
+                name: "45:10:0 @40 -- Nays can still outvote Yeahs",
                 governing_token_supply: 100,
                 vote_threshold_percentage: 40,
                 yes_votes_count: 45,
                 no_votes_count: 10,
+                abstain_votes_count: 0,
                 expected_tipped_state: ProposalState::Voting,
                 expected_finalized_state: ProposalState::Succeeded,
             }),
             Just(VoteCastTestCase {
-                name: "49:50 @40 -- In best case scenario it can be 50:50 tie and hence Defeated",
+                name: "45:10:11 @40 -- Nays cannot outvote Yeahs because of abstains",
+                governing_token_supply: 100,
+                vote_threshold_percentage: 40,
+                yes_votes_count: 45,
+                no_votes_count: 10,
+                abstain_votes_count: 11,
+                expected_tipped_state: ProposalState::Succeeded,
+                expected_finalized_state: ProposalState::Succeeded,
+            }),
+            Just(VoteCastTestCase {
+                name: "49:50:0 @40 -- In best case scenario it can be 50:50 tie and hence Defeated",
                 governing_token_supply: 100,
                 vote_threshold_percentage: 40,
                 yes_votes_count: 49,
                 no_votes_count: 50,
+                abstain_votes_count: 0,
                 expected_tipped_state: ProposalState::Defeated,
                 expected_finalized_state: ProposalState::Defeated,
             }),
             Just(VoteCastTestCase {
-                name: "40:40 @40 -- Still can go either way",
+                name: "39:40:20 @40 -- In best case scenario it can be 50:50 tie and hence Defeated (w/ abstain)",
+                governing_token_supply: 100,
+                vote_threshold_percentage: 40,
+                yes_votes_count: 39,
+                no_votes_count: 40,
+                abstain_votes_count: 20,
+                expected_tipped_state: ProposalState::Defeated,
+                expected_finalized_state: ProposalState::Defeated,
+            }),
+            Just(VoteCastTestCase {
+                name: "40:40:0 @40 -- Still can go either way",
                 governing_token_supply: 100,
                 vote_threshold_percentage: 40,
                 yes_votes_count: 40,
                 no_votes_count: 40,
+                abstain_votes_count: 0,
                 expected_tipped_state: ProposalState::Voting,
                 expected_finalized_state: ProposalState::Defeated,
             }),
             Just(VoteCastTestCase {
-                name: "45:45 @40 -- Still can go either way",
+                name: "45:45:0 @40 -- Still can go either way",
                 governing_token_supply: 100,
                 vote_threshold_percentage: 40,
                 yes_votes_count: 45,
                 no_votes_count: 45,
+                abstain_votes_count: 0,
                 expected_tipped_state: ProposalState::Voting,
                 expected_finalized_state: ProposalState::Defeated,
             }),
             Just(VoteCastTestCase {
-                name: "50:10 @40 -- Nay sayers can still tie up",
+                name: "45:45:5 @40 -- Still can go either way",
+                governing_token_supply: 100,
+                vote_threshold_percentage: 40,
+                yes_votes_count: 45,
+                no_votes_count: 45,
+                abstain_votes_count: 5,
+                expected_tipped_state: ProposalState::Voting,
+                expected_finalized_state: ProposalState::Defeated,
+            }),
+            Just(VoteCastTestCase {
+                name: "50:10:0 @40 -- Nay sayers can still tie up",
                 governing_token_supply: 100,
                 vote_threshold_percentage: 40,
                 yes_votes_count: 50,
                 no_votes_count: 10,
+                abstain_votes_count: 0,
                 expected_tipped_state: ProposalState::Voting,
                 expected_finalized_state: ProposalState::Succeeded,
             }),
             Just(VoteCastTestCase {
-                name: "50:50 @40 -- It's a tie and hence Defeated",
+                name: "25:10:50 @40 -- Nay sayers can still tie up",
+                governing_token_supply: 100,
+                vote_threshold_percentage: 40,
+                yes_votes_count: 25,
+                no_votes_count: 10,
+                abstain_votes_count: 50,
+                expected_tipped_state: ProposalState::Voting,
+                expected_finalized_state: ProposalState::Defeated,
+            }),
+            Just(VoteCastTestCase {
+                name: "50:10:1 @40 -- Nay sayers cannot tie up",
+                governing_token_supply: 100,
+                vote_threshold_percentage: 40,
+                yes_votes_count: 50,
+                no_votes_count: 10,
+                abstain_votes_count: 1,
+                expected_tipped_state: ProposalState::Succeeded,
+                expected_finalized_state: ProposalState::Succeeded,
+            }),
+            Just(VoteCastTestCase {
+                name: "50:50:0 @40 -- It's a tie and hence Defeated",
                 governing_token_supply: 100,
                 vote_threshold_percentage: 40,
                 yes_votes_count: 50,
                 no_votes_count: 50,
+                abstain_votes_count: 0,
                 expected_tipped_state: ProposalState::Defeated,
                 expected_finalized_state: ProposalState::Defeated,
             }),
             Just(VoteCastTestCase {
-                name: "45:51 @ 40 -- Nays won",
+                name: "40:40:20 @40 -- It's a tie and hence Defeated",
+                governing_token_supply: 100,
+                vote_threshold_percentage: 40,
+                yes_votes_count: 40,
+                no_votes_count: 40,
+                abstain_votes_count: 20,
+                expected_tipped_state: ProposalState::Defeated,
+                expected_finalized_state: ProposalState::Defeated,
+            }),
+            Just(VoteCastTestCase {
+                name: "30:1:60 @40 -- Yeahs cannot reach the threshold so Defeated",
+                governing_token_supply: 100,
+                vote_threshold_percentage: 40,
+                yes_votes_count: 30,
+                no_votes_count: 1,
+                abstain_votes_count: 60,
+                expected_tipped_state: ProposalState::Defeated,
+                expected_finalized_state: ProposalState::Defeated,
+            }),
+            Just(VoteCastTestCase {
+                name: "30:1:60 @40 -- Yeahs can still reach the threshold",
+                governing_token_supply: 100,
+                vote_threshold_percentage: 40,
+                yes_votes_count: 30,
+                no_votes_count: 1,
+                abstain_votes_count: 59,
+                expected_tipped_state: ProposalState::Voting,
+                expected_finalized_state: ProposalState::Defeated,
+            }),
+            Just(VoteCastTestCase {
+                name: "45:51:0 @ 40 -- Nays won",
                 governing_token_supply: 100,
                 vote_threshold_percentage: 40,
                 yes_votes_count: 45,
                 no_votes_count: 51,
+                abstain_votes_count: 0,
                 expected_tipped_state: ProposalState::Defeated,
                 expected_finalized_state: ProposalState::Defeated,
             }),
             Just(VoteCastTestCase {
-                name: "40:55 @ 40 -- Nays won",
+                name: "40:55:0 @ 40 -- Nays won",
                 governing_token_supply: 100,
                 vote_threshold_percentage: 40,
                 yes_votes_count: 40,
                 no_votes_count: 55,
+                abstain_votes_count: 3,
                 expected_tipped_state: ProposalState::Defeated,
                 expected_finalized_state: ProposalState::Defeated,
             }),
             // threshold == 50%
             Just(VoteCastTestCase {
-                name: "50:10 @50 -- +1 tie breaker required to tip",
+                name: "50:10:0 @50 -- +1 tie breaker required to tip",
                 governing_token_supply: 100,
                 vote_threshold_percentage: 50,
                 yes_votes_count: 50,
                 no_votes_count: 10,
+                abstain_votes_count: 0,
                 expected_tipped_state: ProposalState::Voting,
                 expected_finalized_state: ProposalState::Succeeded,
             }),
             Just(VoteCastTestCase {
-                name: "10:50 @50 -- +1 tie breaker vote not possible any longer",
+                name: "10:50:0 @50 -- +1 tie breaker vote not possible any longer",
                 governing_token_supply: 100,
                 vote_threshold_percentage: 50,
                 yes_votes_count: 10,
                 no_votes_count: 50,
+                abstain_votes_count: 0,
                 expected_tipped_state: ProposalState::Defeated,
                 expected_finalized_state: ProposalState::Defeated,
             }),
             Just(VoteCastTestCase {
-                name: "50:50 @50 -- +1 tie breaker vote not possible any longer",
+                name: "50:50:0 @50 -- +1 tie breaker vote not possible any longer",
                 governing_token_supply: 100,
                 vote_threshold_percentage: 50,
                 yes_votes_count: 50,
                 no_votes_count: 50,
+                abstain_votes_count: 0,
                 expected_tipped_state: ProposalState::Defeated,
                 expected_finalized_state: ProposalState::Defeated,
             }),
             Just(VoteCastTestCase {
-                name: "51:10 @ 50 -- Nay sayers can't outvote any longer",
+                name: "51:10:0 @ 50 -- Nay sayers can't outvote any longer",
                 governing_token_supply: 100,
                 vote_threshold_percentage: 50,
                 yes_votes_count: 51,
                 no_votes_count: 10,
+                abstain_votes_count: 0,
                 expected_tipped_state: ProposalState::Succeeded,
                 expected_finalized_state: ProposalState::Succeeded,
             }),
             Just(VoteCastTestCase {
-                name: "10:51 @ 50 -- Nays won",
+                name: "10:51:0 @ 50 -- Nays won",
                 governing_token_supply: 100,
                 vote_threshold_percentage: 50,
                 yes_votes_count: 10,
                 no_votes_count: 51,
+                abstain_votes_count: 0,
                 expected_tipped_state: ProposalState::Defeated,
                 expected_finalized_state: ProposalState::Defeated,
             }),
             // threshold > 50%
             Just(VoteCastTestCase {
-                name: "10:10 @ 60 -- Can still go either way",
+                name: "10:10:0 @ 60 -- Can still go either way",
                 governing_token_supply: 100,
                 vote_threshold_percentage: 60,
                 yes_votes_count: 10,
                 no_votes_count: 10,
+                abstain_votes_count: 0,
                 expected_tipped_state: ProposalState::Voting,
                 expected_finalized_state: ProposalState::Defeated,
             }),
             Just(VoteCastTestCase {
-                name: "55:10 @ 60 -- Can still go either way",
+                name: "55:10:0 @ 60 -- Can still go either way",
                 governing_token_supply: 100,
                 vote_threshold_percentage: 60,
                 yes_votes_count: 55,
                 no_votes_count: 10,
+                abstain_votes_count: 0,
                 expected_tipped_state: ProposalState::Voting,
                 expected_finalized_state: ProposalState::Defeated,
             }),
             Just(VoteCastTestCase {
-                name: "60:10 @ 60 -- Yeah reached the required threshold",
+                name: "60:10:0 @ 60 -- Yeah reached the required threshold",
                 governing_token_supply: 100,
                 vote_threshold_percentage: 60,
                 yes_votes_count: 60,
                 no_votes_count: 10,
+                abstain_votes_count: 0,
                 expected_tipped_state: ProposalState::Succeeded,
                 expected_finalized_state: ProposalState::Succeeded,
             }),
             Just(VoteCastTestCase {
-                name: "61:10 @ 60 -- Yeah won",
+                name: "0:0:41 @ 60 -- Abstain blocked the threshold",
                 governing_token_supply: 100,
                 vote_threshold_percentage: 60,
-                yes_votes_count: 61,
-                no_votes_count: 10,
-                expected_tipped_state: ProposalState::Succeeded,
-                expected_finalized_state: ProposalState::Succeeded,
-            }),
-            Just(VoteCastTestCase {
-                name: "10:40 @ 60 -- Yeah can still outvote Nay",
-                governing_token_supply: 100,
-                vote_threshold_percentage: 60,
-                yes_votes_count: 10,
-                no_votes_count: 40,
-                expected_tipped_state: ProposalState::Voting,
-                expected_finalized_state: ProposalState::Defeated,
-            }),
-            Just(VoteCastTestCase {
-                name: "60:40 @ 60 -- Yeah won",
-                governing_token_supply: 100,
-                vote_threshold_percentage: 60,
-                yes_votes_count: 60,
-                no_votes_count: 40,
-                expected_tipped_state: ProposalState::Succeeded,
-                expected_finalized_state: ProposalState::Succeeded,
-            }),
-            Just(VoteCastTestCase {
-                name: "10:41 @ 60 -- Aye can't outvote Nay any longer",
-                governing_token_supply: 100,
-                vote_threshold_percentage: 60,
-                yes_votes_count: 10,
-                no_votes_count: 41,
+                yes_votes_count: 0,
+                no_votes_count: 0,
+                abstain_votes_count: 41,
                 expected_tipped_state: ProposalState::Defeated,
                 expected_finalized_state: ProposalState::Defeated,
             }),
             Just(VoteCastTestCase {
-                name: "100:0",
+                name: "61:10:0 @ 60 -- Yeah won",
                 governing_token_supply: 100,
-                vote_threshold_percentage: 100,
-                yes_votes_count: 100,
-                no_votes_count: 0,
+                vote_threshold_percentage: 60,
+                yes_votes_count: 61,
+                no_votes_count: 10,
+                abstain_votes_count: 0,
                 expected_tipped_state: ProposalState::Succeeded,
                 expected_finalized_state: ProposalState::Succeeded,
             }),
             Just(VoteCastTestCase {
-                name: "0:100",
+                name: "10:40:0 @ 60 -- Yeah can still outvote Nay",
+                governing_token_supply: 100,
+                vote_threshold_percentage: 60,
+                yes_votes_count: 10,
+                no_votes_count: 40,
+                abstain_votes_count: 0,
+                expected_tipped_state: ProposalState::Voting,
+                expected_finalized_state: ProposalState::Defeated,
+            }),
+            Just(VoteCastTestCase {
+                name: "60:40:0 @ 60 -- Yeah won",
+                governing_token_supply: 100,
+                vote_threshold_percentage: 60,
+                yes_votes_count: 60,
+                no_votes_count: 40,
+                abstain_votes_count: 0,
+                expected_tipped_state: ProposalState::Succeeded,
+                expected_finalized_state: ProposalState::Succeeded,
+            }),
+            Just(VoteCastTestCase {
+                name: "10:41:0 @ 60 -- Aye can't outvote Nay any longer",
+                governing_token_supply: 100,
+                vote_threshold_percentage: 60,
+                yes_votes_count: 10,
+                no_votes_count: 41,
+                abstain_votes_count: 0,
+                expected_tipped_state: ProposalState::Defeated,
+                expected_finalized_state: ProposalState::Defeated,
+            }),
+            Just(VoteCastTestCase {
+                name: "100:0:0",
+                governing_token_supply: 100,
+                vote_threshold_percentage: 100,
+                yes_votes_count: 100,
+                no_votes_count: 0,
+                abstain_votes_count: 0,
+                expected_tipped_state: ProposalState::Succeeded,
+                expected_finalized_state: ProposalState::Succeeded,
+            }),
+            Just(VoteCastTestCase {
+                name: "0:100:0",
                 governing_token_supply: 100,
                 vote_threshold_percentage: 100,
                 yes_votes_count: 0,
                 no_votes_count: 100,
+                abstain_votes_count: 0,
+                expected_tipped_state: ProposalState::Defeated,
+                expected_finalized_state: ProposalState::Defeated,
+            }),
+            Just(VoteCastTestCase {
+                name: "0:0:100 @100",
+                governing_token_supply: 100,
+                vote_threshold_percentage: 100,
+                yes_votes_count: 0,
+                no_votes_count: 0,
+                abstain_votes_count: 100,
+                expected_tipped_state: ProposalState::Defeated,
+                expected_finalized_state: ProposalState::Defeated,
+            }),
+            Just(VoteCastTestCase {
+                name: "0:0:100 @0",
+                governing_token_supply: 100,
+                vote_threshold_percentage: 0,
+                yes_votes_count: 0,
+                no_votes_count: 0,
+                abstain_votes_count: 100,
                 expected_tipped_state: ProposalState::Defeated,
                 expected_finalized_state: ProposalState::Defeated,
             }),
@@ -1364,8 +1496,9 @@ mod test {
             // Arrange
             let mut proposal = create_test_proposal();
 
-           proposal.options[0].vote_weight = test_case.yes_votes_count;
-           proposal.deny_vote_weight = Some(test_case.no_votes_count);
+            proposal.options[0].vote_weight = test_case.yes_votes_count;
+            proposal.deny_vote_weight = Some(test_case.no_votes_count);
+            proposal.abstain_vote_weight = test_case.abstain_votes_count;
 
             proposal.state = ProposalState::Voting;
 
@@ -1408,6 +1541,7 @@ mod test {
 
             proposal.options[0].vote_weight = test_case.yes_votes_count;
             proposal.deny_vote_weight = Some(test_case.no_votes_count);
+            proposal.abstain_vote_weight = test_case.abstain_votes_count;
 
             proposal.state = ProposalState::Voting;
 
