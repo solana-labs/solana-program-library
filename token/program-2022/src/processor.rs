@@ -1,10 +1,12 @@
 //! Program state processor
 
 use crate::{
+    check_program_account,
     error::TokenError,
     extension::{
         confidential_transfer::{self, ConfidentialTransferAccount},
-        transfer_fee, StateWithExtensionsMut,
+        get_account_extensions, get_account_len, transfer_fee, ExtensionType, StateWithExtensions,
+        StateWithExtensionsMut,
     },
     instruction::{is_valid_signer_index, AuthorityType, TokenInstruction, MAX_SIGNERS},
     state::{Account, AccountState, Mint, Multisig},
@@ -15,6 +17,7 @@ use solana_program::{
     decode_error::DecodeError,
     entrypoint::ProgramResult,
     msg,
+    program::set_return_data,
     program_error::{PrintProgramError, ProgramError},
     program_option::COption,
     program_pack::{IsInitialized, Pack},
@@ -761,6 +764,24 @@ impl Processor {
         unimplemented!();
     }
 
+    /// Processes a [GetAccountDataSize](enum.TokenInstruction.html) instruction
+    pub fn process_get_account_data_size(accounts: &[AccountInfo]) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let mint_account_info = next_account_info(account_info_iter)?;
+
+        check_program_account(mint_account_info.owner)?;
+        let mint_data = mint_account_info.data.borrow();
+        let state = StateWithExtensions::<Mint>::unpack(&mint_data)?;
+        let mint_extensions: Vec<ExtensionType> = state.get_extension_types()?;
+
+        let account_extensions = get_account_extensions(&mint_extensions);
+
+        let account_len = get_account_len(&account_extensions);
+        set_return_data(&account_len.to_le_bytes());
+
+        Ok(())
+    }
+
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         let instruction = TokenInstruction::unpack(input)?;
@@ -863,7 +884,8 @@ impl Processor {
                 Self::process_sync_native(program_id, accounts)
             }
             TokenInstruction::GetAccountDataSize => {
-                unimplemented!();
+                msg!("Instruction: GetAccountDataSize");
+                Self::process_get_account_data_size(accounts)
             }
             TokenInstruction::InitializeMintCloseAuthority { close_authority } => {
                 msg!("Instruction: InitializeMintCloseAuthority");
