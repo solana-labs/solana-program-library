@@ -84,6 +84,9 @@ pub enum YesNoVote {
     /// No vote
     #[allow(dead_code)]
     No,
+    /// No vote
+    #[allow(dead_code)]
+    Abstain,
 }
 
 pub struct GovernanceProgramTest {
@@ -1862,6 +1865,7 @@ impl GovernanceProgramTest {
                 weight_percentage: 100,
             }]),
             YesNoVote::No => Vote::Deny,
+            YesNoVote::Abstain => Vote::Abstain,
         };
 
         self.with_cast_multi_option_vote(proposal_cookie, token_owner_record_cookie, vote)

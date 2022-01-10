@@ -463,31 +463,18 @@ impl ProposalV2 {
 
         let yes_vote_weight = yes_option.vote_weight;
         let deny_vote_weight = self.deny_vote_weight.unwrap();
-        let non_yes_vote_weight = self.abstain_vote_weight + deny_vote_weight;
         let max_non_abstain = max_vote_weight - self.abstain_vote_weight;
-
-        if yes_vote_weight == max_vote_weight {
-            yes_option.vote_result = OptionVoteResult::Succeeded;
-            return Some(ProposalState::Succeeded);
-        }
-
-        if non_yes_vote_weight == max_vote_weight {
-            yes_option.vote_result = OptionVoteResult::Defeated;
-            return Some(ProposalState::Defeated);
-        }
+        let max_yes_weight = max_non_abstain - deny_vote_weight;
+        let max_deny_weight = max_non_abstain - yes_vote_weight;
 
         let min_vote_threshold_weight =
             get_min_vote_threshold_weight(&config.vote_threshold_percentage, max_vote_weight)
                 .unwrap();
 
-        if yes_vote_weight >= min_vote_threshold_weight
-            && yes_vote_weight > max_non_abstain - yes_vote_weight
-        {
+        if yes_vote_weight >= min_vote_threshold_weight && yes_vote_weight > max_deny_weight {
             yes_option.vote_result = OptionVoteResult::Succeeded;
             return Some(ProposalState::Succeeded);
-        } else if non_yes_vote_weight > max_vote_weight - min_vote_threshold_weight
-            || deny_vote_weight >= max_non_abstain - deny_vote_weight
-        {
+        } else if max_yes_weight < min_vote_threshold_weight || deny_vote_weight >= max_yes_weight {
             yes_option.vote_result = OptionVoteResult::Defeated;
             return Some(ProposalState::Defeated);
         }
