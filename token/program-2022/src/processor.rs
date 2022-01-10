@@ -726,6 +726,14 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes an [InitializeMintCloseAuthority](enum.TokenInstruction.html) instruction
+    pub fn process_initialize_mint_close_authority(
+        _accounts: &[AccountInfo],
+        _close_authority: COption<Pubkey>,
+    ) -> ProgramResult {
+        unimplemented!();
+    }
+
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         let instruction = TokenInstruction::unpack(input)?;
@@ -830,8 +838,9 @@ impl Processor {
             TokenInstruction::GetAccountDataSize => {
                 unimplemented!();
             }
-            TokenInstruction::InitializeMintCloseAuthority { .. } => {
-                unimplemented!();
+            TokenInstruction::InitializeMintCloseAuthority { close_authority } => {
+                msg!("Instruction: InitializeMintCloseAuthority");
+                Self::process_initialize_mint_close_authority(accounts, close_authority)
             }
             TokenInstruction::InitializeTransferFeeConfig { .. } => {
                 unimplemented!();
@@ -938,6 +947,15 @@ impl PrintProgramError for TokenError {
             }
             TokenError::NonNativeNotSupported => {
                 msg!("Error: Instruction does not support non-native tokens")
+            }
+            TokenError::ExtensionTypeMismatch => {
+                msg!("Error: New extension type does not match already existing extensions")
+            }
+            TokenError::ExtensionBaseMismatch => {
+                msg!("Error: Extension does not match the base type provided")
+            }
+            TokenError::ExtensionAlreadyInitialized => {
+                msg!("Error: Extension already initialized on this account")
             }
         }
     }

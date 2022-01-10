@@ -1,7 +1,7 @@
 //! Solana program utilities for Plain Old Data types
 use {
     bytemuck::{Pod, Zeroable},
-    solana_program::{program_error::ProgramError, pubkey::Pubkey},
+    solana_program::{program_error::ProgramError, program_option::COption, pubkey::Pubkey},
     std::convert::TryFrom,
 };
 
@@ -16,6 +16,21 @@ impl TryFrom<Option<Pubkey>> for OptionalNonZeroPubkey {
         match p {
             None => Ok(Self(Pubkey::default())),
             Some(pubkey) => {
+                if pubkey == Pubkey::default() {
+                    Err(ProgramError::InvalidArgument)
+                } else {
+                    Ok(Self(pubkey))
+                }
+            }
+        }
+    }
+}
+impl TryFrom<COption<Pubkey>> for OptionalNonZeroPubkey {
+    type Error = ProgramError;
+    fn try_from(p: COption<Pubkey>) -> Result<Self, Self::Error> {
+        match p {
+            COption::None => Ok(Self(Pubkey::default())),
+            COption::Some(pubkey) => {
                 if pubkey == Pubkey::default() {
                     Err(ProgramError::InvalidArgument)
                 } else {

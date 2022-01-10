@@ -1,6 +1,6 @@
 use {
     crate::{
-        extension::{AccountType, Extension, ExtensionType},
+        extension::{Extension, ExtensionType},
         pod::*,
     },
     bytemuck::{Pod, Zeroable},
@@ -15,5 +15,4 @@ pub struct MintCloseAuthority {
 }
 impl Extension for MintCloseAuthority {
     const TYPE: ExtensionType = ExtensionType::MintCloseAuthority;
-    const ACCOUNT_TYPE: AccountType = AccountType::Mint;
 }

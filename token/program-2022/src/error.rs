@@ -74,6 +74,17 @@ pub enum TokenError {
     /// Instruction does not support non-native tokens
     #[error("Instruction does not support non-native tokens")]
     NonNativeNotSupported,
+
+    // 20
+    /// Extension type does not match already existing extensions
+    #[error("Extension type does not match already existing extensions")]
+    ExtensionTypeMismatch,
+    /// Extension does not match the base type provided
+    #[error("Extension does not match the base type provided")]
+    ExtensionBaseMismatch,
+    /// Extension already initialized on this account
+    #[error("Extension already initialized on this account")]
+    ExtensionAlreadyInitialized,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {

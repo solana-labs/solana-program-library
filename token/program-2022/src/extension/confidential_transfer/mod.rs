@@ -1,6 +1,6 @@
 use {
     crate::{
-        extension::{AccountType, Extension, ExtensionType},
+        extension::{Extension, ExtensionType},
         id,
         pod::*,
     },
@@ -41,7 +41,6 @@ pub struct ConfidentialTransferAuditor {
 
 impl Extension for ConfidentialTransferAuditor {
     const TYPE: ExtensionType = ExtensionType::ConfidentialTransferAuditor;
-    const ACCOUNT_TYPE: AccountType = AccountType::Mint;
 }
 
 /// Confidential account state
@@ -56,7 +55,6 @@ pub struct ConfidentialTransferState {
 
 impl Extension for ConfidentialTransferState {
     const TYPE: ExtensionType = ExtensionType::ConfidentialTransferState;
-    const ACCOUNT_TYPE: AccountType = AccountType::Account;
 }
 
 pub(crate) fn get_omnibus_token_address_with_seed(token_mint: &Pubkey) -> (Pubkey, u8) {

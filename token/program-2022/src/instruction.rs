@@ -29,6 +29,8 @@ pub enum TokenInstruction {
     /// Otherwise another party can acquire ownership of the uninitialized
     /// account.
     ///
+    /// All extensions must be initialized before calling this instruction.
+    ///
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` The mint to initialize.
@@ -569,7 +571,6 @@ pub enum TokenInstruction {
         /// Maximum fee assessed on transfers
         maximum_fee: u64,
     },
-
     /// The common instruction prefix for Confidential Transfer extension instructions.
     ///
     /// See `extension::confidential_transfer::instruction::ConfidentialTransferInstruction` for
