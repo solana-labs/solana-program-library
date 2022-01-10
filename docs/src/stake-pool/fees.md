@@ -2,9 +2,10 @@
 title: Fees
 ---
 
-The stake pool program provides managers many options for making the pool
-financially viable, predominantly through fees. There are five different sources
-of fees.
+Operators of stake pools should take time to understand the purpose of each fee
+and think about them carefully to ensure that the pool cannot be abused.
+
+There are five different sources of fees.
 
 ### Epoch Fee
 

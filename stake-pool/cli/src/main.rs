@@ -93,7 +93,7 @@ const FEES_REFERENCE: &str = "Consider setting a minimal fee. \
                               See https://spl.solana.com/stake-pool/fees for more \
                               information about fees and best practices. If you are \
                               aware of the possible risks of a stake pool with no fees, \
-                              you may force pool creation with the --yolo flag.";
+                              you may force pool creation with the --unsafe-fees flag.";
 
 fn check_stake_pool_fees(
     epoch_fee: &Fee,
@@ -226,9 +226,9 @@ fn command_create_pool(
     validator_list_keypair: Option<Keypair>,
     mint_keypair: Option<Keypair>,
     reserve_keypair: Option<Keypair>,
-    yolo: bool,
+    unsafe_fees: bool,
 ) -> CommandResult {
-    if !yolo {
+    if !unsafe_fees {
         check_stake_pool_fees(&epoch_fee, &withdrawal_fee, &deposit_fee)?;
     }
     let reserve_keypair = reserve_keypair.unwrap_or_else(Keypair::new);
@@ -1989,10 +1989,10 @@ fn main() {
                     .help("Stake pool reserve keypair [default: new keypair]"),
             )
             .arg(
-                Arg::with_name("yolo")
-                    .long("yolo")
+                Arg::with_name("unsafe_fees")
+                    .long("unsafe-fees")
                     .takes_value(false)
-                    .help("YOLO pool creation, bypassing fee checks"),
+                    .help("Bypass fee checks, allowing pool to be created with unsafe fees"),
             )
         )
         .subcommand(SubCommand::with_name("add-validator")
@@ -2693,7 +2693,7 @@ fn main() {
             let validator_list_keypair = keypair_of(arg_matches, "validator_list_keypair");
             let mint_keypair = keypair_of(arg_matches, "mint_keypair");
             let reserve_keypair = keypair_of(arg_matches, "reserve_keypair");
-            let yolo = arg_matches.is_present("yolo");
+            let unsafe_fees = arg_matches.is_present("unsafe_fees");
             command_create_pool(
                 &config,
                 deposit_authority,
@@ -2715,7 +2715,7 @@ fn main() {
                 validator_list_keypair,
                 mint_keypair,
                 reserve_keypair,
-                yolo,
+                unsafe_fees,
             )
         }
         ("add-validator", Some(arg_matches)) => {
