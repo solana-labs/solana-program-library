@@ -265,7 +265,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         }
     }
 
-    fn get_extension<V: Extension>(&mut self, init: bool) -> Result<&mut V, ProgramError> {
+    fn init_or_get_extension<V: Extension>(&mut self, init: bool) -> Result<&mut V, ProgramError> {
         if V::ACCOUNT_TYPE != S::ACCOUNT_TYPE {
             return Err(ProgramError::InvalidAccountData);
         }
@@ -296,7 +296,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
 
     /// Unpack a portion of the TLV data as the desired type
     pub fn get_extension_mut<V: Extension>(&mut self) -> Result<&mut V, ProgramError> {
-        self.get_extension(false)
+        self.init_or_get_extension(false)
     }
 
     /// Packs base state data into the base data portion
@@ -308,7 +308,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
     /// Packs the extension data into an open slot if not already found in the
     /// data buffer, otherwise overwrites itself
     pub fn init_extension<V: Extension>(&mut self) -> Result<&mut V, ProgramError> {
-        self.get_extension(true)
+        self.init_or_get_extension(true)
     }
 
     /// Write the account type into the buffer, done during the base
