@@ -106,43 +106,6 @@ the stake account on a validator, so the stake pool staker will need liquidity
 on hand to fully manage the pool stakes.  The SOL used to add a new validator
 is recovered when removing the validator.
 
-### Fees
-
-The stake pool program provides managers many options for making the pool
-financially viable, predominantly through fees. There are five different sources
-of fees:
-
-* Epoch: every epoch (roughly 2 days), the stake accounts in the pool earn 
-  inflation rewards, so the stake pool mints pool tokens into the manager's fee
-  account as a proportion of the earned rewards. For example, if the pool earns
-  10 SOL in rewards, and the fee is set to 2%, the manager will earn pool tokens
-  worth 0.2 SOL. Note that the epoch fee is charged after normal validator
-  commissions are assessed. For example, if a validator charges 8% commission,
-  and the stake pool charges 2%, and a stake in the pool earns 100 SOL pre-commission,
-  then that stake will actually enrich the pool by 90.16 SOL. The total rewards
-  on that validator will be reduced by ~9.84%.
-* SOL withdraw: sends a proportion of the desired withdrawal amount to the manager
-  For example, if a user wishes to withdraw 100 pool tokens, and the fee is set
-  to 3%, 3 pool tokens go to the manager, and the remaining 97 tokens go to the
-  user in the form of a SOL.
-* Stake withdraw: sends a proportion of the desired withdrawal amount to the manager
-  before creating a new stake for the user.
-* SOL deposit: converts the entire SOL deposit into pool tokens, then sends a
-  proportion of those to the manager, and the rest to the user
-* Stake deposit: converts the stake account's delegation plus rent-exemption 
-  to pool tokens, sends a proportion of those to the manager, and the rest to
-  the user
-
-For partner applications, there's the option of a referral fee on deposits.
-During SOL or stake deposits, the stake pool can redistribute a percentage of
-the fees to another address as a referral fee.
-
-This option is particularly attractive for wallet providers. When a wallet
-integrates a stake pool, the wallet developer will have the option to earn
-additional tokens anytime a user deposits into the stake pool. Stake pool
-managers can use this feature to create strategic partnerships and entice
-greater adoption of stake pools!
-
 ### Funding restrictions
 
 To give the manager more control over funds entering the pool, stake pools allow
@@ -168,23 +131,6 @@ This can also be useful in a few situations:
   manager can temporarily restrict new deposits by setting deposit authorities.
 
 Note: in order to keep user funds safe, stake withdrawals are always permitted.
-
-## Security Audits
-
-Multiple security firms have audited the stake pool program to ensure total
-safety of funds. The audit reports are available for reading, presented in descending
-chronological order, and the commit hash that each was reviewed at:
-
-* Quantstamp
-    - Initial review commit hash [`99914c9`](https://github.com/solana-labs/solana-program-library/tree/99914c9fc7246b22ef04416586ab1722c89576de)
-    - Re-review commit hash [`3b48fa0`](https://github.com/solana-labs/solana-program-library/tree/3b48fa09d38d1b66ffb4fef186b606f1bc4fdb31)
-    - Final report https://solana.com/SolanaQuantstampStakePoolAudit.pdf
-* Neodyme
-    - Review commit hash [`0a85a9a`](https://github.com/solana-labs/solana-program-library/tree/0a85a9a533795b6338ea144e433893c6c0056210)
-    - Report https://solana.com/SolanaNeodymeStakePoolAudit.pdf
-* Kudelski
-    - Review commit hash [`3dd6767`](https://github.com/solana-labs/solana-program-library/tree/3dd67672974f92d3b648bb50ee74f4747a5f8973)
-    - Report https://solana.com/SolanaKudelskiStakePoolAudit.pdf
 
 ## Safety of Funds
 
