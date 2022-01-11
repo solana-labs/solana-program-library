@@ -363,8 +363,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
     }
 
     /// Packs base state data into the base data portion
-    pub fn pack_base(&mut self, new_base: S) {
-        self.base = new_base;
+    pub fn pack_base(&mut self) {
         S::pack_into_slice(&self.base, self.base_data);
     }
 
@@ -740,9 +739,8 @@ mod test {
 
         // write base mint
         let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
-        let base = TEST_MINT;
-        state.pack_base(base);
-        assert_eq!(state.base, base);
+        state.base = TEST_MINT;
+        state.pack_base();
         state.init_account_type().unwrap();
 
         // check raw buffer
@@ -766,13 +764,11 @@ mod test {
 
         // check unpacking
         let mut state = StateWithExtensionsMut::<Mint>::unpack(&mut buffer).unwrap();
-        assert_eq!(state.base, base);
 
         // update base
-        let mut new_base = TEST_MINT;
-        new_base.supply += 100;
-        state.pack_base(new_base);
-        assert_eq!(state.base, new_base);
+        state.base = TEST_MINT;
+        state.base.supply += 100;
+        state.pack_base();
 
         // check unpacking
         let mut unpacked_extension = state.get_extension_mut::<MintCloseAuthority>().unwrap();
@@ -783,14 +779,15 @@ mod test {
         unpacked_extension.close_authority = close_authority;
 
         // check updates are propagated
+        let base = state.base;
         let state = StateWithExtensions::<Mint>::unpack(&buffer).unwrap();
-        assert_eq!(state.base, new_base);
+        assert_eq!(state.base, base);
         let unpacked_extension = state.get_extension::<MintCloseAuthority>().unwrap();
         assert_eq!(*unpacked_extension, MintCloseAuthority { close_authority });
 
         // check raw buffer
         let mut expect = vec![0; Mint::LEN];
-        Mint::pack_into_slice(&new_base, &mut expect);
+        Mint::pack_into_slice(&base, &mut expect);
         expect.extend_from_slice(&[0; BASE_ACCOUNT_LENGTH - Mint::LEN]); // padding
         expect.push(AccountType::Mint.into());
         expect.extend_from_slice(&(ExtensionType::MintCloseAuthority as u16).to_le_bytes());
@@ -829,7 +826,7 @@ mod test {
 
         // check raw buffer
         let mut expect = vec![0; Mint::LEN];
-        Mint::pack_into_slice(&new_base, &mut expect);
+        Mint::pack_into_slice(&base, &mut expect);
         expect.extend_from_slice(&[0; BASE_ACCOUNT_LENGTH - Mint::LEN]); // padding
         expect.push(AccountType::Mint.into());
         expect.extend_from_slice(&(ExtensionType::MintCloseAuthority as u16).to_le_bytes());
@@ -881,9 +878,8 @@ mod test {
 
         // write base mint
         let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
-        let base = TEST_MINT;
-        state.pack_base(base);
-        assert_eq!(state.base, base);
+        state.base = TEST_MINT;
+        state.pack_base();
         state.init_account_type().unwrap();
 
         let mut other_buffer = vec![0; mint_size];
@@ -891,9 +887,8 @@ mod test {
             StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut other_buffer).unwrap();
 
         // write base mint
-        let base = TEST_MINT;
-        state.pack_base(base);
-        assert_eq!(state.base, base);
+        state.base = TEST_MINT;
+        state.pack_base();
         state.init_account_type().unwrap();
 
         // write extensions in a different order
@@ -947,9 +942,8 @@ mod test {
 
         // write base mint
         let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
-        let base = TEST_MINT;
-        state.pack_base(base);
-        assert_eq!(state.base, base);
+        state.base = TEST_MINT;
+        state.pack_base();
         state.init_account_type().unwrap();
 
         // write padding
@@ -1011,10 +1005,10 @@ mod test {
         // write base account
         let mut state =
             StateWithExtensionsMut::<Account>::unpack_uninitialized(&mut buffer).unwrap();
-        let base = TEST_ACCOUNT;
-        state.pack_base(base);
-        assert_eq!(state.base, base);
+        state.base = TEST_ACCOUNT;
+        state.pack_base();
         state.init_account_type().unwrap();
+        let base = state.base;
 
         // check raw buffer
         let mut expect = TEST_ACCOUNT_SLICE.to_vec();
@@ -1033,10 +1027,9 @@ mod test {
         );
 
         // update base
-        let mut new_base = TEST_ACCOUNT;
-        new_base.amount += 100;
-        state.pack_base(new_base);
-        assert_eq!(state.base, new_base);
+        state.base = TEST_ACCOUNT;
+        state.base.amount += 100;
+        state.pack_base();
 
         // check unpacking
         let mut unpacked_extension = state.get_extension_mut::<TransferFeeAmount>().unwrap();
@@ -1047,14 +1040,15 @@ mod test {
         unpacked_extension.withheld_amount = withheld_amount;
 
         // check updates are propagated
+        let base = state.base;
         let state = StateWithExtensions::<Account>::unpack(&buffer).unwrap();
-        assert_eq!(state.base, new_base);
+        assert_eq!(state.base, base);
         let unpacked_extension = state.get_extension::<TransferFeeAmount>().unwrap();
         assert_eq!(*unpacked_extension, TransferFeeAmount { withheld_amount });
 
         // check raw buffer
         let mut expect = vec![0; Account::LEN];
-        Account::pack_into_slice(&new_base, &mut expect);
+        Account::pack_into_slice(&base, &mut expect);
         expect.push(AccountType::Account.into());
         expect.extend_from_slice(&(ExtensionType::TransferFeeAmount as u16).to_le_bytes());
         expect.extend_from_slice(&(pod_get_packed_len::<TransferFeeAmount>() as u16).to_le_bytes());
@@ -1082,9 +1076,8 @@ mod test {
         // write base account
         let mut state =
             StateWithExtensionsMut::<Account>::unpack_uninitialized(&mut buffer).unwrap();
-        let base = TEST_ACCOUNT;
-        state.pack_base(base);
-        assert_eq!(state.base, base);
+        state.base = TEST_ACCOUNT;
+        state.pack_base();
         state.init_account_type().unwrap();
 
         // write padding
