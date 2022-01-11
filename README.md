@@ -15,7 +15,7 @@ The Solend protocol is open source with a focus on developer friendliness and in
 
 Solend is made for developers to build on top of. Check out our developer portal to get involved.
 
-[<img width="200" alt="Screen Shot 2022-01-09 at 5 54 30 PM" src="https://user-images.githubusercontent.com/89805726/148710356-a6cdb798-934a-459d-b795-d4a1099168db.png">](https://dev.solend.fi/).
+[<img width="200" alt="Screen Shot 2022-01-09 at 5 54 30 PM" src="https://user-images.githubusercontent.com/89805726/148710356-a6cdb798-934a-459d-b795-d4a1099168db.png">](https://dev.solend.fi/)
 
 # Solana Program Library
 
