@@ -71,12 +71,12 @@ fn get_extension_indices<V: Extension>(
     init: bool,
 ) -> Result<TlvIndices, ProgramError> {
     let mut start_index = 0;
-    let v_account_type = V::TYPE.get_associated_account_type();
+    let v_account_type = V::TYPE.get_account_type();
     while start_index < tlv_data.len() {
         let tlv_indices = get_tlv_indices(start_index);
         let extension_type =
             ExtensionType::try_from(&tlv_data[tlv_indices.type_start..tlv_indices.length_start])?;
-        let account_type = extension_type.get_associated_account_type();
+        let account_type = extension_type.get_account_type();
         // got to an empty spot, can init here, or move forward if not initing
         if extension_type == ExtensionType::Uninitialized {
             if init {
@@ -227,7 +227,7 @@ impl<'data, S: BaseState> StateWithExtensions<'data, S> {
 
     /// Unpack a portion of the TLV data as the desired type
     pub fn get_extension<V: Extension>(&self) -> Result<&V, ProgramError> {
-        if V::TYPE.get_associated_account_type() != S::ACCOUNT_TYPE {
+        if V::TYPE.get_account_type() != S::ACCOUNT_TYPE {
             return Err(ProgramError::InvalidAccountData);
         }
         let TlvIndices {
@@ -311,7 +311,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
                 tlv_data,
             };
             if let Some(extension_type) = state.get_first_extension_type()? {
-                let account_type = extension_type.get_associated_account_type();
+                let account_type = extension_type.get_account_type();
                 if account_type != S::ACCOUNT_TYPE {
                     return Err(TokenError::ExtensionBaseMismatch.into());
                 }
@@ -328,7 +328,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
     }
 
     fn init_or_get_extension<V: Extension>(&mut self, init: bool) -> Result<&mut V, ProgramError> {
-        if V::TYPE.get_associated_account_type() != S::ACCOUNT_TYPE {
+        if V::TYPE.get_account_type() != S::ACCOUNT_TYPE {
             return Err(ProgramError::InvalidAccountData);
         }
         let TlvIndices {
@@ -381,7 +381,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
     pub fn init_account_type(&mut self) -> Result<(), ProgramError> {
         if !self.account_type.is_empty() {
             if let Some(extension_type) = self.get_first_extension_type()? {
-                let account_type = extension_type.get_associated_account_type();
+                let account_type = extension_type.get_account_type();
                 if account_type != S::ACCOUNT_TYPE {
                     return Err(TokenError::ExtensionBaseMismatch.into());
                 }
@@ -462,7 +462,7 @@ impl From<ExtensionType> for [u8; 2] {
 }
 impl ExtensionType {
     /// Get the data length of the type associated with the enum
-    pub fn get_associated_type_len(&self) -> usize {
+    pub fn get_type_len(&self) -> usize {
         match self {
             ExtensionType::Uninitialized => 0,
             ExtensionType::TransferFeeConfig => pod_get_packed_len::<TransferFeeConfig>(),
@@ -482,7 +482,7 @@ impl ExtensionType {
     }
 
     /// Get the associated account type
-    pub fn get_associated_account_type(&self) -> AccountType {
+    pub fn get_account_type(&self) -> AccountType {
         match self {
             ExtensionType::Uninitialized => AccountType::Uninitialized,
             ExtensionType::TransferFeeConfig
@@ -504,7 +504,7 @@ pub fn get_account_len(extension_types: &[ExtensionType]) -> usize {
     let extension_size: usize = extension_types
         .iter()
         .map(|e| {
-            e.get_associated_type_len()
+            e.get_type_len()
                 .saturating_add(size_of::<ExtensionType>())
                 .saturating_add(pod_get_packed_len::<Length>())
         })
