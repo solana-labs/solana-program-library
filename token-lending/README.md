@@ -1,10 +1,16 @@
-# Token Lending program
+# Solend Lending program
 
-A lending protocol for the Token program on the Solana blockchain inspired by Aave and Compound.
+The Solend lending protocol is based on the token-lending program authored by [Solana labs](https://github.com/solana-labs/solana-program-library).
 
-Full documentation is available at https://spl.solana.com/token-lending
+## Contributing/Building
 
-Web3 bindings are available in the `./js` directory.
+The Solend protocol is open source with a focus on developer friendliness and integrations.
+
+Solend is made for developers to build on top of. Check out our developer portal to understand more and get involved.
+
+[
+<img width="200" alt="Screen Shot 2022-01-09 at 5 54 30 PM" src="https://user-images.githubusercontent.com/89805726/148710356-a6cdb798-934a-459d-b795-d4a1099168db.png">](https://dev.solend.fi/).
+
 
 ### On-chain programs
 
