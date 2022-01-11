@@ -930,7 +930,7 @@ Coming soon:
 - subject/memo
 
 Resources:
-- Audit: Report can be found [here.](https://github.com/StreamFlow-Finance/timelock/blob/community/TIMELOCK_IMPLEMENTATION_COMMUNITY_REPORT_FINAL.pdf)
+- Audit: Reports can be found [here](https://github.com/StreamFlow-Finance/timelock/blob/community/TIMELOCK_IMPLEMENTATION_COMMUNITY_REPORT_FINAL.pdf) and [here](https://github.com/StreamFlow-Finance/timelock-crate/blob/community/TIMELOCK_COMMUNITY_REPORT_FINAL.pdf).
 - Application with the UI: https://app.streamflow.finance/vesting
 - JS SDK: https://npmjs.com/@streamflow/timelock ([source](https://github.com/StreamFlow-Finance/timelock/tree/master/packages/timelock))
 - Rust SDK: https://crates.io/crates/streamflow-timelock ([source](https://github.com/streamflow-finance/timelock-crate))
