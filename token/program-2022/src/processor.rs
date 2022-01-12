@@ -249,6 +249,7 @@ impl Processor {
             COption::Some(ref delegate) if authority_info.key == delegate => {
                 Self::validate_owner(
                     program_id,
+                    source_account_info.key,
                     delegate,
                     authority_info,
                     account_info_iter.as_slice(),
@@ -268,6 +269,7 @@ impl Processor {
             }
             _ => Self::validate_owner(
                 program_id,
+                source_account_info.key,
                 &source_account.owner,
                 authority_info,
                 account_info_iter.as_slice(),
@@ -345,6 +347,7 @@ impl Processor {
 
         Self::validate_owner(
             program_id,
+            source_account_info.key,
             &source_account.owner,
             owner_info,
             account_info_iter.as_slice(),
@@ -373,6 +376,7 @@ impl Processor {
 
         Self::validate_owner(
             program_id,
+            source_account_info.key,
             &source_account.owner,
             owner_info,
             account_info_iter.as_slice(),
@@ -408,6 +412,7 @@ impl Processor {
                 AuthorityType::AccountOwner => {
                     Self::validate_owner(
                         program_id,
+                        account_info.key,
                         &account.owner,
                         authority_info,
                         account_info_iter.as_slice(),
@@ -430,6 +435,7 @@ impl Processor {
                     let authority = account.close_authority.unwrap_or(account.owner);
                     Self::validate_owner(
                         program_id,
+                        account_info.key,
                         &authority,
                         authority_info,
                         account_info_iter.as_slice(),
@@ -452,6 +458,7 @@ impl Processor {
                         .ok_or(Into::<ProgramError>::into(TokenError::FixedSupply))?;
                     Self::validate_owner(
                         program_id,
+                        account_info.key,
                         &mint_authority,
                         authority_info,
                         account_info_iter.as_slice(),
@@ -466,6 +473,7 @@ impl Processor {
                         .ok_or(Into::<ProgramError>::into(TokenError::MintCannotFreeze))?;
                     Self::validate_owner(
                         program_id,
+                        account_info.key,
                         &freeze_authority,
                         authority_info,
                         account_info_iter.as_slice(),
@@ -518,6 +526,7 @@ impl Processor {
         match mint.mint_authority {
             COption::Some(mint_authority) => Self::validate_owner(
                 program_id,
+                mint_info.key,
                 &mint_authority,
                 owner_info,
                 account_info_iter.as_slice(),
@@ -580,6 +589,7 @@ impl Processor {
             COption::Some(ref delegate) if authority_info.key == delegate => {
                 Self::validate_owner(
                     program_id,
+                    source_account_info.key,
                     delegate,
                     authority_info,
                     account_info_iter.as_slice(),
@@ -598,6 +608,7 @@ impl Processor {
             }
             _ => Self::validate_owner(
                 program_id,
+                source_account_info.key,
                 &source_account.owner,
                 authority_info,
                 account_info_iter.as_slice(),
@@ -636,6 +647,7 @@ impl Processor {
             .unwrap_or(source_account.owner);
         Self::validate_owner(
             program_id,
+            source_account_info.key,
             &authority,
             authority_info,
             account_info_iter.as_slice(),
@@ -681,6 +693,7 @@ impl Processor {
         match mint.freeze_authority {
             COption::Some(authority) => Self::validate_owner(
                 program_id,
+                mint_info.key,
                 &authority,
                 authority_info,
                 account_info_iter.as_slice(),
@@ -870,9 +883,10 @@ impl Processor {
         }
     }
 
-    /// Validates owner(s) are present
+    /// Validates owner(s) are present. Used for Mints and Accounts only.
     pub fn validate_owner(
         program_id: &Pubkey,
+        account_to_validate: &Pubkey,
         expected_owner: &Pubkey,
         owner_account_info: &AccountInfo,
         signers: &[AccountInfo],
@@ -880,7 +894,14 @@ impl Processor {
         if expected_owner != owner_account_info.key {
             return Err(TokenError::OwnerMismatch.into());
         }
-        if program_id == owner_account_info.owner
+        // If the account is self-owned, it is *not* a multisig, so just check
+        // the signer key. Otherwise we can run into a double-borrow for the
+        // `owner_account_info`
+        if account_to_validate == owner_account_info.key {
+            if !owner_account_info.is_signer {
+                return Err(ProgramError::MissingRequiredSignature);
+            }
+        } else if program_id == owner_account_info.owner
             && owner_account_info.data_len() == Multisig::get_packed_len()
         {
             let multisig = Multisig::unpack(&owner_account_info.data.borrow())?;
@@ -4714,6 +4735,7 @@ mod tests {
     fn test_validate_owner() {
         let program_id = crate::id();
         let owner_key = Pubkey::new_unique();
+        let account_to_validate = Pubkey::new_unique();
         let mut signer_keys = [Pubkey::default(); MAX_SIGNERS];
         for signer_key in signer_keys.iter_mut().take(MAX_SIGNERS) {
             *signer_key = Pubkey::new_unique();
@@ -4755,8 +4777,45 @@ mod tests {
             Epoch::default(),
         );
 
+        // no multisig, but the account is its own authority, and data is mutably borrowed
+        {
+            let mut lamports = 0;
+            let mut data = vec![0; Account::get_packed_len()];
+            let mut account = Account::unpack_unchecked(&data).unwrap();
+            account.owner = account_to_validate;
+            Account::pack(account, &mut data).unwrap();
+            let account_info = AccountInfo::new(
+                &account_to_validate,
+                true,
+                false,
+                &mut lamports,
+                &mut data,
+                &program_id,
+                false,
+                Epoch::default(),
+            );
+            let mut borrowed_data = account_info.try_borrow_mut_data().unwrap();
+            Processor::validate_owner(
+                &program_id,
+                &account_to_validate,
+                &account_to_validate,
+                &account_info,
+                &[],
+            )
+            .unwrap();
+            // modify the data to be sure that it wasn't silently dropped by the compiler
+            borrowed_data[0] = 1;
+        }
+
         // full 11 of 11
-        Processor::validate_owner(&program_id, &owner_key, &owner_account_info, &signers).unwrap();
+        Processor::validate_owner(
+            &program_id,
+            &account_to_validate,
+            &owner_key,
+            &owner_account_info,
+            &signers,
+        )
+        .unwrap();
 
         // 1 of 11
         {
@@ -4765,7 +4824,14 @@ mod tests {
             multisig.m = 1;
             Multisig::pack(multisig, &mut owner_account_info.data.borrow_mut()).unwrap();
         }
-        Processor::validate_owner(&program_id, &owner_key, &owner_account_info, &signers).unwrap();
+        Processor::validate_owner(
+            &program_id,
+            &account_to_validate,
+            &owner_key,
+            &owner_account_info,
+            &signers,
+        )
+        .unwrap();
 
         // 2:1
         {
@@ -4777,7 +4843,13 @@ mod tests {
         }
         assert_eq!(
             Err(ProgramError::MissingRequiredSignature),
-            Processor::validate_owner(&program_id, &owner_key, &owner_account_info, &signers)
+            Processor::validate_owner(
+                &program_id,
+                &account_to_validate,
+                &owner_key,
+                &owner_account_info,
+                &signers
+            )
         );
 
         // 0:11
@@ -4788,7 +4860,14 @@ mod tests {
             multisig.n = 11;
             Multisig::pack(multisig, &mut owner_account_info.data.borrow_mut()).unwrap();
         }
-        Processor::validate_owner(&program_id, &owner_key, &owner_account_info, &signers).unwrap();
+        Processor::validate_owner(
+            &program_id,
+            &account_to_validate,
+            &owner_key,
+            &owner_account_info,
+            &signers,
+        )
+        .unwrap();
 
         // 2:11 but 0 provided
         {
@@ -4800,7 +4879,13 @@ mod tests {
         }
         assert_eq!(
             Err(ProgramError::MissingRequiredSignature),
-            Processor::validate_owner(&program_id, &owner_key, &owner_account_info, &[])
+            Processor::validate_owner(
+                &program_id,
+                &account_to_validate,
+                &owner_key,
+                &owner_account_info,
+                &[]
+            )
         );
         // 2:11 but 1 provided
         {
@@ -4812,7 +4897,13 @@ mod tests {
         }
         assert_eq!(
             Err(ProgramError::MissingRequiredSignature),
-            Processor::validate_owner(&program_id, &owner_key, &owner_account_info, &signers[0..1])
+            Processor::validate_owner(
+                &program_id,
+                &account_to_validate,
+                &owner_key,
+                &owner_account_info,
+                &signers[0..1]
+            )
         );
 
         // 2:11, 2 from middle provided
@@ -4823,8 +4914,14 @@ mod tests {
             multisig.n = 11;
             Multisig::pack(multisig, &mut owner_account_info.data.borrow_mut()).unwrap();
         }
-        Processor::validate_owner(&program_id, &owner_key, &owner_account_info, &signers[5..7])
-            .unwrap();
+        Processor::validate_owner(
+            &program_id,
+            &account_to_validate,
+            &owner_key,
+            &owner_account_info,
+            &signers[5..7],
+        )
+        .unwrap();
 
         // 11:11, one is not a signer
         {
@@ -4837,7 +4934,13 @@ mod tests {
         signers[5].is_signer = false;
         assert_eq!(
             Err(ProgramError::MissingRequiredSignature),
-            Processor::validate_owner(&program_id, &owner_key, &owner_account_info, &signers)
+            Processor::validate_owner(
+                &program_id,
+                &account_to_validate,
+                &owner_key,
+                &owner_account_info,
+                &signers
+            )
         );
         signers[5].is_signer = true;
 
@@ -4865,7 +4968,13 @@ mod tests {
             Multisig::pack(multisig, &mut owner_account_info.data.borrow_mut()).unwrap();
             assert_eq!(
                 Err(ProgramError::MissingRequiredSignature),
-                Processor::validate_owner(&program_id, &owner_key, &owner_account_info, &signers)
+                Processor::validate_owner(
+                    &program_id,
+                    &account_to_validate,
+                    &owner_key,
+                    &owner_account_info,
+                    &signers
+                )
             );
         }
     }
