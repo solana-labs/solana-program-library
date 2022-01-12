@@ -1,11 +1,11 @@
 use {
     crate::{
+        error::TokenError,
         extension::{Extension, ExtensionType},
-        id,
         pod::*,
     },
     bytemuck::{Pod, Zeroable},
-    solana_program::pubkey::Pubkey,
+    solana_program::{entrypoint::ProgramResult, pubkey::Pubkey},
     solana_zk_token_sdk::zk_token_elgamal::pod,
 };
 
@@ -15,23 +15,23 @@ pub mod instruction;
 /// Confidential Transfer Extension processor
 pub mod processor;
 
-/// Transfer auditor configuration
+/// Confidential transfer mint configuration
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
-pub struct ConfidentialTransferAuditor {
-    /// Authority to modify the auditor configuration
+pub struct ConfidentialTransferMint {
+    /// Authority to modify the `ConfidentialTransferMint` configuration
     ///
     /// Note that setting an authority of `Pubkey::default()` is the idiomatic way to disable
     /// future changes to the configuration.
     pub authority: Pubkey,
 
-    /// Indicate if newly configured accounts must be approved by the auditor before they may be
+    /// Indicate if newly configured accounts must be approved by the `authority` before they may be
     /// used by the user.
     ///
-    /// * If `true`, the auditor authority must approve newly configured accounts (see
+    /// * If `true`, no approval is required and new accounts may be used immediately
+    /// * If `false`, the authority must approve newly configured accounts (see
     ///              `ConfidentialTransferInstruction::ConfigureAccount`)
-    /// * If `false`, no approval is required and new accounts may be used immediately
-    pub approve_new_accounts: PodBool,
+    pub auto_approve_new_accounts: PodBool,
 
     /// * If non-zero, transfers must include ElGamal cypertext with this public key permitting the
     /// auditor to decode the transfer amount.
@@ -39,14 +39,14 @@ pub struct ConfidentialTransferAuditor {
     pub auditor_pk: pod::ElGamalPubkey,
 }
 
-impl Extension for ConfidentialTransferAuditor {
-    const TYPE: ExtensionType = ExtensionType::ConfidentialTransferAuditor;
+impl Extension for ConfidentialTransferMint {
+    const TYPE: ExtensionType = ExtensionType::ConfidentialTransferMint;
 }
 
 /// Confidential account state
 #[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
-pub struct ConfidentialTransferState {
+pub struct ConfidentialTransferAccount {
     /// `true` if this account has been approved for use. All confidential transfer operations for
     /// the account will fail until approval is granted.
     pub approved: PodBool,
@@ -77,29 +77,28 @@ pub struct ConfidentialTransferState {
     pub actual_pending_balance_credit_counter: PodU64,
 }
 
-impl Extension for ConfidentialTransferState {
-    const TYPE: ExtensionType = ExtensionType::ConfidentialTransferState;
+impl Extension for ConfidentialTransferAccount {
+    const TYPE: ExtensionType = ExtensionType::ConfidentialTransferAccount;
 }
 
-impl ConfidentialTransferState {
-    /// Check if a `ConfidentialTransferState` is in a closable state
-    pub fn closable(&self) -> bool {
-        self.pending_balance == pod::ElGamalCiphertext::zeroed()
-            && self.available_balance == pod::ElGamalCiphertext::zeroed()
+impl ConfidentialTransferAccount {
+    /// Check if a `ConfidentialTransferAccount` has been approved for use
+    pub fn approved(&self) -> ProgramResult {
+        if bool::from(&self.approved) {
+            Ok(())
+        } else {
+            Err(TokenError::ConfidentialTransferAccountNotApproved.into())
+        }
     }
-}
 
-pub(crate) fn get_omnibus_token_address_with_seed(token_mint: &Pubkey) -> (Pubkey, u8) {
-    Pubkey::find_program_address(
-        &[token_mint.as_ref(), br"confidential_transfer_omnibus"],
-        &id(),
-    )
-}
-
-/// Derive the address of the Omnibus SPL Token account for a given SPL Token mint
-///
-/// The omnibus account is a central token account that holds all SPL Tokens deposited for
-/// confidential transfer by all users
-pub fn get_omnibus_token_address(token_mint: &Pubkey) -> Pubkey {
-    get_omnibus_token_address_with_seed(token_mint).0
+    /// Check if a `ConfidentialTransferAccount` is in a closable state
+    pub fn closable(&self) -> ProgramResult {
+        if self.pending_balance == pod::ElGamalCiphertext::zeroed()
+            && self.available_balance == pod::ElGamalCiphertext::zeroed()
+        {
+            Ok(())
+        } else {
+            Err(TokenError::ConfidentialTransferAccountHasBalance.into())
+        }
+    }
 }
