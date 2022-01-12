@@ -879,11 +879,13 @@ mod tests {
         let check = SwapInstruction::Swap(Swap {
             amount_in,
             minimum_amount_out,
+            flags: swap_flags::default(),
         });
         let packed = check.pack();
         let mut expect = vec![1];
         expect.extend_from_slice(&amount_in.to_le_bytes());
         expect.extend_from_slice(&minimum_amount_out.to_le_bytes());
+        expect.extend_from_slice(&[swap_flags::default()]);
         assert_eq!(packed, expect);
         let unpacked = SwapInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);

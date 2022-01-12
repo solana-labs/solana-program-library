@@ -661,6 +661,7 @@ impl<'a> TokenSwapAccounts<'a> {
                 instruction::Swap {
                     amount_in: amt_in,
                     minimum_amount_out: amt_out,
+                    flags: instruction::swap_flags::default_routed(),
                 },
             ).unwrap()
         );
