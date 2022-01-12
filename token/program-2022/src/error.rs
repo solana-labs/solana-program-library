@@ -85,9 +85,23 @@ pub enum TokenError {
     /// Extension already initialized on this account
     #[error("Extension already initialized on this account")]
     ExtensionAlreadyInitialized,
-    /// An account can only be closed if its confidential balance is zero"
+    /// An account can only be closed if its confidential balance is zero
     #[error("An account can only be closed if its confidential balance is zero")]
-    ConfidentialTransferStateHasBalance,
+    ConfidentialTransferAccountHasBalance,
+    /// Account not approved for confidential transfers
+    #[error("Account not approved for confidential transfers")]
+    ConfidentialTransferAccountNotApproved,
+
+    // 25
+    /// Account not accepting deposits or transfers
+    #[error("Account not accepting deposits or transfers")]
+    ConfidentialTransferDepositsAndTransfersDisabled,
+    /// ElGamal public key mismatch
+    #[error("ElGamal public key mismatch")]
+    ConfidentialTransferElGamalPubkeyMismatch,
+    /// Available balance mismatch
+    #[error("Available balance mismatch")]
+    ConfidentialTransferAvailableBalanceMismatch,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {

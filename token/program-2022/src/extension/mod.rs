@@ -4,7 +4,7 @@ use {
     crate::{
         error::TokenError,
         extension::{
-            confidential_transfer::{ConfidentialTransferAuditor, ConfidentialTransferState},
+            confidential_transfer::{ConfidentialTransferAccount, ConfidentialTransferMint},
             mint_close_authority::MintCloseAuthority,
             transfer_fee::{TransferFeeAmount, TransferFeeConfig},
         },
@@ -435,9 +435,9 @@ pub enum ExtensionType {
     /// Includes an optional mint close authority
     MintCloseAuthority,
     /// Auditor configuration for confidential transfers
-    ConfidentialTransferAuditor,
+    ConfidentialTransferMint,
     /// State for confidential transfers
-    ConfidentialTransferState,
+    ConfidentialTransferAccount,
     /// Padding extension used to make an account exactly Multisig::LEN, used for testing
     #[cfg(test)]
     AccountPaddingTest = u16::MAX - 1,
@@ -467,11 +467,11 @@ impl ExtensionType {
             ExtensionType::TransferFeeConfig => pod_get_packed_len::<TransferFeeConfig>(),
             ExtensionType::TransferFeeAmount => pod_get_packed_len::<TransferFeeAmount>(),
             ExtensionType::MintCloseAuthority => pod_get_packed_len::<MintCloseAuthority>(),
-            ExtensionType::ConfidentialTransferAuditor => {
-                pod_get_packed_len::<ConfidentialTransferAuditor>()
+            ExtensionType::ConfidentialTransferMint => {
+                pod_get_packed_len::<ConfidentialTransferMint>()
             }
-            ExtensionType::ConfidentialTransferState => {
-                pod_get_packed_len::<ConfidentialTransferState>()
+            ExtensionType::ConfidentialTransferAccount => {
+                pod_get_packed_len::<ConfidentialTransferAccount>()
             }
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => pod_get_packed_len::<AccountPaddingTest>(),
@@ -486,8 +486,8 @@ impl ExtensionType {
             ExtensionType::Uninitialized => AccountType::Uninitialized,
             ExtensionType::TransferFeeConfig
             | ExtensionType::MintCloseAuthority
-            | ExtensionType::ConfidentialTransferAuditor => AccountType::Mint,
-            ExtensionType::TransferFeeAmount | ExtensionType::ConfidentialTransferState => {
+            | ExtensionType::ConfidentialTransferMint => AccountType::Mint,
+            ExtensionType::TransferFeeAmount | ExtensionType::ConfidentialTransferAccount => {
                 AccountType::Account
             }
             #[cfg(test)]

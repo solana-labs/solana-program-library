@@ -218,6 +218,10 @@ pub enum TokenInstruction {
     /// Mints may be closed if they have the `MintCloseAuthority` extension and their token
     /// supply is zero
     ///
+    /// Note that if the account to close has a `ConfidentialTransferExtension`, the
+    /// `ConfidentialTransferInstruction::EmptyAccount` instruction must precede this
+    /// instruction.
+    ///
     /// Accounts expected by this instruction:
     ///
     ///   * Single owner

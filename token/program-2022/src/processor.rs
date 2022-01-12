@@ -3,7 +3,7 @@
 use crate::{
     error::TokenError,
     extension::{
-        confidential_transfer::{self, ConfidentialTransferState},
+        confidential_transfer::{self, ConfidentialTransferAccount},
         transfer_fee, StateWithExtensionsMut,
     },
     instruction::{is_valid_signer_index, AuthorityType, TokenInstruction, MAX_SIGNERS},
@@ -662,11 +662,9 @@ impl Processor {
         )?;
 
         if let Ok(confidential_transfer_state) =
-            source_account.get_extension_mut::<ConfidentialTransferState>()
+            source_account.get_extension_mut::<ConfidentialTransferAccount>()
         {
-            if !confidential_transfer_state.closable() {
-                return Err(TokenError::ConfidentialTransferStateHasBalance.into());
-            }
+            confidential_transfer_state.closable()?
         }
 
         let dest_starting_lamports = dest_account_info.lamports();
@@ -979,8 +977,20 @@ impl PrintProgramError for TokenError {
             TokenError::ExtensionAlreadyInitialized => {
                 msg!("Error: Extension already initialized on this account")
             }
-            TokenError::ConfidentialTransferStateHasBalance => {
+            TokenError::ConfidentialTransferAccountHasBalance => {
                 msg!("Error: An account can only be closed if its confidential balance is zero")
+            }
+            TokenError::ConfidentialTransferAccountNotApproved => {
+                msg!("Error: Account not approved for confidential transfers")
+            }
+            TokenError::ConfidentialTransferDepositsAndTransfersDisabled => {
+                msg!("Error: Account not accepting deposits or transfers")
+            }
+            TokenError::ConfidentialTransferElGamalPubkeyMismatch => {
+                msg!("Error: ElGamal public key mismatch")
+            }
+            TokenError::ConfidentialTransferAvailableBalanceMismatch => {
+                msg!("Error: Available balance mismatch")
             }
         }
     }
