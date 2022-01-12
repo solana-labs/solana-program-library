@@ -1,6 +1,6 @@
 use {
     crate::{
-        extension::{AccountType, Extension, ExtensionType},
+        extension::{Extension, ExtensionType},
         pod::*,
     },
     bytemuck::{Pod, Zeroable},
@@ -36,7 +36,6 @@ pub struct TransferFeeConfig {
 }
 impl Extension for TransferFeeConfig {
     const TYPE: ExtensionType = ExtensionType::TransferFeeConfig;
-    const ACCOUNT_TYPE: AccountType = AccountType::Mint;
 }
 
 /// Transfer fee extension data for accounts.
@@ -48,7 +47,6 @@ pub struct TransferFeeAmount {
 }
 impl Extension for TransferFeeAmount {
     const TYPE: ExtensionType = ExtensionType::TransferFeeAmount;
-    const ACCOUNT_TYPE: AccountType = AccountType::Account;
 }
 
 #[cfg(test)]
