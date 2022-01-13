@@ -6,6 +6,12 @@ use {
     bytemuck::{Pod, Zeroable},
 };
 
+/// Transfer fee extension instructions
+pub mod instruction;
+
+/// Transfer fee extension processor
+pub mod processor;
+
 /// Transfer fee information
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
