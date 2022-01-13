@@ -1035,7 +1035,7 @@ mod tests {
         static ref EXPECTED_DATA: Arc<RwLock<Vec<u8>>> = Arc::new(RwLock::new(Vec::new()));
     }
 
-    fn _set_expected_data(expected_data: Vec<u8>) {
+    fn set_expected_data(expected_data: Vec<u8>) {
         *EXPECTED_DATA.write().unwrap() = expected_data;
     }
 
@@ -6284,6 +6284,85 @@ mod tests {
                 sync_native(&program_id, &native_account_key,).unwrap(),
                 vec![&mut native_account],
             )
+        );
+    }
+
+    #[test]
+    fn test_get_account_data_size() {
+        // see integration tests for return-data validity
+        let program_id = crate::id();
+        let owner_key = Pubkey::new_unique();
+        let mut owner_account = SolanaAccount::default();
+        let mut rent_sysvar = rent_sysvar();
+
+        // Base mint
+        let mut mint_account =
+            SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
+        let mint_key = Pubkey::new_unique();
+        do_process_instruction(
+            initialize_mint(&program_id, &mint_key, &owner_key, None, 2).unwrap(),
+            vec![&mut mint_account, &mut rent_sysvar],
+        )
+        .unwrap();
+
+        set_expected_data(get_account_len(&[]).to_le_bytes().to_vec());
+        do_process_instruction(
+            get_account_data_size(&program_id, &mint_key).unwrap(),
+            vec![&mut mint_account],
+        )
+        .unwrap();
+
+        // TODO: Extended mint
+
+        // Invalid mint
+        let mut invalid_mint_account = SolanaAccount::new(
+            account_minimum_balance(),
+            Account::get_packed_len(),
+            &program_id,
+        );
+        let invalid_mint_key = Pubkey::new_unique();
+        do_process_instruction(
+            initialize_account(&program_id, &invalid_mint_key, &mint_key, &owner_key).unwrap(),
+            vec![
+                &mut invalid_mint_account,
+                &mut mint_account,
+                &mut owner_account,
+                &mut rent_sysvar,
+            ],
+        )
+        .unwrap();
+
+        assert_eq!(
+            do_process_instruction(
+                get_account_data_size(&program_id, &invalid_mint_key).unwrap(),
+                vec![&mut invalid_mint_account],
+            ),
+            Err(ProgramError::InvalidAccountData)
+        );
+
+        // Invalid mint owner
+        let invalid_program_id = Pubkey::new_unique();
+        let mut invalid_mint_account = SolanaAccount::new(
+            mint_minimum_balance(),
+            Mint::get_packed_len(),
+            &invalid_program_id,
+        );
+        let invalid_mint_key = Pubkey::new_unique();
+        let mut instruction =
+            initialize_mint(&program_id, &invalid_mint_key, &owner_key, None, 2).unwrap();
+        instruction.program_id = invalid_program_id;
+        do_process_instruction(
+            instruction,
+            vec![&mut invalid_mint_account, &mut rent_sysvar],
+        )
+        .unwrap();
+
+        assert_eq!(
+            do_process_instruction(
+                get_account_data_size(&program_id, &invalid_mint_key).unwrap(),
+                vec![&mut invalid_mint_account],
+            ),
+            Err(ProgramError::IncorrectProgramId)
         );
     }
 }
