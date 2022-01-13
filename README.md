@@ -73,6 +73,13 @@ $ cargo install grcov --version 0.6.1
 $ rustup toolchain install nightly-x86_64-apple-darwin
 ```
 
+on Mac M1
+
+```bash
+$ cargo install grcov
+$ rustup toolchain install nightly-aarch64-apple-darwin
+```
+
 
 ## Release Process
 SPL programs are currently tagged and released manually. Each program is

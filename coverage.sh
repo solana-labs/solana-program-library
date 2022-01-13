@@ -90,6 +90,10 @@ find target/cov -type f -name '*.gcda' -newer target/cov/before-test ! -newer ta
 )
 
 ls -l target/cov/$reportName/index.html
-ln -sfT $reportName target/cov/LATEST
+if [[ $OSTYPE == 'darwin'* ]]; then
+  ln -sf $reportName target/cov/LATEST
+else
+  ln -sfT $reportName target/cov/LATEST
+fi
 
 exit $test_status
