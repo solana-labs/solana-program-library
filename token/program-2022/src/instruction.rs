@@ -1,6 +1,9 @@
 //! Instruction types
 
-use crate::{check_program_account, error::TokenError};
+use crate::{
+    check_program_account, error::TokenError,
+    extension::transfer_fee::instruction::TransferFeeInstruction,
+};
 use solana_program::{
     instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
@@ -456,121 +459,11 @@ pub enum TokenInstruction {
         /// Authority that must sign the `CloseAccount` instruction on a mint
         close_authority: COption<Pubkey>,
     },
-    /// Initialize the transfer fee on a new mint.
+    /// The common instruction prefix for Transfer Fee extension instructions.
     ///
-    /// Fails if the mint has already been initialized, so must be called before
-    /// `InitializeMint`.
-    ///
-    /// The mint must have exactly enough space allocated for the base mint (82
-    /// bytes), plus 83 bytes of padding, 1 byte reserved for the account type,
-    /// then space required for this extension, plus any others.
-    ///
-    /// Accounts expected by this instruction:
-    ///
-    ///   0. `[writable]` The mint to initialize.
-    InitializeTransferFeeConfig {
-        /// Pubkey that may update the fees
-        fee_config_authority: COption<Pubkey>,
-        /// Withdraw instructions must be signed by this key
-        withdraw_withheld_authority: COption<Pubkey>,
-        /// Amount of transfer collected as fees, expressed as basis points of the
-        /// transfer amount
-        transfer_fee_basis_points: u16,
-        /// Maximum fee assessed on transfers
-        maximum_fee: u64,
-    },
-    /// Transfer, providing expected mint information and fees
-    ///
-    /// Accounts expected by this instruction:
-    ///
-    ///   * Single owner/delegate
-    ///   0. `[writable]` The source account. Must include the `TransferFeeAmount` extension.
-    ///   1. `[]` The token mint. Must include the `TransferFeeConfig` extension.
-    ///   2. `[writable]` The destination account. Must include the `TransferFeeAmount` extension.
-    ///   3. `[signer]` The source account's owner/delegate.
-    ///
-    ///   * Multisignature owner/delegate
-    ///   0. `[writable]` The source account.
-    ///   1. `[]` The token mint.
-    ///   2. `[writable]` The destination account.
-    ///   3. `[]` The source account's multisignature owner/delegate.
-    ///   4. ..4+M `[signer]` M signer accounts.
-    TransferCheckedWithFee {
-        /// The amount of tokens to transfer.
-        amount: u64,
-        /// Expected number of base 10 digits to the right of the decimal place.
-        decimals: u8,
-        /// Expected fee assessed on this transfer, calculated off-chain based on
-        /// the transfer_fee_basis_points and maximum_fee of the mint.
-        fee: u64,
-    },
-    /// Transfer all withheld tokens in the mint to an account. Signed by the mint's
-    /// withdraw withheld tokens authority.
-    ///
-    /// Accounts expected by this instruction:
-    ///
-    ///   * Single owner/delegate
-    ///   0. `[writable]` The token mint. Must include the `TransferFeeConfig` extension.
-    ///   1. `[writable]` The fee receiver account. Must include the `TransferFeeAmount` extension
-    ///      associated with the provided mint.
-    ///   2. `[signer]` The mint's `withdraw_withheld_authority`.
-    ///
-    ///   * Multisignature owner/delegate
-    ///   0. `[writable]` The token mint.
-    ///   1. `[writable]` The destination account.
-    ///   2. `[]` The mint's `withdraw_withheld_authority`'s multisignature owner/delegate.
-    ///   3. ..3+M `[signer]` M signer accounts.
-    WithdrawWithheldTokensFromMint,
-    /// Transfer all withheld tokens to an account. Signed by the mint's
-    /// withdraw withheld tokens authority.
-    ///
-    /// Accounts expected by this instruction:
-    ///
-    ///   * Single owner/delegate
-    ///   0. `[]` The token mint. Must include the `TransferFeeConfig` extension.
-    ///   1. `[writable]` The fee receiver account. Must include the `TransferFeeAmount`
-    ///      extension and be associated with the provided mint.
-    ///   2. `[signer]` The mint's `withdraw_withheld_authority`.
-    ///   3. ..3+N `[writable]` The source accounts to withdraw from.
-    ///
-    ///   * Multisignature owner/delegate
-    ///   0. `[]` The token mint.
-    ///   1. `[writable]` The destination account.
-    ///   2. `[]` The mint's `withdraw_withheld_authority`'s multisignature owner/delegate.
-    ///   3. ..3+M `[signer]` M signer accounts.
-    ///   3+M+1. ..3+M+N `[writable]` The source accounts to withdraw from.
-    WithdrawWithheldTokensFromAccounts,
-    /// Permissionless instruction to transfer all withheld tokens to the mint.
-    ///
-    /// Succeeds for frozen accounts.
-    ///
-    /// Accounts provided should include the `TransferFeeAmount` extension. If not,
-    /// the account is skipped.
-    ///
-    /// Accounts expected by this instruction:
-    ///
-    ///   0. `[writable]` The mint.
-    ///   1. ..1+N `[writable]` The source accounts to harvest from.
-    HarvestWithheldTokensToMint,
-    /// Set transfer fee. Only supported for mints that include the `TransferFeeConfig` extension.
-    ///
-    /// Accounts expected by this instruction:
-    ///
-    ///   * Single authority
-    ///   0. `[writable]` The mint.
-    ///   1. `[signer]` The mint's fee account owner.
-    ///
-    ///   * Multisignature authority
-    ///   0. `[writable]` The mint.
-    ///   1. `[]` The mint's multisignature fee account owner.
-    ///   2. ..2+M `[signer]` M signer accounts.
-    SetTransferFee {
-        /// Amount of transfer collected as fees, expressed as basis points of the
-        /// transfer amount
-        transfer_fee_basis_points: u16,
-        /// Maximum fee assessed on transfers
-        maximum_fee: u64,
-    },
+    /// See `extension::transfer_fee::instruction::TransferFeeInstruction` for
+    /// further details about the extended instructions that share this instruction prefix
+    TransferFeeExtension(TransferFeeInstruction),
     /// The common instruction prefix for Confidential Transfer extension instructions.
     ///
     /// See `extension::confidential_transfer::instruction::ConfidentialTransferInstruction` for
@@ -703,66 +596,10 @@ impl TokenInstruction {
                 Self::InitializeMintCloseAuthority { close_authority }
             }
             23 => {
-                let (fee_config_authority, rest) = Self::unpack_pubkey_option(rest)?;
-                let (withdraw_withheld_authority, rest) = Self::unpack_pubkey_option(rest)?;
-                let (transfer_fee_basis_points, maximum_fee) = rest.split_at(2);
-                let transfer_fee_basis_points = transfer_fee_basis_points
-                    .try_into()
-                    .ok()
-                    .map(u16::from_le_bytes)
-                    .ok_or(InvalidInstruction)?;
-                let maximum_fee = maximum_fee
-                    .try_into()
-                    .ok()
-                    .map(u64::from_le_bytes)
-                    .ok_or(InvalidInstruction)?;
-                Self::InitializeTransferFeeConfig {
-                    fee_config_authority,
-                    withdraw_withheld_authority,
-                    transfer_fee_basis_points,
-                    maximum_fee,
-                }
+                let (instruction, _rest) = TransferFeeInstruction::unpack(rest)?;
+                Self::TransferFeeExtension(instruction)
             }
-            24 => {
-                let (amount, rest) = rest.split_at(8);
-                let amount = amount
-                    .try_into()
-                    .ok()
-                    .map(u64::from_le_bytes)
-                    .ok_or(InvalidInstruction)?;
-                let (&decimals, fee) = rest.split_first().ok_or(InvalidInstruction)?;
-                let fee = fee
-                    .try_into()
-                    .ok()
-                    .map(u64::from_le_bytes)
-                    .ok_or(InvalidInstruction)?;
-                Self::TransferCheckedWithFee {
-                    amount,
-                    decimals,
-                    fee,
-                }
-            }
-            25 => Self::WithdrawWithheldTokensFromMint,
-            26 => Self::WithdrawWithheldTokensFromAccounts,
-            27 => Self::HarvestWithheldTokensToMint,
-            28 => {
-                let (transfer_fee_basis_points, maximum_fee) = rest.split_at(2);
-                let transfer_fee_basis_points = transfer_fee_basis_points
-                    .try_into()
-                    .ok()
-                    .map(u16::from_le_bytes)
-                    .ok_or(InvalidInstruction)?;
-                let maximum_fee = maximum_fee
-                    .try_into()
-                    .ok()
-                    .map(u64::from_le_bytes)
-                    .ok_or(InvalidInstruction)?;
-                Self::SetTransferFee {
-                    transfer_fee_basis_points,
-                    maximum_fee,
-                }
-            }
-            29 => Self::ConfidentialTransferExtension,
+            24 => Self::ConfidentialTransferExtension,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -869,53 +706,18 @@ impl TokenInstruction {
                 buf.push(22);
                 Self::pack_pubkey_option(close_authority, &mut buf);
             }
-            &Self::InitializeTransferFeeConfig {
-                ref fee_config_authority,
-                ref withdraw_withheld_authority,
-                transfer_fee_basis_points,
-                maximum_fee,
-            } => {
+            &Self::TransferFeeExtension(ref instruction) => {
                 buf.push(23);
-                Self::pack_pubkey_option(fee_config_authority, &mut buf);
-                Self::pack_pubkey_option(withdraw_withheld_authority, &mut buf);
-                buf.extend_from_slice(&transfer_fee_basis_points.to_le_bytes());
-                buf.extend_from_slice(&maximum_fee.to_le_bytes());
-            }
-            &Self::TransferCheckedWithFee {
-                amount,
-                decimals,
-                fee,
-            } => {
-                buf.push(24);
-                buf.extend_from_slice(&amount.to_le_bytes());
-                buf.extend_from_slice(&decimals.to_le_bytes());
-                buf.extend_from_slice(&fee.to_le_bytes());
-            }
-            &Self::WithdrawWithheldTokensFromMint => {
-                buf.push(25);
-            }
-            &Self::WithdrawWithheldTokensFromAccounts => {
-                buf.push(26);
-            }
-            &Self::HarvestWithheldTokensToMint => {
-                buf.push(27);
-            }
-            &Self::SetTransferFee {
-                transfer_fee_basis_points,
-                maximum_fee,
-            } => {
-                buf.push(28);
-                buf.extend_from_slice(&transfer_fee_basis_points.to_le_bytes());
-                buf.extend_from_slice(&maximum_fee.to_le_bytes());
+                TransferFeeInstruction::pack(instruction, &mut buf);
             }
             &Self::ConfidentialTransferExtension => {
-                buf.push(29);
+                buf.push(24);
             }
         };
         buf
     }
 
-    fn unpack_pubkey(input: &[u8]) -> Result<(Pubkey, &[u8]), ProgramError> {
+    pub(crate) fn unpack_pubkey(input: &[u8]) -> Result<(Pubkey, &[u8]), ProgramError> {
         if input.len() >= 32 {
             let (key, rest) = input.split_at(32);
             let pk = Pubkey::new(key);
@@ -925,7 +727,9 @@ impl TokenInstruction {
         }
     }
 
-    fn unpack_pubkey_option(input: &[u8]) -> Result<(COption<Pubkey>, &[u8]), ProgramError> {
+    pub(crate) fn unpack_pubkey_option(
+        input: &[u8],
+    ) -> Result<(COption<Pubkey>, &[u8]), ProgramError> {
         match input.split_first() {
             Option::Some((&0, rest)) => Ok((COption::None, rest)),
             Option::Some((&1, rest)) if rest.len() >= 32 => {
@@ -937,7 +741,7 @@ impl TokenInstruction {
         }
     }
 
-    fn pack_pubkey_option(value: &COption<Pubkey>, buf: &mut Vec<u8>) {
+    pub(crate) fn pack_pubkey_option(value: &COption<Pubkey>, buf: &mut Vec<u8>) {
         match *value {
             COption::Some(ref key) => {
                 buf.push(1);
@@ -1832,69 +1636,6 @@ mod test {
         let packed = check.pack();
         let mut expect = vec![22u8, 1];
         expect.extend_from_slice(&[10u8; 32]);
-        assert_eq!(packed, expect);
-        let unpacked = TokenInstruction::unpack(&expect).unwrap();
-        assert_eq!(unpacked, check);
-
-        let check = TokenInstruction::InitializeTransferFeeConfig {
-            fee_config_authority: COption::Some(Pubkey::new(&[11u8; 32])),
-            withdraw_withheld_authority: COption::None,
-            transfer_fee_basis_points: 111,
-            maximum_fee: u64::MAX,
-        };
-        let packed = check.pack();
-        let mut expect = vec![23u8, 1];
-        expect.extend_from_slice(&[11u8; 32]);
-        expect.extend_from_slice(&[0]);
-        expect.extend_from_slice(&111u16.to_le_bytes());
-        expect.extend_from_slice(&u64::MAX.to_le_bytes());
-        assert_eq!(packed, expect);
-        let unpacked = TokenInstruction::unpack(&expect).unwrap();
-        assert_eq!(unpacked, check);
-
-        let check = TokenInstruction::TransferCheckedWithFee {
-            amount: 24,
-            decimals: 24,
-            fee: 23,
-        };
-        let packed = check.pack();
-        let mut expect = vec![24u8];
-        expect.extend_from_slice(&24u64.to_le_bytes());
-        expect.extend_from_slice(&[24u8]);
-        expect.extend_from_slice(&23u64.to_le_bytes());
-        assert_eq!(packed, expect);
-        let unpacked = TokenInstruction::unpack(&expect).unwrap();
-        assert_eq!(unpacked, check);
-
-        let check = TokenInstruction::WithdrawWithheldTokensFromMint;
-        let packed = check.pack();
-        let expect = [25u8];
-        assert_eq!(packed, expect);
-        let unpacked = TokenInstruction::unpack(&expect).unwrap();
-        assert_eq!(unpacked, check);
-
-        let check = TokenInstruction::WithdrawWithheldTokensFromAccounts;
-        let packed = check.pack();
-        let expect = [26u8];
-        assert_eq!(packed, expect);
-        let unpacked = TokenInstruction::unpack(&expect).unwrap();
-        assert_eq!(unpacked, check);
-
-        let check = TokenInstruction::HarvestWithheldTokensToMint;
-        let packed = check.pack();
-        let expect = [27u8];
-        assert_eq!(packed, expect);
-        let unpacked = TokenInstruction::unpack(&expect).unwrap();
-        assert_eq!(unpacked, check);
-
-        let check = TokenInstruction::SetTransferFee {
-            transfer_fee_basis_points: u16::MAX,
-            maximum_fee: u64::MAX,
-        };
-        let packed = check.pack();
-        let mut expect = vec![28u8];
-        expect.extend_from_slice(&u16::MAX.to_le_bytes());
-        expect.extend_from_slice(&u64::MAX.to_le_bytes());
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);

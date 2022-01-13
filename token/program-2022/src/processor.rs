@@ -4,7 +4,7 @@ use crate::{
     error::TokenError,
     extension::{
         confidential_transfer::{self, ConfidentialTransferState},
-        StateWithExtensionsMut,
+        transfer_fee, StateWithExtensionsMut,
     },
     instruction::{is_valid_signer_index, AuthorityType, TokenInstruction, MAX_SIGNERS},
     state::{Account, AccountState, Mint, Multisig},
@@ -871,23 +871,8 @@ impl Processor {
                 msg!("Instruction: InitializeMintCloseAuthority");
                 Self::process_initialize_mint_close_authority(accounts, close_authority)
             }
-            TokenInstruction::InitializeTransferFeeConfig { .. } => {
-                unimplemented!();
-            }
-            TokenInstruction::TransferCheckedWithFee { .. } => {
-                unimplemented!();
-            }
-            TokenInstruction::WithdrawWithheldTokensFromMint => {
-                unimplemented!();
-            }
-            TokenInstruction::WithdrawWithheldTokensFromAccounts => {
-                unimplemented!();
-            }
-            TokenInstruction::HarvestWithheldTokensToMint => {
-                unimplemented!();
-            }
-            TokenInstruction::SetTransferFee { .. } => {
-                unimplemented!();
+            TokenInstruction::TransferFeeExtension(instruction) => {
+                transfer_fee::processor::process_instruction(program_id, accounts, instruction)
             }
             TokenInstruction::ConfidentialTransferExtension => {
                 confidential_transfer::processor::process_instruction(
