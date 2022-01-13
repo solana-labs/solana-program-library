@@ -1029,6 +1029,15 @@ mod tests {
     use solana_sdk::account::{
         create_account_for_test, create_is_signer_account_infos, Account as SolanaAccount,
     };
+    use std::sync::{Arc, RwLock};
+
+    lazy_static::lazy_static! {
+        static ref EXPECTED_DATA: Arc<RwLock<Vec<u8>>> = Arc::new(RwLock::new(Vec::new()));
+    }
+
+    fn _set_expected_data(expected_data: Vec<u8>) {
+        *EXPECTED_DATA.write().unwrap() = expected_data;
+    }
 
     struct SyscallStubs {}
     impl solana_sdk::program_stubs::SyscallStubs for SyscallStubs {
@@ -1061,6 +1070,10 @@ mod tests {
                 *(var_addr as *mut _ as *mut Rent) = Rent::default();
             }
             solana_program::entrypoint::SUCCESS
+        }
+
+        fn sol_set_return_data(&mut self, data: &[u8]) {
+            assert_eq!(&*EXPECTED_DATA.read().unwrap(), data)
         }
     }
 
