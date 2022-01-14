@@ -5,7 +5,7 @@ use crate::{
     error::TokenError,
     extension::{
         confidential_transfer::{self, ConfidentialTransferAccount},
-        get_account_len, transfer_fee, ExtensionType, StateWithExtensions, StateWithExtensionsMut,
+        transfer_fee, ExtensionType, StateWithExtensions, StateWithExtensionsMut,
     },
     instruction::{is_valid_signer_index, AuthorityType, TokenInstruction, MAX_SIGNERS},
     state::{Account, AccountState, Mint, Multisig},
@@ -775,7 +775,7 @@ impl Processor {
 
         let account_extensions = ExtensionType::get_account_extensions(&mint_extensions);
 
-        let account_len = get_account_len(&account_extensions);
+        let account_len = ExtensionType::get_account_len::<Account>(&account_extensions);
         set_return_data(&account_len.to_le_bytes());
 
         Ok(())
@@ -6304,7 +6304,11 @@ mod tests {
         )
         .unwrap();
 
-        set_expected_data(get_account_len(&[]).to_le_bytes().to_vec());
+        set_expected_data(
+            ExtensionType::get_account_len::<Account>(&[])
+                .to_le_bytes()
+                .to_vec(),
+        );
         do_process_instruction(
             get_account_data_size(&program_id, &mint_key).unwrap(),
             vec![&mut mint_account],
