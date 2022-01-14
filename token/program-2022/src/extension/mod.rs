@@ -480,6 +480,30 @@ impl ExtensionType {
         }
     }
 
+    /// Get the required account data length for the given ExtensionTypes
+    pub fn get_account_len<S: BaseState>(extension_types: &[Self]) -> usize {
+        if extension_types.is_empty() {
+            S::LEN
+        } else {
+            let extension_size: usize = extension_types
+                .iter()
+                .map(|e| {
+                    e.get_type_len()
+                        .saturating_add(size_of::<ExtensionType>())
+                        .saturating_add(pod_get_packed_len::<Length>())
+                })
+                .sum();
+            let account_size = extension_size
+                .saturating_add(BASE_ACCOUNT_LENGTH)
+                .saturating_add(size_of::<AccountType>());
+            if account_size == Multisig::LEN {
+                account_size.saturating_add(size_of::<ExtensionType>())
+            } else {
+                account_size
+            }
+        }
+    }
+
     /// Get the associated account type
     pub fn get_account_type(&self) -> AccountType {
         match self {
@@ -515,26 +539,6 @@ impl ExtensionType {
             }
         }
         account_extension_types
-    }
-}
-
-/// Get the required account data length for the given ExtensionTypes
-pub fn get_account_len(extension_types: &[ExtensionType]) -> usize {
-    let extension_size: usize = extension_types
-        .iter()
-        .map(|e| {
-            e.get_type_len()
-                .saturating_add(size_of::<ExtensionType>())
-                .saturating_add(pod_get_packed_len::<Length>())
-        })
-        .sum();
-    let account_size = extension_size
-        .saturating_add(BASE_ACCOUNT_LENGTH)
-        .saturating_add(size_of::<AccountType>());
-    if account_size == Multisig::LEN {
-        account_size.saturating_add(size_of::<ExtensionType>())
-    } else {
-        account_size
     }
 }
 
@@ -707,7 +711,7 @@ mod test {
 
     #[test]
     fn mint_with_extension_pack_unpack() {
-        let mint_size = get_account_len(&[
+        let mint_size = ExtensionType::get_account_len::<Mint>(&[
             ExtensionType::MintCloseAuthority,
             ExtensionType::TransferFeeConfig,
         ]);
@@ -868,7 +872,7 @@ mod test {
 
     #[test]
     fn mint_extension_any_order() {
-        let mint_size = get_account_len(&[
+        let mint_size = ExtensionType::get_account_len::<Mint>(&[
             ExtensionType::MintCloseAuthority,
             ExtensionType::TransferFeeConfig,
         ]);
@@ -956,7 +960,7 @@ mod test {
             StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer),
             Err(ProgramError::InvalidAccountData),
         );
-        let mint_size = get_account_len(&[ExtensionType::MintPaddingTest]);
+        let mint_size = ExtensionType::get_account_len::<Mint>(&[ExtensionType::MintPaddingTest]);
         assert_eq!(mint_size, Multisig::LEN + size_of::<ExtensionType>());
         let mut buffer = vec![0; mint_size];
 
@@ -990,7 +994,8 @@ mod test {
 
     #[test]
     fn account_with_extension_pack_unpack() {
-        let account_size = get_account_len(&[ExtensionType::TransferFeeAmount]);
+        let account_size =
+            ExtensionType::get_account_len::<Account>(&[ExtensionType::TransferFeeAmount]);
         let mut buffer = vec![0; account_size];
 
         // fail unpack
@@ -1089,7 +1094,8 @@ mod test {
             StateWithExtensionsMut::<Account>::unpack_uninitialized(&mut buffer),
             Err(ProgramError::InvalidAccountData),
         );
-        let account_size = get_account_len(&[ExtensionType::AccountPaddingTest]);
+        let account_size =
+            ExtensionType::get_account_len::<Account>(&[ExtensionType::AccountPaddingTest]);
         assert_eq!(account_size, Multisig::LEN + size_of::<ExtensionType>());
         let mut buffer = vec![0; account_size];
 
@@ -1169,5 +1175,29 @@ mod test {
                 ExtensionType::TransferFeeAmount
             ]
         );
+    }
+
+    #[test]
+    fn mint_without_extensions() {
+        let space = ExtensionType::get_account_len::<Mint>(&[]);
+        let mut buffer = vec![0; space];
+        assert_eq!(
+            StateWithExtensionsMut::<Account>::unpack_uninitialized(&mut buffer),
+            Err(ProgramError::InvalidAccountData),
+        );
+
+        // write base account
+        let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
+        state.base = TEST_MINT;
+        state.pack_base();
+        state.init_account_type().unwrap();
+
+        // fail init extension
+        assert_eq!(
+            state.init_extension::<TransferFeeConfig>(),
+            Err(ProgramError::InvalidAccountData),
+        );
+
+        assert_eq!(TEST_MINT_SLICE, buffer);
     }
 }

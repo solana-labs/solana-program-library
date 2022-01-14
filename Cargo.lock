@@ -3817,6 +3817,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "solana-zk-token-sdk",
+ "spl-token-client",
  "thiserror",
 ]
 
@@ -3853,7 +3854,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-associated-token-account 1.0.3",
- "spl-token 3.2.0",
+ "spl-token-2022",
  "thiserror",
 ]
 
