@@ -7,11 +7,16 @@ name = "spl-token-client"
 repository = "https://github.com/solana-labs/solana-program-library"
 version = "0.0.1"
 
+# When spl-token-2022 depends on this with no-entrypoint, all tests fail!
+# Normally, we want no-entrypoint, except when testing spl-token-2022
+[features]
+default = [ "spl-token-2022/no-entrypoint" ]
+
 [dependencies]
 async-trait = "0.1"
 solana-client = "=1.9.2"
 solana-program-test = "=1.9.2"
 solana-sdk = "=1.9.2"
 spl-associated-token-account = { version = "1.0", features = ["no-entrypoint"] }
-spl-token = { version = "3.2", path="../program", features = [ "no-entrypoint" ] }
+spl-token-2022 = { version = "0.1", path="../program-2022" }
 thiserror = "1.0"

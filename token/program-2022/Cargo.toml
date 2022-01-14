@@ -26,6 +26,7 @@ thiserror = "1.0"
 lazy_static = "1.4.0"
 solana-program-test = "1.9.2"
 solana-sdk = "1.9.2"
+spl-token-client = { version = "0.0.1", path = "../rust", default-features = false }
 
 [lib]
 crate-type = ["cdylib", "lib"]

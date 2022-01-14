@@ -9,7 +9,7 @@ use solana_sdk::{
     transaction::Transaction,
 };
 use spl_associated_token_account::{create_associated_token_account, get_associated_token_address};
-use spl_token::{instruction, state};
+use spl_token_2022::{extension::ExtensionType, instruction, state};
 use std::{fmt, sync::Arc};
 use thiserror::Error;
 
@@ -97,6 +97,7 @@ where
     }
 
     /// Create and initialize a token.
+    #[allow(clippy::too_many_arguments)]
     pub async fn create_mint<'a, S2: Signer>(
         client: Arc<dyn ProgramClient<T>>,
         payer: S,
@@ -104,33 +105,31 @@ where
         mint_authority: &'a Pubkey,
         freeze_authority: Option<&'a Pubkey>,
         decimals: u8,
+        extension_types: &'a [ExtensionType],
+        extension_instructions: &'a [Instruction],
     ) -> TokenResult<Self> {
+        let space = ExtensionType::get_account_len::<state::Mint>(extension_types);
         let token = Self::new(client, mint_account.pubkey(), payer);
-        token
-            .process_ixs(
-                &[
-                    system_instruction::create_account(
-                        &token.payer.pubkey(),
-                        &mint_account.pubkey(),
-                        token
-                            .client
-                            .get_minimum_balance_for_rent_exemption(state::Mint::LEN)
-                            .await
-                            .map_err(TokenError::Client)?,
-                        state::Mint::LEN as u64,
-                        &spl_token::id(),
-                    ),
-                    instruction::initialize_mint(
-                        &spl_token::id(),
-                        &mint_account.pubkey(),
-                        mint_authority,
-                        freeze_authority,
-                        decimals,
-                    )?,
-                ],
-                &[mint_account],
-            )
-            .await?;
+        let mut instructions = vec![system_instruction::create_account(
+            &token.payer.pubkey(),
+            &mint_account.pubkey(),
+            token
+                .client
+                .get_minimum_balance_for_rent_exemption(space)
+                .await
+                .map_err(TokenError::Client)?,
+            space as u64,
+            &spl_token_2022::id(),
+        )];
+        instructions.extend_from_slice(extension_instructions);
+        instructions.push(instruction::initialize_mint(
+            &spl_token_2022::id(),
+            &mint_account.pubkey(),
+            mint_authority,
+            freeze_authority,
+            decimals,
+        )?);
+        token.process_ixs(&instructions, &[mint_account]).await?;
 
         Ok(token)
     }
@@ -155,6 +154,38 @@ where
         .map_err(Into::into)
     }
 
+    /// Create and initialize a new token account.
+    pub async fn create_auxiliary_token_account(
+        &self,
+        account: &S,
+        owner: &Pubkey,
+    ) -> TokenResult<Pubkey> {
+        self.process_ixs(
+            &[
+                system_instruction::create_account(
+                    &self.payer.pubkey(),
+                    &account.pubkey(),
+                    self.client
+                        .get_minimum_balance_for_rent_exemption(state::Account::LEN)
+                        .await
+                        .map_err(TokenError::Client)?,
+                    state::Account::LEN as u64,
+                    &spl_token_2022::id(),
+                ),
+                instruction::initialize_account(
+                    &spl_token_2022::id(),
+                    &account.pubkey(),
+                    &self.pubkey,
+                    owner,
+                )?,
+            ],
+            &[&self.payer, account],
+        )
+        .await
+        .map(|_| account.pubkey())
+        .map_err(Into::into)
+    }
+
     /// Retrive mint information.
     pub async fn get_mint_info(&self) -> TokenResult<state::Mint> {
         let account = self
@@ -163,7 +194,7 @@ where
             .await
             .map_err(TokenError::Client)?
             .ok_or(TokenError::AccountNotFound)?;
-        if account.owner != spl_token::id() {
+        if account.owner != spl_token_2022::id() {
             return Err(TokenError::AccountInvalidOwner);
         }
 
@@ -178,7 +209,7 @@ where
             .await
             .map_err(TokenError::Client)?
             .ok_or(TokenError::AccountNotFound)?;
-        if account.owner != spl_token::id() {
+        if account.owner != spl_token_2022::id() {
             return Err(TokenError::AccountInvalidOwner);
         }
 
@@ -217,7 +248,7 @@ where
     ) -> TokenResult<()> {
         self.process_ixs(
             &[instruction::set_authority(
-                &spl_token::id(),
+                &spl_token_2022::id(),
                 account,
                 new_authority,
                 authority_type,
@@ -239,7 +270,7 @@ where
     ) -> TokenResult<()> {
         self.process_ixs(
             &[instruction::mint_to(
-                &spl_token::id(),
+                &spl_token_2022::id(),
                 &self.pubkey,
                 dest,
                 &authority.pubkey(),
@@ -253,21 +284,24 @@ where
     }
 
     /// Transfer tokens to another account
-    pub async fn transfer<S2: Signer>(
+    pub async fn transfer_checked<S2: Signer>(
         &self,
         source: &Pubkey,
         destination: &Pubkey,
         authority: &S2,
         amount: u64,
+        decimals: u8,
     ) -> TokenResult<T::Output> {
         self.process_ixs(
-            &[instruction::transfer(
-                &spl_token::id(),
+            &[instruction::transfer_checked(
+                &spl_token_2022::id(),
                 source,
+                &self.pubkey,
                 destination,
                 &authority.pubkey(),
                 &[],
                 amount,
+                decimals,
             )?],
             &[authority],
         )
