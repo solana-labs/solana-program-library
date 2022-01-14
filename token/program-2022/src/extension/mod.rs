@@ -496,6 +496,26 @@ impl ExtensionType {
             ExtensionType::MintPaddingTest => AccountType::Mint,
         }
     }
+
+    /// Get the list of required AccountType::Account ExtensionTypes based on a set of
+    /// AccountType::Mint ExtensionTypes
+    pub fn get_account_extensions(mint_extension_types: &[Self]) -> Vec<Self> {
+        let mut account_extension_types = vec![];
+        for extension_type in mint_extension_types {
+            #[allow(clippy::single_match)]
+            match extension_type {
+                ExtensionType::TransferFeeConfig => {
+                    account_extension_types.push(ExtensionType::TransferFeeAmount);
+                }
+                #[cfg(test)]
+                ExtensionType::MintPaddingTest => {
+                    account_extension_types.push(ExtensionType::AccountPaddingTest);
+                }
+                _ => {}
+            }
+        }
+        account_extension_types
+    }
 }
 
 /// Get the required account data length for the given ExtensionTypes
@@ -1100,5 +1120,54 @@ mod test {
         expect.extend_from_slice(&vec![2; pod_get_packed_len::<AccountPaddingTest>()]);
         expect.extend_from_slice(&(ExtensionType::Uninitialized as u16).to_le_bytes());
         assert_eq!(expect, buffer);
+    }
+
+    #[test]
+    fn test_get_account_extensions() {
+        // Some mint extensions with no required account extensions
+        let mint_extensions = vec![
+            ExtensionType::MintCloseAuthority,
+            ExtensionType::Uninitialized,
+        ];
+        assert_eq!(
+            ExtensionType::get_account_extensions(&mint_extensions),
+            vec![]
+        );
+
+        // One mint extension with required account extension, one without
+        let mint_extensions = vec![
+            ExtensionType::TransferFeeConfig,
+            ExtensionType::MintCloseAuthority,
+        ];
+        assert_eq!(
+            ExtensionType::get_account_extensions(&mint_extensions),
+            vec![ExtensionType::TransferFeeAmount]
+        );
+
+        // Some mint extensions both with required account extensions
+        let mint_extensions = vec![
+            ExtensionType::TransferFeeConfig,
+            ExtensionType::MintPaddingTest,
+        ];
+        assert_eq!(
+            ExtensionType::get_account_extensions(&mint_extensions),
+            vec![
+                ExtensionType::TransferFeeAmount,
+                ExtensionType::AccountPaddingTest
+            ]
+        );
+
+        // Demonstrate that method does not dedupe inputs or outputs
+        let mint_extensions = vec![
+            ExtensionType::TransferFeeConfig,
+            ExtensionType::TransferFeeConfig,
+        ];
+        assert_eq!(
+            ExtensionType::get_account_extensions(&mint_extensions),
+            vec![
+                ExtensionType::TransferFeeAmount,
+                ExtensionType::TransferFeeAmount
+            ]
+        );
     }
 }

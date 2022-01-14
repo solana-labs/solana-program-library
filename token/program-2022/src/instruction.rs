@@ -1405,6 +1405,19 @@ pub fn sync_native(
     })
 }
 
+/// Creates a `GetAccountDataSize` instruction
+pub fn get_account_data_size(
+    token_program_id: &Pubkey,
+    mint_pubkey: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts: vec![AccountMeta::new_readonly(*mint_pubkey, false)],
+        data: TokenInstruction::GetAccountDataSize.pack(),
+    })
+}
+
 /// Utility function that checks index is between MIN_SIGNERS and MAX_SIGNERS
 pub fn is_valid_signer_index(index: usize) -> bool {
     (MIN_SIGNERS..=MAX_SIGNERS).contains(&index)

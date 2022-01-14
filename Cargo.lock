@@ -3809,6 +3809,7 @@ version = "0.1.0"
 dependencies = [
  "arrayref",
  "bytemuck",
+ "lazy_static",
  "num-derive",
  "num-traits",
  "num_enum",

@@ -1,10 +1,11 @@
 //! Program state processor
 
 use crate::{
+    check_program_account,
     error::TokenError,
     extension::{
         confidential_transfer::{self, ConfidentialTransferAccount},
-        transfer_fee, StateWithExtensionsMut,
+        get_account_len, transfer_fee, ExtensionType, StateWithExtensions, StateWithExtensionsMut,
     },
     instruction::{is_valid_signer_index, AuthorityType, TokenInstruction, MAX_SIGNERS},
     state::{Account, AccountState, Mint, Multisig},
@@ -15,6 +16,7 @@ use solana_program::{
     decode_error::DecodeError,
     entrypoint::ProgramResult,
     msg,
+    program::set_return_data,
     program_error::{PrintProgramError, ProgramError},
     program_option::COption,
     program_pack::{IsInitialized, Pack},
@@ -761,6 +763,24 @@ impl Processor {
         unimplemented!();
     }
 
+    /// Processes a [GetAccountDataSize](enum.TokenInstruction.html) instruction
+    pub fn process_get_account_data_size(accounts: &[AccountInfo]) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let mint_account_info = next_account_info(account_info_iter)?;
+
+        check_program_account(mint_account_info.owner)?;
+        let mint_data = mint_account_info.data.borrow();
+        let state = StateWithExtensions::<Mint>::unpack(&mint_data)?;
+        let mint_extensions: Vec<ExtensionType> = state.get_extension_types()?;
+
+        let account_extensions = ExtensionType::get_account_extensions(&mint_extensions);
+
+        let account_len = get_account_len(&account_extensions);
+        set_return_data(&account_len.to_le_bytes());
+
+        Ok(())
+    }
+
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         let instruction = TokenInstruction::unpack(input)?;
@@ -863,7 +883,8 @@ impl Processor {
                 Self::process_sync_native(program_id, accounts)
             }
             TokenInstruction::GetAccountDataSize => {
-                unimplemented!();
+                msg!("Instruction: GetAccountDataSize");
+                Self::process_get_account_data_size(accounts)
             }
             TokenInstruction::InitializeMintCloseAuthority { close_authority } => {
                 msg!("Instruction: InitializeMintCloseAuthority");
@@ -1007,6 +1028,15 @@ mod tests {
     use solana_sdk::account::{
         create_account_for_test, create_is_signer_account_infos, Account as SolanaAccount,
     };
+    use std::sync::{Arc, RwLock};
+
+    lazy_static::lazy_static! {
+        static ref EXPECTED_DATA: Arc<RwLock<Vec<u8>>> = Arc::new(RwLock::new(Vec::new()));
+    }
+
+    fn set_expected_data(expected_data: Vec<u8>) {
+        *EXPECTED_DATA.write().unwrap() = expected_data;
+    }
 
     struct SyscallStubs {}
     impl solana_sdk::program_stubs::SyscallStubs for SyscallStubs {
@@ -1039,6 +1069,10 @@ mod tests {
                 *(var_addr as *mut _ as *mut Rent) = Rent::default();
             }
             solana_program::entrypoint::SUCCESS
+        }
+
+        fn sol_set_return_data(&mut self, data: &[u8]) {
+            assert_eq!(&*EXPECTED_DATA.read().unwrap(), data)
         }
     }
 
@@ -6249,6 +6283,85 @@ mod tests {
                 sync_native(&program_id, &native_account_key,).unwrap(),
                 vec![&mut native_account],
             )
+        );
+    }
+
+    #[test]
+    fn test_get_account_data_size() {
+        // see integration tests for return-data validity
+        let program_id = crate::id();
+        let owner_key = Pubkey::new_unique();
+        let mut owner_account = SolanaAccount::default();
+        let mut rent_sysvar = rent_sysvar();
+
+        // Base mint
+        let mut mint_account =
+            SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
+        let mint_key = Pubkey::new_unique();
+        do_process_instruction(
+            initialize_mint(&program_id, &mint_key, &owner_key, None, 2).unwrap(),
+            vec![&mut mint_account, &mut rent_sysvar],
+        )
+        .unwrap();
+
+        set_expected_data(get_account_len(&[]).to_le_bytes().to_vec());
+        do_process_instruction(
+            get_account_data_size(&program_id, &mint_key).unwrap(),
+            vec![&mut mint_account],
+        )
+        .unwrap();
+
+        // TODO: Extended mint
+
+        // Invalid mint
+        let mut invalid_mint_account = SolanaAccount::new(
+            account_minimum_balance(),
+            Account::get_packed_len(),
+            &program_id,
+        );
+        let invalid_mint_key = Pubkey::new_unique();
+        do_process_instruction(
+            initialize_account(&program_id, &invalid_mint_key, &mint_key, &owner_key).unwrap(),
+            vec![
+                &mut invalid_mint_account,
+                &mut mint_account,
+                &mut owner_account,
+                &mut rent_sysvar,
+            ],
+        )
+        .unwrap();
+
+        assert_eq!(
+            do_process_instruction(
+                get_account_data_size(&program_id, &invalid_mint_key).unwrap(),
+                vec![&mut invalid_mint_account],
+            ),
+            Err(ProgramError::InvalidAccountData)
+        );
+
+        // Invalid mint owner
+        let invalid_program_id = Pubkey::new_unique();
+        let mut invalid_mint_account = SolanaAccount::new(
+            mint_minimum_balance(),
+            Mint::get_packed_len(),
+            &invalid_program_id,
+        );
+        let invalid_mint_key = Pubkey::new_unique();
+        let mut instruction =
+            initialize_mint(&program_id, &invalid_mint_key, &owner_key, None, 2).unwrap();
+        instruction.program_id = invalid_program_id;
+        do_process_instruction(
+            instruction,
+            vec![&mut invalid_mint_account, &mut rent_sysvar],
+        )
+        .unwrap();
+
+        assert_eq!(
+            do_process_instruction(
+                get_account_data_size(&program_id, &invalid_mint_key).unwrap(),
+                vec![&mut invalid_mint_account],
+            ),
+            Err(ProgramError::IncorrectProgramId)
         );
     }
 }
