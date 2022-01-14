@@ -409,6 +409,18 @@ pub enum TokenInstruction {
         /// The freeze authority/multisignature of the mint.
         freeze_authority: COption<Pubkey>,
     },
+    /// Migrate native SOL from the multisig account to an associated token account.
+    /// 
+    /// This is the only way to access SOL that has been sent directly to the public
+    /// address of the multisig account.
+    /// 
+    /// Accounts expected by this instruction:
+    ///
+    ///  0. `[writable]`  The address of the token account to migrate the SOL to.
+    ///                   This account must be owned by the multisig and must be a 
+    ///                   native SOL token account.
+    ///  1. `[writable]`  The address of the multisig to migrate the SOL of
+    MigrateMultisigNative,
 }
 impl TokenInstruction {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -529,6 +541,7 @@ impl TokenInstruction {
                     decimals,
                 }
             }
+            21 => Self::MigrateMultisigNative,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -624,6 +637,9 @@ impl TokenInstruction {
                 buf.push(decimals);
                 buf.extend_from_slice(mint_authority.as_ref());
                 Self::pack_pubkey_option(freeze_authority, &mut buf);
+            }
+            &Self::MigrateMultisigNative => {
+                buf.push(21);
             }
         };
         buf
@@ -1295,6 +1311,24 @@ pub fn sync_native(
         program_id: *token_program_id,
         accounts: vec![AccountMeta::new(*account_pubkey, false)],
         data: TokenInstruction::SyncNative.pack(),
+    })
+}
+
+/// Creates a `SyncNative` instruction
+pub fn migrate_multisig_native(
+    token_program_id: &Pubkey,
+    multisig_pubkey: &Pubkey,
+    dest_token_account_pubkey: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts: vec![
+            AccountMeta::new(*dest_token_account_pubkey, false),
+            AccountMeta::new(*multisig_pubkey, false),
+        ],
+        data: TokenInstruction::MigrateMultisigNative.pack(),
     })
 }
 

@@ -726,6 +726,64 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes a [MigrateMultisigNative](enum.TokenInstruction.html) instruction
+    pub fn process_migrate_multisig_native(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+    ) -> ProgramResult {
+        // Collect account info
+        let account_info_iter = &mut accounts.iter();
+        let dest_token_account_info = next_account_info(account_info_iter)?;
+        let multisig_account_info = next_account_info(account_info_iter)?;
+
+        // Validate our program owns the multisig and token accounts
+        if multisig_account_info.owner != program_id {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+        if dest_token_account_info.owner != program_id {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+
+        // Parse the accounts
+        Multisig::unpack(&multisig_account_info.data.borrow())?;
+        let token_account = Account::unpack(&dest_token_account_info.data.borrow())?;
+
+        // Make sure the multisig is the owner of the token account
+        if &token_account.owner != multisig_account_info.key {
+            return Err(TokenError::OwnerMismatch.into());
+        }
+        // Make sure that the token account is a native SOL account
+        if !token_account.is_native() || token_account.mint != crate::native_mint::id() {
+            return Err(TokenError::NonNativeNotSupported.into());
+        }
+
+        // Calculate the rent-exempt reservation for the multisig account
+        let rent = Rent::get()?;
+        let multisig_rent_exempt_reserve = rent.minimum_balance(multisig_account_info.data_len());
+
+        let transfer_ammount = multisig_account_info
+            .lamports()
+            .checked_sub(multisig_rent_exempt_reserve)
+            .ok_or(TokenError::NotRentExempt)?;
+
+        // TODO: Should this instruction only be able to be executed with signatures from the
+        // multisig signers? It seems harmless, similar to the SyncNative instruction.
+
+        let multisig_starting_lamports = multisig_account_info.lamports();
+        **multisig_account_info.lamports.borrow_mut() = multisig_starting_lamports
+            .checked_sub(transfer_ammount)
+            .ok_or(TokenError::Overflow)?;
+
+        let dest_token_account_starting_lamports = dest_token_account_info.lamports();
+        **dest_token_account_info.lamports.borrow_mut() = dest_token_account_starting_lamports
+            .checked_add(transfer_ammount)
+            .ok_or(TokenError::Overflow)?;
+
+        Self::process_sync_native(program_id, accounts)?;
+
+        Ok(())
+    }
+
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         let instruction = TokenInstruction::unpack(input)?;
@@ -825,6 +883,10 @@ impl Processor {
             TokenInstruction::SyncNative => {
                 msg!("Instruction: SyncNative");
                 Self::process_sync_native(program_id, accounts)
+            }
+            TokenInstruction::MigrateMultisigNative => {
+                msg!("Instruction: MigrateMultisigNative");
+                Self::process_migrate_multisig_native(program_id, accounts)
             }
         }
     }

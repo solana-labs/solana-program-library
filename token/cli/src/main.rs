@@ -1631,6 +1631,35 @@ fn command_sync_native(
     })
 }
 
+fn command_migrate_multisig_native(
+    multisig_account_address: Pubkey,
+    dest_token_account_address: Pubkey,
+    bulk_signers: Vec<Box<dyn Signer>>,
+    config: &Config,
+) -> CommandResult {
+    let tx_return = handle_tx(
+        &CliSignerInfo {
+            signers: bulk_signers,
+        },
+        config,
+        false,
+        0,
+        vec![migrate_multisig_native(
+            &spl_token::id(),
+            &multisig_account_address,
+            &dest_token_account_address,
+        )?],
+    )?;
+    Ok(match tx_return {
+        TransactionReturnData::CliSignature(signature) => {
+            config.output_format.formatted_string(&signature)
+        }
+        TransactionReturnData::CliSignOnlyData(sign_only_data) => {
+            config.output_format.formatted_string(&sign_only_data)
+        }
+    })
+}
+
 struct SignOnlyNeedsFullMintSpec {}
 impl offline::ArgsConfig for SignOnlyNeedsFullMintSpec {
     fn sign_only_arg<'a, 'b>(&self, arg: Arg<'a, 'b>) -> Arg<'a, 'b> {
@@ -2441,6 +2470,27 @@ fn main() -> Result<(), Error> {
                         .help("Specify the specific token account address to sync"),
                 ),
         )
+        .subcommand(
+            SubCommand::with_name("migrate-multisig-native")
+                .about("Migrate native SOL from a multisig address to an associated token \
+                        account")
+                .arg(
+                    Arg::with_name("multisig-address")
+                        .validator(is_valid_pubkey)
+                        .value_name("MULTISIG_ADDRESS")
+                        .takes_value(true)
+                        .required(true)
+                        .help("Specify the address of the multisig to sync"),
+                )
+                .arg(
+                    Arg::with_name("token-account-address")
+                        .validator(is_valid_pubkey)
+                        .value_name("TOKEN_ACCOUNT_ADDRESS")
+                        .takes_value(true)
+                        .required(true)
+                        .help("Specify the address of the token account to move the native SOL to"),
+                ),
+        )
         .get_matches();
 
     let mut wallet_manager = None;
@@ -2954,6 +3004,27 @@ fn main() -> Result<(), Error> {
             );
 
             command_sync_native(address, bulk_signers, &config)
+        }
+        ("migrate-multisig-native", Some(arg_matches)) => {
+            let multisig_address = config.associated_token_address_for_token_or_override(
+                arg_matches,
+                "multisig-address",
+                &mut wallet_manager,
+                Some(native_mint::id()),
+            );
+            let token_account_address = config.associated_token_address_for_token_or_override(
+                arg_matches,
+                "token-account-address",
+                &mut wallet_manager,
+                Some(native_mint::id()),
+            );
+
+            command_migrate_multisig_native(
+                multisig_address,
+                token_account_address,
+                bulk_signers,
+                &config,
+            )
         }
         _ => unreachable!(),
     }
