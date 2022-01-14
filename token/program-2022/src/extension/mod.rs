@@ -481,7 +481,7 @@ impl ExtensionType {
     }
 
     /// Get the required account data length for the given ExtensionTypes
-    pub fn get_account_len<S: BaseState>(extension_types: &[ExtensionType]) -> usize {
+    pub fn get_account_len<S: BaseState>(extension_types: &[Self]) -> usize {
         if extension_types.is_empty() {
             S::LEN
         } else {
