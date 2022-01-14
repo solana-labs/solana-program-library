@@ -373,6 +373,38 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         self.init_or_get_extension(true)
     }
 
+    /// Packs the relevant Extension of an ExtensionType into an open slot if not already
+    /// found in the data buffer, otherwise overwrites the Extension
+    pub fn init_extension_from_type(
+        &mut self,
+        extension_type: ExtensionType,
+    ) -> Result<(), ProgramError> {
+        match extension_type {
+            ExtensionType::Uninitialized => Ok(()),
+            ExtensionType::TransferFeeConfig => {
+                self.init_extension::<TransferFeeConfig>().map(|_| ())
+            }
+            ExtensionType::TransferFeeAmount => {
+                self.init_extension::<TransferFeeAmount>().map(|_| ())
+            }
+            ExtensionType::MintCloseAuthority => {
+                self.init_extension::<MintCloseAuthority>().map(|_| ())
+            }
+            ExtensionType::ConfidentialTransferMint => self
+                .init_extension::<ConfidentialTransferMint>()
+                .map(|_| ()),
+            ExtensionType::ConfidentialTransferAccount => self
+                .init_extension::<ConfidentialTransferAccount>()
+                .map(|_| ()),
+            #[cfg(test)]
+            ExtensionType::AccountPaddingTest => {
+                self.init_extension::<AccountPaddingTest>().map(|_| ())
+            }
+            #[cfg(test)]
+            ExtensionType::MintPaddingTest => self.init_extension::<MintPaddingTest>().map(|_| ()),
+        }
+    }
+
     /// Write the account type into the buffer, done during the base
     /// state initialization
     /// Noops if there is no room for an extension in the account, needed for
