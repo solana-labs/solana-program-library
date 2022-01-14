@@ -1137,6 +1137,25 @@ mod tests {
         Rent::default().minimum_balance(Multisig::get_packed_len())
     }
 
+    fn native_mint() -> SolanaAccount {
+        let mut rent_sysvar = rent_sysvar();
+        let mut mint_account =
+            SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &crate::id());
+        do_process_instruction(
+            initialize_mint(
+                &crate::id(),
+                &crate::native_mint::id(),
+                &Pubkey::default(),
+                None,
+                9,
+            )
+            .unwrap(),
+            vec![&mut mint_account, &mut rent_sysvar],
+        )
+        .unwrap();
+        mint_account
+    }
+
     #[test]
     fn test_print_error() {
         let error = return_token_error_as_program_error();
@@ -5355,8 +5374,7 @@ mod tests {
     #[test]
     fn test_native_token() {
         let program_id = crate::id();
-        let mut mint_account =
-            SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
+        let mut mint_account = native_mint();
         let account_key = Pubkey::new_unique();
         let mut account_account = SolanaAccount::new(
             account_minimum_balance() + 40,
