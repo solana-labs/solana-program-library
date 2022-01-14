@@ -295,7 +295,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         let (base_data, rest) = input.split_at_mut(S::LEN);
         let base = S::unpack_unchecked(base_data)?;
         if base.is_initialized() {
-            return Err(ProgramError::InvalidAccountData);
+            return Err(TokenError::AlreadyInUse.into());
         }
         if let Some((account_type_index, tlv_start_index)) = type_and_tlv_indices::<S>(rest)? {
             let account_type = AccountType::try_from(rest[account_type_index])
@@ -783,7 +783,7 @@ mod test {
         // unpack uninitialized will now fail because the Mint is now initialized
         assert_eq!(
             StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer.clone()),
-            Err(ProgramError::InvalidAccountData),
+            Err(TokenError::AlreadyInUse.into()),
         );
 
         // check unpacking
