@@ -6343,6 +6343,19 @@ mod tests {
         )
         .unwrap();
 
+        // Native mint
+        let mut mint_account = native_mint();
+        set_expected_data(
+            ExtensionType::get_account_len::<Account>(&[])
+                .to_le_bytes()
+                .to_vec(),
+        );
+        do_process_instruction(
+            get_account_data_size(&program_id, &mint_key).unwrap(),
+            vec![&mut mint_account],
+        )
+        .unwrap();
+
         // TODO: Extended mint
 
         // Invalid mint
