@@ -18,9 +18,8 @@ Please note that only the lending program deployed to devnet is currently operat
 
 | Cluster | Program Address |
 | --- | --- |
-| Mainnet Beta | [`LendZqTs8gn5CTSJU1jWKhKuVpjJGom45nnwPb2AMTi`](https://explorer.solana.com/address/LendZqTs7gn5CTSJU1jWKhKuVpjJGom45nnwPb2AMTi) |
-| Testnet | [`6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH`](https://explorer.solana.com/address/6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH?cluster=testnet) |
-| Devnet | [`6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH`](https://explorer.solana.com/address/6TvznH3B2e3p2mbhufNBpgSrLx6UkgvxtVQvopEZ2kuH?cluster=devnet) |
+| Mainnet Beta | [`So1endDq2YkqhipRh3WViPa8hdiSpxWy6z3Z6tMCpAo`](https://explorer.solana.com/address/So1endDq2YkqhipRh3WViPa8hdiSpxWy6z3Z6tMCpAo) |
+| Devnet | [`ALend7Ketfx5bxh6ghsCDXAoDrhvEmsXT3cynB6aPLgx`](https://explorer.solana.com/address/ALend7Ketfx5bxh6ghsCDXAoDrhvEmsXT3cynB6aPLgx?cluster=devnet) |
 
 ### Deploy a lending program (optional)
 
