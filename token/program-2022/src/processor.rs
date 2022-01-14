@@ -19,7 +19,7 @@ use solana_program::{
     program::set_return_data,
     program_error::{PrintProgramError, ProgramError},
     program_option::COption,
-    program_pack::{IsInitialized, Pack},
+    program_pack::Pack,
     pubkey::Pubkey,
     sysvar::{rent::Rent, Sysvar},
 };
@@ -102,10 +102,10 @@ impl Processor {
             Rent::get()?
         };
 
-        let mut account = Account::unpack_unchecked(&new_account_info.data.borrow())?;
-        if account.is_initialized() {
-            return Err(TokenError::AlreadyInUse.into());
-        }
+        let mut account_data = new_account_info.data.borrow_mut();
+        // unpack_uninitialized checks account.base.is_initialized() under the hood
+        let mut account =
+            StateWithExtensionsMut::<Account>::unpack_uninitialized(&mut account_data)?;
 
         if !rent.is_exempt(new_account_info.lamports(), new_account_info_data_len) {
             return Err(TokenError::NotRentExempt.into());
@@ -116,24 +116,29 @@ impl Processor {
                 .map_err(|_| Into::<ProgramError>::into(TokenError::InvalidMint))?;
         }
 
-        account.mint = *mint_info.key;
-        account.owner = *owner;
-        account.delegate = COption::None;
-        account.delegated_amount = 0;
-        account.state = AccountState::Initialized;
+        let required_extensions = Self::get_required_account_extensions(mint_info)?;
+        for extension in required_extensions {
+            account.init_extension_from_type(extension)?;
+        }
+
+        account.base.mint = *mint_info.key;
+        account.base.owner = *owner;
+        account.base.delegate = COption::None;
+        account.base.delegated_amount = 0;
+        account.base.state = AccountState::Initialized;
         if *mint_info.key == crate::native_mint::id() {
             let rent_exempt_reserve = rent.minimum_balance(new_account_info_data_len);
-            account.is_native = COption::Some(rent_exempt_reserve);
-            account.amount = new_account_info
+            account.base.is_native = COption::Some(rent_exempt_reserve);
+            account.base.amount = new_account_info
                 .lamports()
                 .checked_sub(rent_exempt_reserve)
                 .ok_or(TokenError::Overflow)?;
         } else {
-            account.is_native = COption::None;
-            account.amount = 0;
+            account.base.is_native = COption::None;
+            account.base.amount = 0;
         };
 
-        Account::pack(account, &mut new_account_info.data.borrow_mut())?;
+        account.pack_base();
 
         Ok(())
     }
