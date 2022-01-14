@@ -5,8 +5,7 @@ use crate::{
     error::TokenError,
     extension::{
         confidential_transfer::{self, ConfidentialTransferAccount},
-        get_account_extensions, get_account_len, transfer_fee, ExtensionType, StateWithExtensions,
-        StateWithExtensionsMut,
+        get_account_len, transfer_fee, ExtensionType, StateWithExtensions, StateWithExtensionsMut,
     },
     instruction::{is_valid_signer_index, AuthorityType, TokenInstruction, MAX_SIGNERS},
     state::{Account, AccountState, Mint, Multisig},
@@ -774,7 +773,7 @@ impl Processor {
         let state = StateWithExtensions::<Mint>::unpack(&mint_data)?;
         let mint_extensions: Vec<ExtensionType> = state.get_extension_types()?;
 
-        let account_extensions = get_account_extensions(&mint_extensions);
+        let account_extensions = ExtensionType::get_account_extensions(&mint_extensions);
 
         let account_len = get_account_len(&account_extensions);
         set_return_data(&account_len.to_le_bytes());
