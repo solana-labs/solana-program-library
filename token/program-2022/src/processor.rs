@@ -768,12 +768,7 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
         let mint_account_info = next_account_info(account_info_iter)?;
 
-        check_program_account(mint_account_info.owner)?;
-        let mint_data = mint_account_info.data.borrow();
-        let state = StateWithExtensions::<Mint>::unpack(&mint_data)?;
-        let mint_extensions: Vec<ExtensionType> = state.get_extension_types()?;
-
-        let account_extensions = ExtensionType::get_account_extensions(&mint_extensions);
+        let account_extensions = Self::get_required_account_extensions(mint_account_info)?;
 
         let account_len = ExtensionType::get_account_len::<Account>(&account_extensions);
         set_return_data(&account_len.to_le_bytes());
@@ -946,6 +941,16 @@ impl Processor {
             return Err(ProgramError::MissingRequiredSignature);
         }
         Ok(())
+    }
+
+    fn get_required_account_extensions(
+        mint_account_info: &AccountInfo,
+    ) -> Result<Vec<ExtensionType>, ProgramError> {
+        check_program_account(mint_account_info.owner)?;
+        let mint_data = mint_account_info.data.borrow();
+        let state = StateWithExtensions::<Mint>::unpack(&mint_data)?;
+        let mint_extensions: Vec<ExtensionType> = state.get_extension_types()?;
+        Ok(ExtensionType::get_account_extensions(&mint_extensions))
     }
 }
 
