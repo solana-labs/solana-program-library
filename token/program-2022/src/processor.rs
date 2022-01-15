@@ -114,7 +114,7 @@ impl Processor {
         // get_required_account_extensions checks mint validity
         let required_extensions = Self::get_required_account_extensions(mint_info)?;
         if ExtensionType::get_account_len::<Account>(&required_extensions)
-            > new_account_info_data_len
+            != new_account_info_data_len
         {
             return Err(ProgramError::InvalidAccountData);
         }
