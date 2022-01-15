@@ -957,7 +957,9 @@ impl Processor {
         let state = StateWithExtensions::<Mint>::unpack(&mint_data)
             .map_err(|_| Into::<ProgramError>::into(TokenError::InvalidMint))?;
         let mint_extensions: Vec<ExtensionType> = state.get_extension_types()?;
-        Ok(ExtensionType::get_account_extensions(&mint_extensions))
+        Ok(ExtensionType::get_required_init_account_extensions(
+            &mint_extensions,
+        ))
     }
 }
 
