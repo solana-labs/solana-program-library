@@ -19,7 +19,7 @@ use solana_program::{
     program::set_return_data,
     program_error::{PrintProgramError, ProgramError},
     program_option::COption,
-    program_pack::{IsInitialized, Pack},
+    program_pack::Pack,
     pubkey::Pubkey,
     sysvar::{rent::Rent, Sysvar},
 };
@@ -102,38 +102,44 @@ impl Processor {
             Rent::get()?
         };
 
-        let mut account = Account::unpack_unchecked(&new_account_info.data.borrow())?;
-        if account.is_initialized() {
-            return Err(TokenError::AlreadyInUse.into());
-        }
+        let mut account_data = new_account_info.data.borrow_mut();
+        // unpack_uninitialized checks account.base.is_initialized() under the hood
+        let mut account =
+            StateWithExtensionsMut::<Account>::unpack_uninitialized(&mut account_data)?;
 
         if !rent.is_exempt(new_account_info.lamports(), new_account_info_data_len) {
             return Err(TokenError::NotRentExempt.into());
         }
 
-        if *mint_info.key != crate::native_mint::id() {
-            let _ = Mint::unpack(&mint_info.data.borrow_mut())
-                .map_err(|_| Into::<ProgramError>::into(TokenError::InvalidMint))?;
+        // get_required_account_extensions checks mint validity
+        let required_extensions = Self::get_required_account_extensions(mint_info)?;
+        if ExtensionType::get_account_len::<Account>(&required_extensions)
+            != new_account_info_data_len
+        {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        for extension in required_extensions {
+            account.init_account_extension_from_type(extension)?;
         }
 
-        account.mint = *mint_info.key;
-        account.owner = *owner;
-        account.delegate = COption::None;
-        account.delegated_amount = 0;
-        account.state = AccountState::Initialized;
+        account.base.mint = *mint_info.key;
+        account.base.owner = *owner;
+        account.base.delegate = COption::None;
+        account.base.delegated_amount = 0;
+        account.base.state = AccountState::Initialized;
         if *mint_info.key == crate::native_mint::id() {
             let rent_exempt_reserve = rent.minimum_balance(new_account_info_data_len);
-            account.is_native = COption::Some(rent_exempt_reserve);
-            account.amount = new_account_info
+            account.base.is_native = COption::Some(rent_exempt_reserve);
+            account.base.amount = new_account_info
                 .lamports()
                 .checked_sub(rent_exempt_reserve)
                 .ok_or(TokenError::Overflow)?;
         } else {
-            account.is_native = COption::None;
-            account.amount = 0;
+            account.base.is_native = COption::None;
+            account.base.amount = 0;
         };
 
-        Account::pack(account, &mut new_account_info.data.borrow_mut())?;
+        account.pack_base();
 
         Ok(())
     }
@@ -768,12 +774,7 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
         let mint_account_info = next_account_info(account_info_iter)?;
 
-        check_program_account(mint_account_info.owner)?;
-        let mint_data = mint_account_info.data.borrow();
-        let state = StateWithExtensions::<Mint>::unpack(&mint_data)?;
-        let mint_extensions: Vec<ExtensionType> = state.get_extension_types()?;
-
-        let account_extensions = ExtensionType::get_account_extensions(&mint_extensions);
+        let account_extensions = Self::get_required_account_extensions(mint_account_info)?;
 
         let account_len = ExtensionType::get_account_len::<Account>(&account_extensions);
         set_return_data(&account_len.to_le_bytes());
@@ -946,6 +947,19 @@ impl Processor {
             return Err(ProgramError::MissingRequiredSignature);
         }
         Ok(())
+    }
+
+    fn get_required_account_extensions(
+        mint_account_info: &AccountInfo,
+    ) -> Result<Vec<ExtensionType>, ProgramError> {
+        check_program_account(mint_account_info.owner)?;
+        let mint_data = mint_account_info.data.borrow();
+        let state = StateWithExtensions::<Mint>::unpack(&mint_data)
+            .map_err(|_| Into::<ProgramError>::into(TokenError::InvalidMint))?;
+        let mint_extensions: Vec<ExtensionType> = state.get_extension_types()?;
+        Ok(ExtensionType::get_required_init_account_extensions(
+            &mint_extensions,
+        ))
     }
 }
 
@@ -1125,6 +1139,25 @@ mod tests {
 
     fn multisig_minimum_balance() -> u64 {
         Rent::default().minimum_balance(Multisig::get_packed_len())
+    }
+
+    fn native_mint() -> SolanaAccount {
+        let mut rent_sysvar = rent_sysvar();
+        let mut mint_account =
+            SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &crate::id());
+        do_process_instruction(
+            initialize_mint(
+                &crate::id(),
+                &crate::native_mint::id(),
+                &Pubkey::default(),
+                None,
+                9,
+            )
+            .unwrap(),
+            vec![&mut mint_account, &mut rent_sysvar],
+        )
+        .unwrap();
+        mint_account
     }
 
     #[test]
@@ -5345,8 +5378,7 @@ mod tests {
     #[test]
     fn test_native_token() {
         let program_id = crate::id();
-        let mut mint_account =
-            SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
+        let mut mint_account = native_mint();
         let account_key = Pubkey::new_unique();
         let mut account_account = SolanaAccount::new(
             account_minimum_balance() + 40,
@@ -6315,6 +6347,19 @@ mod tests {
         )
         .unwrap();
 
+        // Native mint
+        let mut mint_account = native_mint();
+        set_expected_data(
+            ExtensionType::get_account_len::<Account>(&[])
+                .to_le_bytes()
+                .to_vec(),
+        );
+        do_process_instruction(
+            get_account_data_size(&program_id, &mint_key).unwrap(),
+            vec![&mut mint_account],
+        )
+        .unwrap();
+
         // TODO: Extended mint
 
         // Invalid mint
@@ -6340,7 +6385,7 @@ mod tests {
                 get_account_data_size(&program_id, &invalid_mint_key).unwrap(),
                 vec![&mut invalid_mint_account],
             ),
-            Err(ProgramError::InvalidAccountData)
+            Err(TokenError::InvalidMint.into())
         );
 
         // Invalid mint owner

@@ -295,7 +295,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         let (base_data, rest) = input.split_at_mut(S::LEN);
         let base = S::unpack_unchecked(base_data)?;
         if base.is_initialized() {
-            return Err(ProgramError::InvalidAccountData);
+            return Err(TokenError::AlreadyInUse.into());
         }
         if let Some((account_type_index, tlv_start_index)) = type_and_tlv_indices::<S>(rest)? {
             let account_type = AccountType::try_from(rest[account_type_index])
@@ -368,9 +368,35 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
     }
 
     /// Packs the extension data into an open slot if not already found in the
-    /// data buffer, otherwise overwrites itself
+    /// data buffer
     pub fn init_extension<V: Extension>(&mut self) -> Result<&mut V, ProgramError> {
         self.init_or_get_extension(true)
+    }
+
+    /// If `extension_type` is an Account-associated ExtensionType that requires initialization on
+    /// InitializeAccount, this method packs the relevant Extension of an ExtensionType into an
+    /// open slot if not already found in the data buffer. For all other ExtensionTypes, this is a
+    /// no-op.
+    pub fn init_account_extension_from_type(
+        &mut self,
+        extension_type: ExtensionType,
+    ) -> Result<(), ProgramError> {
+        if extension_type.get_account_type() != AccountType::Account {
+            return Ok(());
+        }
+        match extension_type {
+            ExtensionType::TransferFeeAmount => {
+                self.init_extension::<TransferFeeAmount>().map(|_| ())
+            }
+            // ConfidentialTransfers are currently opt-in only, so this is a no-op for extra safety
+            // on InitializeAccount
+            ExtensionType::ConfidentialTransferAccount => Ok(()),
+            #[cfg(test)]
+            ExtensionType::AccountPaddingTest => {
+                self.init_extension::<AccountPaddingTest>().map(|_| ())
+            }
+            _ => unreachable!(),
+        }
     }
 
     /// Write the account type into the buffer, done during the base
@@ -521,9 +547,9 @@ impl ExtensionType {
         }
     }
 
-    /// Get the list of required AccountType::Account ExtensionTypes based on a set of
-    /// AccountType::Mint ExtensionTypes
-    pub fn get_account_extensions(mint_extension_types: &[Self]) -> Vec<Self> {
+    /// Based on a set of AccountType::Mint ExtensionTypes, get the list of AccountType::Account
+    /// ExtensionTypes required on InitializeAccount
+    pub fn get_required_init_account_extensions(mint_extension_types: &[Self]) -> Vec<Self> {
         let mut account_extension_types = vec![];
         for extension_type in mint_extension_types {
             #[allow(clippy::single_match)]
@@ -783,7 +809,7 @@ mod test {
         // unpack uninitialized will now fail because the Mint is now initialized
         assert_eq!(
             StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer.clone()),
-            Err(ProgramError::InvalidAccountData),
+            Err(TokenError::AlreadyInUse.into()),
         );
 
         // check unpacking
@@ -1129,14 +1155,14 @@ mod test {
     }
 
     #[test]
-    fn test_get_account_extensions() {
+    fn test_get_required_init_account_extensions() {
         // Some mint extensions with no required account extensions
         let mint_extensions = vec![
             ExtensionType::MintCloseAuthority,
             ExtensionType::Uninitialized,
         ];
         assert_eq!(
-            ExtensionType::get_account_extensions(&mint_extensions),
+            ExtensionType::get_required_init_account_extensions(&mint_extensions),
             vec![]
         );
 
@@ -1146,7 +1172,7 @@ mod test {
             ExtensionType::MintCloseAuthority,
         ];
         assert_eq!(
-            ExtensionType::get_account_extensions(&mint_extensions),
+            ExtensionType::get_required_init_account_extensions(&mint_extensions),
             vec![ExtensionType::TransferFeeAmount]
         );
 
@@ -1156,7 +1182,7 @@ mod test {
             ExtensionType::MintPaddingTest,
         ];
         assert_eq!(
-            ExtensionType::get_account_extensions(&mint_extensions),
+            ExtensionType::get_required_init_account_extensions(&mint_extensions),
             vec![
                 ExtensionType::TransferFeeAmount,
                 ExtensionType::AccountPaddingTest
@@ -1169,7 +1195,7 @@ mod test {
             ExtensionType::TransferFeeConfig,
         ];
         assert_eq!(
-            ExtensionType::get_account_extensions(&mint_extensions),
+            ExtensionType::get_required_init_account_extensions(&mint_extensions),
             vec![
                 ExtensionType::TransferFeeAmount,
                 ExtensionType::TransferFeeAmount
