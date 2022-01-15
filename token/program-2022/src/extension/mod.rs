@@ -368,14 +368,14 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
     }
 
     /// Packs the extension data into an open slot if not already found in the
-    /// data buffer, otherwise overwrites itself
+    /// data buffer
     pub fn init_extension<V: Extension>(&mut self) -> Result<&mut V, ProgramError> {
         self.init_or_get_extension(true)
     }
 
     /// If `extension_type` is an Account-associated ExtensionType, this method packs the relevant
-    /// Extension of an ExtensionType into an open slot if not already found in the data buffer,
-    /// otherwise overwrites the Extension. For all other ExtensionTypes, this is a no-op.
+    /// Extension of an ExtensionType into an open slot if not already found in the data buffer.
+    /// For all other ExtensionTypes, this is a no-op.
     pub fn init_account_extension_from_type(
         &mut self,
         extension_type: ExtensionType,
