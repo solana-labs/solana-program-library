@@ -111,11 +111,7 @@ impl Processor {
             return Err(TokenError::NotRentExempt.into());
         }
 
-        if *mint_info.key != crate::native_mint::id() {
-            let _ = Mint::unpack(&mint_info.data.borrow_mut())
-                .map_err(|_| Into::<ProgramError>::into(TokenError::InvalidMint))?;
-        }
-
+        // get_required_account_extensions checks mint validity
         let required_extensions = Self::get_required_account_extensions(mint_info)?;
         for extension in required_extensions {
             account.init_extension_from_type(extension)?;
@@ -953,7 +949,8 @@ impl Processor {
     ) -> Result<Vec<ExtensionType>, ProgramError> {
         check_program_account(mint_account_info.owner)?;
         let mint_data = mint_account_info.data.borrow();
-        let state = StateWithExtensions::<Mint>::unpack(&mint_data)?;
+        let state = StateWithExtensions::<Mint>::unpack(&mint_data)
+            .map_err(|_| Into::<ProgramError>::into(TokenError::InvalidMint))?;
         let mint_extensions: Vec<ExtensionType> = state.get_extension_types()?;
         Ok(ExtensionType::get_account_extensions(&mint_extensions))
     }
@@ -6381,7 +6378,7 @@ mod tests {
                 get_account_data_size(&program_id, &invalid_mint_key).unwrap(),
                 vec![&mut invalid_mint_account],
             ),
-            Err(ProgramError::InvalidAccountData)
+            Err(TokenError::InvalidMint.into())
         );
 
         // Invalid mint owner
