@@ -114,7 +114,7 @@ impl Processor {
         // get_required_account_extensions checks mint validity
         let required_extensions = Self::get_required_account_extensions(mint_info)?;
         for extension in required_extensions {
-            account.init_extension_from_type(extension)?;
+            account.init_account_extension_from_type(extension)?;
         }
 
         account.base.mint = *mint_info.key;

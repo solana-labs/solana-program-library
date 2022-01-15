@@ -373,26 +373,20 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         self.init_or_get_extension(true)
     }
 
-    /// Packs the relevant Extension of an ExtensionType into an open slot if not already
-    /// found in the data buffer, otherwise overwrites the Extension
-    pub fn init_extension_from_type(
+    /// If `extension_type` is an Account-associated ExtensionType, this method packs the relevant
+    /// Extension of an ExtensionType into an open slot if not already found in the data buffer,
+    /// otherwise overwrites the Extension. For all other ExtensionTypes, this is a no-op.
+    pub fn init_account_extension_from_type(
         &mut self,
         extension_type: ExtensionType,
     ) -> Result<(), ProgramError> {
+        if extension_type.get_account_type() != AccountType::Account {
+            return Ok(());
+        }
         match extension_type {
-            ExtensionType::Uninitialized => Ok(()),
-            ExtensionType::TransferFeeConfig => {
-                self.init_extension::<TransferFeeConfig>().map(|_| ())
-            }
             ExtensionType::TransferFeeAmount => {
                 self.init_extension::<TransferFeeAmount>().map(|_| ())
             }
-            ExtensionType::MintCloseAuthority => {
-                self.init_extension::<MintCloseAuthority>().map(|_| ())
-            }
-            ExtensionType::ConfidentialTransferMint => self
-                .init_extension::<ConfidentialTransferMint>()
-                .map(|_| ()),
             ExtensionType::ConfidentialTransferAccount => self
                 .init_extension::<ConfidentialTransferAccount>()
                 .map(|_| ()),
@@ -400,8 +394,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
             ExtensionType::AccountPaddingTest => {
                 self.init_extension::<AccountPaddingTest>().map(|_| ())
             }
-            #[cfg(test)]
-            ExtensionType::MintPaddingTest => self.init_extension::<MintPaddingTest>().map(|_| ()),
+            _ => unreachable!(),
         }
     }
 
