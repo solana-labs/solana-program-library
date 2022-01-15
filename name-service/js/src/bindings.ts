@@ -169,7 +169,8 @@ export async function transferNameOwnership(
     nameAccountKey,
     newOwner,
     curentNameOwner,
-    nameClass
+    nameClass,
+    nameParent
   );
 
   return transferInstr;
