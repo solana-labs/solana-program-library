@@ -411,16 +411,16 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         S::pack_into_slice(&self.base, self.base_data);
     }
 
-    /// Packs the extension data into an open slot if not already found in the
-    /// data buffer
+    /// Packs the default extension data into an open slot if not already found in the
+    /// data buffer, otherwise overwrites the existing extension with the default state
     pub fn init_extension<V: Extension>(&mut self) -> Result<&mut V, ProgramError> {
         self.init_or_get_extension(true)
     }
 
     /// If `extension_type` is an Account-associated ExtensionType that requires initialization on
-    /// InitializeAccount, this method packs the relevant Extension of an ExtensionType into an
-    /// open slot if not already found in the data buffer. For all other ExtensionTypes, this is a
-    /// no-op.
+    /// InitializeAccount, this method packs the default relevant Extension of an ExtensionType
+    /// into an open slot if not already found in the data buffer, otherwise overwrites the
+    /// existing extension with the default state. For all other ExtensionTypes, this is a no-op.
     pub fn init_account_extension_from_type(
         &mut self,
         extension_type: ExtensionType,
