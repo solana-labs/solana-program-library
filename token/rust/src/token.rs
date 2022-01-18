@@ -1,7 +1,8 @@
-use super::client::{ProgramClient, ProgramClientError, SendTransaction};
+use crate::client::{ProgramClient, ProgramClientError, SendTransaction};
 use solana_sdk::{
     instruction::Instruction,
     program_error::ProgramError,
+    program_option::COption,
     program_pack::Pack,
     pubkey::Pubkey,
     signer::{signers::Signers, Signer},
@@ -9,7 +10,11 @@ use solana_sdk::{
     transaction::Transaction,
 };
 use spl_associated_token_account::{create_associated_token_account, get_associated_token_address};
-use spl_token_2022::{extension::ExtensionType, instruction, state};
+use spl_token_2022::{
+    extension::{ExtensionType, StateWithExtensionsOwned},
+    id, instruction,
+    state::{Account, Mint},
+};
 use std::{fmt, sync::Arc};
 use thiserror::Error;
 
@@ -25,6 +30,41 @@ pub enum TokenError {
     AccountInvalidOwner,
     #[error("invalid account mint")]
     AccountInvalidMint,
+}
+impl PartialEq for TokenError {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            // TODO not great, but workable for tests
+            (Self::Client(ref a), Self::Client(ref b)) => a.to_string() == b.to_string(),
+            (Self::Program(ref a), Self::Program(ref b)) => a == b,
+            (Self::AccountNotFound, Self::AccountNotFound) => true,
+            (Self::AccountInvalidOwner, Self::AccountInvalidOwner) => true,
+            (Self::AccountInvalidMint, Self::AccountInvalidMint) => true,
+            _ => false,
+        }
+    }
+}
+
+/// Encapsulates initializing an extension
+#[derive(Clone, Debug, PartialEq)]
+pub enum ExtensionInitializationParams {
+    InitializeMintCloseAuthority { close_authority: COption<Pubkey> },
+}
+impl ExtensionInitializationParams {
+    /// Get the extension type associated with the init params
+    pub fn extension(&self) -> ExtensionType {
+        match self {
+            Self::InitializeMintCloseAuthority { .. } => ExtensionType::MintCloseAuthority,
+        }
+    }
+    /// Generate an appropriate initialization instruction for the given mint
+    pub fn instruction(self, mint: &Pubkey) -> Instruction {
+        match self {
+            Self::InitializeMintCloseAuthority { close_authority } => {
+                instruction::initialize_mint_close_authority(&id(), mint, close_authority).unwrap()
+            }
+        }
+    }
 }
 
 pub type TokenResult<T> = Result<T, TokenError>;
@@ -73,7 +113,7 @@ where
         }
     }
 
-    async fn process_ixs<S2: Signers>(
+    pub async fn process_ixs<S2: Signers>(
         &self,
         instructions: &[Instruction],
         signing_keypairs: &S2,
@@ -105,26 +145,34 @@ where
         mint_authority: &'a Pubkey,
         freeze_authority: Option<&'a Pubkey>,
         decimals: u8,
-        extension_types: &'a [ExtensionType],
-        extension_instructions: &'a [Instruction],
+        extension_initialization_params: Vec<ExtensionInitializationParams>,
     ) -> TokenResult<Self> {
-        let space = ExtensionType::get_account_len::<state::Mint>(extension_types);
+        let mint_pubkey = mint_account.pubkey();
+        let extension_types = extension_initialization_params
+            .iter()
+            .map(|e| e.extension())
+            .collect::<Vec<_>>();
+        let space = ExtensionType::get_account_len::<Mint>(&extension_types);
         let token = Self::new(client, mint_account.pubkey(), payer);
         let mut instructions = vec![system_instruction::create_account(
             &token.payer.pubkey(),
-            &mint_account.pubkey(),
+            &mint_pubkey,
             token
                 .client
                 .get_minimum_balance_for_rent_exemption(space)
                 .await
                 .map_err(TokenError::Client)?,
             space as u64,
-            &spl_token_2022::id(),
+            &id(),
         )];
-        instructions.extend_from_slice(extension_instructions);
+        let mut init_instructions = extension_initialization_params
+            .into_iter()
+            .map(|e| e.instruction(&mint_pubkey))
+            .collect::<Vec<_>>();
+        instructions.append(&mut init_instructions);
         instructions.push(instruction::initialize_mint(
-            &spl_token_2022::id(),
-            &mint_account.pubkey(),
+            &id(),
+            &mint_pubkey,
             mint_authority,
             freeze_authority,
             decimals,
@@ -166,18 +214,13 @@ where
                     &self.payer.pubkey(),
                     &account.pubkey(),
                     self.client
-                        .get_minimum_balance_for_rent_exemption(state::Account::LEN)
+                        .get_minimum_balance_for_rent_exemption(Account::LEN)
                         .await
                         .map_err(TokenError::Client)?,
-                    state::Account::LEN as u64,
-                    &spl_token_2022::id(),
+                    Account::LEN as u64,
+                    &id(),
                 ),
-                instruction::initialize_account(
-                    &spl_token_2022::id(),
-                    &account.pubkey(),
-                    &self.pubkey,
-                    owner,
-                )?,
+                instruction::initialize_account(&id(), &account.pubkey(), &self.pubkey, owner)?,
             ],
             &[&self.payer, account],
         )
@@ -187,33 +230,33 @@ where
     }
 
     /// Retrive mint information.
-    pub async fn get_mint_info(&self) -> TokenResult<state::Mint> {
+    pub async fn get_mint_info(&self) -> TokenResult<StateWithExtensionsOwned<Mint>> {
         let account = self
             .client
             .get_account(self.pubkey)
             .await
             .map_err(TokenError::Client)?
             .ok_or(TokenError::AccountNotFound)?;
-        if account.owner != spl_token_2022::id() {
+        if account.owner != id() {
             return Err(TokenError::AccountInvalidOwner);
         }
 
-        state::Mint::unpack_from_slice(&account.data).map_err(Into::into)
+        StateWithExtensionsOwned::<Mint>::unpack(account.data).map_err(Into::into)
     }
 
     /// Retrieve account information.
-    pub async fn get_account_info(&self, account: Pubkey) -> TokenResult<state::Account> {
+    pub async fn get_account_info(&self, account: Pubkey) -> TokenResult<Account> {
         let account = self
             .client
             .get_account(account)
             .await
             .map_err(TokenError::Client)?
             .ok_or(TokenError::AccountNotFound)?;
-        if account.owner != spl_token_2022::id() {
+        if account.owner != id() {
             return Err(TokenError::AccountInvalidOwner);
         }
 
-        let account = state::Account::unpack_from_slice(&account.data)?;
+        let account = Account::unpack_from_slice(&account.data)?;
         if account.mint != *self.get_address() {
             return Err(TokenError::AccountInvalidMint);
         }
@@ -225,7 +268,7 @@ where
     pub async fn get_or_create_associated_account_info(
         &self,
         owner: &Pubkey,
-    ) -> TokenResult<state::Account> {
+    ) -> TokenResult<Account> {
         let account = self.get_associated_token_address(owner);
         match self.get_account_info(account).await {
             Ok(account) => Ok(account),
@@ -248,7 +291,7 @@ where
     ) -> TokenResult<()> {
         self.process_ixs(
             &[instruction::set_authority(
-                &spl_token_2022::id(),
+                &id(),
                 account,
                 new_authority,
                 authority_type,
@@ -270,7 +313,7 @@ where
     ) -> TokenResult<()> {
         self.process_ixs(
             &[instruction::mint_to(
-                &spl_token_2022::id(),
+                &id(),
                 &self.pubkey,
                 dest,
                 &authority.pubkey(),
@@ -294,7 +337,7 @@ where
     ) -> TokenResult<T::Output> {
         self.process_ixs(
             &[instruction::transfer_checked(
-                &spl_token_2022::id(),
+                &id(),
                 source,
                 &self.pubkey,
                 destination,
@@ -302,6 +345,26 @@ where
                 &[],
                 amount,
                 decimals,
+            )?],
+            &[authority],
+        )
+        .await
+    }
+
+    /// Close account into another
+    pub async fn close_account<S2: Signer>(
+        &self,
+        account: &Pubkey,
+        destination: &Pubkey,
+        authority: &S2,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[instruction::close_account(
+                &id(),
+                account,
+                destination,
+                &authority.pubkey(),
+                &[],
             )?],
             &[authority],
         )

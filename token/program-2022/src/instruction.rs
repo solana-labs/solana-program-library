@@ -1418,6 +1418,20 @@ pub fn get_account_data_size(
     })
 }
 
+/// Creates an `InitializeMintCloseAuthority` instruction
+pub fn initialize_mint_close_authority(
+    token_program_id: &Pubkey,
+    mint_pubkey: &Pubkey,
+    close_authority: COption<Pubkey>,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts: vec![AccountMeta::new(*mint_pubkey, false)],
+        data: TokenInstruction::InitializeMintCloseAuthority { close_authority }.pack(),
+    })
+}
+
 /// Utility function that checks index is between MIN_SIGNERS and MAX_SIGNERS
 pub fn is_valid_signer_index(index: usize) -> bool {
     (MIN_SIGNERS..=MAX_SIGNERS).contains(&index)

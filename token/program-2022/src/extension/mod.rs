@@ -193,6 +193,61 @@ fn type_and_tlv_indices<S: BaseState>(
     }
 }
 
+fn get_extension<S: BaseState, V: Extension>(tlv_data: &[u8]) -> Result<&V, ProgramError> {
+    if V::TYPE.get_account_type() != S::ACCOUNT_TYPE {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    let TlvIndices {
+        type_start: _,
+        length_start,
+        value_start,
+    } = get_extension_indices::<V>(tlv_data, false)?;
+    let length = pod_from_bytes::<Length>(&tlv_data[length_start..value_start])?;
+    let value_end = value_start.saturating_add(usize::from(*length));
+    pod_from_bytes::<V>(&tlv_data[value_start..value_end])
+}
+
+/// Encapsulates owned immutable base state data (mint or account) with possible extensions
+#[derive(Debug, PartialEq)]
+pub struct StateWithExtensionsOwned<S: BaseState> {
+    /// Unpacked base data
+    pub base: S,
+    /// Raw TLV data, deserialized on demand
+    tlv_data: Vec<u8>,
+}
+impl<S: BaseState> StateWithExtensionsOwned<S> {
+    /// Unpack base state, leaving the extension data as a slice
+    ///
+    /// Fails if the base state is not initialized.
+    pub fn unpack(mut input: Vec<u8>) -> Result<Self, ProgramError> {
+        check_min_len_and_not_multisig(&input, S::LEN)?;
+        let mut rest = input.split_off(S::LEN);
+        let base = S::unpack(&input)?;
+        if let Some((account_type_index, tlv_start_index)) = type_and_tlv_indices::<S>(&rest)? {
+            let account_type = AccountType::try_from(rest[account_type_index])
+                .map_err(|_| ProgramError::InvalidAccountData)?;
+            check_account_type::<S>(account_type)?;
+            let tlv_data = rest.split_off(tlv_start_index);
+            Ok(Self { base, tlv_data })
+        } else {
+            Ok(Self {
+                base,
+                tlv_data: vec![],
+            })
+        }
+    }
+
+    /// Unpack a portion of the TLV data as the desired type
+    pub fn get_extension<V: Extension>(&self) -> Result<&V, ProgramError> {
+        get_extension::<S, V>(&self.tlv_data)
+    }
+
+    /// Iterates through the TLV entries, returning only the types
+    pub fn get_extension_types(&self) -> Result<Vec<ExtensionType>, ProgramError> {
+        get_extension_types(&self.tlv_data)
+    }
+}
+
 /// Encapsulates immutable base state data (mint or account) with possible extensions
 #[derive(Debug, PartialEq)]
 pub struct StateWithExtensions<'data, S: BaseState> {
@@ -227,17 +282,7 @@ impl<'data, S: BaseState> StateWithExtensions<'data, S> {
 
     /// Unpack a portion of the TLV data as the desired type
     pub fn get_extension<V: Extension>(&self) -> Result<&V, ProgramError> {
-        if V::TYPE.get_account_type() != S::ACCOUNT_TYPE {
-            return Err(ProgramError::InvalidAccountData);
-        }
-        let TlvIndices {
-            type_start: _,
-            length_start,
-            value_start,
-        } = get_extension_indices::<V>(self.tlv_data, false)?;
-        let length = pod_from_bytes::<Length>(&self.tlv_data[length_start..value_start])?;
-        let value_end = value_start.saturating_add(usize::from(*length));
-        pod_from_bytes::<V>(&self.tlv_data[value_start..value_end])
+        get_extension::<S, V>(self.tlv_data)
     }
 
     /// Iterates through the TLV entries, returning only the types
