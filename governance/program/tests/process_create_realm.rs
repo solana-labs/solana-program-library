@@ -60,7 +60,12 @@ async fn test_create_realm_for_existing_pda() {
     let realm_name = format!("Realm #{}", governance_test.next_realm_id).to_string();
     let realm_address = get_realm_address(&governance_test.program_id, &realm_name);
 
-    governance_test.bench.transfer_sol(&realm_address, 1).await;
+    let rent_exempt = governance_test.bench.rent.minimum_balance(0);
+
+    governance_test
+        .bench
+        .transfer_sol(&realm_address, rent_exempt)
+        .await;
 
     // Act
     let realm_cookie = governance_test.with_realm().await;
