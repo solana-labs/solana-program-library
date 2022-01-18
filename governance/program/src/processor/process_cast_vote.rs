@@ -127,11 +127,10 @@ pub fn process_cast_vote(
             )
         }
         Vote::Abstain => {
-            proposal_data.abstain_vote_weight =
-                proposal_data
-                    .abstain_vote_weight
-                    .checked_add(voter_weight)
-                    .unwrap()
+            proposal_data.abstain_vote_weight = proposal_data
+                .abstain_vote_weight
+                .checked_add(voter_weight)
+                .unwrap()
         }
     }
 

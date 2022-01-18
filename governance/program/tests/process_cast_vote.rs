@@ -516,7 +516,7 @@ async fn test_cast_vote_with_vote_tipped_to_succeeded_by_abstain() {
     let proposal_account = governance_test
         .get_proposal_account(&proposal_cookie.address)
         .await;
-    
+
     assert_eq!(ProposalState::Succeeded, proposal_account.state);
 
     let proposal_owner_record = governance_test
@@ -657,7 +657,7 @@ async fn test_cast_vote_with_vote_tipped_to_defeated_by_abstain() {
         .with_community_token_deposit(&realm_cookie)
         .await
         .unwrap();
-    
+
     let token_owner_record_cookie4 = governance_test
         .with_community_token_deposit(&realm_cookie)
         .await
@@ -680,11 +680,7 @@ async fn test_cast_vote_with_vote_tipped_to_defeated_by_abstain() {
 
     // Act
     governance_test
-        .with_cast_vote(
-            &proposal_cookie,
-            &token_owner_record_cookie1,
-            YesNoVote::No,
-        )
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie1, YesNoVote::No)
         .await
         .unwrap();
 
@@ -711,16 +707,12 @@ async fn test_cast_vote_with_vote_tipped_to_defeated_by_abstain() {
     let proposal_account = governance_test
         .get_proposal_account(&proposal_cookie.address)
         .await;
-    
+
     assert_eq!(ProposalState::Voting, proposal_account.state);
 
     // Act
     governance_test
-        .with_cast_vote(
-            &proposal_cookie,
-            &token_owner_record_cookie3,
-            YesNoVote::No,
-        )
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie3, YesNoVote::No)
         .await
         .unwrap();
 
@@ -749,7 +741,7 @@ async fn test_cast_vote_with_vote_tipped_to_defeated_by_abstain() {
         .await;
 
     println!("{:?}", proposal_account);
-    
+
     assert_eq!(ProposalState::Defeated, proposal_account.state);
 
     let proposal_owner_record = governance_test

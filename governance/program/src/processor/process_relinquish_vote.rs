@@ -89,11 +89,10 @@ pub fn process_relinquish_vote(program_id: &Pubkey, accounts: &[AccountInfo]) ->
                 )
             }
             Vote::Abstain => {
-                proposal_data.abstain_vote_weight =
-                    proposal_data
-                        .abstain_vote_weight
-                        .checked_sub(vote_record_data.voter_weight)
-                        .unwrap()
+                proposal_data.abstain_vote_weight = proposal_data
+                    .abstain_vote_weight
+                    .checked_sub(vote_record_data.voter_weight)
+                    .unwrap()
             }
         }
 
