@@ -102,6 +102,9 @@ pub enum TokenError {
     /// Available balance mismatch
     #[error("Available balance mismatch")]
     ConfidentialTransferAvailableBalanceMismatch,
+    /// Mint has non-zero supply. Burn all tokens before closing the mint.
+    #[error("Mint has non-zero supply. Burn all tokens before closing the mint")]
+    MintHasSupply,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {

@@ -1,13 +1,10 @@
 use {
     solana_program_test::{processor, tokio::sync::Mutex, ProgramTest},
-    solana_sdk::{
-        instruction::Instruction,
-        signer::{keypair::Keypair, Signer},
-    },
-    spl_token_2022::{extension::ExtensionType, id, processor::Processor},
+    solana_sdk::signer::{keypair::Keypair, Signer},
+    spl_token_2022::{id, processor::Processor},
     spl_token_client::{
         client::{ProgramBanksClient, ProgramBanksClientProcessTransaction, ProgramClient},
-        token::Token,
+        token::{ExtensionInitializationParams, Token},
     },
     std::sync::Arc,
 };
@@ -21,10 +18,7 @@ pub struct TestContext {
 }
 
 impl TestContext {
-    pub async fn new(
-        extension_types: &[ExtensionType],
-        extension_instructions: &[Instruction],
-    ) -> Self {
+    pub async fn new(extension_init_params: Vec<ExtensionInitializationParams>) -> Self {
         let program_test = ProgramTest::new("spl_token_2022", id(), processor!(Processor::process));
         let ctx = program_test.start_with_context().await;
         let ctx = Arc::new(Mutex::new(ctx));
@@ -50,8 +44,7 @@ impl TestContext {
             &mint_authority_pubkey,
             None,
             decimals,
-            extension_types,
-            extension_instructions,
+            extension_init_params,
         )
         .await
         .expect("failed to create mint");

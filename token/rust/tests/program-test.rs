@@ -49,8 +49,7 @@ impl TestContext {
             &mint_authority_pubkey,
             None,
             decimals,
-            &[],
-            &[],
+            vec![],
         )
         .await
         .expect("failed to create mint");
@@ -167,7 +166,7 @@ async fn set_authority() {
         .get_mint_info()
         .await
         .expect("failed to get mint info");
-    assert!(mint.mint_authority.is_none());
+    assert!(mint.base.mint_authority.is_none());
 
     // TODO: compare
     // Err(Client(TransactionError(InstructionError(0, Custom(5)))))

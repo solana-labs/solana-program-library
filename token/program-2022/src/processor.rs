@@ -5,6 +5,7 @@ use crate::{
     error::TokenError,
     extension::{
         confidential_transfer::{self, ConfidentialTransferAccount},
+        mint_close_authority::MintCloseAuthority,
         transfer_fee, ExtensionType, StateWithExtensions, StateWithExtensionsMut,
     },
     instruction::{is_valid_signer_index, AuthorityType, TokenInstruction, MAX_SIGNERS},
@@ -23,6 +24,7 @@ use solana_program::{
     pubkey::Pubkey,
     sysvar::{rent::Rent, Sysvar},
 };
+use std::convert::TryInto;
 
 /// Program state handler.
 pub struct Processor {}
@@ -37,27 +39,33 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
         let mint_info = next_account_info(account_info_iter)?;
         let mint_data_len = mint_info.data_len();
+        let mut mint_data = mint_info.data.borrow_mut();
         let rent = if rent_sysvar_account {
             Rent::from_account_info(next_account_info(account_info_iter)?)?
         } else {
             Rent::get()?
         };
 
-        let mut mint = Mint::unpack_unchecked(&mint_info.data.borrow())?;
-        if mint.is_initialized {
-            return Err(TokenError::AlreadyInUse.into());
-        }
-
         if !rent.is_exempt(mint_info.lamports(), mint_data_len) {
             return Err(TokenError::NotRentExempt.into());
         }
 
-        mint.mint_authority = COption::Some(mint_authority);
-        mint.decimals = decimals;
-        mint.is_initialized = true;
-        mint.freeze_authority = freeze_authority;
+        let mut mint = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut mint_data)?;
+        if mint.base.is_initialized {
+            return Err(TokenError::AlreadyInUse.into());
+        }
 
-        Mint::pack(mint, &mut mint_info.data.borrow_mut())?;
+        let extension_types = mint.get_extension_types()?;
+        if ExtensionType::get_account_len::<Mint>(&extension_types) != mint_data_len {
+            return Err(ProgramError::InvalidAccountData);
+        }
+
+        mint.base.mint_authority = COption::Some(mint_authority);
+        mint.base.decimals = decimals;
+        mint.base.is_initialized = true;
+        mint.base.freeze_authority = freeze_authority;
+        mint.pack_base();
+        mint.init_account_type()?;
 
         Ok(())
     }
@@ -763,10 +771,18 @@ impl Processor {
 
     /// Processes an [InitializeMintCloseAuthority](enum.TokenInstruction.html) instruction
     pub fn process_initialize_mint_close_authority(
-        _accounts: &[AccountInfo],
-        _close_authority: COption<Pubkey>,
+        accounts: &[AccountInfo],
+        close_authority: COption<Pubkey>,
     ) -> ProgramResult {
-        unimplemented!();
+        let account_info_iter = &mut accounts.iter();
+        let mint_account_info = next_account_info(account_info_iter)?;
+
+        let mut mint_data = mint_account_info.data.borrow_mut();
+        let mut mint = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut mint_data)?;
+        let extension = mint.init_extension::<MintCloseAuthority>()?;
+        extension.close_authority = close_authority.try_into()?;
+
+        Ok(())
     }
 
     /// Processes a [GetAccountDataSize](enum.TokenInstruction.html) instruction
@@ -1026,6 +1042,9 @@ impl PrintProgramError for TokenError {
             }
             TokenError::ConfidentialTransferAvailableBalanceMismatch => {
                 msg!("Error: Available balance mismatch")
+            }
+            TokenError::MintHasSupply => {
+                msg!("Error: Mint has non-zero supply. Burn all tokens before closing the mint")
             }
         }
     }
