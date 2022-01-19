@@ -96,7 +96,7 @@ fn process_configure_account(
     let token_account_info = next_account_info(account_info_iter)?;
     let mint_info = next_account_info(account_info_iter)?;
     let authority_info = next_account_info(account_info_iter)?;
-    let authority_info_len = authority_info.data_len();
+    let authority_info_data_len = authority_info.data_len();
 
     check_program_account(token_account_info.owner)?;
     let token_account_data = &mut token_account_info.data.borrow_mut();
@@ -110,7 +110,7 @@ fn process_configure_account(
         program_id,
         token_account_info.owner,
         authority_info,
-        authority_info_len,
+        authority_info_data_len,
         account_info_iter.as_slice(),
     )?;
 
@@ -196,7 +196,7 @@ fn process_empty_account(
     let token_account_info = next_account_info(account_info_iter)?;
     let instructions_sysvar_info = next_account_info(account_info_iter)?;
     let authority_info = next_account_info(account_info_iter)?;
-    let authority_info_len = authority_info.data_len();
+    let authority_info_data_len = authority_info.data_len();
 
     check_program_account(token_account_info.owner)?;
     let token_account_data = &mut token_account_info.data.borrow_mut();
@@ -206,7 +206,7 @@ fn process_empty_account(
         program_id,
         token_account_info.owner,
         authority_info,
-        authority_info_len,
+        authority_info_data_len,
         account_info_iter.as_slice(),
     )?;
 
@@ -248,7 +248,7 @@ fn process_deposit(
     let receiver_token_account_info = next_account_info(account_info_iter)?;
     let mint_info = next_account_info(account_info_iter)?;
     let authority_info = next_account_info(account_info_iter)?;
-    let authority_info_len = authority_info.data_len();
+    let authority_info_data_len = authority_info.data_len();
 
     check_program_account(mint_info.owner)?;
     let mint_data = &mint_info.data.borrow_mut();
@@ -268,7 +268,7 @@ fn process_deposit(
             program_id,
             token_account_info.owner,
             authority_info,
-            authority_info_len,
+            authority_info_data_len,
             account_info_iter.as_slice(),
         )?;
 
@@ -348,7 +348,7 @@ fn process_withdraw(
     let mint_info = next_account_info(account_info_iter)?;
     let instructions_sysvar_info = next_account_info(account_info_iter)?;
     let authority_info = next_account_info(account_info_iter)?;
-    let authority_info_len = authority_info.data_len();
+    let authority_info_data_len = authority_info.data_len();
 
     check_program_account(mint_info.owner)?;
     let mint_data = &mint_info.data.borrow_mut();
@@ -376,7 +376,7 @@ fn process_withdraw(
             program_id,
             token_account_info.owner,
             authority_info,
-            authority_info_len,
+            authority_info_data_len,
             account_info_iter.as_slice(),
         )?;
 
@@ -450,7 +450,7 @@ fn process_transfer(
     let mint_info = next_account_info(account_info_iter)?;
     let instructions_sysvar_info = next_account_info(account_info_iter)?;
     let authority_info = next_account_info(account_info_iter)?;
-    let authority_info_len = authority_info.data_len();
+    let authority_info_data_len = authority_info.data_len();
 
     check_program_account(mint_info.owner)?;
     let mint_data = &mint_info.data.borrow_mut();
@@ -478,7 +478,7 @@ fn process_transfer(
             program_id,
             token_account_info.owner,
             authority_info,
-            authority_info_len,
+            authority_info_data_len,
             account_info_iter.as_slice(),
         )?;
 
@@ -600,7 +600,7 @@ fn process_apply_pending_balance(
     let account_info_iter = &mut accounts.iter();
     let token_account_info = next_account_info(account_info_iter)?;
     let authority_info = next_account_info(account_info_iter)?;
-    let authority_info_len = authority_info.data_len();
+    let authority_info_data_len = authority_info.data_len();
 
     check_program_account(token_account_info.owner)?;
     let token_account_data = &mut token_account_info.data.borrow_mut();
@@ -610,7 +610,7 @@ fn process_apply_pending_balance(
         program_id,
         token_account_info.owner,
         authority_info,
-        authority_info_len,
+        authority_info_data_len,
         account_info_iter.as_slice(),
     )?;
 
@@ -642,7 +642,7 @@ fn process_allow_balance_credits(
     let account_info_iter = &mut accounts.iter();
     let token_account_info = next_account_info(account_info_iter)?;
     let authority_info = next_account_info(account_info_iter)?;
-    let authority_info_len = authority_info.data_len();
+    let authority_info_data_len = authority_info.data_len();
 
     check_program_account(token_account_info.owner)?;
     let token_account_data = &mut token_account_info.data.borrow_mut();
@@ -652,7 +652,7 @@ fn process_allow_balance_credits(
         program_id,
         token_account_info.owner,
         authority_info,
-        authority_info_len,
+        authority_info_data_len,
         account_info_iter.as_slice(),
     )?;
 
