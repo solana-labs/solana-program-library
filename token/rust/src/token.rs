@@ -1,5 +1,6 @@
 use crate::client::{ProgramClient, ProgramClientError, SendTransaction};
 use solana_sdk::{
+    account::Account as BaseAccount,
     instruction::Instruction,
     program_error::ProgramError,
     program_option::COption,
@@ -229,14 +230,18 @@ where
         .map_err(Into::into)
     }
 
-    /// Retrive mint information.
-    pub async fn get_mint_info(&self) -> TokenResult<StateWithExtensionsOwned<Mint>> {
-        let account = self
-            .client
-            .get_account(self.pubkey)
+    /// Retrieve a raw account
+    pub async fn get_account(&self, account: Pubkey) -> TokenResult<BaseAccount> {
+        self.client
+            .get_account(account)
             .await
             .map_err(TokenError::Client)?
-            .ok_or(TokenError::AccountNotFound)?;
+            .ok_or(TokenError::AccountNotFound)
+    }
+
+    /// Retrive mint information.
+    pub async fn get_mint_info(&self) -> TokenResult<StateWithExtensionsOwned<Mint>> {
+        let account = self.get_account(self.pubkey).await?;
         if account.owner != id() {
             return Err(TokenError::AccountInvalidOwner);
         }
@@ -246,16 +251,10 @@ where
 
     /// Retrieve account information.
     pub async fn get_account_info(&self, account: Pubkey) -> TokenResult<Account> {
-        let account = self
-            .client
-            .get_account(account)
-            .await
-            .map_err(TokenError::Client)?
-            .ok_or(TokenError::AccountNotFound)?;
+        let account = self.get_account(account).await?;
         if account.owner != id() {
             return Err(TokenError::AccountInvalidOwner);
         }
-
         let account = Account::unpack_from_slice(&account.data)?;
         if account.mint != *self.get_address() {
             return Err(TokenError::AccountInvalidMint);

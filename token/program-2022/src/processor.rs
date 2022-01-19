@@ -238,6 +238,7 @@ impl Processor {
 
         let dest_account_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
+        let authority_info_data_len = authority_info.data_len();
 
         let mut source_account = Account::unpack(&source_account_info.data.borrow())?;
         let mut dest_account = Account::unpack(&dest_account_info.data.borrow())?;
@@ -269,9 +270,9 @@ impl Processor {
             COption::Some(ref delegate) if authority_info.key == delegate => {
                 Self::validate_owner(
                     program_id,
-                    source_account_info.key,
                     delegate,
                     authority_info,
+                    authority_info_data_len,
                     account_info_iter.as_slice(),
                 )?;
                 if source_account.delegated_amount < amount {
@@ -289,9 +290,9 @@ impl Processor {
             }
             _ => Self::validate_owner(
                 program_id,
-                source_account_info.key,
                 &source_account.owner,
                 authority_info,
+                authority_info_data_len,
                 account_info_iter.as_slice(),
             )?,
         };
@@ -347,6 +348,7 @@ impl Processor {
         };
         let delegate_info = next_account_info(account_info_iter)?;
         let owner_info = next_account_info(account_info_iter)?;
+        let owner_info_data_len = owner_info.data_len();
 
         let mut source_account = Account::unpack(&source_account_info.data.borrow())?;
 
@@ -367,9 +369,9 @@ impl Processor {
 
         Self::validate_owner(
             program_id,
-            source_account_info.key,
             &source_account.owner,
             owner_info,
+            owner_info_data_len,
             account_info_iter.as_slice(),
         )?;
 
@@ -385,20 +387,19 @@ impl Processor {
     pub fn process_revoke(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let source_account_info = next_account_info(account_info_iter)?;
+        let owner_info = next_account_info(account_info_iter)?;
+        let owner_info_data_len = owner_info.data_len();
 
         let mut source_account = Account::unpack(&source_account_info.data.borrow())?;
-
-        let owner_info = next_account_info(account_info_iter)?;
-
         if source_account.is_frozen() {
             return Err(TokenError::AccountFrozen.into());
         }
 
         Self::validate_owner(
             program_id,
-            source_account_info.key,
             &source_account.owner,
             owner_info,
+            owner_info_data_len,
             account_info_iter.as_slice(),
         )?;
 
@@ -420,11 +421,11 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
         let account_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
+        let authority_info_data_len = authority_info.data_len();
 
-        if account_info.data_len() == Account::get_packed_len() {
-            let mut account = Account::unpack(&account_info.data.borrow())?;
-
-            if account.is_frozen() {
+        let mut account_data = account_info.data.borrow_mut();
+        if let Ok(mut account) = StateWithExtensionsMut::<Account>::unpack(&mut account_data) {
+            if account.base.is_frozen() {
                 return Err(TokenError::AccountFrozen.into());
             }
 
@@ -432,81 +433,97 @@ impl Processor {
                 AuthorityType::AccountOwner => {
                     Self::validate_owner(
                         program_id,
-                        account_info.key,
-                        &account.owner,
+                        &account.base.owner,
                         authority_info,
+                        authority_info_data_len,
                         account_info_iter.as_slice(),
                     )?;
 
                     if let COption::Some(authority) = new_authority {
-                        account.owner = authority;
+                        account.base.owner = authority;
                     } else {
                         return Err(TokenError::InvalidInstruction.into());
                     }
 
-                    account.delegate = COption::None;
-                    account.delegated_amount = 0;
+                    account.base.delegate = COption::None;
+                    account.base.delegated_amount = 0;
 
-                    if account.is_native() {
-                        account.close_authority = COption::None;
+                    if account.base.is_native() {
+                        account.base.close_authority = COption::None;
                     }
                 }
                 AuthorityType::CloseAccount => {
-                    let authority = account.close_authority.unwrap_or(account.owner);
+                    let authority = account.base.close_authority.unwrap_or(account.base.owner);
                     Self::validate_owner(
                         program_id,
-                        account_info.key,
                         &authority,
                         authority_info,
+                        authority_info_data_len,
                         account_info_iter.as_slice(),
                     )?;
-                    account.close_authority = new_authority;
+                    account.base.close_authority = new_authority;
                 }
                 _ => {
                     return Err(TokenError::AuthorityTypeNotSupported.into());
                 }
             }
-            Account::pack(account, &mut account_info.data.borrow_mut())?;
-        } else if account_info.data_len() == Mint::get_packed_len() {
-            let mut mint = Mint::unpack(&account_info.data.borrow())?;
+            account.pack_base();
+        } else if let Ok(mut mint) = StateWithExtensionsMut::<Mint>::unpack(&mut account_data) {
             match authority_type {
                 AuthorityType::MintTokens => {
                     // Once a mint's supply is fixed, it cannot be undone by setting a new
                     // mint_authority
                     let mint_authority = mint
+                        .base
                         .mint_authority
                         .ok_or(Into::<ProgramError>::into(TokenError::FixedSupply))?;
                     Self::validate_owner(
                         program_id,
-                        account_info.key,
                         &mint_authority,
                         authority_info,
+                        authority_info_data_len,
                         account_info_iter.as_slice(),
                     )?;
-                    mint.mint_authority = new_authority;
+                    mint.base.mint_authority = new_authority;
+                    mint.pack_base();
                 }
                 AuthorityType::FreezeAccount => {
                     // Once a mint's freeze authority is disabled, it cannot be re-enabled by
                     // setting a new freeze_authority
                     let freeze_authority = mint
+                        .base
                         .freeze_authority
                         .ok_or(Into::<ProgramError>::into(TokenError::MintCannotFreeze))?;
                     Self::validate_owner(
                         program_id,
-                        account_info.key,
                         &freeze_authority,
                         authority_info,
+                        authority_info_data_len,
                         account_info_iter.as_slice(),
                     )?;
-                    mint.freeze_authority = new_authority;
+                    mint.base.freeze_authority = new_authority;
+                    mint.pack_base();
+                }
+                AuthorityType::CloseAccount => {
+                    let extension = mint.get_extension_mut::<MintCloseAuthority>()?;
+                    let maybe_close_authority: Option<Pubkey> = extension.close_authority.into();
+                    let close_authority =
+                        maybe_close_authority.ok_or(TokenError::AuthorityTypeNotSupported)?;
+                    Self::validate_owner(
+                        program_id,
+                        &close_authority,
+                        authority_info,
+                        authority_info_data_len,
+                        account_info_iter.as_slice(),
+                    )?;
+                    extension.close_authority = new_authority.try_into()?;
                 }
                 _ => {
                     return Err(TokenError::AuthorityTypeNotSupported.into());
                 }
             }
-            Mint::pack(mint, &mut account_info.data.borrow_mut())?;
         } else {
-            return Err(ProgramError::InvalidArgument);
+            return Err(ProgramError::InvalidAccountData);
         }
 
         Ok(())
@@ -523,49 +540,54 @@ impl Processor {
         let mint_info = next_account_info(account_info_iter)?;
         let dest_account_info = next_account_info(account_info_iter)?;
         let owner_info = next_account_info(account_info_iter)?;
+        let owner_info_data_len = owner_info.data_len();
 
-        let mut dest_account = Account::unpack(&dest_account_info.data.borrow())?;
-        if dest_account.is_frozen() {
+        let mut dest_account_data = dest_account_info.data.borrow_mut();
+        let mut dest_account = StateWithExtensionsMut::<Account>::unpack(&mut dest_account_data)?;
+        if dest_account.base.is_frozen() {
             return Err(TokenError::AccountFrozen.into());
         }
 
-        if dest_account.is_native() {
+        if dest_account.base.is_native() {
             return Err(TokenError::NativeNotSupported.into());
         }
-        if mint_info.key != &dest_account.mint {
+        if mint_info.key != &dest_account.base.mint {
             return Err(TokenError::MintMismatch.into());
         }
 
-        let mut mint = Mint::unpack(&mint_info.data.borrow())?;
+        let mut mint_data = mint_info.data.borrow_mut();
+        let mut mint = StateWithExtensionsMut::<Mint>::unpack(&mut mint_data)?;
         if let Some(expected_decimals) = expected_decimals {
-            if expected_decimals != mint.decimals {
+            if expected_decimals != mint.base.decimals {
                 return Err(TokenError::MintDecimalsMismatch.into());
             }
         }
 
-        match mint.mint_authority {
+        match mint.base.mint_authority {
             COption::Some(mint_authority) => Self::validate_owner(
                 program_id,
-                mint_info.key,
                 &mint_authority,
                 owner_info,
+                owner_info_data_len,
                 account_info_iter.as_slice(),
             )?,
             COption::None => return Err(TokenError::FixedSupply.into()),
         }
 
-        dest_account.amount = dest_account
+        dest_account.base.amount = dest_account
+            .base
             .amount
             .checked_add(amount)
             .ok_or(TokenError::Overflow)?;
 
-        mint.supply = mint
+        mint.base.supply = mint
+            .base
             .supply
             .checked_add(amount)
             .ok_or(TokenError::Overflow)?;
 
-        Account::pack(dest_account, &mut dest_account_info.data.borrow_mut())?;
-        Mint::pack(mint, &mut mint_info.data.borrow_mut())?;
+        mint.pack_base();
+        dest_account.pack_base();
 
         Ok(())
     }
@@ -582,6 +604,7 @@ impl Processor {
         let source_account_info = next_account_info(account_info_iter)?;
         let mint_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
+        let authority_info_data_len = authority_info.data_len();
 
         let mut source_account = Account::unpack(&source_account_info.data.borrow())?;
         let mut mint = Mint::unpack(&mint_info.data.borrow())?;
@@ -609,9 +632,9 @@ impl Processor {
             COption::Some(ref delegate) if authority_info.key == delegate => {
                 Self::validate_owner(
                     program_id,
-                    source_account_info.key,
                     delegate,
                     authority_info,
+                    authority_info_data_len,
                     account_info_iter.as_slice(),
                 )?;
 
@@ -628,9 +651,9 @@ impl Processor {
             }
             _ => Self::validate_owner(
                 program_id,
-                source_account_info.key,
                 &source_account.owner,
                 authority_info,
+                authority_info_data_len,
                 account_info_iter.as_slice(),
             )?,
         }
@@ -656,31 +679,55 @@ impl Processor {
         let source_account_info = next_account_info(account_info_iter)?;
         let dest_account_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
+        let authority_info_data_len = authority_info.data_len();
 
         let mut source_account_data = source_account_info.data.borrow_mut();
-        let mut source_account =
-            StateWithExtensionsMut::<Account>::unpack(&mut source_account_data)?;
-        if !source_account.base.is_native() && source_account.base.amount != 0 {
-            return Err(TokenError::NonNativeHasBalance.into());
-        }
-
-        let authority = source_account
-            .base
-            .close_authority
-            .unwrap_or(source_account.base.owner);
-
-        Self::validate_owner(
-            program_id,
-            source_account_info.key,
-            &authority,
-            authority_info,
-            account_info_iter.as_slice(),
-        )?;
-
-        if let Ok(confidential_transfer_state) =
-            source_account.get_extension_mut::<ConfidentialTransferAccount>()
+        if let Ok(mut source_account) =
+            StateWithExtensionsMut::<Account>::unpack(&mut source_account_data)
         {
-            confidential_transfer_state.closable()?
+            if !source_account.base.is_native() && source_account.base.amount != 0 {
+                return Err(TokenError::NonNativeHasBalance.into());
+            }
+
+            let authority = source_account
+                .base
+                .close_authority
+                .unwrap_or(source_account.base.owner);
+
+            Self::validate_owner(
+                program_id,
+                &authority,
+                authority_info,
+                authority_info_data_len,
+                account_info_iter.as_slice(),
+            )?;
+
+            if let Ok(confidential_transfer_state) =
+                source_account.get_extension_mut::<ConfidentialTransferAccount>()
+            {
+                confidential_transfer_state.closable()?
+            }
+            source_account.base.amount = 0;
+            source_account.pack_base();
+        } else if let Ok(mut mint) =
+            StateWithExtensionsMut::<Mint>::unpack(&mut source_account_data)
+        {
+            let extension = mint.get_extension_mut::<MintCloseAuthority>()?;
+            let maybe_authority: Option<Pubkey> = extension.close_authority.into();
+            let authority = maybe_authority.ok_or(TokenError::AuthorityTypeNotSupported)?;
+            Self::validate_owner(
+                program_id,
+                &authority,
+                authority_info,
+                authority_info_data_len,
+                account_info_iter.as_slice(),
+            )?;
+
+            if mint.base.supply != 0 {
+                return Err(TokenError::MintHasSupply.into());
+            }
+        } else {
+            return Err(ProgramError::UninitializedAccount);
         }
 
         let dest_starting_lamports = dest_account_info.lamports();
@@ -689,9 +736,6 @@ impl Processor {
             .ok_or(TokenError::Overflow)?;
 
         **source_account_info.lamports.borrow_mut() = 0;
-        source_account.base.amount = 0;
-
-        source_account.pack_base();
 
         Ok(())
     }
@@ -707,6 +751,7 @@ impl Processor {
         let source_account_info = next_account_info(account_info_iter)?;
         let mint_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
+        let authority_info_data_len = authority_info.data_len();
 
         let mut source_account = Account::unpack(&source_account_info.data.borrow())?;
         if freeze && source_account.is_frozen() || !freeze && !source_account.is_frozen() {
@@ -723,9 +768,9 @@ impl Processor {
         match mint.freeze_authority {
             COption::Some(authority) => Self::validate_owner(
                 program_id,
-                mint_info.key,
                 &authority,
                 authority_info,
+                authority_info_data_len,
                 account_info_iter.as_slice(),
             ),
             COption::None => Err(TokenError::MintCannotFreeze.into()),
@@ -923,23 +968,17 @@ impl Processor {
     /// Validates owner(s) are present. Used for Mints and Accounts only.
     pub fn validate_owner(
         program_id: &Pubkey,
-        account_to_validate: &Pubkey,
         expected_owner: &Pubkey,
         owner_account_info: &AccountInfo,
+        owner_account_data_len: usize,
         signers: &[AccountInfo],
     ) -> ProgramResult {
         if expected_owner != owner_account_info.key {
             return Err(TokenError::OwnerMismatch.into());
         }
-        // If the account is self-owned, it is *not* a multisig, so just check
-        // the signer key. Otherwise we can run into a double-borrow for the
-        // `owner_account_info`
-        if account_to_validate == owner_account_info.key {
-            if !owner_account_info.is_signer {
-                return Err(ProgramError::MissingRequiredSignature);
-            }
-        } else if program_id == owner_account_info.owner
-            && owner_account_info.data_len() == Multisig::get_packed_len()
+
+        if program_id == owner_account_info.owner
+            && owner_account_data_len == Multisig::get_packed_len()
         {
             let multisig = Multisig::unpack(&owner_account_info.data.borrow())?;
             let mut num_signers = 0;
@@ -3315,7 +3354,7 @@ mod tests {
 
         // invalid account
         assert_eq!(
-            Err(ProgramError::UninitializedAccount),
+            Err(ProgramError::InvalidAccountData),
             do_process_instruction(
                 set_authority(
                     &program_id,
@@ -4894,12 +4933,13 @@ mod tests {
                 false,
                 Epoch::default(),
             );
+            let account_info_data_len = account_info.data_len();
             let mut borrowed_data = account_info.try_borrow_mut_data().unwrap();
             Processor::validate_owner(
                 &program_id,
                 &account_to_validate,
-                &account_to_validate,
                 &account_info,
+                account_info_data_len,
                 &[],
             )
             .unwrap();
@@ -4910,9 +4950,9 @@ mod tests {
         // full 11 of 11
         Processor::validate_owner(
             &program_id,
-            &account_to_validate,
             &owner_key,
             &owner_account_info,
+            owner_account_info.data_len(),
             &signers,
         )
         .unwrap();
@@ -4926,9 +4966,9 @@ mod tests {
         }
         Processor::validate_owner(
             &program_id,
-            &account_to_validate,
             &owner_key,
             &owner_account_info,
+            owner_account_info.data_len(),
             &signers,
         )
         .unwrap();
@@ -4945,9 +4985,9 @@ mod tests {
             Err(ProgramError::MissingRequiredSignature),
             Processor::validate_owner(
                 &program_id,
-                &account_to_validate,
                 &owner_key,
                 &owner_account_info,
+                owner_account_info.data_len(),
                 &signers
             )
         );
@@ -4962,9 +5002,9 @@ mod tests {
         }
         Processor::validate_owner(
             &program_id,
-            &account_to_validate,
             &owner_key,
             &owner_account_info,
+            owner_account_info.data_len(),
             &signers,
         )
         .unwrap();
@@ -4981,9 +5021,9 @@ mod tests {
             Err(ProgramError::MissingRequiredSignature),
             Processor::validate_owner(
                 &program_id,
-                &account_to_validate,
                 &owner_key,
                 &owner_account_info,
+                owner_account_info.data_len(),
                 &[]
             )
         );
@@ -4999,9 +5039,9 @@ mod tests {
             Err(ProgramError::MissingRequiredSignature),
             Processor::validate_owner(
                 &program_id,
-                &account_to_validate,
                 &owner_key,
                 &owner_account_info,
+                owner_account_info.data_len(),
                 &signers[0..1]
             )
         );
@@ -5016,9 +5056,9 @@ mod tests {
         }
         Processor::validate_owner(
             &program_id,
-            &account_to_validate,
             &owner_key,
             &owner_account_info,
+            owner_account_info.data_len(),
             &signers[5..7],
         )
         .unwrap();
@@ -5036,9 +5076,9 @@ mod tests {
             Err(ProgramError::MissingRequiredSignature),
             Processor::validate_owner(
                 &program_id,
-                &account_to_validate,
                 &owner_key,
                 &owner_account_info,
+                owner_account_info.data_len(),
                 &signers
             )
         );
@@ -5070,9 +5110,9 @@ mod tests {
                 Err(ProgramError::MissingRequiredSignature),
                 Processor::validate_owner(
                     &program_id,
-                    &account_to_validate,
                     &owner_key,
                     &owner_account_info,
+                    owner_account_info.data_len(),
                     &signers
                 )
             );
