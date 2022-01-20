@@ -4,11 +4,12 @@ use {
     spl_token_2022::{id, processor::Processor},
     spl_token_client::{
         client::{ProgramBanksClient, ProgramBanksClientProcessTransaction, ProgramClient},
-        token::{ExtensionInitializationParams, Token},
+        token::{ExtensionInitializationParams, Token, TokenResult},
     },
     std::sync::Arc,
 };
 
+#[derive(Debug)]
 pub struct TestContext {
     pub decimals: u8,
     pub mint_authority: Keypair,
@@ -18,7 +19,9 @@ pub struct TestContext {
 }
 
 impl TestContext {
-    pub async fn new(extension_init_params: Vec<ExtensionInitializationParams>) -> Self {
+    pub async fn new(
+        extension_init_params: Vec<ExtensionInitializationParams>,
+    ) -> TokenResult<Self> {
         let program_test = ProgramTest::new("spl_token_2022", id(), processor!(Processor::process));
         let ctx = program_test.start_with_context().await;
         let ctx = Arc::new(Mutex::new(ctx));
@@ -46,16 +49,15 @@ impl TestContext {
             decimals,
             extension_init_params,
         )
-        .await
-        .expect("failed to create mint");
+        .await?;
 
-        Self {
+        Ok(Self {
             decimals,
             mint_authority,
             token,
             alice: Keypair::new(),
             bob: Keypair::new(),
-        }
+        })
     }
 }
 

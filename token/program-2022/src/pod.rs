@@ -41,11 +41,20 @@ impl TryFrom<COption<Pubkey>> for OptionalNonZeroPubkey {
     }
 }
 impl From<OptionalNonZeroPubkey> for Option<Pubkey> {
-    fn from(p: OptionalNonZeroPubkey) -> Option<Pubkey> {
+    fn from(p: OptionalNonZeroPubkey) -> Self {
         if p.0 == Pubkey::default() {
             None
         } else {
             Some(p.0)
+        }
+    }
+}
+impl From<OptionalNonZeroPubkey> for COption<Pubkey> {
+    fn from(p: OptionalNonZeroPubkey) -> Self {
+        if p.0 == Pubkey::default() {
+            COption::None
+        } else {
+            COption::Some(p.0)
         }
     }
 }

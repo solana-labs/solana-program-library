@@ -12,7 +12,7 @@ use solana_sdk::{
 };
 use spl_associated_token_account::{create_associated_token_account, get_associated_token_address};
 use spl_token_2022::{
-    extension::{ExtensionType, StateWithExtensionsOwned},
+    extension::{transfer_fee, ExtensionType, StateWithExtensionsOwned},
     id, instruction,
     state::{Account, Mint},
 };
@@ -49,21 +49,42 @@ impl PartialEq for TokenError {
 /// Encapsulates initializing an extension
 #[derive(Clone, Debug, PartialEq)]
 pub enum ExtensionInitializationParams {
-    InitializeMintCloseAuthority { close_authority: COption<Pubkey> },
+    MintCloseAuthority {
+        close_authority: COption<Pubkey>,
+    },
+    TransferFeeConfig {
+        transfer_fee_config_authority: COption<Pubkey>,
+        withdraw_withheld_authority: COption<Pubkey>,
+        transfer_fee_basis_points: u16,
+        maximum_fee: u64,
+    },
 }
 impl ExtensionInitializationParams {
     /// Get the extension type associated with the init params
     pub fn extension(&self) -> ExtensionType {
         match self {
-            Self::InitializeMintCloseAuthority { .. } => ExtensionType::MintCloseAuthority,
+            Self::MintCloseAuthority { .. } => ExtensionType::MintCloseAuthority,
+            Self::TransferFeeConfig { .. } => ExtensionType::TransferFeeConfig,
         }
     }
     /// Generate an appropriate initialization instruction for the given mint
     pub fn instruction(self, mint: &Pubkey) -> Instruction {
         match self {
-            Self::InitializeMintCloseAuthority { close_authority } => {
+            Self::MintCloseAuthority { close_authority } => {
                 instruction::initialize_mint_close_authority(&id(), mint, close_authority).unwrap()
             }
+            Self::TransferFeeConfig {
+                transfer_fee_config_authority,
+                withdraw_withheld_authority,
+                transfer_fee_basis_points,
+                maximum_fee,
+            } => transfer_fee::instruction::initialize_transfer_fee_config(
+                *mint,
+                transfer_fee_config_authority,
+                withdraw_withheld_authority,
+                transfer_fee_basis_points,
+                maximum_fee,
+            ),
         }
     }
 }

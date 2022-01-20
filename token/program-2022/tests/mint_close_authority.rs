@@ -23,12 +23,11 @@ async fn success_init() {
         mint_authority,
         token,
         ..
-    } = TestContext::new(vec![
-        ExtensionInitializationParams::InitializeMintCloseAuthority {
-            close_authority: close_authority.clone(),
-        },
-    ])
-    .await;
+    } = TestContext::new(vec![ExtensionInitializationParams::MintCloseAuthority {
+        close_authority: close_authority.clone(),
+    }])
+    .await
+    .unwrap();
 
     let state = token.get_mint_info().await.unwrap();
     assert_eq!(state.base.decimals, decimals);
@@ -49,12 +48,12 @@ async fn success_init() {
 #[tokio::test]
 async fn set_authority() {
     let close_authority = Keypair::new();
-    let TestContext { token, .. } = TestContext::new(vec![
-        ExtensionInitializationParams::InitializeMintCloseAuthority {
+    let TestContext { token, .. } =
+        TestContext::new(vec![ExtensionInitializationParams::MintCloseAuthority {
             close_authority: COption::Some(close_authority.pubkey()),
-        },
-    ])
-    .await;
+        }])
+        .await
+        .unwrap();
     let new_authority = Keypair::new();
 
     // fail, wrong signature
@@ -149,12 +148,12 @@ async fn set_authority() {
 #[tokio::test]
 async fn success_close() {
     let close_authority = Keypair::new();
-    let TestContext { token, .. } = TestContext::new(vec![
-        ExtensionInitializationParams::InitializeMintCloseAuthority {
+    let TestContext { token, .. } =
+        TestContext::new(vec![ExtensionInitializationParams::MintCloseAuthority {
             close_authority: COption::Some(close_authority.pubkey()),
-        },
-    ])
-    .await;
+        }])
+        .await
+        .unwrap();
 
     let destination = Pubkey::new_unique();
     token
@@ -172,7 +171,7 @@ async fn fail_without_extension() {
         mint_authority,
         token,
         ..
-    } = TestContext::new(vec![]).await;
+    } = TestContext::new(vec![]).await.unwrap();
 
     // fail set
     let err = token
@@ -212,12 +211,11 @@ async fn fail_close_with_supply() {
         token,
         mint_authority,
         ..
-    } = TestContext::new(vec![
-        ExtensionInitializationParams::InitializeMintCloseAuthority {
-            close_authority: COption::Some(close_authority.pubkey()),
-        },
-    ])
-    .await;
+    } = TestContext::new(vec![ExtensionInitializationParams::MintCloseAuthority {
+        close_authority: COption::Some(close_authority.pubkey()),
+    }])
+    .await
+    .unwrap();
 
     // mint a token
     let owner = Pubkey::new_unique();
