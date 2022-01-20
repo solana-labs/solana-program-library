@@ -30,6 +30,7 @@ use {
     solana_remote_wallet::remote_wallet::RemoteWalletManager,
     solana_sdk::{
         commitment_config::CommitmentConfig,
+        hash::Hash,
         native_token::{self, Sol},
         signature::{Keypair, Signer},
         signers::Signers,
@@ -135,6 +136,12 @@ fn get_signer(
     })
 }
 
+fn get_latest_blockhash(client: &RpcClient) -> Result<Hash, Error> {
+    Ok(client
+        .get_latest_blockhash_with_commitment(CommitmentConfig::confirmed())?
+        .0)
+}
+
 fn send_transaction_no_wait(
     config: &Config,
     transaction: Transaction,
@@ -170,7 +177,7 @@ fn checked_transaction_with_signers<T: Signers>(
     instructions: &[Instruction],
     signers: &T,
 ) -> Result<Transaction, Error> {
-    let recent_blockhash = config.rpc_client.get_latest_blockhash()?;
+    let recent_blockhash = get_latest_blockhash(&config.rpc_client)?;
     let transaction = Transaction::new_signed_with_payer(
         instructions,
         Some(&config.fee_payer.pubkey()),
@@ -365,27 +372,10 @@ fn command_create_pool(
         Some(&config.fee_payer.pubkey()),
     );
 
-    let recent_blockhash = config.rpc_client.get_latest_blockhash()?;
-    check_fee_payer_balance(
-        config,
-        total_rent_free_balances
-            + config
-                .rpc_client
-                .get_fee_for_message(setup_transaction.message())?
-            + config
-                .rpc_client
-                .get_fee_for_message(initialize_transaction.message())?,
-    )?;
+    let recent_blockhash = get_latest_blockhash(&config.rpc_client)?;
     let mut setup_signers = vec![config.fee_payer.as_ref(), &mint_keypair, &reserve_keypair];
     unique_signers!(setup_signers);
     setup_transaction.sign(&setup_signers, recent_blockhash);
-    send_transaction(config, setup_transaction)?;
-
-    println!(
-        "Creating stake pool {} with validator list {}",
-        stake_pool_keypair.pubkey(),
-        validator_list_keypair.pubkey()
-    );
     let mut initialize_signers = vec![
         config.fee_payer.as_ref(),
         &stake_pool_keypair,
@@ -405,6 +395,23 @@ fn command_create_pool(
         unique_signers!(initialize_signers);
         initialize_transaction.sign(&initialize_signers, recent_blockhash);
     }
+    check_fee_payer_balance(
+        config,
+        total_rent_free_balances
+            + config
+                .rpc_client
+                .get_fee_for_message(setup_transaction.message())?
+            + config
+                .rpc_client
+                .get_fee_for_message(initialize_transaction.message())?,
+    )?;
+    send_transaction(config, setup_transaction)?;
+
+    println!(
+        "Creating stake pool {} with validator list {}",
+        stake_pool_keypair.pubkey(),
+        validator_list_keypair.pubkey()
+    );
     send_transaction(config, initialize_transaction)?;
     Ok(())
 }
@@ -761,7 +768,9 @@ fn command_deposit_stake(
     let mut transaction =
         Transaction::new_with_payer(&instructions, Some(&config.fee_payer.pubkey()));
 
-    let recent_blockhash = config.rpc_client.get_latest_blockhash()?;
+    let recent_blockhash = get_latest_blockhash(&config.rpc_client)?;
+    unique_signers!(signers);
+    transaction.sign(&signers, recent_blockhash);
     check_fee_payer_balance(
         config,
         total_rent_free_balances
@@ -769,8 +778,6 @@ fn command_deposit_stake(
                 .rpc_client
                 .get_fee_for_message(transaction.message())?,
     )?;
-    unique_signers!(signers);
-    transaction.sign(&signers, recent_blockhash);
     send_transaction(config, transaction)?;
     Ok(())
 }
@@ -802,7 +809,7 @@ fn command_deposit_all_stake(
             &mut total_rent_free_balances,
         ));
     if !create_token_account_instructions.is_empty() {
-        let recent_blockhash = config.rpc_client.get_latest_blockhash()?;
+        let recent_blockhash = get_latest_blockhash(&config.rpc_client)?;
         let transaction = Transaction::new_signed_with_payer(
             &create_token_account_instructions,
             Some(&config.fee_payer.pubkey()),
@@ -903,7 +910,7 @@ fn command_deposit_all_stake(
             )
         };
 
-        let recent_blockhash = config.rpc_client.get_latest_blockhash()?;
+        let recent_blockhash = get_latest_blockhash(&config.rpc_client)?;
         let transaction = Transaction::new_signed_with_payer(
             &instructions,
             Some(&config.fee_payer.pubkey()),
@@ -1034,7 +1041,9 @@ fn command_deposit_sol(
     let mut transaction =
         Transaction::new_with_payer(&instructions, Some(&config.fee_payer.pubkey()));
 
-    let recent_blockhash = config.rpc_client.get_latest_blockhash()?;
+    let recent_blockhash = get_latest_blockhash(&config.rpc_client)?;
+    unique_signers!(signers);
+    transaction.sign(&signers, recent_blockhash);
     check_fee_payer_balance(
         config,
         total_rent_free_balances
@@ -1042,8 +1051,6 @@ fn command_deposit_sol(
                 .rpc_client
                 .get_fee_for_message(transaction.message())?,
     )?;
-    unique_signers!(signers);
-    transaction.sign(&signers, recent_blockhash);
     send_transaction(config, transaction)?;
     Ok(())
 }
@@ -1495,7 +1502,12 @@ fn command_withdraw_stake(
     let mut transaction =
         Transaction::new_with_payer(&instructions, Some(&config.fee_payer.pubkey()));
 
-    let recent_blockhash = config.rpc_client.get_latest_blockhash()?;
+    let recent_blockhash = get_latest_blockhash(&config.rpc_client)?;
+    for new_stake_keypair in &new_stake_keypairs {
+        signers.push(new_stake_keypair);
+    }
+    unique_signers!(signers);
+    transaction.sign(&signers, recent_blockhash);
     check_fee_payer_balance(
         config,
         total_rent_free_balances
@@ -1503,11 +1515,6 @@ fn command_withdraw_stake(
                 .rpc_client
                 .get_fee_for_message(transaction.message())?,
     )?;
-    for new_stake_keypair in &new_stake_keypairs {
-        signers.push(new_stake_keypair);
-    }
-    unique_signers!(signers);
-    transaction.sign(&signers, recent_blockhash);
     send_transaction(config, transaction)?;
     Ok(())
 }
@@ -1620,15 +1627,15 @@ fn command_withdraw_sol(
     let mut transaction =
         Transaction::new_with_payer(&instructions, Some(&config.fee_payer.pubkey()));
 
-    let recent_blockhash = config.rpc_client.get_latest_blockhash()?;
+    let recent_blockhash = get_latest_blockhash(&config.rpc_client)?;
+    unique_signers!(signers);
+    transaction.sign(&signers, recent_blockhash);
     check_fee_payer_balance(
         config,
         config
             .rpc_client
             .get_fee_for_message(transaction.message())?,
     )?;
-    unique_signers!(signers);
-    transaction.sign(&signers, recent_blockhash);
     send_transaction(config, transaction)?;
     Ok(())
 }
