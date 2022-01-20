@@ -906,7 +906,7 @@ mod test {
         let new_extension = state.init_extension::<TransferFeeConfig>().unwrap();
         new_extension.transfer_fee_config_authority =
             mint_transfer_fee.transfer_fee_config_authority;
-        new_extension.withheld_withdraw_authority = mint_transfer_fee.withheld_withdraw_authority;
+        new_extension.withdraw_withheld_authority = mint_transfer_fee.withdraw_withheld_authority;
         new_extension.withheld_amount = mint_transfer_fee.withheld_amount;
         new_extension.older_transfer_fee = mint_transfer_fee.older_transfer_fee;
         new_extension.newer_transfer_fee = mint_transfer_fee.newer_transfer_fee;
@@ -958,7 +958,7 @@ mod test {
         let mint_transfer_fee = test_transfer_fee_config();
         let extension = state.init_extension::<TransferFeeConfig>().unwrap();
         extension.transfer_fee_config_authority = mint_transfer_fee.transfer_fee_config_authority;
-        extension.withheld_withdraw_authority = mint_transfer_fee.withheld_withdraw_authority;
+        extension.withdraw_withheld_authority = mint_transfer_fee.withdraw_withheld_authority;
         extension.withheld_amount = mint_transfer_fee.withheld_amount;
         extension.older_transfer_fee = mint_transfer_fee.older_transfer_fee;
         extension.newer_transfer_fee = mint_transfer_fee.newer_transfer_fee;
@@ -990,7 +990,7 @@ mod test {
         let mint_transfer_fee = test_transfer_fee_config();
         let extension = state.init_extension::<TransferFeeConfig>().unwrap();
         extension.transfer_fee_config_authority = mint_transfer_fee.transfer_fee_config_authority;
-        extension.withheld_withdraw_authority = mint_transfer_fee.withheld_withdraw_authority;
+        extension.withdraw_withheld_authority = mint_transfer_fee.withdraw_withheld_authority;
         extension.withheld_amount = mint_transfer_fee.withheld_amount;
         extension.older_transfer_fee = mint_transfer_fee.older_transfer_fee;
         extension.newer_transfer_fee = mint_transfer_fee.newer_transfer_fee;

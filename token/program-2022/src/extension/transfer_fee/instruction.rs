@@ -27,7 +27,7 @@ pub enum TransferFeeInstruction {
     ///   0. `[writable]` The mint to initialize.
     InitializeTransferFeeConfig {
         /// Pubkey that may update the fees
-        fee_config_authority: COption<Pubkey>,
+        transfer_fee_config_authority: COption<Pubkey>,
         /// Withdraw instructions must be signed by this key
         withdraw_withheld_authority: COption<Pubkey>,
         /// Amount of transfer collected as fees, expressed as basis points of the
@@ -137,7 +137,8 @@ impl TransferFeeInstruction {
         let (&tag, rest) = input.split_first().ok_or(InvalidInstruction)?;
         Ok(match tag {
             0 => {
-                let (fee_config_authority, rest) = TokenInstruction::unpack_pubkey_option(rest)?;
+                let (transfer_fee_config_authority, rest) =
+                    TokenInstruction::unpack_pubkey_option(rest)?;
                 let (withdraw_withheld_authority, rest) =
                     TokenInstruction::unpack_pubkey_option(rest)?;
                 let (transfer_fee_basis_points, rest) = rest.split_at(2);
@@ -153,7 +154,7 @@ impl TransferFeeInstruction {
                     .map(u64::from_le_bytes)
                     .ok_or(InvalidInstruction)?;
                 let instruction = Self::InitializeTransferFeeConfig {
-                    fee_config_authority,
+                    transfer_fee_config_authority,
                     withdraw_withheld_authority,
                     transfer_fee_basis_points,
                     maximum_fee,
@@ -211,13 +212,13 @@ impl TransferFeeInstruction {
     pub fn pack(&self, buffer: &mut Vec<u8>) {
         match *self {
             Self::InitializeTransferFeeConfig {
-                ref fee_config_authority,
+                ref transfer_fee_config_authority,
                 ref withdraw_withheld_authority,
                 transfer_fee_basis_points,
                 maximum_fee,
             } => {
                 buffer.push(0);
-                TokenInstruction::pack_pubkey_option(fee_config_authority, buffer);
+                TokenInstruction::pack_pubkey_option(transfer_fee_config_authority, buffer);
                 TokenInstruction::pack_pubkey_option(withdraw_withheld_authority, buffer);
                 buffer.extend_from_slice(&transfer_fee_basis_points.to_le_bytes());
                 buffer.extend_from_slice(&maximum_fee.to_le_bytes());
@@ -256,14 +257,14 @@ impl TransferFeeInstruction {
 /// Create a `InitializeTransferFeeConfig` instruction
 pub fn initialize_transfer_fee_config(
     mint: Pubkey,
-    fee_config_authority: COption<Pubkey>,
+    transfer_fee_config_authority: COption<Pubkey>,
     withdraw_withheld_authority: COption<Pubkey>,
     transfer_fee_basis_points: u16,
     maximum_fee: u64,
 ) -> Instruction {
     let data = TokenInstruction::TransferFeeExtension(
         TransferFeeInstruction::InitializeTransferFeeConfig {
-            fee_config_authority,
+            transfer_fee_config_authority,
             withdraw_withheld_authority,
             transfer_fee_basis_points,
             maximum_fee,
@@ -419,7 +420,7 @@ mod test {
     fn test_instruction_packing() {
         let check = TokenInstruction::TransferFeeExtension(
             TransferFeeInstruction::InitializeTransferFeeConfig {
-                fee_config_authority: COption::Some(Pubkey::new(&[11u8; 32])),
+                transfer_fee_config_authority: COption::Some(Pubkey::new(&[11u8; 32])),
                 withdraw_withheld_authority: COption::None,
                 transfer_fee_basis_points: 111,
                 maximum_fee: u64::MAX,

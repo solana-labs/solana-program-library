@@ -16,7 +16,7 @@ use {
     },
     spl_token_2022::{
         error::TokenError,
-        extension::{mint_close_authority::MintCloseAuthority, ExtensionType},
+        extension::{mint_close_authority::MintCloseAuthority, transfer_fee, ExtensionType},
         id, instruction,
         processor::Processor,
         state::Mint,
@@ -32,7 +32,7 @@ async fn success_base() {
         mint_authority,
         token,
         ..
-    } = TestContext::new(vec![]).await;
+    } = TestContext::new(vec![]).await.unwrap();
 
     let mint = token.get_mint_info().await.unwrap();
     assert_eq!(mint.base.decimals, decimals);
@@ -159,12 +159,11 @@ async fn success_extension_and_base() {
         mint_authority,
         token,
         ..
-    } = TestContext::new(vec![
-        ExtensionInitializationParams::InitializeMintCloseAuthority {
-            close_authority: close_authority.clone(),
-        },
-    ])
-    .await;
+    } = TestContext::new(vec![ExtensionInitializationParams::MintCloseAuthority {
+        close_authority: close_authority.clone(),
+    }])
+    .await
+    .unwrap();
 
     let state = token.get_mint_info().await.unwrap();
     assert_eq!(state.base.decimals, decimals);
@@ -413,5 +412,59 @@ async fn fail_account_init_after_mint_init_with_extension() {
     assert_eq!(
         err,
         TransactionError::InstructionError(3, InstructionError::InvalidAccountData)
+    );
+}
+
+#[tokio::test]
+async fn fail_fee_init_after_mint_init() {
+    let program_test = ProgramTest::new("spl_token_2022", id(), processor!(Processor::process));
+    let mut ctx = program_test.start_with_context().await;
+    let rent = ctx.banks_client.get_rent().await.unwrap();
+    let mint_account = Keypair::new();
+    let mint_authority_pubkey = Pubkey::new_unique();
+
+    let space = ExtensionType::get_account_len::<Mint>(&[ExtensionType::TransferFeeConfig]);
+    let instructions = vec![
+        system_instruction::create_account(
+            &ctx.payer.pubkey(),
+            &mint_account.pubkey(),
+            rent.minimum_balance(space),
+            space as u64,
+            &spl_token_2022::id(),
+        ),
+        instruction::initialize_mint(
+            &spl_token_2022::id(),
+            &mint_account.pubkey(),
+            &mint_authority_pubkey,
+            None,
+            9,
+        )
+        .unwrap(),
+        transfer_fee::instruction::initialize_transfer_fee_config(
+            mint_account.pubkey(),
+            COption::Some(Pubkey::new_unique()),
+            COption::Some(Pubkey::new_unique()),
+            10,
+            100,
+        ),
+    ];
+
+    let tx = Transaction::new_signed_with_payer(
+        &instructions,
+        Some(&ctx.payer.pubkey()),
+        &[&ctx.payer, &mint_account],
+        ctx.last_blockhash,
+    );
+    #[allow(clippy::useless_conversion)]
+    let err: TransactionError = ctx
+        .banks_client
+        .process_transaction(tx)
+        .await
+        .unwrap_err()
+        .unwrap()
+        .into();
+    assert_eq!(
+        err,
+        TransactionError::InstructionError(1, InstructionError::InvalidAccountData)
     );
 }

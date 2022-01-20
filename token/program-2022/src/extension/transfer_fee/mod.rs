@@ -32,7 +32,7 @@ pub struct TransferFeeConfig {
     /// Optional authority to set the fee
     pub transfer_fee_config_authority: OptionalNonZeroPubkey,
     /// Withdraw from mint instructions must be signed by this key
-    pub withheld_withdraw_authority: OptionalNonZeroPubkey,
+    pub withdraw_withheld_authority: OptionalNonZeroPubkey,
     /// Withheld transfer fee tokens that have been moved to the mint for withdrawal
     pub withheld_amount: PodU64,
     /// Older transfer fee, used if the current epoch < new_transfer_fee.epoch
@@ -65,7 +65,7 @@ pub(crate) mod test {
                 &[10; 32],
             )))
             .unwrap(),
-            withheld_withdraw_authority: OptionalNonZeroPubkey::try_from(Some(Pubkey::new(
+            withdraw_withheld_authority: OptionalNonZeroPubkey::try_from(Some(Pubkey::new(
                 &[11; 32],
             )))
             .unwrap(),
