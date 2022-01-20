@@ -1,4 +1,4 @@
-#![cfg(any(test, feature = "test-bpf"))]
+#![cfg(feature = "test-bpf")]
 
 mod helpers;
 
