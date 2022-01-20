@@ -674,7 +674,7 @@ impl Processor {
                 swap_token_b_amount,
                 to_u128(pool_mint.supply)?,
                 trade_direction,
-                token_swap.fees(),
+                &fees,
             )
             .ok_or(SwapError::FeeCalculationFailure)?;
 
