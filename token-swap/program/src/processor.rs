@@ -13,6 +13,7 @@ use crate::{
         SwapInstruction, WithdrawAllTokenTypes, WithdrawSingleTokenTypeExactAmountOut, swap_flags,
     },
     state::{SwapState, SwapV1, SwapVersion, PoolRegistry},
+    constraints,
 };
 use num_traits::FromPrimitive;
 use solana_program::{
@@ -29,6 +30,7 @@ use solana_program::{
     system_instruction,
     sysvar::Sysvar,
 };
+use spl_associated_token_account::get_associated_token_address;
 use std::convert::TryInto;
 
 /// Program state handler.
@@ -1365,6 +1367,87 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes RepairClosedFeeAccount
+    pub fn process_repair_closed_fee_account(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let token_swap_account = next_account_info(account_info_iter)?;
+        let old_fee_account = next_account_info(account_info_iter)?;
+        let new_fee_account = next_account_info(account_info_iter)?;
+
+        //assert program account ownership
+        if token_swap_account.owner != program_id {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+
+        //no point making no change
+        if old_fee_account.key == new_fee_account.key {
+            return Err(SwapError::InvalidInput.into());
+        }
+
+        //constraints must exist
+        let swap_constraints = constraints::SWAP_CONSTRAINTS
+            .ok_or_else(|| SwapError::InvalidInput)?;
+
+        let new_fee_token_account = Self::unpack_token_account(&new_fee_account, &spl_token::id())?;
+        let owner_key = swap_constraints.owner_key.parse::<Pubkey>().unwrap();
+
+        //new fee account must be owned by the owner fee account
+        if owner_key != new_fee_token_account.owner {
+            return Err(SwapError::InvalidOwner.into());
+        }
+
+        //new fee account cannot have a close authority
+        if new_fee_token_account.close_authority.is_some() {
+            return Err(SwapError::InvalidCloseAuthority.into());
+        }
+
+        //new fee account cannot have a delegate
+        if new_fee_token_account.delegate.is_some() {
+            return Err(SwapError::InvalidDelegate.into());
+        }
+
+        //old fee must NOT be a token account (assumed closed, but could be some other reason?)
+        //this makes sure this can only run in a truly broken scenario
+        Self::unpack_token_account(&old_fee_account, &spl_token::id())
+            .err()
+            .ok_or_else(|| SwapError::InvalidInput)?;
+
+        //token swap must parse. 
+        //we avoid using the trait returned from SwapVersion::unpack so we have a mutable SwapV1
+        let data = token_swap_account.data.borrow();
+        let (&version, rest) = data
+            .split_first()
+            .ok_or(ProgramError::InvalidAccountData)?;
+        let mut token_swap = match version {
+            1 => Ok(SwapV1::unpack(rest)?),
+            _ => Err(ProgramError::UninitializedAccount),
+        }?;
+
+        //old fee account key must match whats on our token swap
+        if old_fee_account.key != &token_swap.pool_fee_account {
+            return Err(SwapError::IncorrectFeeAccount.into());
+        }
+
+        //new fee account must be the ata of owner fee address and the pool mint
+        let ata = get_associated_token_address(&owner_key, token_swap.pool_mint());
+        if new_fee_account.key != &ata {
+            return Err(SwapError::IncorrectFeeAccount.into());
+        }
+
+        //set the new fee account
+        token_swap.pool_fee_account = *new_fee_account.key;
+
+        //repack the token_swap account data
+        SwapVersion::pack(
+            SwapVersion::SwapV1(token_swap), 
+            &mut token_swap_account.data.borrow_mut())?;
+
+        Ok(())
+    }
+
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         Self::process_with_constraints(program_id, accounts, input, &SWAP_CONSTRAINTS)
@@ -1480,6 +1563,13 @@ impl Processor {
             }) => {
                 msg!("Instruction: DeregisterPool");
                 Self::process_deregister_pool(program_id, pool_index, accounts)
+            }
+            SwapInstruction::RepairClosedFeeAccount => {
+                msg!("Instruction: RepairClosedFeeAccount");
+                Self::process_repair_closed_fee_account(
+                    program_id,
+                    accounts,
+                )
             }
         }
     }
