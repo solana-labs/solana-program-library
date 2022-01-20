@@ -286,6 +286,35 @@ pub async fn create_token_account(
     Ok(())
 }
 
+pub async fn create_associated_token_account(
+    banks_client: &mut BanksClient,
+    payer: &Keypair,
+    recent_blockhash: &Hash,
+    owner: &Pubkey,
+    mint: &Pubkey,
+) -> Result<Pubkey, TransportError> {
+
+    let mut transaction = Transaction::new_with_payer(
+        &[
+            spl_associated_token_account::create_associated_token_account(
+                &payer.pubkey(),
+                owner,
+                mint,
+            ),
+        ],
+        Some(&payer.pubkey()),
+    );
+    transaction.sign(&[payer], *recent_blockhash);
+    banks_client.process_transaction(transaction).await?;
+
+    Ok(
+        spl_associated_token_account::get_associated_token_address(
+            owner,
+            mint,
+        )
+    )
+}
+
 pub async fn close_token_account(
     banks_client: &mut BanksClient,
     payer: &Keypair,
@@ -332,6 +361,33 @@ pub async fn mint_tokens(
         .unwrap()],
         Some(&payer.pubkey()),
         &[payer, mint_authority],
+        *recent_blockhash,
+    );
+    banks_client.process_transaction(transaction).await?;
+    Ok(())
+}
+
+pub async fn burn_tokens(
+    banks_client: &mut BanksClient,
+    payer: &Keypair,
+    recent_blockhash: &Hash,
+    mint: &Pubkey,
+    account: &Pubkey,
+    authority: &Keypair,
+    amount: u64,
+) -> Result<(), TransportError> {
+    let transaction = Transaction::new_signed_with_payer(
+        &[spl_token::instruction::burn(
+            &spl_token::id(),
+            account,
+            mint,
+            &authority.pubkey(),
+            &[&authority.pubkey()],
+            amount,
+        )
+        .unwrap()],
+        Some(&payer.pubkey()),
+        &[payer, authority],
         *recent_blockhash,
     );
     banks_client.process_transaction(transaction).await?;
@@ -417,6 +473,7 @@ pub struct TokenSwapAccounts<'a> {
     pub token_b_mint_key: &'a Keypair,
     pub pool_mint_key: Keypair,
     pub pool_fee_key: Keypair,
+    pub pool_fee_pubkey_override: Option<Pubkey>,
     pub pool_token_key: Keypair,
     pub pool_registry_pubkey: Pubkey,
     pub pool_nonce: u8,
@@ -574,6 +631,7 @@ impl<'a> TokenSwapAccounts<'a> {
             token_b_mint_key,
             pool_mint_key,
             pool_fee_key,
+            pool_fee_pubkey_override: None,
             pool_token_key,
             pool_registry_pubkey,
             pool_nonce,
@@ -671,8 +729,8 @@ impl<'a> TokenSwapAccounts<'a> {
                 &self.token_b_key.pubkey(),
                 &token_b,
                 &self.pool_mint_key.pubkey(),
-                &self.pool_fee_key.pubkey(),
-
+                //allow fee key to change externally to a pubkey
+                &self.pool_fee_pubkey_override.unwrap_or(self.pool_fee_key.pubkey()),
                 &other_swap.swap_pubkey,
                 &other_swap.authority_pubkey,
                 &other_swap.token_a_key.pubkey(),
@@ -763,4 +821,50 @@ impl<'a> TokenSwapAccounts<'a> {
         banks_client.process_transaction(transaction).await?;
         Ok(())
     }
+
+    pub async fn repair(
+        &mut self,
+        banks_client: &mut BanksClient,
+        payer: &Keypair,
+        recent_blockhash: &Hash,
+        ata: &Pubkey,
+    ) -> Result<(), TransportError> {
+        self.repair_override_old_fee(
+            banks_client,
+            payer,
+            recent_blockhash,
+            ata,
+            None,
+        ).await
+    }
+
+    pub async fn repair_override_old_fee(
+            &mut self,
+            banks_client: &mut BanksClient,
+            payer: &Keypair,
+            recent_blockhash: &Hash,
+            ata: &Pubkey,
+            old_fee_account: Option<Pubkey>,
+        ) -> Result<(), TransportError> {
+
+        let mut transaction = Transaction::new_with_payer(
+            &[
+                instruction::repair_closed_fee_account(
+                    &id(),
+                    &self.swap_pubkey,
+                    &old_fee_account.unwrap_or_else(||self.pool_fee_key.pubkey()),
+                    ata,
+                ).unwrap()
+            ],
+            Some(&payer.pubkey()),
+        );
+        transaction.sign(&[payer], *recent_blockhash);
+        banks_client.process_transaction(transaction).await?;
+
+        //future swaps should use this new key
+        self.pool_fee_pubkey_override = Some(*ata);
+
+        Ok(())
+    }
+
 }
