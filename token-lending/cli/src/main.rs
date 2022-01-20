@@ -457,6 +457,10 @@ fn command_create_lending_market(
     );
 
     let recent_blockhash = config.rpc_client.get_latest_blockhash()?;
+    transaction.sign(
+        &vec![config.fee_payer.as_ref(), &lending_market_keypair],
+        recent_blockhash,
+    );
     check_fee_payer_balance(
         config,
         lending_market_balance
@@ -464,10 +468,6 @@ fn command_create_lending_market(
                 .rpc_client
                 .get_fee_for_message(transaction.message())?,
     )?;
-    transaction.sign(
-        &vec![config.fee_payer.as_ref(), &lending_market_keypair],
-        recent_blockhash,
-    );
     send_transaction(config, transaction)?;
     Ok(())
 }
@@ -644,19 +644,6 @@ fn command_add_reserve(
     );
 
     let recent_blockhash = config.rpc_client.get_latest_blockhash()?;
-    check_fee_payer_balance(
-        config,
-        total_balance
-            + config
-                .rpc_client
-                .get_fee_for_message(transaction_1.message())?
-            + config
-                .rpc_client
-                .get_fee_for_message(transaction_2.message())?
-            + config
-                .rpc_client
-                .get_fee_for_message(transaction_3.message())?,
-    )?;
     transaction_1.sign(
         &vec![
             config.fee_payer.as_ref(),
@@ -684,6 +671,19 @@ fn command_add_reserve(
         ],
         recent_blockhash,
     );
+    check_fee_payer_balance(
+        config,
+        total_balance
+            + config
+                .rpc_client
+                .get_fee_for_message(transaction_1.message())?
+            + config
+                .rpc_client
+                .get_fee_for_message(transaction_2.message())?
+            + config
+                .rpc_client
+                .get_fee_for_message(transaction_3.message())?,
+    )?;
     send_transaction(config, transaction_1)?;
     send_transaction(config, transaction_2)?;
     send_transaction(config, transaction_3)?;
