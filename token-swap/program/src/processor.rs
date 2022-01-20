@@ -678,7 +678,13 @@ impl Processor {
             )
             .ok_or(SwapError::FeeCalculationFailure)?;
 
-        if pool_token_amount > 0 {
+        
+        //if the pool fee account doesn't exist, we have to resort to no fees
+        let valid_fee_account = Self::unpack_token_account(pool_fee_account_info, token_program_info.key).is_ok();
+        if !valid_fee_account {
+            msg!("cannot pay fees to {}", pool_fee_account_info.key);
+        //otherwise, pay fees if there are any
+        } else if pool_token_amount > 0 {
             Self::token_mint_to(
                 swap_info.key,
                 token_program_info.clone(),
