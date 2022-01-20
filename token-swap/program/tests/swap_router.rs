@@ -15,16 +15,14 @@ use {
     spl_token_swap::error::SwapError,
 };
 
-const POOL_TOKEN_A_AMOUNT: u64 = 700_000_000_000_000;
-const POOL_TOKEN_B_AMOUNT: u64 = 600_000_000_000_000;
-const POOL_TOKEN_B2_AMOUNT: u64 = 300_000_000_000_000;
-const POOL_TOKEN_C_AMOUNT: u64 = 400_000_000_000_000;
+const POOL_TOKEN_A_AMOUNT: u64 = 700_000_000;
+const POOL_TOKEN_B_AMOUNT: u64 = 600_000_000;
+const POOL_TOKEN_B2_AMOUNT: u64 = 300_000_000;
+const POOL_TOKEN_C_AMOUNT: u64 = 400_000_000;
 const USER_TOKEN_A_BAL: u64 = 200_000;
 const USER_WILL_SWAP: u64 = 99_999;
 const USER_WILL_EXPECT: u64 = 114_286;
-//const USER_WILL_RECEIVE: u64 = 112_463;
-//if 1/2 router discount used fees
-const USER_WILL_RECEIVE: u64 = 113_694; //after 0.6% fee
+const USER_WILL_RECEIVE: u64 = 113_646; 
 
 #[tokio::test]
 async fn fn_swap_router_create_b_c() {
