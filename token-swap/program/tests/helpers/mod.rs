@@ -286,6 +286,31 @@ pub async fn create_token_account(
     Ok(())
 }
 
+pub async fn close_token_account(
+    banks_client: &mut BanksClient,
+    payer: &Keypair,
+    recent_blockhash: &Hash,
+    account: &Pubkey,
+    manager: &Keypair,
+) -> Result<(), TransportError> {
+    let mut transaction = Transaction::new_with_payer(
+        &[
+            spl_token::instruction::close_account(
+                &spl_token::id(),
+                &account,
+                &manager.pubkey(),
+                &manager.pubkey(),
+                &[&manager.pubkey()],
+            )
+            .unwrap(),
+        ],
+        Some(&payer.pubkey()),
+    );
+    transaction.sign(&[payer, manager], *recent_blockhash);
+    banks_client.process_transaction(transaction).await?;
+    Ok(())
+}
+
 pub async fn mint_tokens(
     banks_client: &mut BanksClient,
     payer: &Keypair,
