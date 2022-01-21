@@ -300,7 +300,7 @@ mod tests {
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator
+            owner_withdraw_fee_denominator,
         };
         let source_amount = 100;
         let curve = ConstantProductCurve {};
@@ -341,7 +341,7 @@ mod tests {
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator
+            owner_withdraw_fee_denominator,
         };
         let source_amount: u128 = 100;
         let curve = ConstantProductCurve {};

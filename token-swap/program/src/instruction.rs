@@ -247,7 +247,7 @@ pub enum SwapInstruction {
     ///   7. `[writable]` Pool token mint, to generate trading fees
     ///   8. `[]` Swap 1 fee account
     ///   9. '[]` Token program id
-    /// 
+    ///
     ///   10. `[]` Token-swap 2
     ///   11. `[]` swap authority 2
     ///   12. `[writable]` token_(A|B) Base Account to swap INTO.  Must be the MIDDLE token.
@@ -284,7 +284,7 @@ impl SwapInstruction {
                         nonce,
                         fees,
                         swap_curve,
-                        pool_nonce
+                        pool_nonce,
                     })
                 } else {
                     return Err(SwapError::InvalidInstruction.into());
@@ -335,25 +335,25 @@ impl SwapInstruction {
                     destination_token_amount,
                     maximum_pool_token_amount,
                 })
-            },
-            6 => Self::InitializeRegistry {
-            },
+            }
+            6 => Self::InitializeRegistry {},
             7 => {
                 let (amount_in, rest) = Self::unpack_u64(rest)?;
                 let (minimum_amount_out, rest) = Self::unpack_u64(rest)?;
-                let flags = rest.first().unwrap_or(&swap_flags::default_routed()).clone();
+                let flags = rest
+                    .first()
+                    .unwrap_or(&swap_flags::default_routed())
+                    .clone();
                 Self::RoutedSwap(Swap {
                     amount_in,
                     minimum_amount_out,
                     flags,
                 })
-            },
+            }
             8 => {
                 let (pool_index, _rest) = Self::unpack_u64(rest)?;
-                Self::DeregisterPool(DeregisterPool {
-                    pool_index,
-                })
-            },
+                Self::DeregisterPool(DeregisterPool { pool_index })
+            }
             _ => return Err(SwapError::InvalidInstruction.into()),
         })
     }
@@ -380,7 +380,7 @@ impl SwapInstruction {
                 nonce,
                 fees,
                 swap_curve,
-                pool_nonce
+                pool_nonce,
             }) => {
                 buf.push(0);
                 buf.push(*nonce);
@@ -453,9 +453,7 @@ impl SwapInstruction {
                 buf.extend_from_slice(&minimum_amount_out.to_le_bytes());
                 buf.push(*flags);
             }
-            Self::DeregisterPool(DeregisterPool {
-                pool_index,
-            }) => {
+            Self::DeregisterPool(DeregisterPool { pool_index }) => {
                 buf.push(8);
                 buf.extend_from_slice(&pool_index.to_le_bytes());
             }
@@ -486,7 +484,7 @@ pub fn initialize(
         nonce,
         fees,
         swap_curve,
-        pool_nonce
+        pool_nonce,
     });
     let data = init_data.pack();
 
@@ -696,7 +694,7 @@ pub fn swap(
     if let Some(host_fee_pubkey) = host_fee_pubkey {
         accounts.push(AccountMeta::new(*host_fee_pubkey, false));
     }
-    
+
     Ok(Instruction {
         program_id: *program_id,
         accounts,
@@ -744,7 +742,6 @@ pub fn routed_swap(
         AccountMeta::new(*pool_mint_pubkey, false),
         AccountMeta::new(*pool_fee_pubkey, false),
         AccountMeta::new_readonly(*token_program_id, false),
-
         AccountMeta::new_readonly(*swap_pubkey2, false),
         AccountMeta::new_readonly(*authority_pubkey2, false),
         AccountMeta::new(*swap_source_pubkey2, false),
@@ -762,12 +759,11 @@ pub fn routed_swap(
     })
 }
 
-
 /// Creates an 'initialize_registry' instruction.
 pub fn initialize_registry(
     program_id: &Pubkey,
     payer: &Pubkey,
-    pool_registry_pubkey: &Pubkey
+    pool_registry_pubkey: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     let init_data = SwapInstruction::InitializeRegistry();
     let data = init_data.pack();
@@ -784,7 +780,6 @@ pub fn initialize_registry(
     })
 }
 
-
 /// Creates an 'deregister_pool' instruction.
 pub fn deregister_pool(
     program_id: &Pubkey,
@@ -792,7 +787,7 @@ pub fn deregister_pool(
     pool_registry_pubkey: &Pubkey,
     pool_index: u64,
 ) -> Result<Instruction, ProgramError> {
-    let init_data = SwapInstruction::DeregisterPool(DeregisterPool{pool_index});
+    let init_data = SwapInstruction::DeregisterPool(DeregisterPool { pool_index });
     let data = init_data.pack();
 
     let accounts = vec![
@@ -838,7 +833,7 @@ mod tests {
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator
+            owner_withdraw_fee_denominator,
         };
         let nonce: u8 = 255;
         let amp: u64 = 1;
@@ -853,7 +848,7 @@ mod tests {
             nonce,
             fees,
             swap_curve,
-            pool_nonce
+            pool_nonce,
         });
         let packed = check.pack();
         let mut expect = vec![0u8, nonce];

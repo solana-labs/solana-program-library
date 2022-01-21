@@ -1,7 +1,10 @@
 #![allow(dead_code)]
 
 use {
-    solana_program::{instruction::Instruction, hash::Hash, program_pack::Pack, pubkey::Pubkey, system_instruction},
+    solana_program::{
+        hash::Hash, instruction::Instruction, program_pack::Pack, pubkey::Pubkey,
+        system_instruction,
+    },
     solana_program_test::*,
     solana_sdk::{
         signature::{Keypair, Signer},
@@ -41,11 +44,9 @@ pub async fn create_standard_setup<'a>(
 ) -> TokenSwapAccounts<'a> {
     let pool_registry_key = match pool_registry_key {
         Some(a) => a,
-        None => {
-            create_pool_registry(banks_client, payer, recent_blockhash, payer)
+        None => create_pool_registry(banks_client, payer, recent_blockhash, payer)
             .await
-            .unwrap()
-        },
+            .unwrap(),
     };
 
     let fees = Fees {
@@ -294,16 +295,14 @@ pub async fn close_token_account(
     manager: &Keypair,
 ) -> Result<(), TransportError> {
     let mut transaction = Transaction::new_with_payer(
-        &[
-            spl_token::instruction::close_account(
-                &spl_token::id(),
-                &account,
-                &manager.pubkey(),
-                &manager.pubkey(),
-                &[&manager.pubkey()],
-            )
-            .unwrap(),
-        ],
+        &[spl_token::instruction::close_account(
+            &spl_token::id(),
+            &account,
+            &manager.pubkey(),
+            &manager.pubkey(),
+            &[&manager.pubkey()],
+        )
+        .unwrap()],
         Some(&payer.pubkey()),
     );
     transaction.sign(&[payer, manager], *recent_blockhash);
@@ -630,32 +629,36 @@ impl<'a> TokenSwapAccounts<'a> {
             Some(t) => *t,
             _ => {
                 //create ata
-                ins.push(spl_associated_token_account::create_associated_token_account(
-                    &payer.pubkey(), 
-                    &payer.pubkey(), 
-                    &self.token_b_mint_key.pubkey(),
-                ));
+                ins.push(
+                    spl_associated_token_account::create_associated_token_account(
+                        &payer.pubkey(),
+                        &payer.pubkey(),
+                        &self.token_b_mint_key.pubkey(),
+                    ),
+                );
                 spl_associated_token_account::get_associated_token_address(
-                    &payer.pubkey(), 
+                    &payer.pubkey(),
                     &self.token_b_mint_key.pubkey(),
                 )
-            },
+            }
         };
         //if token_c needs created, create it
         let token_c = match token_c {
             Some(t) => *t,
             _ => {
                 //create ata
-                ins.push(spl_associated_token_account::create_associated_token_account(
-                    &payer.pubkey(), 
-                    &payer.pubkey(), 
-                    &other_swap.token_b_mint_key.pubkey(),
-                ));
+                ins.push(
+                    spl_associated_token_account::create_associated_token_account(
+                        &payer.pubkey(),
+                        &payer.pubkey(),
+                        &other_swap.token_b_mint_key.pubkey(),
+                    ),
+                );
                 spl_associated_token_account::get_associated_token_address(
-                    &payer.pubkey(), 
+                    &payer.pubkey(),
                     &other_swap.token_b_mint_key.pubkey(),
                 )
-            },
+            }
         };
 
         //swap ins
@@ -672,7 +675,6 @@ impl<'a> TokenSwapAccounts<'a> {
                 &token_b,
                 &self.pool_mint_key.pubkey(),
                 &self.pool_fee_key.pubkey(),
-
                 &other_swap.swap_pubkey,
                 &other_swap.authority_pubkey,
                 &other_swap.token_a_key.pubkey(),
@@ -680,23 +682,20 @@ impl<'a> TokenSwapAccounts<'a> {
                 &token_c,
                 &other_swap.pool_mint_key.pubkey(),
                 &other_swap.pool_fee_key.pubkey(),
-
                 &payer.pubkey(),
-
                 instruction::Swap {
                     amount_in: amt_in,
                     minimum_amount_out: amt_out,
                     flags: instruction::swap_flags::default_routed(),
                 },
-            ).unwrap()
+            )
+            .unwrap(),
         );
 
         //now create and execute tx
-        
-        let mut transaction = Transaction::new_with_payer(
-            &ins.into_boxed_slice(),
-            Some(&payer.pubkey()),
-        );
+
+        let mut transaction =
+            Transaction::new_with_payer(&ins.into_boxed_slice(), Some(&payer.pubkey()));
         transaction.sign(&[payer], *recent_blockhash);
         banks_client.process_transaction(transaction).await?;
         Ok(())
@@ -716,10 +715,9 @@ impl<'a> TokenSwapAccounts<'a> {
         maximum_token_a_amount: u64,
         maximum_token_b_amount: u64,
     ) -> Result<(), TransportError> {
+        let user_transfer_authority = Keypair::new();
 
-            let user_transfer_authority = Keypair::new();
-
-            let mut transaction = Transaction::new_with_payer(
+        let mut transaction = Transaction::new_with_payer(
             &[
                 spl_token::instruction::approve(
                     &spl_token::id(),
@@ -728,7 +726,8 @@ impl<'a> TokenSwapAccounts<'a> {
                     &depositor_key.pubkey(),
                     &[&depositor_key.pubkey()],
                     maximum_token_a_amount,
-                ).unwrap(),
+                )
+                .unwrap(),
                 spl_token::instruction::approve(
                     &spl_token::id(),
                     depositor_token_b_key,
@@ -736,7 +735,8 @@ impl<'a> TokenSwapAccounts<'a> {
                     &depositor_key.pubkey(),
                     &[&depositor_key.pubkey()],
                     maximum_token_b_amount,
-                ).unwrap(),
+                )
+                .unwrap(),
                 instruction::deposit_all_token_types(
                     &id(),
                     &spl_token::id(),
@@ -755,11 +755,14 @@ impl<'a> TokenSwapAccounts<'a> {
                         maximum_token_b_amount,
                     },
                 )
-                .unwrap()
+                .unwrap(),
             ],
             Some(&payer.pubkey()),
         );
-        transaction.sign(&[payer, &user_transfer_authority, &depositor_key], *recent_blockhash);
+        transaction.sign(
+            &[payer, &user_transfer_authority, &depositor_key],
+            *recent_blockhash,
+        );
         banks_client.process_transaction(transaction).await?;
         Ok(())
     }

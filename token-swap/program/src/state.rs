@@ -2,6 +2,7 @@
 
 use crate::curve::{base::SwapCurve, fees::Fees};
 use arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs};
+use bytemuck::{from_bytes_mut, Pod, Zeroable};
 use enum_dispatch::enum_dispatch;
 use solana_program::{
     account_info::AccountInfo,
@@ -9,13 +10,7 @@ use solana_program::{
     program_pack::{IsInitialized, Pack, Sealed},
     pubkey::Pubkey,
 };
-use std::{
-    cell::RefMut,
-};
-use bytemuck::{
-    from_bytes_mut,
-    Pod, Zeroable,
-};
+use std::cell::RefMut;
 
 /// Max number of accounts in registry
 const MAX_REGISTRY_SIZE: usize = ((2 * 1024 * 1024) / 32) - 1;
@@ -29,7 +24,7 @@ pub struct PoolRegistry {
     /// Current size of the registry array
     pub registry_size: u32,
     /// Array of pubkeys
-    pub accounts: [Pubkey; MAX_REGISTRY_SIZE]
+    pub accounts: [Pubkey; MAX_REGISTRY_SIZE],
 }
 unsafe impl Zeroable for PoolRegistry {}
 unsafe impl Pod for PoolRegistry {}
@@ -287,7 +282,7 @@ impl Pack for SwapV1 {
             pool_fee_account,
             fees,
             swap_curve,
-            pool_nonce
+            pool_nonce,
         ) = mut_array_refs![output, 1, 1, 32, 32, 32, 32, 32, 32, 32, 48, 33, 1];
         is_initialized[0] = self.is_initialized as u8;
         nonce[0] = self.nonce;
@@ -319,7 +314,7 @@ impl Pack for SwapV1 {
             pool_fee_account,
             fees,
             swap_curve,
-            pool_nonce
+            pool_nonce,
         ) = array_refs![input, 1, 1, 32, 32, 32, 32, 32, 32, 32, 48, 33, 1];
         Ok(Self {
             is_initialized: match is_initialized {
@@ -349,9 +344,7 @@ mod tests {
 
     use std::convert::TryInto;
 
-    use bytemuck::{
-        try_zeroed_box
-    };
+    use bytemuck::try_zeroed_box;
 
     const TEST_FEES: Fees = Fees {
         trade_fee_numerator: 1,
@@ -359,7 +352,7 @@ mod tests {
         owner_trade_fee_numerator: 3,
         owner_trade_fee_denominator: 10,
         owner_withdraw_fee_numerator: 2,
-        owner_withdraw_fee_denominator: 7
+        owner_withdraw_fee_denominator: 7,
     };
 
     const TEST_NONCE: u8 = 255;
@@ -412,7 +405,6 @@ mod tests {
         let regsize_ref = std::ptr::addr_of!(pool_registry.registry_size);
         let registry_size = unsafe { regsize_ref.read_unaligned() };
         assert_eq!(registry_size, 4u32);
-
     }
 
     #[test]

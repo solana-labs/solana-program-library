@@ -96,7 +96,7 @@ fn run_fuzz(fuzz_data: FuzzData) {
         owner_trade_fee_numerator,
         owner_trade_fee_denominator,
         owner_withdraw_fee_numerator,
-        owner_withdraw_fee_denominator
+        owner_withdraw_fee_denominator,
     };
     let swap_curve = get_swap_curve(fuzz_data.curve_type);
     let mut token_swap = NativeTokenSwap::new(

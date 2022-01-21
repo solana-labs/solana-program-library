@@ -1,4 +1,4 @@
-//started writing these to mimic the unit tests - but found that simply mocking the init 
+//started writing these to mimic the unit tests - but found that simply mocking the init
 //in the unit tests followed the pattern there and allowed all other existing tests to function
 
 #![cfg(feature = "test-bpf")]
@@ -6,20 +6,16 @@
 mod helpers;
 
 use {
-    solana_program_test::{tokio},
+    solana_program_test::tokio,
     solana_sdk::{
+        account::Account,
         instruction::InstructionError,
         signature::{Keypair, Signer},
+        system_program,
         transaction::TransactionError,
         transport::TransportError,
-        account::Account,
-        system_program,
     },
-    spl_token_swap::{
-        curve::{
-            calculator::INITIAL_SWAP_POOL_AMOUNT,
-        },
-    },
+    spl_token_swap::curve::calculator::INITIAL_SWAP_POOL_AMOUNT,
     std::convert::TryInto,
 };
 
@@ -30,8 +26,8 @@ async fn fn_test_deposit_swap_not_init() {
     let mut pt = helpers::program_test();
     //throw our depositor account directly onto the chain startup
     pt.add_account(
-        depositor.pubkey(), 
-        Account::new(100_000_000, 0, &system_program::id())
+        depositor.pubkey(),
+        Account::new(100_000_000, 0, &system_program::id()),
     );
     let (mut banks_client, payer, recent_blockhash) = pt.start().await;
 
@@ -44,7 +40,7 @@ async fn fn_test_deposit_swap_not_init() {
         &payer,
         &recent_blockhash,
         None,
-        &mint_a, 
+        &mint_a,
         &mint_b,
         token_a_amount,
         token_b_amount,
@@ -62,8 +58,8 @@ async fn fn_test_deposit_swap_not_init() {
     let token_account_pool = Keypair::new();
 
     helpers::create_depositor(
-        &mut banks_client, 
-        &payer, 
+        &mut banks_client,
+        &payer,
         &recent_blockhash,
         &depositor,
         &token_account_a,
@@ -74,12 +70,13 @@ async fn fn_test_deposit_swap_not_init() {
         &swap.pool_mint_key.pubkey(),
         deposit_a,
         deposit_b,
-    ).await;
+    )
+    .await;
 
     let transaction_error = swap
         .deposit_all_token_types(
-            &mut banks_client, 
-            &depositor, 
+            &mut banks_client,
+            &depositor,
             &recent_blockhash,
             &depositor,
             &token_account_a.pubkey(),
@@ -93,11 +90,11 @@ async fn fn_test_deposit_swap_not_init() {
         .err()
         .unwrap();
     if let TransportError::TransactionError(TransactionError::InstructionError(
-            _,
-            InstructionError::InvalidAccountData, 
-        )) = transaction_error { }
-    else {
+        _,
+        InstructionError::InvalidAccountData,
+    )) = transaction_error
+    {
+    } else {
         panic!("Wrong error occurs while depositing into uninitialized swap")
     }
-    
 }

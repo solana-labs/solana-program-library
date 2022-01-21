@@ -121,7 +121,7 @@ mod tests {
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator
+            owner_withdraw_fee_denominator,
         };
         let calculator = ConstantProductCurve {};
         let swap_curve = SwapCurve {

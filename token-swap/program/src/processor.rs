@@ -9,10 +9,11 @@ use crate::{
     },
     error::SwapError,
     instruction::{
-        DepositAllTokenTypes, DepositSingleTokenTypeExactAmountIn, Initialize, Swap, DeregisterPool,
-        SwapInstruction, WithdrawAllTokenTypes, WithdrawSingleTokenTypeExactAmountOut, swap_flags,
+        swap_flags, DepositAllTokenTypes, DepositSingleTokenTypeExactAmountIn, DeregisterPool,
+        Initialize, Swap, SwapInstruction, WithdrawAllTokenTypes,
+        WithdrawSingleTokenTypeExactAmountOut,
     },
-    state::{SwapState, SwapV1, SwapVersion, PoolRegistry},
+    state::{PoolRegistry, SwapState, SwapV1, SwapVersion},
 };
 use num_traits::FromPrimitive;
 use solana_program::{
@@ -308,20 +309,20 @@ impl Processor {
                 &seed_key_vec[0][..32],
                 &seed_key_vec[1][..32],
                 &[swap_curve.curve_type as u8],
-            ], program_id);
+            ],
+            program_id,
+        );
 
         if *swap_info.key != pool_pda || pool_nonce != pool_pda_nonce {
             return Err(SwapError::InvalidProgramAddress.into());
         }
 
-        let pool_signer_seeds: &[&[_]] = &[
-            &[
-                &seed_key_vec[0][..32],
-                &seed_key_vec[1][..32],
-                &[swap_curve.curve_type as u8],
-                &[pool_nonce]
-            ]
-        ];
+        let pool_signer_seeds: &[&[_]] = &[&[
+            &seed_key_vec[0][..32],
+            &seed_key_vec[1][..32],
+            &[swap_curve.curve_type as u8],
+            &[pool_nonce],
+        ]];
 
         if let Some(swap_constraints) = swap_constraints {
             let owner_key = swap_constraints
@@ -339,7 +340,7 @@ impl Processor {
             if token_a.mint != required_mint && token_b.mint != required_mint {
                 return Err(SwapError::InvalidMint.into());
             }
-            
+
             swap_constraints.validate_curve(&swap_curve)?;
             swap_constraints.validate_fees(&fees)?;
         }
@@ -352,14 +353,14 @@ impl Processor {
                 &pool_pda,
                 1.max(rent.minimum_balance(SwapVersion::LATEST_LEN)),
                 SwapVersion::LATEST_LEN as u64,
-                program_id
+                program_id,
             ),
             &[
                 payer_info.clone(),
                 swap_info.clone(),
-                system_program_info.clone()
+                system_program_info.clone(),
             ],
-            &pool_signer_seeds
+            &pool_signer_seeds,
         )?;
 
         pool_registry.append(&pool_pda);
@@ -388,7 +389,7 @@ impl Processor {
             pool_fee_account: *fee_account_info.key,
             fees,
             swap_curve,
-            pool_nonce
+            pool_nonce,
         });
         SwapVersion::pack(obj, &mut swap_info.data.borrow_mut())?;
         Ok(())
@@ -402,10 +403,10 @@ impl Processor {
         flags: u8,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
-        //we cut the owner fees when routing through pools 
+        //we cut the owner fees when routing through pools
         const ROUTED_OWNER_FEE_NUMERATOR_MULT: u64 = 6;
         const ROUTED_OWNER_FEE_DENOMINATOR_MULT: u64 = 10;
-        
+
         let account_info_iter = &mut accounts.iter();
         let swap_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
@@ -428,7 +429,6 @@ impl Processor {
         let pool_fee_account_info2 = next_account_info(account_info_iter)?;
         let refund_account_info = next_account_info(account_info_iter)?;
 
-
         let token_b = Self::unpack_token_account(destination_info, token_program_info.key)?;
         if token_b.amount > 0 {
             return Err(SwapError::RoutedSwapRequiresEmptyIntermediary.into());
@@ -439,10 +439,16 @@ impl Processor {
             return Err(ProgramError::IncorrectProgramId);
         }
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
-        let new_numerator = token_swap.fees()
-            .owner_trade_fee_numerator.checked_mul(ROUTED_OWNER_FEE_NUMERATOR_MULT).unwrap();
-        let new_denominator = token_swap.fees()
-            .owner_trade_fee_denominator.checked_mul(ROUTED_OWNER_FEE_DENOMINATOR_MULT).unwrap();
+        let new_numerator = token_swap
+            .fees()
+            .owner_trade_fee_numerator
+            .checked_mul(ROUTED_OWNER_FEE_NUMERATOR_MULT)
+            .unwrap();
+        let new_denominator = token_swap
+            .fees()
+            .owner_trade_fee_denominator
+            .checked_mul(ROUTED_OWNER_FEE_DENOMINATOR_MULT)
+            .unwrap();
 
         let swap_result1 = Self::process_swap_internal(
             true,
@@ -463,13 +469,13 @@ impl Processor {
             pool_fee_account_info,
             Some(refund_account_info),
             token_program_info,
-            Some((new_numerator,new_denominator)),
+            Some((new_numerator, new_denominator)),
         )?;
 
         msg!("first swap: {:?}", swap_result1);
-         
+
         //second swap
-        
+
         let swap_result2 = Self::process_swap_internal(
             true,
             flags & swap_flags::CLOSE_OUTPUT_2 > 0,
@@ -482,7 +488,7 @@ impl Processor {
             swap_info2,
             authority_info2,
             user_transfer_authority_info,
-            source_info2, 
+            source_info2,
             swap_source_info2,
             swap_destination_info2,
             destination_info2,
@@ -491,11 +497,11 @@ impl Processor {
             Some(refund_account_info),
             token_program_info,
             //None,
-            Some((new_numerator,new_denominator)),
+            Some((new_numerator, new_denominator)),
         )?;
 
         msg!("second swap: {:?}", swap_result2);
-        
+
         Ok(())
     }
 
@@ -544,7 +550,7 @@ impl Processor {
         Ok(())
     }
 
-    fn process_swap_internal<'a> (
+    fn process_swap_internal<'a>(
         collect_dust: bool,
         output_unwrap: bool,
         input_unwrap: bool,
@@ -562,9 +568,8 @@ impl Processor {
         pool_fee_account_info: &AccountInfo<'a>,
         refund_account_info: Option<&AccountInfo<'a>>,
         token_program_info: &AccountInfo<'a>,
-        owner_trade_fee_numerator_denominator_override: Option<(u64,u64)>,
+        owner_trade_fee_numerator_denominator_override: Option<(u64, u64)>,
     ) -> Result<SwapResult, ProgramError> {
-
         if swap_info.owner != program_id {
             return Err(ProgramError::IncorrectProgramId);
         }
@@ -678,9 +683,9 @@ impl Processor {
             )
             .ok_or(SwapError::FeeCalculationFailure)?;
 
-        
         //if the pool fee account doesn't exist, we have to resort to no fees
-        let valid_fee_account = Self::unpack_token_account(pool_fee_account_info, token_program_info.key).is_ok();
+        let valid_fee_account =
+            Self::unpack_token_account(pool_fee_account_info, token_program_info.key).is_ok();
         if !valid_fee_account {
             msg!("cannot pay fees to {}", pool_fee_account_info.key);
         //otherwise, pay fees if there are any
@@ -706,7 +711,6 @@ impl Processor {
             to_u64(result.destination_amount_swapped)?,
         )?;
 
-
         //some checks to prevent stranded token and unwrap sol
 
         //CHECK FOR INPUT CLOSING CAPABILITY
@@ -716,7 +720,7 @@ impl Processor {
             let token_a = Self::unpack_token_account(source_info, token_program_info.key)?;
             let owner_is_refundee = match refund_account_info {
                 None => false,
-                Some(r) => *r.key == token_a.owner
+                Some(r) => *r.key == token_a.owner,
             };
             //if we have permission to close out this account
             if token_a.owner == *user_transfer_authority_info.key {
@@ -725,8 +729,8 @@ impl Processor {
                 //this is stopping a caller from shooting themselves in the foot
                 if !owner_is_refundee && token_a.amount > 0 && !token_a.is_native() {
                     return Err(SwapError::NonRefundeeTransferAuthorityNotEmpty.into());
-                } 
-                
+                }
+
                 //if empty, we close it
                 if token_a.amount == 0 || token_a.is_native() {
                     if refund_account_info.is_none() {
@@ -765,7 +769,7 @@ impl Processor {
 
             let owner_is_refundee = match refund_account_info {
                 None => false,
-                Some(r) => *r.key == token_b.owner
+                Some(r) => *r.key == token_b.owner,
             };
 
             //if we can potentially close out this account
@@ -775,8 +779,8 @@ impl Processor {
                 //be used for WSOL
                 if !owner_is_refundee && !token_b.is_native() {
                     return Err(SwapError::NonRefundeeTransferAuthorityOwnsNonNative.into());
-                } 
-                
+                }
+
                 if token_b.is_native() {
                     if refund_account_info.is_none() {
                         return Err(SwapError::TransferAuthorityOwnsButRefundeeNotProvided.into());
@@ -1308,12 +1312,8 @@ impl Processor {
         let pool_registry_account = next_account_info(account_info_iter)?;
 
         let pool_registry_seed = "poolregistry";
-        let pool_registry_key = Pubkey::create_with_seed(
-            &payer_info.key,
-            &pool_registry_seed,
-            &program_id,
-        )
-        .unwrap();
+        let pool_registry_key =
+            Pubkey::create_with_seed(&payer_info.key, &pool_registry_seed, &program_id).unwrap();
 
         if pool_registry_key != *pool_registry_account.key {
             msg!("Error: pool registry pubkey incorrect");
@@ -1339,18 +1339,14 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
         let payer_info = next_account_info(account_info_iter)?;
         let pool_registry_account = next_account_info(account_info_iter)?;
-        
+
         if !payer_info.is_signer {
             return Err(ProgramError::MissingRequiredSignature);
         }
 
         let pool_registry_seed = "poolregistry";
-        let pool_registry_key = Pubkey::create_with_seed(
-            &payer_info.key,
-            &pool_registry_seed,
-            &program_id,
-        )
-        .unwrap();
+        let pool_registry_key =
+            Pubkey::create_with_seed(&payer_info.key, &pool_registry_seed, &program_id).unwrap();
 
         if pool_registry_key != *pool_registry_account.key {
             msg!("Error: pool registry pubkey incorrect");
@@ -1387,7 +1383,7 @@ impl Processor {
                 nonce,
                 fees,
                 swap_curve,
-                pool_nonce
+                pool_nonce,
             }) => {
                 msg!("Instruction: Init");
                 Self::process_initialize(
@@ -1466,10 +1462,7 @@ impl Processor {
             }
             SwapInstruction::InitializeRegistry() => {
                 msg!("Instruction: InitializeRegistry");
-                Self::process_initialize_registry(
-                    program_id,
-                    accounts,
-                )
+                Self::process_initialize_registry(program_id, accounts)
             }
             SwapInstruction::RoutedSwap(Swap {
                 amount_in,
@@ -1477,11 +1470,15 @@ impl Processor {
                 flags,
             }) => {
                 msg!("Instruction: RoutedSwap");
-                Self::process_routed_swap(program_id, amount_in, minimum_amount_out, flags, accounts)
+                Self::process_routed_swap(
+                    program_id,
+                    amount_in,
+                    minimum_amount_out,
+                    flags,
+                    accounts,
+                )
             }
-            SwapInstruction::DeregisterPool(DeregisterPool {
-                pool_index,
-            }) => {
+            SwapInstruction::DeregisterPool(DeregisterPool { pool_index }) => {
                 msg!("Instruction: DeregisterPool");
                 Self::process_deregister_pool(program_id, pool_index, accounts)
             }
@@ -1560,7 +1557,10 @@ impl PrintProgramError for SwapError {
                 msg!("Error: A refundee is required when a non-owner transfer authority owns native output")
             }
             SwapError::InvalidMint => {
-                msg!("Error: A swap must be comprised of the required mint ({})", SWAP_CONSTRAINTS.unwrap().required_mint)
+                msg!(
+                    "Error: A swap must be comprised of the required mint ({})",
+                    SWAP_CONSTRAINTS.unwrap().required_mint
+                )
             }
             SwapError::NonRefundeeTransferAuthorityNotEmpty => {
                 msg!("Error: A non-refundee transfer authority owned account was left not empty")
@@ -1590,16 +1590,14 @@ mod tests {
             constant_product::ConstantProductCurve, offset::OffsetCurve,
         },
         instruction::{
-            deposit_all_token_types, deposit_single_token_type_exact_amount_in, initialize, swap,
-            withdraw_all_token_types, withdraw_single_token_type_exact_amount_out, initialize_registry
+            deposit_all_token_types, deposit_single_token_type_exact_amount_in, initialize,
+            initialize_registry, swap, withdraw_all_token_types,
+            withdraw_single_token_type_exact_amount_out,
         },
-        state::{PoolRegistry},
+        state::PoolRegistry,
     };
     use solana_program::{
-        instruction::Instruction,
-        program_stubs,
-        rent::Rent,
-        account_info::IntoAccountInfo
+        account_info::IntoAccountInfo, instruction::Instruction, program_stubs, rent::Rent,
     };
     use solana_sdk::account::{create_account_for_test, create_is_signer_account_infos, Account};
     use spl_token::{
@@ -1669,27 +1667,17 @@ mod tests {
         let _payer_account_info = (&payer_key, false, &mut payer_account).into_account_info();
 
         let pool_registry_seed = "poolregistry";
-        let pool_registry_key = Pubkey::create_with_seed(
-            &payer_key,
-            &pool_registry_seed,
-            &SWAP_PROGRAM_ID,
-        )
-        .unwrap();
+        let pool_registry_key =
+            Pubkey::create_with_seed(&payer_key, &pool_registry_seed, &SWAP_PROGRAM_ID).unwrap();
 
-        let mut pool_registry_account = Account::new(0, std::mem::size_of::<PoolRegistry>(), &SWAP_PROGRAM_ID);
-        let _pool_registry_account_info = (&pool_registry_key, false, &mut pool_registry_account).into_account_info();
+        let mut pool_registry_account =
+            Account::new(0, std::mem::size_of::<PoolRegistry>(), &SWAP_PROGRAM_ID);
+        let _pool_registry_account_info =
+            (&pool_registry_key, false, &mut pool_registry_account).into_account_info();
 
         do_process_instruction(
-            initialize_registry(
-                &SWAP_PROGRAM_ID,
-                &payer_key,
-                &pool_registry_key
-            )
-            .unwrap(),
-            vec![
-                &mut payer_account,
-                &mut pool_registry_account
-            ],
+            initialize_registry(&SWAP_PROGRAM_ID, &payer_key, &pool_registry_key).unwrap(),
+            vec![&mut payer_account, &mut pool_registry_account],
         )
         .unwrap();
 
@@ -1722,7 +1710,7 @@ mod tests {
         pool_registry_key: Pubkey,
         pool_registry_account: Account,
         rent_sysvar_account: Account,
-        pool_nonce: u8
+        pool_nonce: u8,
     }
 
     impl SwapAccountInfo {
@@ -1733,7 +1721,6 @@ mod tests {
             token_a_amount: u64,
             token_b_amount: u64,
         ) -> Self {
-
             let payer_key = Pubkey::new_unique();
             let mut payer_account = Account::new(100000000000, 0, &SWAP_PROGRAM_ID);
             let _payer_account_info = (&payer_key, false, &mut payer_account).into_account_info();
@@ -1754,8 +1741,10 @@ mod tests {
                 &[
                     &seed_key_vec[0][..32],
                     &seed_key_vec[1][..32],
-                    &[swap_curve.curve_type as u8]
-                ], &SWAP_PROGRAM_ID);
+                    &[swap_curve.curve_type as u8],
+                ],
+                &SWAP_PROGRAM_ID,
+            );
 
             let mut swap_account = Account::new(0, SwapVersion::LATEST_LEN, &SWAP_PROGRAM_ID);
             let _swap_account_info = (&swap_key, false, &mut swap_account).into_account_info();
@@ -1763,7 +1752,7 @@ mod tests {
                 Pubkey::find_program_address(&[&swap_key.to_bytes()[..]], &SWAP_PROGRAM_ID);
 
             let (pool_mint_key, mut pool_mint_account) =
-            create_mint(&spl_token::id(), &authority_key, None);
+                create_mint(&spl_token::id(), &authority_key, None);
             let (pool_token_key, pool_token_account) = mint_token(
                 &spl_token::id(),
                 &pool_mint_key,
@@ -1827,7 +1816,7 @@ mod tests {
                 pool_registry_key,
                 pool_registry_account,
                 rent_sysvar_account,
-                pool_nonce
+                pool_nonce,
             }
         }
 
@@ -1848,7 +1837,7 @@ mod tests {
                     self.fees.clone(),
                     self.swap_curve.clone(),
                     &self.pool_registry_key,
-                    self.pool_nonce
+                    self.pool_nonce,
                 )
                 .unwrap(),
                 vec![
@@ -1871,7 +1860,6 @@ mod tests {
         //mimic an initialization with NO checks in order to unit test on an initialized swap
         //initialize itself is tested in functional tests
         pub fn initialize_swap_mock_for_testing(&mut self) -> Result<(), ProgramError> {
-            
             //mint pool tokens
             let initial_amount = self.swap_curve.calculator.new_pool_supply();
             mint_token_to_existing(
@@ -1902,7 +1890,7 @@ mod tests {
             self.swap_account = Account::new(0, SwapVersion::LATEST_LEN, &SWAP_PROGRAM_ID);
             let swap_info = (&self.swap_key, false, &mut self.swap_account).into_account_info();
 
-            let x = SwapVersion::pack(obj, &mut swap_info.data.borrow_mut()); 
+            let x = SwapVersion::pack(obj, &mut swap_info.data.borrow_mut());
             x
         }
 
@@ -2549,7 +2537,7 @@ mod tests {
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator
+            owner_withdraw_fee_denominator,
         };
 
         let token_a_amount = 1000;
@@ -3098,11 +3086,12 @@ mod tests {
 
             //use proper required mint
             let required_mint = accounts.token_a_mint_key.to_string();
-            
+
             let valid_curve_types = &[CurveType::ConstantProduct];
 
             //use proper owner
-            let fee_account = spl_token::state::Account::unpack(&accounts.pool_fee_account.data).unwrap();
+            let fee_account =
+                spl_token::state::Account::unpack(&accounts.pool_fee_account.data).unwrap();
             let owner_as_str = fee_account.owner.to_string();
             let constraints = Some(SwapConstraints {
                 owner_key: &owner_as_str,
@@ -3112,13 +3101,11 @@ mod tests {
             });
 
             assert_eq!(
-
-                //this err is a side affect of getting past the point in the code where the invalid 
-                //mint is checked its what we expect because this is what happens if you try and swap 
+                //this err is a side affect of getting past the point in the code where the invalid
+                //mint is checked its what we expect because this is what happens if you try and swap
                 //without using banks_client.  It's the best we can do for now.
                 //tl;dr; it's not an InvalidMint err.
                 Err(ProgramError::InvalidAccountData),
-
                 do_process_instruction_with_fee_constraints(
                     initialize(
                         &SWAP_PROGRAM_ID,
@@ -3180,7 +3167,8 @@ mod tests {
             let required_mint = &new_key.to_string();
             let valid_curve_types = &[CurveType::ConstantProduct];
             //use proper owner
-            let fee_account = spl_token::state::Account::unpack(&accounts.pool_fee_account.data).unwrap();
+            let fee_account =
+                spl_token::state::Account::unpack(&accounts.pool_fee_account.data).unwrap();
             let owner_as_str = bs58::encode(fee_account.owner).into_string();
             let constraints = Some(SwapConstraints {
                 owner_key: &owner_as_str,
@@ -3310,7 +3298,6 @@ mod tests {
                 )
             );
         }
-
     }
 
     #[test]
@@ -3328,7 +3315,7 @@ mod tests {
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator
+            owner_withdraw_fee_denominator,
         };
 
         let token_a_amount = 1000;
@@ -3362,7 +3349,7 @@ mod tests {
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator
+            owner_withdraw_fee_denominator,
         };
 
         let token_a_amount = 1000;
@@ -3949,7 +3936,7 @@ mod tests {
                 spl_token::state::Account::unpack(&accounts.pool_token_account.data).unwrap();
             let pool_mint =
                 spl_token::state::Mint::unpack(&accounts.pool_mint_account.data).unwrap();
-                
+
             assert_eq!(
                 pool_mint.supply,
                 pool_account.amount + swap_pool_account.amount
@@ -3973,7 +3960,7 @@ mod tests {
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator
+            owner_withdraw_fee_denominator,
         };
 
         let token_a_amount = 1000;
@@ -4778,7 +4765,7 @@ mod tests {
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator
+            owner_withdraw_fee_denominator,
         };
 
         let token_a_amount = 1000;
@@ -5287,7 +5274,7 @@ mod tests {
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator
+            owner_withdraw_fee_denominator,
         };
 
         let token_a_amount = 100_000;
@@ -6113,7 +6100,7 @@ mod tests {
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator
+            owner_withdraw_fee_denominator,
         };
 
         let token_a_amount = 10_000_000_000;
@@ -6158,7 +6145,7 @@ mod tests {
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator
+            owner_withdraw_fee_denominator,
         };
 
         let token_a_amount = 10_000_000_000;
@@ -6205,7 +6192,7 @@ mod tests {
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator
+            owner_withdraw_fee_denominator,
         };
 
         let token_a_amount = 1000;
@@ -6733,7 +6720,7 @@ mod tests {
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator
+            owner_withdraw_fee_denominator,
         };
 
         let token_b_offset = 2_000_000;
@@ -6880,7 +6867,7 @@ mod tests {
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator
+            owner_withdraw_fee_denominator,
         };
 
         let token_b_offset = 2_000_000;
@@ -6962,7 +6949,7 @@ mod tests {
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator
+            owner_withdraw_fee_denominator,
         };
 
         let swap_curve = SwapCurve {
