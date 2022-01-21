@@ -19,15 +19,15 @@
     "type": "module",
     "sideEffects": false,
     "main": "lib/cjs/index.js",
-    "module": "lib/esm/index.js",
+    "module": "lib/esm/index.mjs",
     "types": "lib/esm/index.d.ts",
     "exports": {
-        "import": "./lib/esm/index.js",
+        "import": "./lib/esm/index.mjs",
         "require": "./lib/cjs/index.js"
     },
     "scripts": {
         "clean": "shx rm -rf lib",
-        "build": "yarn clean && tsc -p tsconfig.json && tsc -p tsconfig-cjs.json",
+        "build": "yarn clean && tsc -p tsconfig.json; tsc-esm -p tsconfig.json && tsc -p tsconfig-cjs.json",
         "postbuild": "echo '{\"type\":\"commonjs\"}' > lib/cjs/package.json && echo '{\"type\":\"module\"}' > lib/esm/package.json",
         "deploy": "yarn docs && gh-pages --dist docs --dotfiles",
         "example": "node --experimental-specifier-resolution=node --loader ts-node/esm examples/create_mint_and_transfer_tokens.ts",
@@ -64,6 +64,7 @@
         "ts-node": "^10.4.0",
         "tslib": "^2.3.1",
         "typedoc": "^0.22.10",
-        "typescript": "^4.4.4"
+        "typescript": "^4.4.4",
+        "typescript-esm": "^2.0.0"
     }
 }
