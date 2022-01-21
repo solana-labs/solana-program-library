@@ -298,10 +298,11 @@ impl Processor {
             )?,
         };
 
-        if self_transfer || amount == 0 {
-            check_program_account(source_account_info.owner)?;
-            check_program_account(dest_account_info.owner)?;
-        }
+        // Revisit this later to see if it's worth adding a check to reduce
+        // compute costs, ie:
+        // if self_transfer || amount == 0
+        check_program_account(source_account_info.owner)?;
+        check_program_account(dest_account_info.owner)?;
 
         // This check MUST occur just before the amounts are manipulated
         // to ensure self-transfers are fully validated
@@ -580,10 +581,11 @@ impl Processor {
             COption::None => return Err(TokenError::FixedSupply.into()),
         }
 
-        if amount == 0 {
-            check_program_account(mint_info.owner)?;
-            check_program_account(dest_account_info.owner)?;
-        }
+        // Revisit this later to see if it's worth adding a check to reduce
+        // compute costs, ie:
+        // if amount == 0
+        check_program_account(mint_info.owner)?;
+        check_program_account(dest_account_info.owner)?;
 
         dest_account.base.amount = dest_account
             .base
@@ -669,10 +671,11 @@ impl Processor {
             )?,
         }
 
-        if amount == 0 {
-            check_program_account(source_account_info.owner)?;
-            check_program_account(mint_info.owner)?;
-        }
+        // Revisit this later to see if it's worth adding a check to reduce
+        // compute costs, ie:
+        // if amount == 0
+        check_program_account(source_account_info.owner)?;
+        check_program_account(mint_info.owner)?;
 
         source_account.amount = source_account
             .amount
