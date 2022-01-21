@@ -9,12 +9,7 @@ pub mod tools;
 
 // Export current SDK types for downstream users building with a different SDK version
 pub use solana_program;
-use solana_program::{
-    instruction::{AccountMeta, Instruction},
-    program_pack::Pack,
-    pubkey::Pubkey,
-    sysvar,
-};
+use solana_program::{instruction::Instruction, program_pack::Pack, pubkey::Pubkey};
 
 solana_program::declare_id!("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
 
@@ -65,28 +60,19 @@ fn get_associated_token_address_and_bump_seed_internal(
 ///   3. `[]` The token mint for the new associated token account
 ///   4. `[]` System program
 ///   5. `[]` SPL Token program
-///   6. `[]` Rent sysvar
 ///
-// TODO: Uncomment after 1.0.4 is released
-// #[deprecated(
-//     since = "1.0.4",
-//     note = "please use `instruction::create_associated_token_account` instead"
-// )]
+#[deprecated(
+    since = "1.0.4",
+    note = "please use `instruction::create_associated_token_account` instead"
+)]
 pub fn create_associated_token_account(
     funding_address: &Pubkey,
     wallet_address: &Pubkey,
     spl_token_mint_address: &Pubkey,
 ) -> Instruction {
-    let mut instruction = instruction::create_associated_token_account(
+    instruction::create_associated_token_account(
         funding_address,
         wallet_address,
         spl_token_mint_address,
-    );
-
-    // TODO: Remove after ATA 1.0.4 and Token  >3.2.0 are released (Token::InitializeAccount3 is required if rent account is not provided)
-    instruction
-        .accounts
-        .push(AccountMeta::new_readonly(sysvar::rent::id(), false));
-
-    instruction
+    )
 }

@@ -300,6 +300,7 @@ async fn test_create_associated_token_account_using_deprecated_instruction_creat
     );
 
     // Use legacy instruction creator
+    #[allow(deprecated)]
     let create_associated_token_account_ix = deprecated_create_associated_token_account(
         &payer.pubkey(),
         &wallet_address,

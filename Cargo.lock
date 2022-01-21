@@ -3462,7 +3462,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-token-2022",
+ "spl-token 3.3.0",
 ]
 
 [[package]]
@@ -3853,7 +3853,7 @@ dependencies = [
  "solana-client",
  "solana-program-test",
  "solana-sdk",
- "spl-associated-token-account 1.0.3",
+ "spl-associated-token-account 1.0.4",
  "spl-token-2022",
  "thiserror",
 ]
@@ -3941,7 +3941,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-associated-token-account 1.0.3",
+ "spl-associated-token-account 1.0.4",
  "spl-token 3.3.0",
  "thiserror",
 ]
