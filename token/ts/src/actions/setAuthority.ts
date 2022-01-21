@@ -8,7 +8,7 @@ import {
     TransactionSignature,
 } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants';
-import { AuthorityType, createSetAuthorityInstruction } from '../instructions';
+import { AuthorityType, createSetAuthorityInstruction } from '../instructions/index';
 import { getSigners } from './internal';
 
 /**

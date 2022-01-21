@@ -14,8 +14,8 @@ import {
     TokenInvalidMintError,
     TokenInvalidOwnerError,
 } from '../errors';
-import { createAssociatedTokenAccountInstruction } from '../instructions';
-import { Account, getAccount, getAssociatedTokenAddress } from '../state';
+import { createAssociatedTokenAccountInstruction } from '../instructions/index';
+import { Account, getAccount, getAssociatedTokenAddress } from '../state/index';
 
 /**
  * Retrieve the associated token account, or create it if it doesn't exist
