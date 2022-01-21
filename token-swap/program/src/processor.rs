@@ -33,7 +33,7 @@ use spl_associated_token_account::get_associated_token_address;
 use std::convert::TryInto;
 
 
-/// For unit testing, we need to use a owner key when generating ATAs. 
+/// For unit testing, we need to use a owner key when generating ATAs.
 /// This matches the one in the unit test
 #[cfg(not(feature = "production"))]
 pub const TEST_OWNER_KEY: &str = "5Cebzty8iwgAUx9jyfZVAT2iMvXBECLwEVgT6T8KYmvS";
@@ -346,7 +346,7 @@ impl Processor {
             if token_a.mint != required_mint && token_b.mint != required_mint {
                 return Err(SwapError::InvalidMint.into());
             }
-            
+
             swap_constraints.validate_curve(&swap_curve)?;
             swap_constraints.validate_fees(&fees)?;
         }
@@ -409,10 +409,10 @@ impl Processor {
         flags: u8,
         accounts: &[AccountInfo],
     ) -> ProgramResult {
-        //we cut the owner fees when routing through pools 
+        //we cut the owner fees when routing through pools
         const ROUTED_OWNER_FEE_NUMERATOR_MULT: u64 = 6;
         const ROUTED_OWNER_FEE_DENOMINATOR_MULT: u64 = 10;
-        
+
         let account_info_iter = &mut accounts.iter();
         let swap_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
@@ -474,9 +474,9 @@ impl Processor {
         )?;
 
         msg!("first swap: {:?}", swap_result1);
-         
+
         //second swap
-        
+
         let swap_result2 = Self::process_swap_internal(
             true,
             flags & swap_flags::CLOSE_OUTPUT_2 > 0,
@@ -489,7 +489,7 @@ impl Processor {
             swap_info2,
             authority_info2,
             user_transfer_authority_info,
-            source_info2, 
+            source_info2,
             swap_source_info2,
             swap_destination_info2,
             destination_info2,
@@ -502,7 +502,7 @@ impl Processor {
         )?;
 
         msg!("second swap: {:?}", swap_result2);
-        
+
         Ok(())
     }
 
@@ -685,7 +685,7 @@ impl Processor {
             )
             .ok_or(SwapError::FeeCalculationFailure)?;
 
-        
+
         //if the pool fee account doesn't exist, we have to resort to no fees
         let valid_fee_account = Self::unpack_token_account(pool_fee_account_info, token_program_info.key).is_ok();
         if !valid_fee_account {
@@ -732,8 +732,8 @@ impl Processor {
                 //this is stopping a caller from shooting themselves in the foot
                 if !owner_is_refundee && token_a.amount > 0 && !token_a.is_native() {
                     return Err(SwapError::NonRefundeeTransferAuthorityNotEmpty.into());
-                } 
-                
+                }
+
                 //if empty, we close it
                 if token_a.amount == 0 || token_a.is_native() {
                     if refund_account_info.is_none() {
@@ -782,8 +782,8 @@ impl Processor {
                 //be used for WSOL
                 if !owner_is_refundee && !token_b.is_native() {
                     return Err(SwapError::NonRefundeeTransferAuthorityOwnsNonNative.into());
-                } 
-                
+                }
+
                 if token_b.is_native() {
                     if refund_account_info.is_none() {
                         return Err(SwapError::TransferAuthorityOwnsButRefundeeNotProvided.into());
@@ -1342,7 +1342,7 @@ impl Processor {
         let account_info_iter = &mut accounts.iter();
         let payer_info = next_account_info(account_info_iter)?;
         let pool_registry_account = next_account_info(account_info_iter)?;
-        
+
         if !payer_info.is_signer {
             return Err(ProgramError::MissingRequiredSignature);
         }
@@ -1386,7 +1386,7 @@ impl Processor {
         if token_swap_account.owner != program_id {
             return Err(ProgramError::IncorrectProgramId);
         }
-        
+
         //no point making no change
         if old_fee_account.key == new_fee_account.key {
             return Err(SwapError::InvalidInput.into());
@@ -1400,7 +1400,7 @@ impl Processor {
 
         //constraints must exist
         #[cfg(feature = "production")]
-        let owner_key = constraints::SWAP_CONSTRAINTS
+        let owner_key = SWAP_CONSTRAINTS
             .map(|c| c.owner_key.parse::<Pubkey>().unwrap())
             .ok_or_else(|| ProgramError::InvalidInstructionData)?;
 
@@ -1425,7 +1425,7 @@ impl Processor {
             return Err(SwapError::InvalidDelegate.into());
         }
 
-        //token swap must parse. 
+        //token swap must parse.
         //we avoid using the trait returned from SwapVersion::unpack so we have a mutable SwapV1
         let mut token_swap: SwapV1 =
         {
@@ -1456,7 +1456,7 @@ impl Processor {
 
         //repack the token_swap account data
         SwapVersion::pack(
-            SwapVersion::SwapV1(token_swap), 
+            SwapVersion::SwapV1(token_swap),
             &mut token_swap_account.data.borrow_mut())?;
 
         Ok(())
@@ -1971,7 +1971,7 @@ mod tests {
         //mimic an initialization with NO checks in order to unit test on an initialized swap
         //initialize itself is tested in functional tests
         pub fn initialize_swap_mock_for_testing(&mut self) -> Result<(), ProgramError> {
-            
+
             //mint pool tokens
             let initial_amount = self.swap_curve.calculator.new_pool_supply();
             mint_token_to_existing(
@@ -2002,7 +2002,7 @@ mod tests {
             self.swap_account = Account::new(0, SwapVersion::LATEST_LEN, &SWAP_PROGRAM_ID);
             let swap_info = (&self.swap_key, false, &mut self.swap_account).into_account_info();
 
-            let x = SwapVersion::pack(obj, &mut swap_info.data.borrow_mut()); 
+            let x = SwapVersion::pack(obj, &mut swap_info.data.borrow_mut());
             x
         }
 
@@ -3198,7 +3198,7 @@ mod tests {
 
             //use proper required mint
             let required_mint = accounts.token_a_mint_key.to_string();
-            
+
             let valid_curve_types = &[CurveType::ConstantProduct];
 
             //use proper owner
@@ -3213,8 +3213,8 @@ mod tests {
 
             assert_eq!(
 
-                //this err is a side affect of getting past the point in the code where the invalid 
-                //mint is checked its what we expect because this is what happens if you try and swap 
+                //this err is a side affect of getting past the point in the code where the invalid
+                //mint is checked its what we expect because this is what happens if you try and swap
                 //without using banks_client.  It's the best we can do for now.
                 //tl;dr; it's not an InvalidMint err.
                 Err(ProgramError::InvalidAccountData),
@@ -4049,7 +4049,7 @@ mod tests {
                 spl_token::state::Account::unpack(&accounts.pool_token_account.data).unwrap();
             let pool_mint =
                 spl_token::state::Mint::unpack(&accounts.pool_mint_account.data).unwrap();
-                
+
             assert_eq!(
                 pool_mint.supply,
                 pool_account.amount + swap_pool_account.amount
