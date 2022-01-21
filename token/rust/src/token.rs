@@ -10,7 +10,9 @@ use solana_sdk::{
     system_instruction,
     transaction::Transaction,
 };
-use spl_associated_token_account::{create_associated_token_account, get_associated_token_address};
+use spl_associated_token_account::{
+    get_associated_token_address, instruction::create_associated_token_account,
+};
 use spl_token_2022::{
     extension::{transfer_fee, ExtensionType, StateWithExtensionsOwned},
     id, instruction,
