@@ -11,7 +11,8 @@ use spl_associated_token_account::*;
 use std::{process::exit, sync::Arc};
 
 pub(crate) struct Config<'a> {
-    pub(crate) rpc_client: RpcClient,
+    pub(crate) rpc_client: Arc<RpcClient>,
+    pub(crate) websocket_url: String,
     pub(crate) output_format: OutputFormat,
     pub(crate) fee_payer: Pubkey,
     pub(crate) default_keypair_path: String,
@@ -19,6 +20,7 @@ pub(crate) struct Config<'a> {
     pub(crate) nonce_authority: Option<Pubkey>,
     pub(crate) blockhash_query: BlockhashQuery,
     pub(crate) sign_only: bool,
+    pub(crate) dump_transaction_message: bool,
     pub(crate) multisigner_pubkeys: Vec<&'a Pubkey>,
 }
 

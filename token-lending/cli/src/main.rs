@@ -456,15 +456,18 @@ fn command_create_lending_market(
         Some(&config.fee_payer.pubkey()),
     );
 
-    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-    check_fee_payer_balance(
-        config,
-        lending_market_balance + fee_calculator.calculate_fee(transaction.message()),
-    )?;
+    let recent_blockhash = config.rpc_client.get_latest_blockhash()?;
     transaction.sign(
         &vec![config.fee_payer.as_ref(), &lending_market_keypair],
         recent_blockhash,
     );
+    check_fee_payer_balance(
+        config,
+        lending_market_balance
+            + config
+                .rpc_client
+                .get_fee_for_message(transaction.message())?,
+    )?;
     send_transaction(config, transaction)?;
     Ok(())
 }
@@ -640,14 +643,7 @@ fn command_add_reserve(
         Some(&config.fee_payer.pubkey()),
     );
 
-    let (recent_blockhash, fee_calculator) = config.rpc_client.get_recent_blockhash()?;
-    check_fee_payer_balance(
-        config,
-        total_balance
-            + fee_calculator.calculate_fee(transaction_1.message())
-            + fee_calculator.calculate_fee(transaction_2.message())
-            + fee_calculator.calculate_fee(transaction_3.message()),
-    )?;
+    let recent_blockhash = config.rpc_client.get_latest_blockhash()?;
     transaction_1.sign(
         &vec![
             config.fee_payer.as_ref(),
@@ -675,6 +671,19 @@ fn command_add_reserve(
         ],
         recent_blockhash,
     );
+    check_fee_payer_balance(
+        config,
+        total_balance
+            + config
+                .rpc_client
+                .get_fee_for_message(transaction_1.message())?
+            + config
+                .rpc_client
+                .get_fee_for_message(transaction_2.message())?
+            + config
+                .rpc_client
+                .get_fee_for_message(transaction_3.message())?,
+    )?;
     send_transaction(config, transaction_1)?;
     send_transaction(config, transaction_2)?;
     send_transaction(config, transaction_3)?;

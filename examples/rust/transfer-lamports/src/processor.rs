@@ -12,7 +12,7 @@ pub fn process_instruction(
     accounts: &[AccountInfo],
     _instruction_data: &[u8],
 ) -> ProgramResult {
-    // Create in iterator to safety reference accounts in the slice
+    // Create an iterator to safely reference accounts in the slice
     let account_info_iter = &mut accounts.iter();
 
     // As part of the program specification the first account is the source

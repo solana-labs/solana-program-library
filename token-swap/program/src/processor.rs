@@ -1058,6 +1058,10 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
+        let calculator = &token_swap.swap_curve().calculator;
+        if !calculator.allows_deposits() {
+            return Err(SwapError::UnsupportedCurveOperation.into());
+        }
         let source_account =
             Self::unpack_token_account(source_info, token_swap.token_program_id())?;
         let swap_token_a =

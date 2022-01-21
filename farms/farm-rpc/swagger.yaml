@@ -1,0 +1,1269 @@
+openapi: 3.0.1
+info:
+  title: Solana Farms RPC Service
+  description: RPC service for interaction with pools, farms and vaults built on Solana
+  version: "0.1"
+servers:
+  - url: "http://127.0.0.1:9090"
+  - url: "http://localhost:9090"
+paths:
+  /api/v1/git_token:
+    get:
+      description: Returns Token metadata from Github
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/git_tokens:
+    get:
+      description: Returns all Tokens from Github
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/vault:
+    get:
+      description: Returns the Vault struct for the given name
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/vaults:
+    get:
+      description: Returns all Vaults available
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/vault_ref:
+    get:
+      description: Returns the Vault metadata address for the given name
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/vault_refs:
+    get:
+      description: Returns Vault refs - a map of Vault name to account address with metadata
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/vault_by_ref:
+    get:
+      description: Loads the Vault struct data from the specified metadata address
+      parameters:
+        - name: vault_ref
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/vault_name:
+    get:
+      description: Returns the Vault name for the given metadata address
+      parameters:
+        - name: vault_ref
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/find_vaults:
+    get:
+      description: Returns all Vaults with tokens A and B sorted by version
+      parameters:
+        - name: token_a
+          in: query
+          schema:
+            type: string
+        - name: token_b
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/pool:
+    get:
+      description: Returns the Pool struct for the given name
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/pools:
+    get:
+      description: Returns all Pools available
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/pool_ref:
+    get:
+      description: Returns the Pool metadata address for the given name
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/pool_refs:
+    get:
+      description: Returns Pool refs - a map of Pool name to account address with metadata
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/pool_by_ref:
+    get:
+      description: Loads the Pool struct data from the specified metadata address
+      parameters:
+        - name: pool_ref
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/pool_name:
+    get:
+      description: Returns the Pool name for the given metadata address
+      parameters:
+        - name: pool_ref
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/find_pools:
+    get:
+      description: Returns all Pools with tokens A and B sorted by version for the given protocol
+      parameters:
+        - name: protocol
+          in: query
+          schema:
+            type: string
+        - name: token_a
+          in: query
+          schema:
+            type: string
+        - name: token_b
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/find_pools_with_lp:
+    get:
+      description: Returns all Pools sorted by version for the given LP token
+      parameters:
+        - name: lp_token
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/pool_price:
+    get:
+      description: Returns pair's price based on the ratio of tokens in the pool
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/farm:
+    get:
+      description: Returns the Farm struct for the given name
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/farms:
+    get:
+      description: Returns all Farms available
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/farm_ref:
+    get:
+      description: Returns the Farm metadata address for the given name
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/farm_refs:
+    get:
+      description: Returns Farm refs - a map of Farm name to account address with metadata
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/farm_by_ref:
+    get:
+      description: Loads the Farm struct data from the specified metadata address
+      parameters:
+        - name: farm_ref
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/farm_name:
+    get:
+      description: Returns the Farm name for the given metadata address
+      parameters:
+        - name: farm_ref
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/find_farms_with_lp:
+    get:
+      description: Returns all Farms for the given LP token
+      parameters:
+        - name: lp_token
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/token:
+    get:
+      description: Returns the Token struct for the given name
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/tokens:
+    get:
+      description: Returns all Tokens available
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/token_ref:
+    get:
+      description: Returns the Token metadata address for the given name
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/token_refs:
+    get:
+      description: Returns Token refs - a map of Token name to account address with metadata
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/token_by_ref:
+    get:
+      description: Loads the Token struct data from the specified metadata address
+      parameters:
+        - name: token_ref
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/token_name:
+    get:
+      description: Returns the Token name for the given metadata address
+      parameters:
+        - name: token_ref
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/token_with_mint:
+    get:
+      description: Loads the Token struct data from the specified mint
+      parameters:
+        - name: token_mint
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/program_id:
+    get:
+      description: Returns the official Program ID for the given name
+      parameters:
+        - name: name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/program_ids:
+    get:
+      description: Returns all official Program IDs available
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/program_name:
+    get:
+      description: Returns the official program name for the given Program ID
+      parameters:
+        - name: prog_id
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/is_official_id:
+    get:
+      description: Checks if the given address is the official Program ID
+      parameters:
+        - name: prog_id
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/associated_token_address:
+    get:
+      description: Returns the associated token account address for the given token name
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/wallet_tokens:
+    get:
+      description: Returns all tokens with active account in the wallet
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/token_account_data:
+    get:
+      description: Returns UiTokenAccount struct data for the associated token account address
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/account_balance:
+    get:
+      description: Returns native SOL balance
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/token_account_balance:
+    get:
+      description: Returns token balance for the associated token account address
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/has_active_token_account:
+    get:
+      description: Returns true if the associated token account exists and is initialized
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/user_stake_balance:
+    get:
+      description: Returns User's stacked balance
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/vault_stake_balance:
+    get:
+      description: Returns Vault's stacked balance
+      parameters:
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/vault_user_info:
+    get:
+      description: Returns user stats for specific Vault
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/vault_info:
+    get:
+      description: Returns Vault stats
+      parameters:
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/new_instruction_create_system_account:
+    get:
+      description: Returns a new Instruction for creating system account
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: new_address
+          in: query
+          schema:
+            type: string
+        - name: lamports
+          in: query
+          schema:
+            type: string
+        - name: space
+          in: query
+          schema:
+            type: string
+        - name: owner
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/new_instruction_close_system_account:
+    get:
+      description: Returns a new Instruction for closing system account
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: target_address
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/new_instruction_transfer:
+    get:
+      description: Creates the native SOL transfer instruction
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: destination_wallet
+          in: query
+          schema:
+            type: string
+        - name: sol_ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/new_instruction_token_transfer:
+    get:
+      description: Creates a tokens transfer instruction
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: destination_wallet
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/new_instruction_sync_token_balance:
+    get:
+      description: Creates a new Instruction for syncing token balance for the specified account
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/new_instruction_create_token_account:
+    get:
+      description: Returns a new Instruction for creating associated token account
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/new_instruction_close_token_account:
+    get:
+      description: Returns a new Instruction for closing associated token account
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/new_instruction_user_init_vault:
+    get:
+      description: Creates a new Instruction for initializing a new User for the Vault
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/new_instruction_add_liquidity_vault:
+    get:
+      description: Creates a new Instruction for adding liquidity to the Vault
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: max_token_a_ui_amount
+          in: query
+          schema:
+            type: number
+        - name: max_token_b_ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/new_instruction_lock_liquidity_vault:
+    get:
+      description: Creates a new Instruction for locking liquidity in the Vault
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/new_instruction_unlock_liquidity_vault:
+    get:
+      description: Creates a new Instruction for unlocking liquidity from the Vault
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/new_instruction_remove_liquidity_vault:
+    get:
+      description: Creates a new Instruction for removing liquidity from the Vault
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/new_instruction_add_liquidity_pool:
+    get:
+      description: Creates a new Instruction for adding liquidity to the Pool
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: pool_name
+          in: query
+          schema:
+            type: string
+        - name: max_token_a_ui_amount
+          in: query
+          schema:
+            type: number
+        - name: max_token_b_ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/new_instruction_remove_liquidity_pool:
+    get:
+      description: Creates a new Instruction for removing liquidity from the Pool
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: pool_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/new_instruction_swap:
+    get:
+      description: Creates a new Instruction for tokens swap
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: protocol
+          in: query
+          schema:
+            type: string
+        - name: from_token
+          in: query
+          schema:
+            type: string
+        - name: to_token
+          in: query
+          schema:
+            type: string
+        - name: ui_amount_in
+          in: query
+          schema:
+            type: number
+        - name: min_ui_amount_out
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/new_instruction_stake:
+    get:
+      description: Creates a new Instruction for tokens staking
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/new_instruction_unstake:
+    get:
+      description: Creates a new Instruction for tokens unstaking
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/new_instruction_harvest:
+    get:
+      description: Creates a new Instruction for rewards harvesting
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/new_instruction_crank_vault:
+    get:
+      description: Creates a new Vault Crank Instruction
+      parameters:
+        - name: wallet_address
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: step
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/create_system_account:
+    post:
+      description: Creates a new system account
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: new_account_keypair
+          in: query
+          schema:
+            type: string
+        - name: lamports
+          in: query
+          schema:
+            type: string
+        - name: space
+          in: query
+          schema:
+            type: string
+        - name: owner
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/close_system_account:
+    post:
+      description: Closes existing system account
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: target_account_keypair
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/transfer:
+    post:
+      description: Transfers native SOL from the wallet to the destination
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: destination_wallet
+          in: query
+          schema:
+            type: string
+        - name: sol_ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/transfer_sol_to_wsol:
+    post:
+      description: Transfers native SOL from the wallet to the associated Wrapped SOL account.
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: sol_ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/token_transfer:
+    post:
+      description: Transfers tokens from the wallet to the destination
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+        - name: destination_wallet
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/sync_token_balance:
+    post:
+      description: Updates token balance of the account, usefull after transfer SOL to WSOL account
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/create_token_account:
+    post:
+      description: Returns the associated token account or creates one if it doesn't exist
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/close_token_account:
+    post:
+      description: Closes existing token account associated with the given user's main account
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: token_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/user_init_vault:
+    post:
+      description: Initializes a new User for the Vault
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/add_liquidity_vault:
+    post:
+      description: Adds liquidity to the Vault
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: max_token_a_ui_amount
+          in: query
+          schema:
+            type: number
+        - name: max_token_b_ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/add_locked_liquidity_vault:
+    post:
+      description: Adds locked liquidity to the Vault
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/remove_liquidity_vault:
+    post:
+      description: Removes liquidity from the Vault
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/remove_unlocked_liquidity_vault:
+    post:
+      description: Removes unlocked liquidity from the Vault
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/add_liquidity_pool:
+    post:
+      description: Adds liquidity to the Pool
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: pool_name
+          in: query
+          schema:
+            type: string
+        - name: max_token_a_ui_amount
+          in: query
+          schema:
+            type: number
+        - name: max_token_b_ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/remove_liquidity_pool:
+    post:
+      description: Removes liquidity from the Pool
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: pool_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/swap:
+    post:
+      description: Swaps tokens
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: protocol
+          in: query
+          schema:
+            type: string
+        - name: from_token
+          in: query
+          schema:
+            type: string
+        - name: to_token
+          in: query
+          schema:
+            type: string
+        - name: ui_amount_in
+          in: query
+          schema:
+            type: number
+        - name: min_ui_amount_out
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/stake:
+    post:
+      description: Stakes tokens to the Farm
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/unstake:
+    post:
+      description: Unstakes tokens from the Farm
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+        - name: ui_amount
+          in: query
+          schema:
+            type: number
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/harvest:
+    post:
+      description: Harvests rewards from the Pool
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: farm_name
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/crank_vault:
+    post:
+      description: Cranks single Vault
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: vault_name
+          in: query
+          schema:
+            type: string
+        - name: step
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string
+  /api/v1/crank_vaults:
+    post:
+      description: Cranks all Vaults
+      parameters:
+        - name: wallet_keypair
+          in: query
+          schema:
+            type: string
+        - name: step
+          in: query
+          schema:
+            type: string
+      responses:
+        default:
+          description: Json object or error string

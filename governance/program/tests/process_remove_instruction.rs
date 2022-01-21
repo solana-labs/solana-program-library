@@ -17,7 +17,8 @@ async fn test_remove_instruction() {
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let mut account_governance_cookie = governance_test
         .with_account_governance(
@@ -34,7 +35,7 @@ async fn test_remove_instruction() {
         .unwrap();
 
     let proposal_instruction_cookie = governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, None)
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .unwrap();
 
@@ -55,11 +56,14 @@ async fn test_remove_instruction() {
         .get_proposal_account(&proposal_cookie.address)
         .await;
 
-    assert_eq!(proposal_account.instructions_count, 0);
-    assert_eq!(proposal_account.instructions_next_index, 1);
-    assert_eq!(proposal_account.instructions_executed_count, 0);
+    let yes_option = proposal_account.options.first().unwrap();
+
+    assert_eq!(yes_option.instructions_count, 0);
+    assert_eq!(yes_option.instructions_next_index, 1);
+    assert_eq!(yes_option.instructions_executed_count, 0);
 
     let proposal_instruction_account = governance_test
+        .bench
         .get_account(&proposal_instruction_cookie.address)
         .await;
 
@@ -76,7 +80,8 @@ async fn test_replace_instruction() {
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let mut account_governance_cookie = governance_test
         .with_account_governance(
@@ -93,12 +98,12 @@ async fn test_replace_instruction() {
         .unwrap();
 
     let proposal_instruction_cookie = governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, None)
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .unwrap();
 
     governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, None)
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .unwrap();
 
@@ -114,7 +119,7 @@ async fn test_replace_instruction() {
         .unwrap();
 
     let proposal_instruction_cookie2 = governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, Some(0))
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, Some(0))
         .await
         .unwrap();
 
@@ -123,8 +128,10 @@ async fn test_replace_instruction() {
         .get_proposal_account(&proposal_cookie.address)
         .await;
 
-    assert_eq!(proposal_account.instructions_count, 2);
-    assert_eq!(proposal_account.instructions_next_index, 2);
+    let yes_option = proposal_account.options.first().unwrap();
+
+    assert_eq!(yes_option.instructions_count, 2);
+    assert_eq!(yes_option.instructions_next_index, 2);
 
     let proposal_instruction_account2 = governance_test
         .get_proposal_instruction_account(&proposal_instruction_cookie2.address)
@@ -146,7 +153,8 @@ async fn test_remove_front_instruction() {
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let mut account_governance_cookie = governance_test
         .with_account_governance(
@@ -163,12 +171,12 @@ async fn test_remove_front_instruction() {
         .unwrap();
 
     let proposal_instruction_cookie = governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, None)
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .unwrap();
 
     governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, None)
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .unwrap();
 
@@ -188,10 +196,13 @@ async fn test_remove_front_instruction() {
         .get_proposal_account(&proposal_cookie.address)
         .await;
 
-    assert_eq!(proposal_account.instructions_count, 1);
-    assert_eq!(proposal_account.instructions_next_index, 2);
+    let yes_option = proposal_account.options.first().unwrap();
+
+    assert_eq!(yes_option.instructions_count, 1);
+    assert_eq!(yes_option.instructions_next_index, 2);
 
     let proposal_instruction_account = governance_test
+        .bench
         .get_account(&proposal_instruction_cookie.address)
         .await;
 
@@ -208,7 +219,8 @@ async fn test_remove_instruction_with_owner_or_delegate_must_sign_error() {
 
     let mut token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let mut account_governance_cookie = governance_test
         .with_account_governance(
@@ -225,13 +237,14 @@ async fn test_remove_instruction_with_owner_or_delegate_must_sign_error() {
         .unwrap();
 
     let proposal_instruction_cookie = governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, None)
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .unwrap();
 
     let token_owner_record_cookie2 = governance_test
         .with_council_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     token_owner_record_cookie.token_owner = token_owner_record_cookie2.token_owner;
 
@@ -263,7 +276,8 @@ async fn test_remove_instruction_with_proposal_not_editable_error() {
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let mut account_governance_cookie = governance_test
         .with_account_governance(
@@ -280,7 +294,7 @@ async fn test_remove_instruction_with_proposal_not_editable_error() {
         .unwrap();
 
     let proposal_instruction_cookie = governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, None)
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .unwrap();
 
@@ -317,7 +331,8 @@ async fn test_remove_instruction_with_instruction_from_other_proposal_error() {
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let mut account_governance_cookie = governance_test
         .with_account_governance(
@@ -334,17 +349,22 @@ async fn test_remove_instruction_with_instruction_from_other_proposal_error() {
         .unwrap();
 
     governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, None)
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
+        .await
+        .unwrap();
+
+    let token_owner_record_cookie2 = governance_test
+        .with_community_token_deposit(&realm_cookie)
         .await
         .unwrap();
 
     let mut proposal_cookie2 = governance_test
-        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_proposal(&token_owner_record_cookie2, &mut account_governance_cookie)
         .await
         .unwrap();
 
     let proposal_instruction_cookie2 = governance_test
-        .with_nop_instruction(&mut proposal_cookie2, &token_owner_record_cookie, None)
+        .with_nop_instruction(&mut proposal_cookie2, &token_owner_record_cookie2, 0, None)
         .await
         .unwrap();
 

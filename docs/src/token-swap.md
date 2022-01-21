@@ -52,7 +52,7 @@ The Token Swap Program's source is available on
 ## Interface
 
 [JavaScript
-bindings](https://github.com/solana-labs/solana-program-library/blob/master/token-swap/js/client/token-swap.js)
+bindings](https://github.com/solana-labs/solana-program-library/blob/master/token-swap/js/src/index.ts)
 are available that support loading the Token Swap Program on to a chain and
 issuing instructions.
 
@@ -63,7 +63,7 @@ Example user interface built and maintained by Serum team is available
 
 The following explains the instructions available in the Token Swap Program.
 Note that each instruction has a simple code example that can be found in the
-[end-to-end tests](https://github.com/solana-labs/solana-program-library/blob/master/token-swap/js/cli/token-swap-test.js).
+[end-to-end tests](https://github.com/solana-labs/solana-program-library/blob/master/token-swap/js/cli/token-swap-test.ts).
 
 ### Creating a new token swap pool
 

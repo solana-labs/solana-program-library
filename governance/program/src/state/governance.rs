@@ -6,12 +6,15 @@ use crate::{
         enums::{GovernanceAccountType, VoteThresholdPercentage, VoteWeightSource},
         realm::assert_is_valid_realm,
     },
-    tools::account::{get_account_data, AccountMaxSize},
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
     account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
     pubkey::Pubkey,
+};
+use spl_governance_tools::{
+    account::{assert_is_valid_account2, get_account_data, AccountMaxSize},
+    error::GovernanceToolsError,
 };
 
 /// Governance config
@@ -94,7 +97,7 @@ impl Governance {
             GovernanceAccountType::TokenGovernance => {
                 get_token_governance_address_seeds(&self.realm, &self.governed_account)
             }
-            _ => return Err(GovernanceError::InvalidAccountType.into()),
+            _ => return Err(GovernanceToolsError::InvalidAccountType.into()),
         };
 
         Ok(seeds)
@@ -106,7 +109,7 @@ pub fn get_governance_data(
     program_id: &Pubkey,
     governance_info: &AccountInfo,
 ) -> Result<Governance, ProgramError> {
-    get_account_data::<Governance>(governance_info, program_id)
+    get_account_data::<Governance>(program_id, governance_info)
 }
 
 /// Deserializes Governance account, checks owner program and asserts governance belongs to the given ream
@@ -220,6 +223,23 @@ pub fn get_account_governance_address<'a>(
         program_id,
     )
     .0
+}
+
+/// Checks whether governance account exists, is initialized and owned by the Governance program
+pub fn assert_is_valid_governance(
+    program_id: &Pubkey,
+    governance_info: &AccountInfo,
+) -> Result<(), ProgramError> {
+    assert_is_valid_account2(
+        governance_info,
+        &[
+            GovernanceAccountType::AccountGovernance,
+            GovernanceAccountType::ProgramGovernance,
+            GovernanceAccountType::TokenGovernance,
+            GovernanceAccountType::MintGovernance,
+        ],
+        program_id,
+    )
 }
 
 /// Validates args supplied to create governance account

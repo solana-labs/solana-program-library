@@ -1,6 +1,6 @@
 declare module '@solana/spl-token' {
   import {Buffer} from 'buffer';
-  import {Layout} from 'buffer-layout';
+  import {Layout} from '@solana/buffer-layout';
   import {
     PublicKey,
     Signer,
@@ -119,6 +119,14 @@ declare module '@solana/spl-token' {
       owner: Signer | PublicKey,
       multiSigners: Array<Signer>,
       amount: number | u64,
+    ): Promise<TransactionSignature>;
+    transferChecked(
+      source: PublicKey,
+      destination: PublicKey,
+      owner: any,
+      multiSigners: Array<Signer>,
+      amount: number | u64,
+      decimals: number,
     ): Promise<TransactionSignature>;
     approve(
       account: PublicKey,
@@ -246,6 +254,48 @@ declare module '@solana/spl-token' {
       mint: PublicKey,
       authority: PublicKey,
       multiSigners: Array<Signer>,
+    ): TransactionInstruction;
+    static createTransferCheckedInstruction(
+      programId: PublicKey,
+      source: PublicKey,
+      mint: PublicKey,
+      destination: PublicKey,
+      owner: PublicKey,
+      multiSigners: Array<Signer>,
+      amount: number | u64,
+      decimals: number,
+    ): TransactionInstruction;
+    static createApproveCheckedInstruction(
+      programId: PublicKey,
+      account: PublicKey,
+      mint: PublicKey,
+      delegate: PublicKey,
+      owner: PublicKey,
+      multiSigners: Array<Signer>,
+      amount: number | u64,
+      decimals: number,
+    ): TransactionInstruction;
+    static createMintToCheckedInstruction(
+      programId: PublicKey,
+      mint: PublicKey,
+      dest: PublicKey,
+      authority: PublicKey,
+      multiSigners: Array<Signer>,
+      amount: number | u64,
+      decimals: number,
+    ): TransactionInstruction;
+    static createBurnCheckedInstruction(
+      programId: PublicKey,
+      mint: PublicKey,
+      account: PublicKey,
+      owner: PublicKey,
+      multiSigners: Array<Signer>,
+      amount: number | u64,
+      decimals: number,
+    ): TransactionInstruction;
+    static createSyncNativeInstruction(
+      programId: PublicKey,
+      nativeAccount: PublicKey,
     ): TransactionInstruction;
     static createAssociatedTokenAccountInstruction(
       associatedProgramId: PublicKey,

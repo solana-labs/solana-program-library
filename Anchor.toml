@@ -1,0 +1,12 @@
+anchor_version = "0.16.1"
+solana_version = "1.7.11"
+
+[workspace]
+members = ["governance/program"]
+
+[provider]
+cluster = "mainnet"
+wallet = "~/.config/solana/id.json"
+
+[programs.mainnet]
+spl_governance = "GoVEr6xcF9QGrRFJC4kt9wiCdNqZzrG7KWdrm7viDnpa"

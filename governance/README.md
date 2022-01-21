@@ -1,12 +1,76 @@
-# Governance
+# SPL Governance
 
-Governance is a program the chief purpose of which is to control the upgrade of other programs through democratic means.
-It can also be used as an authority provider for mints and other forms of access control as well where we may want
-a voting population to vote on disbursement of access or funds collectively.
+SPL Governance is a program the chief purpose of which is to provide core building blocks and primitives to create
+Decentralized Autonomous Organizations (DAOs) on Solana blockchain.
+
+The program is DAO type and asset type agnostic and can be used to build any type of DAOs
+which can own and manage any type of assets.
+
+For example it can be used as an authority provider for mints, token accounts and other forms of access control where
+we may want a voting population to vote on disbursement of funds collectively.
+It can also control upgrades of itself and other programs through democratic means.
+
+In the simplest form the program can be used for Multisig control over a shared wallet (treasury account) or as
+a Mutlisig upgrade authority for Solana programs
 
 ## Architecture
 
-### Accounts diagram (Program Governance use case)
+The program is modular and uses open/close architecture where individual parts of the program's
+behavior can be customized through external plugins.
+
+For example the default implementation of the program takes deposits of the governance tokens in exchange for
+voting power but it can be swapped with a custom program implementation which can implement any custom requirements
+like token locking, token escrows, NFT voting or multi token governance structures.
+
+The plugins are ordinary Solana programs and can be written using any supporting technology like Anchor framework
+for example.
+
+## Deployment
+
+The program supports two deployment models 1) DAO owned instance and 2) shared instance
+
+### 1) DAO owned instance
+
+When a DAO needs full control over the governance program then it's recommended to deploy and use its own instance
+and put it under the DAO governance.
+This way only the DAO can ever change and upgrade the most important program it uses.
+
+Note: Using your own instance is not the same as forking the source code. It simply means deploying the program's code
+and transferring its upgrade authority to the DAO.
+
+### 2) Shared instance
+
+In cases where deploying the owned instance is not practical a shared instances of the program can be used.
+There are two instances available for anybody to use on mainnet
+
+`GovER5Lthms3bLBqWub97yVrMmEogzX7xNjdXpPPCVZw` - default `spl-governance` instance
+
+`GTesTBiEWE32WHXXE2S4XbZvA5CrEc4xs6ZgRe895dP` - test instance which can be used to setup test DAOs
+
+## Governance UI
+
+There are two UIs available which showcase the programs capabilities:
+
+- [Realms Explorer](https://github.com/solana-labs/oyster) project (part of Oyster monorepo) provides basic and data
+  oriented UI to create and manage DAOs: [realms-explorer](https://realms-explorer.com/)
+
+  It's a good starting point for developers to learn about the program and interact with it
+
+- [Governance UI](https://github.com/solana-labs/governance-ui) project build together
+  with the [MNGO](https://mango.markets/) team: [governance-ui](https://realms.today)
+
+  This is advanced, user friendly and tasks oriented UI used by most of the existing DAOs on Solana
+
+## Documentation and Help
+
+Program and UI documentation: [spl-governance-docs](https://docs.realms.today)
+
+Discord server: [spl-governance-discord](https://discord.gg/VsPbrK2hJk)
+
+## Program Accounts
+
+The diagram belows shows an illustrative configuration of the program accounts when used to control upgrades
+of multiple programs through proposals
 
 ![Accounts diagram](./resources/governance-accounts.jpg)
 
@@ -49,7 +113,7 @@ from the governed token account.
 
 ### How does the authority work?
 
-Governance can handle arbitrary executions of code, but it's real power lies in the power to upgrade programs.
+Governance can handle arbitrary executions of code. In the program governance case it can execute program upgrades.
 It does this through executing instructions to the bpf-upgradable-loader program.
 Bpf-upgradable-loader allows any signer who has Upgrade authority over a Buffer account and the Program account itself
 to upgrade it using its Upgrade command.
@@ -65,7 +129,7 @@ mint and transfer instructions for the governed accounts.
 
 ### Proposal accounts
 
-A Proposal is an instance of a Governance created to vote on and execute given set of changes.
+A Proposal is an instance of a Governance created to vote on and execute given set of instructions.
 It is created by someone (Proposal Owner) and tied to a given Governance account
 and has a set of executable instructions to it, a name and a description.
 It goes through various states (draft, voting, executing, ...) and users can vote on it
@@ -101,16 +165,30 @@ When a Proposal is created and signed by its Signatories voters can start voting
 equal to deposited governing tokens into the realm. A vote is tipped once it passes the defined `vote_threshold` of votes
 and enters Succeeded or Defeated state. If Succeeded then Proposal instructions can be executed after they hold_up_time passes.
 
-Users can relinquish their vote any time during Proposal lifetime, but once Proposal it decided their vote can't be changed.
+Users can relinquish their vote any time during Proposal lifetime, but once Proposal is decided their vote can't be changed.
 
 ### Community and Councils governing tokens
 
 Each Governance Realm that gets created has the option to also have a Council mint.
 A council mint is simply a separate mint from the Community mint.
 What this means is that users can submit Proposals that have a different voting population from a different mint
-that can affect the same program. A practical application of this policy may be to have a very large population control
+that can affect the same DAO. A practical application of this policy may be to have a very large population control
 major version bumps of Solana via normal SOL, for instance, but hot fixes be controlled via Council tokens,
 of which there may be only 30, and which may be themselves minted and distributed via proposals by the governing population.
+
+Another important use case is to use the Council for DAO inception. At the beginning of a DAO life
+there are lots of risks and unknowns.
+For example it's not known whether the community of token holders would engage and participate in DAO votes.
+And if it would engage then to what extent. It means it can be difficult for example to decide how many votes are
+required for a proposal to be successfully voted on.
+This is why in order to avoid traps and potentially irreversible actions the Council can be used as a safety net
+in a similar way to Multisig to moderate and supervise the voting process at the DAO inception.
+Once the newly born DAO goes through several successful proposal votes and everything is going smoothly
+the council can be removed from the DAO through a community vote.
+
+The Council can also be used for protocols and communities which haven't launched their token yet.
+In such cases the DAO can be setup with the yet to launch token and the Council which would governed
+the DAO until the token is distributed.
 
 ### Proposal Workflow
 

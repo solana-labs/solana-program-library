@@ -7,7 +7,6 @@ use solana_program_test::tokio;
 use program_test::*;
 use spl_governance::{
     error::GovernanceError,
-    instruction::Vote,
     state::enums::{ProposalState, VoteThresholdPercentage},
 };
 
@@ -25,7 +24,8 @@ async fn test_finalize_vote_to_succeeded() {
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let mut account_governance_cookie = governance_test
         .with_account_governance_using_config(
@@ -48,7 +48,7 @@ async fn test_finalize_vote_to_succeeded() {
         .unwrap();
 
     governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::Yes)
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
         .await
         .unwrap();
 
@@ -67,7 +67,7 @@ async fn test_finalize_vote_to_succeeded() {
         )
         .await;
 
-    let clock = governance_test.get_clock().await;
+    let clock = governance_test.bench.get_clock().await;
 
     // Act
 
@@ -99,6 +99,12 @@ async fn test_finalize_vote_to_succeeded() {
         ),
         proposal_account.vote_threshold_percentage
     );
+
+    let proposal_owner_record = governance_test
+        .get_token_owner_record_account(&proposal_cookie.account.token_owner_record)
+        .await;
+
+    assert_eq!(0, proposal_owner_record.outstanding_proposal_count);
 }
 
 #[tokio::test]
@@ -111,7 +117,8 @@ async fn test_finalize_vote_to_defeated() {
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let mut account_governance_cookie = governance_test
         .with_account_governance(
@@ -133,7 +140,7 @@ async fn test_finalize_vote_to_defeated() {
         .unwrap();
 
     governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::No)
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::No)
         .await
         .unwrap();
 
@@ -178,7 +185,8 @@ async fn test_finalize_vote_with_invalid_mint_error() {
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let mut account_governance_cookie = governance_test
         .with_account_governance(
@@ -200,7 +208,7 @@ async fn test_finalize_vote_with_invalid_mint_error() {
         .unwrap();
 
     governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::No)
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::No)
         .await
         .unwrap();
 
@@ -237,7 +245,8 @@ async fn test_finalize_vote_with_invalid_governance_error() {
 
     let token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
-        .await;
+        .await
+        .unwrap();
 
     let mut account_governance_cookie = governance_test
         .with_account_governance(
@@ -259,7 +268,7 @@ async fn test_finalize_vote_with_invalid_governance_error() {
         .unwrap();
 
     governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::No)
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::No)
         .await
         .unwrap();
 

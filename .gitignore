@@ -11,3 +11,6 @@ hfuzz_workspace
 **/.DS_Store
 test-ledger
 keys/
+docker-target
+.idea
+.coderrect

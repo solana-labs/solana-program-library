@@ -123,7 +123,8 @@ export async function updateNameRegistryData(
     nameAccountKey,
     new Numberu32(offset),
     input_data,
-    signer
+    signer,
+    nameParent
   );
 
   return updateInstr;
@@ -168,7 +169,8 @@ export async function transferNameOwnership(
     nameAccountKey,
     newOwner,
     curentNameOwner,
-    nameClass
+    nameClass,
+    nameParent
   );
 
   return transferInstr;
