@@ -265,6 +265,15 @@ pub enum SwapInstruction {
     /// 0. `[signer]` The account of deployer.
     /// 1. `[writable]` The pool registry account.
     DeregisterPool(DeregisterPool),
+
+    ///   Repairs a token swap whose fee account is closed
+    ///
+    /// Accounts expected:
+    ///
+    /// 0. `[writable]` The token swap account to repair.
+    /// 1. `[]` The old fee account this must be closed.
+    /// 2. `[]` The new fee account. This must be the ATA for the mint and the owner fee account.
+    RepairClosedFeeAccount(),
 }
 
 impl SwapInstruction {
@@ -353,6 +362,8 @@ impl SwapInstruction {
                 Self::DeregisterPool(DeregisterPool {
                     pool_index,
                 })
+            },
+            9 => Self::RepairClosedFeeAccount {
             },
             _ => return Err(SwapError::InvalidInstruction.into()),
         })
@@ -458,6 +469,9 @@ impl SwapInstruction {
             }) => {
                 buf.push(8);
                 buf.extend_from_slice(&pool_index.to_le_bytes());
+            }
+            Self::RepairClosedFeeAccount() => {
+                buf.push(9);
             }
         }
         buf
@@ -798,6 +812,30 @@ pub fn deregister_pool(
     let accounts = vec![
         AccountMeta::new(*payer, true),
         AccountMeta::new(*pool_registry_pubkey, false),
+    ];
+
+    Ok(Instruction {
+        program_id: *program_id,
+        accounts,
+        data,
+    })
+}
+
+
+/// Creates an 'repair_closed_fee_account' instruction.
+pub fn repair_closed_fee_account(
+    program_id: &Pubkey,
+    token_swap: &Pubkey,
+    old_fee_account: &Pubkey,
+    new_fee_account: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    let init_data = SwapInstruction::RepairClosedFeeAccount();
+    let data = init_data.pack();
+
+    let accounts = vec![
+        AccountMeta::new(*token_swap, false),
+        AccountMeta::new(*old_fee_account, false),
+        AccountMeta::new(*new_fee_account, false),
     ];
 
     Ok(Instruction {

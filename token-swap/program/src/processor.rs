@@ -29,7 +29,14 @@ use solana_program::{
     system_instruction,
     sysvar::Sysvar,
 };
+use spl_associated_token_account::get_associated_token_address;
 use std::convert::TryInto;
+
+
+/// For unit testing, we need to use a owner key when generating ATAs. 
+/// This matches the one in the unit test
+#[cfg(not(feature = "production"))]
+pub const TEST_OWNER_KEY: &str = "5Cebzty8iwgAUx9jyfZVAT2iMvXBECLwEVgT6T8KYmvS";
 
 /// Program state handler.
 pub struct Processor {}
@@ -1365,6 +1372,96 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes RepairClosedFeeAccount
+    pub fn process_repair_closed_fee_account(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let token_swap_account = next_account_info(account_info_iter)?;
+        let old_fee_account = next_account_info(account_info_iter)?;
+        let new_fee_account = next_account_info(account_info_iter)?;
+
+        //assert program account ownership
+        if token_swap_account.owner != program_id {
+            return Err(ProgramError::IncorrectProgramId);
+        }
+        
+        //no point making no change
+        if old_fee_account.key == new_fee_account.key {
+            return Err(SwapError::InvalidInput.into());
+        }
+
+        //old fee must NOT be a token account (assumed closed, but could be some other reason?)
+        //this makes sure this can only run in a truly broken scenario
+        Self::unpack_token_account(&old_fee_account, &spl_token::id())
+            .err()
+            .ok_or_else(|| SwapError::InvalidInput)?;
+
+        //constraints must exist
+        #[cfg(feature = "production")]
+        let owner_key = constraints::SWAP_CONSTRAINTS
+            .map(|c| c.owner_key.parse::<Pubkey>().unwrap())
+            .ok_or_else(|| ProgramError::InvalidInstructionData)?;
+
+        //unit test has no swap constraints, so no owner key - we use our hard coded key
+        #[cfg(not(feature = "production"))]
+        let owner_key = TEST_OWNER_KEY.parse::<Pubkey>().unwrap();
+
+        let new_fee_token_account = Self::unpack_token_account(&new_fee_account, &spl_token::id())?;
+
+        //new fee account must be owned by the owner fee account
+        if owner_key != new_fee_token_account.owner {
+            return Err(SwapError::InvalidOwner.into());
+        }
+
+        //new fee account cannot have a close authority
+        if new_fee_token_account.close_authority.is_some() {
+            return Err(SwapError::InvalidCloseAuthority.into());
+        }
+
+        //new fee account cannot have a delegate
+        if new_fee_token_account.delegate.is_some() {
+            return Err(SwapError::InvalidDelegate.into());
+        }
+
+        //token swap must parse. 
+        //we avoid using the trait returned from SwapVersion::unpack so we have a mutable SwapV1
+        let mut token_swap: SwapV1 =
+        {
+            let data = token_swap_account.data.borrow();
+            let (&version, rest) = data
+                .split_first()
+                .ok_or(ProgramError::InvalidAccountData)?;
+            match version {
+                1 => Ok(SwapV1::unpack(rest)?),
+                _ => Err(ProgramError::UninitializedAccount),
+            }
+        }?;
+
+        //old fee account key must match whats on our token swap
+        if old_fee_account.key != &token_swap.pool_fee_account {
+            return Err(SwapError::IncorrectFeeAccount.into());
+        }
+
+        //new fee account must be the ata of owner fee address and the pool mint
+        //if owner_key is None, this is in a unit test - we have to use something
+        let ata = get_associated_token_address(&owner_key, token_swap.pool_mint());
+        if new_fee_account.key != &ata {
+            return Err(SwapError::IncorrectFeeAccount.into());
+        }
+
+        //set the new fee account
+        token_swap.pool_fee_account = *new_fee_account.key;
+
+        //repack the token_swap account data
+        SwapVersion::pack(
+            SwapVersion::SwapV1(token_swap), 
+            &mut token_swap_account.data.borrow_mut())?;
+
+        Ok(())
+    }
+
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         Self::process_with_constraints(program_id, accounts, input, &SWAP_CONSTRAINTS)
@@ -1480,6 +1577,13 @@ impl Processor {
             }) => {
                 msg!("Instruction: DeregisterPool");
                 Self::process_deregister_pool(program_id, pool_index, accounts)
+            }
+            SwapInstruction::RepairClosedFeeAccount() => {
+                msg!("Instruction: RepairClosedFeeAccount");
+                Self::process_repair_closed_fee_account(
+                    program_id,
+                    accounts,
+                )
             }
         }
     }

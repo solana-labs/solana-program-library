@@ -23,6 +23,7 @@ bytemuck = { version = "1.7.2", features = ["derive", "extern_crate_alloc"] }
 solana-program = "1.7.7"
 spl-math = { version = "0.1", path = "../../libraries/math", features = [ "no-entrypoint" ] }
 spl-token = { version = "3.2", path = "../../token/program", features = [ "no-entrypoint" ] }
+spl-associated-token-account = { version = "1.0.3", features = ["no-entrypoint"] }
 thiserror = "1.0"
 arbitrary = { version = "0.4", features = ["derive"], optional = true }
 roots = { version = "0.0.7", optional = true }
