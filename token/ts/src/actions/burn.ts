@@ -8,7 +8,7 @@ import {
     TransactionSignature,
 } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants';
-import { createBurnInstruction } from '../instructions';
+import { createBurnInstruction } from '../instructions/index';
 import { getSigners } from './internal';
 
 /**

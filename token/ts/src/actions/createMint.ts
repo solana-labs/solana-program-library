@@ -9,8 +9,8 @@ import {
     Transaction,
 } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants';
-import { createInitializeMintInstruction } from '../instructions';
-import { getMinimumBalanceForRentExemptMint, MINT_SIZE } from '../state';
+import { createInitializeMintInstruction } from '../instructions/index';
+import { getMinimumBalanceForRentExemptMint, MINT_SIZE } from '../state/index';
 
 /**
  * Create and initialize a new mint

@@ -8,7 +8,7 @@ import {
     TransactionSignature,
 } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants';
-import { createThawAccountInstruction } from '../instructions';
+import { createThawAccountInstruction } from '../instructions/index';
 import { getSigners } from './internal';
 
 /**
