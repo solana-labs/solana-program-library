@@ -286,7 +286,7 @@ async fn burn() {
 #[tokio::test]
 async fn close_account() {
     let mut pt = ProgramTest::new("spl_token_2022", id(), processor!(Processor::process));
-    pt.set_compute_max_units(6_000); // last known 1783
+    pt.set_compute_max_units(8_000); // last known 1783
     let (mut banks_client, payer, recent_blockhash) = pt.start().await;
 
     let owner = Keypair::new();
