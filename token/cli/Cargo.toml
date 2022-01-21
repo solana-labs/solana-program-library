@@ -24,7 +24,7 @@ solana-logger = "=1.9.2"
 solana-remote-wallet = "=1.9.2"
 solana-sdk = "=1.9.2"
 solana-transaction-status = "=1.9.2"
-spl-token = { version = "3.2", path="../program", features = [ "no-entrypoint" ] }
+spl-token = { version = "3.3", path="../program", features = [ "no-entrypoint" ] }
 spl-associated-token-account = { version = "1.0", path="../../associated-token-account/program", features = [ "no-entrypoint" ] }
 spl-memo = { version = "3.0.1", path="../../memo/program", features = ["no-entrypoint"] }
 
