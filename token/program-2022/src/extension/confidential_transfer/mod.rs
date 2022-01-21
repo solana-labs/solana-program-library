@@ -17,7 +17,7 @@ pub mod processor;
 
 /// Confidential transfer mint configuration
 #[repr(C)]
-#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct ConfidentialTransferMint {
     /// Authority to modify the `ConfidentialTransferMint` configuration
     ///
@@ -45,7 +45,7 @@ impl Extension for ConfidentialTransferMint {
 
 /// Confidential account state
 #[repr(C)]
-#[derive(Clone, Copy, Debug, PartialEq, Pod, Zeroable)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct ConfidentialTransferAccount {
     /// `true` if this account has been approved for use. All confidential transfer operations for
     /// the account will fail until approval is granted.
