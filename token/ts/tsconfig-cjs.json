@@ -1,8 +1,10 @@
 {
     "extends": "./tsconfig.json",
     "compilerOptions": {
-        "module": "commonjs",
         "target": "es6",
-        "outDir": "lib/cjs"
+        "module": "commonjs",
+        "outDir": "lib/cjs",
+        "declarationDir": null,
+        "declaration": false
     }
 }

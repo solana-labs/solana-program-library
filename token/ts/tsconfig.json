@@ -3,8 +3,9 @@
     "exclude": ["node_modules"],
     "compilerOptions": {
         "module": "esnext",
-        "target": "esnext",
+        "target": "es2019",
         "outDir": "lib/esm",
+        "declarationDir": "lib/types",
         "noEmit": false,
         "declaration": true,
         "sourceMap": true,
