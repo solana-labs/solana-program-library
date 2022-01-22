@@ -1164,9 +1164,9 @@ mod tests {
             solana_program::entrypoint::SUCCESS
         }
 
-        // fn sol_set_return_data(&mut self, data: &[u8]) {
-        //     assert_eq!(&*EXPECTED_DATA.read().unwrap(), data)
-        // }
+        fn sol_set_return_data(&self, data: &[u8]) {
+            assert_eq!(&*EXPECTED_DATA.read().unwrap(), data)
+        }
     }
 
     fn do_process_instruction(
@@ -6555,7 +6555,6 @@ mod tests {
         );
     }
 
-    #[ignore]
     #[test]
     fn test_get_account_data_size() {
         // see integration tests for return-data validity
