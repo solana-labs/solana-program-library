@@ -293,7 +293,7 @@ impl SwapInstruction {
             1 => {
                 let (amount_in, rest) = Self::unpack_u64(rest)?;
                 let (minimum_amount_out, rest) = Self::unpack_u64(rest)?;
-                let flags = rest.first().unwrap_or(&swap_flags::default()).clone();
+                let flags = *rest.first().unwrap_or(&swap_flags::default());
                 Self::Swap(Swap {
                     amount_in,
                     minimum_amount_out,
@@ -340,10 +340,9 @@ impl SwapInstruction {
             7 => {
                 let (amount_in, rest) = Self::unpack_u64(rest)?;
                 let (minimum_amount_out, rest) = Self::unpack_u64(rest)?;
-                let flags = rest
+                let flags = *rest
                     .first()
-                    .unwrap_or(&swap_flags::default_routed())
-                    .clone();
+                    .unwrap_or(&swap_flags::default_routed());
                 Self::RoutedSwap(Swap {
                     amount_in,
                     minimum_amount_out,

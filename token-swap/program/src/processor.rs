@@ -234,7 +234,7 @@ impl Processor {
 
         let mut pool_registry = PoolRegistry::load(pool_registry_info, program_id)?;
         if !pool_registry.is_initialized {
-            return Err(ProgramError::AccountAlreadyInitialized.into());
+            return Err(ProgramError::AccountAlreadyInitialized);
         }
 
         let token_program_id = *token_program_info.key;
@@ -300,7 +300,7 @@ impl Processor {
         let mut seed_key_vec = Vec::new();
         seed_key_vec.push(token_a.mint.to_bytes());
         seed_key_vec.push(token_b.mint.to_bytes());
-        seed_key_vec.sort();
+        seed_key_vec.sort_unstable();
 
         // Although this is less efficient, it prevents a malicious attacker providing a nonce
         // that produces a different valid address, allowing them to inject duplicate/fake pools.
@@ -360,7 +360,7 @@ impl Processor {
                 swap_info.clone(),
                 system_program_info.clone(),
             ],
-            &pool_signer_seeds,
+            pool_signer_seeds,
         )?;
 
         pool_registry.append(&pool_pda);
@@ -1313,7 +1313,7 @@ impl Processor {
 
         let pool_registry_seed = "poolregistry";
         let pool_registry_key =
-            Pubkey::create_with_seed(&payer_info.key, &pool_registry_seed, &program_id).unwrap();
+            Pubkey::create_with_seed(payer_info.key, pool_registry_seed, program_id).unwrap();
 
         if pool_registry_key != *pool_registry_account.key {
             msg!("Error: pool registry pubkey incorrect");
@@ -1322,7 +1322,7 @@ impl Processor {
 
         let mut pool_registry = PoolRegistry::load(pool_registry_account, program_id)?;
         if pool_registry.is_initialized {
-            return Err(ProgramError::AccountAlreadyInitialized.into());
+            return Err(ProgramError::AccountAlreadyInitialized);
         }
 
         pool_registry.is_initialized = true;
@@ -1346,7 +1346,7 @@ impl Processor {
 
         let pool_registry_seed = "poolregistry";
         let pool_registry_key =
-            Pubkey::create_with_seed(&payer_info.key, &pool_registry_seed, &program_id).unwrap();
+            Pubkey::create_with_seed(payer_info.key, pool_registry_seed, program_id).unwrap();
 
         if pool_registry_key != *pool_registry_account.key {
             msg!("Error: pool registry pubkey incorrect");
@@ -1355,7 +1355,7 @@ impl Processor {
 
         let mut pool_registry = PoolRegistry::load(pool_registry_account, program_id)?;
         if !pool_registry.is_initialized {
-            return Err(ProgramError::AccountAlreadyInitialized.into());
+            return Err(ProgramError::AccountAlreadyInitialized);
         }
 
         //we took the arg as a u64 for consistency, convert to u32
@@ -1668,7 +1668,7 @@ mod tests {
 
         let pool_registry_seed = "poolregistry";
         let pool_registry_key =
-            Pubkey::create_with_seed(&payer_key, &pool_registry_seed, &SWAP_PROGRAM_ID).unwrap();
+            Pubkey::create_with_seed(&payer_key, pool_registry_seed, &SWAP_PROGRAM_ID).unwrap();
 
         let mut pool_registry_account =
             Account::new(0, std::mem::size_of::<PoolRegistry>(), &SWAP_PROGRAM_ID);
@@ -1735,7 +1735,7 @@ mod tests {
             let mut seed_key_vec = Vec::new();
             seed_key_vec.push(token_a_mint_key.to_bytes());
             seed_key_vec.push(token_b_mint_key.to_bytes());
-            seed_key_vec.sort();
+            seed_key_vec.sort_unstable();
 
             let (swap_key, pool_nonce) = Pubkey::find_program_address(
                 &[

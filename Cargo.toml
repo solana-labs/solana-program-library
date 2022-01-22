@@ -26,7 +26,6 @@ members = [
   "token-lending/cli",
   "token-lending/program",
   "token-swap/program",
-  "token-swap/program/fuzz",
   "token/cli",
   "token/program",
   "token/program-2022",
