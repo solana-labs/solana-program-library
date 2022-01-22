@@ -28,7 +28,7 @@ pub fn process_instruction(
     accounts: &[AccountInfo],
     input: &[u8],
 ) -> ProgramResult {
-    msg!("GOVERNANCE-CHAT-VERSION:{:?}", env!("CARGO_PKG_VERSION"));
+    msg!("VERSION:{:?}", env!("CARGO_PKG_VERSION"));
 
     let instruction = GovernanceChatInstruction::try_from_slice(input)
         .map_err(|_| ProgramError::InvalidInstructionData)?;
