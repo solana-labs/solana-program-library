@@ -294,7 +294,6 @@ pub async fn create_associated_token_account(
     owner: &Pubkey,
     mint: &Pubkey,
 ) -> Result<Pubkey, TransportError> {
-
     let mut transaction = Transaction::new_with_payer(
         &[
             spl_associated_token_account::create_associated_token_account(
@@ -308,12 +307,9 @@ pub async fn create_associated_token_account(
     transaction.sign(&[payer], *recent_blockhash);
     banks_client.process_transaction(transaction).await?;
 
-    Ok(
-        spl_associated_token_account::get_associated_token_address(
-            owner,
-            mint,
-        )
-    )
+    Ok(spl_associated_token_account::get_associated_token_address(
+        owner, mint,
+    ))
 }
 
 pub async fn close_token_account(
@@ -733,7 +729,9 @@ impl<'a> TokenSwapAccounts<'a> {
                 &token_b,
                 &self.pool_mint_key.pubkey(),
                 //allow fee key to change externally to a pubkey
-                &self.pool_fee_pubkey_override.unwrap_or(self.pool_fee_key.pubkey()),
+                &self
+                    .pool_fee_pubkey_override
+                    .unwrap_or(self.pool_fee_key.pubkey()),
                 &other_swap.swap_pubkey,
                 &other_swap.authority_pubkey,
                 &other_swap.token_a_key.pubkey(),
@@ -833,33 +831,26 @@ impl<'a> TokenSwapAccounts<'a> {
         recent_blockhash: &Hash,
         ata: &Pubkey,
     ) -> Result<(), TransportError> {
-        self.repair_override_old_fee(
-            banks_client,
-            payer,
-            recent_blockhash,
-            ata,
-            None,
-        ).await
+        self.repair_override_old_fee(banks_client, payer, recent_blockhash, ata, None)
+            .await
     }
 
     pub async fn repair_override_old_fee(
-            &mut self,
-            banks_client: &mut BanksClient,
-            payer: &Keypair,
-            recent_blockhash: &Hash,
-            ata: &Pubkey,
-            old_fee_account: Option<Pubkey>,
-        ) -> Result<(), TransportError> {
-
+        &mut self,
+        banks_client: &mut BanksClient,
+        payer: &Keypair,
+        recent_blockhash: &Hash,
+        ata: &Pubkey,
+        old_fee_account: Option<Pubkey>,
+    ) -> Result<(), TransportError> {
         let mut transaction = Transaction::new_with_payer(
-            &[
-                instruction::repair_closed_fee_account(
-                    &id(),
-                    &self.swap_pubkey,
-                    &old_fee_account.unwrap_or_else(||self.pool_fee_key.pubkey()),
-                    ata,
-                ).unwrap()
-            ],
+            &[instruction::repair_closed_fee_account(
+                &id(),
+                &self.swap_pubkey,
+                &old_fee_account.unwrap_or_else(|| self.pool_fee_key.pubkey()),
+                ata,
+            )
+            .unwrap()],
             Some(&payer.pubkey()),
         );
         transaction.sign(&[payer], *recent_blockhash);
@@ -870,5 +861,4 @@ impl<'a> TokenSwapAccounts<'a> {
 
         Ok(())
     }
-
 }

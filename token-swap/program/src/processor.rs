@@ -33,7 +33,6 @@ use solana_program::{
 use spl_associated_token_account::get_associated_token_address;
 use std::convert::TryInto;
 
-
 /// For unit testing, we need to use a owner key when generating ATAs.
 /// This matches the one in the unit test
 #[cfg(not(feature = "production"))]
@@ -1427,12 +1426,9 @@ impl Processor {
 
         //token swap must parse.
         //we avoid using the trait returned from SwapVersion::unpack so we have a mutable SwapV1
-        let mut token_swap: SwapV1 =
-        {
+        let mut token_swap: SwapV1 = {
             let data = token_swap_account.data.borrow();
-            let (&version, rest) = data
-                .split_first()
-                .ok_or(ProgramError::InvalidAccountData)?;
+            let (&version, rest) = data.split_first().ok_or(ProgramError::InvalidAccountData)?;
             match version {
                 1 => Ok(SwapV1::unpack(rest)?),
                 _ => Err(ProgramError::UninitializedAccount),
@@ -1457,7 +1453,8 @@ impl Processor {
         //repack the token_swap account data
         SwapVersion::pack(
             SwapVersion::SwapV1(token_swap),
-            &mut token_swap_account.data.borrow_mut())?;
+            &mut token_swap_account.data.borrow_mut(),
+        )?;
 
         Ok(())
     }
@@ -1581,10 +1578,7 @@ impl Processor {
             }
             SwapInstruction::RepairClosedFeeAccount() => {
                 msg!("Instruction: RepairClosedFeeAccount");
-                Self::process_repair_closed_fee_account(
-                    program_id,
-                    accounts,
-                )
+                Self::process_repair_closed_fee_account(program_id, accounts)
             }
         }
     }

@@ -349,9 +349,7 @@ impl SwapInstruction {
             7 => {
                 let (amount_in, rest) = Self::unpack_u64(rest)?;
                 let (minimum_amount_out, rest) = Self::unpack_u64(rest)?;
-                let flags = *rest
-                    .first()
-                    .unwrap_or(&swap_flags::default_routed());
+                let flags = *rest.first().unwrap_or(&swap_flags::default_routed());
                 Self::RoutedSwap(Swap {
                     amount_in,
                     minimum_amount_out,
@@ -360,12 +358,9 @@ impl SwapInstruction {
             }
             8 => {
                 let (pool_index, _rest) = Self::unpack_u64(rest)?;
-                Self::DeregisterPool(DeregisterPool {
-                    pool_index,
-                })
-            },
-            9 => Self::RepairClosedFeeAccount {
-            },
+                Self::DeregisterPool(DeregisterPool { pool_index })
+            }
+            9 => Self::RepairClosedFeeAccount {},
             _ => return Err(SwapError::InvalidInstruction.into()),
         })
     }
@@ -816,7 +811,6 @@ pub fn deregister_pool(
         data,
     })
 }
-
 
 /// Creates an 'repair_closed_fee_account' instruction.
 pub fn repair_closed_fee_account(
