@@ -22,10 +22,7 @@ import { DecodedTransferCheckedInstruction, decodeTransferCheckedInstruction } f
 import { TokenInstruction } from './types';
 
 /** TODO: docs */
-export function decodeInstruction(
-    instruction: TransactionInstruction,
-    programId = TOKEN_PROGRAM_ID
-):
+export type DecodedInstruction =
     | DecodedInitializeMintInstruction
     | DecodedInitializeAccountInstruction
     | DecodedInitializeMultisigInstruction
@@ -43,11 +40,18 @@ export function decodeInstruction(
     | DecodedMintToCheckedInstruction
     | DecodedBurnCheckedInstruction
     // | DecodedInitializeAccount2Instruction
-    | DecodedSyncNativeInstruction {
+    | DecodedSyncNativeInstruction
     // | DecodedInitializeAccount3Instruction
     // | DecodedInitializeMultisig2Instruction
     // | DecodedInitializeMint2Instruction
-    // TODO: implement ^
+    // TODO: implement ^ and remove `never`
+    | never;
+
+/** TODO: docs */
+export function decodeInstruction(
+    instruction: TransactionInstruction,
+    programId = TOKEN_PROGRAM_ID
+): DecodedInstruction {
     if (!instruction.data.length) throw new TokenInvalidInstructionDataError();
 
     const type = u8().decode(instruction.data);
@@ -80,3 +84,122 @@ export function decodeInstruction(
 
     throw new TokenInvalidInstructionTypeError();
 }
+
+/** TODO: docs */
+export function isInitializeMintInstruction(decoded: DecodedInstruction): decoded is DecodedInitializeMintInstruction {
+    return decoded.data.instruction === TokenInstruction.InitializeMint;
+}
+
+/** TODO: docs */
+export function isInitializeAccountInstruction(
+    decoded: DecodedInstruction
+): decoded is DecodedInitializeAccountInstruction {
+    return decoded.data.instruction === TokenInstruction.InitializeAccount;
+}
+
+/** TODO: docs */
+export function isInitializeMultisigInstruction(
+    decoded: DecodedInstruction
+): decoded is DecodedInitializeMultisigInstruction {
+    return decoded.data.instruction === TokenInstruction.InitializeMultisig;
+}
+
+/** TODO: docs */
+export function isTransferInstruction(decoded: DecodedInstruction): decoded is DecodedTransferInstruction {
+    return decoded.data.instruction === TokenInstruction.Transfer;
+}
+
+/** TODO: docs */
+export function isApproveInstruction(decoded: DecodedInstruction): decoded is DecodedApproveInstruction {
+    return decoded.data.instruction === TokenInstruction.Approve;
+}
+
+/** TODO: docs */
+export function isRevokeInstruction(decoded: DecodedInstruction): decoded is DecodedRevokeInstruction {
+    return decoded.data.instruction === TokenInstruction.Revoke;
+}
+
+/** TODO: docs */
+export function isSetAuthorityInstruction(decoded: DecodedInstruction): decoded is DecodedSetAuthorityInstruction {
+    return decoded.data.instruction === TokenInstruction.SetAuthority;
+}
+
+/** TODO: docs */
+export function isMintToInstruction(decoded: DecodedInstruction): decoded is DecodedMintToInstruction {
+    return decoded.data.instruction === TokenInstruction.MintTo;
+}
+
+/** TODO: docs */
+export function isBurnInstruction(decoded: DecodedInstruction): decoded is DecodedBurnInstruction {
+    return decoded.data.instruction === TokenInstruction.Burn;
+}
+
+/** TODO: docs */
+export function isCloseAccountInstruction(decoded: DecodedInstruction): decoded is DecodedCloseAccountInstruction {
+    return decoded.data.instruction === TokenInstruction.CloseAccount;
+}
+
+/** TODO: docs */
+export function isFreezeAccountInstruction(decoded: DecodedInstruction): decoded is DecodedFreezeAccountInstruction {
+    return decoded.data.instruction === TokenInstruction.FreezeAccount;
+}
+
+/** TODO: docs */
+export function isThawAccountInstruction(decoded: DecodedInstruction): decoded is DecodedThawAccountInstruction {
+    return decoded.data.instruction === TokenInstruction.ThawAccount;
+}
+
+/** TODO: docs */
+export function isTransferCheckedInstruction(
+    decoded: DecodedInstruction
+): decoded is DecodedTransferCheckedInstruction {
+    return decoded.data.instruction === TokenInstruction.TransferChecked;
+}
+
+/** TODO: docs */
+export function isApproveCheckedInstruction(decoded: DecodedInstruction): decoded is DecodedApproveCheckedInstruction {
+    return decoded.data.instruction === TokenInstruction.ApproveChecked;
+}
+
+/** TODO: docs */
+export function isMintToCheckedInstruction(decoded: DecodedInstruction): decoded is DecodedMintToCheckedInstruction {
+    return decoded.data.instruction === TokenInstruction.MintToChecked;
+}
+
+/** TODO: docs */
+export function isBurnCheckedInstruction(decoded: DecodedInstruction): decoded is DecodedBurnCheckedInstruction {
+    return decoded.data.instruction === TokenInstruction.BurnChecked;
+}
+
+/** TODO: docs, implement */
+// export function isInitializeAccount2Instruction(
+//     decoded: DecodedInstruction
+// ): decoded is DecodedInitializeAccount2Instruction {
+//     return decoded.data.instruction === TokenInstruction.InitializeAccount2;
+// }
+
+/** TODO: docs */
+export function isSyncNativeInstruction(decoded: DecodedInstruction): decoded is DecodedSyncNativeInstruction {
+    return decoded.data.instruction === TokenInstruction.SyncNative;
+}
+
+/** TODO: docs, implement */
+// export function isInitializeAccount3Instruction(
+//     decoded: DecodedInstruction
+// ): decoded is DecodedInitializeAccount3Instruction {
+//     return decoded.data.instruction === TokenInstruction.InitializeAccount3;
+// }
+
+/** TODO: docs, implement */
+// export function isInitializeMultisig2Instruction(
+//     decoded: DecodedInstruction
+// ): decoded is DecodedInitializeMultisig2Instruction {
+//     return decoded.data.instruction === TokenInstruction.InitializeMultisig2;
+// }
+
+/** TODO: docs, implement */
+// export function isInitializeMint2Instruction(
+//     decoded: DecodedInstruction
+// ): decoded is DecodedInitializeMint2Instruction {
+//     return decoded.data.instruction === TokenInstruction.InitializeMint2;
+// }
