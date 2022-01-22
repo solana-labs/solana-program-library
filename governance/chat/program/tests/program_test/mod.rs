@@ -52,6 +52,14 @@ impl GovernanceChatProgramTest {
     #[allow(dead_code)]
     async fn start_impl(use_voter_weight_addin: bool) -> Self {
         let mut program_test = ProgramTest::default();
+
+        solana_logger::setup_with_default(
+            "solana_rbpf::vm=debug,\
+             solana_runtime::message_processor=debug,\
+             solana_program_runtime=debug,\
+             solana_program_test=info",
+        );
+
         let program_id = Pubkey::from_str("GovernanceChat11111111111111111111111111111").unwrap();
         program_test.add_program(
             "spl_governance_chat",
