@@ -15,7 +15,8 @@
         "esModuleInterop": true,
         "resolveJsonModule": true,
         "isolatedModules": true,
-        "typeRoots": ["node_modules/@types", "types"]
+        "typeRoots": ["node_modules/@types", "types"],
+        "skipLibCheck": true
     },
     "typedocOptions": {
         "entryPoints": "src/index.ts",
