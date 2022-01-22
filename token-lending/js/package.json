@@ -30,7 +30,7 @@
     },
     "dependencies": {
         "@solana/buffer-layout": "^4.0.0",
-        "@solana/buffer-layout-utils": "^0.1.0",
+        "@solana/buffer-layout-utils": "^0.2.0",
         "bigint-buffer": "^1.1.5",
         "bignumber.js": "^9.0.1"
     },

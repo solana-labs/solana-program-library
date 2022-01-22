@@ -10,7 +10,8 @@
         "isolatedModules": true,
         "declaration": true,
         "moduleResolution": "node",
-        "stripInternal": true
+        "stripInternal": true,
+        "skipLibCheck": true
     },
     "files": ["rollup.config.ts"],
     "include": ["src"],
