@@ -303,9 +303,7 @@ impl Processor {
             return Err(SwapError::IncorrectPoolMint.into());
         }
 
-        let mut seed_key_vec = Vec::new();
-        seed_key_vec.push(token_a.mint.to_bytes());
-        seed_key_vec.push(token_b.mint.to_bytes());
+        let mut seed_key_vec = vec![token_a.mint.to_bytes(), token_b.mint.to_bytes()];
         seed_key_vec.sort_unstable();
 
         // Although this is less efficient, it prevents a malicious attacker providing a nonce
@@ -556,6 +554,7 @@ impl Processor {
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn process_swap_internal<'a>(
         collect_dust: bool,
         output_unwrap: bool,
@@ -615,8 +614,7 @@ impl Processor {
         }
 
         let mut fees = token_swap.fees().clone();
-        if owner_trade_fee_numerator_denominator_override.is_some() {
-            let nd = owner_trade_fee_numerator_denominator_override.unwrap();
+        if let Some(nd) = owner_trade_fee_numerator_denominator_override {
             fees.owner_trade_fee_numerator = nd.0;
             fees.owner_trade_fee_denominator = nd.1;
         }
@@ -1393,9 +1391,9 @@ impl Processor {
 
         //old fee must NOT be a token account (assumed closed, but could be some other reason?)
         //this makes sure this can only run in a truly broken scenario
-        Self::unpack_token_account(&old_fee_account, &spl_token::id())
+        Self::unpack_token_account(old_fee_account, &spl_token::id())
             .err()
-            .ok_or_else(|| SwapError::InvalidInput)?;
+            .ok_or(SwapError::InvalidInput)?;
 
         //constraints must exist
         #[cfg(feature = "production")]
@@ -1407,7 +1405,7 @@ impl Processor {
         #[cfg(not(feature = "production"))]
         let owner_key = TEST_OWNER_KEY.parse::<Pubkey>().unwrap();
 
-        let new_fee_token_account = Self::unpack_token_account(&new_fee_account, &spl_token::id())?;
+        let new_fee_token_account = Self::unpack_token_account(new_fee_account, &spl_token::id())?;
 
         //new fee account must be owned by the owner fee account
         if owner_key != new_fee_token_account.owner {
@@ -1830,9 +1828,7 @@ mod tests {
             let (token_b_mint_key, mut token_b_mint_account) =
                 create_mint(&spl_token::id(), user_key, None);
 
-            let mut seed_key_vec = Vec::new();
-            seed_key_vec.push(token_a_mint_key.to_bytes());
-            seed_key_vec.push(token_b_mint_key.to_bytes());
+            let mut seed_key_vec = vec![token_a_mint_key.to_bytes(), token_b_mint_key.to_bytes()];
             seed_key_vec.sort_unstable();
 
             let (swap_key, pool_nonce) = Pubkey::find_program_address(

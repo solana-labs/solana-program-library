@@ -376,7 +376,7 @@ mod tests {
         pool_registry.append(&TEST_TOKEN_B);
         let regsize_ref = std::ptr::addr_of!(pool_registry.registry_size);
         let registry_size = unsafe { regsize_ref.read_unaligned() };
-        assert_eq!(pool_registry.is_initialized, false);
+        assert!(!pool_registry.is_initialized);
         assert_eq!(registry_size, 2);
         assert_eq!(pool_registry.accounts[0], TEST_TOKEN_A);
         assert_eq!(pool_registry.accounts[1], TEST_TOKEN_B);
