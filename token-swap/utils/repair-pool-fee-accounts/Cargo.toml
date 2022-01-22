@@ -1,0 +1,16 @@
+[package]
+name = "repair-pool-fee-accounts"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "3.0", features = ["derive"] }
+anyhow = "1.0.52"
+arrayref = "0.3.6"
+solana-sdk = "1.9.2"
+solana-client = "1.9.2"
+solana-client-helpers = "1.0.0"
+solana-cli-config = "1.9.2"
+spl-token-swap = { path = "../../program", features = ["fuzz", "no-entrypoint"] }
+spl-token = "3.2.0"
+spl-associated-token-account = { version = "1.0.3", features = ["no-entrypoint"] }
