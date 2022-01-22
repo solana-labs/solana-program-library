@@ -85,7 +85,7 @@ async fn fail_init_default_pubkey_as_authority() {
     } = test_transfer_fee_config();
     let err = TestContext::new(vec![ExtensionInitializationParams::TransferFeeConfig {
         transfer_fee_config_authority: transfer_fee_config_authority.into(),
-        withdraw_withheld_authority: COption::Some(Pubkey::default()),
+        withdraw_withheld_authority: Some(Pubkey::default()),
         transfer_fee_basis_points: newer_transfer_fee.transfer_fee_basis_points.into(),
         maximum_fee: newer_transfer_fee.maximum_fee.into(),
     }])

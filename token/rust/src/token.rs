@@ -3,7 +3,6 @@ use solana_sdk::{
     account::Account as BaseAccount,
     instruction::Instruction,
     program_error::ProgramError,
-    program_option::COption,
     program_pack::Pack,
     pubkey::Pubkey,
     signer::{signers::Signers, Signer},
@@ -52,11 +51,11 @@ impl PartialEq for TokenError {
 #[derive(Clone, Debug, PartialEq)]
 pub enum ExtensionInitializationParams {
     MintCloseAuthority {
-        close_authority: COption<Pubkey>,
+        close_authority: Option<Pubkey>,
     },
     TransferFeeConfig {
-        transfer_fee_config_authority: COption<Pubkey>,
-        withdraw_withheld_authority: COption<Pubkey>,
+        transfer_fee_config_authority: Option<Pubkey>,
+        withdraw_withheld_authority: Option<Pubkey>,
         transfer_fee_basis_points: u16,
         maximum_fee: u64,
     },
@@ -73,7 +72,8 @@ impl ExtensionInitializationParams {
     pub fn instruction(self, mint: &Pubkey) -> Instruction {
         match self {
             Self::MintCloseAuthority { close_authority } => {
-                instruction::initialize_mint_close_authority(&id(), mint, close_authority).unwrap()
+                instruction::initialize_mint_close_authority(&id(), mint, close_authority.as_ref())
+                    .unwrap()
             }
             Self::TransferFeeConfig {
                 transfer_fee_config_authority,
@@ -81,9 +81,9 @@ impl ExtensionInitializationParams {
                 transfer_fee_basis_points,
                 maximum_fee,
             } => transfer_fee::instruction::initialize_transfer_fee_config(
-                *mint,
-                transfer_fee_config_authority,
-                withdraw_withheld_authority,
+                mint,
+                transfer_fee_config_authority.as_ref(),
+                withdraw_withheld_authority.as_ref(),
                 transfer_fee_basis_points,
                 maximum_fee,
             ),
