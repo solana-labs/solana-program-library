@@ -2115,7 +2115,7 @@ fn get_price(
 }
 
 fn get_pyth_price(pyth_price_info: &AccountInfo, clock: &Clock) -> Result<Decimal, ProgramError> {
-    const STALE_AFTER_SLOTS_ELAPSED: u64 = 20;
+    const STALE_AFTER_SLOTS_ELAPSED: u64 = 240;
 
     if *pyth_price_info.key == spl_token_lending::NULL_PUBKEY {
         return Err(LendingError::NullOracleConfig.into());
@@ -2196,7 +2196,7 @@ fn get_switchboard_price(
     switchboard_feed_info: &AccountInfo,
     clock: &Clock,
 ) -> Result<Decimal, ProgramError> {
-    const STALE_AFTER_SLOTS_ELAPSED: u64 = 100;
+    const STALE_AFTER_SLOTS_ELAPSED: u64 = 240;
 
     if *switchboard_feed_info.key == spl_token_lending::NULL_PUBKEY {
         return Err(LendingError::NullOracleConfig.into());
