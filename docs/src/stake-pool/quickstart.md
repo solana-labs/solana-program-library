@@ -109,9 +109,16 @@ if it has no fees.
 Each of these parameters is modifiable after pool creation, so there's no need
 to worry about being locked in to any choices.
 
-Modify the parameters to suit your needs.  In our example, we will use fees
-of 0.3%, a referral fee of 50%, opt to *not* set a deposit authority, and have
-the maximum number of validators (2,950).  Next, run the script:
+Modify the parameters to suit your needs. The fees are especially important to
+avoid abuse, so please take the time to review and calculate fees that work best
+for your pool.
+
+Carefully read through the [Fees](fees.md) for more information about fees and
+best practices.
+
+In our example, we will use fees of 0.3%, a referral fee of 50%, opt to *not*
+set a deposit authority, and have the maximum number of validators (2,950).  Next,
+run the script:
 
 ```bash
 $ ./setup-stake-pool.sh

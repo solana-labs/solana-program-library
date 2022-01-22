@@ -2,9 +2,18 @@
 
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
-    account_info::AccountInfo, borsh::try_from_slice_unchecked, msg, program::invoke,
-    program::invoke_signed, program_error::ProgramError, program_pack::IsInitialized,
-    pubkey::Pubkey, rent::Rent, system_instruction::create_account, system_program, sysvar::Sysvar,
+    account_info::AccountInfo,
+    borsh::try_from_slice_unchecked,
+    msg,
+    program::invoke,
+    program::invoke_signed,
+    program_error::ProgramError,
+    program_pack::IsInitialized,
+    pubkey::Pubkey,
+    rent::Rent,
+    system_instruction::{self, create_account},
+    system_program,
+    sysvar::Sysvar,
 };
 
 use crate::error::GovernanceToolsError;
@@ -127,27 +136,59 @@ pub fn create_and_serialize_account_with_owner_signed<'a, T: BorshSerialize + Ac
         (Some(serialized_data), account_size)
     };
 
-    let create_account_instruction = create_account(
-        payer_info.key,
-        account_info.key,
-        rent.minimum_balance(account_size),
-        account_size as u64,
-        owner_program_id,
-    );
-
     let mut signers_seeds = account_address_seeds.to_vec();
     let bump = &[bump_seed];
     signers_seeds.push(bump);
 
-    invoke_signed(
-        &create_account_instruction,
-        &[
-            payer_info.clone(),
-            account_info.clone(),
-            system_info.clone(),
-        ],
-        &[&signers_seeds[..]],
-    )?;
+    let rent_exempt_lamports = rent.minimum_balance(account_size).max(1);
+
+    // If the account has some lamports already it can't be created using create_account instruction
+    // Anybody can send lamports to a PDA and by doing so create the account and perform DoS attack by blocking create_account
+    if account_info.lamports() > 0 {
+        let top_up_lamports = rent_exempt_lamports.saturating_sub(account_info.lamports());
+
+        if top_up_lamports > 0 {
+            invoke(
+                &system_instruction::transfer(payer_info.key, account_info.key, top_up_lamports),
+                &[
+                    payer_info.clone(),
+                    account_info.clone(),
+                    system_info.clone(),
+                ],
+            )?;
+        }
+
+        invoke_signed(
+            &system_instruction::allocate(account_info.key, account_size as u64),
+            &[account_info.clone(), system_info.clone()],
+            &[&signers_seeds[..]],
+        )?;
+
+        invoke_signed(
+            &system_instruction::assign(account_info.key, owner_program_id),
+            &[account_info.clone(), system_info.clone()],
+            &[&signers_seeds[..]],
+        )?;
+    } else {
+        // If the PDA doesn't exist use create_account to use lower compute budget
+        let create_account_instruction = create_account(
+            payer_info.key,
+            account_info.key,
+            rent_exempt_lamports,
+            account_size as u64,
+            owner_program_id,
+        );
+
+        invoke_signed(
+            &create_account_instruction,
+            &[
+                payer_info.clone(),
+                account_info.clone(),
+                system_info.clone(),
+            ],
+            &[&signers_seeds[..]],
+        )?;
+    }
 
     if let Some(serialized_data) = serialized_data {
         account_info

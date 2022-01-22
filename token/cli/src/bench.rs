@@ -476,5 +476,19 @@ fn send_messages(
         tps,
         elapsed.as_secs_f64(),
     );
+
+    let stats = config.rpc_client.get_transport_stats();
+    println!("Total RPC requests: {}", stats.request_count);
+    println!(
+        "Total RPC time: {:.2} seconds",
+        stats.elapsed_time.as_secs_f64()
+    );
+    if stats.rate_limited_time != std::time::Duration::default() {
+        println!(
+            "Total idle time due to RPC rate limiting: {:.2} seconds",
+            stats.rate_limited_time.as_secs_f64()
+        );
+    }
+
     Ok(())
 }

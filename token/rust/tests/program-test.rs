@@ -6,7 +6,7 @@ use solana_sdk::{
     program_option::COption,
     signer::{keypair::Keypair, Signer},
 };
-use spl_token::{instruction, state};
+use spl_token_2022::{instruction, state};
 use spl_token_client::{
     client::{ProgramBanksClient, ProgramBanksClientProcessTransaction, ProgramClient},
     token::Token,
@@ -49,6 +49,7 @@ impl TestContext {
             &mint_authority_pubkey,
             None,
             decimals,
+            vec![],
         )
         .await
         .expect("failed to create mint");
@@ -68,6 +69,9 @@ fn keypair_clone(kp: &Keypair) -> Keypair {
     Keypair::from_bytes(&kp.to_bytes()).expect("failed to copy keypair")
 }
 
+// TODO unignore once spl-token-2022 becomes spl-token, and is included in
+// ProgramTest by default
+#[ignore]
 #[tokio::test]
 async fn associated_token_account() {
     let TestContext { token, alice, .. } = TestContext::new().await;
@@ -100,6 +104,9 @@ async fn associated_token_account() {
     );
 }
 
+// TODO unignore once spl-token-2022 becomes spl-token, and is included in
+// ProgramTest by default
+#[ignore]
 #[tokio::test]
 async fn get_or_create_associated_token_account() {
     let TestContext { token, alice, .. } = TestContext::new().await;
@@ -122,6 +129,9 @@ async fn get_or_create_associated_token_account() {
     );
 }
 
+// TODO unignore once spl-token-2022 becomes spl-token, and is included in
+// ProgramTest by default
+#[ignore]
 #[tokio::test]
 async fn set_authority() {
     let TestContext {
@@ -156,7 +166,7 @@ async fn set_authority() {
         .get_mint_info()
         .await
         .expect("failed to get mint info");
-    assert!(mint.mint_authority.is_none());
+    assert!(mint.base.mint_authority.is_none());
 
     // TODO: compare
     // Err(Client(TransactionError(InstructionError(0, Custom(5)))))
@@ -185,6 +195,9 @@ async fn set_authority() {
     );
 }
 
+// TODO unignore once spl-token-2022 becomes spl-token, and is included in
+// ProgramTest by default
+#[ignore]
 #[tokio::test]
 async fn mint_to() {
     let TestContext {
@@ -216,6 +229,9 @@ async fn mint_to() {
     );
 }
 
+// TODO unignore once spl-token-2022 becomes spl-token, and is included in
+// ProgramTest by default
+#[ignore]
 #[tokio::test]
 async fn transfer() {
     let TestContext {
@@ -244,7 +260,7 @@ async fn transfer() {
 
     let transfer_amount = mint_amount.overflowing_div(3).0;
     token
-        .transfer(&alice_vault, &bob_vault, &alice, transfer_amount)
+        .transfer_checked(&alice_vault, &bob_vault, &alice, transfer_amount, decimals)
         .await
         .expect("failed to transfer");
 

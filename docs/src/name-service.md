@@ -44,7 +44,7 @@ any kind of decentralized governance signing program could be used.
 - Twitter handles can be added as names of one specific name class. The class
   authority of will therefore hold the right to add a Twitter handle name. This
   enables the verification of Twitter accounts for example by asking the user to
-  tweet his pubkey or a signed message. A bot that holds the private issuing
+  tweet their pubkey or a signed message. A bot that holds the private issuing
   authority key can then sign the Create instruction (with a metadata_authority
   that is the tweeted pubkey) and send it back to the user who will then submit
   it to the program.
@@ -54,4 +54,4 @@ Therefore, another way of using this program would be to create a name
 (`"verified-twitter-handles"` for example) with the `Pubkey::default()` class
 and with the owner being the authority. That way verified Twitter names could be
 issued as child names of this parent by the owner, leaving the user as being
-able to modify the data of his Twitter name registry.
+able to modify the data of their Twitter name registry.

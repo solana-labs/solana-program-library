@@ -1,10 +1,16 @@
 use {
     crate::{
-        extension::{AccountType, Extension, ExtensionType},
+        extension::{Extension, ExtensionType},
         pod::*,
     },
     bytemuck::{Pod, Zeroable},
 };
+
+/// Transfer fee extension instructions
+pub mod instruction;
+
+/// Transfer fee extension processor
+pub mod processor;
 
 /// Transfer fee information
 #[repr(C)]
@@ -26,7 +32,7 @@ pub struct TransferFeeConfig {
     /// Optional authority to set the fee
     pub transfer_fee_config_authority: OptionalNonZeroPubkey,
     /// Withdraw from mint instructions must be signed by this key
-    pub withheld_withdraw_authority: OptionalNonZeroPubkey,
+    pub withdraw_withheld_authority: OptionalNonZeroPubkey,
     /// Withheld transfer fee tokens that have been moved to the mint for withdrawal
     pub withheld_amount: PodU64,
     /// Older transfer fee, used if the current epoch < new_transfer_fee.epoch
@@ -36,7 +42,6 @@ pub struct TransferFeeConfig {
 }
 impl Extension for TransferFeeConfig {
     const TYPE: ExtensionType = ExtensionType::TransferFeeConfig;
-    const ACCOUNT_TYPE: AccountType = AccountType::Mint;
 }
 
 /// Transfer fee extension data for accounts.
@@ -48,7 +53,6 @@ pub struct TransferFeeAmount {
 }
 impl Extension for TransferFeeAmount {
     const TYPE: ExtensionType = ExtensionType::TransferFeeAmount;
-    const ACCOUNT_TYPE: AccountType = AccountType::Account;
 }
 
 #[cfg(test)]
@@ -61,7 +65,7 @@ pub(crate) mod test {
                 &[10; 32],
             )))
             .unwrap(),
-            withheld_withdraw_authority: OptionalNonZeroPubkey::try_from(Some(Pubkey::new(
+            withdraw_withheld_authority: OptionalNonZeroPubkey::try_from(Some(Pubkey::new(
                 &[11; 32],
             )))
             .unwrap(),
