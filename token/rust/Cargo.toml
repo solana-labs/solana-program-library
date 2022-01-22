@@ -14,9 +14,9 @@ default = [ "spl-token-2022/no-entrypoint", "spl-associated-token-account/no-tok
 
 [dependencies]
 async-trait = "0.1"
-solana-client = "=1.9.2"
-solana-program-test = "=1.9.2"
-solana-sdk = "=1.9.2"
+solana-client = "=1.9.5"
+solana-program-test = "=1.9.5"
+solana-sdk = "=1.9.5"
 # We never want the entrypoint for ATA, but we want the entrypoint for token when
 # testing token
 spl-associated-token-account = { version = "1.0", path = "../../associated-token-account/program", features = ["no-entrypoint"], default-features = false }
