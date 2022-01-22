@@ -283,6 +283,7 @@ impl GovernanceChatProgramTest {
         let post_message_ix = post_message(
             &self.program_id,
             &self.governance_program_id,
+            &proposal_cookie.realm_address,
             &proposal_cookie.governance_address,
             &proposal_cookie.address,
             &proposal_cookie.token_owner_record_address,
@@ -290,6 +291,7 @@ impl GovernanceChatProgramTest {
             reply_to,
             &message_account.pubkey(),
             &self.bench.payer.pubkey(),
+            None,
             message_body.clone(),
         );
 
