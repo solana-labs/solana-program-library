@@ -6,7 +6,8 @@ use solana_program_test::{processor, ProgramTest};
 use solana_sdk::{signature::Keypair, signer::Signer};
 use spl_governance::{
     instruction::{
-        create_account_governance, create_proposal, create_realm, deposit_governing_tokens,
+        create_account_governance, create_proposal, create_realm, create_token_owner_record,
+        deposit_governing_tokens,
     },
     state::{
         enums::{MintMaxVoteWeightSource, VoteThresholdPercentage},
@@ -22,6 +23,7 @@ use spl_governance_chat::{
     state::{ChatMessage, GovernanceChatAccountType, MessageBody},
 };
 use spl_governance_test_sdk::{addins::ensure_voter_weight_addin_is_built, ProgramTestBench};
+use spl_governance_voter_weight_addin::instruction::deposit_voter_weight;
 
 use crate::program_test::cookies::{ChatMessageCookie, ProposalCookie};
 
@@ -123,7 +125,7 @@ impl GovernanceChatProgramTest {
             &governing_token_mint_keypair.pubkey(),
             &self.bench.payer.pubkey(),
             None,
-            None,
+            self.voter_weight_addin_id,
             name.clone(),
             1,
             MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,
@@ -137,36 +139,51 @@ impl GovernanceChatProgramTest {
         // Create TokenOwnerRecord
         let token_owner = Keypair::new();
         let token_source = Keypair::new();
-
-        let transfer_authority = Keypair::new();
         let amount = 100;
 
-        self.bench
-            .create_token_account_with_transfer_authority(
-                &token_source,
-                &governing_token_mint_keypair.pubkey(),
-                &governing_token_mint_authority,
+        if self.voter_weight_addin_id.is_none() {
+            let transfer_authority = Keypair::new();
+
+            self.bench
+                .create_token_account_with_transfer_authority(
+                    &token_source,
+                    &governing_token_mint_keypair.pubkey(),
+                    &governing_token_mint_authority,
+                    amount,
+                    &token_owner,
+                    &transfer_authority.pubkey(),
+                )
+                .await;
+
+            let deposit_governing_tokens_ix = deposit_governing_tokens(
+                &self.governance_program_id,
+                &realm_address,
+                &token_source.pubkey(),
+                &token_owner.pubkey(),
+                &token_owner.pubkey(),
+                &self.bench.payer.pubkey(),
                 amount,
-                &token_owner,
-                &transfer_authority.pubkey(),
-            )
-            .await;
+                &governing_token_mint_keypair.pubkey(),
+            );
 
-        let deposit_governing_tokens_ix = deposit_governing_tokens(
-            &self.governance_program_id,
-            &realm_address,
-            &token_source.pubkey(),
-            &token_owner.pubkey(),
-            &token_owner.pubkey(),
-            &self.bench.payer.pubkey(),
-            amount,
-            &governing_token_mint_keypair.pubkey(),
-        );
+            self.bench
+                .process_transaction(&[deposit_governing_tokens_ix], Some(&[&token_owner]))
+                .await
+                .unwrap();
+        } else {
+            let deposit_governing_tokens_ix = create_token_owner_record(
+                &self.governance_program_id,
+                &realm_address,
+                &token_owner.pubkey(),
+                &governing_token_mint_keypair.pubkey(),
+                &self.bench.payer.pubkey(),
+            );
 
-        self.bench
-            .process_transaction(&[deposit_governing_tokens_ix], Some(&[&token_owner]))
-            .await
-            .unwrap();
+            self.bench
+                .process_transaction(&[deposit_governing_tokens_ix], None)
+                .await
+                .unwrap();
+        }
 
         // Create Governance
         let governed_account_address = Pubkey::new_unique();
@@ -188,6 +205,29 @@ impl GovernanceChatProgramTest {
             &token_owner.pubkey(),
         );
 
+        let voter_weight_record = if self.voter_weight_addin_id.is_some() {
+            let voter_weight_record = Keypair::new();
+            let deposit_voter_weight_ix = deposit_voter_weight(
+                &self.voter_weight_addin_id.unwrap(),
+                &self.governance_program_id,
+                &realm_address,
+                &governing_token_mint_keypair.pubkey(),
+                &token_owner_record_address,
+                &voter_weight_record.pubkey(),
+                &self.bench.payer.pubkey(),
+                amount,
+            );
+
+            self.bench
+                .process_transaction(&[deposit_voter_weight_ix], Some(&[&voter_weight_record]))
+                .await
+                .unwrap();
+
+            Some(voter_weight_record.pubkey())
+        } else {
+            None
+        };
+
         let create_account_governance_ix = create_account_governance(
             &self.governance_program_id,
             &realm_address,
@@ -195,7 +235,7 @@ impl GovernanceChatProgramTest {
             &token_owner_record_address,
             &self.bench.payer.pubkey(),
             &token_owner.pubkey(),
-            None,
+            voter_weight_record,
             governance_config,
         );
 
@@ -224,7 +264,7 @@ impl GovernanceChatProgramTest {
             &token_owner_record_address,
             &token_owner.pubkey(),
             &self.bench.payer.pubkey(),
-            None,
+            voter_weight_record,
             &realm_address,
             proposal_name,
             description_link.clone(),
@@ -255,6 +295,7 @@ impl GovernanceChatProgramTest {
             token_owner,
             governing_token_mint: governing_token_mint_keypair.pubkey(),
             governing_token_mint_authority: governing_token_mint_authority,
+            voter_weight_record,
         }
     }
 
@@ -328,7 +369,7 @@ impl GovernanceChatProgramTest {
             reply_to,
             &message_account.pubkey(),
             &self.bench.payer.pubkey(),
-            None,
+            proposal_cookie.voter_weight_record,
             message_body.clone(),
         );
 
