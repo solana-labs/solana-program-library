@@ -2076,7 +2076,7 @@ mod tests {
                 )
                 .unwrap(),
                 vec![
-                    &mut user_source_account,
+                    user_source_account,
                     &mut Account::default(),
                     &mut Account::default(),
                 ],
@@ -2113,10 +2113,10 @@ mod tests {
                     &mut self.swap_account,
                     &mut Account::default(),
                     &mut Account::default(),
-                    &mut user_source_account,
+                    user_source_account,
                     &mut swap_source_account,
                     &mut swap_destination_account,
-                    &mut user_destination_account,
+                    user_destination_account,
                     &mut self.pool_mint_account,
                     &mut self.pool_fee_account,
                     &mut Account::default(),
@@ -2156,7 +2156,7 @@ mod tests {
                 )
                 .unwrap(),
                 vec![
-                    &mut depositor_token_a_account,
+                    depositor_token_a_account,
                     &mut Account::default(),
                     &mut Account::default(),
                 ],
@@ -2174,7 +2174,7 @@ mod tests {
                 )
                 .unwrap(),
                 vec![
-                    &mut depositor_token_b_account,
+                    depositor_token_b_account,
                     &mut Account::default(),
                     &mut Account::default(),
                 ],
@@ -2205,12 +2205,12 @@ mod tests {
                     &mut self.swap_account,
                     &mut Account::default(),
                     &mut Account::default(),
-                    &mut depositor_token_a_account,
-                    &mut depositor_token_b_account,
+                    depositor_token_a_account,
+                    depositor_token_b_account,
                     &mut self.token_a_account,
                     &mut self.token_b_account,
                     &mut self.pool_mint_account,
-                    &mut depositor_pool_account,
+                    depositor_pool_account,
                     &mut Account::default(),
                 ],
             )
@@ -2243,7 +2243,7 @@ mod tests {
                 )
                 .unwrap(),
                 vec![
-                    &mut pool_account,
+                    pool_account,
                     &mut Account::default(),
                     &mut Account::default(),
                 ],
@@ -2277,11 +2277,11 @@ mod tests {
                     &mut Account::default(),
                     &mut Account::default(),
                     &mut self.pool_mint_account,
-                    &mut pool_account,
+                    pool_account,
                     &mut self.token_a_account,
                     &mut self.token_b_account,
-                    &mut token_a_account,
-                    &mut token_b_account,
+                    token_a_account,
+                    token_b_account,
                     &mut self.pool_fee_account,
                     &mut Account::default(),
                 ],
@@ -2311,7 +2311,7 @@ mod tests {
                 )
                 .unwrap(),
                 vec![
-                    &mut deposit_token_account,
+                    deposit_token_account,
                     &mut Account::default(),
                     &mut Account::default(),
                 ],
@@ -2340,11 +2340,11 @@ mod tests {
                     &mut self.swap_account,
                     &mut Account::default(),
                     &mut Account::default(),
-                    &mut deposit_token_account,
+                    deposit_token_account,
                     &mut self.token_a_account,
                     &mut self.token_b_account,
                     &mut self.pool_mint_account,
-                    &mut deposit_pool_account,
+                    deposit_pool_account,
                     &mut Account::default(),
                 ],
             )
@@ -2374,7 +2374,7 @@ mod tests {
                 )
                 .unwrap(),
                 vec![
-                    &mut pool_account,
+                    pool_account,
                     &mut Account::default(),
                     &mut Account::default(),
                 ],
@@ -2405,10 +2405,10 @@ mod tests {
                     &mut Account::default(),
                     &mut Account::default(),
                     &mut self.pool_mint_account,
-                    &mut pool_account,
+                    pool_account,
                     &mut self.token_a_account,
                     &mut self.token_b_account,
-                    &mut destination_account,
+                    destination_account,
                     &mut self.pool_fee_account,
                     &mut Account::default(),
                 ],
@@ -2505,7 +2505,7 @@ mod tests {
             initialize_account(program_id, &account_key, mint_key, account_owner_key).unwrap(),
             vec![
                 &mut account_account,
-                &mut mint_account,
+                mint_account,
                 &mut mint_authority_account,
                 &mut rent_sysvar_account,
             ],
@@ -2524,7 +2524,7 @@ mod tests {
                 )
                 .unwrap(),
                 vec![
-                    &mut mint_account,
+                    mint_account,
                     &mut account_account,
                     &mut mint_authority_account,
                 ],
@@ -2556,8 +2556,8 @@ mod tests {
             )
             .unwrap(),
             vec![
-                &mut mint_account,
-                &mut destination_account,
+                mint_account,
+                destination_account,
                 &mut mint_authority_account,
             ],
         )
