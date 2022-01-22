@@ -2,8 +2,8 @@
     "include": ["src", "types"],
     "exclude": ["node_modules"],
     "compilerOptions": {
-        "module": "esnext",
         "target": "es2019",
+        "module": "esnext",
         "outDir": "lib/esm",
         "declarationDir": "lib/types",
         "noEmit": false,
@@ -12,11 +12,12 @@
         "noEmitOnError": true,
         "stripInternal": true,
         "moduleResolution": "node",
+        "jsx": "react",
         "strict": true,
         "esModuleInterop": true,
         "resolveJsonModule": true,
         "isolatedModules": true,
-        "typeRoots": ["node_modules/@types", "types"]
+        "typeRoots": ["node_modules/@types"]
     },
     "typedocOptions": {
         "entryPoints": "src/index.ts",
