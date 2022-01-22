@@ -70,8 +70,13 @@ pub enum NameRegistryInstruction {
     ///   * If account class is not `Pubkey::default()`:
     ///   0. `[writeable]` Name record to be transferred
     ///   1. `[signer]` Account owner
-    ///   1. `[signer]` Account class
+    ///   2. `[signer]` Account class
     ///
+    ///    * If the signer is the parent name account owner
+    ///   0. `[writeable]` Name record to be transferred
+    ///   1. `[signer]` Account owner
+    ///   2. `[signer]` Account class
+    ///   3. `[]` Parent name record
     Transfer { new_owner: Pubkey },
 
     /// Delete a name record.

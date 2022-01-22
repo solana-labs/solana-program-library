@@ -12,7 +12,7 @@ pub fn program_test(token_mint_address: Pubkey, use_latest_spl_token: bool) -> P
     );
 
     if use_latest_spl_token {
-        // TODO: Remove after Token >3.2.0 is released
+        // TODO: Remove after Token >3.2.0 is available by default in program-test
         pc.add_program(
             "spl_token",
             spl_token::id(),

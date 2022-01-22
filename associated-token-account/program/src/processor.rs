@@ -51,10 +51,7 @@ pub fn process_create_associated_token_account(
     let spl_token_program_info = next_account_info(account_info_iter)?;
     let spl_token_program_id = spl_token_program_info.key;
 
-    // TODO: Remove after ATA 1.0.4 and Token >3.2.0 are released and just use Rent::get()
-    let (rent_sysvar_info, rent) = next_account_info(account_info_iter)
-        .map(|info| (Some(info), Rent::from_account_info(info).unwrap()))
-        .unwrap_or((None, Rent::get().unwrap()));
+    let rent = Rent::get()?;
 
     let (associated_token_address, bump_seed) = get_associated_token_address_and_bump_seed_internal(
         wallet_account_info.key,
@@ -85,38 +82,18 @@ pub fn process_create_associated_token_account(
     )?;
 
     msg!("Initialize the associated token account");
-
-    if let Some(rent_sysvar_info) = rent_sysvar_info {
-        invoke(
-            &spl_token::instruction::initialize_account(
-                spl_token_program_id,
-                associated_token_account_info.key,
-                spl_token_mint_info.key,
-                wallet_account_info.key,
-            )?,
-            &[
-                associated_token_account_info.clone(),
-                spl_token_mint_info.clone(),
-                wallet_account_info.clone(),
-                rent_sysvar_info.clone(),
-                spl_token_program_info.clone(),
-            ],
-        )
-    } else {
-        // Use InitializeAccount3 when Rent account is not provided
-        invoke(
-            &spl_token::instruction::initialize_account3(
-                spl_token_program_id,
-                associated_token_account_info.key,
-                spl_token_mint_info.key,
-                wallet_account_info.key,
-            )?,
-            &[
-                associated_token_account_info.clone(),
-                spl_token_mint_info.clone(),
-                wallet_account_info.clone(),
-                spl_token_program_info.clone(),
-            ],
-        )
-    }
+    invoke(
+        &spl_token::instruction::initialize_account3(
+            spl_token_program_id,
+            associated_token_account_info.key,
+            spl_token_mint_info.key,
+            wallet_account_info.key,
+        )?,
+        &[
+            associated_token_account_info.clone(),
+            spl_token_mint_info.clone(),
+            wallet_account_info.clone(),
+            spl_token_program_info.clone(),
+        ],
+    )
 }

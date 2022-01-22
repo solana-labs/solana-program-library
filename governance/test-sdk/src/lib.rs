@@ -196,6 +196,14 @@ impl ProgramTestBench {
         }
     }
 
+    pub async fn transfer_sol(&mut self, to_account: &Pubkey, lamports: u64) {
+        let transfer_ix = system_instruction::transfer(&self.payer.pubkey(), to_account, lamports);
+
+        self.process_transaction(&[transfer_ix], None)
+            .await
+            .unwrap();
+    }
+
     pub async fn mint_tokens(
         &mut self,
         token_mint: &Pubkey,
