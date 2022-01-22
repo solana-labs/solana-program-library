@@ -7,6 +7,7 @@ pub mod error;
 pub mod extension;
 pub mod instruction;
 pub mod native_mint;
+pub mod pod;
 pub mod processor;
 pub mod state;
 
@@ -15,7 +16,12 @@ mod entrypoint;
 
 // Export current sdk types for downstream users building with a different sdk version
 pub use solana_program;
-use solana_program::{entrypoint::ProgramResult, program_error::ProgramError, pubkey::Pubkey};
+use solana_program::{
+    entrypoint::ProgramResult,
+    program_error::ProgramError,
+    program_memory::sol_memcmp,
+    pubkey::{Pubkey, PUBKEY_BYTES},
+};
 
 /// Convert the UI representation of a token amount (using the decimals field defined in its mint)
 /// to the raw amount
@@ -36,4 +42,10 @@ pub fn check_program_account(spl_token_program_id: &Pubkey) -> ProgramResult {
         return Err(ProgramError::IncorrectProgramId);
     }
     Ok(())
+}
+
+/// Checks two pubkeys for equality in a computationally cheap way using
+/// `sol_memcmp`
+pub fn cmp_pubkeys(a: &Pubkey, b: &Pubkey) -> bool {
+    sol_memcmp(a.as_ref(), b.as_ref(), PUBKEY_BYTES) == 0
 }

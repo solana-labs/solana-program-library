@@ -26,3 +26,18 @@ impl<T> DecodeError<T> for MathError {
         "Math Error"
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use solana_program::program_error::ProgramError;
+
+    #[test]
+    fn test_math_error_from() {
+        let program_error = ProgramError::from(MathError::Overflow);
+        assert_eq!(program_error, ProgramError::Custom(0));
+
+        let program_error = ProgramError::from(MathError::Underflow);
+        assert_eq!(program_error, ProgramError::Custom(1));
+    }
+}

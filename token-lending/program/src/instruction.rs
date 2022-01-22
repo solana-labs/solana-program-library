@@ -981,3 +981,409 @@ pub fn flash_loan(
         data: LendingInstruction::FlashLoan { amount }.pack(),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_init_lending_market() {
+        let program_id = Pubkey::new_unique();
+        let owner = Pubkey::new_unique();
+        let lending_market_pubkey = Pubkey::new_unique();
+        let oracle_program_id = Pubkey::new_unique();
+        let currency = "USD";
+        let mut quote_currency = [0u8; 32];
+        quote_currency[0..currency.len()].clone_from_slice(currency.as_bytes());
+        let instruction = init_lending_market(
+            program_id,
+            owner,
+            quote_currency,
+            lending_market_pubkey,
+            oracle_program_id,
+        );
+        assert_eq!(instruction.program_id, program_id);
+        assert_eq!(instruction.accounts.len(), 4);
+        assert_eq!(
+            instruction.data,
+            LendingInstruction::InitLendingMarket {
+                owner,
+                quote_currency,
+            }
+            .pack()
+        );
+    }
+
+    #[test]
+    fn test_set_lending_market_owner() {
+        let program_id = Pubkey::new_unique();
+        let lending_market_pubkey = Pubkey::new_unique();
+        let lending_market_owner = Pubkey::new_unique();
+        let new_owner = Pubkey::new_unique();
+        let instruction = set_lending_market_owner(
+            program_id,
+            lending_market_pubkey,
+            lending_market_owner,
+            new_owner,
+        );
+        assert_eq!(instruction.program_id, program_id);
+        assert_eq!(instruction.accounts.len(), 2);
+        assert_eq!(
+            instruction.data,
+            LendingInstruction::SetLendingMarketOwner { new_owner }.pack()
+        );
+    }
+
+    #[test]
+    fn test_init_reserve() {
+        let program_id = Pubkey::new_unique();
+        let liquidity_amount = u64::MAX;
+        let config = ReserveConfig {
+            optimal_utilization_rate: 50,
+            loan_to_value_ratio: 1,
+            liquidation_bonus: 10,
+            liquidation_threshold: 5,
+            min_borrow_rate: 2,
+            optimal_borrow_rate: 4,
+            max_borrow_rate: 10,
+            fees: ReserveFees {
+                borrow_fee_wad: 1,
+                flash_loan_fee_wad: 3,
+                host_fee_percentage: 1,
+            },
+        };
+        let source_liquidity_pubkey = Pubkey::new_unique();
+        let destination_collateral_pubkey = Pubkey::new_unique();
+        let reserve_pubkey = Pubkey::new_unique();
+        let reserve_liquidity_mint_pubkey = Pubkey::new_unique();
+        let reserve_liquidity_supply_pubkey = Pubkey::new_unique();
+        let reserve_liquidity_fee_receiver_pubkey = Pubkey::new_unique();
+        let reserve_collateral_mint_pubkey = Pubkey::new_unique();
+        let reserve_collateral_supply_pubkey = Pubkey::new_unique();
+        let pyth_product_pubkey = Pubkey::new_unique();
+        let pyth_price_pubkey = Pubkey::new_unique();
+        let lending_market_pubkey = Pubkey::new_unique();
+        let lending_market_owner_pubkey = Pubkey::new_unique();
+        let user_transfer_authority_pubkey = Pubkey::new_unique();
+        let instruction = init_reserve(
+            program_id,
+            liquidity_amount,
+            config,
+            source_liquidity_pubkey,
+            destination_collateral_pubkey,
+            reserve_pubkey,
+            reserve_liquidity_mint_pubkey,
+            reserve_liquidity_supply_pubkey,
+            reserve_liquidity_fee_receiver_pubkey,
+            reserve_collateral_mint_pubkey,
+            reserve_collateral_supply_pubkey,
+            pyth_product_pubkey,
+            pyth_price_pubkey,
+            lending_market_pubkey,
+            lending_market_owner_pubkey,
+            user_transfer_authority_pubkey,
+        );
+        assert_eq!(instruction.program_id, program_id);
+        assert_eq!(instruction.accounts.len(), 17);
+        assert_eq!(
+            instruction.data,
+            LendingInstruction::InitReserve {
+                liquidity_amount,
+                config,
+            }
+            .pack()
+        );
+    }
+
+    #[test]
+    fn test_refresh_reserve() {
+        let program_id = Pubkey::new_unique();
+        let reserve_pubkey = Pubkey::new_unique();
+        let reserve_liquidity_oracle_pubkey = Pubkey::new_unique();
+        let instruction =
+            refresh_reserve(program_id, reserve_pubkey, reserve_liquidity_oracle_pubkey);
+        assert_eq!(instruction.program_id, program_id);
+        assert_eq!(instruction.accounts.len(), 3);
+        assert_eq!(instruction.data, LendingInstruction::RefreshReserve.pack());
+    }
+
+    #[test]
+    fn test_deposit_reserve_liquidity() {
+        let program_id = Pubkey::new_unique();
+        let liquidity_amount = u64::MAX;
+        let source_liquidity_pubkey = Pubkey::new_unique();
+        let destination_collateral_pubkey = Pubkey::new_unique();
+        let reserve_pubkey = Pubkey::new_unique();
+        let reserve_liquidity_supply_pubkey = Pubkey::new_unique();
+        let reserve_collateral_mint_pubkey = Pubkey::new_unique();
+        let lending_market_pubkey = Pubkey::new_unique();
+        let user_transfer_authority_pubkey = Pubkey::new_unique();
+        let instruction = deposit_reserve_liquidity(
+            program_id,
+            liquidity_amount,
+            source_liquidity_pubkey,
+            destination_collateral_pubkey,
+            reserve_pubkey,
+            reserve_liquidity_supply_pubkey,
+            reserve_collateral_mint_pubkey,
+            lending_market_pubkey,
+            user_transfer_authority_pubkey,
+        );
+        assert_eq!(instruction.program_id, program_id);
+        assert_eq!(instruction.accounts.len(), 10);
+        assert_eq!(
+            instruction.data,
+            LendingInstruction::DepositReserveLiquidity { liquidity_amount }.pack()
+        );
+    }
+
+    #[test]
+    fn test_redeem_reserve_collateral() {
+        let program_id = Pubkey::new_unique();
+        let collateral_amount = u64::MAX;
+        let source_collateral_pubkey = Pubkey::new_unique();
+        let destination_liquidity_pubkey = Pubkey::new_unique();
+        let reserve_pubkey = Pubkey::new_unique();
+        let reserve_collateral_mint_pubkey = Pubkey::new_unique();
+        let reserve_liquidity_supply_pubkey = Pubkey::new_unique();
+        let lending_market_pubkey = Pubkey::new_unique();
+        let user_transfer_authority_pubkey = Pubkey::new_unique();
+        let instruction = redeem_reserve_collateral(
+            program_id,
+            collateral_amount,
+            source_collateral_pubkey,
+            destination_liquidity_pubkey,
+            reserve_pubkey,
+            reserve_collateral_mint_pubkey,
+            reserve_liquidity_supply_pubkey,
+            lending_market_pubkey,
+            user_transfer_authority_pubkey,
+        );
+        assert_eq!(instruction.program_id, program_id);
+        assert_eq!(instruction.accounts.len(), 10);
+        assert_eq!(
+            instruction.data,
+            LendingInstruction::RedeemReserveCollateral { collateral_amount }.pack()
+        );
+    }
+
+    #[test]
+    fn test_init_obligation() {
+        let program_id = Pubkey::new_unique();
+        let obligation_pubkey = Pubkey::new_unique();
+        let lending_market_pubkey = Pubkey::new_unique();
+        let obligation_owner_pubkey = Pubkey::new_unique();
+        let instruction = init_obligation(
+            program_id,
+            obligation_pubkey,
+            lending_market_pubkey,
+            obligation_owner_pubkey,
+        );
+        assert_eq!(instruction.program_id, program_id);
+        assert_eq!(instruction.accounts.len(), 6);
+        assert_eq!(instruction.data, LendingInstruction::InitObligation.pack());
+    }
+
+    #[test]
+    fn test_refresh_obligation() {
+        let program_id = Pubkey::new_unique();
+        let obligation_pubkey = Pubkey::new_unique();
+        let reserve_pubkeys = vec![Pubkey::new_unique()];
+        let instruction = refresh_obligation(program_id, obligation_pubkey, reserve_pubkeys);
+        assert_eq!(instruction.program_id, program_id);
+        assert_eq!(instruction.accounts.len(), 3);
+        assert_eq!(
+            instruction.data,
+            LendingInstruction::RefreshObligation.pack()
+        );
+    }
+
+    #[test]
+    fn test_deposit_obligation_collateral() {
+        let program_id = Pubkey::new_unique();
+        let collateral_amount = u64::MAX;
+        let source_collateral_pubkey = Pubkey::new_unique();
+        let destination_collateral_pubkey = Pubkey::new_unique();
+        let deposit_reserve_pubkey = Pubkey::new_unique();
+        let obligation_pubkey = Pubkey::new_unique();
+        let lending_market_pubkey = Pubkey::new_unique();
+        let obligation_owner_pubkey = Pubkey::new_unique();
+        let user_transfer_authority_pubkey = Pubkey::new_unique();
+        let instruction = deposit_obligation_collateral(
+            program_id,
+            collateral_amount,
+            source_collateral_pubkey,
+            destination_collateral_pubkey,
+            deposit_reserve_pubkey,
+            obligation_pubkey,
+            lending_market_pubkey,
+            obligation_owner_pubkey,
+            user_transfer_authority_pubkey,
+        );
+        assert_eq!(instruction.program_id, program_id);
+        assert_eq!(instruction.accounts.len(), 9);
+        assert_eq!(
+            instruction.data,
+            LendingInstruction::DepositObligationCollateral { collateral_amount }.pack()
+        );
+    }
+
+    #[test]
+    fn test_withdraw_obligation_collateral() {
+        let program_id = Pubkey::new_unique();
+        let collateral_amount = u64::MAX;
+        let source_collateral_pubkey = Pubkey::new_unique();
+        let destination_collateral_pubkey = Pubkey::new_unique();
+        let withdraw_reserve_pubkey = Pubkey::new_unique();
+        let obligation_pubkey = Pubkey::new_unique();
+        let lending_market_pubkey = Pubkey::new_unique();
+        let obligation_owner_pubkey = Pubkey::new_unique();
+        let instruction = withdraw_obligation_collateral(
+            program_id,
+            collateral_amount,
+            source_collateral_pubkey,
+            destination_collateral_pubkey,
+            withdraw_reserve_pubkey,
+            obligation_pubkey,
+            lending_market_pubkey,
+            obligation_owner_pubkey,
+        );
+        assert_eq!(instruction.program_id, program_id);
+        assert_eq!(instruction.accounts.len(), 9);
+        assert_eq!(
+            instruction.data,
+            LendingInstruction::WithdrawObligationCollateral { collateral_amount }.pack()
+        );
+    }
+
+    #[test]
+    fn test_borrow_obligation_liquidity() {
+        let program_id = Pubkey::new_unique();
+        let liquidity_amount = u64::MAX;
+        let source_liquidity_pubkey = Pubkey::new_unique();
+        let destination_liquidity_pubkey = Pubkey::new_unique();
+        let borrow_reserve_pubkey = Pubkey::new_unique();
+        let borrow_reserve_liquidity_fee_receiver_pubkey = Pubkey::new_unique();
+        let obligation_pubkey = Pubkey::new_unique();
+        let lending_market_pubkey = Pubkey::new_unique();
+        let obligation_owner_pubkey = Pubkey::new_unique();
+        let host_fee_receiver_pubkey = Some(Pubkey::new_unique());
+        let instruction = borrow_obligation_liquidity(
+            program_id,
+            liquidity_amount,
+            source_liquidity_pubkey,
+            destination_liquidity_pubkey,
+            borrow_reserve_pubkey,
+            borrow_reserve_liquidity_fee_receiver_pubkey,
+            obligation_pubkey,
+            lending_market_pubkey,
+            obligation_owner_pubkey,
+            host_fee_receiver_pubkey,
+        );
+        assert_eq!(instruction.program_id, program_id);
+        assert_eq!(instruction.accounts.len(), 11);
+        assert_eq!(
+            instruction.data,
+            LendingInstruction::BorrowObligationLiquidity { liquidity_amount }.pack()
+        );
+    }
+
+    #[test]
+    fn test_repay_obligation_liquidity() {
+        let program_id = Pubkey::new_unique();
+        let liquidity_amount = u64::MAX;
+        let source_liquidity_pubkey = Pubkey::new_unique();
+        let destination_liquidity_pubkey = Pubkey::new_unique();
+        let repay_reserve_pubkey = Pubkey::new_unique();
+        let obligation_pubkey = Pubkey::new_unique();
+        let lending_market_pubkey = Pubkey::new_unique();
+        let user_transfer_authority_pubkey = Pubkey::new_unique();
+        let instruction = repay_obligation_liquidity(
+            program_id,
+            liquidity_amount,
+            source_liquidity_pubkey,
+            destination_liquidity_pubkey,
+            repay_reserve_pubkey,
+            obligation_pubkey,
+            lending_market_pubkey,
+            user_transfer_authority_pubkey,
+        );
+        assert_eq!(instruction.program_id, program_id);
+        assert_eq!(instruction.accounts.len(), 8);
+        assert_eq!(
+            instruction.data,
+            LendingInstruction::RepayObligationLiquidity { liquidity_amount }.pack()
+        );
+    }
+
+    #[test]
+    fn test_liquidate_obligation() {
+        let program_id = Pubkey::new_unique();
+        let liquidity_amount = u64::MAX;
+        let source_liquidity_pubkey = Pubkey::new_unique();
+        let destination_collateral_pubkey = Pubkey::new_unique();
+        let repay_reserve_pubkey = Pubkey::new_unique();
+        let repay_reserve_liquidity_supply_pubkey = Pubkey::new_unique();
+        let withdraw_reserve_pubkey = Pubkey::new_unique();
+        let withdraw_reserve_collateral_supply_pubkey = Pubkey::new_unique();
+        let obligation_pubkey = Pubkey::new_unique();
+        let lending_market_pubkey = Pubkey::new_unique();
+        let user_transfer_authority_pubkey = Pubkey::new_unique();
+        let instruction = liquidate_obligation(
+            program_id,
+            liquidity_amount,
+            source_liquidity_pubkey,
+            destination_collateral_pubkey,
+            repay_reserve_pubkey,
+            repay_reserve_liquidity_supply_pubkey,
+            withdraw_reserve_pubkey,
+            withdraw_reserve_collateral_supply_pubkey,
+            obligation_pubkey,
+            lending_market_pubkey,
+            user_transfer_authority_pubkey,
+        );
+        assert_eq!(instruction.program_id, program_id);
+        assert_eq!(instruction.accounts.len(), 12);
+        assert_eq!(
+            instruction.data,
+            LendingInstruction::LiquidateObligation { liquidity_amount }.pack()
+        );
+    }
+
+    #[test]
+    fn test_flash_loan() {
+        let program_id = Pubkey::new_unique();
+        let amount = u64::MAX;
+        let source_liquidity_pubkey = Pubkey::new_unique();
+        let destination_liquidity_pubkey = Pubkey::new_unique();
+        let repay_reserve_pubkey = Pubkey::new_unique();
+        let reserve_liquidity_fee_receiver_pubkey = Pubkey::new_unique();
+        let host_fee_receiver_pubkey = Pubkey::new_unique();
+        let lending_market_pubkey = Pubkey::new_unique();
+        let flash_loan_receiver_program_id = Pubkey::new_unique();
+        let account_meta = AccountMeta {
+            pubkey: Pubkey::new_unique(),
+            is_signer: true,
+            is_writable: false,
+        };
+        let flash_loan_receiver_program_accounts = vec![account_meta];
+        let instruction = flash_loan(
+            program_id,
+            amount,
+            source_liquidity_pubkey,
+            destination_liquidity_pubkey,
+            repay_reserve_pubkey,
+            reserve_liquidity_fee_receiver_pubkey,
+            host_fee_receiver_pubkey,
+            lending_market_pubkey,
+            flash_loan_receiver_program_id,
+            flash_loan_receiver_program_accounts,
+        );
+        assert_eq!(instruction.program_id, program_id);
+        assert_eq!(instruction.accounts.len(), 10);
+        assert_eq!(
+            instruction.data,
+            LendingInstruction::FlashLoan { amount }.pack()
+        );
+    }
+}

@@ -13,15 +13,15 @@ test-bpf = []
 [dependencies]
 num-derive = "0.3"
 num-traits = "0.2"
-solana-program = "1.9.2"
-spl-token = { version = "3.2", path = "../../token/program", features = [ "no-entrypoint" ] }
+solana-program = "1.9.5"
+spl-token = { version = "3.3", path = "../../token/program", features = [ "no-entrypoint" ] }
 thiserror = "1.0"
 uint = "0.9"
 borsh = "0.9.1"
 
 [dev-dependencies]
-solana-program-test = "1.9.2"
-solana-sdk = "1.9.2"
+solana-program-test = "1.9.5"
+solana-sdk = "1.9.5"
 
 [lib]
 crate-type = ["cdylib", "lib"]

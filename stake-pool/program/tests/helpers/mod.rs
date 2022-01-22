@@ -426,7 +426,7 @@ pub async fn create_vote(
     let mut instructions = vec![system_instruction::create_account(
         &payer.pubkey(),
         &validator.pubkey(),
-        42,
+        rent.minimum_balance(0),
         0,
         &system_program::id(),
     )];

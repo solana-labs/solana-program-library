@@ -282,3 +282,51 @@ async fn burn() {
     .await
     .unwrap();
 }
+
+#[tokio::test]
+async fn close_account() {
+    let mut pt = ProgramTest::new("spl_token", id(), processor!(Processor::process));
+    pt.set_compute_max_units(6_000); // last known 1783
+    let (mut banks_client, payer, recent_blockhash) = pt.start().await;
+
+    let owner = Keypair::new();
+    let mint = Keypair::new();
+    let account = Keypair::new();
+    let decimals = 9;
+
+    action::create_mint(
+        &mut banks_client,
+        &payer,
+        recent_blockhash,
+        &mint,
+        &owner.pubkey(),
+        decimals,
+    )
+    .await
+    .unwrap();
+    action::create_account(
+        &mut banks_client,
+        &payer,
+        recent_blockhash,
+        &account,
+        &mint.pubkey(),
+        &owner.pubkey(),
+    )
+    .await
+    .unwrap();
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction::close_account(
+            &id(),
+            &account.pubkey(),
+            &owner.pubkey(),
+            &owner.pubkey(),
+            &[],
+        )
+        .unwrap()],
+        Some(&payer.pubkey()),
+        &[&payer, &owner],
+        recent_blockhash,
+    );
+    banks_client.process_transaction(transaction).await.unwrap();
+}

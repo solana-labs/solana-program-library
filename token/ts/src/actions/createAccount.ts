@@ -9,8 +9,8 @@ import {
     Transaction,
 } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants';
-import { createInitializeAccountInstruction } from '../instructions';
-import { ACCOUNT_SIZE, getMinimumBalanceForRentExemptAccount } from '../state';
+import { createInitializeAccountInstruction } from '../instructions/index';
+import { ACCOUNT_SIZE, getMinimumBalanceForRentExemptAccount } from '../state/index';
 import { createAssociatedTokenAccount } from './createAssociatedTokenAccount';
 
 /**

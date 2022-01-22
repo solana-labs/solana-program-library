@@ -30,7 +30,7 @@ use {
     spl_token::state::{Account as SplAccount, AccountState as SplAccountState, Mint},
 };
 
-const HUGE_POOL_SIZE: u32 = 3_825;
+const HUGE_POOL_SIZE: u32 = 2_950;
 const ACCOUNT_RENT_EXEMPTION: u64 = 1_000_000_000; // go with something big to be safe
 const STAKE_AMOUNT: u64 = 200_000_000_000;
 const STAKE_ACCOUNT_RENT_EXEMPTION: u64 = 2_282_880;

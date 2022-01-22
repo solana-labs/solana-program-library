@@ -3,6 +3,8 @@
 pub mod enums;
 pub mod governance;
 pub mod legacy;
+pub mod native_treasury;
+pub mod program_metadata;
 pub mod proposal;
 pub mod proposal_instruction;
 pub mod realm;

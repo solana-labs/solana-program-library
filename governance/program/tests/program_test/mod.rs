@@ -7,7 +7,7 @@ use solana_program::{
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack},
     pubkey::Pubkey,
-    system_program,
+    system_instruction, system_program,
 };
 
 use solana_program_test::*;
@@ -18,12 +18,12 @@ use spl_governance::{
     addins::voter_weight::{VoterWeightAccountType, VoterWeightRecord},
     instruction::{
         add_signatory, cancel_proposal, cast_vote, create_account_governance,
-        create_mint_governance, create_program_governance, create_proposal, create_realm,
-        create_token_governance, create_token_owner_record, deposit_governing_tokens,
+        create_mint_governance, create_native_treasury, create_program_governance, create_proposal,
+        create_realm, create_token_governance, create_token_owner_record, deposit_governing_tokens,
         execute_instruction, finalize_vote, flag_instruction_error, insert_instruction,
         relinquish_vote, remove_instruction, remove_signatory, set_governance_config,
         set_governance_delegate, set_realm_authority, set_realm_config, sign_off_proposal,
-        withdraw_governing_tokens,
+        upgrade_program_metadata, withdraw_governing_tokens,
     },
     processor::process_instruction,
     state::{
@@ -36,6 +36,8 @@ use spl_governance::{
             get_program_governance_address, get_token_governance_address, Governance,
             GovernanceConfig,
         },
+        native_treasury::{get_native_treasury_address, NativeTreasury},
+        program_metadata::{get_program_metadata_address, ProgramMetadata},
         proposal::{get_proposal_address, OptionVoteResult, ProposalOption, ProposalV2, VoteType},
         proposal_instruction::{
             get_proposal_instruction_address, InstructionData, ProposalInstructionV2,
@@ -60,6 +62,7 @@ use crate::program_test::cookies::{
 };
 
 use spl_governance_test_sdk::{
+    cookies::WalletCookie,
     tools::{clone_keypair, NopOverride},
     ProgramTestBench,
 };
@@ -68,8 +71,8 @@ use self::{
     addins::ensure_voter_weight_addin_is_built,
     cookies::{
         GovernanceCookie, GovernedAccountCookie, GovernedMintCookie, GovernedProgramCookie,
-        GovernedTokenCookie, ProposalCookie, ProposalInstructionCookie, RealmCookie,
-        TokenOwnerRecordCookie, VoteRecordCookie,
+        GovernedTokenCookie, NativeTreasuryCookie, ProgramMetadataCookie, ProposalCookie,
+        ProposalInstructionCookie, RealmCookie, TokenOwnerRecordCookie, VoteRecordCookie,
     },
 };
 
@@ -422,6 +425,65 @@ impl GovernanceProgramTest {
             governance_authority: None,
             governance_delegate: Keypair::new(),
             voter_weight_record: None,
+        }
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_program_metadata(&mut self) -> ProgramMetadataCookie {
+        let update_program_metadata_ix =
+            upgrade_program_metadata(&self.program_id, &self.bench.payer.pubkey());
+
+        self.bench
+            .process_transaction(&[update_program_metadata_ix], None)
+            .await
+            .unwrap();
+
+        const VERSION: &str = env!("CARGO_PKG_VERSION");
+        let clock = self.bench.get_clock().await;
+
+        let account = ProgramMetadata {
+            account_type: GovernanceAccountType::ProgramMetadata,
+            updated_at: clock.slot,
+            version: VERSION.to_string(),
+            reserved: [0; 64],
+        };
+
+        let program_metadata_address = get_program_metadata_address(&self.program_id);
+
+        ProgramMetadataCookie {
+            address: program_metadata_address,
+            account,
+        }
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_native_treasury(
+        &mut self,
+        governance_cookie: &GovernanceCookie,
+    ) -> NativeTreasuryCookie {
+        let create_treasury_ix = create_native_treasury(
+            &self.program_id,
+            &governance_cookie.address,
+            &self.bench.payer.pubkey(),
+        );
+
+        let treasury_address =
+            get_native_treasury_address(&self.program_id, &governance_cookie.address);
+
+        let transfer_ix = system_instruction::transfer(
+            &self.bench.payer.pubkey(),
+            &treasury_address,
+            1_000_000_000,
+        );
+
+        self.bench
+            .process_transaction(&[create_treasury_ix, transfer_ix], None)
+            .await
+            .unwrap();
+
+        NativeTreasuryCookie {
+            address: treasury_address,
+            account: NativeTreasury {},
         }
     }
 
@@ -1964,6 +2026,31 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
+    pub async fn with_native_transfer_instruction(
+        &mut self,
+        governance_cookie: &GovernanceCookie,
+        proposal_cookie: &mut ProposalCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        to_wallet_cookie: &WalletCookie,
+        lamports: u64,
+    ) -> Result<ProposalInstructionCookie, ProgramError> {
+        let treasury_address =
+            get_native_treasury_address(&self.program_id, &governance_cookie.address);
+
+        let mut transfer_ix =
+            system_instruction::transfer(&treasury_address, &to_wallet_cookie.address, lamports);
+
+        self.with_instruction(
+            proposal_cookie,
+            token_owner_record_cookie,
+            0,
+            None,
+            &mut transfer_ix,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
     pub async fn with_upgrade_program_instruction(
         &mut self,
         governance_cookie: &GovernanceCookie,
@@ -2206,6 +2293,20 @@ impl GovernanceProgramTest {
     pub async fn get_token_owner_record_account(&mut self, address: &Pubkey) -> TokenOwnerRecord {
         self.bench
             .get_borsh_account::<TokenOwnerRecord>(address)
+            .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn get_program_metadata_account(&mut self, address: &Pubkey) -> ProgramMetadata {
+        self.bench
+            .get_borsh_account::<ProgramMetadata>(address)
+            .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn get_native_treasury_account(&mut self, address: &Pubkey) -> NativeTreasury {
+        self.bench
+            .get_borsh_account::<NativeTreasury>(address)
             .await
     }
 

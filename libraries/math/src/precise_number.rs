@@ -445,6 +445,11 @@ mod tests {
 
     #[test]
     fn test_newtonian_approximation() {
+        let test = PreciseNumber::new(0).unwrap();
+        let nth_root = PreciseNumber::new(0).unwrap();
+        let guess = test.checked_div(&nth_root);
+        assert_eq!(guess, Option::None);
+
         // square root
         let test = PreciseNumber::new(9).unwrap();
         let nth_root = PreciseNumber::new(2).unwrap();
@@ -502,6 +507,35 @@ mod tests {
             .to_imprecise()
             .unwrap();
         assert_eq!(root, 3); // actually 3.46572422
+    }
+
+    #[test]
+    fn test_checked_mul() {
+        let number_one = PreciseNumber::new(0).unwrap();
+        let number_two = PreciseNumber::new(0).unwrap();
+        let result = number_one.checked_mul(&number_two);
+        assert_eq!(
+            result,
+            Option::Some(PreciseNumber {
+                value: U256::from(0)
+            })
+        );
+
+        let number_one = PreciseNumber::new(2).unwrap();
+        let number_two = PreciseNumber::new(2).unwrap();
+        let result = number_one.checked_mul(&number_two).unwrap();
+        assert_eq!(result, PreciseNumber::new(2 * 2).unwrap());
+
+        let number_one = PreciseNumber { value: U256::MAX };
+        let number_two = PreciseNumber::new(1).unwrap();
+        let result = number_one.checked_mul(&number_two).unwrap();
+        assert_eq!(result.value, U256::MAX / one() * one());
+
+        let number_one = PreciseNumber { value: U256::MAX };
+        let mut number_two = PreciseNumber::new(1).unwrap();
+        number_two.value += U256::from(1);
+        let result = number_one.checked_mul(&number_two);
+        assert_eq!(result, Option::None);
     }
 
     fn check_square_root(check: &PreciseNumber) {

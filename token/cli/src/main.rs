@@ -41,7 +41,9 @@ use solana_sdk::{
     system_instruction, system_program,
     transaction::Transaction,
 };
-use spl_associated_token_account::*;
+use spl_associated_token_account::{
+    get_associated_token_address, instruction::create_associated_token_account,
+};
 use spl_token::{
     self,
     instruction::*,

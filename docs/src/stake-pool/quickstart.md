@@ -99,7 +99,7 @@ to create a new stake pool, and include:
 * withdrawal fee, expressed as two different flags, numerator and denominator
 * deposit fee, expressed as two different flags, numerator and denominator
 * referral fee, expressed as a number between 0 and 100, inclusive
-* maximum number of validators (highest possible is 3,825 currently)
+* maximum number of validators (highest possible is 2,950 currently)
 * (Optional) deposit authority, for restricted pools
 
 Although fees may seem uninteresting or scammy at this point, consider the costs
@@ -109,14 +109,21 @@ if it has no fees.
 Each of these parameters is modifiable after pool creation, so there's no need
 to worry about being locked in to any choices.
 
-Modify the parameters to suit your needs.  In our example, we will use fees
-of 0.3%, a referral fee of 50%, opt to *not* set a deposit authority, and have
-the maximum number of validators (3,825).  Next, run the script:
+Modify the parameters to suit your needs. The fees are especially important to
+avoid abuse, so please take the time to review and calculate fees that work best
+for your pool.
+
+Carefully read through the [Fees](fees.md) for more information about fees and
+best practices.
+
+In our example, we will use fees of 0.3%, a referral fee of 50%, opt to *not*
+set a deposit authority, and have the maximum number of validators (2,950).  Next,
+run the script:
 
 ```bash
 $ ./setup-stake-pool.sh
 Creating pool
-+ spl-stake-pool create-pool --epoch-fee-numerator 3 --epoch-fee-denominator 1000 --withdrawal-fee-numerator 3 --withdrawal-fee-denominator 1000 --deposit-fee-numerator 3 --deposit-fee-denominator 1000 --referral-fee 50 --max-validators 3825 --pool-keypair keys/stake-pool.json --validator-list-keypair keys/validator-list.json --mint-keypair keys/mint.json --reserve-keypair keys/reserve.json
++ spl-stake-pool create-pool --epoch-fee-numerator 3 --epoch-fee-denominator 1000 --withdrawal-fee-numerator 3 --withdrawal-fee-denominator 1000 --deposit-fee-numerator 3 --deposit-fee-denominator 1000 --referral-fee 50 --max-validators 2950 --pool-keypair keys/stake-pool.json --validator-list-keypair keys/validator-list.json --mint-keypair keys/mint.json --reserve-keypair keys/reserve.json
 Creating reserve stake 4tvTkLB4X7ahUYZ2NaTohkG3mud4UBBvu9ZEGD4Wk9mt
 Creating mint BoNneHKDrX9BHjjvSpPfnQyRjsnc9WFH71v8wrgCd7LB
 Creating associated token account DgyZrAq88bnG1TNRxpgDQzWXpzEurCvfY2ukKFWBvADQ to receive stake pool tokens of mint BoNneHKDrX9BHjjvSpPfnQyRjsnc9WFH71v8wrgCd7LB, owned by 4SnSuUtJGKvk2GYpBwmEsWG53zTurVM8yXGsoiZQyMJn

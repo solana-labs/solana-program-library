@@ -2,9 +2,18 @@
 
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
-    account_info::AccountInfo, borsh::try_from_slice_unchecked, msg, program::invoke,
-    program::invoke_signed, program_error::ProgramError, program_pack::IsInitialized,
-    pubkey::Pubkey, rent::Rent, system_instruction::create_account, system_program, sysvar::Sysvar,
+    account_info::AccountInfo,
+    borsh::try_from_slice_unchecked,
+    msg,
+    program::invoke,
+    program::invoke_signed,
+    program_error::ProgramError,
+    program_pack::IsInitialized,
+    pubkey::Pubkey,
+    rent::Rent,
+    system_instruction::{self, create_account},
+    system_program,
+    sysvar::Sysvar,
 };
 
 use crate::error::GovernanceToolsError;
@@ -70,6 +79,7 @@ pub fn create_and_serialize_account<'a, T: BorshSerialize + AccountMaxSize>(
 }
 
 /// Creates a new account and serializes data into it using the provided seeds to invoke signed CPI call
+/// The owner of the account is set to the PDA program
 /// Note: This functions also checks the provided account PDA matches the supplied seeds
 pub fn create_and_serialize_account_signed<'a, T: BorshSerialize + AccountMaxSize>(
     payer_info: &AccountInfo<'a>,
@@ -77,6 +87,31 @@ pub fn create_and_serialize_account_signed<'a, T: BorshSerialize + AccountMaxSiz
     account_data: &T,
     account_address_seeds: &[&[u8]],
     program_id: &Pubkey,
+    system_info: &AccountInfo<'a>,
+    rent: &Rent,
+) -> Result<(), ProgramError> {
+    create_and_serialize_account_with_owner_signed(
+        payer_info,
+        account_info,
+        account_data,
+        account_address_seeds,
+        program_id,
+        program_id, // By default use PDA program_id as the owner of the account
+        system_info,
+        rent,
+    )
+}
+
+/// Creates a new account and serializes data into it using the provided seeds to invoke signed CPI call
+/// Note: This functions also checks the provided account PDA matches the supplied seeds
+#[allow(clippy::too_many_arguments)]
+pub fn create_and_serialize_account_with_owner_signed<'a, T: BorshSerialize + AccountMaxSize>(
+    payer_info: &AccountInfo<'a>,
+    account_info: &AccountInfo<'a>,
+    account_data: &T,
+    account_address_seeds: &[&[u8]],
+    program_id: &Pubkey,
+    owner_program_id: &Pubkey,
     system_info: &AccountInfo<'a>,
     rent: &Rent,
 ) -> Result<(), ProgramError> {
@@ -101,34 +136,66 @@ pub fn create_and_serialize_account_signed<'a, T: BorshSerialize + AccountMaxSiz
         (Some(serialized_data), account_size)
     };
 
-    let create_account_instruction = create_account(
-        payer_info.key,
-        account_info.key,
-        rent.minimum_balance(account_size),
-        account_size as u64,
-        program_id,
-    );
-
     let mut signers_seeds = account_address_seeds.to_vec();
     let bump = &[bump_seed];
     signers_seeds.push(bump);
 
-    invoke_signed(
-        &create_account_instruction,
-        &[
-            payer_info.clone(),
-            account_info.clone(),
-            system_info.clone(),
-        ],
-        &[&signers_seeds[..]],
-    )?;
+    let rent_exempt_lamports = rent.minimum_balance(account_size).max(1);
+
+    // If the account has some lamports already it can't be created using create_account instruction
+    // Anybody can send lamports to a PDA and by doing so create the account and perform DoS attack by blocking create_account
+    if account_info.lamports() > 0 {
+        let top_up_lamports = rent_exempt_lamports.saturating_sub(account_info.lamports());
+
+        if top_up_lamports > 0 {
+            invoke(
+                &system_instruction::transfer(payer_info.key, account_info.key, top_up_lamports),
+                &[
+                    payer_info.clone(),
+                    account_info.clone(),
+                    system_info.clone(),
+                ],
+            )?;
+        }
+
+        invoke_signed(
+            &system_instruction::allocate(account_info.key, account_size as u64),
+            &[account_info.clone(), system_info.clone()],
+            &[&signers_seeds[..]],
+        )?;
+
+        invoke_signed(
+            &system_instruction::assign(account_info.key, owner_program_id),
+            &[account_info.clone(), system_info.clone()],
+            &[&signers_seeds[..]],
+        )?;
+    } else {
+        // If the PDA doesn't exist use create_account to use lower compute budget
+        let create_account_instruction = create_account(
+            payer_info.key,
+            account_info.key,
+            rent_exempt_lamports,
+            account_size as u64,
+            owner_program_id,
+        );
+
+        invoke_signed(
+            &create_account_instruction,
+            &[
+                payer_info.clone(),
+                account_info.clone(),
+                system_info.clone(),
+            ],
+            &[&signers_seeds[..]],
+        )?;
+    }
 
     if let Some(serialized_data) = serialized_data {
         account_info
             .data
             .borrow_mut()
             .copy_from_slice(&serialized_data);
-    } else {
+    } else if account_size > 0 {
         account_data.serialize(&mut *account_info.data.borrow_mut())?;
     }
 
@@ -162,6 +229,15 @@ pub fn assert_is_valid_account<T: BorshDeserialize + PartialEq>(
     expected_account_type: T,
     owner_program_id: &Pubkey,
 ) -> Result<(), ProgramError> {
+    assert_is_valid_account2(account_info, &[expected_account_type], owner_program_id)
+}
+/// Asserts the given account is not empty, owned by the given program and one of the expected types
+/// Note: The function assumes the account type T is stored as the first element in the account data
+pub fn assert_is_valid_account2<T: BorshDeserialize + PartialEq>(
+    account_info: &AccountInfo,
+    expected_account_types: &[T],
+    owner_program_id: &Pubkey,
+) -> Result<(), ProgramError> {
     if account_info.owner != owner_program_id {
         return Err(GovernanceToolsError::InvalidAccountOwner.into());
     }
@@ -172,7 +248,7 @@ pub fn assert_is_valid_account<T: BorshDeserialize + PartialEq>(
 
     let account_type: T = try_from_slice_unchecked(&account_info.data.borrow())?;
 
-    if account_type != expected_account_type {
+    if expected_account_types.iter().all(|a| a != &account_type) {
         return Err(GovernanceToolsError::InvalidAccountType.into());
     };
 

@@ -13,8 +13,8 @@ import {
     createAssociatedTokenAccountInstruction,
     createInitializeAccountInstruction,
     createSyncNativeInstruction,
-} from '../instructions';
-import { ACCOUNT_SIZE, getAssociatedTokenAddress, getMinimumBalanceForRentExemptAccount } from '../state';
+} from '../instructions/index';
+import { ACCOUNT_SIZE, getAssociatedTokenAddress, getMinimumBalanceForRentExemptAccount } from '../state/index';
 import { createAccount } from './createAccount';
 
 /**

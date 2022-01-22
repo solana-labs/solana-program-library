@@ -15,6 +15,7 @@ jobs:
     needs:
       - rustfmt
       - clippy
+      - audit
       - cargo-build-test
     steps:
       - run: echo "Done"
@@ -77,6 +78,31 @@ jobs:
         with:
           command: clippy
           args: -Zunstable-options --workspace --all-targets -- --deny=warnings
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set env vars
+        run: |
+          source ci/rust-version.sh
+          echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_STABLE }}
+          override: true
+          profile: minimal
+
+      - name: Install Cargo Audit
+        uses: actions-rs/install@v0.1
+        with:
+          crate: cargo-audit
+          version: latest
+
+      - name: Run Cargo Audit
+        run: ./ci/do-audit.sh
 
   cargo-build-test:
     runs-on: ubuntu-latest

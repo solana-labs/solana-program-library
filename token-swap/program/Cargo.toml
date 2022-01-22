@@ -17,15 +17,15 @@ arrayref = "0.3.6"
 enum_dispatch = "0.3.7"
 num-derive = "0.3"
 num-traits = "0.2"
-solana-program = "1.9.2"
+solana-program = "1.9.5"
 spl-math = { version = "0.1", path = "../../libraries/math", features = [ "no-entrypoint" ] }
-spl-token = { version = "3.2", path = "../../token/program", features = [ "no-entrypoint" ] }
+spl-token = { version = "3.3", path = "../../token/program", features = [ "no-entrypoint" ] }
 thiserror = "1.0"
 arbitrary = { version = "1.0", features = ["derive"], optional = true }
 roots = { version = "0.0.7", optional = true }
 
 [dev-dependencies]
-solana-sdk = "1.9.2"
+solana-sdk = "1.9.5"
 proptest = "1.0"
 sim =  { path = "./sim" }
 roots = "0.0.7"

@@ -83,7 +83,7 @@ pub fn process_set_realm_config(
                 reserved: [0; 128],
             };
 
-            let rent = Rent::get().unwrap();
+            let rent = Rent::get()?;
 
             create_and_serialize_account_signed::<RealmConfigAccount>(
                 payer_info,
