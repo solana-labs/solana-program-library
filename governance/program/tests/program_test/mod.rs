@@ -54,7 +54,6 @@ use spl_governance::{
     tools::bpf_loader_upgradeable::get_program_data_address,
 };
 
-pub mod addins;
 pub mod cookies;
 
 use crate::program_test::cookies::{
@@ -62,18 +61,16 @@ use crate::program_test::cookies::{
 };
 
 use spl_governance_test_sdk::{
+    addins::ensure_voter_weight_addin_is_built,
     cookies::WalletCookie,
     tools::{clone_keypair, NopOverride},
     ProgramTestBench,
 };
 
-use self::{
-    addins::ensure_voter_weight_addin_is_built,
-    cookies::{
-        GovernanceCookie, GovernedAccountCookie, GovernedMintCookie, GovernedProgramCookie,
-        GovernedTokenCookie, NativeTreasuryCookie, ProgramMetadataCookie, ProposalCookie,
-        ProposalInstructionCookie, RealmCookie, TokenOwnerRecordCookie, VoteRecordCookie,
-    },
+use self::cookies::{
+    GovernanceCookie, GovernedAccountCookie, GovernedMintCookie, GovernedProgramCookie,
+    GovernedTokenCookie, NativeTreasuryCookie, ProgramMetadataCookie, ProposalCookie,
+    ProposalInstructionCookie, RealmCookie, TokenOwnerRecordCookie, VoteRecordCookie,
 };
 
 /// Yes/No Vote

@@ -21,7 +21,7 @@ use spl_governance_chat::{
     processor::process_instruction,
     state::{ChatMessage, GovernanceChatAccountType, MessageBody},
 };
-use spl_governance_test_sdk::ProgramTestBench;
+use spl_governance_test_sdk::{addins::ensure_voter_weight_addin_is_built, ProgramTestBench};
 
 use crate::program_test::cookies::{ChatMessageCookie, ProposalCookie};
 
@@ -33,10 +33,24 @@ pub struct GovernanceChatProgramTest {
     pub bench: ProgramTestBench,
     pub program_id: Pubkey,
     pub governance_program_id: Pubkey,
+    pub voter_weight_addin_id: Option<Pubkey>,
 }
 
 impl GovernanceChatProgramTest {
+    #[allow(dead_code)]
     pub async fn start_new() -> Self {
+        Self::start_impl(false).await
+    }
+
+    #[allow(dead_code)]
+    pub async fn start_with_voter_weight_addin() -> Self {
+        ensure_voter_weight_addin_is_built();
+
+        Self::start_impl(true).await
+    }
+
+    #[allow(dead_code)]
+    async fn start_impl(use_voter_weight_addin: bool) -> Self {
         let mut program_test = ProgramTest::default();
         let program_id = Pubkey::from_str("GovernanceChat11111111111111111111111111111").unwrap();
         program_test.add_program(
@@ -52,12 +66,27 @@ impl GovernanceChatProgramTest {
             governance_program_id,
             processor!(spl_governance::processor::process_instruction),
         );
+
+        let voter_weight_addin_id = if use_voter_weight_addin {
+            let voter_weight_addin_id =
+                Pubkey::from_str("VoterWeight11111111111111111111111111111111").unwrap();
+            program_test.add_program(
+                "spl_governance_voter_weight_addin",
+                voter_weight_addin_id,
+                None,
+            );
+            Some(voter_weight_addin_id)
+        } else {
+            None
+        };
+
         let bench = ProgramTestBench::start_new(program_test).await;
 
         Self {
             bench,
             program_id,
             governance_program_id,
+            voter_weight_addin_id,
         }
     }
 
