@@ -149,6 +149,7 @@ impl Processor {
         };
 
         account.pack_base();
+        account.init_account_type()?;
 
         Ok(())
     }
