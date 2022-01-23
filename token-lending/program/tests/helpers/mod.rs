@@ -602,7 +602,6 @@ impl TestLendingMarket {
         payer: &Keypair,
         reserve: &TestReserve,
         obligation: &TestObligation,
-        obligation_keypair: &Keypair,
         liquidity_amount: u64,
     ) {
         let user_transfer_authority = Keypair::new();
@@ -617,6 +616,15 @@ impl TestLendingMarket {
                     liquidity_amount,
                 )
                 .unwrap(),
+                approve(
+                    &spl_token::id(),
+                    &reserve.user_collateral_pubkey,
+                    &user_transfer_authority.pubkey(),
+                    &user_accounts_owner.pubkey(),
+                    &[],
+                    liquidity_amount,
+                )
+                .unwrap(),
                 deposit_reserve_liquidity_and_obligation_collateral(
                     spl_token_lending::id(),
                     liquidity_amount,
@@ -625,7 +633,7 @@ impl TestLendingMarket {
                     reserve.pubkey,
                     reserve.liquidity_supply_pubkey,
                     reserve.collateral_mint_pubkey,
-                    reserve.pubkey,
+                    self.pubkey,
                     reserve.collateral_supply_pubkey,
                     obligation.pubkey,
                     obligation.owner,
@@ -639,12 +647,7 @@ impl TestLendingMarket {
 
         let recent_blockhash = banks_client.get_recent_blockhash().await.unwrap();
         transaction.sign(
-            &[
-                payer,
-                user_accounts_owner,
-                &user_transfer_authority,
-                &obligation_keypair,
-            ],
+            &[payer, user_accounts_owner, &user_transfer_authority],
             recent_blockhash,
         );
 

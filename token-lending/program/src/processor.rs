@@ -411,6 +411,23 @@ fn _refresh_reserve<'a>(
     }
 
     reserve.liquidity.market_price = get_price(switchboard_feed_info, pyth_price_info, clock)?;
+    Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
+
+    _refresh_reserve_interest(program_id, reserve_info, clock)
+}
+
+/// Lite version of refresh_reserve that should be used when the oracle price doesn't need to be updated
+/// BE CAREFUL WHEN USING THIS
+fn _refresh_reserve_interest<'a>(
+    program_id: &Pubkey,
+    reserve_info: &AccountInfo<'a>,
+    clock: &Clock,
+) -> ProgramResult {
+    let mut reserve = Reserve::unpack(&reserve_info.data.borrow())?;
+    if reserve_info.owner != program_id {
+        msg!("Reserve provided is not owned by the lending program");
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
 
     reserve.accrue_interest(clock.slot)?;
     reserve.last_update.update_slot(clock.slot);
@@ -483,7 +500,6 @@ fn _deposit_reserve_liquidity<'a>(
         msg!("Lending market token program does not match the token program provided");
         return Err(LendingError::InvalidTokenProgram.into());
     }
-
     let mut reserve = Reserve::unpack(&reserve_info.data.borrow())?;
     if reserve_info.owner != program_id {
         msg!("Reserve provided is not owned by the lending program");
@@ -513,7 +529,6 @@ fn _deposit_reserve_liquidity<'a>(
         msg!("Reserve is stale and must be refreshed in the current slot");
         return Err(LendingError::ReserveStale.into());
     }
-
     let authority_signer_seeds = &[
         lending_market_info.key.as_ref(),
         &[lending_market.bump_seed],
@@ -971,7 +986,6 @@ fn _deposit_obligation_collateral<'a>(
         .deposit(collateral_amount)?;
     obligation.last_update.mark_stale();
     Obligation::pack(obligation, &mut obligation_info.data.borrow_mut())?;
-
     spl_token_transfer(TokenTransferParams {
         source: source_collateral_info.clone(),
         destination: destination_collateral_info.clone(),
@@ -980,7 +994,6 @@ fn _deposit_obligation_collateral<'a>(
         authority_signer_seeds: &[],
         token_program: token_program_id.clone(),
     })?;
-
     Ok(())
 }
 
@@ -1006,12 +1019,13 @@ fn process_deposit_reserve_liquidity_and_obligation_collateral(
     let destination_collateral_info = next_account_info(account_info_iter)?;
     let obligation_info = next_account_info(account_info_iter)?;
     let obligation_owner_info = next_account_info(account_info_iter)?;
-    let pyth_price_info = next_account_info(account_info_iter)?;
-    let switchboard_feed_info = next_account_info(account_info_iter)?;
+    let _pyth_price_info = next_account_info(account_info_iter)?;
+    let _switchboard_feed_info = next_account_info(account_info_iter)?;
     let user_transfer_authority_info = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
     let token_program_id = next_account_info(account_info_iter)?;
 
+    _refresh_reserve_interest(program_id, reserve_info, clock)?;
     let collateral_amount = _deposit_reserve_liquidity(
         program_id,
         liquidity_amount,
@@ -1026,13 +1040,7 @@ fn process_deposit_reserve_liquidity_and_obligation_collateral(
         clock,
         token_program_id,
     )?;
-    _refresh_reserve(
-        program_id,
-        reserve_info,
-        pyth_price_info,
-        switchboard_feed_info,
-        clock,
-    )?;
+    _refresh_reserve_interest(program_id, reserve_info, clock)?;
     _deposit_obligation_collateral(
         program_id,
         collateral_amount,
@@ -1046,6 +1054,11 @@ fn process_deposit_reserve_liquidity_and_obligation_collateral(
         clock,
         token_program_id,
     )?;
+    // mark the reserve as stale to make sure no weird bugs happen
+    let mut reserve = Reserve::unpack(&reserve_info.data.borrow())?;
+    reserve.last_update.mark_stale();
+    Reserve::pack(reserve, &mut reserve_info.data.borrow_mut())?;
+
     Ok(())
 }
 
