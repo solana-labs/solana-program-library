@@ -18,7 +18,7 @@ default = [ "no-token-entrypoint" ]
 [dependencies]
 borsh = "0.9.1"
 solana-program = "1.9.5"
-spl-token = { version = "3.3", path = "../../token/program" }
+spl-token = { version = "0.1", path = "../../token/program-2022", package = "spl-token-2022" }
 
 [dev-dependencies]
 solana-program-test = "1.9.5"
