@@ -441,12 +441,14 @@ async fn fail_fee_init_after_mint_init() {
         )
         .unwrap(),
         transfer_fee::instruction::initialize_transfer_fee_config(
+            &spl_token_2022::id(),
             &mint_account.pubkey(),
             Some(&Pubkey::new_unique()),
             Some(&Pubkey::new_unique()),
             10,
             100,
-        ),
+        )
+        .unwrap(),
     ];
 
     let tx = Transaction::new_signed_with_payer(

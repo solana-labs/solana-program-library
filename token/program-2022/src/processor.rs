@@ -6615,7 +6615,8 @@ mod tests {
         );
         let extended_mint_key = Pubkey::new_unique();
         do_process_instruction(
-            initialize_transfer_fee_config(&extended_mint_key, None, None, 10, 4242),
+            initialize_transfer_fee_config(&program_id, &extended_mint_key, None, None, 10, 4242)
+                .unwrap(),
             vec![&mut extended_mint_account],
         )
         .unwrap();

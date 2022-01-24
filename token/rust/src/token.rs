@@ -69,11 +69,15 @@ impl ExtensionInitializationParams {
         }
     }
     /// Generate an appropriate initialization instruction for the given mint
-    pub fn instruction(self, mint: &Pubkey) -> Instruction {
+    pub fn instruction(self, token_program_id: &Pubkey, mint: &Pubkey) -> Instruction {
         match self {
             Self::MintCloseAuthority { close_authority } => {
-                instruction::initialize_mint_close_authority(&id(), mint, close_authority.as_ref())
-                    .unwrap()
+                instruction::initialize_mint_close_authority(
+                    token_program_id,
+                    mint,
+                    close_authority.as_ref(),
+                )
+                .unwrap()
             }
             Self::TransferFeeConfig {
                 transfer_fee_config_authority,
@@ -81,12 +85,14 @@ impl ExtensionInitializationParams {
                 transfer_fee_basis_points,
                 maximum_fee,
             } => transfer_fee::instruction::initialize_transfer_fee_config(
+                token_program_id,
                 mint,
                 transfer_fee_config_authority.as_ref(),
                 withdraw_withheld_authority.as_ref(),
                 transfer_fee_basis_points,
                 maximum_fee,
-            ),
+            )
+            .unwrap(),
         }
     }
 }
@@ -191,7 +197,7 @@ where
         )];
         let mut init_instructions = extension_initialization_params
             .into_iter()
-            .map(|e| e.instruction(&mint_pubkey))
+            .map(|e| e.instruction(&id(), &mint_pubkey))
             .collect::<Vec<_>>();
         instructions.append(&mut init_instructions);
         instructions.push(instruction::initialize_mint(

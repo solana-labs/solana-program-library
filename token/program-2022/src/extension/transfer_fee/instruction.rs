@@ -1,5 +1,5 @@
 use {
-    crate::{error::TokenError, id, instruction::TokenInstruction},
+    crate::{check_program_account, error::TokenError, instruction::TokenInstruction},
     solana_program::{
         instruction::{AccountMeta, Instruction},
         program_error::ProgramError,
@@ -256,12 +256,14 @@ impl TransferFeeInstruction {
 
 /// Create a `InitializeTransferFeeConfig` instruction
 pub fn initialize_transfer_fee_config(
+    token_program_id: &Pubkey,
     mint: &Pubkey,
     transfer_fee_config_authority: Option<&Pubkey>,
     withdraw_withheld_authority: Option<&Pubkey>,
     transfer_fee_basis_points: u16,
     maximum_fee: u64,
-) -> Instruction {
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
     let transfer_fee_config_authority = transfer_fee_config_authority.cloned().into();
     let withdraw_withheld_authority = withdraw_withheld_authority.cloned().into();
     let data = TokenInstruction::TransferFeeExtension(
@@ -274,16 +276,17 @@ pub fn initialize_transfer_fee_config(
     )
     .pack();
 
-    Instruction {
-        program_id: id(),
+    Ok(Instruction {
+        program_id: *token_program_id,
         accounts: vec![AccountMeta::new(*mint, false)],
         data,
-    }
+    })
 }
 
 /// Create a `TransferCheckedWithFee` instruction
 #[allow(clippy::too_many_arguments)]
 pub fn transfer_checked_with_fee(
+    token_program_id: &Pubkey,
     source: &Pubkey,
     mint: &Pubkey,
     destination: &Pubkey,
@@ -292,7 +295,8 @@ pub fn transfer_checked_with_fee(
     amount: u64,
     decimals: u8,
     fee: u64,
-) -> Instruction {
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
     let data =
         TokenInstruction::TransferFeeExtension(TransferFeeInstruction::TransferCheckedWithFee {
             amount,
@@ -310,20 +314,22 @@ pub fn transfer_checked_with_fee(
         accounts.push(AccountMeta::new_readonly(**signer, true));
     }
 
-    Instruction {
-        program_id: id(),
+    Ok(Instruction {
+        program_id: *token_program_id,
         accounts,
         data,
-    }
+    })
 }
 
 /// Creates a `WithdrawWithheldTokensFromMint` instruction
 pub fn withdraw_withheld_tokens_from_mint(
+    token_program_id: &Pubkey,
     mint: &Pubkey,
     destination: &Pubkey,
     authority: &Pubkey,
     signers: &[&Pubkey],
-) -> Instruction {
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
     let mut accounts = Vec::with_capacity(3 + signers.len());
     accounts.push(AccountMeta::new(*mint, false));
     accounts.push(AccountMeta::new(*destination, false));
@@ -332,24 +338,26 @@ pub fn withdraw_withheld_tokens_from_mint(
         accounts.push(AccountMeta::new_readonly(**signer, true));
     }
 
-    Instruction {
-        program_id: id(),
+    Ok(Instruction {
+        program_id: *token_program_id,
         accounts,
         data: TokenInstruction::TransferFeeExtension(
             TransferFeeInstruction::WithdrawWithheldTokensFromMint,
         )
         .pack(),
-    }
+    })
 }
 
 /// Creates a `WithdrawWithheldTokensFromAccounts` instruction
 pub fn withdraw_withheld_tokens_from_accounts(
+    token_program_id: &Pubkey,
     mint: &Pubkey,
     destination: &Pubkey,
     authority: &Pubkey,
     signers: &[&Pubkey],
     sources: &[&Pubkey],
-) -> Instruction {
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
     let mut accounts = Vec::with_capacity(3 + signers.len() + sources.len());
     accounts.push(AccountMeta::new_readonly(*mint, false));
     accounts.push(AccountMeta::new(*destination, false));
@@ -361,41 +369,48 @@ pub fn withdraw_withheld_tokens_from_accounts(
         accounts.push(AccountMeta::new(**source, false));
     }
 
-    Instruction {
-        program_id: id(),
+    Ok(Instruction {
+        program_id: *token_program_id,
         accounts,
         data: TokenInstruction::TransferFeeExtension(
             TransferFeeInstruction::WithdrawWithheldTokensFromAccounts,
         )
         .pack(),
-    }
+    })
 }
 
 /// Creates a `HarvestWithheldTokensToMint` instruction
-pub fn harvest_withheld_tokens_to_mint(mint: &Pubkey, sources: &[&Pubkey]) -> Instruction {
+pub fn harvest_withheld_tokens_to_mint(
+    token_program_id: &Pubkey,
+    mint: &Pubkey,
+    sources: &[&Pubkey],
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
     let mut accounts = Vec::with_capacity(1 + sources.len());
     accounts.push(AccountMeta::new(*mint, false));
     for source in sources.iter() {
         accounts.push(AccountMeta::new(**source, false));
     }
-    Instruction {
-        program_id: id(),
+    Ok(Instruction {
+        program_id: *token_program_id,
         accounts,
         data: TokenInstruction::TransferFeeExtension(
             TransferFeeInstruction::HarvestWithheldTokensToMint,
         )
         .pack(),
-    }
+    })
 }
 
 /// Creates a `SetTransferFee` instruction
 pub fn set_transfer_fee(
+    token_program_id: &Pubkey,
     mint: &Pubkey,
     authority: &Pubkey,
     signers: &[&Pubkey],
     transfer_fee_basis_points: u16,
     maximum_fee: u64,
-) -> Instruction {
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
     let mut accounts = Vec::with_capacity(2 + signers.len());
     accounts.push(AccountMeta::new(*mint, false));
     accounts.push(AccountMeta::new_readonly(*authority, signers.is_empty()));
@@ -403,15 +418,15 @@ pub fn set_transfer_fee(
         accounts.push(AccountMeta::new_readonly(**signer, true));
     }
 
-    Instruction {
-        program_id: id(),
+    Ok(Instruction {
+        program_id: *token_program_id,
         accounts,
         data: TokenInstruction::TransferFeeExtension(TransferFeeInstruction::SetTransferFee {
             transfer_fee_basis_points,
             maximum_fee,
         })
         .pack(),
-    }
+    })
 }
 
 #[cfg(test)]
