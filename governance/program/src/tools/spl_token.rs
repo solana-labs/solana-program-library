@@ -335,7 +335,7 @@ pub fn assert_spl_token_owner_is_signer(
 }
 
 /// Sets token account authority
-pub fn set_spl_token_authority<'a>(
+pub fn set_spl_token_account_authority<'a>(
     token_info: &AccountInfo<'a>,
     token_owner: &AccountInfo<'a>,
     new_token_owner: &Pubkey,

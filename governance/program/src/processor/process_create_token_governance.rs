@@ -10,7 +10,7 @@ use crate::{
         realm::get_realm_data,
         token_owner_record::get_token_owner_record_data_for_realm,
     },
-    tools::spl_token::{assert_spl_token_owner_is_signer, set_spl_token_authority},
+    tools::spl_token::{assert_spl_token_owner_is_signer, set_spl_token_account_authority},
 };
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -87,7 +87,7 @@ pub fn process_create_token_governance(
     )?;
 
     if transfer_account_authorities {
-        set_spl_token_authority(
+        set_spl_token_account_authority(
             governed_token_info,
             governed_token_owner_info,
             token_governance_info.key,
@@ -100,7 +100,7 @@ pub fn process_create_token_governance(
         // Note: The code assumes owner==close_authority
         //       If this is not the case then the caller should set close_authority accordingly before making the transfer
         if token_account_data.close_authority.is_some() {
-            set_spl_token_authority(
+            set_spl_token_account_authority(
                 governed_token_info,
                 governed_token_owner_info,
                 token_governance_info.key,

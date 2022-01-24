@@ -145,7 +145,8 @@ impl ProgramTestBench {
             .unwrap();
     }
 
-    pub async fn set_spl_token_program_account_authority(
+    /// Sets spl-token program account (Mint or TokenAccount) authority
+    pub async fn set_spl_token_account_authority(
         &mut self,
         account: &Pubkey,
         account_authority: &Keypair,

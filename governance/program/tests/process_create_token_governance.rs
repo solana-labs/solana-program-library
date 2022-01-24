@@ -236,7 +236,7 @@ async fn test_create_token_governance_with_close_authority_transfer() {
 
     governance_test
         .bench
-        .set_spl_token_program_account_authority(
+        .set_spl_token_account_authority(
             &governed_token_cookie.address,
             &governed_token_cookie.token_owner,
             Some(&governed_token_cookie.token_owner.pubkey()),
