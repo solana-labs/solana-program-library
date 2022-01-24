@@ -16,6 +16,7 @@ use tools::clone_keypair;
 
 use crate::tools::map_transaction_error;
 
+pub mod addins;
 pub mod cookies;
 pub mod tools;
 

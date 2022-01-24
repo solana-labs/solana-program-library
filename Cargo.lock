@@ -3628,7 +3628,6 @@ dependencies = [
  "base64 0.13.0",
  "bincode",
  "borsh",
- "lazy_static",
  "num-derive",
  "num-traits",
  "proptest",
@@ -3645,7 +3644,7 @@ dependencies = [
 
 [[package]]
 name = "spl-governance-chat"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "arrayref",
  "assert_matches",
@@ -3663,6 +3662,7 @@ dependencies = [
  "spl-governance",
  "spl-governance-test-sdk",
  "spl-governance-tools",
+ "spl-governance-voter-weight-addin",
  "spl-token 3.3.0",
  "thiserror",
 ]
@@ -3674,6 +3674,7 @@ dependencies = [
  "arrayref",
  "bincode",
  "borsh",
+ "lazy_static",
  "num-derive",
  "num-traits",
  "serde",
