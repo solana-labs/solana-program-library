@@ -149,6 +149,7 @@ impl Processor {
         };
 
         account.pack_base();
+        account.init_account_type()?;
 
         Ok(())
     }
@@ -1113,10 +1114,15 @@ impl PrintProgramError for TokenError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::instruction::*;
+    use crate::{
+        extension::transfer_fee::instruction::initialize_transfer_fee_config, instruction::*,
+    };
     use solana_program::{
-        account_info::IntoAccountInfo, clock::Epoch, instruction::Instruction, program_error,
-        sysvar::rent,
+        account_info::IntoAccountInfo,
+        clock::Epoch,
+        instruction::Instruction,
+        program_error,
+        sysvar::{clock::Clock, rent},
     };
     use solana_sdk::account::{
         create_account_for_test, create_is_signer_account_infos, Account as SolanaAccount,
@@ -1144,8 +1150,11 @@ mod tests {
             Err(ProgramError::Custom(42)) // Not supported
         }
 
-        fn sol_get_clock_sysvar(&self, _var_addr: *mut u8) -> u64 {
-            program_error::UNSUPPORTED_SYSVAR
+        fn sol_get_clock_sysvar(&self, var_addr: *mut u8) -> u64 {
+            unsafe {
+                *(var_addr as *mut _ as *mut Clock) = Clock::default();
+            }
+            solana_program::entrypoint::SUCCESS
         }
 
         fn sol_get_epoch_schedule_sysvar(&self, _var_addr: *mut u8) -> u64 {
@@ -6597,7 +6606,35 @@ mod tests {
         )
         .unwrap();
 
-        // TODO: Extended mint
+        // Extended mint
+        let mint_len = ExtensionType::get_account_len::<Mint>(&[ExtensionType::TransferFeeConfig]);
+        let mut extended_mint_account = SolanaAccount::new(
+            Rent::default().minimum_balance(mint_len),
+            mint_len,
+            &program_id,
+        );
+        let extended_mint_key = Pubkey::new_unique();
+        do_process_instruction(
+            initialize_transfer_fee_config(&extended_mint_key, None, None, 10, 4242),
+            vec![&mut extended_mint_account],
+        )
+        .unwrap();
+        do_process_instruction(
+            initialize_mint(&program_id, &extended_mint_key, &owner_key, None, 2).unwrap(),
+            vec![&mut extended_mint_account, &mut rent_sysvar],
+        )
+        .unwrap();
+
+        set_expected_data(
+            ExtensionType::get_account_len::<Account>(&[ExtensionType::TransferFeeAmount])
+                .to_le_bytes()
+                .to_vec(),
+        );
+        do_process_instruction(
+            get_account_data_size(&program_id, &mint_key).unwrap(),
+            vec![&mut extended_mint_account],
+        )
+        .unwrap();
 
         // Invalid mint
         let mut invalid_mint_account = SolanaAccount::new(
