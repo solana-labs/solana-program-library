@@ -44,6 +44,7 @@ impl TestContext {
 
         let token = Token::create_mint(
             Arc::clone(&client),
+            &spl_token_2022::id(),
             keypair_clone(&payer),
             &mint_account,
             &mint_authority_pubkey,
