@@ -27,20 +27,6 @@ pub fn create_associated_token_account(
     funding_address: &Pubkey,
     wallet_address: &Pubkey,
     token_mint_address: &Pubkey,
-) -> Instruction {
-    create_associated_token_account_with_program_id(
-        funding_address,
-        wallet_address,
-        token_mint_address,
-        &spl_token::id(),
-    )
-}
-
-/// Creates CreateAssociatedTokenAccount instruction
-pub fn create_associated_token_account_with_program_id(
-    funding_address: &Pubkey,
-    wallet_address: &Pubkey,
-    token_mint_address: &Pubkey,
     token_program_id: &Pubkey,
 ) -> Instruction {
     let associated_account_address =

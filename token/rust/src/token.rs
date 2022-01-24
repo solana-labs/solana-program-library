@@ -10,8 +10,7 @@ use solana_sdk::{
     transaction::Transaction,
 };
 use spl_associated_token_account::{
-    get_associated_token_address_with_program_id,
-    instruction::create_associated_token_account_with_program_id,
+    get_associated_token_address_with_program_id, instruction::create_associated_token_account,
 };
 use spl_token_2022::{
     extension::{transfer_fee, ExtensionType, StateWithExtensionsOwned},
@@ -181,7 +180,7 @@ where
     #[allow(clippy::too_many_arguments)]
     pub async fn create_mint<'a, S2: Signer>(
         client: Arc<dyn ProgramClient<T>>,
-        program_id: &Pubkey,
+        program_id: &'a Pubkey,
         payer: S,
         mint_account: &'a S2,
         mint_authority: &'a Pubkey,
@@ -230,7 +229,7 @@ where
     /// Create and initialize the associated account.
     pub async fn create_associated_token_account(&self, owner: &Pubkey) -> TokenResult<Pubkey> {
         self.process_ixs(
-            &[create_associated_token_account_with_program_id(
+            &[create_associated_token_account(
                 &self.payer.pubkey(),
                 owner,
                 &self.pubkey,
@@ -424,7 +423,7 @@ where
     ) -> TokenResult<T::Output> {
         self.process_ixs(
             &[transfer_fee::instruction::set_transfer_fee(
-                &id(),
+                &self.program_id,
                 &self.pubkey,
                 &authority.pubkey(),
                 &[],

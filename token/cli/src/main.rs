@@ -42,8 +42,7 @@ use solana_sdk::{
     transaction::Transaction,
 };
 use spl_associated_token_account::{
-    get_associated_token_address_with_program_id,
-    instruction::create_associated_token_account_with_program_id,
+    get_associated_token_address_with_program_id, instruction::create_associated_token_account,
 };
 use spl_token::{
     instruction::*,
@@ -383,7 +382,7 @@ fn command_create_account(
         (
             account,
             true,
-            vec![create_associated_token_account_with_program_id(
+            vec![create_associated_token_account(
                 &config.fee_payer,
                 &owner,
                 &token,
@@ -780,7 +779,7 @@ fn command_transfer(
                         ),
                     );
                 }
-                instructions.push(create_associated_token_account_with_program_id(
+                instructions.push(create_associated_token_account(
                     &config.fee_payer,
                     &recipient,
                     &mint_pubkey,
@@ -1093,7 +1092,7 @@ fn command_wrap(
         println_display(config, format!("Wrapping {} SOL into {}", sol, account));
         vec![
             system_instruction::transfer(&wallet_address, &account, lamports),
-            create_associated_token_account_with_program_id(
+            create_associated_token_account(
                 &config.fee_payer,
                 &wallet_address,
                 &native_mint::id(),
@@ -1548,7 +1547,7 @@ fn command_gc(
 
         if total_balance > 0 && !accounts.contains_key(&associated_token_account) {
             // Create the associated token account
-            instructions.push(vec![create_associated_token_account_with_program_id(
+            instructions.push(vec![create_associated_token_account(
                 &config.fee_payer,
                 &owner,
                 &token,
