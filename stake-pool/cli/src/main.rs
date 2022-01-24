@@ -641,6 +641,7 @@ fn add_associated_token_account(
             &config.fee_payer.pubkey(),
             owner,
             mint,
+            &spl_token::id(),
         ));
 
         *rent_free_balances += min_account_balance;

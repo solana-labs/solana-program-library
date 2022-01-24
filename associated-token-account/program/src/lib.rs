@@ -96,7 +96,7 @@ pub fn create_associated_token_account(
     token_mint_address: &Pubkey,
 ) -> Instruction {
     let associated_account_address =
-        get_associated_token_address(wallet_address, spl_token_mint_address);
+        get_associated_token_address(wallet_address, token_mint_address);
 
     Instruction {
         program_id: id(),
