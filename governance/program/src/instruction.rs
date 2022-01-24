@@ -352,10 +352,11 @@ pub enum GovernanceInstruction {
         config: GovernanceConfig,
 
         #[allow(dead_code)]
-        /// Indicates whether Mint's authority should be transferred to the Governance PDA
+        /// Indicates whether Mint's authorities should be transferred to the Governance PDA
         /// If it's set to false then it can be done at a later time
         /// However the instruction would validate the current mint authority signed the transaction nonetheless
-        transfer_mint_authority: bool,
+        /// If the mint has also freeze_authority then it'll be transferred as well
+        transfer_mint_authorities: bool,
     },
 
     /// Creates Token Governance account which governs a token account
@@ -756,7 +757,7 @@ pub fn create_mint_governance(
     voter_weight_record: Option<Pubkey>,
     // Args
     config: GovernanceConfig,
-    transfer_mint_authority: bool,
+    transfer_mint_authorities: bool,
 ) -> Instruction {
     let mint_governance_address = get_mint_governance_address(program_id, realm, governed_mint);
 
@@ -777,7 +778,7 @@ pub fn create_mint_governance(
 
     let instruction = GovernanceInstruction::CreateMintGovernance {
         config,
-        transfer_mint_authority,
+        transfer_mint_authorities,
     };
 
     Instruction {

@@ -119,8 +119,10 @@ pub fn process_instruction(
 
         GovernanceInstruction::CreateMintGovernance {
             config,
-            transfer_mint_authority,
-        } => process_create_mint_governance(program_id, accounts, config, transfer_mint_authority),
+            transfer_mint_authorities,
+        } => {
+            process_create_mint_governance(program_id, accounts, config, transfer_mint_authorities)
+        }
 
         GovernanceInstruction::CreateTokenGovernance {
             config,

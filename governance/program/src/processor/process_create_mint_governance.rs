@@ -28,7 +28,7 @@ pub fn process_create_mint_governance(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     config: GovernanceConfig,
-    transfer_mint_authority: bool,
+    transfer_mint_authorities: bool,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -86,7 +86,7 @@ pub fn process_create_mint_governance(
         rent,
     )?;
 
-    if transfer_mint_authority {
+    if transfer_mint_authorities {
         set_spl_token_mint_authority(
             governed_mint_info,
             governed_mint_authority_info,
@@ -97,7 +97,8 @@ pub fn process_create_mint_governance(
 
         // If the mint has freeze_authority then transfer it as well
         let mint_data = Mint::unpack(&governed_mint_info.data.borrow())?;
-        // Note: The code assumes mint_authority==freeze_authority and if this is not the case then the caller should set the authority accordingly
+        // Note: The code assumes mint_authority==freeze_authority
+        //       If this is not the case then the caller should set freeze_authority accordingly before making the transfer
         if mint_data.freeze_authority.is_some() {
             set_spl_token_mint_authority(
                 governed_mint_info,
