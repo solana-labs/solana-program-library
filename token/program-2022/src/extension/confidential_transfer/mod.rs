@@ -23,6 +23,8 @@ pub struct ConfidentialTransferMint {
     ///
     /// Note that setting an authority of `Pubkey::default()` is the idiomatic way to disable
     /// future changes to the configuration.
+    ///
+    /// The legacy Token Multisig account is not supported as the authority
     pub authority: Pubkey,
 
     /// Indicate if newly configured accounts must be approved by the `authority` before they may be
