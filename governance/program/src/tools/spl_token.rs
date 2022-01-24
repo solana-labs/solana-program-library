@@ -14,7 +14,7 @@ use solana_program::{
     system_instruction,
 };
 use spl_token::{
-    instruction::set_authority,
+    instruction::{set_authority, AuthorityType},
     state::{Account, Mint},
 };
 
@@ -293,12 +293,13 @@ pub fn set_spl_token_mint_authority<'a>(
     mint_authority: &AccountInfo<'a>,
     new_mint_authority: &Pubkey,
     spl_token_info: &AccountInfo<'a>,
+    authority_type: AuthorityType,
 ) -> Result<(), ProgramError> {
     let set_authority_ix = set_authority(
         &spl_token::id(),
         mint_info.key,
         Some(new_mint_authority),
-        spl_token::instruction::AuthorityType::MintTokens,
+        authority_type,
         mint_authority.key,
         &[],
     )?;

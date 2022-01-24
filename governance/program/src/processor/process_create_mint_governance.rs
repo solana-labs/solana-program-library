@@ -15,11 +15,13 @@ use crate::{
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
+    program_pack::Pack,
     pubkey::Pubkey,
     rent::Rent,
     sysvar::Sysvar,
 };
 use spl_governance_tools::account::create_and_serialize_account_signed;
+use spl_token::{instruction::AuthorityType, state::Mint};
 
 /// Processes CreateMintGovernance instruction
 pub fn process_create_mint_governance(
@@ -90,7 +92,21 @@ pub fn process_create_mint_governance(
             governed_mint_authority_info,
             mint_governance_info.key,
             spl_token_info,
+            AuthorityType::MintTokens,
         )?;
+
+        // If the mint has freeze_authority then transfer it as well
+        let mint_data = Mint::unpack(&governed_mint_info.data.borrow())?;
+        // Note: The code assumes mint_authority==freeze_authority and if this is not the case then the caller should set the authority accordingly
+        if mint_data.freeze_authority.is_some() {
+            set_spl_token_mint_authority(
+                governed_mint_info,
+                governed_mint_authority_info,
+                mint_governance_info.key,
+                spl_token_info,
+                AuthorityType::FreezeAccount,
+            )?;
+        }
     } else {
         assert_spl_token_mint_authority_is_signer(
             governed_mint_info,

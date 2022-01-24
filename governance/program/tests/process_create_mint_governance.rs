@@ -226,3 +226,48 @@ async fn test_create_mint_governance_with_invalid_realm_error() {
     // Assert
     assert_eq!(err, GovernanceToolsError::InvalidAccountType.into());
 }
+
+#[tokio::test]
+async fn test_create_mint_governance_with_freeze_authority_transfer() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_mint_cookie = governance_test.with_freezable_governed_mint().await;
+
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    // Act
+    let mint_governance_cookie = governance_test
+        .with_mint_governance(
+            &realm_cookie,
+            &governed_mint_cookie,
+            &token_owner_record_cookie,
+        )
+        .await
+        .unwrap();
+
+    // // Assert
+    let mint_governance_account = governance_test
+        .get_governance_account(&mint_governance_cookie.address)
+        .await;
+
+    assert_eq!(mint_governance_cookie.account, mint_governance_account);
+
+    let mint_account = governance_test
+        .get_mint_account(&governed_mint_cookie.address)
+        .await;
+
+    assert_eq!(
+        mint_governance_cookie.address,
+        mint_account.mint_authority.unwrap()
+    );
+
+    assert_eq!(
+        mint_governance_cookie.address,
+        mint_account.freeze_authority.unwrap()
+    );
+}

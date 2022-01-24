@@ -107,6 +107,7 @@ impl GovernanceChatProgramTest {
             .create_mint(
                 &governing_token_mint_keypair,
                 &governing_token_mint_authority.pubkey(),
+                None,
             )
             .await;
 

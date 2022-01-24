@@ -113,7 +113,12 @@ impl ProgramTestBench {
         }
     }
 
-    pub async fn create_mint(&mut self, mint_keypair: &Keypair, mint_authority: &Pubkey) {
+    pub async fn create_mint(
+        &mut self,
+        mint_keypair: &Keypair,
+        mint_authority: &Pubkey,
+        freeze_authority: Option<&Pubkey>,
+    ) {
         let mint_rent = self.rent.minimum_balance(spl_token::state::Mint::LEN);
 
         let instructions = [
@@ -128,7 +133,7 @@ impl ProgramTestBench {
                 &spl_token::id(),
                 &mint_keypair.pubkey(),
                 mint_authority,
-                None,
+                freeze_authority,
                 0,
             )
             .unwrap(),
