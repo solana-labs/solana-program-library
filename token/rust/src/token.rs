@@ -10,11 +10,12 @@ use solana_sdk::{
     transaction::Transaction,
 };
 use spl_associated_token_account::{
-    get_associated_token_address, instruction::create_associated_token_account,
+    get_associated_token_address_with_program_id,
+    instruction::create_associated_token_account_with_program_id,
 };
 use spl_token_2022::{
     extension::{transfer_fee, ExtensionType, StateWithExtensionsOwned},
-    id, instruction,
+    instruction,
     state::{Account, Mint},
 };
 use std::{fmt, sync::Arc};
@@ -105,6 +106,7 @@ pub struct Token<T, S> {
     client: Arc<dyn ProgramClient<T>>,
     pubkey: Pubkey,
     payer: S,
+    program_id: Pubkey,
 }
 
 impl<T, S> fmt::Debug for Token<T, S>
@@ -124,11 +126,17 @@ where
     T: SendTransaction,
     S: Signer,
 {
-    pub fn new(client: Arc<dyn ProgramClient<T>>, address: Pubkey, payer: S) -> Self {
+    pub fn new(
+        client: Arc<dyn ProgramClient<T>>,
+        program_id: &Pubkey,
+        address: &Pubkey,
+        payer: S,
+    ) -> Self {
         Token {
             client,
-            pubkey: address,
+            pubkey: *address,
             payer,
+            program_id: *program_id,
         }
     }
 
@@ -142,6 +150,7 @@ where
             client: Arc::clone(&self.client),
             pubkey: self.pubkey,
             payer,
+            program_id: self.program_id,
         }
     }
 
@@ -172,6 +181,7 @@ where
     #[allow(clippy::too_many_arguments)]
     pub async fn create_mint<'a, S2: Signer>(
         client: Arc<dyn ProgramClient<T>>,
+        program_id: &Pubkey,
         payer: S,
         mint_account: &'a S2,
         mint_authority: &'a Pubkey,
@@ -185,7 +195,7 @@ where
             .map(|e| e.extension())
             .collect::<Vec<_>>();
         let space = ExtensionType::get_account_len::<Mint>(&extension_types);
-        let token = Self::new(client, mint_account.pubkey(), payer);
+        let token = Self::new(client, program_id, &mint_account.pubkey(), payer);
         let mut instructions = vec![system_instruction::create_account(
             &token.payer.pubkey(),
             &mint_pubkey,
@@ -195,13 +205,13 @@ where
                 .await
                 .map_err(TokenError::Client)?,
             space as u64,
-            &id(),
+            program_id,
         )];
         for params in extension_initialization_params {
-            instructions.push(params.instruction(&id(), &mint_pubkey)?);
+            instructions.push(params.instruction(program_id, &mint_pubkey)?);
         }
         instructions.push(instruction::initialize_mint(
-            &id(),
+            program_id,
             &mint_pubkey,
             mint_authority,
             freeze_authority,
@@ -214,16 +224,17 @@ where
 
     /// Get the address for the associated token account.
     pub fn get_associated_token_address(&self, owner: &Pubkey) -> Pubkey {
-        get_associated_token_address(owner, &self.pubkey)
+        get_associated_token_address_with_program_id(owner, &self.pubkey, &self.program_id)
     }
 
     /// Create and initialize the associated account.
     pub async fn create_associated_token_account(&self, owner: &Pubkey) -> TokenResult<Pubkey> {
         self.process_ixs(
-            &[create_associated_token_account(
+            &[create_associated_token_account_with_program_id(
                 &self.payer.pubkey(),
                 owner,
                 &self.pubkey,
+                &self.program_id,
             )],
             &[&self.payer],
         )
@@ -248,9 +259,14 @@ where
                         .await
                         .map_err(TokenError::Client)?,
                     Account::LEN as u64,
-                    &id(),
+                    &self.program_id,
                 ),
-                instruction::initialize_account(&id(), &account.pubkey(), &self.pubkey, owner)?,
+                instruction::initialize_account(
+                    &self.program_id,
+                    &account.pubkey(),
+                    &self.pubkey,
+                    owner,
+                )?,
             ],
             &[&self.payer, account],
         )
@@ -271,7 +287,7 @@ where
     /// Retrive mint information.
     pub async fn get_mint_info(&self) -> TokenResult<StateWithExtensionsOwned<Mint>> {
         let account = self.get_account(self.pubkey).await?;
-        if account.owner != id() {
+        if account.owner != self.program_id {
             return Err(TokenError::AccountInvalidOwner);
         }
 
@@ -281,7 +297,7 @@ where
     /// Retrieve account information.
     pub async fn get_account_info(&self, account: Pubkey) -> TokenResult<Account> {
         let account = self.get_account(account).await?;
-        if account.owner != id() {
+        if account.owner != self.program_id {
             return Err(TokenError::AccountInvalidOwner);
         }
         let account = Account::unpack_from_slice(&account.data)?;
@@ -319,7 +335,7 @@ where
     ) -> TokenResult<()> {
         self.process_ixs(
             &[instruction::set_authority(
-                &id(),
+                &self.program_id,
                 account,
                 new_authority,
                 authority_type,
@@ -341,7 +357,7 @@ where
     ) -> TokenResult<()> {
         self.process_ixs(
             &[instruction::mint_to(
-                &id(),
+                &self.program_id,
                 &self.pubkey,
                 dest,
                 &authority.pubkey(),
@@ -365,7 +381,7 @@ where
     ) -> TokenResult<T::Output> {
         self.process_ixs(
             &[instruction::transfer_checked(
-                &id(),
+                &self.program_id,
                 source,
                 &self.pubkey,
                 destination,
@@ -388,7 +404,7 @@ where
     ) -> TokenResult<T::Output> {
         self.process_ixs(
             &[instruction::close_account(
-                &id(),
+                &self.program_id,
                 account,
                 destination,
                 &authority.pubkey(),
