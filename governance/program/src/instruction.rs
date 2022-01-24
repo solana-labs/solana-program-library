@@ -410,10 +410,11 @@ pub enum GovernanceInstruction {
     ///
     ///   0. `[writable]` Realm account
     ///   1. `[signer]` Current Realm authority    
+    ///   2. `[]` New realm authority. Must be one of the realm governances when set
     SetRealmAuthority {
         #[allow(dead_code)]
-        /// New realm authority or None to remove authority
-        new_realm_authority: Option<Pubkey>,
+        /// Indicates whether the realm authority should be removed and set to None
+        remove_authority: bool,
     },
 
     /// Sets realm config
@@ -1271,14 +1272,19 @@ pub fn set_realm_authority(
     new_realm_authority: &Option<Pubkey>,
     // Args
 ) -> Instruction {
-    let accounts = vec![
+    let mut accounts = vec![
         AccountMeta::new(*realm, false),
         AccountMeta::new_readonly(*realm_authority, true),
     ];
 
-    let instruction = GovernanceInstruction::SetRealmAuthority {
-        new_realm_authority: *new_realm_authority,
+    let remove_authority = if let Some(new_realm_authority) = new_realm_authority {
+        accounts.push(AccountMeta::new_readonly(*new_realm_authority, false));
+        false
+    } else {
+        true
     };
+
+    let instruction = GovernanceInstruction::SetRealmAuthority { remove_authority };
 
     Instruction {
         program_id: *program_id,

@@ -7,13 +7,16 @@ use solana_program::{
     pubkey::Pubkey,
 };
 
-use crate::{error::GovernanceError, state::realm::get_realm_data_for_authority};
+use crate::{
+    error::GovernanceError,
+    state::{governance::assert_governance_for_realm, realm::get_realm_data_for_authority},
+};
 
 /// Processes SetRealmAuthority instruction
 pub fn process_set_realm_authority(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    new_realm_authority: Option<Pubkey>,
+    remove_authority: bool,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -26,6 +29,16 @@ pub fn process_set_realm_authority(
     if !realm_authority_info.is_signer {
         return Err(GovernanceError::RealmAuthorityMustSign.into());
     }
+
+    let new_realm_authority = if remove_authority {
+        None
+    } else {
+        // Ensure the new realm authority is one of the governances from the realm
+        let new_realm_authority_info = next_account_info(account_info_iter)?; // 2
+        assert_governance_for_realm(program_id, new_realm_authority_info, realm_info.key)?;
+
+        Some(*new_realm_authority_info.key)
+    };
 
     realm_data.authority = new_realm_authority;
 
