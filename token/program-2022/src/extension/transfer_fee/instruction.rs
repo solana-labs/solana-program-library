@@ -256,12 +256,14 @@ impl TransferFeeInstruction {
 
 /// Create a `InitializeTransferFeeConfig` instruction
 pub fn initialize_transfer_fee_config(
-    mint: Pubkey,
-    transfer_fee_config_authority: COption<Pubkey>,
-    withdraw_withheld_authority: COption<Pubkey>,
+    mint: &Pubkey,
+    transfer_fee_config_authority: Option<&Pubkey>,
+    withdraw_withheld_authority: Option<&Pubkey>,
     transfer_fee_basis_points: u16,
     maximum_fee: u64,
 ) -> Instruction {
+    let transfer_fee_config_authority = transfer_fee_config_authority.cloned().into();
+    let withdraw_withheld_authority = withdraw_withheld_authority.cloned().into();
     let data = TokenInstruction::TransferFeeExtension(
         TransferFeeInstruction::InitializeTransferFeeConfig {
             transfer_fee_config_authority,
@@ -274,7 +276,7 @@ pub fn initialize_transfer_fee_config(
 
     Instruction {
         program_id: id(),
-        accounts: vec![AccountMeta::new(mint, false)],
+        accounts: vec![AccountMeta::new(*mint, false)],
         data,
     }
 }
@@ -282,11 +284,11 @@ pub fn initialize_transfer_fee_config(
 /// Create a `TransferCheckedWithFee` instruction
 #[allow(clippy::too_many_arguments)]
 pub fn transfer_checked_with_fee(
-    source: Pubkey,
-    mint: Pubkey,
-    destination: Pubkey,
-    authority: Pubkey,
-    signers: &[Pubkey],
+    source: &Pubkey,
+    mint: &Pubkey,
+    destination: &Pubkey,
+    authority: &Pubkey,
+    signers: &[&Pubkey],
     amount: u64,
     decimals: u8,
     fee: u64,
@@ -300,12 +302,12 @@ pub fn transfer_checked_with_fee(
         .pack();
 
     let mut accounts = Vec::with_capacity(4 + signers.len());
-    accounts.push(AccountMeta::new(source, false));
-    accounts.push(AccountMeta::new_readonly(mint, false));
-    accounts.push(AccountMeta::new(destination, false));
-    accounts.push(AccountMeta::new_readonly(authority, signers.is_empty()));
+    accounts.push(AccountMeta::new(*source, false));
+    accounts.push(AccountMeta::new_readonly(*mint, false));
+    accounts.push(AccountMeta::new(*destination, false));
+    accounts.push(AccountMeta::new_readonly(*authority, signers.is_empty()));
     for signer in signers.iter() {
-        accounts.push(AccountMeta::new_readonly(*signer, true));
+        accounts.push(AccountMeta::new_readonly(**signer, true));
     }
 
     Instruction {
@@ -317,17 +319,17 @@ pub fn transfer_checked_with_fee(
 
 /// Creates a `WithdrawWithheldTokensFromMint` instruction
 pub fn withdraw_withheld_tokens_from_mint(
-    mint: Pubkey,
-    destination: Pubkey,
-    authority: Pubkey,
-    signers: &[Pubkey],
+    mint: &Pubkey,
+    destination: &Pubkey,
+    authority: &Pubkey,
+    signers: &[&Pubkey],
 ) -> Instruction {
     let mut accounts = Vec::with_capacity(3 + signers.len());
-    accounts.push(AccountMeta::new(mint, false));
-    accounts.push(AccountMeta::new(destination, false));
-    accounts.push(AccountMeta::new_readonly(authority, signers.is_empty()));
+    accounts.push(AccountMeta::new(*mint, false));
+    accounts.push(AccountMeta::new(*destination, false));
+    accounts.push(AccountMeta::new_readonly(*authority, signers.is_empty()));
     for signer in signers.iter() {
-        accounts.push(AccountMeta::new_readonly(*signer, true));
+        accounts.push(AccountMeta::new_readonly(**signer, true));
     }
 
     Instruction {
@@ -342,21 +344,21 @@ pub fn withdraw_withheld_tokens_from_mint(
 
 /// Creates a `WithdrawWithheldTokensFromAccounts` instruction
 pub fn withdraw_withheld_tokens_from_accounts(
-    mint: Pubkey,
-    destination: Pubkey,
-    authority: Pubkey,
-    signers: &[Pubkey],
-    sources: &[Pubkey],
+    mint: &Pubkey,
+    destination: &Pubkey,
+    authority: &Pubkey,
+    signers: &[&Pubkey],
+    sources: &[&Pubkey],
 ) -> Instruction {
     let mut accounts = Vec::with_capacity(3 + signers.len() + sources.len());
-    accounts.push(AccountMeta::new_readonly(mint, false));
-    accounts.push(AccountMeta::new(destination, false));
-    accounts.push(AccountMeta::new_readonly(authority, signers.is_empty()));
+    accounts.push(AccountMeta::new_readonly(*mint, false));
+    accounts.push(AccountMeta::new(*destination, false));
+    accounts.push(AccountMeta::new_readonly(*authority, signers.is_empty()));
     for signer in signers.iter() {
-        accounts.push(AccountMeta::new_readonly(*signer, true));
+        accounts.push(AccountMeta::new_readonly(**signer, true));
     }
     for source in sources.iter() {
-        accounts.push(AccountMeta::new(*source, false));
+        accounts.push(AccountMeta::new(**source, false));
     }
 
     Instruction {
@@ -370,11 +372,11 @@ pub fn withdraw_withheld_tokens_from_accounts(
 }
 
 /// Creates a `HarvestWithheldTokensToMint` instruction
-pub fn harvest_withheld_tokens_to_mint(mint: Pubkey, sources: &[Pubkey]) -> Instruction {
+pub fn harvest_withheld_tokens_to_mint(mint: &Pubkey, sources: &[&Pubkey]) -> Instruction {
     let mut accounts = Vec::with_capacity(1 + sources.len());
-    accounts.push(AccountMeta::new(mint, false));
+    accounts.push(AccountMeta::new(*mint, false));
     for source in sources.iter() {
-        accounts.push(AccountMeta::new(*source, false));
+        accounts.push(AccountMeta::new(**source, false));
     }
     Instruction {
         program_id: id(),
@@ -388,17 +390,17 @@ pub fn harvest_withheld_tokens_to_mint(mint: Pubkey, sources: &[Pubkey]) -> Inst
 
 /// Creates a `SetTransferFee` instruction
 pub fn set_transfer_fee(
-    mint: Pubkey,
-    authority: Pubkey,
-    signers: &[Pubkey],
+    mint: &Pubkey,
+    authority: &Pubkey,
+    signers: &[&Pubkey],
     transfer_fee_basis_points: u16,
     maximum_fee: u64,
 ) -> Instruction {
     let mut accounts = Vec::with_capacity(2 + signers.len());
-    accounts.push(AccountMeta::new(mint, false));
-    accounts.push(AccountMeta::new_readonly(authority, signers.is_empty()));
+    accounts.push(AccountMeta::new(*mint, false));
+    accounts.push(AccountMeta::new_readonly(*authority, signers.is_empty()));
     for signer in signers.iter() {
-        accounts.push(AccountMeta::new_readonly(*signer, true));
+        accounts.push(AccountMeta::new_readonly(**signer, true));
     }
 
     Instruction {

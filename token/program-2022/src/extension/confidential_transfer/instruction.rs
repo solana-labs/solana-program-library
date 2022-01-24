@@ -327,8 +327,8 @@ fn encode_instruction<T: Pod>(
 }
 
 /// Create a `InitializeMint` instruction
-pub fn initialize_mint(mint: Pubkey, auditor: &ConfidentialTransferMint) -> Instruction {
-    let accounts = vec![AccountMeta::new(mint, false)];
+pub fn initialize_mint(mint: &Pubkey, auditor: &ConfidentialTransferMint) -> Instruction {
+    let accounts = vec![AccountMeta::new(*mint, false)];
     encode_instruction(
         accounts,
         ConfidentialTransferInstruction::InitializeMint,
@@ -337,13 +337,13 @@ pub fn initialize_mint(mint: Pubkey, auditor: &ConfidentialTransferMint) -> Inst
 }
 /// Create a `UpdateMint` instruction
 pub fn update_mint(
-    mint: Pubkey,
+    mint: &Pubkey,
     new_auditor: &ConfidentialTransferMint,
-    authority: Pubkey,
+    authority: &Pubkey,
 ) -> Instruction {
     let accounts = vec![
-        AccountMeta::new(mint, false),
-        AccountMeta::new_readonly(authority, true),
+        AccountMeta::new(*mint, false),
+        AccountMeta::new_readonly(*authority, true),
         AccountMeta::new_readonly(
             new_auditor.authority,
             new_auditor.authority != Pubkey::default(),
@@ -359,17 +359,17 @@ pub fn update_mint(
 /// Create a `ConfigureAccount` instruction
 #[cfg(not(target_arch = "bpf"))]
 pub fn configure_account(
-    token_account: Pubkey,
-    mint: Pubkey,
+    token_account: &Pubkey,
+    mint: &Pubkey,
     elgamal_pk: ElGamalPubkey,
     decryptable_zero_balance: AeCiphertext,
-    authority: Pubkey,
+    authority: &Pubkey,
     multisig_signers: &[&Pubkey],
 ) -> Vec<Instruction> {
     let mut accounts = vec![
-        AccountMeta::new(token_account, false),
-        AccountMeta::new_readonly(mint, false),
-        AccountMeta::new_readonly(authority, multisig_signers.is_empty()),
+        AccountMeta::new(*token_account, false),
+        AccountMeta::new_readonly(*mint, false),
+        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
     ];
 
     for multisig_signer in multisig_signers.iter() {
@@ -387,11 +387,15 @@ pub fn configure_account(
 }
 
 /// Create an `ApproveAccount` instruction
-pub fn approve_account(mint: Pubkey, account_to_approve: Pubkey, authority: Pubkey) -> Instruction {
+pub fn approve_account(
+    mint: &Pubkey,
+    account_to_approve: &Pubkey,
+    authority: &Pubkey,
+) -> Instruction {
     let accounts = vec![
-        AccountMeta::new(account_to_approve, false),
-        AccountMeta::new_readonly(mint, false),
-        AccountMeta::new_readonly(authority, true),
+        AccountMeta::new(*account_to_approve, false),
+        AccountMeta::new_readonly(*mint, false),
+        AccountMeta::new_readonly(*authority, true),
     ];
     encode_instruction(
         accounts,
@@ -404,15 +408,15 @@ pub fn approve_account(mint: Pubkey, account_to_approve: Pubkey, authority: Pubk
 ///
 /// This instruction is suitable for use with a cross-program `invoke`
 pub fn inner_empty_account(
-    token_account: Pubkey,
-    authority: Pubkey,
+    token_account: &Pubkey,
+    authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     proof_instruction_offset: i8,
 ) -> Instruction {
     let mut accounts = vec![
-        AccountMeta::new_readonly(token_account, false),
+        AccountMeta::new_readonly(*token_account, false),
         AccountMeta::new_readonly(sysvar::instructions::id(), false),
-        AccountMeta::new_readonly(authority, multisig_signers.is_empty()),
+        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
     ];
 
     for multisig_signer in multisig_signers.iter() {
@@ -430,8 +434,8 @@ pub fn inner_empty_account(
 
 /// Create a `EmptyAccount` instruction
 pub fn empty_account(
-    token_account: Pubkey,
-    authority: Pubkey,
+    token_account: &Pubkey,
+    authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     proof_data: &CloseAccountData,
 ) -> Vec<Instruction> {
@@ -443,19 +447,19 @@ pub fn empty_account(
 
 /// Create a `Deposit` instruction
 pub fn deposit(
-    source_token_account: Pubkey,
-    mint: Pubkey,
-    destination_token_account: Pubkey,
+    source_token_account: &Pubkey,
+    mint: &Pubkey,
+    destination_token_account: &Pubkey,
     amount: u64,
     decimals: u8,
-    authority: Pubkey,
+    authority: &Pubkey,
     multisig_signers: &[&Pubkey],
 ) -> Vec<Instruction> {
     let mut accounts = vec![
-        AccountMeta::new(source_token_account, false),
-        AccountMeta::new(destination_token_account, false),
-        AccountMeta::new_readonly(mint, false),
-        AccountMeta::new_readonly(authority, multisig_signers.is_empty()),
+        AccountMeta::new(*source_token_account, false),
+        AccountMeta::new(*destination_token_account, false),
+        AccountMeta::new_readonly(*mint, false),
+        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
     ];
 
     for multisig_signer in multisig_signers.iter() {
@@ -477,22 +481,22 @@ pub fn deposit(
 /// This instruction is suitable for use with a cross-program `invoke`
 #[allow(clippy::too_many_arguments)]
 pub fn inner_withdraw(
-    source_token_account: Pubkey,
-    destination_token_account: Pubkey,
+    source_token_account: &Pubkey,
+    destination_token_account: &Pubkey,
     mint: &Pubkey,
     amount: u64,
     decimals: u8,
     new_decryptable_available_balance: pod::AeCiphertext,
-    authority: Pubkey,
+    authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     proof_instruction_offset: i8,
 ) -> Instruction {
     let mut accounts = vec![
-        AccountMeta::new(source_token_account, false),
-        AccountMeta::new(destination_token_account, false),
+        AccountMeta::new(*source_token_account, false),
+        AccountMeta::new(*destination_token_account, false),
         AccountMeta::new_readonly(*mint, false),
         AccountMeta::new_readonly(sysvar::instructions::id(), false),
-        AccountMeta::new_readonly(authority, multisig_signers.is_empty()),
+        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
     ];
 
     for multisig_signer in multisig_signers.iter() {
@@ -515,13 +519,13 @@ pub fn inner_withdraw(
 #[allow(clippy::too_many_arguments)]
 #[cfg(not(target_arch = "bpf"))]
 pub fn withdraw(
-    source_token_account: Pubkey,
-    destination_token_account: Pubkey,
+    source_token_account: &Pubkey,
+    destination_token_account: &Pubkey,
     mint: &Pubkey,
     amount: u64,
     decimals: u8,
     new_decryptable_available_balance: AeCiphertext,
-    authority: Pubkey,
+    authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     proof_data: &WithdrawData,
 ) -> Vec<Instruction> {
@@ -546,20 +550,20 @@ pub fn withdraw(
 /// This instruction is suitable for use with a cross-program `invoke`
 #[allow(clippy::too_many_arguments)]
 pub fn inner_transfer(
-    source_token_account: Pubkey,
-    destination_token_account: Pubkey,
-    mint: Pubkey,
+    source_token_account: &Pubkey,
+    destination_token_account: &Pubkey,
+    mint: &Pubkey,
     new_source_decryptable_available_balance: pod::AeCiphertext,
-    authority: Pubkey,
+    authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     proof_instruction_offset: i8,
 ) -> Instruction {
     let mut accounts = vec![
-        AccountMeta::new(source_token_account, false),
-        AccountMeta::new(destination_token_account, false),
-        AccountMeta::new_readonly(mint, false),
+        AccountMeta::new(*source_token_account, false),
+        AccountMeta::new(*destination_token_account, false),
+        AccountMeta::new_readonly(*mint, false),
         AccountMeta::new_readonly(sysvar::instructions::id(), false),
-        AccountMeta::new_readonly(authority, multisig_signers.is_empty()),
+        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
     ];
 
     for multisig_signer in multisig_signers.iter() {
@@ -580,11 +584,11 @@ pub fn inner_transfer(
 #[allow(clippy::too_many_arguments)]
 #[cfg(not(target_arch = "bpf"))]
 pub fn transfer(
-    source_token_account: Pubkey,
-    destination_token_account: Pubkey,
-    mint: Pubkey,
+    source_token_account: &Pubkey,
+    destination_token_account: &Pubkey,
+    mint: &Pubkey,
     new_source_decryptable_available_balance: AeCiphertext,
-    authority: Pubkey,
+    authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     proof_data: &TransferData,
 ) -> Vec<Instruction> {
@@ -607,15 +611,15 @@ pub fn transfer(
 /// This instruction is suitable for use with a cross-program `invoke`
 #[allow(clippy::too_many_arguments)]
 pub fn inner_apply_pending_balance(
-    token_account: Pubkey,
+    token_account: &Pubkey,
     expected_pending_balance_credit_counter: u64,
     new_decryptable_available_balance: pod::AeCiphertext,
-    authority: Pubkey,
+    authority: &Pubkey,
     multisig_signers: &[&Pubkey],
 ) -> Instruction {
     let mut accounts = vec![
-        AccountMeta::new(token_account, false),
-        AccountMeta::new_readonly(authority, multisig_signers.is_empty()),
+        AccountMeta::new(*token_account, false),
+        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
     ];
 
     for multisig_signer in multisig_signers.iter() {
@@ -635,10 +639,10 @@ pub fn inner_apply_pending_balance(
 /// Create a `ApplyPendingBalance` instruction
 #[cfg(not(target_arch = "bpf"))]
 pub fn apply_pending_balance(
-    token_account: Pubkey,
+    token_account: &Pubkey,
     pending_balance_instructions: u64,
     new_decryptable_available_balance: AeCiphertext,
-    authority: Pubkey,
+    authority: &Pubkey,
     multisig_signers: &[&Pubkey],
 ) -> Vec<Instruction> {
     vec![inner_apply_pending_balance(
@@ -652,13 +656,13 @@ pub fn apply_pending_balance(
 
 /// Create a `EnableBalanceCredits` instruction
 pub fn enable_balance_credits(
-    token_account: Pubkey,
-    authority: Pubkey,
+    token_account: &Pubkey,
+    authority: &Pubkey,
     multisig_signers: &[&Pubkey],
 ) -> Vec<Instruction> {
     let mut accounts = vec![
-        AccountMeta::new(token_account, false),
-        AccountMeta::new_readonly(authority, multisig_signers.is_empty()),
+        AccountMeta::new(*token_account, false),
+        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
     ];
 
     for multisig_signer in multisig_signers.iter() {
@@ -675,13 +679,13 @@ pub fn enable_balance_credits(
 /// Create a `DisableBalanceCredits` instruction
 #[cfg(not(target_arch = "bpf"))]
 pub fn disable_balance_credits(
-    token_account: Pubkey,
-    authority: Pubkey,
+    token_account: &Pubkey,
+    authority: &Pubkey,
     multisig_signers: &[&Pubkey],
 ) -> Vec<Instruction> {
     let mut accounts = vec![
-        AccountMeta::new(token_account, false),
-        AccountMeta::new_readonly(authority, multisig_signers.is_empty()),
+        AccountMeta::new(*token_account, false),
+        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
     ];
 
     for multisig_signer in multisig_signers.iter() {

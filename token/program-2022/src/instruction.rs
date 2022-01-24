@@ -1422,9 +1422,10 @@ pub fn get_account_data_size(
 pub fn initialize_mint_close_authority(
     token_program_id: &Pubkey,
     mint_pubkey: &Pubkey,
-    close_authority: COption<Pubkey>,
+    close_authority: Option<&Pubkey>,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
+    let close_authority = close_authority.cloned().into();
     Ok(Instruction {
         program_id: *token_program_id,
         accounts: vec![AccountMeta::new(*mint_pubkey, false)],
