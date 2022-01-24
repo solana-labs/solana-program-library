@@ -3524,7 +3524,7 @@ dependencies = [
 
 [[package]]
 name = "spl-associated-token-account"
-version = "1.0.4"
+version = "1.0.5"
 dependencies = [
  "borsh",
  "solana-program",
@@ -3839,7 +3839,7 @@ dependencies = [
  "solana-program",
  "solana-remote-wallet",
  "solana-sdk",
- "spl-associated-token-account 1.0.4",
+ "spl-associated-token-account 1.0.5",
  "spl-stake-pool",
  "spl-token 3.3.0",
 ]
@@ -3909,7 +3909,7 @@ dependencies = [
  "solana-remote-wallet",
  "solana-sdk",
  "solana-transaction-status",
- "spl-associated-token-account 1.0.4",
+ "spl-associated-token-account 1.0.5",
  "spl-memo 3.0.1",
  "spl-token 3.3.0",
 ]
@@ -3922,7 +3922,7 @@ dependencies = [
  "solana-client",
  "solana-program-test",
  "solana-sdk",
- "spl-associated-token-account 1.0.4",
+ "spl-associated-token-account 1.0.5",
  "spl-token-2022",
  "thiserror",
 ]
@@ -4010,7 +4010,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-associated-token-account 1.0.4",
+ "spl-associated-token-account 1.0.5",
  "spl-token 3.3.0",
  "thiserror",
 ]
