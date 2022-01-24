@@ -127,6 +127,16 @@ pub fn get_governance_data_for_realm(
     Ok(governance_data)
 }
 
+/// Checks the given account is a governance account and belongs to the given realm
+pub fn assert_governance_for_realm(
+    program_id: &Pubkey,
+    governance_info: &AccountInfo,
+    realm: &Pubkey,
+) -> Result<(), ProgramError> {
+    get_governance_data_for_realm(program_id, governance_info, realm)?;
+    Ok(())
+}
+
 /// Returns ProgramGovernance PDA seeds
 pub fn get_program_governance_address_seeds<'a>(
     realm: &'a Pubkey,

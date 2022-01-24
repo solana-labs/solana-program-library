@@ -191,9 +191,9 @@ pub fn process_instruction(
         GovernanceInstruction::FlagInstructionError {} => {
             process_flag_instruction_error(program_id, accounts)
         }
-        GovernanceInstruction::SetRealmAuthority {
-            new_realm_authority,
-        } => process_set_realm_authority(program_id, accounts, new_realm_authority),
+        GovernanceInstruction::SetRealmAuthority { remove_authority } => {
+            process_set_realm_authority(program_id, accounts, remove_authority)
+        }
         GovernanceInstruction::SetRealmConfig { config_args } => {
             process_set_realm_config(program_id, accounts, config_args)
         }
