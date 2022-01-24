@@ -3530,7 +3530,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-token-2022",
+ "spl-token 3.3.0",
 ]
 
 [[package]]
