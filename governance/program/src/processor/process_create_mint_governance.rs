@@ -10,7 +10,9 @@ use crate::{
         realm::get_realm_data,
         token_owner_record::get_token_owner_record_data_for_realm,
     },
-    tools::spl_token::{assert_spl_token_mint_authority_is_signer, set_spl_token_mint_authority},
+    tools::spl_token::{
+        assert_spl_token_mint_authority_is_signer, set_spl_token_account_authority,
+    },
 };
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -87,12 +89,12 @@ pub fn process_create_mint_governance(
     )?;
 
     if transfer_mint_authorities {
-        set_spl_token_mint_authority(
+        set_spl_token_account_authority(
             governed_mint_info,
             governed_mint_authority_info,
             mint_governance_info.key,
-            spl_token_info,
             AuthorityType::MintTokens,
+            spl_token_info,
         )?;
 
         // If the mint has freeze_authority then transfer it as well
@@ -100,12 +102,12 @@ pub fn process_create_mint_governance(
         // Note: The code assumes mint_authority==freeze_authority
         //       If this is not the case then the caller should set freeze_authority accordingly before making the transfer
         if mint_data.freeze_authority.is_some() {
-            set_spl_token_mint_authority(
+            set_spl_token_account_authority(
                 governed_mint_info,
                 governed_mint_authority_info,
                 mint_governance_info.key,
-                spl_token_info,
                 AuthorityType::FreezeAccount,
+                spl_token_info,
             )?;
         }
     } else {

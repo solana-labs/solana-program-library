@@ -91,8 +91,8 @@ pub fn process_create_token_governance(
             governed_token_info,
             governed_token_owner_info,
             token_governance_info.key,
-            spl_token_info,
             AuthorityType::AccountOwner,
+            spl_token_info,
         )?;
 
         // If the token account has close_authority then transfer it as well
@@ -104,8 +104,8 @@ pub fn process_create_token_governance(
                 governed_token_info,
                 governed_token_owner_info,
                 token_governance_info.key,
-                spl_token_info,
                 AuthorityType::CloseAccount,
+                spl_token_info,
             )?;
         }
     } else {
