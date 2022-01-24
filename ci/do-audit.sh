@@ -27,7 +27,7 @@ cargo_audit_ignores=(
   # need to update honggfuzz dependency whenever the next version is released
   --ignore RUSTSEC-2020-0077
 
-  # Data race in `Iter` and `IterMut` in thread_local 1.1.3 upstream dependecies 
+  # Data race in `Iter` and `IterMut` in thread_local 1.1.3 upstream dependencies 
   # 
   # Date: 2022-01-23
   # https://rustsec.org/advisories/RUSTSEC-2022-0006
