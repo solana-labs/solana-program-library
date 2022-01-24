@@ -398,4 +398,25 @@ where
         )
         .await
     }
+
+    /// Set transfer fee
+    pub async fn set_transfer_fee<S2: Signer>(
+        &self,
+        authority: &S2,
+        transfer_fee_basis_points: u16,
+        maximum_fee: u64,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[transfer_fee::instruction::set_transfer_fee(
+                &id(),
+                &self.pubkey,
+                &authority.pubkey(),
+                &[],
+                transfer_fee_basis_points,
+                maximum_fee,
+            )?],
+            &[authority],
+        )
+        .await
+    }
 }

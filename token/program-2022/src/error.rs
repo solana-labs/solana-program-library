@@ -105,6 +105,9 @@ pub enum TokenError {
     /// Mint has non-zero supply. Burn all tokens before closing the mint.
     #[error("Mint has non-zero supply. Burn all tokens before closing the mint")]
     MintHasSupply,
+    /// No authority exists to perform the desired operation
+    #[error("No authority exists to perform the desired operation")]
+    NoAuthorityExists,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {

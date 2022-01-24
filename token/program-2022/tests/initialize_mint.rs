@@ -160,7 +160,7 @@ async fn success_extension_and_base() {
         token,
         ..
     } = TestContext::new(vec![ExtensionInitializationParams::MintCloseAuthority {
-        close_authority: close_authority.clone(),
+        close_authority,
     }])
     .await
     .unwrap();
