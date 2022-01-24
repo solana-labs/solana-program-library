@@ -26,5 +26,13 @@ cargo_audit_ignores=(
   # Blcoked on honggfuzz, fixed in https://github.com/rust-fuzz/honggfuzz-rs/pull/55
   # need to update honggfuzz dependency whenever the next version is released
   --ignore RUSTSEC-2020-0077
+
+  # Data race in `Iter` and `IterMut` in thread_local 1.1.3 upstream dependencies 
+  # 
+  # Date: 2022-01-23
+  # https://rustsec.org/advisories/RUSTSEC-2022-0006
+  # Solution: Upgrade to >=1.1.4
+  # Ingored untill fixed in solana sdk 
+  --ignore RUSTSEC-2022-0006
 )
 cargo +"$rust_stable" audit "${cargo_audit_ignores[@]}"
