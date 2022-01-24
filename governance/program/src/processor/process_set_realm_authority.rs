@@ -34,6 +34,8 @@ pub fn process_set_realm_authority(
         None
     } else {
         // Ensure the new realm authority is one of the governances from the realm
+        // Note: This is not a security feature because governance creation is only gated with min_community_tokens_to_create_governance
+        //       The check is done to prevent scenarios where the authority could be accidentally set to a wrong or none existing account
         let new_realm_authority_info = next_account_info(account_info_iter)?; // 2
         assert_governance_for_realm(program_id, new_realm_authority_info, realm_info.key)?;
 
