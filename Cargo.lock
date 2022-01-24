@@ -3656,7 +3656,6 @@ dependencies = [
  "proptest",
  "serde",
  "serde_derive",
- "solana-logger",
  "solana-program",
  "solana-program-test",
  "solana-sdk",
