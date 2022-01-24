@@ -22,6 +22,7 @@ pub(crate) struct Config<'a> {
     pub(crate) sign_only: bool,
     pub(crate) dump_transaction_message: bool,
     pub(crate) multisigner_pubkeys: Vec<&'a Pubkey>,
+    pub(crate) program_id: Pubkey,
 }
 
 impl<'a> Config<'a> {
@@ -63,7 +64,7 @@ impl<'a> Config<'a> {
                 eprintln!("error: {}", e);
                 exit(1);
             });
-        get_associated_token_address(&owner, &token)
+        get_associated_token_address_with_program_id(&owner, &token, &self.program_id)
     }
 
     // Checks if an explicit address was provided, otherwise return the default address.
