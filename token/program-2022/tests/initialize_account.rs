@@ -177,12 +177,14 @@ async fn single_extension() {
             &spl_token_2022::id(),
         ),
         transfer_fee::instruction::initialize_transfer_fee_config(
+            &spl_token_2022::id(),
             &mint_account.pubkey(),
             None,
             None,
             10,
             4242,
-        ),
+        )
+        .unwrap(),
         instruction::initialize_mint(
             &spl_token_2022::id(),
             &mint_account.pubkey(),
