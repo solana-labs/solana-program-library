@@ -12,6 +12,7 @@ use solana_sdk::{account::Account, signature::Keypair, signer::Signer, transacti
 
 use bincode::deserialize;
 
+use spl_token::instruction::{set_authority, AuthorityType};
 use tools::clone_keypair;
 
 use crate::tools::map_transaction_error;
@@ -140,6 +141,28 @@ impl ProgramTestBench {
         ];
 
         self.process_transaction(&instructions, Some(&[mint_keypair]))
+            .await
+            .unwrap();
+    }
+
+    pub async fn set_spl_token_program_account_authority(
+        &mut self,
+        account: &Pubkey,
+        account_authority: &Keypair,
+        new_authority: Option<&Pubkey>,
+        authority_type: AuthorityType,
+    ) {
+        let set_authority_ix = set_authority(
+            &spl_token::id(),
+            account,
+            new_authority,
+            authority_type,
+            &account_authority.pubkey(),
+            &[],
+        )
+        .unwrap();
+
+        self.process_transaction(&[set_authority_ix], Some(&[account_authority]))
             .await
             .unwrap();
     }

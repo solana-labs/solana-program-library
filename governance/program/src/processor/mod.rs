@@ -126,8 +126,13 @@ pub fn process_instruction(
 
         GovernanceInstruction::CreateTokenGovernance {
             config,
-            transfer_token_owner,
-        } => process_create_token_governance(program_id, accounts, config, transfer_token_owner),
+            transfer_account_authorities,
+        } => process_create_token_governance(
+            program_id,
+            accounts,
+            config,
+            transfer_account_authorities,
+        ),
 
         GovernanceInstruction::CreateAccountGovernance { config } => {
             process_create_account_governance(program_id, accounts, config)

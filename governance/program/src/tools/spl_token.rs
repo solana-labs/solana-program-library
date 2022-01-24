@@ -334,18 +334,19 @@ pub fn assert_spl_token_owner_is_signer(
     Ok(())
 }
 
-/// Sets new token account owner
-pub fn set_spl_token_owner<'a>(
+/// Sets token account authority
+pub fn set_spl_token_authority<'a>(
     token_info: &AccountInfo<'a>,
     token_owner: &AccountInfo<'a>,
     new_token_owner: &Pubkey,
     spl_token_info: &AccountInfo<'a>,
+    authority_type: AuthorityType,
 ) -> Result<(), ProgramError> {
     let set_authority_ix = set_authority(
         &spl_token::id(),
         token_info.key,
         Some(new_token_owner),
-        spl_token::instruction::AuthorityType::AccountOwner,
+        authority_type,
         token_owner.key,
         &[],
     )?;
