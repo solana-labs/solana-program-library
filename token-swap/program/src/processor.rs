@@ -1404,7 +1404,7 @@ impl Processor {
             .map(|c| c.owner_key.parse::<Pubkey>().unwrap())
             .ok_or_else(|| ProgramError::InvalidInstructionData)?;
 
-        //unit test has no swap constraints, so no owner key - we use our hard coded key
+        //integration test has no swap constraints, so no owner key - we use our hard coded key
         #[cfg(not(feature = "production"))]
         let owner_key = TEST_OWNER_KEY.parse::<Pubkey>().unwrap();
 
@@ -1445,7 +1445,6 @@ impl Processor {
         }
 
         //new fee account must be the ata of owner fee address and the pool mint
-        //if owner_key is None, this is in a unit test - we have to use something
         let ata = get_associated_token_address(&owner_key, token_swap.pool_mint());
         if new_fee_account.key != &ata {
             return Err(SwapError::IncorrectFeeAccount.into());
