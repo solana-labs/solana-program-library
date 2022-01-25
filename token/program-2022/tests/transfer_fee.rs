@@ -11,6 +11,7 @@ use {
     spl_token_2022::{
         error::TokenError,
         extension::transfer_fee::{TransferFee, TransferFeeConfig},
+        instruction,
     },
     spl_token_client::token::{ExtensionInitializationParams, TokenError as TokenClientError},
     std::convert::TryInto,
@@ -263,4 +264,244 @@ async fn fail_set_fee_unsupported_mint() {
             TransactionError::InstructionError(0, InstructionError::InvalidAccountData)
         )))
     );
+}
+
+#[tokio::test]
+async fn set_transfer_fee_config_authority() {
+    let TransferFeeConfigWithKeypairs {
+        transfer_fee_config_authority,
+        withdraw_withheld_authority,
+        transfer_fee_config: TransferFeeConfig {
+            newer_transfer_fee, ..
+        },
+        ..
+    } = test_transfer_fee_config_with_keypairs();
+    let TestContext { token, .. } =
+        TestContext::new(vec![ExtensionInitializationParams::TransferFeeConfig {
+            transfer_fee_config_authority: transfer_fee_config_authority.pubkey().into(),
+            withdraw_withheld_authority: withdraw_withheld_authority.pubkey().into(),
+            transfer_fee_basis_points: newer_transfer_fee.transfer_fee_basis_points.into(),
+            maximum_fee: newer_transfer_fee.maximum_fee.into(),
+        }])
+        .await
+        .unwrap();
+
+    let new_authority = Keypair::new();
+    let wrong = Keypair::new();
+
+    // fail, wrong signer
+    let err = token
+        .set_authority(
+            token.get_address(),
+            Some(&new_authority.pubkey()),
+            instruction::AuthorityType::TransferFeeConfig,
+            &wrong,
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(
+        err,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::OwnerMismatch as u32)
+            )
+        )))
+    );
+
+    // success
+    token
+        .set_authority(
+            token.get_address(),
+            Some(&new_authority.pubkey()),
+            instruction::AuthorityType::TransferFeeConfig,
+            &transfer_fee_config_authority,
+        )
+        .await
+        .unwrap();
+    let state = token.get_mint_info().await.unwrap();
+    let extension = state.get_extension::<TransferFeeConfig>().unwrap();
+    assert_eq!(
+        extension.transfer_fee_config_authority,
+        Some(new_authority.pubkey()).try_into().unwrap(),
+    );
+
+    // assert new_authority can update transfer fee config, and old cannot
+    let transfer_fee_basis_points = u16::MAX;
+    let maximum_fee = u64::MAX;
+    let err = token
+        .set_transfer_fee(
+            &transfer_fee_config_authority,
+            transfer_fee_basis_points,
+            maximum_fee,
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(
+        err,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::OwnerMismatch as u32)
+            )
+        )))
+    );
+    token
+        .set_transfer_fee(&new_authority, transfer_fee_basis_points, maximum_fee)
+        .await
+        .unwrap();
+
+    // set to none
+    token
+        .set_authority(
+            token.get_address(),
+            None,
+            instruction::AuthorityType::TransferFeeConfig,
+            &new_authority,
+        )
+        .await
+        .unwrap();
+    let state = token.get_mint_info().await.unwrap();
+    let extension = state.get_extension::<TransferFeeConfig>().unwrap();
+    assert_eq!(
+        extension.transfer_fee_config_authority,
+        None.try_into().unwrap(),
+    );
+
+    // fail set again
+    let err = token
+        .set_authority(
+            token.get_address(),
+            Some(&transfer_fee_config_authority.pubkey()),
+            instruction::AuthorityType::TransferFeeConfig,
+            &new_authority,
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(
+        err,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::AuthorityTypeNotSupported as u32)
+            )
+        )))
+    );
+
+    // fail update transfer fee config
+    let err = token
+        .set_transfer_fee(&transfer_fee_config_authority, 0, 0)
+        .await
+        .unwrap_err();
+    assert_eq!(
+        err,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::NoAuthorityExists as u32)
+            )
+        )))
+    );
+}
+
+#[tokio::test]
+async fn set_withdraw_withheld_authority() {
+    let TransferFeeConfigWithKeypairs {
+        transfer_fee_config_authority,
+        withdraw_withheld_authority,
+        transfer_fee_config: TransferFeeConfig {
+            newer_transfer_fee, ..
+        },
+        ..
+    } = test_transfer_fee_config_with_keypairs();
+    let TestContext { token, .. } =
+        TestContext::new(vec![ExtensionInitializationParams::TransferFeeConfig {
+            transfer_fee_config_authority: transfer_fee_config_authority.pubkey().into(),
+            withdraw_withheld_authority: withdraw_withheld_authority.pubkey().into(),
+            transfer_fee_basis_points: newer_transfer_fee.transfer_fee_basis_points.into(),
+            maximum_fee: newer_transfer_fee.maximum_fee.into(),
+        }])
+        .await
+        .unwrap();
+
+    let new_authority = Keypair::new();
+    let wrong = Keypair::new();
+
+    // fail, wrong signer
+    let err = token
+        .set_authority(
+            token.get_address(),
+            Some(&new_authority.pubkey()),
+            instruction::AuthorityType::WithheldWithdraw,
+            &wrong,
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(
+        err,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::OwnerMismatch as u32)
+            )
+        )))
+    );
+
+    // success
+    token
+        .set_authority(
+            token.get_address(),
+            Some(&new_authority.pubkey()),
+            instruction::AuthorityType::WithheldWithdraw,
+            &withdraw_withheld_authority,
+        )
+        .await
+        .unwrap();
+    let state = token.get_mint_info().await.unwrap();
+    let extension = state.get_extension::<TransferFeeConfig>().unwrap();
+    assert_eq!(
+        extension.withdraw_withheld_authority,
+        Some(new_authority.pubkey()).try_into().unwrap(),
+    );
+
+    // TODO: assert new authority can withdraw withheld fees and old cannot
+
+    // set to none
+    token
+        .set_authority(
+            token.get_address(),
+            None,
+            instruction::AuthorityType::WithheldWithdraw,
+            &new_authority,
+        )
+        .await
+        .unwrap();
+    let state = token.get_mint_info().await.unwrap();
+    let extension = state.get_extension::<TransferFeeConfig>().unwrap();
+    assert_eq!(
+        extension.withdraw_withheld_authority,
+        None.try_into().unwrap(),
+    );
+
+    // fail set again
+    let err = token
+        .set_authority(
+            token.get_address(),
+            Some(&withdraw_withheld_authority.pubkey()),
+            instruction::AuthorityType::WithheldWithdraw,
+            &new_authority,
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(
+        err,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::AuthorityTypeNotSupported as u32)
+            )
+        )))
+    );
+
+    // TODO: assert no authority can withdraw withheld fees
 }
