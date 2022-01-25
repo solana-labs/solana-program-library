@@ -23,7 +23,7 @@ pub enum VoterWeightAccountType {
     VoterWeightRecord,
 }
 
-/// The governance action VoterWeight was evaluated for
+/// The governance action VoterWeight is evaluated for
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum VoterWeightAction {
     /// Cast vote for a proposal. Target: Proposal
@@ -40,7 +40,7 @@ pub enum VoterWeightAction {
 }
 
 /// VoterWeightRecord account
-/// The account is used as an interface used to provide voting power to the governance program from external addin contracts
+/// The account is used as an api interface used to provide voting power to the governance program from external addin contracts
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct VoterWeightRecord {
     /// VoterWeightRecord account type
@@ -55,11 +55,11 @@ pub struct VoterWeightRecord {
     pub governing_token_mint: Pubkey,
 
     /// The owner of the governing token and voter
-    /// This is th actual owner (voter) and corresponds to TokenOwnerRecord.governing_token_owner
+    /// This is the actual owner (voter) and corresponds to TokenOwnerRecord.governing_token_owner
     pub governing_token_owner: Pubkey,
 
     /// Voter's weight
-    /// The weight of the voter provided by an addin for the given realm, governing_token_mint and governing_token_owner (voter)
+    /// The weight of the voter provided by the addin for the given realm, governing_token_mint and governing_token_owner (voter)
     pub voter_weight: u64,
 
     /// The slot when the voting weight expires
@@ -71,13 +71,13 @@ pub struct VoterWeightRecord {
 
     /// The governance action the voter's weight pertains to
     /// It allows to provided voter's weight specific to the particular action the weight is evaluated for
-    /// The governance program then asserts the action is the same as specified by the addin
+    /// When the action is provided then the governance program asserts the executing action is the same as specified by the addin
     pub weight_action: Option<VoterWeightAction>,
 
     /// The optional target the voter's weight  action pertains to
-    /// It allows to provided voter's weight specific to the subject the weight is evaluated for
+    /// It allows to provided voter's weight specific to the target the weight is evaluated for
     /// For example when addin supplies weight to vote on a particular proposal then it must specify the proposal as the action target
-    /// The governance program then asserts the target is the same as specified by the addin
+    /// When the target is provided then the governance program asserts the target is the same as specified by the addin
     pub weight_action_target: Option<Pubkey>,
 }
 
@@ -91,7 +91,7 @@ impl IsInitialized for VoterWeightRecord {
 
 impl VoterWeightRecord {
     /// Asserts the VoterWeightRecord hasn't expired and matches the given action and target if specified
-    pub fn assert_is_valid_weight(
+    pub fn assert_is_valid_voter_weight(
         &self,
         weight_action: VoterWeightAction,
         weight_action_target: &Pubkey,

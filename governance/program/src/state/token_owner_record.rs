@@ -204,7 +204,8 @@ impl TokenOwnerRecord {
                 voter_weight_record_info,
                 self,
             )?;
-            voter_weight_record_data.assert_is_valid_weight(weight_action, weight_action_target)?;
+            voter_weight_record_data
+                .assert_is_valid_voter_weight(weight_action, weight_action_target)?;
             Ok(voter_weight_record_data.voter_weight)
         } else {
             Ok(self.governing_token_deposit_amount)
