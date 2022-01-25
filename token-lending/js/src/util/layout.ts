@@ -79,7 +79,7 @@ export const bigInt =
 
         bigIntLayout.decode = (buffer: Buffer, offset: number) => {
             const src = decode(buffer, offset);
-            return toBigIntLE(src);
+            return toBigIntLE(src as Buffer);
         };
 
         bigIntLayout.encode = (bigInt: bigint, buffer: Buffer, offset: number) => {

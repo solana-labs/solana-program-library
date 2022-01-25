@@ -817,7 +817,6 @@ fn process_deposit_obligation_collateral(
     let deposit_reserve_info = next_account_info(account_info_iter)?;
     let obligation_info = next_account_info(account_info_iter)?;
     let lending_market_info = next_account_info(account_info_iter)?;
-    let lending_market_authority_info = next_account_info(account_info_iter)?;
     let obligation_owner_info = next_account_info(account_info_iter)?;
     let user_transfer_authority_info = next_account_info(account_info_iter)?;
     let clock = &Clock::from_account_info(next_account_info(account_info_iter)?)?;
@@ -877,19 +876,6 @@ fn process_deposit_obligation_collateral(
     if !obligation_owner_info.is_signer {
         msg!("Obligation owner provided must be a signer");
         return Err(LendingError::InvalidSigner.into());
-    }
-
-    let authority_signer_seeds = &[
-        lending_market_info.key.as_ref(),
-        &[lending_market.bump_seed],
-    ];
-    let lending_market_authority_pubkey =
-        Pubkey::create_program_address(authority_signer_seeds, program_id)?;
-    if &lending_market_authority_pubkey != lending_market_authority_info.key {
-        msg!(
-            "Derived lending market authority does not match the lending market authority provided"
-        );
-        return Err(LendingError::InvalidMarketAuthority.into());
     }
 
     obligation
@@ -1581,6 +1567,10 @@ fn process_flash_loan(
     }
 
     let mut reserve = Reserve::unpack(&reserve_info.data.borrow())?;
+    if reserve_info.owner != program_id {
+        msg!("Reserve provided is not owned by the lending program");
+        return Err(LendingError::InvalidAccountOwner.into());
+    }
     if &reserve.lending_market != lending_market_info.key {
         msg!("Invalid reserve lending market account");
         return Err(LendingError::InvalidAccountInput.into());
@@ -1782,6 +1772,11 @@ fn get_pyth_price(pyth_price_info: &AccountInfo, clock: &Clock) -> Result<Decima
 
     if pyth_price.ptype != pyth::PriceType::Price {
         msg!("Oracle price type is invalid");
+        return Err(LendingError::InvalidOracleConfig.into());
+    }
+
+    if pyth_price.agg.status != pyth::PriceStatus::Trading {
+        msg!("Oracle price status is invalid");
         return Err(LendingError::InvalidOracleConfig.into());
     }
 

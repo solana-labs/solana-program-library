@@ -8,6 +8,7 @@ use solana_program::{
     rent::Rent,
     sysvar::Sysvar,
 };
+use spl_governance_tools::account::create_and_serialize_account_signed;
 
 use crate::{
     error::GovernanceError,
@@ -19,18 +20,14 @@ use crate::{
             TokenOwnerRecord,
         },
     },
-    tools::{
-        account::create_and_serialize_account_signed,
-        spl_token::{
-            get_spl_token_amount, get_spl_token_mint, get_spl_token_owner, transfer_spl_tokens,
-        },
-    },
+    tools::spl_token::{get_spl_token_mint, get_spl_token_owner, transfer_spl_tokens},
 };
 
 /// Processes DepositGoverningTokens instruction
 pub fn process_deposit_governing_tokens(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
+    amount: u64,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -50,14 +47,14 @@ pub fn process_deposit_governing_tokens(
     let realm_data = get_realm_data(program_id, realm_info)?;
     let governing_token_mint = get_spl_token_mint(governing_token_holding_info)?;
 
+    realm_data.asset_governing_tokens_deposits_allowed(&governing_token_mint)?;
+
     realm_data.assert_is_valid_governing_token_mint_and_holding(
         program_id,
         realm_info.key,
         &governing_token_mint,
         governing_token_holding_info.key,
     )?;
-
-    let amount = get_spl_token_amount(governing_token_source_info)?;
 
     transfer_spl_tokens(
         governing_token_source_info,
@@ -92,7 +89,8 @@ pub fn process_deposit_governing_tokens(
             governance_delegate: None,
             unrelinquished_votes_count: 0,
             total_votes_count: 0,
-            reserved: [0; 8],
+            outstanding_proposal_count: 0,
+            reserved: [0; 7],
         };
 
         create_and_serialize_account_signed(

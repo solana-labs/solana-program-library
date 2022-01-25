@@ -6,12 +6,12 @@ use spl_token_swap::state::SwapVersion;
 use {
     solana_program_test::tokio,
     solana_sdk::{
-        pubkey::Pubkey,
         account::Account,
-        signature::{Keypair, Signer},
-        transaction::TransactionError,
         instruction::InstructionError,
+        pubkey::Pubkey,
+        signature::{Keypair, Signer},
         system_program,
+        transaction::TransactionError,
     },
     spl_token_swap::error::SwapError,
 };
@@ -23,7 +23,7 @@ const POOL_TOKEN_C_AMOUNT: u64 = 400_000_000;
 const USER_TOKEN_A_BAL: u64 = 20_00_000;
 const USER_WILL_SWAP: u64 = 100_000;
 //const USER_WILL_EXPECT: u64 = 114_286;
-//const USER_WILL_RECEIVE: u64 = 113_646; 
+//const USER_WILL_RECEIVE: u64 = 113_646;
 
 /// For unit testing, we need to use a owner key when generating ATAs
 pub const TEST_OWNER_KEY: &str = "5Cebzty8iwgAUx9jyfZVAT2iMvXBECLwEVgT6T8KYmvS";
@@ -46,7 +46,7 @@ async fn fn_swap_repair() {
 
     //grab the atas for later use
     let user_token_c = spl_associated_token_account::get_associated_token_address(
-        &user.pubkey(), 
+        &user.pubkey(),
         &token_c_mint_key.pubkey(),
     );
 
@@ -146,10 +146,10 @@ async fn fn_swap_repair() {
 
     //pull a G and close the fee token account
     helpers::close_token_account(
-        &mut banks_client, 
-        &payer, 
-        &recent_blockhash, 
-        &swap1.pool_fee_key.pubkey(), 
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &swap1.pool_fee_key.pubkey(),
         &payer,
     )
     .await
@@ -157,30 +157,34 @@ async fn fn_swap_repair() {
 
     //simple swap should still work, because we now ignore missing fee accounts
     {
-    swap1
-        .routed_swap(
-            &mut banks_client,
-            &user,
-            &recent_blockhash,
-            &swap2,
-            &user_token_a.pubkey(),
-            None,
-            None,
-            USER_WILL_SWAP,
-            0, //not testing exacts, just testing fee paying
-        )
-        .await
-        .unwrap();
+        swap1
+            .routed_swap(
+                &mut banks_client,
+                &user,
+                &recent_blockhash,
+                &swap2,
+                &user_token_a.pubkey(),
+                None,
+                None,
+                USER_WILL_SWAP,
+                0, //not testing exacts, just testing fee paying
+            )
+            .await
+            .unwrap();
     }
 
     //assert the fee account still doesnt exist, of course, because G closed it
-    assert!(banks_client.get_account(swap1.pool_fee_key.pubkey()).await.unwrap().is_none());
-    
+    assert!(banks_client
+        .get_account(swap1.pool_fee_key.pubkey())
+        .await
+        .unwrap()
+        .is_none());
+
     //create the ata for the fee address
     let ata = helpers::create_associated_token_account(
-        &mut banks_client, 
-        &payer, 
-        &recent_blockhash, 
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
         &TEST_OWNER_KEY.parse::<Pubkey>().unwrap(),
         &swap1.pool_mint_key.pubkey(),
     )
@@ -188,17 +192,17 @@ async fn fn_swap_repair() {
     .unwrap();
 
     //repair the swap_pool
-    swap1.repair(
-        &mut banks_client,
-        &user,
-        &recent_blockhash,
-        &ata,
-    )
-    .await
-    .unwrap();
+    swap1
+        .repair(&mut banks_client, &user, &recent_blockhash, &ata)
+        .await
+        .unwrap();
 
     //verify the token swap account was updated with the new key
-    let swap_account = banks_client.get_account(swap1.swap_pubkey).await.unwrap().unwrap();
+    let swap_account = banks_client
+        .get_account(swap1.swap_pubkey)
+        .await
+        .unwrap()
+        .unwrap();
     let swap_account = SwapVersion::unpack(swap_account.data.as_ref()).unwrap();
     assert!(swap_account.pool_fee_account() == &ata);
 
@@ -353,22 +357,22 @@ async fn fn_swap_repair_failures() {
     )
     .await
     .unwrap();
-    //fail to repair the swap_pool 
+    //fail to repair the swap_pool
     {
-        let res = swap1.repair(
-            &mut banks_client,
-            &user,
-            &recent_blockhash,
-            &k.pubkey(),
-        )
+        let res = swap1
+            .repair(&mut banks_client, &user, &recent_blockhash, &k.pubkey())
             .await
             .unwrap_err()
             .unwrap();
 
         //invalidinput because old fee address exists
         assert_eq!(
-            TransactionError::InstructionError(0, InstructionError::Custom(SwapError::InvalidInput as u32)),
-            res);
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(SwapError::InvalidInput as u32)
+            ),
+            res
+        );
     }
 
     //create an owner account but not ata and try to make the fee address while the old address exists
@@ -383,30 +387,30 @@ async fn fn_swap_repair_failures() {
     )
     .await
     .unwrap();
-    //fail to repair the swap_pool 
+    //fail to repair the swap_pool
     {
-        let res = swap1.repair(
-            &mut banks_client,
-            &user,
-            &recent_blockhash,
-            &k.pubkey(),
-        )
+        let res = swap1
+            .repair(&mut banks_client, &user, &recent_blockhash, &k.pubkey())
             .await
             .unwrap_err()
             .unwrap();
-            
+
         //invalidinput because old fee address exists
         assert_eq!(
-            TransactionError::InstructionError(0, InstructionError::Custom(SwapError::InvalidInput as u32)),
-            res);
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(SwapError::InvalidInput as u32)
+            ),
+            res
+        );
     }
 
     //pull a G and close the fee token account
     helpers::close_token_account(
-        &mut banks_client, 
-        &payer, 
-        &recent_blockhash, 
-        &swap1.pool_fee_key.pubkey(), 
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &swap1.pool_fee_key.pubkey(),
         &payer,
     )
     .await
@@ -414,24 +418,28 @@ async fn fn_swap_repair_failures() {
 
     //simple swap should still work, because we now ignore missing fee accounts
     {
-    swap1
-        .routed_swap(
-            &mut banks_client,
-            &user,
-            &recent_blockhash,
-            &swap2,
-            &user_token_a.pubkey(),
-            None,
-            None,
-            USER_WILL_SWAP,
-            0, //not testing exacts, just testing fee paying
-        )
-        .await
-        .unwrap();
+        swap1
+            .routed_swap(
+                &mut banks_client,
+                &user,
+                &recent_blockhash,
+                &swap2,
+                &user_token_a.pubkey(),
+                None,
+                None,
+                USER_WILL_SWAP,
+                0, //not testing exacts, just testing fee paying
+            )
+            .await
+            .unwrap();
     }
 
     //assert the fee account still doesnt exist, of course, because G closed it
-    assert!(banks_client.get_account(swap1.pool_fee_key.pubkey()).await.unwrap().is_none());
+    assert!(banks_client
+        .get_account(swap1.pool_fee_key.pubkey())
+        .await
+        .unwrap()
+        .is_none());
 
     //create a random user account and try to make it the fee address
     let k = Keypair::new();
@@ -445,21 +453,21 @@ async fn fn_swap_repair_failures() {
     )
     .await
     .unwrap();
-    //fail to repair the swap_pool 
+    //fail to repair the swap_pool
     {
-        let res = swap1.repair(
-            &mut banks_client,
-            &user,
-            &recent_blockhash,
-            &k.pubkey(),
-        )
+        let res = swap1
+            .repair(&mut banks_client, &user, &recent_blockhash, &k.pubkey())
             .await
             .unwrap_err()
             .unwrap();
 
         assert_eq!(
-            TransactionError::InstructionError(0, InstructionError::Custom(SwapError::InvalidOwner as u32)),
-            res);
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(SwapError::InvalidOwner as u32)
+            ),
+            res
+        );
     }
 
     //create an owner account but not ata and try to make the fee address
@@ -474,28 +482,28 @@ async fn fn_swap_repair_failures() {
     )
     .await
     .unwrap();
-    //fail to repair the swap_pool 
+    //fail to repair the swap_pool
     {
-        let res = swap1.repair(
-            &mut banks_client,
-            &user,
-            &recent_blockhash,
-            &k.pubkey(),
-        )
+        let res = swap1
+            .repair(&mut banks_client, &user, &recent_blockhash, &k.pubkey())
             .await
             .unwrap_err()
             .unwrap();
-            
+
         assert_eq!(
-            TransactionError::InstructionError(0, InstructionError::Custom(SwapError::IncorrectFeeAccount as u32)),
-            res);
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(SwapError::IncorrectFeeAccount as u32)
+            ),
+            res
+        );
     }
-    
+
     //create the ata for the fee address
     let ata = helpers::create_associated_token_account(
-        &mut banks_client, 
-        &payer, 
-        &recent_blockhash, 
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
         &TEST_OWNER_KEY.parse::<Pubkey>().unwrap(),
         &swap1.pool_mint_key.pubkey(),
     )
@@ -504,36 +512,41 @@ async fn fn_swap_repair_failures() {
 
     //pass the valid ata, but a old fee account that is empty but doesn't match whats recorded on swap acct
     let k = Keypair::new();
-    //fail to repair the swap_pool 
+    //fail to repair the swap_pool
     {
-        let res = swap1.repair_override_old_fee(
-            &mut banks_client,
-            &user,
-            &recent_blockhash,
-            &ata,
-            Some(k.pubkey()),
-        )
+        let res = swap1
+            .repair_override_old_fee(
+                &mut banks_client,
+                &user,
+                &recent_blockhash,
+                &ata,
+                Some(k.pubkey()),
+            )
             .await
             .unwrap_err()
             .unwrap();
-            
+
         assert_eq!(
-            TransactionError::InstructionError(0, InstructionError::Custom(SwapError::IncorrectFeeAccount as u32)),
-            res);
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(SwapError::IncorrectFeeAccount as u32)
+            ),
+            res
+        );
     }
 
     //repair the swap_pool properly
-    swap1.repair(
-        &mut banks_client,
-        &user,
-        &recent_blockhash,
-        &ata,
-    )
-    .await
-    .unwrap();
+    swap1
+        .repair(&mut banks_client, &user, &recent_blockhash, &ata)
+        .await
+        .unwrap();
 
     //verify the token swap account was updated with the new key
-    let swap_account = banks_client.get_account(swap1.swap_pubkey).await.unwrap().unwrap();
+    let swap_account = banks_client
+        .get_account(swap1.swap_pubkey)
+        .await
+        .unwrap()
+        .unwrap();
     let swap_account = SwapVersion::unpack(swap_account.data.as_ref()).unwrap();
     assert!(swap_account.pool_fee_account() == &ata);
 }

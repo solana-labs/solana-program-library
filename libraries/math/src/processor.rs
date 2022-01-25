@@ -111,3 +111,66 @@ pub fn process_instruction(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::instruction::MathInstruction;
+    use borsh::BorshSerialize;
+
+    #[test]
+    fn test_u64_multiply() {
+        assert_eq!(2 * 2, u64_multiply(2, 2));
+        assert_eq!(4 * 3, u64_multiply(4, 3));
+    }
+
+    #[test]
+    fn test_u64_divide() {
+        assert_eq!(1, u64_divide(2, 2));
+        assert_eq!(2, u64_divide(2, 1));
+    }
+
+    #[test]
+    fn test_f32_multiply() {
+        assert_eq!(2.0 * 2.0, f32_multiply(2.0, 2.0));
+        assert_eq!(4.0 * 3.0, f32_multiply(4.0, 3.0));
+    }
+
+    #[test]
+    fn test_f32_divide() {
+        assert_eq!(1.0, f32_divide(2.0, 2.0));
+        assert_eq!(2.0, f32_divide(2.0, 1.0));
+    }
+
+    #[test]
+    fn test_process_instruction() {
+        let program_id = Pubkey::new_unique();
+        for math_instruction in &[
+            MathInstruction::PreciseSquareRoot { radicand: u64::MAX },
+            MathInstruction::SquareRootU64 { radicand: u64::MAX },
+            MathInstruction::SquareRootU128 {
+                radicand: u128::MAX,
+            },
+            MathInstruction::U64Multiply {
+                multiplicand: 3,
+                multiplier: 4,
+            },
+            MathInstruction::U64Divide {
+                dividend: 2,
+                divisor: 2,
+            },
+            MathInstruction::F32Multiply {
+                multiplicand: 3.0,
+                multiplier: 4.0,
+            },
+            MathInstruction::F32Divide {
+                dividend: 2.0,
+                divisor: 2.0,
+            },
+            MathInstruction::Noop,
+        ] {
+            let input = math_instruction.try_to_vec().unwrap();
+            process_instruction(&program_id, &[], &input).unwrap();
+        }
+    }
+}

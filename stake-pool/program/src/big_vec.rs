@@ -90,7 +90,10 @@ impl<'data> BigVec<'data> {
         len: usize,
     ) -> Result<Vec<&'data mut T>, ProgramError> {
         let vec_len = self.len();
-        if skip + len > vec_len as usize {
+        let last_item_index = skip
+            .checked_add(len)
+            .ok_or(ProgramError::AccountDataTooSmall)?;
+        if last_item_index > vec_len as usize {
             return Err(ProgramError::AccountDataTooSmall);
         }
 
@@ -117,8 +120,8 @@ impl<'data> BigVec<'data> {
         if self.data.len() < end_index {
             return Err(ProgramError::AccountDataTooSmall);
         }
-        let mut element_ref = &mut self.data[start_index..start_index + T::LEN];
-        element.pack_into_slice(&mut element_ref);
+        let element_ref = &mut self.data[start_index..start_index + T::LEN];
+        element.pack_into_slice(element_ref);
         Ok(())
     }
 

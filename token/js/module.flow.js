@@ -6,7 +6,7 @@
 
 import BN from 'bn.js'; // eslint-disable-line
 import {Buffer} from 'buffer';
-import {Layout} from 'buffer-layout';
+import {Layout} from '@solana/buffer-layout';
 import {Connection, PublicKey, TransactionInstruction} from '@solana/web3.js';
 import type {Signer, TransactionSignature} from '@solana/web3.js';
 
@@ -251,6 +251,16 @@ declare module '@solana/spl-token' {
       mint: PublicKey,
       authority: PublicKey,
       multiSigners: Array<Signer>,
+    ): TransactionInstruction;
+    static createTransferCheckedInstruction(
+      programId: PublicKey,
+      source: PublicKey,
+      mint: PublicKey,
+      destination: PublicKey,
+      owner: PublicKey,
+      multiSigners: Array<Signer>,
+      amount: number | u64,
+      decimals: number,
     ): TransactionInstruction;
     static createBurnCheckedInstruction(
       programId: PublicKey,

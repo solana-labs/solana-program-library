@@ -22,7 +22,7 @@ const POOL_TOKEN_C_AMOUNT: u64 = 400_000_000;
 const USER_TOKEN_A_BAL: u64 = 200_000;
 const USER_WILL_SWAP: u64 = 99_999;
 const USER_WILL_EXPECT: u64 = 114_286;
-const USER_WILL_RECEIVE: u64 = 113_646; 
+const USER_WILL_RECEIVE: u64 = 113_646;
 
 #[tokio::test]
 async fn fn_swap_router_create_b_c_broken_empty_fee_account() {
@@ -60,10 +60,10 @@ async fn fn_swap_router_create_b_c_broken_empty_fee_account() {
 
     //purposefully close the fee account after creating the swap
     helpers::close_token_account(
-        &mut banks_client, 
-        &payer, 
-        &recent_blockhash, 
-        &swap1.pool_fee_key.pubkey(), 
+        &mut banks_client,
+        &payer,
+        &recent_blockhash,
+        &swap1.pool_fee_key.pubkey(),
         &payer,
     )
     .await
@@ -153,42 +153,44 @@ async fn fn_swap_router_create_b_c_broken_empty_fee_account() {
     }
 
     //allow it some slippage
-    amount_user_expects = amount_user_expects 
-        - (amount_user_expects as f32 * 0.016) as u64; //fees - 0.5% trade, 0.3% owner. * 2 for 2 pools
-        -(amount_user_expects as f32 * 0.005) as u64; //0.5% slippage
+    amount_user_expects = amount_user_expects - (amount_user_expects as f32 * 0.016) as u64; //fees - 0.5% trade, 0.3% owner. * 2 for 2 pools
+    -(amount_user_expects as f32 * 0.005) as u64; //0.5% slippage
 
     {
-    swap1
-        .routed_swap(
-            &mut banks_client,
-            &user,
-            &recent_blockhash,
-            &swap2,
-            &user_token_a.pubkey(),
-            None,
-            None,
-            amount_user_will_swap,
-            amount_user_expects,
-        )
-        .await
-        .unwrap();
+        swap1
+            .routed_swap(
+                &mut banks_client,
+                &user,
+                &recent_blockhash,
+                &swap2,
+                &user_token_a.pubkey(),
+                None,
+                None,
+                amount_user_will_swap,
+                amount_user_expects,
+            )
+            .await
+            .unwrap();
     }
-
 
     //verify balances
     let user_token_c = spl_associated_token_account::get_associated_token_address(
-        &user.pubkey(), 
+        &user.pubkey(),
         &token_c_mint_key.pubkey(),
     );
 
-    let user_token_a_bal = helpers::get_token_balance(&mut banks_client, &user_token_a.pubkey()).await;
-    assert_eq!(user_token_a_bal, amount_user_will_have - amount_user_will_swap);
+    let user_token_a_bal =
+        helpers::get_token_balance(&mut banks_client, &user_token_a.pubkey()).await;
+    assert_eq!(
+        user_token_a_bal,
+        amount_user_will_have - amount_user_will_swap
+    );
     let user_token_c_bal = helpers::get_token_balance(&mut banks_client, &user_token_c).await;
     assert_eq!(user_token_c_bal, amount_user_actually_gets);
 
     //verify b account doesnt exist
     let user_token_b = spl_associated_token_account::get_associated_token_address(
-        &user.pubkey(), 
+        &user.pubkey(),
         &token_b_mint_key.pubkey(),
     );
     let is = banks_client.get_account(user_token_b).await.unwrap();
@@ -312,42 +314,44 @@ async fn fn_swap_router_create_b_c() {
     }
 
     //allow it some slippage
-    amount_user_expects = amount_user_expects 
-        - (amount_user_expects as f32 * 0.016) as u64; //fees - 0.5% trade, 0.3% owner. * 2 for 2 pools
-        -(amount_user_expects as f32 * 0.005) as u64; //0.5% slippage
+    amount_user_expects = amount_user_expects - (amount_user_expects as f32 * 0.016) as u64; //fees - 0.5% trade, 0.3% owner. * 2 for 2 pools
+    -(amount_user_expects as f32 * 0.005) as u64; //0.5% slippage
 
     {
-    swap1
-        .routed_swap(
-            &mut banks_client,
-            &user,
-            &recent_blockhash,
-            &swap2,
-            &user_token_a.pubkey(),
-            None,
-            None,
-            amount_user_will_swap,
-            amount_user_expects,
-        )
-        .await
-        .unwrap();
+        swap1
+            .routed_swap(
+                &mut banks_client,
+                &user,
+                &recent_blockhash,
+                &swap2,
+                &user_token_a.pubkey(),
+                None,
+                None,
+                amount_user_will_swap,
+                amount_user_expects,
+            )
+            .await
+            .unwrap();
     }
-
 
     //verify balances
     let user_token_c = spl_associated_token_account::get_associated_token_address(
-        &user.pubkey(), 
+        &user.pubkey(),
         &token_c_mint_key.pubkey(),
     );
 
-    let user_token_a_bal = helpers::get_token_balance(&mut banks_client, &user_token_a.pubkey()).await;
-    assert_eq!(user_token_a_bal, amount_user_will_have - amount_user_will_swap);
+    let user_token_a_bal =
+        helpers::get_token_balance(&mut banks_client, &user_token_a.pubkey()).await;
+    assert_eq!(
+        user_token_a_bal,
+        amount_user_will_have - amount_user_will_swap
+    );
     let user_token_c_bal = helpers::get_token_balance(&mut banks_client, &user_token_c).await;
     assert_eq!(user_token_c_bal, amount_user_actually_gets);
 
     //verify b account doesnt exist
     let user_token_b = spl_associated_token_account::get_associated_token_address(
-        &user.pubkey(), 
+        &user.pubkey(),
         &token_b_mint_key.pubkey(),
     );
     let is = banks_client.get_account(user_token_b).await.unwrap();
@@ -397,8 +401,8 @@ async fn fn_swap_router_test_dust_collection() {
         //use the same mint as the right side of swap1
         &token_b_mint_key,
         &token_c_mint_key,
-        765552903928391,//big prime,
-        506261786074157,//big prime,
+        765552903928391, //big prime,
+        506261786074157, //big prime,
     )
     .await;
     swap2
@@ -437,25 +441,25 @@ async fn fn_swap_router_test_dust_collection() {
     .unwrap();
 
     {
-    swap1
-        .routed_swap(
-            &mut banks_client,
-            &user,
-            &recent_blockhash,
-            &swap2,
-            &user_token_a.pubkey(),
-            None,
-            None,
-            amount_user_will_swap,
-            0,
-        )
-        .await
-        .unwrap();
+        swap1
+            .routed_swap(
+                &mut banks_client,
+                &user,
+                &recent_blockhash,
+                &swap2,
+                &user_token_a.pubkey(),
+                None,
+                None,
+                amount_user_will_swap,
+                0,
+            )
+            .await
+            .unwrap();
     }
 
     //verify b account doesnt exist
     let user_token_b = spl_associated_token_account::get_associated_token_address(
-        &user.pubkey(), 
+        &user.pubkey(),
         &token_b_mint_key.pubkey(),
     );
     let is = banks_client.get_account(user_token_b).await.unwrap();
@@ -477,7 +481,7 @@ async fn fn_swap_router_create_b() {
     let token_a_mint_key = Keypair::new();
     let token_b_mint_key = Keypair::new();
     let token_c_mint_key = Keypair::new();
-    
+
     //lp1
     let mut swap1 = helpers::create_standard_setup(
         &mut banks_client,
@@ -560,42 +564,44 @@ async fn fn_swap_router_create_b() {
     .unwrap();
 
     //allow it some slippage
-    amount_user_expects = amount_user_expects 
-        - (amount_user_expects as f32 * 0.016) as u64; //fees - 0.5% trade, 0.3% owner. * 2 for 2 pools
-        -(amount_user_expects as f32 * 0.005) as u64; //0.5% slippage
+    amount_user_expects = amount_user_expects - (amount_user_expects as f32 * 0.016) as u64; //fees - 0.5% trade, 0.3% owner. * 2 for 2 pools
+    -(amount_user_expects as f32 * 0.005) as u64; //0.5% slippage
 
     {
-    swap1
-        .routed_swap(
-            &mut banks_client,
-            &user,
-            &recent_blockhash,
-            &swap2,
-            &user_token_a.pubkey(),
-            Some(&user_token_b.pubkey()),
-            None,
-            amount_user_will_swap,
-            amount_user_expects,
-        )
-        .await
-        .unwrap();
+        swap1
+            .routed_swap(
+                &mut banks_client,
+                &user,
+                &recent_blockhash,
+                &swap2,
+                &user_token_a.pubkey(),
+                Some(&user_token_b.pubkey()),
+                None,
+                amount_user_will_swap,
+                amount_user_expects,
+            )
+            .await
+            .unwrap();
     }
-
 
     //verify balances
     let user_token_c = spl_associated_token_account::get_associated_token_address(
-        &user.pubkey(), 
+        &user.pubkey(),
         &token_c_mint_key.pubkey(),
     );
 
-    let user_token_a_bal = helpers::get_token_balance(&mut banks_client, &user_token_a.pubkey()).await;
-    assert_eq!(user_token_a_bal, amount_user_will_have - amount_user_will_swap);
+    let user_token_a_bal =
+        helpers::get_token_balance(&mut banks_client, &user_token_a.pubkey()).await;
+    assert_eq!(
+        user_token_a_bal,
+        amount_user_will_have - amount_user_will_swap
+    );
     let user_token_c_bal = helpers::get_token_balance(&mut banks_client, &user_token_c).await;
     assert_eq!(user_token_c_bal, amount_user_actually_gets);
 
     //verify b account doesnt exist anymore
     let user_token_b = spl_associated_token_account::get_associated_token_address(
-        &user.pubkey(), 
+        &user.pubkey(),
         &token_b_mint_key.pubkey(),
     );
     let is = banks_client.get_account(user_token_b).await.unwrap();
@@ -653,7 +659,7 @@ async fn fn_swap_router_reuse_all() {
         .initialize_swap(&mut banks_client, &payer, &recent_blockhash)
         .await
         .unwrap();
-        
+
     //our test swap will be
     //100,000 A in -> 85,714 B -> 114,286 C out (excluding fees)
     let amount_user_had_token_b: u64 = 999_234_432;
@@ -738,9 +744,8 @@ async fn fn_swap_router_reuse_all() {
     .unwrap();
 
     //allow it some slippage
-    amount_user_expects = amount_user_expects 
-        - (amount_user_expects as f32 * 0.016) as u64; //fees - 0.5% trade, 0.3% owner. * 2 for 2 pools
-        -(amount_user_expects as f32 * 0.005) as u64; //0.5% slippage
+    amount_user_expects = amount_user_expects - (amount_user_expects as f32 * 0.016) as u64; //fees - 0.5% trade, 0.3% owner. * 2 for 2 pools
+    -(amount_user_expects as f32 * 0.005) as u64; //0.5% slippage
 
     {
         let res = swap1
@@ -761,18 +766,27 @@ async fn fn_swap_router_reuse_all() {
 
         //support for intermediary account with a balance is not supported
         assert_eq!(
-            TransactionError::InstructionError(0, InstructionError::Custom(crate::SwapError::RoutedSwapRequiresEmptyIntermediary as u32)),
-            res);
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(
+                    crate::SwapError::RoutedSwapRequiresEmptyIntermediary as u32
+                )
+            ),
+            res
+        );
     }
 
     //all remained unchanged
-    let user_token_a_bal = helpers::get_token_balance(&mut banks_client, &user_token_a.pubkey()).await;
+    let user_token_a_bal =
+        helpers::get_token_balance(&mut banks_client, &user_token_a.pubkey()).await;
     assert_eq!(user_token_a_bal, amount_user_will_have);
 
     //assert that prior balances remain in place
-    let user_token_b_bal = helpers::get_token_balance(&mut banks_client, &user_token_b.pubkey()).await;
+    let user_token_b_bal =
+        helpers::get_token_balance(&mut banks_client, &user_token_b.pubkey()).await;
     assert_eq!(user_token_b_bal, amount_user_had_token_b);
 
-    let user_token_c_bal = helpers::get_token_balance(&mut banks_client, &user_token_c.pubkey()).await;
+    let user_token_c_bal =
+        helpers::get_token_balance(&mut banks_client, &user_token_c.pubkey()).await;
     assert_eq!(user_token_c_bal, amount_user_had_token_c);
 }

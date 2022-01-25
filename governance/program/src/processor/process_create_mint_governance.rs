@@ -10,10 +10,7 @@ use crate::{
         realm::get_realm_data,
         token_owner_record::get_token_owner_record_data_for_realm,
     },
-    tools::{
-        account::create_and_serialize_account_signed,
-        spl_token::{assert_spl_token_mint_authority_is_signer, set_spl_token_mint_authority},
-    },
+    tools::spl_token::{assert_spl_token_mint_authority_is_signer, set_spl_token_mint_authority},
 };
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -22,6 +19,7 @@ use solana_program::{
     rent::Rent,
     sysvar::Sysvar,
 };
+use spl_governance_tools::account::create_and_serialize_account_signed;
 
 /// Processes CreateMintGovernance instruction
 pub fn process_create_mint_governance(
@@ -48,13 +46,24 @@ pub fn process_create_mint_governance(
     let rent_sysvar_info = next_account_info(account_info_iter)?; // 8
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
 
+    let governance_authority_info = next_account_info(account_info_iter)?; // 9
+
     assert_valid_create_governance_args(program_id, &config, realm_info)?;
 
     let realm_data = get_realm_data(program_id, realm_info)?;
     let token_owner_record_data =
         get_token_owner_record_data_for_realm(program_id, token_owner_record_info, realm_info.key)?;
 
-    token_owner_record_data.assert_can_create_governance(&realm_data)?;
+    token_owner_record_data.assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
+
+    let voter_weight = token_owner_record_data.resolve_voter_weight(
+        program_id,
+        account_info_iter,
+        realm_info.key,
+        &realm_data,
+    )?;
+
+    token_owner_record_data.assert_can_create_governance(&realm_data, voter_weight)?;
 
     let mint_governance_data = Governance {
         account_type: GovernanceAccountType::MintGovernance,

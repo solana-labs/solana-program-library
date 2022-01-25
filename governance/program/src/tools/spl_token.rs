@@ -220,17 +220,6 @@ pub fn assert_is_valid_spl_token_mint(mint_info: &AccountInfo) -> Result<(), Pro
     Ok(())
 }
 
-/// Computationally cheap method to get amount from a token account
-/// It reads amount without deserializing full account data
-pub fn get_spl_token_amount(token_account_info: &AccountInfo) -> Result<u64, ProgramError> {
-    assert_is_valid_spl_token_account(token_account_info)?;
-
-    // TokeAccount layout:   mint(32), owner(32), amount(8), ...
-    let data = token_account_info.try_borrow_data()?;
-    let amount = array_ref![data, 64, 8];
-    Ok(u64::from_le_bytes(*amount))
-}
-
 /// Computationally cheap method to get mint from a token account
 /// It reads mint without deserializing full account data
 pub fn get_spl_token_mint(token_account_info: &AccountInfo) -> Result<Pubkey, ProgramError> {

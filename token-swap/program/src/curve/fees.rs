@@ -125,7 +125,7 @@ impl Pack for Fees {
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator
+            owner_withdraw_fee_denominator,
         ) = mut_array_refs![output, 8, 8, 8, 8, 8, 8];
         *trade_fee_numerator = self.trade_fee_numerator.to_le_bytes();
         *trade_fee_denominator = self.trade_fee_denominator.to_le_bytes();
@@ -144,7 +144,7 @@ impl Pack for Fees {
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator
+            owner_withdraw_fee_denominator,
         ) = array_refs![input, 8, 8, 8, 8, 8, 8];
         Ok(Self {
             trade_fee_numerator: u64::from_le_bytes(*trade_fee_numerator),
@@ -175,7 +175,7 @@ mod tests {
             owner_trade_fee_numerator,
             owner_trade_fee_denominator,
             owner_withdraw_fee_numerator,
-            owner_withdraw_fee_denominator
+            owner_withdraw_fee_denominator,
         };
 
         let mut packed = [0u8; Fees::LEN];

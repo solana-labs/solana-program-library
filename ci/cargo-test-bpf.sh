@@ -24,17 +24,33 @@ if [[ -z $program_directory ]]; then
   usage "No program directory provided"
 fi
 
-set -x
-
 cd $program_directory
 run_dir=$(pwd)
 
-if [[ -d $run_dir/program ]]; then
-  # Build/test just one BPF program
-  cd $run_dir/program
-  cargo +"$rust_stable" test-bpf -- --nocapture
-else
-  # Build/test all BPF programs
+if [[ -r $run_dir/Cargo.toml ]]; then
+    # Build/test just one BPF program
+    set -x
+    cd $run_dir
+    cargo +"$rust_stable" test-bpf -- --nocapture
+    exit 0
+fi
+
+run_all=1
+for program in $run_dir/program{,-*}; do
+  # Build/test all program directories
+  if [[ -r $program/Cargo.toml ]]; then
+    run_all=
+    (
+      set -x
+      cd $program
+      cargo +"$rust_stable" test-bpf -- --nocapture
+    )
+  fi
+done
+
+if [[ -n $run_all ]]; then
+  # Build/test all directories
+  set -x
   for directory in $(ls -d $run_dir/*/); do
     cd $directory
     cargo +"$rust_stable" test-bpf -- --nocapture
