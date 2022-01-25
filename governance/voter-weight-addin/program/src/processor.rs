@@ -72,8 +72,6 @@ pub fn process_deposit(
         governing_token_mint_info.key,
     )?;
 
-    // TODO: Custom deposit logic and validation goes here
-
     let voter_weight_record_data = VoterWeightRecord {
         account_type: VoterWeightAccountType::VoterWeightRecord,
         realm: *realm_info.key,

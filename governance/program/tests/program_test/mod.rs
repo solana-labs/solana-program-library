@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use solana_program::{
     bpf_loader_upgradeable::{self, UpgradeableLoaderState},
-    clock::UnixTimestamp,
+    clock::{Slot, UnixTimestamp},
     instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack},
@@ -15,7 +15,7 @@ use solana_program_test::*;
 use solana_sdk::signature::{Keypair, Signer};
 
 use spl_governance::{
-    addins::voter_weight::{VoterWeightAccountType, VoterWeightRecord},
+    addins::voter_weight::{VoterWeightAccountType, VoterWeightAction, VoterWeightRecord},
     instruction::{
         add_signatory, cancel_proposal, cast_vote, create_account_governance,
         create_mint_governance, create_native_treasury, create_program_governance, create_proposal,
@@ -2448,13 +2448,26 @@ impl GovernanceProgramTest {
     }
 
     /// ----------- VoterWeight Addin -----------------------------
+    ///
     #[allow(dead_code)]
     pub async fn with_voter_weight_addin_record(
         &mut self,
         token_owner_record_cookie: &mut TokenOwnerRecordCookie,
     ) -> Result<VoterWeightRecordCookie, ProgramError> {
+        self.with_voter_weight_addin_record_impl(token_owner_record_cookie, 120, None, None, None)
+            .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_voter_weight_addin_record_impl(
+        &mut self,
+        token_owner_record_cookie: &mut TokenOwnerRecordCookie,
+        voter_weight: u64,
+        voter_weight_expiry: Option<Slot>,
+        weight_action: Option<VoterWeightAction>,
+        weight_action_target: Option<Pubkey>,
+    ) -> Result<VoterWeightRecordCookie, ProgramError> {
         let voter_weight_record_account = Keypair::new();
-        let voter_weight = 120;
 
         let setup_voter_weight_record = setup_voter_weight_record(
             &self.voter_weight_addin_id.unwrap(),
@@ -2465,9 +2478,9 @@ impl GovernanceProgramTest {
             &voter_weight_record_account.pubkey(),
             &self.bench.payer.pubkey(),
             voter_weight,
-            None,
-            None,
-            None,
+            voter_weight_expiry,
+            weight_action,
+            weight_action_target,
         );
 
         self.bench
