@@ -2,7 +2,7 @@
 
 mod program_test;
 use {
-    program_test::TestContext,
+    program_test::{TestContext, TokenContext},
     solana_program_test::tokio,
     solana_sdk::{
         instruction::InstructionError, program_option::COption, pubkey::Pubkey, signature::Signer,
@@ -18,16 +18,19 @@ use {
 #[tokio::test]
 async fn success_init() {
     let close_authority = Some(Pubkey::new_unique());
-    let TestContext {
+    let mut context = TestContext::new().await;
+    context
+        .init_token_with_mint(vec![ExtensionInitializationParams::MintCloseAuthority {
+            close_authority,
+        }])
+        .await
+        .unwrap();
+    let TokenContext {
         decimals,
         mint_authority,
         token,
         ..
-    } = TestContext::new(vec![ExtensionInitializationParams::MintCloseAuthority {
-        close_authority,
-    }])
-    .await
-    .unwrap();
+    } = context.token_context.unwrap();
 
     let state = token.get_mint_info().await.unwrap();
     assert_eq!(state.base.decimals, decimals);
@@ -48,12 +51,14 @@ async fn success_init() {
 #[tokio::test]
 async fn set_authority() {
     let close_authority = Keypair::new();
-    let TestContext { token, .. } =
-        TestContext::new(vec![ExtensionInitializationParams::MintCloseAuthority {
+    let mut context = TestContext::new().await;
+    context
+        .init_token_with_mint(vec![ExtensionInitializationParams::MintCloseAuthority {
             close_authority: Some(close_authority.pubkey()),
         }])
         .await
         .unwrap();
+    let token = context.token_context.unwrap().token;
     let new_authority = Keypair::new();
 
     // fail, wrong signature
@@ -148,12 +153,14 @@ async fn set_authority() {
 #[tokio::test]
 async fn success_close() {
     let close_authority = Keypair::new();
-    let TestContext { token, .. } =
-        TestContext::new(vec![ExtensionInitializationParams::MintCloseAuthority {
+    let mut context = TestContext::new().await;
+    context
+        .init_token_with_mint(vec![ExtensionInitializationParams::MintCloseAuthority {
             close_authority: Some(close_authority.pubkey()),
         }])
         .await
         .unwrap();
+    let token = context.token_context.unwrap().token;
 
     let destination = Pubkey::new_unique();
     token
@@ -167,11 +174,13 @@ async fn success_close() {
 #[tokio::test]
 async fn fail_without_extension() {
     let close_authority = Pubkey::new_unique();
-    let TestContext {
+    let mut context = TestContext::new().await;
+    context.init_token_with_mint(vec![]).await.unwrap();
+    let TokenContext {
         mint_authority,
         token,
         ..
-    } = TestContext::new(vec![]).await.unwrap();
+    } = context.token_context.unwrap();
 
     // fail set
     let err = token
@@ -207,15 +216,18 @@ async fn fail_without_extension() {
 #[tokio::test]
 async fn fail_close_with_supply() {
     let close_authority = Keypair::new();
-    let TestContext {
-        token,
+    let mut context = TestContext::new().await;
+    context
+        .init_token_with_mint(vec![ExtensionInitializationParams::MintCloseAuthority {
+            close_authority: Some(close_authority.pubkey()),
+        }])
+        .await
+        .unwrap();
+    let TokenContext {
         mint_authority,
+        token,
         ..
-    } = TestContext::new(vec![ExtensionInitializationParams::MintCloseAuthority {
-        close_authority: Some(close_authority.pubkey()),
-    }])
-    .await
-    .unwrap();
+    } = context.token_context.unwrap();
 
     // mint a token
     let owner = Pubkey::new_unique();

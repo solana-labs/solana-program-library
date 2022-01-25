@@ -2,7 +2,7 @@
 
 mod program_test;
 use {
-    program_test::TestContext,
+    program_test::{TestContext, TokenContext},
     solana_program_test::tokio,
     solana_sdk::{
         instruction::InstructionError, program_option::COption, pubkey::Pubkey, signature::Signer,
@@ -72,19 +72,22 @@ async fn success_init() {
         newer_transfer_fee,
         ..
     } = test_transfer_fee_config();
-    let TestContext {
+    let mut context = TestContext::new().await;
+    context
+        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
+            transfer_fee_config_authority: transfer_fee_config_authority.into(),
+            withdraw_withheld_authority: withdraw_withheld_authority.into(),
+            transfer_fee_basis_points: newer_transfer_fee.transfer_fee_basis_points.into(),
+            maximum_fee: newer_transfer_fee.maximum_fee.into(),
+        }])
+        .await
+        .unwrap();
+    let TokenContext {
         decimals,
         mint_authority,
         token,
         ..
-    } = TestContext::new(vec![ExtensionInitializationParams::TransferFeeConfig {
-        transfer_fee_config_authority: transfer_fee_config_authority.into(),
-        withdraw_withheld_authority: withdraw_withheld_authority.into(),
-        transfer_fee_basis_points: newer_transfer_fee.transfer_fee_basis_points.into(),
-        maximum_fee: newer_transfer_fee.maximum_fee.into(),
-    }])
-    .await
-    .unwrap();
+    } = context.token_context.unwrap();
 
     let state = token.get_mint_info().await.unwrap();
     assert_eq!(state.base.decimals, decimals);
@@ -115,15 +118,16 @@ async fn fail_init_default_pubkey_as_authority() {
         newer_transfer_fee,
         ..
     } = test_transfer_fee_config();
-    let err = TestContext::new(vec![ExtensionInitializationParams::TransferFeeConfig {
-        transfer_fee_config_authority: transfer_fee_config_authority.into(),
-        withdraw_withheld_authority: Some(Pubkey::default()),
-        transfer_fee_basis_points: newer_transfer_fee.transfer_fee_basis_points.into(),
-        maximum_fee: newer_transfer_fee.maximum_fee.into(),
-    }])
-    .await
-    .err()
-    .unwrap();
+    let mut context = TestContext::new().await;
+    let err = context
+        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
+            transfer_fee_config_authority: transfer_fee_config_authority.into(),
+            withdraw_withheld_authority: Some(Pubkey::default()),
+            transfer_fee_basis_points: newer_transfer_fee.transfer_fee_basis_points.into(),
+            maximum_fee: newer_transfer_fee.maximum_fee.into(),
+        }])
+        .await
+        .unwrap_err();
     assert_eq!(
         err,
         TokenClientError::Client(Box::new(TransportError::TransactionError(
@@ -142,8 +146,9 @@ async fn set_fee() {
         },
         ..
     } = test_transfer_fee_config_with_keypairs();
-    let TestContext { context, token, .. } =
-        TestContext::new(vec![ExtensionInitializationParams::TransferFeeConfig {
+    let mut context = TestContext::new().await;
+    context
+        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
             transfer_fee_config_authority: transfer_fee_config_authority.pubkey().into(),
             withdraw_withheld_authority: withdraw_withheld_authority.pubkey().into(),
             transfer_fee_basis_points: newer_transfer_fee.transfer_fee_basis_points.into(),
@@ -151,6 +156,7 @@ async fn set_fee() {
         }])
         .await
         .unwrap();
+    let token = context.token_context.unwrap().token;
 
     // set to something new, old fee not touched
     let new_transfer_fee_basis_points = u16::MAX;
@@ -200,7 +206,7 @@ async fn set_fee() {
 
     // warp forward one epoch, new fee becomes old fee during set
     let newer_transfer_fee = extension.newer_transfer_fee;
-    context.lock().await.warp_to_slot(10_000).unwrap();
+    context.context.lock().await.warp_to_slot(10_000).unwrap();
     let new_transfer_fee_basis_points = u16::MAX;
     let new_maximum_fee = u64::MAX;
     token
@@ -246,11 +252,13 @@ async fn set_fee() {
 
 #[tokio::test]
 async fn fail_set_fee_unsupported_mint() {
-    let TestContext {
-        token,
+    let mut context = TestContext::new().await;
+    context.init_token_with_mint(vec![]).await.unwrap();
+    let TokenContext {
         mint_authority,
+        token,
         ..
-    } = TestContext::new(vec![]).await.unwrap();
+    } = context.token_context.unwrap();
     let transfer_fee_basis_points = u16::MAX;
     let maximum_fee = u64::MAX;
     let error = token
@@ -276,8 +284,9 @@ async fn set_transfer_fee_config_authority() {
         },
         ..
     } = test_transfer_fee_config_with_keypairs();
-    let TestContext { token, .. } =
-        TestContext::new(vec![ExtensionInitializationParams::TransferFeeConfig {
+    let mut context = TestContext::new().await;
+    context
+        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
             transfer_fee_config_authority: transfer_fee_config_authority.pubkey().into(),
             withdraw_withheld_authority: withdraw_withheld_authority.pubkey().into(),
             transfer_fee_basis_points: newer_transfer_fee.transfer_fee_basis_points.into(),
@@ -285,6 +294,7 @@ async fn set_transfer_fee_config_authority() {
         }])
         .await
         .unwrap();
+    let token = context.token_context.unwrap().token;
 
     let new_authority = Keypair::new();
     let wrong = Keypair::new();
@@ -414,8 +424,9 @@ async fn set_withdraw_withheld_authority() {
         },
         ..
     } = test_transfer_fee_config_with_keypairs();
-    let TestContext { token, .. } =
-        TestContext::new(vec![ExtensionInitializationParams::TransferFeeConfig {
+    let mut context = TestContext::new().await;
+    context
+        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
             transfer_fee_config_authority: transfer_fee_config_authority.pubkey().into(),
             withdraw_withheld_authority: withdraw_withheld_authority.pubkey().into(),
             transfer_fee_basis_points: newer_transfer_fee.transfer_fee_basis_points.into(),
@@ -423,6 +434,7 @@ async fn set_withdraw_withheld_authority() {
         }])
         .await
         .unwrap();
+    let token = context.token_context.unwrap().token;
 
     let new_authority = Keypair::new();
     let wrong = Keypair::new();
