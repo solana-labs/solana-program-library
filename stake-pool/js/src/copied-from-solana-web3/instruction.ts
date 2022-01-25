@@ -1,5 +1,7 @@
-import {Buffer} from 'buffer';
-import {Layout} from '@solana/buffer-layout';
+import { Buffer } from 'buffer';
+import * as BufferLayout from '@solana/buffer-layout';
+
+import * as Layout from './layout';
 
 /**
  * @internal
@@ -8,7 +10,7 @@ export type InstructionType = {
   /** The Instruction index (from solana upstream program) */
   index: number;
   /** The BufferLayout to use to build data */
-  layout: Layout<any>; // NOTE do this better
+  layout: BufferLayout.Layout;
 };
 
 /**
@@ -16,9 +18,9 @@ export type InstructionType = {
  * @internal
  */
 export function encodeData(type: InstructionType, fields?: any): Buffer {
-  const allocLength = type.layout.span;
+  const allocLength = type.layout.span >= 0 ? type.layout.span : Layout.getAlloc(type, fields);
   const data = Buffer.alloc(allocLength);
-  const layoutFields = Object.assign({instruction: type.index}, fields);
+  const layoutFields = Object.assign({ instruction: type.index }, fields);
   type.layout.encode(layoutFields, data);
 
   return data;

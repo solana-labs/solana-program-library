@@ -1,11 +1,7 @@
-import {AccountInfo, LAMPORTS_PER_SOL, PublicKey} from '@solana/web3.js';
-import BN from 'bn.js';
-import {ValidatorStakeInfo} from '../src';
-import {
-  ValidatorStakeInfoStatus,
-  AccountLayout,
-  ValidatorListLayout,
-} from '../src/layouts';
+import { AccountInfo,  LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
+import BN from "bn.js";
+import { ValidatorStakeInfo } from "../src";
+import { ValidatorStakeInfoStatus, AccountLayout, ValidatorListLayout } from "../src/layouts";
 
 export const stakePoolMock = {
   accountType: 1,
@@ -115,43 +111,40 @@ export const validatorListMock = {
       transientSeedSuffixEnd: new BN('a', 'hex'),
     },
   ],
-};
+}
 
 export function mockTokenAccount(amount = 0) {
   const data = Buffer.alloc(1024);
-  AccountLayout.encode(
-    {
-      state: 0,
-      mint: stakePoolMock.poolMint,
-      owner: new PublicKey(0),
-      amount: new BN(amount),
-      // address: new PublicKey(0),
-      // delegate: null,
-      // delegatedAmount: new BN(0),
-      // isInitialized: true,
-      // isFrozen: false,
-      // isNative: false,
-      // rentExemptReserve: null,
-      // closeAuthority: null,
-    },
-    data,
-  );
+  AccountLayout.encode({
+    state: 0,
+    mint: stakePoolMock.poolMint,
+    owner: new PublicKey(0),
+    amount: new BN(amount),
+    // address: new PublicKey(0),
+    // delegate: null,
+    // delegatedAmount: new BN(0),
+    // isInitialized: true,
+    // isFrozen: false,
+    // isNative: false,
+    // rentExemptReserve: null,
+    // closeAuthority: null,
+  }, data)
 
   return <AccountInfo<any>>{
     executable: true,
     owner: new PublicKey(0),
     lamports: amount,
     data,
-  };
+  }
 }
 
 export function mockValidatorList() {
   const data = Buffer.alloc(1024);
-  ValidatorListLayout.encode(validatorListMock, data);
+  ValidatorListLayout.encode(validatorListMock, data)
   return <AccountInfo<any>>{
     executable: true,
     owner: new PublicKey(0),
     lamports: 0,
     data,
-  };
+  }
 }
