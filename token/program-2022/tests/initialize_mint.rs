@@ -2,8 +2,8 @@
 
 mod program_test;
 use {
-    program_test::TestContext,
-    solana_program_test::{processor, tokio, ProgramTest},
+    program_test::{TestContext, TokenContext},
+    solana_program_test::tokio,
     solana_sdk::{
         instruction::InstructionError,
         program_option::COption,
@@ -17,8 +17,7 @@ use {
     spl_token_2022::{
         error::TokenError,
         extension::{mint_close_authority::MintCloseAuthority, transfer_fee, ExtensionType},
-        id, instruction,
-        processor::Processor,
+        instruction,
         state::Mint,
     },
     spl_token_client::token::ExtensionInitializationParams,
@@ -27,12 +26,14 @@ use {
 
 #[tokio::test]
 async fn success_base() {
-    let TestContext {
+    let mut context = TestContext::new().await;
+    context.init_token_with_mint(vec![]).await.unwrap();
+    let TokenContext {
         decimals,
         mint_authority,
         token,
         ..
-    } = TestContext::new(vec![]).await.unwrap();
+    } = context.token_context.unwrap();
 
     let mint = token.get_mint_info().await.unwrap();
     assert_eq!(mint.base.decimals, decimals);
@@ -47,8 +48,8 @@ async fn success_base() {
 
 #[tokio::test]
 async fn fail_extension_no_space() {
-    let program_test = ProgramTest::new("spl_token_2022", id(), processor!(Processor::process));
-    let mut ctx = program_test.start_with_context().await;
+    let context = TestContext::new().await;
+    let mut ctx = context.context.lock().await;
     let rent = ctx.banks_client.get_rent().await.unwrap();
     let mint_account = Keypair::new();
     let mint_authority_pubkey = Pubkey::new_unique();
@@ -100,8 +101,8 @@ async fn fail_extension_no_space() {
 
 #[tokio::test]
 async fn fail_extension_after_mint_init() {
-    let program_test = ProgramTest::new("spl_token_2022", id(), processor!(Processor::process));
-    let mut ctx = program_test.start_with_context().await;
+    let context = TestContext::new().await;
+    let mut ctx = context.context.lock().await;
     let rent = ctx.banks_client.get_rent().await.unwrap();
     let mint_account = Keypair::new();
     let mint_authority_pubkey = Pubkey::new_unique();
@@ -154,16 +155,19 @@ async fn fail_extension_after_mint_init() {
 #[tokio::test]
 async fn success_extension_and_base() {
     let close_authority = Some(Pubkey::new_unique());
-    let TestContext {
+    let mut context = TestContext::new().await;
+    context
+        .init_token_with_mint(vec![ExtensionInitializationParams::MintCloseAuthority {
+            close_authority,
+        }])
+        .await
+        .unwrap();
+    let TokenContext {
         decimals,
         mint_authority,
         token,
         ..
-    } = TestContext::new(vec![ExtensionInitializationParams::MintCloseAuthority {
-        close_authority,
-    }])
-    .await
-    .unwrap();
+    } = context.token_context.unwrap();
 
     let state = token.get_mint_info().await.unwrap();
     assert_eq!(state.base.decimals, decimals);
@@ -183,8 +187,8 @@ async fn success_extension_and_base() {
 
 #[tokio::test]
 async fn fail_init_overallocated_mint() {
-    let program_test = ProgramTest::new("spl_token_2022", id(), processor!(Processor::process));
-    let mut ctx = program_test.start_with_context().await;
+    let context = TestContext::new().await;
+    let mut ctx = context.context.lock().await;
     let rent = ctx.banks_client.get_rent().await.unwrap();
     let mint_account = Keypair::new();
     let mint_authority_pubkey = Pubkey::new_unique();
@@ -230,8 +234,8 @@ async fn fail_init_overallocated_mint() {
 
 #[tokio::test]
 async fn fail_account_init_after_mint_extension() {
-    let program_test = ProgramTest::new("spl_token_2022", id(), processor!(Processor::process));
-    let mut ctx = program_test.start_with_context().await;
+    let context = TestContext::new().await;
+    let mut ctx = context.context.lock().await;
     let rent = ctx.banks_client.get_rent().await.unwrap();
     let mint_account = Keypair::new();
     let mint_authority_pubkey = Pubkey::new_unique();
@@ -303,8 +307,8 @@ async fn fail_account_init_after_mint_extension() {
 
 #[tokio::test]
 async fn fail_account_init_after_mint_init() {
-    let program_test = ProgramTest::new("spl_token_2022", id(), processor!(Processor::process));
-    let mut ctx = program_test.start_with_context().await;
+    let context = TestContext::new().await;
+    let mut ctx = context.context.lock().await;
     let rent = ctx.banks_client.get_rent().await.unwrap();
     let mint_account = Keypair::new();
     let mint_authority_pubkey = Pubkey::new_unique();
@@ -357,8 +361,8 @@ async fn fail_account_init_after_mint_init() {
 
 #[tokio::test]
 async fn fail_account_init_after_mint_init_with_extension() {
-    let program_test = ProgramTest::new("spl_token_2022", id(), processor!(Processor::process));
-    let mut ctx = program_test.start_with_context().await;
+    let context = TestContext::new().await;
+    let mut ctx = context.context.lock().await;
     let rent = ctx.banks_client.get_rent().await.unwrap();
     let mint_account = Keypair::new();
     let mint_authority_pubkey = Pubkey::new_unique();
@@ -417,8 +421,8 @@ async fn fail_account_init_after_mint_init_with_extension() {
 
 #[tokio::test]
 async fn fail_fee_init_after_mint_init() {
-    let program_test = ProgramTest::new("spl_token_2022", id(), processor!(Processor::process));
-    let mut ctx = program_test.start_with_context().await;
+    let context = TestContext::new().await;
+    let mut ctx = context.context.lock().await;
     let rent = ctx.banks_client.get_rent().await.unwrap();
     let mint_account = Keypair::new();
     let mint_authority_pubkey = Pubkey::new_unique();
