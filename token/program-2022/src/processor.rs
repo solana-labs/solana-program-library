@@ -6,7 +6,8 @@ use crate::{
     extension::{
         confidential_transfer::{self, ConfidentialTransferAccount},
         mint_close_authority::MintCloseAuthority,
-        transfer_fee, ExtensionType, StateWithExtensions, StateWithExtensionsMut,
+        transfer_fee::{self, TransferFeeConfig},
+        ExtensionType, StateWithExtensions, StateWithExtensionsMut,
     },
     instruction::{is_valid_signer_index, AuthorityType, TokenInstruction, MAX_SIGNERS},
     state::{Account, AccountState, Mint, Multisig},
@@ -525,6 +526,36 @@ impl Processor {
                         account_info_iter.as_slice(),
                     )?;
                     extension.close_authority = new_authority.try_into()?;
+                }
+                AuthorityType::TransferFeeConfig => {
+                    let extension = mint.get_extension_mut::<TransferFeeConfig>()?;
+                    let maybe_transfer_fee_config_authority: Option<Pubkey> =
+                        extension.transfer_fee_config_authority.into();
+                    let transfer_fee_config_authority = maybe_transfer_fee_config_authority
+                        .ok_or(TokenError::AuthorityTypeNotSupported)?;
+                    Self::validate_owner(
+                        program_id,
+                        &transfer_fee_config_authority,
+                        authority_info,
+                        authority_info_data_len,
+                        account_info_iter.as_slice(),
+                    )?;
+                    extension.transfer_fee_config_authority = new_authority.try_into()?;
+                }
+                AuthorityType::WithheldWithdraw => {
+                    let extension = mint.get_extension_mut::<TransferFeeConfig>()?;
+                    let maybe_withdraw_withheld_authority: Option<Pubkey> =
+                        extension.withdraw_withheld_authority.into();
+                    let withdraw_withheld_authority = maybe_withdraw_withheld_authority
+                        .ok_or(TokenError::AuthorityTypeNotSupported)?;
+                    Self::validate_owner(
+                        program_id,
+                        &withdraw_withheld_authority,
+                        authority_info,
+                        authority_info_data_len,
+                        account_info_iter.as_slice(),
+                    )?;
+                    extension.withdraw_withheld_authority = new_authority.try_into()?;
                 }
                 _ => {
                     return Err(TokenError::AuthorityTypeNotSupported.into());

@@ -766,7 +766,7 @@ pub enum AuthorityType {
     FreezeAccount,
     /// Owner of a given token account
     AccountOwner,
-    /// Authority to close a token account
+    /// Authority to close a mint or token account
     CloseAccount,
     /// Authority to set the transfer fee
     TransferFeeConfig,
