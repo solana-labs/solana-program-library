@@ -10,23 +10,25 @@ use crate::{
         realm::get_realm_data,
         token_owner_record::get_token_owner_record_data_for_realm,
     },
-    tools::spl_token::{assert_spl_token_owner_is_signer, set_spl_token_owner},
+    tools::spl_token::{assert_spl_token_owner_is_signer, set_spl_token_account_authority},
 };
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
+    program_pack::Pack,
     pubkey::Pubkey,
     rent::Rent,
     sysvar::Sysvar,
 };
 use spl_governance_tools::account::create_and_serialize_account_signed;
+use spl_token::{instruction::AuthorityType, state::Account};
 
 /// Processes CreateTokenGovernance instruction
 pub fn process_create_token_governance(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     config: GovernanceConfig,
-    transfer_token_owner: bool,
+    transfer_account_authorities: bool,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -84,13 +86,28 @@ pub fn process_create_token_governance(
         rent,
     )?;
 
-    if transfer_token_owner {
-        set_spl_token_owner(
+    if transfer_account_authorities {
+        set_spl_token_account_authority(
             governed_token_info,
             governed_token_owner_info,
             token_governance_info.key,
+            AuthorityType::AccountOwner,
             spl_token_info,
         )?;
+
+        // If the token account has close_authority then transfer it as well
+        let token_account_data = Account::unpack(&governed_token_info.data.borrow())?;
+        // Note: The code assumes owner==close_authority
+        //       If this is not the case then the caller should set close_authority accordingly before making the transfer
+        if token_account_data.close_authority.is_some() {
+            set_spl_token_account_authority(
+                governed_token_info,
+                governed_token_owner_info,
+                token_governance_info.key,
+                AuthorityType::CloseAccount,
+                spl_token_info,
+            )?;
+        }
     } else {
         assert_spl_token_owner_is_signer(governed_token_info, governed_token_owner_info)?;
     }

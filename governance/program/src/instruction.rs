@@ -337,7 +337,7 @@ pub enum GovernanceInstruction {
     ///   0. `[]` Realm account the created Governance belongs to    
     ///   1. `[writable]` Mint Governance account. PDA seeds: ['mint-governance', realm, governed_mint]
     ///   2. `[writable]` Mint governed by this Governance account
-    ///   3. `[signer]` Current Mint Authority
+    ///   3. `[signer]` Current Mint authority (MintTokens and optionally FreezeAccount)
     ///   4. `[]` Governing TokenOwnerRecord account    
     ///   5. `[signer]` Payer
     ///   6. `[]` SPL Token program
@@ -352,10 +352,10 @@ pub enum GovernanceInstruction {
         config: GovernanceConfig,
 
         #[allow(dead_code)]
-        /// Indicates whether Mint's authority should be transferred to the Governance PDA
+        /// Indicates whether Mint's authorities (MintTokens, FreezeAccount) should be transferred to the Governance PDA
         /// If it's set to false then it can be done at a later time
         /// However the instruction would validate the current mint authority signed the transaction nonetheless
-        transfer_mint_authority: bool,
+        transfer_mint_authorities: bool,
     },
 
     /// Creates Token Governance account which governs a token account
@@ -363,7 +363,7 @@ pub enum GovernanceInstruction {
     ///   0. `[]` Realm account the created Governance belongs to    
     ///   1. `[writable]` Token Governance account. PDA seeds: ['token-governance', realm, governed_token]
     ///   2. `[writable]` Token account governed by this Governance account
-    ///   3. `[signer]` Current Token account
+    ///   3. `[signer]` Current token account authority (AccountOwner and optionally CloseAccount)
     ///   4. `[]` Governing TokenOwnerRecord account        
     ///   5. `[signer]` Payer
     ///   6. `[]` SPL Token program
@@ -378,10 +378,10 @@ pub enum GovernanceInstruction {
         config: GovernanceConfig,
 
         #[allow(dead_code)]
-        /// Indicates whether token owner should be transferred to the Governance PDA
+        /// Indicates whether the token account authorities (AccountOwner and optionally CloseAccount) should be transferred to the Governance PDA
         /// If it's set to false then it can be done at a later time
         /// However the instruction would validate the current token owner signed the transaction nonetheless
-        transfer_token_owner: bool,
+        transfer_account_authorities: bool,
     },
 
     /// Sets GovernanceConfig for a Governance
@@ -756,7 +756,7 @@ pub fn create_mint_governance(
     voter_weight_record: Option<Pubkey>,
     // Args
     config: GovernanceConfig,
-    transfer_mint_authority: bool,
+    transfer_mint_authorities: bool,
 ) -> Instruction {
     let mint_governance_address = get_mint_governance_address(program_id, realm, governed_mint);
 
@@ -777,7 +777,7 @@ pub fn create_mint_governance(
 
     let instruction = GovernanceInstruction::CreateMintGovernance {
         config,
-        transfer_mint_authority,
+        transfer_mint_authorities,
     };
 
     Instruction {
@@ -801,7 +801,7 @@ pub fn create_token_governance(
     voter_weight_record: Option<Pubkey>,
     // Args
     config: GovernanceConfig,
-    transfer_token_owner: bool,
+    transfer_account_authorities: bool,
 ) -> Instruction {
     let token_governance_address = get_token_governance_address(program_id, realm, governed_token);
 
@@ -822,7 +822,7 @@ pub fn create_token_governance(
 
     let instruction = GovernanceInstruction::CreateTokenGovernance {
         config,
-        transfer_token_owner,
+        transfer_account_authorities,
     };
 
     Instruction {

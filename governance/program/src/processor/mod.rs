@@ -119,13 +119,20 @@ pub fn process_instruction(
 
         GovernanceInstruction::CreateMintGovernance {
             config,
-            transfer_mint_authority,
-        } => process_create_mint_governance(program_id, accounts, config, transfer_mint_authority),
+            transfer_mint_authorities,
+        } => {
+            process_create_mint_governance(program_id, accounts, config, transfer_mint_authorities)
+        }
 
         GovernanceInstruction::CreateTokenGovernance {
             config,
-            transfer_token_owner,
-        } => process_create_token_governance(program_id, accounts, config, transfer_token_owner),
+            transfer_account_authorities,
+        } => process_create_token_governance(
+            program_id,
+            accounts,
+            config,
+            transfer_account_authorities,
+        ),
 
         GovernanceInstruction::CreateAccountGovernance { config } => {
             process_create_account_governance(program_id, accounts, config)
