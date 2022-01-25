@@ -1,4 +1,5 @@
-//! Program instructions
+// Governance program has no dependency on the voter-weight-addin program and hence we can't use its instructions here
+// The instructions have to be manually recreated here
 
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{

@@ -23,7 +23,7 @@ use spl_governance_chat::{
     state::{ChatMessage, GovernanceChatAccountType, MessageBody},
 };
 use spl_governance_test_sdk::{addins::ensure_voter_weight_addin_is_built, ProgramTestBench};
-use spl_governance_voter_weight_addin::instruction::deposit_voter_weight;
+use spl_governance_voter_weight_addin::instruction::setup_voter_weight_record;
 
 use crate::program_test::cookies::{ChatMessageCookie, ProposalCookie};
 
@@ -201,7 +201,7 @@ impl GovernanceChatProgramTest {
 
         let voter_weight_record = if self.voter_weight_addin_id.is_some() {
             let voter_weight_record = Keypair::new();
-            let deposit_voter_weight_ix = deposit_voter_weight(
+            let deposit_voter_weight_ix = setup_voter_weight_record(
                 &self.voter_weight_addin_id.unwrap(),
                 &self.governance_program_id,
                 &realm_address,
@@ -210,6 +210,9 @@ impl GovernanceChatProgramTest {
                 &voter_weight_record.pubkey(),
                 &self.bench.payer.pubkey(),
                 amount,
+                None,
+                None,
+                None,
             );
 
             self.bench
