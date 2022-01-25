@@ -74,7 +74,7 @@ pub struct VoterWeightRecord {
     /// When the action is provided then the governance program asserts the executing action is the same as specified by the addin
     pub weight_action: Option<VoterWeightAction>,
 
-    /// The optional target the voter's weight  action pertains to
+    /// The target the voter's weight  action pertains to
     /// It allows to provided voter's weight specific to the target the weight is evaluated for
     /// For example when addin supplies weight to vote on a particular proposal then it must specify the proposal as the action target
     /// When the target is provided then the governance program asserts the target is the same as specified by the addin
