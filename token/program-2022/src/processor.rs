@@ -266,14 +266,9 @@ impl Processor {
             }
 
             if let Ok(transfer_fee_config) = mint.get_extension::<TransferFeeConfig>() {
-                let active_fee = transfer_fee_config.get_epoch_fee(Clock::get()?.epoch);
-                let fee = active_fee.calculate(amount).ok_or(TokenError::Overflow)?;
-                if let Some(expected_fee) = expected_fee {
-                    if expected_fee != fee {
-                        return Err(TokenError::FeeMismatch.into());
-                    }
-                }
-                fee
+                transfer_fee_config
+                    .calculate_epoch_fee(Clock::get()?.epoch, amount)
+                    .ok_or(TokenError::Overflow)?
             } else {
                 0
             }
@@ -289,6 +284,12 @@ impl Processor {
                 0
             }
         };
+        if let Some(expected_fee) = expected_fee {
+            if expected_fee != fee {
+                msg!("Calculated fee {}, received {}", fee, expected_fee);
+                return Err(TokenError::FeeMismatch.into());
+            }
+        }
 
         let self_transfer = cmp_pubkeys(source_account_info.key, dest_account_info.key);
         match source_account.base.delegate {

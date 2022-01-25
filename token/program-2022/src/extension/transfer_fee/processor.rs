@@ -16,6 +16,7 @@ use {
         account_info::{next_account_info, AccountInfo},
         clock::Clock,
         entrypoint::ProgramResult,
+        msg,
         program_option::COption,
         pubkey::Pubkey,
         sysvar::Sysvar,
@@ -131,7 +132,10 @@ pub(crate) fn process_instruction(
             amount,
             decimals,
             fee,
-        } => Processor::process_transfer(program_id, accounts, amount, Some(decimals), Some(fee)),
+        } => {
+            msg!("Instruction: TransferCheckedWithFee");
+            Processor::process_transfer(program_id, accounts, amount, Some(decimals), Some(fee))
+        }
         TransferFeeInstruction::WithdrawWithheldTokensFromMint => {
             unimplemented!();
         }

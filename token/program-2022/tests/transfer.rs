@@ -15,10 +15,7 @@ use {
 #[tokio::test]
 async fn basic() {
     let mut context = TestContext::new().await;
-    context
-        .init_token_with_mint(vec![])
-        .await
-        .unwrap();
+    context.init_token_with_mint(vec![]).await.unwrap();
     let TokenContext {
         decimals,
         mint_authority,
@@ -92,10 +89,7 @@ async fn basic() {
 #[tokio::test]
 async fn self_transfer() {
     let mut context = TestContext::new().await;
-    context
-        .init_token_with_mint(vec![])
-        .await
-        .unwrap();
+    context.init_token_with_mint(vec![]).await.unwrap();
     let TokenContext {
         decimals,
         mint_authority,
@@ -146,10 +140,7 @@ async fn self_transfer() {
 #[tokio::test]
 async fn self_owned() {
     let mut context = TestContext::new().await;
-    context
-        .init_token_with_mint(vec![])
-        .await
-        .unwrap();
+    context.init_token_with_mint(vec![]).await.unwrap();
     let TokenContext {
         decimals,
         mint_authority,
@@ -193,4 +184,57 @@ async fn self_owned() {
         .transfer_checked(&alice_account, &alice_account, &alice, 1, decimals)
         .await
         .unwrap();
+}
+
+#[tokio::test]
+async fn transfer_fee() {
+    let mut context = TestContext::new().await;
+    context.init_token_with_mint(vec![]).await.unwrap();
+    let TokenContext {
+        decimals,
+        mint_authority,
+        token,
+        alice,
+        bob,
+        ..
+    } = context.token_context.unwrap();
+
+    let alice_account = Keypair::new();
+    let alice_account = token
+        .create_auxiliary_token_account(&alice_account, &alice.pubkey())
+        .await
+        .unwrap();
+    let bob_account = Keypair::new();
+    let bob_account = token
+        .create_auxiliary_token_account(&bob_account, &bob.pubkey())
+        .await
+        .unwrap();
+
+    // mint some tokens
+    let amount = 10;
+    token
+        .mint_to(&alice_account, &mint_authority, amount)
+        .await
+        .unwrap();
+
+    // success if expected fee is 0
+    token
+        .transfer_checked_with_fee(&alice_account, &bob_account, &alice, 1, decimals, 0)
+        .await
+        .unwrap();
+
+    // fail for anything else
+    let error = token
+        .transfer_checked_with_fee(&alice_account, &bob_account, &alice, 2, decimals, 1)
+        .await
+        .unwrap_err();
+    assert_eq!(
+        error,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::FeeMismatch as u32)
+            )
+        )))
+    );
 }

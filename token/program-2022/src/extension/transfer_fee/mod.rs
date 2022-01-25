@@ -74,6 +74,10 @@ impl TransferFeeConfig {
             &self.older_transfer_fee
         }
     }
+    /// Calculate the fee for the given epoch
+    pub fn calculate_epoch_fee(&self, epoch: Epoch, amount: u64) -> Option<u64> {
+        self.get_epoch_fee(epoch).calculate(amount)
+    }
 }
 impl Extension for TransferFeeConfig {
     const TYPE: ExtensionType = ExtensionType::TransferFeeConfig;
