@@ -61,6 +61,10 @@ There are two UIs available which showcase the programs capabilities:
 
   This is advanced, user friendly and tasks oriented UI used by most of the existing DAOs on Solana
 
+## Client SDK
+
+[@solana/spl-governance](https://www.npmjs.com/package/@solana/spl-governance)
+
 ## Documentation and Help
 
 Program and UI documentation: [spl-governance-docs](https://docs.realms.today)
