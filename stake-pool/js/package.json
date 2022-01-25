@@ -1,40 +1,22 @@
 {
   "name": "@solana/spl-stake-pool",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "description": "SPL Stake Pool Program JS API",
+  "main": "src/index",
   "scripts": {
-    "build": "tsc",
-    "lint": "npm run pretty && eslint .",
-    "lint:fix": "npm run pretty:fix && eslint . --fix",
-    "pretty": "prettier --check '{,src/**/,test/**/}*.ts'",
-    "pretty:fix": "prettier -w '{,src/**/,test/**/}*.ts'",
+    "lint": "npx prettier src/*.ts -w",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage"
   },
   "keywords": [],
   "authors": [
-    "Solana Maintainers <maintainers@solana.foundation>",
     "Lieu Zheng Hong",
     "mFactory Team (https://mfactory.ch)"
-  ],
-  "homepage": "https://solana.com",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/solana-labs/solana-program-library"
-  },
-  "publishConfig": {
-    "access": "public"
-  },
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "files": [
-    "/dist"
   ],
   "license": "ISC",
   "dependencies": {
     "@project-serum/borsh": "^0.2.2",
-    "@solana/buffer-layout": "^4.0.0",
     "@solana/spl-token": "^0.1.8",
     "@solana/web3.js": "^1.30.2",
     "bn.js": "^5.2.0",
@@ -46,13 +28,8 @@
     "@babel/preset-typescript": "^7.16.5",
     "@types/bn.js": "^5.1.0",
     "@types/jest": "^27.0.3",
-    "@typescript-eslint/eslint-plugin": "^5.8.1",
-    "@typescript-eslint/parser": "^5.8.1",
-    "eslint": "^8.5.0",
-    "eslint-plugin-react": "^7.28.0",
     "jest": "^27.3.1",
-    "prettier": "^2.2.1",
-    "typescript": "^4.5.4"
+    "prettier": "^2.2.1"
   },
   "jest": {
     "testRegex": ".*\\.test\\.ts$",
