@@ -6,7 +6,7 @@ use crate::{
     extension::{
         confidential_transfer::{self, ConfidentialTransferAccount},
         mint_close_authority::MintCloseAuthority,
-        transfer_fee::{self, TransferFeeConfig},
+        transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
         ExtensionType, StateWithExtensions, StateWithExtensionsMut,
     },
     instruction::{is_valid_signer_index, AuthorityType, TokenInstruction, MAX_SIGNERS},
@@ -15,6 +15,7 @@ use crate::{
 use num_traits::FromPrimitive;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
+    clock::Clock,
     decode_error::DecodeError,
     entrypoint::ProgramResult,
     msg,
@@ -228,7 +229,7 @@ impl Processor {
         accounts: &[AccountInfo],
         amount: u64,
         expected_decimals: Option<u8>,
-        _expected_fee: Option<u64>,
+        expected_fee: Option<u64>,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
 
@@ -253,7 +254,7 @@ impl Processor {
         if source_account.base.amount < amount {
             return Err(TokenError::InsufficientFunds.into());
         }
-        if let Some((mint_info, expected_decimals)) = expected_mint_info {
+        let fee = if let Some((mint_info, expected_decimals)) = expected_mint_info {
             if !cmp_pubkeys(&source_account.base.mint, mint_info.key) {
                 return Err(TokenError::MintMismatch.into());
             }
@@ -263,7 +264,31 @@ impl Processor {
             if expected_decimals != mint.base.decimals {
                 return Err(TokenError::MintDecimalsMismatch.into());
             }
-        }
+
+            if let Ok(transfer_fee_config) = mint.get_extension::<TransferFeeConfig>() {
+                let active_fee = transfer_fee_config.get_epoch_fee(Clock::get()?.epoch);
+                let fee = active_fee.calculate(amount).ok_or(TokenError::Overflow)?;
+                if let Some(expected_fee) = expected_fee {
+                    if expected_fee != fee {
+                        return Err(TokenError::FeeMismatch.into());
+                    }
+                }
+                fee
+            } else {
+                0
+            }
+        } else {
+            // Transfer fee amount extension exists on the account, but no mint
+            // was provided to calculate the fee, abort
+            if source_account
+                .get_extension_mut::<TransferFeeAmount>()
+                .is_ok()
+            {
+                return Err(TokenError::MintRequiredForTransfer.into());
+            } else {
+                0
+            }
+        };
 
         let self_transfer = cmp_pubkeys(source_account_info.key, dest_account_info.key);
         match source_account.base.delegate {
@@ -310,7 +335,7 @@ impl Processor {
             return Ok(());
         }
 
-        // self-transfer was dealt with earlier, so this is meant to be safe
+        // self-transfer was dealt with earlier, so this *should* be safe
         let mut dest_account_data = dest_account_info.data.borrow_mut();
         let mut dest_account = StateWithExtensionsMut::<Account>::unpack(&mut dest_account_data)?;
 
@@ -326,11 +351,25 @@ impl Processor {
             .amount
             .checked_sub(amount)
             .ok_or(TokenError::Overflow)?;
+        let credited_amount = amount.checked_sub(fee).ok_or(TokenError::Overflow)?;
         dest_account.base.amount = dest_account
             .base
             .amount
-            .checked_add(amount)
+            .checked_add(credited_amount)
             .ok_or(TokenError::Overflow)?;
+        if fee > 0 {
+            if let Ok(extension) = dest_account.get_extension_mut::<TransferFeeAmount>() {
+                let new_withheld_amount = u64::from(extension.withheld_amount)
+                    .checked_add(fee)
+                    .ok_or(TokenError::Overflow)?;
+                extension.withheld_amount = new_withheld_amount.into();
+            } else {
+                // Use the generic error since this should never happen. If there's
+                // a fee, then the mint has a fee configured, which means all accounts
+                // must have the withholding.
+                return Err(TokenError::InvalidState.into());
+            }
+        }
 
         if source_account.base.is_native() {
             let source_starting_lamports = source_account_info.lamports();
@@ -1154,6 +1193,12 @@ impl PrintProgramError for TokenError {
             }
             TokenError::TransferFeeExceedsMaximum => {
                 msg!("Error: Transfer fee exceeds maximum of 10,000 basis points");
+            }
+            TokenError::MintRequiredForTransfer => {
+                msg!("Mint required for this account to transfer tokens, use `transfer_checked` or `transfer_checked_with_fee`");
+            }
+            TokenError::FeeMismatch => {
+                msg!("Calculated fee does not match expected fee");
             }
         }
     }
