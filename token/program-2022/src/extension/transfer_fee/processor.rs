@@ -76,10 +76,10 @@ fn process_set_transfer_fee(
         account_info_iter.as_slice(),
     )?;
 
-    // When setting the transfer fee, we have a few situations:
+    // When setting the transfer fee, we have two situations:
     // * newer transfer fee epoch <= current epoch:
     //     newer transfer fee is the active one, so overwrite older transfer fee with newer, then overwrite newer transfer fee
-    // * newer transfer fee epoch >= next epoch:
+    // * newer transfer fee epoch == next epoch:
     //     it was never used, so just overwrite next transfer fee
     let epoch = Clock::get()?.epoch;
     let next_epoch = epoch.saturating_add(1);
