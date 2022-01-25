@@ -228,6 +228,7 @@ impl Processor {
         accounts: &[AccountInfo],
         amount: u64,
         expected_decimals: Option<u8>,
+        _expected_fee: Option<u64>,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
 
@@ -243,33 +244,29 @@ impl Processor {
         let authority_info = next_account_info(account_info_iter)?;
         let authority_info_data_len = authority_info.data_len();
 
-        let mut source_account = Account::unpack(&source_account_info.data.borrow())?;
-        let mut dest_account = Account::unpack(&dest_account_info.data.borrow())?;
-
-        if source_account.is_frozen() || dest_account.is_frozen() {
+        let mut source_account_data = source_account_info.data.borrow_mut();
+        let mut source_account =
+            StateWithExtensionsMut::<Account>::unpack(&mut source_account_data)?;
+        if source_account.base.is_frozen() {
             return Err(TokenError::AccountFrozen.into());
         }
-        if source_account.amount < amount {
+        if source_account.base.amount < amount {
             return Err(TokenError::InsufficientFunds.into());
         }
-        if !cmp_pubkeys(&source_account.mint, &dest_account.mint) {
-            return Err(TokenError::MintMismatch.into());
-        }
-
         if let Some((mint_info, expected_decimals)) = expected_mint_info {
-            if !cmp_pubkeys(&source_account.mint, mint_info.key) {
+            if !cmp_pubkeys(&source_account.base.mint, mint_info.key) {
                 return Err(TokenError::MintMismatch.into());
             }
 
-            let mint = Mint::unpack(&mint_info.data.borrow_mut())?;
-            if expected_decimals != mint.decimals {
+            let mint_data = mint_info.try_borrow_data()?;
+            let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
+            if expected_decimals != mint.base.decimals {
                 return Err(TokenError::MintDecimalsMismatch.into());
             }
         }
 
         let self_transfer = cmp_pubkeys(source_account_info.key, dest_account_info.key);
-
-        match source_account.delegate {
+        match source_account.base.delegate {
             COption::Some(ref delegate) if cmp_pubkeys(authority_info.key, delegate) => {
                 Self::validate_owner(
                     program_id,
@@ -278,22 +275,23 @@ impl Processor {
                     authority_info_data_len,
                     account_info_iter.as_slice(),
                 )?;
-                if source_account.delegated_amount < amount {
+                if source_account.base.delegated_amount < amount {
                     return Err(TokenError::InsufficientFunds.into());
                 }
                 if !self_transfer {
-                    source_account.delegated_amount = source_account
+                    source_account.base.delegated_amount = source_account
+                        .base
                         .delegated_amount
                         .checked_sub(amount)
                         .ok_or(TokenError::Overflow)?;
-                    if source_account.delegated_amount == 0 {
-                        source_account.delegate = COption::None;
+                    if source_account.base.delegated_amount == 0 {
+                        source_account.base.delegate = COption::None;
                     }
                 }
             }
             _ => Self::validate_owner(
                 program_id,
-                &source_account.owner,
+                &source_account.base.owner,
                 authority_info,
                 authority_info_data_len,
                 account_info_iter.as_slice(),
@@ -312,16 +310,29 @@ impl Processor {
             return Ok(());
         }
 
-        source_account.amount = source_account
+        // self-transfer was dealt with earlier, so this is meant to be safe
+        let mut dest_account_data = dest_account_info.data.borrow_mut();
+        let mut dest_account = StateWithExtensionsMut::<Account>::unpack(&mut dest_account_data)?;
+
+        if dest_account.base.is_frozen() {
+            return Err(TokenError::AccountFrozen.into());
+        }
+        if !cmp_pubkeys(&source_account.base.mint, &dest_account.base.mint) {
+            return Err(TokenError::MintMismatch.into());
+        }
+
+        source_account.base.amount = source_account
+            .base
             .amount
             .checked_sub(amount)
             .ok_or(TokenError::Overflow)?;
-        dest_account.amount = dest_account
+        dest_account.base.amount = dest_account
+            .base
             .amount
             .checked_add(amount)
             .ok_or(TokenError::Overflow)?;
 
-        if source_account.is_native() {
+        if source_account.base.is_native() {
             let source_starting_lamports = source_account_info.lamports();
             **source_account_info.lamports.borrow_mut() = source_starting_lamports
                 .checked_sub(amount)
@@ -333,8 +344,8 @@ impl Processor {
                 .ok_or(TokenError::Overflow)?;
         }
 
-        Account::pack(source_account, &mut source_account_info.data.borrow_mut())?;
-        Account::pack(dest_account, &mut dest_account_info.data.borrow_mut())?;
+        source_account.pack_base();
+        dest_account.pack_base();
 
         Ok(())
     }
@@ -940,7 +951,7 @@ impl Processor {
             #[allow(deprecated)]
             TokenInstruction::Transfer { amount } => {
                 msg!("Instruction: Transfer");
-                Self::process_transfer(program_id, accounts, amount, None)
+                Self::process_transfer(program_id, accounts, amount, None, None)
             }
             TokenInstruction::Approve { amount } => {
                 msg!("Instruction: Approve");
@@ -979,7 +990,7 @@ impl Processor {
             }
             TokenInstruction::TransferChecked { amount, decimals } => {
                 msg!("Instruction: TransferChecked");
-                Self::process_transfer(program_id, accounts, amount, Some(decimals))
+                Self::process_transfer(program_id, accounts, amount, Some(decimals), None)
             }
             TokenInstruction::ApproveChecked { amount, decimals } => {
                 msg!("Instruction: ApproveChecked");

@@ -127,9 +127,11 @@ pub(crate) fn process_instruction(
             transfer_fee_basis_points,
             maximum_fee,
         ),
-        TransferFeeInstruction::TransferCheckedWithFee { .. } => {
-            unimplemented!();
-        }
+        TransferFeeInstruction::TransferCheckedWithFee {
+            amount,
+            decimals,
+            fee,
+        } => Processor::process_transfer(program_id, accounts, amount, Some(decimals), Some(fee)),
         TransferFeeInstruction::WithdrawWithheldTokensFromMint => {
             unimplemented!();
         }
