@@ -2467,7 +2467,6 @@ impl GovernanceProgramTest {
         weight_action_target: Option<Pubkey>,
     ) -> Result<VoterWeightRecordCookie, ProgramError> {
         let voter_weight_record_account = Keypair::new();
-        let voter_weight = 120;
 
         let setup_voter_weight_record = setup_voter_weight_record(
             &self.voter_weight_addin_id.unwrap(),
