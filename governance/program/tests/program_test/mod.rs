@@ -2454,6 +2454,7 @@ impl GovernanceProgramTest {
         token_owner_record_cookie: &mut TokenOwnerRecordCookie,
     ) -> Result<VoterWeightRecordCookie, ProgramError> {
         let voter_weight_record_account = Keypair::new();
+        let voter_weight = 120;
 
         let setup_voter_weight_record = setup_voter_weight_record(
             &self.voter_weight_addin_id.unwrap(),
@@ -2463,7 +2464,7 @@ impl GovernanceProgramTest {
             &token_owner_record_cookie.address,
             &voter_weight_record_account.pubkey(),
             &self.bench.payer.pubkey(),
-            100,
+            voter_weight,
             None,
             None,
             None,
@@ -2483,7 +2484,7 @@ impl GovernanceProgramTest {
                 realm: token_owner_record_cookie.account.realm,
                 governing_token_mint: token_owner_record_cookie.account.governing_token_mint,
                 governing_token_owner: token_owner_record_cookie.account.governing_token_owner,
-                voter_weight: 120,
+                voter_weight,
                 voter_weight_expiry: None,
                 weight_action: None,
                 weight_action_target: None,
