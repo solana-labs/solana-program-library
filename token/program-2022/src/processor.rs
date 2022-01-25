@@ -1107,6 +1107,9 @@ impl PrintProgramError for TokenError {
             TokenError::MintHasSupply => {
                 msg!("Error: Mint has non-zero supply. Burn all tokens before closing the mint")
             }
+            TokenError::NoAuthorityExists => {
+                msg!("Error: No authority exists to perform the desired operation");
+            }
         }
     }
 }
