@@ -69,6 +69,8 @@ pub fn process_deposit(
         governing_token_owner: token_owner_record_data.governing_token_owner,
         voter_weight: amount,
         voter_weight_expiry: None,
+        weight_action: None,
+        weight_action_target: None,
     };
 
     create_and_serialize_account(

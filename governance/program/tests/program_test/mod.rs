@@ -98,6 +98,8 @@ impl GovernanceProgramTest {
 
     #[allow(dead_code)]
     pub async fn start_with_voter_weight_addin() -> Self {
+        // We only ensure the add-in is built but it doesn't detect changes
+        // If the addin is changes it needs to be manually built
         ensure_voter_weight_addin_is_built();
 
         Self::start_impl(true).await
@@ -2483,6 +2485,8 @@ impl GovernanceProgramTest {
                 governing_token_owner: token_owner_record_cookie.account.governing_token_owner,
                 voter_weight: 100,
                 voter_weight_expiry: None,
+                weight_action: None,
+                weight_action_target: None,
             },
         };
 

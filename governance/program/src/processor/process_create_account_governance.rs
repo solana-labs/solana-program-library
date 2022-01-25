@@ -1,13 +1,16 @@
 //! Program state processor
 
-use crate::state::{
-    enums::GovernanceAccountType,
-    governance::{
-        assert_valid_create_governance_args, get_account_governance_address_seeds, Governance,
-        GovernanceConfig,
+use crate::{
+    addins::voter_weight::VoterWeightAction,
+    state::{
+        enums::GovernanceAccountType,
+        governance::{
+            assert_valid_create_governance_args, get_account_governance_address_seeds, Governance,
+            GovernanceConfig,
+        },
+        realm::get_realm_data,
+        token_owner_record::get_token_owner_record_data_for_realm,
     },
-    realm::get_realm_data,
-    token_owner_record::get_token_owner_record_data_for_realm,
 };
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -53,6 +56,8 @@ pub fn process_create_account_governance(
         account_info_iter,
         realm_info.key,
         &realm_data,
+        VoterWeightAction::CreateGovernance,
+        realm_info.key,
     )?;
 
     token_owner_record_data.assert_can_create_governance(&realm_data, voter_weight)?;

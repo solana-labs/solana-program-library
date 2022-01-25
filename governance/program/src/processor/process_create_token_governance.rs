@@ -1,6 +1,7 @@
 //! Program state processor
 
 use crate::{
+    addins::voter_weight::VoterWeightAction,
     state::{
         enums::GovernanceAccountType,
         governance::{
@@ -63,6 +64,8 @@ pub fn process_create_token_governance(
         account_info_iter,
         realm_info.key,
         &realm_data,
+        VoterWeightAction::CreateGovernance,
+        realm_info.key,
     )?;
 
     token_owner_record_data.assert_can_create_governance(&realm_data, voter_weight)?;
