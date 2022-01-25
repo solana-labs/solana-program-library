@@ -370,6 +370,29 @@ where
     }
 
     /// Transfer tokens to another account
+    pub async fn transfer_unchecked<S2: Signer>(
+        &self,
+        source: &Pubkey,
+        destination: &Pubkey,
+        authority: &S2,
+        amount: u64,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            #[allow(deprecated)]
+            &[instruction::transfer(
+                &self.program_id,
+                source,
+                destination,
+                &authority.pubkey(),
+                &[],
+                amount,
+            )?],
+            &[authority],
+        )
+        .await
+    }
+
+    /// Transfer tokens to another account
     pub async fn transfer_checked<S2: Signer>(
         &self,
         source: &Pubkey,
@@ -388,6 +411,33 @@ where
                 &[],
                 amount,
                 decimals,
+            )?],
+            &[authority],
+        )
+        .await
+    }
+
+    /// Transfer tokens to another account, given an expected fee
+    pub async fn transfer_checked_with_fee<S2: Signer>(
+        &self,
+        source: &Pubkey,
+        destination: &Pubkey,
+        authority: &S2,
+        amount: u64,
+        decimals: u8,
+        fee: u64,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[transfer_fee::instruction::transfer_checked_with_fee(
+                &self.program_id,
+                source,
+                &self.pubkey,
+                destination,
+                &authority.pubkey(),
+                &[],
+                amount,
+                decimals,
+                fee,
             )?],
             &[authority],
         )
