@@ -584,7 +584,7 @@ async fn test_create_account_governance_with_voter_weight_action_target_error() 
             100,
             None,
             None,
-            Some(Pubkey::new_unique()),
+            Some(Pubkey::new_unique()), // Invalid target
         )
         .await
         .unwrap();
@@ -705,4 +705,50 @@ async fn test_cast_vote_with_voter_weight_action_error() {
 
     //  Assert
     assert_eq!(err, GovernanceError::VoterWeightRecordInvalidAction.into());
+}
+
+#[tokio::test]
+async fn test_create_account_governance_with_voter_weight_record() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_with_voter_weight_addin().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+
+    let mut token_owner_record_cookie =
+        governance_test.with_token_owner_record(&realm_cookie).await;
+
+    governance_test.advance_clock().await;
+    let clock = governance_test.bench.get_clock().await;
+
+    governance_test
+        .with_voter_weight_addin_record_impl(
+            &mut token_owner_record_cookie,
+            100,
+            Some(clock.slot),
+            Some(VoterWeightAction::CreateGovernance),
+            Some(realm_cookie.address),
+        )
+        .await
+        .unwrap();
+
+    // Act
+    let account_governance_cookie = governance_test
+        .with_account_governance(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+        )
+        .await
+        .unwrap();
+
+    // // Assert
+    let account_governance_account = governance_test
+        .get_governance_account(&account_governance_cookie.address)
+        .await;
+
+    assert_eq!(
+        account_governance_cookie.account,
+        account_governance_account
+    );
 }
