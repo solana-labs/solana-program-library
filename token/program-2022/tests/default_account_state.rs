@@ -191,8 +191,8 @@ async fn end_to_end_default_account_state() {
         .create_auxiliary_token_account(&account, &owner)
         .await
         .unwrap();
-    let account_state = token.get_account_info(account).await.unwrap();
-    assert_eq!(account_state.state, default_account_state);
+    let account_state = token.get_account_info(&account).await.unwrap();
+    assert_eq!(account_state.base.state, default_account_state);
 
     // Invalid default state
     let err = token
@@ -226,8 +226,8 @@ async fn end_to_end_default_account_state() {
         .create_auxiliary_token_account(&account, &owner)
         .await
         .unwrap();
-    let account_state = token.get_account_info(account).await.unwrap();
-    assert_eq!(account_state.state, AccountState::Initialized);
+    let account_state = token.get_account_info(&account).await.unwrap();
+    assert_eq!(account_state.base.state, AccountState::Initialized);
 
     // adjusting freeze authority adjusts default state authority
     let new_authority = Keypair::new();
