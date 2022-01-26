@@ -4,7 +4,6 @@ use borsh::BorshSerialize;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
-    msg,
     pubkey::Pubkey,
     rent::Rent,
     sysvar::Sysvar,
@@ -68,17 +67,32 @@ pub fn process_set_realm_config(
     let system_info = next_account_info(account_info_iter)?; // 4
     let realm_config_info = next_account_info(account_info_iter)?; // 5
 
-    // Setup community voter weight addin
-    if realm_config_args.use_community_voter_weight_addin {
+    let community_voter_weight_addin = if realm_config_args.use_community_voter_weight_addin {
         let community_voter_weight_addin_info = next_account_info(account_info_iter)?; // 6
-        let payer_info = next_account_info(account_info_iter)?; // 7
+        Some(*community_voter_weight_addin_info.key)
+    } else {
+        None
+    };
+
+    let max_community_voter_weight_addin = if realm_config_args.use_max_community_voter_weight_addin
+    {
+        let max_community_voter_weight_addin_info = next_account_info(account_info_iter)?; // 7
+        Some(*max_community_voter_weight_addin_info.key)
+    } else {
+        None
+    };
+
+    if realm_config_args.use_community_voter_weight_addin
+        || realm_config_args.use_max_community_voter_weight_addin
+    {
+        let payer_info = next_account_info(account_info_iter)?; // 8
 
         if realm_config_info.data_is_empty() {
             let realm_config_data = RealmConfigAccount {
                 account_type: GovernanceAccountType::RealmConfig,
                 realm: *realm_info.key,
-                community_voter_weight_addin: Some(*community_voter_weight_addin_info.key),
-                community_max_vote_weight_addin: None,
+                community_voter_weight_addin,
+                max_community_voter_weight_addin,
                 council_voter_weight_addin: None,
                 council_max_vote_weight_addin: None,
                 reserved: [0; 128],
@@ -98,21 +112,30 @@ pub fn process_set_realm_config(
         } else {
             let mut realm_config_data =
                 get_realm_config_data_for_realm(program_id, realm_config_info, realm_info.key)?;
-            realm_config_data.community_voter_weight_addin =
-                Some(*community_voter_weight_addin_info.key);
+
+            realm_config_data.community_voter_weight_addin = community_voter_weight_addin;
+            realm_config_data.max_community_voter_weight_addin = max_community_voter_weight_addin;
+
             realm_config_data.serialize(&mut *realm_config_info.data.borrow_mut())?;
         }
-    } else if realm_data.config.use_community_voter_weight_addin {
+    } else if realm_data.config.use_community_voter_weight_addin
+        || realm_data.config.use_max_community_voter_weight_addin
+    {
         let mut realm_config_data =
             get_realm_config_data_for_realm(program_id, realm_config_info, realm_info.key)?;
-        realm_config_data.community_voter_weight_addin = None;
+
+        realm_config_data.community_voter_weight_addin = community_voter_weight_addin;
+        realm_config_data.max_community_voter_weight_addin = max_community_voter_weight_addin;
+
         realm_config_data.serialize(&mut *realm_config_info.data.borrow_mut())?;
     }
 
     realm_data.config.community_mint_max_vote_weight_source =
         realm_config_args.community_mint_max_vote_weight_source;
+
     realm_data.config.min_community_tokens_to_create_governance =
         realm_config_args.min_community_tokens_to_create_governance;
+
     realm_data.config.use_community_voter_weight_addin =
         realm_config_args.use_community_voter_weight_addin;
 
