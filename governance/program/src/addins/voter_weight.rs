@@ -40,7 +40,7 @@ pub enum VoterWeightAction {
 }
 
 /// VoterWeightRecord account
-/// The account is used as an api interface used to provide voting power to the governance program from external addin contracts
+/// The account is used as an api interface to provide voting power to the governance program from external addin contracts
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct VoterWeightRecord {
     /// VoterWeightRecord account type
