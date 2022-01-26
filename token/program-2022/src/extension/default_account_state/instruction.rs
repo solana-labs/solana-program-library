@@ -28,7 +28,7 @@ pub enum DefaultAccountStateInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` The mint to initialize.
-    InitializeDefaultAccountState,
+    Initialize,
     /// Update the default state for new Accounts. Only supported for mints that include the
     /// `DefaultAccountState` extension.
     ///
@@ -42,7 +42,7 @@ pub enum DefaultAccountStateInstruction {
     ///   0. `[writable]` The mint.
     ///   1. `[]` The mint's multisignature freeze authority.
     ///   2. ..2+M `[signer]` M signer accounts.
-    UpdateDefaultAccountState,
+    Update,
 }
 
 pub(crate) fn decode_instruction(
@@ -74,7 +74,7 @@ fn encode_instruction(
     }
 }
 
-/// Create an `InitializeDefaultAccountState` instruction
+/// Create an `Initialize` instruction
 pub fn initialize_default_account_state(
     token_program_id: &Pubkey,
     mint: &Pubkey,
@@ -85,12 +85,12 @@ pub fn initialize_default_account_state(
     Ok(encode_instruction(
         token_program_id,
         accounts,
-        DefaultAccountStateInstruction::InitializeDefaultAccountState,
+        DefaultAccountStateInstruction::Initialize,
         state,
     ))
 }
 
-/// Create an `InitializeDefaultAccountState` instruction
+/// Create an `Initialize` instruction
 pub fn update_default_account_state(
     token_program_id: &Pubkey,
     mint: &Pubkey,
@@ -109,7 +109,7 @@ pub fn update_default_account_state(
     Ok(encode_instruction(
         token_program_id,
         accounts,
-        DefaultAccountStateInstruction::UpdateDefaultAccountState,
+        DefaultAccountStateInstruction::Update,
         state,
     ))
 }

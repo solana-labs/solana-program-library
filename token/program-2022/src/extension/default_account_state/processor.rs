@@ -79,12 +79,12 @@ pub(crate) fn process_instruction(
 
     let (instruction, state) = decode_instruction(input)?;
     match instruction {
-        DefaultAccountStateInstruction::InitializeDefaultAccountState => {
-            msg!("DefaultAccountStateInstruction::InitializeDefaultAccountState");
+        DefaultAccountStateInstruction::Initialize => {
+            msg!("DefaultAccountStateInstruction::Initialize");
             process_initialize_default_account_state(accounts, state)
         }
-        DefaultAccountStateInstruction::UpdateDefaultAccountState => {
-            msg!("DefaultAccountStateInstruction::UpdateDefaultAccountState");
+        DefaultAccountStateInstruction::Update => {
+            msg!("DefaultAccountStateInstruction::Update");
             process_update_default_account_state(program_id, accounts, state)
         }
     }
