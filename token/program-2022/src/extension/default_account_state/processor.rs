@@ -20,10 +20,18 @@ use {
     },
 };
 
+fn check_valid_default_state(state: AccountState) -> ProgramResult {
+    match state {
+        AccountState::Uninitialized => Err(TokenError::InvalidState.into()),
+        _ => Ok(()),
+    }
+}
+
 fn process_initialize_default_account_state(
     accounts: &[AccountInfo],
     state: AccountState,
 ) -> ProgramResult {
+    check_valid_default_state(state)?;
     let account_info_iter = &mut accounts.iter();
     let mint_account_info = next_account_info(account_info_iter)?;
     let mut mint_data = mint_account_info.data.borrow_mut();
@@ -38,6 +46,7 @@ fn process_update_default_account_state(
     accounts: &[AccountInfo],
     state: AccountState,
 ) -> ProgramResult {
+    check_valid_default_state(state)?;
     let account_info_iter = &mut accounts.iter();
     let mint_account_info = next_account_info(account_info_iter)?;
     let freeze_authority_info = next_account_info(account_info_iter)?;
