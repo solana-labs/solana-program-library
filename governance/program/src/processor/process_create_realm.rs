@@ -83,15 +83,32 @@ pub fn process_create_realm(
         None
     };
 
-    if config_args.use_community_voter_weight_addin {
-        let realm_config_info = next_account_info(account_info_iter)?; // 10
-        let community_voter_weight_addin_info = next_account_info(account_info_iter)?; //11
+    // Setup config for addins
+
+    let community_voter_weight_addin = if config_args.use_community_voter_weight_addin {
+        let community_voter_weight_addin_info = next_account_info(account_info_iter)?; // 10
+        Some(*community_voter_weight_addin_info.key)
+    } else {
+        None
+    };
+
+    let max_community_voter_weight_addin = if config_args.use_max_community_voter_weight_addin {
+        let max_community_voter_weight_addin_info = next_account_info(account_info_iter)?; // 11
+        Some(*max_community_voter_weight_addin_info.key)
+    } else {
+        None
+    };
+
+    if config_args.use_community_voter_weight_addin
+        || config_args.use_max_community_voter_weight_addin
+    {
+        let realm_config_info = next_account_info(account_info_iter)?; // 12
 
         let realm_config_data = RealmConfigAccount {
             account_type: GovernanceAccountType::RealmConfig,
             realm: *realm_info.key,
-            community_voter_weight_addin: Some(*community_voter_weight_addin_info.key),
-            max_community_voter_weight_addin: None,
+            community_voter_weight_addin,
+            max_community_voter_weight_addin,
             council_voter_weight_addin: None,
             council_max_vote_weight_addin: None,
             reserved: [0; 128],
