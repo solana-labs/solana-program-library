@@ -62,7 +62,7 @@ use crate::program_test::cookies::{
 };
 
 use spl_governance_test_sdk::{
-    addins::ensure_voter_weight_addin_is_built,
+    addins::ensure_addin_mock_is_built,
     cookies::WalletCookie,
     tools::{clone_keypair, NopOverride},
     ProgramTestBench,
@@ -98,23 +98,36 @@ pub struct GovernanceProgramTest {
 impl GovernanceProgramTest {
     #[allow(dead_code)]
     pub async fn start_new() -> Self {
-        Self::start_impl(false).await
+        Self::start_impl(false, false).await
     }
 
     #[allow(dead_code)]
     pub async fn start_with_voter_weight_addin() -> Self {
+        Self::start_with_addin_mock(true, false).await
+    }
+
+    #[allow(dead_code)]
+    pub async fn start_with_max_voter_weight_addin() -> Self {
+        Self::start_with_addin_mock(false, true).await
+    }
+
+    #[allow(dead_code)]
+    pub async fn start_with_addin_mock(
+        use_voter_weight_addin: bool,
+        use_max_voter_weight_addin: bool,
+    ) -> Self {
         // We only ensure the add-in is built but it doesn't detect changes
         // If the addin is changed it needs to be manually built
         // Note: we can't use build.rs script because the addin depends on spl-governance
         // and it has to be built after spl-governance is built and before tests are run
         // Anything inside build.rs would execute before spl-governance is built
-        ensure_voter_weight_addin_is_built();
+        ensure_addin_mock_is_built();
 
-        Self::start_impl(true).await
+        Self::start_impl(use_voter_weight_addin, use_max_voter_weight_addin).await
     }
 
     #[allow(dead_code)]
-    async fn start_impl(use_voter_weight_addin: bool) -> Self {
+    async fn start_impl(use_voter_weight_addin: bool, use_max_voter_weight_addin: bool) -> Self {
         let mut program_test = ProgramTest::default();
 
         let program_id = Pubkey::from_str("Governance111111111111111111111111111111111").unwrap();
@@ -124,14 +137,28 @@ impl GovernanceProgramTest {
             processor!(process_instruction),
         );
 
-        let voter_weight_addin_id = if use_voter_weight_addin {
-            let voter_weight_addin_id =
-                Pubkey::from_str("VoterWeight11111111111111111111111111111111").unwrap();
-            program_test.add_program("spl_governance_addin_mock", voter_weight_addin_id, None);
-            Some(voter_weight_addin_id)
-        } else {
-            None
-        };
+        let (voter_weight_addin_id, max_voter_weight_addin_id) =
+            if use_voter_weight_addin || use_max_voter_weight_addin {
+                let addin_mock_id =
+                    Pubkey::from_str("AddinMock1111111111111111111111111111111111").unwrap();
+                program_test.add_program("spl_governance_addin_mock", addin_mock_id, None);
+
+                let voter_weight_addin_id = if use_voter_weight_addin {
+                    Some(addin_mock_id)
+                } else {
+                    None
+                };
+
+                let max_voter_weight_addin_id = if use_max_voter_weight_addin {
+                    Some(addin_mock_id)
+                } else {
+                    None
+                };
+
+                (voter_weight_addin_id, max_voter_weight_addin_id)
+            } else {
+                (None, None)
+            };
 
         let bench = ProgramTestBench::start_new(program_test).await;
 
@@ -140,7 +167,7 @@ impl GovernanceProgramTest {
             next_realm_id: 0,
             program_id,
             voter_weight_addin_id,
-            max_voter_weight_addin_id: None,
+            max_voter_weight_addin_id,
         }
     }
 
@@ -272,14 +299,16 @@ impl GovernanceProgramTest {
             },
         };
 
-        let realm_config_cookie = if config_args.use_community_voter_weight_addin {
+        let realm_config_cookie = if config_args.use_community_voter_weight_addin
+            || config_args.use_max_community_voter_weight_addin
+        {
             Some(RealmConfigCookie {
                 address: get_realm_config_address(&self.program_id, &realm_address),
                 account: RealmConfigAccount {
                     account_type: GovernanceAccountType::RealmConfig,
                     realm: realm_address,
                     community_voter_weight_addin: self.voter_weight_addin_id,
-                    max_community_voter_weight_addin: None,
+                    max_community_voter_weight_addin: self.max_voter_weight_addin_id,
                     council_voter_weight_addin: None,
                     council_max_vote_weight_addin: None,
                     reserved: [0; 128],
@@ -899,12 +928,16 @@ impl GovernanceProgramTest {
             .community_mint_max_vote_weight_source
             .clone();
 
-        if realm_config_args.use_community_voter_weight_addin {
-            let community_voter_weight_addin_index = if realm_config_args.use_council_mint {
-                6
-            } else {
-                4
-            };
+        if realm_config_args.use_community_voter_weight_addin
+            || realm_config_args.use_max_community_voter_weight_addin
+        {
+            let (community_voter_weight_addin_index, max_community_voter_weight_addin_index) =
+                if realm_config_args.use_council_mint {
+                    (6, 6)
+                } else {
+                    (4, 4)
+                };
+
             realm_cookie.realm_config = Some(RealmConfigCookie {
                 address: get_realm_config_address(&self.program_id, &realm_cookie.address),
                 account: RealmConfigAccount {
@@ -913,7 +946,9 @@ impl GovernanceProgramTest {
                     community_voter_weight_addin: Some(
                         set_realm_config_ix.accounts[community_voter_weight_addin_index].pubkey,
                     ),
-                    max_community_voter_weight_addin: None,
+                    max_community_voter_weight_addin: Some(
+                        set_realm_config_ix.accounts[max_community_voter_weight_addin_index].pubkey,
+                    ),
                     council_voter_weight_addin: None,
                     council_max_vote_weight_addin: None,
                     reserved: [0; 128],

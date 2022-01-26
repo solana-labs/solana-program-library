@@ -7,7 +7,7 @@ lazy_static! {
     pub static ref VOTER_WEIGHT_ADDIN_BUILD_GUARD: Mutex::<u8> = Mutex::new(0);
 }
 
-pub fn ensure_voter_weight_addin_is_built() {
+pub fn ensure_addin_mock_is_built() {
     if find_file("spl_governance_voter_weight_addin_mock.so").is_none() {
         let _guard = VOTER_WEIGHT_ADDIN_BUILD_GUARD.lock().unwrap();
         if find_file("spl_governance_addin_mock.so").is_none() {
