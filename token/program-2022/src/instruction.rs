@@ -8,7 +8,7 @@ use solana_program::{
     instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
     program_option::COption,
-    pubkey::Pubkey,
+    pubkey::{Pubkey, PUBKEY_BYTES},
     sysvar,
 };
 use std::convert::TryInto;
@@ -698,13 +698,11 @@ impl TokenInstruction {
     }
 
     pub(crate) fn unpack_pubkey(input: &[u8]) -> Result<(Pubkey, &[u8]), ProgramError> {
-        if input.len() >= 32 {
-            let (key, rest) = input.split_at(32);
-            let pk = Pubkey::new(key);
-            Ok((pk, rest))
-        } else {
-            Err(TokenError::InvalidInstruction.into())
-        }
+        let pk = input
+            .get(..PUBKEY_BYTES)
+            .map(Pubkey::new)
+            .ok_or(TokenError::InvalidInstruction)?;
+        Ok((pk, &input[PUBKEY_BYTES..]))
     }
 
     pub(crate) fn unpack_pubkey_option(
@@ -712,9 +710,8 @@ impl TokenInstruction {
     ) -> Result<(COption<Pubkey>, &[u8]), ProgramError> {
         match input.split_first() {
             Option::Some((&0, rest)) => Ok((COption::None, rest)),
-            Option::Some((&1, rest)) if rest.len() >= 32 => {
-                let (key, rest) = rest.split_at(32);
-                let pk = Pubkey::new(key);
+            Option::Some((&1, rest)) => {
+                let (pk, rest) = Self::unpack_pubkey(rest)?;
                 Ok((COption::Some(pk), rest))
             }
             _ => Err(TokenError::InvalidInstruction.into()),
