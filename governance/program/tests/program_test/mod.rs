@@ -2,12 +2,12 @@ use std::str::FromStr;
 
 use solana_program::{
     bpf_loader_upgradeable::{self, UpgradeableLoaderState},
-    clock::UnixTimestamp,
+    clock::{Slot, UnixTimestamp},
     instruction::{AccountMeta, Instruction},
     program_error::ProgramError,
     program_pack::{IsInitialized, Pack},
     pubkey::Pubkey,
-    system_instruction, system_program,
+    system_instruction,
 };
 
 use solana_program_test::*;
@@ -15,7 +15,7 @@ use solana_program_test::*;
 use solana_sdk::signature::{Keypair, Signer};
 
 use spl_governance::{
-    addins::voter_weight::{VoterWeightAccountType, VoterWeightRecord},
+    addins::voter_weight::{VoterWeightAccountType, VoterWeightAction, VoterWeightRecord},
     instruction::{
         add_signatory, cancel_proposal, cast_vote, create_account_governance,
         create_mint_governance, create_native_treasury, create_program_governance, create_proposal,
@@ -54,6 +54,7 @@ use spl_governance::{
     tools::bpf_loader_upgradeable::get_program_data_address,
 };
 
+pub mod addins;
 pub mod cookies;
 
 use crate::program_test::cookies::{
@@ -67,10 +68,13 @@ use spl_governance_test_sdk::{
     ProgramTestBench,
 };
 
-use self::cookies::{
-    GovernanceCookie, GovernedAccountCookie, GovernedMintCookie, GovernedProgramCookie,
-    GovernedTokenCookie, NativeTreasuryCookie, ProgramMetadataCookie, ProposalCookie,
-    ProposalInstructionCookie, RealmCookie, TokenOwnerRecordCookie, VoteRecordCookie,
+use self::{
+    addins::setup_voter_weight_record,
+    cookies::{
+        GovernanceCookie, GovernedAccountCookie, GovernedMintCookie, GovernedProgramCookie,
+        GovernedTokenCookie, NativeTreasuryCookie, ProgramMetadataCookie, ProposalCookie,
+        ProposalInstructionCookie, RealmCookie, TokenOwnerRecordCookie, VoteRecordCookie,
+    },
 };
 
 /// Yes/No Vote
@@ -98,6 +102,11 @@ impl GovernanceProgramTest {
 
     #[allow(dead_code)]
     pub async fn start_with_voter_weight_addin() -> Self {
+        // We only ensure the add-in is built but it doesn't detect changes
+        // If the addin is changed it needs to be manually built
+        // Note: we can't use build.rs script because the addin depends on spl-governance
+        // and it has to be built after spl-governance is built and before tests are run
+        // Anything inside build.rs would execute before spl-governance is built
         ensure_voter_weight_addin_is_built();
 
         Self::start_impl(true).await
@@ -117,11 +126,7 @@ impl GovernanceProgramTest {
         let voter_weight_addin_id = if use_voter_weight_addin {
             let voter_weight_addin_id =
                 Pubkey::from_str("VoterWeight11111111111111111111111111111111").unwrap();
-            program_test.add_program(
-                "spl_governance_voter_weight_addin",
-                voter_weight_addin_id,
-                None,
-            );
+            program_test.add_program("spl_governance_addin_mock", voter_weight_addin_id, None);
             Some(voter_weight_addin_id)
         } else {
             None
@@ -2442,36 +2447,46 @@ impl GovernanceProgramTest {
     }
 
     /// ----------- VoterWeight Addin -----------------------------
+    ///
     #[allow(dead_code)]
-    pub async fn with_voter_weight_addin_deposit(
+    pub async fn with_voter_weight_addin_record(
         &mut self,
         token_owner_record_cookie: &mut TokenOwnerRecordCookie,
     ) -> Result<VoterWeightRecordCookie, ProgramError> {
+        self.with_voter_weight_addin_record_impl(token_owner_record_cookie, 120, None, None, None)
+            .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_voter_weight_addin_record_impl(
+        &mut self,
+        token_owner_record_cookie: &mut TokenOwnerRecordCookie,
+        voter_weight: u64,
+        voter_weight_expiry: Option<Slot>,
+        weight_action: Option<VoterWeightAction>,
+        weight_action_target: Option<Pubkey>,
+    ) -> Result<VoterWeightRecordCookie, ProgramError> {
         let voter_weight_record_account = Keypair::new();
 
-        // Governance program has no dependency on the voter-weight-addin program and hence we can't use its instruction creator here
-        // and the instruction has to be created manually
-        let accounts = vec![
-            AccountMeta::new_readonly(self.program_id, false),
-            AccountMeta::new_readonly(token_owner_record_cookie.account.realm, false),
-            AccountMeta::new_readonly(
-                token_owner_record_cookie.account.governing_token_mint,
-                false,
-            ),
-            AccountMeta::new_readonly(token_owner_record_cookie.address, false),
-            AccountMeta::new(voter_weight_record_account.pubkey(), true),
-            AccountMeta::new_readonly(self.bench.payer.pubkey(), true),
-            AccountMeta::new_readonly(system_program::id(), false),
-        ];
-
-        let deposit_ix = Instruction {
-            program_id: self.voter_weight_addin_id.unwrap(),
-            accounts,
-            data: vec![1, 120, 0, 0, 0, 0, 0, 0, 0], // 1 - Deposit instruction, 100 amount (u64)
-        };
+        let setup_voter_weight_record = setup_voter_weight_record(
+            &self.voter_weight_addin_id.unwrap(),
+            &self.program_id,
+            &token_owner_record_cookie.account.realm,
+            &token_owner_record_cookie.account.governing_token_mint,
+            &token_owner_record_cookie.address,
+            &voter_weight_record_account.pubkey(),
+            &self.bench.payer.pubkey(),
+            voter_weight,
+            voter_weight_expiry,
+            weight_action,
+            weight_action_target,
+        );
 
         self.bench
-            .process_transaction(&[deposit_ix], Some(&[&voter_weight_record_account]))
+            .process_transaction(
+                &[setup_voter_weight_record],
+                Some(&[&voter_weight_record_account]),
+            )
             .await?;
 
         let voter_weight_record_cookie = VoterWeightRecordCookie {
@@ -2481,8 +2496,10 @@ impl GovernanceProgramTest {
                 realm: token_owner_record_cookie.account.realm,
                 governing_token_mint: token_owner_record_cookie.account.governing_token_mint,
                 governing_token_owner: token_owner_record_cookie.account.governing_token_owner,
-                voter_weight: 100,
+                voter_weight,
                 voter_weight_expiry: None,
+                weight_action: None,
+                weight_action_target: None,
             },
         };
 

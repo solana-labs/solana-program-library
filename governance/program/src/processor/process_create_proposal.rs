@@ -12,6 +12,7 @@ use solana_program::{
 use spl_governance_tools::account::create_and_serialize_account_signed;
 
 use crate::{
+    addins::voter_weight::VoterWeightAction,
     error::GovernanceError,
     state::{
         enums::{GovernanceAccountType, InstructionExecutionFlags, ProposalState},
@@ -82,6 +83,8 @@ pub fn process_create_proposal(
         account_info_iter,
         realm_info.key,
         &realm_data,
+        VoterWeightAction::CreateProposal,
+        governance_info.key,
     )?;
 
     // Ensure proposal owner (TokenOwner) has enough tokens to create proposal and no outstanding proposals

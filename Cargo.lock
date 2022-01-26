@@ -3643,8 +3643,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "spl-governance-chat"
-version = "0.2.0"
+name = "spl-governance-addin-mock"
+version = "0.1.0"
 dependencies = [
  "arrayref",
  "assert_matches",
@@ -3662,7 +3662,31 @@ dependencies = [
  "spl-governance",
  "spl-governance-test-sdk",
  "spl-governance-tools",
- "spl-governance-voter-weight-addin",
+ "spl-token 3.3.0",
+ "thiserror",
+]
+
+[[package]]
+name = "spl-governance-chat"
+version = "0.2.0"
+dependencies = [
+ "arrayref",
+ "assert_matches",
+ "base64 0.13.0",
+ "bincode",
+ "borsh",
+ "num-derive",
+ "num-traits",
+ "proptest",
+ "serde",
+ "serde_derive",
+ "solana-program",
+ "solana-program-test",
+ "solana-sdk",
+ "spl-governance",
+ "spl-governance-addin-mock",
+ "spl-governance-test-sdk",
+ "spl-governance-tools",
  "spl-token 3.3.0",
  "thiserror",
 ]
@@ -3698,30 +3722,6 @@ dependencies = [
  "serde",
  "serde_derive",
  "solana-program",
- "spl-token 3.3.0",
- "thiserror",
-]
-
-[[package]]
-name = "spl-governance-voter-weight-addin"
-version = "0.1.0"
-dependencies = [
- "arrayref",
- "assert_matches",
- "base64 0.13.0",
- "bincode",
- "borsh",
- "num-derive",
- "num-traits",
- "proptest",
- "serde",
- "serde_derive",
- "solana-program",
- "solana-program-test",
- "solana-sdk",
- "spl-governance",
- "spl-governance-test-sdk",
- "spl-governance-tools",
  "spl-token 3.3.0",
  "thiserror",
 ]

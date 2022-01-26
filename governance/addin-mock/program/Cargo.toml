@@ -1,5 +1,5 @@
 [package]
-name = "spl-governance-voter-weight-addin"
+name = "spl-governance-addin-mock"
 version = "0.1.0"
 description = "Solana Program Library Governance Voter Weight Addin Program"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]

@@ -16,9 +16,12 @@ use solana_program::{
     pubkey::Pubkey,
     sysvar::Sysvar,
 };
-use spl_governance::state::{
-    governance::get_governance_data_for_realm, proposal::get_proposal_data_for_governance,
-    realm::get_realm_data, token_owner_record::get_token_owner_record_data_for_realm,
+use spl_governance::{
+    addins::voter_weight::VoterWeightAction,
+    state::{
+        governance::get_governance_data_for_realm, proposal::get_proposal_data_for_governance,
+        realm::get_realm_data, token_owner_record::get_token_owner_record_data_for_realm,
+    },
 };
 use spl_governance_tools::account::create_and_serialize_account;
 
@@ -96,6 +99,8 @@ pub fn process_post_message(
         account_info_iter, // 10
         realm_info.key,
         &realm_data,
+        VoterWeightAction::CommentProposal,
+        proposal_info.key,
     )?;
 
     // The owner needs to have at least voter weight of 1 to comment on proposals

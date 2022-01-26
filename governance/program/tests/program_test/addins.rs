@@ -1,26 +1,22 @@
-//! Program instructions
+// Governance program has no dependency on the voter-weight-addin program and hence we can't use its instructions here
+// The instructions have to be manually recreated
 
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
+    clock::Slot,
     instruction::{AccountMeta, Instruction},
     pubkey::Pubkey,
     system_program,
 };
+use spl_governance::addins::voter_weight::VoterWeightAction;
 
-/// Instructions supported by the VoterWeightInstruction addin program
+/// Instructions supported by the VoterWeight addin program
+/// This program is a mock program used by spl-governance for testing and not real addin
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 #[allow(clippy::large_enum_variant)]
 pub enum VoterWeightAddinInstruction {
-    /// Revises voter weight providing up to date voter weight
+    /// Sets up VoterWeightRecord owned by the program
     ///
-    /// 0. `[]` Governance Program Id
-    /// 1. `[]` Realm account
-    /// 2. `[]` Governing Token mint
-    /// 3. `[]` TokenOwnerRecord
-    /// 4. `[writable]` VoterWeightRecord
-    Revise {},
-
-    /// Deposits governing token
     /// 0. `[]` Governance Program Id
     /// 1. `[]` Realm account
     /// 2. `[]` Governing Token mint
@@ -28,27 +24,28 @@ pub enum VoterWeightAddinInstruction {
     /// 4. `[writable]` VoterWeightRecord
     /// 5. `[signer]` Payer
     /// 6. `[]` System
-    Deposit {
-        /// The deposit amount
+    SetupVoterWeightRecord {
+        /// Voter weight
         #[allow(dead_code)]
-        amount: u64,
-    },
+        voter_weight: u64,
 
-    /// Withdraws deposited tokens
-    /// Note: This instruction should ensure the tokens can be withdrawn form the Realm
-    ///       by calling TokenOwnerRecord.assert_can_withdraw_governing_tokens()
-    ///
-    /// 0. `[]` Governance Program Id
-    /// 1. `[]` Realm account
-    /// 2. `[]` Governing Token mint
-    /// 3. `[]` TokenOwnerRecord
-    /// 4. `[writable]` VoterWeightRecord
-    Withdraw {},
+        /// Voter weight expiry
+        #[allow(dead_code)]
+        voter_weight_expiry: Option<Slot>,
+
+        /// Voter weight action
+        #[allow(dead_code)]
+        weight_action: Option<VoterWeightAction>,
+
+        /// Voter weight action target
+        #[allow(dead_code)]
+        weight_action_target: Option<Pubkey>,
+    },
 }
 
-/// Creates Deposit instruction
+/// Creates SetupVoterWeightRecord instruction
 #[allow(clippy::too_many_arguments)]
-pub fn deposit_voter_weight(
+pub fn setup_voter_weight_record(
     program_id: &Pubkey,
     // Accounts
     governance_program_id: &Pubkey,
@@ -58,7 +55,10 @@ pub fn deposit_voter_weight(
     voter_weight_record: &Pubkey,
     payer: &Pubkey,
     // Args
-    amount: u64,
+    voter_weight: u64,
+    voter_weight_expiry: Option<Slot>,
+    weight_action: Option<VoterWeightAction>,
+    weight_action_target: Option<Pubkey>,
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new_readonly(*governance_program_id, false),
@@ -70,7 +70,12 @@ pub fn deposit_voter_weight(
         AccountMeta::new_readonly(system_program::id(), false),
     ];
 
-    let instruction = VoterWeightAddinInstruction::Deposit { amount };
+    let instruction = VoterWeightAddinInstruction::SetupVoterWeightRecord {
+        voter_weight,
+        voter_weight_expiry,
+        weight_action,
+        weight_action_target,
+    };
 
     Instruction {
         program_id: *program_id,

@@ -361,6 +361,14 @@ pub enum GovernanceError {
     /// Cannot execute defeated option
     #[error("Cannot execute defeated option")]
     CannotExecuteDefeatedOption,
+
+    /// VoterWeightRecord invalid action
+    #[error("VoterWeightRecord invalid action")]
+    VoterWeightRecordInvalidAction,
+
+    /// VoterWeightRecord invalid action target
+    #[error("VoterWeightRecord invalid action target")]
+    VoterWeightRecordInvalidActionTarget,
 }
 
 impl PrintProgramError for GovernanceError {
