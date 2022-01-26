@@ -12,9 +12,9 @@ use spl_associated_token_account::{
     get_associated_token_address_with_program_id, instruction::create_associated_token_account,
 };
 use spl_token_2022::{
-    extension::{transfer_fee, ExtensionType, StateWithExtensionsOwned},
+    extension::{default_account_state, transfer_fee, ExtensionType, StateWithExtensionsOwned},
     instruction,
-    state::{Account, Mint},
+    state::{Account, AccountState, Mint},
 };
 use std::{fmt, sync::Arc};
 use thiserror::Error;
@@ -49,6 +49,9 @@ impl PartialEq for TokenError {
 /// Encapsulates initializing an extension
 #[derive(Clone, Debug, PartialEq)]
 pub enum ExtensionInitializationParams {
+    DefaultAccountState {
+        state: AccountState,
+    },
     MintCloseAuthority {
         close_authority: Option<Pubkey>,
     },
@@ -63,6 +66,7 @@ impl ExtensionInitializationParams {
     /// Get the extension type associated with the init params
     pub fn extension(&self) -> ExtensionType {
         match self {
+            Self::DefaultAccountState { .. } => ExtensionType::DefaultAccountState,
             Self::MintCloseAuthority { .. } => ExtensionType::MintCloseAuthority,
             Self::TransferFeeConfig { .. } => ExtensionType::TransferFeeConfig,
         }
@@ -74,6 +78,13 @@ impl ExtensionInitializationParams {
         mint: &Pubkey,
     ) -> Result<Instruction, ProgramError> {
         match self {
+            Self::DefaultAccountState { state } => {
+                default_account_state::instruction::initialize_default_account_state(
+                    token_program_id,
+                    mint,
+                    &state,
+                )
+            }
             Self::MintCloseAuthority { close_authority } => {
                 instruction::initialize_mint_close_authority(
                     token_program_id,
@@ -486,6 +497,27 @@ where
                 transfer_fee_basis_points,
                 maximum_fee,
             )?],
+            &[authority],
+        )
+        .await
+    }
+
+    /// Set default account state on mint
+    pub async fn set_default_account_state<S2: Signer>(
+        &self,
+        authority: &S2,
+        state: &AccountState,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[
+                default_account_state::instruction::update_default_account_state(
+                    &self.program_id,
+                    &self.pubkey,
+                    &authority.pubkey(),
+                    &[],
+                    state,
+                )?,
+            ],
             &[authority],
         )
         .await
