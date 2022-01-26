@@ -193,8 +193,8 @@ impl TokenOwnerRecord {
         if realm_data.config.use_community_voter_weight_addin
             && realm_data.community_mint == self.governing_token_mint
         {
-            let realm_config_info = next_account_info(account_info_iter)?;
             let voter_weight_record_info = next_account_info(account_info_iter)?;
+            let realm_config_info = next_account_info(account_info_iter)?;
 
             let realm_config_data =
                 get_realm_config_data_for_realm(program_id, realm_config_info, realm)?;
