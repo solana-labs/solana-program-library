@@ -48,8 +48,9 @@ pub enum GovernanceInstruction {
     /// 9. `[writable]` Council Token Holding account - optional unless council is used. PDA seeds: ['governance',realm,council_mint]
     ///     The account will be created with the Realm PDA as its owner
 
-    /// 10. `[writable]` RealmConfig account. PDA seeds: ['realm-config', realm]
-    /// 11. `[]` Optional Community Voter Weight Addin Program Id
+    /// 10. `[]` Optional Community Voter Weight Addin Program Id
+    /// 11. `[]` Optional Max Community Voter Weight Addin Program Id
+    /// 12. `[writable]` Optional RealmConfig account. PDA seeds: ['realm-config', realm]
     CreateRealm {
         #[allow(dead_code)]
         /// UTF-8 encoded Governance Realm name
@@ -428,8 +429,10 @@ pub enum GovernanceInstruction {
     ///       The account will be created with the Realm PDA as its owner
     ///   4. `[]` System
     ///   5. `[writable]` RealmConfig account. PDA seeds: ['realm-config', realm]
-    ///   6. `[signer]` Optional Payer
-    ///   7. `[]` Optional Community Voter Weight Addin Program Id    
+
+    ///   6. `[]` Optional Community Voter Weight Addin Program Id    
+    ///   7. `[]` Optional Max Community Voter Weight Addin Program Id    
+    ///   8. `[signer]` Optional Payer
     SetRealmConfig {
         #[allow(dead_code)]
         /// Realm config args
@@ -507,9 +510,6 @@ pub fn create_realm(
         false
     };
 
-    let realm_config_address = get_realm_config_address(program_id, &realm_address);
-    accounts.push(AccountMeta::new(realm_config_address, false));
-
     let use_community_voter_weight_addin =
         if let Some(community_voter_weight_addin) = community_voter_weight_addin {
             accounts.push(AccountMeta::new_readonly(
@@ -531,6 +531,11 @@ pub fn create_realm(
         } else {
             false
         };
+
+    if use_community_voter_weight_addin || use_max_community_voter_weight_addin {
+        let realm_config_address = get_realm_config_address(program_id, &realm_address);
+        accounts.push(AccountMeta::new(realm_config_address, false));
+    }
 
     let instruction = GovernanceInstruction::CreateRealm {
         config_args: RealmConfigArgs {
