@@ -10,15 +10,15 @@ lazy_static! {
 pub fn ensure_voter_weight_addin_is_built() {
     if find_file("spl_governance_voter_weight_addin_mock.so").is_none() {
         let _guard = VOTER_WEIGHT_ADDIN_BUILD_GUARD.lock().unwrap();
-        if find_file("spl_governance_voter_weight_addin_mock.so").is_none() {
+        if find_file("spl_governance_addin_mock.so").is_none() {
             assert!(Command::new("cargo")
                 .args(&[
                     "build-bpf",
                     "--manifest-path",
-                    "../voter-weight-addin-mock/program/Cargo.toml",
+                    "../addin-mock/program/Cargo.toml",
                 ])
                 .status()
-                .expect("Failed to build voter-weight-addin-mock program")
+                .expect("Failed to build spl-governance-addin-mock program")
                 .success());
         }
     }
