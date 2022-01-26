@@ -3662,7 +3662,7 @@ dependencies = [
  "spl-governance",
  "spl-governance-test-sdk",
  "spl-governance-tools",
- "spl-governance-voter-weight-addin",
+ "spl-governance-voter-weight-addin-mock",
  "spl-token 3.3.0",
  "thiserror",
 ]
@@ -3703,7 +3703,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "spl-governance-voter-weight-addin"
+name = "spl-governance-voter-weight-addin-mock"
 version = "0.1.0"
 dependencies = [
  "arrayref",

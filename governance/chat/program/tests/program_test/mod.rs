@@ -23,7 +23,7 @@ use spl_governance_chat::{
     state::{ChatMessage, GovernanceChatAccountType, MessageBody},
 };
 use spl_governance_test_sdk::{addins::ensure_voter_weight_addin_is_built, ProgramTestBench};
-use spl_governance_voter_weight_addin::instruction::setup_voter_weight_record;
+use spl_governance_voter_weight_addin_mock::instruction::setup_voter_weight_record;
 
 use crate::program_test::cookies::{ChatMessageCookie, ProposalCookie};
 
@@ -74,7 +74,7 @@ impl GovernanceChatProgramTest {
             let voter_weight_addin_id =
                 Pubkey::from_str("VoterWeight11111111111111111111111111111111").unwrap();
             program_test.add_program(
-                "spl_governance_voter_weight_addin",
+                "spl_governance_voter_weight_addin_mock",
                 voter_weight_addin_id,
                 None,
             );
