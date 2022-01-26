@@ -473,6 +473,11 @@ pub enum TokenInstruction {
     /// See `extension::confidential_transfer::instruction::ConfidentialTransferInstruction` for
     /// further details about the extended instructions that share this instruction prefix
     ConfidentialTransferExtension,
+    /// The common instruction prefix for Default Account State extension instructions.
+    ///
+    /// See `extension::default_account_state::instruction::DefaultAccountStateInstruction` for
+    /// further details about the extended instructions that share this instruction prefix
+    DefaultAccountStateExtension,
 }
 impl TokenInstruction {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -604,6 +609,7 @@ impl TokenInstruction {
                 Self::TransferFeeExtension(instruction)
             }
             24 => Self::ConfidentialTransferExtension,
+            25 => Self::DefaultAccountStateExtension,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -716,6 +722,9 @@ impl TokenInstruction {
             }
             &Self::ConfidentialTransferExtension => {
                 buf.push(24);
+            }
+            &Self::DefaultAccountStateExtension => {
+                buf.push(25);
             }
         };
         buf

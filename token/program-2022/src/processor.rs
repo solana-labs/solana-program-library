@@ -5,6 +5,7 @@ use crate::{
     error::TokenError,
     extension::{
         confidential_transfer::{self, ConfidentialTransferAccount},
+        default_account_state,
         mint_close_authority::MintCloseAuthority,
         transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
         ExtensionType, StateWithExtensions, StateWithExtensionsMut,
@@ -1061,6 +1062,13 @@ impl Processor {
             }
             TokenInstruction::ConfidentialTransferExtension => {
                 confidential_transfer::processor::process_instruction(
+                    program_id,
+                    accounts,
+                    &input[1..],
+                )
+            }
+            TokenInstruction::DefaultAccountStateExtension => {
+                default_account_state::processor::process_instruction(
                     program_id,
                     accounts,
                     &input[1..],
