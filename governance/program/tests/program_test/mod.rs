@@ -1815,6 +1815,7 @@ impl GovernanceProgramTest {
             &proposal_cookie.address,
             &proposal_cookie.account.token_owner_record,
             &proposal_cookie.account.governing_token_mint,
+            None,
         );
 
         self.bench
@@ -1935,6 +1936,7 @@ impl GovernanceProgramTest {
             &proposal_cookie.account.governing_token_mint,
             &self.bench.payer.pubkey(),
             voter_weight_record,
+            None,
             vote.clone(),
         );
 
