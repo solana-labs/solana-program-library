@@ -101,7 +101,7 @@ pub fn update_default_account_state(
     check_program_account(token_program_id)?;
     let mut accounts = vec![
         AccountMeta::new(*mint, false),
-        AccountMeta::new_readonly(*freeze_authority, true),
+        AccountMeta::new_readonly(*freeze_authority, signers.is_empty()),
     ];
     for signer_pubkey in signers.iter() {
         accounts.push(AccountMeta::new_readonly(**signer_pubkey, true));
