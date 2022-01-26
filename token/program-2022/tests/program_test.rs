@@ -17,6 +17,7 @@ pub struct TokenContext {
     pub token: Token<ProgramBanksClientProcessTransaction, Keypair>,
     pub alice: Keypair,
     pub bob: Keypair,
+    pub freeze_authority: Option<Keypair>,
 }
 
 pub struct TestContext {
@@ -40,6 +41,24 @@ impl TestContext {
         &mut self,
         extension_init_params: Vec<ExtensionInitializationParams>,
     ) -> TokenResult<()> {
+        self._init_token_with_mint(extension_init_params, None)
+            .await
+    }
+
+    pub async fn init_token_with_freezing_mint(
+        &mut self,
+        extension_init_params: Vec<ExtensionInitializationParams>,
+    ) -> TokenResult<()> {
+        let freeze_authority = Keypair::new();
+        self._init_token_with_mint(extension_init_params, Some(freeze_authority))
+            .await
+    }
+
+    pub async fn _init_token_with_mint(
+        &mut self,
+        extension_init_params: Vec<ExtensionInitializationParams>,
+        freeze_authority: Option<Keypair>,
+    ) -> TokenResult<()> {
         let payer = keypair_clone(&self.context.lock().await.payer);
         let client: Arc<dyn ProgramClient<ProgramBanksClientProcessTransaction>> =
             Arc::new(ProgramBanksClient::new_from_context(
@@ -52,6 +71,9 @@ impl TestContext {
         let mint_account = Keypair::new();
         let mint_authority = Keypair::new();
         let mint_authority_pubkey = mint_authority.pubkey();
+        let freeze_authority_pubkey = freeze_authority
+            .as_ref()
+            .map(|authority| authority.pubkey());
 
         let token = Token::create_mint(
             Arc::clone(&client),
@@ -59,7 +81,7 @@ impl TestContext {
             payer,
             &mint_account,
             &mint_authority_pubkey,
-            None,
+            freeze_authority_pubkey.as_ref(),
             decimals,
             extension_init_params,
         )
@@ -70,6 +92,7 @@ impl TestContext {
             token,
             alice: Keypair::new(),
             bob: Keypair::new(),
+            freeze_authority,
         });
 
         Ok(())

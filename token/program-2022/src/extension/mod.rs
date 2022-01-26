@@ -5,6 +5,7 @@ use {
         error::TokenError,
         extension::{
             confidential_transfer::{ConfidentialTransferAccount, ConfidentialTransferMint},
+            default_account_state::DefaultAccountState,
             mint_close_authority::MintCloseAuthority,
             transfer_fee::{TransferFeeAmount, TransferFeeConfig},
         },
@@ -25,6 +26,8 @@ use {
 
 /// Confidential Transfer extension
 pub mod confidential_transfer;
+/// Default Account State extension
+pub mod default_account_state;
 /// Mint Close Authority extension
 pub mod mint_close_authority;
 /// Transfer Fee extension
@@ -508,6 +511,8 @@ pub enum ExtensionType {
     ConfidentialTransferMint,
     /// State for confidential transfers
     ConfidentialTransferAccount,
+    /// Specifies the default Account::state for new Accounts
+    DefaultAccountState,
     /// Padding extension used to make an account exactly Multisig::LEN, used for testing
     #[cfg(test)]
     AccountPaddingTest = u16::MAX - 1,
@@ -543,6 +548,7 @@ impl ExtensionType {
             ExtensionType::ConfidentialTransferAccount => {
                 pod_get_packed_len::<ConfidentialTransferAccount>()
             }
+            ExtensionType::DefaultAccountState => pod_get_packed_len::<DefaultAccountState>(),
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => pod_get_packed_len::<AccountPaddingTest>(),
             #[cfg(test)]
@@ -580,7 +586,8 @@ impl ExtensionType {
             ExtensionType::Uninitialized => AccountType::Uninitialized,
             ExtensionType::TransferFeeConfig
             | ExtensionType::MintCloseAuthority
-            | ExtensionType::ConfidentialTransferMint => AccountType::Mint,
+            | ExtensionType::ConfidentialTransferMint
+            | ExtensionType::DefaultAccountState => AccountType::Mint,
             ExtensionType::TransferFeeAmount | ExtensionType::ConfidentialTransferAccount => {
                 AccountType::Account
             }
