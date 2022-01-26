@@ -1,34 +1,36 @@
 //! Program state processor
 
-use crate::{
-    check_program_account, cmp_pubkeys,
-    error::TokenError,
-    extension::{
-        confidential_transfer::{self, ConfidentialTransferAccount},
-        default_account_state::{self, DefaultAccountState},
-        mint_close_authority::MintCloseAuthority,
-        transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
-        ExtensionType, StateWithExtensions, StateWithExtensionsMut,
+use {
+    crate::{
+        check_program_account, cmp_pubkeys,
+        error::TokenError,
+        extension::{
+            confidential_transfer::{self, ConfidentialTransferAccount},
+            default_account_state::{self, DefaultAccountState},
+            mint_close_authority::MintCloseAuthority,
+            transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
+            ExtensionType, StateWithExtensions, StateWithExtensionsMut,
+        },
+        instruction::{is_valid_signer_index, AuthorityType, TokenInstruction, MAX_SIGNERS},
+        state::{Account, AccountState, Mint, Multisig},
     },
-    instruction::{is_valid_signer_index, AuthorityType, TokenInstruction, MAX_SIGNERS},
-    state::{Account, AccountState, Mint, Multisig},
+    num_traits::FromPrimitive,
+    solana_program::{
+        account_info::{next_account_info, AccountInfo},
+        clock::Clock,
+        decode_error::DecodeError,
+        entrypoint::ProgramResult,
+        msg,
+        program::set_return_data,
+        program_error::{PrintProgramError, ProgramError},
+        program_memory::sol_memset,
+        program_option::COption,
+        program_pack::Pack,
+        pubkey::Pubkey,
+        sysvar::{rent::Rent, Sysvar},
+    },
+    std::convert::{TryFrom, TryInto},
 };
-use num_traits::FromPrimitive;
-use solana_program::{
-    account_info::{next_account_info, AccountInfo},
-    clock::Clock,
-    decode_error::DecodeError,
-    entrypoint::ProgramResult,
-    msg,
-    program::set_return_data,
-    program_error::{PrintProgramError, ProgramError},
-    program_memory::sol_memset,
-    program_option::COption,
-    program_pack::Pack,
-    pubkey::Pubkey,
-    sysvar::{rent::Rent, Sysvar},
-};
-use std::convert::{TryFrom, TryInto};
 
 /// Program state handler.
 pub struct Processor {}
@@ -1242,21 +1244,23 @@ impl PrintProgramError for TokenError {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::{
-        extension::transfer_fee::instruction::initialize_transfer_fee_config, instruction::*,
+    use {
+        super::*,
+        crate::{
+            extension::transfer_fee::instruction::initialize_transfer_fee_config, instruction::*,
+        },
+        solana_program::{
+            account_info::IntoAccountInfo,
+            clock::Epoch,
+            instruction::Instruction,
+            program_error,
+            sysvar::{clock::Clock, rent},
+        },
+        solana_sdk::account::{
+            create_account_for_test, create_is_signer_account_infos, Account as SolanaAccount,
+        },
+        std::sync::{Arc, RwLock},
     };
-    use solana_program::{
-        account_info::IntoAccountInfo,
-        clock::Epoch,
-        instruction::Instruction,
-        program_error,
-        sysvar::{clock::Clock, rent},
-    };
-    use solana_sdk::account::{
-        create_account_for_test, create_is_signer_account_infos, Account as SolanaAccount,
-    };
-    use std::sync::{Arc, RwLock};
 
     lazy_static::lazy_static! {
         static ref EXPECTED_DATA: Arc<RwLock<Vec<u8>>> = Arc::new(RwLock::new(Vec::new()));

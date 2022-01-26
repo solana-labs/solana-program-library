@@ -1,8 +1,10 @@
 //! Error types
 
-use num_derive::FromPrimitive;
-use solana_program::{decode_error::DecodeError, program_error::ProgramError};
-use thiserror::Error;
+use {
+    num_derive::FromPrimitive,
+    solana_program::{decode_error::DecodeError, program_error::ProgramError},
+    thiserror::Error,
+};
 
 /// Errors that may be returned by the Token program.
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
