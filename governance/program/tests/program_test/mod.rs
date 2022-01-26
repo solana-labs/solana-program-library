@@ -901,9 +901,9 @@ impl GovernanceProgramTest {
 
         if realm_config_args.use_community_voter_weight_addin {
             let community_voter_weight_addin_index = if realm_config_args.use_council_mint {
-                7
+                6
             } else {
-                5
+                4
             };
             realm_cookie.realm_config = Some(RealmConfigCookie {
                 address: get_realm_config_address(&self.program_id, &realm_cookie.address),

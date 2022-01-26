@@ -4,6 +4,7 @@ use borsh::BorshSerialize;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
+    msg,
     pubkey::Pubkey,
     rent::Rent,
     sysvar::Sysvar,
@@ -69,8 +70,8 @@ pub fn process_set_realm_config(
 
     // Setup community voter weight addin
     if realm_config_args.use_community_voter_weight_addin {
-        let payer_info = next_account_info(account_info_iter)?; // 6
-        let community_voter_weight_addin_info = next_account_info(account_info_iter)?; // 7
+        let community_voter_weight_addin_info = next_account_info(account_info_iter)?; // 6
+        let payer_info = next_account_info(account_info_iter)?; // 7
 
         if realm_config_info.data_is_empty() {
             let realm_config_data = RealmConfigAccount {
