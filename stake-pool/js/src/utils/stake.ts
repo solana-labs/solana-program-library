@@ -1,27 +1,20 @@
 import {
   Connection,
   Keypair,
-  PublicKey, StakeProgram,
+  PublicKey,
+  StakeProgram,
   SystemProgram,
-  TransactionInstruction
-} from "@solana/web3.js";
-import { findStakeProgramAddress, findTransientStakeProgramAddress } from "./program-address";
-import BN from "bn.js";
+  TransactionInstruction,
+} from '@solana/web3.js';
+import {findStakeProgramAddress, findTransientStakeProgramAddress} from './program-address';
+import BN from 'bn.js';
 
-import { lamportsToSol } from "./math";
-import { WithdrawAccount } from "../index";
-import {
-  StakePool,
-  ValidatorList,
-  ValidatorListLayout,
-  ValidatorStakeInfoStatus
-} from "../layouts";
-import { STAKE_POOL_PROGRAM_ID } from "../constants";
+import {lamportsToSol} from './math';
+import {WithdrawAccount} from '../index';
+import {StakePool, ValidatorList, ValidatorListLayout, ValidatorStakeInfoStatus} from '../layouts';
+import {STAKE_POOL_PROGRAM_ID} from '../constants';
 
-export async function getValidatorListAccount(
-  connection: Connection,
-  pubkey: PublicKey,
-) {
+export async function getValidatorListAccount(connection: Connection, pubkey: PublicKey) {
   const account = await connection.getAccountInfo(pubkey);
   if (!account) {
     throw new Error('Invalid validator list account');
@@ -49,7 +42,7 @@ export async function prepareWithdrawAccounts(
   stakePool: StakePool,
   stakePoolAddress: PublicKey,
   amount: number,
-  compareFn?: (a: ValidatorAccount, b: ValidatorAccount) => number
+  compareFn?: (a: ValidatorAccount, b: ValidatorAccount) => number,
 ): Promise<WithdrawAccount[]> {
   const validatorListAcc = await connection.getAccountInfo(stakePool.validatorList);
   const validatorList = ValidatorListLayout.decode(validatorListAcc!.data) as ValidatorList;
@@ -67,7 +60,6 @@ export async function prepareWithdrawAccounts(
 
   // Prepare accounts
   for (const validator of validatorList.validators) {
-
     if (validator.status !== ValidatorStakeInfoStatus.Active) {
       continue;
     }
@@ -82,7 +74,7 @@ export async function prepareWithdrawAccounts(
       const isPreferred =
         stakePool.preferredWithdrawValidatorVoteAddress &&
         stakePool.preferredWithdrawValidatorVoteAddress!.toBase58() ==
-        validator.voteAccountAddress.toBase58();
+          validator.voteAccountAddress.toBase58();
       accounts.push({
         type: isPreferred ? 'preferred' : 'active',
         voteAddress: validator.voteAccountAddress,
@@ -128,7 +120,7 @@ export async function prepareWithdrawAccounts(
   for (const type of ['preferred', 'active', 'transient', 'reserve']) {
     const filteredAccounts = accounts.filter(a => a.type == type);
 
-    for (const { stakeAddress, voteAddress, lamports } of filteredAccounts) {
+    for (const {stakeAddress, voteAddress, lamports} of filteredAccounts) {
       let availableForWithdrawal = Math.floor(calcPoolTokensForDeposit(stakePool, lamports));
       if (!stakePool.stakeWithdrawalFee.denominator.isZero()) {
         availableForWithdrawal = divideBnToNumber(
@@ -143,7 +135,7 @@ export async function prepareWithdrawAccounts(
       }
 
       // Those accounts will be withdrawn completely with `claim` instruction
-      withdrawFrom.push({ stakeAddress, voteAddress, poolAmount });
+      withdrawFrom.push({stakeAddress, voteAddress, poolAmount});
       remainingAmount -= poolAmount;
       if (remainingAmount == 0) {
         break;
@@ -157,7 +149,9 @@ export async function prepareWithdrawAccounts(
   // Not enough stake to withdraw the specified amount
   if (remainingAmount > 0) {
     throw new Error(
-      `No stake accounts found in this pool with enough balance to withdraw ${lamportsToSol(amount)} pool tokens.`
+      `No stake accounts found in this pool with enough balance to withdraw ${lamportsToSol(
+        amount,
+      )} pool tokens.`,
     );
   }
 

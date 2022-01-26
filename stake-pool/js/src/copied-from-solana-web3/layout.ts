@@ -1,12 +1,10 @@
-import { Buffer } from 'buffer';
+import {Buffer} from 'buffer';
 import * as BufferLayout from '@solana/buffer-layout';
 
 /**
  * Layout for a public key
  */
-export const publicKey = (
-  property: string = 'publicKey',
-): BufferLayout.Layout => {
+export const publicKey = (property: string = 'publicKey'): BufferLayout.Layout => {
   return BufferLayout.blob(32, property);
 };
 
@@ -45,11 +43,7 @@ export const rustString = (property: string = 'string') => {
   };
 
   (rsl as any).alloc = (str: any) => {
-    return (
-      BufferLayout.u32().span +
-      BufferLayout.u32().span +
-      Buffer.from(str, 'utf8').length
-    );
+    return BufferLayout.u32().span + BufferLayout.u32().span + Buffer.from(str, 'utf8').length;
   };
 
   return rsl;
@@ -59,10 +53,7 @@ export const rustString = (property: string = 'string') => {
  * Layout for an Authorized object
  */
 export const authorized = (property: string = 'authorized') => {
-  return BufferLayout.struct(
-    [publicKey('staker'), publicKey('withdrawer')],
-    property,
-  );
+  return BufferLayout.struct([publicKey('staker'), publicKey('withdrawer')], property);
 };
 
 /**
@@ -70,11 +61,7 @@ export const authorized = (property: string = 'authorized') => {
  */
 export const lockup = (property: string = 'lockup') => {
   return BufferLayout.struct(
-    [
-      BufferLayout.ns64('unixTimestamp'),
-      BufferLayout.ns64('epoch'),
-      publicKey('custodian'),
-    ],
+    [BufferLayout.ns64('unixTimestamp'), BufferLayout.ns64('epoch'), publicKey('custodian')],
     property,
   );
 };

@@ -1,12 +1,12 @@
-import BN from "bn.js";
-import { LAMPORTS_PER_SOL } from "@solana/web3.js";
+import BN from 'bn.js';
+import {LAMPORTS_PER_SOL} from '@solana/web3.js';
 
 export function arrayChunk(array: any[], size: number): any[] {
-  const result = []
+  const result = [];
   for (let i = 0; i < array.length; i += size) {
-    result.push(array.slice(i, i + size))
+    result.push(array.slice(i, i + size));
   }
-  return result
+  return result;
 }
 
 export function solToLamports(amount: number): number {
