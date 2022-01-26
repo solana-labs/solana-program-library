@@ -18,6 +18,8 @@ use std::mem::size_of;
 pub const MIN_SIGNERS: usize = 1;
 /// Maximum number of multisignature signers (max N)
 pub const MAX_SIGNERS: usize = 11;
+/// Serialized length of a u16, for unpacking
+const U16_BYTES: usize = 2;
 /// Serialized length of a u64, for unpacking
 const U64_BYTES: usize = 8;
 
@@ -530,19 +532,19 @@ impl TokenInstruction {
             10 => Self::FreezeAccount,
             11 => Self::ThawAccount,
             12 => {
-                let (amount, decimals) = Self::unpack_amount_decimals(rest)?;
+                let (amount, decimals, _rest) = Self::unpack_amount_decimals(rest)?;
                 Self::TransferChecked { amount, decimals }
             }
             13 => {
-                let (amount, decimals) = Self::unpack_amount_decimals(rest)?;
+                let (amount, decimals, _rest) = Self::unpack_amount_decimals(rest)?;
                 Self::ApproveChecked { amount, decimals }
             }
             14 => {
-                let (amount, decimals) = Self::unpack_amount_decimals(rest)?;
+                let (amount, decimals, _rest) = Self::unpack_amount_decimals(rest)?;
                 Self::MintToChecked { amount, decimals }
             }
             15 => {
-                let (amount, decimals) = Self::unpack_amount_decimals(rest)?;
+                let (amount, decimals, _rest) = Self::unpack_amount_decimals(rest)?;
                 Self::BurnChecked { amount, decimals }
             }
             16 => {
@@ -729,15 +731,28 @@ impl TokenInstruction {
         }
     }
 
-    pub(crate) fn unpack_amount_decimals(input: &[u8]) -> Result<(u64, u8), ProgramError> {
-        use TokenError::InvalidInstruction;
-        let amount = input
+    pub(crate) fn unpack_u16(input: &[u8]) -> Result<(u16, &[u8]), ProgramError> {
+        let value = input
+            .get(..U16_BYTES)
+            .and_then(|slice| slice.try_into().ok())
+            .map(u16::from_le_bytes)
+            .ok_or(TokenError::InvalidInstruction)?;
+        Ok((value, &input[U16_BYTES..]))
+    }
+
+    pub(crate) fn unpack_u64(input: &[u8]) -> Result<(u64, &[u8]), ProgramError> {
+        let value = input
             .get(..U64_BYTES)
             .and_then(|slice| slice.try_into().ok())
             .map(u64::from_le_bytes)
-            .ok_or(InvalidInstruction)?;
-        let (&decimals, _rest) = input[U64_BYTES..].split_first().ok_or(InvalidInstruction)?;
-        Ok((amount, decimals))
+            .ok_or(TokenError::InvalidInstruction)?;
+        Ok((value, &input[U64_BYTES..]))
+    }
+
+    pub(crate) fn unpack_amount_decimals(input: &[u8]) -> Result<(u64, u8, &[u8]), ProgramError> {
+        let (amount, rest) = Self::unpack_u64(input)?;
+        let (&decimals, rest) = rest.split_first().ok_or(TokenError::InvalidInstruction)?;
+        Ok((amount, decimals, rest))
     }
 }
 
