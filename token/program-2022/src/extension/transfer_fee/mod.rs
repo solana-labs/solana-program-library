@@ -12,6 +12,9 @@ pub mod instruction;
 /// Transfer fee extension processor
 pub mod processor;
 
+/// Maximum possible fee in basis points is 100%, aka 10_000 basis points
+pub const MAX_FEE_BASIS_POINTS: u16 = 10_000;
+
 /// Transfer fee information
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]

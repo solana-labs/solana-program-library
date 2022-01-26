@@ -1141,6 +1141,9 @@ impl PrintProgramError for TokenError {
             TokenError::NoAuthorityExists => {
                 msg!("Error: No authority exists to perform the desired operation");
             }
+            TokenError::TransferFeeExceedsMaximum => {
+                msg!("Error: Transfer fee exceeds maximum of 10,000 basis points");
+            }
         }
     }
 }

@@ -10,7 +10,7 @@ use {
     },
     spl_token_2022::{
         error::TokenError,
-        extension::transfer_fee::{TransferFee, TransferFeeConfig},
+        extension::transfer_fee::{TransferFee, TransferFeeConfig, MAX_FEE_BASIS_POINTS},
         instruction,
     },
     spl_token_client::token::{ExtensionInitializationParams, TokenError as TokenClientError},
@@ -137,6 +137,35 @@ async fn fail_init_default_pubkey_as_authority() {
 }
 
 #[tokio::test]
+async fn fail_init_fee_too_high() {
+    let TransferFeeConfig {
+        transfer_fee_config_authority,
+        withdraw_withheld_authority,
+        newer_transfer_fee,
+        ..
+    } = test_transfer_fee_config();
+    let mut context = TestContext::new().await;
+    let err = context
+        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
+            transfer_fee_config_authority: transfer_fee_config_authority.into(),
+            withdraw_withheld_authority: withdraw_withheld_authority.into(),
+            transfer_fee_basis_points: MAX_FEE_BASIS_POINTS + 1,
+            maximum_fee: newer_transfer_fee.maximum_fee.into(),
+        }])
+        .await
+        .unwrap_err();
+    assert_eq!(
+        err,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                1,
+                InstructionError::Custom(TokenError::TransferFeeExceedsMaximum as u32)
+            )
+        )))
+    );
+}
+
+#[tokio::test]
 async fn set_fee() {
     let TransferFeeConfigWithKeypairs {
         transfer_fee_config_authority,
@@ -159,7 +188,7 @@ async fn set_fee() {
     let token = context.token_context.unwrap().token;
 
     // set to something new, old fee not touched
-    let new_transfer_fee_basis_points = u16::MAX;
+    let new_transfer_fee_basis_points = MAX_FEE_BASIS_POINTS;
     let new_maximum_fee = u64::MAX;
     token
         .set_transfer_fee(
@@ -207,7 +236,7 @@ async fn set_fee() {
     // warp forward one epoch, new fee becomes old fee during set
     let newer_transfer_fee = extension.newer_transfer_fee;
     context.context.lock().await.warp_to_slot(10_000).unwrap();
-    let new_transfer_fee_basis_points = u16::MAX;
+    let new_transfer_fee_basis_points = MAX_FEE_BASIS_POINTS;
     let new_maximum_fee = u64::MAX;
     token
         .set_transfer_fee(
@@ -245,6 +274,26 @@ async fn set_fee() {
             TransactionError::InstructionError(
                 0,
                 InstructionError::Custom(TokenError::OwnerMismatch as u32)
+            )
+        )))
+    );
+
+    // fail, set too high
+    let error = token
+        .set_transfer_fee(
+            &transfer_fee_config_authority,
+            MAX_FEE_BASIS_POINTS + 1,
+            new_maximum_fee,
+        )
+        .await
+        .err()
+        .unwrap();
+    assert_eq!(
+        error,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::TransferFeeExceedsMaximum as u32)
             )
         )))
     );
@@ -337,7 +386,7 @@ async fn set_transfer_fee_config_authority() {
     );
 
     // assert new_authority can update transfer fee config, and old cannot
-    let transfer_fee_basis_points = u16::MAX;
+    let transfer_fee_basis_points = MAX_FEE_BASIS_POINTS;
     let maximum_fee = u64::MAX;
     let err = token
         .set_transfer_fee(
