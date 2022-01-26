@@ -64,6 +64,14 @@ impl Processor {
             return Err(ProgramError::InvalidAccountData);
         }
 
+        if let Ok(default_account_state) = mint.get_extension_mut::<DefaultAccountState>() {
+            let default_account_state = AccountState::try_from(default_account_state.state)
+                .or(Err(ProgramError::InvalidAccountData))?;
+            if default_account_state == AccountState::Frozen && freeze_authority.is_none() {
+                return Err(TokenError::MintCannotFreeze.into());
+            }
+        }
+
         mint.base.mint_authority = COption::Some(mint_authority);
         mint.base.decimals = decimals;
         mint.base.is_initialized = true;

@@ -21,7 +21,7 @@ async fn success_init_default_acct_state_frozen() {
     let default_account_state = AccountState::Frozen;
     let mut context = TestContext::new().await;
     context
-        .init_token_with_mint(vec![ExtensionInitializationParams::DefaultAccountState {
+        .init_token_with_freezing_mint(vec![ExtensionInitializationParams::DefaultAccountState {
             state: default_account_state,
         }])
         .await
@@ -41,11 +41,36 @@ async fn success_init_default_acct_state_frozen() {
     );
     assert_eq!(state.base.supply, 0);
     assert!(state.base.is_initialized);
-    assert_eq!(state.base.freeze_authority, COption::None);
+    assert_eq!(
+        state.base.freeze_authority,
+        COption::Some(mint_authority.pubkey())
+    );
     let extension = state.get_extension::<DefaultAccountState>().unwrap();
     assert_eq!(
         AccountState::try_from(extension.state).unwrap(),
         default_account_state,
+    );
+}
+
+#[tokio::test]
+async fn fail_init_no_authority_default_acct_state_frozen() {
+    let default_account_state = AccountState::Frozen;
+    let mut context = TestContext::new().await;
+    let err = context
+        .init_token_with_mint(vec![ExtensionInitializationParams::DefaultAccountState {
+            state: default_account_state,
+        }])
+        .await
+        .unwrap_err();
+
+    assert_eq!(
+        err,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                2,
+                InstructionError::Custom(TokenError::MintCannotFreeze as u32)
+            )
+        )))
     );
 }
 
@@ -83,11 +108,47 @@ async fn success_init_default_acct_state_initialized() {
 }
 
 #[tokio::test]
+async fn success_no_authority_init_default_acct_state_initialized() {
+    let default_account_state = AccountState::Initialized;
+    let mut context = TestContext::new().await;
+    context
+        .init_token_with_freezing_mint(vec![ExtensionInitializationParams::DefaultAccountState {
+            state: default_account_state,
+        }])
+        .await
+        .unwrap();
+    let TokenContext {
+        decimals,
+        mint_authority,
+        token,
+        ..
+    } = context.token_context.unwrap();
+
+    let state = token.get_mint_info().await.unwrap();
+    assert_eq!(state.base.decimals, decimals);
+    assert_eq!(
+        state.base.mint_authority,
+        COption::Some(mint_authority.pubkey())
+    );
+    assert_eq!(state.base.supply, 0);
+    assert!(state.base.is_initialized);
+    assert_eq!(
+        state.base.freeze_authority,
+        COption::Some(mint_authority.pubkey())
+    );
+    let extension = state.get_extension::<DefaultAccountState>().unwrap();
+    assert_eq!(
+        AccountState::try_from(extension.state).unwrap(),
+        default_account_state,
+    );
+}
+
+#[tokio::test]
 async fn fail_invalid_default_acct_state() {
     let default_account_state = AccountState::Uninitialized;
     let mut context = TestContext::new().await;
     let err = context
-        .init_token_with_mint(vec![ExtensionInitializationParams::DefaultAccountState {
+        .init_token_with_freezing_mint(vec![ExtensionInitializationParams::DefaultAccountState {
             state: default_account_state,
         }])
         .await
