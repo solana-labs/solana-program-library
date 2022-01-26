@@ -929,3 +929,67 @@ async fn transfer_checked_with_fee() {
     let extension = bob_state.get_extension::<TransferFeeAmount>().unwrap();
     assert_eq!(extension.withheld_amount, fee.into());
 }
+
+#[tokio::test]
+async fn no_fees_from_self_transfer() {
+    let TransferFeeConfigWithKeypairs {
+        transfer_fee_config_authority,
+        withdraw_withheld_authority,
+        transfer_fee_config,
+        ..
+    } = test_transfer_fee_config_with_keypairs();
+    let mut context = TestContext::new().await;
+    let transfer_fee_basis_points = u16::from(
+        transfer_fee_config
+            .newer_transfer_fee
+            .transfer_fee_basis_points,
+    );
+    let maximum_fee = u64::from(transfer_fee_config.newer_transfer_fee.maximum_fee);
+    context
+        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
+            transfer_fee_config_authority: transfer_fee_config_authority.pubkey().into(),
+            withdraw_withheld_authority: withdraw_withheld_authority.pubkey().into(),
+            transfer_fee_basis_points,
+            maximum_fee,
+        }])
+        .await
+        .unwrap();
+    let TokenContext {
+        decimals,
+        mint_authority,
+        token,
+        alice,
+        ..
+    } = context.token_context.unwrap();
+
+    let alice_account = Keypair::new();
+    let alice_account = token
+        .create_auxiliary_token_account(&alice_account, &alice.pubkey())
+        .await
+        .unwrap();
+
+    // mint some tokens
+    let amount = maximum_fee;
+    token
+        .mint_to(&alice_account, &mint_authority, amount)
+        .await
+        .unwrap();
+
+    // self transfer, no fee assessed
+    let fee = transfer_fee_config.calculate_epoch_fee(0, amount).unwrap();
+    token
+        .transfer_checked_with_fee(
+            &alice_account,
+            &alice_account,
+            &alice,
+            amount,
+            decimals,
+            fee,
+        )
+        .await
+        .unwrap();
+    let alice_state = token.get_account_info(&alice_account).await.unwrap();
+    assert_eq!(alice_state.base.amount, amount);
+    let extension = alice_state.get_extension::<TransferFeeAmount>().unwrap();
+    assert_eq!(extension.withheld_amount, 0.into());
+}

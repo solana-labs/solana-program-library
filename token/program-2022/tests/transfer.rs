@@ -187,7 +187,7 @@ async fn self_owned() {
 }
 
 #[tokio::test]
-async fn transfer_fee() {
+async fn transfer_with_fee_on_mint_without_fee_configured() {
     let mut context = TestContext::new().await;
     context.init_token_with_mint(vec![]).await.unwrap();
     let TokenContext {
