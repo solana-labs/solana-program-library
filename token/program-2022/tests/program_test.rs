@@ -17,6 +17,7 @@ pub struct TokenContext {
     pub token: Token<ProgramBanksClientProcessTransaction, Keypair>,
     pub alice: Keypair,
     pub bob: Keypair,
+    pub freeze_authority: Option<Keypair>,
 }
 
 pub struct TestContext {
@@ -40,7 +41,7 @@ impl TestContext {
         &mut self,
         extension_init_params: Vec<ExtensionInitializationParams>,
     ) -> TokenResult<()> {
-        self._init_token_with_mint(extension_init_params, false)
+        self._init_token_with_mint(extension_init_params, None)
             .await
     }
 
@@ -48,14 +49,15 @@ impl TestContext {
         &mut self,
         extension_init_params: Vec<ExtensionInitializationParams>,
     ) -> TokenResult<()> {
-        self._init_token_with_mint(extension_init_params, true)
+        let freeze_authority = Keypair::new();
+        self._init_token_with_mint(extension_init_params, Some(freeze_authority))
             .await
     }
 
     pub async fn _init_token_with_mint(
         &mut self,
         extension_init_params: Vec<ExtensionInitializationParams>,
-        enable_freeze: bool,
+        freeze_authority: Option<Keypair>,
     ) -> TokenResult<()> {
         let payer = keypair_clone(&self.context.lock().await.payer);
         let client: Arc<dyn ProgramClient<ProgramBanksClientProcessTransaction>> =
@@ -69,11 +71,9 @@ impl TestContext {
         let mint_account = Keypair::new();
         let mint_authority = Keypair::new();
         let mint_authority_pubkey = mint_authority.pubkey();
-        let freeze_authority = if enable_freeze {
-            Some(&mint_authority_pubkey)
-        } else {
-            None
-        };
+        let freeze_authority_pubkey = freeze_authority
+            .as_ref()
+            .map(|authority| authority.pubkey());
 
         let token = Token::create_mint(
             Arc::clone(&client),
@@ -81,7 +81,7 @@ impl TestContext {
             payer,
             &mint_account,
             &mint_authority_pubkey,
-            freeze_authority,
+            freeze_authority_pubkey.as_ref(),
             decimals,
             extension_init_params,
         )
@@ -92,6 +92,7 @@ impl TestContext {
             token,
             alice: Keypair::new(),
             bob: Keypair::new(),
+            freeze_authority,
         });
 
         Ok(())

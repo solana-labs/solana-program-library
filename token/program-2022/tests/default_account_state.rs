@@ -29,6 +29,7 @@ async fn success_init_default_acct_state_frozen() {
     let TokenContext {
         decimals,
         mint_authority,
+        freeze_authority,
         token,
         ..
     } = context.token_context.unwrap();
@@ -43,7 +44,7 @@ async fn success_init_default_acct_state_frozen() {
     assert!(state.base.is_initialized);
     assert_eq!(
         state.base.freeze_authority,
-        COption::Some(mint_authority.pubkey())
+        COption::Some(freeze_authority.unwrap().pubkey())
     );
     let extension = state.get_extension::<DefaultAccountState>().unwrap();
     assert_eq!(
@@ -120,6 +121,7 @@ async fn success_no_authority_init_default_acct_state_initialized() {
     let TokenContext {
         decimals,
         mint_authority,
+        freeze_authority,
         token,
         ..
     } = context.token_context.unwrap();
@@ -134,7 +136,7 @@ async fn success_no_authority_init_default_acct_state_initialized() {
     assert!(state.base.is_initialized);
     assert_eq!(
         state.base.freeze_authority,
-        COption::Some(mint_authority.pubkey())
+        COption::Some(freeze_authority.unwrap().pubkey())
     );
     let extension = state.get_extension::<DefaultAccountState>().unwrap();
     assert_eq!(
@@ -176,9 +178,12 @@ async fn end_to_end_default_account_state() {
         .unwrap();
     let TokenContext {
         mint_authority,
+        freeze_authority,
         token,
         ..
     } = context.token_context.unwrap();
+
+    let freeze_authority = freeze_authority.unwrap();
 
     let owner = Pubkey::new_unique();
     let account = Keypair::new();
@@ -205,7 +210,7 @@ async fn end_to_end_default_account_state() {
     );
 
     token
-        .set_default_account_state(&mint_authority, &AccountState::Initialized)
+        .set_default_account_state(&freeze_authority, &AccountState::Initialized)
         .await
         .unwrap();
     let state = token.get_mint_info().await.unwrap();
@@ -231,7 +236,7 @@ async fn end_to_end_default_account_state() {
             token.get_address(),
             Some(&new_authority.pubkey()),
             AuthorityType::FreezeAccount,
-            &mint_authority,
+            &freeze_authority,
         )
         .await
         .unwrap();
