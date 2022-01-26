@@ -28,6 +28,10 @@ pub enum DefaultAccountStateInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` The mint to initialize.
+    //
+    /// Data expected by this instruction:
+    ///   `crate::state::AccountState`
+    ///
     Initialize,
     /// Update the default state for new Accounts. Only supported for mints that include the
     /// `DefaultAccountState` extension.
@@ -42,6 +46,10 @@ pub enum DefaultAccountStateInstruction {
     ///   0. `[writable]` The mint.
     ///   1. `[]` The mint's multisignature freeze authority.
     ///   2. ..2+M `[signer]` M signer accounts.
+    //
+    /// Data expected by this instruction:
+    ///   `crate::state::AccountState`
+    ///
     Update,
 }
 
