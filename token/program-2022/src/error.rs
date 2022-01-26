@@ -108,6 +108,11 @@ pub enum TokenError {
     /// No authority exists to perform the desired operation
     #[error("No authority exists to perform the desired operation")]
     NoAuthorityExists,
+
+    // 30
+    /// Transfer fee exceeds maximum of 10,000 basis points
+    #[error("Transfer fee exceeds maximum of 10,000 basis points")]
+    TransferFeeExceedsMaximum,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
