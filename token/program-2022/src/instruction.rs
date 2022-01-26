@@ -18,6 +18,8 @@ use std::mem::size_of;
 pub const MIN_SIGNERS: usize = 1;
 /// Maximum number of multisignature signers (max N)
 pub const MAX_SIGNERS: usize = 11;
+/// Serialized length of a u64, for unpacking
+const U64_BYTES: usize = 8;
 
 /// Instructions supported by the token program.
 #[repr(C)]
@@ -498,7 +500,7 @@ impl TokenInstruction {
             }
             3 | 4 | 7 | 8 => {
                 let amount = rest
-                    .get(..8)
+                    .get(..U64_BYTES)
                     .and_then(|slice| slice.try_into().ok())
                     .map(u64::from_le_bytes)
                     .ok_or(InvalidInstruction)?;
@@ -528,47 +530,19 @@ impl TokenInstruction {
             10 => Self::FreezeAccount,
             11 => Self::ThawAccount,
             12 => {
-                let (amount, rest) = rest.split_at(8);
-                let amount = amount
-                    .try_into()
-                    .ok()
-                    .map(u64::from_le_bytes)
-                    .ok_or(InvalidInstruction)?;
-                let (&decimals, _rest) = rest.split_first().ok_or(InvalidInstruction)?;
-
+                let (amount, decimals) = Self::unpack_amount_decimals(rest)?;
                 Self::TransferChecked { amount, decimals }
             }
             13 => {
-                let (amount, rest) = rest.split_at(8);
-                let amount = amount
-                    .try_into()
-                    .ok()
-                    .map(u64::from_le_bytes)
-                    .ok_or(InvalidInstruction)?;
-                let (&decimals, _rest) = rest.split_first().ok_or(InvalidInstruction)?;
-
+                let (amount, decimals) = Self::unpack_amount_decimals(rest)?;
                 Self::ApproveChecked { amount, decimals }
             }
             14 => {
-                let (amount, rest) = rest.split_at(8);
-                let amount = amount
-                    .try_into()
-                    .ok()
-                    .map(u64::from_le_bytes)
-                    .ok_or(InvalidInstruction)?;
-                let (&decimals, _rest) = rest.split_first().ok_or(InvalidInstruction)?;
-
+                let (amount, decimals) = Self::unpack_amount_decimals(rest)?;
                 Self::MintToChecked { amount, decimals }
             }
             15 => {
-                let (amount, rest) = rest.split_at(8);
-                let amount = amount
-                    .try_into()
-                    .ok()
-                    .map(u64::from_le_bytes)
-                    .ok_or(InvalidInstruction)?;
-                let (&decimals, _rest) = rest.split_first().ok_or(InvalidInstruction)?;
-
+                let (amount, decimals) = Self::unpack_amount_decimals(rest)?;
                 Self::BurnChecked { amount, decimals }
             }
             16 => {
@@ -753,6 +727,17 @@ impl TokenInstruction {
             }
             COption::None => buf.push(0),
         }
+    }
+
+    pub(crate) fn unpack_amount_decimals(input: &[u8]) -> Result<(u64, u8), ProgramError> {
+        use TokenError::InvalidInstruction;
+        let amount = input
+            .get(..U64_BYTES)
+            .and_then(|slice| slice.try_into().ok())
+            .map(u64::from_le_bytes)
+            .ok_or(InvalidInstruction)?;
+        let (&decimals, _rest) = input[U64_BYTES..].split_first().ok_or(InvalidInstruction)?;
+        Ok((amount, decimals))
     }
 }
 
