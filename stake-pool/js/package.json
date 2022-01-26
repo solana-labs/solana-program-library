@@ -18,6 +18,19 @@
     "Lieu Zheng Hong",
     "mFactory Team (https://mfactory.ch)"
   ],
+  "homepage": "https://solana.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/solana-labs/solana-program-library"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "/dist"
+  ],
   "license": "ISC",
   "dependencies": {
     "@project-serum/borsh": "^0.2.2",
