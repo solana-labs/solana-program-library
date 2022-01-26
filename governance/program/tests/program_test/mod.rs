@@ -126,11 +126,7 @@ impl GovernanceProgramTest {
         let voter_weight_addin_id = if use_voter_weight_addin {
             let voter_weight_addin_id =
                 Pubkey::from_str("VoterWeight11111111111111111111111111111111").unwrap();
-            program_test.add_program(
-                "spl_governance_voter_weight_addin_mock",
-                voter_weight_addin_id,
-                None,
-            );
+            program_test.add_program("spl_governance_addin_mock", voter_weight_addin_id, None);
             Some(voter_weight_addin_id)
         } else {
             None
