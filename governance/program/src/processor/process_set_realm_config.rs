@@ -118,14 +118,11 @@ pub fn process_set_realm_config(
         } else {
             true // RealmConfigAccount existed before and needs to be updated
         }
-    } else if realm_data.config.use_community_voter_weight_addin
-        || realm_data.config.use_max_community_voter_weight_addin
-    {
-        // If RealmConfigAccount existed before we have to update it to remove the addins which are not used any longer
-        true
     } else {
-        // We don't want to setup the addins and RealmConfigAccount didn't exist before
-        false
+        // True: If RealmConfigAccount existed before we have to update it to remove the addins which are not used any longer
+        // False: We don't want to setup the addins and RealmConfigAccount didn't exist before
+        realm_data.config.use_community_voter_weight_addin
+            || realm_data.config.use_max_community_voter_weight_addin
     };
 
     if update_realm_config {
