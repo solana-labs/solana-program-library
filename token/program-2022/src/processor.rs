@@ -5,7 +5,7 @@ use crate::{
     error::TokenError,
     extension::{
         confidential_transfer::{self, ConfidentialTransferAccount},
-        default_account_state,
+        default_account_state::{self, DefaultAccountState},
         mint_close_authority::MintCloseAuthority,
         transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
         ExtensionType, StateWithExtensions, StateWithExtensionsMut,
@@ -28,7 +28,7 @@ use solana_program::{
     pubkey::Pubkey,
     sysvar::{rent::Rent, Sysvar},
 };
-use std::convert::TryInto;
+use std::convert::{TryFrom, TryInto};
 
 /// Program state handler.
 pub struct Processor {}
@@ -124,7 +124,11 @@ impl Processor {
         }
 
         // get_required_account_extensions checks mint validity
-        let required_extensions = Self::get_required_account_extensions(mint_info)?;
+        let mint_data = mint_info.data.borrow();
+        let mint = StateWithExtensions::<Mint>::unpack(&mint_data)
+            .map_err(|_| Into::<ProgramError>::into(TokenError::InvalidMint))?;
+        let required_extensions =
+            Self::get_required_account_extensions_from_unpacked_mint(mint_info.owner, &mint)?;
         if ExtensionType::get_account_len::<Account>(&required_extensions)
             != new_account_info_data_len
         {
@@ -134,11 +138,19 @@ impl Processor {
             account.init_account_extension_from_type(extension)?;
         }
 
+        let starting_state =
+            if let Ok(default_account_state) = mint.get_extension::<DefaultAccountState>() {
+                AccountState::try_from(default_account_state.state)
+                    .or(Err(ProgramError::InvalidAccountData))?
+            } else {
+                AccountState::Initialized
+            };
+
         account.base.mint = *mint_info.key;
         account.base.owner = *owner;
         account.base.delegate = COption::None;
         account.base.delegated_amount = 0;
-        account.base.state = AccountState::Initialized;
+        account.base.state = starting_state;
         if cmp_pubkeys(mint_info.key, &crate::native_mint::id()) {
             let rent_exempt_reserve = rent.minimum_balance(new_account_info_data_len);
             account.base.is_native = COption::Some(rent_exempt_reserve);
@@ -1119,10 +1131,17 @@ impl Processor {
     fn get_required_account_extensions(
         mint_account_info: &AccountInfo,
     ) -> Result<Vec<ExtensionType>, ProgramError> {
-        check_program_account(mint_account_info.owner)?;
         let mint_data = mint_account_info.data.borrow();
         let state = StateWithExtensions::<Mint>::unpack(&mint_data)
             .map_err(|_| Into::<ProgramError>::into(TokenError::InvalidMint))?;
+        Self::get_required_account_extensions_from_unpacked_mint(mint_account_info.owner, &state)
+    }
+
+    fn get_required_account_extensions_from_unpacked_mint(
+        token_program_id: &Pubkey,
+        state: &StateWithExtensions<Mint>,
+    ) -> Result<Vec<ExtensionType>, ProgramError> {
+        check_program_account(token_program_id)?;
         let mint_extensions: Vec<ExtensionType> = state.get_extension_types()?;
         Ok(ExtensionType::get_required_init_account_extensions(
             &mint_extensions,
