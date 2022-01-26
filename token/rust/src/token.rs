@@ -3,7 +3,6 @@ use solana_sdk::{
     account::Account as BaseAccount,
     instruction::Instruction,
     program_error::ProgramError,
-    program_pack::Pack,
     pubkey::Pubkey,
     signer::{signers::Signers, Signer},
     system_instruction,
@@ -248,16 +247,20 @@ where
         account: &S,
         owner: &Pubkey,
     ) -> TokenResult<Pubkey> {
+        let state = self.get_mint_info().await?;
+        let mint_extensions: Vec<ExtensionType> = state.get_extension_types()?;
+        let extensions = ExtensionType::get_required_init_account_extensions(&mint_extensions);
+        let space = ExtensionType::get_account_len::<Account>(&extensions);
         self.process_ixs(
             &[
                 system_instruction::create_account(
                     &self.payer.pubkey(),
                     &account.pubkey(),
                     self.client
-                        .get_minimum_balance_for_rent_exemption(Account::LEN)
+                        .get_minimum_balance_for_rent_exemption(space)
                         .await
                         .map_err(TokenError::Client)?,
-                    Account::LEN as u64,
+                    space as u64,
                     &self.program_id,
                 ),
                 instruction::initialize_account(
@@ -275,9 +278,9 @@ where
     }
 
     /// Retrieve a raw account
-    pub async fn get_account(&self, account: Pubkey) -> TokenResult<BaseAccount> {
+    pub async fn get_account(&self, account: &Pubkey) -> TokenResult<BaseAccount> {
         self.client
-            .get_account(account)
+            .get_account(*account)
             .await
             .map_err(TokenError::Client)?
             .ok_or(TokenError::AccountNotFound)
@@ -285,7 +288,7 @@ where
 
     /// Retrive mint information.
     pub async fn get_mint_info(&self) -> TokenResult<StateWithExtensionsOwned<Mint>> {
-        let account = self.get_account(self.pubkey).await?;
+        let account = self.get_account(&self.pubkey).await?;
         if account.owner != self.program_id {
             return Err(TokenError::AccountInvalidOwner);
         }
@@ -294,13 +297,16 @@ where
     }
 
     /// Retrieve account information.
-    pub async fn get_account_info(&self, account: Pubkey) -> TokenResult<Account> {
+    pub async fn get_account_info(
+        &self,
+        account: &Pubkey,
+    ) -> TokenResult<StateWithExtensionsOwned<Account>> {
         let account = self.get_account(account).await?;
         if account.owner != self.program_id {
             return Err(TokenError::AccountInvalidOwner);
         }
-        let account = Account::unpack_from_slice(&account.data)?;
-        if account.mint != *self.get_address() {
+        let account = StateWithExtensionsOwned::<Account>::unpack(account.data)?;
+        if account.base.mint != *self.get_address() {
             return Err(TokenError::AccountInvalidMint);
         }
 
@@ -311,14 +317,14 @@ where
     pub async fn get_or_create_associated_account_info(
         &self,
         owner: &Pubkey,
-    ) -> TokenResult<Account> {
+    ) -> TokenResult<StateWithExtensionsOwned<Account>> {
         let account = self.get_associated_token_address(owner);
-        match self.get_account_info(account).await {
+        match self.get_account_info(&account).await {
             Ok(account) => Ok(account),
             // AccountInvalidOwner is possible if account already received some lamports.
             Err(TokenError::AccountNotFound) | Err(TokenError::AccountInvalidOwner) => {
                 self.create_associated_token_account(owner).await?;
-                self.get_account_info(account).await
+                self.get_account_info(&account).await
             }
             Err(error) => Err(error),
         }
@@ -370,6 +376,29 @@ where
     }
 
     /// Transfer tokens to another account
+    pub async fn transfer_unchecked<S2: Signer>(
+        &self,
+        source: &Pubkey,
+        destination: &Pubkey,
+        authority: &S2,
+        amount: u64,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            #[allow(deprecated)]
+            &[instruction::transfer(
+                &self.program_id,
+                source,
+                destination,
+                &authority.pubkey(),
+                &[],
+                amount,
+            )?],
+            &[authority],
+        )
+        .await
+    }
+
+    /// Transfer tokens to another account
     pub async fn transfer_checked<S2: Signer>(
         &self,
         source: &Pubkey,
@@ -388,6 +417,33 @@ where
                 &[],
                 amount,
                 decimals,
+            )?],
+            &[authority],
+        )
+        .await
+    }
+
+    /// Transfer tokens to another account, given an expected fee
+    pub async fn transfer_checked_with_fee<S2: Signer>(
+        &self,
+        source: &Pubkey,
+        destination: &Pubkey,
+        authority: &S2,
+        amount: u64,
+        decimals: u8,
+        fee: u64,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[transfer_fee::instruction::transfer_checked_with_fee(
+                &self.program_id,
+                source,
+                &self.pubkey,
+                destination,
+                &authority.pubkey(),
+                &[],
+                amount,
+                decimals,
+                fee,
             )?],
             &[authority],
         )

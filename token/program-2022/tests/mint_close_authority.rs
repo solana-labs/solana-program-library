@@ -167,7 +167,7 @@ async fn success_close() {
         .close_account(token.get_address(), &destination, &close_authority)
         .await
         .unwrap();
-    let destination = token.get_account(destination).await.unwrap();
+    let destination = token.get_account(&destination).await.unwrap();
     assert!(destination.lamports > 0);
 }
 

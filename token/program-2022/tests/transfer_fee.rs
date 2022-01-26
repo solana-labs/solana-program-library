@@ -10,7 +10,9 @@ use {
     },
     spl_token_2022::{
         error::TokenError,
-        extension::transfer_fee::{TransferFee, TransferFeeConfig, MAX_FEE_BASIS_POINTS},
+        extension::transfer_fee::{
+            TransferFee, TransferFeeAmount, TransferFeeConfig, MAX_FEE_BASIS_POINTS,
+        },
         instruction,
     },
     spl_token_client::token::{ExtensionInitializationParams, TokenError as TokenClientError},
@@ -565,4 +567,429 @@ async fn set_withdraw_withheld_authority() {
     );
 
     // TODO: assert no authority can withdraw withheld fees
+}
+
+#[tokio::test]
+async fn transfer_checked() {
+    let TransferFeeConfigWithKeypairs {
+        transfer_fee_config_authority,
+        withdraw_withheld_authority,
+        transfer_fee_config,
+        ..
+    } = test_transfer_fee_config_with_keypairs();
+    let mut context = TestContext::new().await;
+    let transfer_fee_basis_points = u16::from(
+        transfer_fee_config
+            .newer_transfer_fee
+            .transfer_fee_basis_points,
+    );
+    let maximum_fee = u64::from(transfer_fee_config.newer_transfer_fee.maximum_fee);
+    context
+        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
+            transfer_fee_config_authority: transfer_fee_config_authority.pubkey().into(),
+            withdraw_withheld_authority: withdraw_withheld_authority.pubkey().into(),
+            transfer_fee_basis_points,
+            maximum_fee,
+        }])
+        .await
+        .unwrap();
+    let TokenContext {
+        decimals,
+        mint_authority,
+        token,
+        alice,
+        bob,
+        ..
+    } = context.token_context.unwrap();
+
+    // token account is self-owned just to test another case
+    let alice_account = token
+        .create_auxiliary_token_account(&alice, &alice.pubkey())
+        .await
+        .unwrap();
+    let bob_account = Keypair::new();
+    let bob_account = token
+        .create_auxiliary_token_account(&bob_account, &bob.pubkey())
+        .await
+        .unwrap();
+
+    // mint a lot of tokens, 100x max fee
+    let mut alice_amount = maximum_fee * 100;
+    token
+        .mint_to(&alice_account, &mint_authority, alice_amount)
+        .await
+        .unwrap();
+
+    // fail unchecked always
+    let error = token
+        .transfer_unchecked(&alice_account, &bob_account, &alice, maximum_fee)
+        .await
+        .unwrap_err();
+    assert_eq!(
+        error,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::MintRequiredForTransfer as u32)
+            )
+        )))
+    );
+
+    // fail because amount too high
+    let error = token
+        .transfer_checked(
+            &alice_account,
+            &bob_account,
+            &alice,
+            alice_amount + 1,
+            decimals,
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(
+        error,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::InsufficientFunds as u32)
+            )
+        )))
+    );
+
+    let mut withheld_amount = 0;
+    let mut transferred_amount = 0;
+
+    // success, clean calculation for transfer fee
+    let fee = transfer_fee_config
+        .calculate_epoch_fee(0, maximum_fee)
+        .unwrap();
+    token
+        .transfer_checked(&alice_account, &bob_account, &alice, maximum_fee, decimals)
+        .await
+        .unwrap();
+    alice_amount -= maximum_fee;
+    withheld_amount += fee;
+    transferred_amount += maximum_fee - fee;
+
+    let alice_state = token.get_account_info(&alice_account).await.unwrap();
+    assert_eq!(alice_state.base.amount, alice_amount);
+    let extension = alice_state.get_extension::<TransferFeeAmount>().unwrap();
+    assert_eq!(extension.withheld_amount, 0.into());
+    let bob_state = token.get_account_info(&bob_account).await.unwrap();
+    assert_eq!(bob_state.base.amount, transferred_amount);
+    let extension = bob_state.get_extension::<TransferFeeAmount>().unwrap();
+    assert_eq!(extension.withheld_amount, withheld_amount.into());
+
+    // success, rounded up transfer fee
+    let transfer_amount = maximum_fee - 1;
+    let fee = transfer_fee_config
+        .calculate_epoch_fee(0, transfer_amount)
+        .unwrap();
+    token
+        .transfer_checked(
+            &alice_account,
+            &bob_account,
+            &alice,
+            transfer_amount,
+            decimals,
+        )
+        .await
+        .unwrap();
+    alice_amount -= transfer_amount;
+    withheld_amount += fee;
+    transferred_amount += transfer_amount - fee;
+    let alice_state = token.get_account_info(&alice_account).await.unwrap();
+    assert_eq!(alice_state.base.amount, alice_amount);
+    let extension = alice_state.get_extension::<TransferFeeAmount>().unwrap();
+    assert_eq!(extension.withheld_amount, 0.into());
+    let bob_state = token.get_account_info(&bob_account).await.unwrap();
+    assert_eq!(bob_state.base.amount, transferred_amount);
+    let extension = bob_state.get_extension::<TransferFeeAmount>().unwrap();
+    assert_eq!(extension.withheld_amount, withheld_amount.into());
+
+    // success, maximum fee kicks in
+    let transfer_amount =
+        1 + maximum_fee * (MAX_FEE_BASIS_POINTS as u64) / (transfer_fee_basis_points as u64);
+    let fee = transfer_fee_config
+        .calculate_epoch_fee(0, transfer_amount)
+        .unwrap();
+    assert_eq!(fee, maximum_fee); // sanity
+    token
+        .transfer_checked(
+            &alice_account,
+            &bob_account,
+            &alice,
+            transfer_amount,
+            decimals,
+        )
+        .await
+        .unwrap();
+    alice_amount -= transfer_amount;
+    withheld_amount += fee;
+    transferred_amount += transfer_amount - fee;
+    let alice_state = token.get_account_info(&alice_account).await.unwrap();
+    assert_eq!(alice_state.base.amount, alice_amount);
+    let extension = alice_state.get_extension::<TransferFeeAmount>().unwrap();
+    assert_eq!(extension.withheld_amount, 0.into());
+    let bob_state = token.get_account_info(&bob_account).await.unwrap();
+    assert_eq!(bob_state.base.amount, transferred_amount);
+    let extension = bob_state.get_extension::<TransferFeeAmount>().unwrap();
+    assert_eq!(extension.withheld_amount, withheld_amount.into());
+
+    // transfer down to 1 token
+    token
+        .transfer_checked(
+            &alice_account,
+            &bob_account,
+            &alice,
+            alice_amount - 1,
+            decimals,
+        )
+        .await
+        .unwrap();
+    transferred_amount += alice_amount - 1 - maximum_fee;
+    alice_amount = 1;
+    withheld_amount += maximum_fee;
+    let alice_state = token.get_account_info(&alice_account).await.unwrap();
+    assert_eq!(alice_state.base.amount, alice_amount);
+    let extension = alice_state.get_extension::<TransferFeeAmount>().unwrap();
+    assert_eq!(extension.withheld_amount, 0.into());
+    let bob_state = token.get_account_info(&bob_account).await.unwrap();
+    assert_eq!(bob_state.base.amount, transferred_amount);
+    let extension = bob_state.get_extension::<TransferFeeAmount>().unwrap();
+    assert_eq!(extension.withheld_amount, withheld_amount.into());
+
+    // final transfer, only move tokens to withheld amount, nothing received
+    token
+        .transfer_checked(&alice_account, &bob_account, &alice, 1, decimals)
+        .await
+        .unwrap();
+    withheld_amount += 1;
+    let alice_state = token.get_account_info(&alice_account).await.unwrap();
+    assert_eq!(alice_state.base.amount, 0);
+    let extension = alice_state.get_extension::<TransferFeeAmount>().unwrap();
+    assert_eq!(extension.withheld_amount, 0.into());
+    let bob_state = token.get_account_info(&bob_account).await.unwrap();
+    assert_eq!(bob_state.base.amount, transferred_amount);
+    let extension = bob_state.get_extension::<TransferFeeAmount>().unwrap();
+    assert_eq!(extension.withheld_amount, withheld_amount.into());
+}
+
+#[tokio::test]
+async fn transfer_checked_with_fee() {
+    let TransferFeeConfigWithKeypairs {
+        transfer_fee_config_authority,
+        withdraw_withheld_authority,
+        transfer_fee_config,
+        ..
+    } = test_transfer_fee_config_with_keypairs();
+    let mut context = TestContext::new().await;
+    let transfer_fee_basis_points = u16::from(
+        transfer_fee_config
+            .newer_transfer_fee
+            .transfer_fee_basis_points,
+    );
+    let maximum_fee = u64::from(transfer_fee_config.newer_transfer_fee.maximum_fee);
+    context
+        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
+            transfer_fee_config_authority: transfer_fee_config_authority.pubkey().into(),
+            withdraw_withheld_authority: withdraw_withheld_authority.pubkey().into(),
+            transfer_fee_basis_points,
+            maximum_fee,
+        }])
+        .await
+        .unwrap();
+    let TokenContext {
+        decimals,
+        mint_authority,
+        token,
+        alice,
+        bob,
+        ..
+    } = context.token_context.unwrap();
+
+    let alice_account = Keypair::new();
+    let alice_account = token
+        .create_auxiliary_token_account(&alice_account, &alice.pubkey())
+        .await
+        .unwrap();
+    let bob_account = Keypair::new();
+    let bob_account = token
+        .create_auxiliary_token_account(&bob_account, &bob.pubkey())
+        .await
+        .unwrap();
+
+    // mint a lot of tokens, 100x max fee
+    let alice_amount = maximum_fee * 100;
+    token
+        .mint_to(&alice_account, &mint_authority, alice_amount)
+        .await
+        .unwrap();
+
+    // incorrect fee, too high
+    let transfer_amount = maximum_fee;
+    let fee = transfer_fee_config
+        .calculate_epoch_fee(0, transfer_amount)
+        .unwrap()
+        + 1;
+    let error = token
+        .transfer_checked_with_fee(
+            &alice_account,
+            &bob_account,
+            &alice,
+            transfer_amount,
+            decimals,
+            fee,
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(
+        error,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::FeeMismatch as u32)
+            )
+        )))
+    );
+
+    // incorrect fee, too low
+    let fee = transfer_fee_config
+        .calculate_epoch_fee(0, transfer_amount)
+        .unwrap()
+        - 1;
+    let error = token
+        .transfer_checked_with_fee(
+            &alice_account,
+            &bob_account,
+            &alice,
+            transfer_amount,
+            decimals,
+            fee,
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(
+        error,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::FeeMismatch as u32)
+            )
+        )))
+    );
+
+    // correct fee, not enough tokens
+    let fee = transfer_fee_config
+        .calculate_epoch_fee(0, alice_amount + 1)
+        .unwrap()
+        - 1;
+    let error = token
+        .transfer_checked_with_fee(
+            &alice_account,
+            &bob_account,
+            &alice,
+            alice_amount + 1,
+            decimals,
+            fee,
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(
+        error,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::InsufficientFunds as u32)
+            )
+        )))
+    );
+
+    // correct fee
+    let fee = transfer_fee_config
+        .calculate_epoch_fee(0, transfer_amount)
+        .unwrap();
+    token
+        .transfer_checked_with_fee(
+            &alice_account,
+            &bob_account,
+            &alice,
+            transfer_amount,
+            decimals,
+            fee,
+        )
+        .await
+        .unwrap();
+    let alice_state = token.get_account_info(&alice_account).await.unwrap();
+    assert_eq!(alice_state.base.amount, alice_amount - transfer_amount);
+    let extension = alice_state.get_extension::<TransferFeeAmount>().unwrap();
+    assert_eq!(extension.withheld_amount, 0.into());
+    let bob_state = token.get_account_info(&bob_account).await.unwrap();
+    assert_eq!(bob_state.base.amount, transfer_amount - fee);
+    let extension = bob_state.get_extension::<TransferFeeAmount>().unwrap();
+    assert_eq!(extension.withheld_amount, fee.into());
+}
+
+#[tokio::test]
+async fn no_fees_from_self_transfer() {
+    let TransferFeeConfigWithKeypairs {
+        transfer_fee_config_authority,
+        withdraw_withheld_authority,
+        transfer_fee_config,
+        ..
+    } = test_transfer_fee_config_with_keypairs();
+    let mut context = TestContext::new().await;
+    let transfer_fee_basis_points = u16::from(
+        transfer_fee_config
+            .newer_transfer_fee
+            .transfer_fee_basis_points,
+    );
+    let maximum_fee = u64::from(transfer_fee_config.newer_transfer_fee.maximum_fee);
+    context
+        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
+            transfer_fee_config_authority: transfer_fee_config_authority.pubkey().into(),
+            withdraw_withheld_authority: withdraw_withheld_authority.pubkey().into(),
+            transfer_fee_basis_points,
+            maximum_fee,
+        }])
+        .await
+        .unwrap();
+    let TokenContext {
+        decimals,
+        mint_authority,
+        token,
+        alice,
+        ..
+    } = context.token_context.unwrap();
+
+    let alice_account = Keypair::new();
+    let alice_account = token
+        .create_auxiliary_token_account(&alice_account, &alice.pubkey())
+        .await
+        .unwrap();
+
+    // mint some tokens
+    let amount = maximum_fee;
+    token
+        .mint_to(&alice_account, &mint_authority, amount)
+        .await
+        .unwrap();
+
+    // self transfer, no fee assessed
+    let fee = transfer_fee_config.calculate_epoch_fee(0, amount).unwrap();
+    token
+        .transfer_checked_with_fee(
+            &alice_account,
+            &alice_account,
+            &alice,
+            amount,
+            decimals,
+            fee,
+        )
+        .await
+        .unwrap();
+    let alice_state = token.get_account_info(&alice_account).await.unwrap();
+    assert_eq!(alice_state.base.amount, amount);
+    let extension = alice_state.get_extension::<TransferFeeAmount>().unwrap();
+    assert_eq!(extension.withheld_amount, 0.into());
 }

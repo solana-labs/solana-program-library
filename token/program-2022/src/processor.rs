@@ -6,7 +6,7 @@ use crate::{
     extension::{
         confidential_transfer::{self, ConfidentialTransferAccount},
         mint_close_authority::MintCloseAuthority,
-        transfer_fee::{self, TransferFeeConfig},
+        transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
         ExtensionType, StateWithExtensions, StateWithExtensionsMut,
     },
     instruction::{is_valid_signer_index, AuthorityType, TokenInstruction, MAX_SIGNERS},
@@ -15,6 +15,7 @@ use crate::{
 use num_traits::FromPrimitive;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
+    clock::Clock,
     decode_error::DecodeError,
     entrypoint::ProgramResult,
     msg,
@@ -228,6 +229,7 @@ impl Processor {
         accounts: &[AccountInfo],
         amount: u64,
         expected_decimals: Option<u8>,
+        expected_fee: Option<u64>,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
 
@@ -243,33 +245,54 @@ impl Processor {
         let authority_info = next_account_info(account_info_iter)?;
         let authority_info_data_len = authority_info.data_len();
 
-        let mut source_account = Account::unpack(&source_account_info.data.borrow())?;
-        let mut dest_account = Account::unpack(&dest_account_info.data.borrow())?;
-
-        if source_account.is_frozen() || dest_account.is_frozen() {
+        let mut source_account_data = source_account_info.data.borrow_mut();
+        let mut source_account =
+            StateWithExtensionsMut::<Account>::unpack(&mut source_account_data)?;
+        if source_account.base.is_frozen() {
             return Err(TokenError::AccountFrozen.into());
         }
-        if source_account.amount < amount {
+        if source_account.base.amount < amount {
             return Err(TokenError::InsufficientFunds.into());
         }
-        if !cmp_pubkeys(&source_account.mint, &dest_account.mint) {
-            return Err(TokenError::MintMismatch.into());
-        }
-
-        if let Some((mint_info, expected_decimals)) = expected_mint_info {
-            if !cmp_pubkeys(&source_account.mint, mint_info.key) {
+        let fee = if let Some((mint_info, expected_decimals)) = expected_mint_info {
+            if !cmp_pubkeys(&source_account.base.mint, mint_info.key) {
                 return Err(TokenError::MintMismatch.into());
             }
 
-            let mint = Mint::unpack(&mint_info.data.borrow_mut())?;
-            if expected_decimals != mint.decimals {
+            let mint_data = mint_info.try_borrow_data()?;
+            let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
+            if expected_decimals != mint.base.decimals {
                 return Err(TokenError::MintDecimalsMismatch.into());
+            }
+
+            if let Ok(transfer_fee_config) = mint.get_extension::<TransferFeeConfig>() {
+                transfer_fee_config
+                    .calculate_epoch_fee(Clock::get()?.epoch, amount)
+                    .ok_or(TokenError::Overflow)?
+            } else {
+                0
+            }
+        } else {
+            // Transfer fee amount extension exists on the account, but no mint
+            // was provided to calculate the fee, abort
+            if source_account
+                .get_extension_mut::<TransferFeeAmount>()
+                .is_ok()
+            {
+                return Err(TokenError::MintRequiredForTransfer.into());
+            } else {
+                0
+            }
+        };
+        if let Some(expected_fee) = expected_fee {
+            if expected_fee != fee {
+                msg!("Calculated fee {}, received {}", fee, expected_fee);
+                return Err(TokenError::FeeMismatch.into());
             }
         }
 
         let self_transfer = cmp_pubkeys(source_account_info.key, dest_account_info.key);
-
-        match source_account.delegate {
+        match source_account.base.delegate {
             COption::Some(ref delegate) if cmp_pubkeys(authority_info.key, delegate) => {
                 Self::validate_owner(
                     program_id,
@@ -278,22 +301,23 @@ impl Processor {
                     authority_info_data_len,
                     account_info_iter.as_slice(),
                 )?;
-                if source_account.delegated_amount < amount {
+                if source_account.base.delegated_amount < amount {
                     return Err(TokenError::InsufficientFunds.into());
                 }
                 if !self_transfer {
-                    source_account.delegated_amount = source_account
+                    source_account.base.delegated_amount = source_account
+                        .base
                         .delegated_amount
                         .checked_sub(amount)
                         .ok_or(TokenError::Overflow)?;
-                    if source_account.delegated_amount == 0 {
-                        source_account.delegate = COption::None;
+                    if source_account.base.delegated_amount == 0 {
+                        source_account.base.delegate = COption::None;
                     }
                 }
             }
             _ => Self::validate_owner(
                 program_id,
-                &source_account.owner,
+                &source_account.base.owner,
                 authority_info,
                 authority_info_data_len,
                 account_info_iter.as_slice(),
@@ -312,16 +336,43 @@ impl Processor {
             return Ok(());
         }
 
-        source_account.amount = source_account
+        // self-transfer was dealt with earlier, so this *should* be safe
+        let mut dest_account_data = dest_account_info.data.borrow_mut();
+        let mut dest_account = StateWithExtensionsMut::<Account>::unpack(&mut dest_account_data)?;
+
+        if dest_account.base.is_frozen() {
+            return Err(TokenError::AccountFrozen.into());
+        }
+        if !cmp_pubkeys(&source_account.base.mint, &dest_account.base.mint) {
+            return Err(TokenError::MintMismatch.into());
+        }
+
+        source_account.base.amount = source_account
+            .base
             .amount
             .checked_sub(amount)
             .ok_or(TokenError::Overflow)?;
-        dest_account.amount = dest_account
+        let credited_amount = amount.checked_sub(fee).ok_or(TokenError::Overflow)?;
+        dest_account.base.amount = dest_account
+            .base
             .amount
-            .checked_add(amount)
+            .checked_add(credited_amount)
             .ok_or(TokenError::Overflow)?;
+        if fee > 0 {
+            if let Ok(extension) = dest_account.get_extension_mut::<TransferFeeAmount>() {
+                let new_withheld_amount = u64::from(extension.withheld_amount)
+                    .checked_add(fee)
+                    .ok_or(TokenError::Overflow)?;
+                extension.withheld_amount = new_withheld_amount.into();
+            } else {
+                // Use the generic error since this should never happen. If there's
+                // a fee, then the mint has a fee configured, which means all accounts
+                // must have the withholding.
+                return Err(TokenError::InvalidState.into());
+            }
+        }
 
-        if source_account.is_native() {
+        if source_account.base.is_native() {
             let source_starting_lamports = source_account_info.lamports();
             **source_account_info.lamports.borrow_mut() = source_starting_lamports
                 .checked_sub(amount)
@@ -333,8 +384,8 @@ impl Processor {
                 .ok_or(TokenError::Overflow)?;
         }
 
-        Account::pack(source_account, &mut source_account_info.data.borrow_mut())?;
-        Account::pack(dest_account, &mut dest_account_info.data.borrow_mut())?;
+        source_account.pack_base();
+        dest_account.pack_base();
 
         Ok(())
     }
@@ -940,7 +991,7 @@ impl Processor {
             #[allow(deprecated)]
             TokenInstruction::Transfer { amount } => {
                 msg!("Instruction: Transfer");
-                Self::process_transfer(program_id, accounts, amount, None)
+                Self::process_transfer(program_id, accounts, amount, None, None)
             }
             TokenInstruction::Approve { amount } => {
                 msg!("Instruction: Approve");
@@ -979,7 +1030,7 @@ impl Processor {
             }
             TokenInstruction::TransferChecked { amount, decimals } => {
                 msg!("Instruction: TransferChecked");
-                Self::process_transfer(program_id, accounts, amount, Some(decimals))
+                Self::process_transfer(program_id, accounts, amount, Some(decimals), None)
             }
             TokenInstruction::ApproveChecked { amount, decimals } => {
                 msg!("Instruction: ApproveChecked");
@@ -1143,6 +1194,12 @@ impl PrintProgramError for TokenError {
             }
             TokenError::TransferFeeExceedsMaximum => {
                 msg!("Error: Transfer fee exceeds maximum of 10,000 basis points");
+            }
+            TokenError::MintRequiredForTransfer => {
+                msg!("Mint required for this account to transfer tokens, use `transfer_checked` or `transfer_checked_with_fee`");
+            }
+            TokenError::FeeMismatch => {
+                msg!("Calculated fee does not match expected fee");
             }
         }
     }
