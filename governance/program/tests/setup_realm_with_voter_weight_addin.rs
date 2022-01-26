@@ -128,7 +128,7 @@ async fn test_set_realm_voter_weight_addin_for_realm_with_existing_voter_weight_
         .set_realm_config_using_instruction(
             &mut realm_cookie,
             &realm_config_args,
-            |i| i.accounts[7].pubkey = community_voter_weight_addin_address,
+            |i| i.accounts[6].pubkey = community_voter_weight_addin_address,
             None,
         )
         .await

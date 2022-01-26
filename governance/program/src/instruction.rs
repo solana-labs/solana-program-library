@@ -1344,11 +1344,8 @@ pub fn set_realm_config(
     let realm_config_address = get_realm_config_address(program_id, realm);
     accounts.push(AccountMeta::new(realm_config_address, false));
 
-    // TODO: Move payer as last
-
     let use_community_voter_weight_addin =
         if let Some(community_voter_weight_addin) = community_voter_weight_addin {
-            accounts.push(AccountMeta::new(*payer, true));
             accounts.push(AccountMeta::new_readonly(
                 community_voter_weight_addin,
                 false,
@@ -1360,7 +1357,6 @@ pub fn set_realm_config(
 
     let use_max_community_voter_weight_addin =
         if let Some(max_community_voter_weight_addin) = max_community_voter_weight_addin {
-            accounts.push(AccountMeta::new(*payer, true));
             accounts.push(AccountMeta::new_readonly(
                 max_community_voter_weight_addin,
                 false,
@@ -1369,6 +1365,10 @@ pub fn set_realm_config(
         } else {
             false
         };
+
+    if use_community_voter_weight_addin || use_max_community_voter_weight_addin {
+        accounts.push(AccountMeta::new(*payer, true));
+    }
 
     let instruction = GovernanceInstruction::SetRealmConfig {
         config_args: RealmConfigArgs {
