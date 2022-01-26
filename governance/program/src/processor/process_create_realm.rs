@@ -91,7 +91,7 @@ pub fn process_create_realm(
             account_type: GovernanceAccountType::RealmConfig,
             realm: *realm_info.key,
             community_voter_weight_addin: Some(*community_voter_weight_addin_info.key),
-            community_max_vote_weight_addin: None,
+            max_community_voter_weight_addin: None,
             council_voter_weight_addin: None,
             council_max_vote_weight_addin: None,
             reserved: [0; 128],
