@@ -104,6 +104,9 @@ impl GovernanceProgramTest {
     pub async fn start_with_voter_weight_addin() -> Self {
         // We only ensure the add-in is built but it doesn't detect changes
         // If the addin is changed it needs to be manually built
+        // Note: we can't use build.rs script because the addin depends on spl-governance
+        // and it has to be built after spl-governance is built and before tests are run
+        // Anything inside build.rs would execute before spl-governance is built
         ensure_voter_weight_addin_is_built();
 
         Self::start_impl(true).await

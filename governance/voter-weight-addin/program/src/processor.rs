@@ -35,7 +35,7 @@ pub fn process_instruction(
             voter_weight_expiry,
             weight_action,
             weight_action_target,
-        } => process_deposit(
+        } => process_setup_voter_weight_record(
             program_id,
             accounts,
             voter_weight,
@@ -46,8 +46,8 @@ pub fn process_instruction(
     }
 }
 
-/// Processes Deposit instruction
-pub fn process_deposit(
+/// Processes SetupVoterWeightRecord instruction
+pub fn process_setup_voter_weight_record(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     voter_weight: u64,

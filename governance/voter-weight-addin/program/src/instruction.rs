@@ -9,7 +9,8 @@ use solana_program::{
 };
 use spl_governance::addins::voter_weight::VoterWeightAction;
 
-/// Instructions supported by the VoterWeightInstruction addin program
+/// Instructions supported by the VoterWeight addin program
+/// This program is a mock program used by spl-governance for testing and not real addin
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 #[allow(clippy::large_enum_variant)]
 pub enum VoterWeightAddinInstruction {
@@ -41,7 +42,7 @@ pub enum VoterWeightAddinInstruction {
     },
 }
 
-/// Creates Deposit instruction
+/// Creates SetupVoterWeightRecord instruction
 #[allow(clippy::too_many_arguments)]
 pub fn setup_voter_weight_record(
     program_id: &Pubkey,
