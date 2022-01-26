@@ -475,6 +475,7 @@ pub fn create_realm(
     payer: &Pubkey,
     council_token_mint: Option<Pubkey>,
     community_voter_weight_addin: Option<Pubkey>,
+    max_community_voter_weight_addin: Option<Pubkey>,
     // Args
     name: String,
     min_community_tokens_to_create_governance: u64,
@@ -520,12 +521,24 @@ pub fn create_realm(
             false
         };
 
+    let use_max_community_voter_weight_addin =
+        if let Some(max_community_voter_weight_addin) = max_community_voter_weight_addin {
+            accounts.push(AccountMeta::new_readonly(
+                max_community_voter_weight_addin,
+                false,
+            ));
+            true
+        } else {
+            false
+        };
+
     let instruction = GovernanceInstruction::CreateRealm {
         config_args: RealmConfigArgs {
             use_council_mint,
             min_community_tokens_to_create_governance,
             community_mint_max_vote_weight_source,
             use_community_voter_weight_addin,
+            use_max_community_voter_weight_addin,
         },
         name,
     };
@@ -1303,6 +1316,7 @@ pub fn set_realm_config(
     council_token_mint: Option<Pubkey>,
     payer: &Pubkey,
     community_voter_weight_addin: Option<Pubkey>,
+    max_community_voter_weight_addin: Option<Pubkey>,
     // Args
     min_community_tokens_to_create_governance: u64,
     community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
@@ -1330,11 +1344,25 @@ pub fn set_realm_config(
     let realm_config_address = get_realm_config_address(program_id, realm);
     accounts.push(AccountMeta::new(realm_config_address, false));
 
+    // TODO: Move payer as last
+
     let use_community_voter_weight_addin =
         if let Some(community_voter_weight_addin) = community_voter_weight_addin {
             accounts.push(AccountMeta::new(*payer, true));
             accounts.push(AccountMeta::new_readonly(
                 community_voter_weight_addin,
+                false,
+            ));
+            true
+        } else {
+            false
+        };
+
+    let use_max_community_voter_weight_addin =
+        if let Some(max_community_voter_weight_addin) = max_community_voter_weight_addin {
+            accounts.push(AccountMeta::new(*payer, true));
+            accounts.push(AccountMeta::new_readonly(
+                max_community_voter_weight_addin,
                 false,
             ));
             true
@@ -1348,6 +1376,7 @@ pub fn set_realm_config(
             min_community_tokens_to_create_governance,
             community_mint_max_vote_weight_source,
             use_community_voter_weight_addin,
+            use_max_community_voter_weight_addin,
         },
     };
 

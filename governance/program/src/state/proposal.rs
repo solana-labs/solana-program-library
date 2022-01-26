@@ -939,8 +939,9 @@ mod test {
             name: "test-realm".to_string(),
             config: RealmConfig {
                 council_mint: Some(Pubkey::new_unique()),
-                reserved: [0; 7],
+                reserved: [0; 6],
                 use_community_voter_weight_addin: false,
+                use_max_community_voter_weight_addin: false,
 
                 community_mint_max_vote_weight_source:
                     MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,
