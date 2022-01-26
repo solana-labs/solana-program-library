@@ -41,14 +41,12 @@
   ],
   "license": "ISC",
   "dependencies": {
-    "@babel/runtime": "^7.16.5",
     "@project-serum/borsh": "^0.2.2",
     "@solana/buffer-layout": "^4.0.0",
     "@solana/spl-token": "^0.1.8",
     "@solana/web3.js": "^1.30.2",
     "bn.js": "^5.2.0",
-    "buffer": "^6.0.3",
-    "process": "^0.11.10"
+    "buffer": "^6.0.3"
   },
   "devDependencies": {
     "@babel/core": "^7.16.5",

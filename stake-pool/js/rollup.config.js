@@ -5,7 +5,6 @@ import nodeResolve from '@rollup/plugin-node-resolve';
 import replace from '@rollup/plugin-replace';
 import {terser} from 'rollup-plugin-terser';
 
-const env = process.env.NODE_ENV;
 const extensions = ['.js', '.ts'];
 
 function generateConfig(configType, format) {
@@ -28,13 +27,6 @@ function generateConfig(configType, format) {
         babelHelpers: bundle ? 'bundled' : 'runtime',
         plugins: bundle ? [] : ['@babel/plugin-transform-runtime'],
       }),
-      replace({
-        preventAssignment: true,
-        values: {
-          'process.env.NODE_ENV': JSON.stringify(env),
-          'process.env.BROWSER': JSON.stringify(browser),
-        },
-      }),
     ],
     onwarn: function (warning, rollupWarn) {
       if (warning.code !== 'CIRCULAR_DEPENDENCY') {
@@ -49,20 +41,12 @@ function generateConfig(configType, format) {
   if (configType !== 'browser') {
     // Prevent dependencies from being bundled
     config.external = [
-      /@babel\/runtime/,
+      '@project-serum/borsh',
       '@solana/buffer-layout',
+      '@solana/spl-token',
+      '@solana/web3.js',
       'bn.js',
-      'borsh',
-      'bs58',
-      'buffer',
-      'crypto-hash',
-      'jayson/lib/client/browser',
-      'js-sha3',
-      'cross-fetch',
-      'rpc-websockets',
-      'secp256k1',
-      'superstruct',
-      'tweetnacl',
+      'buffer'
     ];
   }
 
@@ -80,21 +64,12 @@ function generateConfig(configType, format) {
 
           // Prevent dependencies from being bundled
           config.external = [
-            /@babel\/runtime/,
+            '@project-serum/borsh',
             '@solana/buffer-layout',
+            '@solana/spl-token',
+            '@solana/web3.js',
             'bn.js',
-            'borsh',
-            'bs58',
-            'buffer',
-            'crypto-hash',
-            'http',
-            'https',
-            'jayson/lib/client/browser',
-            'js-sha3',
-            'rpc-websockets',
-            'secp256k1',
-            'superstruct',
-            'tweetnacl',
+            'buffer'
           ];
 
           break;
