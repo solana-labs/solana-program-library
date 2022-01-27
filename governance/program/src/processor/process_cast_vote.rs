@@ -8,10 +8,10 @@ use solana_program::{
     rent::Rent,
     sysvar::Sysvar,
 };
+use spl_governance_addin_api::voter_weight::VoterWeightAction;
 use spl_governance_tools::account::create_and_serialize_account_signed;
 
 use crate::{
-    addins::voter_weight::VoterWeightAction,
     error::GovernanceError,
     state::{
         enums::GovernanceAccountType,

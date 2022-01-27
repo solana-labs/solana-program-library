@@ -4,7 +4,7 @@ use std::slice::Iter;
 
 use crate::{
     addins::voter_weight::{
-        get_voter_weight_record_data_for_token_owner_record, VoterWeightAction,
+        assert_is_valid_voter_weight, get_voter_weight_record_data_for_token_owner_record,
     },
     error::GovernanceError,
     state::{
@@ -21,6 +21,7 @@ use solana_program::{
     program_pack::IsInitialized,
     pubkey::Pubkey,
 };
+use spl_governance_addin_api::voter_weight::VoterWeightAction;
 use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 
 /// Governance Token Owner Record
@@ -205,8 +206,12 @@ impl TokenOwnerRecord {
                 voter_weight_record_info,
                 self,
             )?;
-            voter_weight_record_data
-                .assert_is_valid_voter_weight(weight_action, weight_action_target)?;
+
+            assert_is_valid_voter_weight(
+                &voter_weight_record_data,
+                weight_action,
+                weight_action_target,
+            )?;
 
             Ok(voter_weight_record_data.voter_weight)
         } else {

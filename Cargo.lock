@@ -3636,10 +3636,20 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
+ "spl-governance-addin-api",
  "spl-governance-test-sdk",
  "spl-governance-tools",
  "spl-token 3.3.0",
  "thiserror",
+]
+
+[[package]]
+name = "spl-governance-addin-api"
+version = "0.1.0"
+dependencies = [
+ "borsh",
+ "solana-program",
+ "spl-governance-tools",
 ]
 
 [[package]]

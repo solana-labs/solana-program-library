@@ -15,10 +15,6 @@ use solana_program_test::*;
 use solana_sdk::signature::{Keypair, Signer};
 
 use spl_governance::{
-    addins::{
-        max_voter_weight::{MaxVoterWeightAccountType, MaxVoterWeightRecord},
-        voter_weight::{VoterWeightAccountType, VoterWeightAction, VoterWeightRecord},
-    },
     instruction::{
         add_signatory, cancel_proposal, cast_vote, create_account_governance,
         create_mint_governance, create_native_treasury, create_program_governance, create_proposal,
@@ -55,6 +51,10 @@ use spl_governance::{
         vote_record::{get_vote_record_address, Vote, VoteChoice, VoteRecordV2},
     },
     tools::bpf_loader_upgradeable::get_program_data_address,
+};
+use spl_governance_addin_api::{
+    max_voter_weight::{MaxVoterWeightAccountType, MaxVoterWeightRecord},
+    voter_weight::{VoterWeightAccountType, VoterWeightAction, VoterWeightRecord},
 };
 
 pub mod addins;

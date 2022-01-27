@@ -14,7 +14,10 @@ use solana_program::{
 };
 use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 
-use crate::addins::max_voter_weight::get_max_voter_weight_record_data_for_realm_and_governing_token_mint;
+use crate::addins::max_voter_weight::{
+    assert_is_valid_max_voter_weight,
+    get_max_voter_weight_record_data_for_realm_and_governing_token_mint,
+};
 use crate::state::legacy::ProposalV1;
 use crate::tools::spl_token::get_spl_token_mint_supply;
 use crate::{
@@ -443,7 +446,7 @@ impl ProposalV2 {
                     &self.governing_token_mint,
                 )?;
 
-            max_voter_weight_data.assert_is_valid_max_voter_weight()?;
+            assert_is_valid_max_voter_weight(&max_voter_weight_data)?;
 
             // When the max voter weight addin is used it's possible it can be inaccurate and we can have more votes then the max provided by the addin
             // and we have to adjust it to whatever result is higher

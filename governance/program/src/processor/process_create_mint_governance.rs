@@ -1,7 +1,6 @@
 //! Program state processor
 
 use crate::{
-    addins::voter_weight::VoterWeightAction,
     state::{
         enums::GovernanceAccountType,
         governance::{
@@ -23,6 +22,7 @@ use solana_program::{
     rent::Rent,
     sysvar::Sysvar,
 };
+use spl_governance_addin_api::voter_weight::VoterWeightAction;
 use spl_governance_tools::account::create_and_serialize_account_signed;
 use spl_token::{instruction::AuthorityType, state::Mint};
 
