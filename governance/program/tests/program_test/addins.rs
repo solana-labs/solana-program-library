@@ -65,10 +65,9 @@ pub enum VoterWeightAddinInstruction {
 pub fn setup_voter_weight_record(
     program_id: &Pubkey,
     // Accounts
-    governance_program_id: &Pubkey,
     realm: &Pubkey,
     governing_token_mint: &Pubkey,
-    token_owner_record: &Pubkey,
+    governing_token_owner: &Pubkey,
     voter_weight_record: &Pubkey,
     payer: &Pubkey,
     // Args
@@ -78,10 +77,9 @@ pub fn setup_voter_weight_record(
     weight_action_target: Option<Pubkey>,
 ) -> Instruction {
     let accounts = vec![
-        AccountMeta::new_readonly(*governance_program_id, false),
         AccountMeta::new_readonly(*realm, false),
         AccountMeta::new_readonly(*governing_token_mint, false),
-        AccountMeta::new_readonly(*token_owner_record, false),
+        AccountMeta::new_readonly(*governing_token_owner, false),
         AccountMeta::new(*voter_weight_record, true),
         AccountMeta::new_readonly(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),

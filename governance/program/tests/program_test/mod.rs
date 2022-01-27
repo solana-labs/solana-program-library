@@ -2585,10 +2585,9 @@ impl GovernanceProgramTest {
 
         let setup_voter_weight_record = setup_voter_weight_record(
             &self.voter_weight_addin_id.unwrap(),
-            &self.program_id,
             &token_owner_record_cookie.account.realm,
             &token_owner_record_cookie.account.governing_token_mint,
-            &token_owner_record_cookie.address,
+            &token_owner_record_cookie.account.governing_token_owner,
             &voter_weight_record_account.pubkey(),
             &self.bench.payer.pubkey(),
             voter_weight,

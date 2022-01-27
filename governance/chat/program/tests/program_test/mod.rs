@@ -72,7 +72,7 @@ impl GovernanceChatProgramTest {
 
         let voter_weight_addin_id = if use_voter_weight_addin {
             let voter_weight_addin_id =
-                Pubkey::from_str("VoterWeight11111111111111111111111111111111").unwrap();
+                Pubkey::from_str("VoterWeightAddin111111111111111111111111111").unwrap();
             program_test.add_program("spl_governance_addin_mock", voter_weight_addin_id, None);
             Some(voter_weight_addin_id)
         } else {
@@ -200,10 +200,9 @@ impl GovernanceChatProgramTest {
             let voter_weight_record = Keypair::new();
             let deposit_voter_weight_ix = setup_voter_weight_record(
                 &self.voter_weight_addin_id.unwrap(),
-                &self.governance_program_id,
                 &realm_address,
                 &governing_token_mint_keypair.pubkey(),
-                &token_owner_record_address,
+                &token_owner.pubkey(),
                 &voter_weight_record.pubkey(),
                 &self.bench.payer.pubkey(),
                 amount,
