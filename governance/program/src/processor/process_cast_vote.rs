@@ -4,7 +4,6 @@ use solana_program::{
     account_info::{next_account_info, AccountInfo},
     clock::Clock,
     entrypoint::ProgramResult,
-    msg,
     pubkey::Pubkey,
     rent::Rent,
     sysvar::Sysvar,
@@ -25,7 +24,6 @@ use crate::{
         },
         vote_record::{get_vote_record_address_seeds, Vote, VoteRecordV2},
     },
-    tools::spl_token::get_spl_token_mint_supply,
 };
 
 use borsh::BorshSerialize;
@@ -135,21 +133,18 @@ pub fn process_cast_vote(
         }
     }
 
-    let max_vote_weight = proposal_data.resolve_max_voter_weight(
+    let max_voter_weight = proposal_data.resolve_max_voter_weight(
         program_id,
         realm_config_info,
+        governing_token_mint_info,
         account_info_iter,
         realm_info.key,
         &realm_data,
     )?;
 
-    msg!("MAX VOTE WEIGHT {:?}", max_vote_weight);
-
-    let governing_token_mint_supply = get_spl_token_mint_supply(governing_token_mint_info)?;
     if proposal_data.try_tip_vote(
-        governing_token_mint_supply,
+        max_voter_weight,
         &governance_data.config,
-        &realm_data,
         clock.unix_timestamp,
     )? {
         // Deserialize proposal owner and validate it's the actual owner of the proposal
