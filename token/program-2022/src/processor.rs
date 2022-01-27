@@ -373,6 +373,12 @@ impl Processor {
             return Err(TokenError::MintMismatch.into());
         }
 
+        if let Ok(extension) = dest_account.get_extension_mut::<MemoTransfer>() {
+            if extension.require_incoming_transfer_memos.into() {
+                // TODO: use get_processed_instructions syscall to check for memo
+            }
+        }
+
         source_account.base.amount = source_account
             .base
             .amount
