@@ -1878,7 +1878,10 @@ impl GovernanceProgramTest {
         &mut self,
         realm_cookie: &RealmCookie,
         proposal_cookie: &ProposalCookie,
+        max_voter_weight_record_cookie: Option<MaxVoterWeightRecordCookie>,
     ) -> Result<(), ProgramError> {
+        let max_voter_weight_record = max_voter_weight_record_cookie.map(|rc| rc.address);
+
         let finalize_vote_instruction = finalize_vote(
             &self.program_id,
             &realm_cookie.address,
@@ -1886,7 +1889,7 @@ impl GovernanceProgramTest {
             &proposal_cookie.address,
             &proposal_cookie.account.token_owner_record,
             &proposal_cookie.account.governing_token_mint,
-            None,
+            max_voter_weight_record,
         );
 
         self.bench
@@ -2498,6 +2501,16 @@ impl GovernanceProgramTest {
             .get_packed_account_data::<T>(*address)
             .await
             .unwrap()
+    }
+
+    #[allow(dead_code)]
+    pub async fn advance_clock_past_voting_time(&mut self, governance_cookie: &GovernanceCookie) {
+        let clock = self.bench.get_clock().await;
+
+        self.advance_clock_past_timestamp(
+            clock.unix_timestamp + governance_cookie.account.config.max_voting_time as i64,
+        )
+        .await;
     }
 
     #[allow(dead_code)]

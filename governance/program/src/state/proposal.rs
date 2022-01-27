@@ -387,29 +387,33 @@ impl ProposalV2 {
                     return Ok(governing_token_mint_supply);
                 }
 
-                let max_vote_weight = (governing_token_mint_supply as u128)
+                let max_voter_weight = (governing_token_mint_supply as u128)
                     .checked_mul(fraction as u128)
                     .unwrap()
                     .checked_div(MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE as u128)
                     .unwrap() as u64;
 
-                let deny_vote_weight = self.deny_vote_weight.unwrap_or(0);
-
-                let max_option_vote_weight =
-                    self.options.iter().map(|o| o.vote_weight).max().unwrap();
-
                 // When the fraction is used it's possible we can go over the calculated max_vote_weight
                 // and we have to adjust it in case more votes have been cast
-                let total_vote_weight = max_option_vote_weight
-                    .checked_add(deny_vote_weight)
-                    .unwrap();
-
-                Ok(max_vote_weight.max(total_vote_weight))
+                Ok(self.coerce_max_voter_weight(max_voter_weight))
             }
             MintMaxVoteWeightSource::Absolute(_) => {
                 Err(GovernanceError::VoteWeightSourceNotSupported.into())
             }
         }
+    }
+
+    /// Adjusts max voter weight to ensure it's not lower than total cast votes
+    fn coerce_max_voter_weight(&self, max_voter_weight: u64) -> u64 {
+        let deny_vote_weight = self.deny_vote_weight.unwrap_or(0);
+
+        let max_option_vote_weight = self.options.iter().map(|o| o.vote_weight).max().unwrap();
+
+        let total_vote_weight = max_option_vote_weight
+            .checked_add(deny_vote_weight)
+            .unwrap();
+
+        max_voter_weight.max(total_vote_weight)
     }
 
     /// Resolves max voter weight
@@ -441,7 +445,9 @@ impl ProposalV2 {
 
             max_voter_weight_data.assert_is_valid_max_voter_weight()?;
 
-            return Ok(max_voter_weight_data.max_voter_weight);
+            // When the max voter weight addin is used it's possible it can be inaccurate and we can have more votes then the max provided by the addin
+            // and we have to adjust it to whatever result is higher
+            return Ok(self.coerce_max_voter_weight(max_voter_weight_data.max_voter_weight));
         }
 
         // Note: governing_token_mint_info is already verified at this point and this
@@ -518,12 +524,15 @@ impl ProposalV2 {
                 .unwrap();
 
         if yes_vote_weight >= min_vote_threshold_weight
-            && yes_vote_weight > (max_vote_weight - yes_vote_weight)
+            && yes_vote_weight > (max_vote_weight.checked_sub(yes_vote_weight).unwrap())
         {
             yes_option.vote_result = OptionVoteResult::Succeeded;
             return Some(ProposalState::Succeeded);
-        } else if deny_vote_weight > (max_vote_weight - min_vote_threshold_weight)
-            || deny_vote_weight >= (max_vote_weight - deny_vote_weight)
+        } else if deny_vote_weight
+            > (max_vote_weight
+                .checked_sub(min_vote_threshold_weight)
+                .unwrap())
+            || deny_vote_weight >= (max_vote_weight.checked_sub(deny_vote_weight).unwrap())
         {
             yes_option.vote_result = OptionVoteResult::Defeated;
             return Some(ProposalState::Defeated);

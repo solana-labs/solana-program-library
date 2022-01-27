@@ -294,7 +294,7 @@ async fn test_vote_on_none_executable_single_choice_proposal_with_multiple_optio
         .await;
 
     governance_test
-        .finalize_vote(&realm_cookie, &proposal_cookie)
+        .finalize_vote(&realm_cookie, &proposal_cookie, None)
         .await
         .unwrap();
 
@@ -396,7 +396,7 @@ async fn test_vote_on_none_executable_multi_choice_proposal_with_multiple_option
         .await;
 
     governance_test
-        .finalize_vote(&realm_cookie, &proposal_cookie)
+        .finalize_vote(&realm_cookie, &proposal_cookie, None)
         .await
         .unwrap();
 
@@ -553,7 +553,7 @@ async fn test_vote_on_executable_proposal_with_multiple_options_and_partial_succ
         .await;
 
     governance_test
-        .finalize_vote(&realm_cookie, &proposal_cookie)
+        .finalize_vote(&realm_cookie, &proposal_cookie, None)
         .await
         .unwrap();
 
@@ -740,7 +740,7 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
         .await;
 
     governance_test
-        .finalize_vote(&realm_cookie, &proposal_cookie)
+        .finalize_vote(&realm_cookie, &proposal_cookie, None)
         .await
         .unwrap();
 
@@ -902,7 +902,7 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
         .await;
 
     governance_test
-        .finalize_vote(&realm_cookie, &proposal_cookie)
+        .finalize_vote(&realm_cookie, &proposal_cookie, None)
         .await
         .unwrap();
 

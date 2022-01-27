@@ -59,6 +59,7 @@ pub struct TokenOwnerRecordCookie {
 
     pub voter_weight_record: Option<VoterWeightRecordCookie>,
 
+    // This doesn't belong to TokenOwnerRecord and I put it here for simplicity for now
     pub max_voter_weight_record: Option<MaxVoterWeightRecordCookie>,
 }
 
