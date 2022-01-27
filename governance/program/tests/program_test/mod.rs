@@ -118,6 +118,11 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
+    pub async fn start_with_all_addins() -> Self {
+        Self::start_with_addin_mock(true, true).await
+    }
+
+    #[allow(dead_code)]
     pub async fn start_with_addin_mock(
         use_voter_weight_addin: bool,
         use_max_voter_weight_addin: bool,
