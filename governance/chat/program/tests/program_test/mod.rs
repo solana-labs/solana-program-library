@@ -116,6 +116,7 @@ impl GovernanceChatProgramTest {
             &self.bench.payer.pubkey(),
             None,
             self.voter_weight_addin_id,
+            None,
             name.clone(),
             1,
             MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,

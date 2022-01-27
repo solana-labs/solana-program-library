@@ -58,6 +58,8 @@ pub struct TokenOwnerRecordCookie {
     pub governance_delegate: Keypair,
 
     pub voter_weight_record: Option<VoterWeightRecordCookie>,
+
+    pub max_voter_weight_record: Option<MaxVoterWeightRecordCookie>,
 }
 
 impl TokenOwnerRecordCookie {

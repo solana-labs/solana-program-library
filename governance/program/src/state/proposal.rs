@@ -1,7 +1,9 @@
 //! Proposal  Account
 
 use borsh::maybestd::io::Write;
+use solana_program::account_info::next_account_info;
 use std::cmp::Ordering;
+use std::slice::Iter;
 
 use solana_program::borsh::try_from_slice_unchecked;
 use solana_program::clock::{Slot, UnixTimestamp};
@@ -12,6 +14,7 @@ use solana_program::{
 };
 use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 
+use crate::addins::max_voter_weight::get_max_voter_weight_record_data_for_realm_and_governing_token_mint;
 use crate::state::legacy::ProposalV1;
 use crate::{
     error::GovernanceError,
@@ -28,6 +31,8 @@ use crate::{
     PROGRAM_AUTHORITY_SEED,
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
+
+use super::realm_config::get_realm_config_data_for_realm;
 
 /// Proposal option vote result
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
@@ -408,6 +413,39 @@ impl ProposalV2 {
                 Err(GovernanceError::VoteWeightSourceNotSupported.into())
             }
         }
+    }
+
+    /// Resolves max voter weight
+    pub fn resolve_max_voter_weight(
+        &mut self,
+        program_id: &Pubkey,
+        realm_config_info: &AccountInfo,
+        account_info_iter: &mut Iter<AccountInfo>,
+        realm: &Pubkey,
+        realm_data: &Realm,
+    ) -> Result<u64, ProgramError> {
+        // if the realm uses addin for max community voter weight then use the externally provided max weight
+        if realm_data.config.use_max_community_voter_weight_addin
+            && realm_data.community_mint == self.governing_token_mint
+        {
+            let realm_config_data =
+                get_realm_config_data_for_realm(program_id, realm_config_info, realm)?;
+
+            let max_voter_weight_record_info = next_account_info(account_info_iter)?;
+
+            let max_voter_weight_data =
+                get_max_voter_weight_record_data_for_realm_and_governing_token_mint(
+                    &realm_config_data.max_community_voter_weight_addin.unwrap(),
+                    max_voter_weight_record_info,
+                    realm,
+                    &self.governing_token_mint,
+                )?;
+
+            max_voter_weight_data.assert_is_valid_max_voter_weight()?;
+
+            return Ok(max_voter_weight_data.max_voter_weight);
+        }
+        Ok(0)
     }
 
     /// Checks if vote can be tipped and automatically transitioned to Succeeded or Defeated state

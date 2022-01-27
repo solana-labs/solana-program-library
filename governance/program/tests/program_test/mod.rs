@@ -496,6 +496,7 @@ impl GovernanceProgramTest {
             governance_authority: None,
             governance_delegate: Keypair::new(),
             voter_weight_record: None,
+            max_voter_weight_record: None,
         }
     }
 
@@ -710,6 +711,7 @@ impl GovernanceProgramTest {
             governance_authority: None,
             governance_delegate,
             voter_weight_record: None,
+            max_voter_weight_record: None,
         })
     }
 
@@ -1992,6 +1994,14 @@ impl GovernanceProgramTest {
                 None
             };
 
+        let max_voter_weight_record = if let Some(max_voter_weight_record) =
+            &token_owner_record_cookie.max_voter_weight_record
+        {
+            Some(max_voter_weight_record.address)
+        } else {
+            None
+        };
+
         let vote_instruction = cast_vote(
             &self.program_id,
             &token_owner_record_cookie.account.realm,
@@ -2003,7 +2013,7 @@ impl GovernanceProgramTest {
             &proposal_cookie.account.governing_token_mint,
             &self.bench.payer.pubkey(),
             voter_weight_record,
-            None,
+            max_voter_weight_record,
             vote.clone(),
         );
 
@@ -2601,7 +2611,7 @@ impl GovernanceProgramTest {
     #[allow(dead_code)]
     pub async fn with_max_voter_weight_addin_record(
         &mut self,
-        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        token_owner_record_cookie: &mut TokenOwnerRecordCookie,
     ) -> Result<MaxVoterWeightRecordCookie, ProgramError> {
         self.with_max_voter_weight_addin_record_impl(token_owner_record_cookie, 200, None)
             .await
@@ -2610,7 +2620,7 @@ impl GovernanceProgramTest {
     #[allow(dead_code)]
     pub async fn with_max_voter_weight_addin_record_impl(
         &mut self,
-        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        token_owner_record_cookie: &mut TokenOwnerRecordCookie,
         max_voter_weight: u64,
         max_voter_weight_expiry: Option<Slot>,
     ) -> Result<MaxVoterWeightRecordCookie, ProgramError> {
@@ -2643,6 +2653,9 @@ impl GovernanceProgramTest {
                 max_voter_weight_expiry,
             },
         };
+
+        token_owner_record_cookie.max_voter_weight_record =
+            Some(max_voter_weight_record_cookie.clone());
 
         Ok(max_voter_weight_record_cookie)
     }

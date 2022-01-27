@@ -6,7 +6,7 @@ use solana_program::{
     pubkey::Pubkey,
     system_program,
 };
-use spl_governance::instruction::with_voter_weight_addins_accounts;
+use spl_governance::instruction::with_realm_config_accounts;
 
 use crate::state::MessageBody;
 
@@ -76,7 +76,7 @@ pub fn post_message(
         false
     };
 
-    with_voter_weight_addins_accounts(
+    with_realm_config_accounts(
         governance_program_id,
         &mut accounts,
         realm,

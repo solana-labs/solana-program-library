@@ -4,6 +4,7 @@ use solana_program::{
     account_info::{next_account_info, AccountInfo},
     clock::Clock,
     entrypoint::ProgramResult,
+    msg,
     pubkey::Pubkey,
     rent::Rent,
     sysvar::Sysvar,
@@ -99,8 +100,11 @@ pub fn process_cast_vote(
         .checked_add(1)
         .unwrap();
 
+    let realm_config_info = next_account_info(account_info_iter)?; //12
+
     let voter_weight = voter_token_owner_record_data.resolve_voter_weight(
         program_id,
+        realm_config_info,
         account_info_iter,
         realm_info.key,
         &realm_data,
@@ -130,6 +134,16 @@ pub fn process_cast_vote(
             )
         }
     }
+
+    let max_vote_weight = proposal_data.resolve_max_voter_weight(
+        program_id,
+        realm_config_info,
+        account_info_iter,
+        realm_info.key,
+        &realm_data,
+    )?;
+
+    msg!("MAX VOTE WEIGHT {:?}", max_vote_weight);
 
     let governing_token_mint_supply = get_spl_token_mint_supply(governing_token_mint_info)?;
     if proposal_data.try_tip_vote(

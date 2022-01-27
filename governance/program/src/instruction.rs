@@ -701,7 +701,7 @@ pub fn create_account_governance(
         AccountMeta::new_readonly(*governance_authority, true),
     ];
 
-    with_voter_weight_addins_accounts(program_id, &mut accounts, realm, voter_weight_record, None);
+    with_realm_config_accounts(program_id, &mut accounts, realm, voter_weight_record, None);
 
     let instruction = GovernanceInstruction::CreateAccountGovernance { config };
 
@@ -746,7 +746,7 @@ pub fn create_program_governance(
         AccountMeta::new_readonly(*governance_authority, true),
     ];
 
-    with_voter_weight_addins_accounts(program_id, &mut accounts, realm, voter_weight_record, None);
+    with_realm_config_accounts(program_id, &mut accounts, realm, voter_weight_record, None);
 
     let instruction = GovernanceInstruction::CreateProgramGovernance {
         config,
@@ -791,7 +791,7 @@ pub fn create_mint_governance(
         AccountMeta::new_readonly(*governance_authority, true),
     ];
 
-    with_voter_weight_addins_accounts(program_id, &mut accounts, realm, voter_weight_record, None);
+    with_realm_config_accounts(program_id, &mut accounts, realm, voter_weight_record, None);
 
     let instruction = GovernanceInstruction::CreateMintGovernance {
         config,
@@ -836,7 +836,7 @@ pub fn create_token_governance(
         AccountMeta::new_readonly(*governance_authority, true),
     ];
 
-    with_voter_weight_addins_accounts(program_id, &mut accounts, realm, voter_weight_record, None);
+    with_realm_config_accounts(program_id, &mut accounts, realm, voter_weight_record, None);
 
     let instruction = GovernanceInstruction::CreateTokenGovernance {
         config,
@@ -890,7 +890,7 @@ pub fn create_proposal(
         AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];
 
-    with_voter_weight_addins_accounts(program_id, &mut accounts, realm, voter_weight_record, None);
+    with_realm_config_accounts(program_id, &mut accounts, realm, voter_weight_record, None);
 
     let instruction = GovernanceInstruction::CreateProposal {
         name,
@@ -1033,7 +1033,7 @@ pub fn cast_vote(
         AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];
 
-    with_voter_weight_addins_accounts(
+    with_realm_config_accounts(
         program_id,
         &mut accounts,
         realm,
@@ -1070,7 +1070,7 @@ pub fn finalize_vote(
         AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];
 
-    with_voter_weight_addins_accounts(
+    with_realm_config_accounts(
         program_id,
         &mut accounts,
         realm,
@@ -1408,33 +1408,32 @@ pub fn set_realm_config(
     }
 }
 
-/// Adds voter weight / max voter weight  accounts to the given accounts if voter_weight_record / max_voter_weight_record are specified
-pub fn with_voter_weight_addins_accounts(
+/// Adds realm config account and accounts referenced by the config
+/// 1) VoterWeightRecord
+/// 2) MaxVoterWeightRecord
+pub fn with_realm_config_accounts(
     program_id: &Pubkey,
     accounts: &mut Vec<AccountMeta>,
     realm: &Pubkey,
     voter_weight_record: Option<Pubkey>,
     max_voter_weight_record: Option<Pubkey>,
 ) {
-    let use_voter_weight_record = if let Some(voter_weight_record) = voter_weight_record {
+    let realm_config_address = get_realm_config_address(program_id, realm);
+    accounts.push(AccountMeta::new_readonly(realm_config_address, false));
+
+    if let Some(voter_weight_record) = voter_weight_record {
         accounts.push(AccountMeta::new_readonly(voter_weight_record, false));
         true
     } else {
         false
     };
 
-    let use_max_voter_weight_record = if let Some(max_voter_weight_record) = max_voter_weight_record
-    {
+    if let Some(max_voter_weight_record) = max_voter_weight_record {
         accounts.push(AccountMeta::new_readonly(max_voter_weight_record, false));
         true
     } else {
         false
     };
-
-    if use_voter_weight_record || use_max_voter_weight_record {
-        let realm_config_address = get_realm_config_address(program_id, realm);
-        accounts.push(AccountMeta::new_readonly(realm_config_address, false));
-    }
 }
 
 /// Creates CreateTokenOwnerRecord instruction

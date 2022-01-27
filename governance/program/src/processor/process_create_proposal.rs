@@ -78,8 +78,11 @@ pub fn process_create_proposal(
     proposal_owner_record_data
         .assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
+    let realm_config_info = next_account_info(account_info_iter)?; // 10
+
     let voter_weight = proposal_owner_record_data.resolve_voter_weight(
         program_id,
+        realm_config_info,
         account_info_iter,
         realm_info.key,
         &realm_data,

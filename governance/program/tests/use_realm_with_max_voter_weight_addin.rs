@@ -14,13 +14,13 @@ async fn test_cast_vote_with_max_voter_weight_addin() {
 
     let realm_cookie = governance_test.with_realm().await;
 
-    let token_owner_record_cookie = governance_test
+    let mut token_owner_record_cookie = governance_test
         .with_community_token_deposit(&realm_cookie)
         .await
         .unwrap();
 
     governance_test
-        .with_max_voter_weight_addin_record(&token_owner_record_cookie)
+        .with_max_voter_weight_addin_record(&mut token_owner_record_cookie)
         .await
         .unwrap();
 

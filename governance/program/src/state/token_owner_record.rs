@@ -183,6 +183,7 @@ impl TokenOwnerRecord {
     pub fn resolve_voter_weight(
         &self,
         program_id: &Pubkey,
+        realm_config_info: &AccountInfo,
         account_info_iter: &mut Iter<AccountInfo>,
         realm: &Pubkey,
         realm_data: &Realm,
@@ -194,7 +195,6 @@ impl TokenOwnerRecord {
             && realm_data.community_mint == self.governing_token_mint
         {
             let voter_weight_record_info = next_account_info(account_info_iter)?;
-            let realm_config_info = next_account_info(account_info_iter)?;
 
             let realm_config_data =
                 get_realm_config_data_for_realm(program_id, realm_config_info, realm)?;
@@ -206,6 +206,7 @@ impl TokenOwnerRecord {
             )?;
             voter_weight_record_data
                 .assert_is_valid_voter_weight(weight_action, weight_action_target)?;
+
             Ok(voter_weight_record_data.voter_weight)
         } else {
             Ok(self.governing_token_deposit_amount)

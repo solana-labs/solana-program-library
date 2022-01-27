@@ -94,9 +94,12 @@ pub fn process_post_message(
         governance_info.key,
     )?;
 
+    let realm_config_info = next_account_info(account_info_iter)?; //10
+
     let voter_weight = token_owner_record_data.resolve_voter_weight(
         governance_program_id,
-        account_info_iter, // 10
+        realm_config_info,
+        account_info_iter, // 11
         realm_info.key,
         &realm_data,
         VoterWeightAction::CommentProposal,
