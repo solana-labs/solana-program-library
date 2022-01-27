@@ -143,28 +143,25 @@ impl GovernanceProgramTest {
             processor!(process_instruction),
         );
 
-        let (voter_weight_addin_id, max_voter_weight_addin_id) =
-            if use_voter_weight_addin || use_max_voter_weight_addin {
-                let addin_mock_id =
-                    Pubkey::from_str("AddinMock1111111111111111111111111111111111").unwrap();
-                program_test.add_program("spl_governance_addin_mock", addin_mock_id, None);
+        let voter_weight_addin_id = if use_voter_weight_addin {
+            let addin_mock_id =
+                Pubkey::from_str("VoterWeightAddin111111111111111111111111111").unwrap();
+            program_test.add_program("spl_governance_addin_mock", addin_mock_id, None);
 
-                let voter_weight_addin_id = if use_voter_weight_addin {
-                    Some(addin_mock_id)
-                } else {
-                    None
-                };
+            Some(addin_mock_id)
+        } else {
+            None
+        };
 
-                let max_voter_weight_addin_id = if use_max_voter_weight_addin {
-                    Some(addin_mock_id)
-                } else {
-                    None
-                };
+        let max_voter_weight_addin_id = if use_max_voter_weight_addin {
+            let addin_mock_id =
+                Pubkey::from_str("MaxVoterWeightAddin111111111111111111111111").unwrap();
+            program_test.add_program("spl_governance_addin_mock", addin_mock_id, None);
 
-                (voter_weight_addin_id, max_voter_weight_addin_id)
-            } else {
-                (None, None)
-            };
+            Some(addin_mock_id)
+        } else {
+            None
+        };
 
         let bench = ProgramTestBench::start_new(program_test).await;
 
