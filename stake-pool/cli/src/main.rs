@@ -38,9 +38,7 @@ use {
         system_instruction,
         transaction::Transaction,
     },
-    spl_associated_token_account::{
-        get_associated_token_address, instruction::create_associated_token_account,
-    },
+    spl_associated_token_account::get_associated_token_address,
     spl_stake_pool::state::ValidatorStakeInfo,
     spl_stake_pool::{
         self, find_stake_program_address, find_transient_stake_program_address,
@@ -52,6 +50,9 @@ use {
     std::cmp::Ordering,
     std::{process::exit, sync::Arc},
 };
+// use instruction::create_associated_token_account once ATA 1.0.5 is released
+#[allow(deprecated)]
+use spl_associated_token_account::create_associated_token_account;
 
 pub(crate) struct Config {
     rpc_client: RpcClient,
@@ -637,11 +638,11 @@ fn add_associated_token_account(
             .get_minimum_balance_for_rent_exemption(spl_token::state::Account::LEN)
             .unwrap();
 
+        #[allow(deprecated)]
         instructions.push(create_associated_token_account(
             &config.fee_payer.pubkey(),
             owner,
             mint,
-            &spl_token::id(),
         ));
 
         *rent_free_balances += min_account_balance;
