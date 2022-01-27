@@ -1,10 +1,6 @@
 //! Program processor
 
 use borsh::BorshDeserialize;
-use spl_governance::addins::{
-    max_voter_weight::{MaxVoterWeightAccountType, MaxVoterWeightRecord},
-    voter_weight::{VoterWeightAccountType, VoterWeightAction, VoterWeightRecord},
-};
 
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -13,6 +9,10 @@ use solana_program::{
     msg,
     program_error::ProgramError,
     pubkey::Pubkey,
+};
+use spl_governance_addin_api::{
+    max_voter_weight::{MaxVoterWeightAccountType, MaxVoterWeightRecord},
+    voter_weight::{VoterWeightAccountType, VoterWeightAction, VoterWeightRecord},
 };
 use spl_governance_tools::account::create_and_serialize_account;
 

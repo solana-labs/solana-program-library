@@ -23,7 +23,7 @@ use spl_governance_chat::{
     processor::process_instruction,
     state::{ChatMessage, GovernanceChatAccountType, MessageBody},
 };
-use spl_governance_test_sdk::{addins::ensure_addin_mock_is_built, ProgramTestBench};
+use spl_governance_test_sdk::ProgramTestBench;
 
 use crate::program_test::cookies::{ChatMessageCookie, ProposalCookie};
 
@@ -46,8 +46,6 @@ impl GovernanceChatProgramTest {
 
     #[allow(dead_code)]
     pub async fn start_with_voter_weight_addin() -> Self {
-        ensure_addin_mock_is_built();
-
         Self::start_impl(true).await
     }
 

@@ -16,13 +16,11 @@ use solana_program::{
     pubkey::Pubkey,
     sysvar::Sysvar,
 };
-use spl_governance::{
-    addins::voter_weight::VoterWeightAction,
-    state::{
-        governance::get_governance_data_for_realm, proposal::get_proposal_data_for_governance,
-        realm::get_realm_data, token_owner_record::get_token_owner_record_data_for_realm,
-    },
+use spl_governance::state::{
+    governance::get_governance_data_for_realm, proposal::get_proposal_data_for_governance,
+    realm::get_realm_data, token_owner_record::get_token_owner_record_data_for_realm,
 };
+use spl_governance_addin_api::voter_weight::VoterWeightAction;
 use spl_governance_tools::account::create_and_serialize_account;
 
 /// Processes an instruction

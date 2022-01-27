@@ -56,8 +56,10 @@ use spl_governance_addin_api::{
     max_voter_weight::{MaxVoterWeightAccountType, MaxVoterWeightRecord},
     voter_weight::{VoterWeightAccountType, VoterWeightAction, VoterWeightRecord},
 };
+use spl_governance_addin_mock::instruction::{
+    setup_max_voter_weight_record, setup_voter_weight_record,
+};
 
-pub mod addins;
 pub mod args;
 pub mod cookies;
 
@@ -66,14 +68,12 @@ use crate::program_test::cookies::{
 };
 
 use spl_governance_test_sdk::{
-    addins::ensure_addin_mock_is_built,
     cookies::WalletCookie,
     tools::{clone_keypair, NopOverride},
     ProgramTestBench,
 };
 
 use self::{
-    addins::{setup_max_voter_weight_record, setup_voter_weight_record},
     args::SetRealmConfigArgs,
     cookies::{
         GovernanceCookie, GovernedAccountCookie, GovernedMintCookie, GovernedProgramCookie,
@@ -127,13 +127,6 @@ impl GovernanceProgramTest {
         use_voter_weight_addin: bool,
         use_max_voter_weight_addin: bool,
     ) -> Self {
-        // We only ensure the add-in is built but it doesn't detect changes
-        // If the addin is changed it needs to be manually built
-        // Note: we can't use build.rs script because the addin depends on spl-governance
-        // and it has to be built after spl-governance is built and before tests are run
-        // Anything inside build.rs would execute before spl-governance is built
-        ensure_addin_mock_is_built();
-
         Self::start_impl(use_voter_weight_addin, use_max_voter_weight_addin).await
     }
 

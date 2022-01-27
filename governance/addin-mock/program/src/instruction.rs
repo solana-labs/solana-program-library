@@ -7,7 +7,7 @@ use solana_program::{
     pubkey::Pubkey,
     system_program,
 };
-use spl_governance::addins::voter_weight::VoterWeightAction;
+use spl_governance_addin_api::voter_weight::VoterWeightAction;
 
 /// Instructions supported by the VoterWeight addin program
 /// This program is a mock program used by spl-governance for testing and not real addin
