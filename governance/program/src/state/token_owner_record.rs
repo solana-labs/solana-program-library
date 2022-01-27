@@ -180,6 +180,7 @@ impl TokenOwnerRecord {
     }
 
     /// Resolves voter's weight using either the amount deposited into the realm or weight provided by voter weight addin (if configured)
+    #[allow(clippy::too_many_arguments)]
     pub fn resolve_voter_weight(
         &self,
         program_id: &Pubkey,

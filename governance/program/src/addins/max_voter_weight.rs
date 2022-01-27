@@ -59,9 +59,9 @@ impl IsInitialized for MaxVoterWeightRecord {
 }
 
 impl MaxVoterWeightRecord {
-    /// Asserts the MaxVoterWeightRecord hasn't expired
+    /// Asserts MaxVoterWeightRecord hasn't expired
     pub fn assert_is_valid_max_voter_weight(&self) -> Result<(), ProgramError> {
-        // Assert the max weight is not stale
+        // Assert max voter weight is not stale
         if let Some(max_voter_weight_expiry) = self.max_voter_weight_expiry {
             let slot = Clock::get()?.slot;
 

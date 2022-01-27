@@ -26,13 +26,12 @@ use crate::{
         governance::GovernanceConfig,
         proposal_instruction::ProposalInstructionV2,
         realm::Realm,
+        realm_config::get_realm_config_data_for_realm,
         vote_record::Vote,
     },
     PROGRAM_AUTHORITY_SEED,
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
-
-use super::realm_config::get_realm_config_data_for_realm;
 
 /// Proposal option vote result
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]

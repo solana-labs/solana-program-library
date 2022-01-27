@@ -116,7 +116,7 @@ pub enum GovernanceInstruction {
     ///   5. `[]` System program
     ///   6. `[]` Sysvar Rent
     ///   7. `[signer]` Governance authority
-    ///   8. `[]` Optional Realm Config
+    ///   8. `[]` Realm Config
     ///   9. `[]` Optional Voter Weight Record
     CreateAccountGovernance {
         /// Governance config
@@ -137,7 +137,7 @@ pub enum GovernanceInstruction {
     ///   8. `[]` System program
     ///   9. `[]` Sysvar Rent
     ///   10. `[signer]` Governance authority
-    ///   11. `[]` Optional Realm Config
+    ///   11. `[]` Realm Config
     ///   12. `[]` Optional Voter Weight Record
     CreateProgramGovernance {
         /// Governance config
@@ -163,7 +163,7 @@ pub enum GovernanceInstruction {
     ///   7. `[]` System program
     ///   8. `[]` Rent sysvar
     ///   9. `[]` Clock sysvar
-    ///   10. `[]` Optional Realm Config
+    ///   10. `[]` Realm Config
     ///   11. `[]` Optional Voter Weight Record
     CreateProposal {
         #[allow(dead_code)]
@@ -288,8 +288,9 @@ pub enum GovernanceInstruction {
     ///   8. `[]` System program
     ///   9. `[]` Rent sysvar
     ///   10. `[]` Clock sysvar
-    ///   11. `[]` Optional Realm Config
+    ///   11. `[]` Realm Config
     ///   12. `[]` Optional Voter Weight Record
+    ///   13. `[]` Optional Max Voter Weight Record
     CastVote {
         #[allow(dead_code)]
         /// User's vote
@@ -304,6 +305,8 @@ pub enum GovernanceInstruction {
     ///   3. `[writable]` TokenOwnerRecord of the Proposal owner        
     ///   4. `[]` Governing Token Mint
     ///   5. `[]` Clock sysvar
+    ///   6. `[]` Realm Config
+    ///   7. `[]` Optional Max Voter Weight Record
     FinalizeVote {},
 
     ///  Relinquish Vote removes voter weight from a Proposal and removes it from voter's active votes
@@ -345,7 +348,7 @@ pub enum GovernanceInstruction {
     ///   7. `[]` System program
     ///   8. `[]` Sysvar Rent
     ///   8. `[signer]` Governance authority
-    ///   9. `[]` Optional Realm Config
+    ///   9. `[]` Realm Config
     ///   10. `[]` Optional Voter Weight Record
     CreateMintGovernance {
         #[allow(dead_code)]
@@ -371,7 +374,7 @@ pub enum GovernanceInstruction {
     ///   7. `[]` System program
     ///   8. `[]` Sysvar Rent
     ///   9. `[signer]` Governance authority
-    ///   10. `[]` Optional Realm Config
+    ///   10. `[]` Realm Config
     ///   11. `[]` Optional Voter Weight Record   
     CreateTokenGovernance {
         #[allow(dead_code)]
