@@ -55,6 +55,7 @@ use spl_governance::{
 };
 
 pub mod addins;
+pub mod args;
 pub mod cookies;
 
 use crate::program_test::cookies::{
@@ -70,6 +71,7 @@ use spl_governance_test_sdk::{
 
 use self::{
     addins::setup_voter_weight_record,
+    args::SetRealmConfigArgs,
     cookies::{
         GovernanceCookie, GovernedAccountCookie, GovernedMintCookie, GovernedProgramCookie,
         GovernedTokenCookie, NativeTreasuryCookie, ProgramMetadataCookie, ProposalCookie,
@@ -172,26 +174,46 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub fn get_default_realm_config_args(&mut self) -> RealmConfigArgs {
-        RealmConfigArgs {
+    pub fn get_default_set_realm_config_args(&mut self) -> SetRealmConfigArgs {
+        let realm_config_args = RealmConfigArgs {
             use_council_mint: true,
             community_mint_max_vote_weight_source: MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,
             min_community_tokens_to_create_governance: 10,
             use_community_voter_weight_addin: self.voter_weight_addin_id.is_some(),
             use_max_community_voter_weight_addin: self.max_voter_weight_addin_id.is_some(),
+        };
+
+        let community_voter_weight_addin = if realm_config_args.use_community_voter_weight_addin {
+            self.voter_weight_addin_id
+        } else {
+            None
+        };
+
+        let max_community_voter_weight_addin =
+            if realm_config_args.use_max_community_voter_weight_addin {
+                self.max_voter_weight_addin_id
+            } else {
+                None
+            };
+
+        SetRealmConfigArgs {
+            realm_config_args,
+            community_voter_weight_addin,
+            max_community_voter_weight_addin,
         }
     }
 
     #[allow(dead_code)]
     pub async fn with_realm(&mut self) -> RealmCookie {
-        let realm_config_args = self.get_default_realm_config_args();
-        self.with_realm_using_config_args(&realm_config_args).await
+        let set_realm_config_args = self.get_default_set_realm_config_args();
+        self.with_realm_using_config_args(&set_realm_config_args)
+            .await
     }
 
     #[allow(dead_code)]
     pub async fn with_realm_using_config_args(
         &mut self,
-        config_args: &RealmConfigArgs,
+        set_realm_config_args: &SetRealmConfigArgs,
     ) -> RealmCookie {
         let name = format!("Realm #{}", self.next_realm_id).to_string();
         self.next_realm_id += 1;
@@ -219,7 +241,7 @@ impl GovernanceProgramTest {
             council_token_mint_pubkey,
             council_token_holding_address,
             council_token_mint_authority,
-        ) = if config_args.use_council_mint {
+        ) = if set_realm_config_args.realm_config_args.use_council_mint {
             let council_token_mint_keypair = Keypair::new();
             let council_token_mint_authority = Keypair::new();
 
@@ -248,29 +270,22 @@ impl GovernanceProgramTest {
 
         let realm_authority = Keypair::new();
 
-        let community_voter_weight_addin = if config_args.use_community_voter_weight_addin {
-            self.voter_weight_addin_id
-        } else {
-            None
-        };
-
-        let max_community_voter_weight_addin = if config_args.use_max_community_voter_weight_addin {
-            self.max_voter_weight_addin_id
-        } else {
-            None
-        };
-
         let create_realm_instruction = create_realm(
             &self.program_id,
             &realm_authority.pubkey(),
             &community_token_mint_keypair.pubkey(),
             &self.bench.payer.pubkey(),
             council_token_mint_pubkey,
-            community_voter_weight_addin,
-            max_community_voter_weight_addin,
+            set_realm_config_args.community_voter_weight_addin,
+            set_realm_config_args.max_community_voter_weight_addin,
             name.clone(),
-            config_args.min_community_tokens_to_create_governance,
-            config_args.community_mint_max_vote_weight_source.clone(),
+            set_realm_config_args
+                .realm_config_args
+                .min_community_tokens_to_create_governance,
+            set_realm_config_args
+                .realm_config_args
+                .community_mint_max_vote_weight_source
+                .clone(),
         );
 
         self.bench
@@ -289,9 +304,11 @@ impl GovernanceProgramTest {
                 council_mint: council_token_mint_pubkey,
                 reserved: [0; 6],
 
-                min_community_tokens_to_create_governance: config_args
+                min_community_tokens_to_create_governance: set_realm_config_args
+                    .realm_config_args
                     .min_community_tokens_to_create_governance,
-                community_mint_max_vote_weight_source: config_args
+                community_mint_max_vote_weight_source: set_realm_config_args
+                    .realm_config_args
                     .community_mint_max_vote_weight_source
                     .clone(),
                 use_community_voter_weight_addin: false,
@@ -299,16 +316,20 @@ impl GovernanceProgramTest {
             },
         };
 
-        let realm_config_cookie = if config_args.use_community_voter_weight_addin
-            || config_args.use_max_community_voter_weight_addin
+        let realm_config_cookie = if set_realm_config_args.community_voter_weight_addin.is_some()
+            || set_realm_config_args
+                .max_community_voter_weight_addin
+                .is_some()
         {
             Some(RealmConfigCookie {
                 address: get_realm_config_address(&self.program_id, &realm_address),
                 account: RealmConfigAccount {
                     account_type: GovernanceAccountType::RealmConfig,
                     realm: realm_address,
-                    community_voter_weight_addin: self.voter_weight_addin_id,
-                    max_community_voter_weight_addin: self.max_voter_weight_addin_id,
+                    community_voter_weight_addin: set_realm_config_args
+                        .community_voter_weight_addin,
+                    max_community_voter_weight_addin: set_realm_config_args
+                        .max_community_voter_weight_addin,
                     council_voter_weight_addin: None,
                     council_max_vote_weight_addin: None,
                     reserved: [0; 128],
@@ -868,38 +889,48 @@ impl GovernanceProgramTest {
     pub async fn set_realm_config(
         &mut self,
         realm_cookie: &mut RealmCookie,
-        realm_config_args: &RealmConfigArgs,
+        set_realm_config_args: &SetRealmConfigArgs,
     ) -> Result<(), ProgramError> {
-        self.set_realm_config_using_instruction(realm_cookie, realm_config_args, NopOverride, None)
-            .await
+        self.set_realm_config_using_instruction(
+            realm_cookie,
+            set_realm_config_args,
+            NopOverride,
+            None,
+        )
+        .await
     }
 
     #[allow(dead_code)]
     pub async fn set_realm_config_using_instruction<F: Fn(&mut Instruction)>(
         &mut self,
         realm_cookie: &mut RealmCookie,
-        realm_config_args: &RealmConfigArgs,
+        set_realm_config_args: &SetRealmConfigArgs,
         instruction_override: F,
         signers_override: Option<&[&Keypair]>,
     ) -> Result<(), ProgramError> {
-        let council_token_mint = if realm_config_args.use_council_mint {
+        let council_token_mint = if set_realm_config_args.realm_config_args.use_council_mint {
             realm_cookie.account.config.council_mint
         } else {
             None
         };
 
-        let community_voter_weight_addin = if realm_config_args.use_community_voter_weight_addin {
-            self.voter_weight_addin_id
+        let community_voter_weight_addin = if set_realm_config_args
+            .realm_config_args
+            .use_community_voter_weight_addin
+        {
+            set_realm_config_args.community_voter_weight_addin
         } else {
             None
         };
 
-        let max_community_voter_weight_addin =
-            if realm_config_args.use_max_community_voter_weight_addin {
-                self.voter_weight_addin_id
-            } else {
-                None
-            };
+        let max_community_voter_weight_addin = if set_realm_config_args
+            .realm_config_args
+            .use_max_community_voter_weight_addin
+        {
+            set_realm_config_args.max_community_voter_weight_addin
+        } else {
+            None
+        };
 
         let mut set_realm_config_ix = set_realm_config(
             &self.program_id,
@@ -909,8 +940,11 @@ impl GovernanceProgramTest {
             &self.bench.payer.pubkey(),
             community_voter_weight_addin,
             max_community_voter_weight_addin,
-            realm_config_args.min_community_tokens_to_create_governance,
-            realm_config_args
+            set_realm_config_args
+                .realm_config_args
+                .min_community_tokens_to_create_governance,
+            set_realm_config_args
+                .realm_config_args
                 .community_mint_max_vote_weight_source
                 .clone(),
         );
@@ -924,31 +958,25 @@ impl GovernanceProgramTest {
         realm_cookie
             .account
             .config
-            .community_mint_max_vote_weight_source = realm_config_args
+            .community_mint_max_vote_weight_source = set_realm_config_args
+            .realm_config_args
             .community_mint_max_vote_weight_source
             .clone();
 
-        if realm_config_args.use_community_voter_weight_addin
-            || realm_config_args.use_max_community_voter_weight_addin
+        if set_realm_config_args
+            .realm_config_args
+            .use_community_voter_weight_addin
+            || set_realm_config_args
+                .realm_config_args
+                .use_max_community_voter_weight_addin
         {
-            let (community_voter_weight_addin_index, max_community_voter_weight_addin_index) =
-                if realm_config_args.use_council_mint {
-                    (6, 6)
-                } else {
-                    (4, 4)
-                };
-
             realm_cookie.realm_config = Some(RealmConfigCookie {
                 address: get_realm_config_address(&self.program_id, &realm_cookie.address),
                 account: RealmConfigAccount {
                     account_type: GovernanceAccountType::RealmConfig,
                     realm: realm_cookie.address,
-                    community_voter_weight_addin: Some(
-                        set_realm_config_ix.accounts[community_voter_weight_addin_index].pubkey,
-                    ),
-                    max_community_voter_weight_addin: Some(
-                        set_realm_config_ix.accounts[max_community_voter_weight_addin_index].pubkey,
-                    ),
+                    community_voter_weight_addin,
+                    max_community_voter_weight_addin,
                     council_voter_weight_addin: None,
                     council_max_vote_weight_addin: None,
                     reserved: [0; 128],

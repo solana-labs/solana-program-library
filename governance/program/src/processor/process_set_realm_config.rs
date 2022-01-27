@@ -144,6 +144,9 @@ pub fn process_set_realm_config(
     realm_data.config.use_community_voter_weight_addin =
         realm_config_args.use_community_voter_weight_addin;
 
+    realm_data.config.use_max_community_voter_weight_addin =
+        realm_config_args.use_max_community_voter_weight_addin;
+
     realm_data.serialize(&mut *realm_info.data.borrow_mut())?;
 
     Ok(())
