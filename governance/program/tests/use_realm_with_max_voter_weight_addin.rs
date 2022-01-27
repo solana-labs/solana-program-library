@@ -5,7 +5,7 @@ use solana_program_test::*;
 mod program_test;
 
 use program_test::*;
-use spl_governance::state::enums::ProposalState;
+use spl_governance::{error::GovernanceError, state::enums::ProposalState};
 
 #[tokio::test]
 async fn test_cast_vote_with_max_voter_weight_addin() {
@@ -296,4 +296,51 @@ async fn test_finalize_vote_with_max_voter_weight_addin_and_max_below_total_cast
 
     assert_eq!(proposal_account.state, ProposalState::Succeeded);
     assert_eq!(proposal_account.max_vote_weight, Some(100)); // Adjusted max based on cast votes
+}
+
+#[tokio::test]
+async fn test_cast_vote_with_max_voter_weight_addin_and_expired_record_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_with_max_voter_weight_addin().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+
+    // TokenOwnerRecord with voting power of 100
+    let mut token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    // Bump MaxVoterWeight to 200
+    governance_test
+        .with_max_voter_weight_addin_record_impl(&mut token_owner_record_cookie, 200, Some(1))
+        .await
+        .unwrap();
+
+    let mut account_governance_cookie = governance_test
+        .with_account_governance(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+        )
+        .await
+        .unwrap();
+
+    let proposal_cookie = governance_test
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .await
+        .unwrap();
+
+    governance_test.advance_clock().await;
+
+    // Act
+    let err = governance_test
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+    assert_eq!(err, GovernanceError::MaxVoterWeightRecordExpired.into());
 }
