@@ -1,4 +1,4 @@
-import babel from '@rollup/plugin-babel';
+import typescript from '@rollup/plugin-typescript';
 import commonjs from '@rollup/plugin-commonjs';
 import json from '@rollup/plugin-json';
 import nodeResolve from '@rollup/plugin-node-resolve';
@@ -8,7 +8,6 @@ const extensions = ['.js', '.ts'];
 
 function generateConfig(configType, format) {
   const browser = configType === 'browser';
-  const bundle = format === 'iife';
 
   const config = {
     input: 'src/index.ts',
@@ -20,12 +19,7 @@ function generateConfig(configType, format) {
         extensions,
         preferBuiltins: !browser,
       }),
-      babel({
-        exclude: '**/node_modules/**',
-        extensions,
-        babelHelpers: bundle ? 'bundled' : 'runtime',
-        plugins: bundle ? [] : ['@babel/plugin-transform-runtime'],
-      }),
+      typescript(),
     ],
     onwarn: function (warning, rollupWarn) {
       if (warning.code !== 'CIRCULAR_DEPENDENCY') {
