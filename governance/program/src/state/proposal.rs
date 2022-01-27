@@ -269,21 +269,18 @@ impl ProposalV2 {
     /// If Proposal is still within max_voting_time period then error is returned
     pub fn finalize_vote(
         &mut self,
-        governing_token_mint_supply: u64,
+        max_voter_weight: u64,
         config: &GovernanceConfig,
-        realm_data: &Realm,
         current_unix_timestamp: UnixTimestamp,
     ) -> Result<(), ProgramError> {
         self.assert_can_finalize_vote(config, current_unix_timestamp)?;
 
-        let max_vote_weight = self.get_max_voter_weight(realm_data, governing_token_mint_supply)?;
-
-        self.state = self.resolve_final_vote_state(max_vote_weight, config)?;
+        self.state = self.resolve_final_vote_state(max_voter_weight, config)?;
         // TODO: set voting_completed_at based on the time when the voting ended and not when we finalized the proposal
         self.voting_completed_at = Some(current_unix_timestamp);
 
         // Capture vote params to correctly display historical results
-        self.max_vote_weight = Some(max_vote_weight);
+        self.max_vote_weight = Some(max_voter_weight);
         self.vote_threshold_percentage = Some(config.vote_threshold_percentage.clone());
 
         Ok(())
@@ -374,7 +371,7 @@ impl ProposalV2 {
     }
 
     /// Calculates max voter weight for given mint supply and realm config
-    fn get_max_voter_weight(
+    fn get_max_voter_weight_from_mint_supply(
         &mut self,
         realm_data: &Realm,
         governing_token_mint_supply: u64,
@@ -452,11 +449,12 @@ impl ProposalV2 {
         if self.governing_token_mint != *governing_token_mint_info.key {
             return Err(GovernanceError::InvalidGoverningMintForProposal.into());
         }
-
         let governing_token_mint_supply = get_spl_token_mint_supply(governing_token_mint_info)?;
-        let max_vote_weight = self.get_max_voter_weight(realm_data, governing_token_mint_supply)?;
 
-        Ok(max_vote_weight)
+        let max_voter_weight =
+            self.get_max_voter_weight_from_mint_supply(realm_data, governing_token_mint_supply)?;
+
+        Ok(max_voter_weight)
     }
 
     /// Checks if vote can be tipped and automatically transitioned to Succeeded or Defeated state
@@ -1412,7 +1410,7 @@ mod test {
 
             let realm = create_test_realm();
 
-            let max_voter_weight = proposal.get_max_voter_weight(&realm,test_case.governing_token_supply).unwrap();
+            let max_voter_weight = proposal.get_max_voter_weight_from_mint_supply(&realm,test_case.governing_token_supply).unwrap();
 
             // Act
             proposal.try_tip_vote(max_voter_weight, &governance_config,current_timestamp).unwrap();
@@ -1455,9 +1453,10 @@ mod test {
             let current_timestamp = 16_i64;
 
             let realm = create_test_realm();
+            let max_voter_weight = proposal.get_max_voter_weight_from_mint_supply(&realm,test_case.governing_token_supply).unwrap();
 
             // Act
-            proposal.finalize_vote(test_case.governing_token_supply, &governance_config,&realm,current_timestamp).unwrap();
+            proposal.finalize_vote(max_voter_weight, &governance_config,current_timestamp).unwrap();
 
             // Assert
             assert_eq!(proposal.state,test_case.expected_finalized_state,"CASE: {:?}",test_case);
@@ -1515,7 +1514,7 @@ mod test {
             let current_timestamp = 15_i64;
 
             let realm = create_test_realm();
-            let max_voter_weight = proposal.get_max_voter_weight(&realm,governing_token_supply).unwrap();
+            let max_voter_weight = proposal.get_max_voter_weight_from_mint_supply(&realm,governing_token_supply).unwrap();
 
             // Act
             proposal.try_tip_vote(max_voter_weight, &governance_config, current_timestamp).unwrap();
@@ -1560,9 +1559,10 @@ mod test {
             let current_timestamp = 16_i64;
 
             let realm = create_test_realm();
+            let max_voter_weight = proposal.get_max_voter_weight_from_mint_supply(&realm,governing_token_supply).unwrap();
 
             // Act
-            proposal.finalize_vote(governing_token_supply, &governance_config,&realm,current_timestamp).unwrap();
+            proposal.finalize_vote(max_voter_weight, &governance_config,current_timestamp).unwrap();
 
             // Assert
             let no_vote_weight = proposal.deny_vote_weight.unwrap();
@@ -1604,7 +1604,7 @@ mod test {
             );
 
         let max_voter_weight = proposal
-            .get_max_voter_weight(&realm, community_token_supply)
+            .get_max_voter_weight_from_mint_supply(&realm, community_token_supply)
             .unwrap();
 
         // Act
@@ -1647,7 +1647,7 @@ mod test {
         proposal.options[0].vote_weight = 120;
 
         let max_voter_weight = proposal
-            .get_max_voter_weight(&realm, community_token_supply)
+            .get_max_voter_weight_from_mint_supply(&realm, community_token_supply)
             .unwrap();
 
         // Act
@@ -1685,7 +1685,7 @@ mod test {
         realm.config.council_mint = Some(proposal.governing_token_mint);
 
         let max_voter_weight = proposal
-            .get_max_voter_weight(&realm, community_token_supply)
+            .get_max_voter_weight_from_mint_supply(&realm, community_token_supply)
             .unwrap();
 
         // Act
@@ -1721,14 +1721,13 @@ mod test {
                 MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE / 2,
             );
 
+        let max_voter_weight = proposal
+            .get_max_voter_weight_from_mint_supply(&realm, community_token_supply)
+            .unwrap();
+
         // Act
         proposal
-            .finalize_vote(
-                community_token_supply,
-                &governance_config,
-                &realm,
-                current_timestamp,
-            )
+            .finalize_vote(max_voter_weight, &governance_config, current_timestamp)
             .unwrap();
 
         // Assert
@@ -1763,14 +1762,13 @@ mod test {
         // vote above reduced supply
         proposal.options[0].vote_weight = 120;
 
+        let max_voter_weight = proposal
+            .get_max_voter_weight_from_mint_supply(&realm, community_token_supply)
+            .unwrap();
+
         // Act
         proposal
-            .finalize_vote(
-                community_token_supply,
-                &governance_config,
-                &realm,
-                current_timestamp,
-            )
+            .finalize_vote(max_voter_weight, &governance_config, current_timestamp)
             .unwrap();
 
         // Assert
@@ -1789,10 +1787,13 @@ mod test {
             proposal.voting_at.unwrap() + governance_config.max_voting_time as i64;
 
         let realm = create_test_realm();
+        let max_voter_weight = proposal
+            .get_max_voter_weight_from_mint_supply(&realm, 100)
+            .unwrap();
 
         // Act
         let err = proposal
-            .finalize_vote(100, &governance_config, &realm, current_timestamp)
+            .finalize_vote(max_voter_weight, &governance_config, current_timestamp)
             .err()
             .unwrap();
 
@@ -1811,8 +1812,13 @@ mod test {
             proposal.voting_at.unwrap() + governance_config.max_voting_time as i64 + 1;
 
         let realm = create_test_realm();
+        let max_voter_weight = proposal
+            .get_max_voter_weight_from_mint_supply(&realm, 100)
+            .unwrap();
+
         // Act
-        let result = proposal.finalize_vote(100, &governance_config, &realm, current_timestamp);
+        let result =
+            proposal.finalize_vote(max_voter_weight, &governance_config, current_timestamp);
 
         // Assert
         assert_eq!(result, Ok(()));
