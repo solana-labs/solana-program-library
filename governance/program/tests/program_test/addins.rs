@@ -41,6 +41,23 @@ pub enum VoterWeightAddinInstruction {
         #[allow(dead_code)]
         weight_action_target: Option<Pubkey>,
     },
+
+    /// Sets up MaxVoterWeightRecord owned by the program
+    ///
+    /// 0. `[]` Realm account
+    /// 1. `[]` Governing Token mint
+    /// 2. `[writable]` MaxVoterWeightRecord
+    /// 3. `[signer]` Payer
+    /// 4. `[]` System
+    SetupMaxVoterWeightRecord {
+        /// Max Voter weight
+        #[allow(dead_code)]
+        max_voter_weight: u64,
+
+        /// Voter weight expiry
+        #[allow(dead_code)]
+        max_voter_weight_expiry: Option<Slot>,
+    },
 }
 
 /// Creates SetupVoterWeightRecord instruction
@@ -75,6 +92,39 @@ pub fn setup_voter_weight_record(
         voter_weight_expiry,
         weight_action,
         weight_action_target,
+    };
+
+    Instruction {
+        program_id: *program_id,
+        accounts,
+        data: instruction.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates SetupMaxVoterWeightRecord instruction
+#[allow(clippy::too_many_arguments)]
+pub fn setup_max_voter_weight_record(
+    program_id: &Pubkey,
+    // Accounts
+    realm: &Pubkey,
+    governing_token_mint: &Pubkey,
+    max_voter_weight_record: &Pubkey,
+    payer: &Pubkey,
+    // Args
+    max_voter_weight: u64,
+    max_voter_weight_expiry: Option<Slot>,
+) -> Instruction {
+    let accounts = vec![
+        AccountMeta::new_readonly(*realm, false),
+        AccountMeta::new_readonly(*governing_token_mint, false),
+        AccountMeta::new(*max_voter_weight_record, true),
+        AccountMeta::new_readonly(*payer, true),
+        AccountMeta::new_readonly(system_program::id(), false),
+    ];
+
+    let instruction = VoterWeightAddinInstruction::SetupMaxVoterWeightRecord {
+        max_voter_weight,
+        max_voter_weight_expiry,
     };
 
     Instruction {

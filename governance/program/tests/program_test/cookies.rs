@@ -1,7 +1,7 @@
 use solana_program::{instruction::Instruction, pubkey::Pubkey};
 use solana_sdk::signature::Keypair;
 use spl_governance::{
-    addins::voter_weight::VoterWeightRecord,
+    addins::{max_voter_weight::MaxVoterWeightRecord, voter_weight::VoterWeightRecord},
     state::{
         governance::Governance, native_treasury::NativeTreasury, program_metadata::ProgramMetadata,
         proposal::ProposalV2, proposal_instruction::ProposalInstructionV2, realm::Realm,
@@ -164,6 +164,12 @@ pub struct ProposalInstructionCookie {
 pub struct VoterWeightRecordCookie {
     pub address: Pubkey,
     pub account: VoterWeightRecord,
+}
+
+#[derive(Debug, Clone)]
+pub struct MaxVoterWeightRecordCookie {
+    pub address: Pubkey,
+    pub account: MaxVoterWeightRecord,
 }
 
 #[derive(Debug, Clone)]

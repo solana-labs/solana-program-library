@@ -15,7 +15,10 @@ use solana_program_test::*;
 use solana_sdk::signature::{Keypair, Signer};
 
 use spl_governance::{
-    addins::voter_weight::{VoterWeightAccountType, VoterWeightAction, VoterWeightRecord},
+    addins::{
+        max_voter_weight::{MaxVoterWeightAccountType, MaxVoterWeightRecord},
+        voter_weight::{VoterWeightAccountType, VoterWeightAction, VoterWeightRecord},
+    },
     instruction::{
         add_signatory, cancel_proposal, cast_vote, create_account_governance,
         create_mint_governance, create_native_treasury, create_program_governance, create_proposal,
@@ -70,12 +73,13 @@ use spl_governance_test_sdk::{
 };
 
 use self::{
-    addins::setup_voter_weight_record,
+    addins::{setup_max_voter_weight_record, setup_voter_weight_record},
     args::SetRealmConfigArgs,
     cookies::{
         GovernanceCookie, GovernedAccountCookie, GovernedMintCookie, GovernedProgramCookie,
-        GovernedTokenCookie, NativeTreasuryCookie, ProgramMetadataCookie, ProposalCookie,
-        ProposalInstructionCookie, RealmCookie, TokenOwnerRecordCookie, VoteRecordCookie,
+        GovernedTokenCookie, MaxVoterWeightRecordCookie, NativeTreasuryCookie,
+        ProgramMetadataCookie, ProposalCookie, ProposalInstructionCookie, RealmCookie,
+        TokenOwnerRecordCookie, VoteRecordCookie,
     },
 };
 
@@ -2533,7 +2537,7 @@ impl GovernanceProgramTest {
     }
 
     /// ----------- VoterWeight Addin -----------------------------
-    ///
+
     #[allow(dead_code)]
     pub async fn with_voter_weight_addin_record(
         &mut self,
@@ -2564,7 +2568,7 @@ impl GovernanceProgramTest {
             &self.bench.payer.pubkey(),
             voter_weight,
             voter_weight_expiry,
-            weight_action,
+            weight_action.clone(),
             weight_action_target,
         );
 
@@ -2583,14 +2587,63 @@ impl GovernanceProgramTest {
                 governing_token_mint: token_owner_record_cookie.account.governing_token_mint,
                 governing_token_owner: token_owner_record_cookie.account.governing_token_owner,
                 voter_weight,
-                voter_weight_expiry: None,
-                weight_action: None,
-                weight_action_target: None,
+                voter_weight_expiry,
+                weight_action,
+                weight_action_target,
             },
         };
 
         token_owner_record_cookie.voter_weight_record = Some(voter_weight_record_cookie.clone());
 
         Ok(voter_weight_record_cookie)
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_max_voter_weight_addin_record(
+        &mut self,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+    ) -> Result<MaxVoterWeightRecordCookie, ProgramError> {
+        self.with_max_voter_weight_addin_record_impl(token_owner_record_cookie, 200, None)
+            .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_max_voter_weight_addin_record_impl(
+        &mut self,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        max_voter_weight: u64,
+        max_voter_weight_expiry: Option<Slot>,
+    ) -> Result<MaxVoterWeightRecordCookie, ProgramError> {
+        let max_voter_weight_record_account = Keypair::new();
+
+        let setup_voter_weight_record = setup_max_voter_weight_record(
+            &self.max_voter_weight_addin_id.unwrap(),
+            &token_owner_record_cookie.account.realm,
+            &token_owner_record_cookie.account.governing_token_mint,
+            &max_voter_weight_record_account.pubkey(),
+            &self.bench.payer.pubkey(),
+            max_voter_weight,
+            max_voter_weight_expiry,
+        );
+
+        self.bench
+            .process_transaction(
+                &[setup_voter_weight_record],
+                Some(&[&max_voter_weight_record_account]),
+            )
+            .await?;
+
+        let max_voter_weight_record_cookie = MaxVoterWeightRecordCookie {
+            address: max_voter_weight_record_account.pubkey(),
+            account: MaxVoterWeightRecord {
+                account_type: MaxVoterWeightAccountType::MaxVoterWeightRecord,
+                realm: token_owner_record_cookie.account.realm,
+                governing_token_mint: token_owner_record_cookie.account.governing_token_mint,
+                max_voter_weight,
+                max_voter_weight_expiry,
+            },
+        };
+
+        Ok(max_voter_weight_record_cookie)
     }
 }
