@@ -1293,4 +1293,14 @@ mod test {
         assert_eq!(extension.padding2, [2; 48]);
         assert_eq!(extension.padding3, [3; 9]);
     }
+
+    #[test]
+    fn test_init_buffer_too_small() {
+        let mint_size =
+            ExtensionType::get_account_len::<Mint>(&[ExtensionType::MintCloseAuthority]);
+        let mut buffer = vec![0; mint_size - 1];
+        let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
+        let err = state.init_extension::<MintCloseAuthority>().unwrap_err();
+        assert_eq!(err, ProgramError::InvalidAccountData);
+    }
 }
