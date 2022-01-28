@@ -381,6 +381,9 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
             value_start,
         } = get_extension_indices::<V>(self.tlv_data, init)?;
         if init {
+            if self.tlv_data[type_start..].len() < V::TYPE.get_tlv_len() {
+                return Err(ProgramError::InvalidAccountData);
+            }
             // write extension type
             let extension_type_array: [u8; 2] = V::TYPE.into();
             let extension_type_ref = &mut self.tlv_data[type_start..length_start];
@@ -556,19 +559,24 @@ impl ExtensionType {
         }
     }
 
+    /// Get the TLV length for an ExtensionType
+    fn get_tlv_len(&self) -> usize {
+        self.get_type_len()
+            .saturating_add(size_of::<ExtensionType>())
+            .saturating_add(pod_get_packed_len::<Length>())
+    }
+
+    /// Get the TLV length for a set of ExtensionTypes
+    fn get_total_tlv_len(extension_types: &[Self]) -> usize {
+        extension_types.iter().map(|e| e.get_tlv_len()).sum()
+    }
+
     /// Get the required account data length for the given ExtensionTypes
     pub fn get_account_len<S: BaseState>(extension_types: &[Self]) -> usize {
         if extension_types.is_empty() {
             S::LEN
         } else {
-            let extension_size: usize = extension_types
-                .iter()
-                .map(|e| {
-                    e.get_type_len()
-                        .saturating_add(size_of::<ExtensionType>())
-                        .saturating_add(pod_get_packed_len::<Length>())
-                })
-                .sum();
+            let extension_size = Self::get_total_tlv_len(extension_types);
             let account_size = extension_size
                 .saturating_add(BASE_ACCOUNT_LENGTH)
                 .saturating_add(size_of::<AccountType>());
