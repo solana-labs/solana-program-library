@@ -111,6 +111,9 @@ fn get_extension_types(tlv_data: &[u8]) -> Result<Vec<ExtensionType>, ProgramErr
     let mut start_index = 0;
     while start_index < tlv_data.len() {
         let tlv_indices = get_tlv_indices(start_index);
+        if tlv_data.len() <= tlv_indices.value_start {
+            return Ok(extension_types);
+        }
         let extension_type =
             ExtensionType::try_from(&tlv_data[tlv_indices.type_start..tlv_indices.length_start])?;
         if extension_type == ExtensionType::Uninitialized {
@@ -210,6 +213,7 @@ fn get_extension<S: BaseState, V: Extension>(tlv_data: &[u8]) -> Result<&V, Prog
         length_start,
         value_start,
     } = get_extension_indices::<V>(tlv_data, false)?;
+    // get_extension_indices has checked that tlv_data is long enough to include these indices
     let length = pod_from_bytes::<Length>(&tlv_data[length_start..value_start])?;
     let value_end = value_start.saturating_add(usize::from(*length));
     pod_from_bytes::<V>(&tlv_data[value_start..value_end])
