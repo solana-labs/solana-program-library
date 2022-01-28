@@ -4,14 +4,14 @@ import * as BufferLayout from '@solana/buffer-layout';
 /**
  * Layout for a public key
  */
-export const publicKey = (property = 'publicKey'): BufferLayout.Layout => {
+export const publicKey = (property = 'publicKey'): BufferLayout.Layout<any> => {
   return BufferLayout.blob(32, property);
 };
 
 /**
  * Layout for a 64bit unsigned value
  */
-export const uint64 = (property = 'uint64'): BufferLayout.Layout => {
+export const uint64 = (property = 'uint64'): BufferLayout.Layout<any> => {
   return BufferLayout.blob(8, property);
 };
 
@@ -19,7 +19,7 @@ export const uint64 = (property = 'uint64'): BufferLayout.Layout => {
  * Layout for a Rust String type
  */
 export const rustString = (property = 'string') => {
-  const rsl = BufferLayout.struct(
+  const rsl = BufferLayout.struct<any>(
     [
       BufferLayout.u32('length'),
       BufferLayout.u32('lengthPadding'),
@@ -53,14 +53,14 @@ export const rustString = (property = 'string') => {
  * Layout for an Authorized object
  */
 export const authorized = (property = 'authorized') => {
-  return BufferLayout.struct([publicKey('staker'), publicKey('withdrawer')], property);
+  return BufferLayout.struct<any>([publicKey('staker'), publicKey('withdrawer')], property);
 };
 
 /**
  * Layout for a Lockup object
  */
 export const lockup = (property = 'lockup') => {
-  return BufferLayout.struct(
+  return BufferLayout.struct<any>(
     [BufferLayout.ns64('unixTimestamp'), BufferLayout.ns64('epoch'), publicKey('custodian')],
     property,
   );

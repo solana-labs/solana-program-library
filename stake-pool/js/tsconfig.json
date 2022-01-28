@@ -1,10 +1,10 @@
 {
   "compilerOptions": {
-    "target": "es2019",
-    "allowJs": true,
+    "baseUrl": "src",
+    "outDir": "dist",
     "declaration": true,
     "declarationDir": "dist",
-    "outDir": "dist",
+    "target": "es2019",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "strict": true,
@@ -13,7 +13,7 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "baseUrl": "src",
+    "skipLibCheck": true,
     "noFallthroughCasesInSwitch": true,
     "noImplicitReturns": true
   },
