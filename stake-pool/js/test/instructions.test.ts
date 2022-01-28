@@ -7,7 +7,7 @@ import {
   LAMPORTS_PER_SOL,
 } from '@solana/web3.js';
 import {StakePoolLayout} from '../src/layouts';
-import {STAKE_POOL_PROGRAM_ID} from '../src';
+import {STAKE_POOL_PROGRAM_ID} from '../src/constants';
 import {decodeData} from '../src/copied-from-solana-web3/instruction';
 import {
   STAKE_POOL_INSTRUCTION_LAYOUTS,
@@ -25,21 +25,21 @@ describe('StakePoolProgram', () => {
 
   connection.getMinimumBalanceForRentExemption = jest.fn(async () => 10000);
 
-  const stakePoolPubkey = new PublicKey('SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy');
+  const stakePoolAddress = new PublicKey('SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy');
 
   const data = Buffer.alloc(1024);
   StakePoolLayout.encode(stakePoolMock, data);
 
   const stakePoolAccount = <AccountInfo<any>>{
     executable: true,
-    owner: stakePoolPubkey,
+    owner: stakePoolAddress,
     lamports: 99999,
     data,
   };
 
   it('StakePoolInstruction.depositSol', () => {
     const payload: DepositSolParams = {
-      stakePool: stakePoolPubkey,
+      stakePool: stakePoolAddress,
       withdrawAuthority: Keypair.generate().publicKey,
       reserveStake: Keypair.generate().publicKey,
       fundingAccount: Keypair.generate().publicKey,
@@ -84,7 +84,7 @@ describe('StakePoolProgram', () => {
     connection.getBalance = jest.fn(async () => balance);
 
     connection.getAccountInfo = jest.fn(async pubKey => {
-      if (pubKey == stakePoolPubkey) {
+      if (pubKey == stakePoolAddress) {
         return stakePoolAccount;
       }
       return <AccountInfo<any>>{
@@ -96,21 +96,21 @@ describe('StakePoolProgram', () => {
     });
 
     it.only('should throw an error with invalid balance', async () => {
-      await expect(depositSol(connection, stakePoolPubkey, from, balance + 1)).rejects.toThrow(
+      await expect(depositSol(connection, stakePoolAddress, from, balance + 1)).rejects.toThrow(
         Error('Not enough SOL to deposit into pool. Maximum deposit amount is 0.00001 SOL.'),
       );
     });
 
     it.only('should throw an error with invalid account', async () => {
       connection.getAccountInfo = jest.fn(async () => null);
-      await expect(depositSol(connection, stakePoolPubkey, from, balance)).rejects.toThrow(
+      await expect(depositSol(connection, stakePoolAddress, from, balance)).rejects.toThrow(
         Error('Invalid stake pool account'),
       );
     });
 
     it.only('should call successfully', async () => {
       connection.getAccountInfo = jest.fn(async pubKey => {
-        if (pubKey == stakePoolPubkey) {
+        if (pubKey == stakePoolAddress) {
           return stakePoolAccount;
         }
         return <AccountInfo<any>>{
@@ -121,7 +121,7 @@ describe('StakePoolProgram', () => {
         };
       });
 
-      const res = await depositSol(connection, stakePoolPubkey, from, balance);
+      const res = await depositSol(connection, stakePoolAddress, from, balance);
 
       expect((connection.getAccountInfo as jest.Mock).mock.calls.length).toBe(2);
       expect(res.instructions).toHaveLength(2);
@@ -136,13 +136,13 @@ describe('StakePoolProgram', () => {
     it.only('should throw an error with invalid stake pool account', async () => {
       connection.getAccountInfo = jest.fn(async () => null);
       await expect(
-        withdrawSol(connection, stakePoolPubkey, tokenOwner, solReceiver, 1),
+        withdrawSol(connection, stakePoolAddress, tokenOwner, solReceiver, 1),
       ).rejects.toThrowError('Invalid stake pool account');
     });
 
     it.only('should throw an error with invalid token account', async () => {
       connection.getAccountInfo = jest.fn(async (pubKey: PublicKey) => {
-        if (pubKey == stakePoolPubkey) {
+        if (pubKey == stakePoolAddress) {
           return stakePoolAccount;
         }
         if (pubKey.toBase58() == '9q2rZU5RujvyD9dmYKhzJAZfG4aGBbvQ8rWY52jCNBai') {
@@ -152,13 +152,13 @@ describe('StakePoolProgram', () => {
       });
 
       await expect(
-        withdrawSol(connection, stakePoolPubkey, tokenOwner, solReceiver, 1),
+        withdrawSol(connection, stakePoolAddress, tokenOwner, solReceiver, 1),
       ).rejects.toThrow(Error('Invalid token account'));
     });
 
     it.only('should throw an error with invalid token account balance', async () => {
       connection.getAccountInfo = jest.fn(async (pubKey: PublicKey) => {
-        if (pubKey == stakePoolPubkey) {
+        if (pubKey == stakePoolAddress) {
           return stakePoolAccount;
         }
         if (pubKey.toBase58() == 'GQkqTamwqjaNDfsbNm7r3aXPJ4oTSqKC3d5t2PF9Smqd') {
@@ -168,7 +168,7 @@ describe('StakePoolProgram', () => {
       });
 
       await expect(
-        withdrawSol(connection, stakePoolPubkey, tokenOwner, solReceiver, 1),
+        withdrawSol(connection, stakePoolAddress, tokenOwner, solReceiver, 1),
       ).rejects.toThrow(
         Error(
           'Not enough token balance to withdraw 1 pool tokens.\n          Maximum withdraw amount is 0 pool tokens.',
@@ -178,7 +178,7 @@ describe('StakePoolProgram', () => {
 
     it.only('should call successfully', async () => {
       connection.getAccountInfo = jest.fn(async (pubKey: PublicKey) => {
-        if (pubKey == stakePoolPubkey) {
+        if (pubKey == stakePoolAddress) {
           return stakePoolAccount;
         }
         if (pubKey.toBase58() == 'GQkqTamwqjaNDfsbNm7r3aXPJ4oTSqKC3d5t2PF9Smqd') {
@@ -186,7 +186,7 @@ describe('StakePoolProgram', () => {
         }
         return null;
       });
-      const res = await withdrawSol(connection, stakePoolPubkey, tokenOwner, solReceiver, 1);
+      const res = await withdrawSol(connection, stakePoolAddress, tokenOwner, solReceiver, 1);
 
       expect((connection.getAccountInfo as jest.Mock).mock.calls.length).toBe(2);
       expect(res.instructions).toHaveLength(2);
@@ -199,20 +199,20 @@ describe('StakePoolProgram', () => {
 
     it.only('should throw an error with invalid token account', async () => {
       connection.getAccountInfo = jest.fn(async (pubKey: PublicKey) => {
-        if (pubKey == stakePoolPubkey) {
+        if (pubKey == stakePoolAddress) {
           return stakePoolAccount;
         }
         return null;
       });
 
-      await expect(withdrawStake(connection, stakePoolPubkey, tokenOwner, 1)).rejects.toThrow(
+      await expect(withdrawStake(connection, stakePoolAddress, tokenOwner, 1)).rejects.toThrow(
         Error('Invalid token account'),
       );
     });
 
     it.only('should throw an error with invalid token account balance', async () => {
       connection.getAccountInfo = jest.fn(async (pubKey: PublicKey) => {
-        if (pubKey == stakePoolPubkey) {
+        if (pubKey == stakePoolAddress) {
           return stakePoolAccount;
         }
         if (pubKey.toBase58() == 'GQkqTamwqjaNDfsbNm7r3aXPJ4oTSqKC3d5t2PF9Smqd') {
@@ -221,7 +221,7 @@ describe('StakePoolProgram', () => {
         return null;
       });
 
-      await expect(withdrawStake(connection, stakePoolPubkey, tokenOwner, 1)).rejects.toThrow(
+      await expect(withdrawStake(connection, stakePoolAddress, tokenOwner, 1)).rejects.toThrow(
         Error(
           'Not enough token balance to withdraw 1 pool tokens.\n' +
             '        Maximum withdraw amount is 0 pool tokens.',
@@ -231,7 +231,7 @@ describe('StakePoolProgram', () => {
 
     it.only('should call successfully', async () => {
       connection.getAccountInfo = jest.fn(async (pubKey: PublicKey) => {
-        if (pubKey == stakePoolPubkey) {
+        if (pubKey == stakePoolAddress) {
           return stakePoolAccount;
         }
         if (pubKey.toBase58() == 'GQkqTamwqjaNDfsbNm7r3aXPJ4oTSqKC3d5t2PF9Smqd') {
@@ -243,7 +243,7 @@ describe('StakePoolProgram', () => {
         return null;
       });
 
-      const res = await withdrawStake(connection, stakePoolPubkey, tokenOwner, 1);
+      const res = await withdrawStake(connection, stakePoolAddress, tokenOwner, 1);
 
       expect((connection.getAccountInfo as jest.Mock).mock.calls.length).toBe(4);
       expect(res.instructions).toHaveLength(3);

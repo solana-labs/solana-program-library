@@ -22,7 +22,7 @@ export async function getValidatorListAccount(connection: Connection, pubkey: Pu
   return {
     pubkey,
     account: {
-      data: ValidatorListLayout.decode(account!.data) as ValidatorList,
+      data: ValidatorListLayout.decode(account?.data) as ValidatorList,
       executable: account.executable,
       lamports: account.lamports,
       owner: account.owner,
@@ -45,7 +45,7 @@ export async function prepareWithdrawAccounts(
   compareFn?: (a: ValidatorAccount, b: ValidatorAccount) => number,
 ): Promise<WithdrawAccount[]> {
   const validatorListAcc = await connection.getAccountInfo(stakePool.validatorList);
-  const validatorList = ValidatorListLayout.decode(validatorListAcc!.data) as ValidatorList;
+  const validatorList = ValidatorListLayout.decode(validatorListAcc?.data) as ValidatorList;
 
   if (!validatorList?.validators || validatorList?.validators.length == 0) {
     throw new Error('No accounts found');
@@ -72,9 +72,8 @@ export async function prepareWithdrawAccounts(
 
     if (!validator.activeStakeLamports.isZero()) {
       const isPreferred =
-        stakePool.preferredWithdrawValidatorVoteAddress &&
-        stakePool.preferredWithdrawValidatorVoteAddress!.toBase58() ==
-          validator.voteAccountAddress.toBase58();
+        stakePool?.preferredWithdrawValidatorVoteAddress?.toBase58() ==
+        validator.voteAccountAddress.toBase58();
       accounts.push({
         type: isPreferred ? 'preferred' : 'active',
         voteAddress: validator.voteAccountAddress,
@@ -87,7 +86,7 @@ export async function prepareWithdrawAccounts(
       STAKE_POOL_PROGRAM_ID,
       validator.voteAccountAddress,
       stakePoolAddress,
-      validator.transientSeedSuffixStart!,
+      validator?.transientSeedSuffixStart,
     );
 
     if (!validator.transientStakeLamports?.isZero()) {
@@ -95,7 +94,7 @@ export async function prepareWithdrawAccounts(
         type: 'transient',
         voteAddress: validator.voteAccountAddress,
         stakeAddress: transientStakeAccountAddress,
-        lamports: validator.transientStakeLamports!.toNumber(),
+        lamports: validator?.transientStakeLamports.toNumber(),
       });
     }
   }

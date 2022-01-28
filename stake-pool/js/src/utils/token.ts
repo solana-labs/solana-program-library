@@ -15,8 +15,13 @@ export async function getTokenMint(
   connection: Connection,
   tokenMintPubkey: PublicKey,
 ): Promise<MintInfo | undefined> {
+  // try {
+  // @ts-ignore
   const token = new Token(connection, tokenMintPubkey, TOKEN_PROGRAM_ID, null);
   return token.getMintInfo();
+  // } catch (error) {
+  //   console.log(error);
+  // }
 }
 
 /**

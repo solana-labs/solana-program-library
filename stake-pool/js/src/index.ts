@@ -72,20 +72,20 @@ export interface StakePoolAccounts {
 /**
  * Retrieves and deserializes a StakePool account using a web3js connection and the stake pool address.
  * @param connection: An active web3js connection.
- * @param stakePoolPubKey: The public key (address) of the stake pool account.
+ * @param stakePoolAddress: The public key (address) of the stake pool account.
  */
 export async function getStakePoolAccount(
   connection: Connection,
-  stakePoolPubKey: PublicKey,
+  stakePoolAddress: PublicKey,
 ): Promise<StakePoolAccount> {
-  const account = await connection.getAccountInfo(stakePoolPubKey);
+  const account = await connection.getAccountInfo(stakePoolAddress);
 
   if (!account) {
     throw new Error('Invalid stake pool account');
   }
 
   return {
-    pubkey: stakePoolPubKey,
+    pubkey: stakePoolAddress,
     account: {
       data: StakePoolLayout.decode(account.data),
       executable: account.executable,
@@ -98,13 +98,13 @@ export async function getStakePoolAccount(
 /**
  * Retrieves all StakePool and ValidatorList accounts that are running a particular StakePool program.
  * @param connection: An active web3js connection.
- * @param stakePoolProgramAddress: The public key (address) of the StakePool program.
+ * @param stakePoolAddress: The public key (address) of the StakePool program.
  */
 export async function getStakePoolAccounts(
   connection: Connection,
-  stakePoolProgramAddress: PublicKey,
+  stakePoolAddress: PublicKey,
 ): Promise<(StakePoolAccount | ValidatorListAccount)[] | undefined> {
-  const response = await connection.getProgramAccounts(stakePoolProgramAddress);
+  const response = await connection.getProgramAccounts(stakePoolAddress);
 
   return response.map(a => {
     let decodedData;

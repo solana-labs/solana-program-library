@@ -32,13 +32,13 @@ export type StakePoolInstructionType =
   | 'WithdrawSol';
 
 const MOVE_STAKE_LAYOUT = BufferLayout.struct([
-  BufferLayout.u8('instruction') as any, // NOTE do this better
-  BufferLayout.nu64('lamports'),
-  BufferLayout.nu64('transientStakeSeed'),
+  BufferLayout.u8('instruction'),
+  BufferLayout.ns64('lamports'),
+  BufferLayout.ns64('transientStakeSeed'),
 ]);
 
 const UPDATE_VALIDATOR_LIST_BALANCE_LAYOUT = BufferLayout.struct([
-  BufferLayout.u8('instruction') as any, // NOTE do this better
+  BufferLayout.u8('instruction'),
   BufferLayout.u32('startIndex'),
   BufferLayout.u8('noMerge'),
 ]);
@@ -64,41 +64,32 @@ export const STAKE_POOL_INSTRUCTION_LAYOUTS: {
   },
   UpdateStakePoolBalance: {
     index: 7,
-    layout: BufferLayout.struct([BufferLayout.u8('instruction') as any]), // NOTE do this better
+    layout: BufferLayout.struct([BufferLayout.u8('instruction')]),
   },
   CleanupRemovedValidatorEntries: {
     index: 8,
-    layout: BufferLayout.struct([BufferLayout.u8('instruction') as any]), // NOTE do this better
+    layout: BufferLayout.struct([BufferLayout.u8('instruction')]),
   },
   DepositStake: {
     index: 9,
-    layout: BufferLayout.struct([BufferLayout.u8('instruction') as any]), // NOTE do this better
+    layout: BufferLayout.struct([BufferLayout.u8('instruction')]),
   },
   /// Withdraw the token from the pool at the current ratio.
   WithdrawStake: {
     index: 10,
-    layout: BufferLayout.struct([
-      BufferLayout.u8('instruction') as any,
-      BufferLayout.nu64('poolTokens'),
-    ]),
+    layout: BufferLayout.struct([BufferLayout.u8('instruction'), BufferLayout.ns64('poolTokens')]),
   },
   /// Deposit SOL directly into the pool's reserve account. The output is a "pool" token
   /// representing ownership into the pool. Inputs are converted to the current ratio.
   DepositSol: {
     index: 14,
-    layout: BufferLayout.struct([
-      BufferLayout.u8('instruction') as any,
-      BufferLayout.nu64('lamports'),
-    ]),
+    layout: BufferLayout.struct([BufferLayout.u8('instruction'), BufferLayout.ns64('lamports')]),
   },
   /// Withdraw SOL directly from the pool's reserve account. Fails if the
   /// reserve does not have enough SOL.
   WithdrawSol: {
     index: 16,
-    layout: BufferLayout.struct([
-      BufferLayout.u8('instruction') as any,
-      BufferLayout.nu64('poolTokens'),
-    ]),
+    layout: BufferLayout.struct([BufferLayout.u8('instruction'), BufferLayout.ns64('poolTokens')]),
   },
 });
 
