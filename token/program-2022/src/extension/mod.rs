@@ -77,6 +77,9 @@ fn get_extension_indices<V: Extension>(
     let v_account_type = V::TYPE.get_account_type();
     while start_index < tlv_data.len() {
         let tlv_indices = get_tlv_indices(start_index);
+        if tlv_data.len() <= tlv_indices.value_start {
+            return Err(ProgramError::InvalidAccountData);
+        }
         let extension_type =
             ExtensionType::try_from(&tlv_data[tlv_indices.type_start..tlv_indices.length_start])?;
         let account_type = extension_type.get_account_type();
@@ -130,6 +133,9 @@ fn get_first_extension_type(tlv_data: &[u8]) -> Result<Option<ExtensionType>, Pr
         Ok(None)
     } else {
         let tlv_indices = get_tlv_indices(0);
+        if tlv_data.len() <= tlv_indices.length_start {
+            return Ok(None);
+        }
         let extension_type =
             ExtensionType::try_from(&tlv_data[tlv_indices.type_start..tlv_indices.length_start])?;
         if extension_type == ExtensionType::Uninitialized {
