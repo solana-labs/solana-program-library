@@ -11,7 +11,6 @@ pub mod tools;
 pub use solana_program;
 use solana_program::{
     instruction::{AccountMeta, Instruction},
-    program_pack::Pack,
     pubkey::Pubkey,
     sysvar,
 };

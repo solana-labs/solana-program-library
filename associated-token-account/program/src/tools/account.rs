@@ -1,12 +1,17 @@
 //! Account utility functions
 
-use solana_program::{
-    account_info::AccountInfo,
-    entrypoint::ProgramResult,
-    program::{invoke, invoke_signed},
-    pubkey::Pubkey,
-    rent::Rent,
-    system_instruction,
+use {
+    solana_program::{
+        account_info::AccountInfo,
+        entrypoint::ProgramResult,
+        program::{get_return_data, invoke, invoke_signed},
+        program_error::ProgramError,
+        pubkey::Pubkey,
+        rent::Rent,
+        system_instruction,
+    },
+    spl_token::check_program_account,
+    std::convert::TryInto,
 };
 
 /// Creates associated token account using Program Derived Address for the given seeds
@@ -64,4 +69,24 @@ pub fn create_pda_account<'a>(
             &[new_pda_signer_seeds],
         )
     }
+}
+
+/// Determines the required initial data length for a new token account based on the extensions
+/// initialized on the Mint
+pub fn get_account_len<'a>(
+    mint: &AccountInfo<'a>,
+    spl_token_program: &AccountInfo<'a>,
+) -> Result<usize, ProgramError> {
+    invoke(
+        &spl_token::instruction::get_account_data_size(spl_token_program.key, mint.key)?,
+        &[mint.clone(), spl_token_program.clone()],
+    )?;
+    get_return_data()
+        .ok_or(ProgramError::InvalidInstructionData)
+        .and_then(|(key, data)| {
+            check_program_account(&key)?;
+            data.try_into()
+                .map(usize::from_le_bytes)
+                .map_err(|_| ProgramError::InvalidInstructionData)
+        })
 }
