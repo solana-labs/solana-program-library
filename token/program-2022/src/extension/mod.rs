@@ -7,6 +7,7 @@ use {
             confidential_transfer::{ConfidentialTransferAccount, ConfidentialTransferMint},
             default_account_state::DefaultAccountState,
             immutable_owner::ImmutableOwner,
+            memo_transfer::MemoTransfer,
             mint_close_authority::MintCloseAuthority,
             transfer_fee::{TransferFeeAmount, TransferFeeConfig},
         },
@@ -31,6 +32,8 @@ pub mod confidential_transfer;
 pub mod default_account_state;
 /// Immutable Owner extension
 pub mod immutable_owner;
+/// Memo Transfer extension
+pub mod memo_transfer;
 /// Mint Close Authority extension
 pub mod mint_close_authority;
 /// Utility to reallocate token accounts
@@ -561,6 +564,8 @@ pub enum ExtensionType {
     DefaultAccountState,
     /// Indicates that the Account owner authority cannot be changed
     ImmutableOwner,
+    /// Require inbound transfers to have memo
+    MemoTransfer,
     /// Padding extension used to make an account exactly Multisig::LEN, used for testing
     #[cfg(test)]
     AccountPaddingTest = u16::MAX - 1,
@@ -598,6 +603,7 @@ impl ExtensionType {
                 pod_get_packed_len::<ConfidentialTransferAccount>()
             }
             ExtensionType::DefaultAccountState => pod_get_packed_len::<DefaultAccountState>(),
+            ExtensionType::MemoTransfer => pod_get_packed_len::<MemoTransfer>(),
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => pod_get_packed_len::<AccountPaddingTest>(),
             #[cfg(test)]
@@ -655,7 +661,8 @@ impl ExtensionType {
             | ExtensionType::DefaultAccountState => AccountType::Mint,
             ExtensionType::ImmutableOwner
             | ExtensionType::TransferFeeAmount
-            | ExtensionType::ConfidentialTransferAccount => AccountType::Account,
+            | ExtensionType::ConfidentialTransferAccount
+            | ExtensionType::MemoTransfer => AccountType::Account,
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => AccountType::Account,
             #[cfg(test)]
