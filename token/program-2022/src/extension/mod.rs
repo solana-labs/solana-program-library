@@ -1328,5 +1328,7 @@ mod test {
         let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
         let err = state.get_extension_mut::<MintCloseAuthority>().unwrap_err();
         assert_eq!(err, ProgramError::InvalidAccountData);
+
+        assert_eq!(state.get_extension_types().unwrap(), vec![]);
     }
 }
