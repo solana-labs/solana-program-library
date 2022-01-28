@@ -1082,7 +1082,7 @@ async fn harvest_withheld_tokens_to_mint() {
     // harvest from one account
     let accumulated_fees = transfer_fee_config.calculate_epoch_fee(0, amount).unwrap();
     let account = create_and_transfer_to_account(
-        &token,
+        token,
         &alice_account,
         alice,
         &alice.pubkey(),
@@ -1091,7 +1091,7 @@ async fn harvest_withheld_tokens_to_mint() {
     )
     .await;
     token
-        .harvest_withheld_tokens_to_mint(&[account])
+        .harvest_withheld_tokens_to_mint(&[&account])
         .await
         .unwrap();
     let state = token.get_account_info(&account).await.unwrap();
@@ -1103,7 +1103,7 @@ async fn harvest_withheld_tokens_to_mint() {
 
     // harvest again from the same account
     token
-        .harvest_withheld_tokens_to_mint(&[account])
+        .harvest_withheld_tokens_to_mint(&[&account])
         .await
         .unwrap();
     let state = token.get_account_info(&account).await.unwrap();
@@ -1135,7 +1135,7 @@ async fn harvest_withheld_tokens_to_mint() {
         .unwrap();
     let TokenContext { token, .. } = context.token_context.unwrap();
     token
-        .harvest_withheld_tokens_to_mint(&[account])
+        .harvest_withheld_tokens_to_mint(&[&account])
         .await
         .unwrap();
     let state = token.get_mint_info().await.unwrap();
@@ -1204,13 +1204,14 @@ async fn max_harvest_withheld_tokens_to_mint() {
         .await;
         accounts.push(account);
     }
+    let accounts: Vec<_> = accounts.iter().collect();
     let accumulated_fees =
         max_accounts * transfer_fee_config.calculate_epoch_fee(0, amount).unwrap();
     token
         .harvest_withheld_tokens_to_mint(&accounts)
         .await
         .unwrap();
-    for account in &accounts {
+    for account in accounts {
         let state = token.get_account_info(account).await.unwrap();
         let extension = state.get_extension::<TransferFeeAmount>().unwrap();
         assert_eq!(extension.withheld_amount, 0.into());

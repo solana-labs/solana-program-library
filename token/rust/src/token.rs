@@ -526,7 +526,7 @@ where
     /// Harvest withheld tokens to mint
     pub async fn harvest_withheld_tokens_to_mint(
         &self,
-        sources: &[Pubkey],
+        sources: &[&Pubkey],
     ) -> TokenResult<T::Output> {
         self.process_ixs(
             &[transfer_fee::instruction::harvest_withheld_tokens_to_mint(

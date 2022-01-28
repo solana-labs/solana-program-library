@@ -351,13 +351,13 @@ pub fn withdraw_withheld_tokens_from_accounts(
 pub fn harvest_withheld_tokens_to_mint(
     token_program_id: &Pubkey,
     mint: &Pubkey,
-    sources: &[Pubkey],
+    sources: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let mut accounts = Vec::with_capacity(1 + sources.len());
     accounts.push(AccountMeta::new(*mint, false));
     for source in sources.iter() {
-        accounts.push(AccountMeta::new(*source, false));
+        accounts.push(AccountMeta::new(**source, false));
     }
     Ok(Instruction {
         program_id: *token_program_id,
