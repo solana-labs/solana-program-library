@@ -9,6 +9,6 @@ edition = "2018"
 
 [dependencies]
 borsh = "0.9.1"
-spl-governance-tools= { version = "0.1.0", path ="../tools"}
+spl-governance-tools= { version = "0.1.1", path ="../tools"}
 solana-program = "1.9.5"
 

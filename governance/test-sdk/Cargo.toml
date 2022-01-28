@@ -1,6 +1,6 @@
 [package]
 name = "spl-governance-test-sdk"
-version = "0.1.0"
+version = "0.1.1"
 description = "Solana Program Library Governance Program Test SDK"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library"
