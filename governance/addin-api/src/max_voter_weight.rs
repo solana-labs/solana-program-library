@@ -39,6 +39,9 @@ pub struct MaxVoterWeightRecord {
     /// As a pattern Revise instruction to update the max weight should be invoked before governance instruction within the same transaction
     /// and the expiry set to the current slot to provide up to date weight
     pub max_voter_weight_expiry: Option<Slot>,
+
+    /// Reserved space for future versions
+    pub reserved: [u8; 8],
 }
 
 impl AccountMaxSize for MaxVoterWeightRecord {}

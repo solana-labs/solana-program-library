@@ -2614,6 +2614,7 @@ impl GovernanceProgramTest {
                 voter_weight_expiry,
                 weight_action,
                 weight_action_target,
+                reserved: [0; 8],
             },
         };
 
@@ -2665,6 +2666,7 @@ impl GovernanceProgramTest {
                 governing_token_mint: token_owner_record_cookie.account.governing_token_mint,
                 max_voter_weight,
                 max_voter_weight_expiry,
+                reserved: [0; 8],
             },
         };
 

@@ -70,6 +70,9 @@ pub struct VoterWeightRecord {
     /// For example when addin supplies weight to vote on a particular proposal then it must specify the proposal as the action target
     /// When the target is provided then the governance program asserts the target is the same as specified by the addin
     pub weight_action_target: Option<Pubkey>,
+
+    /// Reserved space for future versions
+    pub reserved: [u8; 8],
 }
 
 impl AccountMaxSize for VoterWeightRecord {}

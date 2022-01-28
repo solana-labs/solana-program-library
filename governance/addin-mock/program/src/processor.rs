@@ -82,6 +82,7 @@ pub fn process_setup_voter_weight_record(
         voter_weight_expiry,
         weight_action,
         weight_action_target,
+        reserved: [0; 8],
     };
 
     create_and_serialize_account(
@@ -116,6 +117,7 @@ pub fn process_setup_max_voter_weight_record(
         governing_token_mint: *governing_token_mint_info.key,
         max_voter_weight,
         max_voter_weight_expiry,
+        reserved: [0; 8],
     };
 
     create_and_serialize_account(
