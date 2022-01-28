@@ -1317,5 +1317,10 @@ mod test {
         let mut buffer = vec![0; Mint::LEN + 2];
         let err = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap_err();
         assert_eq!(err, ProgramError::InvalidAccountData);
+
+        let mut buffer = vec![0; BASE_ACCOUNT_LENGTH + 2];
+        let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
+        let err = state.get_extension_mut::<MintCloseAuthority>().unwrap_err();
+        assert_eq!(err, ProgramError::InvalidAccountData);
     }
 }
