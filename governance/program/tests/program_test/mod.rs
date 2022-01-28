@@ -791,6 +791,24 @@ impl GovernanceProgramTest {
         self.set_realm_authority_using_instruction(
             realm_cookie,
             new_realm_authority,
+            true,
+            NopOverride,
+            None,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn set_realm_authority_impl(
+        &mut self,
+        realm_cookie: &RealmCookie,
+        new_realm_authority: Option<&Pubkey>,
+        check_authority: bool,
+    ) -> Result<(), ProgramError> {
+        self.set_realm_authority_using_instruction(
+            realm_cookie,
+            new_realm_authority,
+            check_authority,
             NopOverride,
             None,
         )
@@ -802,11 +820,16 @@ impl GovernanceProgramTest {
         &mut self,
         realm_cookie: &RealmCookie,
         new_realm_authority: Option<&Pubkey>,
+        check_authority: bool,
         instruction_override: F,
         signers_override: Option<&[&Keypair]>,
     ) -> Result<(), ProgramError> {
         let action = if new_realm_authority.is_some() {
-            SetRealmAuthorityAction::SetChecked
+            if check_authority {
+                SetRealmAuthorityAction::SetChecked
+            } else {
+                SetRealmAuthorityAction::SetUnchecked
+            }
         } else {
             SetRealmAuthorityAction::Remove
         };

@@ -99,19 +99,17 @@ async fn test_set_realm_authority_unchecked() {
     let new_realm_authority = Pubkey::new_unique();
 
     // Act
-    let err = governance_test
-        .set_realm_authority_using_instruction(
-            &realm_cookie,
-            Some(&new_realm_authority),
-            |i| i.accounts[1].is_signer = false, // realm_authority
-            Some(&[]),
-        )
+    governance_test
+        .set_realm_authority_impl(&realm_cookie, Some(&new_realm_authority), false)
         .await
-        .err()
         .unwrap();
 
     // Assert
-    assert_eq!(err, GovernanceError::RealmAuthorityMustSign.into());
+    let realm_account = governance_test
+        .get_realm_account(&realm_cookie.address)
+        .await;
+
+    assert_eq!(realm_account.authority, Some(new_realm_authority));
 }
 
 #[tokio::test]
@@ -177,6 +175,7 @@ async fn test_set_realm_authority_with_authority_must_sign_error() {
         .set_realm_authority_using_instruction(
             &realm_cookie,
             Some(&new_realm_authority),
+            true,
             |i| i.accounts[1].is_signer = false, // realm_authority
             Some(&[]),
         )
