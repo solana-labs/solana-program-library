@@ -236,6 +236,7 @@ impl<S: BaseState> StateWithExtensionsOwned<S> {
         let mut rest = input.split_off(S::LEN);
         let base = S::unpack(&input)?;
         if let Some((account_type_index, tlv_start_index)) = type_and_tlv_indices::<S>(&rest)? {
+            // type_and_tlv_indices() checks that returned indexes are within range
             let account_type = AccountType::try_from(rest[account_type_index])
                 .map_err(|_| ProgramError::InvalidAccountData)?;
             check_account_type::<S>(account_type)?;
@@ -277,6 +278,7 @@ impl<'data, S: BaseState> StateWithExtensions<'data, S> {
         let (base_data, rest) = input.split_at(S::LEN);
         let base = S::unpack(base_data)?;
         if let Some((account_type_index, tlv_start_index)) = type_and_tlv_indices::<S>(rest)? {
+            // type_and_tlv_indices() checks that returned indexes are within range
             let account_type = AccountType::try_from(rest[account_type_index])
                 .map_err(|_| ProgramError::InvalidAccountData)?;
             check_account_type::<S>(account_type)?;
@@ -324,6 +326,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         let (base_data, rest) = input.split_at_mut(S::LEN);
         let base = S::unpack(base_data)?;
         if let Some((account_type_index, tlv_start_index)) = type_and_tlv_indices::<S>(rest)? {
+            // type_and_tlv_indices() checks that returned indexes are within range
             let account_type = AccountType::try_from(rest[account_type_index])
                 .map_err(|_| ProgramError::InvalidAccountData)?;
             check_account_type::<S>(account_type)?;
@@ -355,6 +358,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
             return Err(TokenError::AlreadyInUse.into());
         }
         if let Some((account_type_index, tlv_start_index)) = type_and_tlv_indices::<S>(rest)? {
+            // type_and_tlv_indices() checks that returned indexes are within range
             let account_type = AccountType::try_from(rest[account_type_index])
                 .map_err(|_| ProgramError::InvalidAccountData)?;
             if account_type != AccountType::Uninitialized {
