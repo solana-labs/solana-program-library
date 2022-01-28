@@ -18,7 +18,7 @@
     "noImplicitReturns": true
   },
   "include": [
-    "tests/**/*.ts",
+    "test/**/*.ts",
     "src/**/*.ts"
   ]
 }
