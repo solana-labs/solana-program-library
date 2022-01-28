@@ -393,10 +393,10 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
             length_start,
             value_start,
         } = get_extension_indices::<V>(self.tlv_data, init)?;
+        if self.tlv_data[type_start..].len() < V::TYPE.get_tlv_len() {
+            return Err(ProgramError::InvalidAccountData);
+        }
         if init {
-            if self.tlv_data[type_start..].len() < V::TYPE.get_tlv_len() {
-                return Err(ProgramError::InvalidAccountData);
-            }
             // write extension type
             let extension_type_array: [u8; 2] = V::TYPE.into();
             let extension_type_ref = &mut self.tlv_data[type_start..length_start];
