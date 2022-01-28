@@ -175,12 +175,12 @@ impl Realm {
             program_id,
             account_info_iter,
             realm,
-            &self,
+            self,
             VoterWeightAction::CreateGovernance,
             realm,
         )?;
 
-        token_owner_record_data.assert_can_create_governance(&self, voter_weight)?;
+        token_owner_record_data.assert_can_create_governance(self, voter_weight)?;
 
         Ok(())
     }
