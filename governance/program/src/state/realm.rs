@@ -1,5 +1,7 @@
 //! Realm Account
 
+use std::slice::Iter;
+
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
     account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
@@ -8,8 +10,12 @@ use solana_program::{
 use spl_governance_tools::account::{assert_is_valid_account, get_account_data, AccountMaxSize};
 
 use crate::{
+    addins::voter_weight::VoterWeightAction,
     error::GovernanceError,
-    state::enums::{GovernanceAccountType, MintMaxVoteWeightSource},
+    state::{
+        enums::{GovernanceAccountType, MintMaxVoteWeightSource},
+        token_owner_record::get_token_owner_record_data_for_realm,
+    },
     PROGRAM_AUTHORITY_SEED,
 };
 
@@ -141,14 +147,40 @@ impl Realm {
         Ok(())
     }
 
-    /// Asserts the given authority is realm's authority and signer
-    pub fn assert_realm_authority_is_signer(
+    /// Assert the given create authority can create governance
+    pub fn assert_can_create_governance(
         &self,
-        realm_authority_info: &AccountInfo,
+        program_id: &Pubkey,
+        realm: &Pubkey,
+        token_owner_record_info: &AccountInfo,
+        create_authority_info: &AccountInfo,
+        account_info_iter: &mut Iter<AccountInfo>,
     ) -> Result<(), ProgramError> {
-        if self.authority != Some(*realm_authority_info.key) || !realm_authority_info.is_signer {
-            return Err(GovernanceError::RealmAuthorityMustSign.into());
+        // Check if create_authority_info is realm_authority and if yes then it must signed the transaction
+        if self.authority == Some(*create_authority_info.key) {
+            return if !create_authority_info.is_signer {
+                Err(GovernanceError::RealmAuthorityMustSign.into())
+            } else {
+                Ok(())
+            };
         }
+
+        // If realm_authority hasn't signed then check if TokenOwner or Delegate signed and can crate governance
+        let token_owner_record_data =
+            get_token_owner_record_data_for_realm(program_id, token_owner_record_info, realm)?;
+
+        token_owner_record_data.assert_token_owner_or_delegate_is_signer(create_authority_info)?;
+
+        let voter_weight = token_owner_record_data.resolve_voter_weight(
+            program_id,
+            account_info_iter,
+            realm,
+            &self,
+            VoterWeightAction::CreateGovernance,
+            realm,
+        )?;
+
+        token_owner_record_data.assert_can_create_governance(&self, voter_weight)?;
 
         Ok(())
     }

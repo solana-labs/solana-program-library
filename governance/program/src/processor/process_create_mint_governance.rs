@@ -1,7 +1,6 @@
 //! Program state processor
 
 use crate::{
-    addins::voter_weight::VoterWeightAction,
     state::{
         enums::GovernanceAccountType,
         governance::{
@@ -9,7 +8,6 @@ use crate::{
             GovernanceConfig,
         },
         realm::get_realm_data,
-        token_owner_record::get_token_owner_record_data_for_realm,
     },
     tools::spl_token::{
         assert_spl_token_mint_authority_is_signer, set_spl_token_account_authority,
@@ -57,28 +55,13 @@ pub fn process_create_mint_governance(
 
     let realm_data = get_realm_data(program_id, realm_info)?;
 
-    if realm_data.authority == Some(*create_authority_info.key) {
-        realm_data.assert_realm_authority_is_signer(create_authority_info)?;
-    } else {
-        let token_owner_record_data = get_token_owner_record_data_for_realm(
-            program_id,
-            token_owner_record_info,
-            realm_info.key,
-        )?;
-
-        token_owner_record_data.assert_token_owner_or_delegate_is_signer(create_authority_info)?;
-
-        let voter_weight = token_owner_record_data.resolve_voter_weight(
-            program_id,
-            account_info_iter,
-            realm_info.key,
-            &realm_data,
-            VoterWeightAction::CreateGovernance,
-            realm_info.key,
-        )?;
-
-        token_owner_record_data.assert_can_create_governance(&realm_data, voter_weight)?;
-    }
+    realm_data.assert_can_create_governance(
+        program_id,
+        realm_info.key,
+        token_owner_record_info,
+        create_authority_info,
+        account_info_iter,
+    )?;
 
     let mint_governance_data = Governance {
         account_type: GovernanceAccountType::MintGovernance,
