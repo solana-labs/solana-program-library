@@ -183,10 +183,13 @@ fn type_and_tlv_indices<S: BaseState>(
     } else {
         let account_type_index = BASE_ACCOUNT_LENGTH.saturating_sub(S::LEN);
         // check padding is all zeroes
+        let tlv_start_index = account_type_index.saturating_add(size_of::<AccountType>());
+        if rest_input.len() <= tlv_start_index {
+            return Err(ProgramError::InvalidAccountData);
+        }
         if rest_input[..account_type_index] != vec![0; account_type_index] {
             Err(ProgramError::InvalidAccountData)
         } else {
-            let tlv_start_index = account_type_index.saturating_add(size_of::<AccountType>());
             Ok(Some((account_type_index, tlv_start_index)))
         }
     }
