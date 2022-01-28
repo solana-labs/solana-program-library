@@ -109,7 +109,7 @@ async fn test_execute_mint_instruction() {
     );
 
     let instruction_token_account = governance_test
-        .get_token_account(&proposal_instruction_cookie.account.instruction.accounts[1].pubkey)
+        .get_token_account(&proposal_instruction_cookie.account.instructions[0].accounts[1].pubkey)
         .await;
 
     assert_eq!(10, instruction_token_account.amount);
@@ -208,7 +208,7 @@ async fn test_execute_transfer_instruction() {
     );
 
     let instruction_token_account = governance_test
-        .get_token_account(&proposal_instruction_cookie.account.instruction.accounts[1].pubkey)
+        .get_token_account(&proposal_instruction_cookie.account.instructions[0].accounts[1].pubkey)
         .await;
 
     assert_eq!(15, instruction_token_account.amount);
