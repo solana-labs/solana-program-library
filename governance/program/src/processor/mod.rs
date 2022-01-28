@@ -76,7 +76,7 @@ pub fn process_instruction(
         option_index,
         index,
         hold_up_time,
-        instruction: _,
+        instructions: _,
     } = instruction
     {
         // Do not dump instruction data into logs
@@ -174,14 +174,14 @@ pub fn process_instruction(
             option_index,
             index,
             hold_up_time,
-            instruction,
+            instructions,
         } => process_insert_instruction(
             program_id,
             accounts,
             option_index,
             index,
             hold_up_time,
-            instruction,
+            instructions,
         ),
 
         GovernanceInstruction::RemoveInstruction {} => {

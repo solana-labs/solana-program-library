@@ -31,7 +31,7 @@ pub fn process_insert_instruction(
     option_index: u16,
     instruction_index: u16,
     hold_up_time: u32,
-    instruction: InstructionData,
+    instructions: Vec<InstructionData>,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -90,7 +90,7 @@ pub fn process_insert_instruction(
         option_index,
         instruction_index,
         hold_up_time,
-        instruction,
+        instructions,
         executed_at: None,
         execution_status: InstructionExecutionStatus::None,
         proposal: *proposal_info.key,

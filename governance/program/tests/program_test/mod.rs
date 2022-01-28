@@ -2358,7 +2358,7 @@ impl GovernanceProgramTest {
             option_index,
             instruction_index,
             hold_up_time,
-            instruction_data.clone(),
+            vec![instruction_data.clone()],
         );
 
         self.bench
@@ -2380,7 +2380,7 @@ impl GovernanceProgramTest {
             option_index,
             instruction_index,
             hold_up_time,
-            instruction: instruction_data,
+            instructions: vec![instruction_data],
             executed_at: None,
             execution_status: InstructionExecutionStatus::None,
             proposal: proposal_cookie.address,

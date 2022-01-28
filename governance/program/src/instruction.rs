@@ -244,8 +244,8 @@ pub enum GovernanceInstruction {
         hold_up_time: u32,
 
         #[allow(dead_code)]
-        /// Instruction Data
-        instruction: InstructionData,
+        /// Instructions Data
+        instructions: Vec<InstructionData>,
     },
 
     /// Removes instruction from the Proposal
@@ -1168,7 +1168,7 @@ pub fn insert_instruction(
     option_index: u16,
     index: u16,
     hold_up_time: u32,
-    instruction: InstructionData,
+    instructions: Vec<InstructionData>,
 ) -> Instruction {
     let proposal_instruction_address = get_proposal_instruction_address(
         program_id,
@@ -1192,7 +1192,7 @@ pub fn insert_instruction(
         option_index,
         index,
         hold_up_time,
-        instruction,
+        instructions,
     };
 
     Instruction {

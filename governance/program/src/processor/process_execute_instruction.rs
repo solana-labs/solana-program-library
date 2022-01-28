@@ -44,8 +44,15 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
         .assert_can_execute_instruction(&proposal_instruction_data, clock.unix_timestamp)?;
 
     // Execute instruction with Governance PDA as signer
-    let instruction = Instruction::from(&proposal_instruction_data.instruction);
+    let instructions = proposal_instruction_data
+        .instructions
+        .iter()
+        .map(|i| Instruction::from(i));
 
+    // In the current implementation accounts for all instructions are passed to each instruction invocation
+    // This is an overhead but shouldn't be a showstopper because if we can invoke the parent instruction with that many accounts
+    // then we should also be able to invoke all the nested ones
+    // TODO: Optimize the invocation to split the provided accounts for each individual instruction
     let instruction_account_infos = account_info_iter.as_slice();
 
     let mut signers_seeds: Vec<&[&[u8]]> = vec![];
@@ -72,7 +79,9 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
         signers_seeds.push(&treasury_seeds[..]);
     }
 
-    invoke_signed(&instruction, instruction_account_infos, &signers_seeds[..])?;
+    for instruction in instructions {
+        invoke_signed(&instruction, instruction_account_infos, &signers_seeds[..])?;
+    }
 
     // Update proposal and instruction accounts
     if proposal_data.state == ProposalState::Succeeded {

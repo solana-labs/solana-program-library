@@ -1,5 +1,7 @@
 //! ProposalInstruction Account
 
+use core::panic;
+
 use borsh::maybestd::io::Write;
 
 use crate::{
@@ -101,10 +103,11 @@ pub struct ProposalInstructionV2 {
     /// Minimum waiting time in seconds for the  instruction to be executed once proposal is voted on
     pub hold_up_time: u32,
 
-    /// Instruction to execute
-    /// The instruction will be signed by Governance PDA the Proposal belongs to
+    /// Instructions to execute
+    /// The instructions will be signed by Governance PDA the Proposal belongs to
     // For example for ProgramGovernance the instruction to upgrade program will be signed by ProgramGovernance PDA
-    pub instruction: InstructionData,
+    // All instructions will be executed withing a single transaction
+    pub instructions: Vec<InstructionData>,
 
     /// Executed at flag
     pub executed_at: Option<UnixTimestamp>,
@@ -115,7 +118,14 @@ pub struct ProposalInstructionV2 {
 
 impl AccountMaxSize for ProposalInstructionV2 {
     fn get_max_size(&self) -> Option<usize> {
-        Some(self.instruction.accounts.len() * 34 + self.instruction.data.len() + 91)
+        let instructions_size = self
+            .instructions
+            .iter()
+            .map(|i| i.accounts.len() * 34 + i.data.len())
+            .sum::<usize>()
+            + 4;
+
+        Some(instructions_size + 91)
     }
 }
 
@@ -131,13 +141,17 @@ impl ProposalInstructionV2 {
         if self.account_type == GovernanceAccountType::ProposalInstructionV2 {
             BorshSerialize::serialize(&self, writer)?
         } else if self.account_type == GovernanceAccountType::ProposalInstructionV1 {
+            if self.instructions.len() != 1 {
+                panic!("Multiple instructions are not supported by ProposalInstructionV1")
+            };
+
             // V1 account can't be resized and we have to translate it back to the original format
             let proposal_instruction_data_v1 = ProposalInstructionV1 {
                 account_type: self.account_type,
                 proposal: self.proposal,
                 instruction_index: self.instruction_index,
                 hold_up_time: self.hold_up_time,
-                instruction: self.instruction,
+                instruction: self.instructions[0].clone(),
                 executed_at: self.executed_at,
                 execution_status: self.execution_status,
             };
@@ -200,7 +214,7 @@ pub fn get_proposal_instruction_data(
             option_index: 0, // V1 has a single implied option at index 0
             instruction_index: proposal_instruction_data_v1.instruction_index,
             hold_up_time: proposal_instruction_data_v1.hold_up_time,
-            instruction: proposal_instruction_data_v1.instruction,
+            instructions: vec![proposal_instruction_data_v1.instruction],
             executed_at: proposal_instruction_data_v1.executed_at,
             execution_status: proposal_instruction_data_v1.execution_status,
         });
@@ -242,15 +256,15 @@ mod test {
         }
     }
 
-    fn create_test_instruction_data() -> InstructionData {
-        InstructionData {
+    fn create_test_instruction_data() -> Vec<InstructionData> {
+        vec![InstructionData {
             program_id: Pubkey::new_unique(),
             accounts: vec![
                 create_test_account_meta_data(),
                 create_test_account_meta_data(),
             ],
             data: vec![1, 2, 3],
-        }
+        }]
     }
 
     fn create_test_proposal_instruction() -> ProposalInstructionV2 {
@@ -260,7 +274,7 @@ mod test {
             option_index: 0,
             instruction_index: 1,
             hold_up_time: 10,
-            instruction: create_test_instruction_data(),
+            instructions: create_test_instruction_data(),
             executed_at: Some(100),
             execution_status: InstructionExecutionStatus::Success,
         }
@@ -288,8 +302,8 @@ mod test {
     fn test_empty_proposal_instruction_max_size() {
         // Arrange
         let mut proposal_instruction = create_test_proposal_instruction();
-        proposal_instruction.instruction.data = vec![];
-        proposal_instruction.instruction.accounts = vec![];
+        proposal_instruction.instructions[0].data = vec![];
+        proposal_instruction.instructions[0].accounts = vec![];
 
         let size = proposal_instruction.try_to_vec().unwrap().len();
 
@@ -339,7 +353,7 @@ mod test {
             proposal: Pubkey::new_unique(),
             instruction_index: 1,
             hold_up_time: 120,
-            instruction: create_test_instruction_data(),
+            instruction: create_test_instruction_data()[0].clone(),
             executed_at: Some(155),
             execution_status: InstructionExecutionStatus::Success,
         };
