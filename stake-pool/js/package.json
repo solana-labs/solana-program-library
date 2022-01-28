@@ -3,20 +3,41 @@
   "version": "0.6.3",
   "description": "SPL Stake Pool Program JS API",
   "scripts": {
-    "build": "tsc",
+    "build": "npm run clean; tsc; cross-env NODE_ENV=production rollup -c",
     "lint": "npm run pretty && eslint .",
     "lint:fix": "npm run pretty:fix && eslint . --fix",
     "pretty": "prettier --check '{,src/**/,test/**/}*.ts'",
     "pretty:fix": "prettier -w '{,src/**/,test/**/}*.ts'",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:cov": "jest --coverage"
+    "test:cov": "jest --coverage",
+    "clean": "rimraf ./dist ./dist.browser"
   },
   "keywords": [],
-  "authors": [
+  "contributors": [
     "Solana Maintainers <maintainers@solana.foundation>",
-    "Lieu Zheng Hong", 
-    "mFactory Team (https://mfactory.ch)"
+    "Lieu Zheng Hong",
+    "mFactory Team (https://mfactory.ch/)",
+    "SolBlaze <contact@solblaze.org> (https://solblaze.org/)"
+  ],
+  "homepage": "https://solana.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/solana-labs/solana-program-library"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "browser": "dist.browser/index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "browserslist": [
+    "defaults",
+    "not IE 11"
+  ],
+  "files": [
+    "/dist",
+    "/dist.browser"
   ],
   "license": "ISC",
   "dependencies": {
