@@ -1,6 +1,6 @@
 {
   "name": "@solana/spl-stake-pool",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "description": "SPL Stake Pool Program JS API",
   "scripts": {
     "build": "npm run clean; tsc; cross-env NODE_ENV=production rollup -c",
