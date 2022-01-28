@@ -44,7 +44,7 @@ use spl_governance::{
         },
         realm::{
             get_governing_token_holding_address, get_realm_address, Realm, RealmConfig,
-            RealmConfigArgs,
+            RealmConfigArgs, SetRealmAuthorityAction,
         },
         realm_config::{get_realm_config_address, RealmConfigAccount},
         signatory_record::{get_signatory_record_address, SignatoryRecord},
@@ -786,7 +786,7 @@ impl GovernanceProgramTest {
     pub async fn set_realm_authority(
         &mut self,
         realm_cookie: &RealmCookie,
-        new_realm_authority: &Option<Pubkey>,
+        new_realm_authority: Option<&Pubkey>,
     ) -> Result<(), ProgramError> {
         self.set_realm_authority_using_instruction(
             realm_cookie,
@@ -801,15 +801,22 @@ impl GovernanceProgramTest {
     pub async fn set_realm_authority_using_instruction<F: Fn(&mut Instruction)>(
         &mut self,
         realm_cookie: &RealmCookie,
-        new_realm_authority: &Option<Pubkey>,
+        new_realm_authority: Option<&Pubkey>,
         instruction_override: F,
         signers_override: Option<&[&Keypair]>,
     ) -> Result<(), ProgramError> {
+        let action = if new_realm_authority.is_some() {
+            SetRealmAuthorityAction::SetChecked
+        } else {
+            SetRealmAuthorityAction::Remove
+        };
+
         let mut set_realm_authority_ix = set_realm_authority(
             &self.program_id,
             &realm_cookie.address,
             &realm_cookie.realm_authority.as_ref().unwrap().pubkey(),
             new_realm_authority,
+            action,
         );
 
         instruction_override(&mut set_realm_authority_ix);
