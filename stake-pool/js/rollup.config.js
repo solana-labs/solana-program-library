@@ -39,7 +39,7 @@ function generateConfig(configType, format) {
       '@solana/spl-token',
       '@solana/web3.js',
       'bn.js',
-      'buffer'
+      'buffer',
     ];
   }
 
@@ -62,7 +62,7 @@ function generateConfig(configType, format) {
             '@solana/spl-token',
             '@solana/web3.js',
             'bn.js',
-            'buffer'
+            'buffer',
           ];
 
           break;
