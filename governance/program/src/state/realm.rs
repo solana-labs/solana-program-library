@@ -140,6 +140,18 @@ impl Realm {
 
         Ok(())
     }
+
+    /// Asserts the given authority is realm's authority and signer
+    pub fn assert_realm_authority_is_signer(
+        &self,
+        realm_authority_info: &AccountInfo,
+    ) -> Result<(), ProgramError> {
+        if self.authority != Some(*realm_authority_info.key) || !realm_authority_info.is_signer {
+            return Err(GovernanceError::RealmAuthorityMustSign.into());
+        }
+
+        Ok(())
+    }
 }
 
 /// Checks whether realm account exists, is initialized and  owned by Governance program

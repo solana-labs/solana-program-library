@@ -110,11 +110,11 @@ pub enum GovernanceInstruction {
     ///   0. `[]` Realm account the created Governance belongs to
     ///   1. `[writable]` Account Governance account. PDA seeds: ['account-governance', realm, governed_account]
     ///   2. `[]` Account governed by this Governance
-    ///   3. `[]` Governing TokenOwnerRecord account
+    ///   3. `[]` Governing TokenOwnerRecord account (Required only if not signed by RealmAuthority)
     ///   4. `[signer]` Payer
     ///   5. `[]` System program
     ///   6. `[]` Sysvar Rent
-    ///   7. `[signer]` Governance authority
+    ///   7. `[signer]` Create authority (TokenOwner, Delegate or RealmAuthority)
     ///   8. `[]` Optional Realm Config
     ///   9. `[]` Optional Voter Weight Record
     CreateAccountGovernance {
@@ -130,12 +130,12 @@ pub enum GovernanceInstruction {
     ///   2. `[]` Program governed by this Governance account
     ///   3. `[writable]` Program Data account of the Program governed by this Governance account
     ///   4. `[signer]` Current Upgrade Authority account of the Program governed by this Governance account
-    ///   5. `[]` Governing TokenOwnerRecord account     
+    ///    5. `[]` Governing TokenOwnerRecord account (Required only if not signed by RealmAuthority)
     ///   6. `[signer]` Payer
     ///   7. `[]` bpf_upgradeable_loader program
     ///   8. `[]` System program
     ///   9. `[]` Sysvar Rent
-    ///   10. `[signer]` Governance authority
+    ///   10. `[signer]` Create authority (TokenOwner, Delegate or RealmAuthority)
     ///   11. `[]` Optional Realm Config
     ///   12. `[]` Optional Voter Weight Record
     CreateProgramGovernance {
@@ -338,12 +338,12 @@ pub enum GovernanceInstruction {
     ///   1. `[writable]` Mint Governance account. PDA seeds: ['mint-governance', realm, governed_mint]
     ///   2. `[writable]` Mint governed by this Governance account
     ///   3. `[signer]` Current Mint authority (MintTokens and optionally FreezeAccount)
-    ///   4. `[]` Governing TokenOwnerRecord account    
+    ///   4. `[]` Governing TokenOwnerRecord account (Required only if not signed by RealmAuthority)   
     ///   5. `[signer]` Payer
     ///   6. `[]` SPL Token program
     ///   7. `[]` System program
     ///   8. `[]` Sysvar Rent
-    ///   8. `[signer]` Governance authority
+    ///   8. `[signer]` Create authority (TokenOwner, Delegate or RealmAuthority)
     ///   9. `[]` Optional Realm Config
     ///   10. `[]` Optional Voter Weight Record
     CreateMintGovernance {
@@ -364,12 +364,12 @@ pub enum GovernanceInstruction {
     ///   1. `[writable]` Token Governance account. PDA seeds: ['token-governance', realm, governed_token]
     ///   2. `[writable]` Token account governed by this Governance account
     ///   3. `[signer]` Current token account authority (AccountOwner and optionally CloseAccount)
-    ///   4. `[]` Governing TokenOwnerRecord account        
+    ///   4. `[]` Governing TokenOwnerRecord account (Required only if not signed by RealmAuthority)       
     ///   5. `[signer]` Payer
     ///   6. `[]` SPL Token program
     ///   7. `[]` System program
     ///   8. `[]` Sysvar Rent
-    ///   9. `[signer]` Governance authority
+    ///   9. `[signer]` Create authority (TokenOwner, Delegate or RealmAuthority)
     ///   10. `[]` Optional Realm Config
     ///   11. `[]` Optional Voter Weight Record   
     CreateTokenGovernance {
@@ -664,7 +664,7 @@ pub fn create_account_governance(
     governed_account: &Pubkey,
     token_owner_record: &Pubkey,
     payer: &Pubkey,
-    governance_authority: &Pubkey,
+    create_authority: &Pubkey,
     voter_weight_record: Option<Pubkey>,
     // Args
     config: GovernanceConfig,
@@ -680,7 +680,7 @@ pub fn create_account_governance(
         AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
-        AccountMeta::new_readonly(*governance_authority, true),
+        AccountMeta::new_readonly(*create_authority, true),
     ];
 
     with_voter_weight_accounts(program_id, &mut accounts, realm, voter_weight_record);
@@ -704,7 +704,7 @@ pub fn create_program_governance(
     governed_program_upgrade_authority: &Pubkey,
     token_owner_record: &Pubkey,
     payer: &Pubkey,
-    governance_authority: &Pubkey,
+    create_authority: &Pubkey,
     voter_weight_record: Option<Pubkey>,
     // Args
     config: GovernanceConfig,
@@ -725,7 +725,7 @@ pub fn create_program_governance(
         AccountMeta::new_readonly(bpf_loader_upgradeable::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
-        AccountMeta::new_readonly(*governance_authority, true),
+        AccountMeta::new_readonly(*create_authority, true),
     ];
 
     with_voter_weight_accounts(program_id, &mut accounts, realm, voter_weight_record);
@@ -752,7 +752,7 @@ pub fn create_mint_governance(
     governed_mint_authority: &Pubkey,
     token_owner_record: &Pubkey,
     payer: &Pubkey,
-    governance_authority: &Pubkey,
+    create_authority: &Pubkey,
     voter_weight_record: Option<Pubkey>,
     // Args
     config: GovernanceConfig,
@@ -770,7 +770,7 @@ pub fn create_mint_governance(
         AccountMeta::new_readonly(spl_token::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
-        AccountMeta::new_readonly(*governance_authority, true),
+        AccountMeta::new_readonly(*create_authority, true),
     ];
 
     with_voter_weight_accounts(program_id, &mut accounts, realm, voter_weight_record);
@@ -797,7 +797,7 @@ pub fn create_token_governance(
     governed_token_owner: &Pubkey,
     token_owner_record: &Pubkey,
     payer: &Pubkey,
-    governance_authority: &Pubkey,
+    create_authority: &Pubkey,
     voter_weight_record: Option<Pubkey>,
     // Args
     config: GovernanceConfig,
@@ -815,7 +815,7 @@ pub fn create_token_governance(
         AccountMeta::new_readonly(spl_token::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
-        AccountMeta::new_readonly(*governance_authority, true),
+        AccountMeta::new_readonly(*create_authority, true),
     ];
 
     with_voter_weight_accounts(program_id, &mut accounts, realm, voter_weight_record);
