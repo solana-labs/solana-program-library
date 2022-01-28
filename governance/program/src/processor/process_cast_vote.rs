@@ -11,6 +11,7 @@ use solana_program::{
 use spl_governance_tools::account::create_and_serialize_account_signed;
 
 use crate::{
+    addins::voter_weight::VoterWeightAction,
     error::GovernanceError,
     state::{
         enums::GovernanceAccountType,
@@ -103,6 +104,8 @@ pub fn process_cast_vote(
         account_info_iter,
         realm_info.key,
         &realm_data,
+        VoterWeightAction::CastVote,
+        proposal_info.key,
     )?;
 
     proposal_data.assert_valid_vote(&vote)?;

@@ -2,12 +2,13 @@
 
 use borsh::BorshDeserialize;
 use spl_governance::{
-    addins::voter_weight::{VoterWeightAccountType, VoterWeightRecord},
+    addins::voter_weight::{VoterWeightAccountType, VoterWeightAction, VoterWeightRecord},
     state::token_owner_record::get_token_owner_record_data_for_realm_and_governing_mint,
 };
 
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
+    clock::Slot,
     entrypoint::ProgramResult,
     msg,
     program_error::ProgramError,
@@ -29,19 +30,30 @@ pub fn process_instruction(
     msg!("GOVERNANCE-VOTER-WEIGHT-INSTRUCTION: {:?}", instruction);
 
     match instruction {
-        VoterWeightAddinInstruction::Revise {} => Ok(()),
-        VoterWeightAddinInstruction::Deposit { amount } => {
-            process_deposit(program_id, accounts, amount)
-        }
-        VoterWeightAddinInstruction::Withdraw {} => Ok(()),
+        VoterWeightAddinInstruction::SetupVoterWeightRecord {
+            voter_weight,
+            voter_weight_expiry,
+            weight_action,
+            weight_action_target,
+        } => process_setup_voter_weight_record(
+            program_id,
+            accounts,
+            voter_weight,
+            voter_weight_expiry,
+            weight_action,
+            weight_action_target,
+        ),
     }
 }
 
-/// Processes Deposit instruction
-pub fn process_deposit(
+/// Processes SetupVoterWeightRecord instruction
+pub fn process_setup_voter_weight_record(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    amount: u64,
+    voter_weight: u64,
+    voter_weight_expiry: Option<Slot>,
+    weight_action: Option<VoterWeightAction>,
+    weight_action_target: Option<Pubkey>,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -60,15 +72,15 @@ pub fn process_deposit(
         governing_token_mint_info.key,
     )?;
 
-    // TODO: Custom deposit logic and validation goes here
-
     let voter_weight_record_data = VoterWeightRecord {
         account_type: VoterWeightAccountType::VoterWeightRecord,
         realm: *realm_info.key,
         governing_token_mint: *governing_token_mint_info.key,
         governing_token_owner: token_owner_record_data.governing_token_owner,
-        voter_weight: amount,
-        voter_weight_expiry: None,
+        voter_weight,
+        voter_weight_expiry,
+        weight_action,
+        weight_action_target,
     };
 
     create_and_serialize_account(

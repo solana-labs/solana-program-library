@@ -3,7 +3,10 @@ use {
         check_program_account,
         error::TokenError,
         extension::{
-            transfer_fee::{instruction::TransferFeeInstruction, TransferFee, TransferFeeConfig},
+            transfer_fee::{
+                instruction::TransferFeeInstruction, TransferFee, TransferFeeConfig,
+                MAX_FEE_BASIS_POINTS,
+            },
             StateWithExtensionsMut,
         },
         processor::Processor,
@@ -13,6 +16,7 @@ use {
         account_info::{next_account_info, AccountInfo},
         clock::Clock,
         entrypoint::ProgramResult,
+        msg,
         program_option::COption,
         pubkey::Pubkey,
         sysvar::Sysvar,
@@ -36,6 +40,10 @@ fn process_initialize_transfer_fee_config(
     extension.transfer_fee_config_authority = transfer_fee_config_authority.try_into()?;
     extension.withdraw_withheld_authority = withdraw_withheld_authority.try_into()?;
     extension.withheld_amount = 0u64.into();
+
+    if transfer_fee_basis_points > MAX_FEE_BASIS_POINTS {
+        return Err(TokenError::TransferFeeExceedsMaximum.into());
+    }
     // To be safe, set newer and older transfer fees to the same thing on init,
     // but only newer will actually be used
     let epoch = Clock::get()?.epoch;
@@ -75,6 +83,10 @@ fn process_set_transfer_fee(
         authority_info_data_len,
         account_info_iter.as_slice(),
     )?;
+
+    if transfer_fee_basis_points > MAX_FEE_BASIS_POINTS {
+        return Err(TokenError::TransferFeeExceedsMaximum.into());
+    }
 
     // When setting the transfer fee, we have two situations:
     // * newer transfer fee epoch <= current epoch:
@@ -116,8 +128,13 @@ pub(crate) fn process_instruction(
             transfer_fee_basis_points,
             maximum_fee,
         ),
-        TransferFeeInstruction::TransferCheckedWithFee { .. } => {
-            unimplemented!();
+        TransferFeeInstruction::TransferCheckedWithFee {
+            amount,
+            decimals,
+            fee,
+        } => {
+            msg!("Instruction: TransferCheckedWithFee");
+            Processor::process_transfer(program_id, accounts, amount, Some(decimals), Some(fee))
         }
         TransferFeeInstruction::WithdrawWithheldTokensFromMint => {
             unimplemented!();

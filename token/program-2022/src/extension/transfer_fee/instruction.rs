@@ -6,7 +6,6 @@ use {
         program_option::COption,
         pubkey::Pubkey,
     },
-    std::convert::TryInto,
 };
 
 /// Transfer Fee extension instructions
@@ -141,18 +140,8 @@ impl TransferFeeInstruction {
                     TokenInstruction::unpack_pubkey_option(rest)?;
                 let (withdraw_withheld_authority, rest) =
                     TokenInstruction::unpack_pubkey_option(rest)?;
-                let (transfer_fee_basis_points, rest) = rest.split_at(2);
-                let transfer_fee_basis_points = transfer_fee_basis_points
-                    .try_into()
-                    .ok()
-                    .map(u16::from_le_bytes)
-                    .ok_or(InvalidInstruction)?;
-                let (maximum_fee, rest) = rest.split_at(8);
-                let maximum_fee = maximum_fee
-                    .try_into()
-                    .ok()
-                    .map(u64::from_le_bytes)
-                    .ok_or(InvalidInstruction)?;
+                let (transfer_fee_basis_points, rest) = TokenInstruction::unpack_u16(rest)?;
+                let (maximum_fee, rest) = TokenInstruction::unpack_u64(rest)?;
                 let instruction = Self::InitializeTransferFeeConfig {
                     transfer_fee_config_authority,
                     withdraw_withheld_authority,
@@ -162,19 +151,8 @@ impl TransferFeeInstruction {
                 (instruction, rest)
             }
             1 => {
-                let (amount, rest) = rest.split_at(8);
-                let amount = amount
-                    .try_into()
-                    .ok()
-                    .map(u64::from_le_bytes)
-                    .ok_or(InvalidInstruction)?;
-                let (&decimals, rest) = rest.split_first().ok_or(InvalidInstruction)?;
-                let (fee, rest) = rest.split_at(8);
-                let fee = fee
-                    .try_into()
-                    .ok()
-                    .map(u64::from_le_bytes)
-                    .ok_or(InvalidInstruction)?;
+                let (amount, decimals, rest) = TokenInstruction::unpack_amount_decimals(rest)?;
+                let (fee, rest) = TokenInstruction::unpack_u64(rest)?;
                 let instruction = Self::TransferCheckedWithFee {
                     amount,
                     decimals,
@@ -186,18 +164,8 @@ impl TransferFeeInstruction {
             3 => (Self::WithdrawWithheldTokensFromAccounts, rest),
             4 => (Self::HarvestWithheldTokensToMint, rest),
             5 => {
-                let (transfer_fee_basis_points, rest) = rest.split_at(2);
-                let transfer_fee_basis_points = transfer_fee_basis_points
-                    .try_into()
-                    .ok()
-                    .map(u16::from_le_bytes)
-                    .ok_or(InvalidInstruction)?;
-                let (maximum_fee, rest) = rest.split_at(8);
-                let maximum_fee = maximum_fee
-                    .try_into()
-                    .ok()
-                    .map(u64::from_le_bytes)
-                    .ok_or(InvalidInstruction)?;
+                let (transfer_fee_basis_points, rest) = TokenInstruction::unpack_u16(rest)?;
+                let (maximum_fee, rest) = TokenInstruction::unpack_u64(rest)?;
                 let instruction = Self::SetTransferFee {
                     transfer_fee_basis_points,
                     maximum_fee,

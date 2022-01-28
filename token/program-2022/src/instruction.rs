@@ -1,23 +1,28 @@
 //! Instruction types
 
-use crate::{
-    check_program_account, error::TokenError,
-    extension::transfer_fee::instruction::TransferFeeInstruction,
+use {
+    crate::{
+        check_program_account, error::TokenError,
+        extension::transfer_fee::instruction::TransferFeeInstruction,
+    },
+    solana_program::{
+        instruction::{AccountMeta, Instruction},
+        program_error::ProgramError,
+        program_option::COption,
+        pubkey::{Pubkey, PUBKEY_BYTES},
+        sysvar,
+    },
+    std::{convert::TryInto, mem::size_of},
 };
-use solana_program::{
-    instruction::{AccountMeta, Instruction},
-    program_error::ProgramError,
-    program_option::COption,
-    pubkey::Pubkey,
-    sysvar,
-};
-use std::convert::TryInto;
-use std::mem::size_of;
 
 /// Minimum number of multisignature signers (min N)
 pub const MIN_SIGNERS: usize = 1;
 /// Maximum number of multisignature signers (max N)
 pub const MAX_SIGNERS: usize = 11;
+/// Serialized length of a u16, for unpacking
+const U16_BYTES: usize = 2;
+/// Serialized length of a u64, for unpacking
+const U64_BYTES: usize = 8;
 
 /// Instructions supported by the token program.
 #[repr(C)]
@@ -473,6 +478,11 @@ pub enum TokenInstruction {
     /// See `extension::confidential_transfer::instruction::ConfidentialTransferInstruction` for
     /// further details about the extended instructions that share this instruction prefix
     ConfidentialTransferExtension,
+    /// The common instruction prefix for Default Account State extension instructions.
+    ///
+    /// See `extension::default_account_state::instruction::DefaultAccountStateInstruction` for
+    /// further details about the extended instructions that share this instruction prefix
+    DefaultAccountStateExtension,
 }
 impl TokenInstruction {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -498,7 +508,7 @@ impl TokenInstruction {
             }
             3 | 4 | 7 | 8 => {
                 let amount = rest
-                    .get(..8)
+                    .get(..U64_BYTES)
                     .and_then(|slice| slice.try_into().ok())
                     .map(u64::from_le_bytes)
                     .ok_or(InvalidInstruction)?;
@@ -528,47 +538,19 @@ impl TokenInstruction {
             10 => Self::FreezeAccount,
             11 => Self::ThawAccount,
             12 => {
-                let (amount, rest) = rest.split_at(8);
-                let amount = amount
-                    .try_into()
-                    .ok()
-                    .map(u64::from_le_bytes)
-                    .ok_or(InvalidInstruction)?;
-                let (&decimals, _rest) = rest.split_first().ok_or(InvalidInstruction)?;
-
+                let (amount, decimals, _rest) = Self::unpack_amount_decimals(rest)?;
                 Self::TransferChecked { amount, decimals }
             }
             13 => {
-                let (amount, rest) = rest.split_at(8);
-                let amount = amount
-                    .try_into()
-                    .ok()
-                    .map(u64::from_le_bytes)
-                    .ok_or(InvalidInstruction)?;
-                let (&decimals, _rest) = rest.split_first().ok_or(InvalidInstruction)?;
-
+                let (amount, decimals, _rest) = Self::unpack_amount_decimals(rest)?;
                 Self::ApproveChecked { amount, decimals }
             }
             14 => {
-                let (amount, rest) = rest.split_at(8);
-                let amount = amount
-                    .try_into()
-                    .ok()
-                    .map(u64::from_le_bytes)
-                    .ok_or(InvalidInstruction)?;
-                let (&decimals, _rest) = rest.split_first().ok_or(InvalidInstruction)?;
-
+                let (amount, decimals, _rest) = Self::unpack_amount_decimals(rest)?;
                 Self::MintToChecked { amount, decimals }
             }
             15 => {
-                let (amount, rest) = rest.split_at(8);
-                let amount = amount
-                    .try_into()
-                    .ok()
-                    .map(u64::from_le_bytes)
-                    .ok_or(InvalidInstruction)?;
-                let (&decimals, _rest) = rest.split_first().ok_or(InvalidInstruction)?;
-
+                let (amount, decimals, _rest) = Self::unpack_amount_decimals(rest)?;
                 Self::BurnChecked { amount, decimals }
             }
             16 => {
@@ -604,6 +586,7 @@ impl TokenInstruction {
                 Self::TransferFeeExtension(instruction)
             }
             24 => Self::ConfidentialTransferExtension,
+            25 => Self::DefaultAccountStateExtension,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -717,18 +700,19 @@ impl TokenInstruction {
             &Self::ConfidentialTransferExtension => {
                 buf.push(24);
             }
+            &Self::DefaultAccountStateExtension => {
+                buf.push(25);
+            }
         };
         buf
     }
 
     pub(crate) fn unpack_pubkey(input: &[u8]) -> Result<(Pubkey, &[u8]), ProgramError> {
-        if input.len() >= 32 {
-            let (key, rest) = input.split_at(32);
-            let pk = Pubkey::new(key);
-            Ok((pk, rest))
-        } else {
-            Err(TokenError::InvalidInstruction.into())
-        }
+        let pk = input
+            .get(..PUBKEY_BYTES)
+            .map(Pubkey::new)
+            .ok_or(TokenError::InvalidInstruction)?;
+        Ok((pk, &input[PUBKEY_BYTES..]))
     }
 
     pub(crate) fn unpack_pubkey_option(
@@ -736,9 +720,8 @@ impl TokenInstruction {
     ) -> Result<(COption<Pubkey>, &[u8]), ProgramError> {
         match input.split_first() {
             Option::Some((&0, rest)) => Ok((COption::None, rest)),
-            Option::Some((&1, rest)) if rest.len() >= 32 => {
-                let (key, rest) = rest.split_at(32);
-                let pk = Pubkey::new(key);
+            Option::Some((&1, rest)) => {
+                let (pk, rest) = Self::unpack_pubkey(rest)?;
                 Ok((COption::Some(pk), rest))
             }
             _ => Err(TokenError::InvalidInstruction.into()),
@@ -753,6 +736,30 @@ impl TokenInstruction {
             }
             COption::None => buf.push(0),
         }
+    }
+
+    pub(crate) fn unpack_u16(input: &[u8]) -> Result<(u16, &[u8]), ProgramError> {
+        let value = input
+            .get(..U16_BYTES)
+            .and_then(|slice| slice.try_into().ok())
+            .map(u16::from_le_bytes)
+            .ok_or(TokenError::InvalidInstruction)?;
+        Ok((value, &input[U16_BYTES..]))
+    }
+
+    pub(crate) fn unpack_u64(input: &[u8]) -> Result<(u64, &[u8]), ProgramError> {
+        let value = input
+            .get(..U64_BYTES)
+            .and_then(|slice| slice.try_into().ok())
+            .map(u64::from_le_bytes)
+            .ok_or(TokenError::InvalidInstruction)?;
+        Ok((value, &input[U64_BYTES..]))
+    }
+
+    pub(crate) fn unpack_amount_decimals(input: &[u8]) -> Result<(u64, u8, &[u8]), ProgramError> {
+        let (amount, rest) = Self::unpack_u64(input)?;
+        let (&decimals, rest) = rest.split_first().ok_or(TokenError::InvalidInstruction)?;
+        Ok((amount, decimals, rest))
     }
 }
 

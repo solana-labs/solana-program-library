@@ -10,7 +10,7 @@ members = [
   "examples/rust/transfer-lamports",
   "feature-proposal/program",
   "feature-proposal/cli",
-  "governance/voter-weight-addin/program",
+  "governance/addin-mock/program",
   "governance/program",
   "governance/test-sdk",
   "governance/tools",

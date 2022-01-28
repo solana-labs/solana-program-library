@@ -3,7 +3,9 @@
 use std::slice::Iter;
 
 use crate::{
-    addins::voter_weight::get_voter_weight_record_data_for_token_owner_record,
+    addins::voter_weight::{
+        get_voter_weight_record_data_for_token_owner_record, VoterWeightAction,
+    },
     error::GovernanceError,
     state::{
         enums::GovernanceAccountType, governance::GovernanceConfig, realm::Realm,
@@ -184,6 +186,8 @@ impl TokenOwnerRecord {
         account_info_iter: &mut Iter<AccountInfo>,
         realm: &Pubkey,
         realm_data: &Realm,
+        weight_action: VoterWeightAction,
+        weight_action_target: &Pubkey,
     ) -> Result<u64, ProgramError> {
         // if the realm uses addin for community voter weight then use the externally provided weight
         if realm_data.config.use_community_voter_weight_addin
@@ -200,7 +204,8 @@ impl TokenOwnerRecord {
                 voter_weight_record_info,
                 self,
             )?;
-            voter_weight_record_data.assert_is_up_to_date()?;
+            voter_weight_record_data
+                .assert_is_valid_voter_weight(weight_action, weight_action_target)?;
             Ok(voter_weight_record_data.voter_weight)
         } else {
             Ok(self.governing_token_deposit_amount)

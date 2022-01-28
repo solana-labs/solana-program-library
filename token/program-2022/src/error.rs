@@ -1,8 +1,10 @@
 //! Error types
 
-use num_derive::FromPrimitive;
-use solana_program::{decode_error::DecodeError, program_error::ProgramError};
-use thiserror::Error;
+use {
+    num_derive::FromPrimitive,
+    solana_program::{decode_error::DecodeError, program_error::ProgramError},
+    thiserror::Error,
+};
 
 /// Errors that may be returned by the Token program.
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
@@ -108,6 +110,17 @@ pub enum TokenError {
     /// No authority exists to perform the desired operation
     #[error("No authority exists to perform the desired operation")]
     NoAuthorityExists,
+
+    // 30
+    /// Transfer fee exceeds maximum of 10,000 basis points
+    #[error("Transfer fee exceeds maximum of 10,000 basis points")]
+    TransferFeeExceedsMaximum,
+    /// Mint required for this account to transfer tokens, use `transfer_checked` or `transfer_checked_with_fee`
+    #[error("Mint required for this account to transfer tokens, use `transfer_checked` or `transfer_checked_with_fee`")]
+    MintRequiredForTransfer,
+    /// Calculated fee does not match expected fee
+    #[error("Calculated fee does not match expected fee")]
+    FeeMismatch,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
