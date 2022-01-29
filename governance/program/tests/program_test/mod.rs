@@ -39,8 +39,8 @@ use spl_governance::{
         native_treasury::{get_native_treasury_address, NativeTreasury},
         program_metadata::{get_program_metadata_address, ProgramMetadata},
         proposal::{get_proposal_address, OptionVoteResult, ProposalOption, ProposalV2, VoteType},
-        proposal_instruction::{
-            get_proposal_instruction_address, InstructionData, ProposalInstructionV2,
+        proposal_transaction::{
+            get_proposal_instruction_address, InstructionData, ProposalTransactionV2,
         },
         realm::{
             get_governing_token_holding_address, get_realm_address, Realm, RealmConfig,
@@ -1616,9 +1616,9 @@ impl GovernanceProgramTest {
                 label: o.to_string(),
                 vote_weight: 0,
                 vote_result: OptionVoteResult::None,
-                instructions_executed_count: 0,
-                instructions_count: 0,
-                instructions_next_index: 0,
+                transactions_executed_count: 0,
+                transactions_count: 0,
+                transactions_next_index: 0,
             })
             .collect();
 
@@ -2182,9 +2182,9 @@ impl GovernanceProgramTest {
         let instruction_data: InstructionData = instruction.clone().into();
         let mut yes_option = &mut proposal_cookie.account.options[0];
 
-        let instruction_index = index.unwrap_or(yes_option.instructions_next_index);
+        let instruction_index = index.unwrap_or(yes_option.transactions_next_index);
 
-        yes_option.instructions_next_index += 1;
+        yes_option.transactions_next_index += 1;
 
         let insert_instruction_instruction = insert_instruction(
             &self.program_id,
@@ -2213,8 +2213,8 @@ impl GovernanceProgramTest {
             &instruction_index.to_le_bytes(),
         );
 
-        let proposal_instruction_data = ProposalInstructionV2 {
-            account_type: GovernanceAccountType::ProposalInstructionV2,
+        let proposal_instruction_data = ProposalTransactionV2 {
+            account_type: GovernanceAccountType::ProposalTransactionV2,
             option_index,
             instruction_index,
             hold_up_time,
@@ -2372,9 +2372,9 @@ impl GovernanceProgramTest {
     pub async fn get_proposal_instruction_account(
         &mut self,
         proposal_instruction_address: &Pubkey,
-    ) -> ProposalInstructionV2 {
+    ) -> ProposalTransactionV2 {
         self.bench
-            .get_borsh_account::<ProposalInstructionV2>(proposal_instruction_address)
+            .get_borsh_account::<ProposalTransactionV2>(proposal_instruction_address)
             .await
     }
 

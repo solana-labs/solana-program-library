@@ -5,7 +5,7 @@ use crate::state::{
         GovernanceAccountType, InstructionExecutionFlags, InstructionExecutionStatus,
         MintMaxVoteWeightSource, ProposalState, VoteThresholdPercentage,
     },
-    proposal_instruction::InstructionData,
+    proposal_transaction::InstructionData,
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{

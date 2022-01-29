@@ -87,7 +87,7 @@ impl From<&InstructionData> for Instruction {
 /// Account for an instruction to be executed for Proposal
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub struct ProposalInstructionV2 {
+pub struct ProposalTransactionV2 {
     /// Governance Account type
     pub account_type: GovernanceAccountType,
 
@@ -116,7 +116,7 @@ pub struct ProposalInstructionV2 {
     pub execution_status: InstructionExecutionStatus,
 }
 
-impl AccountMaxSize for ProposalInstructionV2 {
+impl AccountMaxSize for ProposalTransactionV2 {
     fn get_max_size(&self) -> Option<usize> {
         let instructions_size = self
             .instructions
@@ -129,16 +129,16 @@ impl AccountMaxSize for ProposalInstructionV2 {
     }
 }
 
-impl IsInitialized for ProposalInstructionV2 {
+impl IsInitialized for ProposalTransactionV2 {
     fn is_initialized(&self) -> bool {
-        self.account_type == GovernanceAccountType::ProposalInstructionV2
+        self.account_type == GovernanceAccountType::ProposalTransactionV2
     }
 }
 
-impl ProposalInstructionV2 {
+impl ProposalTransactionV2 {
     /// Serializes account into the target buffer
     pub fn serialize<W: Write>(self, writer: &mut W) -> Result<(), ProgramError> {
-        if self.account_type == GovernanceAccountType::ProposalInstructionV2 {
+        if self.account_type == GovernanceAccountType::ProposalTransactionV2 {
             BorshSerialize::serialize(&self, writer)?
         } else if self.account_type == GovernanceAccountType::ProposalInstructionV1 {
             if self.instructions.len() != 1 {
@@ -199,7 +199,7 @@ pub fn get_proposal_instruction_address<'a>(
 pub fn get_proposal_instruction_data(
     program_id: &Pubkey,
     proposal_instruction_info: &AccountInfo,
-) -> Result<ProposalInstructionV2, ProgramError> {
+) -> Result<ProposalTransactionV2, ProgramError> {
     let account_type: GovernanceAccountType =
         try_from_slice_unchecked(&proposal_instruction_info.data.borrow())?;
 
@@ -208,7 +208,7 @@ pub fn get_proposal_instruction_data(
         let proposal_instruction_data_v1 =
             get_account_data::<ProposalInstructionV1>(program_id, proposal_instruction_info)?;
 
-        return Ok(ProposalInstructionV2 {
+        return Ok(ProposalTransactionV2 {
             account_type,
             proposal: proposal_instruction_data_v1.proposal,
             option_index: 0, // V1 has a single implied option at index 0
@@ -220,7 +220,7 @@ pub fn get_proposal_instruction_data(
         });
     }
 
-    get_account_data::<ProposalInstructionV2>(program_id, proposal_instruction_info)
+    get_account_data::<ProposalTransactionV2>(program_id, proposal_instruction_info)
 }
 
 ///  Deserializes and returns ProposalInstruction account and checks it belongs to the given Proposal
@@ -228,12 +228,12 @@ pub fn get_proposal_instruction_data_for_proposal(
     program_id: &Pubkey,
     proposal_instruction_info: &AccountInfo,
     proposal: &Pubkey,
-) -> Result<ProposalInstructionV2, ProgramError> {
+) -> Result<ProposalTransactionV2, ProgramError> {
     let proposal_instruction_data =
         get_proposal_instruction_data(program_id, proposal_instruction_info)?;
 
     if proposal_instruction_data.proposal != *proposal {
-        return Err(GovernanceError::InvalidProposalForProposalInstruction.into());
+        return Err(GovernanceError::InvalidProposalForProposalTransaction.into());
     }
 
     Ok(proposal_instruction_data)
@@ -267,9 +267,9 @@ mod test {
         }]
     }
 
-    fn create_test_proposal_instruction() -> ProposalInstructionV2 {
-        ProposalInstructionV2 {
-            account_type: GovernanceAccountType::ProposalInstructionV2,
+    fn create_test_proposal_instruction() -> ProposalTransactionV2 {
+        ProposalTransactionV2 {
+            account_type: GovernanceAccountType::ProposalTransactionV2,
             proposal: Pubkey::new_unique(),
             option_index: 0,
             instruction_index: 1,

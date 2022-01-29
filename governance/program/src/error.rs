@@ -51,9 +51,9 @@ pub enum GovernanceError {
     #[error("Invalid Realm for TokenOwnerRecord")]
     InvalidRealmForTokenOwnerRecord,
 
-    /// Invalid Proposal for ProposalInstruction
-    #[error("Invalid Proposal for ProposalInstruction")]
-    InvalidProposalForProposalInstruction,
+    /// Invalid Proposal for ProposalTransaction,
+    #[error("Invalid Proposal for ProposalTransaction,")]
+    InvalidProposalForProposalTransaction,
 
     /// Invalid Signatory account address
     #[error("Invalid Signatory account address")]

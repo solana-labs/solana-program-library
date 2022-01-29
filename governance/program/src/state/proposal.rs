@@ -21,7 +21,7 @@ use crate::{
             MintMaxVoteWeightSource, ProposalState, VoteThresholdPercentage,
         },
         governance::GovernanceConfig,
-        proposal_instruction::ProposalInstructionV2,
+        proposal_transaction::ProposalTransactionV2,
         realm::Realm,
         vote_record::Vote,
     },
@@ -54,14 +54,14 @@ pub struct ProposalOption {
     /// Vote result for the option
     pub vote_result: OptionVoteResult,
 
-    /// The number of the instructions already executed
-    pub instructions_executed_count: u16,
+    /// The number of the transactions already executed
+    pub transactions_executed_count: u16,
 
-    /// The number of instructions included in the option
-    pub instructions_count: u16,
+    /// The number of transactions included in the option
+    pub transactions_count: u16,
 
-    /// The index of the the next instruction to be added
-    pub instructions_next_index: u16,
+    /// The index of the the next transaction to be added
+    pub transactions_next_index: u16,
 }
 
 /// Proposal vote type
@@ -549,7 +549,7 @@ impl ProposalV2 {
     /// Checks if Instructions can be executed for the Proposal in the given state
     pub fn assert_can_execute_instruction(
         &self,
-        proposal_instruction_data: &ProposalInstructionV2,
+        proposal_instruction_data: &ProposalTransactionV2,
         current_unix_timestamp: UnixTimestamp,
     ) -> Result<(), ProgramError> {
         match self.state {
@@ -592,7 +592,7 @@ impl ProposalV2 {
     /// Checks if the instruction can be flagged with error for the Proposal in the given state
     pub fn assert_can_flag_instruction_error(
         &self,
-        proposal_instruction_data: &ProposalInstructionV2,
+        proposal_instruction_data: &ProposalTransactionV2,
         current_unix_timestamp: UnixTimestamp,
     ) -> Result<(), ProgramError> {
         // Instruction can be flagged for error only when it's eligible for execution
@@ -670,9 +670,9 @@ impl ProposalV2 {
                 signatories_signed_off_count: self.signatories_signed_off_count,
                 yes_votes_count: self.options[0].vote_weight,
                 no_votes_count: self.deny_vote_weight.unwrap(),
-                instructions_executed_count: self.options[0].instructions_executed_count,
-                instructions_count: self.options[0].instructions_count,
-                instructions_next_index: self.options[0].instructions_next_index,
+                instructions_executed_count: self.options[0].transactions_executed_count,
+                instructions_count: self.options[0].transactions_count,
+                instructions_next_index: self.options[0].transactions_next_index,
                 draft_at: self.draft_at,
                 signing_off_at: self.signing_off_at,
                 voting_at: self.voting_at,
@@ -759,9 +759,9 @@ pub fn get_proposal_data(
                 label: "Yes".to_string(),
                 vote_weight: proposal_data_v1.yes_votes_count,
                 vote_result,
-                instructions_executed_count: proposal_data_v1.instructions_executed_count,
-                instructions_count: proposal_data_v1.instructions_count,
-                instructions_next_index: proposal_data_v1.instructions_next_index,
+                transactions_executed_count: proposal_data_v1.instructions_executed_count,
+                transactions_count: proposal_data_v1.instructions_count,
+                transactions_next_index: proposal_data_v1.instructions_next_index,
             }],
             deny_vote_weight: Some(proposal_data_v1.no_votes_count),
             draft_at: proposal_data_v1.draft_at,
@@ -911,9 +911,9 @@ mod test {
                 label: "yes".to_string(),
                 vote_weight: 0,
                 vote_result: OptionVoteResult::None,
-                instructions_executed_count: 10,
-                instructions_count: 10,
-                instructions_next_index: 10,
+                transactions_executed_count: 10,
+                transactions_count: 10,
+                transactions_next_index: 10,
             }],
             deny_vote_weight: Some(0),
 
@@ -930,25 +930,25 @@ mod test {
                 label: "option 1".to_string(),
                 vote_weight: 0,
                 vote_result: OptionVoteResult::None,
-                instructions_executed_count: 10,
-                instructions_count: 10,
-                instructions_next_index: 10,
+                transactions_executed_count: 10,
+                transactions_count: 10,
+                transactions_next_index: 10,
             },
             ProposalOption {
                 label: "option 2".to_string(),
                 vote_weight: 0,
                 vote_result: OptionVoteResult::None,
-                instructions_executed_count: 10,
-                instructions_count: 10,
-                instructions_next_index: 10,
+                transactions_executed_count: 10,
+                transactions_count: 10,
+                transactions_next_index: 10,
             },
             ProposalOption {
                 label: "option 3".to_string(),
                 vote_weight: 0,
                 vote_result: OptionVoteResult::None,
-                instructions_executed_count: 10,
-                instructions_count: 10,
-                instructions_next_index: 10,
+                transactions_executed_count: 10,
+                transactions_count: 10,
+                transactions_next_index: 10,
             },
         ];
 

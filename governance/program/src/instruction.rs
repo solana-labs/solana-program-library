@@ -10,7 +10,7 @@ use crate::{
         native_treasury::get_native_treasury_address,
         program_metadata::get_program_metadata_address,
         proposal::{get_proposal_address, VoteType},
-        proposal_instruction::{get_proposal_instruction_address, InstructionData},
+        proposal_transaction::{get_proposal_instruction_address, InstructionData},
         realm::{get_governing_token_holding_address, get_realm_address, RealmConfigArgs},
         realm_config::get_realm_config_address,
         signatory_record::get_signatory_record_address,
@@ -216,19 +216,19 @@ pub enum GovernanceInstruction {
         signatory: Pubkey,
     },
 
-    /// Inserts an instruction for the Proposal at the given index position
-    /// New Instructions must be inserted at the end of the range indicated by Proposal instructions_next_index
-    /// If an Instruction replaces an existing Instruction at a given index then the old one must be removed using RemoveInstruction first
+    /// Inserts Transaction with a set of instructions for the Proposal at the given index position
+    /// New Transaction must be inserted at the end of the range indicated by Proposal transactions_next_index
+    /// If a Transaction replaces an existing Transaction at a given index then the old one must be removed using RemoveTransaction first
 
     ///   0. `[]` Governance account
     ///   1. `[writable]` Proposal account
     ///   2. `[]` TokenOwnerRecord account of the Proposal owner
     ///   3. `[signer]` Governance Authority (Token Owner or Governance Delegate)
-    ///   4. `[writable]` ProposalInstruction account. PDA seeds: ['governance',proposal,index]
+    ///   4. `[writable]` ProposalTransaction, account. PDA seeds: ['governance',proposal,index]
     ///   5. `[signer]` Payer
     ///   6. `[]` System program
     ///   7. `[]` Rent sysvar
-    InsertInstruction {
+    InsertTransaction {
         #[allow(dead_code)]
         /// The index of the option the instruction is for
         option_index: u16,
@@ -244,14 +244,14 @@ pub enum GovernanceInstruction {
         instructions: Vec<InstructionData>,
     },
 
-    /// Removes instruction from the Proposal
+    /// Removes Transaction from the Proposal
     ///
     ///   0. `[writable]` Proposal account
     ///   1. `[]` TokenOwnerRecord account of the Proposal owner
     ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)
-    ///   3. `[writable]` ProposalInstruction account
-    ///   4. `[writable]` Beneficiary Account which would receive lamports from the disposed ProposalInstruction account
-    RemoveInstruction,
+    ///   3. `[writable]` ProposalTransaction, account
+    ///   4. `[writable]` Beneficiary Account which would receive lamports from the disposed ProposalTransaction account
+    RemoveTransaction,
 
     /// Cancels Proposal by changing its state to Canceled
     ///
@@ -321,16 +321,16 @@ pub enum GovernanceInstruction {
     ///       It's required only when Proposal is still being voted on
     RelinquishVote,
 
-    /// Executes an instruction in the Proposal
+    /// Executes a Transaction in the Proposal
     /// Anybody can execute transaction once Proposal has been voted Yes and transaction_hold_up time has passed
     /// The actual instruction being executed will be signed by Governance PDA the Proposal belongs to
     /// For example to execute Program upgrade the ProgramGovernance PDA would be used as the singer
     ///
     ///   0. `[writable]` Proposal account
-    ///   1. `[writable]` ProposalInstruction account you wish to execute
+    ///   1. `[writable]` ProposalTransaction account you wish to execute
     ///   2. `[]` Clock sysvar
     ///   3+ Any extra accounts that are part of the instruction, in order
-    ExecuteInstruction,
+    ExecuteTransaction,
 
     /// Creates Mint Governance account which governs a mint
     ///
@@ -394,17 +394,17 @@ pub enum GovernanceInstruction {
         config: GovernanceConfig,
     },
 
-    /// Flags an instruction and its parent Proposal with error status
-    /// It can be used by Proposal owner in case the instruction is permanently broken and can't be executed
+    /// Flags a transaction and its parent Proposal with error status
+    /// It can be used by Proposal owner in case the transaction is permanently broken and can't be executed
     /// Note: This instruction is a workaround because currently it's not possible to catch errors from CPI calls
     ///       and the Governance program has no way to know when instruction failed and flag it automatically
     ///
     ///   0. `[writable]` Proposal account
     ///   1. `[]` TokenOwnerRecord account of the Proposal owner
     ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)    
-    ///   3. `[writable]` ProposalInstruction account to flag
+    ///   3. `[writable]` ProposalTransaction account to flag
     ///   4. `[]` Clock sysvar
-    FlagInstructionError,
+    FlagTransactionError,
 
     /// Sets new Realm authority
     ///
@@ -1148,7 +1148,7 @@ pub fn insert_instruction(
         AccountMeta::new_readonly(sysvar::rent::id(), false),
     ];
 
-    let instruction = GovernanceInstruction::InsertInstruction {
+    let instruction = GovernanceInstruction::InsertTransaction {
         option_index,
         index,
         hold_up_time,
@@ -1180,7 +1180,7 @@ pub fn remove_instruction(
         AccountMeta::new(*beneficiary, false),
     ];
 
-    let instruction = GovernanceInstruction::RemoveInstruction {};
+    let instruction = GovernanceInstruction::RemoveTransaction {};
 
     Instruction {
         program_id: *program_id,
@@ -1209,7 +1209,7 @@ pub fn execute_instruction(
 
     accounts.extend_from_slice(instruction_accounts);
 
-    let instruction = GovernanceInstruction::ExecuteInstruction {};
+    let instruction = GovernanceInstruction::ExecuteTransaction {};
 
     Instruction {
         program_id: *program_id,
@@ -1254,7 +1254,7 @@ pub fn flag_instruction_error(
         AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];
 
-    let instruction = GovernanceInstruction::FlagInstructionError {};
+    let instruction = GovernanceInstruction::FlagTransactionError {};
 
     Instruction {
         program_id: *program_id,

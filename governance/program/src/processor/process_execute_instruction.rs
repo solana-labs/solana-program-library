@@ -15,7 +15,7 @@ use crate::state::{
     governance::get_governance_data,
     native_treasury::get_native_treasury_address_seeds,
     proposal::{get_proposal_data_for_governance, OptionVoteResult},
-    proposal_instruction::get_proposal_instruction_data_for_proposal,
+    proposal_transaction::get_proposal_instruction_data_for_proposal,
 };
 
 /// Processes ExecuteInstruction instruction
@@ -90,7 +90,7 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
     }
 
     let mut option = &mut proposal_data.options[proposal_instruction_data.option_index as usize];
-    option.instructions_executed_count = option.instructions_executed_count.checked_add(1).unwrap();
+    option.transactions_executed_count = option.transactions_executed_count.checked_add(1).unwrap();
 
     // Checking for Executing and ExecutingWithErrors states because instruction can still be executed after being flagged with error
     // The check for instructions_executed_count ensures Proposal can't be transitioned to Completed state from ExecutingWithErrors
@@ -100,7 +100,7 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
             .options
             .iter()
             .filter(|o| o.vote_result == OptionVoteResult::Succeeded)
-            .all(|o| o.instructions_executed_count == o.instructions_count)
+            .all(|o| o.transactions_executed_count == o.transactions_count)
     {
         proposal_data.closed_at = Some(clock.unix_timestamp);
         proposal_data.state = ProposalState::Completed;

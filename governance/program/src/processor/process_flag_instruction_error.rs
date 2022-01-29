@@ -11,7 +11,7 @@ use solana_program::{
 use crate::state::{
     enums::{InstructionExecutionStatus, ProposalState},
     proposal::get_proposal_data,
-    proposal_instruction::get_proposal_instruction_data_for_proposal,
+    proposal_transaction::get_proposal_instruction_data_for_proposal,
     token_owner_record::get_token_owner_record_data_for_proposal_owner,
 };
 

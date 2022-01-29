@@ -17,15 +17,15 @@ use crate::{
         enums::{GovernanceAccountType, InstructionExecutionStatus},
         governance::get_governance_data,
         proposal::get_proposal_data_for_governance,
-        proposal_instruction::{
-            get_proposal_instruction_address_seeds, InstructionData, ProposalInstructionV2,
+        proposal_transaction::{
+            get_proposal_instruction_address_seeds, InstructionData, ProposalTransactionV2,
         },
         token_owner_record::get_token_owner_record_data_for_proposal_owner,
     },
 };
 
-/// Processes InsertInstruction instruction
-pub fn process_insert_instruction(
+/// Processes InsertTransaction instruction
+pub fn process_insert_transaction(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     option_index: u16,
@@ -72,21 +72,21 @@ pub fn process_insert_instruction(
 
     let option = &mut proposal_data.options[option_index as usize];
 
-    match instruction_index.cmp(&option.instructions_next_index) {
+    match instruction_index.cmp(&option.transactions_next_index) {
         Ordering::Greater => return Err(GovernanceError::InvalidInstructionIndex.into()),
         // If the index is the same as instructions_next_index then we are adding a new instruction
         // If the index is below instructions_next_index then we are inserting into an existing empty space
         Ordering::Equal => {
-            option.instructions_next_index = option.instructions_next_index.checked_add(1).unwrap();
+            option.transactions_next_index = option.transactions_next_index.checked_add(1).unwrap();
         }
         Ordering::Less => {}
     }
 
-    option.instructions_count = option.instructions_count.checked_add(1).unwrap();
+    option.transactions_count = option.transactions_count.checked_add(1).unwrap();
     proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
 
-    let proposal_instruction_data = ProposalInstructionV2 {
-        account_type: GovernanceAccountType::ProposalInstructionV2,
+    let proposal_instruction_data = ProposalTransactionV2 {
+        account_type: GovernanceAccountType::ProposalTransactionV2,
         option_index,
         instruction_index,
         hold_up_time,
@@ -96,7 +96,7 @@ pub fn process_insert_instruction(
         proposal: *proposal_info.key,
     };
 
-    create_and_serialize_account_signed::<ProposalInstructionV2>(
+    create_and_serialize_account_signed::<ProposalTransactionV2>(
         payer_info,
         proposal_instruction_info,
         &proposal_instruction_data,

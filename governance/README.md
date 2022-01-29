@@ -157,10 +157,10 @@ Once all Proposal instructions are executed the Proposal enters Completed state.
 In the Executing state an instruction can be run by any one at any time after the `instruction_hold_up_time` period has
 transpired.
 
-### ProposalInstruction
+### ProposalTransaction
 
-A Proposal can have multiple Proposal Instructions, and they run independently of each other.
-These contain the actual data for an instruction, and how long after the voting phase a user must wait before they can
+A Proposal can have multiple Proposal Transactions with multiple instructions each, and they run independently of each other.
+These contain the actual data for instructions, and how long after the voting phase a user must wait before they can
 be executed.
 
 ### Voting Dynamics

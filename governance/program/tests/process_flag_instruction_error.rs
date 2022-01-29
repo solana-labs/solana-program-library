@@ -82,7 +82,7 @@ async fn test_execute_flag_instruction_error() {
 
     let yes_option = proposal_account.options.first().unwrap();
 
-    assert_eq!(0, yes_option.instructions_executed_count);
+    assert_eq!(0, yes_option.transactions_executed_count);
     assert_eq!(ProposalState::ExecutingWithErrors, proposal_account.state);
     assert_eq!(None, proposal_account.closed_at);
     assert_eq!(Some(clock.unix_timestamp), proposal_account.executing_at);

@@ -46,9 +46,9 @@ pub enum GovernanceAccountType {
     /// V2 adds support for multi option votes
     VoteRecordV2,
 
-    /// ProposalInstruction account which holds an instruction to execute for Proposal
-    /// V2 adds index for proposal option
-    ProposalInstructionV2,
+    /// ProposalTransaction account which holds instructions to execute for Proposal within a single Transaction
+    /// V2 replaces ProposalInstruction and adds index for proposal option and multiple instructions
+    ProposalTransactionV2,
 
     /// Proposal account for Governance account. A single Governance account can have multiple Proposal accounts
     /// V2 adds support for multiple vote options
