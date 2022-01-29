@@ -1242,7 +1242,8 @@ impl GovernanceProgramTest {
             governed_account: governed_account_cookie.address,
             config: governance_config.clone(),
             proposals_count: 0,
-            reserved: [0; 8],
+            reserved: [0; 6],
+            voting_proposal_count: 0,
         };
 
         let default_signers = &[create_authority];
@@ -1409,7 +1410,8 @@ impl GovernanceProgramTest {
             governed_account: governed_program_cookie.address,
             config,
             proposals_count: 0,
-            reserved: [0; 8],
+            reserved: [0; 6],
+            voting_proposal_count: 0,
         };
 
         let program_governance_address = get_program_governance_address(
@@ -1531,7 +1533,8 @@ impl GovernanceProgramTest {
             governed_account: governed_mint_cookie.address,
             config: governance_config.clone(),
             proposals_count: 0,
-            reserved: [0; 8],
+            reserved: [0; 6],
+            voting_proposal_count: 0,
         };
 
         let mint_governance_address = get_mint_governance_address(
@@ -1613,7 +1616,8 @@ impl GovernanceProgramTest {
             governed_account: governed_token_cookie.address,
             config,
             proposals_count: 0,
-            reserved: [0; 8],
+            reserved: [0; 6],
+            voting_proposal_count: 0,
         };
 
         let token_governance_address = get_token_governance_address(
@@ -1920,6 +1924,7 @@ impl GovernanceProgramTest {
         let mut sign_off_proposal_ix = sign_off_proposal(
             &self.program_id,
             &proposal_cookie.realm,
+            &proposal_cookie.account.governance,
             &proposal_cookie.address,
             &token_owner_record_cookie.account.governing_token_owner,
             Some(&token_owner_record_cookie.address),
@@ -1963,6 +1968,7 @@ impl GovernanceProgramTest {
         let mut sign_off_proposal_ix = sign_off_proposal(
             &self.program_id,
             &proposal_cookie.realm,
+            &proposal_cookie.account.governance,
             &proposal_cookie.address,
             &signatory_record_cookie.signatory.pubkey(),
             None,

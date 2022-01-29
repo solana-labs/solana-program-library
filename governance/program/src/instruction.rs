@@ -272,11 +272,11 @@ pub enum GovernanceInstruction {
     /// If Proposal owner doesn't designate any signatories then can sign off the Proposal themself
     ///
     ///   0. `[writable]` Realm account
-    ///   1. `[writable]` Proposal account
-    ///   2. `[writable]` Signatory Record account
-    ///   3. `[signer]` Signatory account signing off the Proposal
+    ///   1. `[writable]` Realm account
+    ///   2. `[writable]` Governance account
+    ///   3. `[writable]` Signatory Record account
+    ///   4. `[signer]` Signatory account signing off the Proposal
     ///       Or Proposal owner if the owner hasn't appointed any signatories
-    ///   4. `[]` Clock sysvar
     ///   5. `[]` Optional TokenOwnerRecord of the Proposal owner when self signing off the Proposal
     SignOffProposal,
 
@@ -994,6 +994,7 @@ pub fn sign_off_proposal(
     program_id: &Pubkey,
     // Accounts
     realm: &Pubkey,
+    governance: &Pubkey,
     proposal: &Pubkey,
     signatory: &Pubkey,
     proposal_owner_record: Option<&Pubkey>,
@@ -1002,10 +1003,10 @@ pub fn sign_off_proposal(
 
     let mut accounts = vec![
         AccountMeta::new(*realm, false),
+        AccountMeta::new(*governance, false),
         AccountMeta::new(*proposal, false),
         AccountMeta::new(signatory_record_address, false),
         AccountMeta::new_readonly(*signatory, true),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];
 
     if let Some(proposal_owner_record) = proposal_owner_record {

@@ -65,6 +65,18 @@ async fn test_sign_off_proposal() {
         .await;
 
     assert_eq!(true, signatory_record_account.signed_off);
+
+    let realm_account = governance_test
+        .get_realm_account(&realm_cookie.address)
+        .await;
+
+    assert_eq!(1, realm_account.voting_proposal_count);
+
+    let governance_account = governance_test
+        .get_governance_account(&governance_cookie.address)
+        .await;
+
+    assert_eq!(1, governance_account.voting_proposal_count);
 }
 
 #[tokio::test]
@@ -104,7 +116,7 @@ async fn test_sign_off_proposal_with_signatory_must_sign_error() {
         .sign_off_proposal_using_instruction(
             &proposal_cookie,
             &signatory_record_cookie,
-            |i| i.accounts[3].is_signer = false, // signatory
+            |i| i.accounts[4].is_signer = false, // signatory
             Some(&[]),
         )
         .await
@@ -196,7 +208,7 @@ async fn test_sign_off_proposal_by_owner_with_owner_must_sign_error() {
         .sign_off_proposal_by_owner_using_instruction(
             &proposal_cookie,
             &token_owner_record_cookie,
-            |i| i.accounts[3].is_signer = false, // signatory
+            |i| i.accounts[4].is_signer = false, // signatory
             Some(&[]),
         )
         .await
