@@ -978,6 +978,8 @@ pub fn assert_valid_proposal_options(
         }
     }
 
+    // TODO: Check for duplicated option labels
+
     if options.iter().any(|o| o.is_empty()) {
         return Err(GovernanceError::InvalidProposalOptions.into());
     }
