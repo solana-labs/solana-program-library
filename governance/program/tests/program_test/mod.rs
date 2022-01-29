@@ -1778,6 +1778,7 @@ impl GovernanceProgramTest {
             state: ProposalState::Draft,
             signatories_count: 0,
 
+            start_at: None,
             draft_at: clock.unix_timestamp,
             signing_off_at: None,
 

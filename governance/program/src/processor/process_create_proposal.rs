@@ -132,6 +132,7 @@ pub fn process_create_proposal(
         name,
         description_link,
 
+        start_at: None,
         draft_at: clock.unix_timestamp,
         signing_off_at: None,
         voting_at: None,

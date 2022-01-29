@@ -140,12 +140,16 @@ pub struct ProposalV2 {
     pub deny_vote_weight: Option<u64>,
 
     /// The total weight of Veto votes
-    /// Note: Veto is not supported in V2
+    /// Note: Veto is not supported in the current version
     pub veto_vote_weight: Option<u64>,
 
     /// The total weight of  votes
-    /// Note: Abstain is not supported in V2
+    /// Note: Abstain is not supported in the current version
     pub abstain_vote_weight: Option<u64>,
+
+    /// Optional start time if the Proposal should not enter voting state immediately after being signed off
+    /// Note: start_at is not supported in the current version
+    pub start_at: Option<UnixTimestamp>,
 
     /// When the Proposal was created and entered Draft state
     pub draft_at: UnixTimestamp,
@@ -193,7 +197,7 @@ pub struct ProposalV2 {
 impl AccountMaxSize for ProposalV2 {
     fn get_max_size(&self) -> Option<usize> {
         let options_size: usize = self.options.iter().map(|o| o.label.len() + 19).sum();
-        Some(self.name.len() + self.description_link.len() + options_size + 219)
+        Some(self.name.len() + self.description_link.len() + options_size + 228)
     }
 }
 
@@ -742,6 +746,18 @@ impl ProposalV2 {
         } else if self.account_type == GovernanceAccountType::ProposalV1 {
             // V1 account can't be resized and we have to translate it back to the original format
 
+            if self.abstain_vote_weight.is_some() {
+                panic!("ProposalV1 doesn't support Abstain vote")
+            }
+
+            if self.veto_vote_weight.is_some() {
+                panic!("ProposalV1 doesn't support Veto vote")
+            }
+
+            if self.start_at.is_some() {
+                panic!("ProposalV1 doesn't support start time")
+            }
+
             let proposal_data_v1 = ProposalV1 {
                 account_type: self.account_type,
                 governance: self.governance,
@@ -848,6 +864,7 @@ pub fn get_proposal_data(
             deny_vote_weight: Some(proposal_data_v1.no_votes_count),
             veto_vote_weight: None,
             abstain_vote_weight: None,
+            start_at: None,
             draft_at: proposal_data_v1.draft_at,
             signing_off_at: proposal_data_v1.signing_off_at,
             voting_at: proposal_data_v1.voting_at,
@@ -980,6 +997,8 @@ mod test {
             signatories_signed_off_count: 5,
             description_link: "This is my description".to_string(),
             name: "This is my name".to_string(),
+
+            start_at: Some(0),
             draft_at: 10,
             signing_off_at: Some(10),
 
