@@ -12,6 +12,7 @@ use solana_program::{
 use crate::state::{
     enums::ProposalState, proposal::get_proposal_data,
     signatory_record::get_signatory_record_data_for_seeds,
+    token_owner_record::get_token_owner_record_data_for_proposal_owner,
 };
 
 /// Processes SignOffProposal instruction
@@ -29,26 +30,43 @@ pub fn process_sign_off_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) 
     let mut proposal_data = get_proposal_data(program_id, proposal_info)?;
     proposal_data.assert_can_sign_off()?;
 
-    let mut signatory_record_data = get_signatory_record_data_for_seeds(
-        program_id,
-        signatory_record_info,
-        proposal_info.key,
-        signatory_info.key,
-    )?;
-    signatory_record_data.assert_can_sign_off(signatory_info)?;
+    // If the owner of the proposal hasn't appointed any signatories then can sign off the proposal themself
+    if proposal_data.signatories_count == 0 {
+        let proposal_owner_record_info = next_account_info(account_info_iter)?; // 4
 
-    signatory_record_data.signed_off = true;
-    signatory_record_data.serialize(&mut *signatory_record_info.data.borrow_mut())?;
+        let proposal_owner_record_data = get_token_owner_record_data_for_proposal_owner(
+            program_id,
+            proposal_owner_record_info,
+            &proposal_data.token_owner_record,
+        )?;
 
-    if proposal_data.signatories_signed_off_count == 0 {
+        // Proposal owner (TokenOwner) or its governance_delegate must be the signatory and sign this transaction
+        proposal_owner_record_data.assert_token_owner_or_delegate_is_signer(signatory_info)?;
+
         proposal_data.signing_off_at = Some(clock.unix_timestamp);
-        proposal_data.state = ProposalState::SigningOff;
-    }
+    } else {
+        let mut signatory_record_data = get_signatory_record_data_for_seeds(
+            program_id,
+            signatory_record_info,
+            proposal_info.key,
+            signatory_info.key,
+        )?;
 
-    proposal_data.signatories_signed_off_count = proposal_data
-        .signatories_signed_off_count
-        .checked_add(1)
-        .unwrap();
+        signatory_record_data.assert_can_sign_off(signatory_info)?;
+
+        signatory_record_data.signed_off = true;
+        signatory_record_data.serialize(&mut *signatory_record_info.data.borrow_mut())?;
+
+        if proposal_data.signatories_signed_off_count == 0 {
+            proposal_data.signing_off_at = Some(clock.unix_timestamp);
+            proposal_data.state = ProposalState::SigningOff;
+        }
+
+        proposal_data.signatories_signed_off_count = proposal_data
+            .signatories_signed_off_count
+            .checked_add(1)
+            .unwrap();
+    }
 
     // If all Signatories signed off we can start voting
     if proposal_data.signatories_signed_off_count == proposal_data.signatories_count {
