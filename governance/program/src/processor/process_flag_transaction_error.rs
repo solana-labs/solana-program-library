@@ -40,7 +40,7 @@ pub fn process_flag_transaction_error(
     )?;
 
     proposal_data
-        .assert_can_flag_instruction_error(&proposal_transaction_data, clock.unix_timestamp)?;
+        .assert_can_flag_transaction_error(&proposal_transaction_data, clock.unix_timestamp)?;
 
     let token_owner_record_data = get_token_owner_record_data_for_proposal_owner(
         program_id,

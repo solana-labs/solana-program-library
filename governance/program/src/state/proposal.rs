@@ -584,7 +584,7 @@ impl ProposalV2 {
     }
 
     /// Checks if Instructions can be executed for the Proposal in the given state
-    pub fn assert_can_execute_instruction(
+    pub fn assert_can_execute_transaction(
         &self,
         proposal_transaction_data: &ProposalTransactionV2,
         current_unix_timestamp: UnixTimestamp,
@@ -627,13 +627,13 @@ impl ProposalV2 {
     }
 
     /// Checks if the instruction can be flagged with error for the Proposal in the given state
-    pub fn assert_can_flag_instruction_error(
+    pub fn assert_can_flag_transaction_error(
         &self,
         proposal_transaction_data: &ProposalTransactionV2,
         current_unix_timestamp: UnixTimestamp,
     ) -> Result<(), ProgramError> {
         // Instruction can be flagged for error only when it's eligible for execution
-        self.assert_can_execute_instruction(proposal_transaction_data, current_unix_timestamp)?;
+        self.assert_can_execute_transaction(proposal_transaction_data, current_unix_timestamp)?;
 
         if proposal_transaction_data.execution_status == TransactionExecutionStatus::Error {
             return Err(GovernanceError::InstructionAlreadyFlaggedWithError.into());

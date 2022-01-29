@@ -41,7 +41,7 @@ pub fn process_execute_transaction(program_id: &Pubkey, accounts: &[AccountInfo]
     )?;
 
     proposal_data
-        .assert_can_execute_instruction(&proposal_transaction_data, clock.unix_timestamp)?;
+        .assert_can_execute_transaction(&proposal_transaction_data, clock.unix_timestamp)?;
 
     // Execute instruction with Governance PDA as signer
     let instructions = proposal_transaction_data
