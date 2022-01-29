@@ -148,7 +148,7 @@ async fn test_execute_transfer_instruction() {
         .unwrap();
 
     let proposal_transaction_cookie = governance_test
-        .with_transfer_tokens_instruction(
+        .with_transfer_tokens_transaction(
             &governed_token_cookie,
             &mut proposal_cookie,
             &token_owner_record_cookie,
@@ -247,7 +247,7 @@ async fn test_execute_upgrade_program_instruction() {
         .unwrap();
 
     let proposal_transaction_cookie = governance_test
-        .with_upgrade_program_instruction(
+        .with_upgrade_program_transaction(
             &program_governance_cookie,
             &mut proposal_cookie,
             &token_owner_record_cookie,
@@ -590,7 +590,7 @@ async fn test_execute_proposal_transaction_for_other_proposal_error() {
 }
 
 #[tokio::test]
-async fn test_execute_mint_instruction_twice_error() {
+async fn test_execute_mint_transaction_twice_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -633,7 +633,7 @@ async fn test_execute_mint_instruction_twice_error() {
         .unwrap();
 
     governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
+        .with_nop_transaction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .unwrap();
 

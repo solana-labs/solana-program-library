@@ -11,7 +11,7 @@ use spl_governance::{
 };
 
 #[tokio::test]
-async fn test_execute_flag_instruction_error() {
+async fn test_execute_flag_transaction_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -43,7 +43,7 @@ async fn test_execute_flag_instruction_error() {
         .unwrap();
 
     let proposal_transaction_cookie = governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
+        .with_nop_transaction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .unwrap();
 
@@ -66,7 +66,7 @@ async fn test_execute_flag_instruction_error() {
 
     // Act
     governance_test
-        .flag_instruction_error(
+        .flag_transaction_error(
             &proposal_cookie,
             &token_owner_record_cookie,
             &proposal_transaction_cookie,
@@ -158,7 +158,7 @@ async fn test_execute_proposal_transaction_after_flagged_with_error() {
         .await;
 
     governance_test
-        .flag_instruction_error(
+        .flag_transaction_error(
             &proposal_cookie,
             &token_owner_record_cookie,
             &proposal_transaction_cookie,
@@ -191,7 +191,7 @@ async fn test_execute_proposal_transaction_after_flagged_with_error() {
 }
 
 #[tokio::test]
-async fn test_execute_second_instruction_after_first_instruction_flagged_with_error() {
+async fn test_execute_second_transaction_after_first_transaction_flagged_with_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -223,7 +223,7 @@ async fn test_execute_second_instruction_after_first_instruction_flagged_with_er
         .unwrap();
 
     let proposal_transaction_cookie1 = governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
+        .with_nop_transaction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .unwrap();
 
@@ -254,7 +254,7 @@ async fn test_execute_second_instruction_after_first_instruction_flagged_with_er
         .await;
 
     governance_test
-        .flag_instruction_error(
+        .flag_transaction_error(
             &proposal_cookie,
             &token_owner_record_cookie,
             &proposal_transaction_cookie1,
@@ -278,7 +278,7 @@ async fn test_execute_second_instruction_after_first_instruction_flagged_with_er
 }
 
 #[tokio::test]
-async fn test_flag_instruction_error_with_instruction_already_executed_error() {
+async fn test_flag_transaction_error_with_proposal_transaction_already_executed_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -322,7 +322,7 @@ async fn test_flag_instruction_error_with_instruction_already_executed_error() {
 
     // Add another instruction to prevent Proposal from transitioning to Competed state
     governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
+        .with_nop_transaction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .unwrap();
 
@@ -349,7 +349,7 @@ async fn test_flag_instruction_error_with_instruction_already_executed_error() {
     // Act
 
     let err = governance_test
-        .flag_instruction_error(
+        .flag_transaction_error(
             &proposal_cookie,
             &token_owner_record_cookie,
             &proposal_transaction_cookie,
@@ -364,7 +364,7 @@ async fn test_flag_instruction_error_with_instruction_already_executed_error() {
 }
 
 #[tokio::test]
-async fn test_flag_instruction_error_with_owner_or_delegate_must_sign_error() {
+async fn test_flag_transaction_error_with_owner_or_delegate_must_sign_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -396,7 +396,7 @@ async fn test_flag_instruction_error_with_owner_or_delegate_must_sign_error() {
         .unwrap();
 
     let proposal_transaction_cookie = governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
+        .with_nop_transaction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .unwrap();
 
@@ -426,7 +426,7 @@ async fn test_flag_instruction_error_with_owner_or_delegate_must_sign_error() {
     // Act
 
     let err = governance_test
-        .flag_instruction_error(
+        .flag_transaction_error(
             &proposal_cookie,
             &token_owner_record_cookie,
             &proposal_transaction_cookie,

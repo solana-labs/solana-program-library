@@ -51,7 +51,7 @@ async fn test_set_governance_config() {
     new_governance_config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(40);
 
     let proposal_transaction_cookie = governance_test
-        .with_set_governance_config_instruction(
+        .with_set_governance_config_transaction(
             &mut proposal_cookie,
             &token_owner_record_cookie,
             &new_governance_config,
@@ -202,7 +202,7 @@ async fn test_set_governance_config_with_invalid_governance_authority_error() {
     );
 
     let proposal_transaction_cookie = governance_test
-        .with_instruction(
+        .with_proposal_transaction(
             &mut proposal_cookie,
             &token_owner_record_cookie,
             0,

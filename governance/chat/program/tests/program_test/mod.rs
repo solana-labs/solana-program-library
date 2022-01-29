@@ -181,7 +181,7 @@ impl GovernanceChatProgramTest {
         let governance_config = GovernanceConfig {
             min_community_tokens_to_create_proposal: 5,
             min_council_tokens_to_create_proposal: 2,
-            min_instruction_hold_up_time: 10,
+            min_transaction_hold_up_time: 10,
             max_voting_time: 10,
             vote_threshold_percentage: VoteThresholdPercentage::YesVote(60),
             vote_weight_source: spl_governance::state::enums::VoteWeightSource::Deposit,

@@ -107,7 +107,7 @@ async fn test_create_proposal_with_multiple_choice_options_and_without_deny_opti
 }
 
 #[tokio::test]
-async fn test_insert_instruction_with_proposal_not_executable_error() {
+async fn test_insert_transaction_with_proposal_not_executable_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -141,7 +141,7 @@ async fn test_insert_instruction_with_proposal_not_executable_error() {
 
     // Act
     let err = governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
+        .with_nop_transaction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .err()
         .unwrap();
@@ -187,31 +187,31 @@ async fn test_insert_instructions_for_multiple_options() {
 
     // option 1 / instruction 0
     governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 1, Some(0))
+        .with_nop_transaction(&mut proposal_cookie, &token_owner_record_cookie, 1, Some(0))
         .await
         .unwrap();
 
     // option 1 / instruction 1
     governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 1, Some(1))
+        .with_nop_transaction(&mut proposal_cookie, &token_owner_record_cookie, 1, Some(1))
         .await
         .unwrap();
 
     // option 1 / instruction 2
     governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 1, Some(2))
+        .with_nop_transaction(&mut proposal_cookie, &token_owner_record_cookie, 1, Some(2))
         .await
         .unwrap();
 
     // option 0 / instruction 0
     governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, Some(0))
+        .with_nop_transaction(&mut proposal_cookie, &token_owner_record_cookie, 0, Some(0))
         .await
         .unwrap();
 
     // option 0 / instruction 1
     governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, Some(1))
+        .with_nop_transaction(&mut proposal_cookie, &token_owner_record_cookie, 0, Some(1))
         .await
         .unwrap();
 

@@ -54,7 +54,7 @@ pub fn process_insert_transaction(
 
     let governance_data = get_governance_data(program_id, governance_info)?;
 
-    if hold_up_time < governance_data.config.min_instruction_hold_up_time {
+    if hold_up_time < governance_data.config.min_transaction_hold_up_time {
         return Err(GovernanceError::InstructionHoldUpTimeBelowRequiredMin.into());
     }
 

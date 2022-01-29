@@ -82,7 +82,7 @@ async fn test_execute_transfer_from_native_treasury() {
     let transfer_amount = 100;
 
     let proposal_transaction_cookie = governance_test
-        .with_native_transfer_instruction(
+        .with_native_transfer_transaction(
             &account_governance_cookie,
             &mut proposal_cookie,
             &token_owner_record_cookie,

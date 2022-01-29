@@ -152,7 +152,7 @@ people holding Community (or Council) tokens may vote on the Proposal.
 Once the Proposal is "tipped" it either enters the Defeated or Succeeded state. If the vote can't be tipped automatically
 during the voting period but still reaches the required Yes vote threshold it can be manually transitioned to Succeeded state
 using FinalizeVote instruction.
-Once all Proposal instructions are executed the Proposal enters Completed state.
+Once all Proposal transactions are executed the Proposal enters Completed state.
 
 In the Executing state an instruction can be run by any one at any time after the `instruction_hold_up_time` period has
 transpired.
