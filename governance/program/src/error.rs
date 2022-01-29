@@ -385,6 +385,14 @@ pub enum GovernanceError {
     /// Not supported VoteType
     #[error("Not supported VoteType")]
     NotSupportedVoteType,
+
+    /// RealmConfig change not allowed
+    #[error("RealmConfig change not allowed")]
+    RealmConfigChangeNotAllowed,
+
+    /// GovernanceConfig change not allowed
+    #[error("GovernanceConfig change not allowed")]
+    GovernanceConfigChangeNotAllowed,
 }
 
 impl PrintProgramError for GovernanceError {
