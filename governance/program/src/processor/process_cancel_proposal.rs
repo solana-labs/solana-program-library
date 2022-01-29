@@ -49,9 +49,11 @@ pub fn process_cancel_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) ->
     proposal_owner_record_data.serialize(&mut *proposal_owner_record_info.data.borrow_mut())?;
 
     if proposal_data.state == ProposalState::Voting {
+        // Update Realm voting_proposal_count
         realm_data.voting_proposal_count = realm_data.voting_proposal_count.checked_sub(1).unwrap();
         realm_data.serialize(&mut *realm_info.data.borrow_mut())?;
 
+        // Update  Governance voting_proposal_count
         governance_data.voting_proposal_count = governance_data
             .voting_proposal_count
             .checked_sub(1)

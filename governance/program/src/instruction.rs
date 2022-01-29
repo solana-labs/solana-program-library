@@ -1071,8 +1071,8 @@ pub fn finalize_vote(
     max_voter_weight_record: Option<Pubkey>,
 ) -> Instruction {
     let mut accounts = vec![
-        AccountMeta::new_readonly(*realm, false),
-        AccountMeta::new_readonly(*governance, false),
+        AccountMeta::new(*realm, false),
+        AccountMeta::new(*governance, false),
         AccountMeta::new(*proposal, false),
         AccountMeta::new(*proposal_owner_record, false),
         AccountMeta::new_readonly(*governing_token_mint, false),
