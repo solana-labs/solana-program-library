@@ -11,7 +11,10 @@ use crate::{
         program_metadata::get_program_metadata_address,
         proposal::{get_proposal_address, VoteType},
         proposal_instruction::{get_proposal_instruction_address, InstructionData},
-        realm::{get_governing_token_holding_address, get_realm_address, RealmConfigArgs},
+        realm::{
+            get_governing_token_holding_address, get_realm_address, RealmConfigArgs,
+            SetRealmAuthorityAction,
+        },
         realm_config::get_realm_config_address,
         signatory_record::get_signatory_record_address,
         token_owner_record::get_token_owner_record_address,
@@ -417,8 +420,8 @@ pub enum GovernanceInstruction {
     ///   2. `[]` New realm authority. Must be one of the realm governances when set
     SetRealmAuthority {
         #[allow(dead_code)]
-        /// Indicates whether the realm authority should be removed and set to None
-        remove_authority: bool,
+        /// Set action ( SetUnchecked, SetChecked, Remove)
+        action: SetRealmAuthorityAction,
     },
 
     /// Sets realm config
@@ -1306,22 +1309,26 @@ pub fn set_realm_authority(
     // Accounts
     realm: &Pubkey,
     realm_authority: &Pubkey,
-    new_realm_authority: &Option<Pubkey>,
+    new_realm_authority: Option<&Pubkey>,
     // Args
+    action: SetRealmAuthorityAction,
 ) -> Instruction {
     let mut accounts = vec![
         AccountMeta::new(*realm, false),
         AccountMeta::new_readonly(*realm_authority, true),
     ];
 
-    let remove_authority = if let Some(new_realm_authority) = new_realm_authority {
-        accounts.push(AccountMeta::new_readonly(*new_realm_authority, false));
-        false
-    } else {
-        true
-    };
+    match action {
+        SetRealmAuthorityAction::SetChecked | SetRealmAuthorityAction::SetUnchecked => {
+            accounts.push(AccountMeta::new_readonly(
+                *new_realm_authority.unwrap(),
+                false,
+            ));
+        }
+        SetRealmAuthorityAction::Remove => {}
+    }
 
-    let instruction = GovernanceInstruction::SetRealmAuthority { remove_authority };
+    let instruction = GovernanceInstruction::SetRealmAuthority { action };
 
     Instruction {
         program_id: *program_id,

@@ -36,6 +36,22 @@ pub struct RealmConfigArgs {
     pub use_max_community_voter_weight_addin: bool,
 }
 
+/// SetRealmAuthority instruction action
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub enum SetRealmAuthorityAction {
+    /// Sets realm authority without any checks
+    /// Uncheck option allows to set the realm authority to non governance accounts
+    SetUnchecked,
+
+    /// Sets realm authority and checks the new new authority is one of the realm's governances
+    // Note: This is not a security feature because governance creation is only gated with min_community_tokens_to_create_governance
+    //       The check is done to prevent scenarios where the authority could be accidentally set to a wrong or none existing account
+    SetChecked,
+
+    /// Removes realm authority
+    Remove,
+}
+
 /// Realm Config defining Realm parameters.
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]

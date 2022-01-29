@@ -112,7 +112,7 @@ async fn test_set_realm_config_with_no_authority_error() {
     };
 
     governance_test
-        .set_realm_authority(&realm_cookie, &None)
+        .set_realm_authority(&realm_cookie, None)
         .await
         .unwrap();
 
