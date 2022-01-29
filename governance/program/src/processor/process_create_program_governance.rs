@@ -21,7 +21,7 @@ use solana_program::{
     rent::Rent,
     sysvar::Sysvar,
 };
-use spl_governance_addin_api::voter_weight::VoterWeightAction;
+
 use spl_governance_tools::account::create_and_serialize_account_signed;
 
 /// Processes CreateProgramGovernance instruction
@@ -61,7 +61,7 @@ pub fn process_create_program_governance(
         realm_info.key,
         token_owner_record_info,
         create_authority_info,
-        account_info_iter,
+        account_info_iter, // 10, 11
     )?;
 
     let program_governance_data = Governance {

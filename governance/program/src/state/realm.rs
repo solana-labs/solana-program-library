@@ -4,13 +4,15 @@ use std::slice::Iter;
 
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
-    account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
+    account_info::{next_account_info, AccountInfo},
+    program_error::ProgramError,
+    program_pack::IsInitialized,
     pubkey::Pubkey,
 };
+use spl_governance_addin_api::voter_weight::VoterWeightAction;
 use spl_governance_tools::account::{assert_is_valid_account, get_account_data, AccountMaxSize};
 
 use crate::{
-    addins::voter_weight::VoterWeightAction,
     error::GovernanceError,
     state::{
         enums::{GovernanceAccountType, MintMaxVoteWeightSource},
@@ -194,8 +196,11 @@ impl Realm {
 
         token_owner_record_data.assert_token_owner_or_delegate_is_signer(create_authority_info)?;
 
+        let realm_config_info = next_account_info(account_info_iter)?;
+
         let voter_weight = token_owner_record_data.resolve_voter_weight(
             program_id,
+            realm_config_info,
             account_info_iter,
             realm,
             self,
