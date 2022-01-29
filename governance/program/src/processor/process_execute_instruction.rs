@@ -47,7 +47,7 @@ pub fn process_execute_transaction(program_id: &Pubkey, accounts: &[AccountInfo]
     let instructions = proposal_transaction_data
         .instructions
         .iter()
-        .map(|i| Instruction::from(i));
+        .map(Instruction::from);
 
     // In the current implementation accounts for all instructions are passed to each instruction invocation
     // This is an overhead but shouldn't be a showstopper because if we can invoke the parent instruction with that many accounts
