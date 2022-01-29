@@ -182,10 +182,18 @@ pub struct ProposalV2 {
     /// after vote was completed.
     pub max_vote_weight: Option<u64>,
 
+    /// Max voting time for the proposal if different from parent Governance  (only higher value possible)
+    /// Note: This field is not used in the current version
+    pub max_voting_time: Option<u32>,
+
     /// The vote threshold percentage at the time Proposal was decided
     /// It's used to show correct vote results for historical proposals in cases when the threshold
     /// was changed for governance config after vote was completed.
+    /// TODO: Use this field to override the threshold from parent Governance (only higher value possible)
     pub vote_threshold_percentage: Option<VoteThresholdPercentage>,
+
+    /// Reserved space for future versions
+    pub reserved: [u8; 8],
 
     /// Proposal name
     pub name: String,
@@ -197,7 +205,7 @@ pub struct ProposalV2 {
 impl AccountMaxSize for ProposalV2 {
     fn get_max_size(&self) -> Option<usize> {
         let options_size: usize = self.options.iter().map(|o| o.label.len() + 19).sum();
-        Some(self.name.len() + self.description_link.len() + options_size + 228)
+        Some(self.name.len() + self.description_link.len() + options_size + 241)
     }
 }
 
@@ -758,6 +766,10 @@ impl ProposalV2 {
                 panic!("ProposalV1 doesn't support start time")
             }
 
+            if self.max_voting_time.is_some() {
+                panic!("ProposalV1 doesn't support max voting time")
+            }
+
             let proposal_data_v1 = ProposalV1 {
                 account_type: self.account_type,
                 governance: self.governance,
@@ -874,9 +886,11 @@ pub fn get_proposal_data(
             closed_at: proposal_data_v1.closed_at,
             execution_flags: proposal_data_v1.execution_flags,
             max_vote_weight: proposal_data_v1.max_vote_weight,
+            max_voting_time: None,
             vote_threshold_percentage: proposal_data_v1.vote_threshold_percentage,
             name: proposal_data_v1.name,
             description_link: proposal_data_v1.description_link,
+            reserved: [0; 8],
         });
     }
 
@@ -1024,7 +1038,10 @@ mod test {
 
             execution_flags: InstructionExecutionFlags::Ordered,
 
+            max_voting_time: Some(0),
             vote_threshold_percentage: Some(VoteThresholdPercentage::YesVote(100)),
+
+            reserved: [0; 8],
         }
     }
 

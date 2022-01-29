@@ -1800,7 +1800,10 @@ impl GovernanceProgramTest {
 
             execution_flags: InstructionExecutionFlags::None,
             max_vote_weight: None,
+            max_voting_time: None,
             vote_threshold_percentage: None,
+
+            reserved: [0; 8],
         };
 
         let proposal_address = get_proposal_address(
