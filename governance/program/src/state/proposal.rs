@@ -24,11 +24,11 @@ use crate::{
     error::GovernanceError,
     state::{
         enums::{
-            GovernanceAccountType, InstructionExecutionFlags, InstructionExecutionStatus,
-            MintMaxVoteWeightSource, ProposalState, VoteThresholdPercentage,
+            GovernanceAccountType, InstructionExecutionFlags, MintMaxVoteWeightSource,
+            ProposalState, TransactionExecutionStatus, VoteThresholdPercentage,
         },
         governance::GovernanceConfig,
-        proposal_instruction::ProposalInstructionV2,
+        proposal_transaction::ProposalTransactionV2,
         realm::Realm,
         realm_config::get_realm_config_data_for_realm,
         vote_record::Vote,
@@ -62,14 +62,14 @@ pub struct ProposalOption {
     /// Vote result for the option
     pub vote_result: OptionVoteResult,
 
-    /// The number of the instructions already executed
-    pub instructions_executed_count: u16,
+    /// The number of the transactions already executed
+    pub transactions_executed_count: u16,
 
-    /// The number of instructions included in the option
-    pub instructions_count: u16,
+    /// The number of transactions included in the option
+    pub transactions_count: u16,
 
-    /// The index of the the next instruction to be added
-    pub instructions_next_index: u16,
+    /// The index of the the next transaction to be added
+    pub transactions_next_index: u16,
 }
 
 /// Proposal vote type
@@ -588,7 +588,7 @@ impl ProposalV2 {
     /// It also asserts whether the Proposal is executable (has the reject option)
     pub fn assert_can_edit_instructions(&self) -> Result<(), ProgramError> {
         if self.assert_is_draft_state().is_err() {
-            return Err(GovernanceError::InvalidStateCannotEditInstructions.into());
+            return Err(GovernanceError::InvalidStateCannotEditTransactions.into());
         }
 
         // For security purposes only proposals with the reject option can have executable instructions
@@ -600,9 +600,9 @@ impl ProposalV2 {
     }
 
     /// Checks if Instructions can be executed for the Proposal in the given state
-    pub fn assert_can_execute_instruction(
+    pub fn assert_can_execute_transaction(
         &self,
-        proposal_instruction_data: &ProposalInstructionV2,
+        proposal_transaction_data: &ProposalTransactionV2,
         current_unix_timestamp: UnixTimestamp,
     ) -> Result<(), ProgramError> {
         match self.state {
@@ -615,11 +615,11 @@ impl ProposalV2 {
             | ProposalState::Voting
             | ProposalState::Cancelled
             | ProposalState::Defeated => {
-                return Err(GovernanceError::InvalidStateCannotExecuteInstruction.into())
+                return Err(GovernanceError::InvalidStateCannotExecuteTransaction.into())
             }
         }
 
-        if self.options[proposal_instruction_data.option_index as usize].vote_result
+        if self.options[proposal_transaction_data.option_index as usize].vote_result
             != OptionVoteResult::Succeeded
         {
             return Err(GovernanceError::CannotExecuteDefeatedOption.into());
@@ -628,31 +628,31 @@ impl ProposalV2 {
         if self
             .voting_completed_at
             .unwrap()
-            .checked_add(proposal_instruction_data.hold_up_time as i64)
+            .checked_add(proposal_transaction_data.hold_up_time as i64)
             .unwrap()
             >= current_unix_timestamp
         {
-            return Err(GovernanceError::CannotExecuteInstructionWithinHoldUpTime.into());
+            return Err(GovernanceError::CannotExecuteTransactionWithinHoldUpTime.into());
         }
 
-        if proposal_instruction_data.executed_at.is_some() {
-            return Err(GovernanceError::InstructionAlreadyExecuted.into());
+        if proposal_transaction_data.executed_at.is_some() {
+            return Err(GovernanceError::TransactionAlreadyExecuted.into());
         }
 
         Ok(())
     }
 
     /// Checks if the instruction can be flagged with error for the Proposal in the given state
-    pub fn assert_can_flag_instruction_error(
+    pub fn assert_can_flag_transaction_error(
         &self,
-        proposal_instruction_data: &ProposalInstructionV2,
+        proposal_transaction_data: &ProposalTransactionV2,
         current_unix_timestamp: UnixTimestamp,
     ) -> Result<(), ProgramError> {
         // Instruction can be flagged for error only when it's eligible for execution
-        self.assert_can_execute_instruction(proposal_instruction_data, current_unix_timestamp)?;
+        self.assert_can_execute_transaction(proposal_transaction_data, current_unix_timestamp)?;
 
-        if proposal_instruction_data.execution_status == InstructionExecutionStatus::Error {
-            return Err(GovernanceError::InstructionAlreadyFlaggedWithError.into());
+        if proposal_transaction_data.execution_status == TransactionExecutionStatus::Error {
+            return Err(GovernanceError::TransactionAlreadyFlaggedWithError.into());
         }
 
         Ok(())
@@ -723,9 +723,9 @@ impl ProposalV2 {
                 signatories_signed_off_count: self.signatories_signed_off_count,
                 yes_votes_count: self.options[0].vote_weight,
                 no_votes_count: self.deny_vote_weight.unwrap(),
-                instructions_executed_count: self.options[0].instructions_executed_count,
-                instructions_count: self.options[0].instructions_count,
-                instructions_next_index: self.options[0].instructions_next_index,
+                instructions_executed_count: self.options[0].transactions_executed_count,
+                instructions_count: self.options[0].transactions_count,
+                instructions_next_index: self.options[0].transactions_next_index,
                 draft_at: self.draft_at,
                 signing_off_at: self.signing_off_at,
                 voting_at: self.voting_at,
@@ -812,9 +812,9 @@ pub fn get_proposal_data(
                 label: "Yes".to_string(),
                 vote_weight: proposal_data_v1.yes_votes_count,
                 vote_result,
-                instructions_executed_count: proposal_data_v1.instructions_executed_count,
-                instructions_count: proposal_data_v1.instructions_count,
-                instructions_next_index: proposal_data_v1.instructions_next_index,
+                transactions_executed_count: proposal_data_v1.instructions_executed_count,
+                transactions_count: proposal_data_v1.instructions_count,
+                transactions_next_index: proposal_data_v1.instructions_next_index,
             }],
             deny_vote_weight: Some(proposal_data_v1.no_votes_count),
             draft_at: proposal_data_v1.draft_at,
@@ -964,9 +964,9 @@ mod test {
                 label: "yes".to_string(),
                 vote_weight: 0,
                 vote_result: OptionVoteResult::None,
-                instructions_executed_count: 10,
-                instructions_count: 10,
-                instructions_next_index: 10,
+                transactions_executed_count: 10,
+                transactions_count: 10,
+                transactions_next_index: 10,
             }],
             deny_vote_weight: Some(0),
 
@@ -983,25 +983,25 @@ mod test {
                 label: "option 1".to_string(),
                 vote_weight: 0,
                 vote_result: OptionVoteResult::None,
-                instructions_executed_count: 10,
-                instructions_count: 10,
-                instructions_next_index: 10,
+                transactions_executed_count: 10,
+                transactions_count: 10,
+                transactions_next_index: 10,
             },
             ProposalOption {
                 label: "option 2".to_string(),
                 vote_weight: 0,
                 vote_result: OptionVoteResult::None,
-                instructions_executed_count: 10,
-                instructions_count: 10,
-                instructions_next_index: 10,
+                transactions_executed_count: 10,
+                transactions_count: 10,
+                transactions_next_index: 10,
             },
             ProposalOption {
                 label: "option 3".to_string(),
                 vote_weight: 0,
                 vote_result: OptionVoteResult::None,
-                instructions_executed_count: 10,
-                instructions_count: 10,
-                instructions_next_index: 10,
+                transactions_executed_count: 10,
+                transactions_count: 10,
+                transactions_next_index: 10,
             },
         ];
 
@@ -1033,7 +1033,7 @@ mod test {
         GovernanceConfig {
             min_community_tokens_to_create_proposal: 5,
             min_council_tokens_to_create_proposal: 1,
-            min_instruction_hold_up_time: 10,
+            min_transaction_hold_up_time: 10,
             max_voting_time: 5,
             vote_threshold_percentage: VoteThresholdPercentage::YesVote(60),
             vote_weight_source: VoteWeightSource::Deposit,

@@ -1,11 +1,13 @@
-//! ProposalInstruction Account
+//! ProposalTransaction Account
+
+use core::panic;
 
 use borsh::maybestd::io::Write;
 
 use crate::{
     error::GovernanceError,
     state::{
-        enums::{GovernanceAccountType, InstructionExecutionStatus},
+        enums::{GovernanceAccountType, TransactionExecutionStatus},
         legacy::ProposalInstructionV1,
     },
     PROGRAM_AUTHORITY_SEED,
@@ -85,7 +87,7 @@ impl From<&InstructionData> for Instruction {
 /// Account for an instruction to be executed for Proposal
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub struct ProposalInstructionV2 {
+pub struct ProposalTransactionV2 {
     /// Governance Account type
     pub account_type: GovernanceAccountType,
 
@@ -95,62 +97,74 @@ pub struct ProposalInstructionV2 {
     /// The option index the instruction belongs to
     pub option_index: u16,
 
-    /// Unique instruction index within it's parent Proposal
-    pub instruction_index: u16,
+    /// Unique transaction index within it's parent Proposal
+    pub transaction_index: u16,
 
     /// Minimum waiting time in seconds for the  instruction to be executed once proposal is voted on
     pub hold_up_time: u32,
 
-    /// Instruction to execute
-    /// The instruction will be signed by Governance PDA the Proposal belongs to
+    /// Instructions to execute
+    /// The instructions will be signed by Governance PDA the Proposal belongs to
     // For example for ProgramGovernance the instruction to upgrade program will be signed by ProgramGovernance PDA
-    pub instruction: InstructionData,
+    // All instructions will be executed withing a single transaction
+    pub instructions: Vec<InstructionData>,
 
     /// Executed at flag
     pub executed_at: Option<UnixTimestamp>,
 
     /// Instruction execution status
-    pub execution_status: InstructionExecutionStatus,
+    pub execution_status: TransactionExecutionStatus,
 }
 
-impl AccountMaxSize for ProposalInstructionV2 {
+impl AccountMaxSize for ProposalTransactionV2 {
     fn get_max_size(&self) -> Option<usize> {
-        Some(self.instruction.accounts.len() * 34 + self.instruction.data.len() + 91)
+        let instructions_size = self
+            .instructions
+            .iter()
+            .map(|i| i.accounts.len() * 34 + i.data.len())
+            .sum::<usize>()
+            + 4;
+
+        Some(instructions_size + 91)
     }
 }
 
-impl IsInitialized for ProposalInstructionV2 {
+impl IsInitialized for ProposalTransactionV2 {
     fn is_initialized(&self) -> bool {
-        self.account_type == GovernanceAccountType::ProposalInstructionV2
+        self.account_type == GovernanceAccountType::ProposalTransactionV2
     }
 }
 
-impl ProposalInstructionV2 {
+impl ProposalTransactionV2 {
     /// Serializes account into the target buffer
     pub fn serialize<W: Write>(self, writer: &mut W) -> Result<(), ProgramError> {
-        if self.account_type == GovernanceAccountType::ProposalInstructionV2 {
+        if self.account_type == GovernanceAccountType::ProposalTransactionV2 {
             BorshSerialize::serialize(&self, writer)?
         } else if self.account_type == GovernanceAccountType::ProposalInstructionV1 {
+            if self.instructions.len() != 1 {
+                panic!("Multiple instructions are not supported by ProposalInstructionV1")
+            };
+
             // V1 account can't be resized and we have to translate it back to the original format
-            let proposal_instruction_data_v1 = ProposalInstructionV1 {
+            let proposal_transaction_data_v1 = ProposalInstructionV1 {
                 account_type: self.account_type,
                 proposal: self.proposal,
-                instruction_index: self.instruction_index,
+                instruction_index: self.transaction_index,
                 hold_up_time: self.hold_up_time,
-                instruction: self.instruction,
+                instruction: self.instructions[0].clone(),
                 executed_at: self.executed_at,
                 execution_status: self.execution_status,
             };
 
-            BorshSerialize::serialize(&proposal_instruction_data_v1, writer)?;
+            BorshSerialize::serialize(&proposal_transaction_data_v1, writer)?;
         }
 
         Ok(())
     }
 }
 
-/// Returns ProposalInstruction PDA seeds
-pub fn get_proposal_instruction_address_seeds<'a>(
+/// Returns ProposalTransaction PDA seeds
+pub fn get_proposal_transaction_address_seeds<'a>(
     proposal: &'a Pubkey,
     option_index: &'a [u8; 2],               // u16 le bytes
     instruction_index_le_bytes: &'a [u8; 2], // u16 le bytes
@@ -163,15 +177,15 @@ pub fn get_proposal_instruction_address_seeds<'a>(
     ]
 }
 
-/// Returns ProposalInstruction PDA address
-pub fn get_proposal_instruction_address<'a>(
+/// Returns ProposalTransaction PDA address
+pub fn get_proposal_transaction_address<'a>(
     program_id: &Pubkey,
     proposal: &'a Pubkey,
     option_index_le_bytes: &'a [u8; 2],      // u16 le bytes
     instruction_index_le_bytes: &'a [u8; 2], // u16 le bytes
 ) -> Pubkey {
     Pubkey::find_program_address(
-        &get_proposal_instruction_address_seeds(
+        &get_proposal_transaction_address_seeds(
             proposal,
             option_index_le_bytes,
             instruction_index_le_bytes,
@@ -181,48 +195,48 @@ pub fn get_proposal_instruction_address<'a>(
     .0
 }
 
-/// Deserializes ProposalInstruction account and checks owner program
-pub fn get_proposal_instruction_data(
+/// Deserializes ProposalTransaction account and checks owner program
+pub fn get_proposal_transaction_data(
     program_id: &Pubkey,
-    proposal_instruction_info: &AccountInfo,
-) -> Result<ProposalInstructionV2, ProgramError> {
+    proposal_transaction_info: &AccountInfo,
+) -> Result<ProposalTransactionV2, ProgramError> {
     let account_type: GovernanceAccountType =
-        try_from_slice_unchecked(&proposal_instruction_info.data.borrow())?;
+        try_from_slice_unchecked(&proposal_transaction_info.data.borrow())?;
 
     // If the account is V1 version then translate to V2
     if account_type == GovernanceAccountType::ProposalInstructionV1 {
-        let proposal_instruction_data_v1 =
-            get_account_data::<ProposalInstructionV1>(program_id, proposal_instruction_info)?;
+        let proposal_transaction_data_v1 =
+            get_account_data::<ProposalInstructionV1>(program_id, proposal_transaction_info)?;
 
-        return Ok(ProposalInstructionV2 {
+        return Ok(ProposalTransactionV2 {
             account_type,
-            proposal: proposal_instruction_data_v1.proposal,
+            proposal: proposal_transaction_data_v1.proposal,
             option_index: 0, // V1 has a single implied option at index 0
-            instruction_index: proposal_instruction_data_v1.instruction_index,
-            hold_up_time: proposal_instruction_data_v1.hold_up_time,
-            instruction: proposal_instruction_data_v1.instruction,
-            executed_at: proposal_instruction_data_v1.executed_at,
-            execution_status: proposal_instruction_data_v1.execution_status,
+            transaction_index: proposal_transaction_data_v1.instruction_index,
+            hold_up_time: proposal_transaction_data_v1.hold_up_time,
+            instructions: vec![proposal_transaction_data_v1.instruction],
+            executed_at: proposal_transaction_data_v1.executed_at,
+            execution_status: proposal_transaction_data_v1.execution_status,
         });
     }
 
-    get_account_data::<ProposalInstructionV2>(program_id, proposal_instruction_info)
+    get_account_data::<ProposalTransactionV2>(program_id, proposal_transaction_info)
 }
 
-///  Deserializes and returns ProposalInstruction account and checks it belongs to the given Proposal
-pub fn get_proposal_instruction_data_for_proposal(
+///  Deserializes and returns ProposalTransaction account and checks it belongs to the given Proposal
+pub fn get_proposal_transaction_data_for_proposal(
     program_id: &Pubkey,
-    proposal_instruction_info: &AccountInfo,
+    proposal_transaction_info: &AccountInfo,
     proposal: &Pubkey,
-) -> Result<ProposalInstructionV2, ProgramError> {
-    let proposal_instruction_data =
-        get_proposal_instruction_data(program_id, proposal_instruction_info)?;
+) -> Result<ProposalTransactionV2, ProgramError> {
+    let proposal_transaction_data =
+        get_proposal_transaction_data(program_id, proposal_transaction_info)?;
 
-    if proposal_instruction_data.proposal != *proposal {
-        return Err(GovernanceError::InvalidProposalForProposalInstruction.into());
+    if proposal_transaction_data.proposal != *proposal {
+        return Err(GovernanceError::InvalidProposalForProposalTransaction.into());
     }
 
-    Ok(proposal_instruction_data)
+    Ok(proposal_transaction_data)
 }
 
 #[cfg(test)]
@@ -242,27 +256,27 @@ mod test {
         }
     }
 
-    fn create_test_instruction_data() -> InstructionData {
-        InstructionData {
+    fn create_test_instruction_data() -> Vec<InstructionData> {
+        vec![InstructionData {
             program_id: Pubkey::new_unique(),
             accounts: vec![
                 create_test_account_meta_data(),
                 create_test_account_meta_data(),
             ],
             data: vec![1, 2, 3],
-        }
+        }]
     }
 
-    fn create_test_proposal_instruction() -> ProposalInstructionV2 {
-        ProposalInstructionV2 {
-            account_type: GovernanceAccountType::ProposalInstructionV2,
+    fn create_test_proposal_transaction() -> ProposalTransactionV2 {
+        ProposalTransactionV2 {
+            account_type: GovernanceAccountType::ProposalTransactionV2,
             proposal: Pubkey::new_unique(),
             option_index: 0,
-            instruction_index: 1,
+            transaction_index: 1,
             hold_up_time: 10,
-            instruction: create_test_instruction_data(),
+            instructions: create_test_instruction_data(),
             executed_at: Some(100),
-            execution_status: InstructionExecutionStatus::Success,
+            execution_status: TransactionExecutionStatus::Success,
         }
     }
 
@@ -275,26 +289,26 @@ mod test {
     }
 
     #[test]
-    fn test_proposal_instruction_max_size() {
+    fn test_proposal_transaction_max_size() {
         // Arrange
-        let proposal_instruction = create_test_proposal_instruction();
-        let size = proposal_instruction.try_to_vec().unwrap().len();
+        let proposal_transaction = create_test_proposal_transaction();
+        let size = proposal_transaction.try_to_vec().unwrap().len();
 
         // Act, Assert
-        assert_eq!(proposal_instruction.get_max_size(), Some(size));
+        assert_eq!(proposal_transaction.get_max_size(), Some(size));
     }
 
     #[test]
-    fn test_empty_proposal_instruction_max_size() {
+    fn test_empty_proposal_transaction_max_size() {
         // Arrange
-        let mut proposal_instruction = create_test_proposal_instruction();
-        proposal_instruction.instruction.data = vec![];
-        proposal_instruction.instruction.accounts = vec![];
+        let mut proposal_transaction = create_test_proposal_transaction();
+        proposal_transaction.instructions[0].data = vec![];
+        proposal_transaction.instructions[0].accounts = vec![];
 
-        let size = proposal_instruction.try_to_vec().unwrap().len();
+        let size = proposal_transaction.try_to_vec().unwrap().len();
 
         // Act, Assert
-        assert_eq!(proposal_instruction.get_max_size(), Some(size));
+        assert_eq!(proposal_transaction.get_max_size(), Some(size));
     }
 
     #[test]
@@ -331,21 +345,21 @@ mod test {
     }
 
     #[test]
-    fn test_proposal_instruction_v1_to_v2_serialisation_roundtrip() {
+    fn test_proposal_transaction_v1_to_v2_serialization_roundtrip() {
         // Arrange
 
-        let proposal_instruction_v1_source = ProposalInstructionV1 {
+        let proposal_transaction_v1_source = ProposalInstructionV1 {
             account_type: GovernanceAccountType::ProposalInstructionV1,
             proposal: Pubkey::new_unique(),
             instruction_index: 1,
             hold_up_time: 120,
-            instruction: create_test_instruction_data(),
+            instruction: create_test_instruction_data()[0].clone(),
             executed_at: Some(155),
-            execution_status: InstructionExecutionStatus::Success,
+            execution_status: TransactionExecutionStatus::Success,
         };
 
         let mut account_data = vec![];
-        proposal_instruction_v1_source
+        proposal_transaction_v1_source
             .serialize(&mut account_data)
             .unwrap();
 
@@ -367,17 +381,20 @@ mod test {
 
         // Act
 
-        let proposal_instruction_v2 =
-            get_proposal_instruction_data(&program_id, &account_info).unwrap();
+        let proposal_transaction_v2 =
+            get_proposal_transaction_data(&program_id, &account_info).unwrap();
 
-        proposal_instruction_v2
+        proposal_transaction_v2
             .serialize(&mut &mut **account_info.data.borrow_mut())
             .unwrap();
 
         // Assert
-        let vote_record_v1_target =
+        let proposal_transaction_v1_target =
             get_account_data::<ProposalInstructionV1>(&program_id, &account_info).unwrap();
 
-        assert_eq!(proposal_instruction_v1_source, vote_record_v1_target)
+        assert_eq!(
+            proposal_transaction_v1_source,
+            proposal_transaction_v1_target
+        )
     }
 }

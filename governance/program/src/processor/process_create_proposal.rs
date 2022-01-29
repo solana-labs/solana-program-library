@@ -111,9 +111,9 @@ pub fn process_create_proposal(
             label: o.to_string(),
             vote_weight: 0,
             vote_result: OptionVoteResult::None,
-            instructions_executed_count: 0,
-            instructions_count: 0,
-            instructions_next_index: 0,
+            transactions_executed_count: 0,
+            transactions_count: 0,
+            transactions_next_index: 0,
         })
         .collect();
 

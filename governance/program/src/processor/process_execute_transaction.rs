@@ -11,20 +11,20 @@ use solana_program::{
 };
 
 use crate::state::{
-    enums::{InstructionExecutionStatus, ProposalState},
+    enums::{ProposalState, TransactionExecutionStatus},
     governance::get_governance_data,
     native_treasury::get_native_treasury_address_seeds,
     proposal::{get_proposal_data_for_governance, OptionVoteResult},
-    proposal_instruction::get_proposal_instruction_data_for_proposal,
+    proposal_transaction::get_proposal_transaction_data_for_proposal,
 };
 
-/// Processes ExecuteInstruction instruction
-pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+/// Processes ExecuteTransaction instruction
+pub fn process_execute_transaction(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
     let governance_info = next_account_info(account_info_iter)?; // 0
     let proposal_info = next_account_info(account_info_iter)?; // 1
-    let proposal_instruction_info = next_account_info(account_info_iter)?; // 2
+    let proposal_transaction_info = next_account_info(account_info_iter)?; // 2
 
     let clock_info = next_account_info(account_info_iter)?; // 3
     let clock = Clock::from_account_info(clock_info)?;
@@ -34,18 +34,25 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
     let mut proposal_data =
         get_proposal_data_for_governance(program_id, proposal_info, governance_info.key)?;
 
-    let mut proposal_instruction_data = get_proposal_instruction_data_for_proposal(
+    let mut proposal_transaction_data = get_proposal_transaction_data_for_proposal(
         program_id,
-        proposal_instruction_info,
+        proposal_transaction_info,
         proposal_info.key,
     )?;
 
     proposal_data
-        .assert_can_execute_instruction(&proposal_instruction_data, clock.unix_timestamp)?;
+        .assert_can_execute_transaction(&proposal_transaction_data, clock.unix_timestamp)?;
 
     // Execute instruction with Governance PDA as signer
-    let instruction = Instruction::from(&proposal_instruction_data.instruction);
+    let instructions = proposal_transaction_data
+        .instructions
+        .iter()
+        .map(Instruction::from);
 
+    // In the current implementation accounts for all instructions are passed to each instruction invocation
+    // This is an overhead but shouldn't be a showstopper because if we can invoke the parent instruction with that many accounts
+    // then we should also be able to invoke all the nested ones
+    // TODO: Optimize the invocation to split the provided accounts for each individual instruction
     let instruction_account_infos = account_info_iter.as_slice();
 
     let mut signers_seeds: Vec<&[&[u8]]> = vec![];
@@ -72,7 +79,9 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
         signers_seeds.push(&treasury_seeds[..]);
     }
 
-    invoke_signed(&instruction, instruction_account_infos, &signers_seeds[..])?;
+    for instruction in instructions {
+        invoke_signed(&instruction, instruction_account_infos, &signers_seeds[..])?;
+    }
 
     // Update proposal and instruction accounts
     if proposal_data.state == ProposalState::Succeeded {
@@ -80,8 +89,8 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
         proposal_data.state = ProposalState::Executing;
     }
 
-    let mut option = &mut proposal_data.options[proposal_instruction_data.option_index as usize];
-    option.instructions_executed_count = option.instructions_executed_count.checked_add(1).unwrap();
+    let mut option = &mut proposal_data.options[proposal_transaction_data.option_index as usize];
+    option.transactions_executed_count = option.transactions_executed_count.checked_add(1).unwrap();
 
     // Checking for Executing and ExecutingWithErrors states because instruction can still be executed after being flagged with error
     // The check for instructions_executed_count ensures Proposal can't be transitioned to Completed state from ExecutingWithErrors
@@ -91,7 +100,7 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
             .options
             .iter()
             .filter(|o| o.vote_result == OptionVoteResult::Succeeded)
-            .all(|o| o.instructions_executed_count == o.instructions_count)
+            .all(|o| o.transactions_executed_count == o.transactions_count)
     {
         proposal_data.closed_at = Some(clock.unix_timestamp);
         proposal_data.state = ProposalState::Completed;
@@ -99,9 +108,9 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
 
     proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
 
-    proposal_instruction_data.executed_at = Some(clock.unix_timestamp);
-    proposal_instruction_data.execution_status = InstructionExecutionStatus::Success;
-    proposal_instruction_data.serialize(&mut *proposal_instruction_info.data.borrow_mut())?;
+    proposal_transaction_data.executed_at = Some(clock.unix_timestamp);
+    proposal_transaction_data.execution_status = TransactionExecutionStatus::Success;
+    proposal_transaction_data.serialize(&mut *proposal_transaction_info.data.borrow_mut())?;
 
     Ok(())
 }

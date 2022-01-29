@@ -2,10 +2,10 @@
 
 use crate::state::{
     enums::{
-        GovernanceAccountType, InstructionExecutionFlags, InstructionExecutionStatus,
-        MintMaxVoteWeightSource, ProposalState, VoteThresholdPercentage,
+        GovernanceAccountType, InstructionExecutionFlags, MintMaxVoteWeightSource, ProposalState,
+        TransactionExecutionStatus, VoteThresholdPercentage,
     },
-    proposal_instruction::InstructionData,
+    proposal_transaction::InstructionData,
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
@@ -210,7 +210,7 @@ pub struct ProposalInstructionV1 {
     pub executed_at: Option<UnixTimestamp>,
 
     /// Instruction execution status
-    pub execution_status: InstructionExecutionStatus,
+    pub execution_status: TransactionExecutionStatus,
 }
 
 impl IsInitialized for ProposalInstructionV1 {

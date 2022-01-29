@@ -12,13 +12,13 @@ mod process_create_realm;
 mod process_create_token_governance;
 mod process_create_token_owner_record;
 mod process_deposit_governing_tokens;
-mod process_execute_instruction;
+mod process_execute_transaction;
 mod process_finalize_vote;
-mod process_flag_instruction_error;
-mod process_insert_instruction;
+mod process_flag_transaction_error;
+mod process_insert_transaction;
 mod process_relinquish_vote;
-mod process_remove_instruction;
 mod process_remove_signatory;
+mod process_remove_transaction;
 mod process_set_governance_config;
 mod process_set_governance_delegate;
 mod process_set_realm_authority;
@@ -41,13 +41,13 @@ use process_create_realm::*;
 use process_create_token_governance::*;
 use process_create_token_owner_record::*;
 use process_deposit_governing_tokens::*;
-use process_execute_instruction::*;
+use process_execute_transaction::*;
 use process_finalize_vote::*;
-use process_flag_instruction_error::*;
-use process_insert_instruction::*;
+use process_flag_transaction_error::*;
+use process_insert_transaction::*;
 use process_relinquish_vote::*;
-use process_remove_instruction::*;
 use process_remove_signatory::*;
+use process_remove_transaction::*;
 use process_set_governance_config::*;
 use process_set_governance_delegate::*;
 use process_set_realm_authority::*;
@@ -72,11 +72,11 @@ pub fn process_instruction(
     let instruction: GovernanceInstruction =
         try_from_slice_unchecked(input).map_err(|_| ProgramError::InvalidInstructionData)?;
 
-    if let GovernanceInstruction::InsertInstruction {
+    if let GovernanceInstruction::InsertTransaction {
         option_index,
         index,
         hold_up_time,
-        instruction: _,
+        instructions: _,
     } = instruction
     {
         // Do not dump instruction data into logs
@@ -170,33 +170,33 @@ pub fn process_instruction(
 
         GovernanceInstruction::CancelProposal {} => process_cancel_proposal(program_id, accounts),
 
-        GovernanceInstruction::InsertInstruction {
+        GovernanceInstruction::InsertTransaction {
             option_index,
             index,
             hold_up_time,
-            instruction,
-        } => process_insert_instruction(
+            instructions,
+        } => process_insert_transaction(
             program_id,
             accounts,
             option_index,
             index,
             hold_up_time,
-            instruction,
+            instructions,
         ),
 
-        GovernanceInstruction::RemoveInstruction {} => {
-            process_remove_instruction(program_id, accounts)
+        GovernanceInstruction::RemoveTransaction {} => {
+            process_remove_transaction(program_id, accounts)
         }
-        GovernanceInstruction::ExecuteInstruction {} => {
-            process_execute_instruction(program_id, accounts)
+        GovernanceInstruction::ExecuteTransaction {} => {
+            process_execute_transaction(program_id, accounts)
         }
 
         GovernanceInstruction::SetGovernanceConfig { config } => {
             process_set_governance_config(program_id, accounts, config)
         }
 
-        GovernanceInstruction::FlagInstructionError {} => {
-            process_flag_instruction_error(program_id, accounts)
+        GovernanceInstruction::FlagTransactionError {} => {
+            process_flag_transaction_error(program_id, accounts)
         }
         GovernanceInstruction::SetRealmAuthority { action } => {
             process_set_realm_authority(program_id, accounts, action)

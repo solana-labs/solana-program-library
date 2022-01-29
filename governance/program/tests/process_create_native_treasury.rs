@@ -81,8 +81,8 @@ async fn test_execute_transfer_from_native_treasury() {
     let wallet_cookie = governance_test.bench.with_wallet().await;
     let transfer_amount = 100;
 
-    let proposal_instruction_cookie = governance_test
-        .with_native_transfer_instruction(
+    let proposal_transaction_cookie = governance_test
+        .with_native_transfer_transaction(
             &account_governance_cookie,
             &mut proposal_cookie,
             &token_owner_record_cookie,
@@ -104,12 +104,12 @@ async fn test_execute_transfer_from_native_treasury() {
 
     // Advance timestamp past hold_up_time
     governance_test
-        .advance_clock_by_min_timespan(proposal_instruction_cookie.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(proposal_transaction_cookie.account.hold_up_time as u64)
         .await;
 
     // Act
     governance_test
-        .execute_instruction(&proposal_cookie, &proposal_instruction_cookie)
+        .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie)
         .await
         .unwrap();
 

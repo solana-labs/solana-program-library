@@ -51,9 +51,9 @@ pub enum GovernanceError {
     #[error("Invalid Realm for TokenOwnerRecord")]
     InvalidRealmForTokenOwnerRecord,
 
-    /// Invalid Proposal for ProposalInstruction
-    #[error("Invalid Proposal for ProposalInstruction")]
-    InvalidProposalForProposalInstruction,
+    /// Invalid Proposal for ProposalTransaction,
+    #[error("Invalid Proposal for ProposalTransaction,")]
+    InvalidProposalForProposalTransaction,
 
     /// Invalid Signatory account address
     #[error("Invalid Signatory account address")]
@@ -102,33 +102,33 @@ pub enum GovernanceError {
     /// Invalid Proposal state
     #[error("Invalid Proposal state")]
     InvalidProposalState,
-    /// Invalid State: Can't edit instructions
-    #[error("Invalid State: Can't edit instructions")]
-    InvalidStateCannotEditInstructions,
+    /// Invalid State: Can't edit transactions
+    #[error("Invalid State: Can't edit transactions")]
+    InvalidStateCannotEditTransactions,
 
-    /// Invalid State: Can't execute instruction
-    #[error("Invalid State: Can't execute instruction")]
-    InvalidStateCannotExecuteInstruction,
+    /// Invalid State: Can't execute transaction
+    #[error("Invalid State: Can't execute transaction")]
+    InvalidStateCannotExecuteTransaction,
 
-    /// Can't execute instruction within its hold up time
-    #[error("Can't execute instruction within its hold up time")]
-    CannotExecuteInstructionWithinHoldUpTime,
+    /// Can't execute transaction within its hold up time
+    #[error("Can't execute transaction within its hold up time")]
+    CannotExecuteTransactionWithinHoldUpTime,
 
-    /// Instruction already executed
-    #[error("Instruction already executed")]
-    InstructionAlreadyExecuted,
+    /// Transaction already executed
+    #[error("Transaction already executed")]
+    TransactionAlreadyExecuted,
 
-    /// Invalid Instruction index
-    #[error("Invalid Instruction index")]
-    InvalidInstructionIndex,
+    /// Invalid Transaction index
+    #[error("Invalid Transaction index")]
+    InvalidTransactionIndex,
 
-    /// Instruction hold up time is below the min specified by Governance
-    #[error("Instruction hold up time is below the min specified by Governance")]
-    InstructionHoldUpTimeBelowRequiredMin,
+    /// Transaction hold up time is below the min specified by Governance
+    #[error("Transaction hold up time is below the min specified by Governance")]
+    TransactionHoldUpTimeBelowRequiredMin,
 
-    /// Instruction at the given index for the Proposal already exists
-    #[error("Instruction at the given index for the Proposal already exists")]
-    InstructionAlreadyExists,
+    /// Transaction at the given index for the Proposal already exists
+    #[error("Transaction at the given index for the Proposal already exists")]
+    TransactionAlreadyExists,
 
     /// Invalid State: Can't sign off
     #[error("Invalid State: Can't sign off")]
@@ -262,9 +262,9 @@ pub enum GovernanceError {
     #[error("Governance PDA must sign")]
     GovernancePdaMustSign,
 
-    /// Instruction already flagged with error
-    #[error("Instruction already flagged with error")]
-    InstructionAlreadyFlaggedWithError,
+    /// Transaction already flagged with error
+    #[error("Transaction already flagged with error")]
+    TransactionAlreadyFlaggedWithError,
 
     /// Invalid Realm for Governance
     #[error("Invalid Realm for Governance")]

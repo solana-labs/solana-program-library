@@ -19,16 +19,16 @@ use spl_governance::{
         add_signatory, cancel_proposal, cast_vote, create_account_governance,
         create_mint_governance, create_native_treasury, create_program_governance, create_proposal,
         create_realm, create_token_governance, create_token_owner_record, deposit_governing_tokens,
-        execute_instruction, finalize_vote, flag_instruction_error, insert_instruction,
-        relinquish_vote, remove_instruction, remove_signatory, set_governance_config,
+        execute_transaction, finalize_vote, flag_transaction_error, insert_transaction,
+        relinquish_vote, remove_signatory, remove_transaction, set_governance_config,
         set_governance_delegate, set_realm_authority, set_realm_config, sign_off_proposal,
         upgrade_program_metadata, withdraw_governing_tokens,
     },
     processor::process_instruction,
     state::{
         enums::{
-            GovernanceAccountType, InstructionExecutionFlags, InstructionExecutionStatus,
-            MintMaxVoteWeightSource, ProposalState, VoteThresholdPercentage,
+            GovernanceAccountType, InstructionExecutionFlags, MintMaxVoteWeightSource,
+            ProposalState, TransactionExecutionStatus, VoteThresholdPercentage,
         },
         governance::{
             get_account_governance_address, get_mint_governance_address,
@@ -38,8 +38,8 @@ use spl_governance::{
         native_treasury::{get_native_treasury_address, NativeTreasury},
         program_metadata::{get_program_metadata_address, ProgramMetadata},
         proposal::{get_proposal_address, OptionVoteResult, ProposalOption, ProposalV2, VoteType},
-        proposal_instruction::{
-            get_proposal_instruction_address, InstructionData, ProposalInstructionV2,
+        proposal_transaction::{
+            get_proposal_transaction_address, InstructionData, ProposalTransactionV2,
         },
         realm::{
             get_governing_token_holding_address, get_realm_address, Realm, RealmConfig,
@@ -79,7 +79,7 @@ use self::{
     cookies::{
         GovernanceCookie, GovernedAccountCookie, GovernedMintCookie, GovernedProgramCookie,
         GovernedTokenCookie, MaxVoterWeightRecordCookie, NativeTreasuryCookie,
-        ProgramMetadataCookie, ProposalCookie, ProposalInstructionCookie, RealmCookie,
+        ProgramMetadataCookie, ProposalCookie, ProposalTransactionCookie, RealmCookie,
         TokenOwnerRecordCookie, VoteRecordCookie,
     },
 };
@@ -276,7 +276,7 @@ impl GovernanceProgramTest {
 
         let realm_authority = Keypair::new();
 
-        let create_realm_instruction = create_realm(
+        let create_realm_ix = create_realm(
             &self.program_id,
             &realm_authority.pubkey(),
             &community_token_mint_keypair.pubkey(),
@@ -295,7 +295,7 @@ impl GovernanceProgramTest {
         );
 
         self.bench
-            .process_transaction(&[create_realm_instruction], None)
+            .process_transaction(&[create_realm_ix], None)
             .await
             .unwrap();
 
@@ -372,7 +372,7 @@ impl GovernanceProgramTest {
         let community_mint_max_vote_weight_source = MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION;
         let min_community_tokens_to_create_governance = 10;
 
-        let create_realm_instruction = create_realm(
+        let create_realm_ix = create_realm(
             &self.program_id,
             &realm_authority.pubkey(),
             &realm_cookie.account.community_mint,
@@ -386,7 +386,7 @@ impl GovernanceProgramTest {
         );
 
         self.bench
-            .process_transaction(&[create_realm_instruction], None)
+            .process_transaction(&[create_realm_ix], None)
             .await
             .unwrap();
 
@@ -663,7 +663,7 @@ impl GovernanceProgramTest {
             )
             .await;
 
-        let deposit_governing_tokens_instruction = deposit_governing_tokens(
+        let deposit_governing_tokens_ix = deposit_governing_tokens(
             &self.program_id,
             realm_address,
             &token_source.pubkey(),
@@ -675,10 +675,7 @@ impl GovernanceProgramTest {
         );
 
         self.bench
-            .process_transaction(
-                &[deposit_governing_tokens_instruction],
-                Some(&[&token_owner]),
-            )
+            .process_transaction(&[deposit_governing_tokens_ix], Some(&[&token_owner]))
             .await?;
 
         let token_owner_record_address = get_token_owner_record_address(
@@ -757,7 +754,7 @@ impl GovernanceProgramTest {
             )
             .await;
 
-        let deposit_governing_tokens_instruction = deposit_governing_tokens(
+        let deposit_governing_tokens_ix = deposit_governing_tokens(
             &self.program_id,
             realm,
             &token_owner_record_cookie.token_source,
@@ -770,7 +767,7 @@ impl GovernanceProgramTest {
 
         self.bench
             .process_transaction(
-                &[deposit_governing_tokens_instruction],
+                &[deposit_governing_tokens_ix],
                 Some(&[&token_owner_record_cookie.token_owner]),
             )
             .await
@@ -835,7 +832,7 @@ impl GovernanceProgramTest {
         governing_token_mint: &Pubkey,
         new_governance_delegate: &Option<Pubkey>,
     ) {
-        let set_governance_delegate_instruction = set_governance_delegate(
+        let set_governance_delegate_ix = set_governance_delegate(
             &self.program_id,
             &signing_governance_authority.pubkey(),
             &realm_cookie.address,
@@ -846,7 +843,7 @@ impl GovernanceProgramTest {
 
         self.bench
             .process_transaction(
-                &[set_governance_delegate_instruction],
+                &[set_governance_delegate_ix],
                 Some(&[signing_governance_authority]),
             )
             .await
@@ -1066,7 +1063,7 @@ impl GovernanceProgramTest {
 
         governing_token_owner: &Keypair,
     ) -> Result<(), ProgramError> {
-        let deposit_governing_tokens_instruction = withdraw_governing_tokens(
+        let deposit_governing_tokens_ix = withdraw_governing_tokens(
             &self.program_id,
             &realm_cookie.address,
             &token_owner_record_cookie.token_source,
@@ -1076,7 +1073,7 @@ impl GovernanceProgramTest {
 
         self.bench
             .process_transaction(
-                &[deposit_governing_tokens_instruction],
+                &[deposit_governing_tokens_ix],
                 Some(&[governing_token_owner]),
             )
             .await
@@ -1164,7 +1161,7 @@ impl GovernanceProgramTest {
         GovernanceConfig {
             min_community_tokens_to_create_proposal: 5,
             min_council_tokens_to_create_proposal: 2,
-            min_instruction_hold_up_time: 10,
+            min_transaction_hold_up_time: 10,
             max_voting_time: 10,
             vote_threshold_percentage: VoteThresholdPercentage::YesVote(60),
             vote_weight_source: spl_governance::state::enums::VoteWeightSource::Deposit,
@@ -1227,7 +1224,7 @@ impl GovernanceProgramTest {
         governance_config: &GovernanceConfig,
         signers_override: Option<&[&Keypair]>,
     ) -> Result<GovernanceCookie, ProgramError> {
-        let mut create_account_governance_instruction = create_account_governance(
+        let mut create_account_governance_ix = create_account_governance(
             &self.program_id,
             &realm_cookie.address,
             &governed_account_cookie.address,
@@ -1251,11 +1248,11 @@ impl GovernanceProgramTest {
         let signers = signers_override.unwrap_or(default_signers);
 
         if signers.len() == 0 {
-            create_account_governance_instruction.accounts[7].is_signer = false;
+            create_account_governance_ix.accounts[7].is_signer = false;
         }
 
         self.bench
-            .process_transaction(&[create_account_governance_instruction], Some(signers))
+            .process_transaction(&[create_account_governance_ix], Some(signers))
             .await?;
 
         let account_governance_address = get_account_governance_address(
@@ -1313,7 +1310,7 @@ impl GovernanceProgramTest {
             .rent
             .minimum_balance(UpgradeableLoaderState::program_len().unwrap());
 
-        let deploy_instructions = bpf_loader_upgradeable::deploy_with_max_program_len(
+        let deploy_ixs = bpf_loader_upgradeable::deploy_with_max_program_len(
             &self.bench.payer.pubkey(),
             &program_keypair.pubkey(),
             &program_buffer_keypair.pubkey(),
@@ -1323,7 +1320,7 @@ impl GovernanceProgramTest {
         )
         .unwrap();
 
-        instructions.extend_from_slice(&deploy_instructions);
+        instructions.extend_from_slice(&deploy_ixs);
 
         self.bench
             .process_transaction(
@@ -1380,7 +1377,7 @@ impl GovernanceProgramTest {
                 None
             };
 
-        let mut create_program_governance_instruction = create_program_governance(
+        let mut create_program_governance_ix = create_program_governance(
             &self.program_id,
             &realm_cookie.address,
             &governed_program_cookie.address,
@@ -1393,7 +1390,7 @@ impl GovernanceProgramTest {
             governed_program_cookie.transfer_upgrade_authority,
         );
 
-        instruction_override(&mut create_program_governance_instruction);
+        instruction_override(&mut create_program_governance_ix);
 
         let default_signers = &[
             &governed_program_cookie.upgrade_authority,
@@ -1402,7 +1399,7 @@ impl GovernanceProgramTest {
         let signers = signers_override.unwrap_or(default_signers);
 
         self.bench
-            .process_transaction(&[create_program_governance_instruction], Some(signers))
+            .process_transaction(&[create_program_governance_ix], Some(signers))
             .await?;
 
         let account = Governance {
@@ -1502,7 +1499,7 @@ impl GovernanceProgramTest {
                 None
             };
 
-        let mut create_mint_governance_instruction = create_mint_governance(
+        let mut create_mint_governance_ix = create_mint_governance(
             &self.program_id,
             &realm_cookie.address,
             &governed_mint_cookie.address,
@@ -1515,7 +1512,7 @@ impl GovernanceProgramTest {
             governed_mint_cookie.transfer_mint_authority,
         );
 
-        instruction_override(&mut create_mint_governance_instruction);
+        instruction_override(&mut create_mint_governance_ix);
 
         let default_signers = &[
             &governed_mint_cookie.mint_authority,
@@ -1524,7 +1521,7 @@ impl GovernanceProgramTest {
         let signers = signers_override.unwrap_or(default_signers);
 
         self.bench
-            .process_transaction(&[create_mint_governance_instruction], Some(signers))
+            .process_transaction(&[create_mint_governance_ix], Some(signers))
             .await?;
 
         let account = Governance {
@@ -1584,7 +1581,7 @@ impl GovernanceProgramTest {
                 None
             };
 
-        let mut create_token_governance_instruction = create_token_governance(
+        let mut create_token_governance_ix = create_token_governance(
             &self.program_id,
             &realm_cookie.address,
             &governed_token_cookie.address,
@@ -1597,7 +1594,7 @@ impl GovernanceProgramTest {
             governed_token_cookie.transfer_token_owner,
         );
 
-        instruction_override(&mut create_token_governance_instruction);
+        instruction_override(&mut create_token_governance_ix);
 
         let default_signers = &[
             &governed_token_cookie.token_owner,
@@ -1606,7 +1603,7 @@ impl GovernanceProgramTest {
         let signers = signers_override.unwrap_or(default_signers);
 
         self.bench
-            .process_transaction(&[create_token_governance_instruction], Some(signers))
+            .process_transaction(&[create_token_governance_ix], Some(signers))
             .await?;
 
         let account = Governance {
@@ -1731,7 +1728,7 @@ impl GovernanceProgramTest {
                 None
             };
 
-        let mut create_proposal_instruction = create_proposal(
+        let mut create_proposal_transaction = create_proposal(
             &self.program_id,
             &governance_cookie.address,
             &token_owner_record_cookie.address,
@@ -1748,11 +1745,11 @@ impl GovernanceProgramTest {
             proposal_index,
         );
 
-        instruction_override(&mut create_proposal_instruction);
+        instruction_override(&mut create_proposal_transaction);
 
         self.bench
             .process_transaction(
-                &[create_proposal_instruction],
+                &[create_proposal_transaction],
                 Some(&[governance_authority]),
             )
             .await?;
@@ -1765,9 +1762,9 @@ impl GovernanceProgramTest {
                 label: o.to_string(),
                 vote_weight: 0,
                 vote_result: OptionVoteResult::None,
-                instructions_executed_count: 0,
-                instructions_count: 0,
-                instructions_next_index: 0,
+                transactions_executed_count: 0,
+                transactions_count: 0,
+                transactions_next_index: 0,
             })
             .collect();
 
@@ -1825,7 +1822,7 @@ impl GovernanceProgramTest {
     ) -> Result<SignatoryRecordCookie, ProgramError> {
         let signatory = Keypair::new();
 
-        let add_signatory_instruction = add_signatory(
+        let add_signatory_ix = add_signatory(
             &self.program_id,
             &proposal_cookie.address,
             &token_owner_record_cookie.address,
@@ -1836,7 +1833,7 @@ impl GovernanceProgramTest {
 
         self.bench
             .process_transaction(
-                &[add_signatory_instruction],
+                &[add_signatory_ix],
                 Some(&[&token_owner_record_cookie.token_owner]),
             )
             .await?;
@@ -1870,7 +1867,7 @@ impl GovernanceProgramTest {
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         signatory_record_cookie: &SignatoryRecordCookie,
     ) -> Result<(), ProgramError> {
-        let remove_signatory_instruction = remove_signatory(
+        let remove_signatory_ix = remove_signatory(
             &self.program_id,
             &proposal_cookie.address,
             &token_owner_record_cookie.address,
@@ -1881,7 +1878,7 @@ impl GovernanceProgramTest {
 
         self.bench
             .process_transaction(
-                &[remove_signatory_instruction],
+                &[remove_signatory_ix],
                 Some(&[&token_owner_record_cookie.token_owner]),
             )
             .await?;
@@ -1939,7 +1936,7 @@ impl GovernanceProgramTest {
     ) -> Result<(), ProgramError> {
         let max_voter_weight_record = max_voter_weight_record_cookie.map(|rc| rc.address);
 
-        let finalize_vote_instruction = finalize_vote(
+        let finalize_vote_ix = finalize_vote(
             &self.program_id,
             &realm_cookie.address,
             &proposal_cookie.account.governance,
@@ -1950,7 +1947,7 @@ impl GovernanceProgramTest {
         );
 
         self.bench
-            .process_transaction(&[finalize_vote_instruction], None)
+            .process_transaction(&[finalize_vote_ix], None)
             .await?;
 
         Ok(())
@@ -1977,7 +1974,7 @@ impl GovernanceProgramTest {
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         instruction_override: F,
     ) -> Result<(), ProgramError> {
-        let mut relinquish_vote_instruction = relinquish_vote(
+        let mut relinquish_vote_ix = relinquish_vote(
             &self.program_id,
             &proposal_cookie.account.governance,
             &proposal_cookie.address,
@@ -1987,11 +1984,11 @@ impl GovernanceProgramTest {
             Some(self.bench.payer.pubkey()),
         );
 
-        instruction_override(&mut relinquish_vote_instruction);
+        instruction_override(&mut relinquish_vote_ix);
 
         self.bench
             .process_transaction(
-                &[relinquish_vote_instruction],
+                &[relinquish_vote_ix],
                 Some(&[&token_owner_record_cookie.token_owner]),
             )
             .await?;
@@ -2005,7 +2002,7 @@ impl GovernanceProgramTest {
         proposal_cookie: &ProposalCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
     ) -> Result<(), ProgramError> {
-        let cancel_proposal_instruction = cancel_proposal(
+        let cancel_proposal_transaction = cancel_proposal(
             &self.program_id,
             &proposal_cookie.address,
             &token_owner_record_cookie.address,
@@ -2015,7 +2012,7 @@ impl GovernanceProgramTest {
 
         self.bench
             .process_transaction(
-                &[cancel_proposal_instruction],
+                &[cancel_proposal_transaction],
                 Some(&[&token_owner_record_cookie.token_owner]),
             )
             .await?;
@@ -2064,7 +2061,7 @@ impl GovernanceProgramTest {
             None
         };
 
-        let vote_instruction = cast_vote(
+        let cast_vote_ix = cast_vote(
             &self.program_id,
             &token_owner_record_cookie.account.realm,
             &proposal_cookie.account.governance,
@@ -2081,7 +2078,7 @@ impl GovernanceProgramTest {
 
         self.bench
             .process_transaction(
-                &[vote_instruction],
+                &[cast_vote_ix],
                 Some(&[&token_owner_record_cookie.token_owner]),
             )
             .await?;
@@ -2112,19 +2109,19 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn with_set_governance_config_instruction(
+    pub async fn with_set_governance_config_transaction(
         &mut self,
         proposal_cookie: &mut ProposalCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         governance_config: &GovernanceConfig,
-    ) -> Result<ProposalInstructionCookie, ProgramError> {
+    ) -> Result<ProposalTransactionCookie, ProgramError> {
         let mut set_governance_config_ix = set_governance_config(
             &self.program_id,
             &proposal_cookie.account.governance,
             governance_config.clone(),
         );
 
-        self.with_instruction(
+        self.with_proposal_transaction(
             proposal_cookie,
             token_owner_record_cookie,
             0,
@@ -2135,14 +2132,14 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn with_mint_tokens_instruction(
+    pub async fn with_mint_tokens_transaction(
         &mut self,
         governed_mint_cookie: &GovernedMintCookie,
         proposal_cookie: &mut ProposalCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         option_index: u16,
         index: Option<u16>,
-    ) -> Result<ProposalInstructionCookie, ProgramError> {
+    ) -> Result<ProposalTransactionCookie, ProgramError> {
         let token_account_keypair = Keypair::new();
         self.bench
             .create_empty_token_account(
@@ -2162,7 +2159,7 @@ impl GovernanceProgramTest {
         )
         .unwrap();
 
-        self.with_instruction(
+        self.with_proposal_transaction(
             proposal_cookie,
             token_owner_record_cookie,
             option_index,
@@ -2173,13 +2170,13 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn with_transfer_tokens_instruction(
+    pub async fn with_transfer_tokens_transaction(
         &mut self,
         governed_token_cookie: &GovernedTokenCookie,
         proposal_cookie: &mut ProposalCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         index: Option<u16>,
-    ) -> Result<ProposalInstructionCookie, ProgramError> {
+    ) -> Result<ProposalTransactionCookie, ProgramError> {
         let token_account_keypair = Keypair::new();
         self.bench
             .create_empty_token_account(
@@ -2199,7 +2196,7 @@ impl GovernanceProgramTest {
         )
         .unwrap();
 
-        self.with_instruction(
+        self.with_proposal_transaction(
             proposal_cookie,
             token_owner_record_cookie,
             0,
@@ -2210,21 +2207,21 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn with_native_transfer_instruction(
+    pub async fn with_native_transfer_transaction(
         &mut self,
         governance_cookie: &GovernanceCookie,
         proposal_cookie: &mut ProposalCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         to_wallet_cookie: &WalletCookie,
         lamports: u64,
-    ) -> Result<ProposalInstructionCookie, ProgramError> {
+    ) -> Result<ProposalTransactionCookie, ProgramError> {
         let treasury_address =
             get_native_treasury_address(&self.program_id, &governance_cookie.address);
 
         let mut transfer_ix =
             system_instruction::transfer(&treasury_address, &to_wallet_cookie.address, lamports);
 
-        self.with_instruction(
+        self.with_proposal_transaction(
             proposal_cookie,
             token_owner_record_cookie,
             0,
@@ -2235,12 +2232,12 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn with_upgrade_program_instruction(
+    pub async fn with_upgrade_program_transaction(
         &mut self,
         governance_cookie: &GovernanceCookie,
         proposal_cookie: &mut ProposalCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
-    ) -> Result<ProposalInstructionCookie, ProgramError> {
+    ) -> Result<ProposalTransactionCookie, ProgramError> {
         let program_buffer_keypair = Keypair::new();
         let buffer_authority_keypair = Keypair::new();
 
@@ -2287,31 +2284,31 @@ impl GovernanceProgramTest {
             .await
             .unwrap();
 
-        let mut upgrade_instruction = bpf_loader_upgradeable::upgrade(
+        let mut upgrade_ix = bpf_loader_upgradeable::upgrade(
             &governance_cookie.account.governed_account,
             &program_buffer_keypair.pubkey(),
             &governance_cookie.address,
             &governance_cookie.address,
         );
 
-        self.with_instruction(
+        self.with_proposal_transaction(
             proposal_cookie,
             token_owner_record_cookie,
             0,
             None,
-            &mut upgrade_instruction,
+            &mut upgrade_ix,
         )
         .await
     }
 
     #[allow(dead_code)]
-    pub async fn with_nop_instruction(
+    pub async fn with_nop_transaction(
         &mut self,
         proposal_cookie: &mut ProposalCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         option_index: u16,
         index: Option<u16>,
-    ) -> Result<ProposalInstructionCookie, ProgramError> {
+    ) -> Result<ProposalTransactionCookie, ProgramError> {
         // Create NOP instruction as a placeholder
         // Note: The actual instruction is irrelevant because we do not execute it in tests
         let mut instruction = Instruction {
@@ -2320,7 +2317,7 @@ impl GovernanceProgramTest {
             data: vec![],
         };
 
-        self.with_instruction(
+        self.with_proposal_transaction(
             proposal_cookie,
             token_owner_record_cookie,
             option_index,
@@ -2331,24 +2328,24 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn with_instruction(
+    pub async fn with_proposal_transaction(
         &mut self,
         proposal_cookie: &mut ProposalCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         option_index: u16,
         index: Option<u16>,
         instruction: &mut Instruction,
-    ) -> Result<ProposalInstructionCookie, ProgramError> {
+    ) -> Result<ProposalTransactionCookie, ProgramError> {
         let hold_up_time = 15;
 
         let instruction_data: InstructionData = instruction.clone().into();
         let mut yes_option = &mut proposal_cookie.account.options[0];
 
-        let instruction_index = index.unwrap_or(yes_option.instructions_next_index);
+        let transaction_index = index.unwrap_or(yes_option.transactions_next_index);
 
-        yes_option.instructions_next_index += 1;
+        yes_option.transactions_next_index += 1;
 
-        let insert_instruction_instruction = insert_instruction(
+        let insert_transaction_ix = insert_transaction(
             &self.program_id,
             &proposal_cookie.account.governance,
             &proposal_cookie.address,
@@ -2356,33 +2353,33 @@ impl GovernanceProgramTest {
             &token_owner_record_cookie.token_owner.pubkey(),
             &self.bench.payer.pubkey(),
             option_index,
-            instruction_index,
+            transaction_index,
             hold_up_time,
-            instruction_data.clone(),
+            vec![instruction_data.clone()],
         );
 
         self.bench
             .process_transaction(
-                &[insert_instruction_instruction],
+                &[insert_transaction_ix],
                 Some(&[&token_owner_record_cookie.token_owner]),
             )
             .await?;
 
-        let proposal_instruction_address = get_proposal_instruction_address(
+        let proposal_transaction_address = get_proposal_transaction_address(
             &self.program_id,
             &proposal_cookie.address,
             &option_index.to_le_bytes(),
-            &instruction_index.to_le_bytes(),
+            &transaction_index.to_le_bytes(),
         );
 
-        let proposal_instruction_data = ProposalInstructionV2 {
-            account_type: GovernanceAccountType::ProposalInstructionV2,
+        let proposal_transaction_data = ProposalTransactionV2 {
+            account_type: GovernanceAccountType::ProposalTransactionV2,
             option_index,
-            instruction_index,
+            transaction_index,
             hold_up_time,
-            instruction: instruction_data,
+            instructions: vec![instruction_data],
             executed_at: None,
-            execution_status: InstructionExecutionStatus::None,
+            execution_status: TransactionExecutionStatus::None,
             proposal: proposal_cookie.address,
         };
 
@@ -2396,34 +2393,34 @@ impl GovernanceProgramTest {
             })
             .collect();
 
-        let proposal_instruction_cookie = ProposalInstructionCookie {
-            address: proposal_instruction_address,
-            account: proposal_instruction_data,
+        let proposal_transaction_cookie = ProposalTransactionCookie {
+            address: proposal_transaction_address,
+            account: proposal_transaction_data,
             instruction: instruction.clone(),
         };
 
-        Ok(proposal_instruction_cookie)
+        Ok(proposal_transaction_cookie)
     }
 
     #[allow(dead_code)]
-    pub async fn remove_instruction(
+    pub async fn remove_transaction(
         &mut self,
         proposal_cookie: &mut ProposalCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
-        proposal_instruction_cookie: &ProposalInstructionCookie,
+        proposal_transaction_cookie: &ProposalTransactionCookie,
     ) -> Result<(), ProgramError> {
-        let remove_instruction_instruction = remove_instruction(
+        let remove_transaction_ix = remove_transaction(
             &self.program_id,
             &proposal_cookie.address,
             &token_owner_record_cookie.address,
             &token_owner_record_cookie.token_owner.pubkey(),
-            &proposal_instruction_cookie.address,
+            &proposal_transaction_cookie.address,
             &self.bench.payer.pubkey(),
         );
 
         self.bench
             .process_transaction(
-                &[remove_instruction_instruction],
+                &[remove_transaction_ix],
                 Some(&[&token_owner_record_cookie.token_owner]),
             )
             .await?;
@@ -2432,44 +2429,44 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn execute_instruction(
+    pub async fn execute_proposal_transaction(
         &mut self,
         proposal_cookie: &ProposalCookie,
-        proposal_instruction_cookie: &ProposalInstructionCookie,
+        proposal_transaction_cookie: &ProposalTransactionCookie,
     ) -> Result<(), ProgramError> {
-        let execute_instruction_instruction = execute_instruction(
+        let execute_proposal_transaction_ix = execute_transaction(
             &self.program_id,
             &proposal_cookie.account.governance,
             &proposal_cookie.address,
-            &proposal_instruction_cookie.address,
-            &proposal_instruction_cookie.instruction.program_id,
-            &proposal_instruction_cookie.instruction.accounts,
+            &proposal_transaction_cookie.address,
+            &proposal_transaction_cookie.instruction.program_id,
+            &proposal_transaction_cookie.instruction.accounts,
         );
 
         self.bench
-            .process_transaction(&[execute_instruction_instruction], None)
+            .process_transaction(&[execute_proposal_transaction_ix], None)
             .await
     }
 
     #[allow(dead_code)]
-    pub async fn flag_instruction_error(
+    pub async fn flag_transaction_error(
         &mut self,
         proposal_cookie: &ProposalCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
-        proposal_instruction_cookie: &ProposalInstructionCookie,
+        proposal_transaction_cookie: &ProposalTransactionCookie,
     ) -> Result<(), ProgramError> {
         let governance_authority = token_owner_record_cookie.get_governance_authority();
 
-        let flag_instruction_error_ix = flag_instruction_error(
+        let flag_transaction_error_ix = flag_transaction_error(
             &self.program_id,
             &proposal_cookie.address,
             &proposal_cookie.account.token_owner_record,
             &governance_authority.pubkey(),
-            &proposal_instruction_cookie.address,
+            &proposal_transaction_cookie.address,
         );
 
         self.bench
-            .process_transaction(&[flag_instruction_error_ix], Some(&[&governance_authority]))
+            .process_transaction(&[flag_transaction_error_ix], Some(&[&governance_authority]))
             .await
     }
 
@@ -2531,12 +2528,12 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn get_proposal_instruction_account(
+    pub async fn get_proposal_transaction_account(
         &mut self,
-        proposal_instruction_address: &Pubkey,
-    ) -> ProposalInstructionV2 {
+        proposal_transaction_address: &Pubkey,
+    ) -> ProposalTransactionV2 {
         self.bench
-            .get_borsh_account::<ProposalInstructionV2>(proposal_instruction_address)
+            .get_borsh_account::<ProposalTransactionV2>(proposal_transaction_address)
             .await
     }
 

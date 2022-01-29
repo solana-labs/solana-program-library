@@ -10,11 +10,9 @@ use crate::{
         native_treasury::get_native_treasury_address,
         program_metadata::get_program_metadata_address,
         proposal::{get_proposal_address, VoteType},
-        proposal_instruction::{get_proposal_instruction_address, InstructionData},
-        realm::{
-            get_governing_token_holding_address, get_realm_address, RealmConfigArgs,
-            SetRealmAuthorityAction,
-        },
+        proposal_transaction::{get_proposal_transaction_address, InstructionData},
+        realm::SetRealmAuthorityAction,
+        realm::{get_governing_token_holding_address, get_realm_address, RealmConfigArgs},
         realm_config::get_realm_config_address,
         signatory_record::get_signatory_record_address,
         token_owner_record::get_token_owner_record_address,
@@ -154,7 +152,7 @@ pub enum GovernanceInstruction {
         transfer_upgrade_authority: bool,
     },
 
-    /// Creates Proposal account for Instructions that will be executed at some point in the future
+    /// Creates Proposal account for Transactions which will be executed at some point in the future
     ///
     ///   0. `[]` Realm account the created Proposal belongs to
     ///   1. `[writable]` Proposal account. PDA seeds ['governance',governance, governing_token_mint, proposal_index]
@@ -188,7 +186,7 @@ pub enum GovernanceInstruction {
         #[allow(dead_code)]
         /// Indicates whether the proposal has the deny option
         /// A proposal without the rejecting option is a non binding survey
-        /// Only proposals with the rejecting option can have executable instructions
+        /// Only proposals with the rejecting option can have executable transactions
         use_deny_option: bool,
     },
 
@@ -220,42 +218,42 @@ pub enum GovernanceInstruction {
         signatory: Pubkey,
     },
 
-    /// Inserts an instruction for the Proposal at the given index position
-    /// New Instructions must be inserted at the end of the range indicated by Proposal instructions_next_index
-    /// If an Instruction replaces an existing Instruction at a given index then the old one must be removed using RemoveInstruction first
+    /// Inserts Transaction with a set of instructions for the Proposal at the given index position
+    /// New Transaction must be inserted at the end of the range indicated by Proposal transactions_next_index
+    /// If a Transaction replaces an existing Transaction at a given index then the old one must be removed using RemoveTransaction first
 
     ///   0. `[]` Governance account
     ///   1. `[writable]` Proposal account
     ///   2. `[]` TokenOwnerRecord account of the Proposal owner
     ///   3. `[signer]` Governance Authority (Token Owner or Governance Delegate)
-    ///   4. `[writable]` ProposalInstruction account. PDA seeds: ['governance',proposal,index]
+    ///   4. `[writable]` ProposalTransaction, account. PDA seeds: ['governance',proposal,index]
     ///   5. `[signer]` Payer
     ///   6. `[]` System program
     ///   7. `[]` Rent sysvar
-    InsertInstruction {
+    InsertTransaction {
         #[allow(dead_code)]
-        /// The index of the option the instruction is for
+        /// The index of the option the transaction is for
         option_index: u16,
         #[allow(dead_code)]
-        /// Instruction index to be inserted at.
+        /// Transaction index to be inserted at.
         index: u16,
         #[allow(dead_code)]
         /// Waiting time (in seconds) between vote period ending and this being eligible for execution
         hold_up_time: u32,
 
         #[allow(dead_code)]
-        /// Instruction Data
-        instruction: InstructionData,
+        /// Instructions Data
+        instructions: Vec<InstructionData>,
     },
 
-    /// Removes instruction from the Proposal
+    /// Removes Transaction from the Proposal
     ///
     ///   0. `[writable]` Proposal account
     ///   1. `[]` TokenOwnerRecord account of the Proposal owner
     ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)
-    ///   3. `[writable]` ProposalInstruction account
-    ///   4. `[writable]` Beneficiary Account which would receive lamports from the disposed ProposalInstruction account
-    RemoveInstruction,
+    ///   3. `[writable]` ProposalTransaction, account
+    ///   4. `[writable]` Beneficiary Account which would receive lamports from the disposed ProposalTransaction account
+    RemoveTransaction,
 
     /// Cancels Proposal by changing its state to Canceled
     ///
@@ -276,8 +274,8 @@ pub enum GovernanceInstruction {
     SignOffProposal,
 
     ///  Uses your voter weight (deposited Community or Council tokens) to cast a vote on a Proposal
-    ///  By doing so you indicate you approve or disapprove of running the Proposal set of instructions
-    ///  If you tip the consensus then the instructions can begin to be run after their hold up time
+    ///  By doing so you indicate you approve or disapprove of running the Proposal set of transactions
+    ///  If you tip the consensus then the transactions can begin to be run after their hold up time
     ///
     ///   0. `[]` Realm account
     ///   1. `[]` Governance account
@@ -328,16 +326,16 @@ pub enum GovernanceInstruction {
     ///       It's required only when Proposal is still being voted on
     RelinquishVote,
 
-    /// Executes an instruction in the Proposal
+    /// Executes a Transaction in the Proposal
     /// Anybody can execute transaction once Proposal has been voted Yes and transaction_hold_up time has passed
-    /// The actual instruction being executed will be signed by Governance PDA the Proposal belongs to
+    /// The actual transaction being executed will be signed by Governance PDA the Proposal belongs to
     /// For example to execute Program upgrade the ProgramGovernance PDA would be used as the singer
     ///
     ///   0. `[writable]` Proposal account
-    ///   1. `[writable]` ProposalInstruction account you wish to execute
+    ///   1. `[writable]` ProposalTransaction account you wish to execute
     ///   2. `[]` Clock sysvar
-    ///   3+ Any extra accounts that are part of the instruction, in order
-    ExecuteInstruction,
+    ///   3+ Any extra accounts that are part of the transaction, in order
+    ExecuteTransaction,
 
     /// Creates Mint Governance account which governs a mint
     ///
@@ -401,17 +399,17 @@ pub enum GovernanceInstruction {
         config: GovernanceConfig,
     },
 
-    /// Flags an instruction and its parent Proposal with error status
-    /// It can be used by Proposal owner in case the instruction is permanently broken and can't be executed
+    /// Flags a transaction and its parent Proposal with error status
+    /// It can be used by Proposal owner in case the transaction is permanently broken and can't be executed
     /// Note: This instruction is a workaround because currently it's not possible to catch errors from CPI calls
     ///       and the Governance program has no way to know when instruction failed and flag it automatically
     ///
     ///   0. `[writable]` Proposal account
     ///   1. `[]` TokenOwnerRecord account of the Proposal owner
     ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)    
-    ///   3. `[writable]` ProposalInstruction account to flag
+    ///   3. `[writable]` ProposalTransaction account to flag
     ///   4. `[]` Clock sysvar
-    FlagInstructionError,
+    FlagTransactionError,
 
     /// Sets new Realm authority
     ///
@@ -1154,9 +1152,9 @@ pub fn cancel_proposal(
     }
 }
 
-/// Creates InsertInstruction instruction
+/// Creates InsertTransaction instruction
 #[allow(clippy::too_many_arguments)]
-pub fn insert_instruction(
+pub fn insert_transaction(
     program_id: &Pubkey,
     // Accounts
     governance: &Pubkey,
@@ -1168,9 +1166,9 @@ pub fn insert_instruction(
     option_index: u16,
     index: u16,
     hold_up_time: u32,
-    instruction: InstructionData,
+    instructions: Vec<InstructionData>,
 ) -> Instruction {
-    let proposal_instruction_address = get_proposal_instruction_address(
+    let proposal_transaction_address = get_proposal_transaction_address(
         program_id,
         proposal,
         &option_index.to_le_bytes(),
@@ -1182,17 +1180,17 @@ pub fn insert_instruction(
         AccountMeta::new(*proposal, false),
         AccountMeta::new_readonly(*token_owner_record, false),
         AccountMeta::new_readonly(*governance_authority, true),
-        AccountMeta::new(proposal_instruction_address, false),
+        AccountMeta::new(proposal_transaction_address, false),
         AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
     ];
 
-    let instruction = GovernanceInstruction::InsertInstruction {
+    let instruction = GovernanceInstruction::InsertTransaction {
         option_index,
         index,
         hold_up_time,
-        instruction,
+        instructions,
     };
 
     Instruction {
@@ -1202,25 +1200,25 @@ pub fn insert_instruction(
     }
 }
 
-/// Creates RemoveInstruction instruction
-pub fn remove_instruction(
+/// Creates RemoveTransaction instruction
+pub fn remove_transaction(
     program_id: &Pubkey,
     // Accounts
     proposal: &Pubkey,
     token_owner_record: &Pubkey,
     governance_authority: &Pubkey,
-    proposal_instruction: &Pubkey,
+    proposal_transaction: &Pubkey,
     beneficiary: &Pubkey,
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(*proposal, false),
         AccountMeta::new_readonly(*token_owner_record, false),
         AccountMeta::new_readonly(*governance_authority, true),
-        AccountMeta::new(*proposal_instruction, false),
+        AccountMeta::new(*proposal_transaction, false),
         AccountMeta::new(*beneficiary, false),
     ];
 
-    let instruction = GovernanceInstruction::RemoveInstruction {};
+    let instruction = GovernanceInstruction::RemoveTransaction {};
 
     Instruction {
         program_id: *program_id,
@@ -1229,27 +1227,27 @@ pub fn remove_instruction(
     }
 }
 
-/// Creates ExecuteInstruction instruction
-pub fn execute_instruction(
+/// Creates ExecuteTransaction instruction
+pub fn execute_transaction(
     program_id: &Pubkey,
     // Accounts
     governance: &Pubkey,
     proposal: &Pubkey,
-    proposal_instruction: &Pubkey,
+    proposal_transaction: &Pubkey,
     instruction_program_id: &Pubkey,
     instruction_accounts: &[AccountMeta],
 ) -> Instruction {
     let mut accounts = vec![
         AccountMeta::new_readonly(*governance, false),
         AccountMeta::new(*proposal, false),
-        AccountMeta::new(*proposal_instruction, false),
+        AccountMeta::new(*proposal_transaction, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(*instruction_program_id, false),
     ];
 
     accounts.extend_from_slice(instruction_accounts);
 
-    let instruction = GovernanceInstruction::ExecuteInstruction {};
+    let instruction = GovernanceInstruction::ExecuteTransaction {};
 
     Instruction {
         program_id: *program_id,
@@ -1277,24 +1275,24 @@ pub fn set_governance_config(
     }
 }
 
-/// Creates FlagInstructionError instruction
-pub fn flag_instruction_error(
+/// Creates FlagTransactionError instruction
+pub fn flag_transaction_error(
     program_id: &Pubkey,
     // Accounts
     proposal: &Pubkey,
     token_owner_record: &Pubkey,
     governance_authority: &Pubkey,
-    proposal_instruction: &Pubkey,
+    proposal_transaction: &Pubkey,
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(*proposal, false),
         AccountMeta::new_readonly(*token_owner_record, false),
         AccountMeta::new_readonly(*governance_authority, true),
-        AccountMeta::new(*proposal_instruction, false),
+        AccountMeta::new(*proposal_transaction, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];
 
-    let instruction = GovernanceInstruction::FlagInstructionError {};
+    let instruction = GovernanceInstruction::FlagTransactionError {};
 
     Instruction {
         program_id: *program_id,
