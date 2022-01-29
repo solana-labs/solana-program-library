@@ -51,6 +51,7 @@ pub fn process_sign_off_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) 
             proposal_info.key,
             signatory_info.key,
         )?;
+
         signatory_record_data.assert_can_sign_off(signatory_info)?;
 
         signatory_record_data.signed_off = true;

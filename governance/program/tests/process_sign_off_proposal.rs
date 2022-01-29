@@ -6,6 +6,7 @@ use solana_program_test::tokio;
 
 use program_test::*;
 use spl_governance::{error::GovernanceError, state::enums::ProposalState};
+use spl_governance_tools::error::GovernanceToolsError;
 
 #[tokio::test]
 async fn test_sign_off_proposal() {
@@ -251,4 +252,50 @@ async fn test_sign_off_proposal_by_owner_with_other_proposal_owner_error() {
 
     // Assert
     assert_eq!(err, GovernanceError::InvalidProposalOwnerAccount.into());
+}
+
+#[tokio::test]
+async fn test_sign_off_proposal_by_owner_with_existing_signatories_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let mut account_governance_cookie = governance_test
+        .with_account_governance(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+        )
+        .await
+        .unwrap();
+
+    let proposal_cookie = governance_test
+        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .await
+        .unwrap();
+
+    governance_test
+        .with_signatory(&proposal_cookie, &token_owner_record_cookie)
+        .await
+        .unwrap();
+
+    // Act
+
+    let err = governance_test
+        .sign_off_proposal_by_owner(&proposal_cookie, &token_owner_record_cookie)
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+
+    // The instruction fails with AccountDoesNotExist because SignatoryRecord doesn't exist for owner
+    assert_eq!(err, GovernanceToolsError::AccountDoesNotExist.into());
 }
