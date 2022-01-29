@@ -163,10 +163,8 @@ pub enum GovernanceInstruction {
     ///   5. `[signer]` Governance Authority (Token Owner or Governance Delegate)
     ///   6. `[signer]` Payer
     ///   7. `[]` System program
-    ///   8. `[]` Rent sysvar
-    ///   9. `[]` Clock sysvar
-    ///   10. `[]` Realm Config
-    ///   11. `[]` Optional Voter Weight Record
+    ///   8. `[]` Realm Config
+    ///   9. `[]` Optional Voter Weight Record
     CreateProposal {
         #[allow(dead_code)]
         /// UTF-8 encoded name of the proposal
@@ -903,8 +901,6 @@ pub fn create_proposal(
         AccountMeta::new_readonly(*governance_authority, true),
         AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
-        AccountMeta::new_readonly(sysvar::rent::id(), false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];
 
     with_realm_config_accounts(program_id, &mut accounts, realm, voter_weight_record, None);
