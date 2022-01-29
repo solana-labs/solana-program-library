@@ -51,6 +51,14 @@ pub enum Vote {
 
     /// Vote rejecting proposal
     Deny,
+
+    /// Declare indifference to proposal
+    /// Note: Not supported in the current version
+    Abstain,
+
+    /// Veto proposal
+    /// Note: Not supported in the current version
+    Veto,
 }
 
 /// Proposal VoteRecord
@@ -102,6 +110,9 @@ impl VoteRecordV2 {
             let vote_weight = match &self.vote {
                 Vote::Approve(_options) => VoteWeightV1::Yes(self.voter_weight),
                 Vote::Deny => VoteWeightV1::No(self.voter_weight),
+                Vote::Abstain | Vote::Veto => {
+                    panic!("Vote type: {:?} not supported by VoteRecordV1", &self.vote)
+                }
             };
 
             let vote_record_data_v1 = VoteRecordV1 {

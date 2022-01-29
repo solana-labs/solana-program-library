@@ -381,6 +381,10 @@ pub enum GovernanceError {
     /// MaxVoterWeightRecord expired
     #[error("MaxVoterWeightRecord expired")]
     MaxVoterWeightRecordExpired,
+
+    /// Not supported VoteType
+    #[error("Not supported VoteType")]
+    NotSupportedVoteType,
 }
 
 impl PrintProgramError for GovernanceError {

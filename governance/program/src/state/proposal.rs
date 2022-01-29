@@ -742,6 +742,9 @@ impl ProposalV2 {
                     return Err(GovernanceError::InvalidVote.into());
                 }
             }
+            Vote::Abstain | Vote::Veto => {
+                return Err(GovernanceError::NotSupportedVoteType.into());
+            }
         }
 
         Ok(())

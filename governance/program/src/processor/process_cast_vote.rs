@@ -134,6 +134,9 @@ pub fn process_cast_vote(
                     .unwrap(),
             )
         }
+        Vote::Abstain | Vote::Veto => {
+            return Err(GovernanceError::NotSupportedVoteType.into());
+        }
     }
 
     let max_voter_weight = proposal_data.resolve_max_voter_weight(
