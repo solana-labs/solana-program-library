@@ -149,7 +149,7 @@ pub struct ProposalV2 {
 
     /// Optional start time if the Proposal should not enter voting state immediately after being signed off
     /// Note: start_at is not supported in the current version
-    pub start_at: Option<UnixTimestamp>,
+    pub start_voting_at: Option<UnixTimestamp>,
 
     /// When the Proposal was created and entered Draft state
     pub draft_at: UnixTimestamp,
@@ -754,7 +754,7 @@ impl ProposalV2 {
                 panic!("ProposalV1 doesn't support Veto vote")
             }
 
-            if self.start_at.is_some() {
+            if self.start_voting_at.is_some() {
                 panic!("ProposalV1 doesn't support start time")
             }
 
@@ -864,7 +864,7 @@ pub fn get_proposal_data(
             deny_vote_weight: Some(proposal_data_v1.no_votes_count),
             veto_vote_weight: None,
             abstain_vote_weight: None,
-            start_at: None,
+            start_voting_at: None,
             draft_at: proposal_data_v1.draft_at,
             signing_off_at: proposal_data_v1.signing_off_at,
             voting_at: proposal_data_v1.voting_at,
@@ -998,7 +998,7 @@ mod test {
             description_link: "This is my description".to_string(),
             name: "This is my name".to_string(),
 
-            start_at: Some(0),
+            start_voting_at: Some(0),
             draft_at: 10,
             signing_off_at: Some(10),
 
