@@ -1204,13 +1204,36 @@ impl GovernanceProgramTest {
                 None
             };
 
-        let create_account_governance_instruction = create_account_governance(
+        self.with_account_governance_impl(
+            realm_cookie,
+            governed_account_cookie,
+            Some(&token_owner_record_cookie.address),
+            &token_owner_record_cookie.token_owner,
+            voter_weight_record,
+            governance_config,
+            None,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn with_account_governance_impl(
+        &mut self,
+        realm_cookie: &RealmCookie,
+        governed_account_cookie: &GovernedAccountCookie,
+        token_owner_record: Option<&Pubkey>,
+        create_authority: &Keypair,
+        voter_weight_record: Option<Pubkey>,
+        governance_config: &GovernanceConfig,
+        signers_override: Option<&[&Keypair]>,
+    ) -> Result<GovernanceCookie, ProgramError> {
+        let mut create_account_governance_instruction = create_account_governance(
             &self.program_id,
             &realm_cookie.address,
             &governed_account_cookie.address,
-            &token_owner_record_cookie.address,
+            token_owner_record.unwrap_or(&Pubkey::new_unique()),
             &self.bench.payer.pubkey(),
-            &token_owner_record_cookie.token_owner.pubkey(),
+            &create_authority.pubkey(),
             voter_weight_record,
             governance_config.clone(),
         );
@@ -1224,11 +1247,15 @@ impl GovernanceProgramTest {
             reserved: [0; 8],
         };
 
+        let default_signers = &[create_authority];
+        let signers = signers_override.unwrap_or(default_signers);
+
+        if signers.len() == 0 {
+            create_account_governance_instruction.accounts[7].is_signer = false;
+        }
+
         self.bench
-            .process_transaction(
-                &[create_account_governance_instruction],
-                Some(&[&token_owner_record_cookie.token_owner]),
-            )
+            .process_transaction(&[create_account_governance_instruction], Some(signers))
             .await?;
 
         let account_governance_address = get_account_governance_address(

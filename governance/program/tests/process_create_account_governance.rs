@@ -202,3 +202,69 @@ async fn test_create_account_governance_with_not_enough_council_tokens_error() {
         GovernanceError::NotEnoughTokensToCreateGovernance.into()
     );
 }
+
+#[tokio::test]
+async fn test_create_account_governance_using_realm_authority() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let config = governance_test.get_default_governance_config();
+    let realm_authority = realm_cookie.realm_authority.as_ref().unwrap();
+
+    // Act
+    let account_governance_cookie = governance_test
+        .with_account_governance_impl(
+            &realm_cookie,
+            &governed_account_cookie,
+            None,
+            &realm_authority,
+            None,
+            &config,
+            None,
+        )
+        .await
+        .unwrap();
+
+    // Assert
+    let account_governance_account = governance_test
+        .get_governance_account(&account_governance_cookie.address)
+        .await;
+
+    assert_eq!(
+        account_governance_cookie.account,
+        account_governance_account
+    );
+}
+
+#[tokio::test]
+async fn test_create_account_governance_using_realm_authority_with_authority_must_sign_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let config = governance_test.get_default_governance_config();
+    let realm_authority = realm_cookie.realm_authority.as_ref().unwrap();
+
+    // Act
+    let err = governance_test
+        .with_account_governance_impl(
+            &realm_cookie,
+            &governed_account_cookie,
+            None,
+            &realm_authority,
+            None,
+            &config,
+            Some(&[]),
+        )
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+    assert_eq!(err, GovernanceError::RealmAuthorityMustSign.into());
+}
