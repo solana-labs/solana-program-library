@@ -45,10 +45,9 @@ pub fn process_create_token_governance(
 
     let system_info = next_account_info(account_info_iter)?; // 7
 
-    let rent_sysvar_info = next_account_info(account_info_iter)?; // 8
-    let rent = &Rent::from_account_info(rent_sysvar_info)?;
+    let rent = Rent::get()?;
 
-    let create_authority_info = next_account_info(account_info_iter)?; // 9
+    let create_authority_info = next_account_info(account_info_iter)?; // 8
 
     assert_valid_create_governance_args(program_id, &config, realm_info)?;
 
@@ -59,7 +58,7 @@ pub fn process_create_token_governance(
         realm_info.key,
         token_owner_record_info,
         create_authority_info,
-        account_info_iter, // realm_config_info 10, voter_weight_record_info 11
+        account_info_iter, // realm_config_info 9, voter_weight_record_info 10
     )?;
 
     let token_governance_data = Governance {
@@ -79,7 +78,7 @@ pub fn process_create_token_governance(
         &get_token_governance_address_seeds(realm_info.key, governed_token_info.key),
         program_id,
         system_info,
-        rent,
+        &rent,
     )?;
 
     if transfer_account_authorities {

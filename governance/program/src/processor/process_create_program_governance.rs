@@ -47,10 +47,9 @@ pub fn process_create_program_governance(
 
     let system_info = next_account_info(account_info_iter)?; // 8
 
-    let rent_sysvar_info = next_account_info(account_info_iter)?; // 9
-    let rent = &Rent::from_account_info(rent_sysvar_info)?;
+    let rent = Rent::get()?;
 
-    let create_authority_info = next_account_info(account_info_iter)?; // 10
+    let create_authority_info = next_account_info(account_info_iter)?; // 9
 
     assert_valid_create_governance_args(program_id, &config, realm_info)?;
 
@@ -81,7 +80,7 @@ pub fn process_create_program_governance(
         &get_program_governance_address_seeds(realm_info.key, governed_program_info.key),
         program_id,
         system_info,
-        rent,
+        &rent,
     )?;
 
     if transfer_upgrade_authority {
