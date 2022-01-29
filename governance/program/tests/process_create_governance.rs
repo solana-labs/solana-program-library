@@ -4,6 +4,7 @@ mod program_test;
 use solana_program_test::*;
 
 use program_test::*;
+use solana_sdk::signature::Keypair;
 use spl_governance::{error::GovernanceError, state::enums::VoteThresholdPercentage};
 use spl_governance_tools::error::GovernanceToolsError;
 
@@ -261,4 +262,42 @@ async fn test_create_governance_using_realm_authority_with_authority_must_sign_e
 
     // Assert
     assert_eq!(err, GovernanceError::RealmAuthorityMustSign.into());
+}
+
+#[tokio::test]
+async fn test_create_governance_using_realm_authority_with_wrong_authority_sign_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let config = governance_test.get_default_governance_config();
+    let authority = Keypair::new();
+
+    // Act
+    let err = governance_test
+        .with_governance_impl(
+            &realm_cookie,
+            &governed_account_cookie,
+            Some(&token_owner_record_cookie.address),
+            &authority,
+            None,
+            &config,
+            Some(&[&authority]),
+        )
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+    assert_eq!(
+        err,
+        GovernanceError::GoverningTokenOwnerOrDelegateMustSign.into()
+    );
 }

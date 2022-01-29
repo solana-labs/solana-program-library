@@ -1250,7 +1250,7 @@ impl GovernanceProgramTest {
         let signers = signers_override.unwrap_or(default_signers);
 
         if signers.len() == 0 {
-            create_governance_ix.accounts[7].is_signer = false;
+            create_governance_ix.accounts[6].is_signer = false;
         }
 
         self.bench

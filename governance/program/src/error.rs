@@ -280,7 +280,7 @@ pub enum GovernanceError {
 
     /// Realm authority must sign
     #[error("Realm authority must sign")]
-    RealmAuthorityMustSign,
+    RealmAuthorityMustSign, // 566
 
     /// Invalid governing token holding account
     #[error("Invalid governing token holding account")]
@@ -290,7 +290,7 @@ pub enum GovernanceError {
     #[error("Realm council mint change is not supported")]
     RealmCouncilMintChangeIsNotSupported,
 
-    /// Not supported mint max vote weight source
+    /// Not supported mint max vote weight sourcef
     #[error("Not supported mint max vote weight source")]
     MintMaxVoteWeightSourceNotSupported,
 

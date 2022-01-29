@@ -706,7 +706,6 @@ pub fn create_governance(
         AccountMeta::new_readonly(*token_owner_record, false),
         AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
-        AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(*create_authority, true),
     ];
 
