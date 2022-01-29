@@ -26,8 +26,7 @@ pub fn process_execute_transaction(program_id: &Pubkey, accounts: &[AccountInfo]
     let proposal_info = next_account_info(account_info_iter)?; // 1
     let proposal_transaction_info = next_account_info(account_info_iter)?; // 2
 
-    let clock_info = next_account_info(account_info_iter)?; // 3
-    let clock = Clock::from_account_info(clock_info)?;
+    let clock = Clock::get()?;
 
     let governance_data = get_governance_data(program_id, governance_info)?;
 

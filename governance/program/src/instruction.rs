@@ -335,8 +335,7 @@ pub enum GovernanceInstruction {
     ///
     ///   0. `[writable]` Proposal account
     ///   1. `[writable]` ProposalTransaction account you wish to execute
-    ///   2. `[]` Clock sysvar
-    ///   3+ Any extra accounts that are part of the transaction, in order
+    ///   2+ Any extra accounts that are part of the transaction, in order
     ExecuteTransaction,
 
     /// Creates Mint Governance account which governs a mint
@@ -1255,7 +1254,6 @@ pub fn execute_transaction(
         AccountMeta::new_readonly(*governance, false),
         AccountMeta::new(*proposal, false),
         AccountMeta::new(*proposal_transaction, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(*instruction_program_id, false),
     ];
 
