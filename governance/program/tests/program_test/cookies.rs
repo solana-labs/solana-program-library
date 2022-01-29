@@ -1,15 +1,15 @@
 use solana_program::{instruction::Instruction, pubkey::Pubkey};
 use solana_sdk::signature::Keypair;
-use spl_governance::{
-    addins::voter_weight::VoterWeightRecord,
-    state::{
-        governance::Governance, native_treasury::NativeTreasury, program_metadata::ProgramMetadata,
-        proposal::ProposalV2, proposal_instruction::ProposalInstructionV2, realm::Realm,
-        realm_config::RealmConfigAccount, signatory_record::SignatoryRecord,
-        token_owner_record::TokenOwnerRecord, vote_record::VoteRecordV2,
-    },
+use spl_governance::state::{
+    governance::Governance, native_treasury::NativeTreasury, program_metadata::ProgramMetadata,
+    proposal::ProposalV2, proposal_instruction::ProposalInstructionV2, realm::Realm,
+    realm_config::RealmConfigAccount, signatory_record::SignatoryRecord,
+    token_owner_record::TokenOwnerRecord, vote_record::VoteRecordV2,
 };
 
+use spl_governance_addin_api::{
+    max_voter_weight::MaxVoterWeightRecord, voter_weight::VoterWeightRecord,
+};
 use spl_governance_test_sdk::tools::clone_keypair;
 
 pub trait AccountCookie {
@@ -58,6 +58,9 @@ pub struct TokenOwnerRecordCookie {
     pub governance_delegate: Keypair,
 
     pub voter_weight_record: Option<VoterWeightRecordCookie>,
+
+    // This doesn't belong to TokenOwnerRecord and I put it here for simplicity for now
+    pub max_voter_weight_record: Option<MaxVoterWeightRecordCookie>,
 }
 
 impl TokenOwnerRecordCookie {
@@ -164,6 +167,12 @@ pub struct ProposalInstructionCookie {
 pub struct VoterWeightRecordCookie {
     pub address: Pubkey,
     pub account: VoterWeightRecord,
+}
+
+#[derive(Debug, Clone)]
+pub struct MaxVoterWeightRecordCookie {
+    pub address: Pubkey,
+    pub account: MaxVoterWeightRecord,
 }
 
 #[derive(Debug, Clone)]

@@ -8,10 +8,10 @@ use solana_program::{
     rent::Rent,
     sysvar::Sysvar,
 };
+use spl_governance_addin_api::voter_weight::VoterWeightAction;
 use spl_governance_tools::account::create_and_serialize_account_signed;
 
 use crate::{
-    addins::voter_weight::VoterWeightAction,
     error::GovernanceError,
     state::{
         enums::GovernanceAccountType,
@@ -24,7 +24,6 @@ use crate::{
         },
         vote_record::{get_vote_record_address_seeds, Vote, VoteRecordV2},
     },
-    tools::spl_token::get_spl_token_mint_supply,
 };
 
 use borsh::BorshSerialize;
@@ -99,8 +98,14 @@ pub fn process_cast_vote(
         .checked_add(1)
         .unwrap();
 
+    // Note: When both voter_weight and max_voter_weight addins are used the realm_config will be deserialized twice in resolve_voter_weight() and resolve_max_voter_weight()
+    //      It can't be deserialized eagerly because some realms won't have the config if they don't use any of the advanced options
+    //      This extra deserialisation should be acceptable to keep things simple and encapsulated.
+    let realm_config_info = next_account_info(account_info_iter)?; //12
+
     let voter_weight = voter_token_owner_record_data.resolve_voter_weight(
         program_id,
+        realm_config_info,
         account_info_iter,
         realm_info.key,
         &realm_data,
@@ -131,11 +136,18 @@ pub fn process_cast_vote(
         }
     }
 
-    let governing_token_mint_supply = get_spl_token_mint_supply(governing_token_mint_info)?;
-    if proposal_data.try_tip_vote(
-        governing_token_mint_supply,
-        &governance_data.config,
+    let max_voter_weight = proposal_data.resolve_max_voter_weight(
+        program_id,
+        realm_config_info,
+        governing_token_mint_info,
+        account_info_iter,
+        realm_info.key,
         &realm_data,
+    )?;
+
+    if proposal_data.try_tip_vote(
+        max_voter_weight,
+        &governance_data.config,
         clock.unix_timestamp,
     )? {
         // Deserialize proposal owner and validate it's the actual owner of the proposal

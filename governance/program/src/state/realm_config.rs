@@ -25,7 +25,7 @@ pub struct RealmConfigAccount {
 
     /// Addin providing max vote weight for community token
     /// Note: This field is not implemented in the current version
-    pub community_max_vote_weight_addin: Option<Pubkey>,
+    pub max_community_voter_weight_addin: Option<Pubkey>,
 
     /// Addin providing voter weights for council token
     /// Note: This field is not implemented in the current version
@@ -95,7 +95,7 @@ mod test {
             account_type: GovernanceAccountType::Realm,
             realm: Pubkey::new_unique(),
             community_voter_weight_addin: Some(Pubkey::new_unique()),
-            community_max_vote_weight_addin: Some(Pubkey::new_unique()),
+            max_community_voter_weight_addin: Some(Pubkey::new_unique()),
             council_voter_weight_addin: Some(Pubkey::new_unique()),
             council_max_vote_weight_addin: Some(Pubkey::new_unique()),
             reserved: [0; 128],

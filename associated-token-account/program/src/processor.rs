@@ -1,7 +1,10 @@
 //! Program state processor
 
 use crate::*;
-use crate::{instruction::AssociatedTokenAccountInstruction, tools::account::create_pda_account};
+use crate::{
+    instruction::AssociatedTokenAccountInstruction,
+    tools::account::{create_pda_account, get_account_len},
+};
 use borsh::BorshDeserialize;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
@@ -71,10 +74,12 @@ pub fn process_create_associated_token_account(
         &[bump_seed],
     ];
 
+    let account_len = get_account_len(spl_token_mint_info, spl_token_program_info)?;
+
     create_pda_account(
         funder_info,
         &rent,
-        spl_token::state::Account::LEN,
+        account_len,
         spl_token_program_id,
         system_program_info,
         associated_token_account_info,

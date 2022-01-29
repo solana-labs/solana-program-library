@@ -1,7 +1,9 @@
 //! Proposal  Account
 
 use borsh::maybestd::io::Write;
+use solana_program::account_info::next_account_info;
 use std::cmp::Ordering;
+use std::slice::Iter;
 
 use solana_program::borsh::try_from_slice_unchecked;
 use solana_program::clock::{Slot, UnixTimestamp};
@@ -12,7 +14,12 @@ use solana_program::{
 };
 use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 
+use crate::addins::max_voter_weight::{
+    assert_is_valid_max_voter_weight,
+    get_max_voter_weight_record_data_for_realm_and_governing_token_mint,
+};
 use crate::state::legacy::ProposalV1;
+use crate::tools::spl_token::get_spl_token_mint_supply;
 use crate::{
     error::GovernanceError,
     state::{
@@ -23,6 +30,7 @@ use crate::{
         governance::GovernanceConfig,
         proposal_instruction::ProposalInstructionV2,
         realm::Realm,
+        realm_config::get_realm_config_data_for_realm,
         vote_record::Vote,
     },
     PROGRAM_AUTHORITY_SEED,
@@ -264,21 +272,18 @@ impl ProposalV2 {
     /// If Proposal is still within max_voting_time period then error is returned
     pub fn finalize_vote(
         &mut self,
-        governing_token_mint_supply: u64,
+        max_voter_weight: u64,
         config: &GovernanceConfig,
-        realm_data: &Realm,
         current_unix_timestamp: UnixTimestamp,
     ) -> Result<(), ProgramError> {
         self.assert_can_finalize_vote(config, current_unix_timestamp)?;
 
-        let max_vote_weight = self.get_max_vote_weight(realm_data, governing_token_mint_supply)?;
-
-        self.state = self.resolve_final_vote_state(max_vote_weight, config)?;
+        self.state = self.resolve_final_vote_state(max_voter_weight, config)?;
         // TODO: set voting_completed_at based on the time when the voting ended and not when we finalized the proposal
         self.voting_completed_at = Some(current_unix_timestamp);
 
         // Capture vote params to correctly display historical results
-        self.max_vote_weight = Some(max_vote_weight);
+        self.max_vote_weight = Some(max_voter_weight);
         self.vote_threshold_percentage = Some(config.vote_threshold_percentage.clone());
 
         Ok(())
@@ -368,8 +373,8 @@ impl ProposalV2 {
         Ok(final_state)
     }
 
-    /// Calculates max vote weight for given mint supply and realm config
-    fn get_max_vote_weight(
+    /// Calculates max voter weight for given mint supply and realm config
+    fn get_max_voter_weight_from_mint_supply(
         &mut self,
         realm_data: &Realm,
         governing_token_mint_supply: u64,
@@ -385,24 +390,15 @@ impl ProposalV2 {
                     return Ok(governing_token_mint_supply);
                 }
 
-                let max_vote_weight = (governing_token_mint_supply as u128)
+                let max_voter_weight = (governing_token_mint_supply as u128)
                     .checked_mul(fraction as u128)
                     .unwrap()
                     .checked_div(MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE as u128)
                     .unwrap() as u64;
 
-                let deny_vote_weight = self.deny_vote_weight.unwrap_or(0);
-
-                let max_option_vote_weight =
-                    self.options.iter().map(|o| o.vote_weight).max().unwrap();
-
                 // When the fraction is used it's possible we can go over the calculated max_vote_weight
                 // and we have to adjust it in case more votes have been cast
-                let total_vote_weight = max_option_vote_weight
-                    .checked_add(deny_vote_weight)
-                    .unwrap();
-
-                Ok(max_vote_weight.max(total_vote_weight))
+                Ok(self.coerce_max_voter_weight(max_voter_weight))
             }
             MintMaxVoteWeightSource::Absolute(_) => {
                 Err(GovernanceError::VoteWeightSourceNotSupported.into())
@@ -410,23 +406,80 @@ impl ProposalV2 {
         }
     }
 
+    /// Adjusts max voter weight to ensure it's not lower than total cast votes
+    fn coerce_max_voter_weight(&self, max_voter_weight: u64) -> u64 {
+        let deny_vote_weight = self.deny_vote_weight.unwrap_or(0);
+
+        let max_option_vote_weight = self.options.iter().map(|o| o.vote_weight).max().unwrap();
+
+        let total_vote_weight = max_option_vote_weight
+            .checked_add(deny_vote_weight)
+            .unwrap();
+
+        max_voter_weight.max(total_vote_weight)
+    }
+
+    /// Resolves max voter weight
+    pub fn resolve_max_voter_weight(
+        &mut self,
+        program_id: &Pubkey,
+        realm_config_info: &AccountInfo,
+        governing_token_mint_info: &AccountInfo,
+        account_info_iter: &mut Iter<AccountInfo>,
+        realm: &Pubkey,
+        realm_data: &Realm,
+    ) -> Result<u64, ProgramError> {
+        // if the realm uses addin for max community voter weight then use the externally provided max weight
+        if realm_data.config.use_max_community_voter_weight_addin
+            && realm_data.community_mint == self.governing_token_mint
+        {
+            let realm_config_data =
+                get_realm_config_data_for_realm(program_id, realm_config_info, realm)?;
+
+            let max_voter_weight_record_info = next_account_info(account_info_iter)?;
+
+            let max_voter_weight_data =
+                get_max_voter_weight_record_data_for_realm_and_governing_token_mint(
+                    &realm_config_data.max_community_voter_weight_addin.unwrap(),
+                    max_voter_weight_record_info,
+                    realm,
+                    &self.governing_token_mint,
+                )?;
+
+            assert_is_valid_max_voter_weight(&max_voter_weight_data)?;
+
+            // When the max voter weight addin is used it's possible it can be inaccurate and we can have more votes then the max provided by the addin
+            // and we have to adjust it to whatever result is higher
+            return Ok(self.coerce_max_voter_weight(max_voter_weight_data.max_voter_weight));
+        }
+
+        // Note: governing_token_mint_info is already verified at this point and this
+        // check is just a safety net in case some future refactoring would remove the validation
+        if self.governing_token_mint != *governing_token_mint_info.key {
+            return Err(GovernanceError::InvalidGoverningMintForProposal.into());
+        }
+        let governing_token_mint_supply = get_spl_token_mint_supply(governing_token_mint_info)?;
+
+        let max_voter_weight =
+            self.get_max_voter_weight_from_mint_supply(realm_data, governing_token_mint_supply)?;
+
+        Ok(max_voter_weight)
+    }
+
     /// Checks if vote can be tipped and automatically transitioned to Succeeded or Defeated state
     /// If the conditions are met the state is updated accordingly
     pub fn try_tip_vote(
         &mut self,
-        governing_token_mint_supply: u64,
+        max_voter_weight: u64,
         config: &GovernanceConfig,
-        realm_data: &Realm,
         current_unix_timestamp: UnixTimestamp,
     ) -> Result<bool, ProgramError> {
-        let max_vote_weight = self.get_max_vote_weight(realm_data, governing_token_mint_supply)?;
-
-        if let Some(tipped_state) = self.try_get_tipped_vote_state(max_vote_weight, config) {
+        if let Some(tipped_state) = self.try_get_tipped_vote_state(max_voter_weight, config) {
             self.state = tipped_state;
             self.voting_completed_at = Some(current_unix_timestamp);
 
             // Capture vote params to correctly display historical results
-            self.max_vote_weight = Some(max_vote_weight);
+            self.max_vote_weight = Some(max_voter_weight);
             self.vote_threshold_percentage = Some(config.vote_threshold_percentage.clone());
 
             Ok(true)
@@ -474,12 +527,12 @@ impl ProposalV2 {
                 .unwrap();
 
         if yes_vote_weight >= min_vote_threshold_weight
-            && yes_vote_weight > (max_vote_weight - yes_vote_weight)
+            && yes_vote_weight > (max_vote_weight.saturating_sub(yes_vote_weight))
         {
             yes_option.vote_result = OptionVoteResult::Succeeded;
             return Some(ProposalState::Succeeded);
-        } else if deny_vote_weight > (max_vote_weight - min_vote_threshold_weight)
-            || deny_vote_weight >= (max_vote_weight - deny_vote_weight)
+        } else if deny_vote_weight > (max_vote_weight.saturating_sub(min_vote_threshold_weight))
+            || deny_vote_weight >= (max_vote_weight.saturating_sub(deny_vote_weight))
         {
             yes_option.vote_result = OptionVoteResult::Defeated;
             return Some(ProposalState::Defeated);
@@ -939,8 +992,9 @@ mod test {
             name: "test-realm".to_string(),
             config: RealmConfig {
                 council_mint: Some(Pubkey::new_unique()),
-                reserved: [0; 7],
+                reserved: [0; 6],
                 use_community_voter_weight_addin: false,
+                use_max_community_voter_weight_addin: false,
 
                 community_mint_max_vote_weight_source:
                     MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,
@@ -1365,8 +1419,10 @@ mod test {
 
             let realm = create_test_realm();
 
+            let max_voter_weight = proposal.get_max_voter_weight_from_mint_supply(&realm,test_case.governing_token_supply).unwrap();
+
             // Act
-            proposal.try_tip_vote(test_case.governing_token_supply, &governance_config,&realm,current_timestamp).unwrap();
+            proposal.try_tip_vote(max_voter_weight, &governance_config,current_timestamp).unwrap();
 
             // Assert
             assert_eq!(proposal.state,test_case.expected_tipped_state,"CASE: {:?}",test_case);
@@ -1406,9 +1462,10 @@ mod test {
             let current_timestamp = 16_i64;
 
             let realm = create_test_realm();
+            let max_voter_weight = proposal.get_max_voter_weight_from_mint_supply(&realm,test_case.governing_token_supply).unwrap();
 
             // Act
-            proposal.finalize_vote(test_case.governing_token_supply, &governance_config,&realm,current_timestamp).unwrap();
+            proposal.finalize_vote(max_voter_weight, &governance_config,current_timestamp).unwrap();
 
             // Assert
             assert_eq!(proposal.state,test_case.expected_finalized_state,"CASE: {:?}",test_case);
@@ -1466,9 +1523,10 @@ mod test {
             let current_timestamp = 15_i64;
 
             let realm = create_test_realm();
+            let max_voter_weight = proposal.get_max_voter_weight_from_mint_supply(&realm,governing_token_supply).unwrap();
 
             // Act
-            proposal.try_tip_vote(governing_token_supply, &governance_config,&realm, current_timestamp).unwrap();
+            proposal.try_tip_vote(max_voter_weight, &governance_config, current_timestamp).unwrap();
 
             // Assert
             let yes_vote_threshold_count = get_min_vote_threshold_weight(&yes_vote_threshold_percentage,governing_token_supply).unwrap();
@@ -1510,9 +1568,10 @@ mod test {
             let current_timestamp = 16_i64;
 
             let realm = create_test_realm();
+            let max_voter_weight = proposal.get_max_voter_weight_from_mint_supply(&realm,governing_token_supply).unwrap();
 
             // Act
-            proposal.finalize_vote(governing_token_supply, &governance_config,&realm,current_timestamp).unwrap();
+            proposal.finalize_vote(max_voter_weight, &governance_config,current_timestamp).unwrap();
 
             // Assert
             let no_vote_weight = proposal.deny_vote_weight.unwrap();
@@ -1553,14 +1612,13 @@ mod test {
                 MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE / 2,
             );
 
+        let max_voter_weight = proposal
+            .get_max_voter_weight_from_mint_supply(&realm, community_token_supply)
+            .unwrap();
+
         // Act
         proposal
-            .try_tip_vote(
-                community_token_supply,
-                &governance_config,
-                &realm,
-                current_timestamp,
-            )
+            .try_tip_vote(max_voter_weight, &governance_config, current_timestamp)
             .unwrap();
 
         // Assert
@@ -1597,14 +1655,13 @@ mod test {
         // Yes vote weight
         proposal.options[0].vote_weight = 120;
 
+        let max_voter_weight = proposal
+            .get_max_voter_weight_from_mint_supply(&realm, community_token_supply)
+            .unwrap();
+
         // Act
         proposal
-            .try_tip_vote(
-                community_token_supply,
-                &governance_config,
-                &realm,
-                current_timestamp,
-            )
+            .try_tip_vote(max_voter_weight, &governance_config, current_timestamp)
             .unwrap();
 
         // Assert
@@ -1636,14 +1693,13 @@ mod test {
             );
         realm.config.council_mint = Some(proposal.governing_token_mint);
 
+        let max_voter_weight = proposal
+            .get_max_voter_weight_from_mint_supply(&realm, community_token_supply)
+            .unwrap();
+
         // Act
         proposal
-            .try_tip_vote(
-                community_token_supply,
-                &governance_config,
-                &realm,
-                current_timestamp,
-            )
+            .try_tip_vote(max_voter_weight, &governance_config, current_timestamp)
             .unwrap();
 
         // Assert
@@ -1674,14 +1730,13 @@ mod test {
                 MintMaxVoteWeightSource::SUPPLY_FRACTION_BASE / 2,
             );
 
+        let max_voter_weight = proposal
+            .get_max_voter_weight_from_mint_supply(&realm, community_token_supply)
+            .unwrap();
+
         // Act
         proposal
-            .finalize_vote(
-                community_token_supply,
-                &governance_config,
-                &realm,
-                current_timestamp,
-            )
+            .finalize_vote(max_voter_weight, &governance_config, current_timestamp)
             .unwrap();
 
         // Assert
@@ -1716,14 +1771,13 @@ mod test {
         // vote above reduced supply
         proposal.options[0].vote_weight = 120;
 
+        let max_voter_weight = proposal
+            .get_max_voter_weight_from_mint_supply(&realm, community_token_supply)
+            .unwrap();
+
         // Act
         proposal
-            .finalize_vote(
-                community_token_supply,
-                &governance_config,
-                &realm,
-                current_timestamp,
-            )
+            .finalize_vote(max_voter_weight, &governance_config, current_timestamp)
             .unwrap();
 
         // Assert
@@ -1742,10 +1796,13 @@ mod test {
             proposal.voting_at.unwrap() + governance_config.max_voting_time as i64;
 
         let realm = create_test_realm();
+        let max_voter_weight = proposal
+            .get_max_voter_weight_from_mint_supply(&realm, 100)
+            .unwrap();
 
         // Act
         let err = proposal
-            .finalize_vote(100, &governance_config, &realm, current_timestamp)
+            .finalize_vote(max_voter_weight, &governance_config, current_timestamp)
             .err()
             .unwrap();
 
@@ -1764,8 +1821,13 @@ mod test {
             proposal.voting_at.unwrap() + governance_config.max_voting_time as i64 + 1;
 
         let realm = create_test_realm();
+        let max_voter_weight = proposal
+            .get_max_voter_weight_from_mint_supply(&realm, 100)
+            .unwrap();
+
         // Act
-        let result = proposal.finalize_vote(100, &governance_config, &realm, current_timestamp);
+        let result =
+            proposal.finalize_vote(max_voter_weight, &governance_config, current_timestamp);
 
         // Assert
         assert_eq!(result, Ok(()));

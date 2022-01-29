@@ -36,6 +36,26 @@ pub struct RealmConfigArgs {
     /// Indicates whether an external addin program should be used to provide community voters weights
     /// If yes then the voters weight program account must be passed to the instruction
     pub use_community_voter_weight_addin: bool,
+
+    /// Indicates whether an external addin program should be used to provide max voters weight for the community mint
+    /// If yes then the max voter weight program account must be passed to the instruction
+    pub use_max_community_voter_weight_addin: bool,
+}
+
+/// SetRealmAuthority instruction action
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub enum SetRealmAuthorityAction {
+    /// Sets realm authority without any checks
+    /// Uncheck option allows to set the realm authority to non governance accounts
+    SetUnchecked,
+
+    /// Sets realm authority and checks the new new authority is one of the realm's governances
+    // Note: This is not a security feature because governance creation is only gated with min_community_tokens_to_create_governance
+    //       The check is done to prevent scenarios where the authority could be accidentally set to a wrong or none existing account
+    SetChecked,
+
+    /// Removes realm authority
+    Remove,
 }
 
 /// Realm Config defining Realm parameters.
@@ -45,8 +65,11 @@ pub struct RealmConfig {
     /// Indicates whether an external addin program should be used to provide voters weights for the community mint
     pub use_community_voter_weight_addin: bool,
 
+    /// Indicates whether an external addin program should be used to provide max voter weight for the community mint
+    pub use_max_community_voter_weight_addin: bool,
+
     /// Reserved space for future versions
-    pub reserved: [u8; 7],
+    pub reserved: [u8; 6],
 
     /// Min number of community tokens required to create a governance
     pub min_community_tokens_to_create_governance: u64,
@@ -308,8 +331,8 @@ mod test {
             config: RealmConfig {
                 council_mint: Some(Pubkey::new_unique()),
                 use_community_voter_weight_addin: false,
-                reserved: [0; 7],
-
+                use_max_community_voter_weight_addin: false,
+                reserved: [0; 6],
                 community_mint_max_vote_weight_source: MintMaxVoteWeightSource::Absolute(100),
                 min_community_tokens_to_create_governance: 10,
             },
@@ -363,6 +386,7 @@ mod test {
                 community_mint_max_vote_weight_source:
                     MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,
                 use_community_voter_weight_addin: false,
+                use_max_community_voter_weight_addin: false,
             },
         };
 

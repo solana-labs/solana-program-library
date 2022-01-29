@@ -9,10 +9,10 @@ use solana_program::{
     rent::Rent,
     sysvar::Sysvar,
 };
+use spl_governance_addin_api::voter_weight::VoterWeightAction;
 use spl_governance_tools::account::create_and_serialize_account_signed;
 
 use crate::{
-    addins::voter_weight::VoterWeightAction,
     error::GovernanceError,
     state::{
         enums::{GovernanceAccountType, InstructionExecutionFlags, ProposalState},
@@ -78,8 +78,11 @@ pub fn process_create_proposal(
     proposal_owner_record_data
         .assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
+    let realm_config_info = next_account_info(account_info_iter)?; // 10
+
     let voter_weight = proposal_owner_record_data.resolve_voter_weight(
         program_id,
+        realm_config_info,
         account_info_iter,
         realm_info.key,
         &realm_data,

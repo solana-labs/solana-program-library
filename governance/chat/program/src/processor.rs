@@ -16,13 +16,11 @@ use solana_program::{
     pubkey::Pubkey,
     sysvar::Sysvar,
 };
-use spl_governance::{
-    addins::voter_weight::VoterWeightAction,
-    state::{
-        governance::get_governance_data_for_realm, proposal::get_proposal_data_for_governance,
-        realm::get_realm_data, token_owner_record::get_token_owner_record_data_for_realm,
-    },
+use spl_governance::state::{
+    governance::get_governance_data_for_realm, proposal::get_proposal_data_for_governance,
+    realm::get_realm_data, token_owner_record::get_token_owner_record_data_for_realm,
 };
+use spl_governance_addin_api::voter_weight::VoterWeightAction;
 use spl_governance_tools::account::create_and_serialize_account;
 
 /// Processes an instruction
@@ -94,9 +92,12 @@ pub fn process_post_message(
         governance_info.key,
     )?;
 
+    let realm_config_info = next_account_info(account_info_iter)?; //10
+
     let voter_weight = token_owner_record_data.resolve_voter_weight(
         governance_program_id,
-        account_info_iter, // 10
+        realm_config_info,
+        account_info_iter, // 11
         realm_info.key,
         &realm_data,
         VoterWeightAction::CommentProposal,
