@@ -409,7 +409,6 @@ pub enum GovernanceInstruction {
     ///   1. `[]` TokenOwnerRecord account of the Proposal owner
     ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)    
     ///   3. `[writable]` ProposalTransaction account to flag
-    ///   4. `[]` Clock sysvar
     FlagTransactionError,
 
     /// Sets new Realm authority
@@ -1301,7 +1300,6 @@ pub fn flag_transaction_error(
         AccountMeta::new_readonly(*token_owner_record, false),
         AccountMeta::new_readonly(*governance_authority, true),
         AccountMeta::new(*proposal_transaction, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];
 
     let instruction = GovernanceInstruction::FlagTransactionError {};

@@ -28,8 +28,7 @@ pub fn process_flag_transaction_error(
 
     let proposal_transaction_info = next_account_info(account_info_iter)?; // 3
 
-    let clock_info = next_account_info(account_info_iter)?; // 4
-    let clock = Clock::from_account_info(clock_info)?;
+    let clock = Clock::get()?;
 
     let mut proposal_data = get_proposal_data(program_id, proposal_info)?;
 
