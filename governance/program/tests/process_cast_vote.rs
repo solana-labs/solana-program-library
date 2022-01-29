@@ -591,11 +591,7 @@ async fn test_cast_vote_with_early_vote_tipped_to_succeeded() {
     assert_eq!(ProposalState::Voting, proposal_account.state);
 
     governance_test
-        .with_cast_vote(
-            &proposal_cookie,
-            &token_owner_record_cookie2,
-            YesNoVote::No,
-        )
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie2, YesNoVote::No)
         .await
         .unwrap();
     let proposal_account = governance_test
@@ -639,11 +635,7 @@ async fn test_cast_vote_with_early_vote_tipped_to_succeeded() {
     assert_eq!(ProposalState::Voting, proposal_account.state);
 
     governance_test
-        .with_cast_vote(
-            &proposal_cookie,
-            &token_owner_record_cookie2,
-            YesNoVote::No,
-        )
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie2, YesNoVote::No)
         .await
         .unwrap();
     let proposal_account = governance_test
@@ -652,11 +644,7 @@ async fn test_cast_vote_with_early_vote_tipped_to_succeeded() {
     assert_eq!(ProposalState::Voting, proposal_account.state);
 
     governance_test
-        .with_cast_vote(
-            &proposal_cookie,
-            &token_owner_record_cookie3,
-            YesNoVote::No,
-        )
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie3, YesNoVote::No)
         .await
         .unwrap();
     let proposal_account = governance_test
@@ -859,7 +847,7 @@ async fn test_cast_vote_with_threshold_below_50_and_vote_not_tipped() {
 }
 
 #[tokio::test]
-async fn test_cast_vote_with_disabled_tipping() {
+async fn test_cast_vote_with_disabled_tipping_yes_votes() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -889,12 +877,12 @@ async fn test_cast_vote_with_disabled_tipping() {
     governance_test
         .mint_community_tokens(&realm_cookie, 20) // total supply: 120
         .await;
-
-    // Act: no yes tipping
     let proposal_cookie = governance_test
         .with_signed_off_proposal(&token_owner_record_cookie1, &mut account_governance_cookie)
         .await
         .unwrap();
+
+    // Act
     governance_test
         .with_cast_vote(
             &proposal_cookie,
@@ -916,6 +904,56 @@ async fn test_cast_vote_with_disabled_tipping() {
         .with_signed_off_proposal(&token_owner_record_cookie1, &mut account_governance_cookie)
         .await
         .unwrap();
+    governance_test
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie1, YesNoVote::No)
+        .await
+        .unwrap();
+
+    // Assert
+
+    let proposal_account = governance_test
+        .get_proposal_account(&proposal_cookie.address)
+        .await;
+    assert_eq!(ProposalState::Voting, proposal_account.state);
+}
+
+#[tokio::test]
+async fn test_cast_vote_with_disabled_tipping_no_votes() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let mut governance_config = governance_test.get_default_governance_config();
+
+    governance_config.vote_tipping = VoteTipping::Disabled;
+    governance_config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(10);
+
+    let token_owner_record_cookie1 = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let mut account_governance_cookie = governance_test
+        .with_account_governance_using_config(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie1,
+            &governance_config,
+        )
+        .await
+        .unwrap();
+
+    governance_test
+        .mint_community_tokens(&realm_cookie, 20) // total supply: 120
+        .await;
+    let proposal_cookie = governance_test
+        .with_signed_off_proposal(&token_owner_record_cookie1, &mut account_governance_cookie)
+        .await
+        .unwrap();
+
+    // Act
     governance_test
         .with_cast_vote(&proposal_cookie, &token_owner_record_cookie1, YesNoVote::No)
         .await

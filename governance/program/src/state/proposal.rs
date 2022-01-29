@@ -553,12 +553,6 @@ impl ProposalV2 {
                 }
             }
             VoteTipping::Early => {
-                solana_program::msg!(
-                    "{} {} {}",
-                    yes_vote_weight,
-                    deny_vote_weight,
-                    min_vote_threshold_weight
-                );
                 if yes_vote_weight >= min_vote_threshold_weight
                     && yes_vote_weight > deny_vote_weight
                 {
@@ -568,7 +562,11 @@ impl ProposalV2 {
             }
         }
 
-        if !matches!(config.vote_tipping, VoteTipping::Disabled)
+        // If vote tipping isn't disabled entirely, allow a vote to complete as
+        // "defeated" if there is no possible way of reaching majority or the
+        // min_vote_threshold_weight for another option. This tipping is always
+        // strict, there's no equivalent to "early" tipping for deny votes.
+        if config.vote_tipping != VoteTipping::Disabled
             && (deny_vote_weight > (max_vote_weight.saturating_sub(min_vote_threshold_weight))
                 || deny_vote_weight >= (max_vote_weight.saturating_sub(deny_vote_weight)))
         {
