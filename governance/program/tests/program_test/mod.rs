@@ -53,8 +53,8 @@ use spl_governance::{
     tools::bpf_loader_upgradeable::get_program_data_address,
 };
 use spl_governance_addin_api::{
-    max_voter_weight::{MaxVoterWeightAccountType, MaxVoterWeightRecord},
-    voter_weight::{VoterWeightAccountType, VoterWeightAction, VoterWeightRecord},
+    max_voter_weight::MaxVoterWeightRecord,
+    voter_weight::{VoterWeightAction, VoterWeightRecord},
 };
 use spl_governance_addin_mock::instruction::{
     setup_max_voter_weight_record, setup_voter_weight_record,
@@ -2606,7 +2606,7 @@ impl GovernanceProgramTest {
         let voter_weight_record_cookie = VoterWeightRecordCookie {
             address: voter_weight_record_account.pubkey(),
             account: VoterWeightRecord {
-                account_type: VoterWeightAccountType::VoterWeightRecord,
+                account_discriminator: VoterWeightRecord::ACCOUNT_DISCRIMINATOR,
                 realm: token_owner_record_cookie.account.realm,
                 governing_token_mint: token_owner_record_cookie.account.governing_token_mint,
                 governing_token_owner: token_owner_record_cookie.account.governing_token_owner,
@@ -2661,7 +2661,7 @@ impl GovernanceProgramTest {
         let max_voter_weight_record_cookie = MaxVoterWeightRecordCookie {
             address: max_voter_weight_record_account.pubkey(),
             account: MaxVoterWeightRecord {
-                account_type: MaxVoterWeightAccountType::MaxVoterWeightRecord,
+                account_discriminator: MaxVoterWeightRecord::ACCOUNT_DISCRIMINATOR,
                 realm: token_owner_record_cookie.account.realm,
                 governing_token_mint: token_owner_record_cookie.account.governing_token_mint,
                 max_voter_weight,

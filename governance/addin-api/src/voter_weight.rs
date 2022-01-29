@@ -4,16 +4,6 @@ use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{clock::Slot, program_pack::IsInitialized, pubkey::Pubkey};
 use spl_governance_tools::account::AccountMaxSize;
 
-/// VoterWeight account type
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub enum VoterWeightAccountType {
-    /// Default uninitialized account state
-    Uninitialized,
-
-    /// Voter Weight Record
-    VoterWeightRecord,
-}
-
 /// The governance action VoterWeight is evaluated for
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum VoterWeightAction {
@@ -34,8 +24,10 @@ pub enum VoterWeightAction {
 /// The account is used as an api interface to provide voting power to the governance program from external addin contracts
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct VoterWeightRecord {
-    /// VoterWeightRecord account type
-    pub account_type: VoterWeightAccountType,
+    /// VoterWeightRecord discriminator sha256("account:VoterWeightRecord")[..8]
+    /// Note: The discriminator size must match the addin implementing program discriminator size
+    /// to ensure it's stored in the private space of the account data and it's unique
+    pub account_discriminator: [u8; 8],
 
     /// The Realm the VoterWeightRecord belongs to
     pub realm: Pubkey,
@@ -75,10 +67,15 @@ pub struct VoterWeightRecord {
     pub reserved: [u8; 8],
 }
 
+impl VoterWeightRecord {
+    /// sha256("account:VoterWeightRecord")[..8]
+    pub const ACCOUNT_DISCRIMINATOR: [u8; 8] = *b"2ef99b4b";
+}
+
 impl AccountMaxSize for VoterWeightRecord {}
 
 impl IsInitialized for VoterWeightRecord {
     fn is_initialized(&self) -> bool {
-        self.account_type == VoterWeightAccountType::VoterWeightRecord
+        self.account_discriminator == VoterWeightRecord::ACCOUNT_DISCRIMINATOR
     }
 }

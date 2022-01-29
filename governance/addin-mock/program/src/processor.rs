@@ -11,8 +11,8 @@ use solana_program::{
     pubkey::Pubkey,
 };
 use spl_governance_addin_api::{
-    max_voter_weight::{MaxVoterWeightAccountType, MaxVoterWeightRecord},
-    voter_weight::{VoterWeightAccountType, VoterWeightAction, VoterWeightRecord},
+    max_voter_weight::MaxVoterWeightRecord,
+    voter_weight::{VoterWeightAction, VoterWeightRecord},
 };
 use spl_governance_tools::account::create_and_serialize_account;
 
@@ -74,7 +74,7 @@ pub fn process_setup_voter_weight_record(
     let system_info = next_account_info(account_info_iter)?; // 5
 
     let voter_weight_record_data = VoterWeightRecord {
-        account_type: VoterWeightAccountType::VoterWeightRecord,
+        account_discriminator: VoterWeightRecord::ACCOUNT_DISCRIMINATOR,
         realm: *realm_info.key,
         governing_token_mint: *governing_token_mint_info.key,
         governing_token_owner: *governing_token_owner_info.key,
@@ -112,7 +112,7 @@ pub fn process_setup_max_voter_weight_record(
     let system_info = next_account_info(account_info_iter)?; // 4
 
     let max_voter_weight_record_data = MaxVoterWeightRecord {
-        account_type: MaxVoterWeightAccountType::MaxVoterWeightRecord,
+        account_discriminator: MaxVoterWeightRecord::ACCOUNT_DISCRIMINATOR,
         realm: *realm_info.key,
         governing_token_mint: *governing_token_mint_info.key,
         max_voter_weight,
