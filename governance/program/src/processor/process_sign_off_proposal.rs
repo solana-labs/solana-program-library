@@ -24,8 +24,7 @@ pub fn process_sign_off_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) 
     let governance_info = next_account_info(account_info_iter)?; // 1
     let proposal_info = next_account_info(account_info_iter)?; // 2
 
-    let signatory_record_info = next_account_info(account_info_iter)?; // 3
-    let signatory_info = next_account_info(account_info_iter)?; // 4
+    let signatory_info = next_account_info(account_info_iter)?; // 3
 
     let clock = Clock::get()?;
 
@@ -41,7 +40,7 @@ pub fn process_sign_off_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) 
 
     // If the owner of the proposal hasn't appointed any signatories then can sign off the proposal themself
     if proposal_data.signatories_count == 0 {
-        let proposal_owner_record_info = next_account_info(account_info_iter)?; // 5
+        let proposal_owner_record_info = next_account_info(account_info_iter)?; // 4
 
         let proposal_owner_record_data = get_token_owner_record_data_for_proposal_owner(
             program_id,
@@ -54,6 +53,8 @@ pub fn process_sign_off_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) 
 
         proposal_data.signing_off_at = Some(clock.unix_timestamp);
     } else {
+        let signatory_record_info = next_account_info(account_info_iter)?; // 4
+
         let mut signatory_record_data = get_signatory_record_data_for_seeds(
             program_id,
             signatory_record_info,

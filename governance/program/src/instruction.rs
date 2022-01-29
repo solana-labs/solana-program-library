@@ -272,12 +272,12 @@ pub enum GovernanceInstruction {
     /// If Proposal owner doesn't designate any signatories then can sign off the Proposal themself
     ///
     ///   0. `[writable]` Realm account
-    ///   1. `[writable]` Realm account
-    ///   2. `[writable]` Governance account
-    ///   3. `[writable]` Signatory Record account
+    ///   1. `[writable]` Governance account
+    ///   2. `[writable]` Proposal account
     ///   4. `[signer]` Signatory account signing off the Proposal
     ///       Or Proposal owner if the owner hasn't appointed any signatories
-    ///   5. `[]` Optional TokenOwnerRecord of the Proposal owner when self signing off the Proposal
+    ///   5. `[]` Optional TokenOwnerRecord for the Proposal owner. Required when the owner signs off the Proposal
+    ///   3. `[writable]` Optional Signatory Record account. Required when non owner sings off the Proposal
     SignOffProposal,
 
     ///  Uses your voter weight (deposited Community or Council tokens) to cast a vote on a Proposal
@@ -999,18 +999,19 @@ pub fn sign_off_proposal(
     signatory: &Pubkey,
     proposal_owner_record: Option<&Pubkey>,
 ) -> Instruction {
-    let signatory_record_address = get_signatory_record_address(program_id, proposal, signatory);
-
     let mut accounts = vec![
         AccountMeta::new(*realm, false),
         AccountMeta::new(*governance, false),
         AccountMeta::new(*proposal, false),
-        AccountMeta::new(signatory_record_address, false),
         AccountMeta::new_readonly(*signatory, true),
     ];
 
     if let Some(proposal_owner_record) = proposal_owner_record {
         accounts.push(AccountMeta::new_readonly(*proposal_owner_record, false))
+    } else {
+        let signatory_record_address =
+            get_signatory_record_address(program_id, proposal, signatory);
+        accounts.push(AccountMeta::new(signatory_record_address, false));
     }
 
     let instruction = GovernanceInstruction::SignOffProposal;
