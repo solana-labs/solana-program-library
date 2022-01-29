@@ -110,7 +110,7 @@ pub enum GovernanceInstruction {
     ///   0. `[]` Realm account the created Governance belongs to
     ///   1. `[writable]` Account Governance account. PDA seeds: ['account-governance', realm, governed_account]
     ///   2. `[]` Account governed by this Governance
-    ///   3. `[]` Governing TokenOwnerRecord account (Required only if not signed by RealmAuthority)
+    ///   3. `[]` Governing TokenOwnerRecord account (Used only if not signed by RealmAuthority)
     ///   4. `[signer]` Payer
     ///   5. `[]` System program
     ///   6. `[]` Sysvar Rent
@@ -130,7 +130,7 @@ pub enum GovernanceInstruction {
     ///   2. `[]` Program governed by this Governance account
     ///   3. `[writable]` Program Data account of the Program governed by this Governance account
     ///   4. `[signer]` Current Upgrade Authority account of the Program governed by this Governance account
-    ///    5. `[]` Governing TokenOwnerRecord account (Required only if not signed by RealmAuthority)
+    ///    5. `[]` Governing TokenOwnerRecord account (Used only if not signed by RealmAuthority)
     ///   6. `[signer]` Payer
     ///   7. `[]` bpf_upgradeable_loader program
     ///   8. `[]` System program
@@ -338,7 +338,7 @@ pub enum GovernanceInstruction {
     ///   1. `[writable]` Mint Governance account. PDA seeds: ['mint-governance', realm, governed_mint]
     ///   2. `[writable]` Mint governed by this Governance account
     ///   3. `[signer]` Current Mint authority (MintTokens and optionally FreezeAccount)
-    ///   4. `[]` Governing TokenOwnerRecord account (Required only if not signed by RealmAuthority)   
+    ///   4. `[]` Governing TokenOwnerRecord account (Used only if not signed by RealmAuthority)   
     ///   5. `[signer]` Payer
     ///   6. `[]` SPL Token program
     ///   7. `[]` System program
@@ -364,7 +364,7 @@ pub enum GovernanceInstruction {
     ///   1. `[writable]` Token Governance account. PDA seeds: ['token-governance', realm, governed_token]
     ///   2. `[writable]` Token account governed by this Governance account
     ///   3. `[signer]` Current token account authority (AccountOwner and optionally CloseAccount)
-    ///   4. `[]` Governing TokenOwnerRecord account (Required only if not signed by RealmAuthority)       
+    ///   4. `[]` Governing TokenOwnerRecord account (Used only if not signed by RealmAuthority)       
     ///   5. `[signer]` Payer
     ///   6. `[]` SPL Token program
     ///   7. `[]` System program
