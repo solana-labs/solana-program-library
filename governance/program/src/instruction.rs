@@ -931,7 +931,6 @@ pub fn add_signatory(
         AccountMeta::new(signatory_record_address, false),
         AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
-        AccountMeta::new_readonly(sysvar::rent::id(), false),
     ];
 
     let instruction = GovernanceInstruction::AddSignatory {
