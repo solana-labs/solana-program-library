@@ -97,8 +97,8 @@ pub struct ProposalTransactionV2 {
     /// The option index the instruction belongs to
     pub option_index: u16,
 
-    /// Unique instruction index within it's parent Proposal
-    pub instruction_index: u16,
+    /// Unique transaction index within it's parent Proposal
+    pub transaction_index: u16,
 
     /// Minimum waiting time in seconds for the  instruction to be executed once proposal is voted on
     pub hold_up_time: u32,
@@ -149,7 +149,7 @@ impl ProposalTransactionV2 {
             let proposal_transaction_data_v1 = ProposalInstructionV1 {
                 account_type: self.account_type,
                 proposal: self.proposal,
-                instruction_index: self.instruction_index,
+                instruction_index: self.transaction_index,
                 hold_up_time: self.hold_up_time,
                 instruction: self.instructions[0].clone(),
                 executed_at: self.executed_at,
@@ -212,7 +212,7 @@ pub fn get_proposal_transaction_data(
             account_type,
             proposal: proposal_transaction_data_v1.proposal,
             option_index: 0, // V1 has a single implied option at index 0
-            instruction_index: proposal_transaction_data_v1.instruction_index,
+            transaction_index: proposal_transaction_data_v1.instruction_index,
             hold_up_time: proposal_transaction_data_v1.hold_up_time,
             instructions: vec![proposal_transaction_data_v1.instruction],
             executed_at: proposal_transaction_data_v1.executed_at,
@@ -272,7 +272,7 @@ mod test {
             account_type: GovernanceAccountType::ProposalTransactionV2,
             proposal: Pubkey::new_unique(),
             option_index: 0,
-            instruction_index: 1,
+            transaction_index: 1,
             hold_up_time: 10,
             instructions: create_test_instruction_data(),
             executed_at: Some(100),

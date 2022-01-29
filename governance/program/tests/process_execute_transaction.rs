@@ -116,7 +116,7 @@ async fn test_execute_mint_transaction() {
 }
 
 #[tokio::test]
-async fn test_execute_transfer_instruction() {
+async fn test_execute_transfer_transaction() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -215,7 +215,7 @@ async fn test_execute_transfer_instruction() {
 }
 
 #[tokio::test]
-async fn test_execute_upgrade_program_instruction() {
+async fn test_execute_upgrade_program_transaction() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -271,7 +271,7 @@ async fn test_execute_upgrade_program_instruction() {
         .await;
 
     // Ensure we can invoke the governed program before upgrade
-    let governed_program_instruction = Instruction::new_with_bytes(
+    let governed_program_ix = Instruction::new_with_bytes(
         governed_program_cookie.address,
         &[0],
         vec![AccountMeta::new(clock::id(), false)],
@@ -279,7 +279,7 @@ async fn test_execute_upgrade_program_instruction() {
 
     let err = governance_test
         .bench
-        .process_transaction(&[governed_program_instruction.clone()], None)
+        .process_transaction(&[governed_program_ix.clone()], None)
         .await
         .err()
         .unwrap();
@@ -328,7 +328,7 @@ async fn test_execute_upgrade_program_instruction() {
 
     let err = governance_test
         .bench
-        .process_transaction(&[governed_program_instruction.clone()], None)
+        .process_transaction(&[governed_program_ix.clone()], None)
         .await
         .err()
         .unwrap();
@@ -399,7 +399,7 @@ async fn test_execute_proposal_transaction_with_invalid_state_errors() {
     // Assert
     assert_eq!(
         err,
-        GovernanceError::InvalidStateCannotExecuteInstruction.into()
+        GovernanceError::InvalidStateCannotExecuteTransaction.into()
     );
 
     // Arrange
@@ -420,7 +420,7 @@ async fn test_execute_proposal_transaction_with_invalid_state_errors() {
     // Assert
     assert_eq!(
         err,
-        GovernanceError::InvalidStateCannotExecuteInstruction.into()
+        GovernanceError::InvalidStateCannotExecuteTransaction.into()
     );
 
     // Arrange
@@ -441,7 +441,7 @@ async fn test_execute_proposal_transaction_with_invalid_state_errors() {
     // Assert
     assert_eq!(
         err,
-        GovernanceError::InvalidStateCannotExecuteInstruction.into()
+        GovernanceError::InvalidStateCannotExecuteTransaction.into()
     );
 
     // Arrange
@@ -463,7 +463,7 @@ async fn test_execute_proposal_transaction_with_invalid_state_errors() {
     // Assert
     assert_eq!(
         err,
-        GovernanceError::CannotExecuteInstructionWithinHoldUpTime.into()
+        GovernanceError::CannotExecuteTransactionWithinHoldUpTime.into()
     );
 
     // Arrange
@@ -500,7 +500,7 @@ async fn test_execute_proposal_transaction_with_invalid_state_errors() {
     // Assert
     assert_eq!(
         err,
-        GovernanceError::InvalidStateCannotExecuteInstruction.into()
+        GovernanceError::InvalidStateCannotExecuteTransaction.into()
     );
 }
 
@@ -669,5 +669,5 @@ async fn test_execute_mint_transaction_twice_error() {
         .unwrap();
 
     // Assert
-    assert_eq!(err, GovernanceError::InstructionAlreadyExecuted.into());
+    assert_eq!(err, GovernanceError::TransactionAlreadyExecuted.into());
 }

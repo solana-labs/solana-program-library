@@ -572,7 +572,7 @@ impl ProposalV2 {
     /// It also asserts whether the Proposal is executable (has the reject option)
     pub fn assert_can_edit_instructions(&self) -> Result<(), ProgramError> {
         if self.assert_is_draft_state().is_err() {
-            return Err(GovernanceError::InvalidStateCannotEditInstructions.into());
+            return Err(GovernanceError::InvalidStateCannotEditTransactions.into());
         }
 
         // For security purposes only proposals with the reject option can have executable instructions
@@ -599,7 +599,7 @@ impl ProposalV2 {
             | ProposalState::Voting
             | ProposalState::Cancelled
             | ProposalState::Defeated => {
-                return Err(GovernanceError::InvalidStateCannotExecuteInstruction.into())
+                return Err(GovernanceError::InvalidStateCannotExecuteTransaction.into())
             }
         }
 
@@ -616,11 +616,11 @@ impl ProposalV2 {
             .unwrap()
             >= current_unix_timestamp
         {
-            return Err(GovernanceError::CannotExecuteInstructionWithinHoldUpTime.into());
+            return Err(GovernanceError::CannotExecuteTransactionWithinHoldUpTime.into());
         }
 
         if proposal_transaction_data.executed_at.is_some() {
-            return Err(GovernanceError::InstructionAlreadyExecuted.into());
+            return Err(GovernanceError::TransactionAlreadyExecuted.into());
         }
 
         Ok(())

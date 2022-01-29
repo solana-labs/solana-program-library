@@ -320,7 +320,7 @@ async fn test_flag_transaction_error_with_proposal_transaction_already_executed_
         .await
         .unwrap();
 
-    // Add another instruction to prevent Proposal from transitioning to Competed state
+    // Add another transaction to prevent Proposal from transitioning to Competed state
     governance_test
         .with_nop_transaction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
@@ -360,7 +360,7 @@ async fn test_flag_transaction_error_with_proposal_transaction_already_executed_
 
     // Assert
 
-    assert_eq!(err, GovernanceError::InstructionAlreadyExecuted.into());
+    assert_eq!(err, GovernanceError::TransactionAlreadyExecuted.into());
 }
 
 #[tokio::test]

@@ -8,7 +8,7 @@ use program_test::*;
 use spl_governance::error::GovernanceError;
 
 #[tokio::test]
-async fn test_insert_instruction() {
+async fn test_insert_transaction() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -63,7 +63,7 @@ async fn test_insert_instruction() {
 }
 
 #[tokio::test]
-async fn test_insert_multiple_instructions() {
+async fn test_insert_multiple_transactions() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -148,7 +148,7 @@ async fn test_insert_transaction_with_invalid_index_error() {
         .unwrap();
 
     // Assert
-    assert_eq!(err, GovernanceError::InvalidInstructionIndex.into());
+    assert_eq!(err, GovernanceError::InvalidTransactionIndex.into());
 }
 
 #[tokio::test]
@@ -193,7 +193,7 @@ async fn test_insert_transaction_with_proposal_transaction_already_exists_error(
         .unwrap();
 
     // Assert
-    assert_eq!(err, GovernanceError::InstructionAlreadyExists.into());
+    assert_eq!(err, GovernanceError::TransactionAlreadyExists.into());
 }
 
 #[tokio::test]
@@ -238,7 +238,7 @@ async fn test_insert_transaction_with_invalid_hold_up_time_error() {
     // Assert
     assert_eq!(
         err,
-        GovernanceError::InstructionHoldUpTimeBelowRequiredMin.into()
+        GovernanceError::TransactionHoldUpTimeBelowRequiredMin.into()
     );
 }
 #[tokio::test]
@@ -278,7 +278,7 @@ async fn test_insert_transaction_with_not_editable_proposal_error() {
     // Assert
     assert_eq!(
         err,
-        GovernanceError::InvalidStateCannotEditInstructions.into()
+        GovernanceError::InvalidStateCannotEditTransactions.into()
     );
 }
 

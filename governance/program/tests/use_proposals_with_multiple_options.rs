@@ -151,7 +151,7 @@ async fn test_insert_transaction_with_proposal_not_executable_error() {
 }
 
 #[tokio::test]
-async fn test_insert_instructions_for_multiple_options() {
+async fn test_insert_transactions_for_multiple_options() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -185,31 +185,31 @@ async fn test_insert_instructions_for_multiple_options() {
 
     // Act
 
-    // option 1 / instruction 0
+    // option 1 / transaction 0
     governance_test
         .with_nop_transaction(&mut proposal_cookie, &token_owner_record_cookie, 1, Some(0))
         .await
         .unwrap();
 
-    // option 1 / instruction 1
+    // option 1 / transaction 1
     governance_test
         .with_nop_transaction(&mut proposal_cookie, &token_owner_record_cookie, 1, Some(1))
         .await
         .unwrap();
 
-    // option 1 / instruction 2
+    // option 1 / transaction 2
     governance_test
         .with_nop_transaction(&mut proposal_cookie, &token_owner_record_cookie, 1, Some(2))
         .await
         .unwrap();
 
-    // option 0 / instruction 0
+    // option 0 / transaction 0
     governance_test
         .with_nop_transaction(&mut proposal_cookie, &token_owner_record_cookie, 0, Some(0))
         .await
         .unwrap();
 
-    // option 0 / instruction 1
+    // option 0 / transaction 1
     governance_test
         .with_nop_transaction(&mut proposal_cookie, &token_owner_record_cookie, 0, Some(1))
         .await
@@ -757,7 +757,7 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
 
     // Act
 
-    let instruction1_err = governance_test
+    let transaction1_err = governance_test
         .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie1)
         .await
         .err()
@@ -768,7 +768,7 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
         .await
         .unwrap();
 
-    let instruction3_err = governance_test
+    let transaction3_err = governance_test
         .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie3)
         .await
         .err()
@@ -782,13 +782,13 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
     assert_eq!(ProposalState::Completed, proposal_account.state);
 
     assert_eq!(
-        instruction1_err,
+        transaction1_err,
         GovernanceError::CannotExecuteDefeatedOption.into()
     );
 
     assert_eq!(
-        instruction3_err,
-        GovernanceError::InvalidStateCannotExecuteInstruction.into()
+        transaction3_err,
+        GovernanceError::InvalidStateCannotExecuteTransaction.into()
     );
 }
 
@@ -928,7 +928,7 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
     // Assert
     assert_eq!(
         err,
-        GovernanceError::InvalidStateCannotExecuteInstruction.into()
+        GovernanceError::InvalidStateCannotExecuteTransaction.into()
     );
 
     // Act
@@ -942,7 +942,7 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
     // Assert
     assert_eq!(
         err,
-        GovernanceError::InvalidStateCannotExecuteInstruction.into()
+        GovernanceError::InvalidStateCannotExecuteTransaction.into()
     );
 
     // Act
@@ -956,6 +956,6 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
     // Assert
     assert_eq!(
         err,
-        GovernanceError::InvalidStateCannotExecuteInstruction.into()
+        GovernanceError::InvalidStateCannotExecuteTransaction.into()
     );
 }

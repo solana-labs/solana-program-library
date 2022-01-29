@@ -49,13 +49,13 @@ pub fn process_insert_transaction(
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
 
     if !proposal_transaction_info.data_is_empty() {
-        return Err(GovernanceError::InstructionAlreadyExists.into());
+        return Err(GovernanceError::TransactionAlreadyExists.into());
     }
 
     let governance_data = get_governance_data(program_id, governance_info)?;
 
     if hold_up_time < governance_data.config.min_transaction_hold_up_time {
-        return Err(GovernanceError::InstructionHoldUpTimeBelowRequiredMin.into());
+        return Err(GovernanceError::TransactionHoldUpTimeBelowRequiredMin.into());
     }
 
     let mut proposal_data =
@@ -73,7 +73,7 @@ pub fn process_insert_transaction(
     let option = &mut proposal_data.options[option_index as usize];
 
     match instruction_index.cmp(&option.transactions_next_index) {
-        Ordering::Greater => return Err(GovernanceError::InvalidInstructionIndex.into()),
+        Ordering::Greater => return Err(GovernanceError::InvalidTransactionIndex.into()),
         // If the index is the same as instructions_next_index then we are adding a new instruction
         // If the index is below instructions_next_index then we are inserting into an existing empty space
         Ordering::Equal => {
@@ -88,7 +88,7 @@ pub fn process_insert_transaction(
     let proposal_transaction_data = ProposalTransactionV2 {
         account_type: GovernanceAccountType::ProposalTransactionV2,
         option_index,
-        instruction_index,
+        transaction_index: instruction_index,
         hold_up_time,
         instructions,
         executed_at: None,
