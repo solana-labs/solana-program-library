@@ -2063,10 +2063,11 @@ impl GovernanceProgramTest {
     ) -> Result<(), ProgramError> {
         let cancel_proposal_transaction = cancel_proposal(
             &self.program_id,
+            &proposal_cookie.realm,
+            &proposal_cookie.account.governance,
             &proposal_cookie.address,
             &token_owner_record_cookie.address,
             &token_owner_record_cookie.token_owner.pubkey(),
-            &proposal_cookie.account.governance,
         );
 
         self.bench

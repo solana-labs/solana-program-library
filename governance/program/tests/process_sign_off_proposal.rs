@@ -6,7 +6,6 @@ use solana_program_test::tokio;
 
 use program_test::*;
 use spl_governance::{error::GovernanceError, state::enums::ProposalState};
-use spl_governance_tools::error::GovernanceToolsError;
 
 #[tokio::test]
 async fn test_sign_off_proposal() {

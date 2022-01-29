@@ -258,11 +258,11 @@ pub enum GovernanceInstruction {
 
     /// Cancels Proposal by changing its state to Canceled
     ///
-    ///   0. `[writable]` Proposal account
-    ///   1. `[writable]`  TokenOwnerRecord account of the  Proposal owner
-    ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)
-    ///   3. `[]` Clock sysvar
-    ///   4. `[]` Governance account
+    ///   0. `[writable]` Realm account
+    ///   1. `[writable]` Governance account
+    ///   2. `[writable]` Proposal account
+    ///   3. `[writable]`  TokenOwnerRecord account of the  Proposal owner
+    ///   4. `[signer]` Governance Authority (Token Owner or Governance Delegate)
     CancelProposal,
 
     /// Signs off Proposal indicating the Signatory approves the Proposal
@@ -1152,17 +1152,19 @@ pub fn relinquish_vote(
 pub fn cancel_proposal(
     program_id: &Pubkey,
     // Accounts
+    realm: &Pubkey,
+    governance: &Pubkey,
     proposal: &Pubkey,
     proposal_owner_record: &Pubkey,
     governance_authority: &Pubkey,
-    governance: &Pubkey,
 ) -> Instruction {
     let accounts = vec![
+        AccountMeta::new(*realm, false),
+        AccountMeta::new(*governance, false),
         AccountMeta::new(*proposal, false),
         AccountMeta::new(*proposal_owner_record, false),
         AccountMeta::new_readonly(*governance_authority, true),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
-        AccountMeta::new_readonly(*governance, false),
     ];
 
     let instruction = GovernanceInstruction::CancelProposal {};
