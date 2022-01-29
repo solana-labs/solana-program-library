@@ -636,7 +636,7 @@ impl ProposalV2 {
         self.assert_can_execute_transaction(proposal_transaction_data, current_unix_timestamp)?;
 
         if proposal_transaction_data.execution_status == TransactionExecutionStatus::Error {
-            return Err(GovernanceError::InstructionAlreadyFlaggedWithError.into());
+            return Err(GovernanceError::TransactionAlreadyFlaggedWithError.into());
         }
 
         Ok(())

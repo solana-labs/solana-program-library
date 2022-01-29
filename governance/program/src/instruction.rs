@@ -152,7 +152,7 @@ pub enum GovernanceInstruction {
         transfer_upgrade_authority: bool,
     },
 
-    /// Creates Proposal account for Instructions that will be executed at some point in the future
+    /// Creates Proposal account for Transactions which will be executed at some point in the future
     ///
     ///   0. `[]` Realm account the created Proposal belongs to
     ///   1. `[writable]` Proposal account. PDA seeds ['governance',governance, governing_token_mint, proposal_index]
@@ -186,7 +186,7 @@ pub enum GovernanceInstruction {
         #[allow(dead_code)]
         /// Indicates whether the proposal has the deny option
         /// A proposal without the rejecting option is a non binding survey
-        /// Only proposals with the rejecting option can have executable instructions
+        /// Only proposals with the rejecting option can have executable transactions
         use_deny_option: bool,
     },
 
@@ -232,10 +232,10 @@ pub enum GovernanceInstruction {
     ///   7. `[]` Rent sysvar
     InsertTransaction {
         #[allow(dead_code)]
-        /// The index of the option the instruction is for
+        /// The index of the option the transaction is for
         option_index: u16,
         #[allow(dead_code)]
-        /// Instruction index to be inserted at.
+        /// Transaction index to be inserted at.
         index: u16,
         #[allow(dead_code)]
         /// Waiting time (in seconds) between vote period ending and this being eligible for execution
@@ -274,8 +274,8 @@ pub enum GovernanceInstruction {
     SignOffProposal,
 
     ///  Uses your voter weight (deposited Community or Council tokens) to cast a vote on a Proposal
-    ///  By doing so you indicate you approve or disapprove of running the Proposal set of instructions
-    ///  If you tip the consensus then the instructions can begin to be run after their hold up time
+    ///  By doing so you indicate you approve or disapprove of running the Proposal set of transactions
+    ///  If you tip the consensus then the transactions can begin to be run after their hold up time
     ///
     ///   0. `[]` Realm account
     ///   1. `[]` Governance account
@@ -328,13 +328,13 @@ pub enum GovernanceInstruction {
 
     /// Executes a Transaction in the Proposal
     /// Anybody can execute transaction once Proposal has been voted Yes and transaction_hold_up time has passed
-    /// The actual instruction being executed will be signed by Governance PDA the Proposal belongs to
+    /// The actual transaction being executed will be signed by Governance PDA the Proposal belongs to
     /// For example to execute Program upgrade the ProgramGovernance PDA would be used as the singer
     ///
     ///   0. `[writable]` Proposal account
     ///   1. `[writable]` ProposalTransaction account you wish to execute
     ///   2. `[]` Clock sysvar
-    ///   3+ Any extra accounts that are part of the instruction, in order
+    ///   3+ Any extra accounts that are part of the transaction, in order
     ExecuteTransaction,
 
     /// Creates Mint Governance account which governs a mint

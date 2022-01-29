@@ -262,9 +262,9 @@ pub enum GovernanceError {
     #[error("Governance PDA must sign")]
     GovernancePdaMustSign,
 
-    /// Instruction already flagged with error
-    #[error("Instruction already flagged with error")]
-    InstructionAlreadyFlaggedWithError,
+    /// Transaction already flagged with error
+    #[error("Transaction already flagged with error")]
+    TransactionAlreadyFlaggedWithError,
 
     /// Invalid Realm for Governance
     #[error("Invalid Realm for Governance")]
