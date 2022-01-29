@@ -527,15 +527,12 @@ impl ProposalV2 {
                 .unwrap();
 
         if yes_vote_weight >= min_vote_threshold_weight
-            && yes_vote_weight > (max_vote_weight.checked_sub(yes_vote_weight).unwrap())
+            && yes_vote_weight > (max_vote_weight.saturating_sub(yes_vote_weight))
         {
             yes_option.vote_result = OptionVoteResult::Succeeded;
             return Some(ProposalState::Succeeded);
-        } else if deny_vote_weight
-            > (max_vote_weight
-                .checked_sub(min_vote_threshold_weight)
-                .unwrap())
-            || deny_vote_weight >= (max_vote_weight.checked_sub(deny_vote_weight).unwrap())
+        } else if deny_vote_weight > (max_vote_weight.saturating_sub(min_vote_threshold_weight))
+            || deny_vote_weight >= (max_vote_weight.saturating_sub(deny_vote_weight))
         {
             yes_option.vote_result = OptionVoteResult::Defeated;
             return Some(ProposalState::Defeated);
