@@ -176,7 +176,7 @@ impl Realm {
     }
 
     /// Assert the given create authority can create governance
-    pub fn assert_can_create_governance(
+    pub fn assert_create_authority_can_create_governance(
         &self,
         program_id: &Pubkey,
         realm: &Pubkey,

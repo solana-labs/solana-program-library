@@ -44,12 +44,12 @@ pub fn process_create_governance(
 
     let realm_data = get_realm_data(program_id, realm_info)?;
 
-    realm_data.assert_can_create_governance(
+    realm_data.assert_create_authority_can_create_governance(
         program_id,
         realm_info.key,
         token_owner_record_info,
         create_authority_info,
-        account_info_iter, // 8, 9
+        account_info_iter, // realm_config_info 8, voter_weight_record_info 9
     )?;
 
     let governance_data = Governance {
