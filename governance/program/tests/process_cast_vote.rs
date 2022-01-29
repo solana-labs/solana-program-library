@@ -533,8 +533,8 @@ async fn test_cast_vote_with_early_vote_tipped_to_succeeded() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance_using_config(
+    let mut governance_cookie = governance_test
+        .with_governance_using_config(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie1,
@@ -569,7 +569,7 @@ async fn test_cast_vote_with_early_vote_tipped_to_succeeded() {
 
     // Test: tip by reaching 200 yes, 100 deny
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie1, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie1, &mut governance_cookie)
         .await
         .unwrap();
     governance_test
@@ -613,7 +613,7 @@ async fn test_cast_vote_with_early_vote_tipped_to_succeeded() {
 
     // Test: 200 vs 200 is above 15% yes, but does not tip yet
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie1, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie1, &mut governance_cookie)
         .await
         .unwrap();
     governance_test
@@ -698,8 +698,8 @@ async fn test_cast_vote_with_early_vote_tipped_to_defeated() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance_using_config(
+    let mut _governance_cookie = governance_test
+        .with_governance_using_config(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie1,
@@ -726,7 +726,7 @@ async fn test_cast_vote_with_early_vote_tipped_to_defeated() {
         .await;
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie1, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie1, &mut _governance_cookie)
         .await
         .unwrap();
 
@@ -859,8 +859,8 @@ async fn test_cast_vote_with_disabled_tipping_yes_votes() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance_using_config(
+    let mut _governance_cookie = governance_test
+        .with_governance_using_config(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie1,
@@ -873,7 +873,7 @@ async fn test_cast_vote_with_disabled_tipping_yes_votes() {
         .mint_community_tokens(&realm_cookie, 20) // total supply: 120
         .await;
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie1, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie1, &mut _governance_cookie)
         .await
         .unwrap();
 
@@ -896,7 +896,7 @@ async fn test_cast_vote_with_disabled_tipping_yes_votes() {
 
     // Act: no deny tipping
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie1, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie1, &mut _governance_cookie)
         .await
         .unwrap();
     governance_test
@@ -930,8 +930,8 @@ async fn test_cast_vote_with_disabled_tipping_no_votes() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance_using_config(
+    let mut _governance_cookie = governance_test
+        .with_governance_using_config(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie1,
@@ -944,7 +944,7 @@ async fn test_cast_vote_with_disabled_tipping_no_votes() {
         .mint_community_tokens(&realm_cookie, 20) // total supply: 120
         .await;
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie1, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie1, &mut _governance_cookie)
         .await
         .unwrap();
 

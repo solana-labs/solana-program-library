@@ -18,6 +18,10 @@ pub enum VoterWeightAction {
 
     /// Create a proposal for a governance. Target: Governance
     CreateProposal,
+
+    /// Signs off a proposal for a governance. Target: Proposal
+    /// Note: SignOffProposal is not supported in the current version
+    SignOffProposal,
 }
 
 /// VoterWeightRecord account

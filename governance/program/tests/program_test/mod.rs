@@ -1778,6 +1778,7 @@ impl GovernanceProgramTest {
             state: ProposalState::Draft,
             signatories_count: 0,
 
+            start_voting_at: None,
             draft_at: clock.unix_timestamp,
             signing_off_at: None,
 
@@ -1794,9 +1795,15 @@ impl GovernanceProgramTest {
             options: proposal_options,
             deny_vote_weight,
 
+            veto_vote_weight: None,
+            abstain_vote_weight: None,
+
             execution_flags: InstructionExecutionFlags::None,
             max_vote_weight: None,
+            max_voting_time: None,
             vote_threshold_percentage: None,
+
+            reserved: [0; 8],
         };
 
         let proposal_address = get_proposal_address(

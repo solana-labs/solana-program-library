@@ -82,9 +82,9 @@ pub enum VoteType {
     SingleChoice,
 
     /// Multiple options can be selected with up to max_voter_options per voter
-    /// and with up to max_executable_options of wining options eligible for execution
+    /// and with up to max_winning_options of successful options
     /// Ex. voters are given 5 options, can choose up to 3 (max_voter_options)
-    /// and only 1 (max_executable_options) wining option can be executed
+    /// and only 1 (max_winning_options) option can win and be executed
     MultiChoice {
         /// The max number of options a voter can choose
         /// By default it equals to the number of available options
@@ -92,11 +92,12 @@ pub enum VoteType {
         #[allow(dead_code)]
         max_voter_options: u16,
 
-        /// The max number of wining options which can be executed
+        /// The max number of wining options
+        /// For executable proposals it limits how many options can be executed for a Proposal
         /// By default it equals to the number of available options
         /// Note: In the current version the limit is not supported and not enforced yet
         #[allow(dead_code)]
-        max_executable_options: u16,
+        max_winning_options: u16,
     },
 }
 
@@ -132,11 +133,23 @@ pub struct ProposalV2 {
     /// Proposal options
     pub options: Vec<ProposalOption>,
 
-    /// The weight of the Proposal rejection votes
+    /// The total weight of the Proposal rejection votes
     /// If the proposal has no deny option then the weight is None
     /// Only proposals with the deny option can have executable instructions attached to them
     /// Without the deny option a proposal is only non executable survey
     pub deny_vote_weight: Option<u64>,
+
+    /// The total weight of Veto votes
+    /// Note: Veto is not supported in the current version
+    pub veto_vote_weight: Option<u64>,
+
+    /// The total weight of  votes
+    /// Note: Abstain is not supported in the current version
+    pub abstain_vote_weight: Option<u64>,
+
+    /// Optional start time if the Proposal should not enter voting state immediately after being signed off
+    /// Note: start_at is not supported in the current version
+    pub start_voting_at: Option<UnixTimestamp>,
 
     /// When the Proposal was created and entered Draft state
     pub draft_at: UnixTimestamp,
@@ -169,10 +182,18 @@ pub struct ProposalV2 {
     /// after vote was completed.
     pub max_vote_weight: Option<u64>,
 
+    /// Max voting time for the proposal if different from parent Governance  (only higher value possible)
+    /// Note: This field is not used in the current version
+    pub max_voting_time: Option<u32>,
+
     /// The vote threshold percentage at the time Proposal was decided
     /// It's used to show correct vote results for historical proposals in cases when the threshold
     /// was changed for governance config after vote was completed.
+    /// TODO: Use this field to override for the threshold from parent Governance (only higher value possible)
     pub vote_threshold_percentage: Option<VoteThresholdPercentage>,
+
+    /// Reserved space for future versions
+    pub reserved: [u8; 8],
 
     /// Proposal name
     pub name: String,
@@ -184,7 +205,7 @@ pub struct ProposalV2 {
 impl AccountMaxSize for ProposalV2 {
     fn get_max_size(&self) -> Option<usize> {
         let options_size: usize = self.options.iter().map(|o| o.label.len() + 19).sum();
-        Some(self.name.len() + self.description_link.len() + options_size + 201)
+        Some(self.name.len() + self.description_link.len() + options_size + 241)
     }
 }
 
@@ -372,7 +393,7 @@ impl ProposalV2 {
                 }
                 VoteType::MultiChoice {
                     max_voter_options: _n,
-                    max_executable_options: _m,
+                    max_winning_options: _m,
                 } => {
                     // If any option succeeded for multi choice then the proposal as a whole succeeded as well
                     ProposalState::Succeeded
@@ -708,7 +729,7 @@ impl ProposalV2 {
                     }
                     VoteType::MultiChoice {
                         max_voter_options: _n,
-                        max_executable_options: _m,
+                        max_winning_options: _m,
                     } => {
                         if choice_count == 0 {
                             return Err(GovernanceError::InvalidVote.into());
@@ -721,6 +742,9 @@ impl ProposalV2 {
                     return Err(GovernanceError::InvalidVote.into());
                 }
             }
+            Vote::Abstain | Vote::Veto => {
+                return Err(GovernanceError::NotSupportedVoteType.into());
+            }
         }
 
         Ok(())
@@ -732,6 +756,22 @@ impl ProposalV2 {
             BorshSerialize::serialize(&self, writer)?
         } else if self.account_type == GovernanceAccountType::ProposalV1 {
             // V1 account can't be resized and we have to translate it back to the original format
+
+            if self.abstain_vote_weight.is_some() {
+                panic!("ProposalV1 doesn't support Abstain vote")
+            }
+
+            if self.veto_vote_weight.is_some() {
+                panic!("ProposalV1 doesn't support Veto vote")
+            }
+
+            if self.start_voting_at.is_some() {
+                panic!("ProposalV1 doesn't support start time")
+            }
+
+            if self.max_voting_time.is_some() {
+                panic!("ProposalV1 doesn't support max voting time")
+            }
 
             let proposal_data_v1 = ProposalV1 {
                 account_type: self.account_type,
@@ -837,6 +877,9 @@ pub fn get_proposal_data(
                 transactions_next_index: proposal_data_v1.instructions_next_index,
             }],
             deny_vote_weight: Some(proposal_data_v1.no_votes_count),
+            veto_vote_weight: None,
+            abstain_vote_weight: None,
+            start_voting_at: None,
             draft_at: proposal_data_v1.draft_at,
             signing_off_at: proposal_data_v1.signing_off_at,
             voting_at: proposal_data_v1.voting_at,
@@ -846,9 +889,11 @@ pub fn get_proposal_data(
             closed_at: proposal_data_v1.closed_at,
             execution_flags: proposal_data_v1.execution_flags,
             max_vote_weight: proposal_data_v1.max_vote_weight,
+            max_voting_time: None,
             vote_threshold_percentage: proposal_data_v1.vote_threshold_percentage,
             name: proposal_data_v1.name,
             description_link: proposal_data_v1.description_link,
+            reserved: [0; 8],
         });
     }
 
@@ -925,16 +970,19 @@ pub fn assert_valid_proposal_options(
 
     if let VoteType::MultiChoice {
         max_voter_options,
-        max_executable_options,
+        max_winning_options,
     } = *vote_type
     {
         if options.len() == 1
             || max_voter_options as usize != options.len()
-            || max_executable_options as usize != options.len()
+            || max_winning_options as usize != options.len()
         {
             return Err(GovernanceError::InvalidProposalOptions.into());
         }
     }
+
+    // TODO: Check for duplicated option labels
+    // The options are identified by index so it's ok for now
 
     if options.iter().any(|o| o.is_empty()) {
         return Err(GovernanceError::InvalidProposalOptions.into());
@@ -969,6 +1017,8 @@ mod test {
             signatories_signed_off_count: 5,
             description_link: "This is my description".to_string(),
             name: "This is my name".to_string(),
+
+            start_voting_at: Some(0),
             draft_at: 10,
             signing_off_at: Some(10),
 
@@ -989,10 +1039,15 @@ mod test {
                 transactions_next_index: 10,
             }],
             deny_vote_weight: Some(0),
+            abstain_vote_weight: Some(0),
+            veto_vote_weight: Some(0),
 
             execution_flags: InstructionExecutionFlags::Ordered,
 
+            max_voting_time: Some(0),
             vote_threshold_percentage: Some(VoteThresholdPercentage::YesVote(100)),
+
+            reserved: [0; 8],
         }
     }
 
@@ -1066,7 +1121,7 @@ mod test {
         let mut proposal = create_test_proposal();
         proposal.vote_type = VoteType::MultiChoice {
             max_voter_options: 1,
-            max_executable_options: 1,
+            max_winning_options: 1,
         };
 
         let size = proposal.try_to_vec().unwrap().len();
@@ -1079,7 +1134,7 @@ mod test {
         let mut proposal = create_test_multi_option_proposal();
         proposal.vote_type = VoteType::MultiChoice {
             max_voter_options: 3,
-            max_executable_options: 3,
+            max_winning_options: 3,
         };
 
         let size = proposal.try_to_vec().unwrap().len();
@@ -2025,7 +2080,7 @@ mod test {
         let mut proposal = create_test_multi_option_proposal();
         proposal.vote_type = VoteType::MultiChoice {
             max_voter_options: 3,
-            max_executable_options: 3,
+            max_winning_options: 3,
         };
 
         let choices = vec![
@@ -2061,7 +2116,7 @@ mod test {
         // Arrange
         let vote_type = VoteType::MultiChoice {
             max_voter_options: 3,
-            max_executable_options: 3,
+            max_winning_options: 3,
         };
 
         let options = vec!["option 1".to_string(), "option 2".to_string()];
@@ -2078,7 +2133,7 @@ mod test {
         // Arrange
         let vote_type = VoteType::MultiChoice {
             max_voter_options: 3,
-            max_executable_options: 3,
+            max_winning_options: 3,
         };
 
         let options = vec![];
@@ -2109,7 +2164,7 @@ mod test {
         // Arrange
         let vote_type = VoteType::MultiChoice {
             max_voter_options: 3,
-            max_executable_options: 3,
+            max_winning_options: 3,
         };
 
         let options = vec![
@@ -2130,7 +2185,7 @@ mod test {
         // Arrange
         let vote_type = VoteType::MultiChoice {
             max_voter_options: 3,
-            max_executable_options: 3,
+            max_winning_options: 3,
         };
 
         let options = vec![

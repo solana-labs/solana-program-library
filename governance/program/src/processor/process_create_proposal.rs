@@ -132,6 +132,7 @@ pub fn process_create_proposal(
         name,
         description_link,
 
+        start_voting_at: None,
         draft_at: clock.unix_timestamp,
         signing_off_at: None,
         voting_at: None,
@@ -146,8 +147,14 @@ pub fn process_create_proposal(
         options: proposal_options,
         deny_vote_weight,
 
+        veto_vote_weight: None,
+        abstain_vote_weight: None,
+
         max_vote_weight: None,
+        max_voting_time: None,
         vote_threshold_percentage: None,
+
+        reserved: [0; 8],
     };
 
     create_and_serialize_account_signed::<ProposalV2>(
