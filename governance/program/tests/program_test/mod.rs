@@ -1885,6 +1885,47 @@ impl GovernanceProgramTest {
 
         Ok(())
     }
+    #[allow(dead_code)]
+    pub async fn sign_off_proposal_by_owner(
+        &mut self,
+        proposal_cookie: &ProposalCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+    ) -> Result<(), ProgramError> {
+        self.sign_off_proposal_by_owner_using_instruction(
+            proposal_cookie,
+            token_owner_record_cookie,
+            NopOverride,
+            None,
+        )
+        .await
+    }
+
+    #[allow(dead_code)]
+    pub async fn sign_off_proposal_by_owner_using_instruction<F: Fn(&mut Instruction)>(
+        &mut self,
+        proposal_cookie: &ProposalCookie,
+        token_owner_record_cookie: &TokenOwnerRecordCookie,
+        instruction_override: F,
+        signers_override: Option<&[&Keypair]>,
+    ) -> Result<(), ProgramError> {
+        let mut sign_off_proposal_ix = sign_off_proposal(
+            &self.program_id,
+            &proposal_cookie.address,
+            &token_owner_record_cookie.account.governing_token_owner,
+            Some(&token_owner_record_cookie.address),
+        );
+
+        instruction_override(&mut sign_off_proposal_ix);
+
+        let default_signers = &[&token_owner_record_cookie.token_owner];
+        let signers = signers_override.unwrap_or(default_signers);
+
+        self.bench
+            .process_transaction(&[sign_off_proposal_ix], Some(signers))
+            .await?;
+
+        Ok(())
+    }
 
     #[allow(dead_code)]
     pub async fn sign_off_proposal(
@@ -1913,6 +1954,7 @@ impl GovernanceProgramTest {
             &self.program_id,
             &proposal_cookie.address,
             &signatory_record_cookie.signatory.pubkey(),
+            None,
         );
 
         instruction_override(&mut sign_off_proposal_ix);

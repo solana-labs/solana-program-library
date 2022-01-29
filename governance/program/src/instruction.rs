@@ -132,7 +132,7 @@ pub enum GovernanceInstruction {
     ///   2. `[]` Program governed by this Governance account
     ///   3. `[writable]` Program Data account of the Program governed by this Governance account
     ///   4. `[signer]` Current Upgrade Authority account of the Program governed by this Governance account
-    ///    5. `[]` Governing TokenOwnerRecord account (Used only if not signed by RealmAuthority)
+    ///   5. `[]` Governing TokenOwnerRecord account (Used only if not signed by RealmAuthority)
     ///   6. `[signer]` Payer
     ///   7. `[]` bpf_upgradeable_loader program
     ///   8. `[]` System program
@@ -265,12 +265,17 @@ pub enum GovernanceInstruction {
     CancelProposal,
 
     /// Signs off Proposal indicating the Signatory approves the Proposal
-    /// When the last Signatory signs the Proposal state moves to Voting state
+    /// When the last Signatory signs off the Proposal it enters Voting state
+    /// Note: Adding signatories to a Proposal is a quality and not a security gate and
+    /// it's entirely at the discretion of the Proposal owner
+    /// If Proposal owner doesn't designate any signatories then can sign off the Proposal themself
     ///
     ///   0. `[writable]` Proposal account
     ///   1. `[writable]` Signatory Record account
-    ///   2. `[signer]` Signatory account
+    ///   2. `[signer]` Signatory account signing off the Proposal
+    ///       Or Proposal owner if the owner hasn't appointed any signatories
     ///   3. `[]` Clock sysvar
+    ///   4. `[]` Optional TokenOwnerRecord of the Proposal owner when self signing off the Proposal
     SignOffProposal,
 
     ///  Uses your voter weight (deposited Community or Council tokens) to cast a vote on a Proposal
@@ -982,15 +987,20 @@ pub fn sign_off_proposal(
     // Accounts
     proposal: &Pubkey,
     signatory: &Pubkey,
+    proposal_owner_record: Option<&Pubkey>,
 ) -> Instruction {
     let signatory_record_address = get_signatory_record_address(program_id, proposal, signatory);
 
-    let accounts = vec![
+    let mut accounts = vec![
         AccountMeta::new(*proposal, false),
         AccountMeta::new(signatory_record_address, false),
         AccountMeta::new_readonly(*signatory, true),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];
+
+    if let Some(proposal_owner_record) = proposal_owner_record {
+        accounts.push(AccountMeta::new_readonly(*proposal_owner_record, false))
+    }
 
     let instruction = GovernanceInstruction::SignOffProposal;
 
