@@ -19,7 +19,7 @@ pub enum VoterWeightAddinInstruction {
     /// 0. `[]` Governance Program Id
     /// 1. `[]` Realm account
     /// 2. `[]` Governing Token mint
-    /// 3. `[]` TokenOwnerRecord
+    /// 3. `[]` Governing token owner
     /// 4. `[writable]` VoterWeightRecord
     /// 5. `[signer]` Payer
     /// 6. `[]` System
