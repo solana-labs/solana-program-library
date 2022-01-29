@@ -282,8 +282,8 @@ pub enum GovernanceInstruction {
     ///  By doing so you indicate you approve or disapprove of running the Proposal set of transactions
     ///  If you tip the consensus then the transactions can begin to be run after their hold up time
     ///
-    ///   0. `[]` Realm account
-    ///   1. `[]` Governance account
+    ///   0. `[writable]` Realm account
+    ///   1. `[writable]` Governance account
     ///   2. `[writable]` Proposal account
     ///   4. `[writable]` TokenOwnerRecord of the Proposal owner    
     ///   3. `[writable]` TokenOwnerRecord of the voter. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
@@ -303,8 +303,8 @@ pub enum GovernanceInstruction {
 
     /// Finalizes vote in case the Vote was not automatically tipped within max_voting_time period
     ///
-    ///   0. `[]` Realm account    
-    ///   1. `[]` Governance account
+    ///   0. `[writable]` Realm account    
+    ///   1. `[writable]` Governance account
     ///   2. `[writable]` Proposal account
     ///   3. `[writable]` TokenOwnerRecord of the Proposal owner        
     ///   4. `[]` Governing Token Mint
@@ -1030,8 +1030,8 @@ pub fn cast_vote(
         get_vote_record_address(program_id, proposal, voter_token_owner_record);
 
     let mut accounts = vec![
-        AccountMeta::new_readonly(*realm, false),
-        AccountMeta::new_readonly(*governance, false),
+        AccountMeta::new(*realm, false),
+        AccountMeta::new(*governance, false),
         AccountMeta::new(*proposal, false),
         AccountMeta::new(*proposal_owner_record, false),
         AccountMeta::new(*voter_token_owner_record, false),

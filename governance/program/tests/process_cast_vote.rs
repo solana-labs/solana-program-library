@@ -82,6 +82,18 @@ async fn test_cast_vote() {
 
     assert_eq!(1, token_owner_record.unrelinquished_votes_count);
     assert_eq!(1, token_owner_record.total_votes_count);
+
+    let realm_account = governance_test
+        .get_realm_account(&realm_cookie.address)
+        .await;
+
+    assert_eq!(0, realm_account.voting_proposal_count);
+
+    let governance_account = governance_test
+        .get_governance_account(&governance_cookie.address)
+        .await;
+
+    assert_eq!(0, governance_account.voting_proposal_count);
 }
 
 #[tokio::test]
@@ -415,6 +427,18 @@ async fn test_cast_vote_with_strict_vote_tipped_to_succeeded() {
         .await;
 
     assert_eq!(0, proposal_owner_record.outstanding_proposal_count);
+
+    let realm_account = governance_test
+        .get_realm_account(&realm_cookie.address)
+        .await;
+
+    assert_eq!(0, realm_account.voting_proposal_count);
+
+    let governance_account = governance_test
+        .get_governance_account(&governance_cookie.address)
+        .await;
+
+    assert_eq!(0, governance_account.voting_proposal_count);
 }
 
 #[tokio::test]
@@ -839,6 +863,18 @@ async fn test_cast_vote_with_threshold_below_50_and_vote_not_tipped() {
         .await;
 
     assert_eq!(1, proposal_owner_record.outstanding_proposal_count);
+
+    let realm_account = governance_test
+        .get_realm_account(&realm_cookie.address)
+        .await;
+
+    assert_eq!(1, realm_account.voting_proposal_count);
+
+    let governance_account = governance_test
+        .get_governance_account(&governance_cookie.address)
+        .await;
+
+    assert_eq!(1, governance_account.voting_proposal_count);
 }
 
 #[tokio::test]
