@@ -8,9 +8,9 @@ mod program_test;
 use program_test::*;
 
 #[tokio::test]
-async fn test_create_realm_with_voter_weight_addin() {
+async fn test_create_realm_with_max_voter_weight_addin() {
     // Arrange
-    let mut governance_test = GovernanceProgramTest::start_with_voter_weight_addin().await;
+    let mut governance_test = GovernanceProgramTest::start_with_max_voter_weight_addin().await;
 
     // Act
 
@@ -22,7 +22,11 @@ async fn test_create_realm_with_voter_weight_addin() {
         .get_realm_account(&realm_cookie.address)
         .await;
 
-    assert!(realm_account_data.config.use_community_voter_weight_addin);
+    assert!(
+        realm_account_data
+            .config
+            .use_max_community_voter_weight_addin
+    );
 
     let realm_config_cookie = realm_cookie.realm_config.unwrap();
 
@@ -34,11 +38,16 @@ async fn test_create_realm_with_voter_weight_addin() {
 }
 
 #[tokio::test]
-async fn test_set_realm_voter_weight_addin_for_realm_without_addins() {
+async fn test_set_realm_max_voter_weight_addin_for_realm_without_addins() {
     // Arrange
-    let mut governance_test = GovernanceProgramTest::start_with_voter_weight_addin().await;
+    let mut governance_test = GovernanceProgramTest::start_with_max_voter_weight_addin().await;
 
     let mut set_realm_config_args = governance_test.get_default_set_realm_config_args();
+
+    set_realm_config_args
+        .realm_config_args
+        .use_max_community_voter_weight_addin = false;
+
     set_realm_config_args
         .realm_config_args
         .use_community_voter_weight_addin = false;
@@ -49,7 +58,7 @@ async fn test_set_realm_voter_weight_addin_for_realm_without_addins() {
 
     set_realm_config_args
         .realm_config_args
-        .use_community_voter_weight_addin = true;
+        .use_max_community_voter_weight_addin = true;
 
     // Act
 
@@ -64,7 +73,11 @@ async fn test_set_realm_voter_weight_addin_for_realm_without_addins() {
         .get_realm_account(&realm_cookie.address)
         .await;
 
-    assert!(realm_account_data.config.use_community_voter_weight_addin);
+    assert!(
+        realm_account_data
+            .config
+            .use_max_community_voter_weight_addin
+    );
 
     let realm_config_cookie = realm_cookie.realm_config.unwrap();
 
@@ -76,14 +89,20 @@ async fn test_set_realm_voter_weight_addin_for_realm_without_addins() {
 }
 
 #[tokio::test]
-async fn test_set_realm_voter_weight_addin_for_realm_without_council_and_addins() {
+async fn test_set_realm_max_voter_weight_addin_for_realm_without_council_and_addins() {
     // Arrange
-    let mut governance_test = GovernanceProgramTest::start_with_voter_weight_addin().await;
+    let mut governance_test = GovernanceProgramTest::start_with_max_voter_weight_addin().await;
 
     let mut set_realm_config_args = governance_test.get_default_set_realm_config_args();
+
     set_realm_config_args
         .realm_config_args
         .use_community_voter_weight_addin = false;
+
+    set_realm_config_args
+        .realm_config_args
+        .use_max_community_voter_weight_addin = false;
+
     set_realm_config_args.realm_config_args.use_council_mint = false;
 
     let mut realm_cookie = governance_test
@@ -92,7 +111,7 @@ async fn test_set_realm_voter_weight_addin_for_realm_without_council_and_addins(
 
     set_realm_config_args
         .realm_config_args
-        .use_community_voter_weight_addin = true;
+        .use_max_community_voter_weight_addin = true;
 
     // Act
 
@@ -107,7 +126,11 @@ async fn test_set_realm_voter_weight_addin_for_realm_without_council_and_addins(
         .get_realm_account(&realm_cookie.address)
         .await;
 
-    assert!(realm_account_data.config.use_community_voter_weight_addin);
+    assert!(
+        realm_account_data
+            .config
+            .use_max_community_voter_weight_addin
+    );
 
     let realm_config_cookie = realm_cookie.realm_config.unwrap();
 
@@ -119,9 +142,9 @@ async fn test_set_realm_voter_weight_addin_for_realm_without_council_and_addins(
 }
 
 #[tokio::test]
-async fn test_set_realm_voter_weight_addin_for_realm_with_existing_voter_weight_addin() {
+async fn test_set_realm_max_voter_weight_addin_for_realm_with_existing_voter_weight_addin() {
     // Arrange
-    let mut governance_test = GovernanceProgramTest::start_with_voter_weight_addin().await;
+    let mut governance_test = GovernanceProgramTest::start_with_max_voter_weight_addin().await;
 
     let mut realm_cookie = governance_test.with_realm().await;
 
@@ -129,10 +152,11 @@ async fn test_set_realm_voter_weight_addin_for_realm_with_existing_voter_weight_
 
     set_realm_config_args
         .realm_config_args
-        .use_community_voter_weight_addin = true;
+        .use_max_community_voter_weight_addin = true;
 
-    let community_voter_weight_addin_address = Pubkey::new_unique();
-    set_realm_config_args.community_voter_weight_addin = Some(community_voter_weight_addin_address);
+    let max_community_voter_weight_addin_address = Pubkey::new_unique();
+    set_realm_config_args.max_community_voter_weight_addin =
+        Some(max_community_voter_weight_addin_address);
 
     // Act
 
@@ -147,7 +171,11 @@ async fn test_set_realm_voter_weight_addin_for_realm_with_existing_voter_weight_
         .get_realm_account(&realm_cookie.address)
         .await;
 
-    assert!(realm_account_data.config.use_community_voter_weight_addin);
+    assert!(
+        realm_account_data
+            .config
+            .use_max_community_voter_weight_addin
+    );
 
     let realm_config_cookie = realm_cookie.realm_config.unwrap();
 
@@ -157,33 +185,34 @@ async fn test_set_realm_voter_weight_addin_for_realm_with_existing_voter_weight_
 
     assert_eq!(realm_config_cookie.account, realm_config_data);
     assert_eq!(
-        realm_config_data.community_voter_weight_addin,
-        Some(community_voter_weight_addin_address)
+        realm_config_data.max_community_voter_weight_addin,
+        Some(max_community_voter_weight_addin_address)
     );
 }
 
 #[tokio::test]
-async fn test_set_realm_config_with_no_voter_weight_addin_for_realm_without_addins() {
+async fn test_set_realm_config_with_no_max_voter_weight_addin_for_realm_without_addins() {
     // Arrange
-    let mut governance_test = GovernanceProgramTest::start_with_voter_weight_addin().await;
+    let mut governance_test = GovernanceProgramTest::start_with_max_voter_weight_addin().await;
 
-    let mut realm_config_args = governance_test.get_default_set_realm_config_args();
-    realm_config_args
+    let mut set_realm_config_args = governance_test.get_default_set_realm_config_args();
+
+    set_realm_config_args
         .realm_config_args
-        .use_community_voter_weight_addin = false;
+        .use_max_community_voter_weight_addin = false;
 
     let mut realm_cookie = governance_test
-        .with_realm_using_config_args(&realm_config_args)
+        .with_realm_using_config_args(&set_realm_config_args)
         .await;
 
-    realm_config_args
+    set_realm_config_args
         .realm_config_args
-        .use_community_voter_weight_addin = false;
+        .use_max_community_voter_weight_addin = false;
 
     // Act
 
     governance_test
-        .set_realm_config(&mut realm_cookie, &realm_config_args)
+        .set_realm_config(&mut realm_cookie, &set_realm_config_args)
         .await
         .unwrap();
 
@@ -193,24 +222,29 @@ async fn test_set_realm_config_with_no_voter_weight_addin_for_realm_without_addi
         .get_realm_account(&realm_cookie.address)
         .await;
 
-    assert!(!realm_account_data.config.use_community_voter_weight_addin);
+    assert!(
+        !realm_account_data
+            .config
+            .use_max_community_voter_weight_addin
+    );
 }
 
 #[tokio::test]
-async fn test_set_realm_config_with_no_voter_weight_addin_for_realm_with_existing_addin() {
+async fn test_set_realm_config_with_no_max_voter_weight_addin_for_realm_with_existing_addin() {
     // Arrange
-    let mut governance_test = GovernanceProgramTest::start_with_voter_weight_addin().await;
+    let mut governance_test = GovernanceProgramTest::start_with_max_voter_weight_addin().await;
     let mut realm_cookie = governance_test.with_realm().await;
 
-    let mut realm_config_args = governance_test.get_default_set_realm_config_args();
-    realm_config_args
+    let mut set_realm_config_args = governance_test.get_default_set_realm_config_args();
+
+    set_realm_config_args
         .realm_config_args
-        .use_community_voter_weight_addin = false;
+        .use_max_community_voter_weight_addin = false;
 
     // Act
 
     governance_test
-        .set_realm_config(&mut realm_cookie, &realm_config_args)
+        .set_realm_config(&mut realm_cookie, &set_realm_config_args)
         .await
         .unwrap();
 
@@ -226,5 +260,5 @@ async fn test_set_realm_config_with_no_voter_weight_addin_for_realm_with_existin
         .get_realm_config_data(&realm_cookie.realm_config.unwrap().address)
         .await;
 
-    assert!(realm_config_data.community_voter_weight_addin.is_none());
+    assert!(realm_config_data.max_community_voter_weight_addin.is_none());
 }

@@ -23,7 +23,7 @@ use spl_governance_chat::{
     processor::process_instruction,
     state::{ChatMessage, GovernanceChatAccountType, MessageBody},
 };
-use spl_governance_test_sdk::{addins::ensure_voter_weight_addin_is_built, ProgramTestBench};
+use spl_governance_test_sdk::{addins::ensure_addin_mock_is_built, ProgramTestBench};
 
 use crate::program_test::cookies::{ChatMessageCookie, ProposalCookie};
 
@@ -46,8 +46,7 @@ impl GovernanceChatProgramTest {
 
     #[allow(dead_code)]
     pub async fn start_with_voter_weight_addin() -> Self {
-        ensure_voter_weight_addin_is_built();
-
+        ensure_addin_mock_is_built();
         Self::start_impl(true).await
     }
 
@@ -72,7 +71,7 @@ impl GovernanceChatProgramTest {
 
         let voter_weight_addin_id = if use_voter_weight_addin {
             let voter_weight_addin_id =
-                Pubkey::from_str("VoterWeight11111111111111111111111111111111").unwrap();
+                Pubkey::from_str("VoterWeightAddin111111111111111111111111111").unwrap();
             program_test.add_program("spl_governance_addin_mock", voter_weight_addin_id, None);
             Some(voter_weight_addin_id)
         } else {
@@ -116,6 +115,7 @@ impl GovernanceChatProgramTest {
             &self.bench.payer.pubkey(),
             None,
             self.voter_weight_addin_id,
+            None,
             name.clone(),
             1,
             MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,
@@ -199,10 +199,9 @@ impl GovernanceChatProgramTest {
             let voter_weight_record = Keypair::new();
             let deposit_voter_weight_ix = setup_voter_weight_record(
                 &self.voter_weight_addin_id.unwrap(),
-                &self.governance_program_id,
                 &realm_address,
                 &governing_token_mint_keypair.pubkey(),
-                &token_owner_record_address,
+                &token_owner.pubkey(),
                 &voter_weight_record.pubkey(),
                 &self.bench.payer.pubkey(),
                 amount,

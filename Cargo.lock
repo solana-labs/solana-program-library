@@ -3621,7 +3621,7 @@ dependencies = [
 
 [[package]]
 name = "spl-governance"
-version = "2.1.5"
+version = "2.2.0"
 dependencies = [
  "arrayref",
  "assert_matches",
@@ -3636,10 +3636,21 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
+ "spl-governance-addin-api",
+ "spl-governance-addin-mock",
  "spl-governance-test-sdk",
  "spl-governance-tools",
  "spl-token 3.3.0",
  "thiserror",
+]
+
+[[package]]
+name = "spl-governance-addin-api"
+version = "0.1.0"
+dependencies = [
+ "borsh",
+ "solana-program",
+ "spl-governance-tools",
 ]
 
 [[package]]
@@ -3659,7 +3670,7 @@ dependencies = [
  "solana-program",
  "solana-program-test",
  "solana-sdk",
- "spl-governance",
+ "spl-governance-addin-api",
  "spl-governance-test-sdk",
  "spl-governance-tools",
  "spl-token 3.3.0",
@@ -3668,7 +3679,7 @@ dependencies = [
 
 [[package]]
 name = "spl-governance-chat"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "arrayref",
  "assert_matches",
@@ -3684,6 +3695,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-governance",
+ "spl-governance-addin-api",
  "spl-governance-addin-mock",
  "spl-governance-test-sdk",
  "spl-governance-tools",
@@ -3693,7 +3705,7 @@ dependencies = [
 
 [[package]]
 name = "spl-governance-test-sdk"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "arrayref",
  "bincode",
@@ -3712,7 +3724,7 @@ dependencies = [
 
 [[package]]
 name = "spl-governance-tools"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "arrayref",
  "bincode",

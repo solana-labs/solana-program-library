@@ -4,7 +4,7 @@ use std::slice::Iter;
 
 use crate::{
     addins::voter_weight::{
-        get_voter_weight_record_data_for_token_owner_record, VoterWeightAction,
+        assert_is_valid_voter_weight, get_voter_weight_record_data_for_token_owner_record,
     },
     error::GovernanceError,
     state::{
@@ -21,6 +21,7 @@ use solana_program::{
     program_pack::IsInitialized,
     pubkey::Pubkey,
 };
+use spl_governance_addin_api::voter_weight::VoterWeightAction;
 use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 
 /// Governance Token Owner Record
@@ -180,9 +181,11 @@ impl TokenOwnerRecord {
     }
 
     /// Resolves voter's weight using either the amount deposited into the realm or weight provided by voter weight addin (if configured)
+    #[allow(clippy::too_many_arguments)]
     pub fn resolve_voter_weight(
         &self,
         program_id: &Pubkey,
+        realm_config_info: &AccountInfo,
         account_info_iter: &mut Iter<AccountInfo>,
         realm: &Pubkey,
         realm_data: &Realm,
@@ -193,7 +196,6 @@ impl TokenOwnerRecord {
         if realm_data.config.use_community_voter_weight_addin
             && realm_data.community_mint == self.governing_token_mint
         {
-            let realm_config_info = next_account_info(account_info_iter)?;
             let voter_weight_record_info = next_account_info(account_info_iter)?;
 
             let realm_config_data =
@@ -204,8 +206,13 @@ impl TokenOwnerRecord {
                 voter_weight_record_info,
                 self,
             )?;
-            voter_weight_record_data
-                .assert_is_valid_voter_weight(weight_action, weight_action_target)?;
+
+            assert_is_valid_voter_weight(
+                &voter_weight_record_data,
+                weight_action,
+                weight_action_target,
+            )?;
+
             Ok(voter_weight_record_data.voter_weight)
         } else {
             Ok(self.governing_token_deposit_amount)

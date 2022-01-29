@@ -72,7 +72,7 @@ async fn test_finalize_vote_to_succeeded() {
     // Act
 
     governance_test
-        .finalize_vote(&realm_cookie, &proposal_cookie)
+        .finalize_vote(&realm_cookie, &proposal_cookie, None)
         .await
         .unwrap();
 
@@ -162,7 +162,7 @@ async fn test_finalize_vote_to_defeated() {
     // Act
 
     governance_test
-        .finalize_vote(&realm_cookie, &proposal_cookie)
+        .finalize_vote(&realm_cookie, &proposal_cookie, None)
         .await
         .unwrap();
 
@@ -225,7 +225,7 @@ async fn test_finalize_vote_with_invalid_mint_error() {
     // Act
 
     let err = governance_test
-        .finalize_vote(&realm_cookie, &proposal_cookie)
+        .finalize_vote(&realm_cookie, &proposal_cookie, None)
         .await
         .err()
         .unwrap();
@@ -296,7 +296,7 @@ async fn test_finalize_vote_with_invalid_governance_error() {
     // Act
 
     let err = governance_test
-        .finalize_vote(&realm_cookie, &proposal_cookie)
+        .finalize_vote(&realm_cookie, &proposal_cookie, None)
         .await
         .err()
         .unwrap();

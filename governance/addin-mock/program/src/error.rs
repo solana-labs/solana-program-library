@@ -14,7 +14,7 @@ pub enum VoterWeightAddinError {}
 
 impl PrintProgramError for VoterWeightAddinError {
     fn print<E>(&self) {
-        msg!("VOTER-WEIGHT-ADDIN-ERROR: {}", &self.to_string());
+        msg!("GOVERNANCE-ADDIN-MOCK-ERROR: {}", &self.to_string());
     }
 }
 
@@ -26,6 +26,6 @@ impl From<VoterWeightAddinError> for ProgramError {
 
 impl<T> DecodeError<T> for VoterWeightAddinError {
     fn type_of() -> &'static str {
-        "Voter Weight Addin Error"
+        "Governance Addin Mock Error"
     }
 }

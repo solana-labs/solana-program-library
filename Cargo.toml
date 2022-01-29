@@ -11,6 +11,7 @@ members = [
   "feature-proposal/program",
   "feature-proposal/cli",
   "governance/addin-mock/program",
+  "governance/addin-api",
   "governance/program",
   "governance/test-sdk",
   "governance/tools",

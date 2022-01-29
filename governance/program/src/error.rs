@@ -369,6 +369,18 @@ pub enum GovernanceError {
     /// VoterWeightRecord invalid action target
     #[error("VoterWeightRecord invalid action target")]
     VoterWeightRecordInvalidActionTarget,
+
+    /// Invalid MaxVoterWeightRecord for Realm
+    #[error("Invalid MaxVoterWeightRecord for Realm")]
+    InvalidMaxVoterWeightRecordForRealm,
+
+    /// Invalid MaxVoterWeightRecord for GoverningTokenMint
+    #[error("Invalid MaxVoterWeightRecord for GoverningTokenMint")]
+    InvalidMaxVoterWeightRecordForGoverningTokenMint,
+
+    /// MaxVoterWeightRecord expired
+    #[error("MaxVoterWeightRecord expired")]
+    MaxVoterWeightRecordExpired,
 }
 
 impl PrintProgramError for GovernanceError {

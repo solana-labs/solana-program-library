@@ -8,14 +8,11 @@ use solana_program::{
     sysvar::Sysvar,
 };
 
-use crate::{
-    state::{
-        governance::get_governance_data_for_realm,
-        proposal::get_proposal_data_for_governance_and_governing_mint,
-        realm::get_realm_data_for_governing_token_mint,
-        token_owner_record::get_token_owner_record_data_for_proposal_owner,
-    },
-    tools::spl_token::get_spl_token_mint_supply,
+use crate::state::{
+    governance::get_governance_data_for_realm,
+    proposal::get_proposal_data_for_governance_and_governing_mint,
+    realm::get_realm_data_for_governing_token_mint,
+    token_owner_record::get_token_owner_record_data_for_proposal_owner,
 };
 
 use borsh::BorshSerialize;
@@ -49,12 +46,20 @@ pub fn process_finalize_vote(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
         governing_token_mint_info.key,
     )?;
 
-    let governing_token_mint_supply = get_spl_token_mint_supply(governing_token_mint_info)?;
+    let realm_config_info = next_account_info(account_info_iter)?; // 6
+
+    let max_voter_weight = proposal_data.resolve_max_voter_weight(
+        program_id,
+        realm_config_info,
+        governing_token_mint_info,
+        account_info_iter, // *7
+        realm_info.key,
+        &realm_data,
+    )?;
 
     proposal_data.finalize_vote(
-        governing_token_mint_supply,
+        max_voter_weight,
         &governance_data.config,
-        &realm_data,
         clock.unix_timestamp,
     )?;
 
