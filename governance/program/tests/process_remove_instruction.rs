@@ -58,9 +58,9 @@ async fn test_remove_instruction() {
 
     let yes_option = proposal_account.options.first().unwrap();
 
-    assert_eq!(yes_option.instructions_count, 0);
-    assert_eq!(yes_option.instructions_next_index, 1);
-    assert_eq!(yes_option.instructions_executed_count, 0);
+    assert_eq!(yes_option.transactions_count, 0);
+    assert_eq!(yes_option.transactions_next_index, 1);
+    assert_eq!(yes_option.transactions_executed_count, 0);
 
     let proposal_instruction_account = governance_test
         .bench
@@ -130,8 +130,8 @@ async fn test_replace_instruction() {
 
     let yes_option = proposal_account.options.first().unwrap();
 
-    assert_eq!(yes_option.instructions_count, 2);
-    assert_eq!(yes_option.instructions_next_index, 2);
+    assert_eq!(yes_option.transactions_count, 2);
+    assert_eq!(yes_option.transactions_next_index, 2);
 
     let proposal_instruction_account2 = governance_test
         .get_proposal_instruction_account(&proposal_instruction_cookie2.address)
@@ -198,8 +198,8 @@ async fn test_remove_front_instruction() {
 
     let yes_option = proposal_account.options.first().unwrap();
 
-    assert_eq!(yes_option.instructions_count, 1);
-    assert_eq!(yes_option.instructions_next_index, 2);
+    assert_eq!(yes_option.transactions_count, 1);
+    assert_eq!(yes_option.transactions_next_index, 2);
 
     let proposal_instruction_account = governance_test
         .bench
@@ -382,6 +382,6 @@ async fn test_remove_instruction_with_instruction_from_other_proposal_error() {
     // Assert
     assert_eq!(
         err,
-        GovernanceError::InvalidProposalForProposalInstruction.into()
+        GovernanceError::InvalidProposalForProposalTransaction.into()
     );
 }

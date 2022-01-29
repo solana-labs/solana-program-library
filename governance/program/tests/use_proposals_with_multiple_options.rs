@@ -220,8 +220,8 @@ async fn test_insert_instructions_for_multiple_options() {
         .get_proposal_account(&proposal_cookie.address)
         .await;
 
-    assert_eq!(2, proposal_account.options[0].instructions_count);
-    assert_eq!(3, proposal_account.options[1].instructions_count);
+    assert_eq!(2, proposal_account.options[0].transactions_count);
+    assert_eq!(3, proposal_account.options[1].transactions_count);
 }
 
 #[tokio::test]

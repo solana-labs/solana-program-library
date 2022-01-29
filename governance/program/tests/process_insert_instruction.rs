@@ -57,9 +57,9 @@ async fn test_insert_instruction() {
 
     let yes_option = proposal_account.options.first().unwrap();
 
-    assert_eq!(yes_option.instructions_count, 1);
-    assert_eq!(yes_option.instructions_next_index, 1);
-    assert_eq!(yes_option.instructions_executed_count, 0);
+    assert_eq!(yes_option.transactions_count, 1);
+    assert_eq!(yes_option.transactions_next_index, 1);
+    assert_eq!(yes_option.transactions_executed_count, 0);
 }
 
 #[tokio::test]
@@ -108,9 +108,9 @@ async fn test_insert_multiple_instructions() {
 
     let yes_option = proposal_account.options.first().unwrap();
 
-    assert_eq!(yes_option.instructions_count, 2);
-    assert_eq!(yes_option.instructions_next_index, 2);
-    assert_eq!(yes_option.instructions_executed_count, 0);
+    assert_eq!(yes_option.transactions_count, 2);
+    assert_eq!(yes_option.transactions_next_index, 2);
+    assert_eq!(yes_option.transactions_executed_count, 0);
 }
 
 #[tokio::test]

@@ -15,7 +15,7 @@ mod process_deposit_governing_tokens;
 mod process_execute_instruction;
 mod process_finalize_vote;
 mod process_flag_instruction_error;
-mod process_insert_instruction;
+mod process_insert_transaction;
 mod process_relinquish_vote;
 mod process_remove_instruction;
 mod process_remove_signatory;
@@ -44,7 +44,7 @@ use process_deposit_governing_tokens::*;
 use process_execute_instruction::*;
 use process_finalize_vote::*;
 use process_flag_instruction_error::*;
-use process_insert_instruction::*;
+use process_insert_transaction::*;
 use process_relinquish_vote::*;
 use process_remove_instruction::*;
 use process_remove_signatory::*;
@@ -72,7 +72,7 @@ pub fn process_instruction(
     let instruction: GovernanceInstruction =
         try_from_slice_unchecked(input).map_err(|_| ProgramError::InvalidInstructionData)?;
 
-    if let GovernanceInstruction::InsertInstruction {
+    if let GovernanceInstruction::InsertTransaction {
         option_index,
         index,
         hold_up_time,
@@ -170,12 +170,12 @@ pub fn process_instruction(
 
         GovernanceInstruction::CancelProposal {} => process_cancel_proposal(program_id, accounts),
 
-        GovernanceInstruction::InsertInstruction {
+        GovernanceInstruction::InsertTransaction {
             option_index,
             index,
             hold_up_time,
             instructions,
-        } => process_insert_instruction(
+        } => process_insert_transaction(
             program_id,
             accounts,
             option_index,
@@ -184,10 +184,10 @@ pub fn process_instruction(
             instructions,
         ),
 
-        GovernanceInstruction::RemoveInstruction {} => {
+        GovernanceInstruction::RemoveTransaction {} => {
             process_remove_instruction(program_id, accounts)
         }
-        GovernanceInstruction::ExecuteInstruction {} => {
+        GovernanceInstruction::ExecuteTransaction {} => {
             process_execute_instruction(program_id, accounts)
         }
 
@@ -195,7 +195,7 @@ pub fn process_instruction(
             process_set_governance_config(program_id, accounts, config)
         }
 
-        GovernanceInstruction::FlagInstructionError {} => {
+        GovernanceInstruction::FlagTransactionError {} => {
             process_flag_instruction_error(program_id, accounts)
         }
         GovernanceInstruction::SetRealmAuthority { action } => {
