@@ -50,7 +50,7 @@ pub struct GovernanceConfig {
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct Governance {
-    /// Account type. It can be Uninitialized, AccountGovernance or ProgramGovernance
+    /// Account type. It can be Uninitialized, Governance, ProgramGovernance, TokenGovernance or MintGovernance
     pub account_type: GovernanceAccountType,
 
     /// Governance Realm
@@ -81,7 +81,7 @@ impl AccountMaxSize for Governance {}
 
 impl IsInitialized for Governance {
     fn is_initialized(&self) -> bool {
-        self.account_type == GovernanceAccountType::AccountGovernance
+        self.account_type == GovernanceAccountType::Governance
             || self.account_type == GovernanceAccountType::ProgramGovernance
             || self.account_type == GovernanceAccountType::MintGovernance
             || self.account_type == GovernanceAccountType::TokenGovernance
@@ -92,8 +92,8 @@ impl Governance {
     /// Returns Governance PDA seeds
     pub fn get_governance_address_seeds(&self) -> Result<[&[u8]; 3], ProgramError> {
         let seeds = match self.account_type {
-            GovernanceAccountType::AccountGovernance => {
-                get_account_governance_address_seeds(&self.realm, &self.governed_account)
+            GovernanceAccountType::Governance => {
+                get_governance_address_seeds(&self.realm, &self.governed_account)
             }
             GovernanceAccountType::ProgramGovernance => {
                 get_program_governance_address_seeds(&self.realm, &self.governed_account)
@@ -217,8 +217,8 @@ pub fn get_token_governance_address<'a>(
     .0
 }
 
-/// Returns AccountGovernance PDA seeds
-pub fn get_account_governance_address_seeds<'a>(
+/// Returns Governance PDA seeds
+pub fn get_governance_address_seeds<'a>(
     realm: &'a Pubkey,
     governed_account: &'a Pubkey,
 ) -> [&'a [u8]; 3] {
@@ -229,14 +229,14 @@ pub fn get_account_governance_address_seeds<'a>(
     ]
 }
 
-/// Returns AccountGovernance PDA address
-pub fn get_account_governance_address<'a>(
+/// Returns Governance PDA address
+pub fn get_governance_address<'a>(
     program_id: &Pubkey,
     realm: &'a Pubkey,
     governed_account: &'a Pubkey,
 ) -> Pubkey {
     Pubkey::find_program_address(
-        &get_account_governance_address_seeds(realm, governed_account),
+        &get_governance_address_seeds(realm, governed_account),
         program_id,
     )
     .0
@@ -250,7 +250,7 @@ pub fn assert_is_valid_governance(
     assert_is_valid_account2(
         governance_info,
         &[
-            GovernanceAccountType::AccountGovernance,
+            GovernanceAccountType::Governance,
             GovernanceAccountType::ProgramGovernance,
             GovernanceAccountType::TokenGovernance,
             GovernanceAccountType::MintGovernance,

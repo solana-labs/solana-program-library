@@ -21,8 +21,8 @@ async fn test_sign_off_proposal() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -31,7 +31,7 @@ async fn test_sign_off_proposal() {
         .unwrap();
 
     let proposal_cookie = governance_test
-        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -80,8 +80,8 @@ async fn test_sign_off_proposal_with_signatory_must_sign_error() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -90,7 +90,7 @@ async fn test_sign_off_proposal_with_signatory_must_sign_error() {
         .unwrap();
 
     let proposal_cookie = governance_test
-        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -128,8 +128,8 @@ async fn test_sign_off_proposal_by_owner() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -138,7 +138,7 @@ async fn test_sign_off_proposal_by_owner() {
         .unwrap();
 
     let proposal_cookie = governance_test
-        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -176,8 +176,8 @@ async fn test_sign_off_proposal_by_owner_with_owner_must_sign_error() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -186,7 +186,7 @@ async fn test_sign_off_proposal_by_owner_with_owner_must_sign_error() {
         .unwrap();
 
     let proposal_cookie = governance_test
-        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -223,8 +223,8 @@ async fn test_sign_off_proposal_by_owner_with_other_proposal_owner_error() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -233,7 +233,7 @@ async fn test_sign_off_proposal_by_owner_with_other_proposal_owner_error() {
         .unwrap();
 
     let proposal_cookie = governance_test
-        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -267,8 +267,8 @@ async fn test_sign_off_proposal_by_owner_with_existing_signatories_error() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -277,7 +277,7 @@ async fn test_sign_off_proposal_by_owner_with_existing_signatories_error() {
         .unwrap();
 
     let proposal_cookie = governance_test
-        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 

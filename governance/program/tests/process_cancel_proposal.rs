@@ -20,8 +20,8 @@ async fn test_cancel_proposal() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -30,7 +30,7 @@ async fn test_cancel_proposal() {
         .unwrap();
 
     let proposal_cookie = governance_test
-        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -70,8 +70,8 @@ async fn test_cancel_proposal_with_already_completed_error() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -80,7 +80,7 @@ async fn test_cancel_proposal_with_already_completed_error() {
         .unwrap();
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -117,8 +117,8 @@ async fn test_cancel_proposal_with_owner_or_delegate_must_sign_error() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -127,7 +127,7 @@ async fn test_cancel_proposal_with_owner_or_delegate_must_sign_error() {
         .unwrap();
 
     let proposal_cookie = governance_test
-        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -166,8 +166,8 @@ async fn test_cancel_proposal_with_vote_time_expired_error() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -178,14 +178,14 @@ async fn test_cancel_proposal_with_vote_time_expired_error() {
     let clock = governance_test.bench.get_clock().await;
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
     // Advance timestamp past max_voting_time
     governance_test
         .advance_clock_past_timestamp(
-            account_governance_cookie.account.config.max_voting_time as i64 + clock.unix_timestamp,
+            governance_cookie.account.config.max_voting_time as i64 + clock.unix_timestamp,
         )
         .await;
 
@@ -215,8 +215,8 @@ async fn test_cancel_proposal_in_voting_state() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -225,7 +225,7 @@ async fn test_cancel_proposal_in_voting_state() {
         .unwrap();
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 

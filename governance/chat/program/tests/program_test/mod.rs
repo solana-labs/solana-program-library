@@ -6,12 +6,12 @@ use solana_program_test::{processor, ProgramTest};
 use solana_sdk::{signature::Keypair, signer::Signer};
 use spl_governance::{
     instruction::{
-        create_account_governance, create_proposal, create_realm, create_token_owner_record,
+        create_governance, create_proposal, create_realm, create_token_owner_record,
         deposit_governing_tokens,
     },
     state::{
         enums::{MintMaxVoteWeightSource, VoteThresholdPercentage},
-        governance::{get_account_governance_address, GovernanceConfig},
+        governance::{get_governance_address, GovernanceConfig},
         proposal::{get_proposal_address, VoteType},
         realm::get_realm_address,
         token_owner_record::get_token_owner_record_address,
@@ -220,7 +220,7 @@ impl GovernanceChatProgramTest {
             None
         };
 
-        let create_account_governance_ix = create_account_governance(
+        let create_governance_ix = create_governance(
             &self.governance_program_id,
             &realm_address,
             &governed_account_address,
@@ -232,13 +232,13 @@ impl GovernanceChatProgramTest {
         );
 
         self.bench
-            .process_transaction(&[create_account_governance_ix], Some(&[&token_owner]))
+            .process_transaction(&[create_governance_ix], Some(&[&token_owner]))
             .await
             .unwrap();
 
         // Create Proposal
 
-        let governance_address = get_account_governance_address(
+        let governance_address = get_governance_address(
             &self.governance_program_id,
             &realm_address,
             &governed_account_address,

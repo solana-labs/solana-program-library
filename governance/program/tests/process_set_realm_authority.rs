@@ -23,8 +23,8 @@ async fn test_set_realm_authority() {
         .await
         .unwrap();
 
-    let account_governance_cookie = governance_test
-        .with_account_governance(
+    let governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -32,7 +32,7 @@ async fn test_set_realm_authority() {
         .await
         .unwrap();
 
-    let new_realm_authority = account_governance_cookie.address;
+    let new_realm_authority = governance_cookie.address;
 
     // Act
     governance_test
@@ -204,8 +204,8 @@ async fn test_set_realm_authority_with_governance_from_other_realm_error() {
         .await
         .unwrap();
 
-    let account_governance_cookie2 = governance_test
-        .with_account_governance(
+    let governance_cookie2 = governance_test
+        .with_governance(
             &realm_cookie2,
             &governed_account_cookie2,
             &token_owner_record_cookie2,
@@ -213,7 +213,7 @@ async fn test_set_realm_authority_with_governance_from_other_realm_error() {
         .await
         .unwrap();
 
-    let new_realm_authority = account_governance_cookie2.address;
+    let new_realm_authority = governance_cookie2.address;
 
     // Act
     let err = governance_test

@@ -3,7 +3,7 @@
 mod process_add_signatory;
 mod process_cancel_proposal;
 mod process_cast_vote;
-mod process_create_account_governance;
+mod process_create_governance;
 mod process_create_mint_governance;
 mod process_create_native_treasury;
 mod process_create_program_governance;
@@ -32,7 +32,7 @@ use crate::instruction::GovernanceInstruction;
 use process_add_signatory::*;
 use process_cancel_proposal::*;
 use process_cast_vote::*;
-use process_create_account_governance::*;
+use process_create_governance::*;
 use process_create_mint_governance::*;
 use process_create_native_treasury::*;
 use process_create_program_governance::*;
@@ -134,8 +134,8 @@ pub fn process_instruction(
             transfer_account_authorities,
         ),
 
-        GovernanceInstruction::CreateAccountGovernance { config } => {
-            process_create_account_governance(program_id, accounts, config)
+        GovernanceInstruction::CreateGovernance { config } => {
+            process_create_governance(program_id, accounts, config)
         }
 
         GovernanceInstruction::CreateProposal {

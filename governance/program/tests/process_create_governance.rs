@@ -8,7 +8,7 @@ use spl_governance::{error::GovernanceError, state::enums::VoteThresholdPercenta
 use spl_governance_tools::error::GovernanceToolsError;
 
 #[tokio::test]
-async fn test_create_account_governance() {
+async fn test_create_governance() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -21,8 +21,8 @@ async fn test_create_account_governance() {
         .unwrap();
 
     // Act
-    let account_governance_cookie = governance_test
-        .with_account_governance(
+    let governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -31,18 +31,15 @@ async fn test_create_account_governance() {
         .unwrap();
 
     // Assert
-    let account_governance_account = governance_test
-        .get_governance_account(&account_governance_cookie.address)
+    let governance_account = governance_test
+        .get_governance_account(&governance_cookie.address)
         .await;
 
-    assert_eq!(
-        account_governance_cookie.account,
-        account_governance_account
-    );
+    assert_eq!(governance_cookie.account, governance_account);
 }
 
 #[tokio::test]
-async fn test_create_account_governance_with_invalid_realm_error() {
+async fn test_create_governance_with_invalid_realm_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -54,8 +51,8 @@ async fn test_create_account_governance_with_invalid_realm_error() {
         .await
         .unwrap();
 
-    let account_governance_cookie = governance_test
-        .with_account_governance(
+    let governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -63,11 +60,11 @@ async fn test_create_account_governance_with_invalid_realm_error() {
         .await
         .unwrap();
 
-    realm_cookie.address = account_governance_cookie.address;
+    realm_cookie.address = governance_cookie.address;
 
     // Act
     let err = governance_test
-        .with_account_governance(
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -82,7 +79,7 @@ async fn test_create_account_governance_with_invalid_realm_error() {
 }
 
 #[tokio::test]
-async fn test_create_account_governance_with_invalid_config_error() {
+async fn test_create_governance_with_invalid_config_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -100,7 +97,7 @@ async fn test_create_account_governance_with_invalid_config_error() {
 
     // Act
     let err = governance_test
-        .with_account_governance_using_config(
+        .with_governance_using_config(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -120,7 +117,7 @@ async fn test_create_account_governance_with_invalid_config_error() {
 
     // Act
     let err = governance_test
-        .with_account_governance_using_config(
+        .with_governance_using_config(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -136,7 +133,7 @@ async fn test_create_account_governance_with_invalid_config_error() {
 }
 
 #[tokio::test]
-async fn test_create_account_governance_with_not_enough_community_tokens_error() {
+async fn test_create_governance_with_not_enough_community_tokens_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -153,7 +150,7 @@ async fn test_create_account_governance_with_not_enough_community_tokens_error()
 
     // Act
     let err = governance_test
-        .with_account_governance(
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -170,7 +167,7 @@ async fn test_create_account_governance_with_not_enough_community_tokens_error()
 }
 
 #[tokio::test]
-async fn test_create_account_governance_with_not_enough_council_tokens_error() {
+async fn test_create_governance_with_not_enough_council_tokens_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -187,7 +184,7 @@ async fn test_create_account_governance_with_not_enough_council_tokens_error() {
 
     // Act
     let err = governance_test
-        .with_account_governance(
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -204,7 +201,7 @@ async fn test_create_account_governance_with_not_enough_council_tokens_error() {
 }
 
 #[tokio::test]
-async fn test_create_account_governance_using_realm_authority() {
+async fn test_create_governance_using_realm_authority() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -215,8 +212,8 @@ async fn test_create_account_governance_using_realm_authority() {
     let realm_authority = realm_cookie.realm_authority.as_ref().unwrap();
 
     // Act
-    let account_governance_cookie = governance_test
-        .with_account_governance_impl(
+    let governance_cookie = governance_test
+        .with_governance_impl(
             &realm_cookie,
             &governed_account_cookie,
             None,
@@ -229,18 +226,15 @@ async fn test_create_account_governance_using_realm_authority() {
         .unwrap();
 
     // Assert
-    let account_governance_account = governance_test
-        .get_governance_account(&account_governance_cookie.address)
+    let governance_account = governance_test
+        .get_governance_account(&governance_cookie.address)
         .await;
 
-    assert_eq!(
-        account_governance_cookie.account,
-        account_governance_account
-    );
+    assert_eq!(governance_cookie.account, governance_account);
 }
 
 #[tokio::test]
-async fn test_create_account_governance_using_realm_authority_with_authority_must_sign_error() {
+async fn test_create_governance_using_realm_authority_with_authority_must_sign_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -252,7 +246,7 @@ async fn test_create_account_governance_using_realm_authority_with_authority_mus
 
     // Act
     let err = governance_test
-        .with_account_governance_impl(
+        .with_governance_impl(
             &realm_cookie,
             &governed_account_cookie,
             None,

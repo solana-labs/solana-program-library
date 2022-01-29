@@ -3,7 +3,7 @@
 use crate::state::{
     enums::GovernanceAccountType,
     governance::{
-        assert_valid_create_governance_args, get_account_governance_address_seeds, Governance,
+        assert_valid_create_governance_args, get_governance_address_seeds, Governance,
         GovernanceConfig,
     },
     realm::get_realm_data,
@@ -18,8 +18,8 @@ use solana_program::{
 
 use spl_governance_tools::account::create_and_serialize_account_signed;
 
-/// Processes CreateAccountGovernance instruction
-pub fn process_create_account_governance(
+/// Processes CreateGovernance instruction
+pub fn process_create_governance(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     config: GovernanceConfig,
@@ -27,7 +27,7 @@ pub fn process_create_account_governance(
     let account_info_iter = &mut accounts.iter();
 
     let realm_info = next_account_info(account_info_iter)?; // 0
-    let account_governance_info = next_account_info(account_info_iter)?; // 1
+    let governance_info = next_account_info(account_info_iter)?; // 1
     let governed_account_info = next_account_info(account_info_iter)?; // 2
 
     let token_owner_record_info = next_account_info(account_info_iter)?; // 3
@@ -52,8 +52,8 @@ pub fn process_create_account_governance(
         account_info_iter, // 8, 9
     )?;
 
-    let account_governance_data = Governance {
-        account_type: GovernanceAccountType::AccountGovernance,
+    let governance_data = Governance {
+        account_type: GovernanceAccountType::Governance,
         realm: *realm_info.key,
         governed_account: *governed_account_info.key,
         config,
@@ -63,9 +63,9 @@ pub fn process_create_account_governance(
 
     create_and_serialize_account_signed::<Governance>(
         payer_info,
-        account_governance_info,
-        &account_governance_data,
-        &get_account_governance_address_seeds(realm_info.key, governed_account_info.key),
+        governance_info,
+        &governance_data,
+        &get_governance_address_seeds(realm_info.key, governed_account_info.key),
         program_id,
         system_info,
         rent,

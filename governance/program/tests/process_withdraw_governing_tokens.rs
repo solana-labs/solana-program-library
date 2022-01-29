@@ -192,8 +192,8 @@ async fn test_withdraw_governing_tokens_with_unrelinquished_votes_error() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -202,7 +202,7 @@ async fn test_withdraw_governing_tokens_with_unrelinquished_votes_error() {
         .unwrap();
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -238,8 +238,8 @@ async fn test_withdraw_governing_tokens_after_relinquishing_vote() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -248,7 +248,7 @@ async fn test_withdraw_governing_tokens_after_relinquishing_vote() {
         .unwrap();
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -344,8 +344,8 @@ async fn test_withdraw_governing_tokens_with_outstanding_proposals_error() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -354,7 +354,7 @@ async fn test_withdraw_governing_tokens_with_outstanding_proposals_error() {
         .unwrap();
 
     governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -385,8 +385,8 @@ async fn test_withdraw_governing_tokens_after_proposal_cancelled() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -395,7 +395,7 @@ async fn test_withdraw_governing_tokens_after_proposal_cancelled() {
         .unwrap();
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 

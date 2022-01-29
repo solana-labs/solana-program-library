@@ -31,8 +31,8 @@ async fn test_cast_vote_with_all_addin() {
 
     let governed_account_cookie = governance_test.with_governed_account().await;
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -41,7 +41,7 @@ async fn test_cast_vote_with_all_addin() {
         .unwrap();
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -90,8 +90,8 @@ async fn test_tip_vote_with_all_addin() {
 
     let governed_account_cookie = governance_test.with_governed_account().await;
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -100,7 +100,7 @@ async fn test_tip_vote_with_all_addin() {
         .unwrap();
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -149,8 +149,8 @@ async fn test_finalize_vote_with_all_addin() {
 
     let governed_account_cookie = governance_test.with_governed_account().await;
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -159,7 +159,7 @@ async fn test_finalize_vote_with_all_addin() {
         .unwrap();
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -169,7 +169,7 @@ async fn test_finalize_vote_with_all_addin() {
         .unwrap();
 
     governance_test
-        .advance_clock_past_voting_time(&account_governance_cookie)
+        .advance_clock_past_voting_time(&governance_cookie)
         .await;
 
     // Act
