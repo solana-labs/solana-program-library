@@ -189,7 +189,7 @@ pub struct ProposalV2 {
     /// The vote threshold percentage at the time Proposal was decided
     /// It's used to show correct vote results for historical proposals in cases when the threshold
     /// was changed for governance config after vote was completed.
-    /// TODO: Use this field to override the threshold from parent Governance (only higher value possible)
+    /// TODO: Use this field to override for the threshold from parent Governance (only higher value possible)
     pub vote_threshold_percentage: Option<VoteThresholdPercentage>,
 
     /// Reserved space for future versions
@@ -979,6 +979,7 @@ pub fn assert_valid_proposal_options(
     }
 
     // TODO: Check for duplicated option labels
+    // The options are identified by index so it's ok for now
 
     if options.iter().any(|o| o.is_empty()) {
         return Err(GovernanceError::InvalidProposalOptions.into());
