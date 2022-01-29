@@ -140,6 +140,7 @@ pub struct ProposalCookie {
     pub address: Pubkey,
     pub account: ProposalV2,
 
+    pub realm: Pubkey,
     pub proposal_owner: Pubkey,
 }
 

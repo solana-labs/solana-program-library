@@ -104,7 +104,7 @@ async fn test_sign_off_proposal_with_signatory_must_sign_error() {
         .sign_off_proposal_using_instruction(
             &proposal_cookie,
             &signatory_record_cookie,
-            |i| i.accounts[2].is_signer = false, // signatory
+            |i| i.accounts[3].is_signer = false, // signatory
             Some(&[]),
         )
         .await
@@ -196,7 +196,7 @@ async fn test_sign_off_proposal_by_owner_with_owner_must_sign_error() {
         .sign_off_proposal_by_owner_using_instruction(
             &proposal_cookie,
             &token_owner_record_cookie,
-            |i| i.accounts[2].is_signer = false, // signatory
+            |i| i.accounts[3].is_signer = false, // signatory
             Some(&[]),
         )
         .await

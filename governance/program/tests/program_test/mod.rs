@@ -303,7 +303,7 @@ impl GovernanceProgramTest {
             community_mint: community_token_mint_keypair.pubkey(),
 
             name,
-            reserved: [0; 8],
+            reserved: [0; 6],
             authority: Some(realm_authority.pubkey()),
             config: RealmConfig {
                 council_mint: council_token_mint_pubkey,
@@ -319,6 +319,7 @@ impl GovernanceProgramTest {
                 use_community_voter_weight_addin: false,
                 use_max_community_voter_weight_addin: false,
             },
+            voting_proposal_count: 0,
         };
 
         let realm_config_cookie = if set_realm_config_args.community_voter_weight_addin.is_some()
@@ -394,7 +395,7 @@ impl GovernanceProgramTest {
             community_mint: realm_cookie.account.community_mint,
 
             name,
-            reserved: [0; 8],
+            reserved: [0; 6],
             authority: Some(realm_authority.pubkey()),
             config: RealmConfig {
                 council_mint: Some(council_mint),
@@ -406,6 +407,7 @@ impl GovernanceProgramTest {
                 use_community_voter_weight_addin: false,
                 use_max_community_voter_weight_addin: false,
             },
+            voting_proposal_count: 0,
         };
 
         let community_token_holding_address = get_governing_token_holding_address(
@@ -1817,6 +1819,7 @@ impl GovernanceProgramTest {
             address: proposal_address,
             account,
             proposal_owner: governance_authority.pubkey(),
+            realm: governance_cookie.account.realm,
         })
     }
 
@@ -1916,6 +1919,7 @@ impl GovernanceProgramTest {
     ) -> Result<(), ProgramError> {
         let mut sign_off_proposal_ix = sign_off_proposal(
             &self.program_id,
+            &proposal_cookie.realm,
             &proposal_cookie.address,
             &token_owner_record_cookie.account.governing_token_owner,
             Some(&token_owner_record_cookie.address),
@@ -1958,6 +1962,7 @@ impl GovernanceProgramTest {
     ) -> Result<(), ProgramError> {
         let mut sign_off_proposal_ix = sign_off_proposal(
             &self.program_id,
+            &proposal_cookie.realm,
             &proposal_cookie.address,
             &signatory_record_cookie.signatory.pubkey(),
             None,

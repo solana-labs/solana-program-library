@@ -19,12 +19,13 @@ use crate::state::{
 pub fn process_sign_off_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
-    let proposal_info = next_account_info(account_info_iter)?; // 0
+    let _realm_info = next_account_info(account_info_iter)?; // 0
+    let proposal_info = next_account_info(account_info_iter)?; // 1
 
-    let signatory_record_info = next_account_info(account_info_iter)?; // 1
-    let signatory_info = next_account_info(account_info_iter)?; // 2
+    let signatory_record_info = next_account_info(account_info_iter)?; // 2
+    let signatory_info = next_account_info(account_info_iter)?; // 3
 
-    let clock_info = next_account_info(account_info_iter)?; // 3
+    let clock_info = next_account_info(account_info_iter)?; // 4
     let clock = Clock::from_account_info(clock_info)?;
 
     let mut proposal_data = get_proposal_data(program_id, proposal_info)?;
@@ -32,7 +33,7 @@ pub fn process_sign_off_proposal(program_id: &Pubkey, accounts: &[AccountInfo]) 
 
     // If the owner of the proposal hasn't appointed any signatories then can sign off the proposal themself
     if proposal_data.signatories_count == 0 {
-        let proposal_owner_record_info = next_account_info(account_info_iter)?; // 4
+        let proposal_owner_record_info = next_account_info(account_info_iter)?; // 5
 
         let proposal_owner_record_data = get_token_owner_record_data_for_proposal_owner(
             program_id,
