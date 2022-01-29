@@ -146,6 +146,9 @@ pub fn process_create_proposal(
         options: proposal_options,
         deny_vote_weight,
 
+        veto_vote_weight: None,
+        abstain_vote_weight: None,
+
         max_vote_weight: None,
         vote_threshold_percentage: None,
     };

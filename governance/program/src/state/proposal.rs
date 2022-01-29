@@ -132,11 +132,19 @@ pub struct ProposalV2 {
     /// Proposal options
     pub options: Vec<ProposalOption>,
 
-    /// The weight of the Proposal rejection votes
+    /// The total weight of the Proposal rejection votes
     /// If the proposal has no deny option then the weight is None
     /// Only proposals with the deny option can have executable instructions attached to them
     /// Without the deny option a proposal is only non executable survey
     pub deny_vote_weight: Option<u64>,
+
+    /// The total weight of Veto votes
+    /// Note: Veto is not supported in V2
+    pub veto_vote_weight: Option<u64>,
+
+    /// The total weight of  votes
+    /// Note: Abstain is not supported in V2
+    pub abstain_vote_weight: Option<u64>,
 
     /// When the Proposal was created and entered Draft state
     pub draft_at: UnixTimestamp,
@@ -184,7 +192,7 @@ pub struct ProposalV2 {
 impl AccountMaxSize for ProposalV2 {
     fn get_max_size(&self) -> Option<usize> {
         let options_size: usize = self.options.iter().map(|o| o.label.len() + 19).sum();
-        Some(self.name.len() + self.description_link.len() + options_size + 201)
+        Some(self.name.len() + self.description_link.len() + options_size + 219)
     }
 }
 
@@ -837,6 +845,8 @@ pub fn get_proposal_data(
                 transactions_next_index: proposal_data_v1.instructions_next_index,
             }],
             deny_vote_weight: Some(proposal_data_v1.no_votes_count),
+            veto_vote_weight: None,
+            abstain_vote_weight: None,
             draft_at: proposal_data_v1.draft_at,
             signing_off_at: proposal_data_v1.signing_off_at,
             voting_at: proposal_data_v1.voting_at,
@@ -989,6 +999,8 @@ mod test {
                 transactions_next_index: 10,
             }],
             deny_vote_weight: Some(0),
+            abstain_vote_weight: Some(0),
+            veto_vote_weight: Some(0),
 
             execution_flags: InstructionExecutionFlags::Ordered,
 

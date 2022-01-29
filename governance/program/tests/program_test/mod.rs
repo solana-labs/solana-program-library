@@ -1794,6 +1794,9 @@ impl GovernanceProgramTest {
             options: proposal_options,
             deny_vote_weight,
 
+            veto_vote_weight: None,
+            abstain_vote_weight: None,
+
             execution_flags: InstructionExecutionFlags::None,
             max_vote_weight: None,
             vote_threshold_percentage: None,
