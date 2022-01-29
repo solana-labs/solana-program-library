@@ -689,7 +689,7 @@ pub fn create_governance(
     program_id: &Pubkey,
     // Accounts
     realm: &Pubkey,
-    governed_account: &Pubkey,
+    governed_account: Option<&Pubkey>,
     token_owner_record: &Pubkey,
     payer: &Pubkey,
     create_authority: &Pubkey,
@@ -697,12 +697,20 @@ pub fn create_governance(
     // Args
     config: GovernanceConfig,
 ) -> Instruction {
-    let account_governance_address = get_governance_address(program_id, realm, governed_account);
+    let governed_account_address = if let Some(governed_account) = governed_account {
+        *governed_account
+    } else {
+        // If the governed account is not provided then generate a unique identifier for the Governance account
+        Pubkey::new_unique()
+    };
+
+    let account_governance_address =
+        get_governance_address(program_id, realm, &governed_account_address);
 
     let mut accounts = vec![
         AccountMeta::new_readonly(*realm, false),
         AccountMeta::new(account_governance_address, false),
-        AccountMeta::new_readonly(*governed_account, false),
+        AccountMeta::new_readonly(governed_account_address, false),
         AccountMeta::new_readonly(*token_owner_record, false),
         AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
