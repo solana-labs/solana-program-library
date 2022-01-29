@@ -82,9 +82,9 @@ pub enum VoteType {
     SingleChoice,
 
     /// Multiple options can be selected with up to max_voter_options per voter
-    /// and with up to max_executable_options of wining options eligible for execution
+    /// and with up to max_winning_options of successful options
     /// Ex. voters are given 5 options, can choose up to 3 (max_voter_options)
-    /// and only 1 (max_executable_options) wining option can be executed
+    /// and only 1 (max_winning_options) option can win and be executed
     MultiChoice {
         /// The max number of options a voter can choose
         /// By default it equals to the number of available options
@@ -92,11 +92,12 @@ pub enum VoteType {
         #[allow(dead_code)]
         max_voter_options: u16,
 
-        /// The max number of wining options which can be executed
+        /// The max number of wining options
+        /// For executable proposals it limits how many options can be executed for a Proposal
         /// By default it equals to the number of available options
         /// Note: In the current version the limit is not supported and not enforced yet
         #[allow(dead_code)]
-        max_executable_options: u16,
+        max_winning_options: u16,
     },
 }
 
@@ -380,7 +381,7 @@ impl ProposalV2 {
                 }
                 VoteType::MultiChoice {
                     max_voter_options: _n,
-                    max_executable_options: _m,
+                    max_winning_options: _m,
                 } => {
                     // If any option succeeded for multi choice then the proposal as a whole succeeded as well
                     ProposalState::Succeeded
@@ -716,7 +717,7 @@ impl ProposalV2 {
                     }
                     VoteType::MultiChoice {
                         max_voter_options: _n,
-                        max_executable_options: _m,
+                        max_winning_options: _m,
                     } => {
                         if choice_count == 0 {
                             return Err(GovernanceError::InvalidVote.into());
@@ -935,12 +936,12 @@ pub fn assert_valid_proposal_options(
 
     if let VoteType::MultiChoice {
         max_voter_options,
-        max_executable_options,
+        max_winning_options,
     } = *vote_type
     {
         if options.len() == 1
             || max_voter_options as usize != options.len()
-            || max_executable_options as usize != options.len()
+            || max_winning_options as usize != options.len()
         {
             return Err(GovernanceError::InvalidProposalOptions.into());
         }
@@ -1078,7 +1079,7 @@ mod test {
         let mut proposal = create_test_proposal();
         proposal.vote_type = VoteType::MultiChoice {
             max_voter_options: 1,
-            max_executable_options: 1,
+            max_winning_options: 1,
         };
 
         let size = proposal.try_to_vec().unwrap().len();
@@ -1091,7 +1092,7 @@ mod test {
         let mut proposal = create_test_multi_option_proposal();
         proposal.vote_type = VoteType::MultiChoice {
             max_voter_options: 3,
-            max_executable_options: 3,
+            max_winning_options: 3,
         };
 
         let size = proposal.try_to_vec().unwrap().len();
@@ -2037,7 +2038,7 @@ mod test {
         let mut proposal = create_test_multi_option_proposal();
         proposal.vote_type = VoteType::MultiChoice {
             max_voter_options: 3,
-            max_executable_options: 3,
+            max_winning_options: 3,
         };
 
         let choices = vec![
@@ -2073,7 +2074,7 @@ mod test {
         // Arrange
         let vote_type = VoteType::MultiChoice {
             max_voter_options: 3,
-            max_executable_options: 3,
+            max_winning_options: 3,
         };
 
         let options = vec!["option 1".to_string(), "option 2".to_string()];
@@ -2090,7 +2091,7 @@ mod test {
         // Arrange
         let vote_type = VoteType::MultiChoice {
             max_voter_options: 3,
-            max_executable_options: 3,
+            max_winning_options: 3,
         };
 
         let options = vec![];
@@ -2121,7 +2122,7 @@ mod test {
         // Arrange
         let vote_type = VoteType::MultiChoice {
             max_voter_options: 3,
-            max_executable_options: 3,
+            max_winning_options: 3,
         };
 
         let options = vec![
@@ -2142,7 +2143,7 @@ mod test {
         // Arrange
         let vote_type = VoteType::MultiChoice {
             max_voter_options: 3,
-            max_executable_options: 3,
+            max_winning_options: 3,
         };
 
         let options = vec![
