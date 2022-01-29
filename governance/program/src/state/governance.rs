@@ -60,10 +60,10 @@ pub struct Governance {
     /// Account governed by this Governance and/or PDA identity seed
     /// It can be Program account, Mint account, Token account or any other account
     ///
-    /// Note: The account doesn't have to exist. In that case the filed is only a PDA seed
+    /// Note: The account doesn't have to exist. In that case the field is only a PDA seed
     ///
     /// Note: Setting governed_account doesn't give any authority over the governed account
-    /// The relevant authorities for specific account types must be transferred to the Governance PDA
+    /// The relevant authorities for specific account types must still be transferred to the Governance PDA
     /// Ex: mint_authority/freeze_authority for a Mint account
     /// or upgrade_authority for a Program account should be transferred to the Governance PDA
     pub governed_account: Pubkey,
