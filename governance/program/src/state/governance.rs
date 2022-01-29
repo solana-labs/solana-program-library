@@ -74,7 +74,10 @@ pub struct Governance {
     pub config: GovernanceConfig,
 
     /// Reserved space for future versions
-    pub reserved: [u8; 8],
+    pub reserved: [u8; 6],
+
+    /// The number of proposals in voting state in the Governance
+    pub voting_proposal_count: u16,
 }
 
 impl AccountMaxSize for Governance {}

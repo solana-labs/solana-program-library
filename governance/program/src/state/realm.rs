@@ -98,7 +98,10 @@ pub struct Realm {
     pub config: RealmConfig,
 
     /// Reserved space for future versions
-    pub reserved: [u8; 8],
+    pub reserved: [u8; 6],
+
+    /// The number of proposals in voting state in the Realm
+    pub voting_proposal_count: u16,
 
     /// Realm authority. The authority must sign transactions which update the realm config
     /// The authority should be transferred to Realm Governance to make the Realm self governed through proposals
@@ -173,7 +176,7 @@ impl Realm {
     }
 
     /// Assert the given create authority can create governance
-    pub fn assert_can_create_governance(
+    pub fn assert_create_authority_can_create_governance(
         &self,
         program_id: &Pubkey,
         realm: &Pubkey,
@@ -329,7 +332,7 @@ mod test {
         let realm = Realm {
             account_type: GovernanceAccountType::Realm,
             community_mint: Pubkey::new_unique(),
-            reserved: [0; 8],
+            reserved: [0; 6],
 
             authority: Some(Pubkey::new_unique()),
             name: "test-realm".to_string(),
@@ -341,6 +344,8 @@ mod test {
                 community_mint_max_vote_weight_source: MintMaxVoteWeightSource::Absolute(100),
                 min_community_tokens_to_create_governance: 10,
             },
+
+            voting_proposal_count: 0,
         };
 
         let size = realm.try_to_vec().unwrap().len();

@@ -163,10 +163,8 @@ pub enum GovernanceInstruction {
     ///   5. `[signer]` Governance Authority (Token Owner or Governance Delegate)
     ///   6. `[signer]` Payer
     ///   7. `[]` System program
-    ///   8. `[]` Rent sysvar
-    ///   9. `[]` Clock sysvar
-    ///   10. `[]` Realm Config
-    ///   11. `[]` Optional Voter Weight Record
+    ///   8. `[]` Realm Config
+    ///   9. `[]` Optional Voter Weight Record
     CreateProposal {
         #[allow(dead_code)]
         /// UTF-8 encoded name of the proposal
@@ -258,11 +256,11 @@ pub enum GovernanceInstruction {
 
     /// Cancels Proposal by changing its state to Canceled
     ///
-    ///   0. `[writable]` Proposal account
-    ///   1. `[writable]`  TokenOwnerRecord account of the  Proposal owner
-    ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)
-    ///   3. `[]` Clock sysvar
-    ///   4. `[]` Governance account
+    ///   0. `[writable]` Realm account
+    ///   1. `[writable]` Governance account
+    ///   2. `[writable]` Proposal account
+    ///   3. `[writable]`  TokenOwnerRecord account of the  Proposal owner
+    ///   4. `[signer]` Governance Authority (Token Owner or Governance Delegate)
     CancelProposal,
 
     /// Signs off Proposal indicating the Signatory approves the Proposal
@@ -271,20 +269,21 @@ pub enum GovernanceInstruction {
     /// it's entirely at the discretion of the Proposal owner
     /// If Proposal owner doesn't designate any signatories then can sign off the Proposal themself
     ///
-    ///   0. `[writable]` Proposal account
-    ///   1. `[writable]` Signatory Record account
-    ///   2. `[signer]` Signatory account signing off the Proposal
+    ///   0. `[writable]` Realm account
+    ///   1. `[writable]` Governance account
+    ///   2. `[writable]` Proposal account
+    ///   4. `[signer]` Signatory account signing off the Proposal
     ///       Or Proposal owner if the owner hasn't appointed any signatories
-    ///   3. `[]` Clock sysvar
-    ///   4. `[]` Optional TokenOwnerRecord of the Proposal owner when self signing off the Proposal
+    ///   5. `[]` Optional TokenOwnerRecord for the Proposal owner. Required when the owner signs off the Proposal
+    ///   3. `[writable]` Optional Signatory Record account. Required when non owner sings off the Proposal
     SignOffProposal,
 
     ///  Uses your voter weight (deposited Community or Council tokens) to cast a vote on a Proposal
     ///  By doing so you indicate you approve or disapprove of running the Proposal set of transactions
     ///  If you tip the consensus then the transactions can begin to be run after their hold up time
     ///
-    ///   0. `[]` Realm account
-    ///   1. `[]` Governance account
+    ///   0. `[writable]` Realm account
+    ///   1. `[writable]` Governance account
     ///   2. `[writable]` Proposal account
     ///   4. `[writable]` TokenOwnerRecord of the Proposal owner    
     ///   3. `[writable]` TokenOwnerRecord of the voter. PDA seeds: ['governance',realm, governing_token_mint, governing_token_owner]
@@ -293,11 +292,9 @@ pub enum GovernanceInstruction {
     ///   6. `[]` Governing Token Mint
     ///   7. `[signer]` Payer
     ///   8. `[]` System program
-    ///   9. `[]` Rent sysvar
-    ///   10. `[]` Clock sysvar
-    ///   11. `[]` Realm Config
-    ///   12. `[]` Optional Voter Weight Record
-    ///   13. `[]` Optional Max Voter Weight Record
+    ///   9. `[]` Realm Config
+    ///   10. `[]` Optional Voter Weight Record
+    ///   11. `[]` Optional Max Voter Weight Record
     CastVote {
         #[allow(dead_code)]
         /// User's vote
@@ -306,14 +303,13 @@ pub enum GovernanceInstruction {
 
     /// Finalizes vote in case the Vote was not automatically tipped within max_voting_time period
     ///
-    ///   0. `[]` Realm account    
-    ///   1. `[]` Governance account
+    ///   0. `[writable]` Realm account    
+    ///   1. `[writable]` Governance account
     ///   2. `[writable]` Proposal account
     ///   3. `[writable]` TokenOwnerRecord of the Proposal owner        
     ///   4. `[]` Governing Token Mint
-    ///   5. `[]` Clock sysvar
-    ///   6. `[]` Realm Config
-    ///   7. `[]` Optional Max Voter Weight Record
+    ///   5. `[]` Realm Config
+    ///   6. `[]` Optional Max Voter Weight Record
     FinalizeVote {},
 
     ///  Relinquish Vote removes voter weight from a Proposal and removes it from voter's active votes
@@ -339,8 +335,7 @@ pub enum GovernanceInstruction {
     ///
     ///   0. `[writable]` Proposal account
     ///   1. `[writable]` ProposalTransaction account you wish to execute
-    ///   2. `[]` Clock sysvar
-    ///   3+ Any extra accounts that are part of the transaction, in order
+    ///   2+ Any extra accounts that are part of the transaction, in order
     ExecuteTransaction,
 
     /// Creates Mint Governance account which governs a mint
@@ -414,7 +409,6 @@ pub enum GovernanceInstruction {
     ///   1. `[]` TokenOwnerRecord account of the Proposal owner
     ///   2. `[signer]` Governance Authority (Token Owner or Governance Delegate)    
     ///   3. `[writable]` ProposalTransaction account to flag
-    ///   4. `[]` Clock sysvar
     FlagTransactionError,
 
     /// Sets new Realm authority
@@ -599,7 +593,6 @@ pub fn deposit_governing_tokens(
         AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(spl_token::id(), false),
-        AccountMeta::new_readonly(sysvar::rent::id(), false),
     ];
 
     let instruction = GovernanceInstruction::DepositGoverningTokens { amount };
@@ -713,7 +706,6 @@ pub fn create_governance(
         AccountMeta::new_readonly(*token_owner_record, false),
         AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
-        AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(*create_authority, true),
     ];
 
@@ -758,7 +750,6 @@ pub fn create_program_governance(
         AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(bpf_loader_upgradeable::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
-        AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(*create_authority, true),
     ];
 
@@ -803,7 +794,6 @@ pub fn create_mint_governance(
         AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(spl_token::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
-        AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(*create_authority, true),
     ];
 
@@ -848,7 +838,6 @@ pub fn create_token_governance(
         AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(spl_token::id(), false),
         AccountMeta::new_readonly(system_program::id(), false),
-        AccountMeta::new_readonly(sysvar::rent::id(), false),
         AccountMeta::new_readonly(*create_authority, true),
     ];
 
@@ -902,8 +891,6 @@ pub fn create_proposal(
         AccountMeta::new_readonly(*governance_authority, true),
         AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
-        AccountMeta::new_readonly(sysvar::rent::id(), false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];
 
     with_realm_config_accounts(program_id, &mut accounts, realm, voter_weight_record, None);
@@ -943,7 +930,6 @@ pub fn add_signatory(
         AccountMeta::new(signatory_record_address, false),
         AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
-        AccountMeta::new_readonly(sysvar::rent::id(), false),
     ];
 
     let instruction = GovernanceInstruction::AddSignatory {
@@ -992,21 +978,25 @@ pub fn remove_signatory(
 pub fn sign_off_proposal(
     program_id: &Pubkey,
     // Accounts
+    realm: &Pubkey,
+    governance: &Pubkey,
     proposal: &Pubkey,
     signatory: &Pubkey,
     proposal_owner_record: Option<&Pubkey>,
 ) -> Instruction {
-    let signatory_record_address = get_signatory_record_address(program_id, proposal, signatory);
-
     let mut accounts = vec![
+        AccountMeta::new(*realm, false),
+        AccountMeta::new(*governance, false),
         AccountMeta::new(*proposal, false),
-        AccountMeta::new(signatory_record_address, false),
         AccountMeta::new_readonly(*signatory, true),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];
 
     if let Some(proposal_owner_record) = proposal_owner_record {
         accounts.push(AccountMeta::new_readonly(*proposal_owner_record, false))
+    } else {
+        let signatory_record_address =
+            get_signatory_record_address(program_id, proposal, signatory);
+        accounts.push(AccountMeta::new(signatory_record_address, false));
     }
 
     let instruction = GovernanceInstruction::SignOffProposal;
@@ -1040,8 +1030,8 @@ pub fn cast_vote(
         get_vote_record_address(program_id, proposal, voter_token_owner_record);
 
     let mut accounts = vec![
-        AccountMeta::new_readonly(*realm, false),
-        AccountMeta::new_readonly(*governance, false),
+        AccountMeta::new(*realm, false),
+        AccountMeta::new(*governance, false),
         AccountMeta::new(*proposal, false),
         AccountMeta::new(*proposal_owner_record, false),
         AccountMeta::new(*voter_token_owner_record, false),
@@ -1050,8 +1040,6 @@ pub fn cast_vote(
         AccountMeta::new_readonly(*governing_token_mint, false),
         AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
-        AccountMeta::new_readonly(sysvar::rent::id(), false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];
 
     with_realm_config_accounts(
@@ -1083,12 +1071,11 @@ pub fn finalize_vote(
     max_voter_weight_record: Option<Pubkey>,
 ) -> Instruction {
     let mut accounts = vec![
-        AccountMeta::new_readonly(*realm, false),
-        AccountMeta::new_readonly(*governance, false),
+        AccountMeta::new(*realm, false),
+        AccountMeta::new(*governance, false),
         AccountMeta::new(*proposal, false),
         AccountMeta::new(*proposal_owner_record, false),
         AccountMeta::new_readonly(*governing_token_mint, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];
 
     with_realm_config_accounts(
@@ -1147,17 +1134,18 @@ pub fn relinquish_vote(
 pub fn cancel_proposal(
     program_id: &Pubkey,
     // Accounts
+    realm: &Pubkey,
+    governance: &Pubkey,
     proposal: &Pubkey,
     proposal_owner_record: &Pubkey,
     governance_authority: &Pubkey,
-    governance: &Pubkey,
 ) -> Instruction {
     let accounts = vec![
+        AccountMeta::new(*realm, false),
+        AccountMeta::new(*governance, false),
         AccountMeta::new(*proposal, false),
         AccountMeta::new(*proposal_owner_record, false),
         AccountMeta::new_readonly(*governance_authority, true),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
-        AccountMeta::new_readonly(*governance, false),
     ];
 
     let instruction = GovernanceInstruction::CancelProposal {};
@@ -1258,7 +1246,6 @@ pub fn execute_transaction(
         AccountMeta::new_readonly(*governance, false),
         AccountMeta::new(*proposal, false),
         AccountMeta::new(*proposal_transaction, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(*instruction_program_id, false),
     ];
 
@@ -1306,7 +1293,6 @@ pub fn flag_transaction_error(
         AccountMeta::new_readonly(*token_owner_record, false),
         AccountMeta::new_readonly(*governance_authority, true),
         AccountMeta::new(*proposal_transaction, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];
 
     let instruction = GovernanceInstruction::FlagTransactionError {};

@@ -130,7 +130,7 @@ pub fn process_create_realm(
         community_mint: *governance_token_mint_info.key,
 
         name: name.clone(),
-        reserved: [0; 8],
+        reserved: [0; 6],
         authority: Some(*realm_authority_info.key),
         config: RealmConfig {
             council_mint: council_token_mint_address,
@@ -142,6 +142,7 @@ pub fn process_create_realm(
             use_community_voter_weight_addin: config_args.use_community_voter_weight_addin,
             use_max_community_voter_weight_addin: config_args.use_max_community_voter_weight_addin,
         },
+        voting_proposal_count: 0,
     };
 
     create_and_serialize_account_signed::<Realm>(

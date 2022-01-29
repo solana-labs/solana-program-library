@@ -17,7 +17,7 @@ pub enum GovernanceToolsError {
 
     /// Account doesn't exist
     #[error("Account doesn't exist")]
-    AccountDoesNotExist,
+    AccountDoesNotExist, // 1101
 
     /// Invalid account owner
     #[error("Invalid account owner")]

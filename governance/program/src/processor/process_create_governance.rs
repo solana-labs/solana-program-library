@@ -35,21 +35,20 @@ pub fn process_create_governance(
     let payer_info = next_account_info(account_info_iter)?; // 4
     let system_info = next_account_info(account_info_iter)?; // 5
 
-    let rent_sysvar_info = next_account_info(account_info_iter)?; // 6
-    let rent = &Rent::from_account_info(rent_sysvar_info)?;
+    let rent = Rent::get()?;
 
-    let create_authority_info = next_account_info(account_info_iter)?; // 7
+    let create_authority_info = next_account_info(account_info_iter)?; // 6
 
     assert_valid_create_governance_args(program_id, &config, realm_info)?;
 
     let realm_data = get_realm_data(program_id, realm_info)?;
 
-    realm_data.assert_can_create_governance(
+    realm_data.assert_create_authority_can_create_governance(
         program_id,
         realm_info.key,
         token_owner_record_info,
         create_authority_info,
-        account_info_iter, // 8, 9
+        account_info_iter, // realm_config_info 7, voter_weight_record_info 8
     )?;
 
     let governance_data = Governance {
@@ -58,7 +57,8 @@ pub fn process_create_governance(
         governed_account: *governed_account_info.key,
         config,
         proposals_count: 0,
-        reserved: [0; 8],
+        reserved: [0; 6],
+        voting_proposal_count: 0,
     };
 
     create_and_serialize_account_signed::<Governance>(
@@ -68,7 +68,7 @@ pub fn process_create_governance(
         &get_governance_address_seeds(realm_info.key, governed_account_info.key),
         program_id,
         system_info,
-        rent,
+        &rent,
     )?;
 
     Ok(())

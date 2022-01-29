@@ -1087,7 +1087,7 @@ mod test {
         Realm {
             account_type: GovernanceAccountType::Realm,
             community_mint: Pubkey::new_unique(),
-            reserved: [0; 8],
+            reserved: [0; 6],
 
             authority: Some(Pubkey::new_unique()),
             name: "test-realm".to_string(),
@@ -1101,6 +1101,7 @@ mod test {
                     MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,
                 min_community_tokens_to_create_governance: 10,
             },
+            voting_proposal_count: 0,
         }
     }
 

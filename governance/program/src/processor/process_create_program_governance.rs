@@ -47,21 +47,20 @@ pub fn process_create_program_governance(
 
     let system_info = next_account_info(account_info_iter)?; // 8
 
-    let rent_sysvar_info = next_account_info(account_info_iter)?; // 9
-    let rent = &Rent::from_account_info(rent_sysvar_info)?;
+    let rent = Rent::get()?;
 
-    let create_authority_info = next_account_info(account_info_iter)?; // 10
+    let create_authority_info = next_account_info(account_info_iter)?; // 9
 
     assert_valid_create_governance_args(program_id, &config, realm_info)?;
 
     let realm_data = get_realm_data(program_id, realm_info)?;
 
-    realm_data.assert_can_create_governance(
+    realm_data.assert_create_authority_can_create_governance(
         program_id,
         realm_info.key,
         token_owner_record_info,
         create_authority_info,
-        account_info_iter, // 10, 11
+        account_info_iter, // realm_config_info 10, voter_weight_record_info 11
     )?;
 
     let program_governance_data = Governance {
@@ -70,7 +69,8 @@ pub fn process_create_program_governance(
         governed_account: *governed_program_info.key,
         config,
         proposals_count: 0,
-        reserved: [0; 8],
+        reserved: [0; 6],
+        voting_proposal_count: 0,
     };
 
     create_and_serialize_account_signed::<Governance>(
@@ -80,7 +80,7 @@ pub fn process_create_program_governance(
         &get_program_governance_address_seeds(realm_info.key, governed_program_info.key),
         program_id,
         system_info,
-        rent,
+        &rent,
     )?;
 
     if transfer_upgrade_authority {

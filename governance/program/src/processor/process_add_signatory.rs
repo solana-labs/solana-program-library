@@ -33,8 +33,7 @@ pub fn process_add_signatory(
     let payer_info = next_account_info(account_info_iter)?; // 4
     let system_info = next_account_info(account_info_iter)?; // 5
 
-    let rent_sysvar_info = next_account_info(account_info_iter)?; // 6
-    let rent = &Rent::from_account_info(rent_sysvar_info)?;
+    let rent = Rent::get()?;
 
     let mut proposal_data = get_proposal_data(program_id, proposal_info)?;
     proposal_data.assert_can_edit_signatories()?;
@@ -61,7 +60,7 @@ pub fn process_add_signatory(
         &get_signatory_record_address_seeds(proposal_info.key, &signatory),
         program_id,
         system_info,
-        rent,
+        &rent,
     )?;
 
     proposal_data.signatories_count = proposal_data.signatories_count.checked_add(1).unwrap();

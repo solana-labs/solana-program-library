@@ -49,11 +49,8 @@ pub fn process_create_proposal(
     let payer_info = next_account_info(account_info_iter)?; // 6
     let system_info = next_account_info(account_info_iter)?; // 7
 
-    let rent_sysvar_info = next_account_info(account_info_iter)?; // 8
-    let rent = &Rent::from_account_info(rent_sysvar_info)?;
-
-    let clock_info = next_account_info(account_info_iter)?; // 9
-    let clock = Clock::from_account_info(clock_info)?;
+    let rent = Rent::get()?;
+    let clock = Clock::get()?;
 
     if !proposal_info.data_is_empty() {
         return Err(GovernanceError::ProposalAlreadyExists.into());
@@ -168,7 +165,7 @@ pub fn process_create_proposal(
         ),
         program_id,
         system_info,
-        rent,
+        &rent,
     )?;
 
     governance_data.proposals_count = governance_data.proposals_count.checked_add(1).unwrap();
