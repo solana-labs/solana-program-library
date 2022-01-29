@@ -100,7 +100,7 @@ async fn test_execute_flag_instruction_error() {
 }
 
 #[tokio::test]
-async fn test_execute_instruction_after_flagged_with_error() {
+async fn test_execute_proposal_transaction_after_flagged_with_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -132,7 +132,7 @@ async fn test_execute_instruction_after_flagged_with_error() {
         .unwrap();
 
     let proposal_transaction_cookie = governance_test
-        .with_mint_tokens_instruction(
+        .with_mint_tokens_transaction(
             &governed_mint_cookie,
             &mut proposal_cookie,
             &token_owner_record_cookie,
@@ -168,7 +168,7 @@ async fn test_execute_instruction_after_flagged_with_error() {
 
     // Act
     governance_test
-        .execute_instruction(&proposal_cookie, &proposal_transaction_cookie)
+        .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie)
         .await
         .unwrap();
 
@@ -228,7 +228,7 @@ async fn test_execute_second_instruction_after_first_instruction_flagged_with_er
         .unwrap();
 
     let proposal_transaction_cookie2 = governance_test
-        .with_mint_tokens_instruction(
+        .with_mint_tokens_transaction(
             &governed_mint_cookie,
             &mut proposal_cookie,
             &token_owner_record_cookie,
@@ -264,7 +264,7 @@ async fn test_execute_second_instruction_after_first_instruction_flagged_with_er
 
     // Act
     governance_test
-        .execute_instruction(&proposal_cookie, &proposal_transaction_cookie2)
+        .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie2)
         .await
         .unwrap();
 
@@ -310,7 +310,7 @@ async fn test_flag_instruction_error_with_instruction_already_executed_error() {
         .unwrap();
 
     let proposal_transaction_cookie = governance_test
-        .with_mint_tokens_instruction(
+        .with_mint_tokens_transaction(
             &governed_mint_cookie,
             &mut proposal_cookie,
             &token_owner_record_cookie,
@@ -342,7 +342,7 @@ async fn test_flag_instruction_error_with_instruction_already_executed_error() {
         .await;
 
     governance_test
-        .execute_instruction(&proposal_cookie, &proposal_transaction_cookie)
+        .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie)
         .await
         .unwrap();
 

@@ -16,7 +16,7 @@ use spl_governance::{
 };
 
 #[tokio::test]
-async fn test_execute_mint_instruction() {
+async fn test_execute_mint_transaction() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -48,7 +48,7 @@ async fn test_execute_mint_instruction() {
         .unwrap();
 
     let proposal_transaction_cookie = governance_test
-        .with_mint_tokens_instruction(
+        .with_mint_tokens_transaction(
             &governed_mint_cookie,
             &mut proposal_cookie,
             &token_owner_record_cookie,
@@ -77,7 +77,7 @@ async fn test_execute_mint_instruction() {
 
     // Act
     governance_test
-        .execute_instruction(&proposal_cookie, &proposal_transaction_cookie)
+        .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie)
         .await
         .unwrap();
 
@@ -176,7 +176,7 @@ async fn test_execute_transfer_instruction() {
 
     // Act
     governance_test
-        .execute_instruction(&proposal_cookie, &proposal_transaction_cookie)
+        .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie)
         .await
         .unwrap();
 
@@ -291,7 +291,7 @@ async fn test_execute_upgrade_program_instruction() {
 
     // Act
     governance_test
-        .execute_instruction(&proposal_cookie, &proposal_transaction_cookie)
+        .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie)
         .await
         .unwrap();
 
@@ -341,7 +341,7 @@ async fn test_execute_upgrade_program_instruction() {
 
 #[tokio::test]
 #[ignore]
-async fn test_execute_instruction_with_invalid_state_errors() {
+async fn test_execute_proposal_transaction_with_invalid_state_errors() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -378,7 +378,7 @@ async fn test_execute_instruction_with_invalid_state_errors() {
         .unwrap();
 
     let proposal_transaction_cookie = governance_test
-        .with_mint_tokens_instruction(
+        .with_mint_tokens_transaction(
             &governed_mint_cookie,
             &mut proposal_cookie,
             &token_owner_record_cookie,
@@ -391,7 +391,7 @@ async fn test_execute_instruction_with_invalid_state_errors() {
     // Act
 
     let err = governance_test
-        .execute_instruction(&proposal_cookie, &proposal_transaction_cookie)
+        .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie)
         .await
         .err()
         .unwrap();
@@ -412,7 +412,7 @@ async fn test_execute_instruction_with_invalid_state_errors() {
     // Act
 
     let err = governance_test
-        .execute_instruction(&proposal_cookie, &proposal_transaction_cookie)
+        .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie)
         .await
         .err()
         .unwrap();
@@ -433,7 +433,7 @@ async fn test_execute_instruction_with_invalid_state_errors() {
     // Act
 
     let err = governance_test
-        .execute_instruction(&proposal_cookie, &proposal_transaction_cookie)
+        .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie)
         .await
         .err()
         .unwrap();
@@ -455,7 +455,7 @@ async fn test_execute_instruction_with_invalid_state_errors() {
 
     // Act
     let err = governance_test
-        .execute_instruction(&proposal_cookie, &proposal_transaction_cookie)
+        .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie)
         .await
         .err()
         .unwrap();
@@ -474,7 +474,7 @@ async fn test_execute_instruction_with_invalid_state_errors() {
 
     // Act
     governance_test
-        .execute_instruction(&proposal_cookie, &proposal_transaction_cookie)
+        .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie)
         .await
         .unwrap();
 
@@ -492,7 +492,7 @@ async fn test_execute_instruction_with_invalid_state_errors() {
 
     // Act
     let err = governance_test
-        .execute_instruction(&proposal_cookie, &proposal_transaction_cookie)
+        .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie)
         .await
         .err()
         .unwrap();
@@ -505,7 +505,7 @@ async fn test_execute_instruction_with_invalid_state_errors() {
 }
 
 #[tokio::test]
-async fn test_execute_instruction_for_other_proposal_error() {
+async fn test_execute_proposal_transaction_for_other_proposal_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -537,7 +537,7 @@ async fn test_execute_instruction_for_other_proposal_error() {
         .unwrap();
 
     let proposal_transaction_cookie = governance_test
-        .with_mint_tokens_instruction(
+        .with_mint_tokens_transaction(
             &governed_mint_cookie,
             &mut proposal_cookie,
             &token_owner_record_cookie,
@@ -577,7 +577,7 @@ async fn test_execute_instruction_for_other_proposal_error() {
 
     // Act
     let err = governance_test
-        .execute_instruction(&proposal_cookie2, &proposal_transaction_cookie)
+        .execute_proposal_transaction(&proposal_cookie2, &proposal_transaction_cookie)
         .await
         .err()
         .unwrap();
@@ -622,7 +622,7 @@ async fn test_execute_mint_instruction_twice_error() {
         .unwrap();
 
     let proposal_transaction_cookie = governance_test
-        .with_mint_tokens_instruction(
+        .with_mint_tokens_transaction(
             &governed_mint_cookie,
             &mut proposal_cookie,
             &token_owner_record_cookie,
@@ -654,7 +654,7 @@ async fn test_execute_mint_instruction_twice_error() {
         .await;
 
     governance_test
-        .execute_instruction(&proposal_cookie, &proposal_transaction_cookie)
+        .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie)
         .await
         .unwrap();
 
@@ -663,7 +663,7 @@ async fn test_execute_mint_instruction_twice_error() {
     // Act
 
     let err = governance_test
-        .execute_instruction(&proposal_cookie, &proposal_transaction_cookie)
+        .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie)
         .await
         .err()
         .unwrap();

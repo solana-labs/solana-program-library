@@ -19,7 +19,7 @@ use spl_governance::{
         add_signatory, cancel_proposal, cast_vote, create_account_governance,
         create_mint_governance, create_native_treasury, create_program_governance, create_proposal,
         create_realm, create_token_governance, create_token_owner_record, deposit_governing_tokens,
-        execute_transaction, finalize_vote, flag_transaction_error, insert_transaction,
+        execute_proposal_transaction, finalize_vote, flag_transaction_error, insert_transaction,
         relinquish_vote, remove_signatory, remove_transaction, set_governance_config,
         set_governance_delegate, set_realm_authority, set_realm_config, sign_off_proposal,
         upgrade_program_metadata, withdraw_governing_tokens,
@@ -2135,7 +2135,7 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn with_mint_tokens_instruction(
+    pub async fn with_mint_tokens_transaction(
         &mut self,
         governed_mint_cookie: &GovernedMintCookie,
         proposal_cookie: &mut ProposalCookie,
@@ -2432,12 +2432,12 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn execute_instruction(
+    pub async fn execute_proposal_transaction(
         &mut self,
         proposal_cookie: &ProposalCookie,
         proposal_transaction_cookie: &ProposalTransactionCookie,
     ) -> Result<(), ProgramError> {
-        let execute_instruction_instruction = execute_transaction(
+        let execute_proposal_transaction_ix = execute_proposal_transaction(
             &self.program_id,
             &proposal_cookie.account.governance,
             &proposal_cookie.address,
@@ -2447,7 +2447,7 @@ impl GovernanceProgramTest {
         );
 
         self.bench
-            .process_transaction(&[execute_instruction_instruction], None)
+            .process_transaction(&[execute_proposal_transaction_ix], None)
             .await
     }
 

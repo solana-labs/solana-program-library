@@ -639,7 +639,7 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
         .unwrap();
 
     let proposal_transaction_cookie1 = governance_test
-        .with_mint_tokens_instruction(
+        .with_mint_tokens_transaction(
             &governed_mint_cookie,
             &mut proposal_cookie,
             &token_owner_record_cookie1,
@@ -650,7 +650,7 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
         .unwrap();
 
     let proposal_transaction_cookie2 = governance_test
-        .with_mint_tokens_instruction(
+        .with_mint_tokens_transaction(
             &governed_mint_cookie,
             &mut proposal_cookie,
             &token_owner_record_cookie1,
@@ -661,7 +661,7 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
         .unwrap();
 
     let proposal_transaction_cookie3 = governance_test
-        .with_mint_tokens_instruction(
+        .with_mint_tokens_transaction(
             &governed_mint_cookie,
             &mut proposal_cookie,
             &token_owner_record_cookie1,
@@ -758,18 +758,18 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
     // Act
 
     let instruction1_err = governance_test
-        .execute_instruction(&proposal_cookie, &proposal_transaction_cookie1)
+        .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie1)
         .await
         .err()
         .unwrap();
 
     governance_test
-        .execute_instruction(&proposal_cookie, &proposal_transaction_cookie2)
+        .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie2)
         .await
         .unwrap();
 
     let instruction3_err = governance_test
-        .execute_instruction(&proposal_cookie, &proposal_transaction_cookie3)
+        .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie3)
         .await
         .err()
         .unwrap();
@@ -842,7 +842,7 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
         .unwrap();
 
     let proposal_transaction_cookie1 = governance_test
-        .with_mint_tokens_instruction(
+        .with_mint_tokens_transaction(
             &governed_mint_cookie,
             &mut proposal_cookie,
             &token_owner_record_cookie1,
@@ -853,7 +853,7 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
         .unwrap();
 
     let proposal_transaction_cookie2 = governance_test
-        .with_mint_tokens_instruction(
+        .with_mint_tokens_transaction(
             &governed_mint_cookie,
             &mut proposal_cookie,
             &token_owner_record_cookie1,
@@ -864,7 +864,7 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
         .unwrap();
 
     let proposal_transaction_cookie3 = governance_test
-        .with_mint_tokens_instruction(
+        .with_mint_tokens_transaction(
             &governed_mint_cookie,
             &mut proposal_cookie,
             &token_owner_record_cookie1,
@@ -920,7 +920,7 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
     // Act
 
     let mut err = governance_test
-        .execute_instruction(&proposal_cookie, &proposal_transaction_cookie1)
+        .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie1)
         .await
         .err()
         .unwrap();
@@ -934,7 +934,7 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
     // Act
 
     err = governance_test
-        .execute_instruction(&proposal_cookie, &proposal_transaction_cookie2)
+        .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie2)
         .await
         .err()
         .unwrap();
@@ -948,7 +948,7 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
     // Act
 
     err = governance_test
-        .execute_instruction(&proposal_cookie, &proposal_transaction_cookie3)
+        .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie3)
         .await
         .err()
         .unwrap();

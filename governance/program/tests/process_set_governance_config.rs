@@ -76,7 +76,7 @@ async fn test_set_governance_config() {
 
     // Act
     governance_test
-        .execute_instruction(&proposal_cookie, &proposal_transaction_cookie)
+        .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie)
         .await
         .unwrap();
 
@@ -229,7 +229,7 @@ async fn test_set_governance_config_with_invalid_governance_authority_error() {
 
     // Act
     let err = governance_test
-        .execute_instruction(&proposal_cookie, &proposal_transaction_cookie)
+        .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie)
         .await
         .err()
         .unwrap();

@@ -109,7 +109,7 @@ async fn test_execute_transfer_from_native_treasury() {
 
     // Act
     governance_test
-        .execute_instruction(&proposal_cookie, &proposal_transaction_cookie)
+        .execute_proposal_transaction(&proposal_cookie, &proposal_transaction_cookie)
         .await
         .unwrap();
 
