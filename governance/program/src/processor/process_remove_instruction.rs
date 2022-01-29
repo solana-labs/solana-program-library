@@ -8,7 +8,7 @@ use solana_program::{
 use spl_governance_tools::account::dispose_account;
 
 use crate::state::{
-    proposal::get_proposal_data, proposal_transaction::get_proposal_instruction_data_for_proposal,
+    proposal::get_proposal_data, proposal_transaction::get_proposal_transaction_data_for_proposal,
     token_owner_record::get_token_owner_record_data_for_proposal_owner,
 };
 
@@ -34,7 +34,7 @@ pub fn process_remove_instruction(program_id: &Pubkey, accounts: &[AccountInfo])
 
     token_owner_record_data.assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
-    let proposal_instruction_data = get_proposal_instruction_data_for_proposal(
+    let proposal_instruction_data = get_proposal_transaction_data_for_proposal(
         program_id,
         proposal_instruction_info,
         proposal_info.key,

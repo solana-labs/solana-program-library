@@ -10,7 +10,7 @@ use crate::{
         native_treasury::get_native_treasury_address,
         program_metadata::get_program_metadata_address,
         proposal::{get_proposal_address, VoteType},
-        proposal_transaction::{get_proposal_instruction_address, InstructionData},
+        proposal_transaction::{get_proposal_transaction_address, InstructionData},
         realm::SetRealmAuthorityAction,
         realm::{get_governing_token_holding_address, get_realm_address, RealmConfigArgs},
         realm_config::get_realm_config_address,
@@ -1168,7 +1168,7 @@ pub fn insert_instruction(
     hold_up_time: u32,
     instructions: Vec<InstructionData>,
 ) -> Instruction {
-    let proposal_instruction_address = get_proposal_instruction_address(
+    let proposal_instruction_address = get_proposal_transaction_address(
         program_id,
         proposal,
         &option_index.to_le_bytes(),

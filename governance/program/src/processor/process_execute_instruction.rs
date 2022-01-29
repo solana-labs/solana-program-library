@@ -15,7 +15,7 @@ use crate::state::{
     governance::get_governance_data,
     native_treasury::get_native_treasury_address_seeds,
     proposal::{get_proposal_data_for_governance, OptionVoteResult},
-    proposal_transaction::get_proposal_instruction_data_for_proposal,
+    proposal_transaction::get_proposal_transaction_data_for_proposal,
 };
 
 /// Processes ExecuteInstruction instruction
@@ -34,7 +34,7 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
     let mut proposal_data =
         get_proposal_data_for_governance(program_id, proposal_info, governance_info.key)?;
 
-    let mut proposal_instruction_data = get_proposal_instruction_data_for_proposal(
+    let mut proposal_instruction_data = get_proposal_transaction_data_for_proposal(
         program_id,
         proposal_instruction_info,
         proposal_info.key,

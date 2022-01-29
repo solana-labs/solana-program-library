@@ -11,7 +11,7 @@ use solana_program::{
 use crate::state::{
     enums::{InstructionExecutionStatus, ProposalState},
     proposal::get_proposal_data,
-    proposal_transaction::get_proposal_instruction_data_for_proposal,
+    proposal_transaction::get_proposal_transaction_data_for_proposal,
     token_owner_record::get_token_owner_record_data_for_proposal_owner,
 };
 
@@ -33,7 +33,7 @@ pub fn process_flag_instruction_error(
 
     let mut proposal_data = get_proposal_data(program_id, proposal_info)?;
 
-    let mut proposal_instruction_data = get_proposal_instruction_data_for_proposal(
+    let mut proposal_instruction_data = get_proposal_transaction_data_for_proposal(
         program_id,
         proposal_instruction_info,
         proposal_info.key,

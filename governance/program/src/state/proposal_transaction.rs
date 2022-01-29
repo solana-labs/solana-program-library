@@ -1,4 +1,4 @@
-//! ProposalInstruction Account
+//! ProposalTransaction Account
 
 use core::panic;
 
@@ -163,8 +163,8 @@ impl ProposalTransactionV2 {
     }
 }
 
-/// Returns ProposalInstruction PDA seeds
-pub fn get_proposal_instruction_address_seeds<'a>(
+/// Returns ProposalTransaction PDA seeds
+pub fn get_proposal_transaction_address_seeds<'a>(
     proposal: &'a Pubkey,
     option_index: &'a [u8; 2],               // u16 le bytes
     instruction_index_le_bytes: &'a [u8; 2], // u16 le bytes
@@ -177,15 +177,15 @@ pub fn get_proposal_instruction_address_seeds<'a>(
     ]
 }
 
-/// Returns ProposalInstruction PDA address
-pub fn get_proposal_instruction_address<'a>(
+/// Returns ProposalTransaction PDA address
+pub fn get_proposal_transaction_address<'a>(
     program_id: &Pubkey,
     proposal: &'a Pubkey,
     option_index_le_bytes: &'a [u8; 2],      // u16 le bytes
     instruction_index_le_bytes: &'a [u8; 2], // u16 le bytes
 ) -> Pubkey {
     Pubkey::find_program_address(
-        &get_proposal_instruction_address_seeds(
+        &get_proposal_transaction_address_seeds(
             proposal,
             option_index_le_bytes,
             instruction_index_le_bytes,
@@ -195,8 +195,8 @@ pub fn get_proposal_instruction_address<'a>(
     .0
 }
 
-/// Deserializes ProposalInstruction account and checks owner program
-pub fn get_proposal_instruction_data(
+/// Deserializes ProposalTransaction account and checks owner program
+pub fn get_proposal_transaction_data(
     program_id: &Pubkey,
     proposal_instruction_info: &AccountInfo,
 ) -> Result<ProposalTransactionV2, ProgramError> {
@@ -223,14 +223,14 @@ pub fn get_proposal_instruction_data(
     get_account_data::<ProposalTransactionV2>(program_id, proposal_instruction_info)
 }
 
-///  Deserializes and returns ProposalInstruction account and checks it belongs to the given Proposal
-pub fn get_proposal_instruction_data_for_proposal(
+///  Deserializes and returns ProposalTransaction account and checks it belongs to the given Proposal
+pub fn get_proposal_transaction_data_for_proposal(
     program_id: &Pubkey,
     proposal_instruction_info: &AccountInfo,
     proposal: &Pubkey,
 ) -> Result<ProposalTransactionV2, ProgramError> {
     let proposal_instruction_data =
-        get_proposal_instruction_data(program_id, proposal_instruction_info)?;
+        get_proposal_transaction_data(program_id, proposal_instruction_info)?;
 
     if proposal_instruction_data.proposal != *proposal {
         return Err(GovernanceError::InvalidProposalForProposalTransaction.into());
@@ -267,7 +267,7 @@ mod test {
         }]
     }
 
-    fn create_test_proposal_instruction() -> ProposalTransactionV2 {
+    fn create_test_proposal_transaction() -> ProposalTransactionV2 {
         ProposalTransactionV2 {
             account_type: GovernanceAccountType::ProposalTransactionV2,
             proposal: Pubkey::new_unique(),
@@ -289,9 +289,9 @@ mod test {
     }
 
     #[test]
-    fn test_proposal_instruction_max_size() {
+    fn test_proposal_transaction_max_size() {
         // Arrange
-        let proposal_instruction = create_test_proposal_instruction();
+        let proposal_instruction = create_test_proposal_transaction();
         let size = proposal_instruction.try_to_vec().unwrap().len();
 
         // Act, Assert
@@ -299,9 +299,9 @@ mod test {
     }
 
     #[test]
-    fn test_empty_proposal_instruction_max_size() {
+    fn test_empty_proposal_transaction_max_size() {
         // Arrange
-        let mut proposal_instruction = create_test_proposal_instruction();
+        let mut proposal_instruction = create_test_proposal_transaction();
         proposal_instruction.instructions[0].data = vec![];
         proposal_instruction.instructions[0].accounts = vec![];
 
@@ -345,7 +345,7 @@ mod test {
     }
 
     #[test]
-    fn test_proposal_instruction_v1_to_v2_serialisation_roundtrip() {
+    fn test_proposal_transaction_v1_to_v2_serialization_roundtrip() {
         // Arrange
 
         let proposal_instruction_v1_source = ProposalInstructionV1 {
@@ -381,17 +381,20 @@ mod test {
 
         // Act
 
-        let proposal_instruction_v2 =
-            get_proposal_instruction_data(&program_id, &account_info).unwrap();
+        let proposal_transaction_v2 =
+            get_proposal_transaction_data(&program_id, &account_info).unwrap();
 
-        proposal_instruction_v2
+        proposal_transaction_v2
             .serialize(&mut &mut **account_info.data.borrow_mut())
             .unwrap();
 
         // Assert
-        let vote_record_v1_target =
+        let proposal_instruction_v1_target =
             get_account_data::<ProposalInstructionV1>(&program_id, &account_info).unwrap();
 
-        assert_eq!(proposal_instruction_v1_source, vote_record_v1_target)
+        assert_eq!(
+            proposal_instruction_v1_source,
+            proposal_instruction_v1_target
+        )
     }
 }

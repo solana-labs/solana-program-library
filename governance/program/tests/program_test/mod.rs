@@ -39,7 +39,7 @@ use spl_governance::{
         program_metadata::{get_program_metadata_address, ProgramMetadata},
         proposal::{get_proposal_address, OptionVoteResult, ProposalOption, ProposalV2, VoteType},
         proposal_transaction::{
-            get_proposal_instruction_address, InstructionData, ProposalTransactionV2,
+            get_proposal_transaction_address, InstructionData, ProposalTransactionV2,
         },
         realm::{
             get_governing_token_holding_address, get_realm_address, Realm, RealmConfig,
@@ -79,7 +79,7 @@ use self::{
     cookies::{
         GovernanceCookie, GovernedAccountCookie, GovernedMintCookie, GovernedProgramCookie,
         GovernedTokenCookie, MaxVoterWeightRecordCookie, NativeTreasuryCookie,
-        ProgramMetadataCookie, ProposalCookie, ProposalInstructionCookie, RealmCookie,
+        ProgramMetadataCookie, ProposalCookie, ProposalTransactionCookie, RealmCookie,
         TokenOwnerRecordCookie, VoteRecordCookie,
     },
 };
@@ -2117,7 +2117,7 @@ impl GovernanceProgramTest {
         proposal_cookie: &mut ProposalCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         governance_config: &GovernanceConfig,
-    ) -> Result<ProposalInstructionCookie, ProgramError> {
+    ) -> Result<ProposalTransactionCookie, ProgramError> {
         let mut set_governance_config_ix = set_governance_config(
             &self.program_id,
             &proposal_cookie.account.governance,
@@ -2142,7 +2142,7 @@ impl GovernanceProgramTest {
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         option_index: u16,
         index: Option<u16>,
-    ) -> Result<ProposalInstructionCookie, ProgramError> {
+    ) -> Result<ProposalTransactionCookie, ProgramError> {
         let token_account_keypair = Keypair::new();
         self.bench
             .create_empty_token_account(
@@ -2179,7 +2179,7 @@ impl GovernanceProgramTest {
         proposal_cookie: &mut ProposalCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         index: Option<u16>,
-    ) -> Result<ProposalInstructionCookie, ProgramError> {
+    ) -> Result<ProposalTransactionCookie, ProgramError> {
         let token_account_keypair = Keypair::new();
         self.bench
             .create_empty_token_account(
@@ -2217,7 +2217,7 @@ impl GovernanceProgramTest {
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         to_wallet_cookie: &WalletCookie,
         lamports: u64,
-    ) -> Result<ProposalInstructionCookie, ProgramError> {
+    ) -> Result<ProposalTransactionCookie, ProgramError> {
         let treasury_address =
             get_native_treasury_address(&self.program_id, &governance_cookie.address);
 
@@ -2240,7 +2240,7 @@ impl GovernanceProgramTest {
         governance_cookie: &GovernanceCookie,
         proposal_cookie: &mut ProposalCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
-    ) -> Result<ProposalInstructionCookie, ProgramError> {
+    ) -> Result<ProposalTransactionCookie, ProgramError> {
         let program_buffer_keypair = Keypair::new();
         let buffer_authority_keypair = Keypair::new();
 
@@ -2311,7 +2311,7 @@ impl GovernanceProgramTest {
         token_owner_record_cookie: &TokenOwnerRecordCookie,
         option_index: u16,
         index: Option<u16>,
-    ) -> Result<ProposalInstructionCookie, ProgramError> {
+    ) -> Result<ProposalTransactionCookie, ProgramError> {
         // Create NOP instruction as a placeholder
         // Note: The actual instruction is irrelevant because we do not execute it in tests
         let mut instruction = Instruction {
@@ -2338,7 +2338,7 @@ impl GovernanceProgramTest {
         option_index: u16,
         index: Option<u16>,
         instruction: &mut Instruction,
-    ) -> Result<ProposalInstructionCookie, ProgramError> {
+    ) -> Result<ProposalTransactionCookie, ProgramError> {
         let hold_up_time = 15;
 
         let instruction_data: InstructionData = instruction.clone().into();
@@ -2368,7 +2368,7 @@ impl GovernanceProgramTest {
             )
             .await?;
 
-        let proposal_instruction_address = get_proposal_instruction_address(
+        let proposal_instruction_address = get_proposal_transaction_address(
             &self.program_id,
             &proposal_cookie.address,
             &option_index.to_le_bytes(),
@@ -2396,7 +2396,7 @@ impl GovernanceProgramTest {
             })
             .collect();
 
-        let proposal_instruction_cookie = ProposalInstructionCookie {
+        let proposal_instruction_cookie = ProposalTransactionCookie {
             address: proposal_instruction_address,
             account: proposal_instruction_data,
             instruction: instruction.clone(),
@@ -2410,7 +2410,7 @@ impl GovernanceProgramTest {
         &mut self,
         proposal_cookie: &mut ProposalCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
-        proposal_instruction_cookie: &ProposalInstructionCookie,
+        proposal_instruction_cookie: &ProposalTransactionCookie,
     ) -> Result<(), ProgramError> {
         let remove_instruction_instruction = remove_instruction(
             &self.program_id,
@@ -2435,7 +2435,7 @@ impl GovernanceProgramTest {
     pub async fn execute_instruction(
         &mut self,
         proposal_cookie: &ProposalCookie,
-        proposal_instruction_cookie: &ProposalInstructionCookie,
+        proposal_instruction_cookie: &ProposalTransactionCookie,
     ) -> Result<(), ProgramError> {
         let execute_instruction_instruction = execute_instruction(
             &self.program_id,
@@ -2456,7 +2456,7 @@ impl GovernanceProgramTest {
         &mut self,
         proposal_cookie: &ProposalCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
-        proposal_instruction_cookie: &ProposalInstructionCookie,
+        proposal_instruction_cookie: &ProposalTransactionCookie,
     ) -> Result<(), ProgramError> {
         let governance_authority = token_owner_record_cookie.get_governance_authority();
 

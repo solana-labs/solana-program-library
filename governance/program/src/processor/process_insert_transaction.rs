@@ -18,7 +18,7 @@ use crate::{
         governance::get_governance_data,
         proposal::get_proposal_data_for_governance,
         proposal_transaction::{
-            get_proposal_instruction_address_seeds, InstructionData, ProposalTransactionV2,
+            get_proposal_transaction_address_seeds, InstructionData, ProposalTransactionV2,
         },
         token_owner_record::get_token_owner_record_data_for_proposal_owner,
     },
@@ -100,7 +100,7 @@ pub fn process_insert_transaction(
         payer_info,
         proposal_instruction_info,
         &proposal_instruction_data,
-        &get_proposal_instruction_address_seeds(
+        &get_proposal_transaction_address_seeds(
             proposal_info.key,
             &option_index.to_le_bytes(),
             &instruction_index.to_le_bytes(),
