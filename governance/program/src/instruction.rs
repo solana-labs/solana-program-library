@@ -308,9 +308,8 @@ pub enum GovernanceInstruction {
     ///   2. `[writable]` Proposal account
     ///   3. `[writable]` TokenOwnerRecord of the Proposal owner        
     ///   4. `[]` Governing Token Mint
-    ///   5. `[]` Clock sysvar
-    ///   6. `[]` Realm Config
-    ///   7. `[]` Optional Max Voter Weight Record
+    ///   5. `[]` Realm Config
+    ///   6. `[]` Optional Max Voter Weight Record
     FinalizeVote {},
 
     ///  Relinquish Vote removes voter weight from a Proposal and removes it from voter's active votes
@@ -1085,7 +1084,6 @@ pub fn finalize_vote(
         AccountMeta::new(*proposal, false),
         AccountMeta::new(*proposal_owner_record, false),
         AccountMeta::new_readonly(*governing_token_mint, false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];
 
     with_realm_config_accounts(

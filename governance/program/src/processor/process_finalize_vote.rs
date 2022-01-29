@@ -28,8 +28,7 @@ pub fn process_finalize_vote(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
 
     let governing_token_mint_info = next_account_info(account_info_iter)?; // 4
 
-    let clock_info = next_account_info(account_info_iter)?; // 5
-    let clock = Clock::from_account_info(clock_info)?;
+    let clock = Clock::get()?;
 
     let realm_data = get_realm_data_for_governing_token_mint(
         program_id,
@@ -46,13 +45,13 @@ pub fn process_finalize_vote(program_id: &Pubkey, accounts: &[AccountInfo]) -> P
         governing_token_mint_info.key,
     )?;
 
-    let realm_config_info = next_account_info(account_info_iter)?; // 6
+    let realm_config_info = next_account_info(account_info_iter)?; // 5
 
     let max_voter_weight = proposal_data.resolve_max_voter_weight(
         program_id,
         realm_config_info,
         governing_token_mint_info,
-        account_info_iter, // *7
+        account_info_iter, // *6
         realm_info.key,
         &realm_data,
     )?;
