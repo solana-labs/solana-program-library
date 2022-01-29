@@ -33,7 +33,7 @@ pub enum GovernanceError {
 
     /// Governing Token Owner or Delegate  must sign transaction
     #[error("Governing Token Owner or Delegate  must sign transaction")]
-    GoverningTokenOwnerOrDelegateMustSign,
+    GoverningTokenOwnerOrDelegateMustSign, // 505
 
     /// All votes must be relinquished to withdraw governing tokens
     #[error("All votes must be relinquished to withdraw governing tokens")]
@@ -53,47 +53,47 @@ pub enum GovernanceError {
 
     /// Invalid Proposal for ProposalTransaction,
     #[error("Invalid Proposal for ProposalTransaction,")]
-    InvalidProposalForProposalTransaction,
+    InvalidProposalForProposalTransaction, // 510
 
     /// Invalid Signatory account address
     #[error("Invalid Signatory account address")]
-    InvalidSignatoryAddress,
+    InvalidSignatoryAddress, // 511
 
     /// Signatory already signed off
     #[error("Signatory already signed off")]
-    SignatoryAlreadySignedOff,
+    SignatoryAlreadySignedOff, // 512
 
     /// Signatory must sign
     #[error("Signatory must sign")]
-    SignatoryMustSign,
+    SignatoryMustSign, // 513
 
     /// Invalid Proposal Owner
     #[error("Invalid Proposal Owner")]
-    InvalidProposalOwnerAccount,
+    InvalidProposalOwnerAccount, // 514
 
     /// Invalid Proposal for VoterRecord
     #[error("Invalid Proposal for VoterRecord")]
-    InvalidProposalForVoterRecord,
+    InvalidProposalForVoterRecord, // 515
 
     /// Invalid GoverningTokenOwner  for VoteRecord
     #[error("Invalid GoverningTokenOwner for VoteRecord")]
-    InvalidGoverningTokenOwnerForVoteRecord,
+    InvalidGoverningTokenOwnerForVoteRecord, // 516
 
     /// Invalid Governance config: Vote threshold percentage out of range"
     #[error("Invalid Governance config: Vote threshold percentage out of range")]
-    InvalidVoteThresholdPercentage,
+    InvalidVoteThresholdPercentage, // 517
 
     /// Proposal for the given Governance, Governing Token Mint and index already exists
     #[error("Proposal for the given Governance, Governing Token Mint and index already exists")]
-    ProposalAlreadyExists,
+    ProposalAlreadyExists, // 518
 
     /// Token Owner already voted on the Proposal
     #[error("Token Owner already voted on the Proposal")]
-    VoteAlreadyExists,
+    VoteAlreadyExists, // 519
 
     /// Owner doesn't have enough governing tokens to create Proposal
     #[error("Owner doesn't have enough governing tokens to create Proposal")]
-    NotEnoughTokensToCreateProposal,
+    NotEnoughTokensToCreateProposal, // 520
 
     /// Invalid State: Can't edit Signatories
     #[error("Invalid State: Can't edit Signatories")]
@@ -132,7 +132,7 @@ pub enum GovernanceError {
 
     /// Invalid State: Can't sign off
     #[error("Invalid State: Can't sign off")]
-    InvalidStateCannotSignOff,
+    InvalidStateCannotSignOff, // 530
 
     /// Invalid State: Can't vote
     #[error("Invalid State: Can't vote")]
