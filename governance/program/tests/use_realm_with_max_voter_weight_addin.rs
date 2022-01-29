@@ -27,8 +27,8 @@ async fn test_cast_vote_with_max_voter_weight_addin() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -37,7 +37,7 @@ async fn test_cast_vote_with_max_voter_weight_addin() {
         .unwrap();
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -76,8 +76,8 @@ async fn test_tip_vote_with_max_voter_weight_addin() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -86,7 +86,7 @@ async fn test_tip_vote_with_max_voter_weight_addin() {
         .unwrap();
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -126,8 +126,8 @@ async fn test_tip_vote_with_max_voter_weight_addin_and_max_below_total_cast_vote
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -136,7 +136,7 @@ async fn test_tip_vote_with_max_voter_weight_addin_and_max_below_total_cast_vote
         .unwrap();
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -176,8 +176,8 @@ async fn test_finalize_vote_with_max_voter_weight_addin() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -186,7 +186,7 @@ async fn test_finalize_vote_with_max_voter_weight_addin() {
         .unwrap();
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -203,7 +203,7 @@ async fn test_finalize_vote_with_max_voter_weight_addin() {
 
     // Advance timestamp past max_voting_time
     governance_test
-        .advance_clock_past_voting_time(&account_governance_cookie)
+        .advance_clock_past_voting_time(&governance_cookie)
         .await;
 
     // Act
@@ -247,8 +247,8 @@ async fn test_finalize_vote_with_max_voter_weight_addin_and_max_below_total_cast
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -257,7 +257,7 @@ async fn test_finalize_vote_with_max_voter_weight_addin_and_max_below_total_cast
         .unwrap();
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -274,7 +274,7 @@ async fn test_finalize_vote_with_max_voter_weight_addin_and_max_below_total_cast
 
     // Advance timestamp past max_voting_time
     governance_test
-        .advance_clock_past_voting_time(&account_governance_cookie)
+        .advance_clock_past_voting_time(&governance_cookie)
         .await;
 
     // Act
@@ -318,8 +318,8 @@ async fn test_cast_vote_with_max_voter_weight_addin_and_expired_record_error() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -328,7 +328,7 @@ async fn test_cast_vote_with_max_voter_weight_addin_and_expired_record_error() {
         .unwrap();
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 

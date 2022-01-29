@@ -704,12 +704,11 @@ pub fn create_governance(
         Pubkey::new_unique()
     };
 
-    let account_governance_address =
-        get_governance_address(program_id, realm, &governed_account_address);
+    let governance_address = get_governance_address(program_id, realm, &governed_account_address);
 
     let mut accounts = vec![
         AccountMeta::new_readonly(*realm, false),
-        AccountMeta::new(account_governance_address, false),
+        AccountMeta::new(governance_address, false),
         AccountMeta::new_readonly(governed_account_address, false),
         AccountMeta::new_readonly(*token_owner_record, false),
         AccountMeta::new(*payer, true),

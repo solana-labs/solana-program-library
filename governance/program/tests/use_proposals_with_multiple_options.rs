@@ -27,8 +27,8 @@ async fn test_create_proposal_with_single_choice_options_and_deny_option() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -42,7 +42,7 @@ async fn test_create_proposal_with_single_choice_options_and_deny_option() {
     let proposal_cookie = governance_test
         .with_multi_option_proposal(
             &token_owner_record_cookie,
-            &mut account_governance_cookie,
+            &mut governance_cookie,
             options,
             true,
             VoteType::SingleChoice,
@@ -73,8 +73,8 @@ async fn test_create_proposal_with_multiple_choice_options_and_without_deny_opti
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -88,7 +88,7 @@ async fn test_create_proposal_with_multiple_choice_options_and_without_deny_opti
     let proposal_cookie = governance_test
         .with_multi_option_proposal(
             &token_owner_record_cookie,
-            &mut account_governance_cookie,
+            &mut governance_cookie,
             options,
             false,
             VoteType::MultiChoice {
@@ -128,8 +128,8 @@ async fn test_insert_transaction_with_proposal_not_executable_error() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -140,7 +140,7 @@ async fn test_insert_transaction_with_proposal_not_executable_error() {
     let mut proposal_cookie = governance_test
         .with_multi_option_proposal(
             &token_owner_record_cookie,
-            &mut account_governance_cookie,
+            &mut governance_cookie,
             vec!["option 1".to_string(), "option 2".to_string()],
             false,
             VoteType::SingleChoice,
@@ -172,8 +172,8 @@ async fn test_insert_transactions_for_multiple_options() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -184,7 +184,7 @@ async fn test_insert_transactions_for_multiple_options() {
     let mut proposal_cookie = governance_test
         .with_multi_option_proposal(
             &token_owner_record_cookie,
-            &mut account_governance_cookie,
+            &mut governance_cookie,
             vec!["option 1".to_string(), "option 2".to_string()],
             true,
             VoteType::SingleChoice,
@@ -246,8 +246,8 @@ async fn test_vote_on_none_executable_single_choice_proposal_with_multiple_optio
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -258,7 +258,7 @@ async fn test_vote_on_none_executable_single_choice_proposal_with_multiple_optio
     let proposal_cookie = governance_test
         .with_multi_option_proposal(
             &token_owner_record_cookie,
-            &mut account_governance_cookie,
+            &mut governance_cookie,
             vec!["option 1".to_string(), "option 2".to_string()],
             false,
             VoteType::SingleChoice,
@@ -298,7 +298,7 @@ async fn test_vote_on_none_executable_single_choice_proposal_with_multiple_optio
     // Advance timestamp past max_voting_time
     governance_test
         .advance_clock_past_timestamp(
-            account_governance_cookie.account.config.max_voting_time as i64 + clock.unix_timestamp,
+            governance_cookie.account.config.max_voting_time as i64 + clock.unix_timestamp,
         )
         .await;
 
@@ -340,8 +340,8 @@ async fn test_vote_on_none_executable_multi_choice_proposal_with_multiple_option
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -352,7 +352,7 @@ async fn test_vote_on_none_executable_multi_choice_proposal_with_multiple_option
     let proposal_cookie = governance_test
         .with_multi_option_proposal(
             &token_owner_record_cookie,
-            &mut account_governance_cookie,
+            &mut governance_cookie,
             vec![
                 "option 1".to_string(),
                 "option 2".to_string(),
@@ -403,7 +403,7 @@ async fn test_vote_on_none_executable_multi_choice_proposal_with_multiple_option
     // Advance timestamp past max_voting_time
     governance_test
         .advance_clock_past_timestamp(
-            account_governance_cookie.account.config.max_voting_time as i64 + clock.unix_timestamp,
+            governance_cookie.account.config.max_voting_time as i64 + clock.unix_timestamp,
         )
         .await;
 
@@ -467,8 +467,8 @@ async fn test_vote_on_executable_proposal_with_multiple_options_and_partial_succ
     let mut governance_config = governance_test.get_default_governance_config();
     governance_config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(30);
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance_using_config(
+    let mut governance_cookie = governance_test
+        .with_governance_using_config(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie1,
@@ -480,7 +480,7 @@ async fn test_vote_on_executable_proposal_with_multiple_options_and_partial_succ
     let proposal_cookie = governance_test
         .with_multi_option_proposal(
             &token_owner_record_cookie1,
-            &mut account_governance_cookie,
+            &mut governance_cookie,
             vec![
                 "option 1".to_string(),
                 "option 2".to_string(),
@@ -563,7 +563,7 @@ async fn test_vote_on_executable_proposal_with_multiple_options_and_partial_succ
     // Advance timestamp past max_voting_time
     governance_test
         .advance_clock_past_timestamp(
-            account_governance_cookie.account.config.max_voting_time as i64 + clock.unix_timestamp,
+            governance_cookie.account.config.max_voting_time as i64 + clock.unix_timestamp,
         )
         .await;
 
@@ -628,7 +628,7 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
     let mut governance_config = governance_test.get_default_governance_config();
     governance_config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(30);
 
-    let mut account_governance_cookie = governance_test
+    let mut governance_cookie = governance_test
         .with_mint_governance_using_config(
             &realm_cookie,
             &governed_mint_cookie,
@@ -641,7 +641,7 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
     let mut proposal_cookie = governance_test
         .with_multi_option_proposal(
             &token_owner_record_cookie1,
-            &mut account_governance_cookie,
+            &mut governance_cookie,
             vec![
                 "option 1".to_string(),
                 "option 2".to_string(),
@@ -752,9 +752,7 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
 
     // Advance timestamp past max_voting_time
     governance_test
-        .advance_clock_by_min_timespan(
-            account_governance_cookie.account.config.max_voting_time as u64,
-        )
+        .advance_clock_by_min_timespan(governance_cookie.account.config.max_voting_time as u64)
         .await;
 
     governance_test
@@ -834,7 +832,7 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
     let mut governance_config = governance_test.get_default_governance_config();
     governance_config.vote_threshold_percentage = VoteThresholdPercentage::YesVote(30);
 
-    let mut account_governance_cookie = governance_test
+    let mut governance_cookie = governance_test
         .with_mint_governance_using_config(
             &realm_cookie,
             &governed_mint_cookie,
@@ -847,7 +845,7 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
     let mut proposal_cookie = governance_test
         .with_multi_option_proposal(
             &token_owner_record_cookie1,
-            &mut account_governance_cookie,
+            &mut governance_cookie,
             vec![
                 "option 1".to_string(),
                 "option 2".to_string(),
@@ -917,9 +915,7 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
 
     // Advance timestamp past max_voting_time
     governance_test
-        .advance_clock_by_min_timespan(
-            account_governance_cookie.account.config.max_voting_time as u64,
-        )
+        .advance_clock_by_min_timespan(governance_cookie.account.config.max_voting_time as u64)
         .await;
 
     governance_test

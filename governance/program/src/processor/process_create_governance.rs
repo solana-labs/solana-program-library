@@ -27,7 +27,7 @@ pub fn process_create_governance(
     let account_info_iter = &mut accounts.iter();
 
     let realm_info = next_account_info(account_info_iter)?; // 0
-    let account_governance_info = next_account_info(account_info_iter)?; // 1
+    let governance_info = next_account_info(account_info_iter)?; // 1
     let governed_account_info = next_account_info(account_info_iter)?; // 2
 
     let token_owner_record_info = next_account_info(account_info_iter)?; // 3
@@ -52,7 +52,7 @@ pub fn process_create_governance(
         account_info_iter, // 8, 9
     )?;
 
-    let account_governance_data = Governance {
+    let governance_data = Governance {
         account_type: GovernanceAccountType::Governance,
         realm: *realm_info.key,
         governed_account: *governed_account_info.key,
@@ -63,8 +63,8 @@ pub fn process_create_governance(
 
     create_and_serialize_account_signed::<Governance>(
         payer_info,
-        account_governance_info,
-        &account_governance_data,
+        governance_info,
+        &governance_data,
         &get_governance_address_seeds(realm_info.key, governed_account_info.key),
         program_id,
         system_info,

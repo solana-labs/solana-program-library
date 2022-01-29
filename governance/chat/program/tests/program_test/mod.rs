@@ -220,7 +220,7 @@ impl GovernanceChatProgramTest {
             None
         };
 
-        let create_account_governance_ix = create_governance(
+        let create_governance_ix = create_governance(
             &self.governance_program_id,
             &realm_address,
             &governed_account_address,
@@ -232,7 +232,7 @@ impl GovernanceChatProgramTest {
         );
 
         self.bench
-            .process_transaction(&[create_account_governance_ix], Some(&[&token_owner]))
+            .process_transaction(&[create_governance_ix], Some(&[&token_owner]))
             .await
             .unwrap();
 

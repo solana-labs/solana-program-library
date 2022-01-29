@@ -20,8 +20,8 @@ async fn test_remove_transaction() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -30,7 +30,7 @@ async fn test_remove_transaction() {
         .unwrap();
 
     let mut proposal_cookie = governance_test
-        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -83,8 +83,8 @@ async fn test_replace_transaction() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -93,7 +93,7 @@ async fn test_replace_transaction() {
         .unwrap();
 
     let mut proposal_cookie = governance_test
-        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -156,8 +156,8 @@ async fn test_remove_front_transaction() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -166,7 +166,7 @@ async fn test_remove_front_transaction() {
         .unwrap();
 
     let mut proposal_cookie = governance_test
-        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -222,8 +222,8 @@ async fn test_remove_transaction_with_owner_or_delegate_must_sign_error() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -232,7 +232,7 @@ async fn test_remove_transaction_with_owner_or_delegate_must_sign_error() {
         .unwrap();
 
     let mut proposal_cookie = governance_test
-        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -279,8 +279,8 @@ async fn test_remove_transaction_with_proposal_not_editable_error() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -289,7 +289,7 @@ async fn test_remove_transaction_with_proposal_not_editable_error() {
         .unwrap();
 
     let mut proposal_cookie = governance_test
-        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -334,8 +334,8 @@ async fn test_remove_transaction_with_proposal_transaction_from_other_proposal_e
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -344,7 +344,7 @@ async fn test_remove_transaction_with_proposal_transaction_from_other_proposal_e
         .unwrap();
 
     let mut proposal_cookie = governance_test
-        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -359,7 +359,7 @@ async fn test_remove_transaction_with_proposal_transaction_from_other_proposal_e
         .unwrap();
 
     let mut proposal_cookie2 = governance_test
-        .with_proposal(&token_owner_record_cookie2, &mut account_governance_cookie)
+        .with_proposal(&token_owner_record_cookie2, &mut governance_cookie)
         .await
         .unwrap();
 

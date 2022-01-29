@@ -1169,14 +1169,14 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn with_account_governance(
+    pub async fn with_governance(
         &mut self,
         realm_cookie: &RealmCookie,
         governed_account_cookie: &GovernedAccountCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
     ) -> Result<GovernanceCookie, ProgramError> {
         let config = self.get_default_governance_config();
-        self.with_account_governance_using_config(
+        self.with_governance_using_config(
             realm_cookie,
             governed_account_cookie,
             token_owner_record_cookie,
@@ -1186,7 +1186,7 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn with_account_governance_using_config(
+    pub async fn with_governance_using_config(
         &mut self,
         realm_cookie: &RealmCookie,
         governed_account_cookie: &GovernedAccountCookie,
@@ -1200,7 +1200,7 @@ impl GovernanceProgramTest {
                 None
             };
 
-        self.with_account_governance_impl(
+        self.with_governance_impl(
             realm_cookie,
             governed_account_cookie,
             Some(&token_owner_record_cookie.address),
@@ -1213,7 +1213,7 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn with_account_governance_impl(
+    pub async fn with_governance_impl(
         &mut self,
         realm_cookie: &RealmCookie,
         governed_account_cookie: &GovernedAccountCookie,
@@ -1223,7 +1223,7 @@ impl GovernanceProgramTest {
         governance_config: &GovernanceConfig,
         signers_override: Option<&[&Keypair]>,
     ) -> Result<GovernanceCookie, ProgramError> {
-        let mut create_account_governance_ix = create_governance(
+        let mut create_governance_ix = create_governance(
             &self.program_id,
             &realm_cookie.address,
             Some(&governed_account_cookie.address),
@@ -1247,21 +1247,21 @@ impl GovernanceProgramTest {
         let signers = signers_override.unwrap_or(default_signers);
 
         if signers.len() == 0 {
-            create_account_governance_ix.accounts[7].is_signer = false;
+            create_governance_ix.accounts[7].is_signer = false;
         }
 
         self.bench
-            .process_transaction(&[create_account_governance_ix], Some(signers))
+            .process_transaction(&[create_governance_ix], Some(signers))
             .await?;
 
-        let account_governance_address = get_governance_address(
+        let governance_address = get_governance_address(
             &self.program_id,
             &realm_cookie.address,
             &governed_account_cookie.address,
         );
 
         Ok(GovernanceCookie {
-            address: account_governance_address,
+            address: governance_address,
             account,
             next_proposal_index: 0,
         })
