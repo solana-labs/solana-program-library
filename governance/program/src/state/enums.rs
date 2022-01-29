@@ -15,8 +15,8 @@ pub enum GovernanceAccountType {
     /// Token Owner Record for given governing token owner within a Realm
     TokenOwnerRecord,
 
-    /// Generic Account Governance account
-    AccountGovernance,
+    /// Governance account
+    Governance,
 
     /// Program Governance account
     ProgramGovernance,

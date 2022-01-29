@@ -16,9 +16,9 @@ use solana_sdk::signature::{Keypair, Signer};
 
 use spl_governance::{
     instruction::{
-        add_signatory, cancel_proposal, cast_vote, create_account_governance,
-        create_mint_governance, create_native_treasury, create_program_governance, create_proposal,
-        create_realm, create_token_governance, create_token_owner_record, deposit_governing_tokens,
+        add_signatory, cancel_proposal, cast_vote, create_governance, create_mint_governance,
+        create_native_treasury, create_program_governance, create_proposal, create_realm,
+        create_token_governance, create_token_owner_record, deposit_governing_tokens,
         execute_transaction, finalize_vote, flag_transaction_error, insert_transaction,
         relinquish_vote, remove_signatory, remove_transaction, set_governance_config,
         set_governance_delegate, set_realm_authority, set_realm_config, sign_off_proposal,
@@ -31,9 +31,8 @@ use spl_governance::{
             ProposalState, TransactionExecutionStatus, VoteThresholdPercentage,
         },
         governance::{
-            get_account_governance_address, get_mint_governance_address,
-            get_program_governance_address, get_token_governance_address, Governance,
-            GovernanceConfig,
+            get_governance_address, get_mint_governance_address, get_program_governance_address,
+            get_token_governance_address, Governance, GovernanceConfig,
         },
         native_treasury::{get_native_treasury_address, NativeTreasury},
         program_metadata::{get_program_metadata_address, ProgramMetadata},
@@ -1224,7 +1223,7 @@ impl GovernanceProgramTest {
         governance_config: &GovernanceConfig,
         signers_override: Option<&[&Keypair]>,
     ) -> Result<GovernanceCookie, ProgramError> {
-        let mut create_account_governance_ix = create_account_governance(
+        let mut create_account_governance_ix = create_governance(
             &self.program_id,
             &realm_cookie.address,
             &governed_account_cookie.address,
@@ -1236,7 +1235,7 @@ impl GovernanceProgramTest {
         );
 
         let account = Governance {
-            account_type: GovernanceAccountType::AccountGovernance,
+            account_type: GovernanceAccountType::Governance,
             realm: realm_cookie.address,
             governed_account: governed_account_cookie.address,
             config: governance_config.clone(),
@@ -1255,7 +1254,7 @@ impl GovernanceProgramTest {
             .process_transaction(&[create_account_governance_ix], Some(signers))
             .await?;
 
-        let account_governance_address = get_account_governance_address(
+        let account_governance_address = get_governance_address(
             &self.program_id,
             &realm_cookie.address,
             &governed_account_cookie.address,

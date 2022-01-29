@@ -4,8 +4,8 @@ use crate::{
     state::{
         enums::MintMaxVoteWeightSource,
         governance::{
-            get_account_governance_address, get_mint_governance_address,
-            get_program_governance_address, get_token_governance_address, GovernanceConfig,
+            get_governance_address, get_mint_governance_address, get_program_governance_address,
+            get_token_governance_address, GovernanceConfig,
         },
         native_treasury::get_native_treasury_address,
         program_metadata::get_program_metadata_address,
@@ -107,11 +107,12 @@ pub enum GovernanceInstruction {
         new_governance_delegate: Option<Pubkey>,
     },
 
-    /// Creates Account Governance account which can be used to govern an arbitrary account
+    /// Creates Governance account which can be used to govern any arbitrary Solana account or asset
     ///
     ///   0. `[]` Realm account the created Governance belongs to
     ///   1. `[writable]` Account Governance account. PDA seeds: ['account-governance', realm, governed_account]
     ///   2. `[]` Account governed by this Governance
+    ///       Note: The account doesn't have to exist and can be only used as a unique identifier for the Governance account  
     ///   3. `[]` Governing TokenOwnerRecord account (Used only if not signed by RealmAuthority)
     ///   4. `[signer]` Payer
     ///   5. `[]` System program
@@ -119,7 +120,7 @@ pub enum GovernanceInstruction {
     ///   7. `[signer]` Governance authority
     ///   8. `[]` Realm Config
     ///   9. `[]` Optional Voter Weight Record
-    CreateAccountGovernance {
+    CreateGovernance {
         /// Governance config
         #[allow(dead_code)]
         config: GovernanceConfig,
@@ -682,9 +683,9 @@ pub fn set_governance_delegate(
     }
 }
 
-/// Creates CreateAccountGovernance instruction using optional voter weight addin
+/// Creates CreateGovernance instruction using optional voter weight addin
 #[allow(clippy::too_many_arguments)]
-pub fn create_account_governance(
+pub fn create_governance(
     program_id: &Pubkey,
     // Accounts
     realm: &Pubkey,
@@ -696,8 +697,7 @@ pub fn create_account_governance(
     // Args
     config: GovernanceConfig,
 ) -> Instruction {
-    let account_governance_address =
-        get_account_governance_address(program_id, realm, governed_account);
+    let account_governance_address = get_governance_address(program_id, realm, governed_account);
 
     let mut accounts = vec![
         AccountMeta::new_readonly(*realm, false),
@@ -712,7 +712,7 @@ pub fn create_account_governance(
 
     with_realm_config_accounts(program_id, &mut accounts, realm, voter_weight_record, None);
 
-    let instruction = GovernanceInstruction::CreateAccountGovernance { config };
+    let instruction = GovernanceInstruction::CreateGovernance { config };
 
     Instruction {
         program_id: *program_id,
