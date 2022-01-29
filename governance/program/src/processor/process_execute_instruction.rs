@@ -11,7 +11,7 @@ use solana_program::{
 };
 
 use crate::state::{
-    enums::{InstructionExecutionStatus, ProposalState},
+    enums::{ProposalState, TransactionExecutionStatus},
     governance::get_governance_data,
     native_treasury::get_native_treasury_address_seeds,
     proposal::{get_proposal_data_for_governance, OptionVoteResult},
@@ -109,7 +109,7 @@ pub fn process_execute_transaction(program_id: &Pubkey, accounts: &[AccountInfo]
     proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
 
     proposal_transaction_data.executed_at = Some(clock.unix_timestamp);
-    proposal_transaction_data.execution_status = InstructionExecutionStatus::Success;
+    proposal_transaction_data.execution_status = TransactionExecutionStatus::Success;
     proposal_transaction_data.serialize(&mut *proposal_transaction_info.data.borrow_mut())?;
 
     Ok(())

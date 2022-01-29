@@ -14,7 +14,7 @@ use spl_governance_tools::account::create_and_serialize_account_signed;
 use crate::{
     error::GovernanceError,
     state::{
-        enums::{GovernanceAccountType, InstructionExecutionStatus},
+        enums::{GovernanceAccountType, TransactionExecutionStatus},
         governance::get_governance_data,
         proposal::get_proposal_data_for_governance,
         proposal_transaction::{
@@ -92,7 +92,7 @@ pub fn process_insert_transaction(
         hold_up_time,
         instructions,
         executed_at: None,
-        execution_status: InstructionExecutionStatus::None,
+        execution_status: TransactionExecutionStatus::None,
         proposal: *proposal_info.key,
     };
 

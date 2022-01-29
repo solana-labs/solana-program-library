@@ -12,7 +12,7 @@ use solana_program_test::tokio;
 use program_test::*;
 use spl_governance::{
     error::GovernanceError,
-    state::enums::{InstructionExecutionStatus, ProposalState},
+    state::enums::{ProposalState, TransactionExecutionStatus},
 };
 
 #[tokio::test]
@@ -104,7 +104,7 @@ async fn test_execute_mint_instruction() {
     );
 
     assert_eq!(
-        InstructionExecutionStatus::Success,
+        TransactionExecutionStatus::Success,
         proposal_transaction_account.execution_status
     );
 
@@ -203,7 +203,7 @@ async fn test_execute_transfer_instruction() {
     );
 
     assert_eq!(
-        InstructionExecutionStatus::Success,
+        TransactionExecutionStatus::Success,
         proposal_transaction_account.execution_status
     );
 
@@ -318,7 +318,7 @@ async fn test_execute_upgrade_program_instruction() {
     );
 
     assert_eq!(
-        InstructionExecutionStatus::Success,
+        TransactionExecutionStatus::Success,
         proposal_transaction_account.execution_status
     );
 

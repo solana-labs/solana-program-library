@@ -1152,7 +1152,7 @@ pub fn cancel_proposal(
     }
 }
 
-/// Creates InsertInstruction instruction
+/// Creates InsertTransaction instruction
 #[allow(clippy::too_many_arguments)]
 pub fn insert_transaction(
     program_id: &Pubkey,

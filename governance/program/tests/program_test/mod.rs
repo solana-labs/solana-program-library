@@ -27,8 +27,8 @@ use spl_governance::{
     processor::process_instruction,
     state::{
         enums::{
-            GovernanceAccountType, InstructionExecutionFlags, InstructionExecutionStatus,
-            MintMaxVoteWeightSource, ProposalState, VoteThresholdPercentage,
+            GovernanceAccountType, InstructionExecutionFlags, MintMaxVoteWeightSource,
+            ProposalState, TransactionExecutionStatus, VoteThresholdPercentage,
         },
         governance::{
             get_account_governance_address, get_mint_governance_address,
@@ -2382,7 +2382,7 @@ impl GovernanceProgramTest {
             hold_up_time,
             instructions: vec![instruction_data],
             executed_at: None,
-            execution_status: InstructionExecutionStatus::None,
+            execution_status: TransactionExecutionStatus::None,
             proposal: proposal_cookie.address,
         };
 

@@ -24,8 +24,8 @@ use crate::{
     error::GovernanceError,
     state::{
         enums::{
-            GovernanceAccountType, InstructionExecutionFlags, InstructionExecutionStatus,
-            MintMaxVoteWeightSource, ProposalState, VoteThresholdPercentage,
+            GovernanceAccountType, InstructionExecutionFlags, MintMaxVoteWeightSource,
+            ProposalState, TransactionExecutionStatus, VoteThresholdPercentage,
         },
         governance::GovernanceConfig,
         proposal_transaction::ProposalTransactionV2,
@@ -635,7 +635,7 @@ impl ProposalV2 {
         // Instruction can be flagged for error only when it's eligible for execution
         self.assert_can_execute_instruction(proposal_transaction_data, current_unix_timestamp)?;
 
-        if proposal_transaction_data.execution_status == InstructionExecutionStatus::Error {
+        if proposal_transaction_data.execution_status == TransactionExecutionStatus::Error {
             return Err(GovernanceError::InstructionAlreadyFlaggedWithError.into());
         }
 

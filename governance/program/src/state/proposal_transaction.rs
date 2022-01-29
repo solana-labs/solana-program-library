@@ -7,7 +7,7 @@ use borsh::maybestd::io::Write;
 use crate::{
     error::GovernanceError,
     state::{
-        enums::{GovernanceAccountType, InstructionExecutionStatus},
+        enums::{GovernanceAccountType, TransactionExecutionStatus},
         legacy::ProposalInstructionV1,
     },
     PROGRAM_AUTHORITY_SEED,
@@ -113,7 +113,7 @@ pub struct ProposalTransactionV2 {
     pub executed_at: Option<UnixTimestamp>,
 
     /// Instruction execution status
-    pub execution_status: InstructionExecutionStatus,
+    pub execution_status: TransactionExecutionStatus,
 }
 
 impl AccountMaxSize for ProposalTransactionV2 {
@@ -276,7 +276,7 @@ mod test {
             hold_up_time: 10,
             instructions: create_test_instruction_data(),
             executed_at: Some(100),
-            execution_status: InstructionExecutionStatus::Success,
+            execution_status: TransactionExecutionStatus::Success,
         }
     }
 
@@ -355,7 +355,7 @@ mod test {
             hold_up_time: 120,
             instruction: create_test_instruction_data()[0].clone(),
             executed_at: Some(155),
-            execution_status: InstructionExecutionStatus::Success,
+            execution_status: TransactionExecutionStatus::Success,
         };
 
         let mut account_data = vec![];

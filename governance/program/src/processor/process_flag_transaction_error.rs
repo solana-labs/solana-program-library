@@ -9,7 +9,7 @@ use solana_program::{
 };
 
 use crate::state::{
-    enums::{InstructionExecutionStatus, ProposalState},
+    enums::{ProposalState, TransactionExecutionStatus},
     proposal::get_proposal_data,
     proposal_transaction::get_proposal_transaction_data_for_proposal,
     token_owner_record::get_token_owner_record_data_for_proposal_owner,
@@ -59,7 +59,7 @@ pub fn process_flag_transaction_error(
     proposal_data.state = ProposalState::ExecutingWithErrors;
     proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
 
-    proposal_transaction_data.execution_status = InstructionExecutionStatus::Error;
+    proposal_transaction_data.execution_status = TransactionExecutionStatus::Error;
     proposal_transaction_data.serialize(&mut *proposal_transaction_info.data.borrow_mut())?;
 
     Ok(())

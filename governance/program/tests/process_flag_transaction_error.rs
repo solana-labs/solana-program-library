@@ -7,7 +7,7 @@ use solana_program_test::tokio;
 use program_test::*;
 use spl_governance::{
     error::GovernanceError,
-    state::enums::{InstructionExecutionStatus, ProposalState},
+    state::enums::{ProposalState, TransactionExecutionStatus},
 };
 
 #[tokio::test]
@@ -94,7 +94,7 @@ async fn test_execute_flag_instruction_error() {
     assert_eq!(None, proposal_transaction_account.executed_at);
 
     assert_eq!(
-        InstructionExecutionStatus::Error,
+        TransactionExecutionStatus::Error,
         proposal_transaction_account.execution_status
     );
 }
@@ -185,7 +185,7 @@ async fn test_execute_instruction_after_flagged_with_error() {
         .await;
 
     assert_eq!(
-        InstructionExecutionStatus::Success,
+        TransactionExecutionStatus::Success,
         proposal_transaction_account.execution_status
     );
 }

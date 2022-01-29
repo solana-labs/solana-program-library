@@ -137,18 +137,18 @@ pub enum VoteWeightSource {
 /// The status of instruction execution
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub enum InstructionExecutionStatus {
-    /// Instruction was not executed yet
+pub enum TransactionExecutionStatus {
+    /// Transaction was not executed yet
     None,
 
-    /// Instruction was executed successfully
+    /// Transaction was executed successfully
     Success,
 
-    /// Instruction execution failed
+    /// Transaction execution failed
     Error,
 }
 
-/// Instruction execution flags defining how instructions are executed for a Proposal
+/// Transaction execution flags defining how instructions are executed for a Proposal
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub enum InstructionExecutionFlags {
