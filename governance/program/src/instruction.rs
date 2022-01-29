@@ -292,11 +292,9 @@ pub enum GovernanceInstruction {
     ///   6. `[]` Governing Token Mint
     ///   7. `[signer]` Payer
     ///   8. `[]` System program
-    ///   9. `[]` Rent sysvar
-    ///   10. `[]` Clock sysvar
-    ///   11. `[]` Realm Config
-    ///   12. `[]` Optional Voter Weight Record
-    ///   13. `[]` Optional Max Voter Weight Record
+    ///   9. `[]` Realm Config
+    ///   10. `[]` Optional Voter Weight Record
+    ///   11. `[]` Optional Max Voter Weight Record
     CastVote {
         #[allow(dead_code)]
         /// User's vote
@@ -1051,8 +1049,6 @@ pub fn cast_vote(
         AccountMeta::new_readonly(*governing_token_mint, false),
         AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
-        AccountMeta::new_readonly(sysvar::rent::id(), false),
-        AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];
 
     with_realm_config_accounts(
