@@ -42,7 +42,7 @@ async fn test_execute_flag_instruction_error() {
         .await
         .unwrap();
 
-    let proposal_instruction_cookie = governance_test
+    let proposal_transaction_cookie = governance_test
         .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .unwrap();
@@ -59,7 +59,7 @@ async fn test_execute_flag_instruction_error() {
 
     // Advance timestamp past hold_up_time
     governance_test
-        .advance_clock_by_min_timespan(proposal_instruction_cookie.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(proposal_transaction_cookie.account.hold_up_time as u64)
         .await;
 
     let clock = governance_test.bench.get_clock().await;
@@ -69,7 +69,7 @@ async fn test_execute_flag_instruction_error() {
         .flag_instruction_error(
             &proposal_cookie,
             &token_owner_record_cookie,
-            &proposal_instruction_cookie,
+            &proposal_transaction_cookie,
         )
         .await
         .unwrap();
@@ -87,15 +87,15 @@ async fn test_execute_flag_instruction_error() {
     assert_eq!(None, proposal_account.closed_at);
     assert_eq!(Some(clock.unix_timestamp), proposal_account.executing_at);
 
-    let proposal_instruction_account = governance_test
-        .get_proposal_instruction_account(&proposal_instruction_cookie.address)
+    let proposal_transaction_account = governance_test
+        .get_proposal_transaction_account(&proposal_transaction_cookie.address)
         .await;
 
-    assert_eq!(None, proposal_instruction_account.executed_at);
+    assert_eq!(None, proposal_transaction_account.executed_at);
 
     assert_eq!(
         InstructionExecutionStatus::Error,
-        proposal_instruction_account.execution_status
+        proposal_transaction_account.execution_status
     );
 }
 
@@ -131,7 +131,7 @@ async fn test_execute_instruction_after_flagged_with_error() {
         .await
         .unwrap();
 
-    let proposal_instruction_cookie = governance_test
+    let proposal_transaction_cookie = governance_test
         .with_mint_tokens_instruction(
             &governed_mint_cookie,
             &mut proposal_cookie,
@@ -154,21 +154,21 @@ async fn test_execute_instruction_after_flagged_with_error() {
 
     // Advance timestamp past hold_up_time
     governance_test
-        .advance_clock_by_min_timespan(proposal_instruction_cookie.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(proposal_transaction_cookie.account.hold_up_time as u64)
         .await;
 
     governance_test
         .flag_instruction_error(
             &proposal_cookie,
             &token_owner_record_cookie,
-            &proposal_instruction_cookie,
+            &proposal_transaction_cookie,
         )
         .await
         .unwrap();
 
     // Act
     governance_test
-        .execute_instruction(&proposal_cookie, &proposal_instruction_cookie)
+        .execute_instruction(&proposal_cookie, &proposal_transaction_cookie)
         .await
         .unwrap();
 
@@ -180,13 +180,13 @@ async fn test_execute_instruction_after_flagged_with_error() {
 
     assert_eq!(ProposalState::Completed, proposal_account.state);
 
-    let proposal_instruction_account = governance_test
-        .get_proposal_instruction_account(&proposal_instruction_cookie.address)
+    let proposal_transaction_account = governance_test
+        .get_proposal_transaction_account(&proposal_transaction_cookie.address)
         .await;
 
     assert_eq!(
         InstructionExecutionStatus::Success,
-        proposal_instruction_account.execution_status
+        proposal_transaction_account.execution_status
     );
 }
 
@@ -222,12 +222,12 @@ async fn test_execute_second_instruction_after_first_instruction_flagged_with_er
         .await
         .unwrap();
 
-    let proposal_instruction_cookie1 = governance_test
+    let proposal_transaction_cookie1 = governance_test
         .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .unwrap();
 
-    let proposal_instruction_cookie2 = governance_test
+    let proposal_transaction_cookie2 = governance_test
         .with_mint_tokens_instruction(
             &governed_mint_cookie,
             &mut proposal_cookie,
@@ -250,21 +250,21 @@ async fn test_execute_second_instruction_after_first_instruction_flagged_with_er
 
     // Advance timestamp past hold_up_time
     governance_test
-        .advance_clock_by_min_timespan(proposal_instruction_cookie2.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(proposal_transaction_cookie2.account.hold_up_time as u64)
         .await;
 
     governance_test
         .flag_instruction_error(
             &proposal_cookie,
             &token_owner_record_cookie,
-            &proposal_instruction_cookie1,
+            &proposal_transaction_cookie1,
         )
         .await
         .unwrap();
 
     // Act
     governance_test
-        .execute_instruction(&proposal_cookie, &proposal_instruction_cookie2)
+        .execute_instruction(&proposal_cookie, &proposal_transaction_cookie2)
         .await
         .unwrap();
 
@@ -309,7 +309,7 @@ async fn test_flag_instruction_error_with_instruction_already_executed_error() {
         .await
         .unwrap();
 
-    let proposal_instruction_cookie = governance_test
+    let proposal_transaction_cookie = governance_test
         .with_mint_tokens_instruction(
             &governed_mint_cookie,
             &mut proposal_cookie,
@@ -338,11 +338,11 @@ async fn test_flag_instruction_error_with_instruction_already_executed_error() {
 
     // Advance timestamp past hold_up_time
     governance_test
-        .advance_clock_by_min_timespan(proposal_instruction_cookie.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(proposal_transaction_cookie.account.hold_up_time as u64)
         .await;
 
     governance_test
-        .execute_instruction(&proposal_cookie, &proposal_instruction_cookie)
+        .execute_instruction(&proposal_cookie, &proposal_transaction_cookie)
         .await
         .unwrap();
 
@@ -352,7 +352,7 @@ async fn test_flag_instruction_error_with_instruction_already_executed_error() {
         .flag_instruction_error(
             &proposal_cookie,
             &token_owner_record_cookie,
-            &proposal_instruction_cookie,
+            &proposal_transaction_cookie,
         )
         .await
         .err()
@@ -395,7 +395,7 @@ async fn test_flag_instruction_error_with_owner_or_delegate_must_sign_error() {
         .await
         .unwrap();
 
-    let proposal_instruction_cookie = governance_test
+    let proposal_transaction_cookie = governance_test
         .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .unwrap();
@@ -412,7 +412,7 @@ async fn test_flag_instruction_error_with_owner_or_delegate_must_sign_error() {
 
     // Advance timestamp past hold_up_time
     governance_test
-        .advance_clock_by_min_timespan(proposal_instruction_cookie.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(proposal_transaction_cookie.account.hold_up_time as u64)
         .await;
 
     let token_owner_record_cookie2 = governance_test
@@ -429,7 +429,7 @@ async fn test_flag_instruction_error_with_owner_or_delegate_must_sign_error() {
         .flag_instruction_error(
             &proposal_cookie,
             &token_owner_record_cookie,
-            &proposal_instruction_cookie,
+            &proposal_transaction_cookie,
         )
         .await
         .err()

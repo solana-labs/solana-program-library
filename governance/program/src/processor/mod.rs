@@ -14,11 +14,11 @@ mod process_create_token_owner_record;
 mod process_deposit_governing_tokens;
 mod process_execute_instruction;
 mod process_finalize_vote;
-mod process_flag_instruction_error;
+mod process_flag_transaction_error;
 mod process_insert_transaction;
 mod process_relinquish_vote;
-mod process_remove_instruction;
 mod process_remove_signatory;
+mod process_remove_transaction;
 mod process_set_governance_config;
 mod process_set_governance_delegate;
 mod process_set_realm_authority;
@@ -43,11 +43,11 @@ use process_create_token_owner_record::*;
 use process_deposit_governing_tokens::*;
 use process_execute_instruction::*;
 use process_finalize_vote::*;
-use process_flag_instruction_error::*;
+use process_flag_transaction_error::*;
 use process_insert_transaction::*;
 use process_relinquish_vote::*;
-use process_remove_instruction::*;
 use process_remove_signatory::*;
+use process_remove_transaction::*;
 use process_set_governance_config::*;
 use process_set_governance_delegate::*;
 use process_set_realm_authority::*;
@@ -185,10 +185,10 @@ pub fn process_instruction(
         ),
 
         GovernanceInstruction::RemoveTransaction {} => {
-            process_remove_instruction(program_id, accounts)
+            process_remove_transaction(program_id, accounts)
         }
         GovernanceInstruction::ExecuteTransaction {} => {
-            process_execute_instruction(program_id, accounts)
+            process_execute_transaction(program_id, accounts)
         }
 
         GovernanceInstruction::SetGovernanceConfig { config } => {
@@ -196,7 +196,7 @@ pub fn process_instruction(
         }
 
         GovernanceInstruction::FlagTransactionError {} => {
-            process_flag_instruction_error(program_id, accounts)
+            process_flag_transaction_error(program_id, accounts)
         }
         GovernanceInstruction::SetRealmAuthority { action } => {
             process_set_realm_authority(program_id, accounts, action)

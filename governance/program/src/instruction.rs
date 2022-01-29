@@ -1154,7 +1154,7 @@ pub fn cancel_proposal(
 
 /// Creates InsertInstruction instruction
 #[allow(clippy::too_many_arguments)]
-pub fn insert_instruction(
+pub fn insert_transaction(
     program_id: &Pubkey,
     // Accounts
     governance: &Pubkey,
@@ -1168,7 +1168,7 @@ pub fn insert_instruction(
     hold_up_time: u32,
     instructions: Vec<InstructionData>,
 ) -> Instruction {
-    let proposal_instruction_address = get_proposal_transaction_address(
+    let proposal_transaction_address = get_proposal_transaction_address(
         program_id,
         proposal,
         &option_index.to_le_bytes(),
@@ -1180,7 +1180,7 @@ pub fn insert_instruction(
         AccountMeta::new(*proposal, false),
         AccountMeta::new_readonly(*token_owner_record, false),
         AccountMeta::new_readonly(*governance_authority, true),
-        AccountMeta::new(proposal_instruction_address, false),
+        AccountMeta::new(proposal_transaction_address, false),
         AccountMeta::new(*payer, true),
         AccountMeta::new_readonly(system_program::id(), false),
         AccountMeta::new_readonly(sysvar::rent::id(), false),
@@ -1200,21 +1200,21 @@ pub fn insert_instruction(
     }
 }
 
-/// Creates RemoveInstruction instruction
-pub fn remove_instruction(
+/// Creates RemoveTransaction instruction
+pub fn remove_transaction(
     program_id: &Pubkey,
     // Accounts
     proposal: &Pubkey,
     token_owner_record: &Pubkey,
     governance_authority: &Pubkey,
-    proposal_instruction: &Pubkey,
+    proposal_transaction: &Pubkey,
     beneficiary: &Pubkey,
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(*proposal, false),
         AccountMeta::new_readonly(*token_owner_record, false),
         AccountMeta::new_readonly(*governance_authority, true),
-        AccountMeta::new(*proposal_instruction, false),
+        AccountMeta::new(*proposal_transaction, false),
         AccountMeta::new(*beneficiary, false),
     ];
 
@@ -1227,20 +1227,20 @@ pub fn remove_instruction(
     }
 }
 
-/// Creates ExecuteInstruction instruction
-pub fn execute_instruction(
+/// Creates ExecuteTransaction instruction
+pub fn execute_transaction(
     program_id: &Pubkey,
     // Accounts
     governance: &Pubkey,
     proposal: &Pubkey,
-    proposal_instruction: &Pubkey,
+    proposal_transaction: &Pubkey,
     instruction_program_id: &Pubkey,
     instruction_accounts: &[AccountMeta],
 ) -> Instruction {
     let mut accounts = vec![
         AccountMeta::new_readonly(*governance, false),
         AccountMeta::new(*proposal, false),
-        AccountMeta::new(*proposal_instruction, false),
+        AccountMeta::new(*proposal_transaction, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
         AccountMeta::new_readonly(*instruction_program_id, false),
     ];
@@ -1275,20 +1275,20 @@ pub fn set_governance_config(
     }
 }
 
-/// Creates FlagInstructionError instruction
-pub fn flag_instruction_error(
+/// Creates FlagTransactionError instruction
+pub fn flag_transaction_error(
     program_id: &Pubkey,
     // Accounts
     proposal: &Pubkey,
     token_owner_record: &Pubkey,
     governance_authority: &Pubkey,
-    proposal_instruction: &Pubkey,
+    proposal_transaction: &Pubkey,
 ) -> Instruction {
     let accounts = vec![
         AccountMeta::new(*proposal, false),
         AccountMeta::new_readonly(*token_owner_record, false),
         AccountMeta::new_readonly(*governance_authority, true),
-        AccountMeta::new(*proposal_instruction, false),
+        AccountMeta::new(*proposal_transaction, false),
         AccountMeta::new_readonly(sysvar::clock::id(), false),
     ];
 

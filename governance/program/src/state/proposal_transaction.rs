@@ -146,7 +146,7 @@ impl ProposalTransactionV2 {
             };
 
             // V1 account can't be resized and we have to translate it back to the original format
-            let proposal_instruction_data_v1 = ProposalInstructionV1 {
+            let proposal_transaction_data_v1 = ProposalInstructionV1 {
                 account_type: self.account_type,
                 proposal: self.proposal,
                 instruction_index: self.instruction_index,
@@ -156,7 +156,7 @@ impl ProposalTransactionV2 {
                 execution_status: self.execution_status,
             };
 
-            BorshSerialize::serialize(&proposal_instruction_data_v1, writer)?;
+            BorshSerialize::serialize(&proposal_transaction_data_v1, writer)?;
         }
 
         Ok(())
@@ -198,45 +198,45 @@ pub fn get_proposal_transaction_address<'a>(
 /// Deserializes ProposalTransaction account and checks owner program
 pub fn get_proposal_transaction_data(
     program_id: &Pubkey,
-    proposal_instruction_info: &AccountInfo,
+    proposal_transaction_info: &AccountInfo,
 ) -> Result<ProposalTransactionV2, ProgramError> {
     let account_type: GovernanceAccountType =
-        try_from_slice_unchecked(&proposal_instruction_info.data.borrow())?;
+        try_from_slice_unchecked(&proposal_transaction_info.data.borrow())?;
 
     // If the account is V1 version then translate to V2
     if account_type == GovernanceAccountType::ProposalInstructionV1 {
-        let proposal_instruction_data_v1 =
-            get_account_data::<ProposalInstructionV1>(program_id, proposal_instruction_info)?;
+        let proposal_transaction_data_v1 =
+            get_account_data::<ProposalInstructionV1>(program_id, proposal_transaction_info)?;
 
         return Ok(ProposalTransactionV2 {
             account_type,
-            proposal: proposal_instruction_data_v1.proposal,
+            proposal: proposal_transaction_data_v1.proposal,
             option_index: 0, // V1 has a single implied option at index 0
-            instruction_index: proposal_instruction_data_v1.instruction_index,
-            hold_up_time: proposal_instruction_data_v1.hold_up_time,
-            instructions: vec![proposal_instruction_data_v1.instruction],
-            executed_at: proposal_instruction_data_v1.executed_at,
-            execution_status: proposal_instruction_data_v1.execution_status,
+            instruction_index: proposal_transaction_data_v1.instruction_index,
+            hold_up_time: proposal_transaction_data_v1.hold_up_time,
+            instructions: vec![proposal_transaction_data_v1.instruction],
+            executed_at: proposal_transaction_data_v1.executed_at,
+            execution_status: proposal_transaction_data_v1.execution_status,
         });
     }
 
-    get_account_data::<ProposalTransactionV2>(program_id, proposal_instruction_info)
+    get_account_data::<ProposalTransactionV2>(program_id, proposal_transaction_info)
 }
 
 ///  Deserializes and returns ProposalTransaction account and checks it belongs to the given Proposal
 pub fn get_proposal_transaction_data_for_proposal(
     program_id: &Pubkey,
-    proposal_instruction_info: &AccountInfo,
+    proposal_transaction_info: &AccountInfo,
     proposal: &Pubkey,
 ) -> Result<ProposalTransactionV2, ProgramError> {
-    let proposal_instruction_data =
-        get_proposal_transaction_data(program_id, proposal_instruction_info)?;
+    let proposal_transaction_data =
+        get_proposal_transaction_data(program_id, proposal_transaction_info)?;
 
-    if proposal_instruction_data.proposal != *proposal {
+    if proposal_transaction_data.proposal != *proposal {
         return Err(GovernanceError::InvalidProposalForProposalTransaction.into());
     }
 
-    Ok(proposal_instruction_data)
+    Ok(proposal_transaction_data)
 }
 
 #[cfg(test)]
@@ -291,24 +291,24 @@ mod test {
     #[test]
     fn test_proposal_transaction_max_size() {
         // Arrange
-        let proposal_instruction = create_test_proposal_transaction();
-        let size = proposal_instruction.try_to_vec().unwrap().len();
+        let proposal_transaction = create_test_proposal_transaction();
+        let size = proposal_transaction.try_to_vec().unwrap().len();
 
         // Act, Assert
-        assert_eq!(proposal_instruction.get_max_size(), Some(size));
+        assert_eq!(proposal_transaction.get_max_size(), Some(size));
     }
 
     #[test]
     fn test_empty_proposal_transaction_max_size() {
         // Arrange
-        let mut proposal_instruction = create_test_proposal_transaction();
-        proposal_instruction.instructions[0].data = vec![];
-        proposal_instruction.instructions[0].accounts = vec![];
+        let mut proposal_transaction = create_test_proposal_transaction();
+        proposal_transaction.instructions[0].data = vec![];
+        proposal_transaction.instructions[0].accounts = vec![];
 
-        let size = proposal_instruction.try_to_vec().unwrap().len();
+        let size = proposal_transaction.try_to_vec().unwrap().len();
 
         // Act, Assert
-        assert_eq!(proposal_instruction.get_max_size(), Some(size));
+        assert_eq!(proposal_transaction.get_max_size(), Some(size));
     }
 
     #[test]
@@ -348,7 +348,7 @@ mod test {
     fn test_proposal_transaction_v1_to_v2_serialization_roundtrip() {
         // Arrange
 
-        let proposal_instruction_v1_source = ProposalInstructionV1 {
+        let proposal_transaction_v1_source = ProposalInstructionV1 {
             account_type: GovernanceAccountType::ProposalInstructionV1,
             proposal: Pubkey::new_unique(),
             instruction_index: 1,
@@ -359,7 +359,7 @@ mod test {
         };
 
         let mut account_data = vec![];
-        proposal_instruction_v1_source
+        proposal_transaction_v1_source
             .serialize(&mut account_data)
             .unwrap();
 
@@ -389,12 +389,12 @@ mod test {
             .unwrap();
 
         // Assert
-        let proposal_instruction_v1_target =
+        let proposal_transaction_v1_target =
             get_account_data::<ProposalInstructionV1>(&program_id, &account_info).unwrap();
 
         assert_eq!(
-            proposal_instruction_v1_source,
-            proposal_instruction_v1_target
+            proposal_transaction_v1_source,
+            proposal_transaction_v1_target
         )
     }
 }

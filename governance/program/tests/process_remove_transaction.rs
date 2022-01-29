@@ -8,7 +8,7 @@ use program_test::*;
 use spl_governance::error::GovernanceError;
 
 #[tokio::test]
-async fn test_insert_instruction() {
+async fn test_remove_instruction() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -34,22 +34,23 @@ async fn test_insert_instruction() {
         .await
         .unwrap();
 
-    // Act
-    let proposal_instruction_cookie = governance_test
+    let proposal_transaction_cookie = governance_test
         .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .unwrap();
 
+    // Act
+
+    governance_test
+        .remove_instruction(
+            &mut proposal_cookie,
+            &token_owner_record_cookie,
+            &proposal_transaction_cookie,
+        )
+        .await
+        .unwrap();
+
     // Assert
-
-    let proposal_instruction_account = governance_test
-        .get_proposal_instruction_account(&proposal_instruction_cookie.address)
-        .await;
-
-    assert_eq!(
-        proposal_instruction_cookie.account,
-        proposal_instruction_account
-    );
 
     let proposal_account = governance_test
         .get_proposal_account(&proposal_cookie.address)
@@ -57,13 +58,20 @@ async fn test_insert_instruction() {
 
     let yes_option = proposal_account.options.first().unwrap();
 
-    assert_eq!(yes_option.transactions_count, 1);
+    assert_eq!(yes_option.transactions_count, 0);
     assert_eq!(yes_option.transactions_next_index, 1);
     assert_eq!(yes_option.transactions_executed_count, 0);
+
+    let proposal_transaction_account = governance_test
+        .bench
+        .get_account(&proposal_transaction_cookie.address)
+        .await;
+
+    assert_eq!(None, proposal_transaction_account);
 }
 
 #[tokio::test]
-async fn test_insert_multiple_instructions() {
+async fn test_replace_instruction() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -89,19 +97,33 @@ async fn test_insert_multiple_instructions() {
         .await
         .unwrap();
 
-    // Act
-    governance_test
+    let proposal_transaction_cookie = governance_test
         .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .unwrap();
 
     governance_test
         .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
+        .await
+        .unwrap();
+
+    // Act
+
+    governance_test
+        .remove_instruction(
+            &mut proposal_cookie,
+            &token_owner_record_cookie,
+            &proposal_transaction_cookie,
+        )
+        .await
+        .unwrap();
+
+    let proposal_transaction_cookie2 = governance_test
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, Some(0))
         .await
         .unwrap();
 
     // Assert
-
     let proposal_account = governance_test
         .get_proposal_account(&proposal_cookie.address)
         .await;
@@ -110,11 +132,19 @@ async fn test_insert_multiple_instructions() {
 
     assert_eq!(yes_option.transactions_count, 2);
     assert_eq!(yes_option.transactions_next_index, 2);
-    assert_eq!(yes_option.transactions_executed_count, 0);
+
+    let proposal_transaction_account2 = governance_test
+        .get_proposal_transaction_account(&proposal_transaction_cookie2.address)
+        .await;
+
+    assert_eq!(
+        proposal_transaction_cookie2.account,
+        proposal_transaction_account2
+    );
 }
 
 #[tokio::test]
-async fn test_insert_instruction_with_invalid_index_error() {
+async fn test_remove_front_instruction() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -140,41 +170,8 @@ async fn test_insert_instruction_with_invalid_index_error() {
         .await
         .unwrap();
 
-    // Act
-    let err = governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, Some(1))
-        .await
-        .err()
-        .unwrap();
-
-    // Assert
-    assert_eq!(err, GovernanceError::InvalidInstructionIndex.into());
-}
-
-#[tokio::test]
-async fn test_insert_instruction_with_instruction_already_exists_error() {
-    // Arrange
-    let mut governance_test = GovernanceProgramTest::start_new().await;
-
-    let realm_cookie = governance_test.with_realm().await;
-    let governed_account_cookie = governance_test.with_governed_account().await;
-
-    let token_owner_record_cookie = governance_test
-        .with_community_token_deposit(&realm_cookie)
-        .await
-        .unwrap();
-
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
-            &realm_cookie,
-            &governed_account_cookie,
-            &token_owner_record_cookie,
-        )
-        .await
-        .unwrap();
-
-    let mut proposal_cookie = governance_test
-        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+    let proposal_transaction_cookie = governance_test
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .unwrap();
 
@@ -183,107 +180,37 @@ async fn test_insert_instruction_with_instruction_already_exists_error() {
         .await
         .unwrap();
 
-    governance_test.advance_clock().await;
-
     // Act
-    let err = governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, Some(0))
-        .await
-        .err()
-        .unwrap();
 
-    // Assert
-    assert_eq!(err, GovernanceError::InstructionAlreadyExists.into());
-}
-
-#[tokio::test]
-async fn test_insert_instruction_with_invalid_hold_up_time_error() {
-    // Arrange
-    let mut governance_test = GovernanceProgramTest::start_new().await;
-
-    let realm_cookie = governance_test.with_realm().await;
-    let governed_account_cookie = governance_test.with_governed_account().await;
-
-    let mut config = governance_test.get_default_governance_config();
-
-    config.min_instruction_hold_up_time = 100;
-
-    let token_owner_record_cookie = governance_test
-        .with_community_token_deposit(&realm_cookie)
-        .await
-        .unwrap();
-
-    let mut account_governance_cookie = governance_test
-        .with_account_governance_using_config(
-            &realm_cookie,
-            &governed_account_cookie,
+    governance_test
+        .remove_instruction(
+            &mut proposal_cookie,
             &token_owner_record_cookie,
-            &config,
+            &proposal_transaction_cookie,
         )
         .await
         .unwrap();
 
-    let mut proposal_cookie = governance_test
-        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
-        .await
-        .unwrap();
-
-    // Act
-    let err = governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
-        .await
-        .err()
-        .unwrap();
-
     // Assert
-    assert_eq!(
-        err,
-        GovernanceError::InstructionHoldUpTimeBelowRequiredMin.into()
-    );
-}
-#[tokio::test]
-async fn test_insert_instruction_with_not_editable_proposal_error() {
-    // Arrange
-    let mut governance_test = GovernanceProgramTest::start_new().await;
+    let proposal_account = governance_test
+        .get_proposal_account(&proposal_cookie.address)
+        .await;
 
-    let realm_cookie = governance_test.with_realm().await;
-    let governed_account_cookie = governance_test.with_governed_account().await;
+    let yes_option = proposal_account.options.first().unwrap();
 
-    let token_owner_record_cookie = governance_test
-        .with_community_token_deposit(&realm_cookie)
-        .await
-        .unwrap();
+    assert_eq!(yes_option.transactions_count, 1);
+    assert_eq!(yes_option.transactions_next_index, 2);
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
-            &realm_cookie,
-            &governed_account_cookie,
-            &token_owner_record_cookie,
-        )
-        .await
-        .unwrap();
+    let proposal_transaction_account = governance_test
+        .bench
+        .get_account(&proposal_transaction_cookie.address)
+        .await;
 
-    let mut proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
-        .await
-        .unwrap();
-
-    // Act
-    let err = governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
-        .await
-        .err()
-        .unwrap();
-
-    // Assert
-    assert_eq!(
-        err,
-        GovernanceError::InvalidStateCannotEditInstructions.into()
-    );
+    assert_eq!(None, proposal_transaction_account);
 }
 
 #[tokio::test]
-async fn test_insert_instruction_with_owner_or_delegate_must_sign_error() {
+async fn test_remove_instruction_with_owner_or_delegate_must_sign_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -309,6 +236,11 @@ async fn test_insert_instruction_with_owner_or_delegate_must_sign_error() {
         .await
         .unwrap();
 
+    let proposal_transaction_cookie = governance_test
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
+        .await
+        .unwrap();
+
     let token_owner_record_cookie2 = governance_test
         .with_council_token_deposit(&realm_cookie)
         .await
@@ -318,7 +250,11 @@ async fn test_insert_instruction_with_owner_or_delegate_must_sign_error() {
 
     // Act
     let err = governance_test
-        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
+        .remove_instruction(
+            &mut proposal_cookie,
+            &token_owner_record_cookie,
+            &proposal_transaction_cookie,
+        )
         .await
         .err()
         .unwrap();
@@ -331,7 +267,7 @@ async fn test_insert_instruction_with_owner_or_delegate_must_sign_error() {
 }
 
 #[tokio::test]
-async fn test_insert_instruction_with_invalid_governance_for_proposal_error() {
+async fn test_remove_instruction_with_proposal_not_editable_error() {
     // Arrange
     let mut governance_test = GovernanceProgramTest::start_new().await;
 
@@ -357,33 +293,95 @@ async fn test_insert_instruction_with_invalid_governance_for_proposal_error() {
         .await
         .unwrap();
 
-    // Try to maliciously use a different governance account to use with the proposal
-    let governed_account_cookie2 = governance_test.with_governed_account().await;
-
-    let account_governance_cookie2 = governance_test
-        .with_account_governance(
-            &realm_cookie,
-            &governed_account_cookie2,
-            &token_owner_record_cookie,
-        )
+    let proposal_transaction_cookie = governance_test
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
         .await
         .unwrap();
 
-    proposal_cookie.account.governance = account_governance_cookie2.address;
-
-    let new_governance_config = governance_test.get_default_governance_config();
+    governance_test
+        .cancel_proposal(&proposal_cookie, &token_owner_record_cookie)
+        .await
+        .unwrap();
 
     // Act
     let err = governance_test
-        .with_set_governance_config_instruction(
+        .remove_instruction(
             &mut proposal_cookie,
             &token_owner_record_cookie,
-            &new_governance_config,
+            &proposal_transaction_cookie,
         )
         .await
         .err()
         .unwrap();
 
     // Assert
-    assert_eq!(err, GovernanceError::InvalidGovernanceForProposal.into());
+    assert_eq!(
+        err,
+        GovernanceError::InvalidStateCannotEditInstructions.into()
+    );
+}
+
+#[tokio::test]
+async fn test_remove_instruction_with_instruction_from_other_proposal_error() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_account_cookie = governance_test.with_governed_account().await;
+
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let mut account_governance_cookie = governance_test
+        .with_account_governance(
+            &realm_cookie,
+            &governed_account_cookie,
+            &token_owner_record_cookie,
+        )
+        .await
+        .unwrap();
+
+    let mut proposal_cookie = governance_test
+        .with_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .await
+        .unwrap();
+
+    governance_test
+        .with_nop_instruction(&mut proposal_cookie, &token_owner_record_cookie, 0, None)
+        .await
+        .unwrap();
+
+    let token_owner_record_cookie2 = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    let mut proposal_cookie2 = governance_test
+        .with_proposal(&token_owner_record_cookie2, &mut account_governance_cookie)
+        .await
+        .unwrap();
+
+    let proposal_transaction_cookie2 = governance_test
+        .with_nop_instruction(&mut proposal_cookie2, &token_owner_record_cookie2, 0, None)
+        .await
+        .unwrap();
+
+    // Act
+    let err = governance_test
+        .remove_instruction(
+            &mut proposal_cookie,
+            &token_owner_record_cookie,
+            &proposal_transaction_cookie2,
+        )
+        .await
+        .err()
+        .unwrap();
+
+    // Assert
+    assert_eq!(
+        err,
+        GovernanceError::InvalidProposalForProposalTransaction.into()
+    );
 }

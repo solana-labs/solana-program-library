@@ -40,7 +40,7 @@ pub fn process_insert_transaction(
     let token_owner_record_info = next_account_info(account_info_iter)?; // 2
     let governance_authority_info = next_account_info(account_info_iter)?; // 3
 
-    let proposal_instruction_info = next_account_info(account_info_iter)?; // 4
+    let proposal_transaction_info = next_account_info(account_info_iter)?; // 4
 
     let payer_info = next_account_info(account_info_iter)?; // 5
     let system_info = next_account_info(account_info_iter)?; // 6
@@ -48,7 +48,7 @@ pub fn process_insert_transaction(
     let rent_sysvar_info = next_account_info(account_info_iter)?; // 7
     let rent = &Rent::from_account_info(rent_sysvar_info)?;
 
-    if !proposal_instruction_info.data_is_empty() {
+    if !proposal_transaction_info.data_is_empty() {
         return Err(GovernanceError::InstructionAlreadyExists.into());
     }
 
@@ -85,7 +85,7 @@ pub fn process_insert_transaction(
     option.transactions_count = option.transactions_count.checked_add(1).unwrap();
     proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
 
-    let proposal_instruction_data = ProposalTransactionV2 {
+    let proposal_transaction_data = ProposalTransactionV2 {
         account_type: GovernanceAccountType::ProposalTransactionV2,
         option_index,
         instruction_index,
@@ -98,8 +98,8 @@ pub fn process_insert_transaction(
 
     create_and_serialize_account_signed::<ProposalTransactionV2>(
         payer_info,
-        proposal_instruction_info,
-        &proposal_instruction_data,
+        proposal_transaction_info,
+        &proposal_transaction_data,
         &get_proposal_transaction_address_seeds(
             proposal_info.key,
             &option_index.to_le_bytes(),

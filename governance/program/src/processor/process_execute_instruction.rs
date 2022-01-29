@@ -18,13 +18,13 @@ use crate::state::{
     proposal_transaction::get_proposal_transaction_data_for_proposal,
 };
 
-/// Processes ExecuteInstruction instruction
-pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
+/// Processes ExecuteTransaction instruction
+pub fn process_execute_transaction(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
     let governance_info = next_account_info(account_info_iter)?; // 0
     let proposal_info = next_account_info(account_info_iter)?; // 1
-    let proposal_instruction_info = next_account_info(account_info_iter)?; // 2
+    let proposal_transaction_info = next_account_info(account_info_iter)?; // 2
 
     let clock_info = next_account_info(account_info_iter)?; // 3
     let clock = Clock::from_account_info(clock_info)?;
@@ -34,17 +34,17 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
     let mut proposal_data =
         get_proposal_data_for_governance(program_id, proposal_info, governance_info.key)?;
 
-    let mut proposal_instruction_data = get_proposal_transaction_data_for_proposal(
+    let mut proposal_transaction_data = get_proposal_transaction_data_for_proposal(
         program_id,
-        proposal_instruction_info,
+        proposal_transaction_info,
         proposal_info.key,
     )?;
 
     proposal_data
-        .assert_can_execute_instruction(&proposal_instruction_data, clock.unix_timestamp)?;
+        .assert_can_execute_instruction(&proposal_transaction_data, clock.unix_timestamp)?;
 
     // Execute instruction with Governance PDA as signer
-    let instructions = proposal_instruction_data
+    let instructions = proposal_transaction_data
         .instructions
         .iter()
         .map(|i| Instruction::from(i));
@@ -89,7 +89,7 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
         proposal_data.state = ProposalState::Executing;
     }
 
-    let mut option = &mut proposal_data.options[proposal_instruction_data.option_index as usize];
+    let mut option = &mut proposal_data.options[proposal_transaction_data.option_index as usize];
     option.transactions_executed_count = option.transactions_executed_count.checked_add(1).unwrap();
 
     // Checking for Executing and ExecutingWithErrors states because instruction can still be executed after being flagged with error
@@ -108,9 +108,9 @@ pub fn process_execute_instruction(program_id: &Pubkey, accounts: &[AccountInfo]
 
     proposal_data.serialize(&mut *proposal_info.data.borrow_mut())?;
 
-    proposal_instruction_data.executed_at = Some(clock.unix_timestamp);
-    proposal_instruction_data.execution_status = InstructionExecutionStatus::Success;
-    proposal_instruction_data.serialize(&mut *proposal_instruction_info.data.borrow_mut())?;
+    proposal_transaction_data.executed_at = Some(clock.unix_timestamp);
+    proposal_transaction_data.execution_status = InstructionExecutionStatus::Success;
+    proposal_transaction_data.serialize(&mut *proposal_transaction_info.data.borrow_mut())?;
 
     Ok(())
 }

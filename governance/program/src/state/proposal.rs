@@ -586,7 +586,7 @@ impl ProposalV2 {
     /// Checks if Instructions can be executed for the Proposal in the given state
     pub fn assert_can_execute_instruction(
         &self,
-        proposal_instruction_data: &ProposalTransactionV2,
+        proposal_transaction_data: &ProposalTransactionV2,
         current_unix_timestamp: UnixTimestamp,
     ) -> Result<(), ProgramError> {
         match self.state {
@@ -603,7 +603,7 @@ impl ProposalV2 {
             }
         }
 
-        if self.options[proposal_instruction_data.option_index as usize].vote_result
+        if self.options[proposal_transaction_data.option_index as usize].vote_result
             != OptionVoteResult::Succeeded
         {
             return Err(GovernanceError::CannotExecuteDefeatedOption.into());
@@ -612,14 +612,14 @@ impl ProposalV2 {
         if self
             .voting_completed_at
             .unwrap()
-            .checked_add(proposal_instruction_data.hold_up_time as i64)
+            .checked_add(proposal_transaction_data.hold_up_time as i64)
             .unwrap()
             >= current_unix_timestamp
         {
             return Err(GovernanceError::CannotExecuteInstructionWithinHoldUpTime.into());
         }
 
-        if proposal_instruction_data.executed_at.is_some() {
+        if proposal_transaction_data.executed_at.is_some() {
             return Err(GovernanceError::InstructionAlreadyExecuted.into());
         }
 
@@ -629,13 +629,13 @@ impl ProposalV2 {
     /// Checks if the instruction can be flagged with error for the Proposal in the given state
     pub fn assert_can_flag_instruction_error(
         &self,
-        proposal_instruction_data: &ProposalTransactionV2,
+        proposal_transaction_data: &ProposalTransactionV2,
         current_unix_timestamp: UnixTimestamp,
     ) -> Result<(), ProgramError> {
         // Instruction can be flagged for error only when it's eligible for execution
-        self.assert_can_execute_instruction(proposal_instruction_data, current_unix_timestamp)?;
+        self.assert_can_execute_instruction(proposal_transaction_data, current_unix_timestamp)?;
 
-        if proposal_instruction_data.execution_status == InstructionExecutionStatus::Error {
+        if proposal_transaction_data.execution_status == InstructionExecutionStatus::Error {
             return Err(GovernanceError::InstructionAlreadyFlaggedWithError.into());
         }
 

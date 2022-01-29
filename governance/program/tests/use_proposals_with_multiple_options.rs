@@ -638,7 +638,7 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
         .await
         .unwrap();
 
-    let proposal_instruction_cookie1 = governance_test
+    let proposal_transaction_cookie1 = governance_test
         .with_mint_tokens_instruction(
             &governed_mint_cookie,
             &mut proposal_cookie,
@@ -649,7 +649,7 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
         .await
         .unwrap();
 
-    let proposal_instruction_cookie2 = governance_test
+    let proposal_transaction_cookie2 = governance_test
         .with_mint_tokens_instruction(
             &governed_mint_cookie,
             &mut proposal_cookie,
@@ -660,7 +660,7 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
         .await
         .unwrap();
 
-    let proposal_instruction_cookie3 = governance_test
+    let proposal_transaction_cookie3 = governance_test
         .with_mint_tokens_instruction(
             &governed_mint_cookie,
             &mut proposal_cookie,
@@ -746,7 +746,7 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
 
     // Advance timestamp past hold_up_time
     governance_test
-        .advance_clock_by_min_timespan(proposal_instruction_cookie1.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(proposal_transaction_cookie1.account.hold_up_time as u64)
         .await;
 
     let mut proposal_account = governance_test
@@ -758,18 +758,18 @@ async fn test_execute_proposal_with_multiple_options_and_partial_success() {
     // Act
 
     let instruction1_err = governance_test
-        .execute_instruction(&proposal_cookie, &proposal_instruction_cookie1)
+        .execute_instruction(&proposal_cookie, &proposal_transaction_cookie1)
         .await
         .err()
         .unwrap();
 
     governance_test
-        .execute_instruction(&proposal_cookie, &proposal_instruction_cookie2)
+        .execute_instruction(&proposal_cookie, &proposal_transaction_cookie2)
         .await
         .unwrap();
 
     let instruction3_err = governance_test
-        .execute_instruction(&proposal_cookie, &proposal_instruction_cookie3)
+        .execute_instruction(&proposal_cookie, &proposal_transaction_cookie3)
         .await
         .err()
         .unwrap();
@@ -841,7 +841,7 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
         .await
         .unwrap();
 
-    let proposal_instruction_cookie1 = governance_test
+    let proposal_transaction_cookie1 = governance_test
         .with_mint_tokens_instruction(
             &governed_mint_cookie,
             &mut proposal_cookie,
@@ -852,7 +852,7 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
         .await
         .unwrap();
 
-    let proposal_instruction_cookie2 = governance_test
+    let proposal_transaction_cookie2 = governance_test
         .with_mint_tokens_instruction(
             &governed_mint_cookie,
             &mut proposal_cookie,
@@ -863,7 +863,7 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
         .await
         .unwrap();
 
-    let proposal_instruction_cookie3 = governance_test
+    let proposal_transaction_cookie3 = governance_test
         .with_mint_tokens_instruction(
             &governed_mint_cookie,
             &mut proposal_cookie,
@@ -908,7 +908,7 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
 
     // Advance timestamp past hold_up_time
     governance_test
-        .advance_clock_by_min_timespan(proposal_instruction_cookie1.account.hold_up_time as u64)
+        .advance_clock_by_min_timespan(proposal_transaction_cookie1.account.hold_up_time as u64)
         .await;
 
     let proposal_account = governance_test
@@ -920,7 +920,7 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
     // Act
 
     let mut err = governance_test
-        .execute_instruction(&proposal_cookie, &proposal_instruction_cookie1)
+        .execute_instruction(&proposal_cookie, &proposal_transaction_cookie1)
         .await
         .err()
         .unwrap();
@@ -934,7 +934,7 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
     // Act
 
     err = governance_test
-        .execute_instruction(&proposal_cookie, &proposal_instruction_cookie2)
+        .execute_instruction(&proposal_cookie, &proposal_transaction_cookie2)
         .await
         .err()
         .unwrap();
@@ -948,7 +948,7 @@ async fn test_try_execute_proposal_with_multiple_options_and_full_deny() {
     // Act
 
     err = governance_test
-        .execute_instruction(&proposal_cookie, &proposal_instruction_cookie3)
+        .execute_instruction(&proposal_cookie, &proposal_transaction_cookie3)
         .await
         .err()
         .unwrap();
