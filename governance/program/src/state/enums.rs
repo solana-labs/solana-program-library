@@ -122,16 +122,26 @@ pub enum VoteThresholdPercentage {
     Quorum(u8),
 }
 
-/// The source of voter weights used to vote on proposals
+/// The type of vote tipping to use on a Proposal.
+///
+/// Vote tipping means that under some conditions voting will complete early.
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub enum VoteWeightSource {
-    /// Governing token deposits into the Realm are used as voter weights
-    Deposit,
-    /// Governing token account snapshots as of the time a proposal entered voting state are used as voter weights
-    /// Note: Snapshot source is not supported in the current version
-    /// Support for account snapshots are required in solana and/or arweave as a prerequisite
-    Snapshot,
+pub enum VoteTipping {
+    /// Tip when there is no way for another option to win and the vote threshold
+    /// has been reached. This ignores voters withdrawing their votes.
+    ///
+    /// Currently only supported for the "yes" option in single choice votes.
+    Strict,
+
+    /// Tip when an option reaches the vote threshold and has more vote weight
+    /// than any other options.
+    ///
+    /// Currently only supported for the "yes" option in single choice votes.
+    Early,
+
+    /// Never tip the vote early.
+    Disabled,
 }
 
 /// The status of instruction execution

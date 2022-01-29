@@ -25,7 +25,7 @@ use crate::{
     state::{
         enums::{
             GovernanceAccountType, InstructionExecutionFlags, MintMaxVoteWeightSource,
-            ProposalState, TransactionExecutionStatus, VoteThresholdPercentage,
+            ProposalState, TransactionExecutionStatus, VoteThresholdPercentage, VoteTipping,
         },
         governance::GovernanceConfig,
         proposal_transaction::ProposalTransactionV2,
@@ -542,13 +542,33 @@ impl ProposalV2 {
             get_min_vote_threshold_weight(&config.vote_threshold_percentage, max_vote_weight)
                 .unwrap();
 
-        if yes_vote_weight >= min_vote_threshold_weight
-            && yes_vote_weight > (max_vote_weight.saturating_sub(yes_vote_weight))
-        {
-            yes_option.vote_result = OptionVoteResult::Succeeded;
-            return Some(ProposalState::Succeeded);
-        } else if deny_vote_weight > (max_vote_weight.saturating_sub(min_vote_threshold_weight))
-            || deny_vote_weight >= (max_vote_weight.saturating_sub(deny_vote_weight))
+        match config.vote_tipping {
+            VoteTipping::Disabled => {}
+            VoteTipping::Strict => {
+                if yes_vote_weight >= min_vote_threshold_weight
+                    && yes_vote_weight > (max_vote_weight.saturating_sub(yes_vote_weight))
+                {
+                    yes_option.vote_result = OptionVoteResult::Succeeded;
+                    return Some(ProposalState::Succeeded);
+                }
+            }
+            VoteTipping::Early => {
+                if yes_vote_weight >= min_vote_threshold_weight
+                    && yes_vote_weight > deny_vote_weight
+                {
+                    yes_option.vote_result = OptionVoteResult::Succeeded;
+                    return Some(ProposalState::Succeeded);
+                }
+            }
+        }
+
+        // If vote tipping isn't disabled entirely, allow a vote to complete as
+        // "defeated" if there is no possible way of reaching majority or the
+        // min_vote_threshold_weight for another option. This tipping is always
+        // strict, there's no equivalent to "early" tipping for deny votes.
+        if config.vote_tipping != VoteTipping::Disabled
+            && (deny_vote_weight > (max_vote_weight.saturating_sub(min_vote_threshold_weight))
+                || deny_vote_weight >= (max_vote_weight.saturating_sub(deny_vote_weight)))
         {
             yes_option.vote_result = OptionVoteResult::Defeated;
             return Some(ProposalState::Defeated);
@@ -929,7 +949,7 @@ mod test {
     use solana_program::clock::Epoch;
 
     use crate::state::{
-        enums::{MintMaxVoteWeightSource, VoteThresholdPercentage, VoteWeightSource},
+        enums::{MintMaxVoteWeightSource, VoteThresholdPercentage},
         legacy::ProposalV1,
         realm::RealmConfig,
         vote_record::VoteChoice,
@@ -1036,7 +1056,7 @@ mod test {
             min_transaction_hold_up_time: 10,
             max_voting_time: 5,
             vote_threshold_percentage: VoteThresholdPercentage::YesVote(60),
-            vote_weight_source: VoteWeightSource::Deposit,
+            vote_tipping: VoteTipping::Strict,
             proposal_cool_off_time: 0,
         }
     }

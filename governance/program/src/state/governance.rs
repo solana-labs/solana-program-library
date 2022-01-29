@@ -3,7 +3,7 @@
 use crate::{
     error::GovernanceError,
     state::{
-        enums::{GovernanceAccountType, VoteThresholdPercentage, VoteWeightSource},
+        enums::{GovernanceAccountType, VoteThresholdPercentage, VoteTipping},
         realm::assert_is_valid_realm,
     },
 };
@@ -34,9 +34,8 @@ pub struct GovernanceConfig {
     /// Time limit in seconds for proposal to be open for voting
     pub max_voting_time: u32,
 
-    /// The source of vote weight for voters
-    /// Note: In the current version only token deposits are accepted as vote weight
-    pub vote_weight_source: VoteWeightSource,
+    /// Conditions under which a vote will complete early
+    pub vote_tipping: VoteTipping,
 
     /// The time period in seconds within which a Proposal can be still cancelled after being voted on
     /// Once cool off time expires Proposal can't be cancelled any longer and becomes a law
@@ -286,10 +285,6 @@ pub fn assert_is_valid_governance_config(
         _ => {
             return Err(GovernanceError::VoteThresholdPercentageTypeNotSupported.into());
         }
-    }
-
-    if governance_config.vote_weight_source != VoteWeightSource::Deposit {
-        return Err(GovernanceError::VoteWeightSourceNotSupported.into());
     }
 
     if governance_config.proposal_cool_off_time > 0 {

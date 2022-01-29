@@ -184,7 +184,7 @@ impl GovernanceChatProgramTest {
             min_transaction_hold_up_time: 10,
             max_voting_time: 10,
             vote_threshold_percentage: VoteThresholdPercentage::YesVote(60),
-            vote_weight_source: spl_governance::state::enums::VoteWeightSource::Deposit,
+            vote_tipping: spl_governance::state::enums::VoteTipping::Strict,
             proposal_cool_off_time: 0,
         };
 
