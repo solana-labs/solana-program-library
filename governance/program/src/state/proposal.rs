@@ -193,7 +193,7 @@ pub struct ProposalV2 {
     pub vote_threshold_percentage: Option<VoteThresholdPercentage>,
 
     /// Reserved space for future versions
-    pub reserved: [u8; 8],
+    pub reserved: [u8; 64],
 
     /// Proposal name
     pub name: String,
@@ -205,7 +205,7 @@ pub struct ProposalV2 {
 impl AccountMaxSize for ProposalV2 {
     fn get_max_size(&self) -> Option<usize> {
         let options_size: usize = self.options.iter().map(|o| o.label.len() + 19).sum();
-        Some(self.name.len() + self.description_link.len() + options_size + 239)
+        Some(self.name.len() + self.description_link.len() + options_size + 295)
     }
 }
 
@@ -897,7 +897,7 @@ pub fn get_proposal_data(
             vote_threshold_percentage: proposal_data_v1.vote_threshold_percentage,
             name: proposal_data_v1.name,
             description_link: proposal_data_v1.description_link,
-            reserved: [0; 8],
+            reserved: [0; 64],
         });
     }
 
@@ -1051,7 +1051,7 @@ mod test {
             max_voting_time: Some(0),
             vote_threshold_percentage: Some(VoteThresholdPercentage::YesVote(100)),
 
-            reserved: [0; 8],
+            reserved: [0; 64],
         }
     }
 
