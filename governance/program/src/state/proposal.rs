@@ -773,6 +773,10 @@ impl ProposalV2 {
                 panic!("ProposalV1 doesn't support max voting time")
             }
 
+            if self.options.len() != 1 {
+                panic!("ProposalV1 doesn't multiple options")
+            }
+
             let proposal_data_v1 = ProposalV1 {
                 account_type: self.account_type,
                 governance: self.governance,
