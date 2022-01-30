@@ -167,14 +167,12 @@ pub fn process_cast_vote(
         };
 
         // Update Realm voting_proposal_count
-        realm_data.voting_proposal_count = realm_data.voting_proposal_count.checked_sub(1).unwrap();
+        realm_data.voting_proposal_count = realm_data.voting_proposal_count.saturating_sub(1);
         realm_data.serialize(&mut *realm_info.data.borrow_mut())?;
 
         // Update  Governance voting_proposal_count
-        governance_data.voting_proposal_count = governance_data
-            .voting_proposal_count
-            .checked_sub(1)
-            .unwrap();
+        governance_data.voting_proposal_count =
+            governance_data.voting_proposal_count.saturating_sub(1);
         governance_data.serialize(&mut *governance_info.data.borrow_mut())?;
     }
 
