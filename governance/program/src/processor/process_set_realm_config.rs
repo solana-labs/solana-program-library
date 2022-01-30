@@ -43,6 +43,7 @@ pub fn process_set_realm_config(
     // Note: Config change leaves voting proposals in unpredictable state and it's DAOs responsibility
     // to ensure the changes are made when there are no proposals in voting state
     // For example changing voter-weight or max-voter-weight addin could accidentally make proposals to succeed which would otherwise be defeated
+    // The check wouldn't have any effect when upgrading from V1 to V2 because it was not tracked in V1
 
     // if realm_data.voting_proposal_count > 0 {
     //     return Err(GovernanceError::RealmConfigChangeNotAllowed.into());
