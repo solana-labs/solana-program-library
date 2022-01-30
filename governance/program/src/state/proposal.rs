@@ -90,14 +90,14 @@ pub enum VoteType {
         /// By default it equals to the number of available options
         /// Note: In the current version the limit is not supported and not enforced yet
         #[allow(dead_code)]
-        max_voter_options: u16,
+        max_voter_options: u8,
 
         /// The max number of wining options
         /// For executable proposals it limits how many options can be executed for a Proposal
         /// By default it equals to the number of available options
         /// Note: In the current version the limit is not supported and not enforced yet
         #[allow(dead_code)]
-        max_winning_options: u16,
+        max_winning_options: u8,
     },
 }
 
@@ -205,7 +205,7 @@ pub struct ProposalV2 {
 impl AccountMaxSize for ProposalV2 {
     fn get_max_size(&self) -> Option<usize> {
         let options_size: usize = self.options.iter().map(|o| o.label.len() + 19).sum();
-        Some(self.name.len() + self.description_link.len() + options_size + 241)
+        Some(self.name.len() + self.description_link.len() + options_size + 239)
     }
 }
 
@@ -968,7 +968,7 @@ pub fn assert_valid_proposal_options(
     options: &[String],
     vote_type: &VoteType,
 ) -> Result<(), ProgramError> {
-    if options.is_empty() {
+    if options.is_empty() || options.len() > 10 {
         return Err(GovernanceError::InvalidProposalOptions.into());
     }
 
