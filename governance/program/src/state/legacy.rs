@@ -22,7 +22,7 @@ pub struct RealmConfigArgsV1 {
     pub use_council_mint: bool,
 
     /// Min number of community tokens required to create a governance
-    pub min_community_tokens_to_create_governance: u64,
+    pub min_community_weight_to_create_governance: u64,
 
     /// The source used for community mint max vote weight source
     pub community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
@@ -57,7 +57,7 @@ pub struct RealmConfigV1 {
     pub reserved: [u8; 8],
 
     /// Min number of community tokens required to create a governance
-    pub min_community_tokens_to_create_governance: u64,
+    pub min_community_weight_to_create_governance: u64,
 
     /// The source used for community mint max vote weight source
     pub community_mint_max_vote_weight_source: MintMaxVoteWeightSource,

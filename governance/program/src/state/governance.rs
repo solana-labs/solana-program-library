@@ -25,8 +25,8 @@ pub struct GovernanceConfig {
     /// Note: In the current version only YesVote threshold is supported
     pub vote_threshold_percentage: VoteThresholdPercentage,
 
-    /// Minimum number of community tokens a governance token owner must possess to be able to create a proposal
-    pub min_community_tokens_to_create_proposal: u64,
+    /// Minimum community weight a governance token owner must possess to be able to create a proposal
+    pub min_community_weight_to_create_proposal: u64,
 
     /// Minimum waiting time in seconds for a transaction to be executed after proposal is voted on
     pub min_transaction_hold_up_time: u32,
@@ -42,8 +42,8 @@ pub struct GovernanceConfig {
     /// Note: This field is not implemented in the current version
     pub proposal_cool_off_time: u32,
 
-    /// Minimum number of council tokens a governance token owner must possess to be able to create a proposal
-    pub min_council_tokens_to_create_proposal: u64,
+    /// Minimum council weight a governance token owner must possess to be able to create a proposal
+    pub min_council_weight_to_create_proposal: u64,
 }
 
 /// Governance Account

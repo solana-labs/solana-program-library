@@ -110,9 +110,9 @@ impl TokenOwnerRecord {
     ) -> Result<(), ProgramError> {
         let min_weight_to_create_proposal =
             if self.governing_token_mint == realm_data.community_mint {
-                config.min_community_tokens_to_create_proposal
+                config.min_community_weight_to_create_proposal
             } else if Some(self.governing_token_mint) == realm_data.config.council_mint {
-                config.min_council_tokens_to_create_proposal
+                config.min_council_weight_to_create_proposal
             } else {
                 return Err(GovernanceError::InvalidGoverningTokenMint.into());
             };
@@ -138,7 +138,7 @@ impl TokenOwnerRecord {
     ) -> Result<(), ProgramError> {
         let min_weight_to_create_governance =
             if self.governing_token_mint == realm_data.community_mint {
-                realm_data.config.min_community_tokens_to_create_governance
+                realm_data.config.min_community_weight_to_create_governance
             } else if Some(self.governing_token_mint) == realm_data.config.council_mint {
                 // For council tokens it's enough to be in possession of any number of tokens
                 1
