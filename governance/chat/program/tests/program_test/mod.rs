@@ -179,8 +179,8 @@ impl GovernanceChatProgramTest {
         let governed_account_address = Pubkey::new_unique();
 
         let governance_config = GovernanceConfig {
-            min_community_tokens_to_create_proposal: 5,
-            min_council_tokens_to_create_proposal: 2,
+            min_community_weight_to_create_proposal: 5,
+            min_council_weight_to_create_proposal: 2,
             min_transaction_hold_up_time: 10,
             max_voting_time: 10,
             vote_threshold_percentage: VoteThresholdPercentage::YesVote(60),

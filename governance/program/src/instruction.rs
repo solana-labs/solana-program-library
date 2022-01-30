@@ -485,7 +485,7 @@ pub fn create_realm(
     max_community_voter_weight_addin: Option<Pubkey>,
     // Args
     name: String,
-    min_community_tokens_to_create_governance: u64,
+    min_community_weight_to_create_governance: u64,
     community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
 ) -> Instruction {
     let realm_address = get_realm_address(program_id, &name);
@@ -544,7 +544,7 @@ pub fn create_realm(
     let instruction = GovernanceInstruction::CreateRealm {
         config_args: RealmConfigArgs {
             use_council_mint,
-            min_community_tokens_to_create_governance,
+            min_community_weight_to_create_governance,
             community_mint_max_vote_weight_source,
             use_community_voter_weight_addin,
             use_max_community_voter_weight_addin,
@@ -1350,7 +1350,7 @@ pub fn set_realm_config(
     community_voter_weight_addin: Option<Pubkey>,
     max_community_voter_weight_addin: Option<Pubkey>,
     // Args
-    min_community_tokens_to_create_governance: u64,
+    min_community_weight_to_create_governance: u64,
     community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
 ) -> Instruction {
     let mut accounts = vec![
@@ -1405,7 +1405,7 @@ pub fn set_realm_config(
     let instruction = GovernanceInstruction::SetRealmConfig {
         config_args: RealmConfigArgs {
             use_council_mint,
-            min_community_tokens_to_create_governance,
+            min_community_weight_to_create_governance,
             community_mint_max_vote_weight_source,
             use_community_voter_weight_addin,
             use_max_community_voter_weight_addin,

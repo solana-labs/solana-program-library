@@ -773,6 +773,10 @@ impl ProposalV2 {
                 panic!("ProposalV1 doesn't support max voting time")
             }
 
+            if self.options.len() != 1 {
+                panic!("ProposalV1 doesn't multiple options")
+            }
+
             let proposal_data_v1 = ProposalV1 {
                 account_type: self.account_type,
                 governance: self.governance,
@@ -1099,7 +1103,7 @@ mod test {
 
                 community_mint_max_vote_weight_source:
                     MintMaxVoteWeightSource::FULL_SUPPLY_FRACTION,
-                min_community_tokens_to_create_governance: 10,
+                min_community_weight_to_create_governance: 10,
             },
             voting_proposal_count: 0,
         }
@@ -1107,8 +1111,8 @@ mod test {
 
     fn create_test_governance_config() -> GovernanceConfig {
         GovernanceConfig {
-            min_community_tokens_to_create_proposal: 5,
-            min_council_tokens_to_create_proposal: 1,
+            min_community_weight_to_create_proposal: 5,
+            min_council_weight_to_create_proposal: 1,
             min_transaction_hold_up_time: 10,
             max_voting_time: 5,
             vote_threshold_percentage: VoteThresholdPercentage::YesVote(60),
