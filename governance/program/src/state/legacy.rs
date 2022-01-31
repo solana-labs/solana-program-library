@@ -6,6 +6,7 @@ use crate::state::{
         TransactionExecutionStatus, VoteThresholdPercentage,
     },
     proposal_transaction::InstructionData,
+    realm::RealmConfig,
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
@@ -50,22 +51,6 @@ pub enum GovernanceInstructionV1 {
     },
 }
 
-/// Realm Config defining Realm parameters.
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub struct RealmConfigV1 {
-    /// Reserved space for future versions
-    pub reserved: [u8; 8],
-
-    /// Min number of community tokens required to create a governance
-    pub min_community_weight_to_create_governance: u64,
-
-    /// The source used for community mint max vote weight source
-    pub community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
-
-    /// Optional council mint
-    pub council_mint: Option<Pubkey>,
-}
-
 /// Governance Realm Account
 /// Account PDA seeds" ['governance', name]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
@@ -77,10 +62,15 @@ pub struct RealmV1 {
     pub community_mint: Pubkey,
 
     /// Configuration of the Realm
-    pub config: RealmConfigV1,
+    pub config: RealmConfig,
 
     /// Reserved space for future versions
-    pub reserved: [u8; 8],
+    pub reserved: [u8; 6],
+
+    /// The number of proposals in voting state in the Realm
+    /// Note: This is field introduced in V2 but it took space from reserved
+    /// and we have preserve it for V1 serialization roundtrip
+    pub voting_proposal_count: u16,
 
     /// Realm authority. The authority must sign transactions which update the realm config
     /// The authority should be transferred to Realm Governance to make the Realm self governed through proposals
@@ -92,7 +82,7 @@ pub struct RealmV1 {
 
 impl IsInitialized for RealmV1 {
     fn is_initialized(&self) -> bool {
-        self.account_type == GovernanceAccountType::RealmV2
+        self.account_type == GovernanceAccountType::RealmV1
     }
 }
 

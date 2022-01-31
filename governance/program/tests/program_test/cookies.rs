@@ -2,7 +2,7 @@ use solana_program::{instruction::Instruction, pubkey::Pubkey};
 use solana_sdk::signature::Keypair;
 use spl_governance::state::{
     governance::Governance, native_treasury::NativeTreasury, program_metadata::ProgramMetadata,
-    proposal::ProposalV2, proposal_transaction::ProposalTransactionV2, realm::Realm,
+    proposal::ProposalV2, proposal_transaction::ProposalTransactionV2, realm::RealmV2,
     realm_config::RealmConfigAccount, signatory_record::SignatoryRecord,
     token_owner_record::TokenOwnerRecord, vote_record::VoteRecordV2,
 };
@@ -20,7 +20,7 @@ pub trait AccountCookie {
 pub struct RealmCookie {
     pub address: Pubkey,
 
-    pub account: Realm,
+    pub account: RealmV2,
 
     pub community_mint_authority: Keypair,
 

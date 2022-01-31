@@ -8,7 +8,7 @@ use crate::{
     },
     error::GovernanceError,
     state::{
-        enums::GovernanceAccountType, governance::GovernanceConfig, realm::Realm,
+        enums::GovernanceAccountType, governance::GovernanceConfig, realm::RealmV2,
         realm_config::get_realm_config_data_for_realm,
     },
     PROGRAM_AUTHORITY_SEED,
@@ -104,7 +104,7 @@ impl TokenOwnerRecord {
     /// Asserts TokenOwner has enough tokens to be allowed to create proposal and doesn't have any outstanding proposals
     pub fn assert_can_create_proposal(
         &self,
-        realm_data: &Realm,
+        realm_data: &RealmV2,
         config: &GovernanceConfig,
         voter_weight: u64,
     ) -> Result<(), ProgramError> {
@@ -133,7 +133,7 @@ impl TokenOwnerRecord {
     /// Asserts TokenOwner has enough tokens to be allowed to create governance
     pub fn assert_can_create_governance(
         &self,
-        realm_data: &Realm,
+        realm_data: &RealmV2,
         voter_weight: u64,
     ) -> Result<(), ProgramError> {
         let min_weight_to_create_governance =
@@ -188,7 +188,7 @@ impl TokenOwnerRecord {
         realm_config_info: &AccountInfo,
         account_info_iter: &mut Iter<AccountInfo>,
         realm: &Pubkey,
-        realm_data: &Realm,
+        realm_data: &RealmV2,
         weight_action: VoterWeightAction,
         weight_action_target: &Pubkey,
     ) -> Result<u64, ProgramError> {

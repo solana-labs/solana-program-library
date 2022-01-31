@@ -41,8 +41,8 @@ use spl_governance::{
             get_proposal_transaction_address, InstructionData, ProposalTransactionV2,
         },
         realm::{
-            get_governing_token_holding_address, get_realm_address, Realm, RealmConfig,
-            RealmConfigArgs, SetRealmAuthorityAction,
+            get_governing_token_holding_address, get_realm_address, RealmConfig, RealmConfigArgs,
+            RealmV2, SetRealmAuthorityAction,
         },
         realm_config::{get_realm_config_address, RealmConfigAccount},
         signatory_record::{get_signatory_record_address, SignatoryRecord},
@@ -298,7 +298,7 @@ impl GovernanceProgramTest {
             .await
             .unwrap();
 
-        let account = Realm {
+        let account = RealmV2 {
             account_type: GovernanceAccountType::RealmV2,
             community_mint: community_token_mint_keypair.pubkey(),
 
@@ -320,6 +320,7 @@ impl GovernanceProgramTest {
                 use_max_community_voter_weight_addin: false,
             },
             voting_proposal_count: 0,
+            reserved_v2: [0; 128],
         };
 
         let realm_config_cookie = if set_realm_config_args.community_voter_weight_addin.is_some()
@@ -390,7 +391,7 @@ impl GovernanceProgramTest {
             .await
             .unwrap();
 
-        let account = Realm {
+        let account = RealmV2 {
             account_type: GovernanceAccountType::RealmV2,
             community_mint: realm_cookie.account.community_mint,
 
@@ -408,6 +409,7 @@ impl GovernanceProgramTest {
                 use_max_community_voter_weight_addin: false,
             },
             voting_proposal_count: 0,
+            reserved_v2: [0; 128],
         };
 
         let community_token_holding_address = get_governing_token_holding_address(
@@ -2552,8 +2554,8 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn get_realm_account(&mut self, realm_address: &Pubkey) -> Realm {
-        self.bench.get_borsh_account::<Realm>(realm_address).await
+    pub async fn get_realm_account(&mut self, realm_address: &Pubkey) -> RealmV2 {
+        self.bench.get_borsh_account::<RealmV2>(realm_address).await
     }
 
     #[allow(dead_code)]
