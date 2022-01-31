@@ -223,7 +223,7 @@ impl GovernanceChatProgramTest {
         let create_governance_ix = create_governance(
             &self.governance_program_id,
             &realm_address,
-            &governed_account_address,
+            Some(&governed_account_address),
             &token_owner_record_address,
             &self.bench.payer.pubkey(),
             &token_owner.pubkey(),
