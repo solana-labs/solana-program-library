@@ -3,22 +3,23 @@
 
 mod program_test;
 
-use solana_program::{
-    instruction::*, program_pack::Pack, pubkey::Pubkey, system_instruction, sysvar,
-};
-use solana_program_test::*;
-use solana_sdk::{
-    signature::Signer,
-    transaction::{Transaction, TransactionError},
-};
-use spl_associated_token_account::{
-    get_associated_token_address, instruction::create_associated_token_account,
+use {
+    program_test::program_test,
+    solana_program::{
+        instruction::*, program_pack::Pack, pubkey::Pubkey, system_instruction, sysvar,
+    },
+    solana_program_test::*,
+    solana_sdk::{
+        signature::Signer,
+        transaction::{Transaction, TransactionError},
+    },
+    spl_associated_token_account::{
+        get_associated_token_address, instruction::create_associated_token_account,
+    },
 };
 
 #[allow(deprecated)]
 use spl_associated_token_account::create_associated_token_account as deprecated_create_associated_token_account;
-
-use program_test::program_test;
 
 #[tokio::test]
 async fn test_associated_token_address() {

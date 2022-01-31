@@ -1,9 +1,11 @@
 //! Program instructions
 
-use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
-use solana_program::{
-    instruction::{AccountMeta, Instruction},
-    pubkey::Pubkey,
+use {
+    borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
+    solana_program::{
+        instruction::{AccountMeta, Instruction},
+        pubkey::Pubkey,
+    },
 };
 
 use crate::{get_associated_token_address, id};
