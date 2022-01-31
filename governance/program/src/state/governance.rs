@@ -90,10 +90,31 @@ impl AccountMaxSize for GovernanceV2 {}
 
 /// Checks if the given account type is one of the Governance account types
 pub fn is_governance_v2_account_type(account_type: &GovernanceAccountType) -> bool {
-    *account_type == GovernanceAccountType::GovernanceV2
-        || *account_type == GovernanceAccountType::ProgramGovernanceV2
-        || *account_type == GovernanceAccountType::MintGovernanceV2
-        || *account_type == GovernanceAccountType::TokenGovernanceV2
+    match account_type {
+        GovernanceAccountType::GovernanceV2
+        | GovernanceAccountType::ProgramGovernanceV2
+        | GovernanceAccountType::MintGovernanceV2
+        | GovernanceAccountType::TokenGovernanceV2 => true,
+        GovernanceAccountType::Uninitialized
+        | GovernanceAccountType::RealmV1
+        | GovernanceAccountType::RealmV2
+        | GovernanceAccountType::RealmConfig
+        | GovernanceAccountType::TokenOwnerRecordV1
+        | GovernanceAccountType::TokenOwnerRecordV2
+        | GovernanceAccountType::GovernanceV1
+        | GovernanceAccountType::ProgramGovernanceV1
+        | GovernanceAccountType::MintGovernanceV1
+        | GovernanceAccountType::TokenGovernanceV1
+        | GovernanceAccountType::ProposalV1
+        | GovernanceAccountType::ProposalV2
+        | GovernanceAccountType::SignatoryRecordV1
+        | GovernanceAccountType::SignatoryRecordV2
+        | GovernanceAccountType::ProposalInstructionV1
+        | GovernanceAccountType::ProposalTransactionV2
+        | GovernanceAccountType::VoteRecordV1
+        | GovernanceAccountType::VoteRecordV2
+        | GovernanceAccountType::ProgramMetadata => false,
+    }
 }
 
 impl IsInitialized for GovernanceV2 {
