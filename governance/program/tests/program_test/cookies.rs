@@ -1,7 +1,7 @@
 use solana_program::{instruction::Instruction, pubkey::Pubkey};
 use solana_sdk::signature::Keypair;
 use spl_governance::state::{
-    governance::Governance, native_treasury::NativeTreasury, program_metadata::ProgramMetadata,
+    governance::GovernanceV2, native_treasury::NativeTreasury, program_metadata::ProgramMetadata,
     proposal::ProposalV2, proposal_transaction::ProposalTransactionV2, realm::RealmV2,
     realm_config::RealmConfigAccount, signatory_record::SignatoryRecord,
     token_owner_record::TokenOwnerRecordV2, vote_record::VoteRecordV2,
@@ -131,7 +131,7 @@ impl AccountCookie for GovernedAccountCookie {
 #[derive(Debug)]
 pub struct GovernanceCookie {
     pub address: Pubkey,
-    pub account: Governance,
+    pub account: GovernanceV2,
     pub next_proposal_index: u32,
 }
 

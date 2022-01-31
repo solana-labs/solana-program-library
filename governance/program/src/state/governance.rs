@@ -49,7 +49,7 @@ pub struct GovernanceConfig {
 /// Governance Account
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub struct Governance {
+pub struct GovernanceV2 {
     /// Account type. It can be Uninitialized, Governance, ProgramGovernance, TokenGovernance or MintGovernance
     pub account_type: GovernanceAccountType,
 
@@ -80,31 +80,31 @@ pub struct Governance {
     pub voting_proposal_count: u16,
 }
 
-impl AccountMaxSize for Governance {}
+impl AccountMaxSize for GovernanceV2 {}
 
-impl IsInitialized for Governance {
+impl IsInitialized for GovernanceV2 {
     fn is_initialized(&self) -> bool {
-        self.account_type == GovernanceAccountType::Governance
-            || self.account_type == GovernanceAccountType::ProgramGovernance
-            || self.account_type == GovernanceAccountType::MintGovernance
-            || self.account_type == GovernanceAccountType::TokenGovernance
+        self.account_type == GovernanceAccountType::GovernanceV2
+            || self.account_type == GovernanceAccountType::ProgramGovernanceV2
+            || self.account_type == GovernanceAccountType::MintGovernanceV2
+            || self.account_type == GovernanceAccountType::TokenGovernanceV2
     }
 }
 
-impl Governance {
+impl GovernanceV2 {
     /// Returns Governance PDA seeds
     pub fn get_governance_address_seeds(&self) -> Result<[&[u8]; 3], ProgramError> {
         let seeds = match self.account_type {
-            GovernanceAccountType::Governance => {
+            GovernanceAccountType::GovernanceV2 => {
                 get_governance_address_seeds(&self.realm, &self.governed_account)
             }
-            GovernanceAccountType::ProgramGovernance => {
+            GovernanceAccountType::ProgramGovernanceV2 => {
                 get_program_governance_address_seeds(&self.realm, &self.governed_account)
             }
-            GovernanceAccountType::MintGovernance => {
+            GovernanceAccountType::MintGovernanceV2 => {
                 get_mint_governance_address_seeds(&self.realm, &self.governed_account)
             }
-            GovernanceAccountType::TokenGovernance => {
+            GovernanceAccountType::TokenGovernanceV2 => {
                 get_token_governance_address_seeds(&self.realm, &self.governed_account)
             }
             _ => return Err(GovernanceToolsError::InvalidAccountType.into()),
@@ -118,8 +118,8 @@ impl Governance {
 pub fn get_governance_data(
     program_id: &Pubkey,
     governance_info: &AccountInfo,
-) -> Result<Governance, ProgramError> {
-    get_account_data::<Governance>(program_id, governance_info)
+) -> Result<GovernanceV2, ProgramError> {
+    get_account_data::<GovernanceV2>(program_id, governance_info)
 }
 
 /// Deserializes Governance account, checks owner program and asserts governance belongs to the given ream
@@ -127,7 +127,7 @@ pub fn get_governance_data_for_realm(
     program_id: &Pubkey,
     governance_info: &AccountInfo,
     realm: &Pubkey,
-) -> Result<Governance, ProgramError> {
+) -> Result<GovernanceV2, ProgramError> {
     let governance_data = get_governance_data(program_id, governance_info)?;
 
     if governance_data.realm != *realm {
@@ -253,10 +253,10 @@ pub fn assert_is_valid_governance(
     assert_is_valid_account2(
         governance_info,
         &[
-            GovernanceAccountType::Governance,
-            GovernanceAccountType::ProgramGovernance,
-            GovernanceAccountType::TokenGovernance,
-            GovernanceAccountType::MintGovernance,
+            GovernanceAccountType::GovernanceV2,
+            GovernanceAccountType::ProgramGovernanceV2,
+            GovernanceAccountType::TokenGovernanceV2,
+            GovernanceAccountType::MintGovernanceV2,
         ],
         program_id,
     )

@@ -3,8 +3,8 @@
 use crate::state::{
     enums::GovernanceAccountType,
     governance::{
-        assert_valid_create_governance_args, get_governance_address_seeds, Governance,
-        GovernanceConfig,
+        assert_valid_create_governance_args, get_governance_address_seeds, GovernanceConfig,
+        GovernanceV2,
     },
     realm::get_realm_data,
 };
@@ -51,8 +51,8 @@ pub fn process_create_governance(
         account_info_iter, // realm_config_info 7, voter_weight_record_info 8
     )?;
 
-    let governance_data = Governance {
-        account_type: GovernanceAccountType::Governance,
+    let governance_data = GovernanceV2 {
+        account_type: GovernanceAccountType::GovernanceV2,
         realm: *realm_info.key,
         governed_account: *governed_account_info.key,
         config,
@@ -61,7 +61,7 @@ pub fn process_create_governance(
         voting_proposal_count: 0,
     };
 
-    create_and_serialize_account_signed::<Governance>(
+    create_and_serialize_account_signed::<GovernanceV2>(
         payer_info,
         governance_info,
         &governance_data,

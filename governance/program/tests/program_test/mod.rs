@@ -32,7 +32,7 @@ use spl_governance::{
         },
         governance::{
             get_governance_address, get_mint_governance_address, get_program_governance_address,
-            get_token_governance_address, Governance, GovernanceConfig,
+            get_token_governance_address, GovernanceConfig, GovernanceV2,
         },
         native_treasury::{get_native_treasury_address, NativeTreasury},
         program_metadata::{get_program_metadata_address, ProgramMetadata},
@@ -1240,8 +1240,8 @@ impl GovernanceProgramTest {
             governance_config.clone(),
         );
 
-        let account = Governance {
-            account_type: GovernanceAccountType::Governance,
+        let account = GovernanceV2 {
+            account_type: GovernanceAccountType::GovernanceV2,
             realm: realm_cookie.address,
             governed_account: governed_account_cookie.address,
             config: governance_config.clone(),
@@ -1408,8 +1408,8 @@ impl GovernanceProgramTest {
             .process_transaction(&[create_program_governance_ix], Some(signers))
             .await?;
 
-        let account = Governance {
-            account_type: GovernanceAccountType::ProgramGovernance,
+        let account = GovernanceV2 {
+            account_type: GovernanceAccountType::ProgramGovernanceV2,
             realm: realm_cookie.address,
             governed_account: governed_program_cookie.address,
             config,
@@ -1531,8 +1531,8 @@ impl GovernanceProgramTest {
             .process_transaction(&[create_mint_governance_ix], Some(signers))
             .await?;
 
-        let account = Governance {
-            account_type: GovernanceAccountType::MintGovernance,
+        let account = GovernanceV2 {
+            account_type: GovernanceAccountType::MintGovernanceV2,
             realm: realm_cookie.address,
             governed_account: governed_mint_cookie.address,
             config: governance_config.clone(),
@@ -1614,8 +1614,8 @@ impl GovernanceProgramTest {
             .process_transaction(&[create_token_governance_ix], Some(signers))
             .await?;
 
-        let account = Governance {
-            account_type: GovernanceAccountType::TokenGovernance,
+        let account = GovernanceV2 {
+            account_type: GovernanceAccountType::TokenGovernanceV2,
             realm: realm_cookie.address,
             governed_account: governed_token_cookie.address,
             config,
@@ -2571,9 +2571,9 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn get_governance_account(&mut self, governance_address: &Pubkey) -> Governance {
+    pub async fn get_governance_account(&mut self, governance_address: &Pubkey) -> GovernanceV2 {
         self.bench
-            .get_borsh_account::<Governance>(governance_address)
+            .get_borsh_account::<GovernanceV2>(governance_address)
             .await
     }
 
