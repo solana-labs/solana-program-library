@@ -65,7 +65,7 @@ mod test {
     #[test]
     fn test_max_size() {
         let program_metadata_data = ProgramMetadata {
-            account_type: GovernanceAccountType::TokenOwnerRecord,
+            account_type: GovernanceAccountType::TokenOwnerRecordV2,
             updated_at: 10,
             reserved: [0; 64],
             version: "111.122.155".to_string(),

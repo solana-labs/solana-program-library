@@ -4,7 +4,7 @@ use spl_governance::state::{
     governance::Governance, native_treasury::NativeTreasury, program_metadata::ProgramMetadata,
     proposal::ProposalV2, proposal_transaction::ProposalTransactionV2, realm::RealmV2,
     realm_config::RealmConfigAccount, signatory_record::SignatoryRecord,
-    token_owner_record::TokenOwnerRecord, vote_record::VoteRecordV2,
+    token_owner_record::TokenOwnerRecordV2, vote_record::VoteRecordV2,
 };
 
 use spl_governance_addin_api::{
@@ -45,7 +45,7 @@ pub struct RealmConfigCookie {
 pub struct TokenOwnerRecordCookie {
     pub address: Pubkey,
 
-    pub account: TokenOwnerRecord,
+    pub account: TokenOwnerRecordV2,
 
     pub token_source: Pubkey,
 

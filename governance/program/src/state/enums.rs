@@ -13,7 +13,7 @@ pub enum GovernanceAccountType {
     RealmV1,
 
     /// Token Owner Record for given governing token owner within a Realm
-    TokenOwnerRecord,
+    TokenOwnerRecordV1,
 
     /// Governance account
     Governance,
@@ -63,6 +63,9 @@ pub enum GovernanceAccountType {
     /// 2) voting_proposal_count
     /// 3) extra reserved space reserved_v2
     RealmV2,
+
+    /// Token Owner Record for given governing token owner within a Realm
+    TokenOwnerRecordV2,
 }
 
 impl Default for GovernanceAccountType {

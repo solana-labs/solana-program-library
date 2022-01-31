@@ -1011,7 +1011,7 @@ mod test {
 
     fn create_test_proposal() -> ProposalV2 {
         ProposalV2 {
-            account_type: GovernanceAccountType::TokenOwnerRecord,
+            account_type: GovernanceAccountType::TokenOwnerRecordV2,
             governance: Pubkey::new_unique(),
             governing_token_mint: Pubkey::new_unique(),
             max_vote_weight: Some(10),

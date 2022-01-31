@@ -46,7 +46,7 @@ use spl_governance::{
         },
         realm_config::{get_realm_config_address, RealmConfigAccount},
         signatory_record::{get_signatory_record_address, SignatoryRecord},
-        token_owner_record::{get_token_owner_record_address, TokenOwnerRecord},
+        token_owner_record::{get_token_owner_record_address, TokenOwnerRecordV2},
         vote_record::{get_vote_record_address, Vote, VoteChoice, VoteRecordV2},
     },
     tools::bpf_loader_upgradeable::get_program_data_address,
@@ -472,8 +472,8 @@ impl GovernanceProgramTest {
             .await
             .unwrap();
 
-        let account = TokenOwnerRecord {
-            account_type: GovernanceAccountType::TokenOwnerRecord,
+        let account = TokenOwnerRecordV2 {
+            account_type: GovernanceAccountType::TokenOwnerRecordV2,
             realm: realm_cookie.address,
             governing_token_mint: realm_cookie.account.community_mint,
             governing_token_owner: token_owner.pubkey(),
@@ -483,6 +483,7 @@ impl GovernanceProgramTest {
             total_votes_count: 0,
             outstanding_proposal_count: 0,
             reserved: [0; 7],
+            reserved_v2: [0; 128],
         };
 
         let token_owner_record_address = get_token_owner_record_address(
@@ -688,8 +689,8 @@ impl GovernanceProgramTest {
             &token_owner.pubkey(),
         );
 
-        let account = TokenOwnerRecord {
-            account_type: GovernanceAccountType::TokenOwnerRecord,
+        let account = TokenOwnerRecordV2 {
+            account_type: GovernanceAccountType::TokenOwnerRecordV2,
             realm: *realm_address,
             governing_token_mint: *governing_mint,
             governing_token_owner: token_owner.pubkey(),
@@ -699,6 +700,7 @@ impl GovernanceProgramTest {
             total_votes_count: 0,
             outstanding_proposal_count: 0,
             reserved: [0; 7],
+            reserved_v2: [0; 128],
         };
 
         let governance_delegate = Keypair::from_base58_string(&token_owner.to_base58_string());
@@ -2533,9 +2535,9 @@ impl GovernanceProgramTest {
     }
 
     #[allow(dead_code)]
-    pub async fn get_token_owner_record_account(&mut self, address: &Pubkey) -> TokenOwnerRecord {
+    pub async fn get_token_owner_record_account(&mut self, address: &Pubkey) -> TokenOwnerRecordV2 {
         self.bench
-            .get_borsh_account::<TokenOwnerRecord>(address)
+            .get_borsh_account::<TokenOwnerRecordV2>(address)
             .await
     }
 
