@@ -882,19 +882,23 @@ impl Processor {
         let authority_info = next_account_info(account_info_iter)?;
         let authority_info_data_len = authority_info.data_len();
 
-        let mut source_account = Account::unpack(&source_account_info.data.borrow())?;
-        if freeze && source_account.is_frozen() || !freeze && !source_account.is_frozen() {
+        let mut source_account_data = source_account_info.data.borrow_mut();
+        let mut source_account =
+            StateWithExtensionsMut::<Account>::unpack(&mut source_account_data)?;
+        if freeze && source_account.base.is_frozen() || !freeze && !source_account.base.is_frozen()
+        {
             return Err(TokenError::InvalidState.into());
         }
-        if source_account.is_native() {
+        if source_account.base.is_native() {
             return Err(TokenError::NativeNotSupported.into());
         }
-        if !cmp_pubkeys(mint_info.key, &source_account.mint) {
+        if !cmp_pubkeys(mint_info.key, &source_account.base.mint) {
             return Err(TokenError::MintMismatch.into());
         }
 
-        let mint = Mint::unpack(&mint_info.data.borrow_mut())?;
-        match mint.freeze_authority {
+        let mint_data = mint_info.data.borrow();
+        let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
+        match mint.base.freeze_authority {
             COption::Some(authority) => Self::validate_owner(
                 program_id,
                 &authority,
@@ -905,13 +909,13 @@ impl Processor {
             COption::None => Err(TokenError::MintCannotFreeze.into()),
         }?;
 
-        source_account.state = if freeze {
+        source_account.base.state = if freeze {
             AccountState::Frozen
         } else {
             AccountState::Initialized
         };
 
-        Account::pack(source_account, &mut source_account_info.data.borrow_mut())?;
+        source_account.pack_base();
 
         Ok(())
     }
