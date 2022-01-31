@@ -1,5 +1,6 @@
 //! Token Owner Record Account
 
+use borsh::maybestd::io::Write;
 use std::slice::Iter;
 
 use crate::{
@@ -8,8 +9,8 @@ use crate::{
     },
     error::GovernanceError,
     state::{
-        enums::GovernanceAccountType, governance::GovernanceConfig, realm::Realm,
-        realm_config::get_realm_config_data_for_realm,
+        enums::GovernanceAccountType, governance::GovernanceConfig, legacy::TokenOwnerRecordV1,
+        realm::RealmV2, realm_config::get_realm_config_data_for_realm,
     },
     PROGRAM_AUTHORITY_SEED,
 };
@@ -17,6 +18,7 @@ use crate::{
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
+    borsh::try_from_slice_unchecked,
     program_error::ProgramError,
     program_pack::IsInitialized,
     pubkey::Pubkey,
@@ -28,7 +30,7 @@ use spl_governance_tools::account::{get_account_data, AccountMaxSize};
 /// Account PDA seeds: ['governance', realm, token_mint, token_owner ]
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub struct TokenOwnerRecord {
+pub struct TokenOwnerRecordV2 {
     /// Governance account type
     pub account_type: GovernanceAccountType,
 
@@ -66,21 +68,25 @@ pub struct TokenOwnerRecord {
     /// A single account that is allowed to operate governance with the deposited governing tokens
     /// It can be delegated to by the governing_token_owner or current governance_delegate
     pub governance_delegate: Option<Pubkey>,
+
+    /// Reserved space for versions v2 and onwards
+    /// Note: This space won't be available to v1 accounts until runtime supports resizing
+    pub reserved_v2: [u8; 128],
 }
 
-impl AccountMaxSize for TokenOwnerRecord {
+impl AccountMaxSize for TokenOwnerRecordV2 {
     fn get_max_size(&self) -> Option<usize> {
-        Some(154)
+        Some(282)
     }
 }
 
-impl IsInitialized for TokenOwnerRecord {
+impl IsInitialized for TokenOwnerRecordV2 {
     fn is_initialized(&self) -> bool {
-        self.account_type == GovernanceAccountType::TokenOwnerRecord
+        self.account_type == GovernanceAccountType::TokenOwnerRecordV2
     }
 }
 
-impl TokenOwnerRecord {
+impl TokenOwnerRecordV2 {
     /// Checks whether the provided Governance Authority signed transaction
     pub fn assert_token_owner_or_delegate_is_signer(
         &self,
@@ -104,7 +110,7 @@ impl TokenOwnerRecord {
     /// Asserts TokenOwner has enough tokens to be allowed to create proposal and doesn't have any outstanding proposals
     pub fn assert_can_create_proposal(
         &self,
-        realm_data: &Realm,
+        realm_data: &RealmV2,
         config: &GovernanceConfig,
         voter_weight: u64,
     ) -> Result<(), ProgramError> {
@@ -133,7 +139,7 @@ impl TokenOwnerRecord {
     /// Asserts TokenOwner has enough tokens to be allowed to create governance
     pub fn assert_can_create_governance(
         &self,
-        realm_data: &Realm,
+        realm_data: &RealmV2,
         voter_weight: u64,
     ) -> Result<(), ProgramError> {
         let min_weight_to_create_governance =
@@ -188,7 +194,7 @@ impl TokenOwnerRecord {
         realm_config_info: &AccountInfo,
         account_info_iter: &mut Iter<AccountInfo>,
         realm: &Pubkey,
-        realm_data: &Realm,
+        realm_data: &RealmV2,
         weight_action: VoterWeightAction,
         weight_action_target: &Pubkey,
     ) -> Result<u64, ProgramError> {
@@ -217,6 +223,37 @@ impl TokenOwnerRecord {
         } else {
             Ok(self.governing_token_deposit_amount)
         }
+    }
+
+    /// Serializes account into the target buffer
+    pub fn serialize<W: Write>(self, writer: &mut W) -> Result<(), ProgramError> {
+        if self.account_type == GovernanceAccountType::TokenOwnerRecordV2 {
+            BorshSerialize::serialize(&self, writer)?
+        } else if self.account_type == GovernanceAccountType::TokenOwnerRecordV1 {
+            // V1 account can't be resized and we have to translate it back to the original format
+
+            // If reserved_v2 is used it must be individually asses for v1 backward compatibility impact
+            if self.reserved_v2 != [0; 128] {
+                panic!("Extended data not supported by TokenOwnerRecordV1")
+            }
+
+            let token_owner_record_data_v1 = TokenOwnerRecordV1 {
+                account_type: self.account_type,
+                realm: self.realm,
+                governing_token_mint: self.governing_token_mint,
+                governing_token_owner: self.governing_token_owner,
+                governing_token_deposit_amount: self.governing_token_deposit_amount,
+                unrelinquished_votes_count: self.unrelinquished_votes_count,
+                total_votes_count: self.total_votes_count,
+                outstanding_proposal_count: self.outstanding_proposal_count,
+                reserved: self.reserved,
+                governance_delegate: self.governance_delegate,
+            };
+
+            BorshSerialize::serialize(&token_owner_record_data_v1, writer)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -252,8 +289,35 @@ pub fn get_token_owner_record_address_seeds<'a>(
 pub fn get_token_owner_record_data(
     program_id: &Pubkey,
     token_owner_record_info: &AccountInfo,
-) -> Result<TokenOwnerRecord, ProgramError> {
-    get_account_data::<TokenOwnerRecord>(program_id, token_owner_record_info)
+) -> Result<TokenOwnerRecordV2, ProgramError> {
+    let account_type: GovernanceAccountType =
+        try_from_slice_unchecked(&token_owner_record_info.data.borrow())?;
+
+    // If the account is V1 version then translate to V2
+    if account_type == GovernanceAccountType::TokenOwnerRecordV1 {
+        let token_owner_record_data_v1 =
+            get_account_data::<TokenOwnerRecordV1>(program_id, token_owner_record_info)?;
+
+        return Ok(TokenOwnerRecordV2 {
+            account_type,
+
+            realm: token_owner_record_data_v1.realm,
+            governing_token_mint: token_owner_record_data_v1.governing_token_mint,
+            governing_token_owner: token_owner_record_data_v1.governing_token_owner,
+            governing_token_deposit_amount: token_owner_record_data_v1
+                .governing_token_deposit_amount,
+            unrelinquished_votes_count: token_owner_record_data_v1.unrelinquished_votes_count,
+            total_votes_count: token_owner_record_data_v1.total_votes_count,
+            outstanding_proposal_count: token_owner_record_data_v1.outstanding_proposal_count,
+            reserved: token_owner_record_data_v1.reserved,
+            governance_delegate: token_owner_record_data_v1.governance_delegate,
+
+            // Add the extra reserved_v2 padding
+            reserved_v2: [0; 128],
+        });
+    }
+
+    get_account_data::<TokenOwnerRecordV2>(program_id, token_owner_record_info)
 }
 
 /// Deserializes TokenOwnerRecord account and checks its PDA against the provided seeds
@@ -261,7 +325,7 @@ pub fn get_token_owner_record_data_for_seeds(
     program_id: &Pubkey,
     token_owner_record_info: &AccountInfo,
     token_owner_record_seeds: &[&[u8]],
-) -> Result<TokenOwnerRecord, ProgramError> {
+) -> Result<TokenOwnerRecordV2, ProgramError> {
     let (token_owner_record_address, _) =
         Pubkey::find_program_address(token_owner_record_seeds, program_id);
 
@@ -277,7 +341,7 @@ pub fn get_token_owner_record_data_for_realm(
     program_id: &Pubkey,
     token_owner_record_info: &AccountInfo,
     realm: &Pubkey,
-) -> Result<TokenOwnerRecord, ProgramError> {
+) -> Result<TokenOwnerRecordV2, ProgramError> {
     let token_owner_record_data = get_token_owner_record_data(program_id, token_owner_record_info)?;
 
     if token_owner_record_data.realm != *realm {
@@ -293,7 +357,7 @@ pub fn get_token_owner_record_data_for_realm_and_governing_mint(
     token_owner_record_info: &AccountInfo,
     realm: &Pubkey,
     governing_token_mint: &Pubkey,
-) -> Result<TokenOwnerRecord, ProgramError> {
+) -> Result<TokenOwnerRecordV2, ProgramError> {
     let token_owner_record_data =
         get_token_owner_record_data_for_realm(program_id, token_owner_record_info, realm)?;
 
@@ -309,7 +373,7 @@ pub fn get_token_owner_record_data_for_proposal_owner(
     program_id: &Pubkey,
     token_owner_record_info: &AccountInfo,
     proposal_owner: &Pubkey,
-) -> Result<TokenOwnerRecord, ProgramError> {
+) -> Result<TokenOwnerRecordV2, ProgramError> {
     if token_owner_record_info.key != proposal_owner {
         return Err(GovernanceError::InvalidProposalOwnerAccount.into());
     }
@@ -319,14 +383,14 @@ pub fn get_token_owner_record_data_for_proposal_owner(
 
 #[cfg(test)]
 mod test {
-    use solana_program::borsh::{get_packed_len, try_from_slice_unchecked};
+    use solana_program::borsh::get_packed_len;
 
     use super::*;
 
     #[test]
     fn test_max_size() {
-        let token_owner_record = TokenOwnerRecord {
-            account_type: GovernanceAccountType::TokenOwnerRecord,
+        let token_owner_record = TokenOwnerRecordV2 {
+            account_type: GovernanceAccountType::TokenOwnerRecordV2,
             realm: Pubkey::new_unique(),
             governing_token_mint: Pubkey::new_unique(),
             governing_token_owner: Pubkey::new_unique(),
@@ -336,66 +400,11 @@ mod test {
             total_votes_count: 1,
             outstanding_proposal_count: 1,
             reserved: [0; 7],
+            reserved_v2: [0; 128],
         };
 
-        let size = get_packed_len::<TokenOwnerRecord>();
+        let size = get_packed_len::<TokenOwnerRecordV2>();
 
         assert_eq!(token_owner_record.get_max_size(), Some(size));
-    }
-
-    #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-    pub struct TokenOwnerRecordV1 {
-        pub account_type: GovernanceAccountType,
-
-        pub realm: Pubkey,
-
-        pub governing_token_mint: Pubkey,
-
-        pub governing_token_owner: Pubkey,
-
-        pub governing_token_deposit_amount: u64,
-
-        pub unrelinquished_votes_count: u32,
-
-        pub total_votes_count: u32,
-
-        pub reserved: [u8; 8],
-
-        pub governance_delegate: Option<Pubkey>,
-    }
-
-    #[test]
-    fn test_deserialize_v1_0_account() {
-        let token_owner_record_v1_0 = TokenOwnerRecordV1 {
-            account_type: GovernanceAccountType::TokenOwnerRecord,
-            realm: Pubkey::new_unique(),
-            governing_token_mint: Pubkey::new_unique(),
-            governing_token_owner: Pubkey::new_unique(),
-            governing_token_deposit_amount: 10,
-            unrelinquished_votes_count: 2,
-            total_votes_count: 5,
-            reserved: [0; 8],
-            governance_delegate: Some(Pubkey::new_unique()),
-        };
-
-        let mut token_owner_record_v1_0_data = vec![];
-        token_owner_record_v1_0
-            .serialize(&mut token_owner_record_v1_0_data)
-            .unwrap();
-
-        let token_owner_record_v1_1_data: TokenOwnerRecord =
-            try_from_slice_unchecked(&token_owner_record_v1_0_data).unwrap();
-
-        assert_eq!(
-            token_owner_record_v1_0.account_type,
-            token_owner_record_v1_1_data.account_type
-        );
-
-        assert_eq!(0, token_owner_record_v1_1_data.outstanding_proposal_count);
-
-        assert_eq!(
-            token_owner_record_v1_0.governance_delegate,
-            token_owner_record_v1_1_data.governance_delegate
-        );
     }
 }

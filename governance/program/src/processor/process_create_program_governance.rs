@@ -1,7 +1,7 @@
 //! Program state processor
 
 use crate::{
-    state::governance::Governance,
+    state::governance::GovernanceV2,
     state::{
         enums::GovernanceAccountType,
         governance::{
@@ -63,17 +63,18 @@ pub fn process_create_program_governance(
         account_info_iter, // realm_config_info 10, voter_weight_record_info 11
     )?;
 
-    let program_governance_data = Governance {
-        account_type: GovernanceAccountType::ProgramGovernance,
+    let program_governance_data = GovernanceV2 {
+        account_type: GovernanceAccountType::ProgramGovernanceV2,
         realm: *realm_info.key,
         governed_account: *governed_program_info.key,
         config,
         proposals_count: 0,
         reserved: [0; 6],
         voting_proposal_count: 0,
+        reserved_v2: [0; 128],
     };
 
-    create_and_serialize_account_signed::<Governance>(
+    create_and_serialize_account_signed::<GovernanceV2>(
         payer_info,
         program_governance_info,
         &program_governance_data,

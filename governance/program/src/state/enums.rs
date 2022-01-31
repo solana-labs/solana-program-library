@@ -10,22 +10,22 @@ pub enum GovernanceAccountType {
     Uninitialized,
 
     /// Top level aggregation for governances with Community Token (and optional Council Token)
-    Realm,
+    RealmV1,
 
     /// Token Owner Record for given governing token owner within a Realm
-    TokenOwnerRecord,
+    TokenOwnerRecordV1,
 
     /// Governance account
-    Governance,
+    GovernanceV1,
 
     /// Program Governance account
-    ProgramGovernance,
+    ProgramGovernanceV1,
 
     /// Proposal account for Governance account. A single Governance account can have multiple Proposal accounts
     ProposalV1,
 
     /// Proposal Signatory account
-    SignatoryRecord,
+    SignatoryRecordV1,
 
     /// Vote record account for a given Proposal.  Proposal can have 0..n voting records
     VoteRecordV1,
@@ -34,12 +34,12 @@ pub enum GovernanceAccountType {
     ProposalInstructionV1,
 
     /// Mint Governance account
-    MintGovernance,
+    MintGovernanceV1,
 
     /// Token Governance account
-    TokenGovernance,
+    TokenGovernanceV1,
 
-    /// Realm config account
+    /// Realm config account (introduced in V2)
     RealmConfig,
 
     /// Vote record account for a given Proposal.  Proposal can have 0..n voting records
@@ -54,8 +54,40 @@ pub enum GovernanceAccountType {
     /// V2 adds support for multiple vote options
     ProposalV2,
 
-    /// Program metadata account. It stores information about the particular SPL-Governance program instance
+    /// Program metadata account (introduced in V2)
+    /// It stores information about the particular SPL-Governance program instance
     ProgramMetadata,
+
+    /// Top level aggregation for governances with Community Token (and optional Council Token)
+    /// V2 adds the following fields:
+    /// 1) use_community_voter_weight_addin and use_max_community_voter_weight_addin to RealmConfig
+    /// 2) voting_proposal_count
+    /// 3) extra reserved space reserved_v2
+    RealmV2,
+
+    /// Token Owner Record for given governing token owner within a Realm
+    /// V2 adds extra reserved space reserved_v2
+    TokenOwnerRecordV2,
+
+    /// Governance account
+    /// V2 adds extra reserved space reserved_v2
+    GovernanceV2,
+
+    /// Program Governance account
+    /// V2 adds extra reserved space reserved_v2
+    ProgramGovernanceV2,
+
+    /// Mint Governance account
+    /// V2 adds extra reserved space reserved_v2
+    MintGovernanceV2,
+
+    /// Token Governance account
+    /// V2 adds extra reserved space reserved_v2
+    TokenGovernanceV2,
+
+    /// Proposal Signatory account
+    /// V2 adds extra reserved space reserved_v2
+    SignatoryRecordV2,
 }
 
 impl Default for GovernanceAccountType {

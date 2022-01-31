@@ -82,6 +82,10 @@ pub struct VoteRecordV2 {
 
     /// Voter's vote
     pub vote: Vote,
+
+    /// Reserved space for versions v2 and onwards
+    /// Note: This space won't be available to v1 accounts until runtime supports resizing
+    pub reserved_v2: [u8; 8],
 }
 
 impl AccountMaxSize for VoteRecordV2 {}
@@ -107,6 +111,12 @@ impl VoteRecordV2 {
             BorshSerialize::serialize(&self, writer)?
         } else if self.account_type == GovernanceAccountType::VoteRecordV1 {
             // V1 account can't be resized and we have to translate it back to the original format
+
+            // If reserved_v2 is used it must be individually asses for v1 backward compatibility impact
+            if self.reserved_v2 != [0; 8] {
+                panic!("Extended data not supported by VoteRecordV1")
+            }
+
             let vote_weight = match &self.vote {
                 Vote::Approve(_options) => VoteWeightV1::Yes(self.voter_weight),
                 Vote::Deny => VoteWeightV1::No(self.voter_weight),
@@ -160,6 +170,7 @@ pub fn get_vote_record_data(
             is_relinquished: vote_record_data_v1.is_relinquished,
             voter_weight,
             vote,
+            reserved_v2: [0; 8],
         });
     }
 

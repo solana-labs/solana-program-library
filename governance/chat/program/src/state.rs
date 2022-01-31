@@ -5,7 +5,7 @@ use solana_program::{
     account_info::AccountInfo, clock::UnixTimestamp, program_error::ProgramError, pubkey::Pubkey,
 };
 
-use spl_governance_tools::account::{assert_is_valid_account, AccountMaxSize};
+use spl_governance_tools::account::{assert_is_valid_account_of_type, AccountMaxSize};
 
 /// Defines all GovernanceChat accounts types
 #[repr(C)]
@@ -67,7 +67,7 @@ pub fn assert_is_valid_chat_message(
     program_id: &Pubkey,
     chat_message_info: &AccountInfo,
 ) -> Result<(), ProgramError> {
-    assert_is_valid_account(
+    assert_is_valid_account_of_type(
         chat_message_info,
         GovernanceChatAccountType::ChatMessage,
         program_id,

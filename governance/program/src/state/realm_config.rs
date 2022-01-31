@@ -92,7 +92,7 @@ mod test {
     #[test]
     fn test_max_size() {
         let realm_config = RealmConfigAccount {
-            account_type: GovernanceAccountType::Realm,
+            account_type: GovernanceAccountType::RealmV2,
             realm: Pubkey::new_unique(),
             community_voter_weight_addin: Some(Pubkey::new_unique()),
             max_community_voter_weight_addin: Some(Pubkey::new_unique()),

@@ -14,7 +14,7 @@ use crate::{
     state::{
         enums::GovernanceAccountType,
         realm::get_realm_data,
-        token_owner_record::{get_token_owner_record_address_seeds, TokenOwnerRecord},
+        token_owner_record::{get_token_owner_record_address_seeds, TokenOwnerRecordV2},
     },
 };
 
@@ -40,8 +40,8 @@ pub fn process_create_token_owner_record(
         return Err(GovernanceError::TokenOwnerRecordAlreadyExists.into());
     }
 
-    let token_owner_record_data = TokenOwnerRecord {
-        account_type: GovernanceAccountType::TokenOwnerRecord,
+    let token_owner_record_data = TokenOwnerRecordV2 {
+        account_type: GovernanceAccountType::TokenOwnerRecordV2,
         realm: *realm_info.key,
         governing_token_owner: *governing_token_owner_info.key,
         governing_token_deposit_amount: 0,
@@ -51,6 +51,7 @@ pub fn process_create_token_owner_record(
         total_votes_count: 0,
         outstanding_proposal_count: 0,
         reserved: [0; 7],
+        reserved_v2: [0; 128],
     };
 
     create_and_serialize_account_signed(

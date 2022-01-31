@@ -15,7 +15,7 @@ use crate::{
         enums::GovernanceAccountType,
         realm::{
             assert_valid_realm_config_args, get_governing_token_holding_address_seeds,
-            get_realm_address_seeds, Realm, RealmConfig, RealmConfigArgs,
+            get_realm_address_seeds, RealmConfig, RealmConfigArgs, RealmV2,
         },
         realm_config::{get_realm_config_address_seeds, RealmConfigAccount},
     },
@@ -125,8 +125,8 @@ pub fn process_create_realm(
         )?;
     }
 
-    let realm_data = Realm {
-        account_type: GovernanceAccountType::Realm,
+    let realm_data = RealmV2 {
+        account_type: GovernanceAccountType::RealmV2,
         community_mint: *governance_token_mint_info.key,
 
         name: name.clone(),
@@ -143,9 +143,10 @@ pub fn process_create_realm(
             use_max_community_voter_weight_addin: config_args.use_max_community_voter_weight_addin,
         },
         voting_proposal_count: 0,
+        reserved_v2: [0; 128],
     };
 
-    create_and_serialize_account_signed::<Realm>(
+    create_and_serialize_account_signed::<RealmV2>(
         payer_info,
         realm_info,
         &realm_data,

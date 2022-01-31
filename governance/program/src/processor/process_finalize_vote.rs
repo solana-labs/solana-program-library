@@ -15,8 +15,6 @@ use crate::state::{
     token_owner_record::get_token_owner_record_data_for_proposal_owner,
 };
 
-use borsh::BorshSerialize;
-
 /// Processes FinalizeVote instruction
 pub fn process_finalize_vote(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();

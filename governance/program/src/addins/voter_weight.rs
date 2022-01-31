@@ -7,7 +7,7 @@ use solana_program::{
 use spl_governance_addin_api::voter_weight::{VoterWeightAction, VoterWeightRecord};
 use spl_governance_tools::account::get_account_data;
 
-use crate::{error::GovernanceError, state::token_owner_record::TokenOwnerRecord};
+use crate::{error::GovernanceError, state::token_owner_record::TokenOwnerRecordV2};
 
 /// Asserts the VoterWeightRecord hasn't expired and matches the given action and target if specified
 pub fn assert_is_valid_voter_weight(
@@ -53,7 +53,7 @@ pub fn get_voter_weight_record_data(
 pub fn get_voter_weight_record_data_for_token_owner_record(
     program_id: &Pubkey,
     voter_weight_record_info: &AccountInfo,
-    token_owner_record: &TokenOwnerRecord,
+    token_owner_record: &TokenOwnerRecordV2,
 ) -> Result<VoterWeightRecord, ProgramError> {
     let voter_weight_record_data =
         get_voter_weight_record_data(program_id, voter_weight_record_info)?;

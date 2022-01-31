@@ -94,6 +94,7 @@ pub fn process_insert_transaction(
         executed_at: None,
         execution_status: TransactionExecutionStatus::None,
         proposal: *proposal_info.key,
+        reserved_v2: [0; 8],
     };
 
     create_and_serialize_account_signed::<ProposalTransactionV2>(

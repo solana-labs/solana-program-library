@@ -1,6 +1,5 @@
 //! Program state processor
 
-use borsh::BorshSerialize;
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
     entrypoint::ProgramResult,
@@ -17,7 +16,7 @@ use crate::{
         realm::get_realm_data,
         token_owner_record::{
             get_token_owner_record_address_seeds, get_token_owner_record_data_for_seeds,
-            TokenOwnerRecord,
+            TokenOwnerRecordV2,
         },
     },
     tools::spl_token::{get_spl_token_mint, get_spl_token_owner, transfer_spl_tokens},
@@ -79,8 +78,8 @@ pub fn process_deposit_governing_tokens(
             return Err(GovernanceError::GoverningTokenOwnerMustSign.into());
         }
 
-        let token_owner_record_data = TokenOwnerRecord {
-            account_type: GovernanceAccountType::TokenOwnerRecord,
+        let token_owner_record_data = TokenOwnerRecordV2 {
+            account_type: GovernanceAccountType::TokenOwnerRecordV2,
             realm: *realm_info.key,
             governing_token_owner: *governing_token_owner_info.key,
             governing_token_deposit_amount: amount,
@@ -90,6 +89,7 @@ pub fn process_deposit_governing_tokens(
             total_votes_count: 0,
             outstanding_proposal_count: 0,
             reserved: [0; 7],
+            reserved_v2: [0; 128],
         };
 
         create_and_serialize_account_signed(

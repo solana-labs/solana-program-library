@@ -224,16 +224,16 @@ pub fn get_account_data<T: BorshDeserialize + IsInitialized>(
 
 /// Asserts the given account is not empty, owned by the given program and of the expected type
 /// Note: The function assumes the account type T is stored as the first element in the account data
-pub fn assert_is_valid_account<T: BorshDeserialize + PartialEq>(
+pub fn assert_is_valid_account_of_type<T: BorshDeserialize + PartialEq>(
     account_info: &AccountInfo,
     expected_account_type: T,
     owner_program_id: &Pubkey,
 ) -> Result<(), ProgramError> {
-    assert_is_valid_account2(account_info, &[expected_account_type], owner_program_id)
+    assert_is_valid_account_of_types(account_info, &[expected_account_type], owner_program_id)
 }
 /// Asserts the given account is not empty, owned by the given program and one of the expected types
 /// Note: The function assumes the account type T is stored as the first element in the account data
-pub fn assert_is_valid_account2<T: BorshDeserialize + PartialEq>(
+pub fn assert_is_valid_account_of_types<T: BorshDeserialize + PartialEq>(
     account_info: &AccountInfo,
     expected_account_types: &[T],
     owner_program_id: &Pubkey,

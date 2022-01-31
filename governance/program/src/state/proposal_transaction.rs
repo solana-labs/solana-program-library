@@ -114,6 +114,10 @@ pub struct ProposalTransactionV2 {
 
     /// Instruction execution status
     pub execution_status: TransactionExecutionStatus,
+
+    /// Reserved space for versions v2 and onwards
+    /// Note: This space won't be available to v1 accounts until runtime supports resizing
+    pub reserved_v2: [u8; 8],
 }
 
 impl AccountMaxSize for ProposalTransactionV2 {
@@ -125,7 +129,7 @@ impl AccountMaxSize for ProposalTransactionV2 {
             .sum::<usize>()
             + 4;
 
-        Some(instructions_size + 90)
+        Some(instructions_size + 98)
     }
 }
 
@@ -146,6 +150,12 @@ impl ProposalTransactionV2 {
             };
 
             // V1 account can't be resized and we have to translate it back to the original format
+
+            // If reserved_v2 is used it must be individually asses for v1 backward compatibility impact
+            if self.reserved_v2 != [0; 8] {
+                panic!("Extended data not supported by ProposalInstructionV1")
+            }
+
             let proposal_transaction_data_v1 = ProposalInstructionV1 {
                 account_type: self.account_type,
                 proposal: self.proposal,
@@ -217,6 +227,7 @@ pub fn get_proposal_transaction_data(
             instructions: vec![proposal_transaction_data_v1.instruction],
             executed_at: proposal_transaction_data_v1.executed_at,
             execution_status: proposal_transaction_data_v1.execution_status,
+            reserved_v2: [0; 8],
         });
     }
 
@@ -277,6 +288,7 @@ mod test {
             instructions: create_test_instruction_data(),
             executed_at: Some(100),
             execution_status: TransactionExecutionStatus::Success,
+            reserved_v2: [0; 8],
         }
     }
 

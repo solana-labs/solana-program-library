@@ -20,8 +20,6 @@ use crate::{
     },
 };
 
-use borsh::BorshSerialize;
-
 /// Processes RelinquishVote instruction
 pub fn process_relinquish_vote(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();

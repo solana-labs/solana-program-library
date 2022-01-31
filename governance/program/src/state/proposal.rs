@@ -29,7 +29,7 @@ use crate::{
         },
         governance::GovernanceConfig,
         proposal_transaction::ProposalTransactionV2,
-        realm::Realm,
+        realm::RealmV2,
         realm_config::get_realm_config_data_for_realm,
         vote_record::Vote,
     },
@@ -413,7 +413,7 @@ impl ProposalV2 {
     /// Calculates max voter weight for given mint supply and realm config
     fn get_max_voter_weight_from_mint_supply(
         &mut self,
-        realm_data: &Realm,
+        realm_data: &RealmV2,
         governing_token_mint_supply: u64,
     ) -> Result<u64, ProgramError> {
         // max vote weight fraction is only used for community mint
@@ -464,7 +464,7 @@ impl ProposalV2 {
         governing_token_mint_info: &AccountInfo,
         account_info_iter: &mut Iter<AccountInfo>,
         realm: &Pubkey,
-        realm_data: &Realm,
+        realm_data: &RealmV2,
     ) -> Result<u64, ProgramError> {
         // if the realm uses addin for max community voter weight then use the externally provided max weight
         if realm_data.config.use_max_community_voter_weight_addin
@@ -774,7 +774,7 @@ impl ProposalV2 {
             }
 
             if self.options.len() != 1 {
-                panic!("ProposalV1 doesn't multiple options")
+                panic!("ProposalV1 doesn't support multiple options")
             }
 
             let proposal_data_v1 = ProposalV1 {
@@ -1011,7 +1011,7 @@ mod test {
 
     fn create_test_proposal() -> ProposalV2 {
         ProposalV2 {
-            account_type: GovernanceAccountType::TokenOwnerRecord,
+            account_type: GovernanceAccountType::TokenOwnerRecordV2,
             governance: Pubkey::new_unique(),
             governing_token_mint: Pubkey::new_unique(),
             max_vote_weight: Some(10),
@@ -1087,9 +1087,9 @@ mod test {
         proposal
     }
 
-    fn create_test_realm() -> Realm {
-        Realm {
-            account_type: GovernanceAccountType::Realm,
+    fn create_test_realm() -> RealmV2 {
+        RealmV2 {
+            account_type: GovernanceAccountType::RealmV2,
             community_mint: Pubkey::new_unique(),
             reserved: [0; 6],
 
@@ -1106,6 +1106,7 @@ mod test {
                 min_community_weight_to_create_governance: 10,
             },
             voting_proposal_count: 0,
+            reserved_v2: [0; 128],
         }
     }
 
