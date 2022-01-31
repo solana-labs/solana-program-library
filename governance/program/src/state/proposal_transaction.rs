@@ -95,7 +95,7 @@ pub struct ProposalTransactionV2 {
     pub proposal: Pubkey,
 
     /// The option index the instruction belongs to
-    pub option_index: u16,
+    pub option_index: u8,
 
     /// Unique transaction index within it's parent Proposal
     pub transaction_index: u16,
@@ -125,7 +125,7 @@ impl AccountMaxSize for ProposalTransactionV2 {
             .sum::<usize>()
             + 4;
 
-        Some(instructions_size + 91)
+        Some(instructions_size + 90)
     }
 }
 
@@ -166,7 +166,7 @@ impl ProposalTransactionV2 {
 /// Returns ProposalTransaction PDA seeds
 pub fn get_proposal_transaction_address_seeds<'a>(
     proposal: &'a Pubkey,
-    option_index: &'a [u8; 2],               // u16 le bytes
+    option_index: &'a [u8; 1],               // u8 le bytes
     instruction_index_le_bytes: &'a [u8; 2], // u16 le bytes
 ) -> [&'a [u8]; 4] {
     [
@@ -181,7 +181,7 @@ pub fn get_proposal_transaction_address_seeds<'a>(
 pub fn get_proposal_transaction_address<'a>(
     program_id: &Pubkey,
     proposal: &'a Pubkey,
-    option_index_le_bytes: &'a [u8; 2],      // u16 le bytes
+    option_index_le_bytes: &'a [u8; 1],      // u8 le bytes
     instruction_index_le_bytes: &'a [u8; 2], // u16 le bytes
 ) -> Pubkey {
     Pubkey::find_program_address(

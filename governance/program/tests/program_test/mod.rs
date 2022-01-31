@@ -1809,7 +1809,7 @@ impl GovernanceProgramTest {
             max_voting_time: None,
             vote_threshold_percentage: None,
 
-            reserved: [0; 8],
+            reserved: [0; 64],
         };
 
         let proposal_address = get_proposal_address(
@@ -2197,7 +2197,7 @@ impl GovernanceProgramTest {
         governed_mint_cookie: &GovernedMintCookie,
         proposal_cookie: &mut ProposalCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
-        option_index: u16,
+        option_index: u8,
         index: Option<u16>,
     ) -> Result<ProposalTransactionCookie, ProgramError> {
         let token_account_keypair = Keypair::new();
@@ -2366,7 +2366,7 @@ impl GovernanceProgramTest {
         &mut self,
         proposal_cookie: &mut ProposalCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
-        option_index: u16,
+        option_index: u8,
         index: Option<u16>,
     ) -> Result<ProposalTransactionCookie, ProgramError> {
         // Create NOP instruction as a placeholder
@@ -2392,7 +2392,7 @@ impl GovernanceProgramTest {
         &mut self,
         proposal_cookie: &mut ProposalCookie,
         token_owner_record_cookie: &TokenOwnerRecordCookie,
-        option_index: u16,
+        option_index: u8,
         index: Option<u16>,
         instruction: &mut Instruction,
     ) -> Result<ProposalTransactionCookie, ProgramError> {

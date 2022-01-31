@@ -232,7 +232,7 @@ pub enum GovernanceInstruction {
     InsertTransaction {
         #[allow(dead_code)]
         /// The index of the option the transaction is for
-        option_index: u16,
+        option_index: u8,
         #[allow(dead_code)]
         /// Transaction index to be inserted at.
         index: u16,
@@ -1168,7 +1168,7 @@ pub fn insert_transaction(
     governance_authority: &Pubkey,
     payer: &Pubkey,
     // Args
-    option_index: u16,
+    option_index: u8,
     index: u16,
     hold_up_time: u32,
     instructions: Vec<InstructionData>,

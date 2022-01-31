@@ -28,7 +28,7 @@ use crate::{
 pub fn process_insert_transaction(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    option_index: u16,
+    option_index: u8,
     instruction_index: u16,
     hold_up_time: u32,
     instructions: Vec<InstructionData>,
