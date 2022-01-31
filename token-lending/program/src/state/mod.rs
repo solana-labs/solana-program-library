@@ -31,7 +31,7 @@ pub const UNINITIALIZED_VERSION: u8 = 0;
 
 /// Number of slots per year
 pub const SLOTS_PER_YEAR: u64 =
-    DEFAULT_TICKS_PER_SECOND / DEFAULT_TICKS_PER_SLOT * SECONDS_PER_DAY * 365;
+    DEFAULT_TICKS_PER_SECOND * SECONDS_PER_DAY * 365 / DEFAULT_TICKS_PER_SLOT;
 
 // Helpers
 fn pack_decimal(decimal: Decimal, dst: &mut [u8; 16]) {
@@ -70,5 +70,10 @@ mod test {
             INITIAL_COLLATERAL_RATIO.checked_mul(WAD).unwrap(),
             INITIAL_COLLATERAL_RATE
         );
+    }
+
+    #[test]
+    fn slots_per_year_sanity() {
+        assert_eq!(SLOTS_PER_YEAR, 78840000);
     }
 }
