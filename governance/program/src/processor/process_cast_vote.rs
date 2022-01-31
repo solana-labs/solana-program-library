@@ -176,7 +176,7 @@ pub fn process_cast_vote(
         governance_data.serialize(&mut *governance_info.data.borrow_mut())?;
     }
 
-    let governing_token_owner = voter_token_owner_record_data.governing_token_owner.clone();
+    let governing_token_owner = voter_token_owner_record_data.governing_token_owner;
 
     voter_token_owner_record_data
         .serialize(&mut *voter_token_owner_record_info.data.borrow_mut())?;
