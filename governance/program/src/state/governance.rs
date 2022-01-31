@@ -106,16 +106,17 @@ impl GovernanceV2 {
     /// Returns Governance PDA seeds
     pub fn get_governance_address_seeds(&self) -> Result<[&[u8]; 3], ProgramError> {
         let seeds = match self.account_type {
-            GovernanceAccountType::GovernanceV2 => {
+            GovernanceAccountType::GovernanceV1 | GovernanceAccountType::GovernanceV2 => {
                 get_governance_address_seeds(&self.realm, &self.governed_account)
             }
-            GovernanceAccountType::ProgramGovernanceV2 => {
+            GovernanceAccountType::ProgramGovernanceV1
+            | GovernanceAccountType::ProgramGovernanceV2 => {
                 get_program_governance_address_seeds(&self.realm, &self.governed_account)
             }
-            GovernanceAccountType::MintGovernanceV2 => {
+            GovernanceAccountType::MintGovernanceV1 | GovernanceAccountType::MintGovernanceV2 => {
                 get_mint_governance_address_seeds(&self.realm, &self.governed_account)
             }
-            GovernanceAccountType::TokenGovernanceV2 => {
+            GovernanceAccountType::TokenGovernanceV1 | GovernanceAccountType::TokenGovernanceV2 => {
                 get_token_governance_address_seeds(&self.realm, &self.governed_account)
             }
             _ => return Err(GovernanceToolsError::InvalidAccountType.into()),
