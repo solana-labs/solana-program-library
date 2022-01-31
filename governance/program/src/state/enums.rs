@@ -24,8 +24,8 @@ pub enum GovernanceAccountType {
     /// Proposal account for Governance account. A single Governance account can have multiple Proposal accounts
     ProposalV1,
 
-    /// Proposal Signatory account (introduced in V1)
-    SignatoryRecord,
+    /// Proposal Signatory account
+    SignatoryRecordV1,
 
     /// Vote record account for a given Proposal.  Proposal can have 0..n voting records
     VoteRecordV1,
@@ -84,6 +84,10 @@ pub enum GovernanceAccountType {
     /// Token Governance account
     /// V2 adds extra reserved space reserved_v2
     TokenGovernanceV2,
+
+    /// Proposal Signatory account
+    /// V2 adds extra reserved space reserved_v2
+    SignatoryRecordV2,
 }
 
 impl Default for GovernanceAccountType {

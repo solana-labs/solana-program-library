@@ -47,10 +47,11 @@ pub fn process_add_signatory(
     token_owner_record_data.assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
     let signatory_record_data = SignatoryRecord {
-        account_type: GovernanceAccountType::SignatoryRecord,
+        account_type: GovernanceAccountType::SignatoryRecordV2,
         proposal: *proposal_info.key,
         signatory,
         signed_off: false,
+        reserved_v2: [0; 8],
     };
 
     create_and_serialize_account_signed::<SignatoryRecord>(

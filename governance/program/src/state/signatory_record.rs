@@ -26,13 +26,17 @@ pub struct SignatoryRecord {
 
     /// Indicates whether the signatory signed off the proposal
     pub signed_off: bool,
+
+    /// Reserved space for versions v2 and onwards
+    /// Note: This space won't be available to v1 accounts until runtime supports resizing
+    pub reserved_v2: [u8; 8],
 }
 
 impl AccountMaxSize for SignatoryRecord {}
 
 impl IsInitialized for SignatoryRecord {
     fn is_initialized(&self) -> bool {
-        self.account_type == GovernanceAccountType::SignatoryRecord
+        self.account_type == GovernanceAccountType::SignatoryRecordV2
     }
 }
 

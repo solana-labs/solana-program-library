@@ -1866,10 +1866,11 @@ impl GovernanceProgramTest {
         );
 
         let signatory_record_data = SignatoryRecord {
-            account_type: GovernanceAccountType::SignatoryRecord,
+            account_type: GovernanceAccountType::SignatoryRecordV2,
             proposal: proposal_cookie.address,
             signatory: signatory.pubkey(),
             signed_off: false,
+            reserved_v2: [0; 8],
         };
 
         let signatory_record_cookie = SignatoryRecordCookie {
@@ -2162,6 +2163,7 @@ impl GovernanceProgramTest {
             vote,
             voter_weight: vote_amount,
             is_relinquished: false,
+            reserved_v2: [0; 8],
         };
 
         let vote_record_cookie = VoteRecordCookie {
@@ -2449,6 +2451,7 @@ impl GovernanceProgramTest {
             executed_at: None,
             execution_status: TransactionExecutionStatus::None,
             proposal: proposal_cookie.address,
+            reserved_v2: [0; 8],
         };
 
         instruction.accounts = instruction

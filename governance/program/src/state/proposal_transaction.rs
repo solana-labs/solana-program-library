@@ -129,7 +129,7 @@ impl AccountMaxSize for ProposalTransactionV2 {
             .sum::<usize>()
             + 4;
 
-        Some(instructions_size + 90)
+        Some(instructions_size + 98)
     }
 }
 
