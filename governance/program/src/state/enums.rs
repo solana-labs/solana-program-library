@@ -58,6 +58,10 @@ pub enum GovernanceAccountType {
     ProgramMetadata,
 
     /// Top level aggregation for governances with Community Token (and optional Council Token)
+    /// V2 adds the following fields:
+    /// 1) use_community_voter_weight_addin and use_max_community_voter_weight_addin to RealmConfig
+    /// 2) voting_proposal_count
+    /// 3) extra reserved space reserved_v2
     RealmV2,
 }
 
