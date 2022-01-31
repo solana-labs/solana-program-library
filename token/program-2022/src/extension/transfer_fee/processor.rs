@@ -108,6 +108,50 @@ fn process_set_transfer_fee(
     Ok(())
 }
 
+fn process_withdraw_withheld_tokens_from_mint(
+    program_id: &Pubkey,
+    accounts: &[AccountInfo],
+) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+    let mint_account_info = next_account_info(account_info_iter)?;
+    let dest_account_info = next_account_info(account_info_iter)?;
+    let authority_info = next_account_info(account_info_iter)?;
+    let authority_info_data_len = authority_info.data_len();
+
+    let mut mint_data = mint_account_info.data.borrow_mut();
+    let mut mint = StateWithExtensionsMut::<Mint>::unpack(&mut mint_data)?;
+    let extension = mint.get_extension_mut::<TransferFeeConfig>()?;
+
+    let withdraw_withheld_authority = Option::<Pubkey>::from(extension.withdraw_withheld_authority)
+        .ok_or(TokenError::NoAuthorityExists)?;
+    Processor::validate_owner(
+        program_id,
+        &withdraw_withheld_authority,
+        authority_info,
+        authority_info_data_len,
+        account_info_iter.as_slice(),
+    )?;
+
+    let mut dest_account_data = dest_account_info.data.borrow_mut();
+    let mut dest_account = StateWithExtensionsMut::<Account>::unpack(&mut dest_account_data)?;
+    if dest_account.base.mint != *mint_account_info.key {
+        return Err(TokenError::MintMismatch.into());
+    }
+    if dest_account.base.is_frozen() {
+        return Err(TokenError::AccountFrozen.into());
+    }
+    let withheld_amount = u64::from(extension.withheld_amount);
+    extension.withheld_amount = 0.into();
+    dest_account.base.amount = dest_account
+        .base
+        .amount
+        .checked_add(withheld_amount)
+        .ok_or(TokenError::Overflow)?;
+    dest_account.pack_base();
+
+    Ok(())
+}
+
 fn harvest_from_account<'a, 'b>(
     mint_key: &'b Pubkey,
     mint_extension: &'b mut TransferFeeConfig,
@@ -184,7 +228,8 @@ pub(crate) fn process_instruction(
             Processor::process_transfer(program_id, accounts, amount, Some(decimals), Some(fee))
         }
         TransferFeeInstruction::WithdrawWithheldTokensFromMint => {
-            unimplemented!();
+            msg!("TransferFeeInstruction: WithdrawWithheldTokensFromMint");
+            process_withdraw_withheld_tokens_from_mint(program_id, accounts)
         }
         TransferFeeInstruction::WithdrawWithheldTokensFromAccounts => {
             unimplemented!();
