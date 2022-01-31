@@ -321,9 +321,9 @@ checksum = "e3b5ca7a04898ad4bcd41c90c5285445ff5b791899bb1b0abdd2a2aa791211d7"
 
 [[package]]
 name = "bytemuck"
-version = "1.7.2"
+version = "1.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72957246c41db82b8ef88a5486143830adeb8227ef9837740bdec67724cf2c5b"
+checksum = "439989e6b8c38d1b6570a384ef1e49c8848128f5a97f3914baef02920842712f"
 
 [[package]]
 name = "byteorder"
@@ -3877,18 +3877,18 @@ checksum = "6bdef32e8150c2a081110b42772ffe7d7c9032b606bc226c8260fd97e0976601"
 
 [[package]]
 name = "switchboard-program"
-version = "0.1.58"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34746324aa600a859045d5496ad316d52d2c55ff6ae99ed96aaeb6c41348b7f1"
+checksum = "667985cd609f73ea5d6c6b4b5564a816d74d1e8824a5f8ead7f24ecba6d28ae1"
 dependencies = [
  "bincode",
  "borsh",
+ "bytemuck",
  "byteorder",
  "quick-protobuf",
  "solana-program",
  "switchboard-protos",
- "switchboard-utils",
- "zerocopy",
+ "switchboard-utils-bm",
 ]
 
 [[package]]
@@ -3904,20 +3904,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "switchboard-utils"
-version = "0.1.30"
+name = "switchboard-utils-bm"
+version = "0.1.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87018418815036a7dc94f3fff9b4f01051c605b661d01c1d5f6b49728abe70ae"
+checksum = "8ff54ce7d51f595a4303fd56fb0c5fd82008a00c359f3eca7f6a4ed005a18a26"
 dependencies = [
  "bincode",
  "borsh",
+ "bytemuck",
  "byteorder",
  "quick-protobuf",
  "rust_decimal",
  "rust_decimal_macros",
  "solana-program",
  "switchboard-protos",
- "zerocopy",
 ]
 
 [[package]]
@@ -4614,27 +4614,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "56c1936c4cc7a1c9ab21a1ebb602eb942ba868cbd44a99cb7cdc5892335e1c85"
 dependencies = [
  "linked-hash-map",
-]
-
-[[package]]
-name = "zerocopy"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ae0f717764196a220d8c58500e3a3595e2c9054f95d66267f9fd5f6e74ad0fec"
-dependencies = [
- "byteorder",
- "zerocopy-derive",
-]
-
-[[package]]
-name = "zerocopy-derive"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0af017aca1fa6181f5dd7a802456fe6f7666ecdcc18d0910431f0fc89d474e51"
-dependencies = [
- "proc-macro2 1.0.32",
- "syn 1.0.81",
- "synstructure",
 ]
 
 [[package]]
