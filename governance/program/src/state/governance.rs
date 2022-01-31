@@ -1,16 +1,18 @@
 //! Governance Account
+use borsh::maybestd::io::Write;
 
 use crate::{
     error::GovernanceError,
     state::{
         enums::{GovernanceAccountType, VoteThresholdPercentage, VoteTipping},
+        legacy::{is_governance_v1_account_type, GovernanceV1},
         realm::assert_is_valid_realm,
     },
 };
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
-    account_info::AccountInfo, program_error::ProgramError, program_pack::IsInitialized,
-    pubkey::Pubkey,
+    account_info::AccountInfo, borsh::try_from_slice_unchecked, program_error::ProgramError,
+    program_pack::IsInitialized, pubkey::Pubkey,
 };
 use spl_governance_tools::{
     account::{assert_is_valid_account2, get_account_data, AccountMaxSize},
@@ -86,12 +88,17 @@ pub struct GovernanceV2 {
 
 impl AccountMaxSize for GovernanceV2 {}
 
+/// Checks if the given account type is one of the Governance account types
+pub fn is_governance_v2_account_type(account_type: &GovernanceAccountType) -> bool {
+    *account_type == GovernanceAccountType::GovernanceV2
+        || *account_type == GovernanceAccountType::ProgramGovernanceV2
+        || *account_type == GovernanceAccountType::MintGovernanceV2
+        || *account_type == GovernanceAccountType::TokenGovernanceV2
+}
+
 impl IsInitialized for GovernanceV2 {
     fn is_initialized(&self) -> bool {
-        self.account_type == GovernanceAccountType::GovernanceV2
-            || self.account_type == GovernanceAccountType::ProgramGovernanceV2
-            || self.account_type == GovernanceAccountType::MintGovernanceV2
-            || self.account_type == GovernanceAccountType::TokenGovernanceV2
+        is_governance_v2_account_type(&self.account_type)
     }
 }
 
@@ -116,6 +123,34 @@ impl GovernanceV2 {
 
         Ok(seeds)
     }
+
+    /// Serializes account into the target buffer
+    pub fn serialize<W: Write>(self, writer: &mut W) -> Result<(), ProgramError> {
+        if is_governance_v2_account_type(&self.account_type) {
+            BorshSerialize::serialize(&self, writer)?
+        } else if is_governance_v1_account_type(&self.account_type) {
+            // V1 account can't be resized and we have to translate it back to the original format
+
+            // If reserved_v2 is used it must be individually asses for v1 backward compatibility impact
+            if self.reserved_v2 != [0; 128] {
+                panic!("Extended data not supported by GovernanceV1")
+            }
+
+            let governance_data_v1 = GovernanceV1 {
+                account_type: self.account_type,
+                realm: self.realm,
+                governed_account: self.governed_account,
+                proposals_count: self.proposals_count,
+                config: self.config,
+                reserved: self.reserved,
+                voting_proposal_count: self.voting_proposal_count,
+            };
+
+            BorshSerialize::serialize(&governance_data_v1, writer)?;
+        }
+
+        Ok(())
+    }
 }
 
 /// Deserializes Governance account and checks owner program
@@ -123,6 +158,31 @@ pub fn get_governance_data(
     program_id: &Pubkey,
     governance_info: &AccountInfo,
 ) -> Result<GovernanceV2, ProgramError> {
+    if governance_info.data_is_empty() {
+        return Err(GovernanceToolsError::AccountDoesNotExist.into());
+    }
+
+    let account_type: GovernanceAccountType =
+        try_from_slice_unchecked(&governance_info.data.borrow())?;
+
+    // If the account is V1 version then translate to V2
+    if is_governance_v1_account_type(&account_type) {
+        let governance_data_v1 = get_account_data::<GovernanceV1>(program_id, governance_info)?;
+
+        return Ok(GovernanceV2 {
+            account_type,
+            realm: governance_data_v1.realm,
+            governed_account: governance_data_v1.governed_account,
+            proposals_count: governance_data_v1.proposals_count,
+            config: governance_data_v1.config,
+            reserved: governance_data_v1.reserved,
+            voting_proposal_count: governance_data_v1.voting_proposal_count,
+
+            // Add the extra reserved_v2 padding
+            reserved_v2: [0; 128],
+        });
+    }
+
     get_account_data::<GovernanceV2>(program_id, governance_info)
 }
 

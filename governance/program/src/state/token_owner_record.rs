@@ -9,8 +9,8 @@ use crate::{
     },
     error::GovernanceError,
     state::{
-        enums::GovernanceAccountType, governance::GovernanceConfig, realm::RealmV2,
-        realm_config::get_realm_config_data_for_realm,
+        enums::GovernanceAccountType, governance::GovernanceConfig, legacy::TokenOwnerRecordV1,
+        realm::RealmV2, realm_config::get_realm_config_data_for_realm,
     },
     PROGRAM_AUTHORITY_SEED,
 };
@@ -25,8 +25,6 @@ use solana_program::{
 };
 use spl_governance_addin_api::voter_weight::VoterWeightAction;
 use spl_governance_tools::account::{get_account_data, AccountMaxSize};
-
-use super::legacy::TokenOwnerRecordV1;
 
 /// Governance Token Owner Record
 /// Account PDA seeds: ['governance', realm, token_mint, token_owner ]

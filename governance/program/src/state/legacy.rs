@@ -5,6 +5,7 @@ use crate::state::{
         GovernanceAccountType, InstructionExecutionFlags, ProposalState,
         TransactionExecutionStatus, VoteThresholdPercentage,
     },
+    governance::GovernanceConfig,
     proposal_transaction::InstructionData,
     realm::RealmConfig,
 };
@@ -97,6 +98,56 @@ pub struct TokenOwnerRecordV1 {
 impl IsInitialized for TokenOwnerRecordV1 {
     fn is_initialized(&self) -> bool {
         self.account_type == GovernanceAccountType::TokenOwnerRecordV1
+    }
+}
+
+/// Governance Account
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub struct GovernanceV1 {
+    /// Account type. It can be Uninitialized, Governance, ProgramGovernance, TokenGovernance or MintGovernance
+    pub account_type: GovernanceAccountType,
+
+    /// Governance Realm
+    pub realm: Pubkey,
+
+    /// Account governed by this Governance and/or PDA identity seed
+    /// It can be Program account, Mint account, Token account or any other account
+    ///
+    /// Note: The account doesn't have to exist. In that case the field is only a PDA seed
+    ///
+    /// Note: Setting governed_account doesn't give any authority over the governed account
+    /// The relevant authorities for specific account types must still be transferred to the Governance PDA
+    /// Ex: mint_authority/freeze_authority for a Mint account
+    /// or upgrade_authority for a Program account should be transferred to the Governance PDA
+    pub governed_account: Pubkey,
+
+    /// Running count of proposals
+    pub proposals_count: u32,
+
+    /// Governance config
+    pub config: GovernanceConfig,
+
+    /// Reserved space for future versions
+    pub reserved: [u8; 6],
+
+    /// The number of proposals in voting state in the Governance
+    /// Note: This is field introduced in V2 but it took space from reserved
+    /// and we have preserve it for V1 serialization roundtrip
+    pub voting_proposal_count: u16,
+}
+
+/// Checks if the given account type is one of the Governance account types
+pub fn is_governance_v1_account_type(account_type: &GovernanceAccountType) -> bool {
+    *account_type == GovernanceAccountType::GovernanceV1
+        || *account_type == GovernanceAccountType::ProgramGovernanceV1
+        || *account_type == GovernanceAccountType::MintGovernanceV1
+        || *account_type == GovernanceAccountType::TokenGovernanceV1
+}
+
+impl IsInitialized for GovernanceV1 {
+    fn is_initialized(&self) -> bool {
+        is_governance_v1_account_type(&self.account_type)
     }
 }
 

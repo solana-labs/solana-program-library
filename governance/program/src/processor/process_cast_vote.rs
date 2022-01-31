@@ -26,8 +26,6 @@ use crate::{
     },
 };
 
-use borsh::BorshSerialize;
-
 /// Processes CastVote instruction
 pub fn process_cast_vote(
     program_id: &Pubkey,
