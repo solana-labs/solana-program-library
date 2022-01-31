@@ -1,8 +1,8 @@
-use solana_program::pubkey::Pubkey;
-use solana_program_test::ProgramTest;
-
-use solana_program_test::*;
-use spl_associated_token_account::{id, processor::process_instruction};
+use {
+    solana_program::pubkey::Pubkey,
+    solana_program_test::{ProgramTest, *},
+    spl_associated_token_account::{id, processor::process_instruction},
+};
 
 pub fn program_test(token_mint_address: Pubkey, use_latest_spl_token: bool) -> ProgramTest {
     let mut pc = ProgramTest::new(
