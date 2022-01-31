@@ -189,6 +189,7 @@ pub fn process_cast_vote(
         voter_weight,
         vote,
         is_relinquished: false,
+        reserved_v2: [0; 8],
     };
 
     create_and_serialize_account_signed::<VoteRecordV2>(
