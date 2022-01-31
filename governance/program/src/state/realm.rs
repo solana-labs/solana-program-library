@@ -12,7 +12,9 @@ use solana_program::{
     pubkey::Pubkey,
 };
 use spl_governance_addin_api::voter_weight::VoterWeightAction;
-use spl_governance_tools::account::{assert_is_valid_account, get_account_data, AccountMaxSize};
+use spl_governance_tools::account::{
+    assert_is_valid_account_of_types, get_account_data, AccountMaxSize,
+};
 
 use crate::{
     error::GovernanceError,
@@ -257,7 +259,14 @@ pub fn assert_is_valid_realm(
     program_id: &Pubkey,
     realm_info: &AccountInfo,
 ) -> Result<(), ProgramError> {
-    assert_is_valid_account(realm_info, GovernanceAccountType::RealmV2, program_id)
+    assert_is_valid_account_of_types(
+        realm_info,
+        &[
+            GovernanceAccountType::RealmV1,
+            GovernanceAccountType::RealmV2,
+        ],
+        program_id,
+    )
 }
 
 /// Deserializes account and checks owner program

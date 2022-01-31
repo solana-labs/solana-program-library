@@ -15,7 +15,7 @@ use solana_program::{
     program_pack::IsInitialized, pubkey::Pubkey,
 };
 use spl_governance_tools::{
-    account::{assert_is_valid_account2, get_account_data, AccountMaxSize},
+    account::{assert_is_valid_account_of_types, get_account_data, AccountMaxSize},
     error::GovernanceToolsError,
 };
 
@@ -315,12 +315,16 @@ pub fn assert_is_valid_governance(
     program_id: &Pubkey,
     governance_info: &AccountInfo,
 ) -> Result<(), ProgramError> {
-    assert_is_valid_account2(
+    assert_is_valid_account_of_types(
         governance_info,
         &[
+            GovernanceAccountType::GovernanceV1,
             GovernanceAccountType::GovernanceV2,
+            GovernanceAccountType::ProgramGovernanceV1,
             GovernanceAccountType::ProgramGovernanceV2,
+            GovernanceAccountType::TokenGovernanceV1,
             GovernanceAccountType::TokenGovernanceV2,
+            GovernanceAccountType::MintGovernanceV1,
             GovernanceAccountType::MintGovernanceV2,
         ],
         program_id,
