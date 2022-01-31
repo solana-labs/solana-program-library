@@ -1,5 +1,6 @@
 //! Token Owner Record Account
 
+use borsh::maybestd::io::Write;
 use std::slice::Iter;
 
 use crate::{
@@ -17,12 +18,15 @@ use crate::{
 use borsh::{BorshDeserialize, BorshSchema, BorshSerialize};
 use solana_program::{
     account_info::{next_account_info, AccountInfo},
+    borsh::try_from_slice_unchecked,
     program_error::ProgramError,
     program_pack::IsInitialized,
     pubkey::Pubkey,
 };
 use spl_governance_addin_api::voter_weight::VoterWeightAction;
 use spl_governance_tools::account::{get_account_data, AccountMaxSize};
+
+use super::legacy::TokenOwnerRecordV1;
 
 /// Governance Token Owner Record
 /// Account PDA seeds: ['governance', realm, token_mint, token_owner ]
@@ -222,6 +226,37 @@ impl TokenOwnerRecordV2 {
             Ok(self.governing_token_deposit_amount)
         }
     }
+
+    /// Serializes account into the target buffer
+    pub fn serialize<W: Write>(self, writer: &mut W) -> Result<(), ProgramError> {
+        if self.account_type == GovernanceAccountType::TokenOwnerRecordV2 {
+            BorshSerialize::serialize(&self, writer)?
+        } else if self.account_type == GovernanceAccountType::TokenOwnerRecordV1 {
+            // V1 account can't be resized and we have to translate it back to the original format
+
+            // If reserved_v2 is used it must be individually asses for v1 backward compatibility impact
+            if self.reserved_v2 != [0; 128] {
+                panic!("Extended data not supported by TokenOwnerRecordV1")
+            }
+
+            let token_owner_record_data_v1 = TokenOwnerRecordV1 {
+                account_type: self.account_type,
+                realm: self.realm,
+                governing_token_mint: self.governing_token_mint,
+                governing_token_owner: self.governing_token_owner,
+                governing_token_deposit_amount: self.governing_token_deposit_amount,
+                unrelinquished_votes_count: self.unrelinquished_votes_count,
+                total_votes_count: self.total_votes_count,
+                outstanding_proposal_count: self.outstanding_proposal_count,
+                reserved: self.reserved,
+                governance_delegate: self.governance_delegate,
+            };
+
+            BorshSerialize::serialize(&token_owner_record_data_v1, writer)?;
+        }
+
+        Ok(())
+    }
 }
 
 /// Returns TokenOwnerRecord PDA address
@@ -257,6 +292,33 @@ pub fn get_token_owner_record_data(
     program_id: &Pubkey,
     token_owner_record_info: &AccountInfo,
 ) -> Result<TokenOwnerRecordV2, ProgramError> {
+    let account_type: GovernanceAccountType =
+        try_from_slice_unchecked(&token_owner_record_info.data.borrow())?;
+
+    // If the account is V1 version then translate to V2
+    if account_type == GovernanceAccountType::TokenOwnerRecordV1 {
+        let token_owner_record_data_v1 =
+            get_account_data::<TokenOwnerRecordV1>(program_id, token_owner_record_info)?;
+
+        return Ok(TokenOwnerRecordV2 {
+            account_type,
+
+            realm: token_owner_record_data_v1.realm,
+            governing_token_mint: token_owner_record_data_v1.governing_token_mint,
+            governing_token_owner: token_owner_record_data_v1.governing_token_owner,
+            governing_token_deposit_amount: token_owner_record_data_v1
+                .governing_token_deposit_amount,
+            unrelinquished_votes_count: token_owner_record_data_v1.unrelinquished_votes_count,
+            total_votes_count: token_owner_record_data_v1.total_votes_count,
+            outstanding_proposal_count: token_owner_record_data_v1.outstanding_proposal_count,
+            reserved: token_owner_record_data_v1.reserved,
+            governance_delegate: token_owner_record_data_v1.governance_delegate,
+
+            // Add the extra reserved_v2 padding
+            reserved_v2: [0; 128],
+        });
+    }
+
     get_account_data::<TokenOwnerRecordV2>(program_id, token_owner_record_info)
 }
 

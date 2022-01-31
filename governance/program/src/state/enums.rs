@@ -65,6 +65,7 @@ pub enum GovernanceAccountType {
     RealmV2,
 
     /// Token Owner Record for given governing token owner within a Realm
+    /// V2 adds extra reserved space reserved_v2
     TokenOwnerRecordV2,
 }
 

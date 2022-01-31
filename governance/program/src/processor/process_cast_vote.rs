@@ -176,6 +176,8 @@ pub fn process_cast_vote(
         governance_data.serialize(&mut *governance_info.data.borrow_mut())?;
     }
 
+    let governing_token_owner = voter_token_owner_record_data.governing_token_owner.clone();
+
     voter_token_owner_record_data
         .serialize(&mut *voter_token_owner_record_info.data.borrow_mut())?;
 
@@ -185,7 +187,7 @@ pub fn process_cast_vote(
     let vote_record_data = VoteRecordV2 {
         account_type: GovernanceAccountType::VoteRecordV2,
         proposal: *proposal_info.key,
-        governing_token_owner: voter_token_owner_record_data.governing_token_owner,
+        governing_token_owner,
         voter_weight,
         vote,
         is_relinquished: false,
