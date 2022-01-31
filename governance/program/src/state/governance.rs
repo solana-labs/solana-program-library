@@ -78,6 +78,10 @@ pub struct GovernanceV2 {
 
     /// The number of proposals in voting state in the Governance
     pub voting_proposal_count: u16,
+
+    /// Reserved space for versions v2 and onwards
+    /// Note: This space won't be available to v1 accounts until runtime supports resizing
+    pub reserved_v2: [u8; 128],
 }
 
 impl AccountMaxSize for GovernanceV2 {}

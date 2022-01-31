@@ -69,6 +69,7 @@ pub fn process_create_token_governance(
         proposals_count: 0,
         reserved: [0; 6],
         voting_proposal_count: 0,
+        reserved_v2: [0; 128],
     };
 
     create_and_serialize_account_signed::<GovernanceV2>(

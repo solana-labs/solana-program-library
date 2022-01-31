@@ -1248,6 +1248,7 @@ impl GovernanceProgramTest {
             proposals_count: 0,
             reserved: [0; 6],
             voting_proposal_count: 0,
+            reserved_v2: [0; 128],
         };
 
         let default_signers = &[create_authority];
@@ -1416,6 +1417,7 @@ impl GovernanceProgramTest {
             proposals_count: 0,
             reserved: [0; 6],
             voting_proposal_count: 0,
+            reserved_v2: [0; 128],
         };
 
         let program_governance_address = get_program_governance_address(
@@ -1539,6 +1541,7 @@ impl GovernanceProgramTest {
             proposals_count: 0,
             reserved: [0; 6],
             voting_proposal_count: 0,
+            reserved_v2: [0; 128],
         };
 
         let mint_governance_address = get_mint_governance_address(
@@ -1622,6 +1625,7 @@ impl GovernanceProgramTest {
             proposals_count: 0,
             reserved: [0; 6],
             voting_proposal_count: 0,
+            reserved_v2: [0; 128],
         };
 
         let token_governance_address = get_token_governance_address(
