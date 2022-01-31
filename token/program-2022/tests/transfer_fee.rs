@@ -22,11 +22,14 @@ use {
     std::convert::TryInto,
 };
 
+const TEST_MAXIMUM_FEE: u64 = 10_000_000;
+const TEST_FEE_BASIS_POINTS: u16 = 250;
+
 fn test_transfer_fee() -> TransferFee {
     TransferFee {
         epoch: 0.into(),
-        transfer_fee_basis_points: 250.into(),
-        maximum_fee: 10_000_000.into(),
+        transfer_fee_basis_points: TEST_FEE_BASIS_POINTS.into(),
+        maximum_fee: TEST_MAXIMUM_FEE.into(),
     }
 }
 
@@ -66,6 +69,73 @@ fn test_transfer_fee_config_with_keypairs() -> TransferFeeConfigWithKeypairs {
         transfer_fee_config,
         transfer_fee_config_authority,
         withdraw_withheld_authority,
+    }
+}
+
+struct TokenWithAccounts {
+    token: Token<ProgramBanksClientProcessTransaction, Keypair>,
+    transfer_fee_config: TransferFeeConfig,
+    alice: Keypair,
+    alice_account: Pubkey,
+    bob_account: Pubkey,
+    decimals: u8,
+}
+
+async fn create_mint_with_accounts(alice_amount: u64) -> TokenWithAccounts {
+    let TransferFeeConfigWithKeypairs {
+        transfer_fee_config_authority,
+        withdraw_withheld_authority,
+        transfer_fee_config,
+        ..
+    } = test_transfer_fee_config_with_keypairs();
+    let mut context = TestContext::new().await;
+    let transfer_fee_basis_points = u16::from(
+        transfer_fee_config
+            .newer_transfer_fee
+            .transfer_fee_basis_points,
+    );
+    let maximum_fee = u64::from(transfer_fee_config.newer_transfer_fee.maximum_fee);
+    context
+        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
+            transfer_fee_config_authority: transfer_fee_config_authority.pubkey().into(),
+            withdraw_withheld_authority: withdraw_withheld_authority.pubkey().into(),
+            transfer_fee_basis_points,
+            maximum_fee,
+        }])
+        .await
+        .unwrap();
+    let TokenContext {
+        decimals,
+        mint_authority,
+        token,
+        alice,
+        bob,
+        ..
+    } = context.token_context.unwrap();
+
+    // token account is self-owned just to test another case
+    let alice_account = token
+        .create_auxiliary_token_account(&alice, &alice.pubkey())
+        .await
+        .unwrap();
+    let bob_account = Keypair::new();
+    let bob_account = token
+        .create_auxiliary_token_account(&bob_account, &bob.pubkey())
+        .await
+        .unwrap();
+
+    // mint tokens
+    token
+        .mint_to(&alice_account, &mint_authority, alice_amount)
+        .await
+        .unwrap();
+    TokenWithAccounts {
+        token,
+        transfer_fee_config,
+        alice,
+        alice_account,
+        bob_account,
+        decimals,
     }
 }
 
@@ -585,54 +655,17 @@ async fn set_withdraw_withheld_authority() {
 
 #[tokio::test]
 async fn transfer_checked() {
-    let TransferFeeConfigWithKeypairs {
-        transfer_fee_config_authority,
-        withdraw_withheld_authority,
-        transfer_fee_config,
-        ..
-    } = test_transfer_fee_config_with_keypairs();
-    let mut context = TestContext::new().await;
-    let transfer_fee_basis_points = u16::from(
-        transfer_fee_config
-            .newer_transfer_fee
-            .transfer_fee_basis_points,
-    );
-    let maximum_fee = u64::from(transfer_fee_config.newer_transfer_fee.maximum_fee);
-    context
-        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
-            transfer_fee_config_authority: transfer_fee_config_authority.pubkey().into(),
-            withdraw_withheld_authority: withdraw_withheld_authority.pubkey().into(),
-            transfer_fee_basis_points,
-            maximum_fee,
-        }])
-        .await
-        .unwrap();
-    let TokenContext {
-        decimals,
-        mint_authority,
-        token,
-        alice,
-        bob,
-        ..
-    } = context.token_context.unwrap();
-
-    // token account is self-owned just to test another case
-    let alice_account = token
-        .create_auxiliary_token_account(&alice, &alice.pubkey())
-        .await
-        .unwrap();
-    let bob_account = Keypair::new();
-    let bob_account = token
-        .create_auxiliary_token_account(&bob_account, &bob.pubkey())
-        .await
-        .unwrap();
-
-    // mint a lot of tokens, 100x max fee
+    let maximum_fee = TEST_MAXIMUM_FEE;
     let mut alice_amount = maximum_fee * 100;
-    token
-        .mint_to(&alice_account, &mint_authority, alice_amount)
-        .await
-        .unwrap();
+    let TokenWithAccounts {
+        token,
+        transfer_fee_config,
+        alice,
+        alice_account,
+        bob_account,
+        decimals,
+        ..
+    } = create_mint_with_accounts(alice_amount).await;
 
     // fail unchecked always
     let error = token
@@ -722,8 +755,12 @@ async fn transfer_checked() {
     assert_eq!(extension.withheld_amount, withheld_amount.into());
 
     // success, maximum fee kicks in
-    let transfer_amount =
-        1 + maximum_fee * (MAX_FEE_BASIS_POINTS as u64) / (transfer_fee_basis_points as u64);
+    let transfer_amount = 1 + maximum_fee * (MAX_FEE_BASIS_POINTS as u64)
+        / (u16::from(
+            transfer_fee_config
+                .newer_transfer_fee
+                .transfer_fee_basis_points,
+        ) as u64);
     let fee = transfer_fee_config
         .calculate_epoch_fee(0, transfer_amount)
         .unwrap();
@@ -791,54 +828,17 @@ async fn transfer_checked() {
 
 #[tokio::test]
 async fn transfer_checked_with_fee() {
-    let TransferFeeConfigWithKeypairs {
-        transfer_fee_config_authority,
-        withdraw_withheld_authority,
-        transfer_fee_config,
-        ..
-    } = test_transfer_fee_config_with_keypairs();
-    let mut context = TestContext::new().await;
-    let transfer_fee_basis_points = u16::from(
-        transfer_fee_config
-            .newer_transfer_fee
-            .transfer_fee_basis_points,
-    );
-    let maximum_fee = u64::from(transfer_fee_config.newer_transfer_fee.maximum_fee);
-    context
-        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
-            transfer_fee_config_authority: transfer_fee_config_authority.pubkey().into(),
-            withdraw_withheld_authority: withdraw_withheld_authority.pubkey().into(),
-            transfer_fee_basis_points,
-            maximum_fee,
-        }])
-        .await
-        .unwrap();
-    let TokenContext {
-        decimals,
-        mint_authority,
-        token,
-        alice,
-        bob,
-        ..
-    } = context.token_context.unwrap();
-
-    let alice_account = Keypair::new();
-    let alice_account = token
-        .create_auxiliary_token_account(&alice_account, &alice.pubkey())
-        .await
-        .unwrap();
-    let bob_account = Keypair::new();
-    let bob_account = token
-        .create_auxiliary_token_account(&bob_account, &bob.pubkey())
-        .await
-        .unwrap();
-
-    // mint a lot of tokens, 100x max fee
+    let maximum_fee = TEST_MAXIMUM_FEE;
     let alice_amount = maximum_fee * 100;
-    token
-        .mint_to(&alice_account, &mint_authority, alice_amount)
-        .await
-        .unwrap();
+    let TokenWithAccounts {
+        token,
+        transfer_fee_config,
+        alice,
+        alice_account,
+        bob_account,
+        decimals,
+        ..
+    } = create_mint_with_accounts(alice_amount).await;
 
     // incorrect fee, too high
     let transfer_amount = maximum_fee;
@@ -946,48 +946,16 @@ async fn transfer_checked_with_fee() {
 
 #[tokio::test]
 async fn no_fees_from_self_transfer() {
-    let TransferFeeConfigWithKeypairs {
-        transfer_fee_config_authority,
-        withdraw_withheld_authority,
-        transfer_fee_config,
-        ..
-    } = test_transfer_fee_config_with_keypairs();
-    let mut context = TestContext::new().await;
-    let transfer_fee_basis_points = u16::from(
-        transfer_fee_config
-            .newer_transfer_fee
-            .transfer_fee_basis_points,
-    );
-    let maximum_fee = u64::from(transfer_fee_config.newer_transfer_fee.maximum_fee);
-    context
-        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
-            transfer_fee_config_authority: transfer_fee_config_authority.pubkey().into(),
-            withdraw_withheld_authority: withdraw_withheld_authority.pubkey().into(),
-            transfer_fee_basis_points,
-            maximum_fee,
-        }])
-        .await
-        .unwrap();
-    let TokenContext {
-        decimals,
-        mint_authority,
+    let amount = TEST_MAXIMUM_FEE;
+    let alice_amount = amount * 100;
+    let TokenWithAccounts {
         token,
+        transfer_fee_config,
         alice,
+        alice_account,
+        decimals,
         ..
-    } = context.token_context.unwrap();
-
-    let alice_account = Keypair::new();
-    let alice_account = token
-        .create_auxiliary_token_account(&alice_account, &alice.pubkey())
-        .await
-        .unwrap();
-
-    // mint some tokens
-    let amount = maximum_fee;
-    token
-        .mint_to(&alice_account, &mint_authority, amount)
-        .await
-        .unwrap();
+    } = create_mint_with_accounts(alice_amount).await;
 
     // self transfer, no fee assessed
     let fee = transfer_fee_config.calculate_epoch_fee(0, amount).unwrap();
@@ -1003,7 +971,7 @@ async fn no_fees_from_self_transfer() {
         .await
         .unwrap();
     let alice_state = token.get_account_info(&alice_account).await.unwrap();
-    assert_eq!(alice_state.base.amount, amount);
+    assert_eq!(alice_state.base.amount, alice_amount);
     let extension = alice_state.get_extension::<TransferFeeAmount>().unwrap();
     assert_eq!(extension.withheld_amount, 0.into());
 }
@@ -1145,49 +1113,17 @@ async fn harvest_withheld_tokens_to_mint() {
 
 #[tokio::test]
 async fn max_harvest_withheld_tokens_to_mint() {
-    let TransferFeeConfigWithKeypairs {
-        transfer_fee_config_authority,
-        withdraw_withheld_authority,
-        transfer_fee_config,
-        ..
-    } = test_transfer_fee_config_with_keypairs();
-    let mut context = TestContext::new().await;
-    let transfer_fee_basis_points = u16::from(
-        transfer_fee_config
-            .newer_transfer_fee
-            .transfer_fee_basis_points,
-    );
-    let maximum_fee = u64::from(transfer_fee_config.newer_transfer_fee.maximum_fee);
-    context
-        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
-            transfer_fee_config_authority: transfer_fee_config_authority.pubkey().into(),
-            withdraw_withheld_authority: withdraw_withheld_authority.pubkey().into(),
-            transfer_fee_basis_points,
-            maximum_fee,
-        }])
-        .await
-        .unwrap();
-    let TokenContext {
-        decimals,
-        mint_authority,
-        token,
-        alice,
-        ..
-    } = context.token_context.unwrap();
-
-    let alice_account = Keypair::new();
-    let alice_account = token
-        .create_auxiliary_token_account(&alice_account, &alice.pubkey())
-        .await
-        .unwrap();
-
-    // mint a lot of tokens
-    let amount = maximum_fee;
+    let amount = TEST_MAXIMUM_FEE;
     let alice_amount = amount * 100;
-    token
-        .mint_to(&alice_account, &mint_authority, alice_amount)
-        .await
-        .unwrap();
+    let TokenWithAccounts {
+        token,
+        transfer_fee_config,
+        alice,
+        alice_account,
+        decimals,
+        ..
+    } = create_mint_with_accounts(alice_amount).await;
+
     // harvest from max accounts, which is around 35, AKA 34 accounts + 1 mint
     // see https://docs.solana.com/proposals/transactions-v2#problem
     let mut accounts = vec![];
