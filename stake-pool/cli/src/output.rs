@@ -483,9 +483,9 @@ impl From<(Pubkey, StakePool, ValidatorList, Pubkey)> for CliStakePool {
                 .map(CliStakePoolFee::from),
             stake_referral_fee: stake_pool.stake_referral_fee,
             sol_deposit_authority: stake_pool.sol_deposit_authority.map(|x| x.to_string()),
-            sol_deposit_fee: CliStakePoolFee::from(stake_pool.stake_deposit_fee),
+            sol_deposit_fee: CliStakePoolFee::from(stake_pool.sol_deposit_fee),
             sol_referral_fee: stake_pool.sol_referral_fee,
-            sol_withdraw_authority: stake_pool.sol_deposit_authority.map(|x| x.to_string()),
+            sol_withdraw_authority: stake_pool.sol_withdraw_authority.map(|x| x.to_string()),
             sol_withdrawal_fee: CliStakePoolFee::from(stake_pool.sol_withdrawal_fee),
             next_sol_withdrawal_fee: stake_pool
                 .next_sol_withdrawal_fee
