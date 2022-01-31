@@ -10,7 +10,7 @@ pub enum GovernanceAccountType {
     Uninitialized,
 
     /// Top level aggregation for governances with Community Token (and optional Council Token)
-    Realm,
+    RealmV1,
 
     /// Token Owner Record for given governing token owner within a Realm
     TokenOwnerRecord,
@@ -56,6 +56,9 @@ pub enum GovernanceAccountType {
 
     /// Program metadata account. It stores information about the particular SPL-Governance program instance
     ProgramMetadata,
+
+    /// Top level aggregation for governances with Community Token (and optional Council Token)
+    RealmV2,
 }
 
 impl Default for GovernanceAccountType {

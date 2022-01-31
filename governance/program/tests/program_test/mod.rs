@@ -299,7 +299,7 @@ impl GovernanceProgramTest {
             .unwrap();
 
         let account = Realm {
-            account_type: GovernanceAccountType::Realm,
+            account_type: GovernanceAccountType::RealmV2,
             community_mint: community_token_mint_keypair.pubkey(),
 
             name,
@@ -391,7 +391,7 @@ impl GovernanceProgramTest {
             .unwrap();
 
         let account = Realm {
-            account_type: GovernanceAccountType::Realm,
+            account_type: GovernanceAccountType::RealmV2,
             community_mint: realm_cookie.account.community_mint,
 
             name,

@@ -126,7 +126,7 @@ pub fn process_create_realm(
     }
 
     let realm_data = Realm {
-        account_type: GovernanceAccountType::Realm,
+        account_type: GovernanceAccountType::RealmV2,
         community_mint: *governance_token_mint_info.key,
 
         name: name.clone(),

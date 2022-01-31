@@ -119,7 +119,7 @@ impl AccountMaxSize for Realm {
 
 impl IsInitialized for Realm {
     fn is_initialized(&self) -> bool {
-        self.account_type == GovernanceAccountType::Realm
+        self.account_type == GovernanceAccountType::RealmV2
     }
 }
 
@@ -222,7 +222,7 @@ pub fn assert_is_valid_realm(
     program_id: &Pubkey,
     realm_info: &AccountInfo,
 ) -> Result<(), ProgramError> {
-    assert_is_valid_account(realm_info, GovernanceAccountType::Realm, program_id)
+    assert_is_valid_account(realm_info, GovernanceAccountType::RealmV2, program_id)
 }
 
 /// Deserializes account and checks owner program
@@ -330,7 +330,7 @@ mod test {
     #[test]
     fn test_max_size() {
         let realm = Realm {
-            account_type: GovernanceAccountType::Realm,
+            account_type: GovernanceAccountType::RealmV2,
             community_mint: Pubkey::new_unique(),
             reserved: [0; 6],
 
@@ -357,7 +357,7 @@ mod test {
     fn test_deserialize_v2_realm_account_from_v1() {
         // Arrange
         let realm_v1 = RealmV1 {
-            account_type: GovernanceAccountType::Realm,
+            account_type: GovernanceAccountType::RealmV2,
             community_mint: Pubkey::new_unique(),
             config: RealmConfigV1 {
                 council_mint: Some(Pubkey::new_unique()),
@@ -378,7 +378,7 @@ mod test {
 
         // Assert
         assert!(!realm_v2.config.use_community_voter_weight_addin);
-        assert_eq!(realm_v2.account_type, GovernanceAccountType::Realm);
+        assert_eq!(realm_v2.account_type, GovernanceAccountType::RealmV2);
         assert_eq!(
             realm_v2.config.min_community_weight_to_create_governance,
             realm_v1.config.min_community_weight_to_create_governance,

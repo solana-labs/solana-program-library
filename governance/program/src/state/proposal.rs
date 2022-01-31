@@ -1089,7 +1089,7 @@ mod test {
 
     fn create_test_realm() -> Realm {
         Realm {
-            account_type: GovernanceAccountType::Realm,
+            account_type: GovernanceAccountType::RealmV2,
             community_mint: Pubkey::new_unique(),
             reserved: [0; 6],
 

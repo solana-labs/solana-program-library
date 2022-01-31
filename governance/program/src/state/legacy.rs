@@ -92,7 +92,7 @@ pub struct RealmV1 {
 
 impl IsInitialized for RealmV1 {
     fn is_initialized(&self) -> bool {
-        self.account_type == GovernanceAccountType::Realm
+        self.account_type == GovernanceAccountType::RealmV2
     }
 }
 
