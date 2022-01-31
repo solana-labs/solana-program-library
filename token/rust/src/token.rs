@@ -481,6 +481,44 @@ where
         .await
     }
 
+    /// Freeze a token account
+    pub async fn freeze_account<S2: Signer>(
+        &self,
+        account: &Pubkey,
+        authority: &S2,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[instruction::freeze_account(
+                &self.program_id,
+                account,
+                &self.pubkey,
+                &authority.pubkey(),
+                &[],
+            )?],
+            &[authority],
+        )
+        .await
+    }
+
+    /// Thaw / unfreeze a token account
+    pub async fn thaw_account<S2: Signer>(
+        &self,
+        account: &Pubkey,
+        authority: &S2,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[instruction::thaw_account(
+                &self.program_id,
+                account,
+                &self.pubkey,
+                &authority.pubkey(),
+                &[],
+            )?],
+            &[authority],
+        )
+        .await
+    }
+
     /// Set transfer fee
     pub async fn set_transfer_fee<S2: Signer>(
         &self,
@@ -535,6 +573,27 @@ where
                 sources,
             )?],
             &[&self.payer],
+        )
+        .await
+    }
+
+    /// Withdraw withheld tokens from mint
+    pub async fn withdraw_withheld_tokens_from_mint<S2: Signer>(
+        &self,
+        destination: &Pubkey,
+        authority: &S2,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[
+                transfer_fee::instruction::withdraw_withheld_tokens_from_mint(
+                    &self.program_id,
+                    &self.pubkey,
+                    destination,
+                    &authority.pubkey(),
+                    &[],
+                )?,
+            ],
+            &[authority],
         )
         .await
     }
