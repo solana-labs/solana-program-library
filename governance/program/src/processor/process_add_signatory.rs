@@ -12,7 +12,7 @@ use spl_governance_tools::account::create_and_serialize_account_signed;
 use crate::state::{
     enums::GovernanceAccountType,
     proposal::get_proposal_data,
-    signatory_record::{get_signatory_record_address_seeds, SignatoryRecord},
+    signatory_record::{get_signatory_record_address_seeds, SignatoryRecordV2},
     token_owner_record::get_token_owner_record_data_for_proposal_owner,
 };
 
@@ -46,7 +46,7 @@ pub fn process_add_signatory(
 
     token_owner_record_data.assert_token_owner_or_delegate_is_signer(governance_authority_info)?;
 
-    let signatory_record_data = SignatoryRecord {
+    let signatory_record_data = SignatoryRecordV2 {
         account_type: GovernanceAccountType::SignatoryRecordV2,
         proposal: *proposal_info.key,
         signatory,
@@ -54,7 +54,7 @@ pub fn process_add_signatory(
         reserved_v2: [0; 8],
     };
 
-    create_and_serialize_account_signed::<SignatoryRecord>(
+    create_and_serialize_account_signed::<SignatoryRecordV2>(
         payer_info,
         signatory_record_info,
         &signatory_record_data,

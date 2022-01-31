@@ -241,6 +241,29 @@ impl IsInitialized for ProposalV1 {
     }
 }
 
+/// Account PDA seeds: ['governance', proposal, signatory]
+#[repr(C)]
+#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
+pub struct SignatoryRecordV1 {
+    /// Governance account type
+    pub account_type: GovernanceAccountType,
+
+    /// Proposal the signatory is assigned for
+    pub proposal: Pubkey,
+
+    /// The account of the signatory who can sign off the proposal
+    pub signatory: Pubkey,
+
+    /// Indicates whether the signatory signed off the proposal
+    pub signed_off: bool,
+}
+
+impl IsInitialized for SignatoryRecordV1 {
+    fn is_initialized(&self) -> bool {
+        self.account_type == GovernanceAccountType::SignatoryRecordV1
+    }
+}
+
 /// Proposal instruction V1
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
 pub struct ProposalInstructionV1 {

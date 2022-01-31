@@ -45,7 +45,7 @@ use spl_governance::{
             RealmV2, SetRealmAuthorityAction,
         },
         realm_config::{get_realm_config_address, RealmConfigAccount},
-        signatory_record::{get_signatory_record_address, SignatoryRecord},
+        signatory_record::{get_signatory_record_address, SignatoryRecordV2},
         token_owner_record::{get_token_owner_record_address, TokenOwnerRecordV2},
         vote_record::{get_vote_record_address, Vote, VoteChoice, VoteRecordV2},
     },
@@ -1865,7 +1865,7 @@ impl GovernanceProgramTest {
             &signatory.pubkey(),
         );
 
-        let signatory_record_data = SignatoryRecord {
+        let signatory_record_data = SignatoryRecordV2 {
             account_type: GovernanceAccountType::SignatoryRecordV2,
             proposal: proposal_cookie.address,
             signatory: signatory.pubkey(),
@@ -2612,9 +2612,9 @@ impl GovernanceProgramTest {
     pub async fn get_signatory_record_account(
         &mut self,
         proposal_address: &Pubkey,
-    ) -> SignatoryRecord {
+    ) -> SignatoryRecordV2 {
         self.bench
-            .get_borsh_account::<SignatoryRecord>(proposal_address)
+            .get_borsh_account::<SignatoryRecordV2>(proposal_address)
             .await
     }
 

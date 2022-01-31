@@ -3,7 +3,7 @@ use solana_sdk::signature::Keypair;
 use spl_governance::state::{
     governance::GovernanceV2, native_treasury::NativeTreasury, program_metadata::ProgramMetadata,
     proposal::ProposalV2, proposal_transaction::ProposalTransactionV2, realm::RealmV2,
-    realm_config::RealmConfigAccount, signatory_record::SignatoryRecord,
+    realm_config::RealmConfigAccount, signatory_record::SignatoryRecordV2,
     token_owner_record::TokenOwnerRecordV2, vote_record::VoteRecordV2,
 };
 
@@ -147,7 +147,7 @@ pub struct ProposalCookie {
 #[derive(Debug)]
 pub struct SignatoryRecordCookie {
     pub address: Pubkey,
-    pub account: SignatoryRecord,
+    pub account: SignatoryRecordV2,
     pub signatory: Keypair,
 }
 
