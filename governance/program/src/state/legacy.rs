@@ -2,7 +2,7 @@
 
 use crate::state::{
     enums::{
-        GovernanceAccountType, InstructionExecutionFlags, MintMaxVoteWeightSource, ProposalState,
+        GovernanceAccountType, InstructionExecutionFlags, ProposalState,
         TransactionExecutionStatus, VoteThresholdPercentage,
     },
     proposal_transaction::InstructionData,
@@ -14,42 +14,6 @@ use solana_program::{
     program_pack::IsInitialized,
     pubkey::Pubkey,
 };
-
-/// Realm Config instruction args
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub struct RealmConfigArgsV1 {
-    /// Indicates whether council_mint should be used
-    /// If yes then council_mint account must also be passed to the instruction
-    pub use_council_mint: bool,
-
-    /// Min number of community tokens required to create a governance
-    pub min_community_weight_to_create_governance: u64,
-
-    /// The source used for community mint max vote weight source
-    pub community_mint_max_vote_weight_source: MintMaxVoteWeightSource,
-}
-
-/// Instructions supported by the Governance program
-#[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
-pub enum GovernanceInstructionV1 {
-    /// Creates Governance Realm account which aggregates governances for given Community Mint and optional Council Mint
-    CreateRealm {
-        #[allow(dead_code)]
-        /// UTF-8 encoded Governance Realm name
-        name: String,
-
-        #[allow(dead_code)]
-        /// Realm config args     
-        config_args: RealmConfigArgsV1,
-    },
-
-    /// Deposits governing tokens (Community or Council) to Governance Realm and establishes your voter weight to be used for voting within the Realm
-    DepositGoverningTokens {
-        /// The amount to deposit into the realm
-        #[allow(dead_code)]
-        amount: u64,
-    },
-}
 
 /// Governance Realm Account
 /// Account PDA seeds" ['governance', name]
