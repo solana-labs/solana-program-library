@@ -617,7 +617,16 @@ impl ExtensionType {
 
     /// Get the TLV length for a set of ExtensionTypes
     fn get_total_tlv_len(extension_types: &[Self]) -> usize {
-        extension_types.iter().map(|e| e.get_tlv_len()).sum()
+        let tlv_len: usize = extension_types.iter().map(|e| e.get_tlv_len()).sum();
+        if tlv_len
+            == Multisig::LEN
+                .saturating_sub(BASE_ACCOUNT_LENGTH)
+                .saturating_sub(size_of::<AccountType>())
+        {
+            tlv_len.saturating_add(size_of::<ExtensionType>())
+        } else {
+            tlv_len
+        }
     }
 
     /// Get the required account data length for the given ExtensionTypes
@@ -626,14 +635,9 @@ impl ExtensionType {
             S::LEN
         } else {
             let extension_size = Self::get_total_tlv_len(extension_types);
-            let account_size = extension_size
+            extension_size
                 .saturating_add(BASE_ACCOUNT_LENGTH)
-                .saturating_add(size_of::<AccountType>());
-            if account_size == Multisig::LEN {
-                account_size.saturating_add(size_of::<ExtensionType>())
-            } else {
-                account_size
-            }
+                .saturating_add(size_of::<AccountType>())
         }
     }
 
