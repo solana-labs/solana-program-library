@@ -121,6 +121,9 @@ pub enum TokenError {
     /// Calculated fee does not match expected fee
     #[error("Calculated fee does not match expected fee")]
     FeeMismatch,
+    /// The owner authority cannot be changed
+    #[error("The owner authority cannot be changed")]
+    ImmutableOwner,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
