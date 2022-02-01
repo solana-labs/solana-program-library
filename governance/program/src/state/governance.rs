@@ -145,7 +145,23 @@ impl GovernanceV2 {
             GovernanceAccountType::TokenGovernanceV1 | GovernanceAccountType::TokenGovernanceV2 => {
                 get_token_governance_address_seeds(&self.realm, &self.governed_account)
             }
-            _ => return Err(GovernanceToolsError::InvalidAccountType.into()),
+            GovernanceAccountType::Uninitialized
+            | GovernanceAccountType::RealmV1
+            | GovernanceAccountType::TokenOwnerRecordV1
+            | GovernanceAccountType::ProposalV1
+            | GovernanceAccountType::SignatoryRecordV1
+            | GovernanceAccountType::VoteRecordV1
+            | GovernanceAccountType::ProposalInstructionV1
+            | GovernanceAccountType::RealmConfig
+            | GovernanceAccountType::VoteRecordV2
+            | GovernanceAccountType::ProposalTransactionV2
+            | GovernanceAccountType::ProposalV2
+            | GovernanceAccountType::ProgramMetadata
+            | GovernanceAccountType::RealmV2
+            | GovernanceAccountType::TokenOwnerRecordV2
+            | GovernanceAccountType::SignatoryRecordV2 => {
+                return Err(GovernanceToolsError::InvalidAccountType.into())
+            }
         };
 
         Ok(seeds)
