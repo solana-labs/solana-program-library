@@ -505,13 +505,19 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         &self,
         new_extension: ExtensionType,
     ) -> Result<Option<usize>, ProgramError> {
-        let current_extensions = self.get_extension_types()?;
-        let needed_tlv_len = ExtensionType::get_total_tlv_len(&current_extensions);
-        let new_needed_tlv_len = needed_tlv_len.saturating_add(new_extension.get_type_len());
+        let mut extensions = self.get_extension_types()?;
+        if !extensions.contains(&new_extension) {
+            extensions.push(new_extension);
+        }
+        let new_needed_tlv_len = ExtensionType::get_total_tlv_len(&extensions);
         if self.tlv_data.len() >= new_needed_tlv_len {
             Ok(None)
         } else {
-            Ok(Some(new_needed_tlv_len - self.tlv_data.len())) // arithmetic safe because of if clause
+            let mut diff = new_needed_tlv_len - self.tlv_data.len(); // arithmetic safe because of if clause
+            if self.account_type.is_empty() {
+                diff = diff.saturating_add(size_of::<AccountType>());
+            }
+            Ok(Some(diff))
         }
     }
 }
@@ -1373,6 +1379,27 @@ mod test {
 
     #[test]
     fn test_realloc_needed() {
+        // buffer exact size of base-state account
+        let account_size = ExtensionType::get_account_len::<Account>(&[]);
+        let mut buffer = vec![0; account_size];
+        let mut state =
+            StateWithExtensionsMut::<Account>::unpack_uninitialized(&mut buffer).unwrap();
+        state.base = TEST_ACCOUNT;
+        state.pack_base();
+        state.init_account_type().unwrap();
+        let realloc = state.realloc_needed(ExtensionType::ImmutableOwner).unwrap();
+        assert_eq!(
+            realloc,
+            Some(ExtensionType::ImmutableOwner.get_tlv_len() + size_of::<AccountType>())
+        );
+        let mut buffer = vec![0; account_size + realloc.unwrap()];
+        let mut state =
+            StateWithExtensionsMut::<Account>::unpack_uninitialized(&mut buffer).unwrap();
+        state.base = TEST_ACCOUNT;
+        state.pack_base();
+        state.init_account_type().unwrap();
+        state.init_extension::<ImmutableOwner>().unwrap();
+
         // buffer exact size of existing extension
         let mint_size = ExtensionType::get_account_len::<Mint>(&[ExtensionType::TransferFeeConfig]);
         let mut buffer = vec![0; mint_size];
@@ -1391,7 +1418,7 @@ mod test {
             state
                 .realloc_needed(ExtensionType::MintCloseAuthority)
                 .unwrap(),
-            Some(ExtensionType::MintCloseAuthority.get_type_len())
+            Some(ExtensionType::MintCloseAuthority.get_tlv_len())
         );
 
         // buffer with multisig len
@@ -1412,7 +1439,7 @@ mod test {
             state
                 .realloc_needed(ExtensionType::MintCloseAuthority)
                 .unwrap(),
-            Some(ExtensionType::MintCloseAuthority.get_type_len() - size_of::<ExtensionType>())
+            Some(ExtensionType::MintCloseAuthority.get_tlv_len() - size_of::<ExtensionType>())
         );
 
         // huge buffer
