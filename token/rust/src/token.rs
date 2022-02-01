@@ -12,7 +12,9 @@ use spl_associated_token_account::{
     get_associated_token_address_with_program_id, instruction::create_associated_token_account,
 };
 use spl_token_2022::{
-    extension::{default_account_state, transfer_fee, ExtensionType, StateWithExtensionsOwned},
+    extension::{
+        default_account_state, memo_transfer, transfer_fee, ExtensionType, StateWithExtensionsOwned,
+    },
     instruction,
     state::{Account, AccountState, Mint},
 };
@@ -745,6 +747,43 @@ where
                 &authority.pubkey(),
                 &[],
                 extension_types,
+            )?],
+            &[authority],
+        )
+        .await
+    }
+
+    /// Require memos on transfers into this account
+    /// Reallocate first, if needed
+    pub async fn enable_required_transfer_memos<S2: Signer>(
+        &self,
+        account: &Pubkey,
+        authority: &S2,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[memo_transfer::instruction::enable_required_transfer_memos(
+                &self.program_id,
+                account,
+                &authority.pubkey(),
+                &[],
+            )?],
+            &[authority],
+        )
+        .await
+    }
+
+    /// Stop requiring memos on transfers into this account
+    pub async fn disable_required_transfer_memos<S2: Signer>(
+        &self,
+        account: &Pubkey,
+        authority: &S2,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[memo_transfer::instruction::disable_required_transfer_memos(
+                &self.program_id,
+                account,
+                &authority.pubkey(),
+                &[],
             )?],
             &[authority],
         )
