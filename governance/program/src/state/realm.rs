@@ -277,7 +277,7 @@ pub fn get_realm_data(
     let account_type: GovernanceAccountType = try_from_slice_unchecked(&realm_info.data.borrow())?;
 
     // If the account is V1 version then translate to V2
-    if account_type == GovernanceAccountType::ProposalV1 {
+    if account_type == GovernanceAccountType::RealmV1 {
         let realm_data_v1 = get_account_data::<RealmV1>(program_id, realm_info)?;
 
         return Ok(RealmV2 {

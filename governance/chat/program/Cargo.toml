@@ -1,6 +1,6 @@
 [package]
 name = "spl-governance-chat"
-version = "0.2.1"
+version = "0.2.2"
 description = "Solana Program Library Governance Chat Program"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library"
