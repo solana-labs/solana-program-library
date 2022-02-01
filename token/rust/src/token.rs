@@ -597,4 +597,27 @@ where
         )
         .await
     }
+
+    /// Withdraw withheld tokens from accounts
+    pub async fn withdraw_withheld_tokens_from_accounts<S2: Signer>(
+        &self,
+        destination: &Pubkey,
+        authority: &S2,
+        sources: &[&Pubkey],
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[
+                transfer_fee::instruction::withdraw_withheld_tokens_from_accounts(
+                    &self.program_id,
+                    &self.pubkey,
+                    destination,
+                    &authority.pubkey(),
+                    &[],
+                    sources,
+                )?,
+            ],
+            &[authority],
+        )
+        .await
+    }
 }
