@@ -2,8 +2,9 @@
 
 use {
     crate::{
-        check_program_account, error::TokenError,
-        extension::transfer_fee::instruction::TransferFeeInstruction,
+        check_program_account,
+        error::TokenError,
+        extension::{transfer_fee::instruction::TransferFeeInstruction, ExtensionType},
     },
     solana_program::{
         instruction::{AccountMeta, Instruction},
@@ -451,7 +452,10 @@ pub enum TokenInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   0. `[]` The mint to calculate for
-    GetAccountDataSize,
+    GetAccountDataSize {
+        /// Additional extension types to include in the returned account size
+        extension_types: Vec<ExtensionType>,
+    },
     /// Initialize the close account authority on a new mint.
     ///
     /// Fails if the mint has already been initialized, so must be called before
@@ -576,7 +580,13 @@ impl TokenInstruction {
                     decimals,
                 }
             }
-            21 => Self::GetAccountDataSize,
+            21 => {
+                let mut extension_types = vec![];
+                for chunk in rest.chunks(size_of::<ExtensionType>()) {
+                    extension_types.push(chunk.try_into()?);
+                }
+                Self::GetAccountDataSize { extension_types }
+            }
             22 => {
                 let (close_authority, _rest) = Self::unpack_pubkey_option(rest)?;
                 Self::InitializeMintCloseAuthority { close_authority }
@@ -684,8 +694,13 @@ impl TokenInstruction {
                 buf.extend_from_slice(mint_authority.as_ref());
                 Self::pack_pubkey_option(freeze_authority, &mut buf);
             }
-            &Self::GetAccountDataSize => {
+            &Self::GetAccountDataSize {
+                ref extension_types,
+            } => {
                 buf.push(21);
+                for extension_type in extension_types {
+                    buf.extend_from_slice(&<[u8; 2]>::from(*extension_type));
+                }
             }
             &Self::InitializeMintCloseAuthority {
                 ref close_authority,
@@ -1416,12 +1431,13 @@ pub fn sync_native(
 pub fn get_account_data_size(
     token_program_id: &Pubkey,
     mint_pubkey: &Pubkey,
+    extension_types: Vec<ExtensionType>,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     Ok(Instruction {
         program_id: *token_program_id,
         accounts: vec![AccountMeta::new_readonly(*mint_pubkey, false)],
-        data: TokenInstruction::GetAccountDataSize.pack(),
+        data: TokenInstruction::GetAccountDataSize { extension_types }.pack(),
     })
 }
 
@@ -1662,10 +1678,24 @@ mod test {
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
 
-        let check = TokenInstruction::GetAccountDataSize;
+        let check = TokenInstruction::GetAccountDataSize {
+            extension_types: vec![],
+        };
         let packed = check.pack();
         let expect = [21u8];
         assert_eq!(packed, &[21u8]);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::GetAccountDataSize {
+            extension_types: vec![
+                ExtensionType::TransferFeeConfig,
+                ExtensionType::TransferFeeAmount,
+            ],
+        };
+        let packed = check.pack();
+        let expect = [21u8, 1, 0, 2, 0];
+        assert_eq!(packed, &[21u8, 1, 0, 2, 0]);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
 
