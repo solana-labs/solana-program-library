@@ -1392,6 +1392,10 @@ mod test {
             realloc,
             Some(ExtensionType::ImmutableOwner.get_tlv_len() + size_of::<AccountType>())
         );
+        assert_eq!(
+            account_size + realloc.unwrap(),
+            ExtensionType::get_account_len::<Account>(&[ExtensionType::ImmutableOwner])
+        );
         let mut buffer = vec![0; account_size + realloc.unwrap()];
         let mut state =
             StateWithExtensionsMut::<Account>::unpack_uninitialized(&mut buffer).unwrap();
@@ -1421,6 +1425,13 @@ mod test {
             realloc,
             Some(ExtensionType::MintCloseAuthority.get_tlv_len())
         );
+        assert_eq!(
+            mint_size + realloc.unwrap(),
+            ExtensionType::get_account_len::<Account>(&[
+                ExtensionType::TransferFeeConfig,
+                ExtensionType::MintCloseAuthority
+            ])
+        );
         let mut buffer = vec![0; mint_size + realloc.unwrap()];
         let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
         state.base = TEST_MINT;
@@ -1449,6 +1460,13 @@ mod test {
         assert_eq!(
             realloc,
             Some(ExtensionType::MintCloseAuthority.get_tlv_len() - size_of::<ExtensionType>())
+        );
+        assert_eq!(
+            mint_size + realloc.unwrap(),
+            ExtensionType::get_account_len::<Account>(&[
+                ExtensionType::MintPaddingTest,
+                ExtensionType::MintCloseAuthority
+            ])
         );
         let mut buffer = vec![0; mint_size + realloc.unwrap()];
         let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
