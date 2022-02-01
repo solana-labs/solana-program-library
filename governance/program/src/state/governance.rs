@@ -88,7 +88,7 @@ pub struct GovernanceV2 {
 
 impl AccountMaxSize for GovernanceV2 {}
 
-/// Checks if the given account type is one of the Governance account types
+/// Checks if the given account type is one of the Governance V2 account types
 pub fn is_governance_v2_account_type(account_type: &GovernanceAccountType) -> bool {
     match account_type {
         GovernanceAccountType::GovernanceV2
@@ -115,6 +115,11 @@ pub fn is_governance_v2_account_type(account_type: &GovernanceAccountType) -> bo
         | GovernanceAccountType::VoteRecordV2
         | GovernanceAccountType::ProgramMetadata => false,
     }
+}
+
+/// Checks if the given account type is on of the Governance account types of any version
+pub fn is_governance_account_type(account_type: &GovernanceAccountType) -> bool {
+    is_governance_v1_account_type(account_type) || is_governance_v2_account_type(account_type)
 }
 
 impl IsInitialized for GovernanceV2 {
@@ -331,25 +336,12 @@ pub fn get_governance_address<'a>(
     .0
 }
 
-/// Checks whether governance account exists, is initialized and owned by the Governance program
+/// Checks whether the Governance account exists, is initialized and owned by the Governance program
 pub fn assert_is_valid_governance(
     program_id: &Pubkey,
     governance_info: &AccountInfo,
 ) -> Result<(), ProgramError> {
-    assert_is_valid_account_of_types(
-        governance_info,
-        &[
-            GovernanceAccountType::GovernanceV1,
-            GovernanceAccountType::GovernanceV2,
-            GovernanceAccountType::ProgramGovernanceV1,
-            GovernanceAccountType::ProgramGovernanceV2,
-            GovernanceAccountType::TokenGovernanceV1,
-            GovernanceAccountType::TokenGovernanceV2,
-            GovernanceAccountType::MintGovernanceV1,
-            GovernanceAccountType::MintGovernanceV2,
-        ],
-        program_id,
-    )
+    assert_is_valid_account_of_types(program_id, governance_info, is_governance_account_type)
 }
 
 /// Validates args supplied to create governance account

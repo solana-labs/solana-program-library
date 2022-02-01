@@ -137,7 +137,7 @@ pub struct GovernanceV1 {
     pub voting_proposal_count: u16,
 }
 
-/// Checks if the given account type is one of the Governance account types
+/// Checks if the given account type is one of the Governance V1 account types
 pub fn is_governance_v1_account_type(account_type: &GovernanceAccountType) -> bool {
     match account_type {
         GovernanceAccountType::GovernanceV1

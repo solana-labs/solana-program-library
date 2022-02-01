@@ -132,6 +132,34 @@ impl IsInitialized for RealmV2 {
     }
 }
 
+/// Checks if the given account type is on of the Realm account types of any version
+pub fn is_realm_account_type(account_type: &GovernanceAccountType) -> bool {
+    match account_type {
+        GovernanceAccountType::RealmV1 | GovernanceAccountType::RealmV2 => true,
+        GovernanceAccountType::GovernanceV2
+        | GovernanceAccountType::ProgramGovernanceV2
+        | GovernanceAccountType::MintGovernanceV2
+        | GovernanceAccountType::TokenGovernanceV2
+        | GovernanceAccountType::Uninitialized
+        | GovernanceAccountType::RealmConfig
+        | GovernanceAccountType::TokenOwnerRecordV1
+        | GovernanceAccountType::TokenOwnerRecordV2
+        | GovernanceAccountType::GovernanceV1
+        | GovernanceAccountType::ProgramGovernanceV1
+        | GovernanceAccountType::MintGovernanceV1
+        | GovernanceAccountType::TokenGovernanceV1
+        | GovernanceAccountType::ProposalV1
+        | GovernanceAccountType::ProposalV2
+        | GovernanceAccountType::SignatoryRecordV1
+        | GovernanceAccountType::SignatoryRecordV2
+        | GovernanceAccountType::ProposalInstructionV1
+        | GovernanceAccountType::ProposalTransactionV2
+        | GovernanceAccountType::VoteRecordV1
+        | GovernanceAccountType::VoteRecordV2
+        | GovernanceAccountType::ProgramMetadata => false,
+    }
+}
+
 impl RealmV2 {
     /// Asserts the given mint is either Community or Council mint of the Realm
     pub fn assert_is_valid_governing_token_mint(
@@ -254,19 +282,12 @@ impl RealmV2 {
     }
 }
 
-/// Checks whether realm account exists, is initialized and  owned by Governance program
+/// Checks whether the Realm account exists, is initialized and  owned by Governance program
 pub fn assert_is_valid_realm(
     program_id: &Pubkey,
     realm_info: &AccountInfo,
 ) -> Result<(), ProgramError> {
-    assert_is_valid_account_of_types(
-        realm_info,
-        &[
-            GovernanceAccountType::RealmV1,
-            GovernanceAccountType::RealmV2,
-        ],
-        program_id,
-    )
+    assert_is_valid_account_of_types(program_id, realm_info, is_realm_account_type)
 }
 
 /// Deserializes account and checks owner program
