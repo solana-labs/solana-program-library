@@ -78,7 +78,7 @@ pub fn get_account_len<'a>(
     spl_token_program: &AccountInfo<'a>,
 ) -> Result<usize, ProgramError> {
     invoke(
-        &spl_token::instruction::get_account_data_size(spl_token_program.key, mint.key)?,
+        &spl_token::instruction::get_account_data_size(spl_token_program.key, mint.key, vec![])?,
         &[mint.clone(), spl_token_program.clone()],
     )?;
     get_return_data()

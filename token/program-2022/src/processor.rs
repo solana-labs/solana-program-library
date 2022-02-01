@@ -962,11 +962,20 @@ impl Processor {
     }
 
     /// Processes a [GetAccountDataSize](enum.TokenInstruction.html) instruction
-    pub fn process_get_account_data_size(accounts: &[AccountInfo]) -> ProgramResult {
+    pub fn process_get_account_data_size(
+        accounts: &[AccountInfo],
+        extension_types: Vec<ExtensionType>,
+    ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let mint_account_info = next_account_info(account_info_iter)?;
 
-        let account_extensions = Self::get_required_account_extensions(mint_account_info)?;
+        let mut account_extensions = Self::get_required_account_extensions(mint_account_info)?;
+
+        for extension_type in extension_types {
+            if !account_extensions.contains(&extension_type) {
+                account_extensions.push(extension_type);
+            }
+        }
 
         let account_len = ExtensionType::get_account_len::<Account>(&account_extensions);
         set_return_data(&account_len.to_le_bytes());
@@ -1075,9 +1084,9 @@ impl Processor {
                 msg!("Instruction: SyncNative");
                 Self::process_sync_native(accounts)
             }
-            TokenInstruction::GetAccountDataSize => {
+            TokenInstruction::GetAccountDataSize { extension_types } => {
                 msg!("Instruction: GetAccountDataSize");
-                Self::process_get_account_data_size(accounts)
+                Self::process_get_account_data_size(accounts, extension_types)
             }
             TokenInstruction::InitializeMintCloseAuthority { close_authority } => {
                 msg!("Instruction: InitializeMintCloseAuthority");
@@ -6725,7 +6734,26 @@ mod tests {
                 .to_vec(),
         );
         do_process_instruction(
-            get_account_data_size(&program_id, &mint_key).unwrap(),
+            get_account_data_size(&program_id, &mint_key, vec![]).unwrap(),
+            vec![&mut mint_account],
+        )
+        .unwrap();
+
+        set_expected_data(
+            ExtensionType::get_account_len::<Account>(&[ExtensionType::TransferFeeAmount])
+                .to_le_bytes()
+                .to_vec(),
+        );
+        do_process_instruction(
+            get_account_data_size(
+                &program_id,
+                &mint_key,
+                vec![
+                    ExtensionType::TransferFeeAmount,
+                    ExtensionType::TransferFeeAmount, // Duplicate user input ignored...
+                ],
+            )
+            .unwrap(),
             vec![&mut mint_account],
         )
         .unwrap();
@@ -6738,7 +6766,7 @@ mod tests {
                 .to_vec(),
         );
         do_process_instruction(
-            get_account_data_size(&program_id, &mint_key).unwrap(),
+            get_account_data_size(&program_id, &mint_key, vec![]).unwrap(),
             vec![&mut mint_account],
         )
         .unwrap();
@@ -6769,7 +6797,18 @@ mod tests {
                 .to_vec(),
         );
         do_process_instruction(
-            get_account_data_size(&program_id, &mint_key).unwrap(),
+            get_account_data_size(&program_id, &mint_key, vec![]).unwrap(),
+            vec![&mut extended_mint_account],
+        )
+        .unwrap();
+
+        do_process_instruction(
+            get_account_data_size(
+                &program_id,
+                &mint_key,
+                vec![ExtensionType::TransferFeeAmount], // User extension that's also added by the mint ignored...
+            )
+            .unwrap(),
             vec![&mut extended_mint_account],
         )
         .unwrap();
@@ -6794,7 +6833,7 @@ mod tests {
 
         assert_eq!(
             do_process_instruction(
-                get_account_data_size(&program_id, &invalid_mint_key).unwrap(),
+                get_account_data_size(&program_id, &invalid_mint_key, vec![]).unwrap(),
                 vec![&mut invalid_mint_account],
             ),
             Err(TokenError::InvalidMint.into())
@@ -6819,7 +6858,7 @@ mod tests {
 
         assert_eq!(
             do_process_instruction(
-                get_account_data_size(&program_id, &invalid_mint_key).unwrap(),
+                get_account_data_size(&program_id, &invalid_mint_key, vec![]).unwrap(),
                 vec![&mut invalid_mint_account],
             ),
             Err(ProgramError::IncorrectProgramId)
