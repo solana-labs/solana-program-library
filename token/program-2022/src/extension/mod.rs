@@ -515,7 +515,9 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         } else {
             let mut diff = new_needed_tlv_len - self.tlv_data.len(); // arithmetic safe because of if clause
             if self.account_type.is_empty() {
-                diff = diff.saturating_add(size_of::<AccountType>());
+                diff = diff
+                    .saturating_add(size_of::<AccountType>())
+                    .saturating_add(BASE_ACCOUNT_LENGTH.saturating_sub(S::LEN));
             }
             Ok(Some(diff))
         }
@@ -1407,6 +1409,35 @@ mod test {
         state.pack_base();
         state.init_account_type().unwrap();
         state.init_extension::<ImmutableOwner>().unwrap();
+
+        // buffer exact size of base-state mint
+        let account_size = ExtensionType::get_account_len::<Mint>(&[]);
+        let mut buffer = vec![0; account_size];
+        let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
+        state.base = TEST_MINT;
+        state.pack_base();
+        state.init_account_type().unwrap();
+        let realloc = state
+            .realloc_needed(ExtensionType::MintCloseAuthority)
+            .unwrap();
+        assert_eq!(
+            realloc,
+            Some(
+                ExtensionType::MintCloseAuthority.get_tlv_len()
+                    + size_of::<AccountType>()
+                    + (Account::LEN - Mint::LEN)
+            )
+        );
+        assert_eq!(
+            account_size + realloc.unwrap(),
+            ExtensionType::get_account_len::<Mint>(&[ExtensionType::MintCloseAuthority])
+        );
+        let mut buffer = vec![0; account_size + realloc.unwrap()];
+        let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
+        state.base = TEST_MINT;
+        state.pack_base();
+        state.init_account_type().unwrap();
+        state.init_extension::<MintCloseAuthority>().unwrap();
 
         // buffer exact size of existing extension
         let mint_size = ExtensionType::get_account_len::<Mint>(&[ExtensionType::TransferFeeConfig]);
