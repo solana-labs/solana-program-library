@@ -140,7 +140,7 @@ impl Processor {
         let required_extensions =
             Self::get_required_account_extensions_from_unpacked_mint(mint_info.owner, &mint)?;
         if ExtensionType::get_account_len::<Account>(&required_extensions)
-            != new_account_info_data_len
+            > new_account_info_data_len
         {
             return Err(ProgramError::InvalidAccountData);
         }
