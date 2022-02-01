@@ -76,7 +76,11 @@ pub fn process_create_associated_token_account(
         &[bump_seed],
     ];
 
-    let account_len = get_account_len(spl_token_mint_info, spl_token_program_info)?;
+    let account_len = get_account_len(
+        spl_token_mint_info,
+        spl_token_program_info,
+        vec![spl_token::extension::ExtensionType::ImmutableOwner],
+    )?;
 
     create_pda_account(
         funder_info,
@@ -89,6 +93,16 @@ pub fn process_create_associated_token_account(
     )?;
 
     msg!("Initialize the associated token account");
+    invoke(
+        &spl_token::instruction::initialize_immutable_owner(
+            spl_token_program_id,
+            associated_token_account_info.key,
+        )?,
+        &[
+            associated_token_account_info.clone(),
+            spl_token_program_info.clone(),
+        ],
+    )?;
     invoke(
         &spl_token::instruction::initialize_account3(
             spl_token_program_id,

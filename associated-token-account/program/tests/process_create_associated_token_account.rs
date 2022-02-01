@@ -5,9 +5,7 @@ mod program_test;
 
 use {
     program_test::program_test,
-    solana_program::{
-        instruction::*, program_pack::Pack, pubkey::Pubkey, system_instruction, sysvar,
-    },
+    solana_program::{instruction::*, pubkey::Pubkey, system_instruction, sysvar},
     solana_program_test::*,
     solana_sdk::{
         signature::Signer,
@@ -16,6 +14,7 @@ use {
     spl_associated_token_account::{
         get_associated_token_address, instruction::create_associated_token_account,
     },
+    spl_token::extension::ExtensionType,
 };
 
 #[allow(deprecated)]
@@ -31,7 +30,12 @@ async fn test_associated_token_address() {
     let (mut banks_client, payer, recent_blockhash) =
         program_test(token_mint_address, true).start().await;
     let rent = banks_client.get_rent().await.unwrap();
-    let expected_token_account_balance = rent.minimum_balance(spl_token::state::Account::LEN);
+
+    let expected_token_account_len =
+        ExtensionType::get_account_len::<spl_token::state::Account>(&[
+            ExtensionType::ImmutableOwner,
+        ]);
+    let expected_token_account_balance = rent.minimum_balance(expected_token_account_len);
 
     // Associated account does not exist
     assert_eq!(
@@ -60,10 +64,7 @@ async fn test_associated_token_address() {
         .await
         .expect("get_account")
         .expect("associated_account not none");
-    assert_eq!(
-        associated_account.data.len(),
-        spl_token::state::Account::LEN
-    );
+    assert_eq!(associated_account.data.len(), expected_token_account_len,);
     assert_eq!(associated_account.owner, spl_token::id());
     assert_eq!(associated_account.lamports, expected_token_account_balance);
 }
@@ -78,7 +79,11 @@ async fn test_create_with_fewer_lamports() {
     let (mut banks_client, payer, recent_blockhash) =
         program_test(token_mint_address, true).start().await;
     let rent = banks_client.get_rent().await.unwrap();
-    let expected_token_account_balance = rent.minimum_balance(spl_token::state::Account::LEN);
+    let expected_token_account_len =
+        ExtensionType::get_account_len::<spl_token::state::Account>(&[
+            ExtensionType::ImmutableOwner,
+        ]);
+    let expected_token_account_balance = rent.minimum_balance(expected_token_account_len);
 
     // Transfer lamports into `associated_token_address` before creating it - enough to be
     // rent-exempt for 0 data, but not for an initialized token account
@@ -133,7 +138,12 @@ async fn test_create_with_excess_lamports() {
     let (mut banks_client, payer, recent_blockhash) =
         program_test(token_mint_address, true).start().await;
     let rent = banks_client.get_rent().await.unwrap();
-    let expected_token_account_balance = rent.minimum_balance(spl_token::state::Account::LEN);
+
+    let expected_token_account_len =
+        ExtensionType::get_account_len::<spl_token::state::Account>(&[
+            ExtensionType::ImmutableOwner,
+        ]);
+    let expected_token_account_balance = rent.minimum_balance(expected_token_account_len);
 
     // Transfer 1 lamport into `associated_token_address` before creating it
     let mut transaction = Transaction::new_with_payer(
@@ -255,7 +265,11 @@ async fn test_create_associated_token_account_using_legacy_implicit_instruction(
     let (mut banks_client, payer, recent_blockhash) =
         program_test(token_mint_address, true).start().await;
     let rent = banks_client.get_rent().await.unwrap();
-    let expected_token_account_balance = rent.minimum_balance(spl_token::state::Account::LEN);
+    let expected_token_account_len =
+        ExtensionType::get_account_len::<spl_token::state::Account>(&[
+            ExtensionType::ImmutableOwner,
+        ]);
+    let expected_token_account_balance = rent.minimum_balance(expected_token_account_len);
 
     // Associated account does not exist
     assert_eq!(
@@ -290,10 +304,7 @@ async fn test_create_associated_token_account_using_legacy_implicit_instruction(
         .await
         .expect("get_account")
         .expect("associated_account not none");
-    assert_eq!(
-        associated_account.data.len(),
-        spl_token::state::Account::LEN
-    );
+    assert_eq!(associated_account.data.len(), expected_token_account_len);
     assert_eq!(associated_account.owner, spl_token::id());
     assert_eq!(associated_account.lamports, expected_token_account_balance);
 }
@@ -308,7 +319,11 @@ async fn test_create_associated_token_account_using_deprecated_instruction_creat
     let (mut banks_client, payer, recent_blockhash) =
         program_test(token_mint_address, true).start().await;
     let rent = banks_client.get_rent().await.unwrap();
-    let expected_token_account_balance = rent.minimum_balance(spl_token::state::Account::LEN);
+    let expected_token_account_len =
+        ExtensionType::get_account_len::<spl_token::state::Account>(&[
+            ExtensionType::ImmutableOwner,
+        ]);
+    let expected_token_account_balance = rent.minimum_balance(expected_token_account_len);
 
     // Associated account does not exist
     assert_eq!(
@@ -338,10 +353,7 @@ async fn test_create_associated_token_account_using_deprecated_instruction_creat
         .await
         .expect("get_account")
         .expect("associated_account not none");
-    assert_eq!(
-        associated_account.data.len(),
-        spl_token::state::Account::LEN
-    );
+    assert_eq!(associated_account.data.len(), expected_token_account_len);
     assert_eq!(associated_account.owner, spl_token::id());
     assert_eq!(associated_account.lamports, expected_token_account_balance);
 }

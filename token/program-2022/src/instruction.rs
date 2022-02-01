@@ -487,6 +487,19 @@ pub enum TokenInstruction {
     /// See `extension::default_account_state::instruction::DefaultAccountStateInstruction` for
     /// further details about the extended instructions that share this instruction prefix
     DefaultAccountStateExtension,
+    /// Initialize the Immutable Owner extension for the given token account
+    ///
+    /// Fails if the account has already been initialized, so must be called before
+    /// `InitializeAccount`.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]`  The account to initialize.
+    //
+    /// Data expected by this instruction:
+    ///   None
+    ///
+    InitializeImmutableOwner,
 }
 impl TokenInstruction {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -597,6 +610,7 @@ impl TokenInstruction {
             }
             24 => Self::ConfidentialTransferExtension,
             25 => Self::DefaultAccountStateExtension,
+            26 => Self::InitializeImmutableOwner,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -717,6 +731,9 @@ impl TokenInstruction {
             }
             &Self::DefaultAccountStateExtension => {
                 buf.push(25);
+            }
+            &Self::InitializeImmutableOwner => {
+                buf.push(26);
             }
         };
         buf
@@ -1453,6 +1470,19 @@ pub fn initialize_mint_close_authority(
         program_id: *token_program_id,
         accounts: vec![AccountMeta::new(*mint_pubkey, false)],
         data: TokenInstruction::InitializeMintCloseAuthority { close_authority }.pack(),
+    })
+}
+
+/// Create an `InitializeImmutableOwner` instruction
+pub fn initialize_immutable_owner(
+    token_program_id: &Pubkey,
+    token_account: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts: vec![AccountMeta::new(*token_account, false)],
+        data: TokenInstruction::InitializeImmutableOwner.pack(),
     })
 }
 

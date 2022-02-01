@@ -7,6 +7,7 @@ use {
         extension::{
             confidential_transfer::{self, ConfidentialTransferAccount},
             default_account_state::{self, DefaultAccountState},
+            immutable_owner::ImmutableOwner,
             mint_close_authority::MintCloseAuthority,
             transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
             ExtensionType, StateWithExtensions, StateWithExtensionsMut,
@@ -522,6 +523,10 @@ impl Processor {
                         account_info_iter.as_slice(),
                     )?;
 
+                    if account.get_extension_mut::<ImmutableOwner>().is_ok() {
+                        return Err(TokenError::ImmutableOwner.into());
+                    }
+
                     if let COption::Some(authority) = new_authority {
                         account.base.owner = authority;
                     } else {
@@ -983,6 +988,16 @@ impl Processor {
         Ok(())
     }
 
+    /// Processes an [InitializeImmutableOwner](enum.TokenInstruction.html) instruction
+    pub fn process_initialize_immutable_owner(accounts: &[AccountInfo]) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let token_account_info = next_account_info(account_info_iter)?;
+        let token_account_data = &mut token_account_info.data.borrow_mut();
+        let mut token_account =
+            StateWithExtensionsMut::<Account>::unpack_uninitialized(token_account_data)?;
+        token_account.init_extension::<ImmutableOwner>().map(|_| ())
+    }
+
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         let instruction = TokenInstruction::unpack(input)?;
@@ -1108,6 +1123,10 @@ impl Processor {
                     accounts,
                     &input[1..],
                 )
+            }
+            TokenInstruction::InitializeImmutableOwner => {
+                msg!("Instruction: InitializeImmutableOwner");
+                Self::process_initialize_immutable_owner(accounts)
             }
         }
     }
@@ -1250,6 +1269,9 @@ impl PrintProgramError for TokenError {
             }
             TokenError::FeeMismatch => {
                 msg!("Calculated fee does not match expected fee");
+            }
+            TokenError::ImmutableOwner => {
+                msg!("The owner authority cannot be changed");
             }
         }
     }
@@ -3914,6 +3936,75 @@ mod tests {
                 )
                 .unwrap(),
                 vec![&mut mint2_account, &mut owner2_account],
+            )
+        );
+    }
+
+    #[test]
+    fn test_set_authority_with_immutable_owner_extension() {
+        let program_id = crate::id();
+        let account_key = Pubkey::new_unique();
+
+        let account_len =
+            ExtensionType::get_account_len::<Account>(&[ExtensionType::ImmutableOwner]);
+        let mut account_account = SolanaAccount::new(
+            Rent::default().minimum_balance(account_len),
+            account_len,
+            &program_id,
+        );
+        let owner_key = Pubkey::new_unique();
+        let mut owner_account = SolanaAccount::default();
+        let owner2_key = Pubkey::new_unique();
+
+        let mint_key = Pubkey::new_unique();
+        let mut mint_account =
+            SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
+        let mut rent_sysvar = rent_sysvar();
+
+        // create mint
+        assert_eq!(
+            Ok(()),
+            do_process_instruction(
+                initialize_mint(&program_id, &mint_key, &owner_key, None, 2).unwrap(),
+                vec![&mut mint_account, &mut rent_sysvar],
+            )
+        );
+
+        // create account
+        assert_eq!(
+            Ok(()),
+            do_process_instruction(
+                initialize_immutable_owner(&program_id, &account_key).unwrap(),
+                vec![&mut account_account],
+            )
+        );
+        assert_eq!(
+            Ok(()),
+            do_process_instruction(
+                initialize_account(&program_id, &account_key, &mint_key, &owner_key).unwrap(),
+                vec![
+                    &mut account_account,
+                    &mut mint_account,
+                    &mut owner_account,
+                    &mut rent_sysvar,
+                ],
+            )
+        );
+
+        // Immutable Owner extension blocks account owner authority changes
+        assert_eq!(
+            Err(TokenError::ImmutableOwner.into()),
+            do_process_instruction(
+                set_authority(
+                    &program_id,
+                    &account_key,
+                    Some(&owner2_key),
+                    AuthorityType::AccountOwner,
+                    &owner_key,
+                    &[],
+                )
+                .unwrap(),
+                vec![&mut account_account, &mut owner_account],
             )
         );
     }

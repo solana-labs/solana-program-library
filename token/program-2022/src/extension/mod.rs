@@ -6,6 +6,7 @@ use {
         extension::{
             confidential_transfer::{ConfidentialTransferAccount, ConfidentialTransferMint},
             default_account_state::DefaultAccountState,
+            immutable_owner::ImmutableOwner,
             mint_close_authority::MintCloseAuthority,
             transfer_fee::{TransferFeeAmount, TransferFeeConfig},
         },
@@ -28,6 +29,8 @@ use {
 pub mod confidential_transfer;
 /// Default Account State extension
 pub mod default_account_state;
+/// Immutable Owner extension
+pub mod immutable_owner;
 /// Mint Close Authority extension
 pub mod mint_close_authority;
 /// Transfer Fee extension
@@ -64,6 +67,7 @@ fn get_tlv_indices(type_start: usize) -> TlvIndices {
 
 /// Helper struct for returning the indices of the type, length, and value in
 /// a TLV entry
+#[derive(Debug)]
 struct TlvIndices {
     pub type_start: usize,
     pub length_start: usize,
@@ -77,7 +81,7 @@ fn get_extension_indices<V: Extension>(
     let v_account_type = V::TYPE.get_account_type();
     while start_index < tlv_data.len() {
         let tlv_indices = get_tlv_indices(start_index);
-        if tlv_data.len() <= tlv_indices.value_start {
+        if tlv_data.len() < tlv_indices.value_start {
             return Err(ProgramError::InvalidAccountData);
         }
         let extension_type =
@@ -397,6 +401,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
             length_start,
             value_start,
         } = get_extension_indices::<V>(self.tlv_data, init)?;
+
         if self.tlv_data[type_start..].len() < V::TYPE.get_tlv_len() {
             return Err(ProgramError::InvalidAccountData);
         }
@@ -551,6 +556,8 @@ pub enum ExtensionType {
     ConfidentialTransferAccount,
     /// Specifies the default Account::state for new Accounts
     DefaultAccountState,
+    /// Indicates that the Account owner authority cannot be changed
+    ImmutableOwner,
     /// Padding extension used to make an account exactly Multisig::LEN, used for testing
     #[cfg(test)]
     AccountPaddingTest = u16::MAX - 1,
@@ -580,6 +587,7 @@ impl ExtensionType {
             ExtensionType::TransferFeeConfig => pod_get_packed_len::<TransferFeeConfig>(),
             ExtensionType::TransferFeeAmount => pod_get_packed_len::<TransferFeeAmount>(),
             ExtensionType::MintCloseAuthority => pod_get_packed_len::<MintCloseAuthority>(),
+            ExtensionType::ImmutableOwner => pod_get_packed_len::<ImmutableOwner>(),
             ExtensionType::ConfidentialTransferMint => {
                 pod_get_packed_len::<ConfidentialTransferMint>()
             }
@@ -631,9 +639,9 @@ impl ExtensionType {
             | ExtensionType::MintCloseAuthority
             | ExtensionType::ConfidentialTransferMint
             | ExtensionType::DefaultAccountState => AccountType::Mint,
-            ExtensionType::TransferFeeAmount | ExtensionType::ConfidentialTransferAccount => {
-                AccountType::Account
-            }
+            ExtensionType::ImmutableOwner
+            | ExtensionType::TransferFeeAmount
+            | ExtensionType::ConfidentialTransferAccount => AccountType::Account,
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => AccountType::Account,
             #[cfg(test)]
