@@ -1228,12 +1228,21 @@ async fn withdraw_withheld_tokens_from_mint() {
     );
 
     // fail frozen account
+    let account = create_and_transfer_to_account(
+        &token,
+        &alice_account,
+        &alice,
+        &alice.pubkey(),
+        amount,
+        decimals,
+    )
+    .await;
     token
-        .freeze_account(&bob_account, &freeze_authority)
+        .freeze_account(&account, &freeze_authority)
         .await
         .unwrap();
     let error = token
-        .withdraw_withheld_tokens_from_mint(&bob_account, &withdraw_withheld_authority)
+        .withdraw_withheld_tokens_from_mint(&account, &withdraw_withheld_authority)
         .await
         .unwrap_err();
     assert_eq!(
@@ -1247,6 +1256,15 @@ async fn withdraw_withheld_tokens_from_mint() {
     );
 
     // set to none, fail
+    let account = create_and_transfer_to_account(
+        &token,
+        &alice_account,
+        &alice,
+        &alice.pubkey(),
+        amount,
+        decimals,
+    )
+    .await;
     token
         .set_authority(
             token.get_address(),
@@ -1257,7 +1275,7 @@ async fn withdraw_withheld_tokens_from_mint() {
         .await
         .unwrap();
     let error = token
-        .withdraw_withheld_tokens_from_mint(&alice_account, &withdraw_withheld_authority)
+        .withdraw_withheld_tokens_from_mint(&account, &withdraw_withheld_authority)
         .await
         .unwrap_err();
     assert_eq!(
