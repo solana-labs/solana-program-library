@@ -1414,12 +1414,20 @@ mod test {
             None
         );
         state.init_extension::<TransferFeeConfig>().unwrap();
+        let realloc = state
+            .realloc_needed(ExtensionType::MintCloseAuthority)
+            .unwrap();
         assert_eq!(
-            state
-                .realloc_needed(ExtensionType::MintCloseAuthority)
-                .unwrap(),
+            realloc,
             Some(ExtensionType::MintCloseAuthority.get_tlv_len())
         );
+        let mut buffer = vec![0; mint_size + realloc.unwrap()];
+        let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
+        state.base = TEST_MINT;
+        state.pack_base();
+        state.init_account_type().unwrap();
+        state.init_extension::<TransferFeeConfig>().unwrap();
+        state.init_extension::<MintCloseAuthority>().unwrap();
 
         // buffer with multisig len
         let mint_size = ExtensionType::get_account_len::<Mint>(&[ExtensionType::MintPaddingTest]);
@@ -1435,12 +1443,20 @@ mod test {
             None
         );
         state.init_extension::<MintPaddingTest>().unwrap();
+        let realloc = state
+            .realloc_needed(ExtensionType::MintCloseAuthority)
+            .unwrap();
         assert_eq!(
-            state
-                .realloc_needed(ExtensionType::MintCloseAuthority)
-                .unwrap(),
+            realloc,
             Some(ExtensionType::MintCloseAuthority.get_tlv_len() - size_of::<ExtensionType>())
         );
+        let mut buffer = vec![0; mint_size + realloc.unwrap()];
+        let mut state = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut buffer).unwrap();
+        state.base = TEST_MINT;
+        state.pack_base();
+        state.init_account_type().unwrap();
+        state.init_extension::<MintPaddingTest>().unwrap();
+        state.init_extension::<MintCloseAuthority>().unwrap();
 
         // huge buffer
         let mut buffer = vec![0; u16::MAX.into()];
