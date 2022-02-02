@@ -176,6 +176,21 @@ impl Obligation {
         Ok((&self.borrows[liquidity_index], liquidity_index))
     }
 
+    /// Find liquidity by borrow reserve mut
+    pub fn find_liquidity_in_borrows_mut(
+        &mut self,
+        borrow_reserve: Pubkey,
+    ) -> Result<(&mut ObligationLiquidity, usize), ProgramError> {
+        if self.borrows.is_empty() {
+            msg!("Obligation has no borrows");
+            return Err(LendingError::ObligationBorrowsEmpty.into());
+        }
+        let liquidity_index = self
+            ._find_liquidity_index_in_borrows(borrow_reserve)
+            .ok_or(LendingError::InvalidObligationLiquidity)?;
+        Ok((&mut self.borrows[liquidity_index], liquidity_index))
+    }
+
     /// Find or add liquidity by borrow reserve
     pub fn find_or_add_liquidity_to_borrows(
         &mut self,

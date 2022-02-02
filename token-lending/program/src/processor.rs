@@ -1466,6 +1466,7 @@ fn process_repay_obligation_liquidity(
         return Err(LendingError::InvalidTokenProgram.into());
     }
 
+    _refresh_reserve_interest(program_id, repay_reserve_info, clock)?;
     let mut repay_reserve = Reserve::unpack(&repay_reserve_info.data.borrow())?;
     if repay_reserve_info.owner != program_id {
         msg!("Repay reserve provided is not owned by the lending program");
@@ -1497,17 +1498,16 @@ fn process_repay_obligation_liquidity(
         msg!("Obligation lending market does not match the lending market provided");
         return Err(LendingError::InvalidAccountInput.into());
     }
-    if obligation.last_update.is_stale(clock.slot)? {
-        msg!("Obligation is stale and must be refreshed in the current slot");
-        return Err(LendingError::ObligationStale.into());
-    }
 
     let (liquidity, liquidity_index) =
-        obligation.find_liquidity_in_borrows(*repay_reserve_info.key)?;
+        obligation.find_liquidity_in_borrows_mut(*repay_reserve_info.key)?;
     if liquidity.borrowed_amount_wads == Decimal::zero() {
         msg!("Liquidity borrowed amount is zero");
         return Err(LendingError::ObligationLiquidityEmpty.into());
     }
+
+    // refreshing specific borrow instead of checking obligation stale
+    liquidity.accrue_interest(repay_reserve.liquidity.cumulative_borrow_rate_wads)?;
 
     let CalculateRepayResult {
         settle_amount,
