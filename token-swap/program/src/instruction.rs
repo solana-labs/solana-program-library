@@ -12,6 +12,7 @@ use solana_program::{
 };
 use std::convert::TryInto;
 use std::mem::size_of;
+use std::sync::Arc;
 
 #[cfg(feature = "fuzz")]
 use arbitrary::Arbitrary;
@@ -591,7 +592,7 @@ mod tests {
         };
         let amp: u64 = 1;
         let curve_type = CurveType::Stable;
-        let calculator = Box::new(StableCurve { amp });
+        let calculator = Arc::new(StableCurve { amp });
         let swap_curve = SwapCurve {
             curve_type,
             calculator,

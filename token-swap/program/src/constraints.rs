@@ -7,8 +7,8 @@ use crate::{
     },
     error::SwapError,
 };
-
 use solana_program::program_error::ProgramError;
+use std::sync::Arc;
 
 #[cfg(feature = "production")]
 use std::env;
@@ -17,7 +17,7 @@ use std::env;
 /// may be used by multiple frontends, to ensure that proper fees are being
 /// assessed.
 /// Since this struct needs to be created at compile-time, we only have access
-/// to const functions and constructors. Since SwapCurve contains a Box, it
+/// to const functions and constructors. Since SwapCurve contains a Arc, it
 /// cannot be used, so we have to split the curves based on their types.
 pub struct SwapConstraints<'a> {
     /// Owner of the program
@@ -128,7 +128,7 @@ mod tests {
         let calculator = ConstantProductCurve {};
         let swap_curve = SwapCurve {
             curve_type,
-            calculator: Box::new(calculator.clone()),
+            calculator: Arc::new(calculator.clone()),
         };
         let constraints = SwapConstraints {
             owner_key,
@@ -187,7 +187,7 @@ mod tests {
 
         let swap_curve = SwapCurve {
             curve_type: CurveType::ConstantPrice,
-            calculator: Box::new(calculator),
+            calculator: Arc::new(calculator),
         };
         assert_eq!(
             Err(SwapError::UnsupportedCurveType.into()),
