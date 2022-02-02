@@ -200,7 +200,7 @@ fn process_harvest_withheld_tokens_to_mint(accounts: &[AccountInfo]) -> ProgramR
 fn process_withdraw_withheld_tokens_from_accounts(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    number_of_additional_signers: u8,
+    number_of_token_accounts: u8,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let mint_account_info = next_account_info(account_info_iter)?;
@@ -208,7 +208,9 @@ fn process_withdraw_withheld_tokens_from_accounts(
     let authority_info = next_account_info(account_info_iter)?;
     let authority_info_data_len = authority_info.data_len();
     let account_infos = account_info_iter.as_slice();
-    let number_of_additional_signers = number_of_additional_signers as usize;
+    let number_of_signers = account_infos
+        .len()
+        .saturating_sub(number_of_token_accounts as usize);
 
     let mint_data = mint_account_info.data.borrow();
     let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
@@ -225,7 +227,7 @@ fn process_withdraw_withheld_tokens_from_accounts(
         &withdraw_withheld_authority,
         authority_info,
         authority_info_data_len,
-        &account_infos[..number_of_additional_signers],
+        &account_infos[..number_of_signers],
     )?;
 
     let mut dest_account_data = dest_account_info.data.borrow_mut();
@@ -238,7 +240,7 @@ fn process_withdraw_withheld_tokens_from_accounts(
     }
     // This iterates back over any multisig signers, but since it gracefully
     // fails on those, we can support them.
-    for account_info in &account_infos[number_of_additional_signers..] {
+    for account_info in &account_infos[number_of_signers..] {
         // self-harvest, can't double-borrow the underlying data
         if account_info.key == dest_account_info.key {
             let token_account_extension = dest_account
@@ -304,13 +306,13 @@ pub(crate) fn process_instruction(
             process_withdraw_withheld_tokens_from_mint(program_id, accounts)
         }
         TransferFeeInstruction::WithdrawWithheldTokensFromAccounts {
-            number_of_additional_signers,
+            number_of_token_accounts,
         } => {
             msg!("TransferFeeInstruction: WithdrawWithheldTokensFromAccounts");
             process_withdraw_withheld_tokens_from_accounts(
                 program_id,
                 accounts,
-                number_of_additional_signers,
+                number_of_token_accounts,
             )
         }
         TransferFeeInstruction::HarvestWithheldTokensToMint => {

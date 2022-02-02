@@ -97,8 +97,8 @@ pub enum TransferFeeInstruction {
     ///   3. ..3+M `[signer]` M signer accounts.
     ///   3+M+1. ..3+M+N `[writable]` The source accounts to withdraw from.
     WithdrawWithheldTokensFromAccounts {
-        /// Number of multisig signers, in addition to the authority account
-        number_of_additional_signers: u8,
+        /// Number of token accounts harvested
+        number_of_token_accounts: u8,
     },
     /// Permissionless instruction to transfer all withheld tokens to the mint.
     ///
@@ -166,10 +166,10 @@ impl TransferFeeInstruction {
             }
             2 => (Self::WithdrawWithheldTokensFromMint, rest),
             3 => {
-                let (&number_of_additional_signers, rest) =
+                let (&number_of_token_accounts, rest) =
                     rest.split_first().ok_or(InvalidInstruction)?;
                 let instruction = Self::WithdrawWithheldTokensFromAccounts {
-                    number_of_additional_signers,
+                    number_of_token_accounts,
                 };
                 (instruction, rest)
             }
@@ -216,10 +216,10 @@ impl TransferFeeInstruction {
                 buffer.push(2);
             }
             Self::WithdrawWithheldTokensFromAccounts {
-                number_of_additional_signers,
+                number_of_token_accounts,
             } => {
                 buffer.push(3);
-                buffer.push(number_of_additional_signers);
+                buffer.push(number_of_token_accounts);
             }
             Self::HarvestWithheldTokensToMint => {
                 buffer.push(4);
@@ -340,8 +340,8 @@ pub fn withdraw_withheld_tokens_from_accounts(
     sources: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
-    let number_of_additional_signers =
-        u8::try_from(signers.len()).map_err(|_| ProgramError::InvalidInstructionData)?;
+    let number_of_token_accounts =
+        u8::try_from(sources.len()).map_err(|_| ProgramError::InvalidInstructionData)?;
     let mut accounts = Vec::with_capacity(3 + signers.len() + sources.len());
     accounts.push(AccountMeta::new_readonly(*mint, false));
     accounts.push(AccountMeta::new(*destination, false));
@@ -358,7 +358,7 @@ pub fn withdraw_withheld_tokens_from_accounts(
         accounts,
         data: TokenInstruction::TransferFeeExtension(
             TransferFeeInstruction::WithdrawWithheldTokensFromAccounts {
-                number_of_additional_signers,
+                number_of_token_accounts,
             },
         )
         .pack(),
@@ -464,14 +464,14 @@ mod test {
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
 
-        let number_of_additional_signers = 255;
+        let number_of_token_accounts = 255;
         let check = TokenInstruction::TransferFeeExtension(
             TransferFeeInstruction::WithdrawWithheldTokensFromAccounts {
-                number_of_additional_signers,
+                number_of_token_accounts,
             },
         );
         let packed = check.pack();
-        let expect = [23u8, 3, number_of_additional_signers];
+        let expect = [23u8, 3, number_of_token_accounts];
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
