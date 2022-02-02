@@ -12,7 +12,6 @@ use solana_program::{
 };
 use std::convert::TryInto;
 use std::mem::size_of;
-use std::sync::Arc;
 
 #[cfg(feature = "fuzz")]
 use arbitrary::Arbitrary;
@@ -567,8 +566,8 @@ pub fn unpack<T>(input: &[u8]) -> Result<&T, ProgramError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     use crate::curve::{base::CurveType, stable::StableCurve};
+    use std::sync::Arc;
 
     #[test]
     fn pack_intialize() {

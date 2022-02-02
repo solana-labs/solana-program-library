@@ -27,7 +27,6 @@ use solana_program::{
     pubkey::Pubkey,
 };
 use std::convert::TryInto;
-use std::sync::Arc;
 
 /// Program state handler.
 pub struct Processor {}
@@ -1169,6 +1168,7 @@ mod tests {
             AuthorityType,
         },
     };
+    use std::sync::Arc;
 
     // Test program id for the swap program.
     const SWAP_PROGRAM_ID: Pubkey = Pubkey::new_from_array([2u8; 32]);

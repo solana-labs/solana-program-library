@@ -8,7 +8,6 @@ use crate::{
     error::SwapError,
 };
 use solana_program::program_error::ProgramError;
-use std::sync::Arc;
 
 #[cfg(feature = "production")]
 use std::env;
@@ -100,8 +99,8 @@ pub const SWAP_CONSTRAINTS: Option<SwapConstraints> = {
 #[cfg(test)]
 mod tests {
     use super::*;
-
     use crate::curve::{base::CurveType, constant_product::ConstantProductCurve};
+    use std::sync::Arc;
 
     #[test]
     fn validate_fees() {
