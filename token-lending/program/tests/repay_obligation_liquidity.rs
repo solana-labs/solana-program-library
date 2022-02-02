@@ -10,9 +10,10 @@ use solana_sdk::{
     transaction::Transaction,
 };
 use spl_token::instruction::approve;
-use spl_token_lending::instruction::refresh_obligation;
 use spl_token_lending::{
-    instruction::repay_obligation_liquidity, processor::process_instruction,
+    instruction::repay_obligation_liquidity,
+    math::{Decimal, Rate, TryAdd, TryMul, TrySub},
+    processor::process_instruction,
     state::INITIAL_COLLATERAL_RATIO,
 };
 
@@ -31,6 +32,7 @@ async fn test_success() {
     const USDC_BORROW_AMOUNT_FRACTIONAL: u64 = 1_000 * FRACTIONAL_TO_USDC;
     const SOL_RESERVE_COLLATERAL_LAMPORTS: u64 = 2 * SOL_DEPOSIT_AMOUNT_LAMPORTS;
     const USDC_RESERVE_LIQUIDITY_FRACTIONAL: u64 = 2 * USDC_BORROW_AMOUNT_FRACTIONAL;
+    const USDC_RESERVE_BORROW_RATE: u8 = 110;
 
     let user_accounts_owner = Keypair::new();
     let user_transfer_authority = Keypair::new();
@@ -68,6 +70,7 @@ async fn test_success() {
             liquidity_amount: USDC_RESERVE_LIQUIDITY_FRACTIONAL,
             liquidity_mint_pubkey: usdc_mint.pubkey,
             liquidity_mint_decimals: usdc_mint.decimals,
+            initial_borrow_rate: USDC_RESERVE_BORROW_RATE,
             config: reserve_config,
             mark_fresh: true,
             ..AddReserveArgs::default()
@@ -103,11 +106,6 @@ async fn test_success() {
                 USDC_BORROW_AMOUNT_FRACTIONAL,
             )
             .unwrap(),
-            refresh_obligation(
-                spl_token_lending::id(),
-                test_obligation.pubkey,
-                vec![sol_test_reserve.pubkey, usdc_test_reserve.pubkey],
-            ),
             repay_obligation_liquidity(
                 spl_token_lending::id(),
                 USDC_BORROW_AMOUNT_FRACTIONAL,
@@ -143,5 +141,19 @@ async fn test_success() {
     );
 
     let obligation = test_obligation.get_state(&mut banks_client).await;
-    assert_eq!(obligation.borrows.len(), 0);
+    assert_eq!(obligation.borrows.len(), 1);
+    let new_rate = Rate::one()
+        .try_add(Rate::from_percent(USDC_RESERVE_BORROW_RATE))
+        .unwrap();
+    let new_rate_decmial = Decimal::one().try_mul(new_rate).unwrap();
+    let balance_due = new_rate_decmial
+        .try_mul(USDC_BORROW_AMOUNT_FRACTIONAL)
+        .unwrap();
+    let expected_balance_after_repay = balance_due
+        .try_sub(Decimal::from(USDC_BORROW_AMOUNT_FRACTIONAL))
+        .unwrap();
+    assert_eq!(
+        obligation.borrows[0].borrowed_amount_wads,
+        expected_balance_after_repay
+    );
 }
