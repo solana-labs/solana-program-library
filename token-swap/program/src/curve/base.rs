@@ -61,7 +61,7 @@ pub struct SwapCurve {
     pub curve_type: CurveType,
     /// The actual calculator, represented as a trait object to allow for many
     /// different types of curves
-    pub calculator: Box<dyn CurveCalculator>,
+    pub calculator: Arc<dyn CurveCalculator>,
 }
 
 impl SwapCurve {
