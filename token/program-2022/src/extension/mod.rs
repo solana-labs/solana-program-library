@@ -115,7 +115,7 @@ fn get_extension_types(tlv_data: &[u8]) -> Result<Vec<ExtensionType>, ProgramErr
     let mut start_index = 0;
     while start_index < tlv_data.len() {
         let tlv_indices = get_tlv_indices(start_index);
-        if tlv_data.len() <= tlv_indices.value_start {
+        if tlv_data.len() < tlv_indices.value_start {
             return Ok(extension_types);
         }
         let extension_type =
@@ -1529,6 +1529,28 @@ mod test {
                 .realloc_needed(ExtensionType::MintCloseAuthority)
                 .unwrap(),
             None
+        );
+    }
+
+    #[test]
+    fn test_extension_with_no_data() {
+        let account_size =
+            ExtensionType::get_account_len::<Account>(&[ExtensionType::ImmutableOwner]);
+        let mut buffer = vec![0; account_size];
+        let mut state =
+            StateWithExtensionsMut::<Account>::unpack_uninitialized(&mut buffer).unwrap();
+        state.base = TEST_ACCOUNT;
+        state.pack_base();
+        state.init_account_type().unwrap();
+        state.init_extension::<ImmutableOwner>().unwrap();
+
+        assert_eq!(
+            get_first_extension_type(state.tlv_data).unwrap(),
+            Some(ExtensionType::ImmutableOwner)
+        );
+        assert_eq!(
+            get_extension_types(state.tlv_data).unwrap(),
+            vec![ExtensionType::ImmutableOwner]
         );
     }
 }
