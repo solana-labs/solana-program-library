@@ -115,7 +115,7 @@ fn get_extension_types(tlv_data: &[u8]) -> Result<Vec<ExtensionType>, ProgramErr
     let mut start_index = 0;
     while start_index < tlv_data.len() {
         let tlv_indices = get_tlv_indices(start_index);
-        if tlv_data.len() <= tlv_indices.value_start {
+        if tlv_data.len() < tlv_indices.value_start {
             return Ok(extension_types);
         }
         let extension_type =
