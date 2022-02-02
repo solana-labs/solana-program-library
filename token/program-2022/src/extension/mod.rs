@@ -1435,4 +1435,26 @@ mod test {
             None
         );
     }
+
+    #[test]
+    fn test_extension_with_no_data() {
+        let account_size =
+            ExtensionType::get_account_len::<Account>(&[ExtensionType::ImmutableOwner]);
+        let mut buffer = vec![0; account_size];
+        let mut state =
+            StateWithExtensionsMut::<Account>::unpack_uninitialized(&mut buffer).unwrap();
+        state.base = TEST_ACCOUNT;
+        state.pack_base();
+        state.init_account_type().unwrap();
+        state.init_extension::<ImmutableOwner>().unwrap();
+
+        assert_eq!(
+            get_first_extension_type(state.tlv_data).unwrap(),
+            Some(ExtensionType::ImmutableOwner)
+        );
+        assert_eq!(
+            get_extension_types(state.tlv_data).unwrap(),
+            vec![ExtensionType::ImmutableOwner]
+        );
+    }
 }
