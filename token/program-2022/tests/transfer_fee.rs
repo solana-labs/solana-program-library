@@ -629,7 +629,29 @@ async fn set_withdraw_withheld_authority() {
         Some(new_authority.pubkey()).try_into().unwrap(),
     );
 
-    // TODO: assert new authority can withdraw withheld fees and old cannot
+    // new authority can withdraw tokens
+    let account = token
+        .create_auxiliary_token_account(&Keypair::new(), &new_authority.pubkey())
+        .await
+        .unwrap();
+    token
+        .withdraw_withheld_tokens_from_accounts(&account, &new_authority, &[&account])
+        .await
+        .unwrap();
+    // old one cannot
+    let error = token
+        .withdraw_withheld_tokens_from_accounts(&account, &withdraw_withheld_authority, &[&account])
+        .await
+        .unwrap_err();
+    assert_eq!(
+        error,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::OwnerMismatch as u32)
+            )
+        )))
+    );
 
     // set to none
     token
@@ -668,7 +690,37 @@ async fn set_withdraw_withheld_authority() {
         )))
     );
 
-    // TODO: assert no authority can withdraw withheld fees
+    // assert no authority can withdraw withheld fees
+    let account = token
+        .create_auxiliary_token_account(&Keypair::new(), &new_authority.pubkey())
+        .await
+        .unwrap();
+    let error = token
+        .withdraw_withheld_tokens_from_accounts(&account, &withdraw_withheld_authority, &[&account])
+        .await
+        .unwrap_err();
+    assert_eq!(
+        error,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::NoAuthorityExists as u32)
+            )
+        )))
+    );
+    let error = token
+        .withdraw_withheld_tokens_from_accounts(&account, &new_authority, &[&account])
+        .await
+        .unwrap_err();
+    assert_eq!(
+        error,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::NoAuthorityExists as u32)
+            )
+        )))
+    );
 }
 
 #[tokio::test]
@@ -1002,8 +1054,9 @@ async fn create_and_transfer_to_account(
     amount: u64,
     decimals: u8,
 ) -> Pubkey {
+    let account = Keypair::new();
     let account = token
-        .create_auxiliary_token_account(&Keypair::new(), owner)
+        .create_auxiliary_token_account(&account, owner)
         .await
         .unwrap();
     token
@@ -1141,6 +1194,61 @@ async fn max_harvest_withheld_tokens_to_mint() {
     let state = token.get_mint_info().await.unwrap();
     let extension = state.get_extension::<TransferFeeConfig>().unwrap();
     assert_eq!(extension.withheld_amount, accumulated_fees.into());
+}
+
+#[tokio::test]
+async fn max_withdraw_withheld_tokens_from_accounts() {
+    let amount = TEST_MAXIMUM_FEE;
+    let alice_amount = amount * 100;
+    let TokenWithAccounts {
+        token,
+        withdraw_withheld_authority,
+        transfer_fee_config,
+        alice,
+        alice_account,
+        decimals,
+        ..
+    } = create_mint_with_accounts(alice_amount).await;
+
+    // withdraw from max accounts, which is around 35: 1 mint, 1 destination, 1 authority,
+    // 32 accounts
+    // see https://docs.solana.com/proposals/transactions-v2#problem
+    let destination = token
+        .create_auxiliary_token_account(&Keypair::new(), &alice.pubkey())
+        .await
+        .unwrap();
+    let mut accounts = vec![];
+    let max_accounts = 32;
+    for _ in 0..max_accounts {
+        let account = create_and_transfer_to_account(
+            &token,
+            &alice_account,
+            &alice,
+            &alice.pubkey(),
+            amount,
+            decimals,
+        )
+        .await;
+        accounts.push(account);
+    }
+    let accounts: Vec<_> = accounts.iter().collect();
+    let accumulated_fees =
+        max_accounts * transfer_fee_config.calculate_epoch_fee(0, amount).unwrap();
+    token
+        .withdraw_withheld_tokens_from_accounts(
+            &destination,
+            &withdraw_withheld_authority,
+            &accounts,
+        )
+        .await
+        .unwrap();
+    for account in accounts {
+        let state = token.get_account_info(account).await.unwrap();
+        let extension = state.get_extension::<TransferFeeAmount>().unwrap();
+        assert_eq!(extension.withheld_amount, 0.into());
+    }
+    let state = token.get_account_info(&destination).await.unwrap();
+    assert_eq!(state.base.amount, accumulated_fees);
 }
 
 #[tokio::test]
@@ -1301,6 +1409,137 @@ async fn withdraw_withheld_tokens_from_mint() {
     let TokenContext { token, .. } = context.token_context.take().unwrap();
     let error = token
         .withdraw_withheld_tokens_from_mint(&account, &withdraw_withheld_authority)
+        .await
+        .unwrap_err();
+    assert_eq!(
+        error,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::MintMismatch as u32)
+            )
+        )))
+    );
+}
+
+#[tokio::test]
+async fn withdraw_withheld_tokens_from_accounts() {
+    let amount = TEST_MAXIMUM_FEE;
+    let alice_amount = amount * 100;
+    let TokenWithAccounts {
+        mut context,
+        token,
+        withdraw_withheld_authority,
+        alice,
+        alice_account,
+        decimals,
+        ..
+    } = create_mint_with_accounts(alice_amount).await;
+
+    // wrong signer
+    let error = token
+        .withdraw_withheld_tokens_from_accounts(&alice_account, &Keypair::new(), &[])
+        .await
+        .unwrap_err();
+    assert_eq!(
+        error,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::OwnerMismatch as u32)
+            )
+        )))
+    );
+
+    // withdraw from zero accounts
+    token
+        .withdraw_withheld_tokens_from_accounts(&alice_account, &withdraw_withheld_authority, &[])
+        .await
+        .unwrap();
+    let state = token.get_account_info(&alice_account).await.unwrap();
+    assert_eq!(state.base.amount, alice_amount);
+
+    // self-harvest from one account
+    let account = create_and_transfer_to_account(
+        &token,
+        &alice_account,
+        &alice,
+        &alice.pubkey(),
+        amount,
+        decimals,
+    )
+    .await;
+    token
+        .withdraw_withheld_tokens_from_accounts(&account, &withdraw_withheld_authority, &[&account])
+        .await
+        .unwrap();
+    let state = token.get_account_info(&account).await.unwrap();
+    let extension = state.get_extension::<TransferFeeAmount>().unwrap();
+    // we transferred to this account, and then withdrew the fee to it, so it's
+    // like doing a fee-less transfer!
+    assert_eq!(extension.withheld_amount, 0.into());
+    assert_eq!(state.base.amount, amount);
+
+    // harvest again from the same account
+    token
+        .withdraw_withheld_tokens_from_accounts(
+            &alice_account,
+            &withdraw_withheld_authority,
+            &[&account],
+        )
+        .await
+        .unwrap();
+    let state = token.get_account_info(&account).await.unwrap();
+    let extension = state.get_extension::<TransferFeeAmount>().unwrap();
+    assert_eq!(extension.withheld_amount, 0.into());
+    assert_eq!(state.base.amount, amount);
+    let state = token.get_account_info(&alice_account).await.unwrap();
+    assert_eq!(state.base.amount, alice_amount - amount);
+
+    // no fail harvesting from account belonging to different mint, but nothing
+    // happens
+    let account = create_and_transfer_to_account(
+        &token,
+        &alice_account,
+        &alice,
+        &alice.pubkey(),
+        amount,
+        decimals,
+    )
+    .await;
+    context
+        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
+            transfer_fee_config_authority: Some(Pubkey::new_unique()),
+            withdraw_withheld_authority: Some(withdraw_withheld_authority.pubkey()),
+            transfer_fee_basis_points: TEST_FEE_BASIS_POINTS,
+            maximum_fee: TEST_MAXIMUM_FEE,
+        }])
+        .await
+        .unwrap();
+    let TokenContext { token, .. } = context.token_context.take().unwrap();
+    let withdraw_account = token
+        .create_auxiliary_token_account(&Keypair::new(), &alice.pubkey())
+        .await
+        .unwrap();
+    token
+        .withdraw_withheld_tokens_from_accounts(
+            &withdraw_account,
+            &withdraw_withheld_authority,
+            &[&account],
+        )
+        .await
+        .unwrap();
+    let state = token.get_mint_info().await.unwrap();
+    let extension = state.get_extension::<TransferFeeConfig>().unwrap();
+    assert_eq!(extension.withheld_amount, 0.into());
+
+    // fail withdrawing into account on different mint
+    let error = token
+        .withdraw_withheld_tokens_from_accounts(
+            &account,
+            &withdraw_withheld_authority,
+            &[&withdraw_account],
+        )
         .await
         .unwrap_err();
     assert_eq!(
