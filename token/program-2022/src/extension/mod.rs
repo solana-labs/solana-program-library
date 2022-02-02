@@ -326,13 +326,28 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
     ///
     /// Fails if the base state is not initialized.
     pub fn unpack(input: &'data mut [u8]) -> Result<Self, ProgramError> {
+        Self::_unpack(input, false)
+    }
+    /// Unpack base state, leaving the extension data as a mutable slice
+    /// Checks the account_type, and initializes it if Uninitialized
+    ///
+    /// Fails if the base state is not initialized.
+    pub fn unpack_after_realloc(input: &'data mut [u8]) -> Result<Self, ProgramError> {
+        Self::_unpack(input, true)
+    }
+
+    fn _unpack(input: &'data mut [u8], init_account_type: bool) -> Result<Self, ProgramError> {
         check_min_len_and_not_multisig(input, S::LEN)?;
         let (base_data, rest) = input.split_at_mut(S::LEN);
         let base = S::unpack(base_data)?;
         if let Some((account_type_index, tlv_start_index)) = type_and_tlv_indices::<S>(rest)? {
             // type_and_tlv_indices() checks that returned indexes are within range
-            let account_type = AccountType::try_from(rest[account_type_index])
+            let mut account_type = AccountType::try_from(rest[account_type_index])
                 .map_err(|_| ProgramError::InvalidAccountData)?;
+            if init_account_type && account_type == AccountType::Uninitialized {
+                rest[account_type_index] = S::ACCOUNT_TYPE.into();
+                account_type = S::ACCOUNT_TYPE;
+            }
             check_account_type::<S>(account_type)?;
             let (account_type, tlv_data) = rest.split_at_mut(tlv_start_index);
             Ok(Self {
@@ -1268,6 +1283,143 @@ mod test {
         expect.extend_from_slice(&vec![2; pod_get_packed_len::<AccountPaddingTest>()]);
         expect.extend_from_slice(&(ExtensionType::Uninitialized as u16).to_le_bytes());
         assert_eq!(expect, buffer);
+    }
+
+    #[test]
+    fn test_unpack_after_realloc() {
+        // account
+        let mut buffer = TEST_ACCOUNT_SLICE.to_vec();
+        let state = StateWithExtensionsMut::<Account>::unpack(&mut buffer).unwrap();
+        let realloc = state
+            .realloc_needed(ExtensionType::ImmutableOwner)
+            .unwrap()
+            .unwrap();
+        drop(state);
+        buffer.append(&mut vec![0; realloc]);
+        let mut state =
+            StateWithExtensionsMut::<Account>::unpack_after_realloc(&mut buffer).unwrap();
+        assert_eq!(state.base, TEST_ACCOUNT);
+        assert_eq!(state.account_type[0], AccountType::Account as u8);
+        state.init_extension::<ImmutableOwner>().unwrap();
+
+        // account with AccountType
+        let mut buffer = TEST_ACCOUNT_SLICE.to_vec();
+        buffer.append(&mut vec![2, 0]);
+        let state = StateWithExtensionsMut::<Account>::unpack(&mut buffer).unwrap();
+        assert_eq!(state.base, TEST_ACCOUNT);
+        assert_eq!(state.account_type[0], AccountType::Account as u8);
+        let realloc = state
+            .realloc_needed(ExtensionType::ImmutableOwner)
+            .unwrap()
+            .unwrap();
+        drop(state);
+        buffer.append(&mut vec![0; realloc]);
+        let mut state =
+            StateWithExtensionsMut::<Account>::unpack_after_realloc(&mut buffer).unwrap();
+        assert_eq!(state.base, TEST_ACCOUNT);
+        assert_eq!(state.account_type[0], AccountType::Account as u8);
+        state.init_extension::<ImmutableOwner>().unwrap();
+
+        // account with wrong AccountType
+        let mut buffer = TEST_ACCOUNT_SLICE.to_vec();
+        buffer.append(&mut vec![1, 0]);
+        let err = StateWithExtensionsMut::<Account>::unpack_after_realloc(&mut buffer).unwrap_err();
+        assert_eq!(err, ProgramError::InvalidAccountData);
+
+        // account with pre-existing extension
+        let account_size =
+            ExtensionType::get_account_len::<Account>(&[ExtensionType::ImmutableOwner]);
+        let mut buffer = vec![0; account_size];
+        let mut state =
+            StateWithExtensionsMut::<Account>::unpack_uninitialized(&mut buffer).unwrap();
+        state.base = TEST_ACCOUNT;
+        state.pack_base();
+        state.init_extension::<ImmutableOwner>().unwrap();
+        state.init_account_type().unwrap();
+        let realloc = state
+            .realloc_needed(ExtensionType::TransferFeeAmount)
+            .unwrap()
+            .unwrap();
+        drop(state);
+        buffer.append(&mut vec![0; realloc]);
+        let mut state =
+            StateWithExtensionsMut::<Account>::unpack_after_realloc(&mut buffer).unwrap();
+        assert_eq!(state.base, TEST_ACCOUNT);
+        assert_eq!(state.account_type[0], AccountType::Account as u8);
+        state.init_extension::<TransferFeeAmount>().unwrap();
+        assert_eq!(
+            state.get_extension_types().unwrap(),
+            vec![
+                ExtensionType::ImmutableOwner,
+                ExtensionType::TransferFeeAmount
+            ]
+        );
+
+        // mint
+        let mut buffer = TEST_MINT_SLICE.to_vec();
+        let state = StateWithExtensionsMut::<Mint>::unpack(&mut buffer).unwrap();
+        let realloc = state
+            .realloc_needed(ExtensionType::MintCloseAuthority)
+            .unwrap()
+            .unwrap();
+        drop(state);
+        buffer.append(&mut vec![0; realloc]);
+        let mut state = StateWithExtensionsMut::<Mint>::unpack_after_realloc(&mut buffer).unwrap();
+        assert_eq!(state.base, TEST_MINT);
+        assert_eq!(state.account_type[0], AccountType::Mint as u8);
+        state.init_extension::<MintCloseAuthority>().unwrap();
+
+        // mint with AccountType
+        let mut buffer = TEST_MINT_SLICE.to_vec();
+        buffer.append(&mut vec![0; Account::LEN - Mint::LEN]);
+        buffer.append(&mut vec![1, 0]);
+        let state = StateWithExtensionsMut::<Mint>::unpack(&mut buffer).unwrap();
+        assert_eq!(state.base, TEST_MINT);
+        assert_eq!(state.account_type[0], AccountType::Mint as u8);
+        let realloc = state
+            .realloc_needed(ExtensionType::MintCloseAuthority)
+            .unwrap()
+            .unwrap();
+        drop(state);
+        buffer.append(&mut vec![0; realloc]);
+        let mut state = StateWithExtensionsMut::<Mint>::unpack_after_realloc(&mut buffer).unwrap();
+        assert_eq!(state.base, TEST_MINT);
+        assert_eq!(state.account_type[0], AccountType::Mint as u8);
+        state.init_extension::<MintCloseAuthority>().unwrap();
+
+        // mint with wrong AccountType
+        let mut buffer = TEST_MINT_SLICE.to_vec();
+        buffer.append(&mut vec![0; Account::LEN - Mint::LEN]);
+        buffer.append(&mut vec![2, 0]);
+        let err = StateWithExtensionsMut::<Mint>::unpack_after_realloc(&mut buffer).unwrap_err();
+        assert_eq!(err, ProgramError::InvalidAccountData);
+
+        // mint with pre-existing extension
+        let mut buffer = MINT_WITH_EXTENSION.to_vec();
+        let state = StateWithExtensionsMut::<Mint>::unpack(&mut buffer).unwrap();
+        assert_eq!(state.base, TEST_MINT);
+        assert_eq!(state.account_type[0], AccountType::Mint as u8);
+        assert_eq!(
+            state.get_extension_types().unwrap(),
+            vec![ExtensionType::MintCloseAuthority]
+        );
+        let realloc = state
+            .realloc_needed(ExtensionType::TransferFeeConfig)
+            .unwrap()
+            .unwrap();
+        drop(state);
+        buffer.append(&mut vec![0; realloc]);
+        let mut state = StateWithExtensionsMut::<Mint>::unpack_after_realloc(&mut buffer).unwrap();
+        assert_eq!(state.base, TEST_MINT);
+        assert_eq!(state.account_type[0], AccountType::Mint as u8);
+        state.init_extension::<TransferFeeConfig>().unwrap();
+        assert_eq!(
+            state.get_extension_types().unwrap(),
+            vec![
+                ExtensionType::MintCloseAuthority,
+                ExtensionType::TransferFeeConfig
+            ]
+        );
     }
 
     #[test]
