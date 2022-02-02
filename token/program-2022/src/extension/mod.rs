@@ -326,35 +326,17 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
     ///
     /// Fails if the base state is not initialized.
     pub fn unpack(input: &'data mut [u8]) -> Result<Self, ProgramError> {
-        check_min_len_and_not_multisig(input, S::LEN)?;
-        let (base_data, rest) = input.split_at_mut(S::LEN);
-        let base = S::unpack(base_data)?;
-        if let Some((account_type_index, tlv_start_index)) = type_and_tlv_indices::<S>(rest)? {
-            // type_and_tlv_indices() checks that returned indexes are within range
-            let account_type = AccountType::try_from(rest[account_type_index])
-                .map_err(|_| ProgramError::InvalidAccountData)?;
-            check_account_type::<S>(account_type)?;
-            let (account_type, tlv_data) = rest.split_at_mut(tlv_start_index);
-            Ok(Self {
-                base,
-                base_data,
-                account_type: &mut account_type[account_type_index..tlv_start_index],
-                tlv_data,
-            })
-        } else {
-            Ok(Self {
-                base,
-                base_data,
-                account_type: &mut [],
-                tlv_data: &mut [],
-            })
-        }
+        Self::_unpack(input, false)
     }
     /// Unpack base state, leaving the extension data as a mutable slice
     /// Checks the account_type, and initializes it if Uninitialized
     ///
     /// Fails if the base state is not initialized.
     pub fn unpack_after_realloc(input: &'data mut [u8]) -> Result<Self, ProgramError> {
+        Self::_unpack(input, true)
+    }
+
+    fn _unpack(input: &'data mut [u8], init_account_type: bool) -> Result<Self, ProgramError> {
         check_min_len_and_not_multisig(input, S::LEN)?;
         let (base_data, rest) = input.split_at_mut(S::LEN);
         let base = S::unpack(base_data)?;
@@ -362,7 +344,7 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
             // type_and_tlv_indices() checks that returned indexes are within range
             let mut account_type = AccountType::try_from(rest[account_type_index])
                 .map_err(|_| ProgramError::InvalidAccountData)?;
-            if account_type == AccountType::Uninitialized {
+            if init_account_type && account_type == AccountType::Uninitialized {
                 rest[account_type_index] = S::ACCOUNT_TYPE.into();
                 account_type = S::ACCOUNT_TYPE;
             }
