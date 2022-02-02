@@ -1054,8 +1054,9 @@ async fn create_and_transfer_to_account(
     amount: u64,
     decimals: u8,
 ) -> Pubkey {
+    let account = Keypair::new();
     let account = token
-        .create_auxiliary_token_account(&Keypair::new(), owner)
+        .create_auxiliary_token_account(&account, owner)
         .await
         .unwrap();
     token
