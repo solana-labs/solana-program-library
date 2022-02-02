@@ -200,7 +200,7 @@ fn process_harvest_withheld_tokens_to_mint(accounts: &[AccountInfo]) -> ProgramR
 fn process_withdraw_withheld_tokens_from_accounts(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    number_of_token_accounts: u8,
+    num_token_accounts: u8,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let mint_account_info = next_account_info(account_info_iter)?;
@@ -208,9 +208,9 @@ fn process_withdraw_withheld_tokens_from_accounts(
     let authority_info = next_account_info(account_info_iter)?;
     let authority_info_data_len = authority_info.data_len();
     let account_infos = account_info_iter.as_slice();
-    let number_of_signers = account_infos
+    let num_signers = account_infos
         .len()
-        .saturating_sub(number_of_token_accounts as usize);
+        .saturating_sub(num_token_accounts as usize);
 
     let mint_data = mint_account_info.data.borrow();
     let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
@@ -218,16 +218,12 @@ fn process_withdraw_withheld_tokens_from_accounts(
 
     let withdraw_withheld_authority = Option::<Pubkey>::from(extension.withdraw_withheld_authority)
         .ok_or(TokenError::NoAuthorityExists)?;
-    // This will also iterate over the token accounts for a multisig, but
-    // it will only fail if trying to withdraw from an account that is part
-    // of the multisig, but *not* signing the transaction.
-    // This is an annoyance, but doesn't introduce any security issues.
     Processor::validate_owner(
         program_id,
         &withdraw_withheld_authority,
         authority_info,
         authority_info_data_len,
-        &account_infos[..number_of_signers],
+        &account_infos[..num_signers],
     )?;
 
     let mut dest_account_data = dest_account_info.data.borrow_mut();
@@ -238,9 +234,7 @@ fn process_withdraw_withheld_tokens_from_accounts(
     if dest_account.base.is_frozen() {
         return Err(TokenError::AccountFrozen.into());
     }
-    // This iterates back over any multisig signers, but since it gracefully
-    // fails on those, we can support them.
-    for account_info in &account_infos[number_of_signers..] {
+    for account_info in &account_infos[num_signers..] {
         // self-harvest, can't double-borrow the underlying data
         if account_info.key == dest_account_info.key {
             let token_account_extension = dest_account
@@ -305,15 +299,9 @@ pub(crate) fn process_instruction(
             msg!("TransferFeeInstruction: WithdrawWithheldTokensFromMint");
             process_withdraw_withheld_tokens_from_mint(program_id, accounts)
         }
-        TransferFeeInstruction::WithdrawWithheldTokensFromAccounts {
-            number_of_token_accounts,
-        } => {
+        TransferFeeInstruction::WithdrawWithheldTokensFromAccounts { num_token_accounts } => {
             msg!("TransferFeeInstruction: WithdrawWithheldTokensFromAccounts");
-            process_withdraw_withheld_tokens_from_accounts(
-                program_id,
-                accounts,
-                number_of_token_accounts,
-            )
+            process_withdraw_withheld_tokens_from_accounts(program_id, accounts, num_token_accounts)
         }
         TransferFeeInstruction::HarvestWithheldTokensToMint => {
             msg!("TransferFeeInstruction: HarvestWithheldTokensToMint");

@@ -98,7 +98,7 @@ pub enum TransferFeeInstruction {
     ///   3+M+1. ..3+M+N `[writable]` The source accounts to withdraw from.
     WithdrawWithheldTokensFromAccounts {
         /// Number of token accounts harvested
-        number_of_token_accounts: u8,
+        num_token_accounts: u8,
     },
     /// Permissionless instruction to transfer all withheld tokens to the mint.
     ///
@@ -166,11 +166,8 @@ impl TransferFeeInstruction {
             }
             2 => (Self::WithdrawWithheldTokensFromMint, rest),
             3 => {
-                let (&number_of_token_accounts, rest) =
-                    rest.split_first().ok_or(InvalidInstruction)?;
-                let instruction = Self::WithdrawWithheldTokensFromAccounts {
-                    number_of_token_accounts,
-                };
+                let (&num_token_accounts, rest) = rest.split_first().ok_or(InvalidInstruction)?;
+                let instruction = Self::WithdrawWithheldTokensFromAccounts { num_token_accounts };
                 (instruction, rest)
             }
             4 => (Self::HarvestWithheldTokensToMint, rest),
@@ -215,11 +212,9 @@ impl TransferFeeInstruction {
             Self::WithdrawWithheldTokensFromMint => {
                 buffer.push(2);
             }
-            Self::WithdrawWithheldTokensFromAccounts {
-                number_of_token_accounts,
-            } => {
+            Self::WithdrawWithheldTokensFromAccounts { num_token_accounts } => {
                 buffer.push(3);
-                buffer.push(number_of_token_accounts);
+                buffer.push(num_token_accounts);
             }
             Self::HarvestWithheldTokensToMint => {
                 buffer.push(4);
@@ -340,7 +335,7 @@ pub fn withdraw_withheld_tokens_from_accounts(
     sources: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
-    let number_of_token_accounts =
+    let num_token_accounts =
         u8::try_from(sources.len()).map_err(|_| ProgramError::InvalidInstructionData)?;
     let mut accounts = Vec::with_capacity(3 + signers.len() + sources.len());
     accounts.push(AccountMeta::new_readonly(*mint, false));
@@ -357,9 +352,7 @@ pub fn withdraw_withheld_tokens_from_accounts(
         program_id: *token_program_id,
         accounts,
         data: TokenInstruction::TransferFeeExtension(
-            TransferFeeInstruction::WithdrawWithheldTokensFromAccounts {
-                number_of_token_accounts,
-            },
+            TransferFeeInstruction::WithdrawWithheldTokensFromAccounts { num_token_accounts },
         )
         .pack(),
     })
@@ -464,14 +457,12 @@ mod test {
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
 
-        let number_of_token_accounts = 255;
+        let num_token_accounts = 255;
         let check = TokenInstruction::TransferFeeExtension(
-            TransferFeeInstruction::WithdrawWithheldTokensFromAccounts {
-                number_of_token_accounts,
-            },
+            TransferFeeInstruction::WithdrawWithheldTokensFromAccounts { num_token_accounts },
         );
         let packed = check.pack();
-        let expect = [23u8, 3, number_of_token_accounts];
+        let expect = [23u8, 3, num_token_accounts];
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
