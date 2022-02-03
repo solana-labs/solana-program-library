@@ -33,6 +33,8 @@ pub mod default_account_state;
 pub mod immutable_owner;
 /// Mint Close Authority extension
 pub mod mint_close_authority;
+/// Utility to reallocate token accounts
+pub mod reallocate;
 /// Transfer Fee extension
 pub mod transfer_fee;
 

@@ -9,6 +9,7 @@ use {
             default_account_state::{self, DefaultAccountState},
             immutable_owner::ImmutableOwner,
             mint_close_authority::MintCloseAuthority,
+            reallocate,
             transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
             ExtensionType, StateWithExtensions, StateWithExtensionsMut,
         },
@@ -1124,6 +1125,10 @@ impl Processor {
             TokenInstruction::InitializeImmutableOwner => {
                 msg!("Instruction: InitializeImmutableOwner");
                 Self::process_initialize_immutable_owner(accounts)
+            }
+            TokenInstruction::Reallocate { extension_types } => {
+                msg!("Instruction: Reallocate");
+                reallocate::process_reallocate(program_id, accounts, extension_types)
             }
         }
     }
