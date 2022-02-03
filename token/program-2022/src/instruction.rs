@@ -1448,13 +1448,16 @@ pub fn sync_native(
 pub fn get_account_data_size(
     token_program_id: &Pubkey,
     mint_pubkey: &Pubkey,
-    extension_types: Vec<ExtensionType>,
+    extension_types: &[ExtensionType],
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     Ok(Instruction {
         program_id: *token_program_id,
         accounts: vec![AccountMeta::new_readonly(*mint_pubkey, false)],
-        data: TokenInstruction::GetAccountDataSize { extension_types }.pack(),
+        data: TokenInstruction::GetAccountDataSize {
+            extension_types: extension_types.to_vec(),
+        }
+        .pack(),
     })
 }
 

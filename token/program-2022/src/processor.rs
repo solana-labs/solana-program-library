@@ -6825,7 +6825,7 @@ mod tests {
                 .to_vec(),
         );
         do_process_instruction(
-            get_account_data_size(&program_id, &mint_key, vec![]).unwrap(),
+            get_account_data_size(&program_id, &mint_key, &[]).unwrap(),
             vec![&mut mint_account],
         )
         .unwrap();
@@ -6839,7 +6839,7 @@ mod tests {
             get_account_data_size(
                 &program_id,
                 &mint_key,
-                vec![
+                &[
                     ExtensionType::TransferFeeAmount,
                     ExtensionType::TransferFeeAmount, // Duplicate user input ignored...
                 ],
@@ -6857,7 +6857,7 @@ mod tests {
                 .to_vec(),
         );
         do_process_instruction(
-            get_account_data_size(&program_id, &mint_key, vec![]).unwrap(),
+            get_account_data_size(&program_id, &mint_key, &[]).unwrap(),
             vec![&mut mint_account],
         )
         .unwrap();
@@ -6888,7 +6888,7 @@ mod tests {
                 .to_vec(),
         );
         do_process_instruction(
-            get_account_data_size(&program_id, &mint_key, vec![]).unwrap(),
+            get_account_data_size(&program_id, &mint_key, &[]).unwrap(),
             vec![&mut extended_mint_account],
         )
         .unwrap();
@@ -6897,7 +6897,7 @@ mod tests {
             get_account_data_size(
                 &program_id,
                 &mint_key,
-                vec![ExtensionType::TransferFeeAmount], // User extension that's also added by the mint ignored...
+                &[ExtensionType::TransferFeeAmount], // User extension that's also added by the mint ignored...
             )
             .unwrap(),
             vec![&mut extended_mint_account],
@@ -6924,7 +6924,7 @@ mod tests {
 
         assert_eq!(
             do_process_instruction(
-                get_account_data_size(&program_id, &invalid_mint_key, vec![]).unwrap(),
+                get_account_data_size(&program_id, &invalid_mint_key, &[]).unwrap(),
                 vec![&mut invalid_mint_account],
             ),
             Err(TokenError::InvalidMint.into())
@@ -6949,7 +6949,7 @@ mod tests {
 
         assert_eq!(
             do_process_instruction(
-                get_account_data_size(&program_id, &invalid_mint_key, vec![]).unwrap(),
+                get_account_data_size(&program_id, &invalid_mint_key, &[]).unwrap(),
                 vec![&mut invalid_mint_account],
             ),
             Err(ProgramError::IncorrectProgramId)
