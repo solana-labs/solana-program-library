@@ -969,18 +969,15 @@ impl Processor {
     /// Processes a [GetAccountDataSize](enum.TokenInstruction.html) instruction
     pub fn process_get_account_data_size(
         accounts: &[AccountInfo],
-        extension_types: Vec<ExtensionType>,
+        new_extension_types: Vec<ExtensionType>,
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let mint_account_info = next_account_info(account_info_iter)?;
 
         let mut account_extensions = Self::get_required_account_extensions(mint_account_info)?;
-
-        for extension_type in extension_types {
-            if !account_extensions.contains(&extension_type) {
-                account_extensions.push(extension_type);
-            }
-        }
+        // ExtensionType::get_account_len() dedupes types, so just a dumb concatenation is fine
+        // here
+        account_extensions.extend_from_slice(&new_extension_types);
 
         let account_len = ExtensionType::get_account_len::<Account>(&account_extensions);
         set_return_data(&account_len.to_le_bytes());
