@@ -634,7 +634,14 @@ impl ExtensionType {
 
     /// Get the TLV length for a set of ExtensionTypes
     fn get_total_tlv_len(extension_types: &[Self]) -> usize {
-        let tlv_len: usize = extension_types.iter().map(|e| e.get_tlv_len()).sum();
+        // dedupe extensions
+        let mut extensions = vec![];
+        for extension_type in extension_types {
+            if !extensions.contains(&extension_type) {
+                extensions.push(extension_type);
+            }
+        }
+        let tlv_len: usize = extensions.iter().map(|e| e.get_tlv_len()).sum();
         if tlv_len
             == Multisig::LEN
                 .saturating_sub(BASE_ACCOUNT_LENGTH)
