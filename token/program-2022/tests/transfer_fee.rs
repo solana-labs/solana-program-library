@@ -1054,9 +1054,8 @@ async fn create_and_transfer_to_account(
     amount: u64,
     decimals: u8,
 ) -> Pubkey {
-    let account = Keypair::new();
     let account = token
-        .create_auxiliary_token_account(&account, owner)
+        .create_auxiliary_token_account(&Keypair::new(), owner)
         .await
         .unwrap();
     token
@@ -1097,18 +1096,6 @@ async fn harvest_withheld_tokens_to_mint() {
         decimals,
     )
     .await;
-    token
-        .harvest_withheld_tokens_to_mint(&[&account])
-        .await
-        .unwrap();
-    let state = token.get_account_info(&account).await.unwrap();
-    let extension = state.get_extension::<TransferFeeAmount>().unwrap();
-    assert_eq!(extension.withheld_amount, 0.into());
-    let state = token.get_mint_info().await.unwrap();
-    let extension = state.get_extension::<TransferFeeConfig>().unwrap();
-    assert_eq!(extension.withheld_amount, accumulated_fees.into());
-
-    // harvest again from the same account
     token
         .harvest_withheld_tokens_to_mint(&[&account])
         .await
