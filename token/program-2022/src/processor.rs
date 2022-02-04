@@ -471,8 +471,8 @@ impl Processor {
     pub fn process_revoke(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let source_account_info = next_account_info(account_info_iter)?;
-        let owner_info = next_account_info(account_info_iter)?;
-        let owner_info_data_len = owner_info.data_len();
+        let authority_info = next_account_info(account_info_iter)?;
+        let authority_info_data_len = authority_info.data_len();
 
         let mut source_account = Account::unpack(&source_account_info.data.borrow())?;
         if source_account.is_frozen() {
@@ -481,9 +481,14 @@ impl Processor {
 
         Self::validate_owner(
             program_id,
-            &source_account.owner,
-            owner_info,
-            owner_info_data_len,
+            match source_account.delegate {
+                COption::Some(ref delegate) if cmp_pubkeys(authority_info.key, delegate) => {
+                    delegate
+                }
+                _ => &source_account.owner,
+            },
+            authority_info,
+            authority_info_data_len,
             account_info_iter.as_slice(),
         )?;
 
@@ -3248,6 +3253,36 @@ mod tests {
             ],
         )
         .unwrap();
+
+        // approve to source
+        do_process_instruction_dups(
+            approve_checked(
+                &program_id,
+                &account2_key,
+                &mint_key,
+                &account2_key,
+                &owner_key,
+                &[],
+                500,
+                2,
+            )
+            .unwrap(),
+            vec![
+                account2_info.clone(),
+                mint_info.clone(),
+                account2_info.clone(),
+                owner_info.clone(),
+            ],
+        )
+        .unwrap();
+
+        // source-delegate revoke, force account2 to be a signer
+        let account2_info: AccountInfo = (&account2_key, true, &mut account2_account).into();
+        do_process_instruction_dups(
+            revoke(&program_id, &account2_key, &account2_key, &[]).unwrap(),
+            vec![account2_info.clone(), account2_info.clone()],
+        )
+        .unwrap();
     }
 
     #[test]
@@ -3453,6 +3488,44 @@ mod tests {
             vec![&mut account_account, &mut owner_account],
         )
         .unwrap();
+
+        // approve delegate 3
+        do_process_instruction(
+            approve_checked(
+                &program_id,
+                &account_key,
+                &mint_key,
+                &delegate_key,
+                &owner_key,
+                &[],
+                100,
+                2,
+            )
+            .unwrap(),
+            vec![
+                &mut account_account,
+                &mut mint_account,
+                &mut delegate_account,
+                &mut owner_account,
+            ],
+        )
+        .unwrap();
+
+        // revoke by delegate
+        do_process_instruction(
+            revoke(&program_id, &account_key, &delegate_key, &[]).unwrap(),
+            vec![&mut account_account, &mut delegate_account],
+        )
+        .unwrap();
+
+        // fails the second time
+        assert_eq!(
+            Err(TokenError::OwnerMismatch.into()),
+            do_process_instruction(
+                revoke(&program_id, &account_key, &delegate_key, &[]).unwrap(),
+                vec![&mut account_account, &mut delegate_account],
+            )
+        );
     }
 
     #[test]

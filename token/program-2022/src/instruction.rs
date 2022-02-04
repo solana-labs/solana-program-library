@@ -152,11 +152,11 @@ pub enum TokenInstruction {
     ///
     ///   * Single owner
     ///   0. `[writable]` The source account.
-    ///   1. `[signer]` The source account owner.
+    ///   1. `[signer]` The source account owner or current delegate.
     ///
     ///   * Multisignature owner
     ///   0. `[writable]` The source account.
-    ///   1. `[]` The source account's multisignature owner.
+    ///   1. `[]` The source account's multisignature owner or current delegate.
     ///   2. ..2+M `[signer]` M signer accounts
     Revoke,
     /// Sets a new authority of a mint or account.
