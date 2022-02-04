@@ -1,6 +1,6 @@
 [package]
 name = "spl-governance-chat"
-version = "0.2.2"
+version = "0.2.3"
 description = "Solana Program Library Governance Chat Program"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library"
@@ -21,9 +21,9 @@ serde = "1.0.127"
 serde_derive = "1.0.103"
 solana-program = "1.9.5"
 spl-token = { version = "3.3", path = "../../../token/program", features = [ "no-entrypoint" ] }
-spl-governance= { version = "2.2.0", path ="../../program", features = [ "no-entrypoint" ]}
-spl-governance-tools= { version = "0.1.1", path ="../../tools"}
-spl-governance-addin-api= { version = "0.1.0", path ="../../addin-api"}
+spl-governance= { version = "2.2.1", path ="../../program", features = [ "no-entrypoint" ]}
+spl-governance-tools= { version = "0.1.2", path ="../../tools"}
+spl-governance-addin-api= { version = "0.1.1", path ="../../addin-api"}
 thiserror = "1.0"
 
 
@@ -33,8 +33,8 @@ base64 = "0.13"
 proptest = "1.0"
 solana-program-test = "1.9.5"
 solana-sdk = "1.9.5"
-spl-governance-test-sdk = { version = "0.1.1", path ="../../test-sdk"}
-spl-governance-addin-mock = { version = "0.1.0", path ="../../addin-mock/program"}
+spl-governance-test-sdk = { version = "0.1.2", path ="../../test-sdk"}
+spl-governance-addin-mock = { version = "0.1.1", path ="../../addin-mock/program"}
 
 
 [lib]
