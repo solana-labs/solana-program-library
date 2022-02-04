@@ -124,6 +124,10 @@ pub enum TokenError {
     /// The owner authority cannot be changed
     #[error("The owner authority cannot be changed")]
     ImmutableOwner,
+    /// An account can only be closed if its withheld fee balance is zero, harvest fees to the
+    /// mint and try again
+    #[error("An account can only be closed if its withheld fee balance is zero, harvest fees to the mint and try again")]
+    AccountHasWithheldTransferFees,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {

@@ -1539,3 +1539,62 @@ async fn withdraw_withheld_tokens_from_accounts() {
         )))
     );
 }
+
+#[tokio::test]
+async fn fail_close_with_withheld() {
+    let amount = TEST_MAXIMUM_FEE;
+    let alice_amount = amount * 100;
+    let TokenWithAccounts {
+        token,
+        transfer_fee_config,
+        alice,
+        alice_account,
+        decimals,
+        ..
+    } = create_mint_with_accounts(alice_amount).await;
+
+    // accrue withheld fees on new account
+    let account = create_and_transfer_to_account(
+        &token,
+        &alice_account,
+        &alice,
+        &alice.pubkey(),
+        amount,
+        decimals,
+    )
+    .await;
+
+    // empty the account
+    let fee = transfer_fee_config.calculate_epoch_fee(0, amount).unwrap();
+    token
+        .transfer_checked(&account, &alice_account, &alice, amount - fee, decimals)
+        .await
+        .unwrap();
+
+    // fail to close
+    let error = token
+        .close_account(&account, &Pubkey::new_unique(), &alice)
+        .await
+        .unwrap_err();
+    assert_eq!(
+        error,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::AccountHasWithheldTransferFees as u32)
+            )
+        )))
+    );
+
+    // harvest the fees to the mint
+    token
+        .harvest_withheld_tokens_to_mint(&[&account])
+        .await
+        .unwrap();
+
+    // successfully close
+    token
+        .close_account(&account, &Pubkey::new_unique(), &alice)
+        .await
+        .unwrap();
+}

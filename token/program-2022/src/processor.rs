@@ -847,10 +847,19 @@ impl Processor {
                 account_info_iter.as_slice(),
             )?;
 
+            // TODO use get_extension when
+            // https://github.com/solana-labs/solana-program-library/pull/2822 lands
             if let Ok(confidential_transfer_state) =
                 source_account.get_extension_mut::<ConfidentialTransferAccount>()
             {
                 confidential_transfer_state.closable()?
+            }
+
+            // TODO use get_extension when
+            // https://github.com/solana-labs/solana-program-library/pull/2822 lands
+            if let Ok(transfer_fee_state) = source_account.get_extension_mut::<TransferFeeAmount>()
+            {
+                transfer_fee_state.closable()?
             }
         } else if let Ok(mut mint) =
             StateWithExtensionsMut::<Mint>::unpack(&mut source_account_data)
@@ -1283,6 +1292,9 @@ impl PrintProgramError for TokenError {
             }
             TokenError::ImmutableOwner => {
                 msg!("The owner authority cannot be changed");
+            }
+            TokenError::AccountHasWithheldTransferFees => {
+                msg!("Error: An account can only be closed if its withheld fee balance is zero, harvest fees to the mint and try again");
             }
         }
     }
