@@ -79,7 +79,7 @@ pub fn process_create_associated_token_account(
     let account_len = get_account_len(
         spl_token_mint_info,
         spl_token_program_info,
-        vec![spl_token::extension::ExtensionType::ImmutableOwner],
+        &[spl_token::extension::ExtensionType::ImmutableOwner],
     )?;
 
     create_pda_account(

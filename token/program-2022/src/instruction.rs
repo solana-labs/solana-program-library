@@ -11,7 +11,7 @@ use {
         program_error::ProgramError,
         program_option::COption,
         pubkey::{Pubkey, PUBKEY_BYTES},
-        sysvar,
+        system_program, sysvar,
     },
     std::{convert::TryInto, mem::size_of},
 };
@@ -495,11 +495,33 @@ pub enum TokenInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]`  The account to initialize.
-    //
+    ///
     /// Data expected by this instruction:
     ///   None
     ///
     InitializeImmutableOwner,
+    /// Check to see if a token account is large enough for a list of ExtensionTypes, and if not,
+    /// use reallocation to increase the data size.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   * Single owner
+    ///   0. `[writable]` The account to reallocate.
+    ///   1. `[signer, writable]` The payer account to fund reallocation
+    ///   2. `[]` System program for reallocation funding
+    ///   3. `[signer]` The account's owner.
+    ///
+    ///   * Multisignature owner
+    ///   0. `[writable]` The account to reallocate.
+    ///   1. `[signer, writable]` The payer account to fund reallocation
+    ///   2. `[]` System program for reallocation funding
+    ///   3. `[]` The account's multisignature owner/delegate.
+    ///   4. ..4+M `[signer]` M signer accounts.
+    ///
+    Reallocate {
+        /// New extension types to include in the reallocated account
+        extension_types: Vec<ExtensionType>,
+    },
 }
 impl TokenInstruction {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -611,6 +633,13 @@ impl TokenInstruction {
             24 => Self::ConfidentialTransferExtension,
             25 => Self::DefaultAccountStateExtension,
             26 => Self::InitializeImmutableOwner,
+            27 => {
+                let mut extension_types = vec![];
+                for chunk in rest.chunks(size_of::<ExtensionType>()) {
+                    extension_types.push(chunk.try_into()?);
+                }
+                Self::Reallocate { extension_types }
+            }
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -734,6 +763,14 @@ impl TokenInstruction {
             }
             &Self::InitializeImmutableOwner => {
                 buf.push(26);
+            }
+            &Self::Reallocate {
+                ref extension_types,
+            } => {
+                buf.push(27);
+                for extension_type in extension_types {
+                    buf.extend_from_slice(&<[u8; 2]>::from(*extension_type));
+                }
             }
         };
         buf
@@ -1448,13 +1485,16 @@ pub fn sync_native(
 pub fn get_account_data_size(
     token_program_id: &Pubkey,
     mint_pubkey: &Pubkey,
-    extension_types: Vec<ExtensionType>,
+    extension_types: &[ExtensionType],
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     Ok(Instruction {
         program_id: *token_program_id,
         accounts: vec![AccountMeta::new_readonly(*mint_pubkey, false)],
-        data: TokenInstruction::GetAccountDataSize { extension_types }.pack(),
+        data: TokenInstruction::GetAccountDataSize {
+            extension_types: extension_types.to_vec(),
+        }
+        .pack(),
     })
 }
 
@@ -1483,6 +1523,39 @@ pub fn initialize_immutable_owner(
         program_id: *token_program_id,
         accounts: vec![AccountMeta::new(*token_account, false)],
         data: TokenInstruction::InitializeImmutableOwner.pack(),
+    })
+}
+
+/// Creates a `Reallocate` instruction
+pub fn reallocate(
+    token_program_id: &Pubkey,
+    account_pubkey: &Pubkey,
+    payer: &Pubkey,
+    owner_pubkey: &Pubkey,
+    signer_pubkeys: &[&Pubkey],
+    extension_types: &[ExtensionType],
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+
+    let mut accounts = Vec::with_capacity(4 + signer_pubkeys.len());
+    accounts.push(AccountMeta::new(*account_pubkey, false));
+    accounts.push(AccountMeta::new(*payer, true));
+    accounts.push(AccountMeta::new_readonly(system_program::id(), false));
+    accounts.push(AccountMeta::new_readonly(
+        *owner_pubkey,
+        signer_pubkeys.is_empty(),
+    ));
+    for signer_pubkey in signer_pubkeys.iter() {
+        accounts.push(AccountMeta::new_readonly(**signer_pubkey, true));
+    }
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts,
+        data: TokenInstruction::Reallocate {
+            extension_types: extension_types.to_vec(),
+        }
+        .pack(),
     })
 }
 

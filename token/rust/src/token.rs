@@ -729,4 +729,25 @@ where
         )
         .await
     }
+
+    /// Reallocate a token account to be large enough for a set of ExtensionTypes
+    pub async fn reallocate<S2: Signer>(
+        &self,
+        account: &Pubkey,
+        authority: &S2,
+        extension_types: &[ExtensionType],
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[instruction::reallocate(
+                &self.program_id,
+                account,
+                &self.payer.pubkey(),
+                &authority.pubkey(),
+                &[],
+                extension_types,
+            )?],
+            &[authority],
+        )
+        .await
+    }
 }
