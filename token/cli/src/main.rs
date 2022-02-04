@@ -1012,7 +1012,7 @@ fn command_thaw(
 
     println_display(
         config,
-        format!("Freezing account: {}\n  Token: {}", account, token),
+        format!("Thawing account: {}\n  Token: {}", account, token),
     );
 
     let instructions = vec![thaw_account(
