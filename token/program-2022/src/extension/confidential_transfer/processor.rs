@@ -119,8 +119,8 @@ fn process_configure_account(
     let mint = StateWithExtensions::<Mint>::unpack(mint_data)?;
     let ct_mint = mint.get_extension::<ConfidentialTransferMint>()?;
 
-    // TODO: Support reallocating the token account (and re-checking rent) if there's insufficient
-    // room for the new extension.
+    // Note: The caller is expected to use the `Reallocate` instruction to ensure there is
+    // sufficient room in their token account for the new `ConfidentialTransferAccount` extension
     let mut ct_token_account = token_account.init_extension::<ConfidentialTransferAccount>()?;
     ct_token_account.approved = ct_mint.auto_approve_new_accounts;
     ct_token_account.elgamal_pk = *elgamal_pk;
