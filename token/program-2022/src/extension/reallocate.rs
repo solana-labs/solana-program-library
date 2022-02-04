@@ -1,7 +1,7 @@
 use {
     crate::{
         error::TokenError,
-        extension::{AccountType, ExtensionType, StateWithExtensions, StateWithExtensionsMut},
+        extension::{set_account_type, AccountType, ExtensionType, StateWithExtensions},
         processor::Processor,
         state::Account,
     },
@@ -81,7 +81,7 @@ pub fn process_reallocate(
 
     // unpack to set account_type, if needed
     let mut token_account = token_account_info.data.borrow_mut();
-    StateWithExtensionsMut::<Account>::unpack_after_realloc(&mut token_account)?;
+    set_account_type::<Account>(&mut token_account)?;
 
     Ok(())
 }
