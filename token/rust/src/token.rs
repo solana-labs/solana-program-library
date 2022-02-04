@@ -260,10 +260,27 @@ where
         account: &S,
         owner: &Pubkey,
     ) -> TokenResult<Pubkey> {
+        self.create_auxiliary_token_account_with_extension_space(account, owner, vec![])
+            .await
+    }
+
+    /// Create and initialize a new token account.
+    pub async fn create_auxiliary_token_account_with_extension_space(
+        &self,
+        account: &S,
+        owner: &Pubkey,
+        extensions: Vec<ExtensionType>,
+    ) -> TokenResult<Pubkey> {
         let state = self.get_mint_info().await?;
         let mint_extensions: Vec<ExtensionType> = state.get_extension_types()?;
-        let extensions = ExtensionType::get_required_init_account_extensions(&mint_extensions);
-        let space = ExtensionType::get_account_len::<Account>(&extensions);
+        let mut required_extensions =
+            ExtensionType::get_required_init_account_extensions(&mint_extensions);
+        for extension_type in extensions.into_iter() {
+            if !required_extensions.contains(&extension_type) {
+                required_extensions.push(extension_type);
+            }
+        }
+        let space = ExtensionType::get_account_len::<Account>(&required_extensions);
         self.process_ixs(
             &[
                 system_instruction::create_account(
