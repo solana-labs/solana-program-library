@@ -479,24 +479,18 @@ impl Processor {
             return Err(TokenError::AccountFrozen.into());
         }
 
-        match source_account.delegate {
-            COption::Some(ref delegate) if cmp_pubkeys(authority_info.key, delegate) => {
-                Self::validate_owner(
-                    program_id,
-                    delegate,
-                    authority_info,
-                    authority_info_data_len,
-                    account_info_iter.as_slice(),
-                )?;
-            }
-            _ => Self::validate_owner(
-                program_id,
-                &source_account.owner,
-                authority_info,
-                authority_info_data_len,
-                account_info_iter.as_slice(),
-            )?,
-        };
+        Self::validate_owner(
+            program_id,
+            match source_account.delegate {
+                COption::Some(ref delegate) if cmp_pubkeys(authority_info.key, delegate) => {
+                    delegate
+                }
+                _ => &source_account.owner,
+            },
+            authority_info,
+            authority_info_data_len,
+            account_info_iter.as_slice(),
+        )?;
 
         source_account.delegate = COption::None;
         source_account.delegated_amount = 0;
