@@ -461,6 +461,50 @@ where
         .await
     }
 
+    /// Burn tokens from account
+    pub async fn burn<S2: Signer>(
+        &self,
+        source: &Pubkey,
+        authority: &S2,
+        amount: u64,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[instruction::burn(
+                &self.program_id,
+                source,
+                &self.pubkey,
+                &authority.pubkey(),
+                &[],
+                amount,
+            )?],
+            &[authority],
+        )
+        .await
+    }
+
+    /// Burn tokens from account
+    pub async fn burn_checked<S2: Signer>(
+        &self,
+        source: &Pubkey,
+        authority: &S2,
+        amount: u64,
+        decimals: u8,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[instruction::burn_checked(
+                &self.program_id,
+                source,
+                &self.pubkey,
+                &authority.pubkey(),
+                &[],
+                amount,
+                decimals,
+            )?],
+            &[authority],
+        )
+        .await
+    }
+
     /// Close account into another
     pub async fn close_account<S2: Signer>(
         &self,
