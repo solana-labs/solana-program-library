@@ -28,6 +28,7 @@ use {
         program_option::COption,
         program_pack::Pack,
         pubkey::Pubkey,
+        system_program,
         sysvar::{rent::Rent, Sysvar},
     },
     std::convert::{TryFrom, TryInto},
@@ -352,7 +353,6 @@ impl Processor {
         // compute costs, ie:
         // if self_transfer || amount == 0
         check_program_account(source_account_info.owner)?;
-        check_program_account(dest_account_info.owner)?;
 
         // This check MUST occur just before the amounts are manipulated
         // to ensure self-transfers are fully validated
@@ -360,39 +360,64 @@ impl Processor {
             return Ok(());
         }
 
-        // self-transfer was dealt with earlier, so this *should* be safe
-        let mut dest_account_data = dest_account_info.data.borrow_mut();
-        let mut dest_account = StateWithExtensionsMut::<Account>::unpack(&mut dest_account_data)?;
-
-        if dest_account.base.is_frozen() {
-            return Err(TokenError::AccountFrozen.into());
-        }
-        if !cmp_pubkeys(&source_account.base.mint, &dest_account.base.mint) {
-            return Err(TokenError::MintMismatch.into());
-        }
-
-        source_account.base.amount = source_account
-            .base
-            .amount
-            .checked_sub(amount)
-            .ok_or(TokenError::Overflow)?;
-        let credited_amount = amount.checked_sub(fee).ok_or(TokenError::Overflow)?;
-        dest_account.base.amount = dest_account
-            .base
-            .amount
-            .checked_add(credited_amount)
-            .ok_or(TokenError::Overflow)?;
-        if fee > 0 {
-            if let Ok(extension) = dest_account.get_extension_mut::<TransferFeeAmount>() {
-                let new_withheld_amount = u64::from(extension.withheld_amount)
-                    .checked_add(fee)
+        let wsol_source = source_account.base.is_native();
+        let sol_destination = *dest_account_info.owner == system_program::id();
+        match (wsol_source, sol_destination) {
+            // WSOL -> SOL
+            (true, true) => {
+                if fee > 0 {
+                    return Err(TokenError::NativeNotSupported.into());
+                }
+                source_account.base.amount = source_account
+                    .base
+                    .amount
+                    .checked_sub(amount)
                     .ok_or(TokenError::Overflow)?;
-                extension.withheld_amount = new_withheld_amount.into();
-            } else {
-                // Use the generic error since this should never happen. If there's
-                // a fee, then the mint has a fee configured, which means all accounts
-                // must have the withholding.
-                return Err(TokenError::InvalidState.into());
+            }
+            // SPL -> SOL
+            (false, true) => {
+                return Err(TokenError::MintMismatch.into());
+            }
+            // WSOL -> WSOL | SPL -> SPL
+            (true, false) | (false, false) => {
+                // self-transfer was dealt with earlier, so this *should* be safe
+                check_program_account(dest_account_info.owner)?;
+                let mut dest_account_data = dest_account_info.data.borrow_mut();
+                let mut dest_account =
+                    StateWithExtensionsMut::<Account>::unpack(&mut dest_account_data)?;
+
+                if dest_account.base.is_frozen() {
+                    return Err(TokenError::AccountFrozen.into());
+                }
+                if !cmp_pubkeys(&source_account.base.mint, &dest_account.base.mint) {
+                    return Err(TokenError::MintMismatch.into());
+                }
+
+                source_account.base.amount = source_account
+                    .base
+                    .amount
+                    .checked_sub(amount)
+                    .ok_or(TokenError::Overflow)?;
+                let credited_amount = amount.checked_sub(fee).ok_or(TokenError::Overflow)?;
+                dest_account.base.amount = dest_account
+                    .base
+                    .amount
+                    .checked_add(credited_amount)
+                    .ok_or(TokenError::Overflow)?;
+                if fee > 0 {
+                    if let Ok(extension) = dest_account.get_extension_mut::<TransferFeeAmount>() {
+                        let new_withheld_amount = u64::from(extension.withheld_amount)
+                            .checked_add(fee)
+                            .ok_or(TokenError::Overflow)?;
+                        extension.withheld_amount = new_withheld_amount.into();
+                    } else {
+                        // Use the generic error since this should never happen. If there's
+                        // a fee, then the mint has a fee configured, which means all accounts
+                        // must have the withholding.
+                        return Err(TokenError::InvalidState.into());
+                    }
+                }
+                dest_account.pack_base();
             }
         }
 
@@ -409,7 +434,6 @@ impl Processor {
         }
 
         source_account.pack_base();
-        dest_account.pack_base();
 
         Ok(())
     }
@@ -2398,6 +2422,30 @@ mod tests {
                     &mut account_account,
                     &mut account2_account,
                     &mut delegate_account,
+                ],
+            )
+        );
+
+        // transfer to system account
+        let system_account_key = Pubkey::new_unique();
+        let mut system_account = SolanaAccount::new(0, 0, &system_program::id());
+        assert_eq!(
+            Err(TokenError::MintMismatch.into()),
+            do_process_instruction(
+                #[allow(deprecated)]
+                transfer(
+                    &program_id,
+                    &account2_key,
+                    &system_account_key,
+                    &owner_key,
+                    &[],
+                    900,
+                )
+                .unwrap(),
+                vec![
+                    &mut account2_account,
+                    &mut system_account,
+                    &mut owner_account,
                 ],
             )
         );
@@ -6010,6 +6058,99 @@ mod tests {
         let account = Account::unpack_unchecked(&account2_account.data).unwrap();
         assert!(account.is_native());
         assert_eq!(account.amount, 40);
+
+        // fail transfer native to other SPL
+        let bogus_account_key = Pubkey::new_unique();
+        let mut bogus_account = SolanaAccount::new(
+            account_minimum_balance(),
+            Account::get_packed_len(),
+            &program_id,
+        );
+        do_process_instruction(
+            initialize_account3(&program_id, &bogus_account_key, &bogus_mint_key, &owner_key)
+                .unwrap(),
+            vec![&mut bogus_account, &mut bogus_mint_account],
+        )
+        .unwrap();
+
+        assert_eq!(
+            Err(TokenError::MintMismatch.into()),
+            do_process_instruction(
+                transfer_checked(
+                    &program_id,
+                    &account2_key,
+                    &crate::native_mint::id(),
+                    &bogus_account_key,
+                    &owner_key,
+                    &[],
+                    40,
+                    9,
+                )
+                .unwrap(),
+                vec![
+                    &mut account2_account,
+                    &mut mint_account,
+                    &mut bogus_account,
+                    &mut owner_account,
+                ],
+            )
+        );
+
+        // fail transfer native to other program account
+        let other_program_id = Pubkey::new_unique();
+        let other_program_account_key = Pubkey::new_unique();
+        let mut other_program_account = SolanaAccount::new(0, 0, &other_program_id);
+        assert_eq!(
+            Err(ProgramError::IncorrectProgramId),
+            do_process_instruction(
+                transfer_checked(
+                    &program_id,
+                    &account2_key,
+                    &crate::native_mint::id(),
+                    &other_program_account_key,
+                    &owner_key,
+                    &[],
+                    40,
+                    9,
+                )
+                .unwrap(),
+                vec![
+                    &mut account2_account,
+                    &mut mint_account,
+                    &mut other_program_account,
+                    &mut owner_account,
+                ],
+            )
+        );
+
+        // transfer native to system account
+        let system_account_key = Pubkey::new_unique();
+        let mut system_account = SolanaAccount::new(0, 0, &system_program::id());
+        do_process_instruction(
+            transfer_checked(
+                &program_id,
+                &account2_key,
+                &crate::native_mint::id(),
+                &system_account_key,
+                &owner_key,
+                &[],
+                40,
+                9,
+            )
+            .unwrap(),
+            vec![
+                &mut account2_account,
+                &mut mint_account,
+                &mut system_account,
+                &mut owner_account,
+            ],
+        )
+        .unwrap();
+        assert_eq!(account2_account.lamports, account_minimum_balance());
+        let account = Account::unpack_unchecked(&account2_account.data).unwrap();
+        assert!(account.is_native());
+        assert_eq!(account.amount, 0);
+        assert_eq!(system_account.lamports, 40);
 
         // set close authority
         do_process_instruction(
