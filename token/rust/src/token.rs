@@ -505,6 +505,71 @@ where
         .await
     }
 
+    /// Approve a delegate to spend tokens
+    pub async fn approve<S2: Signer>(
+        &self,
+        source: &Pubkey,
+        delegate: &Pubkey,
+        authority: &S2,
+        amount: u64,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[instruction::approve(
+                &self.program_id,
+                source,
+                delegate,
+                &authority.pubkey(),
+                &[],
+                amount,
+            )?],
+            &[authority],
+        )
+        .await
+    }
+
+    /// Approve a delegate to spend tokens, with decimal check
+    pub async fn approve_checked<S2: Signer>(
+        &self,
+        source: &Pubkey,
+        delegate: &Pubkey,
+        authority: &S2,
+        amount: u64,
+        decimals: u8,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[instruction::approve_checked(
+                &self.program_id,
+                source,
+                &self.pubkey,
+                delegate,
+                &authority.pubkey(),
+                &[],
+                amount,
+                decimals,
+            )?],
+            &[authority],
+        )
+        .await
+    }
+
+    /// Revoke a delegate
+    pub async fn revoke<S2: Signer>(
+        &self,
+        source: &Pubkey,
+        authority: &S2,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[instruction::revoke(
+                &self.program_id,
+                source,
+                &authority.pubkey(),
+                &[],
+            )?],
+            &[authority],
+        )
+        .await
+    }
+
     /// Close account into another
     pub async fn close_account<S2: Signer>(
         &self,
