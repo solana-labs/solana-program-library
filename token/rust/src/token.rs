@@ -771,7 +771,6 @@ where
     }
 
     /// Require memos on transfers into this account
-    /// Reallocate first, if needed
     pub async fn enable_required_transfer_memos<S2: Signer>(
         &self,
         account: &Pubkey,
