@@ -14,7 +14,7 @@ use {
 #[repr(u8)]
 pub enum RequiredMemoTransfersInstruction {
     /// Require memos for transfers into this Account. Adds the MemoTransfer extension to the
-    /// Account, if it doesn't already exist. In this case,
+    /// Account, if it doesn't already exist.
     ///
     /// Accounts expected by this instruction:
     ///
