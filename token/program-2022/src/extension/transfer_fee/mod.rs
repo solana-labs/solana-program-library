@@ -1,10 +1,11 @@
 use {
     crate::{
+        error::TokenError,
         extension::{Extension, ExtensionType},
         pod::*,
     },
     bytemuck::{Pod, Zeroable},
-    solana_program::clock::Epoch,
+    solana_program::{clock::Epoch, entrypoint::ProgramResult},
     std::{cmp, convert::TryFrom},
 };
 
@@ -89,6 +90,16 @@ impl Extension for TransferFeeConfig {
 pub struct TransferFeeAmount {
     /// Amount withheld during transfers, to be harvested to the mint
     pub withheld_amount: PodU64,
+}
+impl TransferFeeAmount {
+    /// Check if the extension is in a closable state
+    pub fn closable(&self) -> ProgramResult {
+        if self.withheld_amount == 0.into() {
+            Ok(())
+        } else {
+            Err(TokenError::AccountHasWithheldTransferFees.into())
+        }
+    }
 }
 impl Extension for TransferFeeAmount {
     const TYPE: ExtensionType = ExtensionType::TransferFeeAmount;

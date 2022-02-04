@@ -841,6 +841,11 @@ impl Processor {
             {
                 confidential_transfer_state.closable()?
             }
+
+            if let Ok(transfer_fee_state) = source_account.get_extension_mut::<TransferFeeAmount>()
+            {
+                transfer_fee_state.closable()?
+            }
         } else if let Ok(mut mint) =
             StateWithExtensionsMut::<Mint>::unpack(&mut source_account_data)
         {
@@ -1272,6 +1277,9 @@ impl PrintProgramError for TokenError {
             }
             TokenError::ImmutableOwner => {
                 msg!("The owner authority cannot be changed");
+            }
+            TokenError::AccountHasWithheldTransferFees => {
+                msg!("Error: An account can only be closed if its withheld fee balance is zero, harvest fees to the mint and try again");
             }
         }
     }
