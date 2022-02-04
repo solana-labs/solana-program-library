@@ -25,8 +25,8 @@ impl Extension for MemoTransfer {
 }
 
 /// Determine if a memo is required for transfers into this account
-pub fn memo_required(mut account_state: StateWithExtensionsMut<Account>) -> bool {
-    if let Ok(extension) = account_state.get_extension_mut::<MemoTransfer>() {
+pub fn memo_required(account_state: &StateWithExtensionsMut<Account>) -> bool {
+    if let Ok(extension) = account_state.get_extension::<MemoTransfer>() {
         return extension.require_incoming_transfer_memos.into();
     }
     false

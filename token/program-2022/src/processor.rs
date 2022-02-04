@@ -8,7 +8,7 @@ use {
             confidential_transfer::{self, ConfidentialTransferAccount},
             default_account_state::{self, DefaultAccountState},
             immutable_owner::ImmutableOwner,
-            memo_transfer::{self, MemoTransfer},
+            memo_transfer::{self, memo_required},
             mint_close_authority::MintCloseAuthority,
             reallocate,
             transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
@@ -373,10 +373,8 @@ impl Processor {
             return Err(TokenError::MintMismatch.into());
         }
 
-        if let Ok(extension) = dest_account.get_extension_mut::<MemoTransfer>() {
-            if extension.require_incoming_transfer_memos.into() {
-                // TODO: use get_processed_instructions syscall to check for memo
-            }
+        if memo_required(&dest_account) {
+            // TODO: use get_processed_instructions syscall to check for memo
         }
 
         source_account.base.amount = source_account
