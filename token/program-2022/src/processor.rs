@@ -434,35 +434,37 @@ impl Processor {
         let owner_info = next_account_info(account_info_iter)?;
         let owner_info_data_len = owner_info.data_len();
 
-        let mut source_account = Account::unpack(&source_account_info.data.borrow())?;
+        let mut source_account_data = source_account_info.data.borrow_mut();
+        let mut source_account =
+            StateWithExtensionsMut::<Account>::unpack(&mut source_account_data)?;
 
-        if source_account.is_frozen() {
+        if source_account.base.is_frozen() {
             return Err(TokenError::AccountFrozen.into());
         }
 
         if let Some((mint_info, expected_decimals)) = expected_mint_info {
-            if !cmp_pubkeys(&source_account.mint, mint_info.key) {
+            if !cmp_pubkeys(&source_account.base.mint, mint_info.key) {
                 return Err(TokenError::MintMismatch.into());
             }
 
-            let mint = Mint::unpack(&mint_info.data.borrow_mut())?;
-            if expected_decimals != mint.decimals {
+            let mint_data = mint_info.data.borrow();
+            let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
+            if expected_decimals != mint.base.decimals {
                 return Err(TokenError::MintDecimalsMismatch.into());
             }
         }
 
         Self::validate_owner(
             program_id,
-            &source_account.owner,
+            &source_account.base.owner,
             owner_info,
             owner_info_data_len,
             account_info_iter.as_slice(),
         )?;
 
-        source_account.delegate = COption::Some(*delegate_info.key);
-        source_account.delegated_amount = amount;
-
-        Account::pack(source_account, &mut source_account_info.data.borrow_mut())?;
+        source_account.base.delegate = COption::Some(*delegate_info.key);
+        source_account.base.delegated_amount = amount;
+        source_account.pack_base();
 
         Ok(())
     }
@@ -474,28 +476,29 @@ impl Processor {
         let authority_info = next_account_info(account_info_iter)?;
         let authority_info_data_len = authority_info.data_len();
 
-        let mut source_account = Account::unpack(&source_account_info.data.borrow())?;
-        if source_account.is_frozen() {
+        let mut source_account_data = source_account_info.data.borrow_mut();
+        let mut source_account =
+            StateWithExtensionsMut::<Account>::unpack(&mut source_account_data)?;
+        if source_account.base.is_frozen() {
             return Err(TokenError::AccountFrozen.into());
         }
 
         Self::validate_owner(
             program_id,
-            match source_account.delegate {
+            match source_account.base.delegate {
                 COption::Some(ref delegate) if cmp_pubkeys(authority_info.key, delegate) => {
                     delegate
                 }
-                _ => &source_account.owner,
+                _ => &source_account.base.owner,
             },
             authority_info,
             authority_info_data_len,
             account_info_iter.as_slice(),
         )?;
 
-        source_account.delegate = COption::None;
-        source_account.delegated_amount = 0;
-
-        Account::pack(source_account, &mut source_account_info.data.borrow_mut())?;
+        source_account.base.delegate = COption::None;
+        source_account.base.delegated_amount = 0;
+        source_account.pack_base();
 
         Ok(())
     }
