@@ -836,12 +836,16 @@ impl Processor {
                 account_info_iter.as_slice(),
             )?;
 
+            // TODO use get_extension when
+            // https://github.com/solana-labs/solana-program-library/pull/2822 lands
             if let Ok(confidential_transfer_state) =
                 source_account.get_extension_mut::<ConfidentialTransferAccount>()
             {
                 confidential_transfer_state.closable()?
             }
 
+            // TODO use get_extension when
+            // https://github.com/solana-labs/solana-program-library/pull/2822 lands
             if let Ok(transfer_fee_state) = source_account.get_extension_mut::<TransferFeeAmount>()
             {
                 transfer_fee_state.closable()?
