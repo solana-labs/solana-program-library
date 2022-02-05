@@ -26,7 +26,7 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(3_000);
+    test.set_bpf_compute_max_units(4_000);
 
     let lending_market = add_lending_market(&mut test);
     let (mut banks_client, payer, recent_blockhash) = test.start().await;

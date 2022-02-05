@@ -1168,8 +1168,8 @@ fn command_update_reserve(
     if pyth_price_pubkey.is_some() {
         println!(
             "Updating pyth oracle pubkey from {} to {}",
-            reserve.liquidity.pyth_oracle_pubkey.to_string(),
-            pyth_price_pubkey.unwrap().to_string(),
+            reserve.liquidity.pyth_oracle_pubkey,
+            pyth_price_pubkey.unwrap(),
         );
         reserve.liquidity.pyth_oracle_pubkey = pyth_price_pubkey.unwrap();
         new_pyth_product_pubkey = pyth_product_pubkey.unwrap();
@@ -1178,8 +1178,8 @@ fn command_update_reserve(
     if switchboard_feed_pubkey.is_some() {
         println!(
             "Updating switchboard_oracle_pubkey {} to {}",
-            reserve.liquidity.switchboard_oracle_pubkey.to_string(),
-            switchboard_feed_pubkey.unwrap().to_string(),
+            reserve.liquidity.switchboard_oracle_pubkey,
+            switchboard_feed_pubkey.unwrap(),
         );
         reserve.liquidity.switchboard_oracle_pubkey = switchboard_feed_pubkey.unwrap();
     }
