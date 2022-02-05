@@ -12,7 +12,9 @@ use spl_associated_token_account::{
     get_associated_token_address_with_program_id, instruction::create_associated_token_account,
 };
 use spl_token_2022::{
-    extension::{default_account_state, transfer_fee, ExtensionType, StateWithExtensionsOwned},
+    extension::{
+        default_account_state, memo_transfer, transfer_fee, ExtensionType, StateWithExtensionsOwned,
+    },
     instruction,
     state::{Account, AccountState, Mint},
 };
@@ -258,10 +260,27 @@ where
         account: &S,
         owner: &Pubkey,
     ) -> TokenResult<Pubkey> {
+        self.create_auxiliary_token_account_with_extension_space(account, owner, vec![])
+            .await
+    }
+
+    /// Create and initialize a new token account.
+    pub async fn create_auxiliary_token_account_with_extension_space(
+        &self,
+        account: &S,
+        owner: &Pubkey,
+        extensions: Vec<ExtensionType>,
+    ) -> TokenResult<Pubkey> {
         let state = self.get_mint_info().await?;
         let mint_extensions: Vec<ExtensionType> = state.get_extension_types()?;
-        let extensions = ExtensionType::get_required_init_account_extensions(&mint_extensions);
-        let space = ExtensionType::get_account_len::<Account>(&extensions);
+        let mut required_extensions =
+            ExtensionType::get_required_init_account_extensions(&mint_extensions);
+        for extension_type in extensions.into_iter() {
+            if !required_extensions.contains(&extension_type) {
+                required_extensions.push(extension_type);
+            }
+        }
+        let space = ExtensionType::get_account_len::<Account>(&required_extensions);
         self.process_ixs(
             &[
                 system_instruction::create_account(
@@ -745,6 +764,42 @@ where
                 &authority.pubkey(),
                 &[],
                 extension_types,
+            )?],
+            &[authority],
+        )
+        .await
+    }
+
+    /// Require memos on transfers into this account
+    pub async fn enable_required_transfer_memos<S2: Signer>(
+        &self,
+        account: &Pubkey,
+        authority: &S2,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[memo_transfer::instruction::enable_required_transfer_memos(
+                &self.program_id,
+                account,
+                &authority.pubkey(),
+                &[],
+            )?],
+            &[authority],
+        )
+        .await
+    }
+
+    /// Stop requiring memos on transfers into this account
+    pub async fn disable_required_transfer_memos<S2: Signer>(
+        &self,
+        account: &Pubkey,
+        authority: &S2,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[memo_transfer::instruction::disable_required_transfer_memos(
+                &self.program_id,
+                account,
+                &authority.pubkey(),
+                &[],
             )?],
             &[authority],
         )

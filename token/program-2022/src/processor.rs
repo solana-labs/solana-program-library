@@ -8,6 +8,7 @@ use {
             confidential_transfer::{self, ConfidentialTransferAccount},
             default_account_state::{self, DefaultAccountState},
             immutable_owner::ImmutableOwner,
+            memo_transfer::{self, memo_required},
             mint_close_authority::MintCloseAuthority,
             reallocate,
             transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
@@ -370,6 +371,10 @@ impl Processor {
         }
         if !cmp_pubkeys(&source_account.base.mint, &dest_account.base.mint) {
             return Err(TokenError::MintMismatch.into());
+        }
+
+        if memo_required(&dest_account) {
+            // TODO: use get_processed_instructions syscall to check for memo
         }
 
         source_account.base.amount = source_account
@@ -1152,6 +1157,9 @@ impl Processor {
             TokenInstruction::Reallocate { extension_types } => {
                 msg!("Instruction: Reallocate");
                 reallocate::process_reallocate(program_id, accounts, extension_types)
+            }
+            TokenInstruction::MemoTransferExtension => {
+                memo_transfer::processor::process_instruction(program_id, accounts, &input[1..])
             }
         }
     }

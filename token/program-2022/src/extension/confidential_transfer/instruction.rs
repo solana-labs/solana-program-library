@@ -34,7 +34,7 @@ pub enum ConfidentialTransferInstruction {
     /// Accounts expected by this instruction:
     ///
     ///   0. `[writable]` The SPL Token mint
-    //
+    ///
     /// Data expected by this instruction:
     ///   `ConfidentialTransferMint`
     ///

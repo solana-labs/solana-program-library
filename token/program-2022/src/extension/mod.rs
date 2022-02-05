@@ -7,6 +7,7 @@ use {
             confidential_transfer::{ConfidentialTransferAccount, ConfidentialTransferMint},
             default_account_state::DefaultAccountState,
             immutable_owner::ImmutableOwner,
+            memo_transfer::MemoTransfer,
             mint_close_authority::MintCloseAuthority,
             transfer_fee::{TransferFeeAmount, TransferFeeConfig},
         },
@@ -31,6 +32,8 @@ pub mod confidential_transfer;
 pub mod default_account_state;
 /// Immutable Owner extension
 pub mod immutable_owner;
+/// Memo Transfer extension
+pub mod memo_transfer;
 /// Mint Close Authority extension
 pub mod mint_close_authority;
 /// Utility to reallocate token accounts
@@ -431,9 +434,28 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
         }
     }
 
-    /// Unpack a portion of the TLV data as the desired type
+    /// Unpack a portion of the TLV data as the desired type that allows modifying the type
     pub fn get_extension_mut<V: Extension>(&mut self) -> Result<&mut V, ProgramError> {
         self.init_or_get_extension(false)
+    }
+
+    /// Unpack a portion of the TLV data as the desired type
+    pub fn get_extension<V: Extension>(&self) -> Result<&V, ProgramError> {
+        if V::TYPE.get_account_type() != S::ACCOUNT_TYPE {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        let TlvIndices {
+            type_start,
+            length_start,
+            value_start,
+        } = get_extension_indices::<V>(self.tlv_data, false)?;
+
+        if self.tlv_data[type_start..].len() < V::TYPE.get_tlv_len() {
+            return Err(ProgramError::InvalidAccountData);
+        }
+        let length = pod_from_bytes::<Length>(&self.tlv_data[length_start..value_start])?;
+        let value_end = value_start.saturating_add(usize::from(*length));
+        pod_from_bytes::<V>(&self.tlv_data[value_start..value_end])
     }
 
     /// Packs base state data into the base data portion
@@ -561,6 +583,8 @@ pub enum ExtensionType {
     DefaultAccountState,
     /// Indicates that the Account owner authority cannot be changed
     ImmutableOwner,
+    /// Require inbound transfers to have memo
+    MemoTransfer,
     /// Padding extension used to make an account exactly Multisig::LEN, used for testing
     #[cfg(test)]
     AccountPaddingTest = u16::MAX - 1,
@@ -598,6 +622,7 @@ impl ExtensionType {
                 pod_get_packed_len::<ConfidentialTransferAccount>()
             }
             ExtensionType::DefaultAccountState => pod_get_packed_len::<DefaultAccountState>(),
+            ExtensionType::MemoTransfer => pod_get_packed_len::<MemoTransfer>(),
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => pod_get_packed_len::<AccountPaddingTest>(),
             #[cfg(test)]
@@ -655,7 +680,8 @@ impl ExtensionType {
             | ExtensionType::DefaultAccountState => AccountType::Mint,
             ExtensionType::ImmutableOwner
             | ExtensionType::TransferFeeAmount
-            | ExtensionType::ConfidentialTransferAccount => AccountType::Account,
+            | ExtensionType::ConfidentialTransferAccount
+            | ExtensionType::MemoTransfer => AccountType::Account,
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => AccountType::Account,
             #[cfg(test)]

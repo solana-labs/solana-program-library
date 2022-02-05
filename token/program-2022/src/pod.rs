@@ -74,6 +74,12 @@ impl From<&PodBool> for bool {
     }
 }
 
+impl From<PodBool> for bool {
+    fn from(b: PodBool) -> Self {
+        b.0 != 0
+    }
+}
+
 /// The standard `u16` can cause alignment issues when placed in a `Pod`, define a replacement that
 /// is usable in all `Pod`s
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]

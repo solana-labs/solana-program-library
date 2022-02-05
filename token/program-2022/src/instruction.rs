@@ -522,6 +522,11 @@ pub enum TokenInstruction {
         /// New extension types to include in the reallocated account
         extension_types: Vec<ExtensionType>,
     },
+    /// The common instruction prefix for Memo Transfer account extension instructions.
+    ///
+    /// See `extension::memo_transfer::instruction::RequiredMemoTransfersInstruction` for
+    /// further details about the extended instructions that share this instruction prefix
+    MemoTransferExtension,
 }
 impl TokenInstruction {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -640,6 +645,7 @@ impl TokenInstruction {
                 }
                 Self::Reallocate { extension_types }
             }
+            28 => Self::MemoTransferExtension,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -771,6 +777,9 @@ impl TokenInstruction {
                 for extension_type in extension_types {
                     buf.extend_from_slice(&<[u8; 2]>::from(*extension_type));
                 }
+            }
+            &Self::MemoTransferExtension => {
+                buf.push(28);
             }
         };
         buf
