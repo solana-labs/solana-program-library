@@ -12,5 +12,3 @@ export const MAX_VALIDATORS_TO_UPDATE = 5;
 export const TRANSIENT_STAKE_SEED_PREFIX = Buffer.from('transient');
 
 export const MIN_STAKE_BALANCE = solToLamports(0.001);
-
-export const STAKE_STATE_LEN = 200;

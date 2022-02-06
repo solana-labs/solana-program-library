@@ -15,13 +15,9 @@ export async function getTokenMint(
   connection: Connection,
   tokenMintPubkey: PublicKey,
 ): Promise<MintInfo | undefined> {
-  // try {
   // @ts-ignore
   const token = new Token(connection, tokenMintPubkey, TOKEN_PROGRAM_ID, null);
   return token.getMintInfo();
-  // } catch (error) {
-  //   console.log(error);
-  // }
 }
 
 /**
@@ -40,6 +36,8 @@ export async function addAssociatedTokenAccount(
     mint,
     owner,
   );
+
+  let rentFee = 0;
 
   // This is the optimum logic, considering TX fee, client-side computation,
   // RPC roundtrips and guaranteed idempotent.
@@ -66,13 +64,17 @@ export async function addAssociatedTokenAccount(
           owner,
         ),
       );
+      rentFee = await connection.getMinimumBalanceForRentExemption(AccountLayout.span);
     } else {
       throw err;
     }
     console.warn(err);
   }
 
-  return associatedAddress;
+  return {
+    associatedAddress,
+    rentFee,
+  };
 }
 
 export async function getTokenAccount(

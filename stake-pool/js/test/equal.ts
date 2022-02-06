@@ -1,24 +1,4 @@
-import {Connection, PublicKey} from '@solana/web3.js';
 import BN from 'bn.js';
-import {StakePoolAccount, getStakePoolAccounts} from '../src';
-
-export function isStakePoolAccount(account: any): account is StakePoolAccount {
-  return (
-    account !== undefined &&
-    account.account !== undefined &&
-    account.account.data !== undefined &&
-    'manager' in account.account.data
-  );
-}
-
-export async function getFirstStakePoolAccount(
-  connection: Connection,
-  stakePoolAddress: PublicKey,
-): Promise<StakePoolAccount | undefined> {
-  const accounts = await getStakePoolAccounts(connection, stakePoolAddress);
-
-  return accounts?.filter(account => isStakePoolAccount(account)).pop() as StakePoolAccount;
-}
 
 /**
  * Helper function to do deep equality check because BNs are not equal.

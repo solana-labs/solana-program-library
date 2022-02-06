@@ -295,7 +295,7 @@ export class StakePoolInstruction {
       {pubkey: withdrawAuthority, isSigner: false, isWritable: false},
       {pubkey: validatorList, isSigner: false, isWritable: true},
       {pubkey: reserveStake, isSigner: false, isWritable: false},
-      {pubkey: managerFeeAccount, isSigner: false, isWritable: false},
+      {pubkey: managerFeeAccount, isSigner: false, isWritable: true},
       {pubkey: poolMint, isSigner: false, isWritable: true},
       {pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false},
     ];
@@ -551,7 +551,7 @@ export class StakePoolInstruction {
   /**
    * Creates a transaction instruction to withdraw SOL from a stake pool.
    */
-  static withdrawSol(params: WithdrawSolParams) {
+  static withdrawSol(params: WithdrawSolParams): TransactionInstruction {
     const {
       stakePool,
       withdrawAuthority,

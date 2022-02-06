@@ -54,7 +54,7 @@ export interface StakePool {
   preferredWithdrawValidatorVoteAddress?: PublicKey | undefined;
   stakeDepositFee: Fee;
   stakeWithdrawalFee: Fee;
-  nextWithdrawalFee?: Fee | undefined;
+  nextStakeWithdrawalFee?: Fee | undefined;
   stakeReferralFee: number;
   solDepositAuthority?: PublicKey | undefined;
   solDepositFee: Fee;
@@ -87,7 +87,7 @@ export const StakePoolLayout = struct<StakePool>([
   option(publicKey(), 'preferredWithdrawValidatorVoteAddress'),
   struct(feeFields, 'stakeDepositFee'),
   struct(feeFields, 'stakeWithdrawalFee'),
-  option(struct(feeFields), 'nextWithdrawalFee'),
+  option(struct(feeFields), 'nextStakeWithdrawalFee'),
   u8('stakeReferralFee'),
   option(publicKey(), 'solDepositAuthority'),
   struct(feeFields, 'solDepositFee'),

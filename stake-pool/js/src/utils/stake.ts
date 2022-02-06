@@ -86,7 +86,7 @@ export async function prepareWithdrawAccounts(
       STAKE_POOL_PROGRAM_ID,
       validator.voteAccountAddress,
       stakePoolAddress,
-      validator?.transientSeedSuffixStart,
+      validator.transientSeedSuffixStart,
     );
 
     if (!validator.transientStakeLamports?.isZero()) {
@@ -94,7 +94,7 @@ export async function prepareWithdrawAccounts(
         type: 'transient',
         voteAddress: validator.voteAccountAddress,
         stakeAddress: transientStakeAccountAddress,
-        lamports: validator?.transientStakeLamports.toNumber(),
+        lamports: validator.transientStakeLamports.toNumber(),
       });
     }
   }

@@ -40,7 +40,7 @@ export const stakePoolMock = {
     denominator: new BN(0),
     numerator: new BN(0),
   },
-  nextWithdrawalFee: {
+  nextStakeWithdrawalFee: {
     denominator: new BN(0),
     numerator: new BN(0),
   },

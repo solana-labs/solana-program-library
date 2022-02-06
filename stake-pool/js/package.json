@@ -6,7 +6,7 @@
     "build": "npm run clean; tsc; cross-env NODE_ENV=production rollup -c",
     "lint": "npm run pretty && eslint .",
     "lint:fix": "npm run pretty:fix && eslint . --fix",
-    "pretty": "prettier --check '{,src/**/,test/**/}*.ts' --config .prettierrc",
+    "pretty": "prettier --check '{,src/**/,test/**/}*.ts'",
     "pretty:fix": "prettier -w '{,src/**/,test/**/}*.ts'",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -29,6 +29,7 @@
     "access": "public"
   },
   "browser": "dist.browser/index.js",
+  "module": "dist.browser/index.esm.js",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "browserslist": [
