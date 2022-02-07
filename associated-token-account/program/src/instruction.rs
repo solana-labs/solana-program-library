@@ -34,6 +34,18 @@ pub enum AssociatedTokenAccountInstruction {
     ///   4. `[]` System program
     ///   5. `[]` SPL Token program
     CreateIdempotent,
+    /// Transfers from and closes a nested associated token account: an
+    /// associated token account owned by an associated token account.
+    ///
+    ///   0. `[writeable]` Nested associated token account, must be owned by `4`
+    ///   1. `[]` Token mint for the nested associated token account.
+    ///   2. `[writeable]` Destination token account.
+    ///   3. `[writeable]` Destination wallet for nested account lamports.
+    ///   4. `[]` Owner associated token account address, must be owned by `6`
+    ///   5. `[]` Token mint for the owner associated token account
+    ///   6. `[signer]` Wallet address for the owner associated token account
+    ///   7. `[]` SPL Token program
+    CloseNested,
 }
 
 fn build_associated_token_account_instruction(
@@ -98,4 +110,42 @@ pub fn create_associated_token_account_idempotent(
         token_program_id,
         AssociatedTokenAccountInstruction::CreateIdempotent,
     )
+}
+
+/// Creates a `CloseNested` instruction
+pub fn close_nested(
+    wallet_address: &Pubkey,
+    owner_token_mint_address: &Pubkey,
+    nested_token_mint_address: &Pubkey,
+    token_destination: &Pubkey,
+    lamport_destination: &Pubkey,
+    token_program_id: &Pubkey,
+) -> Instruction {
+    let owner_associated_account_address = get_associated_token_address_with_program_id(
+        wallet_address,
+        owner_token_mint_address,
+        token_program_id,
+    );
+    let nested_associated_account_address = get_associated_token_address_with_program_id(
+        &owner_associated_account_address,
+        nested_token_mint_address,
+        token_program_id,
+    );
+
+    let instruction_data = AssociatedTokenAccountInstruction::CloseNested;
+
+    Instruction {
+        program_id: id(),
+        accounts: vec![
+            AccountMeta::new(nested_associated_account_address, false),
+            AccountMeta::new_readonly(*nested_token_mint_address, false),
+            AccountMeta::new(*token_destination, false),
+            AccountMeta::new(*lamport_destination, false),
+            AccountMeta::new_readonly(owner_associated_account_address, false),
+            AccountMeta::new_readonly(*owner_token_mint_address, false),
+            AccountMeta::new(*wallet_address, true),
+            AccountMeta::new_readonly(*token_program_id, false),
+        ],
+        data: instruction_data.try_to_vec().unwrap(),
+    }
 }
