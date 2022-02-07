@@ -93,6 +93,7 @@ async fn reallocate() {
     );
 
     // reallocate succeeds with noop if account is already large enough
+    token.get_new_latest_blockhash().await.unwrap();
     token
         .reallocate(&alice_account, &alice, &[ExtensionType::ImmutableOwner])
         .await

@@ -1,6 +1,8 @@
 use crate::client::{ProgramClient, ProgramClientError, SendTransaction};
+use solana_program_test::tokio::time;
 use solana_sdk::{
     account::Account as BaseAccount,
+    hash::Hash,
     instruction::Instruction,
     program_error::ProgramError,
     pubkey::Pubkey,
@@ -18,7 +20,11 @@ use spl_token_2022::{
     instruction,
     state::{Account, AccountState, Mint},
 };
-use std::{fmt, sync::Arc};
+use std::{
+    fmt, io,
+    sync::Arc,
+    time::{Duration, Instant},
+};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -165,21 +171,54 @@ where
         }
     }
 
+    pub async fn get_new_latest_blockhash(&self) -> TokenResult<Hash> {
+        let blockhash = self
+            .client
+            .get_latest_blockhash()
+            .await
+            .map_err(TokenError::Client)?;
+        let start = Instant::now();
+        let mut num_retries = 0;
+        while start.elapsed().as_secs() < 5 {
+            let new_blockhash = self
+                .client
+                .get_latest_blockhash()
+                .await
+                .map_err(TokenError::Client)?;
+            if new_blockhash != blockhash {
+                return Ok(new_blockhash);
+            }
+
+            time::sleep(Duration::from_millis(200)).await;
+            num_retries += 1;
+        }
+
+        Err(TokenError::Client(Box::new(io::Error::new(
+            io::ErrorKind::Other,
+            format!(
+                "Unable to get new blockhash after {}ms (retried {} times), stuck at {}",
+                start.elapsed().as_millis(),
+                num_retries,
+                blockhash
+            ),
+        ))))
+    }
+
     pub async fn process_ixs<S2: Signers>(
         &self,
         instructions: &[Instruction],
         signing_keypairs: &S2,
     ) -> TokenResult<T::Output> {
-        let recent_blockhash = self
+        let latest_blockhash = self
             .client
             .get_latest_blockhash()
             .await
             .map_err(TokenError::Client)?;
 
         let mut tx = Transaction::new_with_payer(instructions, Some(&self.payer.pubkey()));
-        tx.try_partial_sign(&[&self.payer], recent_blockhash)
+        tx.try_partial_sign(&[&self.payer], latest_blockhash)
             .map_err(|error| TokenError::Client(error.into()))?;
-        tx.try_sign(signing_keypairs, recent_blockhash)
+        tx.try_sign(signing_keypairs, latest_blockhash)
             .map_err(|error| TokenError::Client(error.into()))?;
 
         self.client
