@@ -17,7 +17,17 @@ use {
         rent::Rent,
         sysvar::Sysvar,
     },
+    spl_token::{extension::StateWithExtensions, state::Account},
 };
+
+/// Specify when to create the associated token account
+#[derive(PartialEq)]
+enum CreateMode {
+    /// Always try to create the ATA
+    Always,
+    /// Only try to create the ATA if non-existent
+    IfNonExistent,
+}
 
 /// Instruction processor
 pub fn process_instruction(
@@ -35,16 +45,20 @@ pub fn process_instruction(
     msg!("{:?}", instruction);
 
     match instruction {
-        AssociatedTokenAccountInstruction::Create {} => {
-            process_create_associated_token_account(program_id, accounts)
+        AssociatedTokenAccountInstruction::Create => {
+            process_create_associated_token_account(program_id, accounts, CreateMode::Always)
+        }
+        AssociatedTokenAccountInstruction::CreateIfNonExistent => {
+            process_create_associated_token_account(program_id, accounts, CreateMode::IfNonExistent)
         }
     }
 }
 
 /// Processes CreateAssociatedTokenAccount instruction
-pub fn process_create_associated_token_account(
+fn process_create_associated_token_account(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
+    create_mode: CreateMode,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
 
@@ -55,6 +69,21 @@ pub fn process_create_associated_token_account(
     let system_program_info = next_account_info(account_info_iter)?;
     let spl_token_program_info = next_account_info(account_info_iter)?;
     let spl_token_program_id = spl_token_program_info.key;
+
+    if create_mode == CreateMode::IfNonExistent
+        && associated_token_account_info.owner == spl_token_program_id
+    {
+        let ata_data = associated_token_account_info.data.borrow();
+        if let Ok(associated_token_account) = StateWithExtensions::<Account>::unpack(&ata_data) {
+            if associated_token_account.base.owner != *wallet_account_info.key {
+                return Err(ProgramError::IllegalOwner);
+            }
+            if associated_token_account.base.mint != *spl_token_mint_info.key {
+                return Err(ProgramError::InvalidAccountData);
+            }
+            return Ok(());
+        }
+    }
 
     let rent = Rent::get()?;
 

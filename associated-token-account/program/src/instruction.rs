@@ -22,9 +22,20 @@ pub enum AssociatedTokenAccountInstruction {
     ///   4. `[]` System program
     ///   5. `[]` SPL Token program
     Create,
+    /// Creates an associated token account for the given wallet address and token mint,
+    /// if it doesn't already exist.  Returns an error if the account exists,
+    /// but with a different owner.
+    ///
+    ///   0. `[writeable,signer]` Funding account (must be a system account)
+    ///   1. `[writeable]` Associated token account address to be created
+    ///   2. `[]` Wallet address for the new associated token account
+    ///   3. `[]` The token mint for the new associated token account
+    ///   4. `[]` System program
+    ///   5. `[]` SPL Token program
+    CreateIfNonExistent,
 }
 
-/// Creates CreateAssociatedTokenAccount instruction
+/// Creates Create instruction
 pub fn create_associated_token_account(
     funding_address: &Pubkey,
     wallet_address: &Pubkey,
@@ -34,7 +45,33 @@ pub fn create_associated_token_account(
     let associated_account_address =
         get_associated_token_address(wallet_address, token_mint_address);
 
-    let instruction_data = AssociatedTokenAccountInstruction::Create {};
+    let instruction_data = AssociatedTokenAccountInstruction::Create;
+
+    Instruction {
+        program_id: id(),
+        accounts: vec![
+            AccountMeta::new(*funding_address, true),
+            AccountMeta::new(associated_account_address, false),
+            AccountMeta::new_readonly(*wallet_address, false),
+            AccountMeta::new_readonly(*token_mint_address, false),
+            AccountMeta::new_readonly(solana_program::system_program::id(), false),
+            AccountMeta::new_readonly(*token_program_id, false),
+        ],
+        data: instruction_data.try_to_vec().unwrap(),
+    }
+}
+
+/// Creates CreateIfNonExistent instruction
+pub fn create_associated_token_account_if_non_existent(
+    funding_address: &Pubkey,
+    wallet_address: &Pubkey,
+    token_mint_address: &Pubkey,
+    token_program_id: &Pubkey,
+) -> Instruction {
+    let associated_account_address =
+        get_associated_token_address(wallet_address, token_mint_address);
+
+    let instruction_data = AssociatedTokenAccountInstruction::CreateIfNonExistent;
 
     Instruction {
         program_id: id(),
