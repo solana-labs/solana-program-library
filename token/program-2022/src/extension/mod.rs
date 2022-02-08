@@ -213,6 +213,16 @@ fn type_and_tlv_indices<S: BaseState>(
     }
 }
 
+/// Checks a base buffer to verify if it is an Account without having to completely deserialize it
+fn is_initialized_account(input: &[u8]) -> Result<bool, ProgramError> {
+    const ACCOUNT_INITIALIZED_INDEX: usize = 108; // See state.rs#L99
+
+    if input.len() != BASE_ACCOUNT_LENGTH {
+        return Err(ProgramError::InvalidAccountData);
+    }
+    Ok(input[ACCOUNT_INITIALIZED_INDEX] != 0)
+}
+
 fn get_extension<S: BaseState, V: Extension>(tlv_data: &[u8]) -> Result<&V, ProgramError> {
     if V::TYPE.get_account_type() != S::ACCOUNT_TYPE {
         return Err(ProgramError::InvalidAccountData);
@@ -524,9 +534,13 @@ impl<'data, S: BaseState> StateWithExtensionsMut<'data, S> {
 
 /// If AccountType is uninitialized, set it to the BaseState's ACCOUNT_TYPE;
 /// if AccountType is already set, check is set correctly for BaseState
+/// This method assumes that the `base_data` has already been packed with data of the desired type.
 pub fn set_account_type<S: BaseState>(input: &mut [u8]) -> Result<(), ProgramError> {
     check_min_len_and_not_multisig(input, S::LEN)?;
-    let (_base_data, rest) = input.split_at_mut(S::LEN);
+    let (base_data, rest) = input.split_at_mut(S::LEN);
+    if S::ACCOUNT_TYPE == AccountType::Account && !is_initialized_account(base_data)? {
+        return Err(ProgramError::InvalidAccountData);
+    }
     if let Some((account_type_index, _tlv_start_index)) = type_and_tlv_indices::<S>(rest)? {
         let mut account_type = AccountType::try_from(rest[account_type_index])
             .map_err(|_| ProgramError::InvalidAccountData)?;
@@ -1386,6 +1400,22 @@ mod test {
         let err = StateWithExtensionsMut::<Mint>::unpack(&mut buffer).unwrap_err();
         assert_eq!(err, ProgramError::InvalidAccountData);
         let err = set_account_type::<Mint>(&mut buffer).unwrap_err();
+        assert_eq!(err, ProgramError::InvalidAccountData);
+    }
+
+    #[test]
+    fn test_set_account_type_wrongly() {
+        // try to set Account account_type to Mint
+        let mut buffer = TEST_ACCOUNT_SLICE.to_vec();
+        buffer.append(&mut vec![0; 2]);
+        let err = set_account_type::<Mint>(&mut buffer).unwrap_err();
+        assert_eq!(err, ProgramError::InvalidAccountData);
+
+        // try to set Mint account_type to Account
+        let mut buffer = TEST_MINT_SLICE.to_vec();
+        buffer.append(&mut vec![0; Account::LEN - Mint::LEN]);
+        buffer.append(&mut vec![0; 2]);
+        let err = set_account_type::<Account>(&mut buffer).unwrap_err();
         assert_eq!(err, ProgramError::InvalidAccountData);
     }
 
