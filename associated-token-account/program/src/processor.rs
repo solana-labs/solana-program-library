@@ -2,6 +2,7 @@
 
 use {
     crate::{
+        error::AssociatedTokenAccountError,
         instruction::AssociatedTokenAccountInstruction,
         tools::account::{create_pda_account, get_account_len},
         *,
@@ -15,6 +16,7 @@ use {
         program_error::ProgramError,
         pubkey::Pubkey,
         rent::Rent,
+        system_program,
         sysvar::Sysvar,
     },
     spl_token::{extension::StateWithExtensions, state::Account},
@@ -26,7 +28,7 @@ enum CreateMode {
     /// Always try to create the ATA
     Always,
     /// Only try to create the ATA if non-existent
-    IfNonExistent,
+    Idempotent,
 }
 
 /// Instruction processor
@@ -48,8 +50,8 @@ pub fn process_instruction(
         AssociatedTokenAccountInstruction::Create => {
             process_create_associated_token_account(program_id, accounts, CreateMode::Always)
         }
-        AssociatedTokenAccountInstruction::CreateIfNonExistent => {
-            process_create_associated_token_account(program_id, accounts, CreateMode::IfNonExistent)
+        AssociatedTokenAccountInstruction::CreateIdempotent => {
+            process_create_associated_token_account(program_id, accounts, CreateMode::Idempotent)
         }
     }
 }
@@ -70,18 +72,23 @@ fn process_create_associated_token_account(
     let spl_token_program_info = next_account_info(account_info_iter)?;
     let spl_token_program_id = spl_token_program_info.key;
 
-    if create_mode == CreateMode::IfNonExistent
-        && associated_token_account_info.owner == spl_token_program_id
-    {
-        let ata_data = associated_token_account_info.data.borrow();
-        if let Ok(associated_token_account) = StateWithExtensions::<Account>::unpack(&ata_data) {
-            if associated_token_account.base.owner != *wallet_account_info.key {
-                return Err(ProgramError::IllegalOwner);
+    if create_mode == CreateMode::Idempotent {
+        if associated_token_account_info.owner == spl_token_program_id {
+            let ata_data = associated_token_account_info.data.borrow();
+            if let Ok(associated_token_account) = StateWithExtensions::<Account>::unpack(&ata_data)
+            {
+                if associated_token_account.base.owner != *wallet_account_info.key {
+                    let error = AssociatedTokenAccountError::InvalidOwner;
+                    msg!("{}", error);
+                    return Err(error.into());
+                }
+                if associated_token_account.base.mint != *spl_token_mint_info.key {
+                    return Err(ProgramError::InvalidAccountData);
+                }
+                return Ok(());
             }
-            if associated_token_account.base.mint != *spl_token_mint_info.key {
-                return Err(ProgramError::InvalidAccountData);
-            }
-            return Ok(());
+        } else if *associated_token_account_info.owner != system_program::id() {
+            return Err(ProgramError::IllegalOwner);
         }
     }
 

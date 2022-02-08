@@ -3526,11 +3526,15 @@ dependencies = [
 name = "spl-associated-token-account"
 version = "1.0.5"
 dependencies = [
+ "assert_matches",
  "borsh",
+ "num-derive",
+ "num-traits",
  "solana-program",
  "solana-program-test",
  "solana-sdk",
  "spl-token-2022",
+ "thiserror",
 ]
 
 [[package]]

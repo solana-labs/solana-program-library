@@ -15,9 +15,10 @@ use {
         transaction::{Transaction, TransactionError},
     },
     spl_associated_token_account::{
+        error::AssociatedTokenAccountError,
         get_associated_token_address,
         instruction::{
-            create_associated_token_account, create_associated_token_account_if_non_existent,
+            create_associated_token_account, create_associated_token_account_idempotent,
         },
     },
     spl_token::{
@@ -42,7 +43,7 @@ async fn success_account_exists() {
         ]);
     let expected_token_account_balance = rent.minimum_balance(expected_token_account_len);
 
-    let instruction = create_associated_token_account_if_non_existent(
+    let instruction = create_associated_token_account_idempotent(
         &payer.pubkey(),
         &wallet_address,
         &token_mint_address,
@@ -67,7 +68,7 @@ async fn success_account_exists() {
     assert_eq!(associated_account.owner, spl_token::id());
     assert_eq!(associated_account.lamports, expected_token_account_balance);
 
-    // Old instruction fails
+    // Unchecked instruction fails
     let instruction = create_associated_token_account(
         &payer.pubkey(),
         &wallet_address,
@@ -99,7 +100,7 @@ async fn success_account_exists() {
         .await
         .unwrap();
 
-    let instruction = create_associated_token_account_if_non_existent(
+    let instruction = create_associated_token_account_idempotent(
         &payer.pubkey(),
         &wallet_address,
         &token_mint_address,
@@ -151,7 +152,7 @@ async fn fail_account_exists_with_wrong_owner() {
     let (mut banks_client, payer, recent_blockhash) = pt.start().await;
 
     // fail creating token account if non existent
-    let instruction = create_associated_token_account_if_non_existent(
+    let instruction = create_associated_token_account_idempotent(
         &payer.pubkey(),
         &wallet_address,
         &token_mint_address,
@@ -170,6 +171,9 @@ async fn fail_account_exists_with_wrong_owner() {
             .await
             .unwrap_err()
             .unwrap(),
-        TransactionError::InstructionError(0, InstructionError::IllegalOwner)
+        TransactionError::InstructionError(
+            0,
+            InstructionError::Custom(AssociatedTokenAccountError::InvalidOwner as u32)
+        )
     );
 }
