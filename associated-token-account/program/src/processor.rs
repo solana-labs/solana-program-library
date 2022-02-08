@@ -72,24 +72,24 @@ fn process_create_associated_token_account(
     let spl_token_program_info = next_account_info(account_info_iter)?;
     let spl_token_program_id = spl_token_program_info.key;
 
-    if create_mode == CreateMode::Idempotent {
-        if associated_token_account_info.owner == spl_token_program_id {
-            let ata_data = associated_token_account_info.data.borrow();
-            if let Ok(associated_token_account) = StateWithExtensions::<Account>::unpack(&ata_data)
-            {
-                if associated_token_account.base.owner != *wallet_account_info.key {
-                    let error = AssociatedTokenAccountError::InvalidOwner;
-                    msg!("{}", error);
-                    return Err(error.into());
-                }
-                if associated_token_account.base.mint != *spl_token_mint_info.key {
-                    return Err(ProgramError::InvalidAccountData);
-                }
-                return Ok(());
+    if create_mode == CreateMode::Idempotent
+        && associated_token_account_info.owner == spl_token_program_id
+    {
+        let ata_data = associated_token_account_info.data.borrow();
+        if let Ok(associated_token_account) = StateWithExtensions::<Account>::unpack(&ata_data) {
+            if associated_token_account.base.owner != *wallet_account_info.key {
+                let error = AssociatedTokenAccountError::InvalidOwner;
+                msg!("{}", error);
+                return Err(error.into());
             }
-        } else if *associated_token_account_info.owner != system_program::id() {
-            return Err(ProgramError::IllegalOwner);
+            if associated_token_account.base.mint != *spl_token_mint_info.key {
+                return Err(ProgramError::InvalidAccountData);
+            }
+            return Ok(());
         }
+    }
+    if *associated_token_account_info.owner != system_program::id() {
+        return Err(ProgramError::IllegalOwner);
     }
 
     let rent = Rent::get()?;

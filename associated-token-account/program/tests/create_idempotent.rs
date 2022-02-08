@@ -11,7 +11,6 @@ use {
         program_option::COption,
         program_pack::Pack,
         signature::Signer,
-        system_instruction::SystemError,
         transaction::{Transaction, TransactionError},
     },
     spl_associated_token_account::{
@@ -88,10 +87,7 @@ async fn success_account_exists() {
             .await
             .unwrap_err()
             .unwrap(),
-        TransactionError::InstructionError(
-            0,
-            InstructionError::Custom(SystemError::AccountAlreadyInUse as u32)
-        )
+        TransactionError::InstructionError(0, InstructionError::IllegalOwner)
     );
 
     // Get a new blockhash, succeed with create if non existent
