@@ -1390,6 +1390,22 @@ mod test {
     }
 
     #[test]
+    fn test_set_account_type_wrongly() {
+        // try to set Account account_type to Mint
+        let mut buffer = TEST_ACCOUNT_SLICE.to_vec();
+        buffer.append(&mut vec![0; 2]);
+        let err = set_account_type::<Mint>(&mut buffer).unwrap_err();
+        assert_eq!(err, ProgramError::InvalidAccountData);
+
+        // try to set Mint account_type to Account
+        let mut buffer = TEST_MINT_SLICE.to_vec();
+        buffer.append(&mut vec![0; Account::LEN - Mint::LEN]);
+        buffer.append(&mut vec![0; 2]);
+        let err = set_account_type::<Account>(&mut buffer).unwrap_err();
+        assert_eq!(err, ProgramError::InvalidAccountData);
+    }
+
+    #[test]
     fn test_get_required_init_account_extensions() {
         // Some mint extensions with no required account extensions
         let mint_extensions = vec![
