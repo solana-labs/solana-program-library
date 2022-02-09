@@ -296,21 +296,21 @@ async fn fail_wrong_signer() {
     let (mint, mint_authority) = create_mint(&mut context).await;
 
     let owner_associated_token_address =
-        create_associated_token_account(&mut context, &wrong_wallet.pubkey(), &mint).await;
+        create_associated_token_account(&mut context, &wallet.pubkey(), &mint).await;
     let nested_associated_token_address =
         create_associated_token_account(&mut context, &owner_associated_token_address, &mint).await;
 
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::close_nested(
-            &wallet.pubkey(),
+            &wrong_wallet.pubkey(),
             &mint,
             &mint,
             &owner_associated_token_address,
-            &wallet.pubkey(),
+            &wrong_wallet.pubkey(),
             &spl_token::id(),
         )],
         Some(&context.payer.pubkey()),
-        &[&context.payer, &wallet],
+        &[&context.payer, &wrong_wallet],
         context.last_blockhash,
     );
     try_close_nested(
@@ -319,7 +319,7 @@ async fn fail_wrong_signer() {
         mint_authority,
         nested_associated_token_address,
         owner_associated_token_address,
-        wallet,
+        wrong_wallet,
         transaction,
         Some(InstructionError::IllegalOwner),
     )
