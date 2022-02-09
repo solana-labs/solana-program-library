@@ -1,6 +1,6 @@
 [package]
 name = "spl-governance"
-version = "2.2.2"
+version = "2.2.3"
 description = "Solana Program Library Governance Program"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library"

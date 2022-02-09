@@ -9,4 +9,4 @@ cluster = "mainnet"
 wallet = "~/.config/solana/id.json"
 
 [programs.mainnet]
-spl_governance = "GoVEr6xcF9QGrRFJC4kt9wiCdNqZzrG7KWdrm7viDnpa"
+spl_governance = "GovER5Lthms3bLBqWub97yVrMmEogzX7xNjdXpPPCVZw"
