@@ -527,6 +527,19 @@ pub enum TokenInstruction {
     /// See `extension::memo_transfer::instruction::RequiredMemoTransfersInstruction` for
     /// further details about the extended instructions that share this instruction prefix
     MemoTransferExtension,
+    /// Creates the native mint.
+    ///
+    /// This instruction only needs to be invoked once after deployment and is permissionless,
+    /// Wrapped SOL (`native_mint::id()`) will not be available until this instruction is
+    /// successfully executed.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writeable,signer]` Funding account (must be a system account)
+    ///   1. `[writable]` The native mint address
+    ///   2. `[]` System program for mint account funding
+    ///
+    CreateNativeMint,
 }
 impl TokenInstruction {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -646,6 +659,7 @@ impl TokenInstruction {
                 Self::Reallocate { extension_types }
             }
             28 => Self::MemoTransferExtension,
+            29 => Self::CreateNativeMint,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -780,6 +794,9 @@ impl TokenInstruction {
             }
             &Self::MemoTransferExtension => {
                 buf.push(28);
+            }
+            &Self::CreateNativeMint => {
+                buf.push(29);
             }
         };
         buf
@@ -1568,6 +1585,24 @@ pub fn reallocate(
     })
 }
 
+/// Creates a `CreateNativeMint` instruction
+pub fn create_native_mint(
+    token_program_id: &Pubkey,
+    payer: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts: vec![
+            AccountMeta::new(*payer, true),
+            AccountMeta::new(crate::native_mint::id(), false),
+            AccountMeta::new_readonly(system_program::id(), false),
+        ],
+        data: TokenInstruction::CreateNativeMint.pack(),
+    })
+}
+
 /// Utility function that checks index is between MIN_SIGNERS and MAX_SIGNERS
 pub fn is_valid_signer_index(index: usize) -> bool {
     (MIN_SIGNERS..=MAX_SIGNERS).contains(&index)
@@ -1817,6 +1852,13 @@ mod test {
         let packed = check.pack();
         let mut expect = vec![22u8, 1];
         expect.extend_from_slice(&[10u8; 32]);
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::CreateNativeMint;
+        let packed = check.pack();
+        let expect = vec![29u8];
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);

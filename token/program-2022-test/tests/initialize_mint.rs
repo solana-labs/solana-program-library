@@ -17,7 +17,7 @@ use {
     spl_token_2022::{
         error::TokenError,
         extension::{mint_close_authority::MintCloseAuthority, transfer_fee, ExtensionType},
-        instruction,
+        instruction, native_mint,
         state::Mint,
     },
     spl_token_client::token::ExtensionInitializationParams,
@@ -473,4 +473,18 @@ async fn fail_fee_init_after_mint_init() {
         err,
         TransactionError::InstructionError(1, InstructionError::InvalidAccountData)
     );
+}
+
+#[tokio::test]
+async fn create_native_mint() {
+    let mut context = TestContext::new().await;
+    context.init_token_with_native_mint().await.unwrap();
+    let TokenContext { token, .. } = context.token_context.unwrap();
+
+    let mint = token.get_mint_info().await.unwrap();
+    assert_eq!(mint.base.decimals, native_mint::DECIMALS);
+    assert_eq!(mint.base.mint_authority, COption::None,);
+    assert_eq!(mint.base.supply, 0);
+    assert!(mint.base.is_initialized);
+    assert_eq!(mint.base.freeze_authority, COption::None);
 }
