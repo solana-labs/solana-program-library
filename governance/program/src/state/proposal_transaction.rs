@@ -125,11 +125,10 @@ impl AccountMaxSize for ProposalTransactionV2 {
         let instructions_size = self
             .instructions
             .iter()
-            .map(|i| i.accounts.len() * 34 + i.data.len())
-            .sum::<usize>()
-            + 4;
+            .map(|i| i.accounts.len() * 34 + i.data.len() + 40)
+            .sum::<usize>();
 
-        Some(instructions_size + 98)
+        Some(instructions_size + 62)
     }
 }
 
@@ -271,6 +270,7 @@ mod test {
         vec![InstructionData {
             program_id: Pubkey::new_unique(),
             accounts: vec![
+                create_test_account_meta_data(),
                 create_test_account_meta_data(),
                 create_test_account_meta_data(),
             ],
