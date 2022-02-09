@@ -15,6 +15,7 @@ use {
             ExtensionType, StateWithExtensions, StateWithExtensionsMut,
         },
         instruction::{is_valid_signer_index, AuthorityType, TokenInstruction, MAX_SIGNERS},
+        native_mint,
         state::{Account, AccountState, Mint, Multisig},
     },
     num_traits::FromPrimitive,
@@ -24,12 +25,13 @@ use {
         decode_error::DecodeError,
         entrypoint::ProgramResult,
         msg,
-        program::set_return_data,
+        program::{invoke, invoke_signed, set_return_data},
         program_error::{PrintProgramError, ProgramError},
         program_memory::sol_memset,
         program_option::COption,
         program_pack::Pack,
         pubkey::Pubkey,
+        system_instruction,
         sysvar::{rent::Rent, Sysvar},
     },
     std::convert::{TryFrom, TryInto},
@@ -164,7 +166,7 @@ impl Processor {
         account.base.delegate = COption::None;
         account.base.delegated_amount = 0;
         account.base.state = starting_state;
-        if cmp_pubkeys(mint_info.key, &crate::native_mint::id()) {
+        if cmp_pubkeys(mint_info.key, &native_mint::id()) {
             let rent_exempt_reserve = rent.minimum_balance(new_account_info_data_len);
             account.base.is_native = COption::Some(rent_exempt_reserve);
             account.base.amount = new_account_info
@@ -1024,6 +1026,51 @@ impl Processor {
         token_account.init_extension::<ImmutableOwner>().map(|_| ())
     }
 
+    /// Processes a [CreateNativeMint](enum.TokenInstruction.html) instruction
+    pub fn process_create_native_mint(accounts: &[AccountInfo]) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let payer_info = next_account_info(account_info_iter)?;
+        let native_mint_info = next_account_info(account_info_iter)?;
+        let system_program_info = next_account_info(account_info_iter)?;
+
+        if *native_mint_info.key != native_mint::id() {
+            return Err(TokenError::InvalidMint.into());
+        }
+
+        let rent = Rent::get()?;
+        let new_minimum_balance = rent.minimum_balance(Mint::get_packed_len());
+        let lamports_diff = new_minimum_balance.saturating_sub(native_mint_info.lamports());
+        invoke(
+            &system_instruction::transfer(payer_info.key, native_mint_info.key, lamports_diff),
+            &[
+                payer_info.clone(),
+                native_mint_info.clone(),
+                system_program_info.clone(),
+            ],
+        )?;
+
+        invoke_signed(
+            &system_instruction::allocate(native_mint_info.key, Mint::get_packed_len() as u64),
+            &[native_mint_info.clone(), system_program_info.clone()],
+            &[native_mint::PROGRAM_ADDRESS_SEEDS],
+        )?;
+
+        invoke_signed(
+            &system_instruction::assign(native_mint_info.key, &crate::id()),
+            &[native_mint_info.clone(), system_program_info.clone()],
+            &[native_mint::PROGRAM_ADDRESS_SEEDS],
+        )?;
+
+        Mint::pack(
+            Mint {
+                decimals: native_mint::DECIMALS,
+                is_initialized: true,
+                ..Mint::default()
+            },
+            &mut native_mint_info.data.borrow_mut(),
+        )
+    }
+
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         let instruction = TokenInstruction::unpack(input)?;
@@ -1160,6 +1207,10 @@ impl Processor {
             }
             TokenInstruction::MemoTransferExtension => {
                 memo_transfer::processor::process_instruction(program_id, accounts, &input[1..])
+            }
+            TokenInstruction::CreateNativeMint => {
+                msg!("Instruction: CreateNativeMint");
+                Self::process_create_native_mint(accounts)
             }
         }
     }
@@ -1443,7 +1494,7 @@ mod tests {
                 &crate::native_mint::id(),
                 &Pubkey::default(),
                 None,
-                9,
+                crate::native_mint::DECIMALS,
             )
             .unwrap(),
             vec![&mut mint_account, &mut rent_sysvar],

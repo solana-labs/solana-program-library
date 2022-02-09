@@ -17,7 +17,7 @@ use spl_token_2022::{
     extension::{
         default_account_state, memo_transfer, transfer_fee, ExtensionType, StateWithExtensionsOwned,
     },
-    instruction,
+    instruction, native_mint,
     state::{Account, AccountState, Mint},
 };
 use std::{
@@ -268,6 +268,26 @@ where
             decimals,
         )?);
         token.process_ixs(&instructions, &[mint_account]).await?;
+
+        Ok(token)
+    }
+
+    /// Create native mint
+    pub async fn create_native_mint(
+        client: Arc<dyn ProgramClient<T>>,
+        program_id: &Pubkey,
+        payer: S,
+    ) -> TokenResult<Self> {
+        let token = Self::new(client, program_id, &native_mint::id(), payer);
+        token
+            .process_ixs(
+                &[instruction::create_native_mint(
+                    program_id,
+                    &token.payer.pubkey(),
+                )?],
+                &[&token.payer],
+            )
+            .await?;
 
         Ok(token)
     }

@@ -3,7 +3,7 @@
 use {
     solana_program_test::{processor, tokio::sync::Mutex, ProgramTest, ProgramTestContext},
     solana_sdk::signer::{keypair::Keypair, Signer},
-    spl_token_2022::{id, processor::Processor},
+    spl_token_2022::{id, native_mint, processor::Processor},
     spl_token_client::{
         client::{ProgramBanksClient, ProgramBanksClientProcessTransaction, ProgramClient},
         token::{ExtensionInitializationParams, Token, TokenResult},
@@ -95,6 +95,26 @@ impl TestContext {
             freeze_authority,
         });
 
+        Ok(())
+    }
+
+    pub async fn init_token_with_native_mint(&mut self) -> TokenResult<()> {
+        let payer = keypair_clone(&self.context.lock().await.payer);
+        let client: Arc<dyn ProgramClient<ProgramBanksClientProcessTransaction>> =
+            Arc::new(ProgramBanksClient::new_from_context(
+                Arc::clone(&self.context),
+                ProgramBanksClientProcessTransaction,
+            ));
+
+        let token = Token::create_native_mint(Arc::clone(&client), &id(), payer).await?;
+        self.token_context = Some(TokenContext {
+            decimals: native_mint::DECIMALS,
+            mint_authority: Keypair::new(), /*bogus*/
+            token,
+            alice: Keypair::new(),
+            bob: Keypair::new(),
+            freeze_authority: None,
+        });
         Ok(())
     }
 }
