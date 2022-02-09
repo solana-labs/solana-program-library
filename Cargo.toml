@@ -31,6 +31,7 @@ members = [
   "token/cli",
   "token/program",
   "token/program-2022",
+  "token/program-2022-test",
   "token/rust",
   "utils/cgen",
   "utils/test-client",
