@@ -272,6 +272,7 @@ mod test {
             accounts: vec![
                 create_test_account_meta_data(),
                 create_test_account_meta_data(),
+                create_test_account_meta_data(),
             ],
             data: vec![1, 2, 3],
         }]
