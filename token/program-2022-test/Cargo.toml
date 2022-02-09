@@ -15,6 +15,7 @@ walkdir = "2"
 
 [dev-dependencies]
 async-trait = "0.1"
+solana-program = "=1.9.9"
 solana-program-test = "=1.9.9"
 solana-sdk = "=1.9.9"
 spl-associated-token-account = { version = "1.0.5", path = "../../associated-token-account/program" }
