@@ -36,8 +36,8 @@ import { createMint, getOrCreateAssociatedTokenAccount, mintTo, transfer } from 
         mint,
         fromTokenAccount.address,
         fromWallet.publicKey,
-        [],
-        1000000000
+        1000000000,
+        []
     );
     console.log('mint tx:', signature);
 
@@ -48,8 +48,8 @@ import { createMint, getOrCreateAssociatedTokenAccount, mintTo, transfer } from 
         fromTokenAccount.address,
         toTokenAccount.address,
         fromWallet.publicKey,
-        [],
-        1000000000
+        1000000000,
+        []
     );
     console.log('transfer tx:', signature);
 })();
