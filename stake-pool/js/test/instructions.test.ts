@@ -6,11 +6,10 @@ import {
   AccountInfo,
   LAMPORTS_PER_SOL,
 } from '@solana/web3.js';
-import {StakePoolLayout} from '../src/layouts';
-import {STAKE_POOL_PROGRAM_ID} from '../src/constants';
-import {decodeData} from '../src/copied-from-solana-web3/instruction';
+import { StakePoolLayout } from '../src/layouts';
 import {
   STAKE_POOL_INSTRUCTION_LAYOUTS,
+  STAKE_POOL_PROGRAM_ID,
   DepositSolParams,
   StakePoolInstruction,
   depositSol,
@@ -18,7 +17,9 @@ import {
   withdrawStake,
 } from '../src';
 
-import {mockTokenAccount, mockValidatorList, stakePoolMock} from './mocks';
+import { decodeData } from '../src/utils';
+
+import { mockTokenAccount, mockValidatorList, stakePoolMock } from './mocks';
 
 describe('StakePoolProgram', () => {
   const connection = new Connection('http://127.0.0.1:8899');
@@ -83,7 +84,7 @@ describe('StakePoolProgram', () => {
 
     connection.getBalance = jest.fn(async () => balance);
 
-    connection.getAccountInfo = jest.fn(async pubKey => {
+    connection.getAccountInfo = jest.fn(async (pubKey) => {
       if (pubKey == stakePoolAddress) {
         return stakePoolAccount;
       }
@@ -109,7 +110,7 @@ describe('StakePoolProgram', () => {
     });
 
     it.only('should call successfully', async () => {
-      connection.getAccountInfo = jest.fn(async pubKey => {
+      connection.getAccountInfo = jest.fn(async (pubKey) => {
         if (pubKey == stakePoolAddress) {
           return stakePoolAccount;
         }

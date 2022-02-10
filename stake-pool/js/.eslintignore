@@ -1,1 +1,6 @@
-/dist
+dist
+dist.browser
+node_modules
+.idea
+.vscode
+.idea

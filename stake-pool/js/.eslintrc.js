@@ -1,9 +1,9 @@
 module.exports = {
   root: true,
   env: {
-    es2021: true,
-    jest: true,
+    es6: true,
     node: true,
+    jest: true,
   },
   extends: ['plugin:@typescript-eslint/recommended', 'plugin:prettier/recommended'],
   plugins: ['@typescript-eslint/eslint-plugin'],

@@ -2,7 +2,7 @@ import typescript from '@rollup/plugin-typescript';
 import commonjs from '@rollup/plugin-commonjs';
 import json from '@rollup/plugin-json';
 import nodeResolve from '@rollup/plugin-node-resolve';
-import {terser} from 'rollup-plugin-terser';
+import { terser } from 'rollup-plugin-terser';
 
 const extensions = ['.js', '.ts'];
 
@@ -82,7 +82,7 @@ function generateConfig(configType, format) {
               format: 'iife',
               name: 'solanaStakePool',
               sourcemap: true,
-              plugins: [terser({mangle: false, compress: false})],
+              plugins: [terser({ mangle: false, compress: false })],
             },
           ];
 

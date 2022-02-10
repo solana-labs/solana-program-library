@@ -9,7 +9,7 @@ import {
   SystemProgram,
   TransactionInstruction,
 } from '@solana/web3.js';
-import {ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, Token} from '@solana/spl-token';
+import { ASSOCIATED_TOKEN_PROGRAM_ID, TOKEN_PROGRAM_ID, Token } from '@solana/spl-token';
 import {
   ValidatorAccount,
   addAssociatedTokenAccount,
@@ -25,7 +25,7 @@ import {
   lamportsToSol,
   solToLamports,
 } from './utils';
-import {StakePoolInstruction} from './instructions';
+import { StakePoolInstruction } from './instructions';
 import {
   StakePool,
   StakePoolLayout,
@@ -33,10 +33,10 @@ import {
   ValidatorListLayout,
   ValidatorStakeInfo,
 } from './layouts';
-import {MAX_VALIDATORS_TO_UPDATE, MIN_STAKE_BALANCE, STAKE_POOL_PROGRAM_ID} from './constants';
+import { MAX_VALIDATORS_TO_UPDATE, MINIMUM_ACTIVE_STAKE, STAKE_POOL_PROGRAM_ID } from './constants';
 
-export type {StakePool, AccountType, ValidatorList, ValidatorStakeInfo} from './layouts';
-export {STAKE_POOL_PROGRAM_ID} from './constants';
+export type { StakePool, AccountType, ValidatorList, ValidatorStakeInfo } from './layouts';
+export { STAKE_POOL_PROGRAM_ID } from './constants';
 export * from './instructions';
 
 export interface ValidatorListAccount {
@@ -101,7 +101,7 @@ export async function getStakePoolAccounts(
 ): Promise<(StakePoolAccount | ValidatorListAccount)[] | undefined> {
   const response = await connection.getProgramAccounts(stakePoolProgramAddress);
 
-  return response.map(a => {
+  return response.map((a) => {
     let decodedData;
 
     if (a.account.data.readUInt8() === 1) {
@@ -170,7 +170,7 @@ export async function depositStake(
 
   // Create token account if not specified
   if (!poolTokenReceiverAccount) {
-    const {associatedAddress, rentFee: fee} = await addAssociatedTokenAccount(
+    const { associatedAddress, rentFee: fee } = await addAssociatedTokenAccount(
       connection,
       authorizedPubkey,
       poolMint,
@@ -263,7 +263,7 @@ export async function depositSol(
 
   // Create token account if not specified
   if (!destinationTokenAccount) {
-    const {associatedAddress, rentFee: fee} = await addAssociatedTokenAccount(
+    const { associatedAddress, rentFee: fee } = await addAssociatedTokenAccount(
       connection,
       from,
       stakePool.poolMint,
@@ -343,6 +343,10 @@ export async function withdrawStake(
     );
   }
 
+  const stakeAccountRentExemption = await connection.getMinimumBalanceForRentExemption(
+    StakeProgram.space,
+  );
+
   const withdrawAuthority = await findWithdrawAuthorityProgramAddress(
     STAKE_POOL_PROGRAM_ID,
     stakePoolAddress,
@@ -369,7 +373,7 @@ export async function withdrawStake(
 
     const availableForWithdrawal = calcLamportsWithdrawAmount(
       stakePool.account.data,
-      stakeAccount.lamports - MIN_STAKE_BALANCE,
+      stakeAccount.lamports - MINIMUM_ACTIVE_STAKE - stakeAccountRentExemption,
     );
 
     if (availableForWithdrawal < poolAmount) {
@@ -393,6 +397,7 @@ export async function withdrawStake(
         stakePoolAddress,
         poolAmount,
         validatorComparator,
+        poolTokenAccount.equals(stakePool.account.data.managerFeeAccount),
       )),
     );
   }
@@ -443,12 +448,9 @@ export async function withdrawStake(
 
     // Use separate mutable variable because withdraw might create a new account
     if (!stakeReceiver) {
-      const stakeReceiverAccountBalance = await connection.getMinimumBalanceForRentExemption(
-        StakeProgram.space,
-      );
-      const stakeKeypair = newStakeAccount(tokenOwner, instructions, stakeReceiverAccountBalance);
+      const stakeKeypair = newStakeAccount(tokenOwner, instructions, stakeAccountRentExemption);
       signers.push(stakeKeypair);
-      totalRentFreeBalances += stakeReceiverAccountBalance;
+      totalRentFreeBalances += stakeAccountRentExemption;
       stakeToReceive = stakeKeypair.publicKey;
     } else {
       stakeToReceive = stakeReceiver;
@@ -589,7 +591,7 @@ export async function increaseValidatorStake(
   );
 
   const validatorInfo = validatorList.account.data.validators.find(
-    v => v.voteAccountAddress.toBase58() == validatorVote.toBase58(),
+    (v) => v.voteAccountAddress.toBase58() == validatorVote.toBase58(),
   );
 
   if (!validatorInfo) {
@@ -646,7 +648,7 @@ export async function decreaseValidatorStake(
   );
 
   const validatorInfo = validatorList.account.data.validators.find(
-    v => v.voteAccountAddress.toBase58() == validatorVote.toBase58(),
+    (v) => v.voteAccountAddress.toBase58() == validatorVote.toBase58(),
   );
 
   if (!validatorInfo) {
@@ -807,7 +809,7 @@ export async function stakePoolInfo(connection: Connection, stakePoolAddress: Pu
     (await connection.getMinimumBalanceForRentExemption(StakeProgram.space)) + 1;
 
   const stakeAccounts = await Promise.all(
-    validatorList.account.data.validators.map(async validator => {
+    validatorList.account.data.validators.map(async (validator) => {
       const stakeAccountAddress = await findStakeProgramAddress(
         STAKE_POOL_PROGRAM_ID,
         validator.voteAccountAddress,
@@ -846,7 +848,7 @@ export async function stakePoolInfo(connection: Connection, stakePoolAddress: Pu
     stakeDepositAuthority: stakePool.account.data.stakeDepositAuthority.toBase58(),
     stakeWithdrawBumpSeed: stakePool.account.data.stakeWithdrawBumpSeed,
     maxValidators: maxNumberOfValidators,
-    validatorList: validatorList.account.data.validators.map(validator => {
+    validatorList: validatorList.account.data.validators.map((validator) => {
       return {
         activeStakeLamports: validator.activeStakeLamports.toString(),
         transientStakeLamports: validator.transientStakeLamports.toString(),

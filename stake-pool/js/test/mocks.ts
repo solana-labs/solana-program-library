@@ -1,7 +1,7 @@
-import {AccountInfo, LAMPORTS_PER_SOL, PublicKey} from '@solana/web3.js';
+import { AccountInfo, LAMPORTS_PER_SOL, PublicKey } from '@solana/web3.js';
 import BN from 'bn.js';
-import {ValidatorStakeInfo} from '../src';
-import {ValidatorStakeInfoStatus, AccountLayout, ValidatorListLayout} from '../src/layouts';
+import { ValidatorStakeInfo } from '../src';
+import { ValidatorStakeInfoStatus, AccountLayout, ValidatorListLayout } from '../src/layouts';
 
 export const stakePoolMock = {
   accountType: 1,
