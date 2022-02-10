@@ -39,6 +39,13 @@ pub struct ConfidentialTransferMint {
     /// auditor to decode the transfer amount.
     /// * If all zero, auditing is currently disabled.
     pub auditor_pk: pod::ElGamalPubkey,
+
+    /// * If non-zero, transfers must include ElGamal cypertext of the transfer fee with this
+    /// public key. If this is the case, but the base mint is not extended for fees, then any
+    /// transfer will fail.
+    /// * If all zero, transfer fee is disabled. If this is the case, but the base mint is extended
+    /// for fees, then any transfer will fail.
+    pub withdraw_withheld_authority_pk: pod::ElGamalPubkey,
 }
 
 impl Extension for ConfidentialTransferMint {
@@ -77,6 +84,9 @@ pub struct ConfidentialTransferAccount {
 
     /// The actual `pending_balance_credit_counter` when the last `ApplyPendingBalance` instruction was executed
     pub actual_pending_balance_credit_counter: PodU64,
+
+    /// The withheld amount of fees. This will always be zero if fees are never enabled.
+    pub withheld_amount: pod::ElGamalCiphertext,
 }
 
 impl Extension for ConfidentialTransferAccount {

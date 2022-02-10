@@ -121,9 +121,16 @@ pub enum TokenError {
     /// Calculated fee does not match expected fee
     #[error("Calculated fee does not match expected fee")]
     FeeMismatch,
+    /// Fee parameters associated with confidential transfer zero-knowledge proofs do not match fee parameters in mint
+    #[error(
+        "Fee parameters associated with zero-knowledge proofs do not match fee parameters in mint"
+    )]
+    FeeParametersMismatch,
     /// The owner authority cannot be changed
     #[error("The owner authority cannot be changed")]
     ImmutableOwner,
+
+    // 35
     /// An account can only be closed if its withheld fee balance is zero, harvest fees to the
     /// mint and try again
     #[error("An account can only be closed if its withheld fee balance is zero, harvest fees to the mint and try again")]
