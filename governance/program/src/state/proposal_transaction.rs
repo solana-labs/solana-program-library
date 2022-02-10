@@ -106,7 +106,7 @@ pub struct ProposalTransactionV2 {
     /// Instructions to execute
     /// The instructions will be signed by Governance PDA the Proposal belongs to
     // For example for ProgramGovernance the instruction to upgrade program will be signed by ProgramGovernance PDA
-    // All instructions will be executed withing a single transaction
+    // All instructions will be executed within a single transaction
     pub instructions: Vec<InstructionData>,
 
     /// Executed at flag
