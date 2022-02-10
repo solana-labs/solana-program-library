@@ -5374,7 +5374,7 @@ mod tests {
     fn check_valid_swap_curve(
         fees: Fees,
         curve_type: CurveType,
-        calculator: Arc<dyn CurveCalculator>,
+        calculator: Arc<dyn CurveCalculator + Send + Sync>,
         token_a_amount: u64,
         token_b_amount: u64,
     ) {
