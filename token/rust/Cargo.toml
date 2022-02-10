@@ -15,5 +15,5 @@ solana-sdk = "=1.9.5"
 # We never want the entrypoint for ATA, but we want the entrypoint for token when
 # testing token
 spl-associated-token-account = { version = "1.0.5", path = "../../associated-token-account/program", features = ["no-entrypoint"] }
-spl-token-2022 = { version = "0.1", path="../program-2022" }
+spl-token-2022 = { version = "0.2", path="../program-2022" }
 thiserror = "1.0"

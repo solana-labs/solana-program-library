@@ -3890,7 +3890,7 @@ dependencies = [
 
 [[package]]
 name = "spl-token-2022"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "arrayref",
  "bytemuck",
