@@ -5,17 +5,20 @@ use {
     program_test::{TestContext, TokenContext},
     solana_program_test::tokio,
     solana_sdk::{
-        instruction::InstructionError, signature::Signer, signer::keypair::Keypair,
+        instruction::InstructionError, pubkey::Pubkey, signature::Signer, signer::keypair::Keypair,
         transaction::TransactionError, transport::TransportError,
     },
     spl_token_2022::error::TokenError,
-    spl_token_client::token::TokenError as TokenClientError,
+    spl_token_client::token::{ExtensionInitializationParams, TokenError as TokenClientError},
 };
 
-#[tokio::test]
-async fn basic() {
-    let mut context = TestContext::new().await;
-    context.init_token_with_mint(vec![]).await.unwrap();
+#[derive(PartialEq)]
+enum TestMode {
+    All,
+    CheckedOnly,
+}
+
+async fn run_basic_transfers(context: TestContext, test_mode: TestMode) {
     let TokenContext {
         decimals,
         mint_authority,
@@ -43,11 +46,13 @@ async fn basic() {
         .await
         .unwrap();
 
-    // unchecked is ok
-    token
-        .transfer_unchecked(&alice_account, &bob_account, &alice, 1)
-        .await
-        .unwrap();
+    if test_mode == TestMode::All {
+        // unchecked is ok
+        token
+            .transfer_unchecked(&alice_account, &bob_account, &alice, 1)
+            .await
+            .unwrap();
+    }
 
     // checked is ok
     token
@@ -87,9 +92,28 @@ async fn basic() {
 }
 
 #[tokio::test]
-async fn self_transfer() {
+async fn basic() {
     let mut context = TestContext::new().await;
     context.init_token_with_mint(vec![]).await.unwrap();
+    run_basic_transfers(context, TestMode::All).await;
+}
+
+#[tokio::test]
+async fn basic_with_extension() {
+    let mut context = TestContext::new().await;
+    context
+        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
+            transfer_fee_config_authority: Some(Pubkey::new_unique()),
+            withdraw_withheld_authority: Some(Pubkey::new_unique()),
+            transfer_fee_basis_points: 100u16,
+            maximum_fee: 1_000_000u64,
+        }])
+        .await
+        .unwrap();
+    run_basic_transfers(context, TestMode::CheckedOnly).await;
+}
+
+async fn run_self_transfers(context: TestContext, test_mode: TestMode) {
     let TokenContext {
         decimals,
         mint_authority,
@@ -116,10 +140,12 @@ async fn self_transfer() {
         .transfer_checked(&alice_account, &alice_account, &alice, 1, decimals)
         .await
         .unwrap();
-    token
-        .transfer_unchecked(&alice_account, &alice_account, &alice, 1)
-        .await
-        .unwrap();
+    if test_mode == TestMode::All {
+        token
+            .transfer_unchecked(&alice_account, &alice_account, &alice, 1)
+            .await
+            .unwrap();
+    }
 
     // too much self transfer is not ok
     let error = token
@@ -138,9 +164,28 @@ async fn self_transfer() {
 }
 
 #[tokio::test]
-async fn self_owned() {
+async fn self_transfer() {
     let mut context = TestContext::new().await;
     context.init_token_with_mint(vec![]).await.unwrap();
+    run_self_transfers(context, TestMode::All).await;
+}
+
+#[tokio::test]
+async fn self_transfer_with_extension() {
+    let mut context = TestContext::new().await;
+    context
+        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
+            transfer_fee_config_authority: Some(Pubkey::new_unique()),
+            withdraw_withheld_authority: Some(Pubkey::new_unique()),
+            transfer_fee_basis_points: 100u16,
+            maximum_fee: 1_000_000u64,
+        }])
+        .await
+        .unwrap();
+    run_self_transfers(context, TestMode::CheckedOnly).await;
+}
+
+async fn run_self_owned(context: TestContext, test_mode: TestMode) {
     let TokenContext {
         decimals,
         mint_authority,
@@ -167,11 +212,13 @@ async fn self_owned() {
         .await
         .unwrap();
 
-    // unchecked is ok
-    token
-        .transfer_unchecked(&alice_account, &bob_account, &alice, 1)
-        .await
-        .unwrap();
+    if test_mode == TestMode::All {
+        // unchecked is ok
+        token
+            .transfer_unchecked(&alice_account, &bob_account, &alice, 1)
+            .await
+            .unwrap();
+    }
 
     // checked is ok
     token
@@ -184,6 +231,28 @@ async fn self_owned() {
         .transfer_checked(&alice_account, &alice_account, &alice, 1, decimals)
         .await
         .unwrap();
+}
+
+#[tokio::test]
+async fn self_owned() {
+    let mut context = TestContext::new().await;
+    context.init_token_with_mint(vec![]).await.unwrap();
+    run_self_owned(context, TestMode::All).await;
+}
+
+#[tokio::test]
+async fn self_owned_with_extension() {
+    let mut context = TestContext::new().await;
+    context
+        .init_token_with_mint(vec![ExtensionInitializationParams::TransferFeeConfig {
+            transfer_fee_config_authority: Some(Pubkey::new_unique()),
+            withdraw_withheld_authority: Some(Pubkey::new_unique()),
+            transfer_fee_basis_points: 100u16,
+            maximum_fee: 1_000_000u64,
+        }])
+        .await
+        .unwrap();
+    run_self_owned(context, TestMode::CheckedOnly).await;
 }
 
 #[tokio::test]

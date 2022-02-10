@@ -1,6 +1,8 @@
 use crate::client::{ProgramClient, ProgramClientError, SendTransaction};
+use solana_program_test::tokio::time;
 use solana_sdk::{
     account::Account as BaseAccount,
+    hash::Hash,
     instruction::Instruction,
     program_error::ProgramError,
     pubkey::Pubkey,
@@ -12,11 +14,17 @@ use spl_associated_token_account::{
     get_associated_token_address_with_program_id, instruction::create_associated_token_account,
 };
 use spl_token_2022::{
-    extension::{default_account_state, transfer_fee, ExtensionType, StateWithExtensionsOwned},
-    instruction,
+    extension::{
+        default_account_state, memo_transfer, transfer_fee, ExtensionType, StateWithExtensionsOwned,
+    },
+    instruction, native_mint,
     state::{Account, AccountState, Mint},
 };
-use std::{fmt, sync::Arc};
+use std::{
+    fmt, io,
+    sync::Arc,
+    time::{Duration, Instant},
+};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -163,21 +171,54 @@ where
         }
     }
 
+    pub async fn get_new_latest_blockhash(&self) -> TokenResult<Hash> {
+        let blockhash = self
+            .client
+            .get_latest_blockhash()
+            .await
+            .map_err(TokenError::Client)?;
+        let start = Instant::now();
+        let mut num_retries = 0;
+        while start.elapsed().as_secs() < 5 {
+            let new_blockhash = self
+                .client
+                .get_latest_blockhash()
+                .await
+                .map_err(TokenError::Client)?;
+            if new_blockhash != blockhash {
+                return Ok(new_blockhash);
+            }
+
+            time::sleep(Duration::from_millis(200)).await;
+            num_retries += 1;
+        }
+
+        Err(TokenError::Client(Box::new(io::Error::new(
+            io::ErrorKind::Other,
+            format!(
+                "Unable to get new blockhash after {}ms (retried {} times), stuck at {}",
+                start.elapsed().as_millis(),
+                num_retries,
+                blockhash
+            ),
+        ))))
+    }
+
     pub async fn process_ixs<S2: Signers>(
         &self,
         instructions: &[Instruction],
         signing_keypairs: &S2,
     ) -> TokenResult<T::Output> {
-        let recent_blockhash = self
+        let latest_blockhash = self
             .client
             .get_latest_blockhash()
             .await
             .map_err(TokenError::Client)?;
 
         let mut tx = Transaction::new_with_payer(instructions, Some(&self.payer.pubkey()));
-        tx.try_partial_sign(&[&self.payer], recent_blockhash)
+        tx.try_partial_sign(&[&self.payer], latest_blockhash)
             .map_err(|error| TokenError::Client(error.into()))?;
-        tx.try_sign(signing_keypairs, recent_blockhash)
+        tx.try_sign(signing_keypairs, latest_blockhash)
             .map_err(|error| TokenError::Client(error.into()))?;
 
         self.client
@@ -231,6 +272,26 @@ where
         Ok(token)
     }
 
+    /// Create native mint
+    pub async fn create_native_mint(
+        client: Arc<dyn ProgramClient<T>>,
+        program_id: &Pubkey,
+        payer: S,
+    ) -> TokenResult<Self> {
+        let token = Self::new(client, program_id, &native_mint::id(), payer);
+        token
+            .process_ixs(
+                &[instruction::create_native_mint(
+                    program_id,
+                    &token.payer.pubkey(),
+                )?],
+                &[&token.payer],
+            )
+            .await?;
+
+        Ok(token)
+    }
+
     /// Get the address for the associated token account.
     pub fn get_associated_token_address(&self, owner: &Pubkey) -> Pubkey {
         get_associated_token_address_with_program_id(owner, &self.pubkey, &self.program_id)
@@ -258,10 +319,27 @@ where
         account: &S,
         owner: &Pubkey,
     ) -> TokenResult<Pubkey> {
+        self.create_auxiliary_token_account_with_extension_space(account, owner, vec![])
+            .await
+    }
+
+    /// Create and initialize a new token account.
+    pub async fn create_auxiliary_token_account_with_extension_space(
+        &self,
+        account: &S,
+        owner: &Pubkey,
+        extensions: Vec<ExtensionType>,
+    ) -> TokenResult<Pubkey> {
         let state = self.get_mint_info().await?;
         let mint_extensions: Vec<ExtensionType> = state.get_extension_types()?;
-        let extensions = ExtensionType::get_required_init_account_extensions(&mint_extensions);
-        let space = ExtensionType::get_account_len::<Account>(&extensions);
+        let mut required_extensions =
+            ExtensionType::get_required_init_account_extensions(&mint_extensions);
+        for extension_type in extensions.into_iter() {
+            if !required_extensions.contains(&extension_type) {
+                required_extensions.push(extension_type);
+            }
+        }
+        let space = ExtensionType::get_account_len::<Account>(&required_extensions);
         self.process_ixs(
             &[
                 system_instruction::create_account(
@@ -461,6 +539,115 @@ where
         .await
     }
 
+    /// Burn tokens from account
+    pub async fn burn<S2: Signer>(
+        &self,
+        source: &Pubkey,
+        authority: &S2,
+        amount: u64,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[instruction::burn(
+                &self.program_id,
+                source,
+                &self.pubkey,
+                &authority.pubkey(),
+                &[],
+                amount,
+            )?],
+            &[authority],
+        )
+        .await
+    }
+
+    /// Burn tokens from account
+    pub async fn burn_checked<S2: Signer>(
+        &self,
+        source: &Pubkey,
+        authority: &S2,
+        amount: u64,
+        decimals: u8,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[instruction::burn_checked(
+                &self.program_id,
+                source,
+                &self.pubkey,
+                &authority.pubkey(),
+                &[],
+                amount,
+                decimals,
+            )?],
+            &[authority],
+        )
+        .await
+    }
+
+    /// Approve a delegate to spend tokens
+    pub async fn approve<S2: Signer>(
+        &self,
+        source: &Pubkey,
+        delegate: &Pubkey,
+        authority: &S2,
+        amount: u64,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[instruction::approve(
+                &self.program_id,
+                source,
+                delegate,
+                &authority.pubkey(),
+                &[],
+                amount,
+            )?],
+            &[authority],
+        )
+        .await
+    }
+
+    /// Approve a delegate to spend tokens, with decimal check
+    pub async fn approve_checked<S2: Signer>(
+        &self,
+        source: &Pubkey,
+        delegate: &Pubkey,
+        authority: &S2,
+        amount: u64,
+        decimals: u8,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[instruction::approve_checked(
+                &self.program_id,
+                source,
+                &self.pubkey,
+                delegate,
+                &authority.pubkey(),
+                &[],
+                amount,
+                decimals,
+            )?],
+            &[authority],
+        )
+        .await
+    }
+
+    /// Revoke a delegate
+    pub async fn revoke<S2: Signer>(
+        &self,
+        source: &Pubkey,
+        authority: &S2,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[instruction::revoke(
+                &self.program_id,
+                source,
+                &authority.pubkey(),
+                &[],
+            )?],
+            &[authority],
+        )
+        .await
+    }
+
     /// Close account into another
     pub async fn close_account<S2: Signer>(
         &self,
@@ -593,6 +780,86 @@ where
                     &[],
                 )?,
             ],
+            &[authority],
+        )
+        .await
+    }
+
+    /// Withdraw withheld tokens from accounts
+    pub async fn withdraw_withheld_tokens_from_accounts<S2: Signer>(
+        &self,
+        destination: &Pubkey,
+        authority: &S2,
+        sources: &[&Pubkey],
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[
+                transfer_fee::instruction::withdraw_withheld_tokens_from_accounts(
+                    &self.program_id,
+                    &self.pubkey,
+                    destination,
+                    &authority.pubkey(),
+                    &[],
+                    sources,
+                )?,
+            ],
+            &[authority],
+        )
+        .await
+    }
+
+    /// Reallocate a token account to be large enough for a set of ExtensionTypes
+    pub async fn reallocate<S2: Signer>(
+        &self,
+        account: &Pubkey,
+        authority: &S2,
+        extension_types: &[ExtensionType],
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[instruction::reallocate(
+                &self.program_id,
+                account,
+                &self.payer.pubkey(),
+                &authority.pubkey(),
+                &[],
+                extension_types,
+            )?],
+            &[authority],
+        )
+        .await
+    }
+
+    /// Require memos on transfers into this account
+    pub async fn enable_required_transfer_memos<S2: Signer>(
+        &self,
+        account: &Pubkey,
+        authority: &S2,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[memo_transfer::instruction::enable_required_transfer_memos(
+                &self.program_id,
+                account,
+                &authority.pubkey(),
+                &[],
+            )?],
+            &[authority],
+        )
+        .await
+    }
+
+    /// Stop requiring memos on transfers into this account
+    pub async fn disable_required_transfer_memos<S2: Signer>(
+        &self,
+        account: &Pubkey,
+        authority: &S2,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[memo_transfer::instruction::disable_required_transfer_memos(
+                &self.program_id,
+                account,
+                &authority.pubkey(),
+                &[],
+            )?],
             &[authority],
         )
         .await

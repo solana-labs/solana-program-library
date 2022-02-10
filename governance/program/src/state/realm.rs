@@ -323,7 +323,7 @@ pub fn get_realm_data_for_authority(
     realm_info: &AccountInfo,
     realm_authority: &Pubkey,
 ) -> Result<RealmV2, ProgramError> {
-    let realm_data = get_account_data::<RealmV2>(program_id, realm_info)?;
+    let realm_data = get_realm_data(program_id, realm_info)?;
 
     if realm_data.authority.is_none() {
         return Err(GovernanceError::RealmHasNoAuthority.into());

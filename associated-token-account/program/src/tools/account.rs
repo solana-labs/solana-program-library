@@ -76,7 +76,7 @@ pub fn create_pda_account<'a>(
 pub fn get_account_len<'a>(
     mint: &AccountInfo<'a>,
     spl_token_program: &AccountInfo<'a>,
-    extension_types: Vec<ExtensionType>,
+    extension_types: &[ExtensionType],
 ) -> Result<usize, ProgramError> {
     invoke(
         &spl_token::instruction::get_account_data_size(

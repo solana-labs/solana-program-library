@@ -3526,11 +3526,15 @@ dependencies = [
 name = "spl-associated-token-account"
 version = "1.0.5"
 dependencies = [
+ "assert_matches",
  "borsh",
+ "num-derive",
+ "num-traits",
  "solana-program",
  "solana-program-test",
  "solana-sdk",
  "spl-token-2022",
+ "thiserror",
 ]
 
 [[package]]
@@ -3621,7 +3625,7 @@ dependencies = [
 
 [[package]]
 name = "spl-governance"
-version = "2.2.0"
+version = "2.2.3"
 dependencies = [
  "arrayref",
  "assert_matches",
@@ -3646,7 +3650,7 @@ dependencies = [
 
 [[package]]
 name = "spl-governance-addin-api"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "borsh",
  "solana-program",
@@ -3655,7 +3659,7 @@ dependencies = [
 
 [[package]]
 name = "spl-governance-addin-mock"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "arrayref",
  "assert_matches",
@@ -3679,7 +3683,7 @@ dependencies = [
 
 [[package]]
 name = "spl-governance-chat"
-version = "0.2.2"
+version = "0.2.4"
 dependencies = [
  "arrayref",
  "assert_matches",
@@ -3705,7 +3709,7 @@ dependencies = [
 
 [[package]]
 name = "spl-governance-test-sdk"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "arrayref",
  "bincode",
@@ -3724,7 +3728,7 @@ dependencies = [
 
 [[package]]
 name = "spl-governance-tools"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "arrayref",
  "bincode",
@@ -3898,8 +3902,19 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "solana-zk-token-sdk",
- "spl-token-client",
  "thiserror",
+]
+
+[[package]]
+name = "spl-token-2022-test"
+version = "0.0.1"
+dependencies = [
+ "async-trait",
+ "solana-program-test",
+ "solana-sdk",
+ "spl-associated-token-account 1.0.5",
+ "spl-token-2022",
+ "spl-token-client",
 ]
 
 [[package]]

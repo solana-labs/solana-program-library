@@ -34,7 +34,7 @@ pub fn amount_to_ui_amount(amount: u64, decimals: u8) -> f64 {
     amount as f64 / 10_usize.pow(decimals as u32) as f64
 }
 
-solana_program::declare_id!("Token22gQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+solana_program::declare_id!("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
 
 /// Checks that the supplied program ID is the correct one for SPL-token
 pub fn check_program_account(spl_token_program_id: &Pubkey) -> ProgramResult {

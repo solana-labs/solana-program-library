@@ -14,7 +14,7 @@ First, make sure you've already deployed the associated-token-account program by
 $ cargo build-bpf
 ```
 
-Once that's complete, come back to the `token/program/js` folder and install the npm dependencies, including `@solana/web3.js`, by running:
+Once that's complete, come back to the `token/js` folder and install the npm dependencies, including `@solana/web3.js`, by running:
 ```bash
 $ npm install
 ```
