@@ -31,7 +31,7 @@ git clone https://github.com/solana-labs/solana-program-library.git
 
 2. Navigate to the library:
 ```shell
-cd solana-program-library/token/ts
+cd solana-program-library/token/js
 ```
 
 3. Install the dependencies:
