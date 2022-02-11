@@ -1354,6 +1354,9 @@ impl PrintProgramError for TokenError {
             TokenError::FeeMismatch => {
                 msg!("Calculated fee does not match expected fee");
             }
+            TokenError::FeeParametersMismatch => {
+                msg!("Fee parameters associated with zero-knowledge proofs do not match fee parameters in mint")
+            }
             TokenError::ImmutableOwner => {
                 msg!("The owner authority cannot be changed");
             }
