@@ -22,7 +22,7 @@ use spl_token_2022::{
 };
 use std::{
     fmt, io,
-    sync::Arc,
+    sync::{Arc, RwLock},
     time::{Duration, Instant},
 };
 use thiserror::Error;
@@ -124,6 +124,7 @@ pub struct Token<T, S> {
     pubkey: Pubkey,
     payer: S,
     program_id: Pubkey,
+    memo: Arc<RwLock<Option<String>>>,
 }
 
 impl<T, S> fmt::Debug for Token<T, S>
@@ -134,6 +135,7 @@ where
         f.debug_struct("Token")
             .field("pubkey", &self.pubkey)
             .field("payer", &self.payer.pubkey())
+            .field("memo", &self.memo.read().unwrap())
             .finish()
     }
 }
@@ -154,6 +156,7 @@ where
             pubkey: *address,
             payer,
             program_id: *program_id,
+            memo: Arc::new(RwLock::new(None)),
         }
     }
 
@@ -168,7 +171,14 @@ where
             pubkey: self.pubkey,
             payer,
             program_id: self.program_id,
+            memo: Arc::new(RwLock::new(None)),
         }
+    }
+
+    pub fn with_memo<M: AsRef<str>>(&self, memo: M) -> &Self {
+        let mut w_memo = self.memo.write().unwrap();
+        *w_memo = Some(memo.as_ref().to_string());
+        self
     }
 
     pub async fn get_new_latest_blockhash(&self) -> TokenResult<Hash> {
@@ -206,16 +216,22 @@ where
 
     pub async fn process_ixs<S2: Signers>(
         &self,
-        instructions: &[Instruction],
+        token_instructions: &[Instruction],
         signing_keypairs: &S2,
     ) -> TokenResult<T::Output> {
+        let mut instructions = vec![];
+        let mut w_memo = self.memo.write().unwrap();
+        if let Some(memo) = w_memo.take() {
+            instructions.push(spl_memo::build_memo(memo.as_bytes(), &[]));
+        }
+        instructions.extend_from_slice(token_instructions);
         let latest_blockhash = self
             .client
             .get_latest_blockhash()
             .await
             .map_err(TokenError::Client)?;
 
-        let mut tx = Transaction::new_with_payer(instructions, Some(&self.payer.pubkey()));
+        let mut tx = Transaction::new_with_payer(&instructions, Some(&self.payer.pubkey()));
         tx.try_partial_sign(&[&self.payer], latest_blockhash)
             .map_err(|error| TokenError::Client(error.into()))?;
         tx.try_sign(signing_keypairs, latest_blockhash)
@@ -280,12 +296,12 @@ where
     ) -> TokenResult<Self> {
         let token = Self::new(client, program_id, &native_mint::id(), payer);
         token
-            .process_ixs(
+            .process_ixs::<[&dyn Signer; 0]>(
                 &[instruction::create_native_mint(
                     program_id,
                     &token.payer.pubkey(),
                 )?],
-                &[&token.payer],
+                &[],
             )
             .await?;
 
@@ -299,14 +315,14 @@ where
 
     /// Create and initialize the associated account.
     pub async fn create_associated_token_account(&self, owner: &Pubkey) -> TokenResult<Pubkey> {
-        self.process_ixs(
+        self.process_ixs::<[&dyn Signer; 0]>(
             &[create_associated_token_account(
                 &self.payer.pubkey(),
                 owner,
                 &self.pubkey,
                 &self.program_id,
             )],
-            &[&self.payer],
+            &[],
         )
         .await
         .map(|_| self.get_associated_token_address(owner))
@@ -359,7 +375,7 @@ where
                     owner,
                 )?,
             ],
-            &[&self.payer, account],
+            &[account],
         )
         .await
         .map(|_| account.pubkey())
@@ -753,13 +769,13 @@ where
         &self,
         sources: &[&Pubkey],
     ) -> TokenResult<T::Output> {
-        self.process_ixs(
+        self.process_ixs::<[&dyn Signer; 0]>(
             &[transfer_fee::instruction::harvest_withheld_tokens_to_mint(
                 &self.program_id,
                 &self.pubkey,
                 sources,
             )?],
-            &[&self.payer],
+            &[],
         )
         .await
     }

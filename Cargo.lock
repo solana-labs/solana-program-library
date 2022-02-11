@@ -3950,6 +3950,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "spl-associated-token-account 1.0.5",
+ "spl-memo 3.0.1",
  "spl-token-2022",
  "thiserror",
 ]
