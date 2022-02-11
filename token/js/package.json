@@ -31,7 +31,10 @@
         "postbuild": "echo '{\"type\":\"commonjs\"}' > lib/cjs/package.json && echo '{\"type\":\"module\"}' > lib/esm/package.json",
         "deploy": "yarn docs && gh-pages --dist docs --dotfiles",
         "example": "node --experimental-specifier-resolution=node --loader ts-node/esm examples/create_mint_and_transfer_tokens.ts",
-        "test": "mocha",
+        "test": "yarn test:unit && yarn test:e2e-built && yarn test:e2e-native",
+        "test:unit": "mocha test/unit",
+        "test:e2e-built": "start-server-and-test 'solana-test-validator --bpf-program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA ../../target/deploy/spl_token.so --reset --quiet' http://localhost:8899/health 'mocha test/e2e'",
+        "test:e2e-native": "start-server-and-test 'solana-test-validator --reset --quiet' http://localhost:8899/health 'mocha test/e2e'",
         "docs": "shx rm -rf docs && NODE_OPTIONS=--max_old_space_size=4096 typedoc && shx cp .nojekyll docs/",
         "fmt": "prettier --write '{*,**/*}.{js,ts,jsx,tsx,json}'",
         "lint": "eslint --ext .ts . && prettier --check '{*,**/*}.{js,ts,jsx,tsx,json}'",
@@ -41,7 +44,8 @@
     "dependencies": {
         "@solana/buffer-layout": "^4.0.0",
         "@solana/buffer-layout-utils": "^0.2.0",
-        "@solana/web3.js": "^1.32.0"
+        "@solana/web3.js": "^1.32.0",
+        "start-server-and-test": "^1.14.0"
     },
     "devDependencies": {
         "@types/chai-as-promised": "^7.1.4",
