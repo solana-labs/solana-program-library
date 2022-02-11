@@ -409,6 +409,31 @@ pub enum TokenInstruction {
         /// The freeze authority/multisignature of the mint.
         freeze_authority: COption<Pubkey>,
     },
+    /// Gets the required size of an account for the given mint as a little-endian
+    /// `u64`.
+    ///
+    /// Return data can be fetched using `sol_get_return_data` and deserializing
+    /// the return data as a little-endian `u64`.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[]` The mint to calculate for
+    GetAccountDataSize, // typically, there's also data, but this program ignores it
+    /// Initialize the Immutable Owner extension for the given token account
+    ///
+    /// Fails if the account has already been initialized, so must be called before
+    /// `InitializeAccount`.
+    ///
+    /// No-ops in this version of the program, but is included for compatibility
+    /// with the Associated Token Account program.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]`  The account to initialize.
+    ///
+    /// Data expected by this instruction:
+    ///   None
+    InitializeImmutableOwner,
 }
 impl TokenInstruction {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -529,6 +554,8 @@ impl TokenInstruction {
                     decimals,
                 }
             }
+            21 => Self::GetAccountDataSize,
+            22 => Self::InitializeImmutableOwner,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -624,6 +651,12 @@ impl TokenInstruction {
                 buf.push(decimals);
                 buf.extend_from_slice(mint_authority.as_ref());
                 Self::pack_pubkey_option(freeze_authority, &mut buf);
+            }
+            &Self::GetAccountDataSize => {
+                buf.push(21);
+            }
+            &Self::InitializeImmutableOwner => {
+                buf.push(22);
             }
         };
         buf
@@ -1298,6 +1331,33 @@ pub fn sync_native(
     })
 }
 
+/// Creates a `GetAccountDataSize` instruction
+pub fn get_account_data_size(
+    token_program_id: &Pubkey,
+    mint_pubkey: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts: vec![AccountMeta::new(*mint_pubkey, false)],
+        data: TokenInstruction::GetAccountDataSize.pack(),
+    })
+}
+
+/// Creates a `InitializeImmutableOwner` instruction
+pub fn initialize_immutable_owner(
+    token_program_id: &Pubkey,
+    account_pubkey: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts: vec![AccountMeta::new(*account_pubkey, false)],
+        data: TokenInstruction::InitializeImmutableOwner.pack(),
+    })
+}
+
 /// Utility function that checks index is between MIN_SIGNERS and MAX_SIGNERS
 pub fn is_valid_signer_index(index: usize) -> bool {
     (MIN_SIGNERS..=MAX_SIGNERS).contains(&index)
@@ -1515,6 +1575,20 @@ mod test {
         expect.extend_from_slice(&[2u8; 32]);
         expect.extend_from_slice(&[1]);
         expect.extend_from_slice(&[3u8; 32]);
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::GetAccountDataSize;
+        let packed = check.pack();
+        let expect = vec![21u8];
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::InitializeImmutableOwner;
+        let packed = check.pack();
+        let expect = vec![22u8];
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);

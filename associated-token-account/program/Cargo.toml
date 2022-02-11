@@ -21,6 +21,7 @@ spl-token = { version = "0.2", path = "../../token/program-2022", package = "spl
 thiserror = "1.0"
 
 [dev-dependencies]
+spl-token-legacy = { version = "3.3", path = "../../token/program", package = "spl-token", features = ["no-entrypoint"] }
 solana-program-test = "1.9.5"
 solana-sdk = "1.9.5"
 

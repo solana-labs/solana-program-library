@@ -456,6 +456,19 @@ pub enum TokenInstruction {
         /// Additional extension types to include in the returned account size
         extension_types: Vec<ExtensionType>,
     },
+    /// Initialize the Immutable Owner extension for the given token account
+    ///
+    /// Fails if the account has already been initialized, so must be called before
+    /// `InitializeAccount`.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]`  The account to initialize.
+    ///
+    /// Data expected by this instruction:
+    ///   None
+    ///
+    InitializeImmutableOwner,
     /// Initialize the close account authority on a new mint.
     ///
     /// Fails if the mint has already been initialized, so must be called before
@@ -487,19 +500,6 @@ pub enum TokenInstruction {
     /// See `extension::default_account_state::instruction::DefaultAccountStateInstruction` for
     /// further details about the extended instructions that share this instruction prefix
     DefaultAccountStateExtension,
-    /// Initialize the Immutable Owner extension for the given token account
-    ///
-    /// Fails if the account has already been initialized, so must be called before
-    /// `InitializeAccount`.
-    ///
-    /// Accounts expected by this instruction:
-    ///
-    ///   0. `[writable]`  The account to initialize.
-    ///
-    /// Data expected by this instruction:
-    ///   None
-    ///
-    InitializeImmutableOwner,
     /// Check to see if a token account is large enough for a list of ExtensionTypes, and if not,
     /// use reallocation to increase the data size.
     ///
@@ -640,17 +640,17 @@ impl TokenInstruction {
                 }
                 Self::GetAccountDataSize { extension_types }
             }
-            22 => {
+            22 => Self::InitializeImmutableOwner,
+            23 => {
                 let (close_authority, _rest) = Self::unpack_pubkey_option(rest)?;
                 Self::InitializeMintCloseAuthority { close_authority }
             }
-            23 => {
+            24 => {
                 let (instruction, _rest) = TransferFeeInstruction::unpack(rest)?;
                 Self::TransferFeeExtension(instruction)
             }
-            24 => Self::ConfidentialTransferExtension,
-            25 => Self::DefaultAccountStateExtension,
-            26 => Self::InitializeImmutableOwner,
+            25 => Self::ConfidentialTransferExtension,
+            26 => Self::DefaultAccountStateExtension,
             27 => {
                 let mut extension_types = vec![];
                 for chunk in rest.chunks(size_of::<ExtensionType>()) {
@@ -765,23 +765,23 @@ impl TokenInstruction {
                     buf.extend_from_slice(&<[u8; 2]>::from(*extension_type));
                 }
             }
+            &Self::InitializeImmutableOwner => {
+                buf.push(22);
+            }
             &Self::InitializeMintCloseAuthority {
                 ref close_authority,
             } => {
-                buf.push(22);
+                buf.push(23);
                 Self::pack_pubkey_option(close_authority, &mut buf);
             }
             &Self::TransferFeeExtension(ref instruction) => {
-                buf.push(23);
+                buf.push(24);
                 TransferFeeInstruction::pack(instruction, &mut buf);
             }
             &Self::ConfidentialTransferExtension => {
-                buf.push(24);
-            }
-            &Self::DefaultAccountStateExtension => {
                 buf.push(25);
             }
-            &Self::InitializeImmutableOwner => {
+            &Self::DefaultAccountStateExtension => {
                 buf.push(26);
             }
             &Self::Reallocate {
@@ -1013,7 +1013,8 @@ pub fn initialize_account3(
     mint_pubkey: &Pubkey,
     owner_pubkey: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    // NOTE: There is no program account check here for associated-token-account
+    // compatibility with both token programs.
     let data = TokenInstruction::InitializeAccount3 {
         owner: *owner_pubkey,
     }
@@ -1513,7 +1514,8 @@ pub fn get_account_data_size(
     mint_pubkey: &Pubkey,
     extension_types: &[ExtensionType],
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    // NOTE: There is no program account check here for associated-token-account
+    // compatibility with both token programs.
     Ok(Instruction {
         program_id: *token_program_id,
         accounts: vec![AccountMeta::new_readonly(*mint_pubkey, false)],
@@ -1544,7 +1546,8 @@ pub fn initialize_immutable_owner(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    // NOTE: There is no program account check here for associated-token-account
+    // compatibility with both token programs.
     Ok(Instruction {
         program_id: *token_program_id,
         accounts: vec![AccountMeta::new(*token_account, false)],
@@ -1850,7 +1853,7 @@ mod test {
             close_authority: COption::Some(Pubkey::new(&[10u8; 32])),
         };
         let packed = check.pack();
-        let mut expect = vec![22u8, 1];
+        let mut expect = vec![23u8, 1];
         expect.extend_from_slice(&[10u8; 32]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
