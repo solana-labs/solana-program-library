@@ -228,7 +228,7 @@ pub fn process_close_nested(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pr
         let owner_account = StateWithExtensions::<Account>::unpack(&owner_account_data)?;
         if owner_account.base.owner != *wallet_account_info.key {
             msg!("Owner associated token account not owned by provided wallet");
-            return Err(ProgramError::IllegalOwner);
+            return Err(AssociatedTokenAccountError::InvalidOwner.into());
         }
 
         // Check nested associated token account data
