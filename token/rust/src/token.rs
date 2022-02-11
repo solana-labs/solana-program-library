@@ -280,12 +280,12 @@ where
     ) -> TokenResult<Self> {
         let token = Self::new(client, program_id, &native_mint::id(), payer);
         token
-            .process_ixs(
+            .process_ixs::<[&dyn Signer; 0]>(
                 &[instruction::create_native_mint(
                     program_id,
                     &token.payer.pubkey(),
                 )?],
-                &[&token.payer],
+                &[],
             )
             .await?;
 
@@ -299,14 +299,14 @@ where
 
     /// Create and initialize the associated account.
     pub async fn create_associated_token_account(&self, owner: &Pubkey) -> TokenResult<Pubkey> {
-        self.process_ixs(
+        self.process_ixs::<[&dyn Signer; 0]>(
             &[create_associated_token_account(
                 &self.payer.pubkey(),
                 owner,
                 &self.pubkey,
                 &self.program_id,
             )],
-            &[&self.payer],
+            &[],
         )
         .await
         .map(|_| self.get_associated_token_address(owner))
@@ -359,7 +359,7 @@ where
                     owner,
                 )?,
             ],
-            &[&self.payer, account],
+            &[account],
         )
         .await
         .map(|_| account.pubkey())
@@ -753,13 +753,13 @@ where
         &self,
         sources: &[&Pubkey],
     ) -> TokenResult<T::Output> {
-        self.process_ixs(
+        self.process_ixs::<[&dyn Signer; 0]>(
             &[transfer_fee::instruction::harvest_withheld_tokens_to_mint(
                 &self.program_id,
                 &self.pubkey,
                 sources,
             )?],
-            &[&self.payer],
+            &[],
         )
         .await
     }
