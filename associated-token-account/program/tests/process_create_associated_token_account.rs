@@ -213,7 +213,7 @@ async fn test_create_account_mismatch() {
             .await
             .unwrap_err()
             .unwrap(),
-        TransactionError::InstructionError(0, InstructionError::IllegalOwner)
+        TransactionError::InstructionError(0, InstructionError::InvalidSeeds)
     );
 
     let mut instruction = create_associated_token_account(

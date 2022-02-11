@@ -11,6 +11,8 @@ use {
         program_option::COption,
         program_pack::Pack,
         signature::Signer,
+        signer::keypair::Keypair,
+        system_instruction::create_account,
         transaction::{Transaction, TransactionError},
     },
     spl_associated_token_account::{
@@ -22,6 +24,7 @@ use {
     },
     spl_token::{
         extension::ExtensionType,
+        instruction::initialize_account,
         state::{Account, AccountState},
     },
 };
@@ -171,5 +174,66 @@ async fn fail_account_exists_with_wrong_owner() {
             0,
             InstructionError::Custom(AssociatedTokenAccountError::InvalidOwner as u32)
         )
+    );
+}
+
+#[tokio::test]
+async fn fail_non_ata() {
+    let token_mint_address = Pubkey::new_unique();
+    let (mut banks_client, payer, recent_blockhash) =
+        program_test(token_mint_address, true).start().await;
+
+    let rent = banks_client.get_rent().await.unwrap();
+    let token_account_len = ExtensionType::get_account_len::<spl_token::state::Account>(&[
+        ExtensionType::ImmutableOwner,
+    ]);
+    let token_account_balance = rent.minimum_balance(token_account_len);
+
+    let wallet_address = Pubkey::new_unique();
+    let account = Keypair::new();
+    let transaction = Transaction::new_signed_with_payer(
+        &[
+            create_account(
+                &payer.pubkey(),
+                &account.pubkey(),
+                token_account_balance,
+                token_account_len as u64,
+                &spl_token::id(),
+            ),
+            initialize_account(
+                &spl_token::id(),
+                &account.pubkey(),
+                &token_mint_address,
+                &wallet_address,
+            )
+            .unwrap(),
+        ],
+        Some(&payer.pubkey()),
+        &[&payer, &account],
+        recent_blockhash,
+    );
+    banks_client.process_transaction(transaction).await.unwrap();
+
+    let mut instruction = create_associated_token_account_idempotent(
+        &payer.pubkey(),
+        &wallet_address,
+        &token_mint_address,
+        &spl_token::id(),
+    );
+    instruction.accounts[1] = AccountMeta::new(account.pubkey(), false); // <-- Invalid associated_account_address
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction],
+        Some(&payer.pubkey()),
+        &[&payer],
+        recent_blockhash,
+    );
+    assert_eq!(
+        banks_client
+            .process_transaction(transaction)
+            .await
+            .unwrap_err()
+            .unwrap(),
+        TransactionError::InstructionError(0, InstructionError::InvalidSeeds)
     );
 }
