@@ -72,6 +72,17 @@ fn process_create_associated_token_account(
     let spl_token_program_info = next_account_info(account_info_iter)?;
     let spl_token_program_id = spl_token_program_info.key;
 
+    let (associated_token_address, bump_seed) = get_associated_token_address_and_bump_seed_internal(
+        wallet_account_info.key,
+        spl_token_mint_info.key,
+        program_id,
+        spl_token_program_id,
+    );
+    if associated_token_address != *associated_token_account_info.key {
+        msg!("Error: Associated address does not match seed derivation");
+        return Err(ProgramError::InvalidSeeds);
+    }
+
     if create_mode == CreateMode::Idempotent
         && associated_token_account_info.owner == spl_token_program_id
     {
@@ -93,17 +104,6 @@ fn process_create_associated_token_account(
     }
 
     let rent = Rent::get()?;
-
-    let (associated_token_address, bump_seed) = get_associated_token_address_and_bump_seed_internal(
-        wallet_account_info.key,
-        spl_token_mint_info.key,
-        program_id,
-        spl_token_program_id,
-    );
-    if associated_token_address != *associated_token_account_info.key {
-        msg!("Error: Associated address does not match seed derivation");
-        return Err(ProgramError::InvalidSeeds);
-    }
 
     let associated_token_account_signer_seeds: &[&[_]] = &[
         &wallet_account_info.key.to_bytes(),
