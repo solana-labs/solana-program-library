@@ -70,7 +70,7 @@ jobs:
   js-test:
     runs-on: ubuntu-latest
     env:
-      NODE_VERSION: 12.x
+      NODE_VERSION: 14.x
     needs: cargo-test-bpf
     steps:
       - uses: actions/checkout@v2
@@ -80,8 +80,8 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
       - uses: actions/cache@v2
         with:
-          path: ~/.npm
-          key: node-${{ hashFiles('token/js/package-lock.json') }}
+          path: ~/.cache/yarn
+          key: node-${{ hashFiles('token/js/yarn.lock') }}
           restore-keys: |
             node-
       - name: Download programs
