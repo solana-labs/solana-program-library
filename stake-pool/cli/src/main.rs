@@ -1283,8 +1283,9 @@ fn prepare_withdraw_accounts(
             continue;
         }
 
-        let available_for_withdrawal_wo_fee =
-            stake_pool.calc_pool_tokens_for_deposit(lamports - min_balance).unwrap();
+        let available_for_withdrawal_wo_fee = stake_pool
+            .calc_pool_tokens_for_deposit(lamports - min_balance)
+            .unwrap();
 
         let available_for_withdrawal = if skip_fee {
             available_for_withdrawal_wo_fee
