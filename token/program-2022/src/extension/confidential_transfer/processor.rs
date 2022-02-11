@@ -90,7 +90,7 @@ fn process_configure_account(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
     ConfigureAccountInstructionData {
-        elgamal_pk,
+        elgamal_pubkey,
         decryptable_zero_balance,
     }: &ConfigureAccountInstructionData,
 ) -> ProgramResult {
@@ -125,7 +125,7 @@ fn process_configure_account(
     // sufficient room in their token account for the new `ConfidentialTransferAccount` extension
     let mut ct_token_account = token_account.init_extension::<ConfidentialTransferAccount>()?;
     ct_token_account.approved = ct_mint.auto_approve_new_accounts;
-    ct_token_account.elgamal_pk = *elgamal_pk;
+    ct_token_account.elgamal_pubkey = *elgamal_pubkey;
     ct_token_account.decryptable_available_balance = *decryptable_zero_balance;
 
     /*
@@ -468,13 +468,13 @@ fn process_transfer(
             &previous_instruction,
         )?;
 
-        if proof_data.transfer_with_fee_pubkeys.auditor != ct_mint.auditor_pk {
+        if proof_data.transfer_with_fee_pubkeys.auditor != ct_mint.auditor_pubkey {
             return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
         }
 
         // `withdraw_withheld_authority` ElGamal pubkey in proof data and mint must match
         if proof_data.transfer_with_fee_pubkeys.fee_collector
-            != ct_mint.withdraw_withheld_authority_pk
+            != ct_mint.withdraw_withheld_authority_pubkey
         {
             return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
         }
@@ -510,6 +510,15 @@ fn process_transfer(
         }
 
         // Process source account
+        let ciphertext_lo_source = pod::ElGamalCiphertext::from((
+            proof_data.ciphertext_lo.commitment,
+            proof_data.ciphertext_lo.source,
+        ));
+        let ciphertext_hi_source = pod::ElGamalCiphertext::from((
+            proof_data.ciphertext_hi.commitment,
+            proof_data.ciphertext_hi.source,
+        ));
+
         process_source_for_transfer(
             program_id,
             token_account_info,
@@ -517,34 +526,27 @@ fn process_transfer(
             authority_info,
             account_info_iter.as_slice(),
             &proof_data.transfer_with_fee_pubkeys.source,
-            (
-                proof_data.ciphertext_lo.commitment,
-                proof_data.ciphertext_lo.source,
-            )
-                .into(),
-            (
-                proof_data.ciphertext_hi.commitment,
-                proof_data.ciphertext_hi.source,
-            )
-                .into(),
+            ciphertext_lo_source,
+            ciphertext_hi_source,
             new_source_decryptable_available_balance,
         )?;
 
         // Process destination account (with fee)
+        let ciphertext_lo_dest = pod::ElGamalCiphertext::from((
+            proof_data.ciphertext_lo.commitment,
+            proof_data.ciphertext_lo.source,
+        ));
+        let ciphertext_hi_dest = pod::ElGamalCiphertext::from((
+            proof_data.ciphertext_hi.commitment,
+            proof_data.ciphertext_hi.source,
+        ));
+
         process_dest_for_transfer(
             dest_token_account_info,
             mint_info,
             &proof_data.transfer_with_fee_pubkeys.dest,
-            (
-                proof_data.ciphertext_lo.commitment,
-                proof_data.ciphertext_lo.dest,
-            )
-                .into(),
-            (
-                proof_data.ciphertext_hi.commitment,
-                proof_data.ciphertext_hi.dest,
-            )
-                .into(),
+            ciphertext_lo_dest,
+            ciphertext_hi_dest,
             Some(proof_data.ciphertext_fee),
         )?;
     } else {
@@ -554,11 +556,20 @@ fn process_transfer(
             &previous_instruction,
         )?;
 
-        if proof_data.transfer_pubkeys.auditor != ct_mint.auditor_pk {
+        if proof_data.transfer_pubkeys.auditor != ct_mint.auditor_pubkey {
             return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
         }
 
         // Process source account
+        let ciphertext_lo_source = pod::ElGamalCiphertext::from((
+            proof_data.ciphertext_lo.commitment,
+            proof_data.ciphertext_lo.source,
+        ));
+        let ciphertext_hi_source = pod::ElGamalCiphertext::from((
+            proof_data.ciphertext_hi.commitment,
+            proof_data.ciphertext_hi.source,
+        ));
+
         process_source_for_transfer(
             program_id,
             token_account_info,
@@ -566,86 +577,30 @@ fn process_transfer(
             authority_info,
             account_info_iter.as_slice(),
             &proof_data.transfer_pubkeys.source,
-            (
-                proof_data.ciphertext_lo.commitment,
-                proof_data.ciphertext_lo.source,
-            )
-                .into(),
-            (
-                proof_data.ciphertext_hi.commitment,
-                proof_data.ciphertext_hi.source,
-            )
-                .into(),
+            ciphertext_lo_source,
+            ciphertext_hi_source,
             new_source_decryptable_available_balance,
         )?;
 
         // Process destination account (without fee)
+        let ciphertext_lo_dest = pod::ElGamalCiphertext::from((
+            proof_data.ciphertext_lo.commitment,
+            proof_data.ciphertext_lo.source,
+        ));
+        let ciphertext_hi_dest = pod::ElGamalCiphertext::from((
+            proof_data.ciphertext_hi.commitment,
+            proof_data.ciphertext_hi.source,
+        ));
+
         process_dest_for_transfer(
             dest_token_account_info,
             mint_info,
             &proof_data.transfer_pubkeys.dest,
-            (
-                proof_data.ciphertext_lo.commitment,
-                proof_data.ciphertext_lo.dest,
-            )
-                .into(),
-            (
-                proof_data.ciphertext_hi.commitment,
-                proof_data.ciphertext_hi.dest,
-            )
-                .into(),
+            ciphertext_lo_dest,
+            ciphertext_hi_dest,
             None,
         )?;
     }
-
-    let previous_instruction =
-        get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
-    let proof_data = decode_proof_instruction::<TransferData>(
-        ProofInstruction::VerifyTransfer,
-        &previous_instruction,
-    )?;
-
-    if proof_data.transfer_pubkeys.auditor != ct_mint.auditor_pk {
-        return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
-    }
-
-    // Process source account
-    process_source_for_transfer(
-        program_id,
-        token_account_info,
-        mint_info,
-        authority_info,
-        account_info_iter.as_slice(),
-        &proof_data.transfer_pubkeys.source,
-        (
-            proof_data.ciphertext_lo.commitment,
-            proof_data.ciphertext_lo.source,
-        )
-            .into(),
-        (
-            proof_data.ciphertext_hi.commitment,
-            proof_data.ciphertext_hi.source,
-        )
-            .into(),
-        new_source_decryptable_available_balance,
-    )?;
-
-    process_dest_for_transfer(
-        dest_token_account_info,
-        mint_info,
-        &proof_data.transfer_pubkeys.dest,
-        (
-            proof_data.ciphertext_lo.commitment,
-            proof_data.ciphertext_lo.dest,
-        )
-            .into(),
-        (
-            proof_data.ciphertext_hi.commitment,
-            proof_data.ciphertext_hi.dest,
-        )
-            .into(),
-        None,
-    )?;
 
     Ok(())
 }
@@ -685,7 +640,7 @@ fn process_source_for_transfer(
 
     let mut ct_token_account = token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
     ct_token_account.approved()?;
-    if *elgamal_pubkey_source != ct_token_account.elgamal_pk {
+    if *elgamal_pubkey_source != ct_token_account.elgamal_pubkey {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
 
@@ -733,7 +688,7 @@ fn process_dest_for_transfer(
         return Err(TokenError::ConfidentialTransferDepositsAndTransfersDisabled.into());
     }
 
-    if *elgamal_pubkey_dest != dest_ct_token_account.elgamal_pk {
+    if *elgamal_pubkey_dest != dest_ct_token_account.elgamal_pubkey {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
 

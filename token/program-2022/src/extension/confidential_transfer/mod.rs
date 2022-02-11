@@ -38,14 +38,14 @@ pub struct ConfidentialTransferMint {
     /// * If non-zero, transfers must include ElGamal cypertext with this public key permitting the
     /// auditor to decode the transfer amount.
     /// * If all zero, auditing is currently disabled.
-    pub auditor_pk: pod::ElGamalPubkey,
+    pub auditor_pubkey: pod::ElGamalPubkey,
 
     /// * If non-zero, transfers must include ElGamal cypertext of the transfer fee with this
     /// public key. If this is the case, but the base mint is not extended for fees, then any
     /// transfer will fail.
     /// * If all zero, transfer fee is disabled. If this is the case, but the base mint is extended
     /// for fees, then any transfer will fail.
-    pub withdraw_withheld_authority_pk: pod::ElGamalPubkey,
+    pub withdraw_withheld_authority_pubkey: pod::ElGamalPubkey,
 }
 
 impl Extension for ConfidentialTransferMint {
@@ -61,12 +61,12 @@ pub struct ConfidentialTransferAccount {
     pub approved: PodBool,
 
     /// The public key associated with ElGamal encryption
-    pub elgamal_pk: pod::ElGamalPubkey,
+    pub elgamal_pubkey: pod::ElGamalPubkey,
 
-    /// The pending balance (encrypted by `elgamal_pk`)
+    /// The pending balance (encrypted by `elgamal_pubkey`)
     pub pending_balance: pod::ElGamalCiphertext,
 
-    /// The available balance (encrypted by `elgamal_pk`)
+    /// The available balance (encrypted by `elgamal_pubkey`)
     pub available_balance: pod::ElGamalCiphertext,
 
     /// The decryptable available balance
