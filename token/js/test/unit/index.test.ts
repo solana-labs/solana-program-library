@@ -10,7 +10,7 @@ import {
     getAssociatedTokenAddress,
     TOKEN_PROGRAM_ID,
     TokenOwnerOffCurveError,
-} from '../src';
+} from '../../src';
 
 chai.use(chaiAsPromised);
 
