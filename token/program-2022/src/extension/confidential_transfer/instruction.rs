@@ -3,8 +3,7 @@ use solana_zk_token_sdk::encryption::{auth_encryption::AeCiphertext, elgamal::El
 pub use solana_zk_token_sdk::zk_token_proof_instruction::*;
 use {
     crate::{
-        check_program_account, extension::confidential_transfer::*,
-        instruction::TokenInstruction,
+        check_program_account, extension::confidential_transfer::*, instruction::TokenInstruction,
     },
     bytemuck::{Pod, Zeroable},
     num_derive::{FromPrimitive, ToPrimitive},
@@ -772,9 +771,7 @@ pub fn harvest_withheld_tokens_to_mint(
     sources: &[&Pubkey],
 ) -> Result<Vec<Instruction>, ProgramError> {
     check_program_account(token_program_id)?;
-    let mut accounts = vec![
-        AccountMeta::new(*mint, false),
-    ];
+    let mut accounts = vec![AccountMeta::new(*mint, false)];
 
     for source in sources.iter() {
         accounts.push(AccountMeta::new(**source, false));
