@@ -4,7 +4,7 @@ use {
         error::TokenError,
         extension::{
             confidential_transfer::{instruction::*, *},
-            transfer_fee::TransferFeeConfig,
+            transfer_fee::{TransferFeeAmount, TransferFeeConfig},
             StateWithExtensions, StateWithExtensionsMut,
         },
         processor::Processor,
@@ -21,7 +21,7 @@ use {
         sysvar::{instructions::get_instruction_relative, Sysvar},
     },
     solana_zk_token_sdk::{
-        zk_token_elgamal::{ops, pod},
+        zk_token_elgamal::ops,
         zk_token_proof_program,
     },
 };
@@ -156,8 +156,8 @@ fn process_configure_account(
 
         This should just be encoded as [0; 64]
     */
-    ct_token_account.pending_balance = pod::ElGamalCiphertext::zeroed();
-    ct_token_account.available_balance = pod::ElGamalCiphertext::zeroed();
+    ct_token_account.pending_balance = EncryptedBalance::zeroed();
+    ct_token_account.available_balance = EncryptedBalance::zeroed();
 
     Ok(())
 }
@@ -221,7 +221,7 @@ fn process_empty_account(
         &previous_instruction,
     )?;
 
-    if ct_token_account.pending_balance != pod::ElGamalCiphertext::zeroed() {
+    if ct_token_account.pending_balance != EncryptedBalance::zeroed() {
         msg!("Pending balance is not zero");
         return Err(ProgramError::InvalidAccountData);
     }
@@ -232,7 +232,7 @@ fn process_empty_account(
     }
 
     ct_token_account.approved()?;
-    ct_token_account.available_balance = pod::ElGamalCiphertext::zeroed();
+    ct_token_account.available_balance = EncryptedBalance::zeroed();
     ct_token_account.closable()?;
 
     Ok(())
@@ -341,7 +341,7 @@ fn process_withdraw(
     accounts: &[AccountInfo],
     amount: u64,
     expected_decimals: u8,
-    new_decryptable_available_balance: pod::AeCiphertext,
+    new_decryptable_available_balance: DecryptableBalance,
     proof_instruction_offset: i64,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
@@ -443,7 +443,7 @@ fn process_withdraw(
 fn process_transfer(
     program_id: &Pubkey,
     accounts: &[AccountInfo],
-    new_source_decryptable_available_balance: pod::AeCiphertext,
+    new_source_decryptable_available_balance: DecryptableBalance,
     proof_instruction_offset: i64,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
@@ -510,11 +510,11 @@ fn process_transfer(
         }
 
         // Process source account
-        let ciphertext_lo_source = pod::ElGamalCiphertext::from((
+        let ciphertext_lo_source = EncryptedBalance::from((
             proof_data.ciphertext_lo.commitment,
             proof_data.ciphertext_lo.source,
         ));
-        let ciphertext_hi_source = pod::ElGamalCiphertext::from((
+        let ciphertext_hi_source = EncryptedBalance::from((
             proof_data.ciphertext_hi.commitment,
             proof_data.ciphertext_hi.source,
         ));
@@ -532,11 +532,11 @@ fn process_transfer(
         )?;
 
         // Process destination account (with fee)
-        let ciphertext_lo_dest = pod::ElGamalCiphertext::from((
+        let ciphertext_lo_dest = EncryptedBalance::from((
             proof_data.ciphertext_lo.commitment,
             proof_data.ciphertext_lo.source,
         ));
-        let ciphertext_hi_dest = pod::ElGamalCiphertext::from((
+        let ciphertext_hi_dest = EncryptedBalance::from((
             proof_data.ciphertext_hi.commitment,
             proof_data.ciphertext_hi.source,
         ));
@@ -561,11 +561,11 @@ fn process_transfer(
         }
 
         // Process source account
-        let ciphertext_lo_source = pod::ElGamalCiphertext::from((
+        let ciphertext_lo_source = EncryptedBalance::from((
             proof_data.ciphertext_lo.commitment,
             proof_data.ciphertext_lo.source,
         ));
-        let ciphertext_hi_source = pod::ElGamalCiphertext::from((
+        let ciphertext_hi_source = EncryptedBalance::from((
             proof_data.ciphertext_hi.commitment,
             proof_data.ciphertext_hi.source,
         ));
@@ -583,11 +583,11 @@ fn process_transfer(
         )?;
 
         // Process destination account (without fee)
-        let ciphertext_lo_dest = pod::ElGamalCiphertext::from((
+        let ciphertext_lo_dest = EncryptedBalance::from((
             proof_data.ciphertext_lo.commitment,
             proof_data.ciphertext_lo.source,
         ));
-        let ciphertext_hi_dest = pod::ElGamalCiphertext::from((
+        let ciphertext_hi_dest = EncryptedBalance::from((
             proof_data.ciphertext_hi.commitment,
             proof_data.ciphertext_hi.source,
         ));
@@ -612,10 +612,10 @@ fn process_source_for_transfer(
     mint_info: &AccountInfo,
     authority_info: &AccountInfo,
     signers: &[AccountInfo],
-    elgamal_pubkey_source: &pod::ElGamalPubkey,
-    ciphertext_lo_source: pod::ElGamalCiphertext,
-    ciphertext_hi_source: pod::ElGamalCiphertext,
-    new_source_decryptable_available_balance: pod::AeCiphertext,
+    elgamal_pubkey_source: &EncryptionPubkey,
+    ciphertext_lo_source: EncryptedBalance,
+    ciphertext_hi_source: EncryptedBalance,
+    new_source_decryptable_available_balance: DecryptableBalance,
 ) -> ProgramResult {
     check_program_account(token_account_info.owner)?;
     let token_account_data = &mut token_account_info.data.borrow_mut();
@@ -662,10 +662,10 @@ fn process_source_for_transfer(
 fn process_dest_for_transfer(
     dest_token_account_info: &AccountInfo,
     mint_info: &AccountInfo,
-    elgamal_pubkey_dest: &pod::ElGamalPubkey,
-    ciphertext_lo_dest: pod::ElGamalCiphertext,
-    ciphertext_hi_dest: pod::ElGamalCiphertext,
-    encrypted_fee: Option<pod::FeeEncryption>,
+    elgamal_pubkey_dest: &EncryptionPubkey,
+    ciphertext_lo_dest: EncryptedBalance,
+    ciphertext_hi_dest: EncryptedBalance,
+    encrypted_fee: Option<EncryptedFee>,
 ) -> ProgramResult {
     check_program_account(dest_token_account_info.owner)?;
     let dest_token_account_data = &mut dest_token_account_info.data.borrow_mut();
@@ -707,9 +707,9 @@ fn process_dest_for_transfer(
 
     // update destination account withheld fees
     if let Some(ciphertext_fee) = encrypted_fee {
-        let ciphertext_fee_dest: pod::ElGamalCiphertext =
+        let ciphertext_fee_dest: EncryptedWithheldAmount =
             (ciphertext_fee.commitment, ciphertext_fee.dest).into();
-        let ciphertext_fee_withheld_authority: pod::ElGamalCiphertext =
+        let ciphertext_fee_withheld_authority: EncryptedWithheldAmount =
             (ciphertext_fee.commitment, ciphertext_fee.fee_collector).into();
 
         // subtract fee from destination pending balance
@@ -772,7 +772,7 @@ fn process_apply_pending_balance(
     ct_token_account.expected_pending_balance_credit_counter =
         *expected_pending_balance_credit_counter;
     ct_token_account.decryptable_available_balance = *new_decryptable_available_balance;
-    ct_token_account.pending_balance = pod::ElGamalCiphertext::zeroed();
+    ct_token_account.pending_balance = EncryptedBalance::zeroed();
 
     Ok(())
 }
@@ -804,6 +804,58 @@ fn process_allow_balance_credits(
     ct_token_account.approved()?;
     ct_token_account.allow_balance_credits = allow_balance_credits.into();
 
+    Ok(())
+}
+
+fn harvest_from_account<'a, 'b>(
+    mint_key: &'b Pubkey,
+    token_account_info: &'b AccountInfo<'a>,
+) -> Result<EncryptedWithheldAmount, TokenError> {
+    let mut token_account_data = token_account_info.data.borrow_mut();
+    let mut token_account = StateWithExtensionsMut::<Account>::unpack(&mut token_account_data)
+        .map_err(|_| TokenError::InvalidState)?;
+    if token_account.base.mint != *mint_key {
+        return Err(TokenError::MintMismatch);
+    }
+    check_program_account(token_account_info.owner).map_err(|_| TokenError::InvalidState)?;
+    token_account
+        .get_extension::<TransferFeeAmount>()
+        .map_err(|_| TokenError::InvalidState)?;
+
+    let ct_token_account = token_account
+        .get_extension_mut::<ConfidentialTransferAccount>()
+        .map_err(|_| TokenError::InvalidState)?;
+
+    Ok(ct_token_account.withheld_amount)
+}
+
+/// Processes an [HarvestWithheldTokensToMint] instruction.
+fn process_harvest_withheld_tokens_to_mint(accounts: &[AccountInfo]) -> ProgramResult {
+    let account_info_iter = &mut accounts.iter();
+    let mint_account_info = next_account_info(account_info_iter)?;
+    let token_account_infos = account_info_iter.as_slice();
+
+    let mut mint_data = mint_account_info.data.borrow_mut();
+    let mut mint = StateWithExtensionsMut::<Mint>::unpack(&mut mint_data)?;
+    mint.get_extension::<TransferFeeConfig>()?;
+    let ct_mint = mint.get_extension_mut::<ConfidentialTransferMint>()?;
+
+    for token_account_info in token_account_infos {
+        match harvest_from_account(mint_account_info.key, token_account_info) {
+            Ok(encrypted_fee) => {
+                let new_mint_withheld_amount = ops::add(
+                    &ct_mint.withheld_amount,
+                    &encrypted_fee
+                )
+                .ok_or(ProgramError::InvalidInstructionData)?;
+
+                ct_mint.withheld_amount = new_mint_withheld_amount;
+            }
+            Err(e) => {
+                msg!("Error harvesting from {}: {}", token_account_info.key, e);
+            }
+        }
+    }
     Ok(())
 }
 
@@ -888,6 +940,10 @@ pub(crate) fn process_instruction(
         ConfidentialTransferInstruction::EnableBalanceCredits => {
             msg!("ConfidentialTransferInstruction::EnableBalanceCredits");
             process_allow_balance_credits(program_id, accounts, true)
+        }
+        ConfidentialTransferInstruction::HarvestWithheldTokensToMint => {
+            msg!("ConfidentialTransferInstruction::HarvestWithheldTokensToMint");
+            process_harvest_withheld_tokens_to_mint(accounts)
         }
     }
 }

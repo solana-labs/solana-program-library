@@ -3,8 +3,8 @@ use solana_zk_token_sdk::encryption::{auth_encryption::AeCiphertext, elgamal::El
 pub use solana_zk_token_sdk::zk_token_proof_instruction::*;
 use {
     crate::{
-        check_program_account, extension::confidential_transfer::ConfidentialTransferMint,
-        instruction::TokenInstruction, pod::*,
+        check_program_account, extension::confidential_transfer::*,
+        instruction::TokenInstruction,
     },
     bytemuck::{Pod, Zeroable},
     num_derive::{FromPrimitive, ToPrimitive},
@@ -225,6 +225,19 @@ pub enum ConfidentialTransferInstruction {
     ///   None
     ///
     DisableBalanceCredits,
+
+    /// Permissionless instruction to transfer all withheld confidential tokens to the mint.
+    ///
+    /// Succeeds for frozen accounts.
+    ///
+    /// Accounts provided should include both the `TransferFeeAmount` and
+    /// `ConfidentialTransferAccount` extension. If not, the account is skipped.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]` The mint.
+    ///   1. ..1+N `[writable]` The source accounts to harvest from.
+    HarvestWithheldTokensToMint,
 }
 
 /// Data expected by `ConfidentialTransferInstruction::ConfigureAccount`
@@ -232,9 +245,9 @@ pub enum ConfidentialTransferInstruction {
 #[repr(C)]
 pub struct ConfigureAccountInstructionData {
     /// The public key associated with the account
-    pub elgamal_pubkey: pod::ElGamalPubkey,
+    pub elgamal_pubkey: EncryptionPubkey,
     /// The decryptable balance (always 0) once the configure account succeeds
-    pub decryptable_zero_balance: pod::AeCiphertext,
+    pub decryptable_zero_balance: DecryptableBalance,
 }
 
 /// Data expected by `ConfidentialTransferInstruction::EmptyAccount`
@@ -265,7 +278,7 @@ pub struct WithdrawInstructionData {
     /// Expected number of base 10 digits to the right of the decimal place
     pub decimals: u8,
     /// The new decryptable balance if the withrawal succeeds
-    pub new_decryptable_available_balance: pod::AeCiphertext,
+    pub new_decryptable_available_balance: DecryptableBalance,
     /// Relative location of the `ProofInstruction::VerifyWithdraw` instruction to the `Withdraw`
     /// instruction in the transaction
     pub proof_instruction_offset: i8,
@@ -276,7 +289,7 @@ pub struct WithdrawInstructionData {
 #[repr(C)]
 pub struct TransferInstructionData {
     /// The new source decryptable balance if the transfer succeeds
-    pub new_source_decryptable_available_balance: pod::AeCiphertext,
+    pub new_source_decryptable_available_balance: DecryptableBalance,
     /// Relative location of the `ProofInstruction::VerifyTransfer` instruction to the
     /// `Transfer` instruction in the transaction
     pub proof_instruction_offset: i8,
@@ -517,7 +530,7 @@ pub fn inner_withdraw(
     mint: &Pubkey,
     amount: u64,
     decimals: u8,
-    new_decryptable_available_balance: pod::AeCiphertext,
+    new_decryptable_available_balance: DecryptableBalance,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     proof_instruction_offset: i8,
@@ -589,7 +602,7 @@ pub fn inner_transfer(
     source_token_account: &Pubkey,
     destination_token_account: &Pubkey,
     mint: &Pubkey,
-    new_source_decryptable_available_balance: pod::AeCiphertext,
+    new_source_decryptable_available_balance: DecryptableBalance,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     proof_instruction_offset: i8,
@@ -654,7 +667,7 @@ pub fn inner_apply_pending_balance(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
     expected_pending_balance_credit_counter: u64,
-    new_decryptable_available_balance: pod::AeCiphertext,
+    new_decryptable_available_balance: DecryptableBalance,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
@@ -748,6 +761,29 @@ pub fn disable_balance_credits(
         token_program_id,
         accounts,
         ConfidentialTransferInstruction::DisableBalanceCredits,
+        &(),
+    )])
+}
+
+/// Creates a `HarvestWithheldTokensToMint` instruction
+pub fn harvest_withheld_tokens_to_mint(
+    token_program_id: &Pubkey,
+    mint: &Pubkey,
+    sources: &[&Pubkey],
+) -> Result<Vec<Instruction>, ProgramError> {
+    check_program_account(token_program_id)?;
+    let mut accounts = vec![
+        AccountMeta::new(*mint, false),
+    ];
+
+    for source in sources.iter() {
+        accounts.push(AccountMeta::new(**source, false));
+    }
+
+    Ok(vec![encode_instruction(
+        token_program_id,
+        accounts,
+        ConfidentialTransferInstruction::HarvestWithheldTokensToMint,
         &(),
     )])
 }

@@ -15,6 +15,13 @@ pub mod instruction;
 /// Confidential Transfer Extension processor
 pub mod processor;
 
+// Hide ElGamal internals under the rug
+type EncryptionPubkey = pod::ElGamalPubkey;
+type EncryptedBalance = pod::ElGamalCiphertext;
+type DecryptableBalance = pod::AeCiphertext;
+type EncryptedFee = pod::FeeEncryption;
+type EncryptedWithheldAmount = pod::ElGamalCiphertext;
+
 /// Confidential transfer mint configuration
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
@@ -38,14 +45,18 @@ pub struct ConfidentialTransferMint {
     /// * If non-zero, transfers must include ElGamal cypertext with this public key permitting the
     /// auditor to decode the transfer amount.
     /// * If all zero, auditing is currently disabled.
-    pub auditor_pubkey: pod::ElGamalPubkey,
+    pub auditor_pubkey: EncryptionPubkey,
 
     /// * If non-zero, transfers must include ElGamal cypertext of the transfer fee with this
     /// public key. If this is the case, but the base mint is not extended for fees, then any
     /// transfer will fail.
     /// * If all zero, transfer fee is disabled. If this is the case, but the base mint is extended
     /// for fees, then any transfer will fail.
-    pub withdraw_withheld_authority_pubkey: pod::ElGamalPubkey,
+    pub withdraw_withheld_authority_pubkey: EncryptionPubkey,
+
+    /// Withheld transfer fee confidential tokens that have been moved to the mint for withdrawal.
+    /// This will always be zero if fees are never enabled.
+    pub withheld_amount: EncryptedWithheldAmount,
 }
 
 impl Extension for ConfidentialTransferMint {
@@ -61,16 +72,16 @@ pub struct ConfidentialTransferAccount {
     pub approved: PodBool,
 
     /// The public key associated with ElGamal encryption
-    pub elgamal_pubkey: pod::ElGamalPubkey,
+    pub elgamal_pubkey: EncryptionPubkey,
 
     /// The pending balance (encrypted by `elgamal_pubkey`)
-    pub pending_balance: pod::ElGamalCiphertext,
+    pub pending_balance: EncryptedBalance,
 
     /// The available balance (encrypted by `elgamal_pubkey`)
-    pub available_balance: pod::ElGamalCiphertext,
+    pub available_balance: EncryptedBalance,
 
     /// The decryptable available balance
-    pub decryptable_available_balance: pod::AeCiphertext,
+    pub decryptable_available_balance: DecryptableBalance,
 
     /// `pending_balance` may only be credited by `Deposit` or `Transfer` instructions if `true`
     pub allow_balance_credits: PodBool,
