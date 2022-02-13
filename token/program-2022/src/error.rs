@@ -138,7 +138,7 @@ pub enum TokenError {
     /// No memo in previous instruction; required for recipient to receive a transfer
     #[error("No memo in previous instruction; required for recipient to receive a transfer")]
     NoMemo,
-    /// The owner authority cannot be changed
+    /// Transfer is disabled for this account
     #[error("Transfer is disabled for this account")]
     TransferDisabled,
 }
