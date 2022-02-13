@@ -571,6 +571,17 @@ pub enum TokenInstruction<'a> {
     ///   2. `[]` System program for mint account funding
     ///
     CreateNativeMint,
+    /// Initialize the Transfer Disabled extension for the given token account
+    ///
+    /// Fails if the account has already been initialized, so must be called before
+    /// `InitializeAccount`.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]`  The account to initialize.
+    ///
+    /// Data expected by this instruction:
+    ///   None
     ///
     InitializeTransferDisabled,
 }
