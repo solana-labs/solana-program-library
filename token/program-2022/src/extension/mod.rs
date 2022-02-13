@@ -10,6 +10,7 @@ use {
             memo_transfer::MemoTransfer,
             mint_close_authority::MintCloseAuthority,
             transfer_fee::{TransferFeeAmount, TransferFeeConfig},
+            transfer_disabled::TransferDisabled,
         },
         pod::*,
         state::{Account, Mint, Multisig},
@@ -40,6 +41,8 @@ pub mod mint_close_authority;
 pub mod reallocate;
 /// Transfer Fee extension
 pub mod transfer_fee;
+/// Transfer Disabled extension
+pub mod transfer_disabled;
 
 /// Length in TLV structure
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
@@ -599,6 +602,8 @@ pub enum ExtensionType {
     ImmutableOwner,
     /// Require inbound transfers to have memo
     MemoTransfer,
+    /// Indicates that the tokens can't be transfered between accounts
+    TransferDisabled,
     /// Padding extension used to make an account exactly Multisig::LEN, used for testing
     #[cfg(test)]
     AccountPaddingTest = u16::MAX - 1,
@@ -637,6 +642,7 @@ impl ExtensionType {
             }
             ExtensionType::DefaultAccountState => pod_get_packed_len::<DefaultAccountState>(),
             ExtensionType::MemoTransfer => pod_get_packed_len::<MemoTransfer>(),
+            ExtensionType::TransferDisabled => pod_get_packed_len::<TransferDisabled>(),
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => pod_get_packed_len::<AccountPaddingTest>(),
             #[cfg(test)]
@@ -695,7 +701,8 @@ impl ExtensionType {
             ExtensionType::ImmutableOwner
             | ExtensionType::TransferFeeAmount
             | ExtensionType::ConfidentialTransferAccount
-            | ExtensionType::MemoTransfer => AccountType::Account,
+            | ExtensionType::MemoTransfer
+            | ExtensionType::TransferDisabled => AccountType::Account,
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => AccountType::Account,
             #[cfg(test)]
