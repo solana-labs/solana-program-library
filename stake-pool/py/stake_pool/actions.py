@@ -45,7 +45,7 @@ async def create(client: AsyncClient, manager: Keypair,
             )
         )
     )
-    max_validators = 3825  # current supported max by the program, go big!
+    max_validators = 2950  # current supported max by the program, go big!
     validator_list_size = ValidatorList.calculate_validator_list_size(max_validators)
     resp = await client.get_minimum_balance_for_rent_exemption(validator_list_size)
     validator_list_balance = resp['result']

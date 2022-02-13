@@ -833,7 +833,7 @@ impl Processor {
             TokenInstruction::InitializeMintCloseAuthority { .. } => {
                 unimplemented!();
             }
-            TokenInstruction::InitializeMintTransferFee { .. } => {
+            TokenInstruction::InitializeTransferFeeConfig { .. } => {
                 unimplemented!();
             }
             TokenInstruction::TransferCheckedWithFee { .. } => {
@@ -850,6 +850,13 @@ impl Processor {
             }
             TokenInstruction::SetTransferFee { .. } => {
                 unimplemented!();
+            }
+            TokenInstruction::ConfidentialTransferExtension => {
+                crate::extension::confidential_transfer::processor::process_instruction(
+                    program_id,
+                    accounts,
+                    &input[1..],
+                )
             }
         }
     }
