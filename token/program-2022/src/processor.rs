@@ -13,6 +13,7 @@ use {
             reallocate,
             transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
             ExtensionType, StateWithExtensions, StateWithExtensionsMut,
+            transfer_disabled::TransferDisabled,
         },
         instruction::{is_valid_signer_index, AuthorityType, TokenInstruction, MAX_SIGNERS},
         native_mint,
@@ -277,6 +278,9 @@ impl Processor {
         let mut source_account_data = source_account_info.data.borrow_mut();
         let mut source_account =
             StateWithExtensionsMut::<Account>::unpack(&mut source_account_data)?;
+        if source_account.get_extension_mut::<TransferDisabled>().is_ok() {
+            return Err(TokenError::TransferDisabled.into());
+        }
         if source_account.base.is_frozen() {
             return Err(TokenError::AccountFrozen.into());
         }
@@ -1072,6 +1076,16 @@ impl Processor {
         )
     }
 
+    /// Processes an [InitializeTransferDisabled](enum.TokenInstruction.html) instruction
+    pub fn process_initialize_transfer_disabled(accounts: &[AccountInfo]) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let token_account_info = next_account_info(account_info_iter)?;
+        let token_account_data = &mut token_account_info.data.borrow_mut();
+        let mut token_account =
+            StateWithExtensionsMut::<Account>::unpack_uninitialized(token_account_data)?;
+        token_account.init_extension::<TransferDisabled>().map(|_| ())
+    }
+
     /// Processes an [Instruction](enum.Instruction.html).
     pub fn process(program_id: &Pubkey, accounts: &[AccountInfo], input: &[u8]) -> ProgramResult {
         let instruction = TokenInstruction::unpack(input)?;
@@ -1212,6 +1226,10 @@ impl Processor {
             TokenInstruction::CreateNativeMint => {
                 msg!("Instruction: CreateNativeMint");
                 Self::process_create_native_mint(accounts)
+            }
+            TokenInstruction::InitializeTransferDisabled => {
+                msg!("Instruction: InitializeTransferDisabled");
+                Self::process_initialize_transfer_disabled(accounts)
             }
         }
     }
@@ -1363,6 +1381,9 @@ impl PrintProgramError for TokenError {
             }
             TokenError::AccountHasWithheldTransferFees => {
                 msg!("Error: An account can only be closed if its withheld fee balance is zero, harvest fees to the mint and try again");
+            }
+            TokenError::TransferDisabled => {
+                msg!("Transfer is disabled for this account");
             }
         }
     }

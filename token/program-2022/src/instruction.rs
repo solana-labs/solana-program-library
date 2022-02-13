@@ -540,6 +540,8 @@ pub enum TokenInstruction {
     ///   2. `[]` System program for mint account funding
     ///
     CreateNativeMint,
+    ///
+    InitializeTransferDisabled,
 }
 impl TokenInstruction {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -660,6 +662,7 @@ impl TokenInstruction {
             }
             28 => Self::MemoTransferExtension,
             29 => Self::CreateNativeMint,
+            30 => Self::InitializeTransferDisabled,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -797,6 +800,9 @@ impl TokenInstruction {
             }
             &Self::CreateNativeMint => {
                 buf.push(29);
+            }
+            &Self::InitializeTransferDisabled => {
+                buf.push(30);
             }
         };
         buf
@@ -1600,6 +1606,19 @@ pub fn create_native_mint(
             AccountMeta::new_readonly(system_program::id(), false),
         ],
         data: TokenInstruction::CreateNativeMint.pack(),
+    })
+}
+
+/// Create an `InitializeTransferDisabled` instruction
+pub fn initialize_transfer_disabled(
+    token_program_id: &Pubkey,
+    token_account: &Pubkey,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts: vec![AccountMeta::new(*token_account, false)],
+        data: TokenInstruction::InitializeTransferDisabled.pack(),
     })
 }
 
