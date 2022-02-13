@@ -146,7 +146,7 @@ async fn test_success() {
 }
 
 #[tokio::test]
-async fn test_repay_close_obligation() {
+async fn test_repay_then_close_obligation() {
     let mut test = Program::new(
         "spl_token_lending",
         spl_token_lending::id(),
@@ -182,7 +182,7 @@ async fn test_repay_close_obligation() {
             mark_fresh: true,
             ..AddReserveArgs::default()
         },
-    ):
+    );
 
     let usdc_mint = add_usdc_mint(&mut test);
     let usdc_oracle = add_usdc_oracle(&mut test);
@@ -275,6 +275,9 @@ async fn test_repay_close_obligation() {
         liquidity_supply_balance,
         initial_liquidity_supply_balance + USDC_BORROW_AMOUNT_FRACTIONAL
     );
+
+    let obligation_balance = get_token_balance(&mut banks_client, test_obligation.pubkey).await;
+    assert!(obligation_balance < 1);
 
     let obligation = test_obligation.get_state(&mut banks_client).await;
     assert_eq!(obligation.borrows.len(), 0);
