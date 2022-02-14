@@ -759,10 +759,15 @@ impl Processor {
     }
 
     /// Processes a [GetAccountDataSize](enum.TokenInstruction.html) instruction
-    pub fn process_get_account_data_size(accounts: &[AccountInfo]) -> ProgramResult {
+    pub fn process_get_account_data_size(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+    ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
-        // make sure the mint is passed in
-        let _mint_account_info = next_account_info(account_info_iter)?;
+        // make sure the mint is valid
+        let mint_info = next_account_info(account_info_iter)?;
+        Self::check_account_owner(program_id, mint_info)?;
+        let _ = Mint::unpack(&mint_info.data.borrow())?;
         set_return_data(&Account::LEN.to_le_bytes());
         Ok(())
     }
@@ -881,7 +886,7 @@ impl Processor {
             }
             TokenInstruction::GetAccountDataSize => {
                 msg!("Instruction: GetAccountDataSize");
-                Self::process_get_account_data_size(accounts)
+                Self::process_get_account_data_size(program_id, accounts)
             }
             TokenInstruction::InitializeImmutableOwner => {
                 msg!("Instruction: InitializeImmutableOwner");
@@ -6408,6 +6413,15 @@ mod tests {
         let mut mint_account =
             SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
         let mint_key = Pubkey::new_unique();
+        // fail if an invalid mint is passed in
+        assert_eq!(
+            Err(ProgramError::UninitializedAccount),
+            do_process_instruction(
+                get_account_data_size(&program_id, &mint_key).unwrap(),
+                vec![&mut mint_account],
+            )
+        );
+
         do_process_instruction(
             initialize_mint(&program_id, &mint_key, &owner_key, None, 2).unwrap(),
             vec![&mut mint_account, &mut rent_sysvar],
