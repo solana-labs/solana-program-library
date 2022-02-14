@@ -11,9 +11,9 @@ use {
             memo_transfer::{self, memo_required},
             mint_close_authority::MintCloseAuthority,
             reallocate,
+            transfer_disabled::TransferDisabled,
             transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
             ExtensionType, StateWithExtensions, StateWithExtensionsMut,
-            transfer_disabled::TransferDisabled,
         },
         instruction::{is_valid_signer_index, AuthorityType, TokenInstruction, MAX_SIGNERS},
         native_mint,
@@ -278,7 +278,10 @@ impl Processor {
         let mut source_account_data = source_account_info.data.borrow_mut();
         let mut source_account =
             StateWithExtensionsMut::<Account>::unpack(&mut source_account_data)?;
-        if source_account.get_extension_mut::<TransferDisabled>().is_ok() {
+        if source_account
+            .get_extension_mut::<TransferDisabled>()
+            .is_ok()
+        {
             return Err(TokenError::TransferDisabled.into());
         }
         if source_account.base.is_frozen() {
@@ -1083,7 +1086,9 @@ impl Processor {
         let token_account_data = &mut token_account_info.data.borrow_mut();
         let mut token_account =
             StateWithExtensionsMut::<Account>::unpack_uninitialized(token_account_data)?;
-        token_account.init_extension::<TransferDisabled>().map(|_| ())
+        token_account
+            .init_extension::<TransferDisabled>()
+            .map(|_| ())
     }
 
     /// Processes an [Instruction](enum.Instruction.html).

@@ -9,8 +9,8 @@ use {
             immutable_owner::ImmutableOwner,
             memo_transfer::MemoTransfer,
             mint_close_authority::MintCloseAuthority,
-            transfer_fee::{TransferFeeAmount, TransferFeeConfig},
             transfer_disabled::TransferDisabled,
+            transfer_fee::{TransferFeeAmount, TransferFeeConfig},
         },
         pod::*,
         state::{Account, Mint, Multisig},
@@ -39,10 +39,10 @@ pub mod memo_transfer;
 pub mod mint_close_authority;
 /// Utility to reallocate token accounts
 pub mod reallocate;
-/// Transfer Fee extension
-pub mod transfer_fee;
 /// Transfer Disabled extension
 pub mod transfer_disabled;
+/// Transfer Fee extension
+pub mod transfer_fee;
 
 /// Length in TLV structure
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
