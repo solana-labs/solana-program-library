@@ -167,8 +167,7 @@ pub fn process_close_nested(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pr
 
     let nested_associated_token_account_info = next_account_info(account_info_iter)?;
     let nested_token_mint_info = next_account_info(account_info_iter)?;
-    let destination_token_account_info = next_account_info(account_info_iter)?;
-    let destination_system_account_info = next_account_info(account_info_iter)?;
+    let destination_associated_token_account_info = next_account_info(account_info_iter)?;
     let owner_associated_token_account_info = next_account_info(account_info_iter)?;
     let owner_token_mint_info = next_account_info(account_info_iter)?;
     let wallet_account_info = next_account_info(account_info_iter)?;
@@ -195,6 +194,17 @@ pub fn process_close_nested(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pr
         spl_token_program_id,
     );
     if nested_associated_token_address != *nested_associated_token_account_info.key {
+        msg!("Error: Nested associated address does not match seed derivation");
+        return Err(ProgramError::InvalidSeeds);
+    }
+
+    // Check destination address derivation
+    let destination_associated_token_address = get_associated_token_address_with_program_id(
+        wallet_account_info.key,
+        nested_token_mint_info.key,
+        spl_token_program_id,
+    );
+    if destination_associated_token_address != *destination_associated_token_account_info.key {
         msg!("Error: Nested associated address does not match seed derivation");
         return Err(ProgramError::InvalidSeeds);
     }
@@ -238,6 +248,10 @@ pub fn process_close_nested(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pr
         }
         let nested_account_data = nested_associated_token_account_info.data.borrow();
         let nested_account = StateWithExtensions::<Account>::unpack(&nested_account_data)?;
+        if nested_account.base.owner != *owner_associated_token_account_info.key {
+            msg!("Nested associated token account not owned by provided associated token account");
+            return Err(AssociatedTokenAccountError::InvalidOwner.into());
+        }
         let amount = nested_account.base.amount;
 
         // Check nested token mint data
@@ -257,7 +271,7 @@ pub fn process_close_nested(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pr
             spl_token_program_id,
             nested_associated_token_account_info.key,
             nested_token_mint_info.key,
-            destination_token_account_info.key,
+            destination_associated_token_account_info.key,
             owner_associated_token_account_info.key,
             &[],
             amount,
@@ -266,8 +280,9 @@ pub fn process_close_nested(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pr
         &[
             nested_associated_token_account_info.clone(),
             nested_token_mint_info.clone(),
-            destination_token_account_info.clone(),
+            destination_associated_token_account_info.clone(),
             owner_associated_token_account_info.clone(),
+            spl_token_program_info.clone(),
         ],
         &[owner_associated_token_account_signer_seeds],
     )?;
@@ -277,14 +292,15 @@ pub fn process_close_nested(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pr
         &spl_token::instruction::close_account(
             spl_token_program_id,
             nested_associated_token_account_info.key,
-            destination_system_account_info.key,
+            wallet_account_info.key,
             owner_associated_token_account_info.key,
             &[],
         )?,
         &[
             nested_associated_token_account_info.clone(),
-            destination_system_account_info.clone(),
+            wallet_account_info.clone(),
             owner_associated_token_account_info.clone(),
+            spl_token_program_info.clone(),
         ],
         &[owner_associated_token_account_signer_seeds],
     )

@@ -37,14 +37,16 @@ pub enum AssociatedTokenAccountInstruction {
     /// Transfers from and closes a nested associated token account: an
     /// associated token account owned by an associated token account.
     ///
+    /// The tokens are moved from the nested associated token account to the
+    /// wallet's associated token account.
+    ///
     ///   0. `[writeable]` Nested associated token account, must be owned by `4`
     ///   1. `[]` Token mint for the nested associated token account.
-    ///   2. `[writeable]` Destination token account.
-    ///   3. `[writeable]` Destination wallet for nested account lamports.
-    ///   4. `[]` Owner associated token account address, must be owned by `6`
-    ///   5. `[]` Token mint for the owner associated token account
-    ///   6. `[signer]` Wallet address for the owner associated token account
-    ///   7. `[]` SPL Token program
+    ///   2. `[writeable]` Wallet's associated token account.
+    ///   3. `[]` Owner associated token account address, must be owned by `6`
+    ///   4. `[]` Token mint for the owner associated token account
+    ///   5. `[signer]` Wallet address for the owner associated token account
+    ///   6. `[]` SPL Token program
     CloseNested,
 }
 
@@ -117,8 +119,6 @@ pub fn close_nested(
     wallet_address: &Pubkey,
     owner_token_mint_address: &Pubkey,
     nested_token_mint_address: &Pubkey,
-    token_destination: &Pubkey,
-    lamport_destination: &Pubkey,
     token_program_id: &Pubkey,
 ) -> Instruction {
     let owner_associated_account_address = get_associated_token_address_with_program_id(
@@ -126,8 +126,13 @@ pub fn close_nested(
         owner_token_mint_address,
         token_program_id,
     );
+    let destination_associated_account_address = get_associated_token_address_with_program_id(
+        wallet_address,
+        nested_token_mint_address,
+        token_program_id,
+    );
     let nested_associated_account_address = get_associated_token_address_with_program_id(
-        &owner_associated_account_address,
+        &owner_associated_account_address, // ATA is wrongly used as a wallet_address
         nested_token_mint_address,
         token_program_id,
     );
@@ -139,8 +144,7 @@ pub fn close_nested(
         accounts: vec![
             AccountMeta::new(nested_associated_account_address, false),
             AccountMeta::new_readonly(*nested_token_mint_address, false),
-            AccountMeta::new(*token_destination, false),
-            AccountMeta::new(*lamport_destination, false),
+            AccountMeta::new(destination_associated_account_address, false),
             AccountMeta::new_readonly(owner_associated_account_address, false),
             AccountMeta::new_readonly(*owner_token_mint_address, false),
             AccountMeta::new(*wallet_address, true),
