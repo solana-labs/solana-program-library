@@ -17,7 +17,7 @@ use {
     },
     spl_associated_token_account::{
         error::AssociatedTokenAccountError,
-        get_associated_token_address,
+        get_associated_token_address_with_program_id,
         instruction::{
             create_associated_token_account, create_associated_token_account_idempotent,
         },
@@ -33,8 +33,11 @@ use {
 async fn success_account_exists() {
     let wallet_address = Pubkey::new_unique();
     let token_mint_address = Pubkey::new_unique();
-    let associated_token_address =
-        get_associated_token_address(&wallet_address, &token_mint_address);
+    let associated_token_address = get_associated_token_address_with_program_id(
+        &wallet_address,
+        &token_mint_address,
+        &spl_token_2022::id(),
+    );
 
     let (mut banks_client, payer, recent_blockhash) =
         program_test(token_mint_address, true).start().await;
@@ -127,8 +130,11 @@ async fn success_account_exists() {
 async fn fail_account_exists_with_wrong_owner() {
     let wallet_address = Pubkey::new_unique();
     let token_mint_address = Pubkey::new_unique();
-    let associated_token_address =
-        get_associated_token_address(&wallet_address, &token_mint_address);
+    let associated_token_address = get_associated_token_address_with_program_id(
+        &wallet_address,
+        &token_mint_address,
+        &spl_token_2022::id(),
+    );
 
     let wrong_owner = Pubkey::new_unique();
     let mut associated_token_account =
