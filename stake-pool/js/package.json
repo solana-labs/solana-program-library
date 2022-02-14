@@ -9,7 +9,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
-    "clean": "rimraf ./dist ./dist.browser"
+    "clean": "rimraf ./dist"
   },
   "keywords": [],
   "contributors": [
@@ -26,17 +26,21 @@
   "publishConfig": {
     "access": "public"
   },
-  "browser": "dist.browser/index.js",
-  "module": "dist.browser/index.esm.js",
-  "main": "dist/index.js",
+  "browser": {
+    "./dist/index.cjs.js": "./dist/index.browser.esm.js",
+    "./dist/index.esm.js": "./dist/index.browser.esm.js"
+  },
+  "main": "dist/index.cjs.js",
+  "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
   "browserslist": [
     "defaults",
-    "not IE 11"
+    "not IE 11",
+    "maintained node versions"
   ],
   "files": [
     "/dist",
-    "/dist.browser"
+    "/src"
   ],
   "license": "ISC",
   "dependencies": {
