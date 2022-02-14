@@ -15,7 +15,7 @@ use {
     spl_associated_token_account::{
         get_associated_token_address, instruction::create_associated_token_account,
     },
-    spl_token::{
+    spl_token_2022::{
         error::TokenError,
         extension::{transfer_fee, ExtensionType, StateWithExtensionsOwned},
         state::{Account, Mint},
@@ -46,10 +46,10 @@ async fn test_associated_token_account_with_transfer_fees() {
                 &mint_account.pubkey(),
                 rent.minimum_balance(space),
                 space as u64,
-                &spl_token::id(),
+                &spl_token_2022::id(),
             ),
             transfer_fee::instruction::initialize_transfer_fee_config(
-                &spl_token::id(),
+                &spl_token_2022::id(),
                 &token_mint_address,
                 Some(&mint_authority.pubkey()),
                 Some(&mint_authority.pubkey()),
@@ -57,8 +57,8 @@ async fn test_associated_token_account_with_transfer_fees() {
                 maximum_fee,
             )
             .unwrap(),
-            spl_token::instruction::initialize_mint(
-                &spl_token::id(),
+            spl_token_2022::instruction::initialize_mint(
+                &spl_token_2022::id(),
                 &token_mint_address,
                 &mint_authority.pubkey(),
                 Some(&mint_authority.pubkey()),
@@ -77,7 +77,7 @@ async fn test_associated_token_account_with_transfer_fees() {
             &payer.pubkey(),
             &wallet_address_sender,
             &token_mint_address,
-            &spl_token::id(),
+            &spl_token_2022::id(),
         )],
         Some(&payer.pubkey()),
     );
@@ -89,7 +89,7 @@ async fn test_associated_token_account_with_transfer_fees() {
             &payer.pubkey(),
             &wallet_address_receiver,
             &token_mint_address,
-            &spl_token::id(),
+            &spl_token_2022::id(),
         )],
         Some(&payer.pubkey()),
     );
@@ -104,8 +104,8 @@ async fn test_associated_token_account_with_transfer_fees() {
     // mint tokens
     let sender_amount = 50 * maximum_fee;
     let mut transaction = Transaction::new_with_payer(
-        &[spl_token::instruction::mint_to(
-            &spl_token::id(),
+        &[spl_token_2022::instruction::mint_to(
+            &spl_token_2022::id(),
             &token_mint_address,
             &associated_token_address_sender,
             &mint_authority.pubkey(),
@@ -121,7 +121,7 @@ async fn test_associated_token_account_with_transfer_fees() {
     // not enough tokens
     let mut transaction = Transaction::new_with_payer(
         &[transfer_fee::instruction::transfer_checked_with_fee(
-            &spl_token::id(),
+            &spl_token_2022::id(),
             &associated_token_address_sender,
             &token_mint_address,
             &associated_token_address_receiver,
@@ -153,7 +153,7 @@ async fn test_associated_token_account_with_transfer_fees() {
     let fee = 50;
     let mut transaction = Transaction::new_with_payer(
         &[transfer_fee::instruction::transfer_checked_with_fee(
-            &spl_token::id(),
+            &spl_token_2022::id(),
             &associated_token_address_sender,
             &token_mint_address,
             &associated_token_address_receiver,

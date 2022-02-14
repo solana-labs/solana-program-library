@@ -775,7 +775,7 @@ impl Processor {
         if account.is_initialized() {
             return Err(TokenError::AlreadyInUse.into());
         }
-        msg!("Not doing anything, instruction support is only for associated-token-account compatibility");
+        msg!("Please upgrade to SPL Token 2022 for immutable owner support");
         Ok(())
     }
 

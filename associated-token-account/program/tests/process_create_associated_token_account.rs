@@ -14,7 +14,7 @@ use {
     spl_associated_token_account::{
         get_associated_token_address, instruction::create_associated_token_account,
     },
-    spl_token::extension::ExtensionType,
+    spl_token_2022::{extension::ExtensionType, state::Account},
 };
 
 #[allow(deprecated)]
@@ -32,9 +32,7 @@ async fn test_associated_token_address() {
     let rent = banks_client.get_rent().await.unwrap();
 
     let expected_token_account_len =
-        ExtensionType::get_account_len::<spl_token::state::Account>(&[
-            ExtensionType::ImmutableOwner,
-        ]);
+        ExtensionType::get_account_len::<Account>(&[ExtensionType::ImmutableOwner]);
     let expected_token_account_balance = rent.minimum_balance(expected_token_account_len);
 
     // Associated account does not exist
@@ -51,7 +49,7 @@ async fn test_associated_token_address() {
             &payer.pubkey(),
             &wallet_address,
             &token_mint_address,
-            &spl_token::id(),
+            &spl_token_2022::id(),
         )],
         Some(&payer.pubkey()),
     );
@@ -65,7 +63,7 @@ async fn test_associated_token_address() {
         .expect("get_account")
         .expect("associated_account not none");
     assert_eq!(associated_account.data.len(), expected_token_account_len,);
-    assert_eq!(associated_account.owner, spl_token::id());
+    assert_eq!(associated_account.owner, spl_token_2022::id());
     assert_eq!(associated_account.lamports, expected_token_account_balance);
 }
 
@@ -80,9 +78,7 @@ async fn test_create_with_fewer_lamports() {
         program_test(token_mint_address, true).start().await;
     let rent = banks_client.get_rent().await.unwrap();
     let expected_token_account_len =
-        ExtensionType::get_account_len::<spl_token::state::Account>(&[
-            ExtensionType::ImmutableOwner,
-        ]);
+        ExtensionType::get_account_len::<Account>(&[ExtensionType::ImmutableOwner]);
     let expected_token_account_balance = rent.minimum_balance(expected_token_account_len);
 
     // Transfer lamports into `associated_token_address` before creating it - enough to be
@@ -112,7 +108,7 @@ async fn test_create_with_fewer_lamports() {
             &payer.pubkey(),
             &wallet_address,
             &token_mint_address,
-            &spl_token::id(),
+            &spl_token_2022::id(),
         )],
         Some(&payer.pubkey()),
     );
@@ -140,9 +136,7 @@ async fn test_create_with_excess_lamports() {
     let rent = banks_client.get_rent().await.unwrap();
 
     let expected_token_account_len =
-        ExtensionType::get_account_len::<spl_token::state::Account>(&[
-            ExtensionType::ImmutableOwner,
-        ]);
+        ExtensionType::get_account_len::<Account>(&[ExtensionType::ImmutableOwner]);
     let expected_token_account_balance = rent.minimum_balance(expected_token_account_len);
 
     // Transfer 1 lamport into `associated_token_address` before creating it
@@ -171,7 +165,7 @@ async fn test_create_with_excess_lamports() {
             &payer.pubkey(),
             &wallet_address,
             &token_mint_address,
-            &spl_token::id(),
+            &spl_token_2022::id(),
         )],
         Some(&payer.pubkey()),
     );
@@ -201,7 +195,7 @@ async fn test_create_account_mismatch() {
         &payer.pubkey(),
         &wallet_address,
         &token_mint_address,
-        &spl_token::id(),
+        &spl_token_2022::id(),
     );
     instruction.accounts[1] = AccountMeta::new(Pubkey::default(), false); // <-- Invalid associated_account_address
 
@@ -220,7 +214,7 @@ async fn test_create_account_mismatch() {
         &payer.pubkey(),
         &wallet_address,
         &token_mint_address,
-        &spl_token::id(),
+        &spl_token_2022::id(),
     );
     instruction.accounts[2] = AccountMeta::new(Pubkey::default(), false); // <-- Invalid wallet_address
 
@@ -239,7 +233,7 @@ async fn test_create_account_mismatch() {
         &payer.pubkey(),
         &wallet_address,
         &token_mint_address,
-        &spl_token::id(),
+        &spl_token_2022::id(),
     );
     instruction.accounts[3] = AccountMeta::new(Pubkey::default(), false); // <-- Invalid token_mint_address
 
@@ -266,9 +260,7 @@ async fn test_create_associated_token_account_using_legacy_implicit_instruction(
         program_test(token_mint_address, true).start().await;
     let rent = banks_client.get_rent().await.unwrap();
     let expected_token_account_len =
-        ExtensionType::get_account_len::<spl_token::state::Account>(&[
-            ExtensionType::ImmutableOwner,
-        ]);
+        ExtensionType::get_account_len::<Account>(&[ExtensionType::ImmutableOwner]);
     let expected_token_account_balance = rent.minimum_balance(expected_token_account_len);
 
     // Associated account does not exist
@@ -284,7 +276,7 @@ async fn test_create_associated_token_account_using_legacy_implicit_instruction(
         &payer.pubkey(),
         &wallet_address,
         &token_mint_address,
-        &spl_token::id(),
+        &spl_token_2022::id(),
     );
 
     // Use implicit  instruction and rent account to replicate the legacy invocation
@@ -305,7 +297,7 @@ async fn test_create_associated_token_account_using_legacy_implicit_instruction(
         .expect("get_account")
         .expect("associated_account not none");
     assert_eq!(associated_account.data.len(), expected_token_account_len);
-    assert_eq!(associated_account.owner, spl_token::id());
+    assert_eq!(associated_account.owner, spl_token_2022::id());
     assert_eq!(associated_account.lamports, expected_token_account_balance);
 }
 
@@ -320,9 +312,7 @@ async fn test_create_associated_token_account_using_deprecated_instruction_creat
         program_test(token_mint_address, true).start().await;
     let rent = banks_client.get_rent().await.unwrap();
     let expected_token_account_len =
-        ExtensionType::get_account_len::<spl_token::state::Account>(&[
-            ExtensionType::ImmutableOwner,
-        ]);
+        ExtensionType::get_account_len::<Account>(&[ExtensionType::ImmutableOwner]);
     let expected_token_account_balance = rent.minimum_balance(expected_token_account_len);
 
     // Associated account does not exist
@@ -354,6 +344,6 @@ async fn test_create_associated_token_account_using_deprecated_instruction_creat
         .expect("get_account")
         .expect("associated_account not none");
     assert_eq!(associated_account.data.len(), expected_token_account_len);
-    assert_eq!(associated_account.owner, spl_token::id());
+    assert_eq!(associated_account.owner, spl_token_2022::id());
     assert_eq!(associated_account.lamports, expected_token_account_balance);
 }

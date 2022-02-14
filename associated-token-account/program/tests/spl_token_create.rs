@@ -9,6 +9,7 @@ use {
         get_associated_token_address_with_program_id, id,
         instruction::create_associated_token_account, processor::process_instruction,
     },
+    spl_token::state::Account,
 };
 
 fn program_test(token_mint_address: Pubkey, use_latest_spl_token: bool) -> ProgramTest {
@@ -22,8 +23,8 @@ fn program_test(token_mint_address: Pubkey, use_latest_spl_token: bool) -> Progr
         // TODO: Remove after Token >3.2.0 is available by default in program-test
         pc.add_program(
             "spl_token",
-            spl_token_legacy::id(),
-            processor!(spl_token_legacy::processor::Processor::process),
+            spl_token::id(),
+            processor!(spl_token::processor::Processor::process),
         );
     }
 
@@ -36,7 +37,7 @@ fn program_test(token_mint_address: Pubkey, use_latest_spl_token: bool) -> Progr
     pc.add_account_with_file_data(
         token_mint_address,
         1461600,
-        spl_token_legacy::id(),
+        spl_token::id(),
         "token-mint-data.bin",
     );
 
@@ -53,13 +54,13 @@ async fn success_create() {
     let associated_token_address = get_associated_token_address_with_program_id(
         &wallet_address,
         &token_mint_address,
-        &spl_token_legacy::id(),
+        &spl_token::id(),
     );
 
     let (mut banks_client, payer, recent_blockhash) =
         program_test(token_mint_address, true).start().await;
     let rent = banks_client.get_rent().await.unwrap();
-    let expected_token_account_len = spl_token::state::Account::LEN;
+    let expected_token_account_len = Account::LEN;
     let expected_token_account_balance = rent.minimum_balance(expected_token_account_len);
 
     // Associated account does not exist
@@ -76,7 +77,7 @@ async fn success_create() {
             &payer.pubkey(),
             &wallet_address,
             &token_mint_address,
-            &spl_token_legacy::id(),
+            &spl_token::id(),
         )],
         Some(&payer.pubkey()),
         &[&payer],
@@ -91,6 +92,6 @@ async fn success_create() {
         .expect("get_account")
         .expect("associated_account not none");
     assert_eq!(associated_account.data.len(), expected_token_account_len);
-    assert_eq!(associated_account.owner, spl_token_legacy::id());
+    assert_eq!(associated_account.owner, spl_token::id());
     assert_eq!(associated_account.lamports, expected_token_account_balance);
 }

@@ -19,7 +19,10 @@ use {
         system_program,
         sysvar::Sysvar,
     },
-    spl_token::{extension::StateWithExtensions, state::Account},
+    spl_token_2022::{
+        extension::{ExtensionType, StateWithExtensions},
+        state::Account,
+    },
 };
 
 /// Specify when to create the associated token account
@@ -115,7 +118,7 @@ fn process_create_associated_token_account(
     let account_len = get_account_len(
         spl_token_mint_info,
         spl_token_program_info,
-        &[spl_token::extension::ExtensionType::ImmutableOwner],
+        &[ExtensionType::ImmutableOwner],
     )?;
 
     create_pda_account(
@@ -130,7 +133,7 @@ fn process_create_associated_token_account(
 
     msg!("Initialize the associated token account");
     invoke(
-        &spl_token::instruction::initialize_immutable_owner(
+        &spl_token_2022::instruction::initialize_immutable_owner(
             spl_token_program_id,
             associated_token_account_info.key,
         )?,
@@ -140,7 +143,7 @@ fn process_create_associated_token_account(
         ],
     )?;
     invoke(
-        &spl_token::instruction::initialize_account3(
+        &spl_token_2022::instruction::initialize_account3(
             spl_token_program_id,
             associated_token_account_info.key,
             spl_token_mint_info.key,

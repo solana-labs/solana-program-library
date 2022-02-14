@@ -1,6 +1,7 @@
 //! Program instructions
 
 use {
+    crate::{get_associated_token_address_with_program_id, id},
     assert_matches::assert_matches,
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{
@@ -8,8 +9,6 @@ use {
         pubkey::Pubkey,
     },
 };
-
-use crate::{get_associated_token_address_with_program_id, id};
 
 /// Instructions supported by the AssociatedTokenAccount program
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
