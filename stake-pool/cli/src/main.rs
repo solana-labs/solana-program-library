@@ -1257,7 +1257,7 @@ fn prepare_withdraw_accounts(
 
             (
                 transient_stake_account_address,
-                validator.transient_stake_lamports,
+                validator.transient_stake_lamports - min_balance,
                 Some(validator.vote_account_address),
             )
         },
@@ -1265,7 +1265,13 @@ fn prepare_withdraw_accounts(
 
     let reserve_stake = rpc_client.get_account(&stake_pool.reserve_stake)?;
 
-    accounts.push((stake_pool.reserve_stake, reserve_stake.lamports, None));
+    accounts.push((
+        stake_pool.reserve_stake,
+        reserve_stake.lamports
+            - rpc_client.get_minimum_balance_for_rent_exemption(STAKE_STATE_LEN)?
+            - 1,
+        None,
+    ));
 
     // Prepare the list of accounts to withdraw from
     let mut withdraw_from: Vec<WithdrawAccount> = vec![];
@@ -1283,9 +1289,8 @@ fn prepare_withdraw_accounts(
             continue;
         }
 
-        let available_for_withdrawal_wo_fee = stake_pool
-            .calc_pool_tokens_for_deposit(lamports - min_balance)
-            .unwrap();
+        let available_for_withdrawal_wo_fee =
+            stake_pool.calc_pool_tokens_for_deposit(lamports).unwrap();
 
         let available_for_withdrawal = if skip_fee {
             available_for_withdrawal_wo_fee
