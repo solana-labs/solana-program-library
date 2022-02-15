@@ -16,12 +16,6 @@ A TypeScript library for interacting with the SPL Token program.
 yarn add @solana/spl-token
 ```
 
-## Usage
-
-```ts
-@TODO
-```
-
 ## Build from Source
 
 1. Clone the project:
