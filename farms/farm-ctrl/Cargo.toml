@@ -1,0 +1,34 @@
+[package]
+name = "solana-farm-ctrl"
+version = "0.0.1"
+description = "Solana Farm Control"
+authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+repository = "https://github.com/solana-labs/solana-program-library"
+license = "Apache-2.0"
+homepage = "https://solana.com/"
+edition = "2018"
+
+[features]
+debug = []
+
+[dependencies]
+log = "0.4.14"
+clap = "2.33.3"
+serde = "1.0.130"
+serde_derive = "1.0.130"
+serde_json = "1.0.69"
+serde_yaml = "0.8.21"
+solana-client = "1.9.5"
+solana-logger = "1.9.5"
+solana-version = "1.9.5"
+solana-clap-utils = "1.9.5"
+solana-sdk = "1.9.5"
+solana-farm-sdk = { path = "../farm-sdk" }
+solana-farm-client = { path = "../farm-client" }
+spl-associated-token-account = { version = "1.0.3", features = ["no-entrypoint"] }
+spl-token = { version = "3.2.0", features = ["no-entrypoint"] }
+spl-governance = { version = "2.1.4", features = ["no-entrypoint"] }
+solana-cli-config = "1.9.5"
+quarry-mine = { version = "1.10.0", features = ["no-entrypoint"] }
+url = "2.2.2"
+num_enum = "0.5.4"

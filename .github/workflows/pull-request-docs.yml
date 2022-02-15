@@ -1,0 +1,43 @@
+name: Docs Pull Request
+
+on:
+  pull_request:
+    paths:
+    - 'docs/**'
+  push:
+    branches: [master]
+    paths:
+    - 'docs/**'
+
+jobs:
+  check_non_docs:
+    outputs:
+      run_all_github_action_checks: ${{ steps.check_files.outputs.run_all_github_action_checks }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 2
+
+      - name: check modified files
+        id: check_files
+        run: |
+          echo "========== check paths of modified files =========="
+          echo "::set-output name=run_all_github_action_checks::true"
+          git diff --name-only HEAD^ HEAD > files.txt
+          while IFS= read -r file
+          do
+            if [[ $file != docs/** ]]; then
+              echo "Found modified non-'docs' file(s)"
+              echo "::set-output name=run_all_github_action_checks::false"
+              break
+            fi
+          done < files.txt
+
+  all_github_action_checks:
+    runs-on: ubuntu-latest
+    needs: check_non_docs
+    if: needs.check_non_docs.outputs.run_all_github_action_checks == 'true'
+    steps:
+      - run: echo "Done"

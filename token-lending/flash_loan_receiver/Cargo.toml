@@ -1,0 +1,15 @@
+[package]
+name = "flash_loan_receiver"
+version = "1.0.0"
+edition = "2018"
+
+[dependencies]
+arrayref = "0.3.6"
+solana-program = "1.9.5"
+spl-token = { version = "3.3", path = "../../token/program", features=["no-entrypoint"] }
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]

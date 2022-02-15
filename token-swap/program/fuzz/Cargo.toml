@@ -1,0 +1,23 @@
+[package]
+name = "spl-token-swap-fuzz"
+version = "0.0.1"
+description = "Solana Program Library Token Swap Fuzzer"
+authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+repository = "https://github.com/solana-labs/solana-program-library"
+license = "Apache-2.0"
+edition = "2018"
+publish = false
+
+[dependencies]
+honggfuzz = { version = "0.5.54" }
+arbitrary = { version = "1.0", features = ["derive"] }
+solana-program = "1.9.5"
+spl-math = { version = "0.1", path = "../../../libraries/math", features = [ "no-entrypoint" ] }
+spl-token = { version = "3.3", path = "../../../token/program", features = [ "no-entrypoint" ] }
+spl-token-swap = { path = "..", features = ["fuzz", "no-entrypoint"] }
+
+[[bin]]
+name = "token-swap-instructions"
+path = "src/instructions.rs"
+test = false
+doc = false

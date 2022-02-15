@@ -1,0 +1,27 @@
+[package]
+name = "solana-farm-router-main"
+version = "0.0.1"
+description = "Solana Farm Main Router"
+authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+repository = "https://github.com/solana-labs/solana-program-library"
+license = "Apache-2.0"
+homepage = "https://solana.com/"
+edition = "2018"
+
+[features]
+no-entrypoint = []
+debug = []
+
+[dependencies]
+solana-farm-sdk = { path = "../farm-sdk" }
+spl-token = { version = "3.2.0", features = ["no-entrypoint"] }
+solana-program = "1.9.5"
+arrayref = "0.3.6"
+arrayvec = "0.7.2"
+
+[dev-dependencies]
+solana-program-test = "1.9.5"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+

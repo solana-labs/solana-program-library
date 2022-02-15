@@ -1,0 +1,27 @@
+[package]
+name = "spl-binary-oracle-pair"
+version = "0.1.0"
+description = "Solana Program Library Binary Oracle Pair"
+authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+repository = "https://github.com/solana-labs/solana-program-library"
+license = "Apache-2.0"
+edition = "2018"
+
+[features]
+test-bpf = []
+
+[dependencies]
+num-derive = "0.3"
+num-traits = "0.2"
+solana-program = "1.9.5"
+spl-token = { version = "3.3", path = "../../token/program", features = [ "no-entrypoint" ] }
+thiserror = "1.0"
+uint = "0.9"
+borsh = "0.9.1"
+
+[dev-dependencies]
+solana-program-test = "1.9.5"
+solana-sdk = "1.9.5"
+
+[lib]
+crate-type = ["cdylib", "lib"]

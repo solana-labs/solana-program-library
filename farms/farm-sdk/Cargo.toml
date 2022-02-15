@@ -1,0 +1,32 @@
+[package]
+name = "solana-farm-sdk"
+version = "0.0.1"
+description = "Solana Farm SDK"
+authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+repository = "https://github.com/solana-labs/solana-program-library"
+license = "Apache-2.0"
+homepage = "https://solana.com/"
+edition = "2018"
+
+[features]
+debug = []
+
+[dependencies]
+solana-program = "1.9.5"
+arrayref = "0.3.6"
+arraystring = "0.3.0"
+serde = "1.0.130"
+serde_derive = "1.0.130"
+serde_json = "1.0.69"
+num_enum = "0.5.4"
+num-traits = "0.2.14"
+spl-token = { version = "3.2.0", features = ["no-entrypoint"] }
+spl-associated-token-account = { version = "1.0.3", features = ["no-entrypoint"] }
+quarry-mine = { version = "1.10.0", features = ["no-entrypoint"] }
+quarry-mint-wrapper = { version = "1.10.0", features = ["no-entrypoint"] }
+quarry-redeemer = { version = "1.10.0", features = ["no-entrypoint"] }
+stable-swap-client = "1.5.2"
+
+[dev-dependencies]
+solana-program-test = "1.9.5"
+

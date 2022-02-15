@@ -1,0 +1,20 @@
+[package]
+authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+description = "SPL-Token Rust Client"
+edition = "2018"
+license = "Apache-2.0"
+name = "spl-token-client"
+repository = "https://github.com/solana-labs/solana-program-library"
+version = "0.0.1"
+
+[dependencies]
+async-trait = "0.1"
+solana-client = "=1.9.5"
+solana-program-test = "=1.9.5"
+solana-sdk = "=1.9.5"
+# We never want the entrypoint for ATA, but we want the entrypoint for token when
+# testing token
+spl-associated-token-account = { version = "1.0.5", path = "../../associated-token-account/program", features = ["no-entrypoint"] }
+spl-memo = { version = "3.0.1", path = "../../memo/program", features = ["no-entrypoint"] }
+spl-token-2022 = { version = "0.2", path="../program-2022" }
+thiserror = "1.0"

@@ -1,0 +1,14 @@
+[package]
+name = "spl-governance-addin-api"
+version = "0.1.1"
+description = "Solana Program Library Governance Addin Api"
+authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+repository = "https://github.com/solana-labs/solana-program-library"
+license = "Apache-2.0"
+edition = "2018"
+
+[dependencies]
+borsh = "0.9.1"
+spl-governance-tools= { version = "0.1.2", path ="../tools"}
+solana-program = "1.9.5"
+

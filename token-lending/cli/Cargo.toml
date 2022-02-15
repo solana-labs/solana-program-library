@@ -1,0 +1,24 @@
+[package]
+authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+description = "SPL Token Lending CLI"
+edition = "2018"
+homepage = "https://spl.solana.com/token-lending"
+license = "Apache-2.0"
+name = "spl-token-lending-cli"
+repository = "https://github.com/solana-labs/solana-program-library"
+version = "0.1.0"
+
+[dependencies]
+clap = "2.33.3"
+solana-clap-utils = "1.9.5"
+solana-cli-config = "1.9.5"
+solana-client = "1.9.5"
+solana-logger = "1.9.5"
+solana-sdk = "1.9.5"
+solana-program = "1.9.5"
+spl-token-lending = { path="../program", features = [ "no-entrypoint" ] }
+spl-token = { path="../../token/program", features = [ "no-entrypoint" ]  }
+
+[[bin]]
+name = "spl-token-lending"
+path = "src/main.rs"

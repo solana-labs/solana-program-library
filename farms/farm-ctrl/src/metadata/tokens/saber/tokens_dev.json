@@ -1,0 +1,230 @@
+{
+  "name": "Saber Tokens",
+  "logoURI": "https://registry.saber.so/icon.png",
+  "tags": {
+    "stablecoin": {
+      "name": "stablecoin",
+      "description": "Tokens that are fixed to an external asset, e.g. the US dollar"
+    },
+    "ethereum": {
+      "name": "ethereum",
+      "description": "Asset bridged from ethereum"
+    },
+    "lp-token": {
+      "name": "lp-token",
+      "description": "Asset representing liquidity provider token"
+    },
+    "wrapped-sollet": {
+      "name": "wrapped-sollet",
+      "description": "Asset wrapped using sollet bridge"
+    },
+    "wrapped": {
+      "name": "wrapped",
+      "description": "Asset wrapped using wormhole bridge"
+    },
+    "leveraged": { "name": "leveraged", "description": "Leveraged asset" },
+    "bull": { "name": "bull", "description": "Leveraged Bull asset" },
+    "bear": { "name": "bear", "description": "Leveraged Bear asset" },
+    "nft": { "name": "nft", "description": "Non-fungible token" },
+    "security-token": {
+      "name": "security-token",
+      "description": "Tokens that are used to gain access to an electronically restricted resource"
+    },
+    "utility-token": {
+      "name": "utility-token",
+      "description": "Tokens that are designed to be spent within a certain blockchain ecosystem e.g. most of the SPL-Tokens"
+    },
+    "tokenized-stock": {
+      "name": "tokenized-stock",
+      "description": "Tokenized stocks are tokenized derivatives that represent traditional securities, particularly shares in publicly firms traded on regulated exchanges"
+    },
+    "saber-hidden": {
+      "name": "saber-hidden",
+      "description": "Hidden from main Saber UI."
+    },
+    "saber-decimal-wrapped": {
+      "name": "saber-decimal-wrapped",
+      "description": "Decimal wrapper for a different token. See `assetContract` for the mint of the underlying."
+    },
+    "saber-stableswap-lp": {
+      "name": "saber-stableswap-lp",
+      "description": "Saber StableSwap LP token."
+    },
+    "saber-swappable": {
+      "name": "saber-swappable",
+      "description": "May be swapped on Saber."
+    },
+    "wormhole-v1": {
+      "name": "wormhole-v1",
+      "description": "Wormhole V1 asset."
+    },
+    "wormhole-v2": {
+      "name": "wormhole-v2",
+      "description": "Wormhole V2 asset."
+    },
+    "saber-market-usd": {
+      "name": "saber-market-usd",
+      "description": "Token which trades against other representations of USD."
+    },
+    "saber-market-btc": {
+      "name": "saber-market-btc",
+      "description": "Token which trades against other representations of BTC."
+    },
+    "saber-market-luna": {
+      "name": "saber-market-luna",
+      "description": "Token which trades against other representations of LUNA."
+    },
+    "saber-market-ftt": {
+      "name": "saber-market-ftt",
+      "description": "Token which trades against other representations of FTT."
+    },
+    "saber-market-srm": {
+      "name": "saber-market-srm",
+      "description": "Token which trades against other representations of SRM."
+    },
+    "saber-market-sol": {
+      "name": "saber-market-sol",
+      "description": "Token which trades against other representations of SOL."
+    },
+    "saber-market-eth": {
+      "name": "saber-market-eth",
+      "description": "Token which trades against other representations of ETH."
+    }
+  },
+  "timestamp": "2021-10-08T22:59:09.384Z",
+  "tokens": [
+    {
+      "symbol": "IOU",
+      "name": "IOU Coin",
+      "logoURI": "",
+      "address": "iouQcQBAiEXe6cKLS85zmZxUqaCqBdeHFpqKoSz615u",
+      "decimals": 6,
+      "chainId": 101,
+      "tags": [],
+      "extensions": {}
+    },
+    {
+      "symbol": "USDC",
+      "name": "USD Coin",
+      "logoURI": "/tokens/usdc.svg",
+      "address": "2tWC4JAdL4AxEFJySziYJfsAnW2MHKRo98vbAPiRDSk8",
+      "decimals": 6,
+      "chainId": 101,
+      "tags": ["saber-market-usd", "saber-swappable"],
+      "extensions": {}
+    },
+    {
+      "symbol": "USDT",
+      "name": "Tether USD",
+      "logoURI": "/tokens/usdt.svg",
+      "address": "EJwZgeZrdC8TXTQbQBoL6bfuAnFUUy1PVCMB4DYPzVaS",
+      "decimals": 6,
+      "chainId": 101,
+      "tags": ["saber-market-usd", "saber-swappable"],
+      "extensions": {}
+    },
+    {
+      "symbol": "PAI",
+      "name": "PAI",
+      "logoURI": "/tokens/pai.svg",
+      "address": "4ry1pMstKzMJvMZSms62HduTyCbbqkUyrz17x1dajBmL",
+      "decimals": 6,
+      "chainId": 101,
+      "tags": ["saber-market-usd", "saber-swappable"],
+      "extensions": {}
+    },
+    {
+      "name": "Test WBTC",
+      "address": "Wbt2CgkkD3eVckD5XxWJmT8pTnFTyWrwvGM7bUMLvsM",
+      "decimals": 6,
+      "chainId": 101,
+      "symbol": "WBTC",
+      "logoURI": "https://cdn.jsdelivr.net/gh/trustwallet/assets@master/blockchains/bitcoin/info/logo.png",
+      "tags": ["saber-market-btc"],
+      "extensions": {}
+    },
+    {
+      "name": "Test RenBTC",
+      "address": "Ren3RLPCG6hpKay86d2fQccQLuGG331UNxwn2VTw3GJ",
+      "decimals": 8,
+      "chainId": 101,
+      "symbol": "renBTC",
+      "logoURI": "https://cdn.jsdelivr.net/gh/trustwallet/assets@master/blockchains/ethereum/assets/0xEB4C2781e4ebA804CE9a9803C67d0893436bB27D/logo.png",
+      "tags": ["saber-market-btc", "saber-swappable"],
+      "extensions": {}
+    },
+    {
+      "symbol": "sWBTC-8",
+      "name": "Saber Test WBTC (8 decimals)",
+      "address": "BtceyXMo5kwg8u6es4NoukBWQuMwtcBCZpFWUfZgVuZs",
+      "decimals": 8,
+      "logoURI": "https://cdn.jsdelivr.net/gh/trustwallet/assets@master/blockchains/bitcoin/info/logo.png",
+      "chainId": 101,
+      "tags": ["saber-decimal-wrapped", "saber-market-btc", "saber-swappable"],
+      "extensions": {
+        "assetContract": "Wbt2CgkkD3eVckD5XxWJmT8pTnFTyWrwvGM7bUMLvsM"
+      }
+    },
+    {
+      "name": "Saber Protocol Token",
+      "symbol": "SBR",
+      "address": "Saber2gLauYim4Mvftnrasomsv6NvAuncvMEZwcLpD1",
+      "logoURI": "/tokens/sbr.svg",
+      "decimals": 6,
+      "chainId": 101,
+      "tags": [],
+      "extensions": {}
+    },
+    {
+      "symbol": "SLP",
+      "name": "USDC-USDT Saber LP",
+      "logoURI": "https://registry.saber.so/token-icons/slp.png",
+      "decimals": 6,
+      "address": "YakofBo4X3zMxa823THQJwZ8QeoU8pxPdFdxJs7JW57",
+      "chainId": 101,
+      "tags": ["saber-stableswap-lp"],
+      "extensions": {
+        "website": "https://app.saber.so/#/pools/usdc_usdt",
+        "underlyingTokens": [
+          "2tWC4JAdL4AxEFJySziYJfsAnW2MHKRo98vbAPiRDSk8",
+          "EJwZgeZrdC8TXTQbQBoL6bfuAnFUUy1PVCMB4DYPzVaS"
+        ],
+        "source": "saber"
+      }
+    },
+    {
+      "symbol": "SLP",
+      "name": "USDC-PAI Saber LP",
+      "logoURI": "https://registry.saber.so/token-icons/slp.png",
+      "decimals": 6,
+      "address": "J8fDLz5bfef14jDNC32nJLbVzpS9Rj1LBHwaSGfYn83J",
+      "chainId": 101,
+      "tags": ["saber-stableswap-lp"],
+      "extensions": {
+        "website": "https://app.saber.so/#/pools/usdc_pai",
+        "underlyingTokens": [
+          "2tWC4JAdL4AxEFJySziYJfsAnW2MHKRo98vbAPiRDSk8",
+          "4ry1pMstKzMJvMZSms62HduTyCbbqkUyrz17x1dajBmL"
+        ],
+        "source": "saber"
+      }
+    },
+    {
+      "symbol": "SLP",
+      "name": "renBTC-WBTC Saber LP",
+      "logoURI": "https://registry.saber.so/token-icons/slp.png",
+      "decimals": 8,
+      "address": "bLpASoWNdsz5DsjCaxpbM2FrkMowTJCydpwiDP4Vdzm",
+      "chainId": 101,
+      "tags": ["saber-stableswap-lp"],
+      "extensions": {
+        "website": "https://app.saber.so/#/pools/btc",
+        "underlyingTokens": [
+          "Ren3RLPCG6hpKay86d2fQccQLuGG331UNxwn2VTw3GJ",
+          "BtceyXMo5kwg8u6es4NoukBWQuMwtcBCZpFWUfZgVuZs"
+        ],
+        "source": "saber"
+      }
+    }
+  ]
+}

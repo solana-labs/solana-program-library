@@ -1,0 +1,35 @@
+[package]
+name = "spl-stake-pool"
+version = "0.6.3"
+description = "Solana Program Library Stake Pool"
+authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+repository = "https://github.com/solana-labs/solana-program-library"
+license = "Apache-2.0"
+edition = "2018"
+
+[features]
+no-entrypoint = []
+test-bpf = []
+
+[dependencies]
+arrayref = "0.3.6"
+borsh = "0.9"
+num-derive = "0.3"
+num-traits = "0.2"
+num_enum = "0.5.4"
+serde = "1.0.130"
+serde_derive = "1.0.103"
+solana-program = "1.9.5"
+spl-math = { version = "0.1", path = "../../libraries/math", features = [ "no-entrypoint" ] }
+spl-token = { version = "3.3", path = "../../token/program", features = [ "no-entrypoint" ] }
+thiserror = "1.0"
+bincode = "1.3.1"
+
+[dev-dependencies]
+proptest = "1.0"
+solana-program-test = "1.9.5"
+solana-sdk = "1.9.5"
+solana-vote-program = "1.9.5"
+
+[lib]
+crate-type = ["cdylib", "lib"]

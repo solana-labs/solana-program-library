@@ -1,0 +1,151 @@
+name: Pull Request
+
+on:
+  pull_request:
+    paths-ignore:
+    - 'docs/**'
+  push:
+    branches: [master]
+    paths-ignore:
+    - 'docs/**'
+
+jobs:
+  all_github_action_checks:
+    runs-on: ubuntu-latest
+    needs:
+      - rustfmt
+      - clippy
+      - audit
+      - cargo-build-test
+    steps:
+      - run: echo "Done"
+
+  rustfmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set env vars
+        run: |
+          source ci/rust-version.sh
+          echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_STABLE }}
+          override: true
+          profile: minimal
+          components: rustfmt
+
+      - name: Run fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check
+
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set env vars
+        run: |
+          source ci/rust-version.sh
+          echo "RUST_NIGHTLY=$rust_nightly" >> $GITHUB_ENV
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_NIGHTLY }}
+          override: true
+          profile: minimal
+          components: clippy
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-clippy-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            cargo-clippy-
+
+      - name: Install dependencies
+        run: ./ci/install-build-deps.sh
+
+      - name: Run clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: -Zunstable-options --workspace --all-targets -- --deny=warnings
+
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set env vars
+        run: |
+          source ci/rust-version.sh
+          echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_STABLE }}
+          override: true
+          profile: minimal
+
+      - name: Install Cargo Audit
+        uses: actions-rs/install@v0.1
+        with:
+          crate: cargo-audit
+          version: latest
+
+      - name: Run Cargo Audit
+        run: ./ci/do-audit.sh
+
+  cargo-build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set env vars
+        run: |
+          source ci/rust-version.sh
+          echo "RUST_STABLE=$rust_stable" >> $GITHUB_ENV
+          source ci/solana-version.sh
+          echo "SOLANA_VERSION=$solana_version" >> $GITHUB_ENV
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ env.RUST_STABLE }}
+          override: true
+          profile: minimal
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            # target # Removed due to build dependency caching conflicts
+          key: cargo-build-${{ hashFiles('**/Cargo.lock') }}-${{ env.RUST_STABLE}}
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/bin/rustfilt
+          key: cargo-bpf-bins-${{ runner.os }}
+
+      - uses: actions/cache@v2
+        with:
+          path: ~/.cache/solana
+          key: solana-${{ env.SOLANA_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          ./ci/install-build-deps.sh
+          ./ci/install-program-deps.sh
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+
+      - name: Build and test
+        run: ./ci/cargo-build-test.sh

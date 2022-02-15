@@ -1,0 +1,66 @@
+{
+    "name": "@solana/spl-token-lending",
+    "version": "0.3.4",
+    "description": "SPL Token Lending JavaScript API",
+    "license": "MIT",
+    "author": "Solana Maintainers <maintainers@solana.foundation>",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/solana-labs/solana-program-library"
+    },
+    "bugs": {
+        "url": "https://github.com/solana-labs/solana-program-library/issues"
+    },
+    "keywords": [],
+    "publishConfig": {
+        "access": "public"
+    },
+    "main": "lib/index.cjs.js",
+    "module": "lib/index.esm.js",
+    "types": "lib/src/index.d.ts",
+    "files": [
+        "lib"
+    ],
+    "scripts": {
+        "build": "rm -rf lib/* && tsc && rollup -c && rm lib/rollup.config.d.ts",
+        "deploy": "yarn docs && gh-pages -d docs -e token-lending",
+        "docs": "rm -rf docs/* && typedoc",
+        "lint": "eslint . --ext .ts && prettier --check '**/*.{ts,js,json}'",
+        "lint:fix": "eslint . --ext .ts --fix && prettier --write '**/*.{ts,js,json}'"
+    },
+    "dependencies": {
+        "bigint-buffer": "^1.1.5",
+        "bignumber.js": "^9.0.1",
+        "buffer-layout": "^1.2.1"
+    },
+    "peerDependencies": {
+        "@solana/spl-token": "^0.1.6",
+        "@solana/web3.js": "^1.20.0"
+    },
+    "devDependencies": {
+        "@rollup/plugin-commonjs": "^21.0.0",
+        "@rollup/plugin-node-resolve": "^13.0.0",
+        "@rollup/plugin-typescript": "^8.2.1",
+        "@solana/spl-token": "^0.1.6",
+        "@solana/web3.js": "^1.20.0",
+        "@types/eslint": "^7.2.13",
+        "@types/eslint-plugin-prettier": "^3.1.0",
+        "@types/node": "^16.0.0",
+        "@types/prettier": "^2.3.1",
+        "@typescript-eslint/eslint-plugin": "^4.28.0",
+        "@typescript-eslint/parser": "^4.28.1",
+        "eslint": "^7.29.0",
+        "eslint-config-prettier": "^8.3.0",
+        "eslint-plugin-prettier": "^3.4.0",
+        "gh-pages": "^3.2.3",
+        "prettier": "^2.2.1",
+        "rollup": "^2.52.3",
+        "ts-node": "^10.0.0",
+        "tslib": "^2.3.0",
+        "typedoc": "^0.22.3",
+        "typescript": "^4.3.5"
+    },
+    "engines": {
+        "node": ">= 10"
+    }
+}
