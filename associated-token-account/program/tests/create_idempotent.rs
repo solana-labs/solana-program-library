@@ -188,9 +188,8 @@ async fn fail_non_ata() {
         program_test(token_mint_address, true).start().await;
 
     let rent = banks_client.get_rent().await.unwrap();
-    let token_account_len = ExtensionType::get_account_len::<spl_token::state::Account>(&[
-        ExtensionType::ImmutableOwner,
-    ]);
+    let token_account_len =
+        ExtensionType::get_account_len::<Account>(&[ExtensionType::ImmutableOwner]);
     let token_account_balance = rent.minimum_balance(token_account_len);
 
     let wallet_address = Pubkey::new_unique();
@@ -202,10 +201,10 @@ async fn fail_non_ata() {
                 &account.pubkey(),
                 token_account_balance,
                 token_account_len as u64,
-                &spl_token::id(),
+                &spl_token_2022::id(),
             ),
             initialize_account(
-                &spl_token::id(),
+                &spl_token_2022::id(),
                 &account.pubkey(),
                 &token_mint_address,
                 &wallet_address,
@@ -222,7 +221,7 @@ async fn fail_non_ata() {
         &payer.pubkey(),
         &wallet_address,
         &token_mint_address,
-        &spl_token::id(),
+        &spl_token_2022::id(),
     );
     instruction.accounts[1] = AccountMeta::new(account.pubkey(), false); // <-- Invalid associated_account_address
 
