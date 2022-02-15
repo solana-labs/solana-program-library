@@ -20,6 +20,7 @@ num-traits = "0.2"
 num_enum = "0.5.4"
 solana-program = "1.9.5"
 solana-zk-token-sdk = "0.6.0"
+spl-token = { version = "3.3",  path = "../program", features = ["no-entrypoint"] }
 thiserror = "1.0"
 
 [dev-dependencies]

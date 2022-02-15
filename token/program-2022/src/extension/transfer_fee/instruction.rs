@@ -412,6 +412,8 @@ pub fn set_transfer_fee(
 mod test {
     use super::*;
 
+    const TRANSFER_FEE_PREFIX: u8 = 24;
+
     #[test]
     fn test_instruction_packing() {
         let check = TokenInstruction::TransferFeeExtension(
@@ -423,7 +425,7 @@ mod test {
             },
         );
         let packed = check.pack();
-        let mut expect = vec![23u8, 0, 1];
+        let mut expect = vec![TRANSFER_FEE_PREFIX, 0, 1];
         expect.extend_from_slice(&[11u8; 32]);
         expect.extend_from_slice(&[0]);
         expect.extend_from_slice(&111u16.to_le_bytes());
@@ -440,7 +442,7 @@ mod test {
             },
         );
         let packed = check.pack();
-        let mut expect = vec![23u8, 1];
+        let mut expect = vec![TRANSFER_FEE_PREFIX, 1];
         expect.extend_from_slice(&24u64.to_le_bytes());
         expect.extend_from_slice(&[24u8]);
         expect.extend_from_slice(&23u64.to_le_bytes());
@@ -452,7 +454,7 @@ mod test {
             TransferFeeInstruction::WithdrawWithheldTokensFromMint,
         );
         let packed = check.pack();
-        let expect = [23u8, 2];
+        let expect = [TRANSFER_FEE_PREFIX, 2];
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
@@ -462,7 +464,7 @@ mod test {
             TransferFeeInstruction::WithdrawWithheldTokensFromAccounts { num_token_accounts },
         );
         let packed = check.pack();
-        let expect = [23u8, 3, num_token_accounts];
+        let expect = [TRANSFER_FEE_PREFIX, 3, num_token_accounts];
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
@@ -471,7 +473,7 @@ mod test {
             TransferFeeInstruction::HarvestWithheldTokensToMint,
         );
         let packed = check.pack();
-        let expect = [23u8, 4];
+        let expect = [TRANSFER_FEE_PREFIX, 4];
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
@@ -482,7 +484,7 @@ mod test {
                 maximum_fee: u64::MAX,
             });
         let packed = check.pack();
-        let mut expect = vec![23u8, 5];
+        let mut expect = vec![TRANSFER_FEE_PREFIX, 5];
         expect.extend_from_slice(&u16::MAX.to_le_bytes());
         expect.extend_from_slice(&u64::MAX.to_le_bytes());
         assert_eq!(packed, expect);

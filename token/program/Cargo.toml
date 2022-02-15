@@ -21,6 +21,7 @@ solana-program = "1.9.5"
 thiserror = "1.0"
 
 [dev-dependencies]
+lazy_static = "1.4.0"
 solana-program-test = "1.9.5"
 solana-sdk = "1.9.5"
 
