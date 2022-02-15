@@ -4,7 +4,7 @@ A TypeScript library for interacting with the SPL Token program.
 
 ## Links
 
-- [TypeScript Docs](...)
+- [TypeScript Docs](https://solana-labs.github.io/solana-program-library/token/docs)
 - [FAQ (Frequently Asked Questions)](./FAQ.md)
 - [Install](#install)
 - [Usage](#usage)
