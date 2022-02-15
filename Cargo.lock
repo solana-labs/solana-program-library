@@ -3904,6 +3904,7 @@ dependencies = [
  "solana-program-test",
  "solana-sdk",
  "solana-zk-token-sdk",
+ "spl-token 3.3.0",
  "thiserror",
 ]
 

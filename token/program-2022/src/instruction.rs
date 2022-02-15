@@ -2,7 +2,7 @@
 
 use {
     crate::{
-        check_program_account,
+        check_program_account, check_spl_token_program_account,
         error::TokenError,
         extension::{transfer_fee::instruction::TransferFeeInstruction, ExtensionType},
     },
@@ -909,7 +909,7 @@ pub fn initialize_mint(
     freeze_authority_pubkey: Option<&Pubkey>,
     decimals: u8,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     let freeze_authority = freeze_authority_pubkey.cloned().into();
     let data = TokenInstruction::InitializeMint {
         mint_authority: *mint_authority_pubkey,
@@ -938,7 +938,7 @@ pub fn initialize_mint2(
     freeze_authority_pubkey: Option<&Pubkey>,
     decimals: u8,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     let freeze_authority = freeze_authority_pubkey.cloned().into();
     let data = TokenInstruction::InitializeMint2 {
         mint_authority: *mint_authority_pubkey,
@@ -963,7 +963,7 @@ pub fn initialize_account(
     mint_pubkey: &Pubkey,
     owner_pubkey: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     let data = TokenInstruction::InitializeAccount.pack();
 
     let accounts = vec![
@@ -987,7 +987,7 @@ pub fn initialize_account2(
     mint_pubkey: &Pubkey,
     owner_pubkey: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     let data = TokenInstruction::InitializeAccount2 {
         owner: *owner_pubkey,
     }
@@ -1013,8 +1013,7 @@ pub fn initialize_account3(
     mint_pubkey: &Pubkey,
     owner_pubkey: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
-    // NOTE: There is no program account check here for associated-token-account
-    // compatibility with both token programs.
+    check_spl_token_program_account(token_program_id)?;
     let data = TokenInstruction::InitializeAccount3 {
         owner: *owner_pubkey,
     }
@@ -1039,7 +1038,7 @@ pub fn initialize_multisig(
     signer_pubkeys: &[&Pubkey],
     m: u8,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     if !is_valid_signer_index(m as usize)
         || !is_valid_signer_index(signer_pubkeys.len())
         || m as usize > signer_pubkeys.len()
@@ -1069,7 +1068,7 @@ pub fn initialize_multisig2(
     signer_pubkeys: &[&Pubkey],
     m: u8,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     if !is_valid_signer_index(m as usize)
         || !is_valid_signer_index(signer_pubkeys.len())
         || m as usize > signer_pubkeys.len()
@@ -1104,7 +1103,7 @@ pub fn transfer(
     signer_pubkeys: &[&Pubkey],
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     #[allow(deprecated)]
     let data = TokenInstruction::Transfer { amount }.pack();
 
@@ -1135,7 +1134,7 @@ pub fn approve(
     signer_pubkeys: &[&Pubkey],
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     let data = TokenInstruction::Approve { amount }.pack();
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
@@ -1163,7 +1162,7 @@ pub fn revoke(
     owner_pubkey: &Pubkey,
     signer_pubkeys: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     let data = TokenInstruction::Revoke.pack();
 
     let mut accounts = Vec::with_capacity(2 + signer_pubkeys.len());
@@ -1192,7 +1191,7 @@ pub fn set_authority(
     owner_pubkey: &Pubkey,
     signer_pubkeys: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     let new_authority = new_authority_pubkey.cloned().into();
     let data = TokenInstruction::SetAuthority {
         authority_type,
@@ -1226,7 +1225,7 @@ pub fn mint_to(
     signer_pubkeys: &[&Pubkey],
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     let data = TokenInstruction::MintTo { amount }.pack();
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
@@ -1256,7 +1255,7 @@ pub fn burn(
     signer_pubkeys: &[&Pubkey],
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     let data = TokenInstruction::Burn { amount }.pack();
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
@@ -1285,7 +1284,7 @@ pub fn close_account(
     owner_pubkey: &Pubkey,
     signer_pubkeys: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     let data = TokenInstruction::CloseAccount.pack();
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
@@ -1314,7 +1313,7 @@ pub fn freeze_account(
     owner_pubkey: &Pubkey,
     signer_pubkeys: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     let data = TokenInstruction::FreezeAccount.pack();
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
@@ -1343,7 +1342,7 @@ pub fn thaw_account(
     owner_pubkey: &Pubkey,
     signer_pubkeys: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     let data = TokenInstruction::ThawAccount.pack();
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
@@ -1376,7 +1375,7 @@ pub fn transfer_checked(
     amount: u64,
     decimals: u8,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     let data = TokenInstruction::TransferChecked { amount, decimals }.pack();
 
     let mut accounts = Vec::with_capacity(4 + signer_pubkeys.len());
@@ -1410,7 +1409,7 @@ pub fn approve_checked(
     amount: u64,
     decimals: u8,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     let data = TokenInstruction::ApproveChecked { amount, decimals }.pack();
 
     let mut accounts = Vec::with_capacity(4 + signer_pubkeys.len());
@@ -1442,7 +1441,7 @@ pub fn mint_to_checked(
     amount: u64,
     decimals: u8,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     let data = TokenInstruction::MintToChecked { amount, decimals }.pack();
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
@@ -1473,7 +1472,7 @@ pub fn burn_checked(
     amount: u64,
     decimals: u8,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     let data = TokenInstruction::BurnChecked { amount, decimals }.pack();
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
@@ -1499,7 +1498,7 @@ pub fn sync_native(
     token_program_id: &Pubkey,
     account_pubkey: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
 
     Ok(Instruction {
         program_id: *token_program_id,
@@ -1514,8 +1513,7 @@ pub fn get_account_data_size(
     mint_pubkey: &Pubkey,
     extension_types: &[ExtensionType],
 ) -> Result<Instruction, ProgramError> {
-    // NOTE: There is no program account check here for associated-token-account
-    // compatibility with both token programs.
+    check_spl_token_program_account(token_program_id)?;
     Ok(Instruction {
         program_id: *token_program_id,
         accounts: vec![AccountMeta::new_readonly(*mint_pubkey, false)],
@@ -1546,8 +1544,7 @@ pub fn initialize_immutable_owner(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
-    // NOTE: There is no program account check here for associated-token-account
-    // compatibility with both token programs.
+    check_spl_token_program_account(token_program_id)?;
     Ok(Instruction {
         program_id: *token_program_id,
         accounts: vec![AccountMeta::new(*token_account, false)],
