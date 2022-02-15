@@ -29,7 +29,7 @@
         "clean": "shx rm -rf lib",
         "build": "yarn clean && tsc -p tsconfig.json; tsc-esm -p tsconfig.json && tsc -p tsconfig.cjs.json",
         "postbuild": "echo '{\"type\":\"commonjs\"}' > lib/cjs/package.json && echo '{\"type\":\"module\"}' > lib/esm/package.json",
-        "deploy": "yarn docs && gh-pages --dist docs --dotfiles",
+        "deploy": "yarn docs && gh-pages --dist token --dotfiles",
         "example": "node --experimental-specifier-resolution=node --loader ts-node/esm examples/create_mint_and_transfer_tokens.ts",
         "test": "yarn test:unit && yarn test:e2e-built && yarn test:e2e-native",
         "test:unit": "mocha test/unit",
