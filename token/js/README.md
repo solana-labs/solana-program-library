@@ -42,3 +42,8 @@ yarn build
 ```shell
 yarn test
 ```
+
+6. Run the example:
+```shell
+yarn example
+```
