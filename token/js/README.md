@@ -5,7 +5,7 @@ A TypeScript library for interacting with the SPL Token program.
 ## Links
 
 - [TypeScript Docs](...)
-- [FAQ (Frequently Asked Questions)](.../FAQ.md)
+- [FAQ (Frequently Asked Questions)](./FAQ.md)
 - [Install](#install)
 - [Usage](#usage)
 - [Build from Source](#build-from-source)
