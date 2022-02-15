@@ -1257,7 +1257,9 @@ fn prepare_withdraw_accounts(
 
             (
                 transient_stake_account_address,
-                validator.transient_stake_lamports - min_balance,
+                validator
+                    .transient_stake_lamports
+                    .saturating_sub(min_balance),
                 Some(validator.vote_account_address),
             )
         },
