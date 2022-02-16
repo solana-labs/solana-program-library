@@ -1,6 +1,6 @@
 [package]
 name = "spl-stake-pool"
-version = "0.6.3"
+version = "0.6.4"
 description = "Solana Program Library Stake Pool"
 authors = ["Solana Maintainers <maintainers@solana.foundation>"]
 repository = "https://github.com/solana-labs/solana-program-library"

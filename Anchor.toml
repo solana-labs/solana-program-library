@@ -2,7 +2,10 @@ anchor_version = "0.20.1"
 solana_version = "1.9.5"
 
 [workspace]
-members = ["governance/program"]
+members = [
+  "governance/program",
+  "stake-pool/program",
+]
 
 [provider]
 cluster = "mainnet"
@@ -10,3 +13,4 @@ wallet = "~/.config/solana/id.json"
 
 [programs.mainnet]
 spl_governance = "GovER5Lthms3bLBqWub97yVrMmEogzX7xNjdXpPPCVZw"
+spl_stake_pool = "SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy"
