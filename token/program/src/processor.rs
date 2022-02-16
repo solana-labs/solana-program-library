@@ -117,6 +117,7 @@ impl Processor {
 
         account.mint = *mint_info.key;
         account.owner = *owner;
+        account.close_authority = COption::None;
         account.delegate = COption::None;
         account.delegated_amount = 0;
         account.state = AccountState::Initialized;
