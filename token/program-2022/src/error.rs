@@ -101,9 +101,9 @@ pub enum TokenError {
     /// ElGamal public key mismatch
     #[error("ElGamal public key mismatch")]
     ConfidentialTransferElGamalPubkeyMismatch,
-    /// Available balance mismatch
-    #[error("Available balance mismatch")]
-    ConfidentialTransferAvailableBalanceMismatch,
+    /// Balance mismatch
+    #[error("Balance mismatch")]
+    ConfidentialTransferBalanceMismatch,
     /// Mint has non-zero supply. Burn all tokens before closing the mint.
     #[error("Mint has non-zero supply. Burn all tokens before closing the mint")]
     MintHasSupply,
