@@ -246,7 +246,9 @@ pub enum ConfidentialTransferInstruction {
     WithdrawWithheldTokensFromMint,
 
     /// Transfer all withheld tokens to an account. Signed by the mint's withdraw withheld tokens
-    /// authority.
+    /// authority. This instruction is susceptible to front-running. Use
+    /// `HarvestWithheldTokensToMint` and `WithdrawWithheldTokensFromMint` as an alternative that
+    /// is not susceptible to front-running.
     ///
     /// Accounts expected by this instruction:
     ///
