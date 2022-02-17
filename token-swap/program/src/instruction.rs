@@ -78,7 +78,7 @@ pub struct DepositSingleTokenTypeExactAmountIn {
     pub minimum_pool_token_amount: u64,
 }
 
-/// WithdrawAllTokenTypes instruction data
+/// WithdrawSingleTokenTypeExactAmountOut instruction data
 #[cfg_attr(feature = "fuzz", derive(Arbitrary))]
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq)]
