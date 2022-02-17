@@ -138,6 +138,9 @@ pub enum TokenError {
     /// Transfer is disabled for this mint
     #[error("Transfer is disabled for this mint")]
     NonTransferable,
+    /// Non-transferable tokens can't be minted to an account without immutable ownership
+    #[error("Non-transferable tokens can't be minted to an account without immutable ownership")]
+    NonTransferableNeedsImmutableOwnership,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
