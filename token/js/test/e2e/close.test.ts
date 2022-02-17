@@ -3,10 +3,8 @@ import chaiAsPromised from 'chai-as-promised';
 chai.use(chaiAsPromised);
 
 import { Connection, Keypair, PublicKey, Signer } from '@solana/web3.js';
-
-import { TOKEN_PROGRAM_ID, createMint, createAccount, closeAccount, mintTo } from '../../src';
-
-import { newAccountWithLamports, getConnection } from './common';
+import { createMint, createAccount, closeAccount, mintTo } from '../../src';
+import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from './common';
 
 const TEST_TOKEN_DECIMALS = 2;
 describe('freezeThaw', () => {
@@ -32,18 +30,18 @@ describe('freezeThaw', () => {
             TEST_TOKEN_DECIMALS,
             mintKeypair,
             undefined,
-            TOKEN_PROGRAM_ID
+            TEST_PROGRAM_ID
         );
     });
     beforeEach(async () => {
         owner = Keypair.generate();
         destination = Keypair.generate().publicKey;
-        account = await createAccount(connection, payer, mint, owner.publicKey, undefined, undefined, TOKEN_PROGRAM_ID);
+        account = await createAccount(connection, payer, mint, owner.publicKey, undefined, undefined, TEST_PROGRAM_ID);
     });
     it('failsWithNonZeroAmount', async () => {
         const amount = BigInt(1000);
-        await mintTo(connection, payer, mint, account, mintAuthority, amount, [], undefined, TOKEN_PROGRAM_ID);
-        expect(closeAccount(connection, payer, account, destination, owner, [], undefined, TOKEN_PROGRAM_ID)).to.be
+        await mintTo(connection, payer, mint, account, mintAuthority, amount, [], undefined, TEST_PROGRAM_ID);
+        expect(closeAccount(connection, payer, account, destination, owner, [], undefined, TEST_PROGRAM_ID)).to.be
             .rejected;
     });
     it('works', async () => {
@@ -54,7 +52,7 @@ describe('freezeThaw', () => {
             tokenRentExemptAmount = accountInfo.lamports;
         }
 
-        await closeAccount(connection, payer, account, destination, owner, [], undefined, TOKEN_PROGRAM_ID);
+        await closeAccount(connection, payer, account, destination, owner, [], undefined, TEST_PROGRAM_ID);
 
         const closedInfo = await connection.getAccountInfo(account);
         expect(closedInfo).to.be.null;

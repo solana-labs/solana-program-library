@@ -1,4 +1,5 @@
 export * from './createMint';
+export * from './createNativeMint';
 export * from './createAccount';
 export * from './createWrappedNativeAccount';
 export * from './createMultisig';

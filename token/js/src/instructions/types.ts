@@ -21,4 +21,13 @@ export enum TokenInstruction {
     InitializeAccount3 = 18,
     InitializeMultisig2 = 19,
     InitializeMint2 = 20,
+    GetAccountDataSize = 21,
+    InitializeImmutableOwner = 22,
+    InitializeMintCloseAuthority = 23,
+    TransferFeeExtension = 24,
+    ConfidentialTransferExtension = 25,
+    DefaultAccountStateExtension = 26,
+    Reallocate = 27,
+    MemoTransferExtension = 28,
+    CreateNativeMint = 29,
 }

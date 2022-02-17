@@ -4,9 +4,9 @@ chai.use(chaiAsPromised);
 
 import { Connection, Keypair, PublicKey, Signer } from '@solana/web3.js';
 
-import { TOKEN_PROGRAM_ID, createMint, getMint, createAccount, getAccount, mintTo, mintToChecked } from '../../src';
+import { createMint, getMint, createAccount, getAccount, mintTo, mintToChecked } from '../../src';
 
-import { newAccountWithLamports, getConnection } from './common';
+import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from './common';
 
 const TEST_TOKEN_DECIMALS = 2;
 describe('mint', () => {
@@ -29,19 +29,19 @@ describe('mint', () => {
             TEST_TOKEN_DECIMALS,
             mintKeypair,
             undefined,
-            TOKEN_PROGRAM_ID
+            TEST_PROGRAM_ID
         );
         owner = Keypair.generate();
-        account = await createAccount(connection, payer, mint, owner.publicKey, undefined, undefined, TOKEN_PROGRAM_ID);
+        account = await createAccount(connection, payer, mint, owner.publicKey, undefined, undefined, TEST_PROGRAM_ID);
     });
     it('mintTo', async () => {
         const amount = BigInt(1000);
-        await mintTo(connection, payer, mint, account, mintAuthority, amount, [], undefined, TOKEN_PROGRAM_ID);
+        await mintTo(connection, payer, mint, account, mintAuthority, amount, [], undefined, TEST_PROGRAM_ID);
 
-        const mintInfo = await getMint(connection, mint, undefined, TOKEN_PROGRAM_ID);
+        const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
         expect(mintInfo.supply).to.eql(amount);
 
-        const accountInfo = await getAccount(connection, account, undefined, TOKEN_PROGRAM_ID);
+        const accountInfo = await getAccount(connection, account, undefined, TEST_PROGRAM_ID);
         expect(accountInfo.amount).to.eql(amount);
     });
     it('mintToChecked', async () => {
@@ -56,11 +56,11 @@ describe('mint', () => {
             TEST_TOKEN_DECIMALS,
             [],
             undefined,
-            TOKEN_PROGRAM_ID
+            TEST_PROGRAM_ID
         );
 
         expect(
-            mintToChecked(connection, payer, mint, account, mintAuthority, amount, 1, [], undefined, TOKEN_PROGRAM_ID)
+            mintToChecked(connection, payer, mint, account, mintAuthority, amount, 1, [], undefined, TEST_PROGRAM_ID)
         ).to.be.rejected;
     });
 });

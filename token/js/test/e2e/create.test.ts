@@ -5,7 +5,6 @@ import chaiAsPromised from 'chai-as-promised';
 chai.use(chaiAsPromised);
 
 import {
-    TOKEN_PROGRAM_ID,
     ASSOCIATED_TOKEN_PROGRAM_ID,
     createMint,
     getMint,
@@ -14,7 +13,7 @@ import {
     getAssociatedTokenAddress,
 } from '../../src';
 
-import { newAccountWithLamports, getConnection } from './common';
+import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from './common';
 
 const TEST_TOKEN_DECIMALS = 2;
 describe('createMint', () => {
@@ -31,10 +30,10 @@ describe('createMint', () => {
             TEST_TOKEN_DECIMALS,
             mintKeypair,
             undefined,
-            TOKEN_PROGRAM_ID
+            TEST_PROGRAM_ID
         );
 
-        const mintInfo = await getMint(connection, mint, undefined, TOKEN_PROGRAM_ID);
+        const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
 
         expect(mintInfo.mintAuthority).to.eql(testMintAuthority.publicKey);
         expect(mintInfo.supply).to.eql(BigInt(0));
@@ -61,7 +60,7 @@ describe('createAccount', () => {
             TEST_TOKEN_DECIMALS,
             mintKeypair,
             undefined,
-            TOKEN_PROGRAM_ID
+            TEST_PROGRAM_ID
         );
     }),
         it('auxiliary token account', async () => {
@@ -73,9 +72,9 @@ describe('createAccount', () => {
                 owner.publicKey,
                 Keypair.generate(),
                 undefined,
-                TOKEN_PROGRAM_ID
+                TEST_PROGRAM_ID
             );
-            const accountInfo = await getAccount(connection, account, undefined, TOKEN_PROGRAM_ID);
+            const accountInfo = await getAccount(connection, account, undefined, TEST_PROGRAM_ID);
             expect(accountInfo.mint).to.eql(mint);
             expect(accountInfo.owner).to.eql(owner.publicKey);
             expect(accountInfo.amount).to.eql(BigInt(0));
@@ -95,7 +94,7 @@ describe('createAccount', () => {
                 owner.publicKey,
                 Keypair.generate(),
                 undefined,
-                TOKEN_PROGRAM_ID
+                TEST_PROGRAM_ID
             );
             expect(account2).to.not.eql(account);
         }),
@@ -105,7 +104,7 @@ describe('createAccount', () => {
                 mint,
                 owner.publicKey,
                 false,
-                TOKEN_PROGRAM_ID,
+                TEST_PROGRAM_ID,
                 ASSOCIATED_TOKEN_PROGRAM_ID
             );
 
@@ -120,11 +119,11 @@ describe('createAccount', () => {
                 owner.publicKey,
                 undefined, // uses ATA by default
                 undefined,
-                TOKEN_PROGRAM_ID
+                TEST_PROGRAM_ID
             );
             expect(createdAddress).to.eql(associatedAddress);
 
-            const accountInfo = await getAccount(connection, associatedAddress, undefined, TOKEN_PROGRAM_ID);
+            const accountInfo = await getAccount(connection, associatedAddress, undefined, TEST_PROGRAM_ID);
             expect(accountInfo).to.not.be.null;
             expect(accountInfo.mint).to.eql(mint);
             expect(accountInfo.owner).to.eql(owner.publicKey);
@@ -139,7 +138,7 @@ describe('createAccount', () => {
                     owner.publicKey,
                     undefined, // uses ATA by default
                     undefined,
-                    TOKEN_PROGRAM_ID
+                    TEST_PROGRAM_ID
                 )
             ).to.be.rejected;
         });
