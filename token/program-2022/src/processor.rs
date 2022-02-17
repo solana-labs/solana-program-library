@@ -700,6 +700,15 @@ impl Processor {
 
         let mut mint_data = mint_info.data.borrow_mut();
         let mut mint = StateWithExtensionsMut::<Mint>::unpack(&mut mint_data)?;
+
+        // If the mint if non-transferable, only allow minting to accounts
+        // with immutable ownership.
+        if mint.get_extension::<NonTransferable>().is_ok() {
+            if !dest_account.get_extension::<ImmutableOwner>().is_ok() {
+                return Err(TokenError::NonTransferableNeedsImmutableOwnership.into());
+            }
+        }
+
         if let Some(expected_decimals) = expected_decimals {
             if expected_decimals != mint.base.decimals {
                 return Err(TokenError::MintDecimalsMismatch.into());
@@ -1438,6 +1447,9 @@ impl PrintProgramError for TokenError {
             }
             TokenError::NonTransferable => {
                 msg!("Transfer is disabled for this mint");
+            }
+            TokenError::NonTransferableNeedsImmutableOwnership => {
+                msg!("Non-transferable tokens can't be minted to an account without immutable ownership");
             }
         }
     }
