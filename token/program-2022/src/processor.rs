@@ -963,22 +963,24 @@ impl Processor {
         let native_account_info = next_account_info(account_info_iter)?;
 
         check_program_account(native_account_info.owner)?;
-        let mut native_account = Account::unpack(&native_account_info.data.borrow())?;
+        let mut native_account_data = native_account_info.data.borrow_mut();
+        let mut native_account =
+            StateWithExtensionsMut::<Account>::unpack(&mut native_account_data)?;
 
-        if let COption::Some(rent_exempt_reserve) = native_account.is_native {
+        if let COption::Some(rent_exempt_reserve) = native_account.base.is_native {
             let new_amount = native_account_info
                 .lamports()
                 .checked_sub(rent_exempt_reserve)
                 .ok_or(TokenError::Overflow)?;
-            if new_amount < native_account.amount {
+            if new_amount < native_account.base.amount {
                 return Err(TokenError::InvalidState.into());
             }
-            native_account.amount = new_amount;
+            native_account.base.amount = new_amount;
         } else {
             return Err(TokenError::NonNativeNotSupported.into());
         }
 
-        Account::pack(native_account, &mut native_account_info.data.borrow_mut())?;
+        native_account.pack_base();
         Ok(())
     }
 

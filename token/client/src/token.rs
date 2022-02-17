@@ -722,6 +722,15 @@ where
         .await
     }
 
+    /// Sync native account lamports
+    pub async fn sync_native(&self, account: &Pubkey) -> TokenResult<T::Output> {
+        self.process_ixs::<[&dyn Signer; 0]>(
+            &[instruction::sync_native(&self.program_id, account)?],
+            &[],
+        )
+        .await
+    }
+
     /// Set transfer fee
     pub async fn set_transfer_fee<S2: Signer>(
         &self,
