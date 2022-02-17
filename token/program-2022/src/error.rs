@@ -139,8 +139,8 @@ pub enum TokenError {
     #[error("No memo in previous instruction; required for recipient to receive a transfer")]
     NoMemo,
     /// Transfer is disabled for this account
-    #[error("Transfer is disabled for this account")]
-    TransferDisabled,
+    #[error("Transfer is disabled for this mint")]
+    NonTransferable,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {

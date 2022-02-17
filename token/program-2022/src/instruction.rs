@@ -571,19 +571,19 @@ pub enum TokenInstruction<'a> {
     ///   2. `[]` System program for mint account funding
     ///
     CreateNativeMint,
-    /// Initialize the Transfer Disabled extension for the given token account
+    /// Initialize the non transferable extension for the given mint account
     ///
     /// Fails if the account has already been initialized, so must be called before
-    /// `InitializeAccount`.
+    /// `InitializeMint`.
     ///
     /// Accounts expected by this instruction:
     ///
-    ///   0. `[writable]`  The account to initialize.
+    ///   0. `[writable]`  The mint account to initialize.
     ///
     /// Data expected by this instruction:
     ///   None
     ///
-    InitializeTransferDisabled,
+    InitializeNonTransferableMint,
 }
 impl<'a> TokenInstruction<'a> {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
@@ -712,7 +712,7 @@ impl<'a> TokenInstruction<'a> {
             }
             30 => Self::MemoTransferExtension,
             31 => Self::CreateNativeMint,
-            32 => Self::InitializeTransferDisabled,
+            32 => Self::InitializeNonTransferableMint,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -859,7 +859,7 @@ impl<'a> TokenInstruction<'a> {
             &Self::CreateNativeMint => {
                 buf.push(31);
             }
-            &Self::InitializeTransferDisabled => {
+            &Self::InitializeNonTransferableMint => {
                 buf.push(32);
             }
         };
@@ -1701,16 +1701,16 @@ pub fn create_native_mint(
     })
 }
 
-/// Create an `InitializeTransferDisabled` instruction
-pub fn initialize_transfer_disabled(
+/// Creates an `InitializeNonTransferableMint` instruction
+pub fn initialize_non_transferable_mint(
     token_program_id: &Pubkey,
-    token_account: &Pubkey,
+    mint_pubkey: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     Ok(Instruction {
         program_id: *token_program_id,
-        accounts: vec![AccountMeta::new(*token_account, false)],
-        data: TokenInstruction::InitializeTransferDisabled.pack(),
+        accounts: vec![AccountMeta::new(*mint_pubkey, false)],
+        data: TokenInstruction::InitializeNonTransferableMint.pack(),
     })
 }
 
