@@ -58,8 +58,10 @@ export async function prepareWithdrawAccounts(
     throw new Error('No accounts found');
   }
 
-  const minBalance =
-    (await connection.getMinimumBalanceForRentExemption(StakeProgram.space)) + MINIMUM_ACTIVE_STAKE;
+  const minBalanceForRentExemption = await connection.getMinimumBalanceForRentExemption(
+    StakeProgram.space,
+  );
+  const minBalance = minBalanceForRentExemption + MINIMUM_ACTIVE_STAKE;
 
   let accounts = [] as Array<{
     type: 'preferred' | 'active' | 'transient' | 'reserve';
@@ -81,9 +83,9 @@ export async function prepareWithdrawAccounts(
     );
 
     if (!validator.activeStakeLamports.isZero()) {
-      const isPreferred =
-        stakePool?.preferredWithdrawValidatorVoteAddress?.toBase58() ==
-        validator.voteAccountAddress.toBase58();
+      const isPreferred = stakePool?.preferredWithdrawValidatorVoteAddress?.equals(
+        validator.voteAccountAddress,
+      );
       accounts.push({
         type: isPreferred ? 'preferred' : 'active',
         voteAddress: validator.voteAccountAddress,
@@ -92,19 +94,19 @@ export async function prepareWithdrawAccounts(
       });
     }
 
-    const transientStakeAccountAddress = await findTransientStakeProgramAddress(
-      STAKE_POOL_PROGRAM_ID,
-      validator.voteAccountAddress,
-      stakePoolAddress,
-      validator.transientSeedSuffixStart,
-    );
-
-    if (!validator.transientStakeLamports?.isZero()) {
+    const transientStakeLamports = validator.transientStakeLamports.toNumber() - minBalance;
+    if (transientStakeLamports > 0) {
+      const transientStakeAccountAddress = await findTransientStakeProgramAddress(
+        STAKE_POOL_PROGRAM_ID,
+        validator.voteAccountAddress,
+        stakePoolAddress,
+        validator.transientSeedSuffixStart,
+      );
       accounts.push({
         type: 'transient',
         voteAddress: validator.voteAccountAddress,
         stakeAddress: transientStakeAccountAddress,
-        lamports: validator.transientStakeLamports.toNumber(),
+        lamports: transientStakeLamports,
       });
     }
   }
@@ -113,11 +115,12 @@ export async function prepareWithdrawAccounts(
   accounts = accounts.sort(compareFn ? compareFn : (a, b) => b.lamports - a.lamports);
 
   const reserveStake = await connection.getAccountInfo(stakePool.reserveStake);
-  if (reserveStake && reserveStake.lamports > 0) {
+  const reserveStakeBalance = (reserveStake?.lamports ?? 0) - minBalanceForRentExemption - 1;
+  if (reserveStakeBalance > 0) {
     accounts.push({
       type: 'reserve',
       stakeAddress: stakePool.reserveStake,
-      lamports: reserveStake?.lamports,
+      lamports: reserveStakeBalance,
     });
   }
 
@@ -139,7 +142,7 @@ export async function prepareWithdrawAccounts(
         continue;
       }
 
-      let availableForWithdrawal = calcPoolTokensForDeposit(stakePool, lamports - minBalance);
+      let availableForWithdrawal = calcPoolTokensForDeposit(stakePool, lamports);
 
       if (!skipFee && !inverseFee.numerator.isZero()) {
         availableForWithdrawal = divideBnToNumber(
