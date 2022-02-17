@@ -1117,7 +1117,7 @@ impl Processor {
         )
     }
 
-    /// Processes an [InitializeMintCloseAuthority](enum.TokenInstruction.html) instruction
+    /// Processes an [InitializeNonTransferableMint](enum.TokenInstruction.html) instruction
     pub fn process_initialize_non_transferable_mint(accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let mint_account_info = next_account_info(account_info_iter)?;

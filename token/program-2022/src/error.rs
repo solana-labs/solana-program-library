@@ -135,10 +135,11 @@ pub enum TokenError {
     /// mint and try again
     #[error("An account can only be closed if its withheld fee balance is zero, harvest fees to the mint and try again")]
     AccountHasWithheldTransferFees,
+
     /// No memo in previous instruction; required for recipient to receive a transfer
     #[error("No memo in previous instruction; required for recipient to receive a transfer")]
     NoMemo,
-    /// Transfer is disabled for this account
+    /// Transfer is disabled for this mint
     #[error("Transfer is disabled for this mint")]
     NonTransferable,
 }

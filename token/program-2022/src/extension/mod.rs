@@ -37,7 +37,7 @@ pub mod immutable_owner;
 pub mod memo_transfer;
 /// Mint Close Authority extension
 pub mod mint_close_authority;
-/// Transfer Disabled extension
+/// Non Transferable extension
 pub mod non_transferable;
 /// Utility to reallocate token accounts
 pub mod reallocate;
@@ -602,7 +602,7 @@ pub enum ExtensionType {
     ImmutableOwner,
     /// Require inbound transfers to have memo
     MemoTransfer,
-    /// Indicates that the tokens can't be transfered between accounts
+    /// Indicates that the tokens from this mint can't be transfered
     NonTransferable,
     /// Padding extension used to make an account exactly Multisig::LEN, used for testing
     #[cfg(test)]
