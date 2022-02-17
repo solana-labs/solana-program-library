@@ -2629,6 +2629,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "serial_test"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e0bccbcf40c8938196944a3da0e133e031a33f4d6b72db3bda3cc556e361905d"
+dependencies = [
+ "lazy_static",
+ "parking_lot",
+ "serial_test_derive",
+]
+
+[[package]]
+name = "serial_test_derive"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b2acd6defeddb41eb60bb468f8825d0cfd0c2a76bc03bfd235b6a1dc4f6a1ad5"
+dependencies = [
+ "proc-macro2 1.0.36",
+ "quote 1.0.14",
+ "syn 1.0.84",
+]
+
+[[package]]
 name = "sha-1"
 version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3884,6 +3906,7 @@ dependencies = [
  "num-derive",
  "num-traits",
  "num_enum",
+ "serial_test",
  "solana-program",
  "solana-program-test",
  "solana-sdk",
@@ -3900,6 +3923,7 @@ dependencies = [
  "num-derive",
  "num-traits",
  "num_enum",
+ "serial_test",
  "solana-program",
  "solana-program-test",
  "solana-sdk",

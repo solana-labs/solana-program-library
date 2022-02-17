@@ -412,7 +412,7 @@ pub fn set_transfer_fee(
 mod test {
     use super::*;
 
-    const TRANSFER_FEE_PREFIX: u8 = 24;
+    const TRANSFER_FEE_PREFIX: u8 = 26;
 
     #[test]
     fn test_instruction_packing() {

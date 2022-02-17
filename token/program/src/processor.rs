@@ -1,9 +1,11 @@
 //! Program state processor
 
 use crate::{
+    amount_to_ui_amount_string_trimmed,
     error::TokenError,
     instruction::{is_valid_signer_index, AuthorityType, TokenInstruction, MAX_SIGNERS},
     state::{Account, AccountState, Mint, Multisig},
+    try_ui_amount_into_amount,
 };
 use num_traits::FromPrimitive;
 use solana_program::{
@@ -768,7 +770,8 @@ impl Processor {
         // make sure the mint is valid
         let mint_info = next_account_info(account_info_iter)?;
         Self::check_account_owner(program_id, mint_info)?;
-        let _ = Mint::unpack(&mint_info.data.borrow())?;
+        let _ = Mint::unpack(&mint_info.data.borrow())
+            .map_err(|_| Into::<ProgramError>::into(TokenError::InvalidMint))?;
         set_return_data(&Account::LEN.to_le_bytes());
         Ok(())
     }
@@ -782,6 +785,42 @@ impl Processor {
             return Err(TokenError::AlreadyInUse.into());
         }
         msg!("Please upgrade to SPL Token 2022 for immutable owner support");
+        Ok(())
+    }
+
+    /// Processes an [AmountToUiAmount](enum.TokenInstruction.html) instruction
+    pub fn process_amount_to_ui_amount(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        amount: u64,
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let mint_info = next_account_info(account_info_iter)?;
+        Self::check_account_owner(program_id, mint_info)?;
+
+        let mint = Mint::unpack(&mint_info.data.borrow_mut())
+            .map_err(|_| Into::<ProgramError>::into(TokenError::InvalidMint))?;
+        let ui_amount = amount_to_ui_amount_string_trimmed(amount, mint.decimals);
+
+        set_return_data(&ui_amount.into_bytes());
+        Ok(())
+    }
+
+    /// Processes an [AmountToUiAmount](enum.TokenInstruction.html) instruction
+    pub fn process_ui_amount_to_amount(
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
+        ui_amount: &str,
+    ) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let mint_info = next_account_info(account_info_iter)?;
+        Self::check_account_owner(program_id, mint_info)?;
+
+        let mint = Mint::unpack(&mint_info.data.borrow_mut())
+            .map_err(|_| Into::<ProgramError>::into(TokenError::InvalidMint))?;
+        let amount = try_ui_amount_into_amount(ui_amount.to_string(), mint.decimals)?;
+
+        set_return_data(&amount.to_le_bytes());
         Ok(())
     }
 
@@ -893,6 +932,14 @@ impl Processor {
                 msg!("Instruction: InitializeImmutableOwner");
                 Self::process_initialize_immutable_owner(accounts)
             }
+            TokenInstruction::AmountToUiAmount { amount } => {
+                msg!("Instruction: AmountToUiAmount");
+                Self::process_amount_to_ui_amount(program_id, accounts, amount)
+            }
+            TokenInstruction::UiAmountToAmount { ui_amount } => {
+                msg!("Instruction: UiAmountToAmount");
+                Self::process_ui_amount_to_amount(program_id, accounts, ui_amount)
+            }
         }
     }
 
@@ -997,6 +1044,7 @@ impl PrintProgramError for TokenError {
 mod tests {
     use super::*;
     use crate::instruction::*;
+    use serial_test::serial;
     use solana_program::{
         account_info::IntoAccountInfo, clock::Epoch, instruction::Instruction, program_error,
         sysvar::rent,
@@ -6406,6 +6454,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_get_account_data_size() {
         // see integration tests for return-data validity
         let program_id = crate::id();
@@ -6416,7 +6465,7 @@ mod tests {
         let mint_key = Pubkey::new_unique();
         // fail if an invalid mint is passed in
         assert_eq!(
-            Err(ProgramError::UninitializedAccount),
+            Err(TokenError::InvalidMint.into()),
             do_process_instruction(
                 get_account_data_size(&program_id, &mint_key).unwrap(),
                 vec![&mut mint_account],
@@ -6485,6 +6534,181 @@ mod tests {
             do_process_instruction(
                 initialize_immutable_owner(&program_id, &account_key).unwrap(),
                 vec![&mut account_account],
+            )
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn test_amount_to_ui_amount() {
+        let program_id = crate::id();
+        let owner_key = Pubkey::new_unique();
+        let mint_key = Pubkey::new_unique();
+        let mut mint_account =
+            SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
+        let mut rent_sysvar = rent_sysvar();
+
+        // fail if an invalid mint is passed in
+        assert_eq!(
+            Err(TokenError::InvalidMint.into()),
+            do_process_instruction(
+                amount_to_ui_amount(&program_id, &mint_key, 110).unwrap(),
+                vec![&mut mint_account],
+            )
+        );
+
+        // create mint
+        do_process_instruction(
+            initialize_mint(&program_id, &mint_key, &owner_key, None, 2).unwrap(),
+            vec![&mut mint_account, &mut rent_sysvar],
+        )
+        .unwrap();
+
+        set_expected_data("0.23".as_bytes().to_vec());
+        do_process_instruction(
+            amount_to_ui_amount(&program_id, &mint_key, 23).unwrap(),
+            vec![&mut mint_account],
+        )
+        .unwrap();
+
+        set_expected_data("1.1".as_bytes().to_vec());
+        do_process_instruction(
+            amount_to_ui_amount(&program_id, &mint_key, 110).unwrap(),
+            vec![&mut mint_account],
+        )
+        .unwrap();
+
+        set_expected_data("42".as_bytes().to_vec());
+        do_process_instruction(
+            amount_to_ui_amount(&program_id, &mint_key, 4200).unwrap(),
+            vec![&mut mint_account],
+        )
+        .unwrap();
+
+        set_expected_data("0".as_bytes().to_vec());
+        do_process_instruction(
+            amount_to_ui_amount(&program_id, &mint_key, 0).unwrap(),
+            vec![&mut mint_account],
+        )
+        .unwrap();
+    }
+
+    #[test]
+    #[serial]
+    fn test_ui_amount_to_amount() {
+        let program_id = crate::id();
+        let owner_key = Pubkey::new_unique();
+        let mint_key = Pubkey::new_unique();
+        let mut mint_account =
+            SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
+        let mut rent_sysvar = rent_sysvar();
+
+        // fail if an invalid mint is passed in
+        assert_eq!(
+            Err(TokenError::InvalidMint.into()),
+            do_process_instruction(
+                ui_amount_to_amount(&program_id, &mint_key, "1.1").unwrap(),
+                vec![&mut mint_account],
+            )
+        );
+
+        // create mint
+        do_process_instruction(
+            initialize_mint(&program_id, &mint_key, &owner_key, None, 2).unwrap(),
+            vec![&mut mint_account, &mut rent_sysvar],
+        )
+        .unwrap();
+
+        set_expected_data(23u64.to_le_bytes().to_vec());
+        do_process_instruction(
+            ui_amount_to_amount(&program_id, &mint_key, "0.23").unwrap(),
+            vec![&mut mint_account],
+        )
+        .unwrap();
+
+        set_expected_data(20u64.to_le_bytes().to_vec());
+        do_process_instruction(
+            ui_amount_to_amount(&program_id, &mint_key, "0.20").unwrap(),
+            vec![&mut mint_account],
+        )
+        .unwrap();
+
+        set_expected_data(20u64.to_le_bytes().to_vec());
+        do_process_instruction(
+            ui_amount_to_amount(&program_id, &mint_key, "0.2000").unwrap(),
+            vec![&mut mint_account],
+        )
+        .unwrap();
+
+        set_expected_data(20u64.to_le_bytes().to_vec());
+        do_process_instruction(
+            ui_amount_to_amount(&program_id, &mint_key, ".20").unwrap(),
+            vec![&mut mint_account],
+        )
+        .unwrap();
+
+        set_expected_data(110u64.to_le_bytes().to_vec());
+        do_process_instruction(
+            ui_amount_to_amount(&program_id, &mint_key, "1.1").unwrap(),
+            vec![&mut mint_account],
+        )
+        .unwrap();
+
+        set_expected_data(110u64.to_le_bytes().to_vec());
+        do_process_instruction(
+            ui_amount_to_amount(&program_id, &mint_key, "1.10").unwrap(),
+            vec![&mut mint_account],
+        )
+        .unwrap();
+
+        set_expected_data(4200u64.to_le_bytes().to_vec());
+        do_process_instruction(
+            ui_amount_to_amount(&program_id, &mint_key, "42").unwrap(),
+            vec![&mut mint_account],
+        )
+        .unwrap();
+
+        set_expected_data(4200u64.to_le_bytes().to_vec());
+        do_process_instruction(
+            ui_amount_to_amount(&program_id, &mint_key, "42.").unwrap(),
+            vec![&mut mint_account],
+        )
+        .unwrap();
+
+        set_expected_data(0u64.to_le_bytes().to_vec());
+        do_process_instruction(
+            ui_amount_to_amount(&program_id, &mint_key, "0").unwrap(),
+            vec![&mut mint_account],
+        )
+        .unwrap();
+
+        // fail if invalid ui_amount passed in
+        assert_eq!(
+            Err(ProgramError::InvalidArgument),
+            do_process_instruction(
+                ui_amount_to_amount(&program_id, &mint_key, "").unwrap(),
+                vec![&mut mint_account],
+            )
+        );
+        assert_eq!(
+            Err(ProgramError::InvalidArgument),
+            do_process_instruction(
+                ui_amount_to_amount(&program_id, &mint_key, ".").unwrap(),
+                vec![&mut mint_account],
+            )
+        );
+        assert_eq!(
+            Err(ProgramError::InvalidArgument),
+            do_process_instruction(
+                ui_amount_to_amount(&program_id, &mint_key, "0.111").unwrap(),
+                vec![&mut mint_account],
+            )
+        );
+        assert_eq!(
+            Err(ProgramError::InvalidArgument),
+            do_process_instruction(
+                ui_amount_to_amount(&program_id, &mint_key, "0.t").unwrap(),
+                vec![&mut mint_account],
             )
         );
     }
