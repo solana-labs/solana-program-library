@@ -19,7 +19,7 @@ pub const MAX_SIGNERS: usize = 11;
 /// Instructions supported by the token program.
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq)]
-pub enum TokenInstruction {
+pub enum TokenInstruction<'a> {
     /// Initializes a new mint and optionally deposits all the newly minted
     /// tokens in an account.
     ///
@@ -434,10 +434,38 @@ pub enum TokenInstruction {
     /// Data expected by this instruction:
     ///   None
     InitializeImmutableOwner,
+    /// Convert an Amount of tokens to a UiAmount `string`, using the given mint.
+    /// In this version of the program, the mint can only specify the number of decimals.
+    ///
+    /// Fails on an invalid mint.
+    ///
+    /// Return data can be fetched using `sol_get_return_data` and deserialized with
+    /// `String::from_utf8`.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[]` The mint to calculate for
+    AmountToUiAmount {
+        /// The amount of tokens to reformat.
+        amount: u64,
+    },
+    /// Convert a UiAmount of tokens to a little-endian `u64` raw Amount, using the given mint.
+    /// In this version of the program, the mint can only specify the number of decimals.
+    ///
+    /// Return data can be fetched using `sol_get_return_data` and deserializing
+    /// the return data as a little-endian `u64`.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[]` The mint to calculate for
+    UiAmountToAmount {
+        /// The ui_amount of tokens to reformat.
+        ui_amount: &'a str,
+    },
 }
-impl TokenInstruction {
+impl<'a> TokenInstruction<'a> {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
-    pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
+    pub fn unpack(input: &'a [u8]) -> Result<Self, ProgramError> {
         use TokenError::InvalidInstruction;
 
         let (&tag, rest) = input.split_first().ok_or(InvalidInstruction)?;
@@ -556,6 +584,19 @@ impl TokenInstruction {
             }
             21 => Self::GetAccountDataSize,
             22 => Self::InitializeImmutableOwner,
+            23 => {
+                let (amount, _rest) = rest.split_at(8);
+                let amount = amount
+                    .try_into()
+                    .ok()
+                    .map(u64::from_le_bytes)
+                    .ok_or(InvalidInstruction)?;
+                Self::AmountToUiAmount { amount }
+            }
+            24 => {
+                let ui_amount = std::str::from_utf8(rest).map_err(|_| InvalidInstruction)?;
+                Self::UiAmountToAmount { ui_amount }
+            }
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -657,6 +698,14 @@ impl TokenInstruction {
             }
             &Self::InitializeImmutableOwner => {
                 buf.push(22);
+            }
+            &Self::AmountToUiAmount { amount } => {
+                buf.push(23);
+                buf.extend_from_slice(&amount.to_le_bytes());
+            }
+            Self::UiAmountToAmount { ui_amount } => {
+                buf.push(24);
+                buf.extend_from_slice(ui_amount.as_bytes());
             }
         };
         buf
@@ -1358,6 +1407,36 @@ pub fn initialize_immutable_owner(
     })
 }
 
+/// Creates an `AmountToUiAmount` instruction
+pub fn amount_to_ui_amount(
+    token_program_id: &Pubkey,
+    mint_pubkey: &Pubkey,
+    amount: u64,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts: vec![AccountMeta::new_readonly(*mint_pubkey, false)],
+        data: TokenInstruction::AmountToUiAmount { amount }.pack(),
+    })
+}
+
+/// Creates a `UiAmountToAmount` instruction
+pub fn ui_amount_to_amount(
+    token_program_id: &Pubkey,
+    mint_pubkey: &Pubkey,
+    ui_amount: &str,
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts: vec![AccountMeta::new_readonly(*mint_pubkey, false)],
+        data: TokenInstruction::UiAmountToAmount { ui_amount }.pack(),
+    })
+}
+
 /// Utility function that checks index is between MIN_SIGNERS and MAX_SIGNERS
 pub fn is_valid_signer_index(index: usize) -> bool {
     (MIN_SIGNERS..=MAX_SIGNERS).contains(&index)
@@ -1589,6 +1668,20 @@ mod test {
         let check = TokenInstruction::InitializeImmutableOwner;
         let packed = check.pack();
         let expect = vec![22u8];
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::AmountToUiAmount { amount: 42 };
+        let packed = check.pack();
+        let expect = vec![23u8, 42, 0, 0, 0, 0, 0, 0, 0];
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::UiAmountToAmount { ui_amount: "0.42" };
+        let packed = check.pack();
+        let expect = vec![24u8, 48, 46, 52, 50];
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
