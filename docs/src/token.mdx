@@ -214,7 +214,7 @@ $ spl-token supply AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM
   <TabItem value="jsx" label="JS">
 
 ```jsx
-const mintInfo = await getMintInfo(
+const mintInfo = await getMint(
   connection,
   mint
 )
@@ -271,7 +271,7 @@ $ spl-token balance AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM
   <TabItem value="jsx" label="JS">
 
 ```jsx
-const tokenAccountInfo = await getAccountInfo(
+const tokenAccountInfo = await getAccount(
   connection,
   tokenAccount.address
 )
@@ -332,7 +332,7 @@ $ spl-token balance AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM
   <TabItem value="jsx" label="JS">
 
 ```jsx
-const mintInfo = await getMintInfo(
+const mintInfo = await getMint(
   connection,
   mint
 )
@@ -340,7 +340,7 @@ const mintInfo = await getMintInfo(
 console.log(mintInfo.supply);
 // 100
 
-const tokenAccountInfo = await getAccountInfo(
+const tokenAccountInfo = await getAccount(
   connection,
   tokenAccount.address
 )
@@ -428,7 +428,7 @@ Signature: 4f4s5QVMKisLS6ihZcXXPbiBAzjnvkBcp2A7KKER7k9DwJ4qjbVsQBKv2rAyBumXC1gLn
   <TabItem value="jsx" label="JS">
 
 ```jsx
-import {NATIVE_MINT, createAssociatedTokenAccountInstruction, getAssociatedTokenAddress, createSyncNativeInstruction, getAccountInfo} from "@solana/spl-token";
+import {NATIVE_MINT, createAssociatedTokenAccountInstruction, getAssociatedTokenAddress, createSyncNativeInstruction, getAccount} from "@solana/spl-token";
 import {clusterApiUrl, Connection, Keypair, LAMPORTS_PER_SOL, SystemProgram, Transaction, sendAndConfirmTransaction} from "@solana/web3.js";
 
 (async () => {
@@ -477,7 +477,7 @@ const solTransferTransaction = new Transaction()
 
 await sendAndConfirmTransaction(connection, solTransferTransaction, [wallet]);
 
-const accountInfo = await getAccountInfo(connection, associatedTokenAccount);
+const accountInfo = await getAccount(connection, associatedTokenAccount);
 
 console.log(`Native: ${accountInfo.isNative}, Lamports: ${accountInfo.amount}`);
 
@@ -588,7 +588,6 @@ import { createMint, getOrCreateAssociatedTokenAccount, mintTo, transfer } from 
         mint,
         fromTokenAccount.address,
         fromWallet.publicKey,
-        [],
         1000000000
     );
     console.log('mint tx:', signature);
@@ -596,11 +595,10 @@ import { createMint, getOrCreateAssociatedTokenAccount, mintTo, transfer } from 
     // Transfer the new token to the "toTokenAccount" we just created
     signature = await transfer(
         connection,
-        toWallet,
+        fromWallet,
         fromTokenAccount.address,
         toTokenAccount.address,
         fromWallet.publicKey,
-        [],
         50
     );
 })();
@@ -638,12 +636,12 @@ Signature: 5a3qbvoJQnTAxGPHCugibZTbSu7xuTgkxvF4EJupRjRXGgZZrnWFmKzfEzcqKF2ogCaF4
 ```jsx
 const signature = await transfer(
     connection,
-    toWallet, // Just update payer to be the toWallet
+    toWallet,
     fromTokenAccount.address,
     toTokenAccount.address,
     fromWallet.publicKey,
-    [],
-    50
+    50,
+    [fromWallet, toWallet]
 );
 ```
 
@@ -692,7 +690,7 @@ CqAxDdBRnawzx9q4PYM3wrybLHBhDZ4P6BTV13WsRJYJ  AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe
   <TabItem value="jsx" label="JS">
 
 ```jsx
-import {getAccountInfo, createMint, createAccount, mintTo, getOrCreateAssociatedTokenAccount, transfer} from "@solana/spl-token";
+import {getAccount, createMint, createAccount, mintTo, getOrCreateAssociatedTokenAccount, transfer} from "@solana/spl-token";
 import {clusterApiUrl, Connection, Keypair, LAMPORTS_PER_SOL} from "@solana/web3.js";
 
 (async () => {
@@ -742,7 +740,7 @@ import {clusterApiUrl, Connection, Keypair, LAMPORTS_PER_SOL} from "@solana/web3
     50
   );
 
-  const accountInfo = await getAccountInfo(connection, associatedTokenAccount.address);
+  const accountInfo = await getAccount(connection, associatedTokenAccount.address);
 
   console.log(accountInfo.amount);
   // 50
@@ -756,7 +754,7 @@ import {clusterApiUrl, Connection, Keypair, LAMPORTS_PER_SOL} from "@solana/web3
     50
   );
 
-  const auxAccountInfo = await getAccountInfo(connection, auxiliaryTokenAccount);
+  const auxAccountInfo = await getAccount(connection, auxiliaryTokenAccount);
 
   console.log(auxAccountInfo.amount);
   // 50
@@ -873,10 +871,9 @@ Signature: 5QpykLzZsceoKcVRRFow9QCdae4Dp2zQAcjebyEWoezPFg2Np73gHKWQicHG1mqRdXu3y
 let transaction = new Transaction()
   .add(createSetAuthorityInstruction(
     mint,
-    null,
-    null,
     wallet.publicKey,
-    []
+    AuthorityType.MintTokens,
+    null
   ));
 
 await web3.sendAndConfirmTransaction(connection, transaction, [wallet]);
@@ -912,11 +909,11 @@ $ spl-token supply 559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z
   <TabItem value="jsx" label="JS">
 
 ```jsx
-const accountInfo = await getAccountInfo(connection, associatedTokenAccount.address);
+const accountInfo = await getAccount(connection, associatedTokenAccount.address);
 
 console.log(accountInfo.amount);
 // 1
-const mintInfo = await getMintInfo(
+const mintInfo = await getMint(
     connection,
     mint
   );
@@ -1181,7 +1178,6 @@ try {
     mint,
     associatedTokenAccount.address,
     multisigKey,
-    [],
     1
   )
 } catch (e) {
@@ -1221,14 +1217,14 @@ await mintTo(
   mint,
   associatedTokenAccount.address,
   multisigKey,
+  1,
   [
     signer1,
     signer2
-  ],
-  1
+  ]
 )
 
-const mintInfo = await getMintInfo(
+const mintInfo = await getMint(
   connection,
   mint
 )
@@ -1475,11 +1471,11 @@ const mintToTransaction = new web3.Transaction({
       mint,
       associatedTokenAccount.address,
       multisigkey,
+      1,
       [
         signer1,
         onlineAccount
       ],
-      1,
       TOKEN_PROGRAM_ID
     )
   );
