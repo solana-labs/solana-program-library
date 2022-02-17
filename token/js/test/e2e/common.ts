@@ -1,4 +1,5 @@
-import { Keypair, Connection, Signer } from '@solana/web3.js';
+import { PublicKey, Keypair, Connection, Signer } from '@solana/web3.js';
+import { TOKEN_PROGRAM_ID, NATIVE_MINT, NATIVE_MINT_2022 } from '../../src';
 
 export async function newAccountWithLamports(connection: Connection, lamports = 1000000): Promise<Signer> {
     const account = Keypair.generate();
@@ -13,3 +14,9 @@ export async function getConnection(): Promise<Connection> {
     await connection.getVersion();
     return connection;
 }
+
+export const TEST_PROGRAM_ID = process.env.TEST_PROGRAM_ID
+    ? new PublicKey(process.env.TEST_PROGRAM_ID)
+    : TOKEN_PROGRAM_ID;
+
+export const TEST_NATIVE_MINT = TEST_PROGRAM_ID === TOKEN_PROGRAM_ID ? NATIVE_MINT : NATIVE_MINT_2022;

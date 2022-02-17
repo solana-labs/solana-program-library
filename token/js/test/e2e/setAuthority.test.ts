@@ -4,17 +4,9 @@ chai.use(chaiAsPromised);
 
 import { Connection, Keypair, PublicKey, Signer } from '@solana/web3.js';
 
-import {
-    TOKEN_PROGRAM_ID,
-    AuthorityType,
-    createMint,
-    createAccount,
-    getAccount,
-    getMint,
-    setAuthority,
-} from '../../src';
+import { AuthorityType, createMint, createAccount, getAccount, getMint, setAuthority } from '../../src';
 
-import { newAccountWithLamports, getConnection } from './common';
+import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from './common';
 
 const TEST_TOKEN_DECIMALS = 2;
 describe('setAuthority', () => {
@@ -37,12 +29,20 @@ describe('setAuthority', () => {
             TEST_TOKEN_DECIMALS,
             mintKeypair,
             undefined,
-            TOKEN_PROGRAM_ID
+            TEST_PROGRAM_ID
         );
     });
     beforeEach(async () => {
         owner = Keypair.generate();
-        account = await createAccount(connection, payer, mint, owner.publicKey, undefined, undefined, TOKEN_PROGRAM_ID);
+        account = await createAccount(
+            connection,
+            payer,
+            mint,
+            owner.publicKey,
+            Keypair.generate(),
+            undefined,
+            TEST_PROGRAM_ID
+        );
     });
     it('AccountOwner', async () => {
         const newOwner = Keypair.generate();
@@ -55,9 +55,9 @@ describe('setAuthority', () => {
             newOwner.publicKey,
             [],
             undefined,
-            TOKEN_PROGRAM_ID
+            TEST_PROGRAM_ID
         );
-        const accountInfo = await getAccount(connection, account, undefined, TOKEN_PROGRAM_ID);
+        const accountInfo = await getAccount(connection, account, undefined, TEST_PROGRAM_ID);
         expect(accountInfo.owner).to.eql(newOwner.publicKey);
         await setAuthority(
             connection,
@@ -68,7 +68,7 @@ describe('setAuthority', () => {
             owner.publicKey,
             [],
             undefined,
-            TOKEN_PROGRAM_ID
+            TEST_PROGRAM_ID
         );
         expect(
             setAuthority(
@@ -80,7 +80,7 @@ describe('setAuthority', () => {
                 owner.publicKey,
                 [],
                 undefined,
-                TOKEN_PROGRAM_ID
+                TEST_PROGRAM_ID
             )
         ).to.be.rejected;
     });
@@ -94,9 +94,9 @@ describe('setAuthority', () => {
             null,
             [],
             undefined,
-            TOKEN_PROGRAM_ID
+            TEST_PROGRAM_ID
         );
-        const mintInfo = await getMint(connection, mint, undefined, TOKEN_PROGRAM_ID);
+        const mintInfo = await getMint(connection, mint, undefined, TEST_PROGRAM_ID);
         expect(mintInfo.mintAuthority).to.be.null;
     });
     it('CloseAuthority', async () => {
@@ -110,9 +110,9 @@ describe('setAuthority', () => {
             closeAuthority.publicKey,
             [],
             undefined,
-            TOKEN_PROGRAM_ID
+            TEST_PROGRAM_ID
         );
-        const accountInfo = await getAccount(connection, account, undefined, TOKEN_PROGRAM_ID);
+        const accountInfo = await getAccount(connection, account, undefined, TEST_PROGRAM_ID);
         expect(accountInfo.closeAuthority).to.eql(closeAuthority.publicKey);
     });
 });

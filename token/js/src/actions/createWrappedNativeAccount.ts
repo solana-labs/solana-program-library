@@ -37,15 +37,16 @@ export async function createWrappedNativeAccount(
     amount: number,
     keypair?: Keypair,
     confirmOptions?: ConfirmOptions,
-    programId = TOKEN_PROGRAM_ID
+    programId = TOKEN_PROGRAM_ID,
+    nativeMint = NATIVE_MINT
 ): Promise<PublicKey> {
     // If the amount provided is explicitly 0 or NaN, just create the account without funding it
-    if (!amount) return await createAccount(connection, payer, NATIVE_MINT, owner, keypair, confirmOptions, programId);
+    if (!amount) return await createAccount(connection, payer, nativeMint, owner, keypair, confirmOptions, programId);
 
     // If a keypair isn't provided, create the account at the owner's ATA for the native mint and return its address
     if (!keypair) {
         const associatedToken = await getAssociatedTokenAddress(
-            NATIVE_MINT,
+            nativeMint,
             owner,
             false,
             programId,
@@ -57,7 +58,7 @@ export async function createWrappedNativeAccount(
                 payer.publicKey,
                 associatedToken,
                 owner,
-                NATIVE_MINT,
+                nativeMint,
                 programId,
                 ASSOCIATED_TOKEN_PROGRAM_ID
             ),
@@ -90,7 +91,7 @@ export async function createWrappedNativeAccount(
             toPubkey: keypair.publicKey,
             lamports: amount,
         }),
-        createInitializeAccountInstruction(keypair.publicKey, NATIVE_MINT, owner, programId)
+        createInitializeAccountInstruction(keypair.publicKey, nativeMint, owner, programId)
     );
 
     await sendAndConfirmTransaction(connection, transaction, [payer, keypair], confirmOptions);

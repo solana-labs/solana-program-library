@@ -92,7 +92,7 @@ export async function getAccount(
     const info = await connection.getAccountInfo(address, commitment);
     if (!info) throw new TokenAccountNotFoundError();
     if (!info.owner.equals(programId)) throw new TokenInvalidAccountOwnerError();
-    if (info.data.length != ACCOUNT_SIZE) throw new TokenInvalidAccountSizeError();
+    if (info.data.length < ACCOUNT_SIZE) throw new TokenInvalidAccountSizeError();
 
     const rawAccount = AccountLayout.decode(info.data);
 

@@ -5,7 +5,6 @@ chai.use(chaiAsPromised);
 import { Connection, Keypair, PublicKey, Signer } from '@solana/web3.js';
 
 import {
-    TOKEN_PROGRAM_ID,
     AuthorityType,
     createMint,
     createAccount,
@@ -18,7 +17,7 @@ import {
     setAuthority,
 } from '../../src';
 
-import { newAccountWithLamports, getConnection } from './common';
+import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from './common';
 
 const TEST_TOKEN_DECIMALS = 2;
 const M = 2;
@@ -54,12 +53,20 @@ describe('multisig', () => {
             TEST_TOKEN_DECIMALS,
             mintKeypair,
             undefined,
-            TOKEN_PROGRAM_ID
+            TEST_PROGRAM_ID
         );
     });
     beforeEach(async () => {
-        multisig = await createMultisig(connection, payer, signerPublicKeys, M, undefined, undefined, TOKEN_PROGRAM_ID);
-        account1 = await createAccount(connection, payer, mint, multisig, undefined, undefined, TOKEN_PROGRAM_ID);
+        multisig = await createMultisig(connection, payer, signerPublicKeys, M, undefined, undefined, TEST_PROGRAM_ID);
+        account1 = await createAccount(
+            connection,
+            payer,
+            mint,
+            multisig,
+            Keypair.generate(),
+            undefined,
+            TEST_PROGRAM_ID
+        );
         account2 = await createAccount(
             connection,
             payer,
@@ -67,13 +74,13 @@ describe('multisig', () => {
             multisig,
             Keypair.generate(),
             undefined,
-            TOKEN_PROGRAM_ID
+            TEST_PROGRAM_ID
         );
         amount = BigInt(1000);
-        await mintTo(connection, payer, mint, account1, mintAuthority, amount, [], undefined, TOKEN_PROGRAM_ID);
+        await mintTo(connection, payer, mint, account1, mintAuthority, amount, [], undefined, TEST_PROGRAM_ID);
     });
     it('create', async () => {
-        const multisigInfo = await getMultisig(connection, multisig, undefined, TOKEN_PROGRAM_ID);
+        const multisigInfo = await getMultisig(connection, multisig, undefined, TEST_PROGRAM_ID);
         expect(multisigInfo.m).to.eql(M);
         expect(multisigInfo.n).to.eql(N);
         expect(multisigInfo.signer1).to.eql(signerPublicKeys[0]);
@@ -83,14 +90,14 @@ describe('multisig', () => {
         expect(multisigInfo.signer5).to.eql(signerPublicKeys[4]);
     });
     it('transfer', async () => {
-        await transfer(connection, payer, account1, account2, multisig, amount, signers, undefined, TOKEN_PROGRAM_ID);
-        const accountInfo = await getAccount(connection, account2, undefined, TOKEN_PROGRAM_ID);
+        await transfer(connection, payer, account1, account2, multisig, amount, signers, undefined, TEST_PROGRAM_ID);
+        const accountInfo = await getAccount(connection, account2, undefined, TEST_PROGRAM_ID);
         expect(accountInfo.amount).to.eql(amount);
     });
     it('approve', async () => {
         const delegate = Keypair.generate().publicKey;
-        await approve(connection, payer, account1, delegate, multisig, amount, signers, undefined, TOKEN_PROGRAM_ID);
-        const approvedAccountInfo = await getAccount(connection, account1, undefined, TOKEN_PROGRAM_ID);
+        await approve(connection, payer, account1, delegate, multisig, amount, signers, undefined, TEST_PROGRAM_ID);
+        const approvedAccountInfo = await getAccount(connection, account1, undefined, TEST_PROGRAM_ID);
         expect(approvedAccountInfo.delegatedAmount).to.eql(amount);
         expect(approvedAccountInfo.delegate).to.eql(delegate);
     });
@@ -105,9 +112,9 @@ describe('multisig', () => {
             newOwner,
             signers,
             undefined,
-            TOKEN_PROGRAM_ID
+            TEST_PROGRAM_ID
         );
-        const accountInfo = await getAccount(connection, account1, undefined, TOKEN_PROGRAM_ID);
+        const accountInfo = await getAccount(connection, account1, undefined, TEST_PROGRAM_ID);
         expect(accountInfo.owner).to.eql(newOwner);
     });
 });
