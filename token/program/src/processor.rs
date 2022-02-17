@@ -770,7 +770,8 @@ impl Processor {
         // make sure the mint is valid
         let mint_info = next_account_info(account_info_iter)?;
         Self::check_account_owner(program_id, mint_info)?;
-        let _ = Mint::unpack(&mint_info.data.borrow())?;
+        let _ = Mint::unpack(&mint_info.data.borrow())
+            .map_err(|_| Into::<ProgramError>::into(TokenError::InvalidMint))?;
         set_return_data(&Account::LEN.to_le_bytes());
         Ok(())
     }
@@ -6464,7 +6465,7 @@ mod tests {
         let mint_key = Pubkey::new_unique();
         // fail if an invalid mint is passed in
         assert_eq!(
-            Err(ProgramError::UninitializedAccount),
+            Err(TokenError::InvalidMint.into()),
             do_process_instruction(
                 get_account_data_size(&program_id, &mint_key).unwrap(),
                 vec![&mut mint_account],
