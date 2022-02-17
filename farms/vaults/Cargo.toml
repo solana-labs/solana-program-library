@@ -1,0 +1,30 @@
+[package]
+name = "solana-farm-vaults"
+version = "0.0.1"
+description = "Solana Farm Vaults"
+authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+repository = "https://github.com/solana-labs/solana-program-library"
+license = "Apache-2.0"
+homepage = "https://solana.com/"
+edition = "2018"
+
+[features]
+no-entrypoint = []
+debug = []
+test-bpf = []
+RDM-STAKE-LP-COMPOUND = []
+SBR-STAKE-LP-COMPOUND = []
+default = ["RDM-STAKE-LP-COMPOUND"]
+
+[dependencies]
+solana-farm-sdk = { path = "../farm-sdk" }
+solana-program = "1.9.5"
+spl-token = { version = "3.2.0", features = ["no-entrypoint"] }
+arrayref = "0.3.6"
+
+[dev-dependencies]
+solana-program-test = "1.9.5"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+

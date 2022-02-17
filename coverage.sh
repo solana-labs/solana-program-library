@@ -11,7 +11,7 @@ if ! which grcov; then
   exit 1
 fi
 
-if [[ ! "$(grcov --version)" =~ "0.6.1" ]]; then
+if [[ ! "$(grcov --version)" =~ 0.[678].[0124] ]]; then
   echo Error: Required grcov version not installed
   exit 1
 fi
@@ -21,6 +21,7 @@ reportName="lcov-${CI_COMMIT:0:9}"
 
 if [[ -z $1 ]]; then
   programs=(
+    libraries/math
     memo/program
     token/program
     token-lending/program

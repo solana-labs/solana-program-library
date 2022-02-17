@@ -32,7 +32,7 @@ async fn assert_instruction_count() {
             ..Account::default()
         },
     );
-    program_test.set_bpf_compute_max_units(480);
+    program_test.set_compute_max_units(480);
     let (mut banks_client, payer, recent_blockhash) = program_test.start().await;
 
     // success

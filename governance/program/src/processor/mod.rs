@@ -3,26 +3,28 @@
 mod process_add_signatory;
 mod process_cancel_proposal;
 mod process_cast_vote;
-mod process_create_account_governance;
+mod process_create_governance;
 mod process_create_mint_governance;
+mod process_create_native_treasury;
 mod process_create_program_governance;
 mod process_create_proposal;
 mod process_create_realm;
 mod process_create_token_governance;
 mod process_create_token_owner_record;
 mod process_deposit_governing_tokens;
-mod process_execute_instruction;
+mod process_execute_transaction;
 mod process_finalize_vote;
-mod process_flag_instruction_error;
-mod process_insert_instruction;
+mod process_flag_transaction_error;
+mod process_insert_transaction;
 mod process_relinquish_vote;
-mod process_remove_instruction;
 mod process_remove_signatory;
+mod process_remove_transaction;
 mod process_set_governance_config;
 mod process_set_governance_delegate;
 mod process_set_realm_authority;
 mod process_set_realm_config;
 mod process_sign_off_proposal;
+mod process_update_program_metadata;
 mod process_withdraw_governing_tokens;
 
 use crate::instruction::GovernanceInstruction;
@@ -30,26 +32,28 @@ use crate::instruction::GovernanceInstruction;
 use process_add_signatory::*;
 use process_cancel_proposal::*;
 use process_cast_vote::*;
-use process_create_account_governance::*;
+use process_create_governance::*;
 use process_create_mint_governance::*;
+use process_create_native_treasury::*;
 use process_create_program_governance::*;
 use process_create_proposal::*;
 use process_create_realm::*;
 use process_create_token_governance::*;
 use process_create_token_owner_record::*;
 use process_deposit_governing_tokens::*;
-use process_execute_instruction::*;
+use process_execute_transaction::*;
 use process_finalize_vote::*;
-use process_flag_instruction_error::*;
-use process_insert_instruction::*;
+use process_flag_transaction_error::*;
+use process_insert_transaction::*;
 use process_relinquish_vote::*;
-use process_remove_instruction::*;
 use process_remove_signatory::*;
+use process_remove_transaction::*;
 use process_set_governance_config::*;
 use process_set_governance_delegate::*;
 use process_set_realm_authority::*;
 use process_set_realm_config::*;
 use process_sign_off_proposal::*;
+use process_update_program_metadata::*;
 use process_withdraw_governing_tokens::*;
 
 use solana_program::{
@@ -63,19 +67,22 @@ pub fn process_instruction(
     accounts: &[AccountInfo],
     input: &[u8],
 ) -> ProgramResult {
+    msg!("VERSION:{:?}", env!("CARGO_PKG_VERSION"));
     // Use try_from_slice_unchecked to support forward compatibility of newer UI with older program
     let instruction: GovernanceInstruction =
         try_from_slice_unchecked(input).map_err(|_| ProgramError::InvalidInstructionData)?;
 
-    if let GovernanceInstruction::InsertInstruction {
+    if let GovernanceInstruction::InsertTransaction {
+        option_index,
         index,
         hold_up_time,
-        instruction: _,
+        instructions: _,
     } = instruction
     {
         // Do not dump instruction data into logs
         msg!(
-            "GOVERNANCE-INSTRUCTION: InsertInstruction {{ index: {:?}, hold_up_time: {:?} }}",
+            "GOVERNANCE-INSTRUCTION: InsertInstruction {{option_index: {:?}, index: {:?}, hold_up_time: {:?} }}",
+            option_index,
             index,
             hold_up_time
         );
@@ -112,28 +119,39 @@ pub fn process_instruction(
 
         GovernanceInstruction::CreateMintGovernance {
             config,
-            transfer_mint_authority,
-        } => process_create_mint_governance(program_id, accounts, config, transfer_mint_authority),
+            transfer_mint_authorities,
+        } => {
+            process_create_mint_governance(program_id, accounts, config, transfer_mint_authorities)
+        }
 
         GovernanceInstruction::CreateTokenGovernance {
             config,
-            transfer_token_owner,
-        } => process_create_token_governance(program_id, accounts, config, transfer_token_owner),
+            transfer_account_authorities,
+        } => process_create_token_governance(
+            program_id,
+            accounts,
+            config,
+            transfer_account_authorities,
+        ),
 
-        GovernanceInstruction::CreateAccountGovernance { config } => {
-            process_create_account_governance(program_id, accounts, config)
+        GovernanceInstruction::CreateGovernance { config } => {
+            process_create_governance(program_id, accounts, config)
         }
 
         GovernanceInstruction::CreateProposal {
             name,
             description_link,
-            governing_token_mint,
+            vote_type: proposal_type,
+            options,
+            use_deny_option,
         } => process_create_proposal(
             program_id,
             accounts,
             name,
             description_link,
-            governing_token_mint,
+            proposal_type,
+            options,
+            use_deny_option,
         ),
         GovernanceInstruction::AddSignatory { signatory } => {
             process_add_signatory(program_id, accounts, signatory)
@@ -152,34 +170,48 @@ pub fn process_instruction(
 
         GovernanceInstruction::CancelProposal {} => process_cancel_proposal(program_id, accounts),
 
-        GovernanceInstruction::InsertInstruction {
+        GovernanceInstruction::InsertTransaction {
+            option_index,
             index,
             hold_up_time,
-            instruction,
-        } => process_insert_instruction(program_id, accounts, index, hold_up_time, instruction),
+            instructions,
+        } => process_insert_transaction(
+            program_id,
+            accounts,
+            option_index,
+            index,
+            hold_up_time,
+            instructions,
+        ),
 
-        GovernanceInstruction::RemoveInstruction {} => {
-            process_remove_instruction(program_id, accounts)
+        GovernanceInstruction::RemoveTransaction {} => {
+            process_remove_transaction(program_id, accounts)
         }
-        GovernanceInstruction::ExecuteInstruction {} => {
-            process_execute_instruction(program_id, accounts)
+        GovernanceInstruction::ExecuteTransaction {} => {
+            process_execute_transaction(program_id, accounts)
         }
 
         GovernanceInstruction::SetGovernanceConfig { config } => {
             process_set_governance_config(program_id, accounts, config)
         }
 
-        GovernanceInstruction::FlagInstructionError {} => {
-            process_flag_instruction_error(program_id, accounts)
+        GovernanceInstruction::FlagTransactionError {} => {
+            process_flag_transaction_error(program_id, accounts)
         }
-        GovernanceInstruction::SetRealmAuthority {
-            new_realm_authority,
-        } => process_set_realm_authority(program_id, accounts, new_realm_authority),
+        GovernanceInstruction::SetRealmAuthority { action } => {
+            process_set_realm_authority(program_id, accounts, action)
+        }
         GovernanceInstruction::SetRealmConfig { config_args } => {
             process_set_realm_config(program_id, accounts, config_args)
         }
         GovernanceInstruction::CreateTokenOwnerRecord {} => {
             process_create_token_owner_record(program_id, accounts)
+        }
+        GovernanceInstruction::UpdateProgramMetadata {} => {
+            process_update_program_metadata(program_id, accounts)
+        }
+        GovernanceInstruction::CreateNativeTreasury {} => {
+            process_create_native_treasury(program_id, accounts)
         }
     }
 }

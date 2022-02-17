@@ -1,0 +1,27 @@
+[package]
+name = "solana-farm-router-orca"
+version = "0.0.1"
+description = "Solana Farm Orca Router"
+authors = ["Solana Maintainers <maintainers@solana.foundation>"]
+repository = "https://github.com/solana-labs/solana-program-library"
+license = "Apache-2.0"
+homepage = "https://solana.com/"
+edition = "2018"
+
+[features]
+no-entrypoint = []
+debug = []
+
+[dependencies]
+solana-farm-sdk = { path = "../farm-sdk" }
+solana-program = "1.9.5"
+arrayref = "0.3.6"
+spl-token-swap = { version = "2.1.0", features = ["no-entrypoint"] }
+spl-token = { version = "3.2.0", features = ["no-entrypoint"] }
+
+[dev-dependencies]
+solana-program-test = "1.9.5"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+

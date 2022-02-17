@@ -5,10 +5,14 @@ use {
         client_error::ClientError,
         rpc_client::RpcClient,
         rpc_config::{RpcAccountInfoConfig, RpcProgramAccountsConfig},
-        rpc_filter::{Memcmp, MemcmpEncodedBytes, RpcFilterType},
+        rpc_filter::{Memcmp, MemcmpEncodedBytes, MemcmpEncoding, RpcFilterType},
     },
     solana_program::{borsh::try_from_slice_unchecked, program_pack::Pack, pubkey::Pubkey, stake},
-    spl_stake_pool::state::{StakePool, ValidatorList},
+    spl_stake_pool::{
+        find_withdraw_authority_program_address,
+        state::{StakePool, ValidatorList},
+    },
+    std::collections::HashSet,
 };
 
 type Error = Box<dyn std::error::Error>;
@@ -76,7 +80,7 @@ pub(crate) fn get_stake_state(
 
 pub(crate) fn get_stake_pools(
     rpc_client: &RpcClient,
-) -> Result<Vec<(Pubkey, StakePool, ValidatorList)>, ClientError> {
+) -> Result<Vec<(Pubkey, StakePool, ValidatorList, Pubkey)>, ClientError> {
     rpc_client
         .get_program_accounts_with_config(
             &spl_stake_pool::id(),
@@ -97,10 +101,14 @@ pub(crate) fn get_stake_pools(
             accounts
                 .into_iter()
                 .filter_map(|(address, account)| {
+                    let pool_withdraw_authority =
+                        find_withdraw_authority_program_address(&spl_stake_pool::id(), &address).0;
                     match try_from_slice_unchecked::<StakePool>(account.data.as_slice()) {
                         Ok(stake_pool) => {
                             get_validator_list(rpc_client, &stake_pool.validator_list)
-                                .map(|v| (address, stake_pool, v))
+                                .map(|validator_list| {
+                                    (address, stake_pool, validator_list, pool_withdraw_authority)
+                                })
                                 .ok()
                         }
                         Err(err) => {
@@ -111,4 +119,34 @@ pub(crate) fn get_stake_pools(
                 })
                 .collect()
         })
+}
+
+pub(crate) fn get_all_stake(
+    rpc_client: &RpcClient,
+    authorized_staker: &Pubkey,
+) -> Result<HashSet<Pubkey>, ClientError> {
+    let all_stake_accounts = rpc_client.get_program_accounts_with_config(
+        &stake::program::id(),
+        RpcProgramAccountsConfig {
+            filters: Some(vec![
+                // Filter by `Meta::authorized::staker`, which begins at byte offset 12
+                RpcFilterType::Memcmp(Memcmp {
+                    offset: 12,
+                    bytes: MemcmpEncodedBytes::Base58(authorized_staker.to_string()),
+                    encoding: Some(MemcmpEncoding::Binary),
+                }),
+            ]),
+            account_config: RpcAccountInfoConfig {
+                encoding: Some(solana_account_decoder::UiAccountEncoding::Base64),
+                commitment: Some(rpc_client.commitment()),
+                ..RpcAccountInfoConfig::default()
+            },
+            ..RpcProgramAccountsConfig::default()
+        },
+    )?;
+
+    Ok(all_stake_accounts
+        .into_iter()
+        .map(|(address, _)| address)
+        .collect())
 }

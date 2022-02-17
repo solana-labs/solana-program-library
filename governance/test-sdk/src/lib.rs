@@ -1,34 +1,25 @@
 use std::borrow::Borrow;
 
 use borsh::BorshDeserialize;
-use cookies::TokenAccountCookie;
+use cookies::{TokenAccountCookie, WalletCookie};
 use solana_program::{
     borsh::try_from_slice_unchecked, clock::Clock, instruction::Instruction,
     program_error::ProgramError, program_pack::Pack, pubkey::Pubkey, rent::Rent,
-    system_instruction, sysvar,
+    system_instruction, system_program, sysvar,
 };
 use solana_program_test::{ProgramTest, ProgramTestContext};
-use solana_sdk::{
-    account::Account, process_instruction::ProcessInstructionWithContext, signature::Keypair,
-    signer::Signer, transaction::Transaction,
-};
+use solana_sdk::{account::Account, signature::Keypair, signer::Signer, transaction::Transaction};
 
 use bincode::deserialize;
 
+use spl_token::instruction::{set_authority, AuthorityType};
 use tools::clone_keypair;
 
 use crate::tools::map_transaction_error;
 
+pub mod addins;
 pub mod cookies;
 pub mod tools;
-
-/// Specification of a program which is loaded into the test bench
-#[derive(Clone)]
-pub struct TestBenchProgram<'a> {
-    pub program_name: &'a str,
-    pub program_id: Pubkey,
-    pub process_instruction: Option<ProcessInstructionWithContext>,
-}
 
 /// Program's test bench which captures test context, rent and payer and common utility functions
 pub struct ProgramTestBench {
@@ -39,17 +30,9 @@ pub struct ProgramTestBench {
 }
 
 impl ProgramTestBench {
-    pub async fn start_new(programs: &[TestBenchProgram<'_>]) -> Self {
-        let mut program_test = ProgramTest::default();
-
-        for program in programs {
-            program_test.add_program(
-                program.program_name,
-                program.program_id,
-                program.process_instruction,
-            )
-        }
-
+    /// Create new bench given a ProgramTest instance populated with all of the
+    /// desired programs.
+    pub async fn start_new(program_test: ProgramTest) -> Self {
         let mut context = program_test.start_with_context().await;
         let rent = context.banks_client.get_rent().await.unwrap();
 
@@ -85,22 +68,58 @@ impl ProgramTestBench {
         let recent_blockhash = self
             .context
             .banks_client
-            .get_recent_blockhash()
+            .get_latest_blockhash()
             .await
             .unwrap();
 
         transaction.sign(&all_signers, recent_blockhash);
 
+        #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
         self.context
             .banks_client
             .process_transaction(transaction)
             .await
-            .map_err(map_transaction_error)?;
+            .map_err(|e| map_transaction_error(e.into()))?;
 
         Ok(())
     }
 
-    pub async fn create_mint(&mut self, mint_keypair: &Keypair, mint_authority: &Pubkey) {
+    pub async fn with_wallet(&mut self) -> WalletCookie {
+        let account_rent = self.rent.minimum_balance(0);
+        let account_keypair = Keypair::new();
+
+        let create_account_ix = system_instruction::create_account(
+            &self.context.payer.pubkey(),
+            &account_keypair.pubkey(),
+            account_rent,
+            0,
+            &system_program::id(),
+        );
+
+        self.process_transaction(&[create_account_ix], Some(&[&account_keypair]))
+            .await
+            .unwrap();
+
+        let account = Account {
+            lamports: account_rent,
+            data: vec![],
+            owner: system_program::id(),
+            executable: false,
+            rent_epoch: 0,
+        };
+
+        WalletCookie {
+            address: account_keypair.pubkey(),
+            account,
+        }
+    }
+
+    pub async fn create_mint(
+        &mut self,
+        mint_keypair: &Keypair,
+        mint_authority: &Pubkey,
+        freeze_authority: Option<&Pubkey>,
+    ) {
         let mint_rent = self.rent.minimum_balance(spl_token::state::Mint::LEN);
 
         let instructions = [
@@ -115,13 +134,36 @@ impl ProgramTestBench {
                 &spl_token::id(),
                 &mint_keypair.pubkey(),
                 mint_authority,
-                None,
+                freeze_authority,
                 0,
             )
             .unwrap(),
         ];
 
         self.process_transaction(&instructions, Some(&[mint_keypair]))
+            .await
+            .unwrap();
+    }
+
+    /// Sets spl-token program account (Mint or TokenAccount) authority
+    pub async fn set_spl_token_account_authority(
+        &mut self,
+        account: &Pubkey,
+        account_authority: &Keypair,
+        new_authority: Option<&Pubkey>,
+        authority_type: AuthorityType,
+    ) {
+        let set_authority_ix = set_authority(
+            &spl_token::id(),
+            account,
+            new_authority,
+            authority_type,
+            &account_authority.pubkey(),
+            &[],
+        )
+        .unwrap();
+
+        self.process_transaction(&[set_authority_ix], Some(&[account_authority]))
             .await
             .unwrap();
     }
@@ -182,6 +224,14 @@ impl ProgramTestBench {
         TokenAccountCookie {
             address: token_account_keypair.pubkey(),
         }
+    }
+
+    pub async fn transfer_sol(&mut self, to_account: &Pubkey, lamports: u64) {
+        let transfer_ix = system_instruction::transfer(&self.payer.pubkey(), to_account, lamports);
+
+        self.process_transaction(&[transfer_ix], None)
+            .await
+            .unwrap();
     }
 
     pub async fn mint_tokens(

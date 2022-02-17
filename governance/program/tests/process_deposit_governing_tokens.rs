@@ -210,7 +210,7 @@ async fn test_deposit_initial_community_tokens_with_owner_must_sign_error() {
         )
         .await;
 
-    let mut instruction = deposit_governing_tokens(
+    let mut deposit_ix = deposit_governing_tokens(
         &governance_test.program_id,
         &realm_cookie.address,
         &token_source.pubkey(),
@@ -221,13 +221,13 @@ async fn test_deposit_initial_community_tokens_with_owner_must_sign_error() {
         &realm_cookie.account.community_mint,
     );
 
-    instruction.accounts[3] = AccountMeta::new_readonly(token_owner.pubkey(), false);
+    deposit_ix.accounts[3] = AccountMeta::new_readonly(token_owner.pubkey(), false);
 
     // Act
 
     let error = governance_test
         .bench
-        .process_transaction(&[instruction], Some(&[&transfer_authority]))
+        .process_transaction(&[deposit_ix], Some(&[&transfer_authority]))
         .await
         .err()
         .unwrap();
@@ -261,7 +261,7 @@ async fn test_deposit_initial_community_tokens_with_invalid_owner_error() {
         )
         .await;
 
-    let instruction = deposit_governing_tokens(
+    let deposit_ix = deposit_governing_tokens(
         &governance_test.program_id,
         &realm_cookie.address,
         &token_source.pubkey(),
@@ -276,7 +276,7 @@ async fn test_deposit_initial_community_tokens_with_invalid_owner_error() {
 
     let error = governance_test
         .bench
-        .process_transaction(&[instruction], Some(&[&transfer_authority, &invalid_owner]))
+        .process_transaction(&[deposit_ix], Some(&[&transfer_authority, &invalid_owner]))
         .await
         .err()
         .unwrap();

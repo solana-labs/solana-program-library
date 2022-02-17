@@ -49,13 +49,14 @@ pub enum StakePoolInstruction {
     ///   0. `[w]` New StakePool to create.
     ///   1. `[s]` Manager
     ///   2. `[]` Staker
-    ///   3. `[w]` Uninitialized validator stake list storage account
-    ///   4. `[]` Reserve stake account must be initialized, have zero balance,
+    ///   3. `[]` Stake pool withdraw authority
+    ///   4. `[w]` Uninitialized validator stake list storage account
+    ///   5. `[]` Reserve stake account must be initialized, have zero balance,
     ///       and staker / withdrawer authority set to pool withdraw authority.
-    ///   5. `[]` Pool token mint. Must have zero supply, owned by withdraw authority.
-    ///   6. `[]` Pool account to deposit the generated fee for manager.
-    ///   7. `[]` Token program id
-    ///   8. `[]` (Optional) Deposit authority that must sign all deposits.
+    ///   6. `[]` Pool token mint. Must have zero supply, owned by withdraw authority.
+    ///   7. `[]` Pool account to deposit the generated fee for manager.
+    ///   8. `[]` Token program id
+    ///   9. `[]` (Optional) Deposit authority that must sign all deposits.
     ///      Defaults to the program address generated using
     ///      `find_deposit_authority_program_address`, making deposits permissionless.
     Initialize {
@@ -380,6 +381,7 @@ pub fn initialize(
     stake_pool: &Pubkey,
     manager: &Pubkey,
     staker: &Pubkey,
+    stake_pool_withdraw_authority: &Pubkey,
     validator_list: &Pubkey,
     reserve_stake: &Pubkey,
     pool_mint: &Pubkey,
@@ -404,10 +406,11 @@ pub fn initialize(
         AccountMeta::new(*stake_pool, false),
         AccountMeta::new_readonly(*manager, true),
         AccountMeta::new_readonly(*staker, false),
+        AccountMeta::new_readonly(*stake_pool_withdraw_authority, false),
         AccountMeta::new(*validator_list, false),
         AccountMeta::new_readonly(*reserve_stake, false),
-        AccountMeta::new_readonly(*pool_mint, false),
-        AccountMeta::new_readonly(*manager_pool_account, false),
+        AccountMeta::new(*pool_mint, false),
+        AccountMeta::new(*manager_pool_account, false),
         AccountMeta::new_readonly(*token_program_id, false),
     ];
     if let Some(deposit_authority) = deposit_authority {

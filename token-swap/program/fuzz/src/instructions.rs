@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use {
     arbitrary::Arbitrary,
     honggfuzz::fuzz,
@@ -245,10 +247,10 @@ fn run_fuzz(fuzz_data: FuzzData) {
     // First, transfer all pool tokens to the fee account to avoid withdrawal
     // fees and a potential crash when withdrawing just 1 pool token.
     let mut fee_account = token_swap.pool_fee_account.clone();
-    for mut pool_account in pool_accounts.values_mut() {
+    for pool_account in pool_accounts.values_mut() {
         let pool_token_amount = get_token_balance(pool_account);
         if pool_token_amount > 0 {
-            transfer(&mut pool_account, &mut fee_account, pool_token_amount);
+            transfer(pool_account, &mut fee_account, pool_token_amount);
         }
     }
     let mut pool_account = token_swap.pool_token_account.clone();
@@ -296,14 +298,14 @@ fn run_fuzz_instruction(
             trade_direction,
             instruction,
         } => {
-            let mut token_a_account = token_a_accounts.get_mut(&token_a_id).unwrap();
-            let mut token_b_account = token_b_accounts.get_mut(&token_b_id).unwrap();
+            let token_a_account = token_a_accounts.get_mut(&token_a_id).unwrap();
+            let token_b_account = token_b_accounts.get_mut(&token_b_id).unwrap();
             match trade_direction {
                 TradeDirection::AtoB => {
-                    token_swap.swap_a_to_b(&mut token_a_account, &mut token_b_account, instruction)
+                    token_swap.swap_a_to_b(token_a_account, token_b_account, instruction)
                 }
                 TradeDirection::BtoA => {
-                    token_swap.swap_b_to_a(&mut token_b_account, &mut token_a_account, instruction)
+                    token_swap.swap_b_to_a(token_b_account, token_a_account, instruction)
                 }
             }
         }
@@ -313,13 +315,13 @@ fn run_fuzz_instruction(
             pool_token_id,
             instruction,
         } => {
-            let mut token_a_account = token_a_accounts.get_mut(&token_a_id).unwrap();
-            let mut token_b_account = token_b_accounts.get_mut(&token_b_id).unwrap();
-            let mut pool_account = pool_accounts.get_mut(&pool_token_id).unwrap();
+            let token_a_account = token_a_accounts.get_mut(&token_a_id).unwrap();
+            let token_b_account = token_b_accounts.get_mut(&token_b_id).unwrap();
+            let pool_account = pool_accounts.get_mut(&pool_token_id).unwrap();
             token_swap.deposit_all_token_types(
-                &mut token_a_account,
-                &mut token_b_account,
-                &mut pool_account,
+                token_a_account,
+                token_b_account,
+                pool_account,
                 instruction,
             )
         }
@@ -329,13 +331,13 @@ fn run_fuzz_instruction(
             pool_token_id,
             instruction,
         } => {
-            let mut token_a_account = token_a_accounts.get_mut(&token_a_id).unwrap();
-            let mut token_b_account = token_b_accounts.get_mut(&token_b_id).unwrap();
-            let mut pool_account = pool_accounts.get_mut(&pool_token_id).unwrap();
+            let token_a_account = token_a_accounts.get_mut(&token_a_id).unwrap();
+            let token_b_account = token_b_accounts.get_mut(&token_b_id).unwrap();
+            let pool_account = pool_accounts.get_mut(&pool_token_id).unwrap();
             token_swap.withdraw_all_token_types(
-                &mut pool_account,
-                &mut token_a_account,
-                &mut token_b_account,
+                pool_account,
+                token_a_account,
+                token_b_account,
                 instruction,
             )
         }
@@ -345,14 +347,14 @@ fn run_fuzz_instruction(
             pool_token_id,
             instruction,
         } => {
-            let mut source_token_account = match trade_direction {
+            let source_token_account = match trade_direction {
                 TradeDirection::AtoB => token_a_accounts.get_mut(&token_account_id).unwrap(),
                 TradeDirection::BtoA => token_b_accounts.get_mut(&token_account_id).unwrap(),
             };
-            let mut pool_account = pool_accounts.get_mut(&pool_token_id).unwrap();
+            let pool_account = pool_accounts.get_mut(&pool_token_id).unwrap();
             token_swap.deposit_single_token_type_exact_amount_in(
-                &mut source_token_account,
-                &mut pool_account,
+                source_token_account,
+                pool_account,
                 instruction,
             )
         }
@@ -362,14 +364,14 @@ fn run_fuzz_instruction(
             pool_token_id,
             instruction,
         } => {
-            let mut destination_token_account = match trade_direction {
+            let destination_token_account = match trade_direction {
                 TradeDirection::AtoB => token_a_accounts.get_mut(&token_account_id).unwrap(),
                 TradeDirection::BtoA => token_b_accounts.get_mut(&token_account_id).unwrap(),
             };
-            let mut pool_account = pool_accounts.get_mut(&pool_token_id).unwrap();
+            let pool_account = pool_accounts.get_mut(&pool_token_id).unwrap();
             token_swap.withdraw_single_token_type_exact_amount_out(
-                &mut pool_account,
-                &mut destination_token_account,
+                pool_account,
+                destination_token_account,
                 instruction,
             )
         }
@@ -459,12 +461,12 @@ fn get_swap_curve(curve_type: CurveType) -> SwapCurve {
     SwapCurve {
         curve_type,
         calculator: match curve_type {
-            CurveType::ConstantProduct => Box::new(ConstantProductCurve),
-            CurveType::ConstantPrice => Box::new(ConstantPriceCurve {
+            CurveType::ConstantProduct => Arc::new(ConstantProductCurve),
+            CurveType::ConstantPrice => Arc::new(ConstantPriceCurve {
                 token_b_price: 10_000_000,
             }),
-            CurveType::Stable => Box::new(StableCurve { amp: 100 }),
-            CurveType::Offset => Box::new(OffsetCurve {
+            CurveType::Stable => Arc::new(StableCurve { amp: 100 }),
+            CurveType::Offset => Arc::new(OffsetCurve {
                 token_b_offset: 100_000_000_000,
             }),
         },

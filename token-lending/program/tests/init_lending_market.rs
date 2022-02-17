@@ -6,7 +6,6 @@ use helpers::*;
 use solana_program_test::*;
 use solana_sdk::{
     instruction::InstructionError,
-    pubkey::Pubkey,
     signature::Signer,
     transaction::{Transaction, TransactionError},
 };
@@ -23,7 +22,7 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(20_000);
+    test.set_compute_max_units(20_000);
 
     let (mut banks_client, payer, _recent_blockhash) = test.start().await;
 

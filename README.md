@@ -65,6 +65,14 @@ $ cargo clippy
 $ ./coverage.sh  # Please help! Coverage build currently fails on MacOS due to an XCode `grcov` mismatch...
 ```
 
+#### MacOS
+
+You may need to pin your grcov version, and then rustup with the apple-darwin nightly toolchain:
+```bash
+$ cargo install grcov --version 0.6.1
+$ rustup toolchain install nightly-x86_64-apple-darwin
+```
+
 
 ## Release Process
 SPL programs are currently tagged and released manually. Each program is

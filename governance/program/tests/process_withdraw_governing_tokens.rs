@@ -9,8 +9,7 @@ use program_test::*;
 use solana_sdk::signature::Signer;
 
 use spl_governance::{
-    error::GovernanceError,
-    instruction::{withdraw_governing_tokens, Vote},
+    error::GovernanceError, instruction::withdraw_governing_tokens,
     state::token_owner_record::get_token_owner_record_address,
 };
 
@@ -107,7 +106,7 @@ async fn test_withdraw_community_tokens_with_owner_must_sign_error() {
 
     let hacker_token_destination = Pubkey::new_unique();
 
-    let mut instruction = withdraw_governing_tokens(
+    let mut withdraw_ix = withdraw_governing_tokens(
         &governance_test.program_id,
         &realm_cookie.address,
         &hacker_token_destination,
@@ -115,13 +114,13 @@ async fn test_withdraw_community_tokens_with_owner_must_sign_error() {
         &realm_cookie.account.community_mint,
     );
 
-    instruction.accounts[3] =
+    withdraw_ix.accounts[3] =
         AccountMeta::new_readonly(token_owner_record_cookie.token_owner.pubkey(), false);
 
     // Act
     let err = governance_test
         .bench
-        .process_transaction(&[instruction], None)
+        .process_transaction(&[withdraw_ix], None)
         .await
         .err()
         .unwrap();
@@ -154,7 +153,7 @@ async fn test_withdraw_community_tokens_with_token_owner_record_address_mismatch
         .await
         .unwrap();
 
-    let mut instruction = withdraw_governing_tokens(
+    let mut withdraw_ix = withdraw_governing_tokens(
         &governance_test.program_id,
         &realm_cookie.address,
         &hacker_record_cookie.token_source,
@@ -162,12 +161,12 @@ async fn test_withdraw_community_tokens_with_token_owner_record_address_mismatch
         &realm_cookie.account.community_mint,
     );
 
-    instruction.accounts[4] = AccountMeta::new(vote_record_address, false);
+    withdraw_ix.accounts[4] = AccountMeta::new(vote_record_address, false);
 
     // Act
     let err = governance_test
         .bench
-        .process_transaction(&[instruction], Some(&[&hacker_record_cookie.token_owner]))
+        .process_transaction(&[withdraw_ix], Some(&[&hacker_record_cookie.token_owner]))
         .await
         .err()
         .unwrap();
@@ -193,8 +192,8 @@ async fn test_withdraw_governing_tokens_with_unrelinquished_votes_error() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -203,12 +202,12 @@ async fn test_withdraw_governing_tokens_with_unrelinquished_votes_error() {
         .unwrap();
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
     governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::Yes)
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
         .await
         .unwrap();
 
@@ -239,8 +238,8 @@ async fn test_withdraw_governing_tokens_after_relinquishing_vote() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -249,12 +248,12 @@ async fn test_withdraw_governing_tokens_after_relinquishing_vote() {
         .unwrap();
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
     governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::Yes)
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
         .await
         .unwrap();
 
@@ -303,7 +302,7 @@ async fn test_withdraw_tokens_with_malicious_holding_account_error() {
         )
         .await;
 
-    let mut instruction = withdraw_governing_tokens(
+    let mut withdraw_ix = withdraw_governing_tokens(
         &governance_test.program_id,
         &realm_cookie.address,
         &token_owner_record_cookie.token_source,
@@ -311,13 +310,13 @@ async fn test_withdraw_tokens_with_malicious_holding_account_error() {
         &realm_cookie.account.community_mint,
     );
 
-    instruction.accounts[1].pubkey = realm_token_account_cookie.address;
+    withdraw_ix.accounts[1].pubkey = realm_token_account_cookie.address;
 
     // Act
     let err = governance_test
         .bench
         .process_transaction(
-            &[instruction],
+            &[withdraw_ix],
             Some(&[&token_owner_record_cookie.token_owner]),
         )
         .await
@@ -345,8 +344,8 @@ async fn test_withdraw_governing_tokens_with_outstanding_proposals_error() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -355,7 +354,7 @@ async fn test_withdraw_governing_tokens_with_outstanding_proposals_error() {
         .unwrap();
 
     governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
@@ -386,8 +385,8 @@ async fn test_withdraw_governing_tokens_after_proposal_cancelled() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -396,7 +395,7 @@ async fn test_withdraw_governing_tokens_after_proposal_cancelled() {
         .unwrap();
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 

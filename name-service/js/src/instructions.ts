@@ -94,7 +94,8 @@ export function updateInstruction(
   nameAccountKey: PublicKey,
   offset: Numberu32,
   input_data: Buffer,
-  nameUpdateSigner: PublicKey
+  nameUpdateSigner: PublicKey,
+  parentNameKey: PublicKey | undefined
 ): TransactionInstruction {
   const buffers = [
     Buffer.from(Int8Array.from([1])),
@@ -104,7 +105,7 @@ export function updateInstruction(
   ];
 
   const data = Buffer.concat(buffers);
-  const keys = [
+  let keys = [
     {
       pubkey: nameAccountKey,
       isSigner: false,
@@ -116,6 +117,14 @@ export function updateInstruction(
       isWritable: false,
     },
   ];
+
+  if (parentNameKey) {
+    keys.push({
+      pubkey: parentNameKey,
+      isSigner: false,
+      isWritable: false,
+    });
+  }
 
   return new TransactionInstruction({
     keys,
@@ -129,7 +138,8 @@ export function transferInstruction(
   nameAccountKey: PublicKey,
   newOwnerKey: PublicKey,
   currentNameOwnerKey: PublicKey,
-  nameClassKey?: PublicKey
+  nameClassKey?: PublicKey,
+  nameParent?:PublicKey
 ): TransactionInstruction {
   const buffers = [Buffer.from(Int8Array.from([2])), newOwnerKey.toBuffer()];
 
@@ -152,6 +162,14 @@ export function transferInstruction(
     keys.push({
       pubkey: nameClassKey,
       isSigner: true,
+      isWritable: false,
+    });
+  }
+
+  if(nameParent){
+    keys.push({
+      pubkey: nameParent,
+      isSigner: false,
       isWritable: false,
     });
   }

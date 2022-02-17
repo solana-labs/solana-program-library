@@ -547,9 +547,9 @@ impl NativeTokenSwap {
 
     pub fn withdraw_all(
         &mut self,
-        mut pool_account: &mut NativeAccountData,
-        mut token_a_account: &mut NativeAccountData,
-        mut token_b_account: &mut NativeAccountData,
+        pool_account: &mut NativeAccountData,
+        token_a_account: &mut NativeAccountData,
+        token_b_account: &mut NativeAccountData,
     ) -> ProgramResult {
         let pool_token_amount = native_token::get_token_balance(pool_account);
         if pool_token_amount > 0 {
@@ -559,9 +559,9 @@ impl NativeTokenSwap {
                 minimum_token_b_amount: 0,
             };
             self.withdraw_all_token_types(
-                &mut pool_account,
-                &mut token_a_account,
-                &mut token_b_account,
+                pool_account,
+                token_a_account,
+                token_b_account,
                 instruction,
             )
         } else {

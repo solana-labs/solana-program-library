@@ -8,7 +8,7 @@ use solana_sdk::{signature::Keypair, signer::Signer};
 use spl_governance::error::GovernanceError;
 use spl_governance_tools::error::GovernanceToolsError;
 
-use spl_token::error::TokenError;
+use spl_token::{error::TokenError, instruction::AuthorityType};
 
 #[tokio::test]
 async fn test_create_token_governance() {
@@ -224,4 +224,55 @@ async fn test_create_token_governance_with_invalid_realm_error() {
 
     // Assert
     assert_eq!(err, GovernanceToolsError::InvalidAccountType.into());
+}
+
+#[tokio::test]
+async fn test_create_token_governance_with_close_authority_transfer() {
+    // Arrange
+    let mut governance_test = GovernanceProgramTest::start_new().await;
+
+    let realm_cookie = governance_test.with_realm().await;
+    let governed_token_cookie = governance_test.with_governed_token().await;
+
+    governance_test
+        .bench
+        .set_spl_token_account_authority(
+            &governed_token_cookie.address,
+            &governed_token_cookie.token_owner,
+            Some(&governed_token_cookie.token_owner.pubkey()),
+            AuthorityType::CloseAccount,
+        )
+        .await;
+
+    let token_owner_record_cookie = governance_test
+        .with_community_token_deposit(&realm_cookie)
+        .await
+        .unwrap();
+
+    // Act
+    let token_governance_cookie = governance_test
+        .with_token_governance(
+            &realm_cookie,
+            &governed_token_cookie,
+            &token_owner_record_cookie,
+        )
+        .await
+        .unwrap();
+
+    // Assert
+    let token_governance_account = governance_test
+        .get_governance_account(&token_governance_cookie.address)
+        .await;
+
+    assert_eq!(token_governance_cookie.account, token_governance_account);
+
+    let token_account = governance_test
+        .get_token_account(&governed_token_cookie.address)
+        .await;
+
+    assert_eq!(token_governance_cookie.address, token_account.owner);
+    assert_eq!(
+        token_governance_cookie.address,
+        token_account.close_authority.unwrap()
+    );
 }

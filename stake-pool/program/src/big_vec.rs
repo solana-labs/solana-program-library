@@ -120,8 +120,8 @@ impl<'data> BigVec<'data> {
         if self.data.len() < end_index {
             return Err(ProgramError::AccountDataTooSmall);
         }
-        let mut element_ref = &mut self.data[start_index..start_index + T::LEN];
-        element.pack_into_slice(&mut element_ref);
+        let element_ref = &mut self.data[start_index..start_index + T::LEN];
+        element.pack_into_slice(element_ref);
         Ok(())
     }
 

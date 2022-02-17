@@ -1,3 +1,5 @@
+use crate::CommandResult;
+
 /// The `bench` subcommand
 use {
     crate::{
@@ -165,7 +167,7 @@ pub(crate) fn bench_process_command(
     config: &Config,
     mut signers: Vec<Box<dyn Signer>>,
     wallet_manager: &mut Option<Arc<RemoteWalletManager>>,
-) -> Result<(), Error> {
+) -> CommandResult {
     assert!(!config.sign_only);
 
     match matches.subcommand() {
@@ -203,7 +205,9 @@ pub(crate) fn bench_process_command(
             signers.push(owner_signer);
             let from = pubkey_of_signer(arg_matches, "from", wallet_manager)
                 .unwrap()
-                .unwrap_or_else(|| get_associated_token_address(&owner, &token));
+                .unwrap_or_else(|| {
+                    get_associated_token_address_with_program_id(&owner, &token, &config.program_id)
+                });
 
             command_deposit_into_or_withdraw_from(
                 config, signers, &token, n, &owner, ui_amount, &from, true,
@@ -220,7 +224,9 @@ pub(crate) fn bench_process_command(
             signers.push(owner_signer);
             let to = pubkey_of_signer(arg_matches, "to", wallet_manager)
                 .unwrap()
-                .unwrap_or_else(|| get_associated_token_address(&owner, &token));
+                .unwrap_or_else(|| {
+                    get_associated_token_address_with_program_id(&owner, &token, &config.program_id)
+                });
 
             command_deposit_into_or_withdraw_from(
                 config, signers, &token, n, &owner, ui_amount, &to, false,
@@ -229,35 +235,32 @@ pub(crate) fn bench_process_command(
         _ => unreachable!(),
     }
 
-    Ok(())
+    Ok("".to_string())
 }
 
-fn get_token_address_with_seed(token: &Pubkey, owner: &Pubkey, i: usize) -> (Pubkey, String) {
+fn get_token_address_with_seed(
+    program_id: &Pubkey,
+    token: &Pubkey,
+    owner: &Pubkey,
+    i: usize,
+) -> (Pubkey, String) {
     let seed = format!("{}{}", i, token)[..31].to_string();
     (
-        Pubkey::create_with_seed(owner, &seed, &spl_token::id()).unwrap(),
+        Pubkey::create_with_seed(owner, &seed, program_id).unwrap(),
         seed,
     )
 }
 
 fn get_token_addresses_with_seed(
+    program_id: &Pubkey,
     token: &Pubkey,
     owner: &Pubkey,
     n: usize,
 ) -> Vec<(Pubkey, String)> {
     (0..n)
-        .map(|i| get_token_address_with_seed(token, owner, i))
+        .map(|i| get_token_address_with_seed(program_id, token, owner, i))
         .collect()
 }
-
-/*
-fn get_token_addresses(token: &Pubkey, owner: &Pubkey, n: usize) -> Vec<Pubkey> {
-    get_token_addresses_with_seed(token, owner, n)
-        .iter()
-        .map(|x| x.0)
-        .collect()
-}
-*/
 
 fn is_valid_token(rpc_client: &RpcClient, token: &Pubkey) -> Result<(), Error> {
     let mint_account_data = rpc_client
@@ -286,7 +289,8 @@ fn command_create_accounts(
 
     let mut lamports_required = 0;
 
-    let token_addresses_with_seed = get_token_addresses_with_seed(token, owner, n);
+    let token_addresses_with_seed =
+        get_token_addresses_with_seed(&config.program_id, token, owner, n);
     let mut messages = vec![];
     for address_chunk in token_addresses_with_seed.chunks(100) {
         let accounts_chunk = rpc_client
@@ -304,10 +308,10 @@ fn command_create_accounts(
                             seed,
                             minimum_balance_for_rent_exemption,
                             spl_token::state::Account::get_packed_len() as u64,
-                            &spl_token::id(),
+                            &config.program_id,
                         ),
                         spl_token::instruction::initialize_account(
-                            &spl_token::id(),
+                            &config.program_id,
                             address,
                             token,
                             owner,
@@ -334,7 +338,8 @@ fn command_close_accounts(
     println!("Scanning accounts...");
     is_valid_token(rpc_client, token)?;
 
-    let token_addresses_with_seed = get_token_addresses_with_seed(token, owner, n);
+    let token_addresses_with_seed =
+        get_token_addresses_with_seed(&config.program_id, token, owner, n);
     let mut messages = vec![];
     for address_chunk in token_addresses_with_seed.chunks(100) {
         let accounts_chunk = rpc_client
@@ -352,7 +357,7 @@ fn command_close_accounts(
                         } else {
                             messages.push(Message::new(
                                 &[spl_token::instruction::close_account(
-                                    &spl_token::id(),
+                                    &config.program_id,
                                     address,
                                     owner,
                                     owner,
@@ -395,7 +400,8 @@ fn command_deposit_into_or_withdraw_from(
     }
     let amount = spl_token::ui_amount_to_amount(ui_amount, decimals);
 
-    let token_addresses_with_seed = get_token_addresses_with_seed(token, owner, n);
+    let token_addresses_with_seed =
+        get_token_addresses_with_seed(&config.program_id, token, owner, n);
     let mut messages = vec![];
     for address_chunk in token_addresses_with_seed.chunks(100) {
         let accounts_chunk = rpc_client
@@ -405,7 +411,7 @@ fn command_deposit_into_or_withdraw_from(
             if account.is_some() {
                 messages.push(Message::new(
                     &[spl_token::instruction::transfer_checked(
-                        &spl_token::id(),
+                        &config.program_id,
                         if deposit_into { from_or_to } else { address },
                         token,
                         if deposit_into { address } else { from_or_to },
@@ -474,5 +480,19 @@ fn send_messages(
         tps,
         elapsed.as_secs_f64(),
     );
+
+    let stats = config.rpc_client.get_transport_stats();
+    println!("Total RPC requests: {}", stats.request_count);
+    println!(
+        "Total RPC time: {:.2} seconds",
+        stats.elapsed_time.as_secs_f64()
+    );
+    if stats.rate_limited_time != std::time::Duration::default() {
+        println!(
+            "Total idle time due to RPC rate limiting: {:.2} seconds",
+            stats.rate_limited_time.as_secs_f64()
+        );
+    }
+
     Ok(())
 }

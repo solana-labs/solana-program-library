@@ -744,6 +744,10 @@ impl Processor {
         let token_program_info = next_account_info(account_info_iter)?;
 
         let token_swap = SwapVersion::unpack(&swap_info.data.borrow())?;
+        let calculator = &token_swap.swap_curve().calculator;
+        if !calculator.allows_deposits() {
+            return Err(SwapError::UnsupportedCurveOperation.into());
+        }
         let source_account =
             Self::unpack_token_account(source_info, token_swap.token_program_id())?;
         let swap_token_a =
@@ -793,7 +797,7 @@ impl Processor {
                 )
                 .ok_or(SwapError::ZeroTradingTokens)?
         } else {
-            token_swap.swap_curve().calculator.new_pool_supply()
+            calculator.new_pool_supply()
         };
 
         let pool_token_amount = to_u64(pool_token_amount)?;
@@ -1164,6 +1168,7 @@ mod tests {
             AuthorityType,
         },
     };
+    use std::sync::Arc;
 
     // Test program id for the swap program.
     const SWAP_PROGRAM_ID: Pubkey = Pubkey::new_from_array([2u8; 32]);
@@ -1413,11 +1418,11 @@ mod tests {
             &mut self,
             user_key: &Pubkey,
             user_source_key: &Pubkey,
-            mut user_source_account: &mut Account,
+            user_source_account: &mut Account,
             swap_source_key: &Pubkey,
             swap_destination_key: &Pubkey,
             user_destination_key: &Pubkey,
-            mut user_destination_account: &mut Account,
+            user_destination_account: &mut Account,
             amount_in: u64,
             minimum_amount_out: u64,
         ) -> ProgramResult {
@@ -1434,7 +1439,7 @@ mod tests {
                 )
                 .unwrap(),
                 vec![
-                    &mut user_source_account,
+                    user_source_account,
                     &mut Account::default(),
                     &mut Account::default(),
                 ],
@@ -1469,10 +1474,10 @@ mod tests {
                     &mut self.swap_account,
                     &mut Account::default(),
                     &mut Account::default(),
-                    &mut user_source_account,
+                    user_source_account,
                     &mut swap_source_account,
                     &mut swap_destination_account,
-                    &mut user_destination_account,
+                    user_destination_account,
                     &mut self.pool_mint_account,
                     &mut self.pool_fee_account,
                     &mut Account::default(),
@@ -1490,11 +1495,11 @@ mod tests {
             &mut self,
             depositor_key: &Pubkey,
             depositor_token_a_key: &Pubkey,
-            mut depositor_token_a_account: &mut Account,
+            depositor_token_a_account: &mut Account,
             depositor_token_b_key: &Pubkey,
-            mut depositor_token_b_account: &mut Account,
+            depositor_token_b_account: &mut Account,
             depositor_pool_key: &Pubkey,
-            mut depositor_pool_account: &mut Account,
+            depositor_pool_account: &mut Account,
             pool_token_amount: u64,
             maximum_token_a_amount: u64,
             maximum_token_b_amount: u64,
@@ -1511,7 +1516,7 @@ mod tests {
                 )
                 .unwrap(),
                 vec![
-                    &mut depositor_token_a_account,
+                    depositor_token_a_account,
                     &mut Account::default(),
                     &mut Account::default(),
                 ],
@@ -1529,7 +1534,7 @@ mod tests {
                 )
                 .unwrap(),
                 vec![
-                    &mut depositor_token_b_account,
+                    depositor_token_b_account,
                     &mut Account::default(),
                     &mut Account::default(),
                 ],
@@ -1560,12 +1565,12 @@ mod tests {
                     &mut self.swap_account,
                     &mut Account::default(),
                     &mut Account::default(),
-                    &mut depositor_token_a_account,
-                    &mut depositor_token_b_account,
+                    depositor_token_a_account,
+                    depositor_token_b_account,
                     &mut self.token_a_account,
                     &mut self.token_b_account,
                     &mut self.pool_mint_account,
-                    &mut depositor_pool_account,
+                    depositor_pool_account,
                     &mut Account::default(),
                 ],
             )
@@ -1576,11 +1581,11 @@ mod tests {
             &mut self,
             user_key: &Pubkey,
             pool_key: &Pubkey,
-            mut pool_account: &mut Account,
+            pool_account: &mut Account,
             token_a_key: &Pubkey,
-            mut token_a_account: &mut Account,
+            token_a_account: &mut Account,
             token_b_key: &Pubkey,
-            mut token_b_account: &mut Account,
+            token_b_account: &mut Account,
             pool_token_amount: u64,
             minimum_token_a_amount: u64,
             minimum_token_b_amount: u64,
@@ -1598,7 +1603,7 @@ mod tests {
                 )
                 .unwrap(),
                 vec![
-                    &mut pool_account,
+                    pool_account,
                     &mut Account::default(),
                     &mut Account::default(),
                 ],
@@ -1632,11 +1637,11 @@ mod tests {
                     &mut Account::default(),
                     &mut Account::default(),
                     &mut self.pool_mint_account,
-                    &mut pool_account,
+                    pool_account,
                     &mut self.token_a_account,
                     &mut self.token_b_account,
-                    &mut token_a_account,
-                    &mut token_b_account,
+                    token_a_account,
+                    token_b_account,
                     &mut self.pool_fee_account,
                     &mut Account::default(),
                 ],
@@ -1648,9 +1653,9 @@ mod tests {
             &mut self,
             depositor_key: &Pubkey,
             deposit_account_key: &Pubkey,
-            mut deposit_token_account: &mut Account,
+            deposit_token_account: &mut Account,
             deposit_pool_key: &Pubkey,
-            mut deposit_pool_account: &mut Account,
+            deposit_pool_account: &mut Account,
             source_token_amount: u64,
             minimum_pool_token_amount: u64,
         ) -> ProgramResult {
@@ -1666,7 +1671,7 @@ mod tests {
                 )
                 .unwrap(),
                 vec![
-                    &mut deposit_token_account,
+                    deposit_token_account,
                     &mut Account::default(),
                     &mut Account::default(),
                 ],
@@ -1695,11 +1700,11 @@ mod tests {
                     &mut self.swap_account,
                     &mut Account::default(),
                     &mut Account::default(),
-                    &mut deposit_token_account,
+                    deposit_token_account,
                     &mut self.token_a_account,
                     &mut self.token_b_account,
                     &mut self.pool_mint_account,
-                    &mut deposit_pool_account,
+                    deposit_pool_account,
                     &mut Account::default(),
                 ],
             )
@@ -1710,9 +1715,9 @@ mod tests {
             &mut self,
             user_key: &Pubkey,
             pool_key: &Pubkey,
-            mut pool_account: &mut Account,
+            pool_account: &mut Account,
             destination_key: &Pubkey,
-            mut destination_account: &mut Account,
+            destination_account: &mut Account,
             destination_token_amount: u64,
             maximum_pool_token_amount: u64,
         ) -> ProgramResult {
@@ -1729,7 +1734,7 @@ mod tests {
                 )
                 .unwrap(),
                 vec![
-                    &mut pool_account,
+                    pool_account,
                     &mut Account::default(),
                     &mut Account::default(),
                 ],
@@ -1760,10 +1765,10 @@ mod tests {
                     &mut Account::default(),
                     &mut Account::default(),
                     &mut self.pool_mint_account,
-                    &mut pool_account,
+                    pool_account,
                     &mut self.token_a_account,
                     &mut self.token_b_account,
-                    &mut destination_account,
+                    destination_account,
                     &mut self.pool_fee_account,
                     &mut Account::default(),
                 ],
@@ -1842,7 +1847,7 @@ mod tests {
     fn mint_token(
         program_id: &Pubkey,
         mint_key: &Pubkey,
-        mut mint_account: &mut Account,
+        mint_account: &mut Account,
         mint_authority_key: &Pubkey,
         account_owner_key: &Pubkey,
         amount: u64,
@@ -1860,7 +1865,7 @@ mod tests {
             initialize_account(program_id, &account_key, mint_key, account_owner_key).unwrap(),
             vec![
                 &mut account_account,
-                &mut mint_account,
+                mint_account,
                 &mut mint_authority_account,
                 &mut rent_sysvar_account,
             ],
@@ -1879,7 +1884,7 @@ mod tests {
                 )
                 .unwrap(),
                 vec![
-                    &mut mint_account,
+                    mint_account,
                     &mut account_account,
                     &mut mint_authority_account,
                 ],
@@ -1970,7 +1975,7 @@ mod tests {
         let curve_type = CurveType::ConstantProduct;
         let swap_curve = SwapCurve {
             curve_type,
-            calculator: Box::new(ConstantProductCurve {}),
+            calculator: Arc::new(ConstantProductCurve {}),
         };
 
         let mut accounts =
@@ -2468,7 +2473,7 @@ mod tests {
             };
             let swap_curve = SwapCurve {
                 curve_type: CurveType::ConstantPrice,
-                calculator: Box::new(ConstantPriceCurve { token_b_price }),
+                calculator: Arc::new(ConstantPriceCurve { token_b_price }),
             };
             let mut accounts =
                 SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
@@ -2493,7 +2498,7 @@ mod tests {
             let token_b_price = 10_000;
             let swap_curve = SwapCurve {
                 curve_type: CurveType::ConstantPrice,
-                calculator: Box::new(ConstantPriceCurve { token_b_price }),
+                calculator: Arc::new(ConstantPriceCurve { token_b_price }),
             };
             let mut accounts =
                 SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
@@ -2515,7 +2520,7 @@ mod tests {
             };
             let swap_curve = SwapCurve {
                 curve_type: CurveType::Offset,
-                calculator: Box::new(OffsetCurve { token_b_offset }),
+                calculator: Arc::new(OffsetCurve { token_b_offset }),
             };
             let mut accounts =
                 SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
@@ -2540,7 +2545,7 @@ mod tests {
             };
             let swap_curve = SwapCurve {
                 curve_type: CurveType::Offset,
-                calculator: Box::new(OffsetCurve { token_b_offset }),
+                calculator: Arc::new(OffsetCurve { token_b_offset }),
             };
             let mut accounts =
                 SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
@@ -2569,7 +2574,7 @@ mod tests {
             let curve = ConstantProductCurve {};
             let swap_curve = SwapCurve {
                 curve_type: CurveType::ConstantProduct,
-                calculator: Box::new(curve),
+                calculator: Arc::new(curve),
             };
             let owner_key = &new_key.to_string();
             let valid_curve_types = &[CurveType::ConstantProduct];
@@ -2638,7 +2643,7 @@ mod tests {
             let curve = ConstantProductCurve {};
             let swap_curve = SwapCurve {
                 curve_type: CurveType::ConstantProduct,
-                calculator: Box::new(curve),
+                calculator: Arc::new(curve),
             };
             let owner_key = &user_key.to_string();
             let valid_curve_types = &[CurveType::ConstantProduct];
@@ -2709,7 +2714,7 @@ mod tests {
             let curve = ConstantProductCurve {};
             let swap_curve = SwapCurve {
                 curve_type: CurveType::ConstantProduct,
-                calculator: Box::new(curve),
+                calculator: Arc::new(curve),
             };
             let owner_key = &user_key.to_string();
             let valid_curve_types = &[CurveType::ConstantProduct];
@@ -2814,7 +2819,7 @@ mod tests {
         let curve_type = CurveType::ConstantProduct;
         let swap_curve = SwapCurve {
             curve_type,
-            calculator: Box::new(ConstantProductCurve {}),
+            calculator: Arc::new(ConstantProductCurve {}),
         };
 
         let mut accounts =
@@ -3426,7 +3431,7 @@ mod tests {
         let curve_type = CurveType::ConstantProduct;
         let swap_curve = SwapCurve {
             curve_type,
-            calculator: Box::new(ConstantProductCurve {}),
+            calculator: Arc::new(ConstantProductCurve {}),
         };
 
         let withdrawer_key = Pubkey::new_unique();
@@ -4234,7 +4239,7 @@ mod tests {
         let curve_type = CurveType::ConstantProduct;
         let swap_curve = SwapCurve {
             curve_type,
-            calculator: Box::new(ConstantProductCurve {}),
+            calculator: Arc::new(ConstantProductCurve {}),
         };
 
         let mut accounts =
@@ -4746,7 +4751,7 @@ mod tests {
         let curve_type = CurveType::ConstantProduct;
         let swap_curve = SwapCurve {
             curve_type,
-            calculator: Box::new(ConstantProductCurve {}),
+            calculator: Arc::new(ConstantProductCurve {}),
         };
 
         let withdrawer_key = Pubkey::new_unique();
@@ -5369,7 +5374,7 @@ mod tests {
     fn check_valid_swap_curve(
         fees: Fees,
         curve_type: CurveType,
-        calculator: Box<dyn CurveCalculator>,
+        calculator: Arc<dyn CurveCalculator + Send + Sync>,
         token_a_amount: u64,
         token_b_amount: u64,
     ) {
@@ -5574,7 +5579,7 @@ mod tests {
         check_valid_swap_curve(
             fees.clone(),
             CurveType::ConstantProduct,
-            Box::new(ConstantProductCurve {}),
+            Arc::new(ConstantProductCurve {}),
             token_a_amount,
             token_b_amount,
         );
@@ -5582,7 +5587,7 @@ mod tests {
         check_valid_swap_curve(
             fees.clone(),
             CurveType::ConstantPrice,
-            Box::new(ConstantPriceCurve { token_b_price }),
+            Arc::new(ConstantPriceCurve { token_b_price }),
             token_a_amount,
             token_b_amount,
         );
@@ -5590,7 +5595,7 @@ mod tests {
         check_valid_swap_curve(
             fees,
             CurveType::Offset,
-            Box::new(OffsetCurve { token_b_offset }),
+            Arc::new(OffsetCurve { token_b_offset }),
             token_a_amount,
             token_b_amount,
         );
@@ -5623,7 +5628,7 @@ mod tests {
         check_valid_swap_curve(
             fees.clone(),
             CurveType::ConstantProduct,
-            Box::new(ConstantProductCurve {}),
+            Arc::new(ConstantProductCurve {}),
             token_a_amount,
             token_b_amount,
         );
@@ -5631,7 +5636,7 @@ mod tests {
         check_valid_swap_curve(
             fees.clone(),
             CurveType::ConstantPrice,
-            Box::new(ConstantPriceCurve { token_b_price }),
+            Arc::new(ConstantPriceCurve { token_b_price }),
             token_a_amount,
             token_b_amount / token_b_price,
         );
@@ -5639,7 +5644,7 @@ mod tests {
         check_valid_swap_curve(
             fees,
             CurveType::Offset,
-            Box::new(OffsetCurve { token_b_offset }),
+            Arc::new(OffsetCurve { token_b_offset }),
             token_a_amount,
             token_b_amount,
         );
@@ -5675,7 +5680,7 @@ mod tests {
         let curve = ConstantProductCurve {};
         let swap_curve = SwapCurve {
             curve_type: CurveType::ConstantProduct,
-            calculator: Box::new(curve),
+            calculator: Arc::new(curve),
         };
 
         let owner_key_str = &owner_key.to_string();
@@ -5821,7 +5826,7 @@ mod tests {
         let curve_type = CurveType::ConstantProduct;
         let swap_curve = SwapCurve {
             curve_type,
-            calculator: Box::new(ConstantProductCurve {}),
+            calculator: Arc::new(ConstantProductCurve {}),
         };
         let mut accounts =
             SwapAccountInfo::new(&user_key, fees, swap_curve, token_a_amount, token_b_amount);
@@ -6480,7 +6485,7 @@ mod tests {
         let token_b_offset = 2_000_000;
         let swap_curve = SwapCurve {
             curve_type: CurveType::Offset,
-            calculator: Box::new(OffsetCurve { token_b_offset }),
+            calculator: Arc::new(OffsetCurve { token_b_offset }),
         };
         let user_key = Pubkey::new_unique();
         let swapper_key = Pubkey::new_unique();
@@ -6630,7 +6635,7 @@ mod tests {
         let token_b_offset = 2_000_000;
         let swap_curve = SwapCurve {
             curve_type: CurveType::Offset,
-            calculator: Box::new(OffsetCurve { token_b_offset }),
+            calculator: Arc::new(OffsetCurve { token_b_offset }),
         };
         let total_pool = swap_curve.calculator.new_pool_supply();
         let user_key = Pubkey::new_unique();
@@ -6714,7 +6719,7 @@ mod tests {
 
         let swap_curve = SwapCurve {
             curve_type: CurveType::ConstantPrice,
-            calculator: Box::new(ConstantPriceCurve { token_b_price }),
+            calculator: Arc::new(ConstantPriceCurve { token_b_price }),
         };
         let total_pool = swap_curve.calculator.new_pool_supply();
         let user_key = Pubkey::new_unique();
@@ -6854,5 +6859,72 @@ mod tests {
                 token_b_amount,
             )
             .unwrap();
+    }
+
+    #[test]
+    fn test_deposits_allowed_single_token() {
+        let trade_fee_numerator = 1;
+        let trade_fee_denominator = 10;
+        let owner_trade_fee_numerator = 1;
+        let owner_trade_fee_denominator = 30;
+        let owner_withdraw_fee_numerator = 0;
+        let owner_withdraw_fee_denominator = 30;
+        let host_fee_numerator = 10;
+        let host_fee_denominator = 100;
+
+        let token_a_amount = 1_000_000;
+        let token_b_amount = 0;
+        let fees = Fees {
+            trade_fee_numerator,
+            trade_fee_denominator,
+            owner_trade_fee_numerator,
+            owner_trade_fee_denominator,
+            owner_withdraw_fee_numerator,
+            owner_withdraw_fee_denominator,
+            host_fee_numerator,
+            host_fee_denominator,
+        };
+
+        let token_b_offset = 2_000_000;
+        let swap_curve = SwapCurve {
+            curve_type: CurveType::Offset,
+            calculator: Arc::new(OffsetCurve { token_b_offset }),
+        };
+        let creator_key = Pubkey::new_unique();
+        let depositor_key = Pubkey::new_unique();
+
+        let mut accounts = SwapAccountInfo::new(
+            &creator_key,
+            fees,
+            swap_curve,
+            token_a_amount,
+            token_b_amount,
+        );
+
+        accounts.initialize_swap().unwrap();
+
+        let initial_a = 1_000_000;
+        let initial_b = 2_000_000;
+        let (
+            _depositor_token_a_key,
+            _depositor_token_a_account,
+            depositor_token_b_key,
+            mut depositor_token_b_account,
+            depositor_pool_key,
+            mut depositor_pool_account,
+        ) = accounts.setup_token_accounts(&creator_key, &depositor_key, initial_a, initial_b, 0);
+
+        assert_eq!(
+            Err(SwapError::UnsupportedCurveOperation.into()),
+            accounts.deposit_single_token_type_exact_amount_in(
+                &depositor_key,
+                &depositor_token_b_key,
+                &mut depositor_token_b_account,
+                &depositor_pool_key,
+                &mut depositor_pool_account,
+                initial_b,
+                0,
+            )
+        );
     }
 }

@@ -97,7 +97,7 @@ async fn fail_double_initialize() {
         .await
         .unwrap();
 
-    let latest_blockhash = banks_client.get_recent_blockhash().await.unwrap();
+    let latest_blockhash = banks_client.get_latest_blockhash().await.unwrap();
 
     let mut second_stake_pool_accounts = StakePoolAccounts::new();
     second_stake_pool_accounts.stake_pool = stake_pool_accounts.stake_pool;
@@ -128,7 +128,7 @@ async fn fail_with_already_initialized_validator_list() {
         .await
         .unwrap();
 
-    let latest_blockhash = banks_client.get_recent_blockhash().await.unwrap();
+    let latest_blockhash = banks_client.get_latest_blockhash().await.unwrap();
 
     let mut second_stake_pool_accounts = StakePoolAccounts::new();
     second_stake_pool_accounts.validator_list = stake_pool_accounts.validator_list;
@@ -246,6 +246,7 @@ async fn fail_with_wrong_max_validators() {
                 &stake_pool_accounts.stake_pool.pubkey(),
                 &stake_pool_accounts.manager.pubkey(),
                 &stake_pool_accounts.staker.pubkey(),
+                &stake_pool_accounts.withdraw_authority,
                 &stake_pool_accounts.validator_list.pubkey(),
                 &stake_pool_accounts.reserve_stake.pubkey(),
                 &stake_pool_accounts.pool_mint.pubkey(),
@@ -270,11 +271,13 @@ async fn fail_with_wrong_max_validators() {
         ],
         recent_blockhash,
     );
+    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = banks_client
         .process_transaction(transaction)
         .await
         .err()
-        .unwrap();
+        .unwrap()
+        .into();
 
     match transaction_error {
         TransportError::TransactionError(TransactionError::InstructionError(
@@ -324,6 +327,7 @@ async fn fail_with_wrong_mint_authority() {
         &stake_pool_accounts.pool_fee_account.pubkey(),
         &stake_pool_accounts.manager,
         &stake_pool_accounts.staker.pubkey(),
+        &stake_pool_accounts.withdraw_authority,
         &None,
         &stake_pool_accounts.epoch_fee,
         &stake_pool_accounts.withdrawal_fee,
@@ -414,6 +418,7 @@ async fn fail_with_freeze_authority() {
         &pool_fee_account.pubkey(),
         &stake_pool_accounts.manager,
         &stake_pool_accounts.staker.pubkey(),
+        &stake_pool_accounts.withdraw_authority,
         &None,
         &stake_pool_accounts.epoch_fee,
         &stake_pool_accounts.withdrawal_fee,
@@ -494,6 +499,7 @@ async fn fail_with_wrong_token_program_id() {
                 &stake_pool_accounts.stake_pool.pubkey(),
                 &stake_pool_accounts.manager.pubkey(),
                 &stake_pool_accounts.staker.pubkey(),
+                &stake_pool_accounts.withdraw_authority,
                 &stake_pool_accounts.validator_list.pubkey(),
                 &stake_pool_accounts.reserve_stake.pubkey(),
                 &stake_pool_accounts.pool_mint.pubkey(),
@@ -518,11 +524,13 @@ async fn fail_with_wrong_token_program_id() {
         ],
         recent_blockhash,
     );
+    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = banks_client
         .process_transaction(transaction)
         .await
         .err()
-        .unwrap();
+        .unwrap()
+        .into();
 
     match transaction_error {
         TransportError::TransactionError(TransactionError::InstructionError(_, error)) => {
@@ -596,6 +604,7 @@ async fn fail_with_fee_owned_by_wrong_token_program_id() {
                 &stake_pool_accounts.stake_pool.pubkey(),
                 &stake_pool_accounts.manager.pubkey(),
                 &stake_pool_accounts.staker.pubkey(),
+                &stake_pool_accounts.withdraw_authority,
                 &stake_pool_accounts.validator_list.pubkey(),
                 &stake_pool_accounts.reserve_stake.pubkey(),
                 &stake_pool_accounts.pool_mint.pubkey(),
@@ -620,11 +629,13 @@ async fn fail_with_fee_owned_by_wrong_token_program_id() {
         ],
         recent_blockhash,
     );
+    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = banks_client
         .process_transaction(transaction)
         .await
         .err()
-        .unwrap();
+        .unwrap()
+        .into();
 
     match transaction_error {
         TransportError::TransactionError(TransactionError::InstructionError(_, error)) => {
@@ -680,6 +691,7 @@ async fn fail_with_wrong_fee_account() {
         &stake_pool_accounts.pool_fee_account.pubkey(),
         &stake_pool_accounts.manager,
         &stake_pool_accounts.staker.pubkey(),
+        &stake_pool_accounts.withdraw_authority,
         &None,
         &stake_pool_accounts.epoch_fee,
         &stake_pool_accounts.withdrawal_fee,
@@ -718,7 +730,7 @@ async fn fail_with_wrong_withdraw_authority() {
             _,
             InstructionError::Custom(error_index),
         )) => {
-            let program_error = error::StakePoolError::WrongMintingAuthority as u32;
+            let program_error = error::StakePoolError::InvalidProgramAddress as u32;
             assert_eq!(error_index, program_error);
         }
         _ => panic!(
@@ -768,6 +780,7 @@ async fn fail_with_not_rent_exempt_pool() {
                 &stake_pool_accounts.stake_pool.pubkey(),
                 &stake_pool_accounts.manager.pubkey(),
                 &stake_pool_accounts.staker.pubkey(),
+                &stake_pool_accounts.withdraw_authority,
                 &stake_pool_accounts.validator_list.pubkey(),
                 &stake_pool_accounts.reserve_stake.pubkey(),
                 &stake_pool_accounts.pool_mint.pubkey(),
@@ -845,6 +858,7 @@ async fn fail_with_not_rent_exempt_validator_list() {
                 &stake_pool_accounts.stake_pool.pubkey(),
                 &stake_pool_accounts.manager.pubkey(),
                 &stake_pool_accounts.staker.pubkey(),
+                &stake_pool_accounts.withdraw_authority,
                 &stake_pool_accounts.validator_list.pubkey(),
                 &stake_pool_accounts.reserve_stake.pubkey(),
                 &stake_pool_accounts.pool_mint.pubkey(),
@@ -958,11 +972,13 @@ async fn fail_without_manager_signature() {
         ],
         recent_blockhash,
     );
+    #[allow(clippy::useless_conversion)] // Remove during upgrade to 1.10
     let transaction_error = banks_client
         .process_transaction(transaction)
         .await
         .err()
-        .unwrap();
+        .unwrap()
+        .into();
 
     match transaction_error {
         TransportError::TransactionError(TransactionError::InstructionError(
@@ -1028,6 +1044,7 @@ async fn fail_with_pre_minted_pool_tokens() {
         &stake_pool_accounts.pool_fee_account.pubkey(),
         &stake_pool_accounts.manager,
         &stake_pool_accounts.staker.pubkey(),
+        &stake_pool_accounts.withdraw_authority,
         &None,
         &stake_pool_accounts.epoch_fee,
         &stake_pool_accounts.withdrawal_fee,
@@ -1094,6 +1111,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.pool_fee_account.pubkey(),
             &stake_pool_accounts.manager,
             &stake_pool_accounts.staker.pubkey(),
+            &stake_pool_accounts.withdraw_authority,
             &None,
             &stake_pool_accounts.epoch_fee,
             &stake_pool_accounts.withdrawal_fee,
@@ -1144,6 +1162,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.pool_fee_account.pubkey(),
             &stake_pool_accounts.manager,
             &stake_pool_accounts.staker.pubkey(),
+            &stake_pool_accounts.withdraw_authority,
             &None,
             &stake_pool_accounts.epoch_fee,
             &stake_pool_accounts.withdrawal_fee,
@@ -1197,6 +1216,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.pool_fee_account.pubkey(),
             &stake_pool_accounts.manager,
             &stake_pool_accounts.staker.pubkey(),
+            &stake_pool_accounts.withdraw_authority,
             &None,
             &stake_pool_accounts.epoch_fee,
             &stake_pool_accounts.withdrawal_fee,
@@ -1250,6 +1270,7 @@ async fn fail_with_bad_reserve() {
             &stake_pool_accounts.pool_fee_account.pubkey(),
             &stake_pool_accounts.manager,
             &stake_pool_accounts.staker.pubkey(),
+            &stake_pool_accounts.withdraw_authority,
             &None,
             &stake_pool_accounts.epoch_fee,
             &stake_pool_accounts.withdrawal_fee,
@@ -1275,21 +1296,24 @@ async fn fail_with_bad_reserve() {
 }
 
 #[tokio::test]
-async fn success_with_deposit_authority() {
+async fn success_with_extra_reserve_lamports() {
     let (mut banks_client, payer, recent_blockhash) = program_test().start().await;
-    let deposit_authority = Keypair::new();
-    let stake_pool_accounts = StakePoolAccounts::new_with_deposit_authority(deposit_authority);
-    let deposit_authority = stake_pool_accounts.stake_deposit_authority;
+    let stake_pool_accounts = StakePoolAccounts::new();
+    let init_lamports = 1_000_000_000_000;
     stake_pool_accounts
-        .initialize_stake_pool(&mut banks_client, &payer, &recent_blockhash, 1)
+        .initialize_stake_pool(
+            &mut banks_client,
+            &payer,
+            &recent_blockhash,
+            1 + init_lamports,
+        )
         .await
         .unwrap();
 
-    // Stake pool now exists
-    let stake_pool_account =
-        get_account(&mut banks_client, &stake_pool_accounts.stake_pool.pubkey()).await;
-    let stake_pool =
-        try_from_slice_unchecked::<state::StakePool>(stake_pool_account.data.as_slice()).unwrap();
-    assert_eq!(stake_pool.stake_deposit_authority, deposit_authority);
-    assert_eq!(stake_pool.sol_deposit_authority.unwrap(), deposit_authority);
+    let init_pool_tokens = get_token_balance(
+        &mut banks_client,
+        &stake_pool_accounts.pool_fee_account.pubkey(),
+    )
+    .await;
+    assert_eq!(init_pool_tokens, init_lamports);
 }

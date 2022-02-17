@@ -18,6 +18,8 @@ pub struct ProposalCookie {
 
     pub governing_token_mint: Pubkey,
     pub governing_token_mint_authority: Keypair,
+
+    pub voter_weight_record: Option<Pubkey>,
 }
 
 #[derive(Debug)]

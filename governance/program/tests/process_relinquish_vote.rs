@@ -6,7 +6,7 @@ use solana_program::{instruction::AccountMeta, pubkey::Pubkey};
 use solana_program_test::tokio;
 
 use program_test::*;
-use spl_governance::{error::GovernanceError, instruction::Vote, state::enums::ProposalState};
+use spl_governance::{error::GovernanceError, state::enums::ProposalState};
 
 #[tokio::test]
 async fn test_relinquish_voted_proposal() {
@@ -21,8 +21,8 @@ async fn test_relinquish_voted_proposal() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -31,12 +31,12 @@ async fn test_relinquish_voted_proposal() {
         .unwrap();
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
     let mut vote_record_cookie = governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::Yes)
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
         .await
         .unwrap();
 
@@ -52,7 +52,7 @@ async fn test_relinquish_voted_proposal() {
         .get_proposal_account(&proposal_cookie.address)
         .await;
 
-    assert_eq!(100, proposal_account.yes_votes_count);
+    assert_eq!(100, proposal_account.options[0].vote_weight);
     assert_eq!(ProposalState::Succeeded, proposal_account.state);
 
     let token_owner_record = governance_test
@@ -83,8 +83,8 @@ async fn test_relinquish_active_yes_vote() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -98,12 +98,12 @@ async fn test_relinquish_active_yes_vote() {
         .await;
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
     let vote_record_cookie = governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::Yes)
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
         .await
         .unwrap();
 
@@ -119,8 +119,8 @@ async fn test_relinquish_active_yes_vote() {
         .get_proposal_account(&proposal_cookie.address)
         .await;
 
-    assert_eq!(0, proposal_account.yes_votes_count);
-    assert_eq!(0, proposal_account.no_votes_count);
+    assert_eq!(0, proposal_account.options[0].vote_weight);
+    assert_eq!(0, proposal_account.deny_vote_weight.unwrap());
     assert_eq!(ProposalState::Voting, proposal_account.state);
 
     let token_owner_record = governance_test
@@ -151,8 +151,8 @@ async fn test_relinquish_active_no_vote() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -166,12 +166,12 @@ async fn test_relinquish_active_no_vote() {
         .await;
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
     let vote_record_cookie = governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::No)
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::No)
         .await
         .unwrap();
 
@@ -187,8 +187,8 @@ async fn test_relinquish_active_no_vote() {
         .get_proposal_account(&proposal_cookie.address)
         .await;
 
-    assert_eq!(0, proposal_account.yes_votes_count);
-    assert_eq!(0, proposal_account.no_votes_count);
+    assert_eq!(0, proposal_account.options[0].vote_weight);
+    assert_eq!(0, proposal_account.deny_vote_weight.unwrap());
     assert_eq!(ProposalState::Voting, proposal_account.state);
 
     let token_owner_record = governance_test
@@ -219,8 +219,8 @@ async fn test_relinquish_vote_with_invalid_mint_error() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -229,12 +229,12 @@ async fn test_relinquish_vote_with_invalid_mint_error() {
         .unwrap();
 
     let mut proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
     governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::No)
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::No)
         .await
         .unwrap();
 
@@ -266,8 +266,8 @@ async fn test_relinquish_vote_with_governance_authority_must_sign_error() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -281,12 +281,12 @@ async fn test_relinquish_vote_with_governance_authority_must_sign_error() {
         .await;
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
     governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::No)
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::No)
         .await
         .unwrap();
 
@@ -327,8 +327,8 @@ async fn test_relinquish_vote_with_invalid_vote_record_error() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -347,17 +347,21 @@ async fn test_relinquish_vote_with_invalid_vote_record_error() {
         .await;
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
     governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::No)
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::No)
         .await
         .unwrap();
 
     let vote_record_cookie2 = governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie2, Vote::Yes)
+        .with_cast_vote(
+            &proposal_cookie,
+            &token_owner_record_cookie2,
+            YesNoVote::Yes,
+        )
         .await
         .unwrap();
 
@@ -393,8 +397,8 @@ async fn test_relinquish_vote_with_already_relinquished_error() {
         .await
         .unwrap();
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -403,12 +407,12 @@ async fn test_relinquish_vote_with_already_relinquished_error() {
         .unwrap();
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
     let vote_record_cookie = governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::No)
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::No)
         .await
         .unwrap();
 
@@ -427,6 +431,8 @@ async fn test_relinquish_vote_with_already_relinquished_error() {
     governance_test
         .mint_community_tokens(&realm_cookie, 10)
         .await;
+
+    governance_test.advance_clock().await;
     // Act
 
     let err = governance_test
@@ -459,8 +465,8 @@ async fn test_relinquish_proposal_in_voting_state_after_vote_time_ended() {
         .mint_community_tokens(&realm_cookie, 200)
         .await;
 
-    let mut account_governance_cookie = governance_test
-        .with_account_governance(
+    let mut governance_cookie = governance_test
+        .with_governance(
             &realm_cookie,
             &governed_account_cookie,
             &token_owner_record_cookie,
@@ -469,21 +475,21 @@ async fn test_relinquish_proposal_in_voting_state_after_vote_time_ended() {
         .unwrap();
 
     let proposal_cookie = governance_test
-        .with_signed_off_proposal(&token_owner_record_cookie, &mut account_governance_cookie)
+        .with_signed_off_proposal(&token_owner_record_cookie, &mut governance_cookie)
         .await
         .unwrap();
 
     let clock = governance_test.bench.get_clock().await;
 
     let mut vote_record_cookie = governance_test
-        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, Vote::Yes)
+        .with_cast_vote(&proposal_cookie, &token_owner_record_cookie, YesNoVote::Yes)
         .await
         .unwrap();
 
     // Advance timestamp past max_voting_time
     governance_test
         .advance_clock_past_timestamp(
-            account_governance_cookie.account.config.max_voting_time as i64 + clock.unix_timestamp,
+            governance_cookie.account.config.max_voting_time as i64 + clock.unix_timestamp,
         )
         .await;
 
@@ -500,7 +506,7 @@ async fn test_relinquish_proposal_in_voting_state_after_vote_time_ended() {
         .await;
 
     // Proposal should be still in voting state but the vote count should not change
-    assert_eq!(100, proposal_account.yes_votes_count);
+    assert_eq!(100, proposal_account.options[0].vote_weight);
     assert_eq!(ProposalState::Voting, proposal_account.state);
 
     let token_owner_record = governance_test

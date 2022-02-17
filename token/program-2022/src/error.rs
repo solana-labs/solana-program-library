@@ -1,8 +1,10 @@
 //! Error types
 
-use num_derive::FromPrimitive;
-use solana_program::{decode_error::DecodeError, program_error::ProgramError};
-use thiserror::Error;
+use {
+    num_derive::FromPrimitive,
+    solana_program::{decode_error::DecodeError, program_error::ProgramError},
+    thiserror::Error,
+};
 
 /// Errors that may be returned by the Token program.
 #[derive(Clone, Debug, Eq, Error, FromPrimitive, PartialEq)]
@@ -74,6 +76,65 @@ pub enum TokenError {
     /// Instruction does not support non-native tokens
     #[error("Instruction does not support non-native tokens")]
     NonNativeNotSupported,
+
+    // 20
+    /// Extension type does not match already existing extensions
+    #[error("Extension type does not match already existing extensions")]
+    ExtensionTypeMismatch,
+    /// Extension does not match the base type provided
+    #[error("Extension does not match the base type provided")]
+    ExtensionBaseMismatch,
+    /// Extension already initialized on this account
+    #[error("Extension already initialized on this account")]
+    ExtensionAlreadyInitialized,
+    /// An account can only be closed if its confidential balance is zero
+    #[error("An account can only be closed if its confidential balance is zero")]
+    ConfidentialTransferAccountHasBalance,
+    /// Account not approved for confidential transfers
+    #[error("Account not approved for confidential transfers")]
+    ConfidentialTransferAccountNotApproved,
+
+    // 25
+    /// Account not accepting deposits or transfers
+    #[error("Account not accepting deposits or transfers")]
+    ConfidentialTransferDepositsAndTransfersDisabled,
+    /// ElGamal public key mismatch
+    #[error("ElGamal public key mismatch")]
+    ConfidentialTransferElGamalPubkeyMismatch,
+    /// Available balance mismatch
+    #[error("Available balance mismatch")]
+    ConfidentialTransferAvailableBalanceMismatch,
+    /// Mint has non-zero supply. Burn all tokens before closing the mint.
+    #[error("Mint has non-zero supply. Burn all tokens before closing the mint")]
+    MintHasSupply,
+    /// No authority exists to perform the desired operation
+    #[error("No authority exists to perform the desired operation")]
+    NoAuthorityExists,
+
+    // 30
+    /// Transfer fee exceeds maximum of 10,000 basis points
+    #[error("Transfer fee exceeds maximum of 10,000 basis points")]
+    TransferFeeExceedsMaximum,
+    /// Mint required for this account to transfer tokens, use `transfer_checked` or `transfer_checked_with_fee`
+    #[error("Mint required for this account to transfer tokens, use `transfer_checked` or `transfer_checked_with_fee`")]
+    MintRequiredForTransfer,
+    /// Calculated fee does not match expected fee
+    #[error("Calculated fee does not match expected fee")]
+    FeeMismatch,
+    /// Fee parameters associated with confidential transfer zero-knowledge proofs do not match fee parameters in mint
+    #[error(
+        "Fee parameters associated with zero-knowledge proofs do not match fee parameters in mint"
+    )]
+    FeeParametersMismatch,
+    /// The owner authority cannot be changed
+    #[error("The owner authority cannot be changed")]
+    ImmutableOwner,
+
+    // 35
+    /// An account can only be closed if its withheld fee balance is zero, harvest fees to the
+    /// mint and try again
+    #[error("An account can only be closed if its withheld fee balance is zero, harvest fees to the mint and try again")]
+    AccountHasWithheldTransferFees,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {

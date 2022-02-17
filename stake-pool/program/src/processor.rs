@@ -160,6 +160,59 @@ fn create_transient_stake_account<'a>(
     )
 }
 
+/// Create an account on a program-derived address
+fn create_pda_account<'a>(
+    payer: &AccountInfo<'a>,
+    required_lamports: u64,
+    space: usize,
+    owner: &Pubkey,
+    system_program: &AccountInfo<'a>,
+    new_pda_account: &AccountInfo<'a>,
+    new_pda_signer_seeds: &[&[u8]],
+) -> ProgramResult {
+    if new_pda_account.lamports() > 0 {
+        let required_lamports = required_lamports.saturating_sub(new_pda_account.lamports());
+        if required_lamports > 0 {
+            invoke(
+                &system_instruction::transfer(payer.key, new_pda_account.key, required_lamports),
+                &[
+                    payer.clone(),
+                    new_pda_account.clone(),
+                    system_program.clone(),
+                ],
+            )?;
+        }
+
+        invoke_signed(
+            &system_instruction::allocate(new_pda_account.key, space as u64),
+            &[new_pda_account.clone(), system_program.clone()],
+            &[new_pda_signer_seeds],
+        )?;
+
+        invoke_signed(
+            &system_instruction::assign(new_pda_account.key, owner),
+            &[new_pda_account.clone(), system_program.clone()],
+            &[new_pda_signer_seeds],
+        )
+    } else {
+        invoke_signed(
+            &system_instruction::create_account(
+                payer.key,
+                new_pda_account.key,
+                required_lamports,
+                space as u64,
+                owner,
+            ),
+            &[
+                payer.clone(),
+                new_pda_account.clone(),
+                system_program.clone(),
+            ],
+            &[new_pda_signer_seeds],
+        )
+    }
+}
+
 /// Program state handler.
 pub struct Processor {}
 impl Processor {
@@ -500,6 +553,7 @@ impl Processor {
         let stake_pool_info = next_account_info(account_info_iter)?;
         let manager_info = next_account_info(account_info_iter)?;
         let staker_info = next_account_info(account_info_iter)?;
+        let withdraw_authority_info = next_account_info(account_info_iter)?;
         let validator_list_info = next_account_info(account_info_iter)?;
         let reserve_stake_info = next_account_info(account_info_iter)?;
         let pool_mint_info = next_account_info(account_info_iter)?;
@@ -605,6 +659,14 @@ impl Processor {
             };
         let (withdraw_authority_key, stake_withdraw_bump_seed) =
             crate::find_withdraw_authority_program_address(program_id, stake_pool_info.key);
+        if withdraw_authority_key != *withdraw_authority_info.key {
+            msg!(
+                "Incorrect withdraw authority provided, expected {}, received {}",
+                withdraw_authority_key,
+                withdraw_authority_info.key
+            );
+            return Err(StakePoolError::InvalidProgramAddress.into());
+        }
 
         let pool_mint = Mint::unpack_from_slice(&pool_mint_info.data.borrow())?;
 
@@ -658,6 +720,19 @@ impl Processor {
             msg!("Reserve stake account not in intialized state");
             return Err(StakePoolError::WrongStakeState.into());
         };
+
+        if total_lamports > 0 {
+            Self::token_mint_to(
+                stake_pool_info.key,
+                token_program_info.clone(),
+                pool_mint_info.clone(),
+                manager_fee_info.clone(),
+                withdraw_authority_info.clone(),
+                AUTHORITY_WITHDRAW,
+                stake_withdraw_bump_seed,
+                total_lamports,
+            )?;
+        }
 
         validator_list.serialize(&mut *validator_list_info.data.borrow_mut())?;
 
@@ -776,22 +851,19 @@ impl Processor {
         ];
 
         // Fund the stake account with the minimum + rent-exempt balance
-        let required_lamports = MINIMUM_ACTIVE_STAKE
-            + rent.minimum_balance(std::mem::size_of::<stake::state::StakeState>());
+        let space = std::mem::size_of::<stake::state::StakeState>();
+        let required_lamports = MINIMUM_ACTIVE_STAKE + rent.minimum_balance(space);
 
         // Create new stake account
-        invoke_signed(
-            &system_instruction::create_account(
-                funder_info.key,
-                stake_info.key,
-                required_lamports,
-                std::mem::size_of::<stake::state::StakeState>() as u64,
-                &stake::program::id(),
-            ),
-            &[funder_info.clone(), stake_info.clone()],
-            &[stake_account_signer_seeds],
+        create_pda_account(
+            funder_info,
+            required_lamports,
+            space,
+            &stake::program::id(),
+            system_program_info,
+            stake_info,
+            stake_account_signer_seeds,
         )?;
-
         invoke(
             &stake::instruction::initialize(
                 stake_info.key,

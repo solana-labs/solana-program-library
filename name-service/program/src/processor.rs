@@ -124,10 +124,22 @@ impl Processor {
 
         let name_account = next_account_info(accounts_iter)?;
         let name_update_signer = next_account_info(accounts_iter)?;
+        let parent_name = next_account_info(accounts_iter).ok();
 
         let name_record_header = NameRecordHeader::unpack_from_slice(&name_account.data.borrow())?;
 
         // Verifications
+        let is_parent_owner = if let Some(parent_name) = parent_name {
+            if name_record_header.parent_name != *parent_name.key {
+                msg!("Invalid parent name account");
+                return Err(ProgramError::InvalidArgument);
+            }
+            let parent_name_record_header =
+                NameRecordHeader::unpack_from_slice(&parent_name.data.borrow())?;
+            parent_name_record_header.owner == *name_update_signer.key
+        } else {
+            false
+        };
         if !name_update_signer.is_signer {
             msg!("The given name class or owner is not a signer.");
             return Err(ProgramError::InvalidArgument);
@@ -140,6 +152,7 @@ impl Processor {
         }
         if name_record_header.class == Pubkey::default()
             && *name_update_signer.key != name_record_header.owner
+            && !is_parent_owner
         {
             msg!("The given name owner account is incorrect.");
             return Err(ProgramError::InvalidArgument);
@@ -156,12 +169,26 @@ impl Processor {
         let name_account = next_account_info(accounts_iter)?;
         let name_owner = next_account_info(accounts_iter)?;
         let name_class_opt = next_account_info(accounts_iter).ok();
+        let parent_name = next_account_info(accounts_iter).ok();
 
         let mut name_record_header =
             NameRecordHeader::unpack_from_slice(&name_account.data.borrow())?;
 
         // Verifications
-        if !name_owner.is_signer || name_record_header.owner != *name_owner.key {
+        let is_parent_owner = if let Some(parent_name) = parent_name {
+            if name_record_header.parent_name != *parent_name.key {
+                msg!("Invalid parent name account");
+                return Err(ProgramError::InvalidArgument);
+            }
+            let parent_name_record_header =
+                NameRecordHeader::unpack_from_slice(&parent_name.data.borrow())?;
+            parent_name_record_header.owner == *name_owner.key
+        } else {
+            false
+        };
+        if !name_owner.is_signer
+            || (name_record_header.owner != *name_owner.key && !is_parent_owner)
+        {
             msg!("The given name owner is incorrect or not a signer.");
             return Err(ProgramError::InvalidArgument);
         }

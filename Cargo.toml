@@ -10,7 +10,8 @@ members = [
   "examples/rust/transfer-lamports",
   "feature-proposal/program",
   "feature-proposal/cli",
-  "governance/voter-weight-addin/program",
+  "governance/addin-mock/program",
+  "governance/addin-api",
   "governance/program",
   "governance/test-sdk",
   "governance/tools",
@@ -30,14 +31,22 @@ members = [
   "token/cli",
   "token/program",
   "token/program-2022",
+  "token/program-2022-test",
+  "token/client",
   "utils/cgen",
   "utils/test-client",
   "token-lending/flash_loan_receiver",
 ]
 exclude = [
-  "themis/client_ristretto",
-  "themis/program_ristretto",
-  "token/perf-monitor", # TODO: Rework perf-monitor to use solana-program-test, avoiding the need to link directly with the BPF VM
+  "farms/farm-client",
+  "farms/farm-ctrl",
+  "farms/farm-rpc",
+  "farms/farm-sdk",
+  "farms/router-main",
+  "farms/router-raydium",
+  "farms/router-saber",
+  "farms/router-orca",
+  "farms/vaults",
 ]
 
 [profile.dev]

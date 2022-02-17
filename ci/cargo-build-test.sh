@@ -21,10 +21,6 @@ cargo +"$rust_stable" test -- --nocapture
 # Run test-client sanity check
 cargo +"$rust_stable" run --manifest-path=utils/test-client/Cargo.toml
 
-# client_ristretto isn't in the workspace, test it explictly
-# client_ristretto disabled because it requires RpcBanksService, which is no longer supported.
-#cargo +"$rust_stable" test --manifest-path=themis/client_ristretto/Cargo.toml -- --nocapture
-
 #  # Check generated C headers
 #  cargo run --manifest-path=utils/cgen/Cargo.toml
 #
