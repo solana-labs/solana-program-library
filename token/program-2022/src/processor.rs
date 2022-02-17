@@ -10,8 +10,8 @@ use {
             immutable_owner::ImmutableOwner,
             memo_transfer::{self, memo_required},
             mint_close_authority::MintCloseAuthority,
+            non_transferable::NonTransferable,
             reallocate,
-            transfer_disabled::TransferDisabled,
             transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
             ExtensionType, StateWithExtensions, StateWithExtensionsMut,
         },
@@ -278,12 +278,6 @@ impl Processor {
         let mut source_account_data = source_account_info.data.borrow_mut();
         let mut source_account =
             StateWithExtensionsMut::<Account>::unpack(&mut source_account_data)?;
-        if source_account
-            .get_extension_mut::<TransferDisabled>()
-            .is_ok()
-        {
-            return Err(TokenError::TransferDisabled.into());
-        }
         if source_account.base.is_frozen() {
             return Err(TokenError::AccountFrozen.into());
         }
@@ -297,6 +291,11 @@ impl Processor {
 
             let mint_data = mint_info.try_borrow_data()?;
             let mint = StateWithExtensions::<Mint>::unpack(&mint_data)?;
+
+            if mint.get_extension::<NonTransferable>().is_ok() {
+                return Err(TokenError::NonTransferable.into());
+            }
+
             if expected_decimals != mint.base.decimals {
                 return Err(TokenError::MintDecimalsMismatch.into());
             }
@@ -1079,16 +1078,16 @@ impl Processor {
         )
     }
 
-    /// Processes an [InitializeTransferDisabled](enum.TokenInstruction.html) instruction
-    pub fn process_initialize_transfer_disabled(accounts: &[AccountInfo]) -> ProgramResult {
+    /// Processes an [InitializeMintCloseAuthority](enum.TokenInstruction.html) instruction
+    pub fn process_initialize_non_transferable_mint(accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
-        let token_account_info = next_account_info(account_info_iter)?;
-        let token_account_data = &mut token_account_info.data.borrow_mut();
-        let mut token_account =
-            StateWithExtensionsMut::<Account>::unpack_uninitialized(token_account_data)?;
-        token_account
-            .init_extension::<TransferDisabled>()
-            .map(|_| ())
+        let mint_account_info = next_account_info(account_info_iter)?;
+
+        let mut mint_data = mint_account_info.data.borrow_mut();
+        let mut mint = StateWithExtensionsMut::<Mint>::unpack_uninitialized(&mut mint_data)?;
+        mint.init_extension::<NonTransferable>()?;
+
+        Ok(())
     }
 
     /// Processes an [Instruction](enum.Instruction.html).
@@ -1232,9 +1231,9 @@ impl Processor {
                 msg!("Instruction: CreateNativeMint");
                 Self::process_create_native_mint(accounts)
             }
-            TokenInstruction::InitializeTransferDisabled => {
-                msg!("Instruction: InitializeTransferDisabled");
-                Self::process_initialize_transfer_disabled(accounts)
+            TokenInstruction::InitializeNonTransferableMint => {
+                msg!("Instruction: InitializeNonTransferableMint");
+                Self::process_initialize_non_transferable_mint(accounts)
             }
         }
     }
@@ -1387,8 +1386,8 @@ impl PrintProgramError for TokenError {
             TokenError::AccountHasWithheldTransferFees => {
                 msg!("Error: An account can only be closed if its withheld fee balance is zero, harvest fees to the mint and try again");
             }
-            TokenError::TransferDisabled => {
-                msg!("Transfer is disabled for this account");
+            TokenError::NonTransferable => {
+                msg!("Transfer is disabled for this mint");
             }
         }
     }

@@ -9,7 +9,7 @@ use {
             immutable_owner::ImmutableOwner,
             memo_transfer::MemoTransfer,
             mint_close_authority::MintCloseAuthority,
-            transfer_disabled::TransferDisabled,
+            non_transferable::NonTransferable,
             transfer_fee::{TransferFeeAmount, TransferFeeConfig},
         },
         pod::*,
@@ -37,10 +37,10 @@ pub mod immutable_owner;
 pub mod memo_transfer;
 /// Mint Close Authority extension
 pub mod mint_close_authority;
+/// Transfer Disabled extension
+pub mod non_transferable;
 /// Utility to reallocate token accounts
 pub mod reallocate;
-/// Transfer Disabled extension
-pub mod transfer_disabled;
 /// Transfer Fee extension
 pub mod transfer_fee;
 
@@ -603,7 +603,7 @@ pub enum ExtensionType {
     /// Require inbound transfers to have memo
     MemoTransfer,
     /// Indicates that the tokens can't be transfered between accounts
-    TransferDisabled,
+    NonTransferable,
     /// Padding extension used to make an account exactly Multisig::LEN, used for testing
     #[cfg(test)]
     AccountPaddingTest = u16::MAX - 1,
@@ -642,7 +642,7 @@ impl ExtensionType {
             }
             ExtensionType::DefaultAccountState => pod_get_packed_len::<DefaultAccountState>(),
             ExtensionType::MemoTransfer => pod_get_packed_len::<MemoTransfer>(),
-            ExtensionType::TransferDisabled => pod_get_packed_len::<TransferDisabled>(),
+            ExtensionType::NonTransferable => pod_get_packed_len::<NonTransferable>(),
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => pod_get_packed_len::<AccountPaddingTest>(),
             #[cfg(test)]
@@ -697,12 +697,12 @@ impl ExtensionType {
             ExtensionType::TransferFeeConfig
             | ExtensionType::MintCloseAuthority
             | ExtensionType::ConfidentialTransferMint
-            | ExtensionType::DefaultAccountState => AccountType::Mint,
+            | ExtensionType::DefaultAccountState
+            | ExtensionType::NonTransferable => AccountType::Mint,
             ExtensionType::ImmutableOwner
             | ExtensionType::TransferFeeAmount
             | ExtensionType::ConfidentialTransferAccount
-            | ExtensionType::MemoTransfer
-            | ExtensionType::TransferDisabled => AccountType::Account,
+            | ExtensionType::MemoTransfer => AccountType::Account,
             #[cfg(test)]
             ExtensionType::AccountPaddingTest => AccountType::Account,
             #[cfg(test)]

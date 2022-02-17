@@ -136,8 +136,8 @@ pub enum TokenError {
     #[error("An account can only be closed if its withheld fee balance is zero, harvest fees to the mint and try again")]
     AccountHasWithheldTransferFees,
     /// Transfer is disabled for this account
-    #[error("Transfer is disabled for this account")]
-    TransferDisabled,
+    #[error("Transfer is disabled for this mint")]
+    NonTransferable,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
