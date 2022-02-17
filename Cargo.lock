@@ -3923,6 +3923,7 @@ dependencies = [
  "num-derive",
  "num-traits",
  "num_enum",
+ "serial_test",
  "solana-program",
  "solana-program-test",
  "solana-sdk",
