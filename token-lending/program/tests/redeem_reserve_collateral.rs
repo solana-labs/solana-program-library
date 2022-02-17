@@ -24,13 +24,14 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(29_000);
+    test.set_bpf_compute_max_units(45_000);
 
     let user_accounts_owner = Keypair::new();
     let lending_market = add_lending_market(&mut test);
 
     const USDC_RESERVE_LIQUIDITY_FRACTIONAL: u64 = 10 * FRACTIONAL_TO_USDC;
     const COLLATERAL_AMOUNT: u64 = USDC_RESERVE_LIQUIDITY_FRACTIONAL * INITIAL_COLLATERAL_RATIO;
+    const BORROWED_AMOUNT: u64 = FRACTIONAL_TO_USDC;
 
     let usdc_mint = add_usdc_mint(&mut test);
     let usdc_oracle = add_usdc_oracle(&mut test);
@@ -41,16 +42,28 @@ async fn test_success() {
         &user_accounts_owner,
         AddReserveArgs {
             collateral_amount: COLLATERAL_AMOUNT,
-            liquidity_amount: USDC_RESERVE_LIQUIDITY_FRACTIONAL,
+            liquidity_amount: 2 * USDC_RESERVE_LIQUIDITY_FRACTIONAL,
             liquidity_mint_decimals: usdc_mint.decimals,
             liquidity_mint_pubkey: usdc_mint.pubkey,
+            borrow_amount: BORROWED_AMOUNT,
             config: test_reserve_config(),
             mark_fresh: true,
             ..AddReserveArgs::default()
         },
     );
 
-    let (mut banks_client, payer, recent_blockhash) = test.start().await;
+    let mut test_context = test.start_with_context().await;
+    test_context.warp_to_slot(300).unwrap(); // clock.slot = 300
+
+    let ProgramTestContext {
+        mut banks_client,
+        payer,
+        last_blockhash: recent_blockhash,
+        ..
+    } = test_context;
+
+    let pre_usdc_reserve = usdc_test_reserve.get_state(&mut banks_client).await;
+    let old_borrow_rate = pre_usdc_reserve.liquidity.cumulative_borrow_rate_wads;
 
     let user_transfer_authority = Keypair::new();
     let mut transaction = Transaction::new_with_payer(
@@ -84,4 +97,9 @@ async fn test_success() {
         recent_blockhash,
     );
     assert!(banks_client.process_transaction(transaction).await.is_ok());
+
+    let usdc_reserve = usdc_test_reserve.get_state(&mut banks_client).await;
+    assert_eq!(usdc_reserve.last_update.stale, true);
+
+    assert!(usdc_reserve.liquidity.cumulative_borrow_rate_wads > old_borrow_rate);
 }

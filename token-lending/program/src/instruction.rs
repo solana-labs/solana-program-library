@@ -121,7 +121,7 @@ pub enum LendingInstruction {
     ///   0. `[writable]` Source collateral token account.
     ///                     $authority can transfer $collateral_amount.
     ///   1. `[writable]` Destination liquidity token account.
-    ///   2. `[writable]` Reserve account. - refreshed
+    ///   2. `[writable]` Reserve account.
     ///   3. `[writable]` Reserve collateral SPL Token mint.
     ///   4. `[writable]` Reserve liquidity supply SPL Token account.
     ///   5. `[]` Lending market account.
@@ -161,7 +161,7 @@ pub enum LendingInstruction {
     RefreshObligation,
 
     // 8
-    /// Deposit collateral to an obligation. Requires a refreshed reserve.
+    /// Deposit collateral to an obligation.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -169,7 +169,7 @@ pub enum LendingInstruction {
     ///                     Minted by deposit reserve collateral mint.
     ///                     $authority can transfer $collateral_amount.
     ///   1. `[writable]` Destination deposit reserve collateral supply SPL Token account.
-    ///   2. `[]` Deposit reserve account - refreshed.
+    ///   2. `[writable]` Deposit reserve account.
     ///   3. `[writable]` Obligation account.
     ///   4. `[]` Lending market account.
     ///   5. `[signer]` Obligation owner.
@@ -948,7 +948,7 @@ pub fn deposit_obligation_collateral(
         accounts: vec![
             AccountMeta::new(source_collateral_pubkey, false),
             AccountMeta::new(destination_collateral_pubkey, false),
-            AccountMeta::new_readonly(deposit_reserve_pubkey, false),
+            AccountMeta::new(deposit_reserve_pubkey, false),
             AccountMeta::new(obligation_pubkey, false),
             AccountMeta::new_readonly(lending_market_pubkey, false),
             AccountMeta::new_readonly(obligation_owner_pubkey, true),

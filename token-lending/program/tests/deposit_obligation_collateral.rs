@@ -28,6 +28,7 @@ async fn test_success() {
 
     const SOL_DEPOSIT_AMOUNT_LAMPORTS: u64 = 10 * LAMPORTS_TO_SOL * INITIAL_COLLATERAL_RATIO;
     const SOL_RESERVE_COLLATERAL_LAMPORTS: u64 = 2 * SOL_DEPOSIT_AMOUNT_LAMPORTS;
+    const SOL_BORROWED_AMOUNT_LAMPORTS: u64 = SOL_DEPOSIT_AMOUNT_LAMPORTS;
 
     let user_accounts_owner = Keypair::new();
     let user_transfer_authority = Keypair::new();
@@ -45,6 +46,7 @@ async fn test_success() {
             liquidity_amount: SOL_RESERVE_COLLATERAL_LAMPORTS,
             liquidity_mint_decimals: 9,
             liquidity_mint_pubkey: spl_token::native_mint::id(),
+            borrow_amount: SOL_BORROWED_AMOUNT_LAMPORTS,
             config: test_reserve_config(),
             mark_fresh: true,
             ..AddReserveArgs::default()
@@ -58,7 +60,15 @@ async fn test_success() {
         AddObligationArgs::default(),
     );
 
-    let (mut banks_client, payer, recent_blockhash) = test.start().await;
+    let mut test_context = test.start_with_context().await;
+    test_context.warp_to_slot(300).unwrap(); // clock.slot = 300
+
+    let ProgramTestContext {
+        mut banks_client,
+        payer,
+        last_blockhash: recent_blockhash,
+        ..
+    } = test_context;
 
     test_obligation.validate_state(&mut banks_client).await;
 
@@ -66,6 +76,8 @@ async fn test_success() {
         get_token_balance(&mut banks_client, sol_test_reserve.collateral_supply_pubkey).await;
     let initial_user_collateral_balance =
         get_token_balance(&mut banks_client, sol_test_reserve.user_collateral_pubkey).await;
+    let pre_sol_reserve = sol_test_reserve.get_state(&mut banks_client).await;
+    let old_borrow_rate = pre_sol_reserve.liquidity.cumulative_borrow_rate_wads;
 
     let mut transaction = Transaction::new_with_payer(
         &[
@@ -99,6 +111,9 @@ async fn test_success() {
     );
     assert!(banks_client.process_transaction(transaction).await.is_ok());
 
+    let sol_reserve = sol_test_reserve.get_state(&mut banks_client).await;
+    assert_eq!(sol_reserve.last_update.stale, true);
+
     // check that collateral tokens were transferred
     let collateral_supply_balance =
         get_token_balance(&mut banks_client, sol_test_reserve.collateral_supply_pubkey).await;
@@ -112,4 +127,6 @@ async fn test_success() {
         user_collateral_balance,
         initial_user_collateral_balance - SOL_DEPOSIT_AMOUNT_LAMPORTS
     );
+
+    assert!(sol_reserve.liquidity.cumulative_borrow_rate_wads > old_borrow_rate);
 }

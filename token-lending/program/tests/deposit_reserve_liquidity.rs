@@ -16,7 +16,7 @@ async fn test_success() {
     );
 
     // limit to track compute unit increase
-    test.set_bpf_compute_max_units(30_000);
+    test.set_bpf_compute_max_units(45_000);
 
     let user_accounts_owner = Keypair::new();
     let lending_market = add_lending_market(&mut test);
@@ -33,13 +33,26 @@ async fn test_success() {
             liquidity_amount: 10_000 * FRACTIONAL_TO_USDC,
             liquidity_mint_decimals: usdc_mint.decimals,
             liquidity_mint_pubkey: usdc_mint.pubkey,
+            borrow_amount: 5_000 * FRACTIONAL_TO_USDC,
             config: test_reserve_config(),
             mark_fresh: true,
             ..AddReserveArgs::default()
         },
     );
 
-    let (mut banks_client, payer, _recent_blockhash) = test.start().await;
+    let mut test_context = test.start_with_context().await;
+    test_context.warp_to_slot(300).unwrap(); // clock.slot = 300
+
+    let ProgramTestContext {
+        mut banks_client,
+        payer,
+        ..
+    } = test_context;
+
+    let initial_ctoken_amount =
+        get_token_balance(&mut banks_client, usdc_test_reserve.user_collateral_pubkey).await;
+    let pre_usdc_reserve = usdc_test_reserve.get_state(&mut banks_client).await;
+    let old_borrow_rate = pre_usdc_reserve.liquidity.cumulative_borrow_rate_wads;
 
     lending_market
         .deposit(
@@ -50,4 +63,17 @@ async fn test_success() {
             100 * FRACTIONAL_TO_USDC,
         )
         .await;
+
+    let usdc_reserve = usdc_test_reserve.get_state(&mut banks_client).await;
+    assert_eq!(usdc_reserve.last_update.stale, true);
+
+    let user_remaining_liquidity_amount =
+        get_token_balance(&mut banks_client, usdc_test_reserve.user_liquidity_pubkey).await;
+    assert_eq!(user_remaining_liquidity_amount, 0);
+
+    let final_ctoken_amount =
+        get_token_balance(&mut banks_client, usdc_test_reserve.user_collateral_pubkey).await;
+    assert!(final_ctoken_amount - initial_ctoken_amount < 100 * FRACTIONAL_TO_USDC);
+
+    assert!(usdc_reserve.liquidity.cumulative_borrow_rate_wads > old_borrow_rate);
 }

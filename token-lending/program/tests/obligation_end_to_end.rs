@@ -123,13 +123,6 @@ async fn test_success() {
                 user_accounts_owner_pubkey,
             ),
             // 2
-            refresh_reserve(
-                spl_token_lending::id(),
-                sol_test_reserve.pubkey,
-                sol_oracle.pyth_price_pubkey,
-                sol_oracle.switchboard_feed_pubkey,
-            ),
-            // 3
             approve(
                 &spl_token::id(),
                 &sol_test_reserve.user_collateral_pubkey,
@@ -139,7 +132,7 @@ async fn test_success() {
                 SOL_DEPOSIT_AMOUNT_LAMPORTS,
             )
             .unwrap(),
-            // 4
+            // 3
             deposit_obligation_collateral(
                 spl_token_lending::id(),
                 SOL_DEPOSIT_AMOUNT_LAMPORTS,
@@ -151,18 +144,25 @@ async fn test_success() {
                 user_accounts_owner_pubkey,
                 user_transfer_authority_pubkey,
             ),
-            // 5
-            refresh_obligation(
-                spl_token_lending::id(),
-                obligation_pubkey,
-                vec![sol_test_reserve.pubkey],
-            ),
-            // 6
+            // 4
             refresh_reserve(
                 spl_token_lending::id(),
                 usdc_test_reserve.pubkey,
                 usdc_oracle.pyth_price_pubkey,
                 usdc_oracle.switchboard_feed_pubkey,
+            ),
+            // 5
+            refresh_reserve(
+                spl_token_lending::id(),
+                sol_test_reserve.pubkey,
+                sol_oracle.pyth_price_pubkey,
+                sol_oracle.switchboard_feed_pubkey,
+            ),
+            // 6
+            refresh_obligation(
+                spl_token_lending::id(),
+                obligation_pubkey,
+                vec![sol_test_reserve.pubkey],
             ),
             // 7
             borrow_obligation_liquidity(
@@ -178,19 +178,6 @@ async fn test_success() {
                 Some(usdc_test_reserve.liquidity_host_pubkey),
             ),
             // 8
-            refresh_reserve(
-                spl_token_lending::id(),
-                usdc_test_reserve.pubkey,
-                usdc_oracle.pyth_price_pubkey,
-                usdc_oracle.switchboard_feed_pubkey,
-            ),
-            // 9
-            refresh_obligation(
-                spl_token_lending::id(),
-                obligation_pubkey,
-                vec![sol_test_reserve.pubkey, usdc_test_reserve.pubkey],
-            ),
-            // 10
             approve(
                 &spl_token::id(),
                 &usdc_test_reserve.user_liquidity_pubkey,
@@ -200,7 +187,7 @@ async fn test_success() {
                 USDC_REPAY_AMOUNT_FRACTIONAL,
             )
             .unwrap(),
-            // 11
+            // 9
             repay_obligation_liquidity(
                 spl_token_lending::id(),
                 USDC_REPAY_AMOUNT_FRACTIONAL,
@@ -211,13 +198,20 @@ async fn test_success() {
                 lending_market.pubkey,
                 user_transfer_authority_pubkey,
             ),
-            // 12
+            // 10
+            refresh_reserve(
+                spl_token_lending::id(),
+                usdc_test_reserve.pubkey,
+                usdc_oracle.pyth_price_pubkey,
+                usdc_oracle.switchboard_feed_pubkey,
+            ),
+            // 11
             refresh_obligation(
                 spl_token_lending::id(),
                 obligation_pubkey,
                 vec![sol_test_reserve.pubkey],
             ),
-            // 13
+            // 12
             withdraw_obligation_collateral(
                 spl_token_lending::id(),
                 SOL_DEPOSIT_AMOUNT_LAMPORTS,

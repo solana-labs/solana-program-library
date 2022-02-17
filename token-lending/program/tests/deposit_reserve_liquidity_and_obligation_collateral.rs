@@ -50,11 +50,6 @@ async fn test_success() {
 
     test_obligation.validate_state(&mut banks_client).await;
 
-    // let initial_collateral_supply_balance =
-    //     get_token_balance(&mut banks_client, usdc_test_reserve.collateral_supply_pubkey).await;
-    // let initial_user_collateral_balance =
-    //     get_token_balance(&mut banks_client, usdc_test_reserve.user_collateral_pubkey).await;
-
     lending_market
         .deposit_obligation_and_collateral(
             &mut banks_client,
