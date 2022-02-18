@@ -138,7 +138,7 @@ export async function prepareWithdrawAccounts(
     const filteredAccounts = accounts.filter((a) => a.type == type);
 
     for (const { stakeAddress, voteAddress, lamports } of filteredAccounts) {
-      if (lamports <= minBalance) {
+      if (lamports <= minBalance && type == 'transient') {
         continue;
       }
 
