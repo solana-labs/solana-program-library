@@ -71,8 +71,8 @@ fn process_update_mint(
         && (new_authority_info.is_signer || *new_authority_info.key == Pubkey::default())
     {
         if new_ct_mint.authority == *new_authority_info.key {
-            let ct_mint = mint.get_extension_mut::<ConfidentialTransferMint>()?;
-            *ct_mint = *new_ct_mint;
+            let confidential_transfer_mint = mint.get_extension_mut::<ConfidentialTransferMint>()?;
+            *confidential_transfer_mint = *new_ct_mint;
             Ok(())
         } else {
             Err(ProgramError::InvalidInstructionData)
@@ -116,14 +116,14 @@ fn process_configure_account(
     check_program_account(mint_info.owner)?;
     let mint_data = &mut mint_info.data.borrow();
     let mint = StateWithExtensions::<Mint>::unpack(mint_data)?;
-    let ct_mint = mint.get_extension::<ConfidentialTransferMint>()?;
+    let confidential_transfer_mint = mint.get_extension::<ConfidentialTransferMint>()?;
 
     // Note: The caller is expected to use the `Reallocate` instruction to ensure there is
     // sufficient room in their token account for the new `ConfidentialTransferAccount` extension
-    let mut ct_token_account = token_account.init_extension::<ConfidentialTransferAccount>()?;
-    ct_token_account.approved = ct_mint.auto_approve_new_accounts;
-    ct_token_account.pubkey_elgamal = *elgamal_pubkey;
-    ct_token_account.decryptable_available_balance = *decryptable_zero_balance;
+    let mut confidential_transfer_account = token_account.init_extension::<ConfidentialTransferAccount>()?;
+    confidential_transfer_account.approved = confidential_transfer_mint.auto_approve_new_accounts;
+    confidential_transfer_account.pubkey_elgamal = *elgamal_pubkey;
+    confidential_transfer_account.decryptable_available_balance = *decryptable_zero_balance;
 
     /*
         An ElGamal ciphertext is of the form
@@ -153,8 +153,8 @@ fn process_configure_account(
 
         This should just be encoded as [0; 64]
     */
-    ct_token_account.pending_balance = EncryptedBalance::zeroed();
-    ct_token_account.available_balance = EncryptedBalance::zeroed();
+    confidential_transfer_account.pending_balance = EncryptedBalance::zeroed();
+    confidential_transfer_account.available_balance = EncryptedBalance::zeroed();
 
     Ok(())
 }
@@ -173,9 +173,9 @@ fn process_approve_account(accounts: &[AccountInfo]) -> ProgramResult {
     check_program_account(mint_info.owner)?;
     let mint_data = &mint_info.data.borrow_mut();
     let mint = StateWithExtensions::<Mint>::unpack(mint_data)?;
-    let ct_mint = mint.get_extension::<ConfidentialTransferMint>()?;
+    let confidential_transfer_mint = mint.get_extension::<ConfidentialTransferMint>()?;
 
-    if authority_info.is_signer && *authority_info.key == ct_mint.authority {
+    if authority_info.is_signer && *authority_info.key == confidential_transfer_mint.authority {
         let mut confidential_transfer_state =
             account_to_approve.get_extension_mut::<ConfidentialTransferAccount>()?;
         confidential_transfer_state.approved = true.into();
@@ -209,7 +209,7 @@ fn process_empty_account(
         account_info_iter.as_slice(),
     )?;
 
-    let mut ct_token_account = token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
+    let mut confidential_transfer_account = token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
 
     let previous_instruction =
         get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
@@ -218,19 +218,19 @@ fn process_empty_account(
         &previous_instruction,
     )?;
 
-    if ct_token_account.pending_balance != EncryptedBalance::zeroed() {
+    if confidential_transfer_account.pending_balance != EncryptedBalance::zeroed() {
         msg!("Pending balance is not zero");
         return Err(ProgramError::InvalidAccountData);
     }
 
-    if ct_token_account.available_balance != proof_data.ciphertext {
+    if confidential_transfer_account.available_balance != proof_data.ciphertext {
         msg!("Available balance mismatch");
         return Err(ProgramError::InvalidInstructionData);
     }
 
-    ct_token_account.approved()?;
-    ct_token_account.available_balance = EncryptedBalance::zeroed();
-    ct_token_account.closable()?;
+    confidential_transfer_account.approved()?;
+    confidential_transfer_account.available_balance = EncryptedBalance::zeroed();
+    confidential_transfer_account.closable()?;
 
     Ok(())
 }
@@ -285,7 +285,7 @@ fn process_deposit(
             .base
             .amount
             .checked_sub(amount)
-            .ok_or(TokenError::Overflow)?;
+            .ok_or(ProgramError::InvalidInstructionData)?;
 
         token_account.pack_base();
     }
@@ -310,22 +310,22 @@ fn process_deposit(
             return Err(TokenError::MintMismatch.into());
         }
 
-        let mut dest_ct_token_account =
+        let mut dest_confidential_transfer_account =
             dest_token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
-        dest_ct_token_account.approved()?;
+        dest_confidential_transfer_account.approved()?;
 
-        if !bool::from(&dest_ct_token_account.allow_balance_credits) {
+        if !bool::from(&dest_confidential_transfer_account.allow_balance_credits) {
             return Err(TokenError::ConfidentialTransferDepositsAndTransfersDisabled.into());
         }
 
-        dest_ct_token_account.pending_balance =
-            ops::add_to(&dest_ct_token_account.pending_balance, amount)
-                .ok_or(TokenError::Overflow)?;
+        dest_confidential_transfer_account.pending_balance =
+            ops::add_to(&dest_confidential_transfer_account.pending_balance, amount)
+                .ok_or(ProgramError::InvalidInstructionData)?;
 
-        dest_ct_token_account.pending_balance_credit_counter =
-            (u64::from(dest_ct_token_account.pending_balance_credit_counter)
+        dest_confidential_transfer_account.pending_balance_credit_counter =
+            (u64::from(dest_confidential_transfer_account.pending_balance_credit_counter)
                 .checked_add(1)
-                .ok_or(TokenError::Overflow)?)
+                .ok_or(ProgramError::InvalidInstructionData)?)
             .into();
     }
 
@@ -387,19 +387,19 @@ fn process_withdraw(
             return Err(TokenError::MintMismatch.into());
         }
 
-        let mut ct_token_account =
+        let mut confidential_transfer_account =
             token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
-        ct_token_account.approved()?;
+        confidential_transfer_account.approved()?;
 
-        ct_token_account.available_balance =
-            ops::subtract_from(&ct_token_account.available_balance, amount)
-                .ok_or(TokenError::Overflow)?;
+        confidential_transfer_account.available_balance =
+            ops::subtract_from(&confidential_transfer_account.available_balance, amount)
+                .ok_or(ProgramError::InvalidInstructionData)?;
 
-        if ct_token_account.available_balance != proof_data.final_ciphertext {
+        if confidential_transfer_account.available_balance != proof_data.final_ciphertext {
             return Err(TokenError::ConfidentialTransferBalanceMismatch.into());
         }
 
-        ct_token_account.decryptable_available_balance = new_decryptable_available_balance;
+        confidential_transfer_account.decryptable_available_balance = new_decryptable_available_balance;
     }
 
     //
@@ -428,7 +428,7 @@ fn process_withdraw(
             .base
             .amount
             .checked_add(amount)
-            .ok_or(TokenError::Overflow)?;
+            .ok_or(ProgramError::InvalidInstructionData)?;
 
         dest_token_account.pack_base();
     }
@@ -453,7 +453,7 @@ fn process_transfer(
     check_program_account(mint_info.owner)?;
     let mint_data = &mint_info.data.borrow_mut();
     let mint = StateWithExtensions::<Mint>::unpack(mint_data)?;
-    let ct_mint = mint.get_extension::<ConfidentialTransferMint>()?;
+    let confidential_transfer_mint = mint.get_extension::<ConfidentialTransferMint>()?;
 
     let previous_instruction =
         get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
@@ -465,7 +465,7 @@ fn process_transfer(
             &previous_instruction,
         )?;
 
-        if proof_data.transfer_with_fee_pubkeys.pubkey_auditor != ct_mint.pubkey_auditor {
+        if proof_data.transfer_with_fee_pubkeys.pubkey_auditor != confidential_transfer_mint.pubkey_auditor {
             return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
         }
 
@@ -473,7 +473,7 @@ fn process_transfer(
         if proof_data
             .transfer_with_fee_pubkeys
             .pubkey_withdraw_withheld_authority
-            != ct_mint.pubkey_withdraw_withheld_authority
+            != confidential_transfer_mint.pubkey_withdraw_withheld_authority
         {
             return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
         }
@@ -555,7 +555,7 @@ fn process_transfer(
             &previous_instruction,
         )?;
 
-        if proof_data.transfer_pubkeys.pubkey_auditor != ct_mint.pubkey_auditor {
+        if proof_data.transfer_pubkeys.pubkey_auditor != confidential_transfer_mint.pubkey_auditor {
             return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
         }
 
@@ -637,23 +637,23 @@ fn process_source_for_transfer(
         return Err(TokenError::MintMismatch.into());
     }
 
-    let mut ct_token_account = token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
-    ct_token_account.approved()?;
-    if *elgamal_pubkey_source != ct_token_account.pubkey_elgamal {
+    let mut confidential_transfer_account = token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
+    confidential_transfer_account.approved()?;
+    if *elgamal_pubkey_source != confidential_transfer_account.pubkey_elgamal {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
 
     let new_source_available_balance = {
         ops::subtract_with_lo_hi(
-            &ct_token_account.available_balance,
+            &confidential_transfer_account.available_balance,
             &ciphertext_lo_source,
             &ciphertext_hi_source,
         )
         .ok_or(ProgramError::InvalidInstructionData)?
     };
 
-    ct_token_account.available_balance = new_source_available_balance;
-    ct_token_account.decryptable_available_balance = new_source_decryptable_available_balance;
+    confidential_transfer_account.available_balance = new_source_available_balance;
+    confidential_transfer_account.decryptable_available_balance = new_source_decryptable_available_balance;
 
     Ok(())
 }
@@ -679,30 +679,30 @@ fn process_dest_for_transfer(
         return Err(TokenError::MintMismatch.into());
     }
 
-    let mut dest_ct_token_account =
+    let mut dest_confidential_transfer_account =
         dest_token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
-    dest_ct_token_account.approved()?;
+    dest_confidential_transfer_account.approved()?;
 
-    if !bool::from(&dest_ct_token_account.allow_balance_credits) {
+    if !bool::from(&dest_confidential_transfer_account.allow_balance_credits) {
         return Err(TokenError::ConfidentialTransferDepositsAndTransfersDisabled.into());
     }
 
-    if *elgamal_pubkey_dest != dest_ct_token_account.pubkey_elgamal {
+    if *elgamal_pubkey_dest != dest_confidential_transfer_account.pubkey_elgamal {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
 
     let new_dest_pending_balance = ops::subtract_with_lo_hi(
-        &dest_ct_token_account.pending_balance,
+        &dest_confidential_transfer_account.pending_balance,
         &ciphertext_lo_dest,
         &ciphertext_hi_dest,
     )
     .ok_or(ProgramError::InvalidInstructionData)?;
 
     let new_dest_pending_balance_credit_counter =
-        (u64::from(dest_ct_token_account.pending_balance_credit_counter) + 1).into();
+        (u64::from(dest_confidential_transfer_account.pending_balance_credit_counter) + 1).into();
 
-    dest_ct_token_account.pending_balance = new_dest_pending_balance;
-    dest_ct_token_account.pending_balance_credit_counter = new_dest_pending_balance_credit_counter;
+    dest_confidential_transfer_account.pending_balance = new_dest_pending_balance;
+    dest_confidential_transfer_account.pending_balance_credit_counter = new_dest_pending_balance_credit_counter;
 
     // update destination account withheld fees
     if let Some(ciphertext_fee) = encrypted_fee {
@@ -716,18 +716,18 @@ fn process_dest_for_transfer(
 
         // subtract fee from destination pending balance
         let new_dest_pending_balance =
-            ops::subtract(&dest_ct_token_account.pending_balance, &ciphertext_fee_dest)
+            ops::subtract(&dest_confidential_transfer_account.pending_balance, &ciphertext_fee_dest)
                 .ok_or(ProgramError::InvalidInstructionData)?;
 
         // add encrypted fee to current withheld fee
         let new_withheld_amount = ops::add(
-            &dest_ct_token_account.withheld_amount,
+            &dest_confidential_transfer_account.withheld_amount,
             &ciphertext_fee_withheld_authority,
         )
         .ok_or(ProgramError::InvalidInstructionData)?;
 
-        dest_ct_token_account.pending_balance = new_dest_pending_balance;
-        dest_ct_token_account.withheld_amount = new_withheld_amount;
+        dest_confidential_transfer_account.pending_balance = new_dest_pending_balance;
+        dest_confidential_transfer_account.withheld_amount = new_withheld_amount;
     }
 
     Ok(())
@@ -759,21 +759,21 @@ fn process_apply_pending_balance(
         account_info_iter.as_slice(),
     )?;
 
-    let mut ct_token_account = token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
-    ct_token_account.approved()?;
+    let mut confidential_transfer_account = token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
+    confidential_transfer_account.approved()?;
 
-    ct_token_account.available_balance = ops::add(
-        &ct_token_account.available_balance,
-        &ct_token_account.pending_balance,
+    confidential_transfer_account.available_balance = ops::add(
+        &confidential_transfer_account.available_balance,
+        &confidential_transfer_account.pending_balance,
     )
     .ok_or(ProgramError::InvalidInstructionData)?;
 
-    ct_token_account.actual_pending_balance_credit_counter =
-        ct_token_account.pending_balance_credit_counter;
-    ct_token_account.expected_pending_balance_credit_counter =
+    confidential_transfer_account.actual_pending_balance_credit_counter =
+        confidential_transfer_account.pending_balance_credit_counter;
+    confidential_transfer_account.expected_pending_balance_credit_counter =
         *expected_pending_balance_credit_counter;
-    ct_token_account.decryptable_available_balance = *new_decryptable_available_balance;
-    ct_token_account.pending_balance = EncryptedBalance::zeroed();
+    confidential_transfer_account.decryptable_available_balance = *new_decryptable_available_balance;
+    confidential_transfer_account.pending_balance = EncryptedBalance::zeroed();
 
     Ok(())
 }
@@ -801,9 +801,9 @@ fn process_allow_balance_credits(
         account_info_iter.as_slice(),
     )?;
 
-    let mut ct_token_account = token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
-    ct_token_account.approved()?;
-    ct_token_account.allow_balance_credits = allow_balance_credits.into();
+    let mut confidential_transfer_account = token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
+    confidential_transfer_account.approved()?;
+    confidential_transfer_account.allow_balance_credits = allow_balance_credits.into();
 
     Ok(())
 }
