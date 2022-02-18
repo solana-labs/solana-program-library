@@ -36,8 +36,8 @@ fn compute_a(amp: u64) -> Option<u64> {
 
 /// Returns self to the power of b
 fn checked_u8_power(a: &U256, b: u8) -> Option<U256> {
-    let mut result = *a;
-    for _ in 1..b {
+    let mut result = U256::from(1);
+    for _ in 0..b {
         result = result.checked_mul(*a)?;
     }
     Some(result)
@@ -45,6 +45,10 @@ fn checked_u8_power(a: &U256, b: u8) -> Option<U256> {
 
 /// Returns self multiplied by b
 fn checked_u8_mul(a: &U256, b: u8) -> Option<U256> {
+    if b == 0 {
+        return Some(U256::from(0));
+    }
+
     let mut result = *a;
     for _ in 1..b {
         result = result.checked_add(*a)?;
