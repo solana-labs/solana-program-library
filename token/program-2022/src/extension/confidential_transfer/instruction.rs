@@ -368,7 +368,6 @@ pub struct WithdrawWithheldTokensFromAccountsData {
     pub proof_instruction_offset: i8,
 }
 
-
 pub(crate) fn decode_instruction_type(
     input: &[u8],
 ) -> Result<ConfidentialTransferInstruction, ProgramError> {
@@ -855,7 +854,9 @@ pub fn inner_withdraw_withheld_tokens_from_mint(
         token_program_id,
         accounts,
         ConfidentialTransferInstruction::WithdrawWithheldTokensFromMint,
-        &WithdrawWithheldTokensFromMintData { proof_instruction_offset },
+        &WithdrawWithheldTokensFromMintData {
+            proof_instruction_offset,
+        },
     ))
 }
 
@@ -866,9 +867,10 @@ pub fn withdraw_withheld_tokens_from_mint(
     destination: &Pubkey,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
+    proof_data: &WithdrawWithheldTokensData,
 ) -> Result<Vec<Instruction>, ProgramError> {
     Ok(vec![
-        // verify_withdraw_withheld_tokens(proof_data), TODO: uncomment once zk-token-sdk updates
+        verify_withdraw_withheld_tokens(proof_data),
         inner_withdraw_withheld_tokens_from_mint(
             token_program_id,
             mint,
@@ -914,7 +916,10 @@ pub fn inner_withdraw_withheld_tokens_from_accounts(
         token_program_id,
         accounts,
         ConfidentialTransferInstruction::WithdrawWithheldTokensFromAccounts,
-        &WithdrawWithheldTokensFromAccountsData { proof_instruction_offset, num_token_accounts },
+        &WithdrawWithheldTokensFromAccountsData {
+            proof_instruction_offset,
+            num_token_accounts,
+        },
     ))
 }
 
@@ -926,10 +931,10 @@ pub fn withdraw_withheld_tokens_from_accounts(
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
     sources: &[&Pubkey],
-    proof_instruction_offset: i8,
+    proof_data: &WithdrawWithheldTokensData,
 ) -> Result<Vec<Instruction>, ProgramError> {
     Ok(vec![
-        // verify_withdraw_withheld_tokens(proof_data), TODO: uncomment once zk-token-sdk updates
+        verify_withdraw_withheld_tokens(proof_data),
         inner_withdraw_withheld_tokens_from_accounts(
             token_program_id,
             mint,

@@ -15,7 +15,6 @@ pub mod instruction;
 /// Confidential Transfer Extension processor
 pub mod processor;
 
-// Hide ElGamal internals under the rug
 type EncryptionPubkey = pod::ElGamalPubkey;
 type EncryptedBalance = pod::ElGamalCiphertext;
 type DecryptableBalance = pod::AeCiphertext;
@@ -45,14 +44,14 @@ pub struct ConfidentialTransferMint {
     /// * If non-zero, transfers must include ElGamal cypertext with this public key permitting the
     /// auditor to decode the transfer amount.
     /// * If all zero, auditing is currently disabled.
-    pub auditor_pubkey: EncryptionPubkey,
+    pub pubkey_auditor: EncryptionPubkey,
 
     /// * If non-zero, transfers must include ElGamal cypertext of the transfer fee with this
     /// public key. If this is the case, but the base mint is not extended for fees, then any
     /// transfer will fail.
     /// * If all zero, transfer fee is disabled. If this is the case, but the base mint is extended
     /// for fees, then any transfer will fail.
-    pub withdraw_withheld_authority_pubkey: EncryptionPubkey,
+    pub pubkey_withdraw_withheld_authority: EncryptionPubkey,
 
     /// Withheld transfer fee confidential tokens that have been moved to the mint for withdrawal.
     /// This will always be zero if fees are never enabled.
@@ -72,7 +71,7 @@ pub struct ConfidentialTransferAccount {
     pub approved: PodBool,
 
     /// The public key associated with ElGamal encryption
-    pub elgamal_pubkey: EncryptionPubkey,
+    pub pubkey_elgamal: EncryptionPubkey,
 
     /// The pending balance (encrypted by `elgamal_pubkey`)
     pub pending_balance: EncryptedBalance,
