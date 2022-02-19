@@ -2,6 +2,11 @@
 title: Token Program
 ---
 
+```mdx-code-block
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+```
+
 A Token program on the Solana blockchain.
 
 This program defines a common implementation for Fungible and Non Fungible tokens.
@@ -34,7 +39,12 @@ instructions.
 See the [SPL Associated Token Account](associated-token-account.md) program for
 convention around wallet address to token account mapping and funding.
 
-## Command-line Utility
+## Reference Guide
+
+### Setup
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
 
 The `spl-token` command-line utility can be used to experiment with SPL
 tokens.  Once you have [Rust installed](https://rustup.rs/), run:
@@ -80,16 +90,72 @@ Hardware Wallet URL (See [URL spec](https://docs.solana.com/wallet-guide/hardwar
 $ solana config set --keypair usb://ledger/
 ```
 
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+#### Yarn
+```console
+yarn add @solana/spl-token
+```
+#### npm
+```console
+npm install @solana/spl-token
+```
+### Configuration
+You can connect to different clusters using `Connection` in `@solana/web3.js`
+```typescript
+const web3 = require('@solana/web3.js');
+const connection = new web3.Connection(web3.clusterApiUrl('devnet'), 'confirmed');
+```
+### Keypair
+You can either get your keypair using [`Keypair`](https://solana-labs.github.io/solana-web3.js/classes/Keypair.html) from `@solana/web3.js`, or let the user's wallet handle the keypair and use `sendTransaction` from [`wallet-adapter`](https://github.com/solana-labs/wallet-adapter)
+
+  </TabItem>
+</Tabs>
+
+
+
 #### Airdrop SOL
 
 Creating tokens and accounts requires SOL for account rent deposits and
 transaction fees. If the cluster you are targeting offers a faucet, you can get
 a little SOL for testing:
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
 ```console
 $ solana airdrop 1
 ```
 
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+import { clusterApiUrl, Connection, Keypair, LAMPORTS_PER_SOL } from '@solana/web3.js';
+
+const payer = Keypair.generate();
+
+const connection = new Connection(
+  clusterApiUrl('devnet'),
+  'confirmed'
+);
+
+const airdropSignature = await connection.requestAirdrop(
+  payer.publicKey,
+  LAMPORTS_PER_SOL,
+);
+
+await connection.confirmTransaction(airdropSignature);
+```
+
+  </TabItem>
+</Tabs>
+
 ### Example: Creating your own fungible token
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
 
 ```console
 $ spl-token create-token
@@ -97,29 +163,127 @@ Creating token AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM
 Signature: 47hsLFxWRCg8azaZZPSnQR8DNTRsGyPNfUK7jqyzgt7wf9eag3nSnewqoZrVZHKm8zt3B6gzxhr91gdQ5qYrsRG4
 ```
 
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+import { createMint } from '@solana/spl-token';
+import { clusterApiUrl, Connection, Keypair, LAMPORTS_PER_SOL } from '@solana/web3.js';
+
+const payer = Keypair.generate();
+const mintAuthority = Keypair.generate();
+const freezeAuthority = Keypair.generate();
+
+const connection = new Connection(
+  clusterApiUrl('devnet'),
+  'confirmed'
+);
+
+const mint = await createMint(
+  connection,
+  payer,
+  mintAuthority.publicKey,
+  freezeAuthority.publicKey,
+  9 // We are using 9 to match the CLI decimal default exactly
+);
+
+console.log(mint.toBase58());
+// AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM
+```
+
+  </TabItem>
+</Tabs>
+
 The unique identifier of the token is `AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM`.
 
 Tokens when initially created by `spl-token` have no supply:
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
 ```console
 $ spl-token supply AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM
 0
 ```
 
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+const mintInfo = await getMint(
+  connection,
+  mint
+)
+
+console.log(mintInfo.supply);
+// 0
+```
+
+  </TabItem>
+</Tabs>
+
 Let's mint some.  First create an account to hold a balance of the new
 `AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM` token:
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
 ```console
 $ spl-token create-account AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM
 Creating account 7UX2i7SucgLMQcfZ75s3VXmZZY4YRUyJN9X1RgfMoDUi
 Signature: 42Sa5eK9dMEQyvD9GMHuKxXf55WLZ7tfjabUKDhNoZRAxj9MsnN7omriWMEHXLea3aYpjZ862qocRLVikvkHkyfy
 ```
 
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+const tokenAccount = await getOrCreateAssociatedTokenAccount(
+  connection,
+  payer,
+  mint,
+  payer.publicKey
+)
+
+console.log(tokenAccount.address.toBase58());
+// 7UX2i7SucgLMQcfZ75s3VXmZZY4YRUyJN9X1RgfMoDUi
+```
+
+  </TabItem>
+</Tabs>
+
+
 `7UX2i7SucgLMQcfZ75s3VXmZZY4YRUyJN9X1RgfMoDUi` is now an empty account:
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
 ```console
 $ spl-token balance AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM
 0
 ```
 
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+const tokenAccountInfo = await getAccount(
+  connection,
+  tokenAccount.address
+)
+
+console.log(tokenAccountInfo.amount);
+// 0
+```
+
+  </TabItem>
+</Tabs>
+
 Mint 100 tokens into the account:
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
 ```console
 $ spl-token mint AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM 100
 Minting 100 tokens
@@ -128,7 +292,28 @@ Minting 100 tokens
 Signature: 41mARH42fPkbYn1mvQ6hYLjmJtjW98NXwd6pHqEYg9p8RnuoUsMxVd16RkStDHEzcS2sfpSEpFscrJQn3HkHzLaa
 ```
 
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+await mintTo(
+  connection,
+  payer,
+  mint,
+  tokenAccount.address,
+  mintAuthority,
+  100
+)
+```
+
+  </TabItem>
+</Tabs>
+
 The token `supply` and account `balance` now reflect the result of minting:
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
 ```console
 $ spl-token supply AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM
 100
@@ -139,7 +324,34 @@ $ spl-token balance AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM
 100
 ```
 
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+const mintInfo = await getMint(
+  connection,
+  mint
+)
+
+console.log(mintInfo.supply);
+// 100
+
+const tokenAccountInfo = await getAccount(
+  connection,
+  tokenAccount.address
+)
+
+console.log(tokenAccountInfo.amount);
+// 100
+```
+
+  </TabItem>
+</Tabs>
+
 ### Example: View all Tokens that you own
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
 
 ```console
 $ spl-token accounts
@@ -151,7 +363,56 @@ AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM  0    (Aux-1*)
 AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM  1    (Aux-2*)
 ```
 
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+import {AccountLayout, TOKEN_PROGRAM_ID} from "@solana/spl-token";
+import {clusterApiUrl, Connection, PublicKey} from "@solana/web3.js";
+
+(async () => {
+
+  const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+
+  const tokenAccounts = await connection.getTokenAccountsByOwner(
+    new PublicKey('8YLKoCu7NwqHNS8GzuvA2ibsvLrsg22YMfMDafxh1B15'),
+    {
+      programId: TOKEN_PROGRAM_ID,
+    }
+  );
+
+  console.log("Token                                         Balance");
+  console.log("------------------------------------------------------------");
+  tokenAccounts.value.forEach((e) => {
+    const accountInfo = AccountLayout.decode(e.account.data);
+    console.log(`${new PublicKey(accountInfo.mint)}   ${accountInfo.amount}`);
+  })
+
+})();
+
+/*
+Token                                         Balance
+------------------------------------------------------------
+7e2X5oeAAJyUTi4PfSGXFLGhyPw2H8oELm1mx87ZCgwF  84
+AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM  100
+AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM  0
+AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM  1
+*/
+```
+
+  </TabItem>
+</Tabs>
+
 ### Example: Wrapping SOL in a Token
+
+When you want to wrap SOL, you can send SOL to an associated token account
+on the native mint and call `syncNative`. `syncNative` updates the `amount`
+field on the token account to match the amount of wrapped SOL available.
+That SOL is only retrievable by closing the token account and choosing
+the desired address to send the token account's lamports.
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
 
 ```console
 $ spl-token wrap 1
@@ -159,7 +420,75 @@ Wrapping 1 SOL into GJTxcnA5Sydy8YRhqvHxbQ5QNsPyRKvzguodQEaShJje
 Signature: 4f4s5QVMKisLS6ihZcXXPbiBAzjnvkBcp2A7KKER7k9DwJ4qjbVsQBKv2rAyBumXC1gLn8EJQhwWkybE4yJGnw2Y
 ```
 
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+import {NATIVE_MINT, createAssociatedTokenAccountInstruction, getAssociatedTokenAddress, createSyncNativeInstruction, getAccount} from "@solana/spl-token";
+import {clusterApiUrl, Connection, Keypair, LAMPORTS_PER_SOL, SystemProgram, Transaction, sendAndConfirmTransaction} from "@solana/web3.js";
+
+(async () => {
+
+const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+
+const wallet = Keypair.generate();
+
+const airdropSignature = await connection.requestAirdrop(
+  wallet.publicKey,
+  2 * LAMPORTS_PER_SOL,
+);
+
+await connection.confirmTransaction(airdropSignature);
+
+const associatedTokenAccount = await getAssociatedTokenAddress(
+  NATIVE_MINT,
+  wallet.publicKey
+)
+
+// Create token account to hold your wrapped SOL
+const ataTransaction = new Transaction()
+  .add(
+    createAssociatedTokenAccountInstruction(
+      wallet.publicKey,
+      associatedTokenAccount,
+      wallet.publicKey,
+      NATIVE_MINT
+    )
+  );
+
+await sendAndConfirmTransaction(connection, ataTransaction, [wallet]);
+
+// Transfer SOL to associated token account and use SyncNative to update wrapped SOL balance
+const solTransferTransaction = new Transaction()
+  .add(
+    SystemProgram.transfer({
+        fromPubkey: wallet.publicKey,
+        toPubkey: associatedTokenAccount,
+        lamports: LAMPORTS_PER_SOL
+      }),
+      createSyncNativeInstruction(
+        associatedTokenAccount
+    )
+  )
+
+await sendAndConfirmTransaction(connection, solTransferTransaction, [wallet]);
+
+const accountInfo = await getAccount(connection, associatedTokenAccount);
+
+console.log(`Native: ${accountInfo.isNative}, Lamports: ${accountInfo.amount}`);
+
+})();
+```
+
+  </TabItem>
+</Tabs>
+
+
 To unwrap the Token back to SOL:
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
 ```console
 $ spl-token unwrap GJTxcnA5Sydy8YRhqvHxbQ5QNsPyRKvzguodQEaShJje
 Unwrapping GJTxcnA5Sydy8YRhqvHxbQ5QNsPyRKvzguodQEaShJje
@@ -168,12 +497,41 @@ Unwrapping GJTxcnA5Sydy8YRhqvHxbQ5QNsPyRKvzguodQEaShJje
 Signature: f7opZ86ZHKGvkJBQsJ8Pk81v8F3v1VUfyd4kFs4CABmfTnSZK5BffETznUU3tEWvzibgKJASCf7TUpDmwGi8Rmh
 ```
 
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+const walletBalance = await connection.getBalance(wallet.publicKey);
+
+console.log(`Balance before unwrapping 1 WSOL: ${walletBalance}`)
+
+await closeAccount(connection, wallet, associatedTokenAccount, wallet.publicKey, wallet);
+
+const walletBalancePostClose = await connection.getBalance(wallet.publicKey);
+
+console.log(`Balance after unwrapping 1 WSOL: ${walletBalancePostClose}`)
+
+/*
+Balance before unwrapping 1 WSOL: 997950720
+Balance after unwrapping 1 WSOL: 1999985000
+*/
+```
+
+*Note*: Some lamports were removed for transaction fees
+
+  </TabItem>
+</Tabs>
+
 ### Example: Transferring tokens to another user
 First the receiver uses `spl-token create-account` to create their associated
 token account for the Token type.  Then the receiver obtains their wallet
 address by running `solana address` and provides it to the sender.
 
 The sender then runs:
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
 ```console
 $ spl-token transfer AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM 50 vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg
 Transfer 50 tokens
@@ -184,6 +542,67 @@ Transfer 50 tokens
 Signature: 5a3qbvoJQnTAxGPHCugibZTbSu7xuTgkxvF4EJupRjRXGgZZrnWFmKzfEzcqKF2ogCaF4QKVbAtuFx7xGwrDUcGd
 ```
 
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+import { clusterApiUrl, Connection, Keypair, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { createMint, getOrCreateAssociatedTokenAccount, mintTo, transfer } from '@solana/spl-token';
+
+(async () => {
+    // Connect to cluster
+    const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+
+    // Generate a new wallet keypair and airdrop SOL
+    const fromWallet = Keypair.generate();
+    const fromAirdropSignature = await connection.requestAirdrop(fromWallet.publicKey, LAMPORTS_PER_SOL);
+
+    // Wait for airdrop confirmation
+    await connection.confirmTransaction(fromAirdropSignature);
+
+    // Generate a new wallet to receive newly minted token
+    const toWallet = Keypair.generate();
+
+    // Create new token mint
+    const mint = await createMint(connection, fromWallet, fromWallet.publicKey, null, 9);
+
+    // Get the token account of the fromWallet address, and if it does not exist, create it
+    const fromTokenAccount = await getOrCreateAssociatedTokenAccount(
+        connection,
+        fromWallet,
+        mint,
+        fromWallet.publicKey
+    );
+
+    // Get the token account of the toWallet address, and if it does not exist, create it
+    const toTokenAccount = await getOrCreateAssociatedTokenAccount(connection, fromWallet, mint, toWallet.publicKey);
+
+    // Mint 1 new token to the "fromTokenAccount" account we just created
+    let signature = await mintTo(
+        connection,
+        fromWallet,
+        mint,
+        fromTokenAccount.address,
+        fromWallet.publicKey,
+        1000000000
+    );
+    console.log('mint tx:', signature);
+
+    // Transfer the new token to the "toTokenAccount" we just created
+    signature = await transfer(
+        connection,
+        fromWallet,
+        fromTokenAccount.address,
+        toTokenAccount.address,
+        fromWallet.publicKey,
+        50
+    );
+})();
+```
+
+  </TabItem>
+</Tabs>
+
 ### Example: Transferring tokens to another user, with sender-funding
 If the receiver does not yet have an associated token account, the sender may
 choose to fund the receiver's account.
@@ -192,6 +611,10 @@ The receiver obtains their wallet address by running `solana address` and provid
 
 The sender then runs to fund the receiver's associated token account, at the
 sender's expense, and then transfers 50 tokens into it:
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
 ```console
 $ spl-token transfer --fund-recipient AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM 50 vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg
 Transfer 50 tokens
@@ -203,9 +626,30 @@ Transfer 50 tokens
 Signature: 5a3qbvoJQnTAxGPHCugibZTbSu7xuTgkxvF4EJupRjRXGgZZrnWFmKzfEzcqKF2ogCaF4QKVbAtuFx7xGwrDUcGd
 ```
 
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+const signature = await transfer(
+    connection,
+    toWallet,
+    fromTokenAccount.address,
+    toTokenAccount.address,
+    fromWallet.publicKey,
+    50,
+    [fromWallet, toWallet]
+);
+```
+
+  </TabItem>
+</Tabs>
+
 ### Example: Transferring tokens to an explicit recipient token account
 Tokens may be transferred to a specific recipient token account.  The recipient
 token account must already exist and be of the same Token type.
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
 
 ```console
 $ spl-token create-account AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM /path/to/auxiliary_keypair.json
@@ -238,23 +682,145 @@ Account                                       Token                             
 CqAxDdBRnawzx9q4PYM3wrybLHBhDZ4P6BTV13WsRJYJ  AQoKYV7tYpTrFZN6P5oUufbQKAUr9mNYGe1TTJC9wajM  50  (Aux-1*)
 ```
 
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+import {getAccount, createMint, createAccount, mintTo, getOrCreateAssociatedTokenAccount, transfer} from "@solana/spl-token";
+import {clusterApiUrl, Connection, Keypair, LAMPORTS_PER_SOL} from "@solana/web3.js";
+
+(async () => {
+
+  const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+
+  const wallet = Keypair.generate();
+  const auxiliaryKeypair = Keypair.generate();
+
+  const airdropSignature = await connection.requestAirdrop(
+    wallet.publicKey,
+    LAMPORTS_PER_SOL,
+  );
+
+  await connection.confirmTransaction(airdropSignature);
+
+  const mint = await createMint(
+    connection,
+    wallet,
+    wallet.publicKey,
+    wallet.publicKey,
+    9
+  );
+
+  // Create custom token account
+  const auxiliaryTokenAccount = await createAccount(
+    connection,
+    wallet,
+    mint,
+    wallet.publicKey,
+    auxiliaryKeypair
+  );
+
+  const associatedTokenAccount = await getOrCreateAssociatedTokenAccount(
+    connection,
+    wallet,
+    mint,
+    wallet.publicKey
+  );
+
+  await mintTo(
+    connection,
+    wallet,
+    mint,
+    associatedTokenAccount.address,
+    wallet,
+    50
+  );
+
+  const accountInfo = await getAccount(connection, associatedTokenAccount.address);
+
+  console.log(accountInfo.amount);
+  // 50
+
+  await transfer(
+    connection,
+    wallet,
+    associatedTokenAccount.address,
+    auxiliaryTokenAccount,
+    wallet,
+    50
+  );
+
+  const auxAccountInfo = await getAccount(connection, auxiliaryTokenAccount);
+
+  console.log(auxAccountInfo.amount);
+  // 50
+})();
+```
+
+  </TabItem>
+</Tabs>
+
 ### Example: Create a non-fungible token
 
 Create the token type with zero decimal place,
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
 ```console
 $ spl-token create-token --decimals 0
 Creating token 559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z
 Signature: 4kz82JUey1B9ki1McPW7NYv1NqPKCod6WNptSkYqtuiEsQb9exHaktSAHJJsm4YxuGNW4NugPJMFX9ee6WA2dXts
 ```
 
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+const mint = await createMint(
+  connection,
+  wallet,
+  wallet.publicKey,
+  wallet.publicKey,
+  0
+);
+```
+
+  </TabItem>
+</Tabs>
+
+
 then create an account to hold tokens of this new type:
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
 ```console
 $ spl-token create-account 559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z
 Creating account 7KqpRwzkkeweW5jQoETyLzhvs9rcCj9dVQ1MnzudirsM
 Signature: sjChze6ecaRtvuQVZuwURyg6teYeiH8ZwT6UTuFNKjrdayQQ3KNdPB7d2DtUZ6McafBfEefejHkJ6MWQEfVHLtC
 ```
 
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+const associatedTokenAccount = await getOrCreateAssociatedTokenAccount(
+    connection,
+    wallet,
+    mint,
+    wallet.publicKey
+  );
+```
+
+  </TabItem>
+</Tabs>
+
 Now mint only one token into the account,
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
 ```console
 $ spl-token mint 559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z 1 7KqpRwzkkeweW5jQoETyLzhvs9rcCj9dVQ1MnzudirsM
 Minting 1 tokens
@@ -263,7 +829,28 @@ Minting 1 tokens
 Signature: 2Kzg6ZArQRCRvcoKSiievYy3sfPqGV91Whnz6SeimhJQXKBTYQf3E54tWg3zPpYLbcDexxyTxnj4QF69ucswfdY
 ```
 
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+await mintTo(
+    connection,
+    wallet,
+    mint,
+    associatedTokenAccount.address,
+    wallet,
+    1
+  );
+```
+
+  </TabItem>
+</Tabs>
+
 and disable future minting:
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
 ```console
 $ spl-token authorize 559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z mint --disable
 Updating 559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z
@@ -272,8 +859,30 @@ Updating 559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z
 Signature: 5QpykLzZsceoKcVRRFow9QCdae4Dp2zQAcjebyEWoezPFg2Np73gHKWQicHG1mqRdXu3yiZbrft3Q8JmqNRNqhwU
 ```
 
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+
+let transaction = new Transaction()
+  .add(createSetAuthorityInstruction(
+    mint,
+    wallet.publicKey,
+    AuthorityType.MintTokens,
+    null
+  ));
+
+await web3.sendAndConfirmTransaction(connection, transaction, [wallet]);
+```
+
+  </TabItem>
+</Tabs>
+
 Now the `7KqpRwzkkeweW5jQoETyLzhvs9rcCj9dVQ1MnzudirsM` account holds the
 one and only `559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z` token:
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
 
 ```console
 $ spl-token account-info 559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z
@@ -292,7 +901,39 @@ $ spl-token supply 559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z
 1
 ```
 
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+const accountInfo = await getAccount(connection, associatedTokenAccount.address);
+
+console.log(accountInfo.amount);
+// 1
+const mintInfo = await getMint(
+    connection,
+    mint
+  );
+
+console.log(mintInfo);
+/*
+{
+  address: "7KqpRwzkkeweW5jQoETyLzhvs9rcCj9dVQ1MnzudirsM",
+  mintAuthority: "559u4Tdr9umKwft3yHMsnAxohhzkFnUBPAFtibwuZD9z",
+  supply: 1,
+  decimals: 0,
+  isInitialized: true,
+  freezeAuthority: "vines1vzrYbzLMRdu58ou5XTby4qAqVRLmqo36NKPTg"
+}
+ */
+```
+
+  </TabItem>
+</Tabs>
+
 ### Multisig usage
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
 
 The main difference in `spl-token` command line usage when referencing multisig
 accounts is in specifying the `--owner` argument. Typically the signer specified
@@ -303,19 +944,67 @@ Signatures are then provided by the multisig signer-set members specified by the
 
 Multisig accounts can be used for any authority on an SPL Token mint or token
 account.
-- Mint account mint authority: `spl-token mint ...`, `spl-token authorize ... mint ...`
-- Mint account freeze authority: `spl-token freeze ...`, `spl-token thaw ...`,
-`spl-token authorize ... freeze ...`
-- Token account owner authority: `spl-token transfer ...`, `spl-token approve ...`,
-`spl-token revoke ...`, `spl-token burn ...`, `spl-token wrap ...`,
-`spl-token unwrap ...`, `spl-token authorize ... owner ...`
-- Token account close authority: `spl-token close ...`, `spl-token authorize ... close ...`
+<ul>
+  <li>Mint account mint authority:
+    <code>spl-token mint ...</code>,
+    <code>spl-token authorize ... mint ...</code>
+  </li>
+  <li>Mint account freeze authority:
+    <code>spl-token freeze ...</code>,
+    <code>spl-token thaw ...</code>,
+    <code>spl-token authorize ... freeze ...</code>
+  </li>
+  <li>Token account owner authority:
+    <code>spl-token transfer ...</code>,
+    <code>spl-token approve ...</code>,
+    <code>spl-token revoke ...</code>,
+    <code>spl-token burn ...</code>,
+    <code>spl-token wrap ...</code>,
+    <code>spl-token unwrap ...</code>,
+    <code>spl-token authorize ... owner ...</code>
+  </li>
+  <li>Token account close authority:
+    <code>spl-token close ...</code>,
+    <code>spl-token authorize ... close ...</code>
+  </li>
+</ul>
+
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+The main difference in using multisign is specifying the owner as the multisig key,
+and giving the list of signers when contructing a transaction. Normally you would
+provide the signer that has authority to run the transaction as the owner, but in
+the multisig case the owner would be the multisig key.
+
+Multisig accounts can be used for any authority on an SPL Token mint or token account.
+
+<ul>
+  <li>Mint account mint authority:
+    <code>createMint(/* ... */, mintAuthority: multisigKey, /* ... */)</code>
+  </li>
+  <li>Mint account freeze authority:
+    <code>createMint(/* ... */, freezeAuthority: multisigKey, /* ... */)</code>
+  </li>
+  <li>Token account owner authority:
+    <code>getOrCreateAssociatedTokenAccount(/* ... */, mintAuthority: multisigKey, /* ... */)</code>
+  </li>
+  <li>Token account close authority:
+    <code>closeAccount(/* ... */, authority: multisigKey, /* ... */)</code>
+  </li>
+</ul>
+  </TabItem>
+</Tabs>
 
 ### Example: Mint with multisig authority
 
 First create keypairs to act as the multisig signer-set. In reality, these can
 be any supported signer, like: a Ledger hardware wallet, a keypair file, or
-a paper wallet. For convenience, keypair files will be used in this example.
+a paper wallet. For convenience, generated keypairs will be used in this example.
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
 ```console
 $ for i in $(seq 3); do solana-keygen new --no-passphrase -so "signer-${i}.json"; done
 Wrote new keypair to signer-1.json
@@ -323,14 +1012,47 @@ Wrote new keypair to signer-2.json
 Wrote new keypair to signer-3.json
 ```
 
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+const signer1 = Keypair.generate();
+const signer2 = Keypair.generate();
+const signer3 = Keypair.generate();
+````
+
+  </TabItem>
+</Tabs>
+
 In order to create the multisig account, the public keys of the signer-set must
 be collected.
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
 ```console
 $ for i in $(seq 3); do SIGNER="signer-${i}.json"; echo "$SIGNER: $(solana-keygen pubkey "$SIGNER")"; done
 signer-1.json: BzWpkuRrwXHq4SSSFHa8FJf6DRQy4TaeoXnkA89vTgHZ
 signer-2.json: DhkUfKgfZ8CF6PAGKwdABRL1VqkeNrTSRx8LZfpPFVNY
 signer-3.json: D7ssXHrZJjfpZXsmDf8RwfPxe1BMMMmP1CtmX3WojPmG
 ```
+
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+console.log(signer1.publicKey.toBase58());
+console.log(signer2.publicKey.toBase58());
+console.log(signer3.publicKey.toBase58());
+/*
+  BzWpkuRrwXHq4SSSFHa8FJf6DRQy4TaeoXnkA89vTgHZ
+  DhkUfKgfZ8CF6PAGKwdABRL1VqkeNrTSRx8LZfpPFVNY
+  D7ssXHrZJjfpZXsmDf8RwfPxe1BMMMmP1CtmX3WojPmG
+ */
+```
+
+  </TabItem>
+</Tabs>
 
 Now the multisig account can be created with the `spl-token create-multisig`
 subcommand. Its first positional argument is the minimum number of signers (`M`)
@@ -342,6 +1064,10 @@ must sign all transactions.
 
 NOTE: SPL Token Multisig accounts are limited to a signer-set of eleven signers
 (1 <= `N` <= 11) and minimum signers must be no more than `N` (1 <= `M` <= `N`)
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
 ```
 $ spl-token create-multisig 2 BzWpkuRrwXHq4SSSFHa8FJf6DRQy4TaeoXnkA89vTgHZ \
 DhkUfKgfZ8CF6PAGKwdABRL1VqkeNrTSRx8LZfpPFVNY D7ssXHrZJjfpZXsmDf8RwfPxe1BMMMmP1CtmX3WojPmG
@@ -351,8 +1077,35 @@ Creating 2/3 multisig 46ed77fd4WTN144q62BwjU2B3ogX3Xmmc8PT5Z3Xc2re
 Signature: 2FN4KXnczAz33SAxwsuevqrD1BvikP6LUhLie5Lz4ETt594X8R7yvMZzZW2zjmFLPsLQNHsRuhQeumExHbnUGC9A
 ```
 
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+const multisigKey = await createMultisig(
+  connection,
+  payer,
+  [
+    signer1.publicKey,
+    signer2.publicKey,
+    signer3.publicKey
+  ],
+  2
+);
+
+console.log(`Created 2/3 multisig ${multisigKey.toBase58()}`);
+// Created 2/3 multisig 46ed77fd4WTN144q62BwjU2B3ogX3Xmmc8PT5Z3Xc2re
+```
+
+  </TabItem>
+</Tabs>
+
 Next create the token mint and receiving accounts
 [as previously described](#example-creating-your-own-fungible-token)
+and set the mint account's minting authority to the multisig account
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
 ```console
 $ spl-token create-token
 Creating token 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o
@@ -361,10 +1114,7 @@ Signature: 3n6zmw3hS5Hyo5duuhnNvwjAbjzC42uzCA3TTsrgr9htUonzDUXdK1d8b8J77XoeSherq
 $ spl-token create-account 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o
 Creating account EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC
 Signature: 5mVes7wjE7avuFqzrmSCWneKBQyPAjasCLYZPNSkmqmk2YFosYWAP9hYSiZ7b7NKpV866x5gwyKbbppX3d8PcE9s
-```
 
-Then set the mint account's minting authority to the multisig account
-```console
 $ spl-token authorize 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o mint 46ed77fd4WTN144q62BwjU2B3ogX3Xmmc8PT5Z3Xc2re
 Updating 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o
   Current mint authority: 5hbZyJ3KRuFvdy5QBxvE9KwK17hzkAUkQHZTxPbiWffE
@@ -372,8 +1122,35 @@ Updating 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o
 Signature: yy7dJiTx1t7jvLPCRX5RQWxNRNtFwvARSfbMJG94QKEiNS4uZcp3GhhjnMgZ1CaWMWe4jVEMy9zQBoUhzomMaxC
 ```
 
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+const mint = await createMint(
+    connection,
+    payer,
+    multisigKey,
+    multisigKey,
+    9
+  );
+
+const associatedTokenAccount = await getOrCreateAssociatedTokenAccount(
+  connection,
+  payer,
+  mint,
+  signer1.publicKey
+);
+```
+
+  </TabItem>
+</Tabs>
+
 To demonstrate that the mint account is now under control of the multisig
 account, attempting to mint with one multisig signer fails
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
 ```
 $ spl-token mint 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o 1 EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC \
 --owner 46ed77fd4WTN144q62BwjU2B3ogX3Xmmc8PT5Z3Xc2re \
@@ -386,7 +1163,33 @@ Minting 1 tokens
 RPC response error -32002: Transaction simulation failed: Error processing Instruction 0: missing required signature for instruction
 ```
 
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+try {
+  await mintTo(
+    connection,
+    payer,
+    mint,
+    associatedTokenAccount.address,
+    multisigKey,
+    1
+  )
+} catch (e) {
+  console.log(e);
+}
+// Error: Signature verification failed
+```
+
+  </TabItem>
+</Tabs>
+
 But repeating with a second multisig signer, succeeds
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
+
 ```
 $ spl-token mint 4VNVRJetwapjwYU8jf4qPgaCeD76wyz8DuNj8yMCQ62o 1 EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC \
 --owner 46ed77fd4WTN144q62BwjU2B3ogX3Xmmc8PT5Z3Xc2re \
@@ -400,16 +1203,48 @@ Minting 1 tokens
 Signature: 2ubqWqZb3ooDuc8FLaBkqZwzguhtMgQpgMAHhKsWcUzjy61qtJ7cZ1bfmYktKUfnbMYWTC1S8zdKgU6m4THsgspT
 ```
 
-### Example: Offline signing with multisig 
+  </TabItem>
+  <TabItem value="jsx" label="JS">
 
-Sometimes online signing is not possible or desireable. Such is the case for example when signers are not in the same geographic location  
-or when they use air-gapped devices not connected to the network.  In this case, we use offline signing which combines the   
+```jsx
+await mintTo(
+  connection,
+  payer,
+  mint,
+  associatedTokenAccount.address,
+  multisigKey,
+  1,
+  [
+    signer1,
+    signer2
+  ]
+)
+
+const mintInfo = await getMint(
+  connection,
+  mint
+)
+
+console.log(`Minted ${mintInfo.supply} token`);
+// Minted 1 token
+```
+
+  </TabItem>
+</Tabs>
+
+### Example: Offline signing with multisig
+
+Sometimes online signing is not possible or desireable. Such is the case for example when signers are not in the same geographic location
+or when they use air-gapped devices not connected to the network.  In this case, we use offline signing which combines the
 previous examples of [multisig](#example-mint-with-multisig-authority) with [offline signing](https://docs.solana.com/offline-signing)
 and a [nonce account](https://docs.solana.com/offline-signing/durable-nonce).
 
 This example will use the same mint account, token account, multisig account,
 and multisig signer-set keypair filenames as the online example, as well as a nonce
 account that we create here:
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
 
 ```console
 $ solana-keygen new -o nonce-keypair.json
@@ -433,8 +1268,58 @@ Fee: 5000 lamports per signature
 Authority: 5hbZyJ3KRuFvdy5QBxvE9KwK17hzkAUkQHZTxPbiWffE
 ```
 
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+```jsx
+const connection = new Connection(
+  clusterApiUrl('devnet'),
+  'confirmed',
+);
+
+const onlineAccount = Keypair.generate();
+const nonceAccount = Keypair.generate();
+
+const minimumAmount = await connection.getMinimumBalanceForRentExemption(
+  NONCE_ACCOUNT_LENGTH,
+);
+
+// Form CreateNonceAccount transaction
+const transaction = new Transaction()
+  .add(
+  SystemProgram.createNonceAccount({
+    fromPubkey: onlineAccount.publicKey,
+    noncePubkey: nonceAccount.publicKey,
+    authorizedPubkey: onlineAccount.publicKey,
+    lamports: minimumAmount,
+  }),
+);
+
+await web3.sendAndConfirmTransaction(connection, transaction, [onlineAccount, nonceAccount])
+
+const nonceAccountData = await connection.getNonce(
+  nonceAccount.publicKey,
+  'confirmed',
+);
+
+console.log(nonceAccountData);
+/*
+NonceAccount {
+  authorizedPubkey: '5hbZyJ3KRuFvdy5QBxvE9KwK17hzkAUkQHZTxPbiWffE'
+  nonce: '6DPt2TfFBG7sR4Hqu16fbMXPj8ddHKkbU4Y3EEEWrC2E',
+  feeCalculator: { lamportsPerSignature: 5000 }
+}
+ */
+```
+
+  </TabItem>
+</Tabs>
+
 For the fee-payer and nonce-authority roles, a local hot wallet at
 `5hbZyJ3KRuFvdy5QBxvE9KwK17hzkAUkQHZTxPbiWffE` will be used.
+
+<Tabs className="unique-tabs" groupId="language-selection">
+  <TabItem value="cli" label="CLI" default>
 
 First a template command is built by specifying all signers by their public
 key. Upon running this command, all signers will be listed as "Absent Signers"
@@ -548,6 +1433,74 @@ Minting 1 tokens
   Recipient: EX8zyi2ZQUuoYtXd4MKmyHYLTjqFdWeuoTHcsTdJcKHC
 Signature: 2AhZXVPDBVBxTQLJohyH1wAhkkSuxRiYKomSSXtwhPL9AdF3wmhrrJGD7WgvZjBPLZUFqWrockzPp9S3fvzbgicy
 ```
+
+  </TabItem>
+  <TabItem value="jsx" label="JS">
+
+First a raw transaction is built using the nonceAccountInformation and tokenAccount key.
+All signers of the transaction are noted as part of the raw transaction. This transaction
+will be handed to the signers later for signing.
+
+```jsx
+const nonceAccountInfo = await connection.getAccountInfo(
+  nonceAccount.publicKey,
+  'confirmed'
+);
+
+const nonceAccountFromInfo = web3.NonceAccount.fromAccountData(nonceAccountInfo.data);
+
+console.log(nonceAccountFromInfo);
+
+const nonceInstruction = web3.SystemProgram.nonceAdvance({
+  authorizedPubkey: onlineAccount.publicKey,
+  noncePubkey: nonceAccount.publicKey
+});
+
+const nonce = nonceAccountFromInfo.nonce;
+
+const mintToTransaction = new web3.Transaction({
+  feePayer: onlineAccount.publicKey,
+  nonceInfo: {nonce, nonceInstruction}
+})
+  .add(
+    createMintToInstruction(
+      mint,
+      associatedTokenAccount.address,
+      multisigkey,
+      1,
+      [
+        signer1,
+        onlineAccount
+      ],
+      TOKEN_PROGRAM_ID
+    )
+  );
+```
+
+Next each offline signer will take the transaction buffer and sign it with their corresponding key.
+
+```jsx
+let mintToTransactionBuffer = mintToTransaction.serializeMessage();
+
+let onlineSIgnature = nacl.sign.detached(mintToTransactionBuffer, onlineAccount.secretKey);
+mintToTransaction.addSignature(onlineAccount.publicKey, onlineSIgnature);
+
+// Handed to offline signer for signature
+let offlineSignature = nacl.sign.detached(mintToTransactionBuffer, signer1.secretKey);
+mintToTransaction.addSignature(signer1.publicKey, offlineSignature);
+
+let rawMintToTransaction = mintToTransaction.serialize();
+```
+
+Finally, the hot wallet will take the transaction, serialize it, and broadcast it to the network.
+
+```jsx
+// Send to online signer for broadcast to network
+await web3.sendAndConfirmRawTransaction(connection, rawMintToTransaction);
+```
+
+  </TabItem>
+</Tabs>
 
 ## JSON RPC methods
 
