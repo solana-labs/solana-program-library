@@ -14,7 +14,7 @@ module.exports = {
         src: "img/logo-horizontal.svg",
         srcDark: "img/logo-horizontal-dark.svg",
       },
-      links: [
+      items: [
         {
           href: "https://docs.solana.com/",
           label: "Docs »",
