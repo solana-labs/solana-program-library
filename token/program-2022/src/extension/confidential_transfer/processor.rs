@@ -229,7 +229,6 @@ fn process_empty_account(
         return Err(ProgramError::InvalidInstructionData);
     }
 
-    ct_token_account.approved()?;
     ct_token_account.available_balance = pod::ElGamalCiphertext::zeroed();
     ct_token_account.closable()?;
 
@@ -390,7 +389,6 @@ fn process_withdraw(
 
         let mut ct_token_account =
             token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
-        ct_token_account.approved()?;
 
         ct_token_account.available_balance =
             ops::subtract_from(&ct_token_account.available_balance, amount)
@@ -757,7 +755,6 @@ fn process_apply_pending_balance(
     )?;
 
     let mut ct_token_account = token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
-    ct_token_account.approved()?;
 
     ct_token_account.available_balance = ops::add(
         &ct_token_account.available_balance,
@@ -799,7 +796,6 @@ fn process_allow_balance_credits(
     )?;
 
     let mut ct_token_account = token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
-    ct_token_account.approved()?;
     ct_token_account.allow_balance_credits = allow_balance_credits.into();
 
     Ok(())
