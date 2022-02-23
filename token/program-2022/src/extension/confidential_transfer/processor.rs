@@ -236,6 +236,11 @@ fn process_empty_account(
     }
 
     ct_token_account.available_balance = pod::ElGamalCiphertext::zeroed();
+
+    if ct_token_account.withheld_amount != pod::ElGamalCiphertext::zeroed() {
+        msg!("Withheld amount is not zero");
+        return Err(ProgramError::InvalidAccountData);
+    }
     ct_token_account.closable()?;
 
     Ok(())

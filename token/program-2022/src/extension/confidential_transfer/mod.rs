@@ -108,6 +108,7 @@ impl ConfidentialTransferAccount {
     pub fn closable(&self) -> ProgramResult {
         if self.pending_balance == pod::ElGamalCiphertext::zeroed()
             && self.available_balance == pod::ElGamalCiphertext::zeroed()
+            && self.withheld_amount == pod::ElGamalCiphertext::zeroed()
         {
             Ok(())
         } else {
