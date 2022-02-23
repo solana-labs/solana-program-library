@@ -3459,9 +3459,9 @@ dependencies = [
 
 [[package]]
 name = "solana-zk-token-sdk"
-version = "0.7.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e11818612bc20a55d603cba5dcd026189c94bf9da8542ec33481dc3664c77f53"
+checksum = "7771d87c8704efb34e5e8f4cb198299373ca26252f60ba554770a920b95f395d"
 dependencies = [
  "aes-gcm-siv",
  "arrayref",

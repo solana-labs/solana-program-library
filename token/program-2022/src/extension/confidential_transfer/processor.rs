@@ -894,7 +894,7 @@ fn process_withdraw_withheld_tokens_from_mint(
     )
     .ok_or(ProgramError::InvalidInstructionData)?;
 
-    dest_confidential_transfer_account.withheld_amount = new_dest_pending_balance;
+    dest_confidential_transfer_account.pending_balance = new_dest_pending_balance;
 
     // fee is now withdrawn, so zero out mint withheld amount
     confidential_transfer_mint.withheld_amount = EncryptedWithheldAmount::zeroed();
