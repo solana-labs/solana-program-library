@@ -966,4 +966,40 @@ where
         )
         .await
     }
+
+    /// Enable confidential transfer `Deposit` and `Transfer` instructions for a token account
+    pub async fn confidential_transfer_enable_balance_credits<S2: Signer>(
+        &self,
+        token_account: &Pubkey,
+        authority: &S2,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[confidential_transfer::instruction::enable_balance_credits(
+                &self.program_id,
+                token_account,
+                &authority.pubkey(),
+                &[],
+            )?],
+            &[authority],
+        )
+        .await
+    }
+
+    /// Disable confidential transfer `Deposit` and `Transfer` instructions for a token account
+    pub async fn confidential_transfer_disable_balance_credits<S2: Signer>(
+        &self,
+        token_account: &Pubkey,
+        authority: &S2,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[confidential_transfer::instruction::disable_balance_credits(
+                &self.program_id,
+                token_account,
+                &authority.pubkey(),
+                &[],
+            )?],
+            &[authority],
+        )
+        .await
+    }
 }
