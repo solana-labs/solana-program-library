@@ -10,7 +10,7 @@ use {
         rent::Rent,
         system_instruction,
     },
-    spl_token::{check_program_account, extension::ExtensionType},
+    spl_token_2022::extension::ExtensionType,
     std::convert::TryInto,
 };
 
@@ -79,7 +79,7 @@ pub fn get_account_len<'a>(
     extension_types: &[ExtensionType],
 ) -> Result<usize, ProgramError> {
     invoke(
-        &spl_token::instruction::get_account_data_size(
+        &spl_token_2022::instruction::get_account_data_size(
             spl_token_program.key,
             mint.key,
             extension_types,
@@ -89,7 +89,9 @@ pub fn get_account_len<'a>(
     get_return_data()
         .ok_or(ProgramError::InvalidInstructionData)
         .and_then(|(key, data)| {
-            check_program_account(&key)?;
+            if key != *spl_token_program.key {
+                return Err(ProgramError::IncorrectProgramId);
+            }
             data.try_into()
                 .map(usize::from_le_bytes)
                 .map_err(|_| ProgramError::InvalidInstructionData)

@@ -25,7 +25,8 @@ type EncryptedWithheldAmount = pod::ElGamalCiphertext;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct ConfidentialTransferMint {
-    /// Authority to modify the `ConfidentialTransferMint` configuration
+    /// Authority to modify the `ConfidentialTransferMint` configuration and to approve new
+    /// accounts (if `auto_approve_new_accounts` is true)
     ///
     /// Note that setting an authority of `Pubkey::default()` is the idiomatic way to disable
     /// future changes to the configuration.
@@ -117,6 +118,7 @@ impl ConfidentialTransferAccount {
     pub fn closable(&self) -> ProgramResult {
         if self.pending_balance == pod::ElGamalCiphertext::zeroed()
             && self.available_balance == pod::ElGamalCiphertext::zeroed()
+            && self.withheld_amount == pod::ElGamalCiphertext::zeroed()
         {
             Ok(())
         } else {

@@ -58,8 +58,11 @@ pub enum ConfidentialTransferInstruction {
     /// The instruction fails if the confidential transfers are already configured, or if the mint
     /// was not initialized with confidential transfer support.
     ///
-    /// Upon success confidential deposits and transfers are disabled, use the
-    /// `EnableBalanceCredits` instruction to enable them.
+    /// The instruction fails if the `TokenInstruction::InitializeAccount` instruction has not yet
+    /// successfully executed for the token account.
+    ///
+    /// Upon success confidential deposits and transfers are enabled, use the
+    /// `DisableBalanceCredits` instruction to disable.
     ///
     /// Accounts expected by this instruction:
     ///
@@ -420,7 +423,7 @@ fn encode_instruction<T: Pod>(
 pub fn initialize_mint(
     token_program_id: &Pubkey,
     mint: &Pubkey,
-    auditor: &ConfidentialTransferMint,
+    ct_mint: &ConfidentialTransferMint,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let accounts = vec![AccountMeta::new(*mint, false)];
@@ -428,14 +431,15 @@ pub fn initialize_mint(
         token_program_id,
         accounts,
         ConfidentialTransferInstruction::InitializeMint,
-        auditor,
+        ct_mint,
     ))
 }
+
 /// Create a `UpdateMint` instruction
 pub fn update_mint(
     token_program_id: &Pubkey,
     mint: &Pubkey,
-    new_auditor: &ConfidentialTransferMint,
+    new_ct_mint: &ConfidentialTransferMint,
     authority: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
@@ -443,15 +447,15 @@ pub fn update_mint(
         AccountMeta::new(*mint, false),
         AccountMeta::new_readonly(*authority, true),
         AccountMeta::new_readonly(
-            new_auditor.authority,
-            new_auditor.authority != Pubkey::default(),
+            new_ct_mint.authority,
+            new_ct_mint.authority != Pubkey::default(),
         ),
     ];
     Ok(encode_instruction(
         token_program_id,
         accounts,
         ConfidentialTransferInstruction::UpdateMint,
-        new_auditor,
+        new_ct_mint,
     ))
 }
 
@@ -465,7 +469,7 @@ pub fn configure_account(
     decryptable_zero_balance: AeCiphertext,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-) -> Result<Vec<Instruction>, ProgramError> {
+) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let mut accounts = vec![
         AccountMeta::new(*token_account, false),
@@ -477,7 +481,7 @@ pub fn configure_account(
         accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
     }
 
-    Ok(vec![encode_instruction(
+    Ok(encode_instruction(
         token_program_id,
         accounts,
         ConfidentialTransferInstruction::ConfigureAccount,
@@ -485,14 +489,14 @@ pub fn configure_account(
             elgamal_pubkey: elgamal_pubkey.into(),
             decryptable_zero_balance: decryptable_zero_balance.into(),
         },
-    )])
+    ))
 }
 
 /// Create an `ApproveAccount` instruction
 pub fn approve_account(
     token_program_id: &Pubkey,
-    mint: &Pubkey,
     account_to_approve: &Pubkey,
+    mint: &Pubkey,
     authority: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
@@ -738,7 +742,6 @@ pub fn transfer(
 /// Create a inner `ApplyPendingBalance` instruction
 ///
 /// This instruction is suitable for use with a cross-program `invoke`
-#[allow(clippy::too_many_arguments)]
 pub fn inner_apply_pending_balance(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -790,55 +793,61 @@ pub fn apply_pending_balance(
     ])
 }
 
+fn enable_or_disable_balance_credits(
+    instruction: ConfidentialTransferInstruction,
+    token_program_id: &Pubkey,
+    token_account: &Pubkey,
+    authority: &Pubkey,
+    multisig_signers: &[&Pubkey],
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+    let mut accounts = vec![
+        AccountMeta::new(*token_account, false),
+        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
+    ];
+
+    for multisig_signer in multisig_signers.iter() {
+        accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
+    }
+
+    Ok(encode_instruction(
+        token_program_id,
+        accounts,
+        instruction,
+        &(),
+    ))
+}
+
 /// Create a `EnableBalanceCredits` instruction
 pub fn enable_balance_credits(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-) -> Result<Vec<Instruction>, ProgramError> {
-    check_program_account(token_program_id)?;
-    let mut accounts = vec![
-        AccountMeta::new(*token_account, false),
-        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
-    ];
-
-    for multisig_signer in multisig_signers.iter() {
-        accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
-    }
-
-    Ok(vec![encode_instruction(
-        token_program_id,
-        accounts,
+) -> Result<Instruction, ProgramError> {
+    enable_or_disable_balance_credits(
         ConfidentialTransferInstruction::EnableBalanceCredits,
-        &(),
-    )])
+        token_program_id,
+        token_account,
+        authority,
+        multisig_signers,
+    )
 }
 
 /// Create a `DisableBalanceCredits` instruction
-#[cfg(not(target_arch = "bpf"))]
 pub fn disable_balance_credits(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-) -> Result<Vec<Instruction>, ProgramError> {
-    check_program_account(token_program_id)?;
-    let mut accounts = vec![
-        AccountMeta::new(*token_account, false),
-        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
-    ];
-
-    for multisig_signer in multisig_signers.iter() {
-        accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
-    }
-
-    Ok(vec![encode_instruction(
-        token_program_id,
-        accounts,
+) -> Result<Instruction, ProgramError> {
+    enable_or_disable_balance_credits(
         ConfidentialTransferInstruction::DisableBalanceCredits,
-        &(),
-    )])
+        token_program_id,
+        token_account,
+        authority,
+        multisig_signers,
+    )
 }
 
 /// Create a inner `WithdrawWithheldTokensFromMint` instruction

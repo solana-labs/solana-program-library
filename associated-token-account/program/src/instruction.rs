@@ -1,6 +1,7 @@
 //! Program instructions
 
 use {
+    crate::{get_associated_token_address_with_program_id, id},
     assert_matches::assert_matches,
     borsh::{BorshDeserialize, BorshSchema, BorshSerialize},
     solana_program::{
@@ -8,8 +9,6 @@ use {
         pubkey::Pubkey,
     },
 };
-
-use crate::{get_associated_token_address, id};
 
 /// Instructions supported by the AssociatedTokenAccount program
 #[derive(Clone, Debug, PartialEq, BorshDeserialize, BorshSerialize, BorshSchema)]
@@ -44,8 +43,11 @@ fn build_associated_token_account_instruction(
     token_program_id: &Pubkey,
     instruction: AssociatedTokenAccountInstruction,
 ) -> Instruction {
-    let associated_account_address =
-        get_associated_token_address(wallet_address, token_mint_address);
+    let associated_account_address = get_associated_token_address_with_program_id(
+        wallet_address,
+        token_mint_address,
+        token_program_id,
+    );
     // safety check, assert if not a creation instruction
     assert_matches!(
         instruction,

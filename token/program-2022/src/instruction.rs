@@ -2,7 +2,7 @@
 
 use {
     crate::{
-        check_program_account,
+        check_program_account, check_spl_token_program_account,
         error::TokenError,
         extension::{transfer_fee::instruction::TransferFeeInstruction, ExtensionType},
     },
@@ -28,7 +28,7 @@ const U64_BYTES: usize = 8;
 /// Instructions supported by the token program.
 #[repr(C)]
 #[derive(Clone, Debug, PartialEq)]
-pub enum TokenInstruction {
+pub enum TokenInstruction<'a> {
     /// Initializes a new mint and optionally deposits all the newly minted
     /// tokens in an account.
     ///
@@ -456,6 +456,45 @@ pub enum TokenInstruction {
         /// Additional extension types to include in the returned account size
         extension_types: Vec<ExtensionType>,
     },
+    /// Initialize the Immutable Owner extension for the given token account
+    ///
+    /// Fails if the account has already been initialized, so must be called before
+    /// `InitializeAccount`.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[writable]`  The account to initialize.
+    ///
+    /// Data expected by this instruction:
+    ///   None
+    ///
+    InitializeImmutableOwner,
+    /// Convert an Amount of tokens to a UiAmount `string`, using the given mint.
+    ///
+    /// Fails on an invalid mint.
+    ///
+    /// Return data can be fetched using `sol_get_return_data` and deserialized with
+    /// `String::from_utf8`.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[]` The mint to calculate for
+    AmountToUiAmount {
+        /// The amount of tokens to convert.
+        amount: u64,
+    },
+    /// Convert a UiAmount of tokens to a little-endian `u64` raw Amount, using the given mint.
+    ///
+    /// Return data can be fetched using `sol_get_return_data` and deserializing
+    /// the return data as a little-endian `u64`.
+    ///
+    /// Accounts expected by this instruction:
+    ///
+    ///   0. `[]` The mint to calculate for
+    UiAmountToAmount {
+        /// The ui_amount of tokens to convert.
+        ui_amount: &'a str,
+    },
     /// Initialize the close account authority on a new mint.
     ///
     /// Fails if the mint has already been initialized, so must be called before
@@ -487,19 +526,6 @@ pub enum TokenInstruction {
     /// See `extension::default_account_state::instruction::DefaultAccountStateInstruction` for
     /// further details about the extended instructions that share this instruction prefix
     DefaultAccountStateExtension,
-    /// Initialize the Immutable Owner extension for the given token account
-    ///
-    /// Fails if the account has already been initialized, so must be called before
-    /// `InitializeAccount`.
-    ///
-    /// Accounts expected by this instruction:
-    ///
-    ///   0. `[writable]`  The account to initialize.
-    ///
-    /// Data expected by this instruction:
-    ///   None
-    ///
-    InitializeImmutableOwner,
     /// Check to see if a token account is large enough for a list of ExtensionTypes, and if not,
     /// use reallocation to increase the data size.
     ///
@@ -541,9 +567,9 @@ pub enum TokenInstruction {
     ///
     CreateNativeMint,
 }
-impl TokenInstruction {
+impl<'a> TokenInstruction<'a> {
     /// Unpacks a byte buffer into a [TokenInstruction](enum.TokenInstruction.html).
-    pub fn unpack(input: &[u8]) -> Result<Self, ProgramError> {
+    pub fn unpack(input: &'a [u8]) -> Result<Self, ProgramError> {
         use TokenError::InvalidInstruction;
 
         let (&tag, rest) = input.split_first().ok_or(InvalidInstruction)?;
@@ -640,26 +666,34 @@ impl TokenInstruction {
                 }
                 Self::GetAccountDataSize { extension_types }
             }
-            22 => {
+            22 => Self::InitializeImmutableOwner,
+            23 => {
+                let (amount, _rest) = Self::unpack_u64(rest)?;
+                Self::AmountToUiAmount { amount }
+            }
+            24 => {
+                let ui_amount = std::str::from_utf8(rest).map_err(|_| InvalidInstruction)?;
+                Self::UiAmountToAmount { ui_amount }
+            }
+            25 => {
                 let (close_authority, _rest) = Self::unpack_pubkey_option(rest)?;
                 Self::InitializeMintCloseAuthority { close_authority }
             }
-            23 => {
+            26 => {
                 let (instruction, _rest) = TransferFeeInstruction::unpack(rest)?;
                 Self::TransferFeeExtension(instruction)
             }
-            24 => Self::ConfidentialTransferExtension,
-            25 => Self::DefaultAccountStateExtension,
-            26 => Self::InitializeImmutableOwner,
-            27 => {
+            27 => Self::ConfidentialTransferExtension,
+            28 => Self::DefaultAccountStateExtension,
+            29 => {
                 let mut extension_types = vec![];
                 for chunk in rest.chunks(size_of::<ExtensionType>()) {
                     extension_types.push(chunk.try_into()?);
                 }
                 Self::Reallocate { extension_types }
             }
-            28 => Self::MemoTransferExtension,
-            29 => Self::CreateNativeMint,
+            30 => Self::MemoTransferExtension,
+            31 => Self::CreateNativeMint,
             _ => return Err(TokenError::InvalidInstruction.into()),
         })
     }
@@ -765,38 +799,46 @@ impl TokenInstruction {
                     buf.extend_from_slice(&<[u8; 2]>::from(*extension_type));
                 }
             }
+            &Self::InitializeImmutableOwner => {
+                buf.push(22);
+            }
+            &Self::AmountToUiAmount { amount } => {
+                buf.push(23);
+                buf.extend_from_slice(&amount.to_le_bytes());
+            }
+            Self::UiAmountToAmount { ui_amount } => {
+                buf.push(24);
+                buf.extend_from_slice(ui_amount.as_bytes());
+            }
             &Self::InitializeMintCloseAuthority {
                 ref close_authority,
             } => {
-                buf.push(22);
+                buf.push(25);
                 Self::pack_pubkey_option(close_authority, &mut buf);
             }
             &Self::TransferFeeExtension(ref instruction) => {
-                buf.push(23);
+                buf.push(26);
                 TransferFeeInstruction::pack(instruction, &mut buf);
             }
             &Self::ConfidentialTransferExtension => {
-                buf.push(24);
+                buf.push(27);
             }
             &Self::DefaultAccountStateExtension => {
-                buf.push(25);
-            }
-            &Self::InitializeImmutableOwner => {
-                buf.push(26);
+                buf.push(28);
             }
             &Self::Reallocate {
                 ref extension_types,
             } => {
-                buf.push(27);
+                buf.push(29);
                 for extension_type in extension_types {
                     buf.extend_from_slice(&<[u8; 2]>::from(*extension_type));
                 }
             }
             &Self::MemoTransferExtension => {
-                buf.push(28);
+                buf.push(30);
             }
             &Self::CreateNativeMint => {
-                buf.push(29);
+                buf.push(31);
             }
         };
         buf
@@ -909,7 +951,7 @@ pub fn initialize_mint(
     freeze_authority_pubkey: Option<&Pubkey>,
     decimals: u8,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     let freeze_authority = freeze_authority_pubkey.cloned().into();
     let data = TokenInstruction::InitializeMint {
         mint_authority: *mint_authority_pubkey,
@@ -938,7 +980,7 @@ pub fn initialize_mint2(
     freeze_authority_pubkey: Option<&Pubkey>,
     decimals: u8,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     let freeze_authority = freeze_authority_pubkey.cloned().into();
     let data = TokenInstruction::InitializeMint2 {
         mint_authority: *mint_authority_pubkey,
@@ -963,7 +1005,7 @@ pub fn initialize_account(
     mint_pubkey: &Pubkey,
     owner_pubkey: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     let data = TokenInstruction::InitializeAccount.pack();
 
     let accounts = vec![
@@ -987,7 +1029,7 @@ pub fn initialize_account2(
     mint_pubkey: &Pubkey,
     owner_pubkey: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     let data = TokenInstruction::InitializeAccount2 {
         owner: *owner_pubkey,
     }
@@ -1013,7 +1055,7 @@ pub fn initialize_account3(
     mint_pubkey: &Pubkey,
     owner_pubkey: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     let data = TokenInstruction::InitializeAccount3 {
         owner: *owner_pubkey,
     }
@@ -1038,7 +1080,7 @@ pub fn initialize_multisig(
     signer_pubkeys: &[&Pubkey],
     m: u8,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     if !is_valid_signer_index(m as usize)
         || !is_valid_signer_index(signer_pubkeys.len())
         || m as usize > signer_pubkeys.len()
@@ -1068,7 +1110,7 @@ pub fn initialize_multisig2(
     signer_pubkeys: &[&Pubkey],
     m: u8,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     if !is_valid_signer_index(m as usize)
         || !is_valid_signer_index(signer_pubkeys.len())
         || m as usize > signer_pubkeys.len()
@@ -1103,7 +1145,7 @@ pub fn transfer(
     signer_pubkeys: &[&Pubkey],
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     #[allow(deprecated)]
     let data = TokenInstruction::Transfer { amount }.pack();
 
@@ -1134,7 +1176,7 @@ pub fn approve(
     signer_pubkeys: &[&Pubkey],
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     let data = TokenInstruction::Approve { amount }.pack();
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
@@ -1162,7 +1204,7 @@ pub fn revoke(
     owner_pubkey: &Pubkey,
     signer_pubkeys: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     let data = TokenInstruction::Revoke.pack();
 
     let mut accounts = Vec::with_capacity(2 + signer_pubkeys.len());
@@ -1191,7 +1233,7 @@ pub fn set_authority(
     owner_pubkey: &Pubkey,
     signer_pubkeys: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     let new_authority = new_authority_pubkey.cloned().into();
     let data = TokenInstruction::SetAuthority {
         authority_type,
@@ -1225,7 +1267,7 @@ pub fn mint_to(
     signer_pubkeys: &[&Pubkey],
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     let data = TokenInstruction::MintTo { amount }.pack();
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
@@ -1255,7 +1297,7 @@ pub fn burn(
     signer_pubkeys: &[&Pubkey],
     amount: u64,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     let data = TokenInstruction::Burn { amount }.pack();
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
@@ -1284,7 +1326,7 @@ pub fn close_account(
     owner_pubkey: &Pubkey,
     signer_pubkeys: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     let data = TokenInstruction::CloseAccount.pack();
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
@@ -1313,7 +1355,7 @@ pub fn freeze_account(
     owner_pubkey: &Pubkey,
     signer_pubkeys: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     let data = TokenInstruction::FreezeAccount.pack();
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
@@ -1342,7 +1384,7 @@ pub fn thaw_account(
     owner_pubkey: &Pubkey,
     signer_pubkeys: &[&Pubkey],
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     let data = TokenInstruction::ThawAccount.pack();
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
@@ -1375,7 +1417,7 @@ pub fn transfer_checked(
     amount: u64,
     decimals: u8,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     let data = TokenInstruction::TransferChecked { amount, decimals }.pack();
 
     let mut accounts = Vec::with_capacity(4 + signer_pubkeys.len());
@@ -1409,7 +1451,7 @@ pub fn approve_checked(
     amount: u64,
     decimals: u8,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     let data = TokenInstruction::ApproveChecked { amount, decimals }.pack();
 
     let mut accounts = Vec::with_capacity(4 + signer_pubkeys.len());
@@ -1441,7 +1483,7 @@ pub fn mint_to_checked(
     amount: u64,
     decimals: u8,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     let data = TokenInstruction::MintToChecked { amount, decimals }.pack();
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
@@ -1472,7 +1514,7 @@ pub fn burn_checked(
     amount: u64,
     decimals: u8,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     let data = TokenInstruction::BurnChecked { amount, decimals }.pack();
 
     let mut accounts = Vec::with_capacity(3 + signer_pubkeys.len());
@@ -1498,7 +1540,7 @@ pub fn sync_native(
     token_program_id: &Pubkey,
     account_pubkey: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
 
     Ok(Instruction {
         program_id: *token_program_id,
@@ -1513,7 +1555,7 @@ pub fn get_account_data_size(
     mint_pubkey: &Pubkey,
     extension_types: &[ExtensionType],
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     Ok(Instruction {
         program_id: *token_program_id,
         accounts: vec![AccountMeta::new_readonly(*mint_pubkey, false)],
@@ -1544,11 +1586,41 @@ pub fn initialize_immutable_owner(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
-    check_program_account(token_program_id)?;
+    check_spl_token_program_account(token_program_id)?;
     Ok(Instruction {
         program_id: *token_program_id,
         accounts: vec![AccountMeta::new(*token_account, false)],
         data: TokenInstruction::InitializeImmutableOwner.pack(),
+    })
+}
+
+/// Creates an `AmountToUiAmount` instruction
+pub fn amount_to_ui_amount(
+    token_program_id: &Pubkey,
+    mint_pubkey: &Pubkey,
+    amount: u64,
+) -> Result<Instruction, ProgramError> {
+    check_spl_token_program_account(token_program_id)?;
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts: vec![AccountMeta::new_readonly(*mint_pubkey, false)],
+        data: TokenInstruction::AmountToUiAmount { amount }.pack(),
+    })
+}
+
+/// Creates a `UiAmountToAmount` instruction
+pub fn ui_amount_to_amount(
+    token_program_id: &Pubkey,
+    mint_pubkey: &Pubkey,
+    ui_amount: &str,
+) -> Result<Instruction, ProgramError> {
+    check_spl_token_program_account(token_program_id)?;
+
+    Ok(Instruction {
+        program_id: *token_program_id,
+        accounts: vec![AccountMeta::new_readonly(*mint_pubkey, false)],
+        data: TokenInstruction::UiAmountToAmount { ui_amount }.pack(),
     })
 }
 
@@ -1846,11 +1918,25 @@ mod test {
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);
 
+        let check = TokenInstruction::AmountToUiAmount { amount: 42 };
+        let packed = check.pack();
+        let expect = vec![23u8, 42, 0, 0, 0, 0, 0, 0, 0];
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
+        let check = TokenInstruction::UiAmountToAmount { ui_amount: "0.42" };
+        let packed = check.pack();
+        let expect = vec![24u8, 48, 46, 52, 50];
+        assert_eq!(packed, expect);
+        let unpacked = TokenInstruction::unpack(&expect).unwrap();
+        assert_eq!(unpacked, check);
+
         let check = TokenInstruction::InitializeMintCloseAuthority {
             close_authority: COption::Some(Pubkey::new(&[10u8; 32])),
         };
         let packed = check.pack();
-        let mut expect = vec![22u8, 1];
+        let mut expect = vec![25u8, 1];
         expect.extend_from_slice(&[10u8; 32]);
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
@@ -1858,7 +1944,7 @@ mod test {
 
         let check = TokenInstruction::CreateNativeMint;
         let packed = check.pack();
-        let expect = vec![29u8];
+        let expect = vec![31u8];
         assert_eq!(packed, expect);
         let unpacked = TokenInstruction::unpack(&expect).unwrap();
         assert_eq!(unpacked, check);

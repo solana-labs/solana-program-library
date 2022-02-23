@@ -1,23 +1,22 @@
 {
   "compilerOptions": {
+    "module": "esnext",
     "target": "es2019",
-    "allowJs": true,
+    "baseUrl": "./src",
+    "outDir": "dist",
     "declaration": true,
     "declarationDir": "dist",
-    "outDir": "dist",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
-    "module": "esnext",
     "moduleResolution": "node",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "baseUrl": "src",
     "noFallthroughCasesInSwitch": true,
     "noImplicitReturns": true
   },
   "include": [
-    "src/**/*"
+    "src/**/*.ts"
   ]
 }

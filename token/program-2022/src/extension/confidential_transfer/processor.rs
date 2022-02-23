@@ -47,7 +47,7 @@ fn process_initialize_mint(
 
     check_program_account(mint_info.owner)?;
     let mint_data = &mut mint_info.data.borrow_mut();
-    let mut mint = StateWithExtensionsMut::<Mint>::unpack(mint_data)?;
+    let mut mint = StateWithExtensionsMut::<Mint>::unpack_uninitialized(mint_data)?;
     *mint.init_extension::<ConfidentialTransferMint>()? = *ct_mint;
 
     Ok(())
@@ -66,18 +66,15 @@ fn process_update_mint(
     check_program_account(mint_info.owner)?;
     let mint_data = &mut mint_info.data.borrow_mut();
     let mut mint = StateWithExtensionsMut::<Mint>::unpack(mint_data)?;
+    let ct_mint = mint.get_extension_mut::<ConfidentialTransferMint>()?;
 
     if authority_info.is_signer
+        && ct_mint.authority == *authority_info.key
         && (new_authority_info.is_signer || *new_authority_info.key == Pubkey::default())
+        && new_ct_mint.authority == *new_authority_info.key
     {
-        if new_ct_mint.authority == *new_authority_info.key {
-            let confidential_transfer_mint =
-                mint.get_extension_mut::<ConfidentialTransferMint>()?;
-            *confidential_transfer_mint = *new_ct_mint;
-            Ok(())
-        } else {
-            Err(ProgramError::InvalidInstructionData)
-        }
+        *ct_mint = *new_ct_mint;
+        Ok(())
     } else {
         Err(ProgramError::MissingRequiredSignature)
     }
@@ -108,7 +105,7 @@ fn process_configure_account(
 
     Processor::validate_owner(
         program_id,
-        token_account_info.owner,
+        &token_account.base.owner,
         authority_info,
         authority_info_data_len,
         account_info_iter.as_slice(),
@@ -125,7 +122,6 @@ fn process_configure_account(
         token_account.init_extension::<ConfidentialTransferAccount>()?;
     confidential_transfer_account.approved = confidential_transfer_mint.auto_approve_new_accounts;
     confidential_transfer_account.pubkey_elgamal = *elgamal_pubkey;
-    confidential_transfer_account.decryptable_available_balance = *decryptable_zero_balance;
 
     /*
         An ElGamal ciphertext is of the form
@@ -158,19 +154,26 @@ fn process_configure_account(
     confidential_transfer_account.pending_balance = EncryptedBalance::zeroed();
     confidential_transfer_account.available_balance = EncryptedBalance::zeroed();
 
+    ct_token_account.decryptable_available_balance = *decryptable_zero_balance;
+    ct_token_account.allow_balance_credits = true.into();
+    ct_token_account.pending_balance_credit_counter = 0.into();
+    ct_token_account.expected_pending_balance_credit_counter = 0.into();
+    ct_token_account.actual_pending_balance_credit_counter = 0.into();
+    ct_token_account.withheld_amount = pod::ElGamalCiphertext::zeroed();
+
     Ok(())
 }
 
 /// Processes an [ApproveAccount] instruction.
 fn process_approve_account(accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
-    let account_to_approve_info = next_account_info(account_info_iter)?;
+    let token_account_info = next_account_info(account_info_iter)?;
     let mint_info = next_account_info(account_info_iter)?;
     let authority_info = next_account_info(account_info_iter)?;
 
-    check_program_account(account_to_approve_info.owner)?;
-    let account_to_approve_data = &mut account_to_approve_info.data.borrow_mut();
-    let mut account_to_approve = StateWithExtensionsMut::<Mint>::unpack(account_to_approve_data)?;
+    check_program_account(token_account_info.owner)?;
+    let token_account_data = &mut token_account_info.data.borrow_mut();
+    let mut token_account = StateWithExtensionsMut::<Account>::unpack(token_account_data)?;
 
     check_program_account(mint_info.owner)?;
     let mint_data = &mint_info.data.borrow_mut();
@@ -179,7 +182,7 @@ fn process_approve_account(accounts: &[AccountInfo]) -> ProgramResult {
 
     if authority_info.is_signer && *authority_info.key == confidential_transfer_mint.authority {
         let mut confidential_transfer_state =
-            account_to_approve.get_extension_mut::<ConfidentialTransferAccount>()?;
+            token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
         confidential_transfer_state.approved = true.into();
         Ok(())
     } else {
@@ -205,7 +208,7 @@ fn process_empty_account(
 
     Processor::validate_owner(
         program_id,
-        token_account_info.owner,
+        &token_account.base.owner,
         authority_info,
         authority_info_data_len,
         account_info_iter.as_slice(),
@@ -231,8 +234,12 @@ fn process_empty_account(
         return Err(ProgramError::InvalidInstructionData);
     }
 
-    confidential_transfer_account.approved()?;
-    confidential_transfer_account.available_balance = EncryptedBalance::zeroed();
+    confidential_transfer_account.available_balance = pod::ElGamalCiphertext::zeroed();
+
+    if confidential_transfer_account.withheld_amount != pod::ElGamalCiphertext::zeroed() {
+        msg!("Withheld amount is not zero");
+        return Err(ProgramError::InvalidAccountData);
+    }
     confidential_transfer_account.closable()?;
 
     Ok(())
@@ -268,7 +275,7 @@ fn process_deposit(
 
         Processor::validate_owner(
             program_id,
-            token_account_info.owner,
+            &token_account.base.owner,
             authority_info,
             authority_info_data_len,
             account_info_iter.as_slice(),
@@ -376,7 +383,7 @@ fn process_withdraw(
 
         Processor::validate_owner(
             program_id,
-            token_account_info.owner,
+            &token_account.base.owner,
             authority_info,
             authority_info_data_len,
             account_info_iter.as_slice(),
@@ -392,7 +399,6 @@ fn process_withdraw(
 
         let mut confidential_transfer_account =
             token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
-        confidential_transfer_account.approved()?;
 
         confidential_transfer_account.available_balance =
             ops::subtract_from(&confidential_transfer_account.available_balance, amount)
@@ -621,7 +627,7 @@ fn process_source_for_transfer(
 
     Processor::validate_owner(
         program_id,
-        token_account_info.owner,
+        &token_account.base.owner,
         authority_info,
         authority_info_data_len,
         signers,
@@ -756,7 +762,7 @@ fn process_apply_pending_balance(
 
     Processor::validate_owner(
         program_id,
-        token_account_info.owner,
+        &token_account.base.owner,
         authority_info,
         authority_info_data_len,
         account_info_iter.as_slice(),
@@ -764,7 +770,6 @@ fn process_apply_pending_balance(
 
     let mut confidential_transfer_account =
         token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
-    confidential_transfer_account.approved()?;
 
     confidential_transfer_account.available_balance = ops::add(
         &confidential_transfer_account.available_balance,
@@ -800,7 +805,7 @@ fn process_allow_balance_credits(
 
     Processor::validate_owner(
         program_id,
-        token_account_info.owner,
+        &token_account.base.owner,
         authority_info,
         authority_info_data_len,
         account_info_iter.as_slice(),
@@ -808,7 +813,6 @@ fn process_allow_balance_credits(
 
     let mut confidential_transfer_account =
         token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
-    confidential_transfer_account.approved()?;
     confidential_transfer_account.allow_balance_credits = allow_balance_credits.into();
 
     Ok(())

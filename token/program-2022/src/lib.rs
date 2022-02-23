@@ -22,6 +22,7 @@ use solana_program::{
     program_memory::sol_memcmp,
     pubkey::{Pubkey, PUBKEY_BYTES},
 };
+pub use solana_zk_token_sdk;
 
 /// Convert the UI representation of a token amount (using the decimals field defined in its mint)
 /// to the raw amount
@@ -36,9 +37,17 @@ pub fn amount_to_ui_amount(amount: u64, decimals: u8) -> f64 {
 
 solana_program::declare_id!("TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb");
 
-/// Checks that the supplied program ID is the correct one for SPL-token
+/// Checks that the supplied program ID is correct for spl-token-2022
 pub fn check_program_account(spl_token_program_id: &Pubkey) -> ProgramResult {
     if spl_token_program_id != &id() {
+        return Err(ProgramError::IncorrectProgramId);
+    }
+    Ok(())
+}
+
+/// Checks that the supplied program ID is corect for spl-token or spl-token-2022
+pub fn check_spl_token_program_account(spl_token_program_id: &Pubkey) -> ProgramResult {
+    if spl_token_program_id != &id() && spl_token_program_id != &spl_token::id() {
         return Err(ProgramError::IncorrectProgramId);
     }
     Ok(())

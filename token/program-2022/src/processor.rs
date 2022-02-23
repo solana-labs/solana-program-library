@@ -163,6 +163,7 @@ impl Processor {
 
         account.base.mint = *mint_info.key;
         account.base.owner = *owner;
+        account.base.close_authority = COption::None;
         account.base.delegate = COption::None;
         account.base.delegated_amount = 0;
         account.base.state = starting_state;
@@ -838,9 +839,7 @@ impl Processor {
         }
 
         let mut source_account_data = source_account_info.data.borrow_mut();
-        if let Ok(mut source_account) =
-            StateWithExtensionsMut::<Account>::unpack(&mut source_account_data)
-        {
+        if let Ok(source_account) = StateWithExtensions::<Account>::unpack(&source_account_data) {
             if !source_account.base.is_native() && source_account.base.amount != 0 {
                 return Err(TokenError::NonNativeHasBalance.into());
             }
@@ -858,24 +857,17 @@ impl Processor {
                 account_info_iter.as_slice(),
             )?;
 
-            // TODO use get_extension when
-            // https://github.com/solana-labs/solana-program-library/pull/2822 lands
             if let Ok(confidential_transfer_state) =
-                source_account.get_extension_mut::<ConfidentialTransferAccount>()
+                source_account.get_extension::<ConfidentialTransferAccount>()
             {
                 confidential_transfer_state.closable()?
             }
 
-            // TODO use get_extension when
-            // https://github.com/solana-labs/solana-program-library/pull/2822 lands
-            if let Ok(transfer_fee_state) = source_account.get_extension_mut::<TransferFeeAmount>()
-            {
+            if let Ok(transfer_fee_state) = source_account.get_extension::<TransferFeeAmount>() {
                 transfer_fee_state.closable()?
             }
-        } else if let Ok(mut mint) =
-            StateWithExtensionsMut::<Mint>::unpack(&mut source_account_data)
-        {
-            let extension = mint.get_extension_mut::<MintCloseAuthority>()?;
+        } else if let Ok(mint) = StateWithExtensions::<Mint>::unpack(&source_account_data) {
+            let extension = mint.get_extension::<MintCloseAuthority>()?;
             let maybe_authority: Option<Pubkey> = extension.close_authority.into();
             let authority = maybe_authority.ok_or(TokenError::AuthorityTypeNotSupported)?;
             Self::validate_owner(
@@ -962,22 +954,24 @@ impl Processor {
         let native_account_info = next_account_info(account_info_iter)?;
 
         check_program_account(native_account_info.owner)?;
-        let mut native_account = Account::unpack(&native_account_info.data.borrow())?;
+        let mut native_account_data = native_account_info.data.borrow_mut();
+        let mut native_account =
+            StateWithExtensionsMut::<Account>::unpack(&mut native_account_data)?;
 
-        if let COption::Some(rent_exempt_reserve) = native_account.is_native {
+        if let COption::Some(rent_exempt_reserve) = native_account.base.is_native {
             let new_amount = native_account_info
                 .lamports()
                 .checked_sub(rent_exempt_reserve)
                 .ok_or(TokenError::Overflow)?;
-            if new_amount < native_account.amount {
+            if new_amount < native_account.base.amount {
                 return Err(TokenError::InvalidState.into());
             }
-            native_account.amount = new_amount;
+            native_account.base.amount = new_amount;
         } else {
             return Err(TokenError::NonNativeNotSupported.into());
         }
 
-        Account::pack(native_account, &mut native_account_info.data.borrow_mut())?;
+        native_account.pack_base();
         Ok(())
     }
 
@@ -1024,6 +1018,39 @@ impl Processor {
         let mut token_account =
             StateWithExtensionsMut::<Account>::unpack_uninitialized(token_account_data)?;
         token_account.init_extension::<ImmutableOwner>().map(|_| ())
+    }
+
+    /// Processes an [AmountToUiAmount](enum.TokenInstruction.html) instruction
+    pub fn process_amount_to_ui_amount(accounts: &[AccountInfo], amount: u64) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let mint_info = next_account_info(account_info_iter)?;
+        check_program_account(mint_info.owner)?;
+
+        let mint_data = mint_info.data.borrow();
+        let mint = StateWithExtensions::<Mint>::unpack(&mint_data)
+            .map_err(|_| Into::<ProgramError>::into(TokenError::InvalidMint))?;
+        // TODO: update this with interest-bearing token extension logic
+        let ui_amount = spl_token::amount_to_ui_amount_string_trimmed(amount, mint.base.decimals);
+
+        set_return_data(&ui_amount.into_bytes());
+        Ok(())
+    }
+
+    /// Processes an [AmountToUiAmount](enum.TokenInstruction.html) instruction
+    pub fn process_ui_amount_to_amount(accounts: &[AccountInfo], ui_amount: &str) -> ProgramResult {
+        let account_info_iter = &mut accounts.iter();
+        let mint_info = next_account_info(account_info_iter)?;
+        check_program_account(mint_info.owner)?;
+
+        let mint_data = mint_info.data.borrow();
+        let mint = StateWithExtensions::<Mint>::unpack(&mint_data)
+            .map_err(|_| Into::<ProgramError>::into(TokenError::InvalidMint))?;
+        // TODO: update this with interest-bearing token extension logic
+        let amount =
+            spl_token::try_ui_amount_into_amount(ui_amount.to_string(), mint.base.decimals)?;
+
+        set_return_data(&amount.to_le_bytes());
+        Ok(())
     }
 
     /// Processes a [CreateNativeMint](enum.TokenInstruction.html) instruction
@@ -1201,6 +1228,14 @@ impl Processor {
                 msg!("Instruction: InitializeImmutableOwner");
                 Self::process_initialize_immutable_owner(accounts)
             }
+            TokenInstruction::AmountToUiAmount { amount } => {
+                msg!("Instruction: AmountToUiAmount");
+                Self::process_amount_to_ui_amount(accounts, amount)
+            }
+            TokenInstruction::UiAmountToAmount { ui_amount } => {
+                msg!("Instruction: UiAmountToAmount");
+                Self::process_ui_amount_to_amount(accounts, ui_amount)
+            }
             TokenInstruction::Reallocate { extension_types } => {
                 msg!("Instruction: Reallocate");
                 reallocate::process_reallocate(program_id, accounts, extension_types)
@@ -1374,6 +1409,7 @@ mod tests {
         crate::{
             extension::transfer_fee::instruction::initialize_transfer_fee_config, instruction::*,
         },
+        serial_test::serial,
         solana_program::{
             account_info::IntoAccountInfo,
             clock::Epoch,
@@ -6960,6 +6996,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_get_account_data_size() {
         // see integration tests for return-data validity
         let program_id = crate::id();
@@ -7111,6 +7148,181 @@ mod tests {
                 vec![&mut invalid_mint_account],
             ),
             Err(ProgramError::IncorrectProgramId)
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn test_amount_to_ui_amount() {
+        let program_id = crate::id();
+        let owner_key = Pubkey::new_unique();
+        let mint_key = Pubkey::new_unique();
+        let mut mint_account =
+            SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
+        let mut rent_sysvar = rent_sysvar();
+
+        // fail if an invalid mint is passed in
+        assert_eq!(
+            Err(TokenError::InvalidMint.into()),
+            do_process_instruction(
+                amount_to_ui_amount(&program_id, &mint_key, 110).unwrap(),
+                vec![&mut mint_account],
+            )
+        );
+
+        // create mint
+        do_process_instruction(
+            initialize_mint(&program_id, &mint_key, &owner_key, None, 2).unwrap(),
+            vec![&mut mint_account, &mut rent_sysvar],
+        )
+        .unwrap();
+
+        set_expected_data("0.23".as_bytes().to_vec());
+        do_process_instruction(
+            amount_to_ui_amount(&program_id, &mint_key, 23).unwrap(),
+            vec![&mut mint_account],
+        )
+        .unwrap();
+
+        set_expected_data("1.1".as_bytes().to_vec());
+        do_process_instruction(
+            amount_to_ui_amount(&program_id, &mint_key, 110).unwrap(),
+            vec![&mut mint_account],
+        )
+        .unwrap();
+
+        set_expected_data("42".as_bytes().to_vec());
+        do_process_instruction(
+            amount_to_ui_amount(&program_id, &mint_key, 4200).unwrap(),
+            vec![&mut mint_account],
+        )
+        .unwrap();
+
+        set_expected_data("0".as_bytes().to_vec());
+        do_process_instruction(
+            amount_to_ui_amount(&program_id, &mint_key, 0).unwrap(),
+            vec![&mut mint_account],
+        )
+        .unwrap();
+    }
+
+    #[test]
+    #[serial]
+    fn test_ui_amount_to_amount() {
+        let program_id = crate::id();
+        let owner_key = Pubkey::new_unique();
+        let mint_key = Pubkey::new_unique();
+        let mut mint_account =
+            SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
+        let mut rent_sysvar = rent_sysvar();
+
+        // fail if an invalid mint is passed in
+        assert_eq!(
+            Err(TokenError::InvalidMint.into()),
+            do_process_instruction(
+                ui_amount_to_amount(&program_id, &mint_key, "1.1").unwrap(),
+                vec![&mut mint_account],
+            )
+        );
+
+        // create mint
+        do_process_instruction(
+            initialize_mint(&program_id, &mint_key, &owner_key, None, 2).unwrap(),
+            vec![&mut mint_account, &mut rent_sysvar],
+        )
+        .unwrap();
+
+        set_expected_data(23u64.to_le_bytes().to_vec());
+        do_process_instruction(
+            ui_amount_to_amount(&program_id, &mint_key, "0.23").unwrap(),
+            vec![&mut mint_account],
+        )
+        .unwrap();
+
+        set_expected_data(20u64.to_le_bytes().to_vec());
+        do_process_instruction(
+            ui_amount_to_amount(&program_id, &mint_key, "0.20").unwrap(),
+            vec![&mut mint_account],
+        )
+        .unwrap();
+
+        set_expected_data(20u64.to_le_bytes().to_vec());
+        do_process_instruction(
+            ui_amount_to_amount(&program_id, &mint_key, "0.2000").unwrap(),
+            vec![&mut mint_account],
+        )
+        .unwrap();
+
+        set_expected_data(20u64.to_le_bytes().to_vec());
+        do_process_instruction(
+            ui_amount_to_amount(&program_id, &mint_key, ".20").unwrap(),
+            vec![&mut mint_account],
+        )
+        .unwrap();
+
+        set_expected_data(110u64.to_le_bytes().to_vec());
+        do_process_instruction(
+            ui_amount_to_amount(&program_id, &mint_key, "1.1").unwrap(),
+            vec![&mut mint_account],
+        )
+        .unwrap();
+
+        set_expected_data(110u64.to_le_bytes().to_vec());
+        do_process_instruction(
+            ui_amount_to_amount(&program_id, &mint_key, "1.10").unwrap(),
+            vec![&mut mint_account],
+        )
+        .unwrap();
+
+        set_expected_data(4200u64.to_le_bytes().to_vec());
+        do_process_instruction(
+            ui_amount_to_amount(&program_id, &mint_key, "42").unwrap(),
+            vec![&mut mint_account],
+        )
+        .unwrap();
+
+        set_expected_data(4200u64.to_le_bytes().to_vec());
+        do_process_instruction(
+            ui_amount_to_amount(&program_id, &mint_key, "42.").unwrap(),
+            vec![&mut mint_account],
+        )
+        .unwrap();
+
+        set_expected_data(0u64.to_le_bytes().to_vec());
+        do_process_instruction(
+            ui_amount_to_amount(&program_id, &mint_key, "0").unwrap(),
+            vec![&mut mint_account],
+        )
+        .unwrap();
+
+        // fail if invalid ui_amount passed in
+        assert_eq!(
+            Err(ProgramError::InvalidArgument),
+            do_process_instruction(
+                ui_amount_to_amount(&program_id, &mint_key, "").unwrap(),
+                vec![&mut mint_account],
+            )
+        );
+        assert_eq!(
+            Err(ProgramError::InvalidArgument),
+            do_process_instruction(
+                ui_amount_to_amount(&program_id, &mint_key, ".").unwrap(),
+                vec![&mut mint_account],
+            )
+        );
+        assert_eq!(
+            Err(ProgramError::InvalidArgument),
+            do_process_instruction(
+                ui_amount_to_amount(&program_id, &mint_key, "0.111").unwrap(),
+                vec![&mut mint_account],
+            )
+        );
+        assert_eq!(
+            Err(ProgramError::InvalidArgument),
+            do_process_instruction(
+                ui_amount_to_amount(&program_id, &mint_key, "0.t").unwrap(),
+                vec![&mut mint_account],
+            )
         );
     }
 }
