@@ -22,6 +22,7 @@ use solana_program::{
     program_memory::sol_memcmp,
     pubkey::{Pubkey, PUBKEY_BYTES},
 };
+pub use solana_zk_token_sdk;
 
 /// Convert the UI representation of a token amount (using the decimals field defined in its mint)
 /// to the raw amount

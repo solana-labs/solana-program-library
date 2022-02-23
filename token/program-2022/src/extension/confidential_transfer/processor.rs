@@ -108,7 +108,7 @@ fn process_configure_account(
 
     Processor::validate_owner(
         program_id,
-        token_account_info.owner,
+        &token_account.base.owner,
         authority_info,
         authority_info_data_len,
         account_info_iter.as_slice(),
@@ -163,13 +163,13 @@ fn process_configure_account(
 /// Processes an [ApproveAccount] instruction.
 fn process_approve_account(accounts: &[AccountInfo]) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
-    let account_to_approve_info = next_account_info(account_info_iter)?;
+    let token_account_info = next_account_info(account_info_iter)?;
     let mint_info = next_account_info(account_info_iter)?;
     let authority_info = next_account_info(account_info_iter)?;
 
-    check_program_account(account_to_approve_info.owner)?;
-    let account_to_approve_data = &mut account_to_approve_info.data.borrow_mut();
-    let mut account_to_approve = StateWithExtensionsMut::<Mint>::unpack(account_to_approve_data)?;
+    check_program_account(token_account_info.owner)?;
+    let token_account_data = &mut token_account_info.data.borrow_mut();
+    let mut token_account = StateWithExtensionsMut::<Account>::unpack(token_account_data)?;
 
     check_program_account(mint_info.owner)?;
     let mint_data = &mint_info.data.borrow_mut();
@@ -178,7 +178,7 @@ fn process_approve_account(accounts: &[AccountInfo]) -> ProgramResult {
 
     if authority_info.is_signer && *authority_info.key == ct_mint.authority {
         let mut confidential_transfer_state =
-            account_to_approve.get_extension_mut::<ConfidentialTransferAccount>()?;
+            token_account.get_extension_mut::<ConfidentialTransferAccount>()?;
         confidential_transfer_state.approved = true.into();
         Ok(())
     } else {
@@ -204,7 +204,7 @@ fn process_empty_account(
 
     Processor::validate_owner(
         program_id,
-        token_account_info.owner,
+        &token_account.base.owner,
         authority_info,
         authority_info_data_len,
         account_info_iter.as_slice(),
@@ -266,7 +266,7 @@ fn process_deposit(
 
         Processor::validate_owner(
             program_id,
-            token_account_info.owner,
+            &token_account.base.owner,
             authority_info,
             authority_info_data_len,
             account_info_iter.as_slice(),
@@ -374,7 +374,7 @@ fn process_withdraw(
 
         Processor::validate_owner(
             program_id,
-            token_account_info.owner,
+            &token_account.base.owner,
             authority_info,
             authority_info_data_len,
             account_info_iter.as_slice(),
@@ -622,7 +622,7 @@ fn process_source_for_transfer(
 
     Processor::validate_owner(
         program_id,
-        token_account_info.owner,
+        &token_account.base.owner,
         authority_info,
         authority_info_data_len,
         signers,
@@ -750,7 +750,7 @@ fn process_apply_pending_balance(
 
     Processor::validate_owner(
         program_id,
-        token_account_info.owner,
+        &token_account.base.owner,
         authority_info,
         authority_info_data_len,
         account_info_iter.as_slice(),
@@ -792,7 +792,7 @@ fn process_allow_balance_credits(
 
     Processor::validate_owner(
         program_id,
-        token_account_info.owner,
+        &token_account.base.owner,
         authority_info,
         authority_info_data_len,
         account_info_iter.as_slice(),
