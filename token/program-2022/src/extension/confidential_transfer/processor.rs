@@ -4,7 +4,7 @@ use {
         error::TokenError,
         extension::{
             confidential_transfer::{instruction::*, *},
-            transfer_fee::{TransferFeeAmount, TransferFeeConfig},
+            transfer_fee::TransferFeeConfig,
             StateWithExtensions, StateWithExtensionsMut,
         },
         processor::Processor,
@@ -948,10 +948,6 @@ fn process_withdraw_withheld_tokens_from_accounts(
     for account_info in &account_infos[num_signers..] {
         // self-harvest, can't double-borrow the underlying data
         if account_info.key == dest_account_info.key {
-            dest_account
-                .get_extension::<TransferFeeAmount>()
-                .map_err(|_| TokenError::InvalidState)?;
-
             let confidential_transfer_dest_account = dest_account
                 .get_extension_mut::<ConfidentialTransferAccount>()
                 .map_err(|_| TokenError::InvalidState)?;
@@ -977,9 +973,9 @@ fn process_withdraw_withheld_tokens_from_accounts(
         }
     }
 
-    let mut confidential_transfer_dest_account =
+    let mut dest_confidential_transfer_account =
         dest_account.get_extension_mut::<ConfidentialTransferAccount>()?;
-    confidential_transfer_dest_account.approved()?;
+    dest_confidential_transfer_account.approved()?;
     // verify consistency of proof data
     let previous_instruction =
         get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
@@ -995,7 +991,7 @@ fn process_withdraw_withheld_tokens_from_accounts(
     }
 
     // destination ElGamal pubkey should match in the proof data and destination account
-    if proof_data.pubkey_dest != confidential_transfer_dest_account.pubkey_elgamal {
+    if proof_data.pubkey_dest != dest_confidential_transfer_account.pubkey_elgamal {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
 
@@ -1006,12 +1002,12 @@ fn process_withdraw_withheld_tokens_from_accounts(
 
     // add the sum of the withheld fees to destination pending balance
     let new_dest_pending_balance = ops::add(
-        &confidential_transfer_dest_account.pending_balance,
+        &dest_confidential_transfer_account.pending_balance,
         &aggregate_withheld_amount,
     )
     .ok_or(ProgramError::InvalidInstructionData)?;
 
-    confidential_transfer_dest_account.pending_balance = new_dest_pending_balance;
+    dest_confidential_transfer_account.pending_balance = new_dest_pending_balance;
 
     Ok(())
 }
@@ -1027,9 +1023,6 @@ fn harvest_from_account<'a, 'b>(
         return Err(TokenError::MintMismatch);
     }
     check_program_account(token_account_info.owner).map_err(|_| TokenError::InvalidState)?;
-    token_account
-        .get_extension::<TransferFeeAmount>()
-        .map_err(|_| TokenError::InvalidState)?;
 
     let confidential_transfer_token_account = token_account
         .get_extension_mut::<ConfidentialTransferAccount>()
@@ -1055,9 +1048,11 @@ fn process_harvest_withheld_tokens_to_mint(accounts: &[AccountInfo]) -> ProgramR
     for token_account_info in token_account_infos {
         match harvest_from_account(mint_account_info.key, token_account_info) {
             Ok(withheld_amount) => {
-                let new_mint_withheld_amount =
-                    ops::add(&confidential_transfer_mint.withheld_amount, &withheld_amount)
-                        .ok_or(ProgramError::InvalidInstructionData)?;
+                let new_mint_withheld_amount = ops::add(
+                    &confidential_transfer_mint.withheld_amount,
+                    &withheld_amount,
+                )
+                .ok_or(ProgramError::InvalidInstructionData)?;
 
                 confidential_transfer_mint.withheld_amount = new_mint_withheld_amount;
             }
