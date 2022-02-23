@@ -653,7 +653,6 @@ pub fn transfer(
 /// Create a inner `ApplyPendingBalance` instruction
 ///
 /// This instruction is suitable for use with a cross-program `invoke`
-#[allow(clippy::too_many_arguments)]
 pub fn inner_apply_pending_balance(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
@@ -705,53 +704,59 @@ pub fn apply_pending_balance(
     ])
 }
 
+fn enable_or_disable_balance_credits(
+    instruction: ConfidentialTransferInstruction,
+    token_program_id: &Pubkey,
+    token_account: &Pubkey,
+    authority: &Pubkey,
+    multisig_signers: &[&Pubkey],
+) -> Result<Instruction, ProgramError> {
+    check_program_account(token_program_id)?;
+    let mut accounts = vec![
+        AccountMeta::new(*token_account, false),
+        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
+    ];
+
+    for multisig_signer in multisig_signers.iter() {
+        accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
+    }
+
+    Ok(encode_instruction(
+        token_program_id,
+        accounts,
+        instruction,
+        &(),
+    ))
+}
+
 /// Create a `EnableBalanceCredits` instruction
 pub fn enable_balance_credits(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-) -> Result<Vec<Instruction>, ProgramError> {
-    check_program_account(token_program_id)?;
-    let mut accounts = vec![
-        AccountMeta::new(*token_account, false),
-        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
-    ];
-
-    for multisig_signer in multisig_signers.iter() {
-        accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
-    }
-
-    Ok(vec![encode_instruction(
-        token_program_id,
-        accounts,
+) -> Result<Instruction, ProgramError> {
+    enable_or_disable_balance_credits(
         ConfidentialTransferInstruction::EnableBalanceCredits,
-        &(),
-    )])
+        token_program_id,
+        token_account,
+        authority,
+        multisig_signers,
+    )
 }
 
 /// Create a `DisableBalanceCredits` instruction
-#[cfg(not(target_arch = "bpf"))]
 pub fn disable_balance_credits(
     token_program_id: &Pubkey,
     token_account: &Pubkey,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-) -> Result<Vec<Instruction>, ProgramError> {
-    check_program_account(token_program_id)?;
-    let mut accounts = vec![
-        AccountMeta::new(*token_account, false),
-        AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
-    ];
-
-    for multisig_signer in multisig_signers.iter() {
-        accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
-    }
-
-    Ok(vec![encode_instruction(
-        token_program_id,
-        accounts,
+) -> Result<Instruction, ProgramError> {
+    enable_or_disable_balance_credits(
         ConfidentialTransferInstruction::DisableBalanceCredits,
-        &(),
-    )])
+        token_program_id,
+        token_account,
+        authority,
+        multisig_signers,
+    )
 }

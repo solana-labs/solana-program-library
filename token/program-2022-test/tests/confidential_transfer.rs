@@ -121,7 +121,7 @@ async fn ct_configure_token_account() {
 
     token
         .confidential_transfer_configure_token_account(
-            dbg!(&alice_token_account),
+            &alice_token_account,
             &alice,
             alice_elgamal_keypair.public,
             alice_ae_key.encrypt(0_u64),
@@ -134,6 +134,7 @@ async fn ct_configure_token_account() {
         .get_extension::<ConfidentialTransferAccount>()
         .unwrap();
     assert!(!bool::from(&extension.approved));
+    assert!(bool::from(&extension.allow_balance_credits));
     assert_eq!(
         extension.elgamal_pubkey,
         alice_elgamal_keypair.public.into()
@@ -155,4 +156,60 @@ async fn ct_configure_token_account() {
         .get_extension::<ConfidentialTransferAccount>()
         .unwrap();
     assert!(bool::from(&extension.approved));
+}
+
+#[tokio::test]
+async fn ct_enable_disable_balance_credits() {
+    let ct_mint = ConfidentialTransferMint::default();
+    let mut context = TestContext::new().await;
+    context
+        .init_token_with_mint(vec![
+            ExtensionInitializationParams::ConfidentialTransferMint { ct_mint },
+        ])
+        .await
+        .unwrap();
+
+    let TokenContext { token, alice, .. } = context.token_context.unwrap();
+
+    let alice_token_account = token
+        .create_auxiliary_token_account_with_extension_space(
+            &alice,
+            &alice.pubkey(),
+            vec![ExtensionType::ConfidentialTransferAccount],
+        )
+        .await
+        .unwrap();
+
+    let alice_elgamal_keypair = ElGamalKeypair::new_rand();
+    let alice_ae_key = AeKey::new(&alice, &alice_token_account).unwrap();
+
+    token
+        .confidential_transfer_configure_token_account(
+            &alice_token_account,
+            &alice,
+            alice_elgamal_keypair.public,
+            alice_ae_key.encrypt(0_u64),
+        )
+        .await
+        .unwrap();
+
+    token
+        .confidential_transfer_disable_balance_credits(&alice_token_account, &alice)
+        .await
+        .unwrap();
+    let state = token.get_account_info(&alice_token_account).await.unwrap();
+    let extension = state
+        .get_extension::<ConfidentialTransferAccount>()
+        .unwrap();
+    assert!(!bool::from(&extension.allow_balance_credits));
+
+    token
+        .confidential_transfer_enable_balance_credits(&alice_token_account, &alice)
+        .await
+        .unwrap();
+    let state = token.get_account_info(&alice_token_account).await.unwrap();
+    let extension = state
+        .get_extension::<ConfidentialTransferAccount>()
+        .unwrap();
+    assert!(bool::from(&extension.allow_balance_credits));
 }
