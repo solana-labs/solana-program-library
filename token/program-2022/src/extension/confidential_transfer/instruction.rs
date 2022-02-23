@@ -954,7 +954,7 @@ pub fn harvest_withheld_tokens_to_mint(
     token_program_id: &Pubkey,
     mint: &Pubkey,
     sources: &[&Pubkey],
-) -> Result<Vec<Instruction>, ProgramError> {
+) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let mut accounts = vec![AccountMeta::new(*mint, false)];
 
@@ -962,10 +962,10 @@ pub fn harvest_withheld_tokens_to_mint(
         accounts.push(AccountMeta::new(**source, false));
     }
 
-    Ok(vec![encode_instruction(
+    Ok(encode_instruction(
         token_program_id,
         accounts,
         ConfidentialTransferInstruction::HarvestWithheldTokensToMint,
         &(),
-    )])
+    ))
 }

@@ -858,7 +858,7 @@ fn process_withdraw_withheld_tokens_from_mint(
     }
     let mut dest_confidential_transfer_account =
         dest_account.get_extension_mut::<ConfidentialTransferAccount>()?;
-
+    dest_confidential_transfer_account.approved()?;
     // verify consistency of proof data
     let previous_instruction =
         get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
@@ -979,7 +979,7 @@ fn process_withdraw_withheld_tokens_from_accounts(
 
     let mut confidential_transfer_dest_account =
         dest_account.get_extension_mut::<ConfidentialTransferAccount>()?;
-
+    confidential_transfer_dest_account.approved()?;
     // verify consistency of proof data
     let previous_instruction =
         get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
@@ -1054,9 +1054,9 @@ fn process_harvest_withheld_tokens_to_mint(accounts: &[AccountInfo]) -> ProgramR
 
     for token_account_info in token_account_infos {
         match harvest_from_account(mint_account_info.key, token_account_info) {
-            Ok(encrypted_fee) => {
+            Ok(withheld_amount) => {
                 let new_mint_withheld_amount =
-                    ops::add(&confidential_transfer_mint.withheld_amount, &encrypted_fee)
+                    ops::add(&confidential_transfer_mint.withheld_amount, &withheld_amount)
                         .ok_or(ProgramError::InvalidInstructionData)?;
 
                 confidential_transfer_mint.withheld_amount = new_mint_withheld_amount;
