@@ -13,22 +13,56 @@ use {
             confidential_transfer::{ConfidentialTransferAccount, ConfidentialTransferMint},
             ExtensionType,
         },
-        solana_zk_token_sdk::encryption::{auth_encryption::*, elgamal::*},
+        solana_zk_token_sdk::encryption::elgamal::*,
     },
     spl_token_client::token::{ExtensionInitializationParams, TokenError as TokenClientError},
     std::convert::TryInto,
 };
 
+struct ConfidentialTransferMintWithKeypairs {
+    ct_mint: ConfidentialTransferMint,
+    ct_mint_authority: Keypair,
+    #[allow(dead_code)]
+    ct_mint_auditor: ElGamalKeypair,
+    #[allow(dead_code)]
+    ct_mint_withdraw_withheld_authority: ElGamalKeypair,
+}
+
+impl ConfidentialTransferMintWithKeypairs {
+    fn new() -> Self {
+        let ct_mint_authority = Keypair::new();
+        let ct_mint_auditor = ElGamalKeypair::new_rand();
+        let ct_mint_withdraw_withheld_authority = ElGamalKeypair::new_rand();
+        let ct_mint = ConfidentialTransferMint {
+            authority: ct_mint_authority.pubkey().into(),
+            auto_approve_new_accounts: true.into(),
+            auditor_pubkey: ct_mint_auditor.public.into(),
+            withdraw_withheld_authority_pubkey: ct_mint_withdraw_withheld_authority.public.into(),
+        };
+        Self {
+            ct_mint,
+            ct_mint_authority,
+            ct_mint_auditor,
+            ct_mint_withdraw_withheld_authority,
+        }
+    }
+
+    fn without_auto_approve() -> Self {
+        let mut x = Self::new();
+        x.ct_mint.auto_approve_new_accounts = false.into();
+        x
+    }
+}
+
 #[tokio::test]
 async fn ct_initialize_and_update_mint() {
     let wrong_keypair = Keypair::new();
 
-    let ct_mint_authority = Keypair::new();
-    let ct_mint = ConfidentialTransferMint {
-        authority: ct_mint_authority.pubkey(),
-        ..ConfidentialTransferMint::default()
-    };
-
+    let ConfidentialTransferMintWithKeypairs {
+        ct_mint,
+        ct_mint_authority,
+        ..
+    } = ConfidentialTransferMintWithKeypairs::new();
     let mut context = TestContext::new().await;
     context
         .init_token_with_mint(vec![
@@ -91,11 +125,11 @@ async fn ct_initialize_and_update_mint() {
 
 #[tokio::test]
 async fn ct_configure_token_account() {
-    let ct_mint_authority = Keypair::new();
-    let ct_mint = ConfidentialTransferMint {
-        authority: ct_mint_authority.pubkey(),
-        ..ConfidentialTransferMint::default()
-    };
+    let ConfidentialTransferMintWithKeypairs {
+        ct_mint,
+        ct_mint_authority,
+        ..
+    } = ConfidentialTransferMintWithKeypairs::without_auto_approve();
 
     let mut context = TestContext::new().await;
     context
@@ -116,16 +150,8 @@ async fn ct_configure_token_account() {
         .await
         .unwrap();
 
-    let alice_elgamal_keypair = ElGamalKeypair::new_rand();
-    let alice_ae_key = AeKey::new(&alice, &alice_token_account).unwrap();
-
-    token
-        .confidential_transfer_configure_token_account(
-            &alice_token_account,
-            &alice,
-            alice_elgamal_keypair.public,
-            alice_ae_key.encrypt(0_u64),
-        )
+    let (alice_elgamal_keypair, alice_ae_key) = token
+        .confidential_transfer_configure_token_account_and_keypairs(&alice_token_account, &alice)
         .await
         .unwrap();
 
@@ -160,7 +186,8 @@ async fn ct_configure_token_account() {
 
 #[tokio::test]
 async fn ct_enable_disable_balance_credits() {
-    let ct_mint = ConfidentialTransferMint::default();
+    let ConfidentialTransferMintWithKeypairs { ct_mint, .. } =
+        ConfidentialTransferMintWithKeypairs::new();
     let mut context = TestContext::new().await;
     context
         .init_token_with_mint(vec![
@@ -180,16 +207,8 @@ async fn ct_enable_disable_balance_credits() {
         .await
         .unwrap();
 
-    let alice_elgamal_keypair = ElGamalKeypair::new_rand();
-    let alice_ae_key = AeKey::new(&alice, &alice_token_account).unwrap();
-
-    token
-        .confidential_transfer_configure_token_account(
-            &alice_token_account,
-            &alice,
-            alice_elgamal_keypair.public,
-            alice_ae_key.encrypt(0_u64),
-        )
+    let _ = token
+        .confidential_transfer_configure_token_account_and_keypairs(&alice_token_account, &alice)
         .await
         .unwrap();
 
