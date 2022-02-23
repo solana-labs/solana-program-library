@@ -19,7 +19,7 @@ use spl_token_2022::{
         StateWithExtensionsOwned,
     },
     instruction, native_mint,
-    solana_zk_token_sdk::encryption::{auth_encryption::AeCiphertext, elgamal::ElGamalPubkey},
+    solana_zk_token_sdk::encryption::{auth_encryption::*, elgamal::*},
     state::{Account, AccountState, Mint},
 };
 use std::{
@@ -947,6 +947,24 @@ where
             &[authority],
         )
         .await
+    }
+
+    pub async fn confidential_transfer_configure_token_account_and_keypairs<S2: Signer>(
+        &self,
+        token_account: &Pubkey,
+        authority: &S2,
+    ) -> TokenResult<(ElGamalKeypair, AeKey)> {
+        let elgamal_keypair = ElGamalKeypair::new_rand();
+        let ae_key = AeKey::new(authority, token_account).unwrap();
+
+        self.confidential_transfer_configure_token_account(
+            token_account,
+            authority,
+            elgamal_keypair.public,
+            ae_key.encrypt(0_u64),
+        )
+        .await
+        .map(|_| (elgamal_keypair, ae_key))
     }
 
     /// Approves a token account for confidential transfers
