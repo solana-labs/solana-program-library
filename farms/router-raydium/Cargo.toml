@@ -14,11 +14,11 @@ debug = []
 
 [dependencies]
 solana-farm-sdk = { path = "../farm-sdk" }
-solana-program = "1.9.5"
+solana-program = "1.9.9"
 arrayref = "0.3.6"
 
 [dev-dependencies]
-solana-program-test = "1.9.5"
+solana-program-test = "1.9.9"
 
 [lib]
 crate-type = ["cdylib", "lib"]
