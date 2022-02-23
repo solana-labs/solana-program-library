@@ -50,7 +50,7 @@ fn process_initialize_mint(
 
     check_program_account(mint_info.owner)?;
     let mint_data = &mut mint_info.data.borrow_mut();
-    let mut mint = StateWithExtensionsMut::<Mint>::unpack(mint_data)?;
+    let mut mint = StateWithExtensionsMut::<Mint>::unpack_uninitialized(mint_data)?;
     *mint.init_extension::<ConfidentialTransferMint>()? = *ct_mint;
 
     Ok(())
@@ -69,17 +69,15 @@ fn process_update_mint(
     check_program_account(mint_info.owner)?;
     let mint_data = &mut mint_info.data.borrow_mut();
     let mut mint = StateWithExtensionsMut::<Mint>::unpack(mint_data)?;
+    let ct_mint = mint.get_extension_mut::<ConfidentialTransferMint>()?;
 
     if authority_info.is_signer
+        && ct_mint.authority == *authority_info.key
         && (new_authority_info.is_signer || *new_authority_info.key == Pubkey::default())
+        && new_ct_mint.authority == *new_authority_info.key
     {
-        if new_ct_mint.authority == *new_authority_info.key {
-            let ct_mint = mint.get_extension_mut::<ConfidentialTransferMint>()?;
-            *ct_mint = *new_ct_mint;
-            Ok(())
-        } else {
-            Err(ProgramError::InvalidInstructionData)
-        }
+        *ct_mint = *new_ct_mint;
+        Ok(())
     } else {
         Err(ProgramError::MissingRequiredSignature)
     }
