@@ -41,8 +41,14 @@ fn main() {
     let spl_token_2022_toml = spl_token_2022_dir.join("Cargo.toml");
     let spl_token_2022_toml = format!("{}", spl_token_2022_toml.display());
     let args = vec!["build-bpf", "--manifest-path", &spl_token_2022_toml];
-    let _output = Command::new("cargo")
+    let output = Command::new("cargo")
         .args(&args)
         .output()
         .expect("Error running cargo build-bpf");
+    if let Ok(output_str) = std::str::from_utf8(&output.stdout) {
+        let subs = output_str.split('\n');
+        for sub in subs {
+            println!("cargo:warning=(not a warning) {}", sub);
+        }
+    }
 }
