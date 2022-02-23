@@ -247,8 +247,22 @@ pub enum ConfidentialTransferInstruction {
 
     /// Transfer all withheld tokens to an account. Signed by the mint's withdraw withheld tokens
     /// authority. This instruction is susceptible to front-running. Use
-    /// `HarvestWithheldTokensToMint` and `WithdrawWithheldTokensFromMint` as an alternative that
-    /// is not susceptible to front-running.
+    /// `HarvestWithheldTokensToMint` and `WithdrawWithheldTokensFromMint` as an alternative.
+    ///
+    /// Note on front-running: This instruction requires a zero-knowledge proof verification
+    /// instruction that is checked with respect to the account state (the currently withheld
+    /// fees). Suppose that a withdraw withheld authority generates the
+    /// `WithdrawWithheldTokensFromAccounts` instruction along with a corresponding zero-knowledge
+    /// proof for a specified set of accounts, and submits it on chain. If the withheld fees at any
+    /// of the specified accounts change before the `WithdrawWithheldTokensFromAccounts` is
+    /// executed on chain, the zero-knowledge proof will not verify with respect to the new state,
+    /// forcing the transaction to fail.
+    ///
+    /// If front-running occurs, then users can look up the updated states of the accounts,
+    /// generate a new zero-knowledge proof and try again. Alternatively, withdraw withheld
+    /// authority can first move the withheld amount to the mint using
+    /// `HarvestWithheldTokensToMint` and then move the withheld fees from mint to a specified
+    /// destination account using `WithdrawWithheldTokensFromMint`.
     ///
     /// Accounts expected by this instruction:
     ///
