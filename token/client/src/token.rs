@@ -19,10 +19,14 @@ use spl_token_2022::{
         StateWithExtensionsOwned,
     },
     instruction, native_mint,
-    solana_zk_token_sdk::encryption::{auth_encryption::*, elgamal::*},
+    solana_zk_token_sdk::{
+        encryption::{auth_encryption::*, elgamal::*},
+        errors::ProofError,
+    },
     state::{Account, AccountState, Mint},
 };
 use std::{
+    convert::TryInto,
     fmt, io,
     sync::{Arc, RwLock},
     time::{Duration, Instant},
@@ -41,6 +45,8 @@ pub enum TokenError {
     AccountInvalidOwner,
     #[error("invalid account mint")]
     AccountInvalidMint,
+    #[error("proof error: {0}")]
+    Proof(ProofError),
 }
 impl PartialEq for TokenError {
     fn eq(&self, other: &Self) -> bool {
@@ -968,7 +974,7 @@ where
     }
 
     /// Approves a token account for confidential transfers
-    pub async fn confidential_transfer_approve_token_account<S2: Signer>(
+    pub async fn confidential_transfer_approve_account<S2: Signer>(
         &self,
         token_account: &Pubkey,
         authority: &S2,
@@ -980,6 +986,36 @@ where
                 &self.pubkey,
                 &authority.pubkey(),
             )?],
+            &[authority],
+        )
+        .await
+    }
+
+    /// Prepare a token account for closing
+    pub async fn confidential_transfer_empty_account<S2: Signer>(
+        &self,
+        token_account: &Pubkey,
+        authority: &S2,
+        elgamal_keypair: &ElGamalKeypair,
+    ) -> TokenResult<T::Output> {
+        let state = self.get_account_info(&token_account).await.unwrap();
+        let extension =
+            state.get_extension::<confidential_transfer::ConfidentialTransferAccount>()?;
+
+        let proof_data = confidential_transfer::instruction::CloseAccountData::new(
+            &elgamal_keypair,
+            &extension.available_balance.try_into().unwrap(),
+        )
+        .map_err(TokenError::Proof)?;
+
+        self.process_ixs(
+            &confidential_transfer::instruction::empty_account(
+                &self.program_id,
+                token_account,
+                &authority.pubkey(),
+                &[],
+                &proof_data,
+            )?,
             &[authority],
         )
         .await

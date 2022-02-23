@@ -176,7 +176,7 @@ async fn ct_configure_token_account() {
     );
 
     token
-        .confidential_transfer_approve_token_account(&alice_token_account, &ct_mint_authority)
+        .confidential_transfer_approve_account(&alice_token_account, &ct_mint_authority)
         .await
         .unwrap();
 
@@ -234,4 +234,38 @@ async fn ct_enable_disable_balance_credits() {
         .get_extension::<ConfidentialTransferAccount>()
         .unwrap();
     assert!(bool::from(&extension.allow_balance_credits));
+}
+
+#[tokio::test]
+async fn ct_new_account_is_empty() {
+    let ConfidentialTransferMintWithKeypairs { ct_mint, .. } =
+        ConfidentialTransferMintWithKeypairs::new();
+    let mut context = TestContext::new().await;
+    context
+        .init_token_with_mint(vec![
+            ExtensionInitializationParams::ConfidentialTransferMint { ct_mint },
+        ])
+        .await
+        .unwrap();
+
+    let TokenContext { token, alice, .. } = context.token_context.unwrap();
+
+    let alice_token_account = token
+        .create_auxiliary_token_account_with_extension_space(
+            &alice,
+            &alice.pubkey(),
+            vec![ExtensionType::ConfidentialTransferAccount],
+        )
+        .await
+        .unwrap();
+
+    let (alice_elgamal_keypair, _) = token
+        .confidential_transfer_configure_token_account_and_keypairs(&alice_token_account, &alice)
+        .await
+        .unwrap();
+
+    token
+        .confidential_transfer_empty_account(&alice_token_account, &alice, &alice_elgamal_keypair)
+        .await
+        .unwrap();
 }
