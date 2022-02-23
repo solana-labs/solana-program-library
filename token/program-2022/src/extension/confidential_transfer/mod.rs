@@ -39,14 +39,14 @@ pub struct ConfidentialTransferMint {
     /// * If non-zero, transfers must include ElGamal cypertext with this public key permitting the
     /// auditor to decode the transfer amount.
     /// * If all zero, auditing is currently disabled.
-    pub auditor_pubkey: pod::ElGamalPubkey,
+    pub transfer_auditor: pod::ElGamalPubkey,
 
     /// * If non-zero, transfers must include ElGamal cypertext of the transfer fee with this
     /// public key. If this is the case, but the base mint is not extended for fees, then any
     /// transfer will fail.
     /// * If all zero, transfer fee is disabled. If this is the case, but the base mint is extended
     /// for fees, then any transfer will fail.
-    pub withdraw_withheld_authority_pubkey: pod::ElGamalPubkey,
+    pub withdraw_withheld_authority: pod::ElGamalPubkey,
 }
 
 impl Extension for ConfidentialTransferMint {

@@ -470,13 +470,12 @@ fn process_transfer(
             &previous_instruction,
         )?;
 
-        if proof_data.transfer_with_fee_pubkeys.auditor != ct_mint.auditor_pubkey {
+        if proof_data.transfer_with_fee_pubkeys.auditor != ct_mint.transfer_auditor {
             return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
         }
 
         // `withdraw_withheld_authority` ElGamal pubkey in proof data and mint must match
-        if proof_data.transfer_with_fee_pubkeys.fee_collector
-            != ct_mint.withdraw_withheld_authority_pubkey
+        if proof_data.transfer_with_fee_pubkeys.fee_collector != ct_mint.withdraw_withheld_authority
         {
             return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
         }
@@ -558,7 +557,7 @@ fn process_transfer(
             &previous_instruction,
         )?;
 
-        if proof_data.transfer_pubkeys.auditor != ct_mint.auditor_pubkey {
+        if proof_data.transfer_pubkeys.auditor != ct_mint.transfer_auditor {
             return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
         }
 
