@@ -154,12 +154,12 @@ fn process_configure_account(
     confidential_transfer_account.pending_balance = EncryptedBalance::zeroed();
     confidential_transfer_account.available_balance = EncryptedBalance::zeroed();
 
-    ct_token_account.decryptable_available_balance = *decryptable_zero_balance;
-    ct_token_account.allow_balance_credits = true.into();
-    ct_token_account.pending_balance_credit_counter = 0.into();
-    ct_token_account.expected_pending_balance_credit_counter = 0.into();
-    ct_token_account.actual_pending_balance_credit_counter = 0.into();
-    ct_token_account.withheld_amount = pod::ElGamalCiphertext::zeroed();
+    confidential_transfer_account.decryptable_available_balance = *decryptable_zero_balance;
+    confidential_transfer_account.allow_balance_credits = true.into();
+    confidential_transfer_account.pending_balance_credit_counter = 0.into();
+    confidential_transfer_account.expected_pending_balance_credit_counter = 0.into();
+    confidential_transfer_account.actual_pending_balance_credit_counter = 0.into();
+    confidential_transfer_account.withheld_amount = pod::ElGamalCiphertext::zeroed();
 
     Ok(())
 }
