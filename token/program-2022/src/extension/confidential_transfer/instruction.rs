@@ -61,8 +61,8 @@ pub enum ConfidentialTransferInstruction {
     /// The instruction fails if the `TokenInstruction::InitializeAccount` instruction has not yet
     /// successfully executed for the token account.
     ///
-    /// Upon success confidential deposits and transfers are disabled, use the
-    /// `EnableBalanceCredits` instruction to enable them.
+    /// Upon success confidential deposits and transfers are enabled, use the
+    /// `DisableBalanceCredits` instruction to disable.
     ///
     /// Accounts expected by this instruction:
     ///
