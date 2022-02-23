@@ -23,7 +23,7 @@ struct ConfidentialTransferMintWithKeypairs {
     ct_mint: ConfidentialTransferMint,
     ct_mint_authority: Keypair,
     #[allow(dead_code)]
-    ct_mint_auditor: ElGamalKeypair,
+    ct_mint_transfer_auditor: ElGamalKeypair,
     #[allow(dead_code)]
     ct_mint_withdraw_withheld_authority: ElGamalKeypair,
 }
@@ -31,18 +31,18 @@ struct ConfidentialTransferMintWithKeypairs {
 impl ConfidentialTransferMintWithKeypairs {
     fn new() -> Self {
         let ct_mint_authority = Keypair::new();
-        let ct_mint_auditor = ElGamalKeypair::new_rand();
+        let ct_mint_transfer_auditor = ElGamalKeypair::new_rand();
         let ct_mint_withdraw_withheld_authority = ElGamalKeypair::new_rand();
         let ct_mint = ConfidentialTransferMint {
             authority: ct_mint_authority.pubkey().into(),
             auto_approve_new_accounts: true.into(),
-            auditor_pubkey: ct_mint_auditor.public.into(),
-            withdraw_withheld_authority_pubkey: ct_mint_withdraw_withheld_authority.public.into(),
+            transfer_auditor: ct_mint_transfer_auditor.public.into(),
+            withdraw_withheld_authority: ct_mint_withdraw_withheld_authority.public.into(),
         };
         Self {
             ct_mint,
             ct_mint_authority,
-            ct_mint_auditor,
+            ct_mint_transfer_auditor,
             ct_mint_withdraw_withheld_authority,
         }
     }
