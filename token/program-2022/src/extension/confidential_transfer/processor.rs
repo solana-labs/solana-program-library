@@ -288,7 +288,7 @@ fn process_deposit(
             .base
             .amount
             .checked_sub(amount)
-            .ok_or(ProgramError::InvalidInstructionData)?;
+            .ok_or(TokenError::Overflow)?;
 
         token_account.pack_base();
     }
@@ -432,7 +432,7 @@ fn process_withdraw(
             .base
             .amount
             .checked_add(amount)
-            .ok_or(ProgramError::InvalidInstructionData)?;
+            .ok_or(TokenError::Overflow)?;
 
         dest_token_account.pack_base();
     }
