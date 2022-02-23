@@ -839,9 +839,7 @@ impl Processor {
         }
 
         let mut source_account_data = source_account_info.data.borrow_mut();
-        if let Ok(mut source_account) =
-            StateWithExtensionsMut::<Account>::unpack(&mut source_account_data)
-        {
+        if let Ok(source_account) = StateWithExtensions::<Account>::unpack(&source_account_data) {
             if !source_account.base.is_native() && source_account.base.amount != 0 {
                 return Err(TokenError::NonNativeHasBalance.into());
             }
@@ -859,24 +857,17 @@ impl Processor {
                 account_info_iter.as_slice(),
             )?;
 
-            // TODO use get_extension when
-            // https://github.com/solana-labs/solana-program-library/pull/2822 lands
             if let Ok(confidential_transfer_state) =
-                source_account.get_extension_mut::<ConfidentialTransferAccount>()
+                source_account.get_extension::<ConfidentialTransferAccount>()
             {
                 confidential_transfer_state.closable()?
             }
 
-            // TODO use get_extension when
-            // https://github.com/solana-labs/solana-program-library/pull/2822 lands
-            if let Ok(transfer_fee_state) = source_account.get_extension_mut::<TransferFeeAmount>()
-            {
+            if let Ok(transfer_fee_state) = source_account.get_extension::<TransferFeeAmount>() {
                 transfer_fee_state.closable()?
             }
-        } else if let Ok(mut mint) =
-            StateWithExtensionsMut::<Mint>::unpack(&mut source_account_data)
-        {
-            let extension = mint.get_extension_mut::<MintCloseAuthority>()?;
+        } else if let Ok(mint) = StateWithExtensions::<Mint>::unpack(&source_account_data) {
+            let extension = mint.get_extension::<MintCloseAuthority>()?;
             let maybe_authority: Option<Pubkey> = extension.close_authority.into();
             let authority = maybe_authority.ok_or(TokenError::AuthorityTypeNotSupported)?;
             Self::validate_owner(
