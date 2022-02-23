@@ -124,7 +124,6 @@ fn process_configure_account(
     let mut ct_token_account = token_account.init_extension::<ConfidentialTransferAccount>()?;
     ct_token_account.approved = ct_mint.auto_approve_new_accounts;
     ct_token_account.elgamal_pubkey = *elgamal_pubkey;
-    ct_token_account.decryptable_available_balance = *decryptable_zero_balance;
 
     /*
         An ElGamal ciphertext is of the form
@@ -156,6 +155,13 @@ fn process_configure_account(
     */
     ct_token_account.pending_balance = pod::ElGamalCiphertext::zeroed();
     ct_token_account.available_balance = pod::ElGamalCiphertext::zeroed();
+
+    ct_token_account.decryptable_available_balance = *decryptable_zero_balance;
+    ct_token_account.allow_balance_credits = true.into();
+    ct_token_account.pending_balance_credit_counter = 0.into();
+    ct_token_account.expected_pending_balance_credit_counter = 0.into();
+    ct_token_account.actual_pending_balance_credit_counter = 0.into();
+    ct_token_account.withheld_amount = pod::ElGamalCiphertext::zeroed();
 
     Ok(())
 }
