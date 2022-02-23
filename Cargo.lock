@@ -3942,6 +3942,7 @@ dependencies = [
  "spl-associated-token-account 1.0.5",
  "spl-token-2022",
  "spl-token-client",
+ "walkdir",
 ]
 
 [[package]]
