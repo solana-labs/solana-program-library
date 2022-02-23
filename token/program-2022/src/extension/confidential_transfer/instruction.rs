@@ -58,6 +58,9 @@ pub enum ConfidentialTransferInstruction {
     /// The instruction fails if the confidential transfers are already configured, or if the mint
     /// was not initialized with confidential transfer support.
     ///
+    /// The instruction fails if the `TokenInstruction::InitializeAccount` instruction has not yet
+    /// successfully executed for the token account.
+    ///
     /// Upon success confidential deposits and transfers are disabled, use the
     /// `EnableBalanceCredits` instruction to enable them.
     ///
@@ -331,7 +334,7 @@ fn encode_instruction<T: Pod>(
 pub fn initialize_mint(
     token_program_id: &Pubkey,
     mint: &Pubkey,
-    auditor: &ConfidentialTransferMint,
+    ct_mint: &ConfidentialTransferMint,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let accounts = vec![AccountMeta::new(*mint, false)];
@@ -339,14 +342,15 @@ pub fn initialize_mint(
         token_program_id,
         accounts,
         ConfidentialTransferInstruction::InitializeMint,
-        auditor,
+        ct_mint,
     ))
 }
+
 /// Create a `UpdateMint` instruction
 pub fn update_mint(
     token_program_id: &Pubkey,
     mint: &Pubkey,
-    new_auditor: &ConfidentialTransferMint,
+    new_ct_mint: &ConfidentialTransferMint,
     authority: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
@@ -354,15 +358,15 @@ pub fn update_mint(
         AccountMeta::new(*mint, false),
         AccountMeta::new_readonly(*authority, true),
         AccountMeta::new_readonly(
-            new_auditor.authority,
-            new_auditor.authority != Pubkey::default(),
+            new_ct_mint.authority,
+            new_ct_mint.authority != Pubkey::default(),
         ),
     ];
     Ok(encode_instruction(
         token_program_id,
         accounts,
         ConfidentialTransferInstruction::UpdateMint,
-        new_auditor,
+        new_ct_mint,
     ))
 }
 

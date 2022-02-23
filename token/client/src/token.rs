@@ -15,7 +15,8 @@ use spl_associated_token_account::{
 };
 use spl_token_2022::{
     extension::{
-        default_account_state, memo_transfer, transfer_fee, ExtensionType, StateWithExtensionsOwned,
+        confidential_transfer, default_account_state, memo_transfer, transfer_fee, ExtensionType,
+        StateWithExtensionsOwned,
     },
     instruction, native_mint,
     state::{Account, AccountState, Mint},
@@ -57,6 +58,9 @@ impl PartialEq for TokenError {
 /// Encapsulates initializing an extension
 #[derive(Clone, Debug, PartialEq)]
 pub enum ExtensionInitializationParams {
+    ConfidentialTransferMint {
+        ct_mint: confidential_transfer::ConfidentialTransferMint,
+    },
     DefaultAccountState {
         state: AccountState,
     },
@@ -74,6 +78,7 @@ impl ExtensionInitializationParams {
     /// Get the extension type associated with the init params
     pub fn extension(&self) -> ExtensionType {
         match self {
+            Self::ConfidentialTransferMint { .. } => ExtensionType::ConfidentialTransferMint,
             Self::DefaultAccountState { .. } => ExtensionType::DefaultAccountState,
             Self::MintCloseAuthority { .. } => ExtensionType::MintCloseAuthority,
             Self::TransferFeeConfig { .. } => ExtensionType::TransferFeeConfig,
@@ -86,6 +91,13 @@ impl ExtensionInitializationParams {
         mint: &Pubkey,
     ) -> Result<Instruction, ProgramError> {
         match self {
+            Self::ConfidentialTransferMint { ct_mint } => {
+                confidential_transfer::instruction::initialize_mint(
+                    token_program_id,
+                    mint,
+                    &ct_mint,
+                )
+            }
             Self::DefaultAccountState { state } => {
                 default_account_state::instruction::initialize_default_account_state(
                     token_program_id,
@@ -886,6 +898,29 @@ where
                 &[],
             )?],
             &[authority],
+        )
+        .await
+    }
+
+    /// Update confidential transfer mint
+    pub async fn confidential_transfer_update_mint<S2: Signer>(
+        &self,
+        authority: &S2,
+        new_ct_mint: confidential_transfer::ConfidentialTransferMint,
+        new_authority: Option<&S2>,
+    ) -> TokenResult<T::Output> {
+        let mut signers = vec![authority];
+        if let Some(new_authority) = new_authority {
+            signers.push(new_authority);
+        }
+        self.process_ixs(
+            &[confidential_transfer::instruction::update_mint(
+                &self.program_id,
+                &self.pubkey,
+                &new_ct_mint,
+                &authority.pubkey(),
+            )?],
+            &signers,
         )
         .await
     }
