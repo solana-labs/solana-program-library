@@ -380,7 +380,7 @@ pub fn configure_account(
     decryptable_zero_balance: AeCiphertext,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-) -> Result<Vec<Instruction>, ProgramError> {
+) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let mut accounts = vec![
         AccountMeta::new(*token_account, false),
@@ -392,7 +392,7 @@ pub fn configure_account(
         accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
     }
 
-    Ok(vec![encode_instruction(
+    Ok(encode_instruction(
         token_program_id,
         accounts,
         ConfidentialTransferInstruction::ConfigureAccount,
@@ -400,14 +400,14 @@ pub fn configure_account(
             elgamal_pubkey: elgamal_pubkey.into(),
             decryptable_zero_balance: decryptable_zero_balance.into(),
         },
-    )])
+    ))
 }
 
 /// Create an `ApproveAccount` instruction
 pub fn approve_account(
     token_program_id: &Pubkey,
-    mint: &Pubkey,
     account_to_approve: &Pubkey,
+    mint: &Pubkey,
     authority: &Pubkey,
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;

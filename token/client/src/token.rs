@@ -19,6 +19,7 @@ use spl_token_2022::{
         StateWithExtensionsOwned,
     },
     instruction, native_mint,
+    solana_zk_token_sdk::encryption::{auth_encryption::AeCiphertext, elgamal::ElGamalPubkey},
     state::{Account, AccountState, Mint},
 };
 use std::{
@@ -921,6 +922,47 @@ where
                 &authority.pubkey(),
             )?],
             &signers,
+        )
+        .await
+    }
+
+    /// Configures confidential transfers for a token account
+    pub async fn confidential_transfer_configure_token_account<S2: Signer>(
+        &self,
+        token_account: &Pubkey,
+        authority: &S2,
+        elgamal_pubkey: ElGamalPubkey,
+        decryptable_zero_balance: AeCiphertext,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[confidential_transfer::instruction::configure_account(
+                &self.program_id,
+                token_account,
+                &self.pubkey,
+                elgamal_pubkey,
+                decryptable_zero_balance,
+                &authority.pubkey(),
+                &[],
+            )?],
+            &[authority],
+        )
+        .await
+    }
+
+    /// Approves a token account for confidential transfers
+    pub async fn confidential_transfer_approve_token_account<S2: Signer>(
+        &self,
+        token_account: &Pubkey,
+        authority: &S2,
+    ) -> TokenResult<T::Output> {
+        self.process_ixs(
+            &[confidential_transfer::instruction::approve_account(
+                &self.program_id,
+                token_account,
+                &self.pubkey,
+                &authority.pubkey(),
+            )?],
+            &[authority],
         )
         .await
     }

@@ -19,7 +19,8 @@ pub mod processor;
 #[repr(C)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Pod, Zeroable)]
 pub struct ConfidentialTransferMint {
-    /// Authority to modify the `ConfidentialTransferMint` configuration
+    /// Authority to modify the `ConfidentialTransferMint` configuration and to approve new
+    /// accounts (if `auto_approve_new_accounts` is true)
     ///
     /// Note that setting an authority of `Pubkey::default()` is the idiomatic way to disable
     /// future changes to the configuration.
