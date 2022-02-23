@@ -37,6 +37,7 @@ crates=(
   solana-transaction-status
   solana-vote-program
   solana-version
+  solana-zk-token-sdk
 )
 
 set -x

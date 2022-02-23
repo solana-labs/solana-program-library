@@ -54,6 +54,7 @@ solana-stake-program = { path = "$solana_dir/programs/stake" }
 solana-transaction-status = { path = "$solana_dir/transaction-status" }
 solana-version = { path = "$solana_dir/version" }
 solana-vote-program = { path = "$solana_dir/programs/vote" }
+solana-zk-token-sdk = { path = "$solana_dir/zk-token-sdk" }
 PATCH
   fi
 done
