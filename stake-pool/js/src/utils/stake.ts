@@ -6,38 +6,62 @@ import {
   SystemProgram,
   TransactionInstruction,
 } from '@solana/web3.js';
-import {
-  findStakeProgramAddress,
-  findTransientStakeProgramAddress,
-} from './program-address';
+import { findStakeProgramAddress, findTransientStakeProgramAddress } from './program-address';
 import BN from 'bn.js';
 
-import {lamportsToSol} from './math';
-import {WithdrawAccount} from '../index';
+import { lamportsToSol } from './math';
+import { WithdrawAccount } from '../index';
 import {
+  Fee,
   StakePool,
   ValidatorList,
   ValidatorListLayout,
   ValidatorStakeInfoStatus,
 } from '../layouts';
-import {STAKE_POOL_PROGRAM_ID} from '../constants';
+import { MINIMUM_ACTIVE_STAKE, STAKE_POOL_PROGRAM_ID } from '../constants';
+
+export async function getValidatorListAccount(connection: Connection, pubkey: PublicKey) {
+  const account = await connection.getAccountInfo(pubkey);
+  if (!account) {
+    throw new Error('Invalid validator list account');
+  }
+  return {
+    pubkey,
+    account: {
+      data: ValidatorListLayout.decode(account?.data) as ValidatorList,
+      executable: account.executable,
+      lamports: account.lamports,
+      owner: account.owner,
+    },
+  };
+}
+
+export interface ValidatorAccount {
+  type: 'preferred' | 'active' | 'transient' | 'reserve';
+  voteAddress?: PublicKey | undefined;
+  stakeAddress: PublicKey;
+  lamports: number;
+}
 
 export async function prepareWithdrawAccounts(
   connection: Connection,
   stakePool: StakePool,
   stakePoolAddress: PublicKey,
   amount: number,
+  compareFn?: (a: ValidatorAccount, b: ValidatorAccount) => number,
+  skipFee?: boolean,
 ): Promise<WithdrawAccount[]> {
-  const validatorListAcc = await connection.getAccountInfo(
-    stakePool.validatorList,
-  );
-  const validatorList = ValidatorListLayout.decode(
-    validatorListAcc?.data,
-  ) as ValidatorList;
+  const validatorListAcc = await connection.getAccountInfo(stakePool.validatorList);
+  const validatorList = ValidatorListLayout.decode(validatorListAcc?.data) as ValidatorList;
 
   if (!validatorList?.validators || validatorList?.validators.length == 0) {
     throw new Error('No accounts found');
   }
+
+  const minBalanceForRentExemption = await connection.getMinimumBalanceForRentExemption(
+    StakeProgram.space,
+  );
+  const minBalance = minBalanceForRentExemption + MINIMUM_ACTIVE_STAKE;
 
   let accounts = [] as Array<{
     type: 'preferred' | 'active' | 'transient' | 'reserve';
@@ -59,10 +83,9 @@ export async function prepareWithdrawAccounts(
     );
 
     if (!validator.activeStakeLamports.isZero()) {
-      const isPreferred =
-        stakePool.preferredWithdrawValidatorVoteAddress &&
-        stakePool.preferredWithdrawValidatorVoteAddress.toBase58() ==
-          validator.voteAccountAddress.toBase58();
+      const isPreferred = stakePool?.preferredWithdrawValidatorVoteAddress?.equals(
+        validator.voteAccountAddress,
+      );
       accounts.push({
         type: isPreferred ? 'preferred' : 'active',
         voteAddress: validator.voteAccountAddress,
@@ -71,33 +94,33 @@ export async function prepareWithdrawAccounts(
       });
     }
 
-    const transientStakeAccountAddress = await findTransientStakeProgramAddress(
-      STAKE_POOL_PROGRAM_ID,
-      validator.voteAccountAddress,
-      stakePoolAddress,
-      validator.transientSeedSuffixStart,
-    );
-
-    if (!validator.transientStakeLamports?.isZero()) {
+    const transientStakeLamports = validator.transientStakeLamports.toNumber() - minBalance;
+    if (transientStakeLamports > 0) {
+      const transientStakeAccountAddress = await findTransientStakeProgramAddress(
+        STAKE_POOL_PROGRAM_ID,
+        validator.voteAccountAddress,
+        stakePoolAddress,
+        validator.transientSeedSuffixStart,
+      );
       accounts.push({
         type: 'transient',
         voteAddress: validator.voteAccountAddress,
         stakeAddress: transientStakeAccountAddress,
-        lamports: validator.transientStakeLamports.toNumber(),
+        lamports: transientStakeLamports,
       });
     }
   }
 
   // Sort from highest to lowest balance
-  accounts = accounts.sort((a, b) => b.lamports - a.lamports);
+  accounts = accounts.sort(compareFn ? compareFn : (a, b) => b.lamports - a.lamports);
 
   const reserveStake = await connection.getAccountInfo(stakePool.reserveStake);
-  if (reserveStake && reserveStake.lamports > 0) {
-    console.log('Reserve Stake: ', reserveStake.lamports);
+  const reserveStakeBalance = (reserveStake?.lamports ?? 0) - minBalanceForRentExemption - 1;
+  if (reserveStakeBalance > 0) {
     accounts.push({
       type: 'reserve',
       stakeAddress: stakePool.reserveStake,
-      lamports: reserveStake?.lamports,
+      lamports: reserveStakeBalance,
     });
   }
 
@@ -105,21 +128,26 @@ export async function prepareWithdrawAccounts(
   const withdrawFrom: WithdrawAccount[] = [];
   let remainingAmount = amount;
 
-  for (const type of ['preferred', 'active', 'transient', 'reserve']) {
-    const filteredAccounts = accounts.filter(a => a.type == type);
+  const fee = stakePool.stakeWithdrawalFee;
+  const inverseFee: Fee = {
+    numerator: fee.denominator.sub(fee.numerator),
+    denominator: fee.denominator,
+  };
 
-    for (const {stakeAddress, voteAddress, lamports} of filteredAccounts) {
-      let availableForWithdrawal = Math.floor(
-        calcPoolTokensForDeposit(stakePool, lamports),
-      );
-      if (!stakePool.stakeWithdrawalFee.denominator.isZero()) {
+  for (const type of ['preferred', 'active', 'transient', 'reserve']) {
+    const filteredAccounts = accounts.filter((a) => a.type == type);
+
+    for (const { stakeAddress, voteAddress, lamports } of filteredAccounts) {
+      if (lamports <= minBalance && type == 'transient') {
+        continue;
+      }
+
+      let availableForWithdrawal = calcPoolTokensForDeposit(stakePool, lamports);
+
+      if (!skipFee && !inverseFee.numerator.isZero()) {
         availableForWithdrawal = divideBnToNumber(
-          new BN(availableForWithdrawal).mul(
-            stakePool.stakeWithdrawalFee.denominator,
-          ),
-          stakePool.stakeWithdrawalFee.denominator.sub(
-            stakePool.stakeWithdrawalFee.numerator,
-          ),
+          new BN(availableForWithdrawal).mul(inverseFee.denominator),
+          inverseFee.numerator,
         );
       }
 
@@ -129,12 +157,14 @@ export async function prepareWithdrawAccounts(
       }
 
       // Those accounts will be withdrawn completely with `claim` instruction
-      withdrawFrom.push({stakeAddress, voteAddress, poolAmount});
+      withdrawFrom.push({ stakeAddress, voteAddress, poolAmount });
       remainingAmount -= poolAmount;
+
       if (remainingAmount == 0) {
         break;
       }
     }
+
     if (remainingAmount == 0) {
       break;
     }
@@ -155,26 +185,19 @@ export async function prepareWithdrawAccounts(
 /**
  * Calculate the pool tokens that should be minted for a deposit of `stakeLamports`
  */
-export function calcPoolTokensForDeposit(
-  stakePool: StakePool,
-  stakeLamports: number,
-): number {
+export function calcPoolTokensForDeposit(stakePool: StakePool, stakeLamports: number): number {
   if (stakePool.poolTokenSupply.isZero() || stakePool.totalLamports.isZero()) {
     return stakeLamports;
   }
-  return divideBnToNumber(
-    new BN(stakeLamports).mul(stakePool.poolTokenSupply),
-    stakePool.totalLamports,
+  return Math.floor(
+    divideBnToNumber(new BN(stakeLamports).mul(stakePool.poolTokenSupply), stakePool.totalLamports),
   );
 }
 
 /**
  * Calculate lamports amount on withdrawal
  */
-export function calcLamportsWithdrawAmount(
-  stakePool: StakePool,
-  poolTokens: number,
-): number {
+export function calcLamportsWithdrawAmount(stakePool: StakePool, poolTokens: number): number {
   const numerator = new BN(poolTokens).mul(stakePool.totalLamports);
   const denominator = stakePool.poolTokenSupply;
   if (numerator.lt(denominator)) {
@@ -200,9 +223,7 @@ export function newStakeAccount(
 ): Keypair {
   // Account for tokens not specified, creating one
   const stakeReceiverKeypair = Keypair.generate();
-  console.log(
-    `Creating account to receive stake ${stakeReceiverKeypair.publicKey}`,
-  );
+  console.log(`Creating account to receive stake ${stakeReceiverKeypair.publicKey}`);
 
   instructions.push(
     // Creating new account

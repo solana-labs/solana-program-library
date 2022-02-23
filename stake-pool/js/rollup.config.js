@@ -2,7 +2,7 @@ import typescript from '@rollup/plugin-typescript';
 import commonjs from '@rollup/plugin-commonjs';
 import json from '@rollup/plugin-json';
 import nodeResolve from '@rollup/plugin-node-resolve';
-import {terser} from 'rollup-plugin-terser';
+import { terser } from 'rollup-plugin-terser';
 
 const extensions = ['.js', '.ts'];
 
@@ -39,7 +39,7 @@ function generateConfig(configType, format) {
       '@solana/spl-token',
       '@solana/web3.js',
       'bn.js',
-      'buffer'
+      'buffer',
     ];
   }
 
@@ -49,7 +49,7 @@ function generateConfig(configType, format) {
         case 'esm': {
           config.output = [
             {
-              file: 'dist.browser/index.browser.esm.js',
+              file: 'dist/index.browser.esm.js',
               format: 'es',
               sourcemap: true,
             },
@@ -62,7 +62,7 @@ function generateConfig(configType, format) {
             '@solana/spl-token',
             '@solana/web3.js',
             'bn.js',
-            'buffer'
+            'buffer',
           ];
 
           break;
@@ -72,17 +72,17 @@ function generateConfig(configType, format) {
 
           config.output = [
             {
-              file: 'dist.browser/index.iife.js',
+              file: 'dist/index.iife.js',
               format: 'iife',
               name: 'solanaStakePool',
               sourcemap: true,
             },
             {
-              file: 'dist.browser/index.iife.min.js',
+              file: 'dist/index.iife.min.js',
               format: 'iife',
               name: 'solanaStakePool',
               sourcemap: true,
-              plugins: [terser({mangle: false, compress: false})],
+              plugins: [terser({ mangle: false, compress: false })],
             },
           ];
 
@@ -100,12 +100,12 @@ function generateConfig(configType, format) {
     case 'node':
       config.output = [
         {
-          file: 'dist.browser/index.cjs.js',
+          file: 'dist/index.cjs.js',
           format: 'cjs',
           sourcemap: true,
         },
         {
-          file: 'dist.browser/index.esm.js',
+          file: 'dist/index.esm.js',
           format: 'es',
           sourcemap: true,
         },
