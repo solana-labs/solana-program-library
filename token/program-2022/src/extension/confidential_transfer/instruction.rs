@@ -624,7 +624,7 @@ pub fn deposit(
     decimals: u8,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-) -> Result<Vec<Instruction>, ProgramError> {
+) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let mut accounts = vec![
         AccountMeta::new(*source_token_account, false),
@@ -637,7 +637,7 @@ pub fn deposit(
         accounts.push(AccountMeta::new_readonly(**multisig_signer, true));
     }
 
-    Ok(vec![encode_instruction(
+    Ok(encode_instruction(
         token_program_id,
         accounts,
         ConfidentialTransferInstruction::Deposit,
@@ -645,7 +645,7 @@ pub fn deposit(
             amount: amount.into(),
             decimals,
         },
-    )])
+    ))
 }
 
 /// Create a inner `Withdraw` instruction
@@ -829,17 +829,15 @@ pub fn apply_pending_balance(
     new_decryptable_available_balance: AeCiphertext,
     authority: &Pubkey,
     multisig_signers: &[&Pubkey],
-) -> Result<Vec<Instruction>, ProgramError> {
-    Ok(vec![
-        inner_apply_pending_balance(
-            token_program_id,
-            token_account,
-            pending_balance_instructions,
-            new_decryptable_available_balance.into(),
-            authority,
-            multisig_signers,
-        )?, // calls check_program_account
-    ])
+) -> Result<Instruction, ProgramError> {
+    inner_apply_pending_balance(
+        token_program_id,
+        token_account,
+        pending_balance_instructions,
+        new_decryptable_available_balance.into(),
+        authority,
+        multisig_signers,
+    ) // calls check_program_account
 }
 
 fn enable_or_disable_balance_credits(
