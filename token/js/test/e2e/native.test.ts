@@ -13,13 +13,15 @@ import {
 } from '@solana/web3.js';
 import {
     NATIVE_MINT,
+    NATIVE_MINT_2022,
+    TOKEN_PROGRAM_ID,
     closeAccount,
     getAccount,
     createNativeMint,
     createWrappedNativeAccount,
     syncNative,
 } from '../../src';
-import { TEST_PROGRAM_ID, TEST_NATIVE_MINT, newAccountWithLamports, getConnection } from './common';
+import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from './common';
 
 describe('native', () => {
     let connection: Connection;
@@ -27,12 +29,16 @@ describe('native', () => {
     let owner: Keypair;
     let account: PublicKey;
     let amount: number;
+    let nativeMint: PublicKey;
     before(async () => {
         amount = 1_000_000_000;
         connection = await getConnection();
         payer = await newAccountWithLamports(connection, 100_000_000_000);
-        if (TEST_NATIVE_MINT !== NATIVE_MINT) {
-            await createNativeMint(connection, payer, undefined, TEST_PROGRAM_ID, TEST_NATIVE_MINT);
+        if (TEST_PROGRAM_ID == TOKEN_PROGRAM_ID) {
+            nativeMint = NATIVE_MINT;
+        } else {
+            nativeMint = NATIVE_MINT_2022;
+            await createNativeMint(connection, payer, undefined, TEST_PROGRAM_ID, nativeMint);
         }
     });
     beforeEach(async () => {
@@ -45,7 +51,7 @@ describe('native', () => {
             undefined,
             undefined,
             TEST_PROGRAM_ID,
-            TEST_NATIVE_MINT
+            nativeMint
         );
     });
     it('works', async () => {
