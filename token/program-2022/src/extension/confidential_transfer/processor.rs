@@ -40,7 +40,7 @@ fn decode_proof_instruction<T: Pod>(
 /// Processes an [InitializeMint] instruction.
 fn process_initialize_mint(
     accounts: &[AccountInfo],
-    ct_mint: &ConfidentialTransferMint,
+    confidential_transfer_mint: &ConfidentialTransferMint,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let mint_info = next_account_info(account_info_iter)?;
@@ -48,7 +48,7 @@ fn process_initialize_mint(
     check_program_account(mint_info.owner)?;
     let mint_data = &mut mint_info.data.borrow_mut();
     let mut mint = StateWithExtensionsMut::<Mint>::unpack_uninitialized(mint_data)?;
-    *mint.init_extension::<ConfidentialTransferMint>()? = *ct_mint;
+    *mint.init_extension::<ConfidentialTransferMint>()? = *confidential_transfer_mint;
 
     Ok(())
 }
@@ -56,7 +56,7 @@ fn process_initialize_mint(
 /// Processes an [UpdateMint] instruction.
 fn process_update_mint(
     accounts: &[AccountInfo],
-    new_ct_mint: &ConfidentialTransferMint,
+    new_confidential_transfer_mint: &ConfidentialTransferMint,
 ) -> ProgramResult {
     let account_info_iter = &mut accounts.iter();
     let mint_info = next_account_info(account_info_iter)?;
@@ -66,14 +66,14 @@ fn process_update_mint(
     check_program_account(mint_info.owner)?;
     let mint_data = &mut mint_info.data.borrow_mut();
     let mut mint = StateWithExtensionsMut::<Mint>::unpack(mint_data)?;
-    let ct_mint = mint.get_extension_mut::<ConfidentialTransferMint>()?;
+    let confidential_transfer_mint = mint.get_extension_mut::<ConfidentialTransferMint>()?;
 
     if authority_info.is_signer
-        && ct_mint.authority == *authority_info.key
+        && confidential_transfer_mint.authority == *authority_info.key
         && (new_authority_info.is_signer || *new_authority_info.key == Pubkey::default())
-        && new_ct_mint.authority == *new_authority_info.key
+        && new_confidential_transfer_mint.authority == *new_authority_info.key
     {
-        *ct_mint = *new_ct_mint;
+        *confidential_transfer_mint = *new_confidential_transfer_mint;
         Ok(())
     } else {
         Err(ProgramError::MissingRequiredSignature)
@@ -989,8 +989,10 @@ fn process_withdraw_withheld_tokens_from_accounts(
     )?;
 
     // withdraw withheld authority ElGamal pubkey should match in the proof data and mint
-    let ct_mint = mint.get_extension_mut::<ConfidentialTransferMint>()?;
-    if proof_data.pubkey_withdraw_withheld_authority != ct_mint.pubkey_withdraw_withheld_authority {
+    let confidential_transfer_mint = mint.get_extension_mut::<ConfidentialTransferMint>()?;
+    if proof_data.pubkey_withdraw_withheld_authority
+        != confidential_transfer_mint.pubkey_withdraw_withheld_authority
+    {
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
 

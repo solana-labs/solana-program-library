@@ -296,6 +296,10 @@ pub enum ConfidentialTransferInstruction {
     ///
     ///   0. `[writable]` The mint.
     ///   1. ..1+N `[writable]` The source accounts to harvest from.
+    ///
+    /// Data expected by this instruction:
+    ///   None
+    ///
     HarvestWithheldTokensToMint,
 }
 
@@ -969,8 +973,6 @@ pub fn withdraw_withheld_tokens_from_accounts(
         )?,
     ])
 }
-
-/// Creates a `WithdrawWithheldTokensFromAccounts` instruction
 
 /// Creates a `HarvestWithheldTokensToMint` instruction
 pub fn harvest_withheld_tokens_to_mint(
