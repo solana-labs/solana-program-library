@@ -15,15 +15,15 @@ pub mod instruction;
 /// Confidential Transfer Extension processor
 pub mod processor;
 
-/// Confidential Transfer Extension processor
+/// ElGamal public key used for encryption
 pub type EncryptionPubkey = pod::ElGamalPubkey;
-/// Confidential Transfer Extension processor
+/// ElGamal ciphertext containing an account balance
 pub type EncryptedBalance = pod::ElGamalCiphertext;
-/// Confidential Transfer Extension processor
+/// Authenticated encryption containing an account balance
 pub type DecryptableBalance = pod::AeCiphertext;
-/// Confidential Transfer Extension processor
+/// (aggregated) ElGamal ciphertext containing a transfer fee
 pub type EncryptedFee = pod::FeeEncryption;
-/// Confidential Transfer Extension processor
+/// ElGamal ciphertext containing a withheld amount
 pub type EncryptedWithheldAmount = pod::ElGamalCiphertext;
 
 /// Confidential transfer mint configuration
