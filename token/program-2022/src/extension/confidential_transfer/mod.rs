@@ -15,11 +15,16 @@ pub mod instruction;
 /// Confidential Transfer Extension processor
 pub mod processor;
 
-type EncryptionPubkey = pod::ElGamalPubkey;
-type EncryptedBalance = pod::ElGamalCiphertext;
-type DecryptableBalance = pod::AeCiphertext;
-type EncryptedFee = pod::FeeEncryption;
-type EncryptedWithheldAmount = pod::ElGamalCiphertext;
+/// Confidential Transfer Extension processor
+pub type EncryptionPubkey = pod::ElGamalPubkey;
+/// Confidential Transfer Extension processor
+pub type EncryptedBalance = pod::ElGamalCiphertext;
+/// Confidential Transfer Extension processor
+pub type DecryptableBalance = pod::AeCiphertext;
+/// Confidential Transfer Extension processor
+pub type EncryptedFee = pod::FeeEncryption;
+/// Confidential Transfer Extension processor
+pub type EncryptedWithheldAmount = pod::ElGamalCiphertext;
 
 /// Confidential transfer mint configuration
 #[repr(C)]

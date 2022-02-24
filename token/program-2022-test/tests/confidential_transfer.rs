@@ -10,10 +10,12 @@ use {
     },
     spl_token_2022::{
         extension::{
-            confidential_transfer::{ConfidentialTransferAccount, ConfidentialTransferMint},
+            confidential_transfer::{
+                ConfidentialTransferAccount, ConfidentialTransferMint, EncryptedWithheldAmount,
+            },
             ExtensionType,
         },
-        solana_zk_token_sdk::encryption::elgamal::*,
+        solana_zk_token_sdk::{encryption::elgamal::*, zk_token_elgamal::pod::Zeroable},
     },
     spl_token_client::token::{ExtensionInitializationParams, TokenError as TokenClientError},
     std::convert::TryInto,
@@ -36,8 +38,9 @@ impl ConfidentialTransferMintWithKeypairs {
         let ct_mint = ConfidentialTransferMint {
             authority: ct_mint_authority.pubkey().into(),
             auto_approve_new_accounts: true.into(),
-            transfer_auditor: ct_mint_transfer_auditor.public.into(),
-            withdraw_withheld_authority: ct_mint_withdraw_withheld_authority.public.into(),
+            pubkey_auditor: ct_mint_transfer_auditor.public.into(),
+            pubkey_withdraw_withheld_authority: ct_mint_withdraw_withheld_authority.public.into(),
+            withheld_amount: EncryptedWithheldAmount::zeroed(),
         };
         Self {
             ct_mint,
@@ -162,7 +165,7 @@ async fn ct_configure_token_account() {
     assert!(!bool::from(&extension.approved));
     assert!(bool::from(&extension.allow_balance_credits));
     assert_eq!(
-        extension.elgamal_pubkey,
+        extension.pubkey_elgamal,
         alice_elgamal_keypair.public.into()
     );
     assert_eq!(
