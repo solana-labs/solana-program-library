@@ -2,7 +2,15 @@ import { struct, u32, u8 } from '@solana/buffer-layout';
 import { publicKey, u64 } from '@solana/buffer-layout-utils';
 import { Commitment, Connection, PublicKey } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '../constants';
-import { TokenAccountNotFoundError, TokenInvalidAccountOwnerError, TokenInvalidAccountSizeError } from '../errors';
+import {
+    TokenAccountNotFoundError,
+    TokenInvalidAccountError,
+    TokenInvalidAccountOwnerError,
+    TokenInvalidAccountSizeError,
+} from '../errors';
+import { MULTISIG_SIZE } from './multisig';
+import { AccountType, ACCOUNT_TYPE_SIZE } from '../extensions/accountType';
+import { ExtensionType, getAccountLen } from '../extensions/extensionType';
 
 /** Information about a token account */
 export interface Account {
@@ -31,6 +39,7 @@ export interface Account {
     rentExemptReserve: bigint | null;
     /** Optional authority to close the account */
     closeAuthority: PublicKey | null;
+    tlvData: Buffer;
 }
 
 /** Token account state as stored by the program */
@@ -94,7 +103,13 @@ export async function getAccount(
     if (!info.owner.equals(programId)) throw new TokenInvalidAccountOwnerError();
     if (info.data.length < ACCOUNT_SIZE) throw new TokenInvalidAccountSizeError();
 
-    const rawAccount = AccountLayout.decode(info.data);
+    const rawAccount = AccountLayout.decode(info.data.slice(0, ACCOUNT_SIZE));
+    let tlvData = Buffer.alloc(0);
+    if (info.data.length > ACCOUNT_SIZE) {
+        if (info.data.length === MULTISIG_SIZE) throw new TokenInvalidAccountSizeError();
+        if (info.data[ACCOUNT_SIZE] != AccountType.Account) throw new TokenInvalidAccountError();
+        tlvData = info.data.slice(ACCOUNT_SIZE + ACCOUNT_TYPE_SIZE);
+    }
 
     return {
         address,
@@ -108,10 +123,11 @@ export async function getAccount(
         isNative: !!rawAccount.isNativeOption,
         rentExemptReserve: rawAccount.isNativeOption ? rawAccount.isNative : null,
         closeAuthority: rawAccount.closeAuthorityOption ? rawAccount.closeAuthority : null,
+        tlvData,
     };
 }
 
-/** Get the minimum lamport balance for a token account to be rent exempt
+/** Get the minimum lamport balance for a base token account to be rent exempt
  *
  * @param connection Connection to use
  * @param commitment Desired level of commitment for querying the state
@@ -122,5 +138,21 @@ export async function getMinimumBalanceForRentExemptAccount(
     connection: Connection,
     commitment?: Commitment
 ): Promise<number> {
-    return await connection.getMinimumBalanceForRentExemption(ACCOUNT_SIZE, commitment);
+    return await getMinimumBalanceForRentExemptAccountWithExtensions(connection, [], commitment);
+}
+
+/** Get the minimum lamport balance for a rent-exempt token account with extensions
+ *
+ * @param connection Connection to use
+ * @param commitment Desired level of commitment for querying the state
+ *
+ * @return Amount of lamports required
+ */
+export async function getMinimumBalanceForRentExemptAccountWithExtensions(
+    connection: Connection,
+    extensions: ExtensionType[],
+    commitment?: Commitment
+): Promise<number> {
+    const accountLen = getAccountLen(extensions);
+    return await connection.getMinimumBalanceForRentExemption(accountLen, commitment);
 }

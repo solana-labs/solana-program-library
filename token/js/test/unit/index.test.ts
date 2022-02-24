@@ -11,6 +11,8 @@ import {
     TOKEN_PROGRAM_ID,
     TOKEN_2022_PROGRAM_ID,
     TokenOwnerOffCurveError,
+    getAccountLen,
+    ExtensionType,
 } from '../../src';
 
 chai.use(chaiAsPromised);
@@ -114,5 +116,13 @@ describe('state', () => {
         expect(associatedPublicKey2.toString()).to.eql(
             new PublicKey('F3DmXZFqkfEWFA7MN2vDPs813GeEWPaT6nLk4PSGuWJd').toString()
         );
+    });
+});
+
+describe('extensionType', () => {
+    it('calculates size', () => {
+        expect(getAccountLen([ExtensionType.MintCloseAuthority, ExtensionType.TransferFeeConfig])).to.eql(314);
+        expect(getAccountLen([])).to.eql(165);
+        expect(getAccountLen([ExtensionType.ImmutableOwner])).to.eql(170);
     });
 });
