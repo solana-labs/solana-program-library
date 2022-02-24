@@ -51,4 +51,13 @@ fn main() {
             println!("cargo:warning=(not a warning) {}", sub);
         }
     }
+
+    // Set the temporary `twoxtx` cfg if `../twoxtx-setup.sh` was run
+    let twoxtx_solana_dir = cwd
+        .parent()
+        .expect("Unable to get parent directory of current working dir")
+        .join("twoxtx-solana");
+    if twoxtx_solana_dir.exists() {
+        println!("cargo:rustc-cfg=twoxtx");
+    }
 }
