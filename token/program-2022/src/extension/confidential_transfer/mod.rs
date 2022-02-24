@@ -74,10 +74,10 @@ pub struct ConfidentialTransferAccount {
     /// The public key associated with ElGamal encryption
     pub pubkey_elgamal: EncryptionPubkey,
 
-    /// The pending balance (encrypted by `elgamal_pubkey`)
+    /// The pending balance (encrypted by `pubkey_elgamal`)
     pub pending_balance: EncryptedBalance,
 
-    /// The available balance (encrypted by `elgamal_pubkey`)
+    /// The available balance (encrypted by `pubkey_elgamal`)
     pub available_balance: EncryptedBalance,
 
     /// The decryptable available balance

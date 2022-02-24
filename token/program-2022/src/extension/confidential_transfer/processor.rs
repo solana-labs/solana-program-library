@@ -468,7 +468,7 @@ fn process_transfer(
     let previous_instruction =
         get_instruction_relative(proof_instruction_offset, instructions_sysvar_info)?;
 
-    if let Ok(fee_mint) = mint.get_extension::<TransferFeeConfig>() {
+    if let Ok(transfer_fee_config) = mint.get_extension::<TransferFeeConfig>() {
         // mint is extended for fees
         let proof_data = decode_proof_instruction::<TransferWithFeeData>(
             ProofInstruction::VerifyTransfer,
@@ -493,15 +493,23 @@ fn process_transfer(
         // fee parameters in proof data and mint must match
         let epoch = Clock::get()?.epoch;
         let (maximum_fee, transfer_fee_basis_points) =
-            if u64::from(fee_mint.newer_transfer_fee.epoch) < epoch {
+            if u64::from(transfer_fee_config.newer_transfer_fee.epoch) < epoch {
                 (
-                    u64::from(fee_mint.older_transfer_fee.maximum_fee),
-                    u16::from(fee_mint.older_transfer_fee.transfer_fee_basis_points),
+                    u64::from(transfer_fee_config.older_transfer_fee.maximum_fee),
+                    u16::from(
+                        transfer_fee_config
+                            .older_transfer_fee
+                            .transfer_fee_basis_points,
+                    ),
                 )
             } else {
                 (
-                    u64::from(fee_mint.newer_transfer_fee.maximum_fee),
-                    u16::from(fee_mint.newer_transfer_fee.transfer_fee_basis_points),
+                    u64::from(transfer_fee_config.newer_transfer_fee.maximum_fee),
+                    u16::from(
+                        transfer_fee_config
+                            .newer_transfer_fee
+                            .transfer_fee_basis_points,
+                    ),
                 )
             };
 
@@ -836,9 +844,9 @@ fn process_withdraw_withheld_tokens_from_mint(
 
     // mint must be extended for fees
     {
-        let fee_mint = mint.get_extension::<TransferFeeConfig>()?;
+        let transfer_fee_config = mint.get_extension::<TransferFeeConfig>()?;
         let withdraw_withheld_authority =
-            Option::<Pubkey>::from(fee_mint.withdraw_withheld_authority)
+            Option::<Pubkey>::from(transfer_fee_config.withdraw_withheld_authority)
                 .ok_or(TokenError::NoAuthorityExists)?;
         Processor::validate_owner(
             program_id,
@@ -847,7 +855,7 @@ fn process_withdraw_withheld_tokens_from_mint(
             authority_info_data_len,
             account_info_iter.as_slice(),
         )?;
-    } // free `fee_mint` to borrow `confidential_transfer_mint` as mutable
+    } // free `transfer_fee_config` to borrow `confidential_transfer_mint` as mutable
 
     let confidential_transfer_mint = mint.get_extension_mut::<ConfidentialTransferMint>()?;
 
@@ -927,9 +935,10 @@ fn process_withdraw_withheld_tokens_from_accounts(
     let mut mint = StateWithExtensionsMut::<Mint>::unpack(&mut mint_data)?;
 
     // mint must be extended for fees
-    let fee_mint = mint.get_extension::<TransferFeeConfig>()?;
-    let withdraw_withheld_authority = Option::<Pubkey>::from(fee_mint.withdraw_withheld_authority)
-        .ok_or(TokenError::NoAuthorityExists)?;
+    let transfer_fee_config = mint.get_extension::<TransferFeeConfig>()?;
+    let withdraw_withheld_authority =
+        Option::<Pubkey>::from(transfer_fee_config.withdraw_withheld_authority)
+            .ok_or(TokenError::NoAuthorityExists)?;
     Processor::validate_owner(
         program_id,
         &withdraw_withheld_authority,
