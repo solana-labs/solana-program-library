@@ -520,11 +520,11 @@ fn process_transfer(
             return Err(TokenError::FeeParametersMismatch.into());
         }
 
-        let ciphertext_lo= EncryptedBalance::from((
+        let ciphertext_lo = EncryptedBalance::from((
             proof_data.ciphertext_lo.commitment,
             proof_data.ciphertext_lo.handle_source,
         ));
-        let ciphertext_hi= EncryptedBalance::from((
+        let ciphertext_hi = EncryptedBalance::from((
             proof_data.ciphertext_hi.commitment,
             proof_data.ciphertext_hi.handle_source,
         ));
@@ -559,11 +559,11 @@ fn process_transfer(
             return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
         }
 
-        let ciphertext_lo= EncryptedBalance::from((
+        let ciphertext_lo = EncryptedBalance::from((
             proof_data.ciphertext_lo.commitment,
             proof_data.ciphertext_lo.handle_source,
         ));
-        let ciphertext_hi= EncryptedBalance::from((
+        let ciphertext_hi = EncryptedBalance::from((
             proof_data.ciphertext_hi.commitment,
             proof_data.ciphertext_hi.handle_source,
         ));
