@@ -54,11 +54,16 @@ jobs:
           ./ci/install-program-deps.sh
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
-      - name: Build and test
+      - name: Build and test token
         run: ./ci/cargo-test-bpf.sh token
 
-      - name: Build and test
+      - name: Build and test ATA
         run: ./ci/cargo-test-bpf.sh associated-token-account
+
+      - name: Build and test token-2022 twoxtx (TEMPORARY)
+        run: |
+          ./token/twoxtx-setup.sh
+          ./ci/cargo-test-bpf.sh token/program-2022-test
 
       - name: Upload programs
         uses: actions/upload-artifact@v2
