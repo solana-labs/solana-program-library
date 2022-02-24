@@ -70,42 +70,49 @@ async fn test_memo_transfers(
     let bob_state = token.get_account_info(&bob_account).await.unwrap();
     assert_eq!(bob_state.base.amount, 0);
 
-    // attempt to transfer from alice to bob with misplaced memo
-    let mut ctx = context.lock().await;
-    #[allow(deprecated)]
-    let instructions = vec![
-        spl_memo::build_memo(&[240, 159, 166, 150], &[]),
-        system_instruction::transfer(&ctx.payer.pubkey(), &alice.pubkey(), 42),
-        spl_token_2022::instruction::transfer(
-            &spl_token_2022::id(),
-            &alice_account,
-            &bob_account,
-            &alice.pubkey(),
-            &[],
-            10,
-        )
-        .unwrap(),
-    ];
-    let tx = Transaction::new_signed_with_payer(
-        &instructions,
-        Some(&ctx.payer.pubkey()),
-        &[&ctx.payer, &alice],
-        ctx.last_blockhash,
-    );
-    let err: TransactionError = ctx
-        .banks_client
-        .process_transaction(tx)
-        .await
-        .unwrap_err()
-        .unwrap()
-        .into();
-    drop(ctx);
-    assert_eq!(
-        err,
-        TransactionError::InstructionError(2, InstructionError::Custom(TokenError::NoMemo as u32))
-    );
-    let bob_state = token.get_account_info(&bob_account).await.unwrap();
-    assert_eq!(bob_state.base.amount, 0);
+    // attempt to transfer from alice to bob with misplaced memo, v1 and current
+    let mut memo_ix = spl_memo::build_memo(&[240, 159, 166, 150], &[]);
+    for program_id in [spl_memo::id(), spl_memo::v1::id()] {
+        let mut ctx = context.lock().await;
+        memo_ix.program_id = program_id;
+        #[allow(deprecated)]
+        let instructions = vec![
+            memo_ix.clone(),
+            system_instruction::transfer(&ctx.payer.pubkey(), &alice.pubkey(), 42),
+            spl_token_2022::instruction::transfer(
+                &spl_token_2022::id(),
+                &alice_account,
+                &bob_account,
+                &alice.pubkey(),
+                &[],
+                10,
+            )
+            .unwrap(),
+        ];
+        let tx = Transaction::new_signed_with_payer(
+            &instructions,
+            Some(&ctx.payer.pubkey()),
+            &[&ctx.payer, &alice],
+            ctx.last_blockhash,
+        );
+        let err: TransactionError = ctx
+            .banks_client
+            .process_transaction(tx)
+            .await
+            .unwrap_err()
+            .unwrap()
+            .into();
+        drop(ctx);
+        assert_eq!(
+            err,
+            TransactionError::InstructionError(
+                2,
+                InstructionError::Custom(TokenError::NoMemo as u32)
+            )
+        );
+        let bob_state = token.get_account_info(&bob_account).await.unwrap();
+        assert_eq!(bob_state.base.amount, 0);
+    }
 
     // transfer with memo
     token
@@ -116,6 +123,33 @@ async fn test_memo_transfers(
     let bob_state = token.get_account_info(&bob_account).await.unwrap();
     assert_eq!(bob_state.base.amount, 10);
 
+    // transfer with memo v1
+    let mut ctx = context.lock().await;
+    memo_ix.program_id = spl_memo::v1::id();
+    #[allow(deprecated)]
+    let instructions = vec![
+        memo_ix,
+        spl_token_2022::instruction::transfer(
+            &spl_token_2022::id(),
+            &alice_account,
+            &bob_account,
+            &alice.pubkey(),
+            &[],
+            11,
+        )
+        .unwrap(),
+    ];
+    let tx = Transaction::new_signed_with_payer(
+        &instructions,
+        Some(&ctx.payer.pubkey()),
+        &[&ctx.payer, &alice],
+        ctx.last_blockhash,
+    );
+    ctx.banks_client.process_transaction(tx).await.unwrap();
+    drop(ctx);
+    let bob_state = token.get_account_info(&bob_account).await.unwrap();
+    assert_eq!(bob_state.base.amount, 21);
+
     // stop requiring memo transfers into bob_account
     token
         .disable_required_transfer_memos(&bob_account, &bob)
@@ -124,11 +158,11 @@ async fn test_memo_transfers(
 
     // transfer from alice to bob without memo
     token
-        .transfer_unchecked(&alice_account, &bob_account, &alice, 11)
+        .transfer_unchecked(&alice_account, &bob_account, &alice, 12)
         .await
         .unwrap();
     let bob_state = token.get_account_info(&bob_account).await.unwrap();
-    assert_eq!(bob_state.base.amount, 21);
+    assert_eq!(bob_state.base.amount, 33);
 }
 
 #[tokio::test]
