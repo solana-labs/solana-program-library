@@ -34,7 +34,7 @@
         "test": "yarn test:unit && yarn test:e2e-built && yarn test:e2e-native && yarn test:e2e-2022",
         "test:unit": "mocha test/unit",
         "test:e2e-built": "start-server-and-test 'solana-test-validator --bpf-program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA ../../target/deploy/spl_token.so --reset --quiet' http://localhost:8899/health 'mocha test/e2e'",
-        "test:e2e-2022": "TEST_PROGRAM_ID=TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb start-server-and-test 'solana-test-validator --bpf-program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL ../../target/deploy/spl_associated_token_account.so --bpf-program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb ../../target/deploy/spl_token_2022.so --reset --quiet' http://localhost:8899/health 'mocha test/e2e'",
+        "test:e2e-2022": "TEST_PROGRAM_ID=TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb start-server-and-test 'solana-test-validator --bpf-program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL ../../target/deploy/spl_associated_token_account.so --bpf-program TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb ../../target/deploy/spl_token_2022.so --reset --quiet' http://localhost:8899/health 'mocha test/e2e*'",
         "test:e2e-native": "start-server-and-test 'solana-test-validator --reset --quiet' http://localhost:8899/health 'mocha test/e2e'",
         "docs": "shx rm -rf docs && NODE_OPTIONS=--max_old_space_size=4096 typedoc && shx cp .nojekyll docs/",
         "fmt": "prettier --write '{*,**/*}.{js,ts,jsx,tsx,json}'",

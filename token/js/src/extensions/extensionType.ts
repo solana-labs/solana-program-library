@@ -2,6 +2,7 @@ import { ACCOUNT_SIZE } from '../state/account';
 import { Mint, MINT_SIZE } from '../state/mint';
 import { MULTISIG_SIZE } from '../state/multisig';
 import { ACCOUNT_TYPE_SIZE } from './accountType';
+import { MINT_CLOSE_AUTHORITY_SIZE } from './mintCloseAuthority';
 
 export enum ExtensionType {
     Uninitialized,
@@ -29,7 +30,7 @@ export function getTypeLen(e: ExtensionType): number {
         case ExtensionType.TransferFeeAmount:
             return 8;
         case ExtensionType.MintCloseAuthority:
-            return 32;
+            return MINT_CLOSE_AUTHORITY_SIZE;
         case ExtensionType.ConfidentialTransferMint:
             return 97;
         case ExtensionType.ConfidentialTransferAccount:
