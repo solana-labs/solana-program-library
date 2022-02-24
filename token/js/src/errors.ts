@@ -10,6 +10,11 @@ export class TokenAccountNotFoundError extends TokenError {
     name = 'TokenAccountNotFoundError';
 }
 
+/** Thrown if a program state account is not a valid Account */
+export class TokenInvalidAccountError extends TokenError {
+    name = 'TokenInvalidAccountError';
+}
+
 /** Thrown if a program state account is not owned by the expected token program */
 export class TokenInvalidAccountOwnerError extends TokenError {
     name = 'TokenInvalidAccountOwnerError';

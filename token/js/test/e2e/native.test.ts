@@ -21,7 +21,7 @@ import {
     createWrappedNativeAccount,
     syncNative,
 } from '../../src';
-import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from './common';
+import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from '../common';
 
 describe('native', () => {
     let connection: Connection;

@@ -6,8 +6,13 @@ import {
     TokenAccountNotFoundError,
     TokenInvalidAccountOwnerError,
     TokenInvalidAccountSizeError,
+    TokenInvalidMintError,
     TokenOwnerOffCurveError,
 } from '../errors';
+import { ACCOUNT_SIZE } from './account';
+import { MULTISIG_SIZE } from './multisig';
+import { AccountType, ACCOUNT_TYPE_SIZE } from '../extensions/accountType';
+import { ExtensionType, getMintLen } from '../extensions/extensionType';
 
 /** Information about a mint */
 export interface Mint {
@@ -26,6 +31,8 @@ export interface Mint {
     isInitialized: boolean;
     /** Optional authority to freeze token accounts */
     freezeAuthority: PublicKey | null;
+    /** Additional data for extension */
+    tlvData: Buffer;
 }
 
 /** Mint as stored by the program */
@@ -72,9 +79,16 @@ export async function getMint(
     const info = await connection.getAccountInfo(address, commitment);
     if (!info) throw new TokenAccountNotFoundError();
     if (!info.owner.equals(programId)) throw new TokenInvalidAccountOwnerError();
-    if (info.data.length != MINT_SIZE) throw new TokenInvalidAccountSizeError();
+    if (info.data.length < MINT_SIZE) throw new TokenInvalidAccountSizeError();
 
-    const rawMint = MintLayout.decode(info.data);
+    const rawMint = MintLayout.decode(info.data.slice(0, MINT_SIZE));
+    let tlvData = Buffer.alloc(0);
+    if (info.data.length > MINT_SIZE) {
+        if (info.data.length <= ACCOUNT_SIZE) throw new TokenInvalidAccountSizeError();
+        if (info.data.length === MULTISIG_SIZE) throw new TokenInvalidAccountSizeError();
+        if (info.data[ACCOUNT_SIZE] != AccountType.Mint) throw new TokenInvalidMintError();
+        tlvData = info.data.slice(ACCOUNT_SIZE + ACCOUNT_TYPE_SIZE);
+    }
 
     return {
         address,
@@ -83,6 +97,7 @@ export async function getMint(
         decimals: rawMint.decimals,
         isInitialized: rawMint.isInitialized,
         freezeAuthority: rawMint.freezeAuthorityOption ? rawMint.freezeAuthority : null,
+        tlvData,
     };
 }
 
@@ -97,7 +112,24 @@ export async function getMinimumBalanceForRentExemptMint(
     connection: Connection,
     commitment?: Commitment
 ): Promise<number> {
-    return await connection.getMinimumBalanceForRentExemption(MINT_SIZE, commitment);
+    return await getMinimumBalanceForRentExemptMintWithExtensions(connection, [], commitment);
+}
+
+/** Get the minimum lamport balance for a rent-exempt mint with extensions
+ *
+ * @param connection Connection to use
+ * @param extensions Extension types included in the mint
+ * @param commitment Desired level of commitment for querying the state
+ *
+ * @return Amount of lamports required
+ */
+export async function getMinimumBalanceForRentExemptMintWithExtensions(
+    connection: Connection,
+    extensions: ExtensionType[],
+    commitment?: Commitment
+): Promise<number> {
+    const mintLen = getMintLen(extensions);
+    return await connection.getMinimumBalanceForRentExemption(mintLen, commitment);
 }
 
 /**

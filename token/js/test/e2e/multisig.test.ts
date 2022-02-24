@@ -17,7 +17,7 @@ import {
     setAuthority,
 } from '../../src';
 
-import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from './common';
+import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from '../common';
 
 const TEST_TOKEN_DECIMALS = 2;
 const M = 2;
