@@ -370,7 +370,7 @@ pub struct ApplyPendingBalanceData {
 #[repr(C)]
 pub struct WithdrawWithheldTokensFromMintData {
     /// Relative location of the `ProofInstruction::VerifyWithdrawWithheld` instruction to the
-    /// `WtihdrawWithheldTokensFromMint` instruction in the transaction
+    /// `WithdrawWithheldTokensFromMint` instruction in the transaction
     pub proof_instruction_offset: i8,
 }
 
