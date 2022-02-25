@@ -348,7 +348,6 @@ pub enum GovernanceInstruction {
     ///   5. `[signer]` Payer
     ///   6. `[]` SPL Token program
     ///   7. `[]` System program
-    ///   8. `[]` Sysvar Rent
     ///   8. `[signer]` Governance authority
     ///   9. `[]` Realm Config
     ///   10. `[]` Optional Voter Weight Record
