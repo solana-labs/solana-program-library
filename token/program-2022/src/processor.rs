@@ -1381,8 +1381,8 @@ impl PrintProgramError for TokenError {
             TokenError::ConfidentialTransferElGamalPubkeyMismatch => {
                 msg!("Error: ElGamal public key mismatch")
             }
-            TokenError::ConfidentialTransferAvailableBalanceMismatch => {
-                msg!("Error: Available balance mismatch")
+            TokenError::ConfidentialTransferBalanceMismatch => {
+                msg!("Error: Balance mismatch")
             }
             TokenError::MintHasSupply => {
                 msg!("Error: Mint has non-zero supply. Burn all tokens before closing the mint")
