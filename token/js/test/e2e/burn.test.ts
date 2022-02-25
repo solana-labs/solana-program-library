@@ -4,7 +4,7 @@ chai.use(chaiAsPromised);
 
 import { Connection, Keypair, PublicKey, Signer } from '@solana/web3.js';
 import { createMint, createAccount, getAccount, mintTo, burn, burnChecked } from '../../src';
-import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from './common';
+import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from '../common';
 
 const TEST_TOKEN_DECIMALS = 2;
 describe('burn', () => {

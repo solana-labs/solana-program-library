@@ -24,6 +24,7 @@ use {
         clock::Clock,
         decode_error::DecodeError,
         entrypoint::ProgramResult,
+        instruction::get_processed_sibling_instruction,
         msg,
         program::{invoke, invoke_signed, set_return_data},
         program_error::{PrintProgramError, ProgramError},
@@ -377,7 +378,16 @@ impl Processor {
         }
 
         if memo_required(&dest_account) {
-            // TODO: use get_processed_instructions syscall to check for memo
+            let is_memo_program = |program_id: &Pubkey| -> bool {
+                program_id == &spl_memo::id() || program_id == &spl_memo::v1::id()
+            };
+            let previous_instruction = get_processed_sibling_instruction(0);
+            match previous_instruction {
+                Some(instruction) if is_memo_program(&instruction.program_id) => {}
+                _ => {
+                    return Err(TokenError::NoMemo.into());
+                }
+            }
         }
 
         source_account.base.amount = source_account
@@ -1397,6 +1407,9 @@ impl PrintProgramError for TokenError {
             }
             TokenError::AccountHasWithheldTransferFees => {
                 msg!("Error: An account can only be closed if its withheld fee balance is zero, harvest fees to the mint and try again");
+            }
+            TokenError::NoMemo => {
+                msg!("Error: No memo in previous instruction; required for recipient to receive a transfer");
             }
         }
     }

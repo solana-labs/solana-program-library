@@ -4,10 +4,10 @@ chai.use(chaiAsPromised);
 
 import { Connection, Keypair, PublicKey, Signer } from '@solana/web3.js';
 import { createMint, createAccount, closeAccount, mintTo } from '../../src';
-import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from './common';
+import { TEST_PROGRAM_ID, newAccountWithLamports, getConnection } from '../common';
 
 const TEST_TOKEN_DECIMALS = 2;
-describe('freezeThaw', () => {
+describe('close', () => {
     let connection: Connection;
     let payer: Signer;
     let mint: PublicKey;

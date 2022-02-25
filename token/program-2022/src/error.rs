@@ -135,6 +135,9 @@ pub enum TokenError {
     /// mint and try again
     #[error("An account can only be closed if its withheld fee balance is zero, harvest fees to the mint and try again")]
     AccountHasWithheldTransferFees,
+    /// No memo in previous instruction; required for recipient to receive a transfer
+    #[error("No memo in previous instruction; required for recipient to receive a transfer")]
+    NoMemo,
 }
 impl From<TokenError> for ProgramError {
     fn from(e: TokenError) -> Self {
