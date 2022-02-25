@@ -279,7 +279,7 @@ pub enum ConfidentialTransferInstruction {
     ///   1. `[writable]` The fee receiver account. Must include the `TransferFeeAmount` and
     ///      `ConfidentialTransferAccount` extensions.
     ///   2. `[]` Instructions sysvar.
-    ///   3. `[]` The mint's `withdraw_withheld_authority`'s multisignature owner/delegate.
+    ///   3. `[]` The mint's multisig `withdraw_withheld_authority`.
     ///   4. ..3+M `[signer]` M signer accounts.
     ///
     /// Data expected by this instruction:
@@ -321,7 +321,7 @@ pub enum ConfidentialTransferInstruction {
     ///   1. `[writable]` The fee receiver account. Must include the `TransferFeeAmount` and
     ///      `ConfidentialTransferAccount` extensions.
     ///   2. `[]` Instructions sysvar.
-    ///   3. `[]` The mint's `withdraw_withheld_authority`'s multisignature owner/delegate.
+    ///   3. `[]` The mint's multisig `withdraw_withheld_authority`.
     ///   4. ..4+M `[signer]` M signer accounts.
     ///   4+M+1. ..3+M+N `[writable]` The source accounts to withdraw from.
     ///
