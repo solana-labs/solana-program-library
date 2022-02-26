@@ -75,7 +75,7 @@ pub enum TransferFeeInstruction {
     ///   * Multisignature owner/delegate
     ///   0. `[writable]` The token mint.
     ///   1. `[writable]` The destination account.
-    ///   2. `[]` The mint's `withdraw_withheld_authority`'s multisignature owner/delegate.
+    ///   2. `[]` The mint's multisig `withdraw_withheld_authority`.
     ///   3. ..3+M `[signer]` M signer accounts.
     WithdrawWithheldTokensFromMint,
     /// Transfer all withheld tokens to an account. Signed by the mint's
@@ -93,7 +93,7 @@ pub enum TransferFeeInstruction {
     ///   * Multisignature owner/delegate
     ///   0. `[]` The token mint.
     ///   1. `[writable]` The destination account.
-    ///   2. `[]` The mint's `withdraw_withheld_authority`'s multisignature owner/delegate.
+    ///   2. `[]` The mint's multisig `withdraw_withheld_authority`.
     ///   3. ..3+M `[signer]` M signer accounts.
     ///   3+M+1. ..3+M+N `[writable]` The source accounts to withdraw from.
     WithdrawWithheldTokensFromAccounts {
