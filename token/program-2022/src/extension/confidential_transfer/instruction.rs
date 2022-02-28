@@ -574,7 +574,7 @@ pub fn inner_empty_account(
 ) -> Result<Instruction, ProgramError> {
     check_program_account(token_program_id)?;
     let mut accounts = vec![
-        AccountMeta::new_readonly(*token_account, false),
+        AccountMeta::new(*token_account, false),
         AccountMeta::new_readonly(sysvar::instructions::id(), false),
         AccountMeta::new_readonly(*authority, multisig_signers.is_empty()),
     ];

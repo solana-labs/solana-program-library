@@ -520,12 +520,11 @@ fn process_transfer(
             return Err(TokenError::FeeParametersMismatch.into());
         }
 
-        // Process source account
-        let ciphertext_lo_source = EncryptedBalance::from((
+        let ciphertext_lo= EncryptedBalance::from((
             proof_data.ciphertext_lo.commitment,
             proof_data.ciphertext_lo.handle_source,
         ));
-        let ciphertext_hi_source = EncryptedBalance::from((
+        let ciphertext_hi= EncryptedBalance::from((
             proof_data.ciphertext_hi.commitment,
             proof_data.ciphertext_hi.handle_source,
         ));
@@ -537,27 +536,16 @@ fn process_transfer(
             authority_info,
             account_info_iter.as_slice(),
             &proof_data.transfer_with_fee_pubkeys.pubkey_source,
-            ciphertext_lo_source,
-            ciphertext_hi_source,
+            &ciphertext_lo,
+            &ciphertext_hi,
             new_source_decryptable_available_balance,
         )?;
-
-        // Process destination account (with fee)
-        let ciphertext_lo_dest = EncryptedBalance::from((
-            proof_data.ciphertext_lo.commitment,
-            proof_data.ciphertext_lo.handle_source,
-        ));
-        let ciphertext_hi_dest = EncryptedBalance::from((
-            proof_data.ciphertext_hi.commitment,
-            proof_data.ciphertext_hi.handle_source,
-        ));
-
         process_dest_for_transfer(
             dest_token_account_info,
             mint_info,
             &proof_data.transfer_with_fee_pubkeys.pubkey_dest,
-            ciphertext_lo_dest,
-            ciphertext_hi_dest,
+            &ciphertext_lo,
+            &ciphertext_hi,
             Some(proof_data.ciphertext_fee),
         )?;
     } else {
@@ -571,16 +559,14 @@ fn process_transfer(
             return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
         }
 
-        // Process source account
-        let ciphertext_lo_source = EncryptedBalance::from((
+        let ciphertext_lo= EncryptedBalance::from((
             proof_data.ciphertext_lo.commitment,
             proof_data.ciphertext_lo.handle_source,
         ));
-        let ciphertext_hi_source = EncryptedBalance::from((
+        let ciphertext_hi= EncryptedBalance::from((
             proof_data.ciphertext_hi.commitment,
             proof_data.ciphertext_hi.handle_source,
         ));
-
         process_source_for_transfer(
             program_id,
             token_account_info,
@@ -588,27 +574,17 @@ fn process_transfer(
             authority_info,
             account_info_iter.as_slice(),
             &proof_data.transfer_pubkeys.pubkey_source,
-            ciphertext_lo_source,
-            ciphertext_hi_source,
+            &ciphertext_lo,
+            &ciphertext_hi,
             new_source_decryptable_available_balance,
         )?;
-
-        // Process destination account (without fee)
-        let ciphertext_lo_dest = EncryptedBalance::from((
-            proof_data.ciphertext_lo.commitment,
-            proof_data.ciphertext_lo.handle_source,
-        ));
-        let ciphertext_hi_dest = EncryptedBalance::from((
-            proof_data.ciphertext_hi.commitment,
-            proof_data.ciphertext_hi.handle_source,
-        ));
 
         process_dest_for_transfer(
             dest_token_account_info,
             mint_info,
             &proof_data.transfer_pubkeys.pubkey_dest,
-            ciphertext_lo_dest,
-            ciphertext_hi_dest,
+            &ciphertext_lo,
+            &ciphertext_hi,
             None,
         )?;
     }
@@ -624,14 +600,14 @@ fn process_source_for_transfer(
     authority_info: &AccountInfo,
     signers: &[AccountInfo],
     elgamal_pubkey_source: &EncryptionPubkey,
-    ciphertext_lo_source: EncryptedBalance,
-    ciphertext_hi_source: EncryptedBalance,
+    ciphertext_lo_source: &EncryptedBalance,
+    ciphertext_hi_source: &EncryptedBalance,
     new_source_decryptable_available_balance: DecryptableBalance,
 ) -> ProgramResult {
     check_program_account(token_account_info.owner)?;
+    let authority_info_data_len = authority_info.data_len();
     let token_account_data = &mut token_account_info.data.borrow_mut();
     let mut token_account = StateWithExtensionsMut::<Account>::unpack(token_account_data)?;
-    let authority_info_data_len = authority_info.data_len();
 
     Processor::validate_owner(
         program_id,
@@ -659,8 +635,8 @@ fn process_source_for_transfer(
     let new_source_available_balance = {
         ops::subtract_with_lo_hi(
             &confidential_transfer_account.available_balance,
-            &ciphertext_lo_source,
-            &ciphertext_hi_source,
+            ciphertext_lo_source,
+            ciphertext_hi_source,
         )
         .ok_or(ProgramError::InvalidInstructionData)?
     };
@@ -676,8 +652,8 @@ fn process_dest_for_transfer(
     dest_token_account_info: &AccountInfo,
     mint_info: &AccountInfo,
     elgamal_pubkey_dest: &EncryptionPubkey,
-    ciphertext_lo_dest: EncryptedBalance,
-    ciphertext_hi_dest: EncryptedBalance,
+    ciphertext_lo_dest: &EncryptedBalance,
+    ciphertext_hi_dest: &EncryptedBalance,
     encrypted_fee: Option<EncryptedFee>,
 ) -> ProgramResult {
     check_program_account(dest_token_account_info.owner)?;
@@ -705,10 +681,10 @@ fn process_dest_for_transfer(
         return Err(TokenError::ConfidentialTransferElGamalPubkeyMismatch.into());
     }
 
-    let new_dest_pending_balance = ops::subtract_with_lo_hi(
+    let new_dest_pending_balance = ops::add_with_lo_hi(
         &dest_confidential_transfer_account.pending_balance,
-        &ciphertext_lo_dest,
-        &ciphertext_hi_dest,
+        ciphertext_lo_dest,
+        ciphertext_hi_dest,
     )
     .ok_or(ProgramError::InvalidInstructionData)?;
 
