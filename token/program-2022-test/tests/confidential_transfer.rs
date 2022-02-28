@@ -488,6 +488,15 @@ async fn ct_withdraw() {
         .await
         .unwrap();
     assert_eq!(state.base.amount, 21);
+    let extension = state
+        .get_extension::<ConfidentialTransferAccount>()
+        .unwrap();
+    assert_eq!(
+        alice_meta
+            .ae_key
+            .decrypt(&extension.decryptable_available_balance.try_into().unwrap()),
+        Some(21),
+    );
 
     token
         .confidential_transfer_withdraw(
@@ -508,6 +517,15 @@ async fn ct_withdraw() {
         .await
         .unwrap();
     assert_eq!(state.base.amount, 42);
+    let extension = state
+        .get_extension::<ConfidentialTransferAccount>()
+        .unwrap();
+    assert_eq!(
+        alice_meta
+            .ae_key
+            .decrypt(&extension.decryptable_available_balance.try_into().unwrap()),
+        Some(0),
+    );
 
     token
         .confidential_transfer_empty_account(
@@ -582,6 +600,20 @@ async fn ct_transfer() {
         .await
         .unwrap();
 
+    let state = token
+        .get_account_info(&alice_meta.token_account)
+        .await
+        .unwrap();
+    let extension = state
+        .get_extension::<ConfidentialTransferAccount>()
+        .unwrap();
+    assert_eq!(
+        alice_meta
+            .ae_key
+            .decrypt(&extension.decryptable_available_balance.try_into().unwrap()),
+        Some(42),
+    );
+
     token
         .confidential_transfer_transfer(
             &alice_meta.token_account,
@@ -594,6 +626,20 @@ async fn ct_transfer() {
         )
         .await
         .unwrap();
+
+    let state = token
+        .get_account_info(&alice_meta.token_account)
+        .await
+        .unwrap();
+    let extension = state
+        .get_extension::<ConfidentialTransferAccount>()
+        .unwrap();
+    assert_eq!(
+        alice_meta
+            .ae_key
+            .decrypt(&extension.decryptable_available_balance.try_into().unwrap()),
+        Some(0),
+    );
 
     token
         .confidential_transfer_empty_account(
@@ -617,5 +663,43 @@ async fn ct_transfer() {
         TokenClientError::Client(Box::new(TransportError::TransactionError(
             TransactionError::InstructionError(1, InstructionError::InvalidAccountData)
         )))
+    );
+
+    let state = token
+        .get_account_info(&bob_meta.token_account)
+        .await
+        .unwrap();
+    let extension = state
+        .get_extension::<ConfidentialTransferAccount>()
+        .unwrap();
+    assert_eq!(
+        bob_meta
+            .ae_key
+            .decrypt(&extension.decryptable_available_balance.try_into().unwrap()),
+        Some(0),
+    );
+
+    token
+        .confidential_transfer_apply_pending_balance(
+            &bob_meta.token_account,
+            &bob,
+            1,
+            bob_meta.ae_key.encrypt(42_u64),
+        )
+        .await
+        .unwrap();
+
+    let state = token
+        .get_account_info(&bob_meta.token_account)
+        .await
+        .unwrap();
+    let extension = state
+        .get_extension::<ConfidentialTransferAccount>()
+        .unwrap();
+    assert_eq!(
+        bob_meta
+            .ae_key
+            .decrypt(&extension.decryptable_available_balance.try_into().unwrap()),
+        Some(42),
     );
 }
