@@ -128,12 +128,17 @@ fn repair(
             ),
         );
     }
-    ixs.push(spl_token_swap::instruction::repair_closed_fee_account(
-        &program_id,
-        &pool_key,
-        &old_fee_key,
-        &ata,
-    )?);
+    if &ata != old_fee_key {
+        println!(
+            "fee address is already an ata, no need for a repair",
+        );
+        ixs.push(spl_token_swap::instruction::repair_closed_fee_account(
+            &program_id,
+            &pool_key,
+            &old_fee_key,
+            &ata,
+        )?);
+    }
     let mut tx = Transaction::new_with_payer(&ixs, Some(&client.payer_pubkey()));
     tx.sign(&[client.payer()], client.recent_blockhash()?);
     println!("sending tx");
