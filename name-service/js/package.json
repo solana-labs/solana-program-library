@@ -25,7 +25,7 @@
     "lint:fix": "yarn pretty:fix && eslint . --fix",
     "pretty": "prettier --check 'src/*.[jt]s'",
     "pretty:fix": "prettier --write 'src/*.[jt]s'",
-    "doc": "yarn typedoc src/index.ts"
+    "doc": "yarn typedoc src/index.ts --includeVersion"
   },
   "prettier": {
     "singleQuote": true
