@@ -30,7 +30,7 @@ solana-clap-utils = "1.9.9"
 spl-token = { version = "3.2.0", features = ["no-entrypoint"] }
 spl-associated-token-account = { version = "1.0.3", features = ["no-entrypoint"] }
 spl-governance = { version = "2.1.4", features = ["no-entrypoint"] }
-quarry-mine = { version = "1.10.0", features = ["no-entrypoint"] }
+quarry-mine = { version = "3.0.0", features = ["no-entrypoint"] }
 stable-swap-client = "1.5.2"
 stable-swap-math = "1.5.3"
 chrono = "0.4.19"

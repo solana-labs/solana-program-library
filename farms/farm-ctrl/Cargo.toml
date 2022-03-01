@@ -29,6 +29,6 @@ spl-associated-token-account = { version = "1.0.3", features = ["no-entrypoint"]
 spl-token = { version = "3.2.0", features = ["no-entrypoint"] }
 spl-governance = { version = "2.1.4", features = ["no-entrypoint"] }
 solana-cli-config = "1.9.9"
-quarry-mine = { version = "1.10.0", features = ["no-entrypoint"] }
+quarry-mine = { version = "3.0.0", features = ["no-entrypoint"] }
 url = "2.2.2"
 num_enum = "0.5.4"
