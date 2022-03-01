@@ -1,7 +1,7 @@
 //! State transition types
 
 use {
-    crate::{instruction::MAX_SIGNERS, extension::AccountType},
+    crate::{extension::AccountType, instruction::MAX_SIGNERS},
     arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs},
     num_enum::{IntoPrimitive, TryFromPrimitive},
     solana_program::{
