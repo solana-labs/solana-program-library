@@ -3903,6 +3903,7 @@ name = "spl-token"
 version = "3.3.0"
 dependencies = [
  "arrayref",
+ "bytemuck",
  "lazy_static",
  "num-derive",
  "num-traits",

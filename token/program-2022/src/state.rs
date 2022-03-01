@@ -10,6 +10,7 @@ use {
         program_pack::{IsInitialized, Pack, Sealed},
         pubkey::Pubkey,
     },
+    spl_token::state::GenericTokenAccount,
 };
 
 /// Mint data.
@@ -286,6 +287,17 @@ fn unpack_coption_u64(src: &[u8; 12]) -> Result<COption<u64>, ProgramError> {
         [0, 0, 0, 0] => Ok(COption::None),
         [1, 0, 0, 0] => Ok(COption::Some(u64::from_le_bytes(*body))),
         _ => Err(ProgramError::InvalidAccountData),
+    }
+}
+
+const ACCOUNTTYPE_ACCOUNT: u8 = 2;
+impl GenericTokenAccount for Account {
+    fn valid_account_data(account_data: &[u8]) -> bool {
+        spl_token::state::Account::valid_account_data(account_data)
+            || ACCOUNTTYPE_ACCOUNT
+                == *account_data
+                    .get(spl_token::state::Account::get_packed_len())
+                    .unwrap_or(&0)
     }
 }
 
