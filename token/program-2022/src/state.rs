@@ -1,7 +1,7 @@
 //! State transition types
 
 use {
-    crate::instruction::MAX_SIGNERS,
+    crate::{instruction::MAX_SIGNERS, extension::AccountType},
     arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs},
     num_enum::{IntoPrimitive, TryFromPrimitive},
     solana_program::{
@@ -290,7 +290,8 @@ fn unpack_coption_u64(src: &[u8; 12]) -> Result<COption<u64>, ProgramError> {
     }
 }
 
-const ACCOUNTTYPE_ACCOUNT: u8 = 2;
+// `spl_token_program_2022::extension::AccountType::Account` ordinal value
+const ACCOUNTTYPE_ACCOUNT: u8 = AccountType::Account as u8;
 impl GenericTokenAccount for Account {
     fn valid_account_data(account_data: &[u8]) -> bool {
         spl_token::state::Account::valid_account_data(account_data)
