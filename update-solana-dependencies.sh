@@ -10,6 +10,8 @@ if [[ -z $solana_ver ]]; then
 fi
 
 cd "$(dirname "$0")"
+source ./ci/solana-version.sh
+old_solana_ver=${solana_version#v}
 
 sed -i'' -e "s#solana_version=v.*#solana_version=v${solana_ver}#" ./ci/solana-version.sh
 
@@ -42,5 +44,5 @@ crates=(
 
 set -x
 for crate in "${crates[@]}"; do
-  sed -E -i'' -e "s#(${crate} = \")(=?).*#\1\2${solana_ver}\"#" "${tomls[@]}"
+  sed -E -i'' -e "s:(${crate} = \")(=?)${old_solana_ver}\".*:\1\2${solana_ver}\":" "${tomls[@]}"
 done
