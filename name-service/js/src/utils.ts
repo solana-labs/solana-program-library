@@ -15,6 +15,19 @@ import { HASH_PREFIX, NAME_PROGRAM_ID } from './bindings';
 import { NameRegistryState } from './state';
 
 export class Numberu32 extends BN {
+  constructor(
+      number: number | string | number[] | Uint8Array | Buffer | BN,
+      base?: number | 'hex',
+      endian?: BN.Endianness
+  ) {
+    if (BN.isBN(number)) {
+      const nbn = number as BN
+      super(nbn.toArray())
+    } else {
+      super(number, base, endian)
+    }
+  }
+
   /**
    * Convert to Buffer representation
    */
@@ -47,6 +60,19 @@ export class Numberu32 extends BN {
 }
 
 export class Numberu64 extends BN {
+  constructor(
+      number: number | string | number[] | Uint8Array | Buffer | BN,
+      base?: number | 'hex',
+      endian?: BN.Endianness
+  ) {
+    if (BN.isBN(number)) {
+        const nbn = number as BN
+        super(nbn.toArray())
+    } else {
+        super(number, base, endian)
+    }
+  }
+
   /**
    * Convert to Buffer representation
    */
