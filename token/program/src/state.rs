@@ -307,7 +307,7 @@ pub trait GenericTokenAccount {
     }
 
     /// Call after account length has already been verified to unpack a Pubkey at
-    /// the specified offset.
+    /// the specified offset. Panics if `account_data.len()` is less than `PUBKEY_BYTES`
     fn unpack_pubkey_unchecked(account_data: &[u8], offset: usize) -> &Pubkey {
         bytemuck::from_bytes(&account_data[offset..offset + PUBKEY_BYTES])
     }

@@ -297,7 +297,7 @@ impl GenericTokenAccount for Account {
         spl_token::state::Account::valid_account_data(account_data)
             || ACCOUNTTYPE_ACCOUNT
                 == *account_data
-                    .get(spl_token::state::Account::get_packed_len())
+                    .get(Account::LEN)
                     .unwrap_or(&0)
     }
 }
