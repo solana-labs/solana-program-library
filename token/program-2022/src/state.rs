@@ -415,4 +415,56 @@ pub(crate) mod test {
         let unpacked = Multisig::unpack(&packed).unwrap();
         assert_eq!(unpacked, check);
     }
+
+    #[test]
+    fn test_unpack_token_owner() {
+        // Account data length < Account::LEN, unpack will not return a key
+        let src: [u8; 12] = [0; 12];
+        let result = Account::unpack_account_owner(&src);
+        assert_eq!(result, Option::None);
+
+        // The right account data size, unpack will return some key
+        let src: [u8; Account::LEN] = [0; Account::LEN];
+        let result = Account::unpack_account_owner(&src);
+        assert!(result.is_some());
+
+        // Account data length > account data size, but not a valid extension,
+        // unpack will not return a key
+        let src: [u8; Account::LEN + 5] = [0; Account::LEN + 5];
+        let result = Account::unpack_account_owner(&src);
+        assert_eq!(result, Option::None);
+
+        // Account data length > account data size with a valid extension,
+        // expect some key returned
+        let mut src: [u8; Account::LEN + 5] = [0; Account::LEN + 5];
+        src[Account::LEN] = 2;
+        let result = Account::unpack_account_owner(&src);
+        assert!(result.is_some());
+    }
+
+    #[test]
+    fn test_unpack_token_mint() {
+        // Account data length < Account::LEN, unpack will not return a key
+        let src: [u8; 12] = [0; 12];
+        let result = Account::unpack_account_mint(&src);
+        assert_eq!(result, Option::None);
+
+        // The right account data size, unpack will return some key
+        let src: [u8; Account::LEN] = [0; Account::LEN];
+        let result = Account::unpack_account_mint(&src);
+        assert!(result.is_some());
+
+        // Account data length > account data size, but not a valid extension,
+        // unpack will not return a key
+        let src: [u8; Account::LEN + 5] = [0; Account::LEN + 5];
+        let result = Account::unpack_account_mint(&src);
+        assert_eq!(result, Option::None);
+
+        // Account data length > account data size with a valid extension,
+        // expect some key returned
+        let mut src: [u8; Account::LEN + 5] = [0; Account::LEN + 5];
+        src[Account::LEN] = 2;
+        let result = Account::unpack_account_mint(&src);
+        assert!(result.is_some());
+    }
 }

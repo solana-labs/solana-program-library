@@ -289,10 +289,9 @@ fn unpack_coption_u64(src: &[u8; 12]) -> Result<COption<u64>, ProgramError> {
 
 const SPL_TOKEN_ACCOUNT_MINT_OFFSET: usize = 0;
 const SPL_TOKEN_ACCOUNT_OWNER_OFFSET: usize = 32;
-const SPL_TOKEN_ACCOUNT_LENGTH: usize = 165;
 
-/// A trait of the generic token account for unpacking an account's fields
-/// partially and returning their references efficiently.
+/// A trait for token Account structs to enable efficiently unpacking various fields
+/// without unpacking the complete state.
 pub trait GenericTokenAccount {
     /// Check if the account data is a valid token account
     fn valid_account_data(account_data: &[u8]) -> bool;
@@ -313,7 +312,7 @@ pub trait GenericTokenAccount {
         bytemuck::from_bytes(&account_data[offset..offset + PUBKEY_BYTES])
     }
 
-    /// Function for unpacking the account owner from the account data.
+    /// Unpacks an account's owner from opaque account data.
     fn unpack_account_owner(account_data: &[u8]) -> Option<&Pubkey> {
         if Self::valid_account_data(account_data) {
             Some(Self::unpack_account_owner_unchecked(account_data))
@@ -322,7 +321,7 @@ pub trait GenericTokenAccount {
         }
     }
 
-    /// Function for unpacking the account mint from the account data.
+    /// Unpacks an account's mint from opaque account data.
     fn unpack_account_mint(account_data: &[u8]) -> Option<&Pubkey> {
         if Self::valid_account_data(account_data) {
             Some(Self::unpack_account_mint_unchecked(account_data))
@@ -332,16 +331,9 @@ pub trait GenericTokenAccount {
     }
 }
 
-impl Account {
-    /// Return the packed account data length in bytes.
-    pub fn get_packed_len() -> usize {
-        SPL_TOKEN_ACCOUNT_LENGTH
-    }
-}
-
 impl GenericTokenAccount for Account {
     fn valid_account_data(account_data: &[u8]) -> bool {
-        account_data.len() == SPL_TOKEN_ACCOUNT_LENGTH
+        account_data.len() == Account::LEN
     }
 }
 
@@ -421,36 +413,36 @@ mod tests {
 
     #[test]
     fn test_unpack_token_owner() {
-        // Account data length < SPL_TOKEN_ACCOUNT_LENGTH, unpack will not return a key
+        // Account data length < Account::LEN, unpack will not return a key
         let src: [u8; 12] = [0; 12];
         let result = Account::unpack_account_owner(&src);
         assert_eq!(result, Option::None);
 
         // The right account data size, unpack will return some key
-        let src: [u8; SPL_TOKEN_ACCOUNT_LENGTH] = [0; SPL_TOKEN_ACCOUNT_LENGTH];
+        let src: [u8; Account::LEN] = [0; Account::LEN];
         let result = Account::unpack_account_owner(&src);
         assert!(result.is_some());
 
-        // Account data length > account data size, unpack will return some key
-        let src: [u8; SPL_TOKEN_ACCOUNT_LENGTH + 5] = [0; SPL_TOKEN_ACCOUNT_LENGTH + 5];
+        // Account data length > account data size, unpack will not return a key
+        let src: [u8; Account::LEN + 5] = [0; Account::LEN + 5];
         let result = Account::unpack_account_owner(&src);
         assert_eq!(result, Option::None);
     }
 
     #[test]
     fn test_unpack_token_mint() {
-        // Account data length < SPL_TOKEN_ACCOUNT_LENGTH, unpack will not return a key
+        // Account data length < Account::LEN, unpack will not return a key
         let src: [u8; 12] = [0; 12];
         let result = Account::unpack_account_mint(&src);
         assert_eq!(result, Option::None);
 
         // The right account data size, unpack will return some key
-        let src: [u8; SPL_TOKEN_ACCOUNT_LENGTH] = [0; SPL_TOKEN_ACCOUNT_LENGTH];
+        let src: [u8; Account::LEN] = [0; Account::LEN];
         let result = Account::unpack_account_mint(&src);
         assert!(result.is_some());
 
-        // Account data length > account data size, unpack will return some key
-        let src: [u8; SPL_TOKEN_ACCOUNT_LENGTH + 5] = [0; SPL_TOKEN_ACCOUNT_LENGTH + 5];
+        // Account data length > account data size, unpack will not return a key
+        let src: [u8; Account::LEN + 5] = [0; Account::LEN + 5];
         let result = Account::unpack_account_mint(&src);
         assert_eq!(result, Option::None);
     }
