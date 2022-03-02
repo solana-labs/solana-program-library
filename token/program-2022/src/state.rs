@@ -295,10 +295,7 @@ const ACCOUNTTYPE_ACCOUNT: u8 = AccountType::Account as u8;
 impl GenericTokenAccount for Account {
     fn valid_account_data(account_data: &[u8]) -> bool {
         spl_token::state::Account::valid_account_data(account_data)
-            || ACCOUNTTYPE_ACCOUNT
-                == *account_data
-                    .get(Account::LEN)
-                    .unwrap_or(&0)
+            || ACCOUNTTYPE_ACCOUNT == *account_data.get(Account::LEN).unwrap_or(&0)
     }
 }
 
