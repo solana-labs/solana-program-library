@@ -1,7 +1,7 @@
 //! State transition types
 
 use {
-    crate::instruction::MAX_SIGNERS,
+    crate::{extension::AccountType, instruction::MAX_SIGNERS},
     arrayref::{array_mut_ref, array_ref, array_refs, mut_array_refs},
     num_enum::{IntoPrimitive, TryFromPrimitive},
     solana_program::{
@@ -10,6 +10,7 @@ use {
         program_pack::{IsInitialized, Pack, Sealed},
         pubkey::Pubkey,
     },
+    spl_token::state::GenericTokenAccount,
 };
 
 /// Mint data.
@@ -289,6 +290,15 @@ fn unpack_coption_u64(src: &[u8; 12]) -> Result<COption<u64>, ProgramError> {
     }
 }
 
+// `spl_token_program_2022::extension::AccountType::Account` ordinal value
+const ACCOUNTTYPE_ACCOUNT: u8 = AccountType::Account as u8;
+impl GenericTokenAccount for Account {
+    fn valid_account_data(account_data: &[u8]) -> bool {
+        spl_token::state::Account::valid_account_data(account_data)
+            || ACCOUNTTYPE_ACCOUNT == *account_data.get(Account::LEN).unwrap_or(&0)
+    }
+}
+
 #[cfg(test)]
 pub(crate) mod test {
     use super::*;
@@ -401,5 +411,57 @@ pub(crate) mod test {
         assert_eq!(packed, expect);
         let unpacked = Multisig::unpack(&packed).unwrap();
         assert_eq!(unpacked, check);
+    }
+
+    #[test]
+    fn test_unpack_token_owner() {
+        // Account data length < Account::LEN, unpack will not return a key
+        let src: [u8; 12] = [0; 12];
+        let result = Account::unpack_account_owner(&src);
+        assert_eq!(result, Option::None);
+
+        // The right account data size, unpack will return some key
+        let src: [u8; Account::LEN] = [0; Account::LEN];
+        let result = Account::unpack_account_owner(&src);
+        assert!(result.is_some());
+
+        // Account data length > account data size, but not a valid extension,
+        // unpack will not return a key
+        let src: [u8; Account::LEN + 5] = [0; Account::LEN + 5];
+        let result = Account::unpack_account_owner(&src);
+        assert_eq!(result, Option::None);
+
+        // Account data length > account data size with a valid extension,
+        // expect some key returned
+        let mut src: [u8; Account::LEN + 5] = [0; Account::LEN + 5];
+        src[Account::LEN] = 2;
+        let result = Account::unpack_account_owner(&src);
+        assert!(result.is_some());
+    }
+
+    #[test]
+    fn test_unpack_token_mint() {
+        // Account data length < Account::LEN, unpack will not return a key
+        let src: [u8; 12] = [0; 12];
+        let result = Account::unpack_account_mint(&src);
+        assert_eq!(result, Option::None);
+
+        // The right account data size, unpack will return some key
+        let src: [u8; Account::LEN] = [0; Account::LEN];
+        let result = Account::unpack_account_mint(&src);
+        assert!(result.is_some());
+
+        // Account data length > account data size, but not a valid extension,
+        // unpack will not return a key
+        let src: [u8; Account::LEN + 5] = [0; Account::LEN + 5];
+        let result = Account::unpack_account_mint(&src);
+        assert_eq!(result, Option::None);
+
+        // Account data length > account data size with a valid extension,
+        // expect some key returned
+        let mut src: [u8; Account::LEN + 5] = [0; Account::LEN + 5];
+        src[Account::LEN] = 2;
+        let result = Account::unpack_account_mint(&src);
+        assert!(result.is_some());
     }
 }
