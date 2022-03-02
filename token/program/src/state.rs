@@ -7,7 +7,7 @@ use solana_program::{
     program_error::ProgramError,
     program_option::COption,
     program_pack::{IsInitialized, Pack, Sealed},
-    pubkey::Pubkey,
+    pubkey::{Pubkey, PUBKEY_BYTES},
 };
 
 /// Mint data.
@@ -287,6 +287,56 @@ fn unpack_coption_u64(src: &[u8; 12]) -> Result<COption<u64>, ProgramError> {
     }
 }
 
+const SPL_TOKEN_ACCOUNT_MINT_OFFSET: usize = 0;
+const SPL_TOKEN_ACCOUNT_OWNER_OFFSET: usize = 32;
+
+/// A trait for token Account structs to enable efficiently unpacking various fields
+/// without unpacking the complete state.
+pub trait GenericTokenAccount {
+    /// Check if the account data is a valid token account
+    fn valid_account_data(account_data: &[u8]) -> bool;
+
+    /// Call after account length has already been verified to unpack the account owner
+    fn unpack_account_owner_unchecked(account_data: &[u8]) -> &Pubkey {
+        Self::unpack_pubkey_unchecked(account_data, SPL_TOKEN_ACCOUNT_OWNER_OFFSET)
+    }
+
+    /// Call after account length has already been verified to unpack the account mint
+    fn unpack_account_mint_unchecked(account_data: &[u8]) -> &Pubkey {
+        Self::unpack_pubkey_unchecked(account_data, SPL_TOKEN_ACCOUNT_MINT_OFFSET)
+    }
+
+    /// Call after account length has already been verified to unpack a Pubkey at
+    /// the specified offset. Panics if `account_data.len()` is less than `PUBKEY_BYTES`
+    fn unpack_pubkey_unchecked(account_data: &[u8], offset: usize) -> &Pubkey {
+        bytemuck::from_bytes(&account_data[offset..offset + PUBKEY_BYTES])
+    }
+
+    /// Unpacks an account's owner from opaque account data.
+    fn unpack_account_owner(account_data: &[u8]) -> Option<&Pubkey> {
+        if Self::valid_account_data(account_data) {
+            Some(Self::unpack_account_owner_unchecked(account_data))
+        } else {
+            None
+        }
+    }
+
+    /// Unpacks an account's mint from opaque account data.
+    fn unpack_account_mint(account_data: &[u8]) -> Option<&Pubkey> {
+        if Self::valid_account_data(account_data) {
+            Some(Self::unpack_account_mint_unchecked(account_data))
+        } else {
+            None
+        }
+    }
+}
+
+impl GenericTokenAccount for Account {
+    fn valid_account_data(account_data: &[u8]) -> bool {
+        account_data.len() == Account::LEN
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -359,5 +409,41 @@ mod tests {
         src[1] = 1;
         let result = unpack_coption_u64(&src).unwrap_err();
         assert_eq!(result, ProgramError::InvalidAccountData);
+    }
+
+    #[test]
+    fn test_unpack_token_owner() {
+        // Account data length < Account::LEN, unpack will not return a key
+        let src: [u8; 12] = [0; 12];
+        let result = Account::unpack_account_owner(&src);
+        assert_eq!(result, Option::None);
+
+        // The right account data size, unpack will return some key
+        let src: [u8; Account::LEN] = [0; Account::LEN];
+        let result = Account::unpack_account_owner(&src);
+        assert!(result.is_some());
+
+        // Account data length > account data size, unpack will not return a key
+        let src: [u8; Account::LEN + 5] = [0; Account::LEN + 5];
+        let result = Account::unpack_account_owner(&src);
+        assert_eq!(result, Option::None);
+    }
+
+    #[test]
+    fn test_unpack_token_mint() {
+        // Account data length < Account::LEN, unpack will not return a key
+        let src: [u8; 12] = [0; 12];
+        let result = Account::unpack_account_mint(&src);
+        assert_eq!(result, Option::None);
+
+        // The right account data size, unpack will return some key
+        let src: [u8; Account::LEN] = [0; Account::LEN];
+        let result = Account::unpack_account_mint(&src);
+        assert!(result.is_some());
+
+        // Account data length > account data size, unpack will not return a key
+        let src: [u8; Account::LEN + 5] = [0; Account::LEN + 5];
+        let result = Account::unpack_account_mint(&src);
+        assert_eq!(result, Option::None);
     }
 }
