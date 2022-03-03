@@ -5,11 +5,13 @@ on:
     paths:
     - 'token-lending/**'
     - 'token/**'
+    - 'ci/*-version.sh'
   push:
     branches: [master]
     paths:
     - 'token-lending/**'
     - 'token/**'
+    - 'ci/*-version.sh'
 
 jobs:
   cargo-test-bpf:

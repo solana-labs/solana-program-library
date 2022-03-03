@@ -5,11 +5,13 @@ on:
     paths:
     - 'governance/**'
     - 'token/**'
+    - 'ci/*-version.sh'
   push:
     branches: [master]
     paths:
     - 'governance/**'
     - 'token/**'
+    - 'ci/*-version.sh'
 
 jobs:
   cargo-test-bpf:
