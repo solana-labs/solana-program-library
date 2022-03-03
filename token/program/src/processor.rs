@@ -235,19 +235,19 @@ impl Processor {
             None
         };
 
-        let dest_account_info = next_account_info(account_info_iter)?;
+        let destination_account_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
 
         let mut source_account = Account::unpack(&source_account_info.data.borrow())?;
-        let mut dest_account = Account::unpack(&dest_account_info.data.borrow())?;
+        let mut destination_account = Account::unpack(&destination_account_info.data.borrow())?;
 
-        if source_account.is_frozen() || dest_account.is_frozen() {
+        if source_account.is_frozen() || destination_account.is_frozen() {
             return Err(TokenError::AccountFrozen.into());
         }
         if source_account.amount < amount {
             return Err(TokenError::InsufficientFunds.into());
         }
-        if !Self::cmp_pubkeys(&source_account.mint, &dest_account.mint) {
+        if !Self::cmp_pubkeys(&source_account.mint, &destination_account.mint) {
             return Err(TokenError::MintMismatch.into());
         }
 
@@ -262,7 +262,8 @@ impl Processor {
             }
         }
 
-        let self_transfer = Self::cmp_pubkeys(source_account_info.key, dest_account_info.key);
+        let self_transfer =
+            Self::cmp_pubkeys(source_account_info.key, destination_account_info.key);
 
         match source_account.delegate {
             COption::Some(ref delegate) if Self::cmp_pubkeys(authority_info.key, delegate) => {
@@ -295,7 +296,7 @@ impl Processor {
 
         if self_transfer || amount == 0 {
             Self::check_account_owner(program_id, source_account_info)?;
-            Self::check_account_owner(program_id, dest_account_info)?;
+            Self::check_account_owner(program_id, destination_account_info)?;
         }
 
         // This check MUST occur just before the amounts are manipulated
@@ -308,7 +309,7 @@ impl Processor {
             .amount
             .checked_sub(amount)
             .ok_or(TokenError::Overflow)?;
-        dest_account.amount = dest_account
+        destination_account.amount = destination_account
             .amount
             .checked_add(amount)
             .ok_or(TokenError::Overflow)?;
@@ -319,14 +320,17 @@ impl Processor {
                 .checked_sub(amount)
                 .ok_or(TokenError::Overflow)?;
 
-            let dest_starting_lamports = dest_account_info.lamports();
-            **dest_account_info.lamports.borrow_mut() = dest_starting_lamports
+            let destination_starting_lamports = destination_account_info.lamports();
+            **destination_account_info.lamports.borrow_mut() = destination_starting_lamports
                 .checked_add(amount)
                 .ok_or(TokenError::Overflow)?;
         }
 
         Account::pack(source_account, &mut source_account_info.data.borrow_mut())?;
-        Account::pack(dest_account, &mut dest_account_info.data.borrow_mut())?;
+        Account::pack(
+            destination_account,
+            &mut destination_account_info.data.borrow_mut(),
+        )?;
 
         Ok(())
     }
@@ -517,18 +521,18 @@ impl Processor {
     ) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let mint_info = next_account_info(account_info_iter)?;
-        let dest_account_info = next_account_info(account_info_iter)?;
+        let destination_account_info = next_account_info(account_info_iter)?;
         let owner_info = next_account_info(account_info_iter)?;
 
-        let mut dest_account = Account::unpack(&dest_account_info.data.borrow())?;
-        if dest_account.is_frozen() {
+        let mut destination_account = Account::unpack(&destination_account_info.data.borrow())?;
+        if destination_account.is_frozen() {
             return Err(TokenError::AccountFrozen.into());
         }
 
-        if dest_account.is_native() {
+        if destination_account.is_native() {
             return Err(TokenError::NativeNotSupported.into());
         }
-        if !Self::cmp_pubkeys(mint_info.key, &dest_account.mint) {
+        if !Self::cmp_pubkeys(mint_info.key, &destination_account.mint) {
             return Err(TokenError::MintMismatch.into());
         }
 
@@ -551,10 +555,10 @@ impl Processor {
 
         if amount == 0 {
             Self::check_account_owner(program_id, mint_info)?;
-            Self::check_account_owner(program_id, dest_account_info)?;
+            Self::check_account_owner(program_id, destination_account_info)?;
         }
 
-        dest_account.amount = dest_account
+        destination_account.amount = destination_account
             .amount
             .checked_add(amount)
             .ok_or(TokenError::Overflow)?;
@@ -564,7 +568,10 @@ impl Processor {
             .checked_add(amount)
             .ok_or(TokenError::Overflow)?;
 
-        Account::pack(dest_account, &mut dest_account_info.data.borrow_mut())?;
+        Account::pack(
+            destination_account,
+            &mut destination_account_info.data.borrow_mut(),
+        )?;
         Mint::pack(mint, &mut mint_info.data.borrow_mut())?;
 
         Ok(())
@@ -657,10 +664,10 @@ impl Processor {
     pub fn process_close_account(program_id: &Pubkey, accounts: &[AccountInfo]) -> ProgramResult {
         let account_info_iter = &mut accounts.iter();
         let source_account_info = next_account_info(account_info_iter)?;
-        let dest_account_info = next_account_info(account_info_iter)?;
+        let destination_account_info = next_account_info(account_info_iter)?;
         let authority_info = next_account_info(account_info_iter)?;
 
-        if Self::cmp_pubkeys(source_account_info.key, dest_account_info.key) {
+        if Self::cmp_pubkeys(source_account_info.key, destination_account_info.key) {
             return Err(ProgramError::InvalidAccountData);
         }
 
@@ -679,8 +686,8 @@ impl Processor {
             account_info_iter.as_slice(),
         )?;
 
-        let dest_starting_lamports = dest_account_info.lamports();
-        **dest_account_info.lamports.borrow_mut() = dest_starting_lamports
+        let destination_starting_lamports = destination_account_info.lamports();
+        **destination_account_info.lamports.borrow_mut() = destination_starting_lamports
             .checked_add(source_account_info.lamports())
             .ok_or(TokenError::Overflow)?;
 
