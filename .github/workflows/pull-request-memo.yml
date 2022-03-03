@@ -4,10 +4,12 @@ on:
   pull_request:
     paths:
     - 'memo/**'
+    - 'ci/*-version.sh'
   push:
     branches: [master]
     paths:
     - 'memo/**'
+    - 'ci/*-version.sh'
 
 jobs:
   cargo-test-bpf:

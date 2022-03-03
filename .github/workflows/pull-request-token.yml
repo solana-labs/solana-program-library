@@ -5,11 +5,13 @@ on:
     paths:
     - 'associated-token-account/**'
     - 'token/**'
+    - 'ci/*-version.sh'
   push:
     branches: [master]
     paths:
     - 'associated-token-account/**'
     - 'token/**'
+    - 'ci/*-version.sh'
 
 jobs:
   cargo-test-bpf:

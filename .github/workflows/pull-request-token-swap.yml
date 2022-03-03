@@ -6,12 +6,14 @@ on:
     - 'token-swap/**'
     - 'token/**'
     - 'libraries/math/**'
+    - 'ci/*-version.sh'
   push:
     branches: [master]
     paths:
     - 'token-swap/**'
     - 'token/**'
     - 'libraries/math/**'
+    - 'ci/*-version.sh'
 
 jobs:
   cargo-test-bpf:
