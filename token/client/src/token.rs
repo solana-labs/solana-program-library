@@ -480,7 +480,7 @@ where
     /// Mint new tokens
     pub async fn mint_to<S2: Signer>(
         &self,
-        dest: &Pubkey,
+        destination: &Pubkey,
         authority: &S2,
         amount: u64,
     ) -> TokenResult<()> {
@@ -488,7 +488,7 @@ where
             &[instruction::mint_to(
                 &self.program_id,
                 &self.pubkey,
-                dest,
+                destination,
                 &authority.pubkey(),
                 &[],
                 amount,
