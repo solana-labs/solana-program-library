@@ -49,14 +49,14 @@ export rust_nightly_docker_image=solanalabs/rust-nightly:"$nightly_version"
   cd "$(dirname "${BASH_SOURCE[0]}")"
   case $1 in
   stable)
-     rustup_install "$rust_stable"
-     ;;
-  # nightly)
-  #    rustup_install "$rust_nightly"
-  #   ;;
+    rustup_install "$rust_stable"
+    ;;
+  nightly)
+    rustup_install "$rust_nightly"
+    ;;
   all)
-     rustup_install "$rust_stable"
-     rustup_install "$rust_nightly"
+    rustup_install "$rust_stable"
+    rustup_install "$rust_nightly"
     ;;
   *)
     echo "$0: Note: ignoring unknown argument: $1" >&2
