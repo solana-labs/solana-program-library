@@ -74,13 +74,13 @@ pub fn get_seeds_and_key(
 
     let name_class = name_class_opt.cloned().unwrap_or_default();
 
-    for b in name_class.to_bytes().to_vec() {
+    for b in name_class.to_bytes() {
         seeds_vec.push(b);
     }
 
     let parent_name_address = parent_name_address_opt.cloned().unwrap_or_default();
 
-    for b in parent_name_address.to_bytes().to_vec() {
+    for b in parent_name_address.to_bytes() {
         seeds_vec.push(b);
     }
 
