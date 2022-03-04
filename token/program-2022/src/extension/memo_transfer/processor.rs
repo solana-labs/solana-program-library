@@ -77,6 +77,7 @@ fn process_diasble_required_memo_transfers(
     Ok(())
 }
 
+#[allow(dead_code)]
 pub(crate) fn process_instruction(
     program_id: &Pubkey,
     accounts: &[AccountInfo],

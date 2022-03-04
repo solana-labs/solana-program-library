@@ -1,5 +1,6 @@
 #![cfg(feature = "test-bpf")]
 #![cfg(twoxtx)]
+#![cfg(norun)]
 
 mod program_test;
 use {

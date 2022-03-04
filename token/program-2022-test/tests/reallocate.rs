@@ -1,4 +1,5 @@
 #![cfg(feature = "test-bpf")]
+#![cfg(norun)]
 
 mod program_test;
 use {
