@@ -102,7 +102,7 @@ pub struct ConfidentialTransferAccount {
     pub actual_pending_balance_credit_counter: PodU64,
 
     /// The withheld amount of fees. This will always be zero if fees are never enabled.
-    pub withheld_amount: pod::ElGamalCiphertext,
+    pub withheld_amount: EncryptedWithheldAmount,
 }
 
 impl Extension for ConfidentialTransferAccount {
@@ -121,9 +121,9 @@ impl ConfidentialTransferAccount {
 
     /// Check if a `ConfidentialTransferAccount` is in a closable state
     pub fn closable(&self) -> ProgramResult {
-        if self.pending_balance == pod::ElGamalCiphertext::zeroed()
-            && self.available_balance == pod::ElGamalCiphertext::zeroed()
-            && self.withheld_amount == pod::ElGamalCiphertext::zeroed()
+        if self.pending_balance == EncryptedBalance::zeroed()
+            && self.available_balance == EncryptedBalance::zeroed()
+            && self.withheld_amount == EncryptedWithheldAmount::zeroed()
         {
             Ok(())
         } else {
