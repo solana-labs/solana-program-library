@@ -159,7 +159,7 @@ fn process_configure_account(
     confidential_transfer_account.pending_balance_credit_counter = 0.into();
     confidential_transfer_account.expected_pending_balance_credit_counter = 0.into();
     confidential_transfer_account.actual_pending_balance_credit_counter = 0.into();
-    confidential_transfer_account.withheld_amount = pod::ElGamalCiphertext::zeroed();
+    confidential_transfer_account.withheld_amount = EncryptedWithheldAmount::zeroed();
 
     Ok(())
 }
@@ -234,9 +234,9 @@ fn process_empty_account(
         return Err(ProgramError::InvalidInstructionData);
     }
 
-    confidential_transfer_account.available_balance = pod::ElGamalCiphertext::zeroed();
+    confidential_transfer_account.available_balance = EncryptedBalance::zeroed();
 
-    if confidential_transfer_account.withheld_amount != pod::ElGamalCiphertext::zeroed() {
+    if confidential_transfer_account.withheld_amount != EncryptedWithheldAmount::zeroed() {
         msg!("Withheld amount is not zero");
         return Err(ProgramError::InvalidAccountData);
     }
