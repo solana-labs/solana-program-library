@@ -450,7 +450,6 @@ pub(crate) mod test {
         src[spl_token::state::ACCOUNT_INITIALIZED_INDEX] = 0;
         let result = Account::unpack_account_owner(&src);
         assert!(result.is_none());
-
     }
 
     #[test]
