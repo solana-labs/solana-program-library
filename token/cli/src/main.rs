@@ -2100,7 +2100,9 @@ fn main() -> Result<(), Error> {
                         .help(
                             "Specify the mint authority keypair. \
                              This may be a keypair file or the ASK keyword. \
-                             Defaults to the client keypair."
+                             Defaults to the client keypair. \
+                             Provide a public key instead for sending transactions \
+                              that have been signed offline"
                         ),
                 )
                 .arg(mint_decimals_arg())
