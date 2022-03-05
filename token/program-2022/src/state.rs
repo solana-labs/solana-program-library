@@ -300,7 +300,7 @@ impl GenericTokenAccount for Account {
                 && ACCOUNTTYPE_ACCOUNT
                     == *account_data
                         .get(spl_token::state::Account::get_packed_len())
-                        .unwrap_or(&0)
+                        .unwrap_or(&(AccountType::Uninitialized as u8))
                 && spl_token::state::is_initialized_account(account_data))
     }
 }
