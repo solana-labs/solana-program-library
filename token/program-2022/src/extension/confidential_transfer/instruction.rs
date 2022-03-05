@@ -826,8 +826,8 @@ pub fn inner_transfer_with_fee(
     Ok(encode_instruction(
         token_program_id,
         accounts,
-        ConfidentialTransferInstruction::Transfer,
-        &TransferInstructionData {
+        ConfidentialTransferInstruction::TransferWithFee,
+        &TransferWithFeeInstructionData {
             new_source_decryptable_available_balance,
             proof_instruction_offset,
         },
