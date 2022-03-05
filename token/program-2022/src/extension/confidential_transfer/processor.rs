@@ -1,6 +1,6 @@
 use {
     crate::{
-        check_program_account,
+        check_program_account, cmp_pubkeys,
         error::TokenError,
         extension::{
             confidential_transfer::{instruction::*, *},
@@ -551,6 +551,13 @@ fn process_transfer(
             &ciphertext_hi,
             new_source_decryptable_available_balance,
         )?;
+
+        let fee = if cmp_pubkeys(token_account_info.key, destination_token_account_info.key) {
+            None
+        } else {
+            Some(proof_data.ciphertext_fee)
+        };
+
         process_destination_for_transfer(
             destination_token_account_info,
             mint_info,
@@ -1238,3 +1245,4 @@ pub(crate) fn process_instruction(
         }
     }
 }
+

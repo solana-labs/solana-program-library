@@ -718,6 +718,9 @@ async fn ct_transfer() {
     );
 }
 
+// TODO: Currently, the tests do a quick sanity check on zk proof verification.
+// Once certain decryption functions become available on v1.10.1 in zk-token-sdk, the tests should
+// be made more comprehensive.
 #[tokio::test]
 async fn ct_transfer_with_fee() {
     let ConfidentialTransferMintWithKeypairs { ct_mint, .. } =
@@ -768,130 +771,133 @@ async fn ct_transfer_with_fee() {
         .await
         .unwrap();
 
-    // // Self-transfer of N tokens
-    // token
-    //     .confidential_transfer_transfer(
-    //         &alice_meta.token_account,
-    //         &alice_meta.token_account,
-    //         &alice,
-    //         42, // amount
-    //         42, // available balance
-    //         &alice_meta.elgamal_keypair,
-    //         alice_meta.ae_key.encrypt(42_u64),
-    //     )
-    //     .await
-    //     .unwrap();
+    // Self-transfer of N tokens
+    token
+        .confidential_transfer_transfer_with_fee(
+            &alice_meta.token_account,
+            &alice_meta.token_account,
+            &alice,
+            100, // amount
+            100, // available balance
+            &alice_meta.elgamal_keypair,
+            alice_meta.ae_key.encrypt(100_u64),
+            &epoch_info,
+        )
+        .await
+        .unwrap();
 
-    // token
-    //     .confidential_transfer_apply_pending_balance(
-    //         &alice_meta.token_account,
-    //         &alice,
-    //         2,
-    //         alice_meta.ae_key.encrypt(42_u64),
-    //     )
-    //     .await
-    //     .unwrap();
+    token
+        .confidential_transfer_apply_pending_balance(
+            &alice_meta.token_account,
+            &alice,
+            2,
+            alice_meta.ae_key.encrypt(100_u64),
+        )
+        .await
+        .unwrap();
 
-    // let state = token
-    //     .get_account_info(&alice_meta.token_account)
-    //     .await
-    //     .unwrap();
-    // let extension = state
-    //     .get_extension::<ConfidentialTransferAccount>()
-    //     .unwrap();
-    // assert_eq!(
-    //     alice_meta
-    //         .ae_key
-    //         .decrypt(&extension.decryptable_available_balance.try_into().unwrap()),
-    //     Some(42),
-    // );
+    let state = token
+        .get_account_info(&alice_meta.token_account)
+        .await
+        .unwrap();
+    let extension = state
+        .get_extension::<ConfidentialTransferAccount>()
+        .unwrap();
+    assert_eq!(
+        alice_meta
+            .ae_key
+            .decrypt(&extension.decryptable_available_balance.try_into().unwrap()),
+        Some(100),
+    );
 
-    // token
-    //     .confidential_transfer_transfer(
-    //         &alice_meta.token_account,
-    //         &bob_meta.token_account,
-    //         &alice,
-    //         42, // amount
-    //         42, // available balance
-    //         &alice_meta.elgamal_keypair,
-    //         alice_meta.ae_key.encrypt(0_u64),
-    //     )
-    //     .await
-    //     .unwrap();
+    token
+        .confidential_transfer_transfer_with_fee(
+            &alice_meta.token_account,
+            &bob_meta.token_account,
+            &alice,
+            100, // amount
+            100, // available balance
+            &alice_meta.elgamal_keypair,
+            alice_meta.ae_key.encrypt(0_u64),
+            &epoch_info,
+        )
+        .await
+        .unwrap();
 
-    // let state = token
-    //     .get_account_info(&alice_meta.token_account)
-    //     .await
-    //     .unwrap();
-    // let extension = state
-    //     .get_extension::<ConfidentialTransferAccount>()
-    //     .unwrap();
-    // assert_eq!(
-    //     alice_meta
-    //         .ae_key
-    //         .decrypt(&extension.decryptable_available_balance.try_into().unwrap()),
-    //     Some(0),
-    // );
+    let state = token
+        .get_account_info(&alice_meta.token_account)
+        .await
+        .unwrap();
+    let extension = state
+        .get_extension::<ConfidentialTransferAccount>()
+        .unwrap();
+    assert_eq!(
+        alice_meta
+            .ae_key
+            .decrypt(&extension.decryptable_available_balance.try_into().unwrap()),
+        Some(0),
+    );
 
-    // token
-    //     .confidential_transfer_empty_account(
-    //         &alice_meta.token_account,
-    //         &alice,
-    //         &alice_meta.elgamal_keypair,
-    //     )
-    //     .await
-    //     .unwrap();
+    token
+        .confidential_transfer_empty_account(
+            &alice_meta.token_account,
+            &alice,
+            &alice_meta.elgamal_keypair,
+        )
+        .await
+        .unwrap();
 
-    // let err = token
-    //     .confidential_transfer_empty_account(
-    //         &bob_meta.token_account,
-    //         &bob,
-    //         &bob_meta.elgamal_keypair,
-    //     )
-    //     .await
-    //     .unwrap_err();
-    // assert_eq!(
-    //     err,
-    //     TokenClientError::Client(Box::new(TransportError::TransactionError(
-    //         TransactionError::InstructionError(1, InstructionError::InvalidAccountData)
-    //     )))
-    // );
+    let err = token
+        .confidential_transfer_empty_account(
+            &bob_meta.token_account,
+            &bob,
+            &bob_meta.elgamal_keypair,
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(
+        err,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(1, InstructionError::InvalidAccountData)
+        )))
+    );
 
-    // let state = token
-    //     .get_account_info(&bob_meta.token_account)
-    //     .await
-    //     .unwrap();
-    // let extension = state
-    //     .get_extension::<ConfidentialTransferAccount>()
-    //     .unwrap();
-    // assert_eq!(
-    //     bob_meta
-    //         .ae_key
-    //         .decrypt(&extension.decryptable_available_balance.try_into().unwrap()),
-    //     Some(0),
-    // );
+    let state = token
+        .get_account_info(&bob_meta.token_account)
+        .await
+        .unwrap();
+    let extension = state
+        .get_extension::<ConfidentialTransferAccount>()
+        .unwrap();
+    assert_eq!(
+        bob_meta
+            .ae_key
+            .decrypt(&extension.decryptable_available_balance.try_into().unwrap()),
+        Some(0),
+    );
 
-    // token
-    //     .confidential_transfer_apply_pending_balance(
-    //         &bob_meta.token_account,
-    //         &bob,
-    //         1,
-    //         bob_meta.ae_key.encrypt(42_u64),
-    //     )
-    //     .await
-    //     .unwrap();
+    token
+        .confidential_transfer_apply_pending_balance(
+            &bob_meta.token_account,
+            &bob,
+            1,
+            bob_meta.ae_key.encrypt(42_u64),
+        )
+        .await
+        .unwrap();
 
-    // let state = token
-    //     .get_account_info(&bob_meta.token_account)
-    //     .await
-    //     .unwrap();
-    // let extension = state
-    //     .get_extension::<ConfidentialTransferAccount>()
-    //     .unwrap();
-    // assert_eq!(
-    //     bob_meta
-    //         .ae_key
-    //         .decrypt(&extension.decryptable_available_balance.try_into().unwrap()),
-    //     Some(42),
-    // );
+    let state = token
+        .get_account_info(&bob_meta.token_account)
+        .await
+        .unwrap();
+    let extension = state
+        .get_extension::<ConfidentialTransferAccount>()
+        .unwrap();
+    assert_eq!(
+        bob_meta
+            .ae_key
+            .decrypt(&extension.decryptable_available_balance.try_into().unwrap()),
+        Some(42),
+    );
 }
+
