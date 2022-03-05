@@ -6,9 +6,8 @@ use {
     program_test::{TestContext, TokenContext},
     solana_program_test::tokio,
     solana_sdk::{
-        epoch_info::EpochInfo,
-        instruction::InstructionError, pubkey::Pubkey, signature::Signer, signer::keypair::Keypair,
-        transaction::TransactionError, transport::TransportError,
+        epoch_info::EpochInfo, instruction::InstructionError, pubkey::Pubkey, signature::Signer,
+        signer::keypair::Keypair, transaction::TransactionError, transport::TransportError,
     },
     spl_token_2022::{
         extension::{
@@ -760,7 +759,7 @@ async fn ct_transfer_with_fee() {
             &alice_meta.token_account,
             &alice_meta.token_account,
             &alice,
-            0,  // amount
+            0,   // amount
             100, // available balance
             &alice_meta.elgamal_keypair,
             alice_meta.ae_key.encrypt(100_u64),
