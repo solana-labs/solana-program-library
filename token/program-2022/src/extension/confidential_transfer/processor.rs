@@ -482,7 +482,7 @@ fn process_transfer(
     if let Ok(transfer_fee_config) = mint.get_extension::<TransferFeeConfig>() {
         // mint is extended for fees
         let proof_data = decode_proof_instruction::<TransferWithFeeData>(
-            ProofInstruction::VerifyTransfer,
+            ProofInstruction::VerifyTransferWithFee,
             &previous_instruction,
         )?;
 
