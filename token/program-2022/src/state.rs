@@ -295,10 +295,12 @@ const ACCOUNTTYPE_ACCOUNT: u8 = AccountType::Account as u8;
 impl GenericTokenAccount for Account {
     fn valid_account_data(account_data: &[u8]) -> bool {
         spl_token::state::Account::valid_account_data(account_data)
-            || (ACCOUNTTYPE_ACCOUNT
-                == *account_data
-                    .get(spl_token::state::Account::get_packed_len())
-                    .unwrap_or(&0)
+            || (account_data.len() >= Account::LEN
+                && account_data.len() != Multisig::LEN
+                && ACCOUNTTYPE_ACCOUNT
+                    == *account_data
+                        .get(spl_token::state::Account::get_packed_len())
+                        .unwrap_or(&0)
                 && spl_token::state::is_initialized_account(account_data))
     }
 }
@@ -450,6 +452,14 @@ pub(crate) mod test {
         src[spl_token::state::ACCOUNT_INITIALIZED_INDEX] = 0;
         let result = Account::unpack_account_owner(&src);
         assert!(result.is_none());
+
+        // Account data length is multi-sig data size with a valid extension and initalized,
+        // expect none
+        let mut src: [u8; Multisig::LEN] = [0; Multisig::LEN];
+        src[spl_token::state::ACCOUNT_INITIALIZED_INDEX] = 1;
+        src[Account::LEN] = 2;
+        let result = Account::unpack_account_owner(&src);
+        assert!(result.is_none());
     }
 
     #[test]
@@ -483,6 +493,14 @@ pub(crate) mod test {
         // Account data length > account data size with a valid extension but uninitalized,
         // expect none
         src[spl_token::state::ACCOUNT_INITIALIZED_INDEX] = 0;
+        let result = Account::unpack_account_mint(&src);
+        assert!(result.is_none());
+
+        // Account data length is multi-sig data size with a valid extension and initalized,
+        // expect none
+        let mut src: [u8; Multisig::LEN] = [0; Multisig::LEN];
+        src[spl_token::state::ACCOUNT_INITIALIZED_INDEX] = 1;
+        src[Account::LEN] = 2;
         let result = Account::unpack_account_mint(&src);
         assert!(result.is_none());
     }

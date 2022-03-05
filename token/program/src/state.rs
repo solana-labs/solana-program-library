@@ -337,7 +337,7 @@ pub const ACCOUNT_INITIALIZED_INDEX: usize = 108;
 /// Check if the account data buffer represents an initialized account.
 /// This is checking the `state` (AccountState) field of an Account object.
 pub fn is_initialized_account(account_data: &[u8]) -> bool {
-    account_data.len() >= Account::LEN && account_data[ACCOUNT_INITIALIZED_INDEX] != 0
+    0 != *account_data.get(ACCOUNT_INITIALIZED_INDEX).unwrap_or(&0)
 }
 
 impl GenericTokenAccount for Account {
