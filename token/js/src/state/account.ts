@@ -82,11 +82,7 @@ export const AccountLayout = struct<RawAccount>([
 /** Byte length of a token account */
 export const ACCOUNT_SIZE = AccountLayout.span;
 
-function info2Account(
-    info: AccountInfo<Buffer> | null,
-    address: PublicKey,
-    programId: PublicKey,
-) {
+function unpackTokenAccount(info: AccountInfo<Buffer> | null, address: PublicKey, programId: PublicKey) {
     if (!info) throw new TokenAccountNotFoundError();
     if (!info.owner.equals(programId)) throw new TokenInvalidAccountOwnerError();
     if (info.data.length < ACCOUNT_SIZE) throw new TokenInvalidAccountSizeError();
@@ -132,10 +128,10 @@ export async function getMultipleAccounts(
     programId = TOKEN_PROGRAM_ID
 ): Promise<Account[]> {
     const infos = await connection.getMultipleAccountsInfo(addresses, commitment);
-    let accounts = [];
-    for (let i=0; i < infos.length; i++) {
-        let account = info2Account(infos[i], addresses[i], programId)
-        accounts.push(account)
+    const accounts = [];
+    for (let i = 0; i < infos.length; i++) {
+        const account = unpackTokenAccount(infos[i], addresses[i], programId);
+        accounts.push(account);
     }
     return accounts;
 }
@@ -157,7 +153,7 @@ export async function getAccount(
     programId = TOKEN_PROGRAM_ID
 ): Promise<Account> {
     const info = await connection.getAccountInfo(address, commitment);
-    return info2Account(info, address, programId)
+    return unpackTokenAccount(info, address, programId);
 }
 
 /** Get the minimum lamport balance for a base token account to be rent exempt
