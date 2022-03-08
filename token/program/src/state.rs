@@ -440,7 +440,7 @@ mod tests {
         src[ACCOUNT_INITIALIZED_INDEX] = AccountState::Frozen as u8;
         let result = Account::unpack_account_owner(&src);
         assert!(result.is_some());
-        
+
         // The right account data size and uninitialized, unpack will return None
         src[ACCOUNT_INITIALIZED_INDEX] = AccountState::Uninitialized as u8;
         let result = Account::unpack_account_mint(&src);
