@@ -877,6 +877,8 @@ impl Processor {
                     authority_info_data_len,
                     account_info_iter.as_slice(),
                 )?;
+            } else if !solana_program::incinerator::check_id(destination_account_info.key) {
+                return Err(ProgramError::InvalidAccountData);
             }
 
             if let Ok(confidential_transfer_state) =

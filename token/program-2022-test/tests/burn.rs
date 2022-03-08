@@ -185,7 +185,11 @@ async fn run_burn_and_close_system_or_incinerator(context: TestContext, non_owne
     // can't close when holding tokens
     let carlos = Keypair::new();
     let error = token
-        .close_account(&non_owner_account, &carlos.pubkey(), &carlos)
+        .close_account(
+            &non_owner_account,
+            &solana_program::incinerator::id(),
+            &carlos,
+        )
         .await
         .unwrap_err();
     assert_eq!(
@@ -204,10 +208,41 @@ async fn run_burn_and_close_system_or_incinerator(context: TestContext, non_owne
         .await
         .unwrap();
 
+    // closing fails if destination is not the incinerator
+    let error = token
+        .close_account(&non_owner_account, &carlos.pubkey(), &carlos)
+        .await
+        .unwrap_err();
+    assert_eq!(
+        error,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(0, InstructionError::InvalidAccountData)
+        )))
+    );
+
+    let error = token
+        .close_account(
+            &non_owner_account,
+            &solana_program::system_program::id(),
+            &carlos,
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(
+        error,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(0, InstructionError::InvalidAccountData)
+        )))
+    );
+
     // ... and then close it
     token.get_new_latest_blockhash().await.unwrap();
     token
-        .close_account(&non_owner_account, &carlos.pubkey(), &carlos)
+        .close_account(
+            &non_owner_account,
+            &solana_program::incinerator::id(),
+            &carlos,
+        )
         .await
         .unwrap();
 }
