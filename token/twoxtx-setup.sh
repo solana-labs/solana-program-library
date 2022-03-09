@@ -24,5 +24,5 @@ if [[ ! -f twoxtx-solana/.twoxtx-patched ]]; then
   touch twoxtx-solana/.twoxtx-patched
 fi
 
-../patch.crates-io.sh twoxtx-solana
+../patch.crates-io.sh twoxtx-solana --no-patch-zk-token-sdk
 exit 0
