@@ -20,7 +20,7 @@ use {
     },
 };
 
-async fn create_mint(context: &mut ProgramTestContext) -> (Pubkey, Keypair) {
+async fn create_mint(context: &mut ProgramTestContext, program_id: &Pubkey) -> (Pubkey, Keypair) {
     let mint_account = Keypair::new();
     let token_mint_address = mint_account.pubkey();
     let mint_authority = Keypair::new();
@@ -33,10 +33,10 @@ async fn create_mint(context: &mut ProgramTestContext) -> (Pubkey, Keypair) {
                 &mint_account.pubkey(),
                 rent.minimum_balance(space),
                 space as u64,
-                &spl_token_2022::id(),
+                program_id,
             ),
             spl_token_2022::instruction::initialize_mint(
-                &spl_token_2022::id(),
+                program_id,
                 &token_mint_address,
                 &mint_authority.pubkey(),
                 Some(&mint_authority.pubkey()),
@@ -60,13 +60,14 @@ async fn create_associated_token_account(
     context: &mut ProgramTestContext,
     owner: &Pubkey,
     mint: &Pubkey,
+    program_id: &Pubkey,
 ) -> Pubkey {
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::create_associated_token_account(
             &context.payer.pubkey(),
             owner,
             mint,
-            &spl_token_2022::id(),
+            program_id,
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer],
@@ -78,12 +79,13 @@ async fn create_associated_token_account(
         .await
         .unwrap();
 
-    get_associated_token_address_with_program_id(owner, mint, &spl_token_2022::id())
+    get_associated_token_address_with_program_id(owner, mint, program_id)
 }
 
 #[allow(clippy::too_many_arguments)]
 async fn try_close_nested(
     context: &mut ProgramTestContext,
+    program_id: &Pubkey,
     nested_mint: Pubkey,
     nested_mint_authority: Keypair,
     nested_associated_token_address: Pubkey,
@@ -104,7 +106,7 @@ async fn try_close_nested(
     let amount = 100;
     let transaction = Transaction::new_signed_with_payer(
         &[spl_token_2022::instruction::mint_to(
-            &spl_token_2022::id(),
+            program_id,
             &nested_mint,
             &nested_associated_token_address,
             &nested_mint_authority.pubkey(),
@@ -159,32 +161,34 @@ async fn try_close_nested(
     }
 }
 
-#[tokio::test]
-async fn success_same_mint() {
+async fn check_same_mint(context: &mut ProgramTestContext, program_id: &Pubkey) {
     let wallet = Keypair::new();
-    let dummy_mint = Pubkey::new_unique();
-    let pt = program_test_2022(dummy_mint, true);
-    let mut context = pt.start_with_context().await;
-    let (mint, mint_authority) = create_mint(&mut context).await;
+    let (mint, mint_authority) = create_mint(context, program_id).await;
 
     let owner_associated_token_address =
-        create_associated_token_account(&mut context, &wallet.pubkey(), &mint).await;
-    let nested_associated_token_address =
-        create_associated_token_account(&mut context, &owner_associated_token_address, &mint).await;
+        create_associated_token_account(context, &wallet.pubkey(), &mint, program_id).await;
+    let nested_associated_token_address = create_associated_token_account(
+        context,
+        &owner_associated_token_address,
+        &mint,
+        program_id,
+    )
+    .await;
 
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::close_nested(
             &wallet.pubkey(),
             &mint,
             &mint,
-            &spl_token_2022::id(),
+            program_id,
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &wallet],
         context.last_blockhash,
     );
     try_close_nested(
-        &mut context,
+        context,
+        program_id,
         mint,
         mint_authority,
         nested_associated_token_address,
@@ -197,38 +201,52 @@ async fn success_same_mint() {
 }
 
 #[tokio::test]
-async fn success_different_mints() {
-    let wallet = Keypair::new();
+async fn success_same_mint_2022() {
     let dummy_mint = Pubkey::new_unique();
     let pt = program_test_2022(dummy_mint, true);
     let mut context = pt.start_with_context().await;
-    let (owner_mint, _owner_mint_authority) = create_mint(&mut context).await;
-    let (nested_mint, nested_mint_authority) = create_mint(&mut context).await;
+    check_same_mint(&mut context, &spl_token_2022::id()).await;
+}
+
+#[tokio::test]
+async fn success_same_mint() {
+    let dummy_mint = Pubkey::new_unique();
+    let pt = program_test(dummy_mint, true);
+    let mut context = pt.start_with_context().await;
+    check_same_mint(&mut context, &spl_token::id()).await;
+}
+
+async fn check_different_mints(context: &mut ProgramTestContext, program_id: &Pubkey) {
+    let wallet = Keypair::new();
+    let (owner_mint, _owner_mint_authority) = create_mint(context, program_id).await;
+    let (nested_mint, nested_mint_authority) = create_mint(context, program_id).await;
 
     let owner_associated_token_address =
-        create_associated_token_account(&mut context, &wallet.pubkey(), &owner_mint).await;
+        create_associated_token_account(context, &wallet.pubkey(), &owner_mint, program_id).await;
     let nested_associated_token_address = create_associated_token_account(
-        &mut context,
+        context,
         &owner_associated_token_address,
         &nested_mint,
+        program_id,
     )
     .await;
     let destination_token_address =
-        create_associated_token_account(&mut context, &wallet.pubkey(), &nested_mint).await;
+        create_associated_token_account(context, &wallet.pubkey(), &nested_mint, program_id).await;
 
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::close_nested(
             &wallet.pubkey(),
             &owner_mint,
             &nested_mint,
-            &spl_token_2022::id(),
+            program_id,
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &wallet],
         context.last_blockhash,
     );
     try_close_nested(
-        &mut context,
+        context,
+        program_id,
         nested_mint,
         nested_mint_authority,
         nested_associated_token_address,
@@ -241,20 +259,37 @@ async fn success_different_mints() {
 }
 
 #[tokio::test]
-async fn fail_missing_wallet_signature() {
-    let wallet = Keypair::new();
+async fn success_different_mints() {
+    let dummy_mint = Pubkey::new_unique();
+    let pt = program_test(dummy_mint, true);
+    let mut context = pt.start_with_context().await;
+    check_different_mints(&mut context, &spl_token::id()).await;
+}
+
+#[tokio::test]
+async fn success_different_mints_2022() {
     let dummy_mint = Pubkey::new_unique();
     let pt = program_test_2022(dummy_mint, true);
     let mut context = pt.start_with_context().await;
-    let (mint, mint_authority) = create_mint(&mut context).await;
+    check_different_mints(&mut context, &spl_token_2022::id()).await;
+}
+
+async fn check_missing_wallet_signature(context: &mut ProgramTestContext, program_id: &Pubkey) {
+    let wallet = Keypair::new();
+    let (mint, mint_authority) = create_mint(context, program_id).await;
 
     let owner_associated_token_address =
-        create_associated_token_account(&mut context, &wallet.pubkey(), &mint).await;
+        create_associated_token_account(context, &wallet.pubkey(), &mint, program_id).await;
 
-    let nested_associated_token_address =
-        create_associated_token_account(&mut context, &owner_associated_token_address, &mint).await;
+    let nested_associated_token_address = create_associated_token_account(
+        context,
+        &owner_associated_token_address,
+        &mint,
+        program_id,
+    )
+    .await;
 
-    let mut close = instruction::close_nested(&wallet.pubkey(), &mint, &mint, &spl_token_2022::id());
+    let mut close = instruction::close_nested(&wallet.pubkey(), &mint, &mint, program_id);
     close.accounts[5] = AccountMeta::new(wallet.pubkey(), false);
     let transaction = Transaction::new_signed_with_payer(
         &[close],
@@ -263,7 +298,8 @@ async fn fail_missing_wallet_signature() {
         context.last_blockhash,
     );
     try_close_nested(
-        &mut context,
+        context,
+        program_id,
         mint,
         mint_authority,
         nested_associated_token_address,
@@ -276,32 +312,50 @@ async fn fail_missing_wallet_signature() {
 }
 
 #[tokio::test]
-async fn fail_wrong_signer() {
-    let wallet = Keypair::new();
-    let wrong_wallet = Keypair::new();
+async fn fail_missing_wallet_signature_2022() {
     let dummy_mint = Pubkey::new_unique();
     let pt = program_test_2022(dummy_mint, true);
     let mut context = pt.start_with_context().await;
-    let (mint, mint_authority) = create_mint(&mut context).await;
+    check_missing_wallet_signature(&mut context, &spl_token_2022::id()).await;
+}
+
+#[tokio::test]
+async fn fail_missing_wallet_signature() {
+    let dummy_mint = Pubkey::new_unique();
+    let pt = program_test(dummy_mint, true);
+    let mut context = pt.start_with_context().await;
+    check_missing_wallet_signature(&mut context, &spl_token::id()).await;
+}
+
+async fn check_wrong_signer(context: &mut ProgramTestContext, program_id: &Pubkey) {
+    let wallet = Keypair::new();
+    let wrong_wallet = Keypair::new();
+    let (mint, mint_authority) = create_mint(context, program_id).await;
 
     let owner_associated_token_address =
-        create_associated_token_account(&mut context, &wallet.pubkey(), &mint).await;
-    let nested_associated_token_address =
-        create_associated_token_account(&mut context, &owner_associated_token_address, &mint).await;
+        create_associated_token_account(context, &wallet.pubkey(), &mint, program_id).await;
+    let nested_associated_token_address = create_associated_token_account(
+        context,
+        &owner_associated_token_address,
+        &mint,
+        program_id,
+    )
+    .await;
 
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::close_nested(
             &wrong_wallet.pubkey(),
             &mint,
             &mint,
-            &spl_token_2022::id(),
+            program_id,
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &wrong_wallet],
         context.last_blockhash,
     );
     try_close_nested(
-        &mut context,
+        context,
+        program_id,
         mint,
         mint_authority,
         nested_associated_token_address,
@@ -314,32 +368,45 @@ async fn fail_wrong_signer() {
 }
 
 #[tokio::test]
-async fn fail_not_nested() {
-    let wallet = Keypair::new();
-    let wrong_wallet = Keypair::new();
+async fn fail_wrong_signer_2022() {
     let dummy_mint = Pubkey::new_unique();
     let pt = program_test_2022(dummy_mint, true);
     let mut context = pt.start_with_context().await;
-    let (mint, mint_authority) = create_mint(&mut context).await;
+    check_wrong_signer(&mut context, &spl_token_2022::id()).await;
+}
+
+#[tokio::test]
+async fn fail_wrong_signer() {
+    let dummy_mint = Pubkey::new_unique();
+    let pt = program_test(dummy_mint, true);
+    let mut context = pt.start_with_context().await;
+    check_wrong_signer(&mut context, &spl_token::id()).await;
+}
+
+async fn check_not_nested(context: &mut ProgramTestContext, program_id: &Pubkey) {
+    let wallet = Keypair::new();
+    let wrong_wallet = Keypair::new();
+    let (mint, mint_authority) = create_mint(context, program_id).await;
 
     let owner_associated_token_address =
-        create_associated_token_account(&mut context, &wallet.pubkey(), &mint).await;
+        create_associated_token_account(context, &wallet.pubkey(), &mint, program_id).await;
     let nested_associated_token_address =
-        create_associated_token_account(&mut context, &wrong_wallet.pubkey(), &mint).await;
+        create_associated_token_account(context, &wrong_wallet.pubkey(), &mint, program_id).await;
 
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::close_nested(
             &wallet.pubkey(),
             &mint,
             &mint,
-            &spl_token_2022::id(),
+            program_id,
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &wallet],
         context.last_blockhash,
     );
     try_close_nested(
-        &mut context,
+        context,
+        program_id,
         mint,
         mint_authority,
         nested_associated_token_address,
@@ -352,33 +419,104 @@ async fn fail_not_nested() {
 }
 
 #[tokio::test]
-async fn fail_wrong_address_derivation_owner() {
-    let wallet = Keypair::new();
-    let wrong_wallet = Keypair::new();
+async fn fail_not_nested_2022() {
     let dummy_mint = Pubkey::new_unique();
     let pt = program_test_2022(dummy_mint, true);
     let mut context = pt.start_with_context().await;
-    let (mint, mint_authority) = create_mint(&mut context).await;
+    check_not_nested(&mut context, &spl_token_2022::id()).await;
+}
 
-    let _ = create_associated_token_account(&mut context, &wallet.pubkey(), &mint).await;
+#[tokio::test]
+async fn fail_not_nested() {
+    let dummy_mint = Pubkey::new_unique();
+    let pt = program_test(dummy_mint, true);
+    let mut context = pt.start_with_context().await;
+    check_not_nested(&mut context, &spl_token::id()).await;
+}
+
+async fn check_wrong_address_derivation_owner(
+    context: &mut ProgramTestContext,
+    program_id: &Pubkey,
+) {
+    let wallet = Keypair::new();
+    let wrong_wallet = Keypair::new();
+    let (mint, mint_authority) = create_mint(context, program_id).await;
+
+    let _ = create_associated_token_account(context, &wallet.pubkey(), &mint, program_id).await;
     let owner_associated_token_address =
-        get_associated_token_address_with_program_id(&mint, &wallet.pubkey(), &spl_token_2022::id());
+        get_associated_token_address_with_program_id(&mint, &wallet.pubkey(), program_id);
     let nested_associated_token_address =
-        create_associated_token_account(&mut context, &wrong_wallet.pubkey(), &mint).await;
+        create_associated_token_account(context, &wrong_wallet.pubkey(), &mint, program_id).await;
 
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::close_nested(
             &wallet.pubkey(),
             &mint,
             &mint,
-            &spl_token_2022::id(),
+            program_id,
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &wallet],
         context.last_blockhash,
     );
     try_close_nested(
-        &mut context,
+        context,
+        program_id,
+        mint,
+        mint_authority,
+        nested_associated_token_address,
+        owner_associated_token_address,
+        wallet,
+        transaction,
+        Some(InstructionError::IllegalOwner),
+    )
+    .await;
+}
+
+#[tokio::test]
+async fn fail_wrong_address_derivation_owner_2022() {
+    let dummy_mint = Pubkey::new_unique();
+    let pt = program_test_2022(dummy_mint, true);
+    let mut context = pt.start_with_context().await;
+    check_wrong_address_derivation_owner(&mut context, &spl_token_2022::id()).await;
+}
+
+#[tokio::test]
+async fn fail_wrong_address_derivation_owner() {
+    let dummy_mint = Pubkey::new_unique();
+    let pt = program_test(dummy_mint, true);
+    let mut context = pt.start_with_context().await;
+    check_wrong_address_derivation_owner(&mut context, &spl_token::id()).await;
+}
+
+async fn check_owner_account_does_not_exist(context: &mut ProgramTestContext, program_id: &Pubkey) {
+    let wallet = Keypair::new();
+    let (mint, mint_authority) = create_mint(context, program_id).await;
+
+    let owner_associated_token_address =
+        get_associated_token_address_with_program_id(&wallet.pubkey(), &mint, program_id);
+    let nested_associated_token_address = create_associated_token_account(
+        context,
+        &owner_associated_token_address,
+        &mint,
+        program_id,
+    )
+    .await;
+
+    let transaction = Transaction::new_signed_with_payer(
+        &[instruction::close_nested(
+            &wallet.pubkey(),
+            &mint,
+            &mint,
+            program_id,
+        )],
+        Some(&context.payer.pubkey()),
+        &[&context.payer, &wallet],
+        context.last_blockhash,
+    );
+    try_close_nested(
+        context,
+        program_id,
         mint,
         mint_authority,
         nested_associated_token_address,
@@ -392,39 +530,10 @@ async fn fail_wrong_address_derivation_owner() {
 
 #[tokio::test]
 async fn fail_owner_account_does_not_exist() {
-    let wallet = Keypair::new();
     let dummy_mint = Pubkey::new_unique();
     let pt = program_test_2022(dummy_mint, true);
     let mut context = pt.start_with_context().await;
-    let (mint, mint_authority) = create_mint(&mut context).await;
-
-    let owner_associated_token_address =
-        get_associated_token_address_with_program_id(&wallet.pubkey(), &mint, &spl_token_2022::id());
-    let nested_associated_token_address =
-        create_associated_token_account(&mut context, &owner_associated_token_address, &mint).await;
-
-    let transaction = Transaction::new_signed_with_payer(
-        &[instruction::close_nested(
-            &wallet.pubkey(),
-            &mint,
-            &mint,
-            &spl_token_2022::id(),
-        )],
-        Some(&context.payer.pubkey()),
-        &[&context.payer, &wallet],
-        context.last_blockhash,
-    );
-    try_close_nested(
-        &mut context,
-        mint,
-        mint_authority,
-        nested_associated_token_address,
-        owner_associated_token_address,
-        wallet,
-        transaction,
-        Some(InstructionError::IllegalOwner),
-    )
-    .await;
+    check_owner_account_does_not_exist(&mut context, &spl_token_2022::id()).await;
 }
 
 #[tokio::test]
@@ -433,19 +542,26 @@ async fn fail_wrong_spl_token_program() {
     let dummy_mint = Pubkey::new_unique();
     let pt = program_test_2022(dummy_mint, true);
     let mut context = pt.start_with_context().await;
-    let (mint, mint_authority) = create_mint(&mut context).await;
+    let program_id = spl_token_2022::id();
+    let wrong_program_id = spl_token::id();
+    let (mint, mint_authority) = create_mint(&mut context, &program_id).await;
 
     let owner_associated_token_address =
-        create_associated_token_account(&mut context, &wallet.pubkey(), &mint).await;
-    let nested_associated_token_address =
-        create_associated_token_account(&mut context, &owner_associated_token_address, &mint).await;
+        create_associated_token_account(&mut context, &wallet.pubkey(), &mint, &program_id).await;
+    let nested_associated_token_address = create_associated_token_account(
+        &mut context,
+        &owner_associated_token_address,
+        &mint,
+        &program_id,
+    )
+    .await;
 
     let transaction = Transaction::new_signed_with_payer(
         &[instruction::close_nested(
             &wallet.pubkey(),
             &mint,
             &mint,
-            &Pubkey::new_unique(),
+            &wrong_program_id,
         )],
         Some(&context.payer.pubkey()),
         &[&context.payer, &wallet],
@@ -453,6 +569,7 @@ async fn fail_wrong_spl_token_program() {
     );
     try_close_nested(
         &mut context,
+        &program_id,
         mint,
         mint_authority,
         nested_associated_token_address,
@@ -470,17 +587,24 @@ async fn fail_destination_not_wallet_ata() {
     let wrong_wallet = Keypair::new();
     let dummy_mint = Pubkey::new_unique();
     let pt = program_test_2022(dummy_mint, true);
+    let program_id = spl_token_2022::id();
     let mut context = pt.start_with_context().await;
-    let (mint, mint_authority) = create_mint(&mut context).await;
+    let (mint, mint_authority) = create_mint(&mut context, &program_id).await;
 
     let owner_associated_token_address =
-        create_associated_token_account(&mut context, &wallet.pubkey(), &mint).await;
-    let nested_associated_token_address =
-        create_associated_token_account(&mut context, &owner_associated_token_address, &mint).await;
+        create_associated_token_account(&mut context, &wallet.pubkey(), &mint, &program_id).await;
+    let nested_associated_token_address = create_associated_token_account(
+        &mut context,
+        &owner_associated_token_address,
+        &mint,
+        &program_id,
+    )
+    .await;
     let wrong_destination_associated_token_account_address =
-        create_associated_token_account(&mut context, &wrong_wallet.pubkey(), &mint).await;
+        create_associated_token_account(&mut context, &wrong_wallet.pubkey(), &mint, &program_id)
+            .await;
 
-    let mut close = instruction::close_nested(&wallet.pubkey(), &mint, &mint, &spl_token_2022::id());
+    let mut close = instruction::close_nested(&wallet.pubkey(), &mint, &mint, &program_id);
     close.accounts[2] = AccountMeta::new(wrong_destination_associated_token_account_address, false);
 
     let transaction = Transaction::new_signed_with_payer(
@@ -491,6 +615,7 @@ async fn fail_destination_not_wallet_ata() {
     );
     try_close_nested(
         &mut context,
+        &program_id,
         mint,
         mint_authority,
         nested_associated_token_address,

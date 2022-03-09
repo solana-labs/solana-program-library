@@ -41,7 +41,10 @@ pub fn program_test(token_mint_address: Pubkey, use_latest_spl_token: bool) -> P
 }
 
 #[allow(dead_code)]
-pub fn program_test_2022(token_mint_address: Pubkey, use_latest_spl_token_2022: bool) -> ProgramTest {
+pub fn program_test_2022(
+    token_mint_address: Pubkey,
+    use_latest_spl_token_2022: bool,
+) -> ProgramTest {
     let mut pc = ProgramTest::new(
         "spl_associated_token_account",
         id(),
