@@ -12,13 +12,13 @@ board and is not a permanent solution.
  3 files changed, 16 insertions(+), 7 deletions(-)
 
 diff --git a/rpc/src/rpc.rs b/rpc/src/rpc.rs
-index 987980cb53..607681728c 100644
+index 1a0dcdeb6c..e33492fa84 100644
 --- a/rpc/src/rpc.rs
 +++ b/rpc/src/rpc.rs
-@@ -4177,8 +4177,11 @@ pub mod rpc_obsolete_v1_7 {
+@@ -4214,8 +4214,11 @@ pub mod rpc_obsolete_v1_7 {
      }
  }
- 
+
 -const MAX_BASE58_SIZE: usize = 1683; // Golden, bump if PACKET_DATA_SIZE changes
 -const MAX_BASE64_SIZE: usize = 1644; // Golden, bump if PACKET_DATA_SIZE changes
 +// These values need to be updated if PACKET_DATA_SIZE changes. The correct values can
@@ -28,18 +28,18 @@ index 987980cb53..607681728c 100644
 +const MAX_BASE64_SIZE: usize = 3288;
  fn decode_and_deserialize<T>(
      encoded: String,
-     encoding: UiTransactionEncoding,
-@@ -7961,7 +7964,7 @@ pub mod tests {
+     encoding: TransactionBinaryEncoding,
+@@ -7749,7 +7752,7 @@ pub mod tests {
      }
- 
+
      #[test]
 -    fn test_worst_case_encoded_tx_goldens() {
 +    fn test_max_encoded_tx_goldens() {
          let ff_tx = vec![0xffu8; PACKET_DATA_SIZE];
          let tx58 = bs58::encode(&ff_tx).into_string();
          assert_eq!(tx58.len(), MAX_BASE58_SIZE);
-@@ -7971,8 +7974,11 @@ pub mod tests {
- 
+@@ -7759,8 +7762,11 @@ pub mod tests {
+
      #[test]
      fn test_decode_and_deserialize_too_large_payloads_fail() {
 -        // +2 because +1 still fits in base64 encoded worst-case
@@ -63,7 +63,7 @@ index efea219043..473a92ecfe 100644
 -pub const PACKET_DATA_SIZE: usize = 1280 - 40 - 8;
 +/// Double the minimum to support larger than MTU transactions
 +pub const PACKET_DATA_SIZE: usize = 2 * (1280 - 40 - 8);
- 
+
  bitflags! {
      #[repr(C)]
 diff --git a/web3.js/src/transaction.ts b/web3.js/src/transaction.ts
@@ -79,9 +79,8 @@ index 5466464f5a..5b71b9dc39 100644
   */
 -export const PACKET_DATA_SIZE = 1280 - 40 - 8;
 +export const PACKET_DATA_SIZE = 2464;
- 
- const SIGNATURE_LENGTH = 64;
- 
--- 
-2.32.0 (Apple Git-132)
 
+ const SIGNATURE_LENGTH = 64;
+
+--
+2.32.0 (Apple Git-132)
