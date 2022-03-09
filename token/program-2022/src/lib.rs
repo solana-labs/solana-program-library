@@ -5,6 +5,7 @@
 
 pub mod error;
 pub mod extension;
+pub mod generic_token_account;
 pub mod instruction;
 pub mod native_mint;
 pub mod pod;
