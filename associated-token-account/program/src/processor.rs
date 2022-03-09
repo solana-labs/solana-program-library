@@ -267,7 +267,7 @@ pub fn process_close_nested(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pr
 
     // Transfer everything out
     invoke_signed(
-        &spl_token::instruction::transfer_checked(
+        &spl_token_2022::instruction::transfer_checked(
             spl_token_program_id,
             nested_associated_token_account_info.key,
             nested_token_mint_info.key,
@@ -289,7 +289,7 @@ pub fn process_close_nested(program_id: &Pubkey, accounts: &[AccountInfo]) -> Pr
 
     // Close the nested account so it's never used again
     invoke_signed(
-        &spl_token::instruction::close_account(
+        &spl_token_2022::instruction::close_account(
             spl_token_program_id,
             nested_associated_token_account_info.key,
             wallet_account_info.key,
