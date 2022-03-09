@@ -3,7 +3,24 @@
 # Patches the SPL crates for developing against a local solana monorepo
 #
 
-solana_dir=$1
+maybe_patch_zk_token_sdk=true
+positional_args=()
+while [[ -n $1 ]]; do
+  if [[ ${1:0:1} = - ]]; then
+    if [[ $1 == --no-patch-zk-token-sdk ]]; then
+      maybe_patch_zk_token_sdk=false
+      shift
+    else
+      echo "unexpected argument: $1" 1>&2
+      exit 1
+    fi
+  else
+    positional_args=($1)
+    shift
+  fi
+done
+
+solana_dir=${positional_args[0]}
 if [[ -z $solana_dir ]]; then
   echo "Usage: $0 <path-to-solana-monorepo>"
   exit 1
@@ -47,7 +64,9 @@ crates_map+=("solana-stake-program programs/stake")
 crates_map+=("solana-transaction-status transaction-status")
 crates_map+=("solana-version version")
 crates_map+=("solana-vote-program programs/vote")
-crates_map+=("solana-zk-token-sdk zk-token-sdk")
+if $maybe_patch_zk_token_sdk; then
+  crates_map+=("solana-zk-token-sdk zk-token-sdk")
+fi
 
 patch_crates=()
 for map_entry in "${crates_map[@]}"; do
