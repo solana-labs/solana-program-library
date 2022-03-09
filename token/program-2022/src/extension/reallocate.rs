@@ -1,3 +1,4 @@
+#[cfg(feature = "reallocate")]
 use {
     crate::{
         error::TokenError,
@@ -16,7 +17,18 @@ use {
     },
 };
 
+/// Stub implementation to remove when reallocate is released on all networks
+#[cfg(not(feature = "reallocate"))]
+pub fn process_reallocate(
+    _program_id: &solana_program::pubkey::Pubkey,
+    _accounts: &[solana_program::account_info::AccountInfo],
+    _new_extension_types: Vec<crate::extension::ExtensionType>,
+) -> solana_program::entrypoint::ProgramResult {
+    Err(solana_program::program_error::ProgramError::InvalidInstructionData)
+}
+
 /// Processes a [Reallocate](enum.TokenInstruction.html) instruction
+#[cfg(feature = "reallocate")]
 pub fn process_reallocate(
     program_id: &Pubkey,
     accounts: &[AccountInfo],

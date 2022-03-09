@@ -1,5 +1,4 @@
 #![cfg(feature = "test-bpf")]
-#![cfg(norun)]
 
 mod program_test;
 use {
@@ -96,6 +95,7 @@ async fn test_memo_transfers(
             &[&ctx.payer, &alice],
             ctx.last_blockhash,
         );
+        #[allow(clippy::useless_conversion)]
         let err: TransactionError = ctx
             .banks_client
             .process_transaction(tx)

@@ -5,9 +5,12 @@ use {
         check_program_account, cmp_pubkeys,
         error::TokenError,
         extension::{
+            confidential_transfer::{self, ConfidentialTransferAccount},
             default_account_state::{self, DefaultAccountState},
             immutable_owner::ImmutableOwner,
+            memo_transfer::{self, check_previous_sibling_instruction_is_memo, memo_required},
             mint_close_authority::MintCloseAuthority,
+            reallocate,
             transfer_fee::{self, TransferFeeAmount, TransferFeeConfig},
             ExtensionType, StateWithExtensions, StateWithExtensionsMut,
         },
@@ -372,6 +375,10 @@ impl Processor {
         }
         if !cmp_pubkeys(&source_account.base.mint, &destination_account.base.mint) {
             return Err(TokenError::MintMismatch.into());
+        }
+
+        if memo_required(&destination_account) {
+            check_previous_sibling_instruction_is_memo()?;
         }
 
         source_account.base.amount = source_account
@@ -864,6 +871,12 @@ impl Processor {
                 return Err(ProgramError::InvalidAccountData);
             }
 
+            if let Ok(confidential_transfer_state) =
+                source_account.get_extension::<ConfidentialTransferAccount>()
+            {
+                confidential_transfer_state.closable()?
+            }
+
             if let Ok(transfer_fee_state) = source_account.get_extension::<TransferFeeAmount>() {
                 transfer_fee_state.closable()?
             }
@@ -1211,7 +1224,11 @@ impl Processor {
                 transfer_fee::processor::process_instruction(program_id, accounts, instruction)
             }
             TokenInstruction::ConfidentialTransferExtension => {
-                Err(ProgramError::InvalidInstructionData)
+                confidential_transfer::processor::process_instruction(
+                    program_id,
+                    accounts,
+                    &input[1..],
+                )
             }
             TokenInstruction::DefaultAccountStateExtension => {
                 default_account_state::processor::process_instruction(
@@ -1232,8 +1249,13 @@ impl Processor {
                 msg!("Instruction: UiAmountToAmount");
                 Self::process_ui_amount_to_amount(accounts, ui_amount)
             }
-            TokenInstruction::Reallocate { .. } => Err(ProgramError::InvalidInstructionData),
-            TokenInstruction::MemoTransferExtension => Err(ProgramError::InvalidInstructionData),
+            TokenInstruction::Reallocate { extension_types } => {
+                msg!("Instruction: Reallocate");
+                reallocate::process_reallocate(program_id, accounts, extension_types)
+            }
+            TokenInstruction::MemoTransferExtension => {
+                memo_transfer::processor::process_instruction(program_id, accounts, &input[1..])
+            }
             TokenInstruction::CreateNativeMint => {
                 msg!("Instruction: CreateNativeMint");
                 Self::process_create_native_mint(accounts)
