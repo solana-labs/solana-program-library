@@ -538,6 +538,7 @@ async fn ct_withdraw() {
 }
 
 #[tokio::test]
+#[ignore]
 async fn ct_transfer() {
     let ConfidentialTransferMintWithKeypairs { ct_mint, .. } =
         ConfidentialTransferMintWithKeypairs::new();
