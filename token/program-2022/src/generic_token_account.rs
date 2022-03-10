@@ -1,6 +1,9 @@
 //! Generic Token Account, copied from spl_token::state
 // Remove all of this and use spl-token's version once token 3.4.0 is released
-use solana_program::pubkey::{Pubkey, PUBKEY_BYTES};
+use {
+    crate::state::AccountState,
+    solana_program::pubkey::{Pubkey, PUBKEY_BYTES},
+};
 
 const SPL_TOKEN_ACCOUNT_MINT_OFFSET: usize = 0;
 const SPL_TOKEN_ACCOUNT_OWNER_OFFSET: usize = 32;
@@ -44,4 +47,16 @@ pub trait GenericTokenAccount {
             None
         }
     }
+}
+
+/// The offset of state field in Account's C representation
+pub const ACCOUNT_INITIALIZED_INDEX: usize = 108;
+
+/// Check if the account data buffer represents an initialized account.
+/// This is checking the `state` (AccountState) field of an Account object.
+pub fn is_initialized_account(account_data: &[u8]) -> bool {
+    *account_data
+        .get(ACCOUNT_INITIALIZED_INDEX)
+        .unwrap_or(&(AccountState::Uninitialized as u8))
+        != AccountState::Uninitialized as u8
 }
