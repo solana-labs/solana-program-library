@@ -784,35 +784,40 @@ impl Processor {
             }
         }
 
-        match source_account.base.delegate {
-            COption::Some(ref delegate) if cmp_pubkeys(authority_info.key, delegate) => {
-                Self::validate_owner(
+        if !source_account
+            .base
+            .is_owned_by_system_program_or_incinerator()
+        {
+            match source_account.base.delegate {
+                COption::Some(ref delegate) if cmp_pubkeys(authority_info.key, delegate) => {
+                    Self::validate_owner(
+                        program_id,
+                        delegate,
+                        authority_info,
+                        authority_info_data_len,
+                        account_info_iter.as_slice(),
+                    )?;
+
+                    if source_account.base.delegated_amount < amount {
+                        return Err(TokenError::InsufficientFunds.into());
+                    }
+                    source_account.base.delegated_amount = source_account
+                        .base
+                        .delegated_amount
+                        .checked_sub(amount)
+                        .ok_or(TokenError::Overflow)?;
+                    if source_account.base.delegated_amount == 0 {
+                        source_account.base.delegate = COption::None;
+                    }
+                }
+                _ => Self::validate_owner(
                     program_id,
-                    delegate,
+                    &source_account.base.owner,
                     authority_info,
                     authority_info_data_len,
                     account_info_iter.as_slice(),
-                )?;
-
-                if source_account.base.delegated_amount < amount {
-                    return Err(TokenError::InsufficientFunds.into());
-                }
-                source_account.base.delegated_amount = source_account
-                    .base
-                    .delegated_amount
-                    .checked_sub(amount)
-                    .ok_or(TokenError::Overflow)?;
-                if source_account.base.delegated_amount == 0 {
-                    source_account.base.delegate = COption::None;
-                }
+                )?,
             }
-            _ => Self::validate_owner(
-                program_id,
-                &source_account.base.owner,
-                authority_info,
-                authority_info_data_len,
-                account_info_iter.as_slice(),
-            )?,
         }
 
         // Revisit this later to see if it's worth adding a check to reduce
@@ -861,13 +866,20 @@ impl Processor {
                 .close_authority
                 .unwrap_or(source_account.base.owner);
 
-            Self::validate_owner(
-                program_id,
-                &authority,
-                authority_info,
-                authority_info_data_len,
-                account_info_iter.as_slice(),
-            )?;
+            if !source_account
+                .base
+                .is_owned_by_system_program_or_incinerator()
+            {
+                Self::validate_owner(
+                    program_id,
+                    &authority,
+                    authority_info,
+                    authority_info_data_len,
+                    account_info_iter.as_slice(),
+                )?;
+            } else if !solana_program::incinerator::check_id(destination_account_info.key) {
+                return Err(ProgramError::InvalidAccountData);
+            }
 
             if let Ok(confidential_transfer_state) =
                 source_account.get_extension::<ConfidentialTransferAccount>()

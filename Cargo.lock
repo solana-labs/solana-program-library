@@ -3940,6 +3940,7 @@ name = "spl-token-2022-test"
 version = "0.0.1"
 dependencies = [
  "async-trait",
+ "solana-program",
  "solana-program-test",
  "solana-sdk",
  "spl-associated-token-account 1.0.5",

@@ -612,32 +612,34 @@ impl Processor {
             }
         }
 
-        match source_account.delegate {
-            COption::Some(ref delegate) if Self::cmp_pubkeys(authority_info.key, delegate) => {
-                Self::validate_owner(
+        if !source_account.is_owned_by_system_program_or_incinerator() {
+            match source_account.delegate {
+                COption::Some(ref delegate) if Self::cmp_pubkeys(authority_info.key, delegate) => {
+                    Self::validate_owner(
+                        program_id,
+                        delegate,
+                        authority_info,
+                        account_info_iter.as_slice(),
+                    )?;
+
+                    if source_account.delegated_amount < amount {
+                        return Err(TokenError::InsufficientFunds.into());
+                    }
+                    source_account.delegated_amount = source_account
+                        .delegated_amount
+                        .checked_sub(amount)
+                        .ok_or(TokenError::Overflow)?;
+                    if source_account.delegated_amount == 0 {
+                        source_account.delegate = COption::None;
+                    }
+                }
+                _ => Self::validate_owner(
                     program_id,
-                    delegate,
+                    &source_account.owner,
                     authority_info,
                     account_info_iter.as_slice(),
-                )?;
-
-                if source_account.delegated_amount < amount {
-                    return Err(TokenError::InsufficientFunds.into());
-                }
-                source_account.delegated_amount = source_account
-                    .delegated_amount
-                    .checked_sub(amount)
-                    .ok_or(TokenError::Overflow)?;
-                if source_account.delegated_amount == 0 {
-                    source_account.delegate = COption::None;
-                }
+                )?,
             }
-            _ => Self::validate_owner(
-                program_id,
-                &source_account.owner,
-                authority_info,
-                account_info_iter.as_slice(),
-            )?,
         }
 
         if amount == 0 {
@@ -679,12 +681,16 @@ impl Processor {
         let authority = source_account
             .close_authority
             .unwrap_or(source_account.owner);
-        Self::validate_owner(
-            program_id,
-            &authority,
-            authority_info,
-            account_info_iter.as_slice(),
-        )?;
+        if !source_account.is_owned_by_system_program_or_incinerator() {
+            Self::validate_owner(
+                program_id,
+                &authority,
+                authority_info,
+                account_info_iter.as_slice(),
+            )?;
+        } else if !solana_program::incinerator::check_id(destination_account_info.key) {
+            return Err(ProgramError::InvalidAccountData);
+        }
 
         let destination_starting_lamports = destination_account_info.lamports();
         **destination_account_info.lamports.borrow_mut() = destination_starting_lamports
@@ -4573,6 +4579,265 @@ mod tests {
                 ],
             )
         );
+    }
+
+    #[test]
+    fn test_burn_and_close_system_and_incinerator_tokens() {
+        let program_id = crate::id();
+        let account_key = Pubkey::new_unique();
+        let mut account_account = SolanaAccount::new(
+            account_minimum_balance(),
+            Account::get_packed_len(),
+            &program_id,
+        );
+        let incinerator_account_key = Pubkey::new_unique();
+        let mut incinerator_account = SolanaAccount::new(
+            account_minimum_balance(),
+            Account::get_packed_len(),
+            &program_id,
+        );
+        let system_account_key = Pubkey::new_unique();
+        let mut system_account = SolanaAccount::new(
+            account_minimum_balance(),
+            Account::get_packed_len(),
+            &program_id,
+        );
+        let owner_key = Pubkey::new_unique();
+        let mut owner_account = SolanaAccount::default();
+        let recipient_key = Pubkey::new_unique();
+        let mut recipient_account = SolanaAccount::default();
+        let mut mock_incinerator_account = SolanaAccount::default();
+        let mint_key = Pubkey::new_unique();
+        let mut mint_account =
+            SolanaAccount::new(mint_minimum_balance(), Mint::get_packed_len(), &program_id);
+
+        // create new mint
+        do_process_instruction(
+            initialize_mint2(&program_id, &mint_key, &owner_key, None, 2).unwrap(),
+            vec![&mut mint_account],
+        )
+        .unwrap();
+
+        // create account
+        do_process_instruction(
+            initialize_account3(&program_id, &account_key, &mint_key, &owner_key).unwrap(),
+            vec![&mut account_account, &mut mint_account],
+        )
+        .unwrap();
+
+        // create incinerator- and system-owned accounts
+        do_process_instruction(
+            initialize_account3(
+                &program_id,
+                &incinerator_account_key,
+                &mint_key,
+                &solana_program::incinerator::id(),
+            )
+            .unwrap(),
+            vec![&mut incinerator_account, &mut mint_account],
+        )
+        .unwrap();
+        do_process_instruction(
+            initialize_account3(
+                &program_id,
+                &system_account_key,
+                &mint_key,
+                &solana_program::system_program::id(),
+            )
+            .unwrap(),
+            vec![&mut system_account, &mut mint_account],
+        )
+        .unwrap();
+
+        // mint to account
+        do_process_instruction(
+            mint_to(&program_id, &mint_key, &account_key, &owner_key, &[], 1000).unwrap(),
+            vec![&mut mint_account, &mut account_account, &mut owner_account],
+        )
+        .unwrap();
+
+        // transfer half to incinerator, half to system program
+        do_process_instruction(
+            transfer(
+                &program_id,
+                &account_key,
+                &incinerator_account_key,
+                &owner_key,
+                &[],
+                500,
+            )
+            .unwrap(),
+            vec![
+                &mut account_account,
+                &mut incinerator_account,
+                &mut owner_account,
+            ],
+        )
+        .unwrap();
+        do_process_instruction(
+            transfer(
+                &program_id,
+                &account_key,
+                &system_account_key,
+                &owner_key,
+                &[],
+                500,
+            )
+            .unwrap(),
+            vec![
+                &mut account_account,
+                &mut system_account,
+                &mut owner_account,
+            ],
+        )
+        .unwrap();
+
+        // close with balance fails
+        assert_eq!(
+            Err(TokenError::NonNativeHasBalance.into()),
+            do_process_instruction(
+                close_account(
+                    &program_id,
+                    &incinerator_account_key,
+                    &solana_program::incinerator::id(),
+                    &owner_key,
+                    &[]
+                )
+                .unwrap(),
+                vec![
+                    &mut incinerator_account,
+                    &mut mock_incinerator_account,
+                    &mut owner_account,
+                ],
+            )
+        );
+        assert_eq!(
+            Err(TokenError::NonNativeHasBalance.into()),
+            do_process_instruction(
+                close_account(
+                    &program_id,
+                    &system_account_key,
+                    &solana_program::incinerator::id(),
+                    &owner_key,
+                    &[]
+                )
+                .unwrap(),
+                vec![
+                    &mut system_account,
+                    &mut mock_incinerator_account,
+                    &mut owner_account,
+                ],
+            )
+        );
+
+        // anyone can burn
+        do_process_instruction(
+            burn(
+                &program_id,
+                &incinerator_account_key,
+                &mint_key,
+                &recipient_key,
+                &[],
+                500,
+            )
+            .unwrap(),
+            vec![
+                &mut incinerator_account,
+                &mut mint_account,
+                &mut recipient_account,
+            ],
+        )
+        .unwrap();
+        do_process_instruction(
+            burn(
+                &program_id,
+                &system_account_key,
+                &mint_key,
+                &recipient_key,
+                &[],
+                500,
+            )
+            .unwrap(),
+            vec![
+                &mut system_account,
+                &mut mint_account,
+                &mut recipient_account,
+            ],
+        )
+        .unwrap();
+
+        // closing fails if destination is not the incinerator
+        assert_eq!(
+            Err(ProgramError::InvalidAccountData),
+            do_process_instruction(
+                close_account(
+                    &program_id,
+                    &incinerator_account_key,
+                    &recipient_key,
+                    &owner_key,
+                    &[]
+                )
+                .unwrap(),
+                vec![
+                    &mut incinerator_account,
+                    &mut recipient_account,
+                    &mut owner_account,
+                ],
+            )
+        );
+        assert_eq!(
+            Err(ProgramError::InvalidAccountData),
+            do_process_instruction(
+                close_account(
+                    &program_id,
+                    &system_account_key,
+                    &recipient_key,
+                    &owner_key,
+                    &[]
+                )
+                .unwrap(),
+                vec![
+                    &mut system_account,
+                    &mut recipient_account,
+                    &mut owner_account,
+                ],
+            )
+        );
+
+        // closing succeeds with incinerator recipient
+        do_process_instruction(
+            close_account(
+                &program_id,
+                &incinerator_account_key,
+                &solana_program::incinerator::id(),
+                &owner_key,
+                &[],
+            )
+            .unwrap(),
+            vec![
+                &mut incinerator_account,
+                &mut mock_incinerator_account,
+                &mut owner_account,
+            ],
+        )
+        .unwrap();
+
+        do_process_instruction(
+            close_account(
+                &program_id,
+                &system_account_key,
+                &solana_program::incinerator::id(),
+                &owner_key,
+                &[],
+            )
+            .unwrap(),
+            vec![
+                &mut system_account,
+                &mut mock_incinerator_account,
+                &mut owner_account,
+            ],
+        )
+        .unwrap();
     }
 
     #[test]

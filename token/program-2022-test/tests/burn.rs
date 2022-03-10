@@ -149,3 +149,114 @@ async fn self_owned_with_extension() {
         .unwrap();
     run_self_owned(context).await;
 }
+
+async fn run_burn_and_close_system_or_incinerator(context: TestContext, non_owner: &Pubkey) {
+    let TokenContext {
+        decimals,
+        mint_authority,
+        token,
+        alice,
+        ..
+    } = context.token_context.unwrap();
+
+    let alice_account = Keypair::new();
+    let alice_account = token
+        .create_auxiliary_token_account(&alice_account, &alice.pubkey())
+        .await
+        .unwrap();
+
+    // mint a token
+    token
+        .mint_to(&alice_account, &mint_authority, 1)
+        .await
+        .unwrap();
+
+    // transfer token to incinerator/system
+    let non_owner_account = Keypair::new();
+    let non_owner_account = token
+        .create_auxiliary_token_account(&non_owner_account, non_owner)
+        .await
+        .unwrap();
+    token
+        .transfer_checked(&alice_account, &non_owner_account, &alice, 1, decimals)
+        .await
+        .unwrap();
+
+    // can't close when holding tokens
+    let carlos = Keypair::new();
+    let error = token
+        .close_account(
+            &non_owner_account,
+            &solana_program::incinerator::id(),
+            &carlos,
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(
+        error,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(
+                0,
+                InstructionError::Custom(TokenError::NonNativeHasBalance as u32)
+            )
+        )))
+    );
+
+    // but anyone can burn it
+    token
+        .burn_checked(&non_owner_account, &carlos, 1, decimals)
+        .await
+        .unwrap();
+
+    // closing fails if destination is not the incinerator
+    let error = token
+        .close_account(&non_owner_account, &carlos.pubkey(), &carlos)
+        .await
+        .unwrap_err();
+    assert_eq!(
+        error,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(0, InstructionError::InvalidAccountData)
+        )))
+    );
+
+    let error = token
+        .close_account(
+            &non_owner_account,
+            &solana_program::system_program::id(),
+            &carlos,
+        )
+        .await
+        .unwrap_err();
+    assert_eq!(
+        error,
+        TokenClientError::Client(Box::new(TransportError::TransactionError(
+            TransactionError::InstructionError(0, InstructionError::InvalidAccountData)
+        )))
+    );
+
+    // ... and then close it
+    token.get_new_latest_blockhash().await.unwrap();
+    token
+        .close_account(
+            &non_owner_account,
+            &solana_program::incinerator::id(),
+            &carlos,
+        )
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn burn_and_close_incinerator_tokens() {
+    let mut context = TestContext::new().await;
+    context.init_token_with_mint(vec![]).await.unwrap();
+    run_burn_and_close_system_or_incinerator(context, &solana_program::incinerator::id()).await;
+}
+
+#[tokio::test]
+async fn burn_and_close_system_tokens() {
+    let mut context = TestContext::new().await;
+    context.init_token_with_mint(vec![]).await.unwrap();
+    run_burn_and_close_system_or_incinerator(context, &solana_program::system_program::id()).await;
+}
